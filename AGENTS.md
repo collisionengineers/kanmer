@@ -221,12 +221,15 @@ Run from the repo root unless noted.
 |---|---|
 | `npm run setup` | install + build core, server, and GUI |
 | `npm run build` | build core + mcp-server (incl. standalone bundle) |
+| `npm run build:core` / `npm run build:server` | build just one package |
 | `npm test` | core vitest suite |
+| `npm run typecheck -w @kanmer/gui` | GUI type check (each package has a `typecheck` script) |
 | `npm run app` | build + launch the GUI |
 | `npm run dev:gui` | GUI with hot reload |
 | `npm run dist` | build everything **and** produce `apps/gui/release/Kanmer Setup <v>.exe` |
 | `npm run plugin:build` | build, then copy the standalone MCP bundle into `plugins/kanmer/mcp/` |
 | `npm run plugin:check` | fail if MCP tool names drift from the skill's tool reference |
+| `npm run inspect` | build, then open MCP Inspector against the server (root `./sandbox`) |
 | `node packages/mcp-server/src/smoke.mjs` | stdio smoke test against the built server |
 
 **Smoke test env overrides** (in `smoke.mjs`): `KANMER_SERVER=<path>` points at a different server entry (e.g. the standalone bundle); `KANMER_NODE=<electron.exe>` runs it via Electron-as-Node (sets `ELECTRON_RUN_AS_NODE=1`). Example — test the packaged server exactly as shipped:

@@ -752,6 +752,323 @@ button.danger {
   display: flex;
   gap: 6px;
 }
+
+/* Editor resize + sticky save (Phase 7) */
+.editor {
+  position: relative;
+}
+.editor-resize {
+  position: absolute;
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 5;
+}
+.editor-resize:hover {
+  background: var(--accent, #5b8cff);
+  opacity: 0.35;
+}
+.editor-foot {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-2);
+  padding-top: 8px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Doc tabs */
+.doc-tabs {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+}
+.doc-tabs .tab {
+  font-size: 11px;
+  padding: 3px 8px;
+}
+.doc-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent, #5b8cff);
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.doc-empty {
+  padding: 30px 10px;
+  text-align: center;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+.doc-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  flex: 1;
+}
+.doc-body {
+  min-height: 300px;
+}
+.doc-view {
+  overflow: auto;
+}
+.checklist-view {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+.checklist-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+}
+.checklist-item .done {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.checklist-text {
+  min-height: 1em;
+}
+.taken-note {
+  font-size: 12px;
+  color: var(--accent, #5b8cff);
+  padding: 4px 0 8px;
+}
+
+/* Chip input */
+.chip-input {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  background: var(--bg-3);
+  padding: 4px 6px;
+  cursor: text;
+}
+.chip-input input {
+  border: none;
+  background: none;
+  outline: none;
+  color: inherit;
+  font: inherit;
+  min-width: 90px;
+  flex: 1;
+}
+.chip-entry {
+  position: relative;
+  flex: 1;
+  min-width: 90px;
+}
+.chip-x {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0 0 0 4px;
+  font-size: 9px;
+  opacity: 0.7;
+}
+.chip-x:hover {
+  opacity: 1;
+}
+
+/* Standup */
+.standup {
+  max-width: 760px;
+  padding: 6px 8px;
+}
+.standup-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.standup-head h2 {
+  margin: 0;
+}
+.standup-section h3 {
+  margin: 18px 0 6px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+}
+.standup-section ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.standup-section li {
+  margin: 3px 0;
+}
+.linklike {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent, #5b8cff);
+  cursor: pointer;
+  font: inherit;
+}
+.linklike:hover {
+  text-decoration: underline;
+}
+
+/* Activity panel + bell */
+.bell {
+  position: relative;
+}
+.bell-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+.activity-panel {
+  width: 340px;
+  border-left: 1px solid var(--line);
+  background: var(--bg-2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.activity-head {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.activity-head h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+}
+.activity-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  font: inherit;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.activity-row:hover {
+  background: var(--bg-3);
+}
+.activity-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* In-app toasts */
+.toast-stack {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 60;
+}
+.toast {
+  background: var(--bg-3);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  color: inherit;
+  font: inherit;
+  padding: 10px 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  text-align: left;
+}
+
+/* Command palette */
+.palette-backdrop {
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+.palette {
+  width: 520px;
+  max-width: 92vw;
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.palette input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: var(--bg-3);
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  padding: 12px 14px;
+  box-sizing: border-box;
+}
+.palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  max-height: 320px;
+  overflow: auto;
+}
+.palette-list li {
+  padding: 7px 14px;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.palette-list li.active,
+.palette-list li:hover {
+  background: var(--bg-3);
+}
+.palette-kind {
+  color: var(--muted);
+  font-size: 11px;
+}
+.palette-none {
+  color: var(--muted);
+  cursor: default;
+}
+
+/* Migration modal */
+.modal.migrate {
+  width: 560px;
+}
+.migrate-list {
+  font-size: 12px;
+  color: var(--muted);
+  max-height: 160px;
+  overflow: auto;
+}
 .area-add .quickadd-btn {
   padding: 0 6px;
   font-size: 12px;

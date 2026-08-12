@@ -1,4 +1,5 @@
 import type {
+  ActivityEntry,
   BoardColumn,
   BoardConfig,
   ColumnKind,
@@ -7,6 +8,9 @@ import type {
   Item,
   ItemFilter,
   LinkGraph,
+  MigrationReport,
+  TicketDoc,
+  TicketDocsInfo,
   UpdateItemPatch,
 } from "@kanmer/core";
 
@@ -32,11 +36,18 @@ export const CH = {
   setNotifications: "kanmer:setNotifications",
   connectAgent: "kanmer:connectAgent",
   showItemMenu: "kanmer:showItemMenu",
+  migrate: "kanmer:migrate",
+  getDoc: "kanmer:getDoc",
+  setDoc: "kanmer:setDoc",
+  getDocsInfo: "kanmer:getDocsInfo",
+  getActivity: "kanmer:getActivity",
   changed: "kanmer:changed",
   /** Main → renderer: reveal an item (toast click, etc.). */
   reveal: "kanmer:reveal",
   /** Main → renderer: application-menu commands. */
   menu: "kanmer:menu",
+  /** Main → renderer: a change NOT made by this GUI (agent/manual edit). */
+  agentChange: "kanmer:agentChange",
 } as const;
 
 export type Theme = "dark" | "light" | "system";
@@ -59,11 +70,20 @@ export interface OpenProjectResult {
   root: string;
   board: BoardConfig;
   items: Item[];
+  /** Storage format: 1 = legacy layout (offer migration), 2 = current. */
+  format: 1 | 2;
 }
 
 export interface ChangePayload {
   event: "add" | "change" | "unlink";
   file: string;
+}
+
+/** A change on disk that this GUI didn't make (agent or manual edit). */
+export interface AgentChangePayload {
+  /** Item id, or "board". */
+  key: string;
+  event: "add" | "change" | "unlink";
 }
 
 /** What the native card context menu needs to build itself. */
@@ -112,10 +132,22 @@ export interface KanmerApi {
   connectAgent(target: ConnectTarget): Promise<ConnectResult>;
   /** Show the native right-click menu for a card; resolves with the chosen action. */
   showItemMenu(payload: ItemMenuPayload): Promise<ItemMenuAction | null>;
+  /** Migrate the open v1 project to format 2 (dryRun for the report only). */
+  migrate(dryRun: boolean): Promise<MigrationReport>;
+  /** Read a ticket pipeline document (null when not written yet). */
+  getDoc(id: string, doc: TicketDoc): Promise<string | null>;
+  /** Write (or append to) a ticket pipeline document. */
+  setDoc(id: string, doc: TicketDoc, content: string, append?: boolean): Promise<void>;
+  /** Which pipeline docs exist + checklist progress; null for legacy items. */
+  getDocsInfo(id: string): Promise<TicketDocsInfo | null>;
+  /** Read the activity log. */
+  getActivity(opts?: { id?: string; since?: string; limit?: number }): Promise<ActivityEntry[]>;
   /** Subscribe to on-disk changes (e.g. an agent editing via MCP). Returns an unsubscribe fn. */
   onChange(cb: (payload: ChangePayload) => void): () => void;
   /** Subscribe to reveal requests (notification clicks). */
   onReveal(cb: (id: string) => void): () => void;
   /** Subscribe to application-menu commands. */
   onMenu(cb: (cmd: MenuCommand) => void): () => void;
+  /** Subscribe to changes made by someone other than this GUI. */
+  onAgentChange(cb: (payload: AgentChangePayload) => void): () => void;
 }

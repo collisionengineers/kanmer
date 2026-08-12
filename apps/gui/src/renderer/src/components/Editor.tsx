@@ -1,12 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { BoardColumn, BoardConfig, Item, LinkGraph, UpdateItemPatch } from "@kanmer/core";
+import type {
+  BoardColumn,
+  BoardConfig,
+  Item,
+  LinkGraph,
+  TicketDoc,
+  TicketDocsInfo,
+  UpdateItemPatch,
+} from "@kanmer/core";
 import { renderMarkdown } from "../lib/markdown.js";
+import { ChipInput } from "./ChipInput.js";
 
 interface EditorProps {
   item: Item;
   board: BoardConfig;
   items: Item[];
   knownIds: Set<string>;
+  /** Bumped on every on-disk change so open documents can re-sync. */
+  changeSignal: number;
   onClose: () => void;
   onNavigate: (id: string) => void;
   /** Saves a diff patch; resolves with the item as written to disk. */
@@ -22,6 +33,7 @@ interface Snapshot {
   area: string;
   priority: string;
   assignee: string;
+  due: string;
   labels: string;
   links: string;
   body: string;
@@ -35,11 +47,22 @@ const FIELD_KEYS = [
   "area",
   "priority",
   "assignee",
+  "due",
   "labels",
   "links",
   "body",
 ] as const;
 type FieldKey = (typeof FIELD_KEYS)[number];
+
+const DOC_TABS: { key: TicketDoc; label: string }[] = [
+  { key: "research", label: "Research" },
+  { key: "impact", label: "Impact" },
+  { key: "plan", label: "Plan" },
+  { key: "checklist", label: "Checklist" },
+  { key: "proof", label: "Proof" },
+];
+
+const MIN_WIDTH = 320;
 
 function snapOf(item: Item): Snapshot {
   return {
@@ -48,6 +71,7 @@ function snapOf(item: Item): Snapshot {
     area: item.area,
     priority: item.priority,
     assignee: item.assignee,
+    due: item.due ?? "",
     labels: (item.labels ?? []).join(", "),
     links: (item.links ?? []).join(", "),
     body: item.body,
@@ -63,13 +87,26 @@ function withCurrent(options: BoardColumn[], current: string): BoardColumn[] {
 }
 
 export function Editor(props: EditorProps): JSX.Element {
-  const { item, board, items, knownIds, onClose, onNavigate, onSave, onDirtyChange } = props;
+  const {
+    item,
+    board,
+    items,
+    knownIds,
+    changeSignal,
+    onClose,
+    onNavigate,
+    onSave,
+    onDirtyChange,
+  } = props;
 
   const [form, setForm] = useState<Snapshot>(() => snapOf(item));
   // The item as last read/written: saves diff against this, never against
   // the live prop — so a concurrent agent edit to a field the user never
   // touched is left alone instead of being clobbered.
   const baseline = useRef<Snapshot>(snapOf(item));
+  const [tab, setTab] = useState<"ticket" | TicketDoc>("ticket");
+  const [docsInfo, setDocsInfo] = useState<TicketDocsInfo | null>(null);
+  const [docDirty, setDocDirty] = useState(false);
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [graph, setGraph] = useState<LinkGraph | null>(null);
@@ -77,6 +114,38 @@ export function Editor(props: EditorProps): JSX.Element {
     null,
   );
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Resizable width, persisted.
+  const [width, setWidth] = useState<number>(() => {
+    const saved = Number(localStorage.getItem("kanmer:editorWidth"));
+    return Number.isFinite(saved) && saved >= MIN_WIDTH ? saved : 420;
+  });
+  const dragging = useRef(false);
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!dragging.current) return;
+      const next = Math.min(
+        Math.max(window.innerWidth - e.clientX, MIN_WIDTH),
+        Math.floor(window.innerWidth / 2),
+      );
+      setWidth(next);
+    };
+    const onUp = () => {
+      if (!dragging.current) return;
+      dragging.current = false;
+      document.body.style.cursor = "";
+      setWidth((w) => {
+        localStorage.setItem("kanmer:editorWidth", String(w));
+        return w;
+      });
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
 
   // Wiki-link autocomplete state.
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -89,11 +158,16 @@ export function Editor(props: EditorProps): JSX.Element {
     void window.kanmer.getLinks(item.id).then(setGraph);
   }, [item.id, item.updated]);
 
+  useEffect(() => {
+    if (item.type !== "ticket") return;
+    void window.kanmer.getDocsInfo(item.id).then(setDocsInfo);
+  }, [item.id, item.updated, changeSignal, item.type]);
+
   const dirtyKeys = useMemo(
     () => FIELD_KEYS.filter((k) => form[k] !== baseline.current[k]),
     [form],
   );
-  const dirty = dirtyKeys.length > 0;
+  const dirty = dirtyKeys.length > 0 || docDirty;
 
   useEffect(() => {
     onDirtyChange?.(dirty);
@@ -132,6 +206,15 @@ export function Editor(props: EditorProps): JSX.Element {
   const statusOpts = withCurrent(board.statuses, item.status);
   const priorityOpts = withCurrent(board.priorities, item.priority);
   const areaOpts = withCurrent(board.areas, item.area);
+  const labelSuggestions = useMemo(
+    () =>
+      [...new Set(items.flatMap((i) => i.labels ?? []))].map((l) => ({ id: l })),
+    [items],
+  );
+  const linkSuggestions = useMemo(
+    () => items.filter((i) => i.id !== item.id).map((i) => ({ id: i.id, hint: i.title })),
+    [items, item.id],
+  );
 
   /** Build the diff patch: only fields where local ≠ baseline. */
   const buildPatch = (keys: FieldKey[]): UpdateItemPatch => {
@@ -188,7 +271,8 @@ export function Editor(props: EditorProps): JSX.Element {
 
   const set = (k: FieldKey, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  // Ctrl+S saves from anywhere in the editor.
+  // Ctrl+S saves from anywhere in the editor (ticket tab only; doc tabs
+  // have their own save flow).
   const saveRef = useRef(save);
   saveRef.current = save;
   useEffect(() => {
@@ -267,7 +351,16 @@ export function Editor(props: EditorProps): JSX.Element {
   };
 
   return (
-    <aside className="editor">
+    <aside className="editor" style={{ width }}>
+      <div
+        className="editor-resize"
+        title="Drag to resize"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          dragging.current = true;
+          document.body.style.cursor = "col-resize";
+        }}
+      />
       <div className="editor-head">
         <span className="editor-id">{item.id}</span>
         {item.archived && <span className="chip subtle archived-tag">archived</span>}
@@ -283,6 +376,32 @@ export function Editor(props: EditorProps): JSX.Element {
           Close
         </button>
       </div>
+
+      {item.type === "ticket" && docsInfo && (
+        <nav className="doc-tabs">
+          <button
+            className={tab === "ticket" ? "tab active" : "tab"}
+            onClick={() => setTab("ticket")}
+          >
+            Ticket
+          </button>
+          {DOC_TABS.map((d) => (
+            <button
+              key={d.key}
+              className={tab === d.key ? "tab active" : "tab"}
+              onClick={() => setTab(d.key)}
+            >
+              {d.label}
+              {docsInfo.docs[d.key] && <span className="doc-dot" aria-label="exists" />}
+              {d.key === "checklist" && docsInfo.checklist && (
+                <span className="count">
+                  {docsInfo.checklist.checked}/{docsInfo.checklist.total}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+      )}
 
       {conflict && (
         <div className="banner warn conflict-banner">
@@ -308,141 +427,366 @@ export function Editor(props: EditorProps): JSX.Element {
       )}
       {saveError && <div className="banner error">{saveError}</div>}
 
-      <label className="field">
-        <span>Title</span>
-        <input value={form.title} onChange={(e) => set("title", e.target.value)} />
-      </label>
+      {tab !== "ticket" ? (
+        <DocEditor
+          key={`${item.id}:${tab}`}
+          id={item.id}
+          doc={tab}
+          knownIds={knownIds}
+          changeSignal={changeSignal}
+          onDirty={setDocDirty}
+          onNavigate={onNavigate}
+        />
+      ) : (
+        <>
+          <label className="field">
+            <span>Title</span>
+            <input value={form.title} onChange={(e) => set("title", e.target.value)} />
+          </label>
 
-      <label className="field">
-        <span>Stage</span>
-        <select value={form.status} onChange={(e) => set("status", e.target.value)}>
-          {statusOpts.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </label>
+          <label className="field">
+            <span>Stage</span>
+            <select value={form.status} onChange={(e) => set("status", e.target.value)}>
+              {statusOpts.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
 
-      <div className="field-row">
-        <label className="field">
-          <span>Area</span>
-          <select value={form.area} onChange={(e) => set("area", e.target.value)}>
-            <option value="">— none —</option>
-            {areaOpts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>Priority</span>
-          <select value={form.priority} onChange={(e) => set("priority", e.target.value)}>
-            {priorityOpts.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <label className="field">
-        <span>Assignee</span>
-        <input value={form.assignee} onChange={(e) => set("assignee", e.target.value)} />
-      </label>
-
-      <label className="field">
-        <span>Labels (comma-separated)</span>
-        <input value={form.labels} onChange={(e) => set("labels", e.target.value)} />
-      </label>
-
-      <label className="field">
-        <span>Links (comma-separated ids)</span>
-        <input value={form.links} onChange={(e) => set("links", e.target.value)} />
-      </label>
-
-      <div className="field">
-        <div className="body-head">
-          <span>Body</span>
-          <button className="ghost xs" onClick={() => setPreview((p) => !p)}>
-            {preview ? "Edit" : "Preview"}
-          </button>
-        </div>
-        {preview ? (
-          <div
-            className="preview markdown"
-            onClick={onPreviewClick}
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(form.body, knownIds) }}
-          />
-        ) : (
-          <div className="body-wrap">
-            <textarea
-              ref={bodyRef}
-              className="body"
-              value={form.body}
-              spellCheck={false}
-              onChange={(e) => {
-                set("body", e.target.value);
-                recomputeSuggest(e.target.value, e.target.selectionStart ?? 0);
-              }}
-              onKeyDown={onBodyKeyDown}
-              onClick={(e) => recomputeSuggest(form.body, e.currentTarget.selectionStart ?? 0)}
-              placeholder="Markdown… reference other items with [[TICK-001]]"
-            />
-            {suggest && suggestions.length > 0 && (
-              <ul className="autocomplete">
-                {suggestions.map((s, i) => (
-                  <li
-                    key={s.id}
-                    className={i === activeIdx ? "active" : ""}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      insertSuggestion(s);
-                    }}
-                  >
-                    <span className="ac-id">{s.id}</span>
-                    <span className="ac-title">{s.title}</span>
-                  </li>
+          <div className="field-row">
+            <label className="field">
+              <span>Area</span>
+              <select value={form.area} onChange={(e) => set("area", e.target.value)}>
+                <option value="">— none —</option>
+                {areaOpts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
                 ))}
-              </ul>
+              </select>
+            </label>
+            <label className="field">
+              <span>Priority</span>
+              <select value={form.priority} onChange={(e) => set("priority", e.target.value)}>
+                {priorityOpts.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="field-row">
+            <label className="field">
+              <span>Assignee</span>
+              <input value={form.assignee} onChange={(e) => set("assignee", e.target.value)} />
+            </label>
+            <label className="field">
+              <span>Due</span>
+              <input
+                type="date"
+                value={form.due}
+                onChange={(e) => set("due", e.target.value)}
+              />
+            </label>
+          </div>
+
+          {item.taken_at && (
+            <div className="taken-note">
+              ⛏ Taken {item.branch ? `on ${item.branch}` : ""}
+              {item.worktree ? ` in ${item.worktree}` : ""} since{" "}
+              {new Date(item.taken_at).toLocaleString()}
+            </div>
+          )}
+
+          <div className="field">
+            <span>Labels</span>
+            <ChipInput
+              value={splitList(form.labels)}
+              onChange={(arr) => set("labels", arr.join(", "))}
+              suggestions={labelSuggestions}
+              placeholder="Add label…"
+              ariaLabel="Labels"
+            />
+          </div>
+
+          <div className="field">
+            <span>Links</span>
+            <ChipInput
+              value={splitList(form.links)}
+              onChange={(arr) => set("links", arr.join(", "))}
+              suggestions={linkSuggestions}
+              placeholder="Link an item id…"
+              ariaLabel="Links"
+            />
+          </div>
+
+          <div className="field">
+            <div className="body-head">
+              <span>Body</span>
+              <button className="ghost xs" onClick={() => setPreview((p) => !p)}>
+                {preview ? "Edit" : "Preview"}
+              </button>
+            </div>
+            {preview ? (
+              <div
+                className="preview markdown"
+                onClick={onPreviewClick}
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(form.body, knownIds) }}
+              />
+            ) : (
+              <div className="body-wrap">
+                <textarea
+                  ref={bodyRef}
+                  className="body"
+                  value={form.body}
+                  spellCheck={false}
+                  onChange={(e) => {
+                    set("body", e.target.value);
+                    recomputeSuggest(e.target.value, e.target.selectionStart ?? 0);
+                  }}
+                  onKeyDown={onBodyKeyDown}
+                  onClick={(e) => recomputeSuggest(form.body, e.currentTarget.selectionStart ?? 0)}
+                  placeholder="Markdown… reference other items with [[TICK-001]]"
+                />
+                {suggest && suggestions.length > 0 && (
+                  <ul className="autocomplete">
+                    {suggestions.map((s, i) => (
+                      <li
+                        key={s.id}
+                        className={i === activeIdx ? "active" : ""}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          insertSuggestion(s);
+                        }}
+                      >
+                        <span className="ac-id">{s.id}</span>
+                        <span className="ac-title">{s.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
 
-      {graph && (graph.links.length > 0 || graph.backlinks.length > 0) && (
-        <div className="links-panel">
-          {graph.links.length > 0 && (
-            <div className="links-group">
-              <span className="links-title">Links to</span>
-              {graph.links.map((id) => (
-                <button key={id} className="chip link" onClick={() => onNavigate(id)}>
-                  {id}
-                </button>
-              ))}
-            </div>
-          )}
-          {graph.backlinks.length > 0 && (
-            <div className="links-group">
-              <span className="links-title">Linked from</span>
-              {graph.backlinks.map((id) => (
-                <button key={id} className="chip link" onClick={() => onNavigate(id)}>
-                  {id}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+          {graph &&
+            (graph.links.length > 0 ||
+              graph.backlinks.length > 0 ||
+              graph.blocks.length > 0 ||
+              graph.blockedBy.length > 0) && (
+              <div className="links-panel">
+                {graph.links.length > 0 && (
+                  <LinkGroup title="Links to" ids={graph.links} onNavigate={onNavigate} />
+                )}
+                {graph.backlinks.length > 0 && (
+                  <LinkGroup title="Linked from" ids={graph.backlinks} onNavigate={onNavigate} />
+                )}
+                {graph.blocks.length > 0 && (
+                  <LinkGroup title="Blocks" ids={graph.blocks} onNavigate={onNavigate} />
+                )}
+                {graph.blockedBy.length > 0 && (
+                  <LinkGroup title="Blocked by" ids={graph.blockedBy} onNavigate={onNavigate} />
+                )}
+              </div>
+            )}
+
+          <div className="editor-foot">
+            <button className="primary" disabled={!dirty || saving} onClick={() => void save()}>
+              {saving ? "Saving…" : dirtyKeys.length > 0 ? "Save changes" : "Saved"}
+            </button>
+          </div>
+        </>
       )}
+    </aside>
+  );
+}
 
-      <div className="editor-foot">
-        <button className="primary" disabled={!dirty || saving} onClick={() => void save()}>
-          {saving ? "Saving…" : dirty ? "Save changes" : "Saved"}
+function LinkGroup({
+  title,
+  ids,
+  onNavigate,
+}: {
+  title: string;
+  ids: string[];
+  onNavigate: (id: string) => void;
+}): JSX.Element {
+  return (
+    <div className="links-group">
+      <span className="links-title">{title}</span>
+      {ids.map((id) => (
+        <button key={id} className="chip link" onClick={() => onNavigate(id)}>
+          {id}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * One pipeline document: edit/preview/save whole-doc, with the checklist tab
+ * rendering interactive checkboxes that write straight back to disk.
+ */
+function DocEditor({
+  id,
+  doc,
+  knownIds,
+  changeSignal,
+  onDirty,
+  onNavigate,
+}: {
+  id: string;
+  doc: TicketDoc;
+  knownIds: Set<string>;
+  changeSignal: number;
+  onDirty: (dirty: boolean) => void;
+  onNavigate: (id: string) => void;
+}): JSX.Element {
+  const [content, setContent] = useState<string | null>(null);
+  const [text, setText] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const dirty = editing && text !== (content ?? "");
+
+  useEffect(() => {
+    onDirty(dirty);
+  }, [dirty, onDirty]);
+  useEffect(() => () => onDirty(false), [onDirty]);
+
+  // Load — and re-sync on external changes while the user isn't editing.
+  useEffect(() => {
+    if (dirty) return;
+    void window.kanmer.getDoc(id, doc).then((c) => {
+      setContent(c);
+      setText(c ?? "");
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, doc, changeSignal]);
+
+  const saveDoc = async (next: string) => {
+    setSaving(true);
+    try {
+      await window.kanmer.setDoc(id, doc, next);
+      setContent(next.trim() ? `${next.trim()}\n` : next);
+      setText(next.trim() ? `${next.trim()}\n` : next);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleCheckbox = async (boxIndex: number) => {
+    if (content === null) return;
+    let seen = -1;
+    const next = content
+      .split("\n")
+      .map((line) => {
+        const m = /^(\s*[-*]\s+\[)( |x|X)(\].*)$/.exec(line);
+        if (!m) return line;
+        seen++;
+        if (seen !== boxIndex) return line;
+        return `${m[1]}${m[2] === " " ? "x" : " "}${m[3]}`;
+      })
+      .join("\n");
+    await saveDoc(next);
+  };
+
+  if (content === null && !editing) {
+    return (
+      <div className="doc-empty">
+        <p>No {doc}.md yet.</p>
+        <button
+          className="primary sm"
+          onClick={() => {
+            setText(`# ${id} ${doc}\n\n`);
+            setEditing(true);
+          }}
+        >
+          Create {doc}.md
         </button>
       </div>
-    </aside>
+    );
+  }
+
+  if (editing) {
+    return (
+      <div className="doc-editor">
+        <textarea
+          className="body doc-body"
+          value={text}
+          spellCheck={false}
+          autoFocus
+          onChange={(e) => setText(e.target.value)}
+        />
+        <div className="editor-foot">
+          <button
+            className="ghost sm"
+            onClick={() => {
+              setText(content ?? "");
+              setEditing(false);
+            }}
+          >
+            Cancel
+          </button>
+          <button className="primary" disabled={saving} onClick={() => void saveDoc(text)}>
+            {saving ? "Saving…" : `Save ${doc}.md`}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (doc === "checklist") {
+    let boxIndex = -1;
+    return (
+      <div className="doc-editor">
+        <div className="doc-view checklist-view">
+          {(content ?? "").split("\n").map((line, i) => {
+            const m = /^(\s*)[-*]\s+\[( |x|X)\]\s?(.*)$/.exec(line);
+            if (!m) return <div key={i} className="checklist-text">{line}</div>;
+            boxIndex++;
+            const idx = boxIndex;
+            const checked = m[2] !== " ";
+            return (
+              <label key={i} className="checklist-item" style={{ paddingLeft: m[1].length * 8 }}>
+                <input type="checkbox" checked={checked} onChange={() => void toggleCheckbox(idx)} />
+                <span className={checked ? "done" : ""}>{m[3]}</span>
+              </label>
+            );
+          })}
+        </div>
+        <div className="editor-foot">
+          <button className="ghost sm" onClick={() => setEditing(true)}>
+            Edit
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="doc-editor">
+      <div
+        className="preview markdown doc-view"
+        onClick={(e) => {
+          const target = e.target as HTMLElement;
+          const href = target.tagName === "A" ? target.getAttribute("href") ?? "" : "";
+          if (href.startsWith("kanmer:")) {
+            e.preventDefault();
+            onNavigate(href.slice("kanmer:".length));
+          }
+        }}
+        dangerouslySetInnerHTML={{ __html: renderMarkdown(content ?? "", knownIds) }}
+      />
+      <div className="editor-foot">
+        <button className="ghost sm" onClick={() => setEditing(true)}>
+          Edit
+        </button>
+      </div>
+    </div>
   );
 }
 

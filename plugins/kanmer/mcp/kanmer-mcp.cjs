@@ -38758,14 +38758,15 @@ function watchKanmer(projectRoot2, onChange, options2 = {}) {
     awaitWriteFinish: { stabilityThreshold: 80, pollInterval: 20 }
   });
   let timer = null;
-  let pending = null;
+  const pending = /* @__PURE__ */ new Map();
   const flush = () => {
-    if (pending) onChange(pending.event, pending.file);
-    pending = null;
+    const batch = [...pending.entries()];
+    pending.clear();
     timer = null;
+    for (const [file, event] of batch) onChange(event, file);
   };
   const schedule = (event) => (file) => {
-    pending = { event, file };
+    pending.set(file, event);
     if (timer) clearTimeout(timer);
     timer = setTimeout(flush, debounceMs);
   };

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { BoardColumn, BoardConfig, CreateItemInput, Item } from "@kanmer/core";
 import { columnColor } from "../lib/board.js";
 import { QuickAdd } from "./QuickAdd.js";
@@ -151,7 +151,11 @@ export function Board(props: BoardProps): JSX.Element {
   );
 }
 
-function Card({
+/**
+ * Memoized: with stable callbacks from App, a drop-target hover or a single
+ * item patch re-renders one card, not every card on the board.
+ */
+const Card = memo(function CardInner({
   item,
   board,
   selected,
@@ -228,4 +232,4 @@ function Card({
       {item.assignee && <div className="card-assignee">@{item.assignee}</div>}
     </article>
   );
-}
+});

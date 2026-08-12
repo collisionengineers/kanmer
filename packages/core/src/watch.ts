@@ -28,16 +28,20 @@ export function watchKanmer(
   });
 
   let timer: NodeJS.Timeout | null = null;
-  let pending: { event: KanmerChangeEvent; file: string } | null = null;
+  // Coalesce per FILE (last event wins per file), not globally — consumers
+  // patch state per file now, so a burst touching several files must
+  // deliver one event for each, not just the last one.
+  const pending = new Map<string, KanmerChangeEvent>();
 
   const flush = () => {
-    if (pending) onChange(pending.event, pending.file);
-    pending = null;
+    const batch = [...pending.entries()];
+    pending.clear();
     timer = null;
+    for (const [file, event] of batch) onChange(event, file);
   };
 
   const schedule = (event: KanmerChangeEvent) => (file: string) => {
-    pending = { event, file };
+    pending.set(file, event);
     if (timer) clearTimeout(timer);
     timer = setTimeout(flush, debounceMs);
   };

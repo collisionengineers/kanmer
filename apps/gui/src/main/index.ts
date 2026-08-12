@@ -17,12 +17,14 @@ import {
   KanmerStore,
   getLinkGraph,
   linkItems,
+  migrateToV2,
   watchKanmer,
   type BoardColumn,
   type BoardConfig,
   type ColumnKind,
   type CreateItemInput,
   type ItemFilter,
+  type TicketDoc,
   type UpdateItemPatch,
   type WatchHandle,
 } from "@kanmer/core";
@@ -318,6 +320,9 @@ async function openProject(root: string): Promise<OpenProjectResult> {
     if (!key) return;
     const own = ownWrites.get(key);
     if (own && Date.now() - own < 2000) return;
+    // Someone else changed the board (agent, hand edit): the renderer shows
+    // this in the activity bell / in-app toasts even while focused.
+    mainWindow?.webContents.send(CH.agentChange, { key, event });
     if (!readSettings().notifications) return;
     if (mainWindow?.isFocused()) return;
     queueToast(key, event);
@@ -327,6 +332,7 @@ async function openProject(root: string): Promise<OpenProjectResult> {
     root: store.paths.projectRoot,
     board: await store.getBoard(),
     items: await store.listItems({ includeArchived: true }),
+    format: await store.detectFormat(),
   };
 }
 
@@ -443,6 +449,18 @@ function registerIpc(): void {
   );
   ipcMain.handle(CH.showItemMenu, (e, payload: ItemMenuPayload) =>
     showItemMenu(e.sender, payload),
+  );
+  ipcMain.handle(CH.migrate, (_e, dryRun: boolean) =>
+    migrateToV2(requireStore(), { dryRun }),
+  );
+  ipcMain.handle(CH.getDoc, (_e, id: string, doc: TicketDoc) => requireStore().getDoc(id, doc));
+  ipcMain.handle(CH.setDoc, (_e, id: string, doc: TicketDoc, content: string, append?: boolean) => {
+    markOwnWrite(id);
+    return requireStore().setDoc(id, doc, content, { append });
+  });
+  ipcMain.handle(CH.getDocsInfo, (_e, id: string) => requireStore().getTicketDocsInfo(id));
+  ipcMain.handle(CH.getActivity, (_e, opts?: { id?: string; since?: string; limit?: number }) =>
+    requireStore().getActivity(opts),
   );
 }
 

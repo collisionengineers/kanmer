@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import {
   CH,
+  type AgentChangePayload,
   type ChangePayload,
   type KanmerApi,
   type MenuCommand,
@@ -27,6 +28,11 @@ const api: KanmerApi = {
   setNotifications: (on) => ipcRenderer.invoke(CH.setNotifications, on),
   connectAgent: (target) => ipcRenderer.invoke(CH.connectAgent, target),
   showItemMenu: (payload) => ipcRenderer.invoke(CH.showItemMenu, payload),
+  migrate: (dryRun) => ipcRenderer.invoke(CH.migrate, dryRun),
+  getDoc: (id, doc) => ipcRenderer.invoke(CH.getDoc, id, doc),
+  setDoc: (id, doc, content, append) => ipcRenderer.invoke(CH.setDoc, id, doc, content, append),
+  getDocsInfo: (id) => ipcRenderer.invoke(CH.getDocsInfo, id),
+  getActivity: (opts) => ipcRenderer.invoke(CH.getActivity, opts),
   onChange: (cb) => {
     const listener = (_e: unknown, payload: ChangePayload) => cb(payload);
     ipcRenderer.on(CH.changed, listener);
@@ -41,6 +47,11 @@ const api: KanmerApi = {
     const listener = (_e: unknown, cmd: MenuCommand) => cb(cmd);
     ipcRenderer.on(CH.menu, listener);
     return () => ipcRenderer.removeListener(CH.menu, listener);
+  },
+  onAgentChange: (cb) => {
+    const listener = (_e: unknown, payload: AgentChangePayload) => cb(payload);
+    ipcRenderer.on(CH.agentChange, listener);
+    return () => ipcRenderer.removeListener(CH.agentChange, listener);
   },
 };
 

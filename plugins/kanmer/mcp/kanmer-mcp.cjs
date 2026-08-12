@@ -3225,8 +3225,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path6) {
-      let input = path6;
+    function removeDotSegments(path7) {
+      let input = path7;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3478,8 +3478,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path6, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path6 && path6 !== "/" ? path6 : void 0;
+        const [path7, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path7 && path7 !== "/" ? path7 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -10477,17 +10477,17 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path6) {
-      const ctrl = callVisitor(key, node, visitor, path6);
+    function visit_(key, node, visitor, path7) {
+      const ctrl = callVisitor(key, node, visitor, path7);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path6, ctrl);
-        return visit_(key, ctrl, visitor, path6);
+        replaceNode(key, path7, ctrl);
+        return visit_(key, ctrl, visitor, path7);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path6 = Object.freeze(path6.concat(node));
+          path7 = Object.freeze(path7.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = visit_(i, node.items[i], visitor, path6);
+            const ci = visit_(i, node.items[i], visitor, path7);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -10498,13 +10498,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path6 = Object.freeze(path6.concat(node));
-          const ck = visit_("key", node.key, visitor, path6);
+          path7 = Object.freeze(path7.concat(node));
+          const ck = visit_("key", node.key, visitor, path7);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = visit_("value", node.value, visitor, path6);
+          const cv = visit_("value", node.value, visitor, path7);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -10525,17 +10525,17 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path6) {
-      const ctrl = await callVisitor(key, node, visitor, path6);
+    async function visitAsync_(key, node, visitor, path7) {
+      const ctrl = await callVisitor(key, node, visitor, path7);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path6, ctrl);
-        return visitAsync_(key, ctrl, visitor, path6);
+        replaceNode(key, path7, ctrl);
+        return visitAsync_(key, ctrl, visitor, path7);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path6 = Object.freeze(path6.concat(node));
+          path7 = Object.freeze(path7.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = await visitAsync_(i, node.items[i], visitor, path6);
+            const ci = await visitAsync_(i, node.items[i], visitor, path7);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -10546,13 +10546,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path6 = Object.freeze(path6.concat(node));
-          const ck = await visitAsync_("key", node.key, visitor, path6);
+          path7 = Object.freeze(path7.concat(node));
+          const ck = await visitAsync_("key", node.key, visitor, path7);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = await visitAsync_("value", node.value, visitor, path6);
+          const cv = await visitAsync_("value", node.value, visitor, path7);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -10579,23 +10579,23 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path6) {
+    function callVisitor(key, node, visitor, path7) {
       if (typeof visitor === "function")
-        return visitor(key, node, path6);
+        return visitor(key, node, path7);
       if (identity.isMap(node))
-        return visitor.Map?.(key, node, path6);
+        return visitor.Map?.(key, node, path7);
       if (identity.isSeq(node))
-        return visitor.Seq?.(key, node, path6);
+        return visitor.Seq?.(key, node, path7);
       if (identity.isPair(node))
-        return visitor.Pair?.(key, node, path6);
+        return visitor.Pair?.(key, node, path7);
       if (identity.isScalar(node))
-        return visitor.Scalar?.(key, node, path6);
+        return visitor.Scalar?.(key, node, path7);
       if (identity.isAlias(node))
-        return visitor.Alias?.(key, node, path6);
+        return visitor.Alias?.(key, node, path7);
       return void 0;
     }
-    function replaceNode(key, path6, node) {
-      const parent = path6[path6.length - 1];
+    function replaceNode(key, path7, node) {
+      const parent = path7[path7.length - 1];
       if (identity.isCollection(parent)) {
         parent.items[key] = node;
       } else if (identity.isPair(parent)) {
@@ -11205,10 +11205,10 @@ var require_Collection = __commonJS({
     var createNode = require_createNode();
     var identity = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema, path6, value) {
+    function collectionFromPath(schema, path7, value) {
       let v = value;
-      for (let i = path6.length - 1; i >= 0; --i) {
-        const k = path6[i];
+      for (let i = path7.length - 1; i >= 0; --i) {
+        const k = path7[i];
         if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
           const a = [];
           a[k] = v;
@@ -11227,7 +11227,7 @@ var require_Collection = __commonJS({
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
-    var isEmptyPath = (path6) => path6 == null || typeof path6 === "object" && !!path6[Symbol.iterator]().next().done;
+    var isEmptyPath = (path7) => path7 == null || typeof path7 === "object" && !!path7[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
       constructor(type, schema) {
         super(type);
@@ -11257,11 +11257,11 @@ var require_Collection = __commonJS({
        * be a Pair instance or a `{ key, value }` object, which may not have a key
        * that already exists in the map.
        */
-      addIn(path6, value) {
-        if (isEmptyPath(path6))
+      addIn(path7, value) {
+        if (isEmptyPath(path7))
           this.add(value);
         else {
-          const [key, ...rest] = path6;
+          const [key, ...rest] = path7;
           const node = this.get(key, true);
           if (identity.isCollection(node))
             node.addIn(rest, value);
@@ -11275,8 +11275,8 @@ var require_Collection = __commonJS({
        * Removes a value from the collection.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path6) {
-        const [key, ...rest] = path6;
+      deleteIn(path7) {
+        const [key, ...rest] = path7;
         if (rest.length === 0)
           return this.delete(key);
         const node = this.get(key, true);
@@ -11290,8 +11290,8 @@ var require_Collection = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path6, keepScalar) {
-        const [key, ...rest] = path6;
+      getIn(path7, keepScalar) {
+        const [key, ...rest] = path7;
         const node = this.get(key, true);
         if (rest.length === 0)
           return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -11309,8 +11309,8 @@ var require_Collection = __commonJS({
       /**
        * Checks if the collection includes a value with the key `key`.
        */
-      hasIn(path6) {
-        const [key, ...rest] = path6;
+      hasIn(path7) {
+        const [key, ...rest] = path7;
         if (rest.length === 0)
           return this.has(key);
         const node = this.get(key, true);
@@ -11320,8 +11320,8 @@ var require_Collection = __commonJS({
        * Sets a value in this collection. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path6, value) {
-        const [key, ...rest] = path6;
+      setIn(path7, value) {
+        const [key, ...rest] = path7;
         if (rest.length === 0) {
           this.set(key, value);
         } else {
@@ -13836,9 +13836,9 @@ var require_Document = __commonJS({
           this.contents.add(value);
       }
       /** Adds a value to the document. */
-      addIn(path6, value) {
+      addIn(path7, value) {
         if (assertCollection(this.contents))
-          this.contents.addIn(path6, value);
+          this.contents.addIn(path7, value);
       }
       /**
        * Create a new `Alias` node, ensuring that the target `node` has the required anchor.
@@ -13913,14 +13913,14 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path6) {
-        if (Collection.isEmptyPath(path6)) {
+      deleteIn(path7) {
+        if (Collection.isEmptyPath(path7)) {
           if (this.contents == null)
             return false;
           this.contents = null;
           return true;
         }
-        return assertCollection(this.contents) ? this.contents.deleteIn(path6) : false;
+        return assertCollection(this.contents) ? this.contents.deleteIn(path7) : false;
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -13935,10 +13935,10 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path6, keepScalar) {
-        if (Collection.isEmptyPath(path6))
+      getIn(path7, keepScalar) {
+        if (Collection.isEmptyPath(path7))
           return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-        return identity.isCollection(this.contents) ? this.contents.getIn(path6, keepScalar) : void 0;
+        return identity.isCollection(this.contents) ? this.contents.getIn(path7, keepScalar) : void 0;
       }
       /**
        * Checks if the document includes a value with the key `key`.
@@ -13949,10 +13949,10 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value at `path`.
        */
-      hasIn(path6) {
-        if (Collection.isEmptyPath(path6))
+      hasIn(path7) {
+        if (Collection.isEmptyPath(path7))
           return this.contents !== void 0;
-        return identity.isCollection(this.contents) ? this.contents.hasIn(path6) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path7) : false;
       }
       /**
        * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -13969,13 +13969,13 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path6, value) {
-        if (Collection.isEmptyPath(path6)) {
+      setIn(path7, value) {
+        if (Collection.isEmptyPath(path7)) {
           this.contents = value;
         } else if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, Array.from(path6), value);
+          this.contents = Collection.collectionFromPath(this.schema, Array.from(path7), value);
         } else if (assertCollection(this.contents)) {
-          this.contents.setIn(path6, value);
+          this.contents.setIn(path7, value);
         }
       }
       /**
@@ -15935,9 +15935,9 @@ var require_cst_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    visit.itemAtPath = (cst, path6) => {
+    visit.itemAtPath = (cst, path7) => {
       let item = cst;
-      for (const [field, index] of path6) {
+      for (const [field, index] of path7) {
         const tok = item?.[field];
         if (tok && "items" in tok) {
           item = tok.items[index];
@@ -15946,23 +15946,23 @@ var require_cst_visit = __commonJS({
       }
       return item;
     };
-    visit.parentCollection = (cst, path6) => {
-      const parent = visit.itemAtPath(cst, path6.slice(0, -1));
-      const field = path6[path6.length - 1][0];
+    visit.parentCollection = (cst, path7) => {
+      const parent = visit.itemAtPath(cst, path7.slice(0, -1));
+      const field = path7[path7.length - 1][0];
       const coll = parent?.[field];
       if (coll && "items" in coll)
         return coll;
       throw new Error("Parent collection not found");
     };
-    function _visit(path6, item, visitor) {
-      let ctrl = visitor(item, path6);
+    function _visit(path7, item, visitor) {
+      let ctrl = visitor(item, path7);
       if (typeof ctrl === "symbol")
         return ctrl;
       for (const field of ["key", "value"]) {
         const token = item[field];
         if (token && "items" in token) {
           for (let i = 0; i < token.items.length; ++i) {
-            const ci = _visit(Object.freeze(path6.concat([[field, i]])), token.items[i], visitor);
+            const ci = _visit(Object.freeze(path7.concat([[field, i]])), token.items[i], visitor);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -15973,10 +15973,10 @@ var require_cst_visit = __commonJS({
             }
           }
           if (typeof ctrl === "function" && field === "key")
-            ctrl = ctrl(item, path6);
+            ctrl = ctrl(item, path7);
         }
       }
-      return typeof ctrl === "function" ? ctrl(item, path6) : ctrl;
+      return typeof ctrl === "function" ? ctrl(item, path7) : ctrl;
     }
     exports2.visit = visit;
   }
@@ -17731,7 +17731,7 @@ var require_dist2 = __commonJS({
 var require_constants = __commonJS({
   "../../node_modules/picomatch/lib/constants.js"(exports2, module2) {
     "use strict";
-    var path6 = require("path");
+    var path7 = require("path");
     var WIN_SLASH = "\\\\/";
     var WIN_NO_SLASH = `[^${WIN_SLASH}]`;
     var DEFAULT_MAX_EXTGLOB_RECURSION = 0;
@@ -17905,7 +17905,7 @@ var require_constants = __commonJS({
       /* | */
       CHAR_ZERO_WIDTH_NOBREAK_SPACE: 65279,
       /* \uFEFF */
-      SEP: path6.sep,
+      SEP: path7.sep,
       /**
        * Create EXTGLOB_CHARS
        */
@@ -17932,7 +17932,7 @@ var require_constants = __commonJS({
 var require_utils3 = __commonJS({
   "../../node_modules/picomatch/lib/utils.js"(exports2) {
     "use strict";
-    var path6 = require("path");
+    var path7 = require("path");
     var win32 = process.platform === "win32";
     var {
       REGEX_BACKSLASH,
@@ -17961,7 +17961,7 @@ var require_utils3 = __commonJS({
       if (options2 && typeof options2.windows === "boolean") {
         return options2.windows;
       }
-      return win32 === true || path6.sep === "\\";
+      return win32 === true || path7.sep === "\\";
     };
     exports2.escapeLast = (input, char, lastIdx) => {
       const idx = input.lastIndexOf(char, lastIdx);
@@ -19325,7 +19325,7 @@ var require_parse2 = __commonJS({
 var require_picomatch = __commonJS({
   "../../node_modules/picomatch/lib/picomatch.js"(exports2, module2) {
     "use strict";
-    var path6 = require("path");
+    var path7 = require("path");
     var scan = require_scan();
     var parse4 = require_parse2();
     var utils = require_utils3();
@@ -19410,7 +19410,7 @@ var require_picomatch = __commonJS({
     };
     picomatch.matchBase = (input, glob, options2, posix = utils.isWindows(options2)) => {
       const regex = glob instanceof RegExp ? glob : picomatch.makeRe(glob, options2);
-      return regex.test(path6.basename(input));
+      return regex.test(path7.basename(input));
     };
     picomatch.isMatch = (str2, patterns, options2) => picomatch(patterns, options2)(str2);
     picomatch.parse = (pattern, options2) => {
@@ -19526,8 +19526,8 @@ var require_readdirp = __commonJS({
         return {
           root: ".",
           /* eslint-disable no-unused-vars */
-          fileFilter: (path6) => true,
-          directoryFilter: (path6) => true,
+          fileFilter: (path7) => true,
+          directoryFilter: (path7) => true,
           /* eslint-enable no-unused-vars */
           type: FILE_TYPE,
           lstat: false,
@@ -19547,7 +19547,7 @@ var require_readdirp = __commonJS({
         this._directoryFilter = normalizeFilter(opts.directoryFilter);
         const statMethod = opts.lstat ? lstat : stat;
         if (wantBigintFsStats) {
-          this._stat = (path6) => statMethod(path6, { bigint: true });
+          this._stat = (path7) => statMethod(path7, { bigint: true });
         } else {
           this._stat = statMethod;
         }
@@ -19568,9 +19568,9 @@ var require_readdirp = __commonJS({
         this.reading = true;
         try {
           while (!this.destroyed && batch > 0) {
-            const { path: path6, depth, files = [] } = this.parent || {};
+            const { path: path7, depth, files = [] } = this.parent || {};
             if (files.length > 0) {
-              const slice = files.splice(0, batch).map((dirent) => this._formatEntry(dirent, path6));
+              const slice = files.splice(0, batch).map((dirent) => this._formatEntry(dirent, path7));
               for (const entry of await Promise.all(slice)) {
                 if (this.destroyed) return;
                 const entryType = await this._getEntryType(entry);
@@ -19605,20 +19605,20 @@ var require_readdirp = __commonJS({
           this.reading = false;
         }
       }
-      async _exploreDir(path6, depth) {
+      async _exploreDir(path7, depth) {
         let files;
         try {
-          files = await readdir(path6, this._rdOptions);
+          files = await readdir(path7, this._rdOptions);
         } catch (error2) {
           this._onError(error2);
         }
-        return { files, depth, path: path6 };
+        return { files, depth, path: path7 };
       }
-      async _formatEntry(dirent, path6) {
+      async _formatEntry(dirent, path7) {
         let entry;
         try {
           const basename = this._isDirent ? dirent.name : dirent;
-          const fullPath = sysPath.resolve(sysPath.join(path6, basename));
+          const fullPath = sysPath.resolve(sysPath.join(path7, basename));
           entry = { path: sysPath.relative(this._root, fullPath), fullPath, basename };
           entry[this._statsProp] = this._isDirent ? dirent : await this._stat(fullPath);
         } catch (err) {
@@ -19704,22 +19704,22 @@ var require_readdirp = __commonJS({
 var require_normalize_path = __commonJS({
   "../../node_modules/normalize-path/index.js"(exports2, module2) {
     "use strict";
-    module2.exports = function(path6, stripTrailing) {
-      if (typeof path6 !== "string") {
+    module2.exports = function(path7, stripTrailing) {
+      if (typeof path7 !== "string") {
         throw new TypeError("expected path to be a string");
       }
-      if (path6 === "\\" || path6 === "/") return "/";
-      var len = path6.length;
-      if (len <= 1) return path6;
+      if (path7 === "\\" || path7 === "/") return "/";
+      var len = path7.length;
+      if (len <= 1) return path7;
       var prefix = "";
-      if (len > 4 && path6[3] === "\\") {
-        var ch = path6[2];
-        if ((ch === "?" || ch === ".") && path6.slice(0, 2) === "\\\\") {
-          path6 = path6.slice(2);
+      if (len > 4 && path7[3] === "\\") {
+        var ch = path7[2];
+        if ((ch === "?" || ch === ".") && path7.slice(0, 2) === "\\\\") {
+          path7 = path7.slice(2);
           prefix = "//";
         }
       }
-      var segs = path6.split(/[/\\]+/);
+      var segs = path7.split(/[/\\]+/);
       if (stripTrailing !== false && segs[segs.length - 1] === "") {
         segs.pop();
       }
@@ -19757,17 +19757,17 @@ var require_anymatch = __commonJS({
       if (!isList && typeof _path !== "string") {
         throw new TypeError("anymatch: second argument must be a string: got " + Object.prototype.toString.call(_path));
       }
-      const path6 = normalizePath(_path, false);
+      const path7 = normalizePath(_path, false);
       for (let index = 0; index < negPatterns.length; index++) {
         const nglob = negPatterns[index];
-        if (nglob(path6)) {
+        if (nglob(path7)) {
           return returnIndex ? -1 : false;
         }
       }
-      const applied = isList && [path6].concat(args.slice(1));
+      const applied = isList && [path7].concat(args.slice(1));
       for (let index = 0; index < patterns.length; index++) {
         const pattern = patterns[index];
-        if (isList ? pattern(...applied) : pattern(path6)) {
+        if (isList ? pattern(...applied) : pattern(path7)) {
           return returnIndex ? index : true;
         }
       }
@@ -21337,10 +21337,10 @@ var require_binary_extensions2 = __commonJS({
 var require_is_binary_path = __commonJS({
   "../../node_modules/is-binary-path/index.js"(exports2, module2) {
     "use strict";
-    var path6 = require("path");
+    var path7 = require("path");
     var binaryExtensions = require_binary_extensions2();
     var extensions = new Set(binaryExtensions);
-    module2.exports = (filePath) => extensions.has(path6.extname(filePath).slice(1).toLowerCase());
+    module2.exports = (filePath) => extensions.has(path7.extname(filePath).slice(1).toLowerCase());
   }
 });
 
@@ -21473,20 +21473,20 @@ var require_nodefs_handler = __commonJS({
     };
     var isEmptySet = (val) => val instanceof Set ? val.size === 0 : !val;
     var FsWatchInstances = /* @__PURE__ */ new Map();
-    function createFsWatchInstance(path6, options2, listener, errHandler, emitRaw) {
+    function createFsWatchInstance(path7, options2, listener, errHandler, emitRaw) {
       const handleEvent = (rawEvent, evPath) => {
-        listener(path6);
-        emitRaw(rawEvent, evPath, { watchedPath: path6 });
-        if (evPath && path6 !== evPath) {
+        listener(path7);
+        emitRaw(rawEvent, evPath, { watchedPath: path7 });
+        if (evPath && path7 !== evPath) {
           fsWatchBroadcast(
-            sysPath.resolve(path6, evPath),
+            sysPath.resolve(path7, evPath),
             KEY_LISTENERS,
-            sysPath.join(path6, evPath)
+            sysPath.join(path7, evPath)
           );
         }
       };
       try {
-        return fs4.watch(path6, options2, handleEvent);
+        return fs4.watch(path7, options2, handleEvent);
       } catch (error2) {
         errHandler(error2);
       }
@@ -21498,13 +21498,13 @@ var require_nodefs_handler = __commonJS({
         listener(val1, val2, val3);
       });
     };
-    var setFsWatchListener = (path6, fullPath, options2, handlers) => {
+    var setFsWatchListener = (path7, fullPath, options2, handlers) => {
       const { listener, errHandler, rawEmitter } = handlers;
       let cont = FsWatchInstances.get(fullPath);
       let watcher;
       if (!options2.persistent) {
         watcher = createFsWatchInstance(
-          path6,
+          path7,
           options2,
           listener,
           errHandler,
@@ -21518,7 +21518,7 @@ var require_nodefs_handler = __commonJS({
         addAndConvert(cont, KEY_RAW, rawEmitter);
       } else {
         watcher = createFsWatchInstance(
-          path6,
+          path7,
           options2,
           fsWatchBroadcast.bind(null, fullPath, KEY_LISTENERS),
           errHandler,
@@ -21531,7 +21531,7 @@ var require_nodefs_handler = __commonJS({
           cont.watcherUnusable = true;
           if (isWindows && error2.code === "EPERM") {
             try {
-              const fd = await open(path6, "r");
+              const fd = await open(path7, "r");
               await close(fd);
               broadcastErr(error2);
             } catch (err) {
@@ -21562,7 +21562,7 @@ var require_nodefs_handler = __commonJS({
       };
     };
     var FsWatchFileInstances = /* @__PURE__ */ new Map();
-    var setFsWatchFileListener = (path6, fullPath, options2, handlers) => {
+    var setFsWatchFileListener = (path7, fullPath, options2, handlers) => {
       const { listener, rawEmitter } = handlers;
       let cont = FsWatchFileInstances.get(fullPath);
       let listeners = /* @__PURE__ */ new Set();
@@ -21588,7 +21588,7 @@ var require_nodefs_handler = __commonJS({
             });
             const currmtime = curr.mtimeMs;
             if (curr.size !== prev.size || currmtime > prev.mtimeMs || currmtime === 0) {
-              foreach(cont.listeners, (listener2) => listener2(path6, curr));
+              foreach(cont.listeners, (listener2) => listener2(path7, curr));
             }
           })
         };
@@ -21619,24 +21619,24 @@ var require_nodefs_handler = __commonJS({
        * @param {Function} listener on fs change
        * @returns {Function} closer for the watcher instance
        */
-      _watchWithNodeFs(path6, listener) {
+      _watchWithNodeFs(path7, listener) {
         const opts = this.fsw.options;
-        const directory = sysPath.dirname(path6);
-        const basename = sysPath.basename(path6);
+        const directory = sysPath.dirname(path7);
+        const basename = sysPath.basename(path7);
         const parent = this.fsw._getWatchedDir(directory);
         parent.add(basename);
-        const absolutePath = sysPath.resolve(path6);
+        const absolutePath = sysPath.resolve(path7);
         const options2 = { persistent: opts.persistent };
         if (!listener) listener = EMPTY_FN;
         let closer;
         if (opts.usePolling) {
           options2.interval = opts.enableBinaryInterval && isBinaryPath(basename) ? opts.binaryInterval : opts.interval;
-          closer = setFsWatchFileListener(path6, absolutePath, options2, {
+          closer = setFsWatchFileListener(path7, absolutePath, options2, {
             listener,
             rawEmitter: this.fsw._emitRaw
           });
         } else {
-          closer = setFsWatchListener(path6, absolutePath, options2, {
+          closer = setFsWatchListener(path7, absolutePath, options2, {
             listener,
             errHandler: this._boundHandleError,
             rawEmitter: this.fsw._emitRaw
@@ -21660,7 +21660,7 @@ var require_nodefs_handler = __commonJS({
         const parent = this.fsw._getWatchedDir(dirname);
         let prevStats = stats;
         if (parent.has(basename)) return;
-        const listener = async (path6, newStats) => {
+        const listener = async (path7, newStats) => {
           if (!this.fsw._throttle(THROTTLE_MODE_WATCH, file, 5)) return;
           if (!newStats || newStats.mtimeMs === 0) {
             try {
@@ -21672,9 +21672,9 @@ var require_nodefs_handler = __commonJS({
                 this.fsw._emit(EV_CHANGE, file, newStats2);
               }
               if (isLinux && prevStats.ino !== newStats2.ino) {
-                this.fsw._closeFile(path6);
+                this.fsw._closeFile(path7);
                 prevStats = newStats2;
-                this.fsw._addPathCloser(path6, this._watchWithNodeFs(file, listener));
+                this.fsw._addPathCloser(path7, this._watchWithNodeFs(file, listener));
               } else {
                 prevStats = newStats2;
               }
@@ -21705,7 +21705,7 @@ var require_nodefs_handler = __commonJS({
        * @param {String} item basename of this item
        * @returns {Promise<Boolean>} true if no more processing is needed for this entry.
        */
-      async _handleSymlink(entry, directory, path6, item) {
+      async _handleSymlink(entry, directory, path7, item) {
         if (this.fsw.closed) {
           return;
         }
@@ -21715,7 +21715,7 @@ var require_nodefs_handler = __commonJS({
           this.fsw._incrReadyCount();
           let linkPath;
           try {
-            linkPath = await fsrealpath(path6);
+            linkPath = await fsrealpath(path7);
           } catch (e) {
             this.fsw._emitReady();
             return true;
@@ -21724,12 +21724,12 @@ var require_nodefs_handler = __commonJS({
           if (dir.has(item)) {
             if (this.fsw._symlinkPaths.get(full) !== linkPath) {
               this.fsw._symlinkPaths.set(full, linkPath);
-              this.fsw._emit(EV_CHANGE, path6, entry.stats);
+              this.fsw._emit(EV_CHANGE, path7, entry.stats);
             }
           } else {
             dir.add(item);
             this.fsw._symlinkPaths.set(full, linkPath);
-            this.fsw._emit(EV_ADD, path6, entry.stats);
+            this.fsw._emit(EV_ADD, path7, entry.stats);
           }
           this.fsw._emitReady();
           return true;
@@ -21757,9 +21757,9 @@ var require_nodefs_handler = __commonJS({
             return;
           }
           const item = entry.path;
-          let path6 = sysPath.join(directory, item);
+          let path7 = sysPath.join(directory, item);
           current.add(item);
-          if (entry.stats.isSymbolicLink() && await this._handleSymlink(entry, directory, path6, item)) {
+          if (entry.stats.isSymbolicLink() && await this._handleSymlink(entry, directory, path7, item)) {
             return;
           }
           if (this.fsw.closed) {
@@ -21768,8 +21768,8 @@ var require_nodefs_handler = __commonJS({
           }
           if (item === target || !target && !previous.has(item)) {
             this.fsw._incrReadyCount();
-            path6 = sysPath.join(dir, sysPath.relative(dir, path6));
-            this._addToNodeFs(path6, initialAdd, wh, depth + 1);
+            path7 = sysPath.join(dir, sysPath.relative(dir, path7));
+            this._addToNodeFs(path7, initialAdd, wh, depth + 1);
           }
         }).on(EV_ERROR, this._boundHandleError);
         return new Promise(
@@ -21839,13 +21839,13 @@ var require_nodefs_handler = __commonJS({
        * @param {String=} target Child path actually targeted for watch
        * @returns {Promise}
        */
-      async _addToNodeFs(path6, initialAdd, priorWh, depth, target) {
+      async _addToNodeFs(path7, initialAdd, priorWh, depth, target) {
         const ready = this.fsw._emitReady;
-        if (this.fsw._isIgnored(path6) || this.fsw.closed) {
+        if (this.fsw._isIgnored(path7) || this.fsw.closed) {
           ready();
           return false;
         }
-        const wh = this.fsw._getWatchHelpers(path6, depth);
+        const wh = this.fsw._getWatchHelpers(path7, depth);
         if (!wh.hasGlob && priorWh) {
           wh.hasGlob = priorWh.hasGlob;
           wh.globFilter = priorWh.globFilter;
@@ -21859,11 +21859,11 @@ var require_nodefs_handler = __commonJS({
             ready();
             return false;
           }
-          const follow = this.fsw.options.followSymlinks && !path6.includes(STAR) && !path6.includes(BRACE_START);
+          const follow = this.fsw.options.followSymlinks && !path7.includes(STAR) && !path7.includes(BRACE_START);
           let closer;
           if (stats.isDirectory()) {
-            const absPath = sysPath.resolve(path6);
-            const targetPath = follow ? await fsrealpath(path6) : path6;
+            const absPath = sysPath.resolve(path7);
+            const targetPath = follow ? await fsrealpath(path7) : path7;
             if (this.fsw.closed) return;
             closer = await this._handleDir(wh.watchPath, stats, initialAdd, depth, target, wh, targetPath);
             if (this.fsw.closed) return;
@@ -21871,26 +21871,26 @@ var require_nodefs_handler = __commonJS({
               this.fsw._symlinkPaths.set(absPath, targetPath);
             }
           } else if (stats.isSymbolicLink()) {
-            const targetPath = follow ? await fsrealpath(path6) : path6;
+            const targetPath = follow ? await fsrealpath(path7) : path7;
             if (this.fsw.closed) return;
             const parent = sysPath.dirname(wh.watchPath);
             this.fsw._getWatchedDir(parent).add(wh.watchPath);
             this.fsw._emit(EV_ADD, wh.watchPath, stats);
-            closer = await this._handleDir(parent, stats, initialAdd, depth, path6, wh, targetPath);
+            closer = await this._handleDir(parent, stats, initialAdd, depth, path7, wh, targetPath);
             if (this.fsw.closed) return;
             if (targetPath !== void 0) {
-              this.fsw._symlinkPaths.set(sysPath.resolve(path6), targetPath);
+              this.fsw._symlinkPaths.set(sysPath.resolve(path7), targetPath);
             }
           } else {
             closer = this._handleFile(wh.watchPath, stats, initialAdd);
           }
           ready();
-          this.fsw._addPathCloser(path6, closer);
+          this.fsw._addPathCloser(path7, closer);
           return false;
         } catch (error2) {
           if (this.fsw._handleError(error2)) {
             ready();
-            return path6;
+            return path7;
           }
         }
       }
@@ -21964,18 +21964,18 @@ var require_fsevents_handler = __commonJS({
       131840,
       262912
     ]);
-    var createFSEventsInstance = (path6, callback) => {
-      const stop = fsevents.watch(path6, callback);
+    var createFSEventsInstance = (path7, callback) => {
+      const stop = fsevents.watch(path7, callback);
       return { stop };
     };
-    function setFSEventsListener(path6, realPath, listener, rawEmitter) {
+    function setFSEventsListener(path7, realPath, listener, rawEmitter) {
       let watchPath = sysPath.extname(realPath) ? sysPath.dirname(realPath) : realPath;
       const parentPath = sysPath.dirname(watchPath);
       let cont = FSEventsWatchers.get(watchPath);
       if (couldConsolidate(parentPath)) {
         watchPath = parentPath;
       }
-      const resolvedPath = sysPath.resolve(path6);
+      const resolvedPath = sysPath.resolve(path7);
       const hasSymlink = resolvedPath !== realPath;
       const filteredListener = (fullPath, flags, info) => {
         if (hasSymlink) fullPath = fullPath.replace(realPath, resolvedPath);
@@ -22020,10 +22020,10 @@ var require_fsevents_handler = __commonJS({
         }
       };
     }
-    var couldConsolidate = (path6) => {
+    var couldConsolidate = (path7) => {
       let count = 0;
       for (const watchPath of FSEventsWatchers.keys()) {
-        if (watchPath.indexOf(path6) === 0) {
+        if (watchPath.indexOf(path7) === 0) {
           count++;
           if (count >= consolidateThreshhold) {
             return true;
@@ -22033,9 +22033,9 @@ var require_fsevents_handler = __commonJS({
       return false;
     };
     var canUse = () => fsevents && FSEventsWatchers.size < 128;
-    var calcDepth = (path6, root) => {
+    var calcDepth = (path7, root) => {
       let i = 0;
-      while (!path6.indexOf(root) && (path6 = sysPath.dirname(path6)) !== root) i++;
+      while (!path7.indexOf(root) && (path7 = sysPath.dirname(path7)) !== root) i++;
       return i;
     };
     var sameTypes = (info, stats) => info.type === FSEVENT_TYPE_DIRECTORY && stats.isDirectory() || info.type === FSEVENT_TYPE_SYMLINK && stats.isSymbolicLink() || info.type === FSEVENT_TYPE_FILE && stats.isFile();
@@ -22046,41 +22046,41 @@ var require_fsevents_handler = __commonJS({
       constructor(fsw) {
         this.fsw = fsw;
       }
-      checkIgnored(path6, stats) {
+      checkIgnored(path7, stats) {
         const ipaths = this.fsw._ignoredPaths;
-        if (this.fsw._isIgnored(path6, stats)) {
-          ipaths.add(path6);
+        if (this.fsw._isIgnored(path7, stats)) {
+          ipaths.add(path7);
           if (stats && stats.isDirectory()) {
-            ipaths.add(path6 + ROOT_GLOBSTAR);
+            ipaths.add(path7 + ROOT_GLOBSTAR);
           }
           return true;
         }
-        ipaths.delete(path6);
-        ipaths.delete(path6 + ROOT_GLOBSTAR);
+        ipaths.delete(path7);
+        ipaths.delete(path7 + ROOT_GLOBSTAR);
       }
-      addOrChange(path6, fullPath, realPath, parent, watchedDir, item, info, opts) {
+      addOrChange(path7, fullPath, realPath, parent, watchedDir, item, info, opts) {
         const event = watchedDir.has(item) ? EV_CHANGE : EV_ADD;
-        this.handleEvent(event, path6, fullPath, realPath, parent, watchedDir, item, info, opts);
+        this.handleEvent(event, path7, fullPath, realPath, parent, watchedDir, item, info, opts);
       }
-      async checkExists(path6, fullPath, realPath, parent, watchedDir, item, info, opts) {
+      async checkExists(path7, fullPath, realPath, parent, watchedDir, item, info, opts) {
         try {
-          const stats = await stat(path6);
+          const stats = await stat(path7);
           if (this.fsw.closed) return;
           if (sameTypes(info, stats)) {
-            this.addOrChange(path6, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.addOrChange(path7, fullPath, realPath, parent, watchedDir, item, info, opts);
           } else {
-            this.handleEvent(EV_UNLINK, path6, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.handleEvent(EV_UNLINK, path7, fullPath, realPath, parent, watchedDir, item, info, opts);
           }
         } catch (error2) {
           if (error2.code === "EACCES") {
-            this.addOrChange(path6, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.addOrChange(path7, fullPath, realPath, parent, watchedDir, item, info, opts);
           } else {
-            this.handleEvent(EV_UNLINK, path6, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.handleEvent(EV_UNLINK, path7, fullPath, realPath, parent, watchedDir, item, info, opts);
           }
         }
       }
-      handleEvent(event, path6, fullPath, realPath, parent, watchedDir, item, info, opts) {
-        if (this.fsw.closed || this.checkIgnored(path6)) return;
+      handleEvent(event, path7, fullPath, realPath, parent, watchedDir, item, info, opts) {
+        if (this.fsw.closed || this.checkIgnored(path7)) return;
         if (event === EV_UNLINK) {
           const isDirectory = info.type === FSEVENT_TYPE_DIRECTORY;
           if (isDirectory || watchedDir.has(item)) {
@@ -22088,16 +22088,16 @@ var require_fsevents_handler = __commonJS({
           }
         } else {
           if (event === EV_ADD) {
-            if (info.type === FSEVENT_TYPE_DIRECTORY) this.fsw._getWatchedDir(path6);
+            if (info.type === FSEVENT_TYPE_DIRECTORY) this.fsw._getWatchedDir(path7);
             if (info.type === FSEVENT_TYPE_SYMLINK && opts.followSymlinks) {
               const curDepth = opts.depth === void 0 ? void 0 : calcDepth(fullPath, realPath) + 1;
-              return this._addToFsEvents(path6, false, true, curDepth);
+              return this._addToFsEvents(path7, false, true, curDepth);
             }
             this.fsw._getWatchedDir(parent).add(item);
           }
           const eventName = info.type === FSEVENT_TYPE_DIRECTORY ? event + DIR_SUFFIX : event;
-          this.fsw._emit(eventName, path6);
-          if (eventName === EV_ADD_DIR) this._addToFsEvents(path6, false, true);
+          this.fsw._emit(eventName, path7);
+          if (eventName === EV_ADD_DIR) this._addToFsEvents(path7, false, true);
         }
       }
       /**
@@ -22114,41 +22114,41 @@ var require_fsevents_handler = __commonJS({
         const watchCallback = async (fullPath, flags, info) => {
           if (this.fsw.closed) return;
           if (opts.depth !== void 0 && calcDepth(fullPath, realPath) > opts.depth) return;
-          const path6 = transform2(sysPath.join(
+          const path7 = transform2(sysPath.join(
             watchPath,
             sysPath.relative(watchPath, fullPath)
           ));
-          if (globFilter && !globFilter(path6)) return;
-          const parent = sysPath.dirname(path6);
-          const item = sysPath.basename(path6);
+          if (globFilter && !globFilter(path7)) return;
+          const parent = sysPath.dirname(path7);
+          const item = sysPath.basename(path7);
           const watchedDir = this.fsw._getWatchedDir(
-            info.type === FSEVENT_TYPE_DIRECTORY ? path6 : parent
+            info.type === FSEVENT_TYPE_DIRECTORY ? path7 : parent
           );
           if (wrongEventFlags.has(flags) || info.event === FSEVENT_UNKNOWN) {
             if (typeof opts.ignored === FUNCTION_TYPE) {
               let stats;
               try {
-                stats = await stat(path6);
+                stats = await stat(path7);
               } catch (error2) {
               }
               if (this.fsw.closed) return;
-              if (this.checkIgnored(path6, stats)) return;
+              if (this.checkIgnored(path7, stats)) return;
               if (sameTypes(info, stats)) {
-                this.addOrChange(path6, fullPath, realPath, parent, watchedDir, item, info, opts);
+                this.addOrChange(path7, fullPath, realPath, parent, watchedDir, item, info, opts);
               } else {
-                this.handleEvent(EV_UNLINK, path6, fullPath, realPath, parent, watchedDir, item, info, opts);
+                this.handleEvent(EV_UNLINK, path7, fullPath, realPath, parent, watchedDir, item, info, opts);
               }
             } else {
-              this.checkExists(path6, fullPath, realPath, parent, watchedDir, item, info, opts);
+              this.checkExists(path7, fullPath, realPath, parent, watchedDir, item, info, opts);
             }
           } else {
             switch (info.event) {
               case FSEVENT_CREATED:
               case FSEVENT_MODIFIED:
-                return this.addOrChange(path6, fullPath, realPath, parent, watchedDir, item, info, opts);
+                return this.addOrChange(path7, fullPath, realPath, parent, watchedDir, item, info, opts);
               case FSEVENT_DELETED:
               case FSEVENT_MOVED:
-                return this.checkExists(path6, fullPath, realPath, parent, watchedDir, item, info, opts);
+                return this.checkExists(path7, fullPath, realPath, parent, watchedDir, item, info, opts);
             }
           }
         };
@@ -22180,12 +22180,12 @@ var require_fsevents_handler = __commonJS({
             return this.fsw._emitReady();
           }
           this.fsw._incrReadyCount();
-          this._addToFsEvents(linkTarget || linkPath, (path6) => {
+          this._addToFsEvents(linkTarget || linkPath, (path7) => {
             let aliasedPath = linkPath;
             if (linkTarget && linkTarget !== DOT_SLASH) {
-              aliasedPath = path6.replace(linkTarget, linkPath);
-            } else if (path6 !== DOT_SLASH) {
-              aliasedPath = sysPath.join(linkPath, path6);
+              aliasedPath = path7.replace(linkTarget, linkPath);
+            } else if (path7 !== DOT_SLASH) {
+              aliasedPath = sysPath.join(linkPath, path7);
             }
             return transform2(aliasedPath);
           }, false, curDepth);
@@ -22212,7 +22212,7 @@ var require_fsevents_handler = __commonJS({
           this.fsw._emit(isDir ? EV_ADD_DIR : EV_ADD, pp, stats);
         }
       }
-      initWatch(realPath, path6, wh, processPath) {
+      initWatch(realPath, path7, wh, processPath) {
         if (this.fsw.closed) return;
         const closer = this._watchWithFsEvents(
           wh.watchPath,
@@ -22220,7 +22220,7 @@ var require_fsevents_handler = __commonJS({
           processPath,
           wh.globFilter
         );
-        this.fsw._addPathCloser(path6, closer);
+        this.fsw._addPathCloser(path7, closer);
       }
       /**
        * Handle added path with fsevents
@@ -22230,13 +22230,13 @@ var require_fsevents_handler = __commonJS({
        * @param {Number=} priorDepth Level of subdirectories already traversed.
        * @returns {Promise<void>}
        */
-      async _addToFsEvents(path6, transform2, forceAdd, priorDepth) {
+      async _addToFsEvents(path7, transform2, forceAdd, priorDepth) {
         if (this.fsw.closed) {
           return;
         }
         const opts = this.fsw.options;
         const processPath = typeof transform2 === FUNCTION_TYPE ? transform2 : IDENTITY_FN;
-        const wh = this.fsw._getWatchHelpers(path6);
+        const wh = this.fsw._getWatchHelpers(path7);
         try {
           const stats = await statMethods[wh.statMethod](wh.watchPath);
           if (this.fsw.closed) return;
@@ -22244,7 +22244,7 @@ var require_fsevents_handler = __commonJS({
             throw null;
           }
           if (stats.isDirectory()) {
-            if (!wh.globFilter) this.emitAdd(processPath(path6), stats, processPath, opts, forceAdd);
+            if (!wh.globFilter) this.emitAdd(processPath(path7), stats, processPath, opts, forceAdd);
             if (priorDepth && priorDepth > opts.depth) return;
             this.fsw._readdirp(wh.watchPath, {
               fileFilter: (entry) => wh.filterPath(entry),
@@ -22278,14 +22278,14 @@ var require_fsevents_handler = __commonJS({
         }
         if (opts.persistent && forceAdd !== true) {
           if (typeof transform2 === FUNCTION_TYPE) {
-            this.initWatch(void 0, path6, wh, processPath);
+            this.initWatch(void 0, path7, wh, processPath);
           } else {
             let realPath;
             try {
               realPath = await realpath(wh.watchPath);
             } catch (e) {
             }
-            this.initWatch(realPath, path6, wh, processPath);
+            this.initWatch(realPath, path7, wh, processPath);
           }
         }
       }
@@ -22379,19 +22379,19 @@ var require_chokidar = __commonJS({
       }
       return str2;
     };
-    var normalizePathToUnix = (path6) => toUnix(sysPath.normalize(toUnix(path6)));
-    var normalizeIgnored = (cwd = EMPTY_STR) => (path6) => {
-      if (typeof path6 !== STRING_TYPE) return path6;
-      return normalizePathToUnix(sysPath.isAbsolute(path6) ? path6 : sysPath.join(cwd, path6));
+    var normalizePathToUnix = (path7) => toUnix(sysPath.normalize(toUnix(path7)));
+    var normalizeIgnored = (cwd = EMPTY_STR) => (path7) => {
+      if (typeof path7 !== STRING_TYPE) return path7;
+      return normalizePathToUnix(sysPath.isAbsolute(path7) ? path7 : sysPath.join(cwd, path7));
     };
-    var getAbsolutePath = (path6, cwd) => {
-      if (sysPath.isAbsolute(path6)) {
-        return path6;
+    var getAbsolutePath = (path7, cwd) => {
+      if (sysPath.isAbsolute(path7)) {
+        return path7;
       }
-      if (path6.startsWith(BANG)) {
-        return BANG + sysPath.join(cwd, path6.slice(1));
+      if (path7.startsWith(BANG)) {
+        return BANG + sysPath.join(cwd, path7.slice(1));
       }
-      return sysPath.join(cwd, path6);
+      return sysPath.join(cwd, path7);
     };
     var undef = (opts, key) => opts[key] === void 0;
     var DirEntry = class {
@@ -22447,16 +22447,16 @@ var require_chokidar = __commonJS({
     var STAT_METHOD_F = "stat";
     var STAT_METHOD_L = "lstat";
     var WatchHelper = class {
-      constructor(path6, watchPath, follow, fsw) {
+      constructor(path7, watchPath, follow, fsw) {
         this.fsw = fsw;
-        this.path = path6 = path6.replace(REPLACER_RE, EMPTY_STR);
+        this.path = path7 = path7.replace(REPLACER_RE, EMPTY_STR);
         this.watchPath = watchPath;
         this.fullWatchPath = sysPath.resolve(watchPath);
-        this.hasGlob = watchPath !== path6;
-        if (path6 === EMPTY_STR) this.hasGlob = false;
+        this.hasGlob = watchPath !== path7;
+        if (path7 === EMPTY_STR) this.hasGlob = false;
         this.globSymlink = this.hasGlob && follow ? void 0 : false;
-        this.globFilter = this.hasGlob ? anymatch(path6, void 0, ANYMATCH_OPTS) : false;
-        this.dirParts = this.getDirParts(path6);
+        this.globFilter = this.hasGlob ? anymatch(path7, void 0, ANYMATCH_OPTS) : false;
+        this.dirParts = this.getDirParts(path7);
         this.dirParts.forEach((parts) => {
           if (parts.length > 1) parts.pop();
         });
@@ -22485,12 +22485,12 @@ var require_chokidar = __commonJS({
         const matchesGlob = this.hasGlob && typeof this.globFilter === FUNCTION_TYPE ? this.globFilter(resolvedPath) : true;
         return matchesGlob && this.fsw._isntIgnored(resolvedPath, stats) && this.fsw._hasReadPermissions(stats);
       }
-      getDirParts(path6) {
+      getDirParts(path7) {
         if (!this.hasGlob) return [];
         const parts = [];
-        const expandedPath = path6.includes(BRACE_START) ? braces.expand(path6) : [path6];
-        expandedPath.forEach((path7) => {
-          parts.push(sysPath.relative(this.watchPath, path7).split(SLASH_OR_BACK_SLASH_RE));
+        const expandedPath = path7.includes(BRACE_START) ? braces.expand(path7) : [path7];
+        expandedPath.forEach((path8) => {
+          parts.push(sysPath.relative(this.watchPath, path8).split(SLASH_OR_BACK_SLASH_RE));
         });
         return parts;
       }
@@ -22596,34 +22596,34 @@ var require_chokidar = __commonJS({
         this.closed = false;
         let paths = unifyPaths(paths_);
         if (cwd) {
-          paths = paths.map((path6) => {
-            const absPath = getAbsolutePath(path6, cwd);
-            if (disableGlobbing || !isGlob(path6)) {
+          paths = paths.map((path7) => {
+            const absPath = getAbsolutePath(path7, cwd);
+            if (disableGlobbing || !isGlob(path7)) {
               return absPath;
             }
             return normalizePath(absPath);
           });
         }
-        paths = paths.filter((path6) => {
-          if (path6.startsWith(BANG)) {
-            this._ignoredPaths.add(path6.slice(1));
+        paths = paths.filter((path7) => {
+          if (path7.startsWith(BANG)) {
+            this._ignoredPaths.add(path7.slice(1));
             return false;
           }
-          this._ignoredPaths.delete(path6);
-          this._ignoredPaths.delete(path6 + SLASH_GLOBSTAR);
+          this._ignoredPaths.delete(path7);
+          this._ignoredPaths.delete(path7 + SLASH_GLOBSTAR);
           this._userIgnored = void 0;
           return true;
         });
         if (this.options.useFsEvents && this._fsEventsHandler) {
           if (!this._readyCount) this._readyCount = paths.length;
           if (this.options.persistent) this._readyCount += paths.length;
-          paths.forEach((path6) => this._fsEventsHandler._addToFsEvents(path6));
+          paths.forEach((path7) => this._fsEventsHandler._addToFsEvents(path7));
         } else {
           if (!this._readyCount) this._readyCount = 0;
           this._readyCount += paths.length;
           Promise.all(
-            paths.map(async (path6) => {
-              const res = await this._nodeFsHandler._addToNodeFs(path6, !_internal, 0, 0, _origAdd);
+            paths.map(async (path7) => {
+              const res = await this._nodeFsHandler._addToNodeFs(path7, !_internal, 0, 0, _origAdd);
               if (res) this._emitReady();
               return res;
             })
@@ -22645,15 +22645,15 @@ var require_chokidar = __commonJS({
         if (this.closed) return this;
         const paths = unifyPaths(paths_);
         const { cwd } = this.options;
-        paths.forEach((path6) => {
-          if (!sysPath.isAbsolute(path6) && !this._closers.has(path6)) {
-            if (cwd) path6 = sysPath.join(cwd, path6);
-            path6 = sysPath.resolve(path6);
+        paths.forEach((path7) => {
+          if (!sysPath.isAbsolute(path7) && !this._closers.has(path7)) {
+            if (cwd) path7 = sysPath.join(cwd, path7);
+            path7 = sysPath.resolve(path7);
           }
-          this._closePath(path6);
-          this._ignoredPaths.add(path6);
-          if (this._watched.has(path6)) {
-            this._ignoredPaths.add(path6 + SLASH_GLOBSTAR);
+          this._closePath(path7);
+          this._ignoredPaths.add(path7);
+          if (this._watched.has(path7)) {
+            this._ignoredPaths.add(path7 + SLASH_GLOBSTAR);
           }
           this._userIgnored = void 0;
         });
@@ -22711,36 +22711,36 @@ var require_chokidar = __commonJS({
        * @param {*=} val3
        * @returns the error if defined, otherwise the value of the FSWatcher instance's `closed` flag
        */
-      async _emit(event, path6, val1, val2, val3) {
+      async _emit(event, path7, val1, val2, val3) {
         if (this.closed) return;
         const opts = this.options;
-        if (isWindows) path6 = sysPath.normalize(path6);
-        if (opts.cwd) path6 = sysPath.relative(opts.cwd, path6);
-        const args = [event, path6];
+        if (isWindows) path7 = sysPath.normalize(path7);
+        if (opts.cwd) path7 = sysPath.relative(opts.cwd, path7);
+        const args = [event, path7];
         if (val3 !== void 0) args.push(val1, val2, val3);
         else if (val2 !== void 0) args.push(val1, val2);
         else if (val1 !== void 0) args.push(val1);
         const awf = opts.awaitWriteFinish;
         let pw;
-        if (awf && (pw = this._pendingWrites.get(path6))) {
+        if (awf && (pw = this._pendingWrites.get(path7))) {
           pw.lastChange = /* @__PURE__ */ new Date();
           return this;
         }
         if (opts.atomic) {
           if (event === EV_UNLINK) {
-            this._pendingUnlinks.set(path6, args);
+            this._pendingUnlinks.set(path7, args);
             setTimeout(() => {
-              this._pendingUnlinks.forEach((entry, path7) => {
+              this._pendingUnlinks.forEach((entry, path8) => {
                 this.emit(...entry);
                 this.emit(EV_ALL, ...entry);
-                this._pendingUnlinks.delete(path7);
+                this._pendingUnlinks.delete(path8);
               });
             }, typeof opts.atomic === "number" ? opts.atomic : 100);
             return this;
           }
-          if (event === EV_ADD && this._pendingUnlinks.has(path6)) {
+          if (event === EV_ADD && this._pendingUnlinks.has(path7)) {
             event = args[0] = EV_CHANGE;
-            this._pendingUnlinks.delete(path6);
+            this._pendingUnlinks.delete(path7);
           }
         }
         if (awf && (event === EV_ADD || event === EV_CHANGE) && this._readyEmitted) {
@@ -22758,15 +22758,15 @@ var require_chokidar = __commonJS({
               this.emitWithAll(event, args);
             }
           };
-          this._awaitWriteFinish(path6, awf.stabilityThreshold, event, awfEmit);
+          this._awaitWriteFinish(path7, awf.stabilityThreshold, event, awfEmit);
           return this;
         }
         if (event === EV_CHANGE) {
-          const isThrottled = !this._throttle(EV_CHANGE, path6, 50);
+          const isThrottled = !this._throttle(EV_CHANGE, path7, 50);
           if (isThrottled) return this;
         }
         if (opts.alwaysStat && val1 === void 0 && (event === EV_ADD || event === EV_ADD_DIR || event === EV_CHANGE)) {
-          const fullPath = opts.cwd ? sysPath.join(opts.cwd, path6) : path6;
+          const fullPath = opts.cwd ? sysPath.join(opts.cwd, path7) : path7;
           let stats;
           try {
             stats = await stat(fullPath);
@@ -22797,28 +22797,28 @@ var require_chokidar = __commonJS({
        * @param {Number} timeout duration of time to suppress duplicate actions
        * @returns {Object|false} tracking object or false if action should be suppressed
        */
-      _throttle(actionType, path6, timeout) {
+      _throttle(actionType, path7, timeout) {
         if (!this._throttled.has(actionType)) {
           this._throttled.set(actionType, /* @__PURE__ */ new Map());
         }
         const action = this._throttled.get(actionType);
-        const actionPath = action.get(path6);
+        const actionPath = action.get(path7);
         if (actionPath) {
           actionPath.count++;
           return false;
         }
         let timeoutObject;
         const clear = () => {
-          const item = action.get(path6);
+          const item = action.get(path7);
           const count = item ? item.count : 0;
-          action.delete(path6);
+          action.delete(path7);
           clearTimeout(timeoutObject);
           if (item) clearTimeout(item.timeoutObject);
           return count;
         };
         timeoutObject = setTimeout(clear, timeout);
         const thr = { timeoutObject, clear, count: 0 };
-        action.set(path6, thr);
+        action.set(path7, thr);
         return thr;
       }
       _incrReadyCount() {
@@ -22832,27 +22832,27 @@ var require_chokidar = __commonJS({
        * @param {EventName} event
        * @param {Function} awfEmit Callback to be called when ready for event to be emitted.
        */
-      _awaitWriteFinish(path6, threshold, event, awfEmit) {
+      _awaitWriteFinish(path7, threshold, event, awfEmit) {
         let timeoutHandler;
-        let fullPath = path6;
-        if (this.options.cwd && !sysPath.isAbsolute(path6)) {
-          fullPath = sysPath.join(this.options.cwd, path6);
+        let fullPath = path7;
+        if (this.options.cwd && !sysPath.isAbsolute(path7)) {
+          fullPath = sysPath.join(this.options.cwd, path7);
         }
         const now = /* @__PURE__ */ new Date();
         const awaitWriteFinish = (prevStat) => {
           fs4.stat(fullPath, (err, curStat) => {
-            if (err || !this._pendingWrites.has(path6)) {
+            if (err || !this._pendingWrites.has(path7)) {
               if (err && err.code !== "ENOENT") awfEmit(err);
               return;
             }
             const now2 = Number(/* @__PURE__ */ new Date());
             if (prevStat && curStat.size !== prevStat.size) {
-              this._pendingWrites.get(path6).lastChange = now2;
+              this._pendingWrites.get(path7).lastChange = now2;
             }
-            const pw = this._pendingWrites.get(path6);
+            const pw = this._pendingWrites.get(path7);
             const df = now2 - pw.lastChange;
             if (df >= threshold) {
-              this._pendingWrites.delete(path6);
+              this._pendingWrites.delete(path7);
               awfEmit(void 0, curStat);
             } else {
               timeoutHandler = setTimeout(
@@ -22863,11 +22863,11 @@ var require_chokidar = __commonJS({
             }
           });
         };
-        if (!this._pendingWrites.has(path6)) {
-          this._pendingWrites.set(path6, {
+        if (!this._pendingWrites.has(path7)) {
+          this._pendingWrites.set(path7, {
             lastChange: now,
             cancelWait: () => {
-              this._pendingWrites.delete(path6);
+              this._pendingWrites.delete(path7);
               clearTimeout(timeoutHandler);
               return event;
             }
@@ -22887,20 +22887,20 @@ var require_chokidar = __commonJS({
        * @param {fs.Stats=} stats result of fs.stat
        * @returns {Boolean}
        */
-      _isIgnored(path6, stats) {
-        if (this.options.atomic && DOT_RE.test(path6)) return true;
+      _isIgnored(path7, stats) {
+        if (this.options.atomic && DOT_RE.test(path7)) return true;
         if (!this._userIgnored) {
           const { cwd } = this.options;
           const ign = this.options.ignored;
           const ignored = ign && ign.map(normalizeIgnored(cwd));
-          const paths = arrify(ignored).filter((path7) => typeof path7 === STRING_TYPE && !isGlob(path7)).map((path7) => path7 + SLASH_GLOBSTAR);
+          const paths = arrify(ignored).filter((path8) => typeof path8 === STRING_TYPE && !isGlob(path8)).map((path8) => path8 + SLASH_GLOBSTAR);
           const list = this._getGlobIgnored().map(normalizeIgnored(cwd)).concat(ignored, paths);
           this._userIgnored = anymatch(list, void 0, ANYMATCH_OPTS);
         }
-        return this._userIgnored([path6, stats]);
+        return this._userIgnored([path7, stats]);
       }
-      _isntIgnored(path6, stat2) {
-        return !this._isIgnored(path6, stat2);
+      _isntIgnored(path7, stat2) {
+        return !this._isIgnored(path7, stat2);
       }
       /**
        * Provides a set of common helpers and properties relating to symlink and glob handling.
@@ -22908,10 +22908,10 @@ var require_chokidar = __commonJS({
        * @param {Number=} depth at any depth > 0, this isn't a glob
        * @returns {WatchHelper} object containing helpers for this path
        */
-      _getWatchHelpers(path6, depth) {
-        const watchPath = depth || this.options.disableGlobbing || !isGlob(path6) ? path6 : globParent(path6);
+      _getWatchHelpers(path7, depth) {
+        const watchPath = depth || this.options.disableGlobbing || !isGlob(path7) ? path7 : globParent(path7);
         const follow = this.options.followSymlinks;
-        return new WatchHelper(path6, watchPath, follow, this);
+        return new WatchHelper(path7, watchPath, follow, this);
       }
       // Directory helpers
       // -----------------
@@ -22950,66 +22950,66 @@ var require_chokidar = __commonJS({
        * @returns {void}
       */
       _remove(directory, item, isDirectory) {
-        const path6 = sysPath.join(directory, item);
-        const fullPath = sysPath.resolve(path6);
-        isDirectory = isDirectory != null ? isDirectory : this._watched.has(path6) || this._watched.has(fullPath);
-        if (!this._throttle("remove", path6, 100)) return;
+        const path7 = sysPath.join(directory, item);
+        const fullPath = sysPath.resolve(path7);
+        isDirectory = isDirectory != null ? isDirectory : this._watched.has(path7) || this._watched.has(fullPath);
+        if (!this._throttle("remove", path7, 100)) return;
         if (!isDirectory && !this.options.useFsEvents && this._watched.size === 1) {
           this.add(directory, item, true);
         }
-        const wp = this._getWatchedDir(path6);
+        const wp = this._getWatchedDir(path7);
         const nestedDirectoryChildren = wp.getChildren();
-        nestedDirectoryChildren.forEach((nested) => this._remove(path6, nested));
+        nestedDirectoryChildren.forEach((nested) => this._remove(path7, nested));
         const parent = this._getWatchedDir(directory);
         const wasTracked = parent.has(item);
         parent.remove(item);
         if (this._symlinkPaths.has(fullPath)) {
           this._symlinkPaths.delete(fullPath);
         }
-        let relPath = path6;
-        if (this.options.cwd) relPath = sysPath.relative(this.options.cwd, path6);
+        let relPath = path7;
+        if (this.options.cwd) relPath = sysPath.relative(this.options.cwd, path7);
         if (this.options.awaitWriteFinish && this._pendingWrites.has(relPath)) {
           const event = this._pendingWrites.get(relPath).cancelWait();
           if (event === EV_ADD) return;
         }
-        this._watched.delete(path6);
+        this._watched.delete(path7);
         this._watched.delete(fullPath);
         const eventName = isDirectory ? EV_UNLINK_DIR : EV_UNLINK;
-        if (wasTracked && !this._isIgnored(path6)) this._emit(eventName, path6);
+        if (wasTracked && !this._isIgnored(path7)) this._emit(eventName, path7);
         if (!this.options.useFsEvents) {
-          this._closePath(path6);
+          this._closePath(path7);
         }
       }
       /**
        * Closes all watchers for a path
        * @param {Path} path
        */
-      _closePath(path6) {
-        this._closeFile(path6);
-        const dir = sysPath.dirname(path6);
-        this._getWatchedDir(dir).remove(sysPath.basename(path6));
+      _closePath(path7) {
+        this._closeFile(path7);
+        const dir = sysPath.dirname(path7);
+        this._getWatchedDir(dir).remove(sysPath.basename(path7));
       }
       /**
        * Closes only file-specific watchers
        * @param {Path} path
        */
-      _closeFile(path6) {
-        const closers = this._closers.get(path6);
+      _closeFile(path7) {
+        const closers = this._closers.get(path7);
         if (!closers) return;
         closers.forEach((closer) => closer());
-        this._closers.delete(path6);
+        this._closers.delete(path7);
       }
       /**
        *
        * @param {Path} path
        * @param {Function} closer
        */
-      _addPathCloser(path6, closer) {
+      _addPathCloser(path7, closer) {
         if (!closer) return;
-        let list = this._closers.get(path6);
+        let list = this._closers.get(path7);
         if (!list) {
           list = [];
-          this._closers.set(path6, list);
+          this._closers.set(path7, list);
         }
         list.push(closer);
       }
@@ -23518,8 +23518,8 @@ function getErrorMap() {
 
 // ../../node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path6, errorMaps, issueData } = params;
-  const fullPath = [...path6, ...issueData.path || []];
+  const { data, path: path7, errorMaps, issueData } = params;
+  const fullPath = [...path7, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -23635,11 +23635,11 @@ var errorUtil;
 
 // ../../node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path6, key) {
+  constructor(parent, value, path7, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path6;
+    this._path = path7;
     this._key = key;
   }
   get path() {
@@ -27276,10 +27276,10 @@ function assignProp(target, prop, value) {
     configurable: true
   });
 }
-function getElementAtPath(obj, path6) {
-  if (!path6)
+function getElementAtPath(obj, path7) {
+  if (!path7)
     return obj;
-  return path6.reduce((acc, key) => acc?.[key], obj);
+  return path7.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -27599,11 +27599,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path6, issues) {
+function prefixIssues(path7, issues) {
   return issues.map((iss) => {
     var _a;
     (_a = iss).path ?? (_a.path = []);
-    iss.path.unshift(path6);
+    iss.path.unshift(path7);
     return iss;
   });
 }
@@ -31014,11 +31014,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path6) {
-  if (path6.length === 0) {
+function getDotPath(path7) {
+  if (path7.length === 0) {
     return "object root";
   }
-  return path6.reduce((acc, seg, index) => {
+  return path7.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -36302,6 +36302,228 @@ var McpZodTypeKind;
   McpZodTypeKind2["Completable"] = "McpCompletable";
 })(McpZodTypeKind || (McpZodTypeKind = {}));
 
+// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/uriTemplate.js
+var MAX_TEMPLATE_LENGTH = 1e6;
+var MAX_VARIABLE_LENGTH = 1e6;
+var MAX_TEMPLATE_EXPRESSIONS = 1e4;
+var MAX_REGEX_LENGTH = 1e6;
+var UriTemplate = class _UriTemplate {
+  /**
+   * Returns true if the given string contains any URI template expressions.
+   * A template expression is a sequence of characters enclosed in curly braces,
+   * like {foo} or {?bar}.
+   */
+  static isTemplate(str2) {
+    return /\{[^}\s]+\}/.test(str2);
+  }
+  static validateLength(str2, max, context) {
+    if (str2.length > max) {
+      throw new Error(`${context} exceeds maximum length of ${max} characters (got ${str2.length})`);
+    }
+  }
+  get variableNames() {
+    return this.parts.flatMap((part) => typeof part === "string" ? [] : part.names);
+  }
+  constructor(template) {
+    _UriTemplate.validateLength(template, MAX_TEMPLATE_LENGTH, "Template");
+    this.template = template;
+    this.parts = this.parse(template);
+  }
+  toString() {
+    return this.template;
+  }
+  parse(template) {
+    const parts = [];
+    let currentText = "";
+    let i = 0;
+    let expressionCount = 0;
+    while (i < template.length) {
+      if (template[i] === "{") {
+        if (currentText) {
+          parts.push(currentText);
+          currentText = "";
+        }
+        const end = template.indexOf("}", i);
+        if (end === -1)
+          throw new Error("Unclosed template expression");
+        expressionCount++;
+        if (expressionCount > MAX_TEMPLATE_EXPRESSIONS) {
+          throw new Error(`Template contains too many expressions (max ${MAX_TEMPLATE_EXPRESSIONS})`);
+        }
+        const expr = template.slice(i + 1, end);
+        const operator = this.getOperator(expr);
+        const exploded = expr.includes("*");
+        const names = this.getNames(expr);
+        const name = names[0];
+        for (const name2 of names) {
+          _UriTemplate.validateLength(name2, MAX_VARIABLE_LENGTH, "Variable name");
+        }
+        parts.push({ name, operator, names, exploded });
+        i = end + 1;
+      } else {
+        currentText += template[i];
+        i++;
+      }
+    }
+    if (currentText) {
+      parts.push(currentText);
+    }
+    return parts;
+  }
+  getOperator(expr) {
+    const operators = ["+", "#", ".", "/", "?", "&"];
+    return operators.find((op) => expr.startsWith(op)) || "";
+  }
+  getNames(expr) {
+    const operator = this.getOperator(expr);
+    return expr.slice(operator.length).split(",").map((name) => name.replace("*", "").trim()).filter((name) => name.length > 0);
+  }
+  encodeValue(value, operator) {
+    _UriTemplate.validateLength(value, MAX_VARIABLE_LENGTH, "Variable value");
+    if (operator === "+" || operator === "#") {
+      return encodeURI(value);
+    }
+    return encodeURIComponent(value);
+  }
+  expandPart(part, variables) {
+    if (part.operator === "?" || part.operator === "&") {
+      const pairs = part.names.map((name) => {
+        const value2 = variables[name];
+        if (value2 === void 0)
+          return "";
+        const encoded2 = Array.isArray(value2) ? value2.map((v) => this.encodeValue(v, part.operator)).join(",") : this.encodeValue(value2.toString(), part.operator);
+        return `${name}=${encoded2}`;
+      }).filter((pair) => pair.length > 0);
+      if (pairs.length === 0)
+        return "";
+      const separator = part.operator === "?" ? "?" : "&";
+      return separator + pairs.join("&");
+    }
+    if (part.names.length > 1) {
+      const values2 = part.names.map((name) => variables[name]).filter((v) => v !== void 0);
+      if (values2.length === 0)
+        return "";
+      return values2.map((v) => Array.isArray(v) ? v[0] : v).join(",");
+    }
+    const value = variables[part.name];
+    if (value === void 0)
+      return "";
+    const values = Array.isArray(value) ? value : [value];
+    const encoded = values.map((v) => this.encodeValue(v, part.operator));
+    switch (part.operator) {
+      case "":
+        return encoded.join(",");
+      case "+":
+        return encoded.join(",");
+      case "#":
+        return "#" + encoded.join(",");
+      case ".":
+        return "." + encoded.join(".");
+      case "/":
+        return "/" + encoded.join("/");
+      default:
+        return encoded.join(",");
+    }
+  }
+  expand(variables) {
+    let result = "";
+    let hasQueryParam = false;
+    for (const part of this.parts) {
+      if (typeof part === "string") {
+        result += part;
+        continue;
+      }
+      const expanded = this.expandPart(part, variables);
+      if (!expanded)
+        continue;
+      if ((part.operator === "?" || part.operator === "&") && hasQueryParam) {
+        result += expanded.replace("?", "&");
+      } else {
+        result += expanded;
+      }
+      if (part.operator === "?" || part.operator === "&") {
+        hasQueryParam = true;
+      }
+    }
+    return result;
+  }
+  escapeRegExp(str2) {
+    return str2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+  partToRegExp(part) {
+    const patterns = [];
+    for (const name2 of part.names) {
+      _UriTemplate.validateLength(name2, MAX_VARIABLE_LENGTH, "Variable name");
+    }
+    if (part.operator === "?" || part.operator === "&") {
+      for (let i = 0; i < part.names.length; i++) {
+        const name2 = part.names[i];
+        const prefix = i === 0 ? "\\" + part.operator : "&";
+        patterns.push({
+          pattern: prefix + this.escapeRegExp(name2) + "=([^&]+)",
+          name: name2
+        });
+      }
+      return patterns;
+    }
+    let pattern;
+    const name = part.name;
+    switch (part.operator) {
+      case "":
+        pattern = part.exploded ? "([^/,]+(?:,[^/,]+)*)" : "([^/,]+)";
+        break;
+      case "+":
+      case "#":
+        pattern = "(.+)";
+        break;
+      case ".":
+        pattern = "\\.([^/,]+)";
+        break;
+      case "/":
+        pattern = "/" + (part.exploded ? "([^/,]+(?:,[^/,]+)*)" : "([^/,]+)");
+        break;
+      default:
+        pattern = "([^/]+)";
+    }
+    patterns.push({ pattern, name });
+    return patterns;
+  }
+  match(uri) {
+    _UriTemplate.validateLength(uri, MAX_TEMPLATE_LENGTH, "URI");
+    let pattern = "^";
+    const names = [];
+    for (const part of this.parts) {
+      if (typeof part === "string") {
+        pattern += this.escapeRegExp(part);
+      } else {
+        const patterns = this.partToRegExp(part);
+        for (const { pattern: partPattern, name } of patterns) {
+          pattern += partPattern;
+          names.push({ name, exploded: part.exploded });
+        }
+      }
+    }
+    pattern += "$";
+    _UriTemplate.validateLength(pattern, MAX_REGEX_LENGTH, "Generated regex pattern");
+    const regex = new RegExp(pattern);
+    const match = uri.match(regex);
+    if (!match)
+      return null;
+    const result = {};
+    for (let i = 0; i < names.length; i++) {
+      const { name, exploded } = names[i];
+      const value = match[i + 1];
+      const cleanName = name.replace("*", "");
+      if (exploded && value.includes(",")) {
+        result[cleanName] = value.split(",");
+      } else {
+        result[cleanName] = value;
+      }
+    }
+    return result;
+  }
+};
+
 // ../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/toolNameValidation.js
 var TOOL_NAME_REGEX = /^[A-Za-z0-9._-]{1,128}$/;
 function validateToolName(name) {
@@ -37091,6 +37313,30 @@ var McpServer = class {
     }
   }
 };
+var ResourceTemplate = class {
+  constructor(uriTemplate, _callbacks) {
+    this._callbacks = _callbacks;
+    this._uriTemplate = typeof uriTemplate === "string" ? new UriTemplate(uriTemplate) : uriTemplate;
+  }
+  /**
+   * Gets the URI template pattern.
+   */
+  get uriTemplate() {
+    return this._uriTemplate;
+  }
+  /**
+   * Gets the list callback, if one was provided.
+   */
+  get listCallback() {
+    return this._callbacks.list;
+  }
+  /**
+   * Gets the callback for completing a specific URI template variable, if one was provided.
+   */
+  completeCallback(variable) {
+    return this._callbacks.complete?.[variable];
+  }
+};
 var EMPTY_OBJECT_JSON_SCHEMA = {
   type: "object",
   properties: {}
@@ -37273,6 +37519,9 @@ var StdioServerTransport = class {
     });
   }
 };
+
+// src/index.ts
+var import_node_path2 = __toESM(require("path"), 1);
 
 // ../core/dist/index.js
 var import_path = __toESM(require("path"), 1);
@@ -37780,6 +38029,88 @@ var KanmerStore = class {
     await this.setBoard(board);
     return board;
   }
+  /**
+   * Rename/recolour a column (and, for areas, pin its id prefix). The id
+   * itself is immutable — items reference columns by id.
+   */
+  async updateColumn(kind, id, patch) {
+    if (patch.prefix !== void 0 && kind !== "area") {
+      throw new Error("prefix only applies to areas");
+    }
+    const board = await this.getBoard();
+    const list = columnList(board, kind);
+    const column = list.find((c) => c.id === id);
+    if (!column) {
+      throw new Error(`No ${kind} "${id}". Valid ids: ${list.map((c) => c.id).join(", ")}`);
+    }
+    if (patch.name !== void 0) column.name = patch.name;
+    if (patch.color !== void 0) column.color = patch.color;
+    if (patch.prefix !== void 0) column.prefix = patch.prefix;
+    await this.setBoard(board);
+    return board;
+  }
+  /**
+   * Remove a column. Refuses while items still reference it unless
+   * `migrateTo` names another column of the same kind — then every matching
+   * item is rewritten first (through updateItem, so validation, folder moves
+   * and the proof gate all apply).
+   */
+  async removeColumn(kind, id, opts = {}) {
+    const board = await this.getBoard();
+    const list = columnList(board, kind);
+    if (!list.some((c) => c.id === id)) {
+      throw new Error(`No ${kind} "${id}". Valid ids: ${list.map((c) => c.id).join(", ")}`);
+    }
+    if (opts.migrateTo !== void 0) {
+      if (opts.migrateTo === id) throw new Error(`migrate_to must differ from the removed ${kind}`);
+      if (!list.some((c) => c.id === opts.migrateTo)) {
+        throw new Error(
+          `migrate_to "${opts.migrateTo}" is not a ${kind} on this board. Valid ids: ${list.map((c) => c.id).join(", ")}`
+        );
+      }
+    }
+    const field = kind === "status" ? "status" : kind === "area" ? "area" : "priority";
+    const affected = (await this.listItems({ includeArchived: true })).filter(
+      (i) => i[field] === id
+    );
+    if (affected.length > 0 && opts.migrateTo === void 0) {
+      const sample = affected.slice(0, 5).map((i) => i.id).join(", ");
+      throw new Error(
+        `${kind} "${id}" still has ${affected.length} item(s) (${sample}${affected.length > 5 ? ", \u2026" : ""}). Pass migrate_to with another ${kind} id to move them, or move them yourself first.`
+      );
+    }
+    const migrated = [];
+    for (const item of affected) {
+      await this.updateItem(item.id, { [field]: opts.migrateTo });
+      migrated.push(item.id);
+    }
+    const remaining = list.filter((c) => c.id !== id);
+    list.splice(0, list.length, ...remaining);
+    await this.setBoard(board);
+    if (kind === "area") {
+      try {
+        await import_promises3.default.rmdir(areaDir(this.paths, id));
+      } catch {
+      }
+    }
+    return { board, migrated };
+  }
+  /** Reorder a column list; `orderedIds` must be a permutation of the existing ids. */
+  async reorderColumns(kind, orderedIds) {
+    const board = await this.getBoard();
+    const list = columnList(board, kind);
+    const current = list.map((c) => c.id);
+    const isPermutation = orderedIds.length === current.length && [...orderedIds].sort().join("\n") === [...current].sort().join("\n");
+    if (!isPermutation) {
+      throw new Error(
+        `order must be a permutation of the existing ${kind} ids: ${current.join(", ")}`
+      );
+    }
+    const byId = new Map(list.map((c) => [c.id, c]));
+    list.splice(0, list.length, ...orderedIds.map((cid) => byId.get(cid)));
+    await this.setBoard(board);
+    return board;
+  }
   /** Read every item (optionally filtered). Includes body. */
   async listItems(filter = {}) {
     return (await this.listItemsWithWarnings(filter)).items;
@@ -38225,6 +38556,37 @@ function pruneUndefined(obj) {
   }
   return out;
 }
+function watchKanmer(projectRoot2, onChange, options2 = {}) {
+  const paths = resolvePaths(projectRoot2);
+  const debounceMs = options2.debounceMs ?? 120;
+  const watcher = import_chokidar.default.watch(paths.kanmer, {
+    ignoreInitial: true,
+    // Ignore the atomic-write temp files (.<name>.tmp-...).
+    ignored: /(^|[/\\])\.[^/\\]*\.tmp-/,
+    awaitWriteFinish: { stabilityThreshold: 80, pollInterval: 20 }
+  });
+  let timer = null;
+  let pending = null;
+  const flush = () => {
+    if (pending) onChange(pending.event, pending.file);
+    pending = null;
+    timer = null;
+  };
+  const schedule = (event) => (file) => {
+    pending = { event, file };
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(flush, debounceMs);
+  };
+  watcher.on("add", schedule("add"));
+  watcher.on("change", schedule("change"));
+  watcher.on("unlink", schedule("unlink"));
+  return {
+    async close() {
+      if (timer) clearTimeout(timer);
+      await watcher.close();
+    }
+  };
+}
 
 // src/root.ts
 var import_node_path = __toESM(require("path"), 1);
@@ -38268,7 +38630,35 @@ function write(fn) {
     return fn(...args);
   });
 }
-function summarise(item) {
+function actorName(extra) {
+  const meta = extra?._meta;
+  const candidates = [
+    meta?.["io.modelcontextprotocol/client"]?.name,
+    meta?.["clientInfo"]?.name
+  ];
+  for (const c of candidates) if (typeof c === "string" && c) return c;
+  return server.server.getClientVersion()?.name ?? "agent";
+}
+async function confirmDestructive(message) {
+  if (!server.server.getClientCapabilities()?.elicitation) return true;
+  try {
+    const res = await server.server.elicitInput({
+      message,
+      requestedSchema: {
+        type: "object",
+        properties: {
+          confirm: { type: "boolean", description: "true to proceed" }
+        },
+        required: ["confirm"]
+      }
+    });
+    return res.action === "accept" && res.content?.confirm === true;
+  } catch {
+    return true;
+  }
+}
+async function summarise(item) {
+  const info = item.type === "ticket" ? await store.getTicketDocsInfo(item.id) : null;
   return {
     id: item.id,
     type: item.type,
@@ -38278,17 +38668,74 @@ function summarise(item) {
     priority: item.priority,
     assignee: item.assignee,
     labels: item.labels,
+    created: item.created,
     updated: item.updated,
-    archived: item.archived
+    archived: item.archived,
+    taken: item.taken_at ? { taken_at: item.taken_at, branch: item.branch ?? null, worktree: item.worktree ?? null } : null,
+    docs: info?.docs ?? null,
+    checklist: info?.checklist ?? null
   };
 }
 var itemTypeEnum = external_exports.enum(["ticket", "plan", "research"]);
+var ticketDocEnum = external_exports.enum(["research", "impact", "plan", "checklist", "proof"]);
+var columnKindEnum = external_exports.enum(["status", "area", "priority"]);
+var createFields = {
+  type: itemTypeEnum.default("ticket").describe("ticket | plan | research (v2 boards: ticket only)"),
+  title: external_exports.string().describe("Short title"),
+  status: external_exports.string().optional().describe("Status id / workflow stage (defaults to the first stage)"),
+  area: external_exports.string().optional().describe("Area id (see list_board \u2192 areas)"),
+  priority: external_exports.string().optional().describe("Priority id (see list_board \u2192 priorities)"),
+  assignee: external_exports.string().optional(),
+  labels: external_exports.array(external_exports.string()).optional(),
+  links: external_exports.array(external_exports.string()).optional().describe("Ids of related items (must exist)"),
+  body: external_exports.string().optional().describe("Markdown body; may contain [[id]] wiki-links")
+};
 var server = new McpServer({ name: "kanmer", version: "0.1.0" });
+server.registerTool(
+  "get_status",
+  {
+    title: "Project status",
+    description: "Orientation call \u2014 use it first, every session. Returns the project root, whether .kanmer/ exists (this tool never creates it), the storage format version, whether the board came from a real board.yml or is the synthesized default, per-stage and per-type item counts, archived/taken counts, and how many file warnings the listing produced.",
+    inputSchema: {},
+    annotations: { readOnlyHint: true, openWorldHint: false }
+  },
+  guard(async () => {
+    const exists = await store.exists();
+    const format = await store.detectFormat();
+    const { board, source } = await store.getBoardWithSource();
+    const { items, warnings } = await store.listItemsWithWarnings({ includeArchived: true });
+    const active = items.filter((i) => !i.archived);
+    const byStage = {};
+    for (const s of board.statuses) byStage[s.id] = 0;
+    let offBoardStage = 0;
+    const byType = {};
+    for (const item of active) {
+      if (item.status in byStage) byStage[item.status]++;
+      else offBoardStage++;
+      byType[item.type] = (byType[item.type] ?? 0) + 1;
+    }
+    return ok({
+      projectRoot,
+      kanmerDir: store.paths.kanmer,
+      exists,
+      format,
+      boardSource: source,
+      counts: {
+        byStage,
+        byType,
+        offBoardStage,
+        archived: items.length - active.length,
+        taken: active.filter((i) => i.taken_at).length
+      },
+      warningsCount: warnings.length
+    });
+  })
+);
 server.registerTool(
   "list_board",
   {
     title: "List board configuration",
-    description: 'Return the board configuration: the ordered statuses (the workflow stages, which are the kanban columns), the areas, the priorities, and the id prefixes for each item type. Call this first to learn valid status/area/priority ids before creating or moving items. The `source` field says whether this is a real board.yml ("file") or the synthesized default for a project with no board yet ("default").',
+    description: 'Return the board configuration: the ordered statuses (the workflow stages, which are the kanban columns), the areas (each with the id prefix its tickets are born with), the priorities, and the legacy id prefixes. Call this to learn valid status/area/priority ids before creating or moving items. The `source` field says whether this is a real board.yml ("file") or the synthesized default for a project with no board yet ("default").',
     inputSchema: {},
     annotations: { readOnlyHint: true, openWorldHint: false }
   },
@@ -38301,17 +38748,20 @@ server.registerTool(
   "list_items",
   {
     title: "List items",
-    description: "List tickets, plans and research items as summaries (no body). Optionally filter by type, status (workflow stage), area or label. Archived items are excluded unless include_archived is true. Use get_item to read an item's full body. Normally returns a plain array; if any files in .kanmer are malformed or misnamed, returns { items, warnings } instead so the problem is visible.",
+    description: "List items as summaries (no body). Filter by type, status (workflow stage), area, label, or updated_since (ISO timestamp \u2014 only items changed after it). Sort by id (default) or updated_desc; cap with limit. Archived items are excluded unless include_archived is true (summaries carry `archived` either way). Summaries also carry `taken` (who/where, when a ticket is taken) and `docs`/`checklist` (pipeline document presence and checklist progress). Normally returns a plain array; if any files in .kanmer are malformed or misnamed, returns { items, warnings } instead so the problem is visible.",
     inputSchema: {
       type: itemTypeEnum.optional().describe("Restrict to one item type"),
       status: external_exports.string().optional().describe("Filter by status id (workflow stage)"),
       area: external_exports.string().optional().describe("Filter by area id"),
       label: external_exports.string().optional().describe("Filter by a label"),
-      include_archived: external_exports.boolean().optional().describe("Include archived items")
+      include_archived: external_exports.boolean().optional().describe("Include archived items"),
+      updated_since: external_exports.string().optional().describe("Only items whose `updated` is after this ISO timestamp"),
+      sort: external_exports.enum(["id", "updated_desc"]).optional().describe("Sort order (default id)"),
+      limit: external_exports.number().int().positive().optional().describe("Return at most this many")
     },
     annotations: { readOnlyHint: true, openWorldHint: false }
   },
-  guard(async ({ type, status, area, label, include_archived }) => {
+  guard(async ({ type, status, area, label, include_archived, updated_since, sort, limit }) => {
     const { items, warnings } = await store.listItemsWithWarnings({
       type,
       status,
@@ -38319,7 +38769,15 @@ server.registerTool(
       label,
       includeArchived: include_archived
     });
-    const summaries = items.map(summarise);
+    let selected = items;
+    if (updated_since !== void 0) {
+      selected = selected.filter((i) => i.updated > updated_since);
+    }
+    if (sort === "updated_desc") {
+      selected = [...selected].sort((a, b) => a.updated < b.updated ? 1 : -1);
+    }
+    if (limit !== void 0) selected = selected.slice(0, limit);
+    const summaries = await Promise.all(selected.map(summarise));
     return ok(warnings.length ? { items: summaries, warnings } : summaries);
   })
 );
@@ -38327,13 +38785,31 @@ server.registerTool(
   "get_item",
   {
     title: "Get an item",
-    description: "Return the full frontmatter and markdown body of one item by id (e.g. TICK-001).",
-    inputSchema: { id: external_exports.string().describe("Item id, e.g. TICK-001") },
+    description: "Return the full frontmatter and markdown body of one item by id (e.g. API-001). For tickets this also reports which pipeline documents exist (docs) and checklist progress \u2014 read the documents themselves with get_ticket_doc.",
+    inputSchema: { id: external_exports.string().describe("Item id, e.g. API-001") },
     annotations: { readOnlyHint: true, openWorldHint: false }
   },
   guard(async ({ id }) => {
     const item = await store.getItem(id);
-    return item ? ok(item) : fail(`No item with id "${id}"`);
+    if (!item) return fail(`No item with id "${id}"`);
+    const info = await store.getTicketDocsInfo(id);
+    return ok(info ? { ...item, docs: info.docs, checklist: info.checklist } : item);
+  })
+);
+server.registerTool(
+  "get_ticket_doc",
+  {
+    title: "Read a ticket document",
+    description: "Read one of a ticket's pipeline documents (research, impact, plan, checklist, proof) from its folder. Returns content: null when the document hasn't been written yet.",
+    inputSchema: {
+      id: external_exports.string().describe("Ticket id"),
+      doc: ticketDocEnum.describe("Which document")
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false }
+  },
+  guard(async ({ id, doc }) => {
+    const content = await store.getDoc(id, doc);
+    return ok({ id, doc, exists: content !== null, content });
   })
 );
 server.registerTool(
@@ -38348,7 +38824,7 @@ server.registerTool(
     annotations: { readOnlyHint: true, openWorldHint: false }
   },
   guard(
-    async ({ query, type }) => ok((await store.searchItems(query, { type })).map(summarise))
+    async ({ query, type }) => ok(await Promise.all((await store.searchItems(query, { type })).map(summarise)))
   )
 );
 server.registerTool(
@@ -38356,7 +38832,7 @@ server.registerTool(
   {
     title: "Get links and backlinks",
     description: "Return the items this item links to (frontmatter links[] plus [[wiki]] links in its body) and the items that link back to it. Each id is annotated with its title.",
-    inputSchema: { id: external_exports.string().describe("Item id, e.g. TICK-001") },
+    inputSchema: { id: external_exports.string().describe("Item id, e.g. API-001") },
     annotations: { readOnlyHint: true, openWorldHint: false }
   },
   guard(async ({ id }) => {
@@ -38374,27 +38850,43 @@ server.registerTool(
   "create_item",
   {
     title: "Create an item",
-    description: "Create a ticket, plan or research note. Returns the created item including its allocated id. status defaults to the first workflow stage if omitted; call list_board for valid ids. Link to other items via links[] and/or [[id]] references in the body.",
-    inputSchema: {
-      type: itemTypeEnum.describe("ticket | plan | research"),
-      title: external_exports.string().describe("Short title"),
-      status: external_exports.string().optional().describe("Status id / workflow stage (defaults to the first stage)"),
-      area: external_exports.string().optional().describe("Area id (see list_board \u2192 areas)"),
-      priority: external_exports.string().optional().describe("Priority id (see list_board \u2192 priorities); defaults to medium"),
-      assignee: external_exports.string().optional(),
-      labels: external_exports.array(external_exports.string()).optional(),
-      links: external_exports.array(external_exports.string()).optional().describe("Ids of related items"),
-      body: external_exports.string().optional().describe("Markdown body; may contain [[id]] wiki-links")
-    },
+    description: "Create a ticket. Returns the created item including its allocated id \u2014 tickets born in an area get that area's prefix (e.g. API-007); area-less tickets get the fallback prefix. status defaults to the first workflow stage; status/area/priority are validated against the board and links[] targets must exist. On format-2 boards plans and research are documents inside a ticket's folder (set_ticket_doc), not standalone items.",
+    inputSchema: createFields,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
   },
   write(async (input) => ok(await store.createItem(input)))
 );
 server.registerTool(
+  "create_items",
+  {
+    title: "Create several items",
+    description: "Bulk create up to 50 items in one call (sequential, so ids stay ordered). Each entry takes the same fields as create_item. Partial success is possible: the result carries one { ok, item | error } per entry, in order.",
+    inputSchema: {
+      items: external_exports.array(external_exports.object(createFields)).min(1).max(50).describe("Entries to create, in order")
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+  },
+  write(async ({ items }) => {
+    const results = [];
+    for (const entry of items) {
+      try {
+        results.push({ ok: true, item: await store.createItem(entry) });
+      } catch (err) {
+        results.push({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    return ok({
+      created: results.filter((r) => r.ok).length,
+      failed: results.filter((r) => !r.ok).length,
+      results
+    });
+  })
+);
+server.registerTool(
   "update_item",
   {
     title: "Update an item",
-    description: "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically (a patch that changes nothing does NOT bump `updated`). Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here \u2014 create a new item and archive the old one instead. Pass expected_updated (the `updated` you last read) when rewriting the body so a concurrent edit is rejected as a conflict instead of overwritten.",
+    description: "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically (a patch that changes nothing does NOT bump `updated`). Changing a ticket's area moves its folder \u2014 the id never changes. Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here \u2014 create a new item and archive the old one instead. Pass expected_updated (the `updated` you last read) when rewriting the body so a concurrent edit is rejected as a conflict instead of overwritten.",
     inputSchema: {
       id: external_exports.string().describe("Item id to update"),
       title: external_exports.string().optional(),
@@ -38420,7 +38912,7 @@ server.registerTool(
   "move_item",
   {
     title: "Move an item to a workflow stage",
-    description: "Kanban move: set an item's status, i.e. move it to a workflow stage (see list_board \u2192 statuses). Rejects a status that is not on the board. Convenience wrapper over update_item.",
+    description: "Kanban move: set an item's status, i.e. move it to a workflow stage (see list_board \u2192 statuses). Rejects a status that is not on the board. Moving a ticket to the final stage requires its proof.md to exist. Convenience wrapper over update_item.",
     inputSchema: {
       id: external_exports.string().describe("Item id to move"),
       status: external_exports.string().describe("Target status id (workflow stage)"),
@@ -38435,10 +38927,58 @@ server.registerTool(
   )
 );
 server.registerTool(
+  "take_ticket",
+  {
+    title: "Take or release a ticket",
+    description: "Take a ticket before working it: records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client's name), and moves the ticket to the working stage (default: the board's `implementing` stage). Errors if the ticket is already taken unless force is true. action: \"release\" clears taken_at/branch/worktree when the work ends.",
+    inputSchema: {
+      id: external_exports.string().describe("Ticket id"),
+      action: external_exports.enum(["take", "release"]).default("take"),
+      branch: external_exports.string().optional().describe("Branch the work happens on (required for take)"),
+      worktree: external_exports.string().optional().describe("Worktree path, when working in one"),
+      stage: external_exports.string().optional().describe("Stage to move to (default: implementing)"),
+      assignee: external_exports.string().optional().describe("Defaults to the calling client's name"),
+      force: external_exports.boolean().optional().describe("Take over an already-taken ticket")
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+  },
+  write(async ({ id, action, branch, worktree, stage, assignee, force }, extra) => {
+    if (action === "release") return ok(await store.releaseTicket(id));
+    if (!branch) return fail(`branch is required when taking a ticket \u2014 it's the point of taking`);
+    return ok(
+      await store.takeTicket(id, {
+        branch,
+        worktree,
+        stage,
+        assignee: assignee ?? actorName(extra),
+        force
+      })
+    );
+  })
+);
+server.registerTool(
+  "set_ticket_doc",
+  {
+    title: "Write a ticket document",
+    description: "Write one of a ticket's pipeline documents (research, impact, plan, checklist, proof) into its folder. Plain Markdown, no frontmatter. Pass append: true to add below the existing content (for progress notes) instead of replacing it. proof.md is required before the ticket can reach the final stage.",
+    inputSchema: {
+      id: external_exports.string().describe("Ticket id"),
+      doc: ticketDocEnum.describe("Which document"),
+      content: external_exports.string().describe("Markdown content"),
+      append: external_exports.boolean().optional().describe("Append below existing content instead of replacing")
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+  },
+  write(async ({ id, doc, content, append }) => {
+    await store.setDoc(id, doc, content, { append });
+    return ok({ id, doc, written: true, appended: append === true });
+  })
+);
+server.registerTool(
   "link_items",
   {
     title: "Link or unlink two items",
-    description: "Add or remove a structured relation from source_id to target_id (stored in the source item's frontmatter links[]).",
+    description: "Add or remove a structured relation from source_id to target_id (stored in the source item's frontmatter links[]). Adding requires the target to exist; removal works even on dangling links.",
     inputSchema: {
       source_id: external_exports.string().describe("The item that will hold the link"),
       target_id: external_exports.string().describe("The item being linked to"),
@@ -38454,34 +38994,207 @@ server.registerTool(
   "add_column",
   {
     title: "Add a board column",
-    description: "Add a new column to the board: a status (workflow stage), area or priority. Areas group tickets within stage columns and are colour-coded; provide a hex color for them. Returns the updated board configuration.",
+    description: "Add a new column to the board: a status (workflow stage), area or priority. Areas group tickets within stage columns and are colour-coded; provide a hex color, and optionally a 2-6 uppercase-alphanumeric id prefix for tickets born there (derived from the id when omitted). Returns the updated board configuration.",
     inputSchema: {
       id: external_exports.string().describe("New column id, e.g. ui"),
       name: external_exports.string().describe("Display name, e.g. UI"),
-      kind: external_exports.enum(["status", "area", "priority"]).default("area"),
-      color: external_exports.string().optional().describe("Hex colour, e.g. #5b8cff (recommended for areas)")
+      kind: columnKindEnum.default("area"),
+      color: external_exports.string().optional().describe("Hex colour, e.g. #5b8cff (recommended for areas)"),
+      prefix: external_exports.string().optional().describe("Areas only: id prefix for tickets born in this area, e.g. API")
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
   },
   write(
-    async ({ id, name, kind, color }) => ok(await store.addColumn(kind, { id, name, ...color ? { color } : {} }))
+    async ({ id, name, kind, color, prefix }) => ok(
+      await store.addColumn(kind, {
+        id,
+        name,
+        ...color ? { color } : {},
+        ...prefix ? { prefix } : {}
+      })
+    )
   )
+);
+server.registerTool(
+  "update_column",
+  {
+    title: "Update a board column",
+    description: "Rename or recolour a status/area/priority, or pin an area's id prefix. The column id itself is immutable (items reference it).",
+    inputSchema: {
+      kind: columnKindEnum,
+      id: external_exports.string().describe("Column id to update"),
+      name: external_exports.string().optional(),
+      color: external_exports.string().optional(),
+      prefix: external_exports.string().optional().describe("Areas only")
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
+  },
+  write(
+    async ({ kind, id, name, color, prefix }) => ok(await store.updateColumn(kind, id, { name, color, prefix }))
+  )
+);
+server.registerTool(
+  "remove_column",
+  {
+    title: "Remove a board column",
+    description: "Remove a status/area/priority from the board. Refuses while items still use it unless migrate_to names another column of the same kind \u2014 then every matching item is rewritten to it first (an area migration moves ticket folders; migrating tickets into the final stage still requires their proof.md). Returns the updated board plus the ids that were migrated.",
+    inputSchema: {
+      kind: columnKindEnum,
+      id: external_exports.string().describe("Column id to remove"),
+      migrate_to: external_exports.string().optional().describe("Column id (same kind) to move the referencing items to")
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false }
+  },
+  write(async ({ kind, id, migrate_to }) => {
+    if (migrate_to !== void 0) {
+      const proceed = await confirmDestructive(
+        `Remove ${kind} "${id}" and move every item using it to "${migrate_to}"?`
+      );
+      if (!proceed) return fail("cancelled by user");
+    }
+    return ok(await store.removeColumn(kind, id, { migrateTo: migrate_to }));
+  })
+);
+server.registerTool(
+  "reorder_columns",
+  {
+    title: "Reorder board columns",
+    description: "Reorder the statuses, areas or priorities. `order` must be a permutation of the existing ids. Note that the FIRST status is where new items land and the LAST status is the proof-gated final stage.",
+    inputSchema: {
+      kind: columnKindEnum,
+      order: external_exports.array(external_exports.string()).min(1).describe("Every existing id, in the new order")
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
+  },
+  write(async ({ kind, order }) => ok(await store.reorderColumns(kind, order)))
 );
 server.registerTool(
   "delete_item",
   {
     title: "Delete an item",
-    description: "Permanently delete an item file by id. This cannot be undone (prefer update_item with archived: true). Frontmatter links[] in other items that pointed at the deleted id are cleaned up automatically (cleanedLinks); [[wiki]] references in bodies are prose and stay put (bodyReferencesRemain).",
+    description: "Permanently delete an item by id. For tickets this removes the whole ticket folder \u2014 pipeline documents and attachments included. This cannot be undone (prefer update_item with archived: true). Frontmatter links[] in other items that pointed at the deleted id are cleaned up automatically (cleanedLinks); [[wiki]] references in bodies are prose and stay put (bodyReferencesRemain).",
     inputSchema: { id: external_exports.string().describe("Item id to delete") },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true }
   },
   write(async ({ id }) => {
+    const proceed = await confirmDestructive(
+      `Permanently delete "${id}" (its whole folder, documents and attachments included)?`
+    );
+    if (!proceed) return fail("cancelled by user");
     const result = await store.deleteItem(id);
     return result.deleted ? ok({
       deleted: id,
       cleanedLinks: result.cleanedLinks,
       bodyReferencesRemain: result.bodyReferencesRemain
     }) : fail(`No item with id "${id}"`);
+  })
+);
+server.registerResource(
+  "board",
+  "kanmer://board",
+  {
+    title: "Kanmer board configuration",
+    description: "The stages, areas and priorities driving this project's board",
+    mimeType: "application/json"
+  },
+  async (uri) => ({
+    contents: [
+      {
+        uri: uri.href,
+        mimeType: "application/json",
+        text: JSON.stringify(await store.getBoardWithSource(), null, 2)
+      }
+    ]
+  })
+);
+server.registerResource(
+  "item",
+  new ResourceTemplate("kanmer://items/{id}", {
+    list: async () => ({
+      resources: (await store.listItems()).map((i) => ({
+        uri: `kanmer://items/${i.id}`,
+        name: i.id,
+        description: i.title,
+        mimeType: "text/markdown"
+      }))
+    })
+  }),
+  {
+    title: "Kanmer items",
+    description: "Each ticket/plan/research item as Markdown with frontmatter",
+    mimeType: "text/markdown"
+  },
+  async (uri, variables) => {
+    const id = String(variables["id"]);
+    const item = await store.getItem(id);
+    if (!item) throw new Error(`No item with id "${id}"`);
+    return {
+      contents: [{ uri: uri.href, mimeType: "text/markdown", text: serialiseItem(item) }]
+    };
+  }
+);
+var subscriptions = /* @__PURE__ */ new Set();
+var subscriptionWatch = null;
+function ensureSubscriptionWatcher() {
+  if (subscriptionWatch) return;
+  subscriptionWatch = watchKanmer(projectRoot, (_event, file) => {
+    const base = import_node_path2.default.basename(file);
+    if (base === "board.yml" && subscriptions.has("kanmer://board")) {
+      void server.server.sendResourceUpdated({ uri: "kanmer://board" });
+    }
+    if (base.endsWith(".md")) {
+      const uri = `kanmer://items/${base.slice(0, -3)}`;
+      if (subscriptions.has(uri)) {
+        void server.server.sendResourceUpdated({ uri });
+      }
+    }
+  });
+}
+server.server.registerCapabilities({ resources: { subscribe: true } });
+server.server.setRequestHandler(SubscribeRequestSchema, async (req) => {
+  subscriptions.add(req.params.uri);
+  ensureSubscriptionWatcher();
+  return {};
+});
+server.server.setRequestHandler(UnsubscribeRequestSchema, async (req) => {
+  subscriptions.delete(req.params.uri);
+  return {};
+});
+server.registerPrompt(
+  "standup",
+  {
+    title: "Board standup",
+    description: "Summarise what happened on the Kanmer board and what needs attention"
+  },
+  () => ({
+    messages: [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: "Give me a standup from the Kanmer board. Call get_status first, then list_items (sort: updated_desc) for the current picture. Group by the board's configured stages by role \u2014 first stage is Up next, last stage is Recently done, a review-like stage is In review, everything between is In flight (include taken branch/worktree info). Flag stale items, off-board stages, and any warnings. Keep it scannable: one line per item."
+        }
+      }
+    ]
+  })
+);
+server.registerPrompt(
+  "take-ticket",
+  {
+    title: "Take a ticket",
+    description: "Take a Kanmer ticket and work it through the doc pipeline",
+    argsSchema: { id: external_exports.string().describe("Ticket id to take") }
+  },
+  ({ id }) => ({
+    messages: [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: `Take Kanmer ticket ${id} and work it: call get_item to read it, take_ticket (with the real branch and worktree you'll work on), then follow the document pipeline with get_ticket_doc/set_ticket_doc \u2014 research.md and impact.md first, write plan.md from them, derive checklist.md, work the checklist (append progress notes), and write proof.md with real evidence before moving the ticket to the final stage and releasing it.`
+        }
+      }
+    ]
   })
 );
 async function main() {

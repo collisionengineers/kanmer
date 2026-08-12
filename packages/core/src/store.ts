@@ -9,6 +9,7 @@ import {
   writeFileExclusive,
 } from "./io.js";
 import {
+  areaDir,
   areaFolderName,
   docFileIn,
   itemFile,
@@ -156,6 +157,107 @@ export class KanmerStore {
       throw new Error(`${kind} "${column.id}" already exists`);
     }
     list.push(column);
+    await this.setBoard(board);
+    return board;
+  }
+
+  /**
+   * Rename/recolour a column (and, for areas, pin its id prefix). The id
+   * itself is immutable — items reference columns by id.
+   */
+  async updateColumn(
+    kind: ColumnKind,
+    id: string,
+    patch: { name?: string; color?: string; prefix?: string },
+  ): Promise<BoardConfig> {
+    if (patch.prefix !== undefined && kind !== "area") {
+      throw new Error("prefix only applies to areas");
+    }
+    const board = await this.getBoard();
+    const list = columnList(board, kind);
+    const column = list.find((c) => c.id === id);
+    if (!column) {
+      throw new Error(`No ${kind} "${id}". Valid ids: ${list.map((c) => c.id).join(", ")}`);
+    }
+    if (patch.name !== undefined) column.name = patch.name;
+    if (patch.color !== undefined) column.color = patch.color;
+    if (patch.prefix !== undefined) column.prefix = patch.prefix;
+    await this.setBoard(board); // validates shape + prefix uniqueness
+    return board;
+  }
+
+  /**
+   * Remove a column. Refuses while items still reference it unless
+   * `migrateTo` names another column of the same kind — then every matching
+   * item is rewritten first (through updateItem, so validation, folder moves
+   * and the proof gate all apply).
+   */
+  async removeColumn(
+    kind: ColumnKind,
+    id: string,
+    opts: { migrateTo?: string } = {},
+  ): Promise<{ board: BoardConfig; migrated: string[] }> {
+    const board = await this.getBoard();
+    const list = columnList(board, kind);
+    if (!list.some((c) => c.id === id)) {
+      throw new Error(`No ${kind} "${id}". Valid ids: ${list.map((c) => c.id).join(", ")}`);
+    }
+    if (opts.migrateTo !== undefined) {
+      if (opts.migrateTo === id) throw new Error(`migrate_to must differ from the removed ${kind}`);
+      if (!list.some((c) => c.id === opts.migrateTo)) {
+        throw new Error(
+          `migrate_to "${opts.migrateTo}" is not a ${kind} on this board. ` +
+            `Valid ids: ${list.map((c) => c.id).join(", ")}`,
+        );
+      }
+    }
+    const field = kind === "status" ? "status" : kind === "area" ? "area" : "priority";
+    const affected = (await this.listItems({ includeArchived: true })).filter(
+      (i) => (i as Record<string, unknown>)[field] === id,
+    );
+    if (affected.length > 0 && opts.migrateTo === undefined) {
+      const sample = affected.slice(0, 5).map((i) => i.id).join(", ");
+      throw new Error(
+        `${kind} "${id}" still has ${affected.length} item(s) (${sample}` +
+          `${affected.length > 5 ? ", …" : ""}). Pass migrate_to with another ${kind} id ` +
+          `to move them, or move them yourself first.`,
+      );
+    }
+    const migrated: string[] = [];
+    for (const item of affected) {
+      await this.updateItem(item.id, { [field]: opts.migrateTo } as UpdateItemPatch);
+      migrated.push(item.id);
+    }
+    const remaining = list.filter((c) => c.id !== id);
+    list.splice(0, list.length, ...remaining);
+    await this.setBoard(board);
+    if (kind === "area") {
+      // The area's folder should now be empty — clear it if so; anything a
+      // human left inside keeps it alive.
+      try {
+        await fs.rmdir(areaDir(this.paths, id));
+      } catch {
+        // non-empty or already gone
+      }
+    }
+    return { board, migrated };
+  }
+
+  /** Reorder a column list; `orderedIds` must be a permutation of the existing ids. */
+  async reorderColumns(kind: ColumnKind, orderedIds: string[]): Promise<BoardConfig> {
+    const board = await this.getBoard();
+    const list = columnList(board, kind);
+    const current = list.map((c) => c.id);
+    const isPermutation =
+      orderedIds.length === current.length &&
+      [...orderedIds].sort().join("\n") === [...current].sort().join("\n");
+    if (!isPermutation) {
+      throw new Error(
+        `order must be a permutation of the existing ${kind} ids: ${current.join(", ")}`,
+      );
+    }
+    const byId = new Map(list.map((c) => [c.id, c]));
+    list.splice(0, list.length, ...orderedIds.map((cid) => byId.get(cid)!));
     await this.setBoard(board);
     return board;
   }

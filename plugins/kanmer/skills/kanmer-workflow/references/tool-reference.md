@@ -7,8 +7,8 @@ Kept in sync with `packages/mcp-server/src/index.ts` — run
 
 | Tool | Purpose | Key params |
 |---|---|---|
-| `list_board` | Board config: stages (statuses), areas, priorities, id prefixes. Call first. | — |
-| `list_items` | Item summaries (see fields below; no body). Archived excluded by default; with `include_archived: true`, archived and active items are returned together and distinguished by the summary's `archived` field. | `type?`, `status?`, `area?`, `label?`, `include_archived?` |
+| `list_board` | Board config: stages (statuses), areas, priorities, id prefixes. Call first. The `source` field is `"file"` for a real board.yml, `"default"` when the project has no board yet and you're seeing the synthesized default. | — |
+| `list_items` | Item summaries (see fields below; no body). Archived excluded by default; with `include_archived: true`, archived and active items are returned together and distinguished by the summary's `archived` field. Normally a plain array; if any `.kanmer` files are malformed or misnamed it returns `{ items, warnings }` instead — surface those warnings to the user rather than ignoring them. | `type?`, `status?`, `area?`, `label?`, `include_archived?` |
 | `get_item` | Full frontmatter + Markdown body of one item. | `id` |
 | `search_items` | Full-text search over id, title, body, labels, assignee. | `query`, `type?` |
 | `get_links` | Forward links + backlinks for an item, with titles. | `id` |
@@ -17,17 +17,17 @@ Kept in sync with `packages/mcp-server/src/index.ts` — run
 
 | Tool | Purpose | Key params |
 |---|---|---|
-| `create_item` | Create ticket / plan / research. Returns allocated id (e.g. TICK-007). | `type`, `title`, `status?`, `area?`, `priority?`, `assignee?`, `labels?`, `links?`, `body?` |
-| `update_item` | Patch frontmatter and/or the body. Omitted fields are left alone, but a supplied `body` **replaces** the whole body — it is not merged. `archived: true` hides from board. `type` **cannot** be changed — it's not in the schema and is silently dropped, not rejected; it determines the item's folder and id prefix, so create a new item and archive the old one instead. | `id`, `title?`, `status?`, `area?`, `priority?`, `assignee?`, `labels?`, `links?`, `body?`, `archived?` |
-| `move_item` | Move an item to a workflow stage. Rejects a status that is not on the board — call `list_board` for valid ids. | `id`, `status` |
-| `link_items` | Add/remove a structured relation source → target. | `source_id`, `target_id`, `action` (`add`/`remove`) |
+| `create_item` | Create ticket / plan / research. Returns allocated id (e.g. TICK-007). Rejects a `status`/`area`/`priority` id the board doesn't define, and any `links` entry that names a nonexistent item — the error lists the valid ids. | `type`, `title`, `status?`, `area?`, `priority?`, `assignee?`, `labels?`, `links?`, `body?` |
+| `update_item` | Patch frontmatter and/or the body. Omitted fields are left alone, but a supplied `body` **replaces** the whole body — it is not merged. A patch that changes nothing is a no-op and does **not** bump `updated`. `archived: true` hides from board. `type` **cannot** be changed — it's not in the schema and is silently dropped, not rejected; it determines the item's folder and id prefix, so create a new item and archive the old one instead. Pass `expected_updated` (the `updated` you last read) when rewriting a body: if the item changed since, the call fails with a conflict telling you to re-read, instead of silently overwriting the newer version. | `id`, `title?`, `status?`, `area?`, `priority?`, `assignee?`, `labels?`, `links?`, `body?`, `archived?`, `expected_updated?` |
+| `move_item` | Move an item to a workflow stage. Rejects a status that is not on the board — call `list_board` for valid ids. | `id`, `status`, `expected_updated?` |
+| `link_items` | Add/remove a structured relation source → target. `add` requires the target to exist; `remove` works even on dangling links so they can be cleaned. | `source_id`, `target_id`, `action` (`add`/`remove`) |
 | `add_column` | Add a stage, area or priority to the board. `color` is a hex string like `#5b8cff`. Append-only: rejects an id that already exists; cannot remove, rename or reorder — a whole-board replacement (e.g. swapping out the default stages) needs the GUI Settings editor. | `id`, `name`, `kind` (`status`/`area`/`priority`), `color?` |
 
 ## Destructive
 
 | Tool | Purpose | Key params |
 |---|---|---|
-| `delete_item` | Permanently delete an item file. Cannot be undone. Prefer archiving. | `id` |
+| `delete_item` | Permanently delete an item file. Cannot be undone. Prefer archiving. Frontmatter `links[]` in other items pointing at the deleted id are cleaned automatically and reported as `cleanedLinks`; body `[[wiki]]` mentions are prose, left in place, and reported as `bodyReferencesRemain`. | `id` |
 
 ## What a `list_items` summary contains
 

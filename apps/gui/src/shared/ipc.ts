@@ -3,6 +3,7 @@ import type {
   BoardConfig,
   ColumnKind,
   CreateItemInput,
+  DeleteItemResult,
   Item,
   ItemFilter,
   LinkGraph,
@@ -69,7 +70,7 @@ export interface KanmerApi {
   createItem(input: CreateItemInput): Promise<Item>;
   updateItem(id: string, patch: UpdateItemPatch): Promise<Item>;
   moveItem(id: string, to: { status: string }): Promise<Item>;
-  deleteItem(id: string): Promise<boolean>;
+  deleteItem(id: string): Promise<DeleteItemResult>;
   addColumn(kind: ColumnKind, column: BoardColumn): Promise<BoardConfig>;
   linkItems(source: string, target: string, action: "add" | "remove"): Promise<Item>;
   getLinks(id: string): Promise<LinkGraph>;

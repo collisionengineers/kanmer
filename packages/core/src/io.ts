@@ -30,6 +30,33 @@ export async function writeFileAtomic(file: string, contents: string): Promise<v
   await fs.rename(tmp, file);
 }
 
+/**
+ * Exclusively create `file` with `contents`: fails with EEXIST if the target
+ * already exists. The claim is atomic — write a temp file, then hard-link it
+ * to the target (link fails if the target exists; works on NTFS). Where hard
+ * links aren't supported, fall back to an O_EXCL write, which is equally
+ * exclusive just not staged through a temp file. Crash-safe by construction:
+ * there is no lock to leak, the item file itself is the lock.
+ */
+export async function writeFileExclusive(file: string, contents: string): Promise<void> {
+  const dir = path.dirname(file);
+  await ensureDir(dir);
+  const tmp = path.join(dir, `.${path.basename(file)}.tmp-${process.pid}-${tmpCounter()}`);
+  await fs.writeFile(tmp, contents, "utf8");
+  try {
+    await fs.link(tmp, file);
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "EPERM" || code === "ENOSYS" || code === "ENOTSUP") {
+      await fs.writeFile(file, contents, { encoding: "utf8", flag: "wx" });
+    } else {
+      throw err;
+    }
+  } finally {
+    await fs.rm(tmp, { force: true });
+  }
+}
+
 export async function readText(file: string): Promise<string> {
   return fs.readFile(file, "utf8");
 }

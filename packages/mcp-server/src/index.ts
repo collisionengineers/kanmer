@@ -73,11 +73,14 @@ server.registerTool(
   {
     title: "List board configuration",
     description:
-      "Return the board configuration: the ordered statuses (the workflow stages, which are the kanban columns), the areas, the priorities, and the id prefixes for each item type. Call this first to learn valid status/area/priority ids before creating or moving items.",
+      "Return the board configuration: the ordered statuses (the workflow stages, which are the kanban columns), the areas, the priorities, and the id prefixes for each item type. Call this first to learn valid status/area/priority ids before creating or moving items. The `source` field says whether this is a real board.yml (\"file\") or the synthesized default for a project with no board yet (\"default\").",
     inputSchema: {},
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  guard(async () => ok(await store.getBoard())),
+  guard(async () => {
+    const { board, source } = await store.getBoardWithSource();
+    return ok({ ...board, source });
+  }),
 );
 
 server.registerTool(
@@ -85,7 +88,7 @@ server.registerTool(
   {
     title: "List items",
     description:
-      "List tickets, plans and research items as summaries (no body). Optionally filter by type, status (workflow stage), area or label. Archived items are excluded unless include_archived is true. Use get_item to read an item's full body.",
+      "List tickets, plans and research items as summaries (no body). Optionally filter by type, status (workflow stage), area or label. Archived items are excluded unless include_archived is true. Use get_item to read an item's full body. Normally returns a plain array; if any files in .kanmer are malformed or misnamed, returns { items, warnings } instead so the problem is visible.",
     inputSchema: {
       type: itemTypeEnum.optional().describe("Restrict to one item type"),
       status: z.string().optional().describe("Filter by status id (workflow stage)"),
@@ -95,19 +98,17 @@ server.registerTool(
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  guard(async ({ type, status, area, label, include_archived }) =>
-    ok(
-      (
-        await store.listItems({
-          type,
-          status,
-          area,
-          label,
-          includeArchived: include_archived,
-        })
-      ).map(summarise),
-    ),
-  ),
+  guard(async ({ type, status, area, label, include_archived }) => {
+    const { items, warnings } = await store.listItemsWithWarnings({
+      type,
+      status,
+      area,
+      label,
+      includeArchived: include_archived,
+    });
+    const summaries = items.map(summarise);
+    return ok(warnings.length ? { items: summaries, warnings } : summaries);
+  }),
 );
 
 server.registerTool(
@@ -195,7 +196,7 @@ server.registerTool(
   {
     title: "Update an item",
     description:
-      "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically. Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here — create a new item and archive the old one instead.",
+      "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically (a patch that changes nothing does NOT bump `updated`). Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here — create a new item and archive the old one instead. Pass expected_updated (the `updated` you last read) when rewriting the body so a concurrent edit is rejected as a conflict instead of overwritten.",
     inputSchema: {
       id: z.string().describe("Item id to update"),
       title: z.string().optional(),
@@ -207,10 +208,18 @@ server.registerTool(
       links: z.array(z.string()).optional(),
       body: z.string().optional(),
       archived: z.boolean().optional(),
+      expected_updated: z
+        .string()
+        .optional()
+        .describe(
+          "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the item changed since.",
+        ),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  write(async ({ id, ...patch }) => ok(await store.updateItem(id, patch))),
+  write(async ({ id, expected_updated, ...patch }) =>
+    ok(await store.updateItem(id, { ...patch, expectedUpdated: expected_updated })),
+  ),
 );
 
 server.registerTool(
@@ -218,14 +227,22 @@ server.registerTool(
   {
     title: "Move an item to a workflow stage",
     description:
-      "Kanban move: set an item's status, i.e. move it to a workflow stage (see list_board → statuses). Convenience wrapper over update_item.",
+      "Kanban move: set an item's status, i.e. move it to a workflow stage (see list_board → statuses). Rejects a status that is not on the board. Convenience wrapper over update_item.",
     inputSchema: {
       id: z.string().describe("Item id to move"),
       status: z.string().describe("Target status id (workflow stage)"),
+      expected_updated: z
+        .string()
+        .optional()
+        .describe(
+          "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the item changed since.",
+        ),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  write(async ({ id, status }) => ok(await store.moveItem(id, { status }))),
+  write(async ({ id, status, expected_updated }) =>
+    ok(await store.moveItem(id, { status, expectedUpdated: expected_updated })),
+  ),
 );
 
 server.registerTool(
@@ -270,13 +287,19 @@ server.registerTool(
   {
     title: "Delete an item",
     description:
-      "Permanently delete an item file by id. This cannot be undone. Backlinks from other items are not rewritten.",
+      "Permanently delete an item file by id. This cannot be undone (prefer update_item with archived: true). Frontmatter links[] in other items that pointed at the deleted id are cleaned up automatically (cleanedLinks); [[wiki]] references in bodies are prose and stay put (bodyReferencesRemain).",
     inputSchema: { id: z.string().describe("Item id to delete") },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
   },
   write(async ({ id }) => {
-    const deleted = await store.deleteItem(id);
-    return deleted ? ok({ deleted: id }) : fail(`No item with id "${id}"`);
+    const result = await store.deleteItem(id);
+    return result.deleted
+      ? ok({
+          deleted: id,
+          cleanedLinks: result.cleanedLinks,
+          bodyReferencesRemain: result.bodyReferencesRemain,
+        })
+      : fail(`No item with id "${id}"`);
   }),
 );
 

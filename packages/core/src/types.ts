@@ -124,7 +124,34 @@ export interface UpdateItemPatch {
   links?: string[];
   body?: string;
   archived?: boolean;
+  /**
+   * Optimistic-concurrency check (opt-in): the `updated` timestamp the caller
+   * last read. If the item's current `updated` differs, the write is rejected
+   * with a conflict error instead of silently overwriting a newer version.
+   * Omit for last-write-wins (the GUI and casual calls).
+   */
+  expectedUpdated?: string;
 }
+
+/** Result of deleteItem: what was removed and what referenced it. */
+export interface DeleteItemResult {
+  /** False if no item with that id existed. */
+  deleted: boolean;
+  /** Ids whose frontmatter links[] pointed at the deleted item and were rewritten. */
+  cleanedLinks: string[];
+  /** Ids whose markdown bodies still reference the deleted id via [[wiki]] links (left as prose). */
+  bodyReferencesRemain: string[];
+}
+
+/** A problem found while reading the item folders (malformed file, id mismatch). */
+export interface ItemWarning {
+  /** Absolute path of the offending file. */
+  file: string;
+  message: string;
+}
+
+/** Where a board config came from: a real board.yml or the synthesized default. */
+export type BoardSource = "file" | "default";
 
 /** Forward + backward relations for one item (get_links). */
 export interface LinkGraph {

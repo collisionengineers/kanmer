@@ -59,6 +59,7 @@ try {
   check("board has no phases dimension", board.phases === undefined);
   check("board carries priorities", board.priorities.some((p) => p.id === "urgent"));
   check("board carries areas array", Array.isArray(board.areas));
+  check("list_board reports source: default before any write", board.source === "default", board.source);
 
   const itemsBeforeWrite = await client.callTool({ name: "list_items", arguments: {} });
   check("list_items works before any write", JSON.parse(textOf(itemsBeforeWrite)).length === 0);
@@ -96,6 +97,23 @@ try {
     arguments: { id: "TICK-001", status: "in-progress" },
   });
   check("move_item rejects a status the board doesn't define", badMove.isError === true);
+
+  const boardAfterWrite = JSON.parse(
+    textOf(await client.callTool({ name: "list_board", arguments: {} })),
+  );
+  check("list_board reports source: file once board.yml exists", boardAfterWrite.source === "file");
+
+  const conflict = await client.callTool({
+    name: "update_item",
+    arguments: { id: "TICK-001", title: "New", expected_updated: "2000-01-01T00:00:00.000Z" },
+  });
+  check(
+    "update_item with stale expected_updated returns a conflict",
+    conflict.isError === true && textOf(conflict).includes("Conflict"),
+  );
+
+  const traversal = await client.callTool({ name: "get_item", arguments: { id: "../evil" } });
+  check("get_item rejects a traversal id", traversal.isError === true);
 
   const links = await client.callTool({ name: "get_links", arguments: { id: "PLAN-001" } });
   check("get_links resolves wiki backlink", textOf(links).includes("TICK-001"));
@@ -150,6 +168,11 @@ try {
 
   const del1 = await client.callTool({ name: "delete_item", arguments: { id: "TICK-001" } });
   check("delete_item removes the file", textOf(del1).includes("TICK-001") && !fs.existsSync(path.join(sandbox, ".kanmer", "tickets", "TICK-001.md")));
+  const delPayload = JSON.parse(textOf(del1));
+  check(
+    "delete_item reports cleanedLinks and bodyReferencesRemain",
+    Array.isArray(delPayload.cleanedLinks) && Array.isArray(delPayload.bodyReferencesRemain),
+  );
 } finally {
   await client.close();
   fs.rmSync(sandbox, { recursive: true, force: true });

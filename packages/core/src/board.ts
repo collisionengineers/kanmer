@@ -1,5 +1,5 @@
 import YAML from "yaml";
-import { BoardConfigSchema, type BoardConfig } from "./types.js";
+import { BoardConfigSchema, type BoardConfig, type BoardSource } from "./types.js";
 import { pathExists, readText, writeFileAtomic } from "./io.js";
 import type { KanmerPaths } from "./paths.js";
 
@@ -29,12 +29,23 @@ export function defaultBoardConfig(): BoardConfig {
 }
 
 export async function readBoard(paths: KanmerPaths): Promise<BoardConfig> {
+  return (await readBoardWithSource(paths)).board;
+}
+
+/**
+ * Read the board plus where it came from, so callers can tell a real
+ * board.yml from the synthesized default (an agent seeing `default` knows
+ * the project hasn't actually configured anything yet).
+ */
+export async function readBoardWithSource(
+  paths: KanmerPaths,
+): Promise<{ board: BoardConfig; source: BoardSource }> {
   if (!(await pathExists(paths.boardFile))) {
-    return defaultBoardConfig();
+    return { board: defaultBoardConfig(), source: "default" };
   }
   const raw = await readText(paths.boardFile);
   const data = YAML.parse(raw);
-  return BoardConfigSchema.parse(data);
+  return { board: BoardConfigSchema.parse(data), source: "file" };
 }
 
 export async function writeBoard(paths: KanmerPaths, board: BoardConfig): Promise<void> {

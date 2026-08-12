@@ -60,6 +60,11 @@ export async function linkItems(
   const links = new Set(source.links ?? []);
   if (action === "add") {
     if (targetId === sourceId) throw new Error("An item cannot link to itself");
+    // Adding requires a real target; removal stays permissive so dangling
+    // links can always be cleaned up.
+    if (!(await store.getItem(targetId))) {
+      throw new Error(`No item with id "${targetId}" to link to`);
+    }
     links.add(targetId);
   } else {
     links.delete(targetId);

@@ -48,5 +48,18 @@ The committed bundle `plugins/kanmer/mcp/kanmer-mcp.cjs` was confirmed rebuilt (
 - [x] Rebase local plans commits onto the PR branch (one add/add conflict in `pr-1-comments.md`; kept the remote version with checked boxes + implementation notes), push
 - [x] Merge PR #1 → merge commit `50262c1` on `main`
 - [x] AGENTS.md build commands — §6 table was already present; added the missing rows (`build:core`/`build:server`, `typecheck`, `inspect`); committed with this log
-- [x] Remove `pr1-fixes` worktree + `worktree-pr1-fixes` branch; delete merged `board-stages-and-plugin`
-- [ ] New branch for Phase 1–8; todo list from the phase plans; implement; open PR
+- [x] Remove `pr1-fixes` worktree + `worktree-pr1-fixes` branch; delete merged `board-stages-and-plugin` (local + remote). Note: the worktree *directory* `.claude/worktrees/pr1-fixes` is still held open by another live Claude session (claude.exe pid 4160) — git registration is pruned; delete the folder once that session exits.
+- [x] New branch `kanmer-upgrades-phases-1-8` created; todo list from the phase plans; implement; open PR
+
+## Implementation run log (branch `kanmer-upgrades-phases-1-8`)
+
+- **Phase 1 — core correctness & safety: DONE.** All 8 items landed:
+  1.1 `assertFieldAgainstBoard` (status/area/priority; area `""` + no-areas-board permissive; board-derived priority default),
+  1.2 `assertSafeId` + containment check in `itemFile()`,
+  1.3 no-op patches don't write / don't bump `updated`,
+  1.4 `link_items` add requires target (also `createItem.links[]`),
+  1.5 `deleteItem` → `{deleted, cleanedLinks, bodyReferencesRemain}` cleanup,
+  1.6 `listItemsWithWarnings` + `list_board.source`,
+  1.7 `expectedUpdated`/`expected_updated` optimistic concurrency,
+  1.8 `writeFileExclusive` (temp+`fs.link`, `wx` fallback) + candidate/claim id loop.
+  Verified: vitest 35/35, smoke 30/30, GUI typecheck, `plugin:build` + `plugin:check` green. Tool-reference + AGENTS.md updated (lockfile suggestion replaced by exclusive-create rationale).

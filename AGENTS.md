@@ -248,7 +248,7 @@ node packages/mcp-server/src/smoke.mjs
 - **TypeScript strict everywhere** (`tsconfig.base.json`). No `any` escapes; run the package `typecheck` scripts.
 - **ESM vs CJS is deliberate.** `@kanmer/core` and the ESM server build are ESM (`"type": "module"`). The **standalone server bundle is CJS** on purpose (see gotcha below). The Electron main/preload are built as CJS by electron-vite.
 - **Renderer imports from `@kanmer/core` must be `import type`.** Core pulls in Node-only deps (gray-matter, chokidar); the renderer is a browser context. Type-only imports are erased at build. Never import a runtime value from core in `renderer/`.
-- **All file writes go through `writeFileAtomic`** (`io.ts`): temp file + `rename`, so the watcher never sees a half-written file. `updated` is stamped on every write.
+- **All file writes go through `writeFileAtomic`** (`io.ts`): temp file + `rename`, so the watcher never sees a half-written file. Item *creation* goes through `writeFileExclusive` (temp + `fs.link`) so two concurrent creates can't claim the same id. `updated` is stamped on every write that actually changes the file — a no-op patch returns the item unchanged without touching disk.
 - **The MCP server must never write to stdout** except MCP protocol frames — stdout *is* the transport. Logs go to `process.stderr`.
 - **Frontmatter key order** is canonicalised in `frontmatter.ts` (`KEY_ORDER`) so files round-trip stably; unknown/hand-added keys are preserved. Add new known fields to `KEY_ORDER`.
 - **Every board mutation from the GUI goes through `setBoard`** (whole-board save); the settings editor builds the new board object and saves it once.
@@ -308,12 +308,13 @@ node packages/mcp-server/src/smoke.mjs
 - No card reordering within a column, no due dates, no typed link relations (blocks/blocked-by).
 - No automated CI; verification is the manual checklist above.
 - Deleting an in-use board column doesn't rewrite referencing items — they fall back to an auto column/group (by design for now). This is a read-side fallback only: `create_item`/`update_item`/`move_item` reject writing a `status` the board doesn't currently define (see `assertKnownStatus` in `store.ts`), so new writes can't create fresh instances of this state — it can only arise from a column later being removed out from under existing items.
-- **Concurrent `create_item` id race.** Id allocation reads `counters.json`,
-  reconciles against the on-disk max, and writes back ([ids.ts](packages/core/src/ids.ts)).
-  Two agents calling `create_item` in the same instant could interleave that
-  read-modify-write. Negligible for single-user use, and every other operation
-  is safe under concurrency (stateless reads + atomic writes), so multiple
-  servers against one `.kanmer` is fine. A lockfile would close it properly.
+- ~~Concurrent `create_item` id race~~ **closed by exclusive create.** The item
+  file itself is the allocation lock: `createItem` computes a candidate id and
+  claims it with `writeFileExclusive` ([io.ts](packages/core/src/io.ts)) — a
+  temp-file + `fs.link` pair that fails `EEXIST` if the id was taken, retried
+  with the next number. Deliberately **not** a lockfile: lockfiles need
+  stale-lock timeouts and break when a holder crashes; exclusive-create is
+  crash-safe by construction and keeps `io.ts` the only file-touching layer.
 - **Duplicate registration is confusing, not harmful.** If a user installs the
   plugin *and* registers the server manually (GUI "Connect" or `mcp add`), the
   agent lists all 11 tools twice under different server names. Both work; the

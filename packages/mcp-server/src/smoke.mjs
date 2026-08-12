@@ -40,7 +40,7 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
-  check("tools/list returns 19 tools", tools.tools.length === 19, `got ${tools.tools.length}`);
+  check("tools/list returns 20 tools", tools.tools.length === 20, `got ${tools.tools.length}`);
 
   const del = tools.tools.find((t) => t.name === "delete_item");
   check("delete_item is destructive", del?.annotations?.destructiveHint === true);
@@ -333,11 +333,14 @@ try {
     "archived",
     "area",
     "assignee",
+    "blocked",
     "checklist",
     "created",
     "docs",
+    "due",
     "id",
     "labels",
+    "order",
     "priority",
     "status",
     "taken",
@@ -378,6 +381,55 @@ try {
     arguments: { area: "ui", include_archived: true },
   });
   check("archived item shown with include_archived", JSON.parse(textOf(allUi)).length === 1);
+
+  // Phase 6: blocks / due / order / activity.
+  const bulk2 = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "create_items",
+        arguments: { items: [{ title: "Dep A" }, { title: "Dep B", due: "2000-01-01" }] },
+      }),
+    ),
+  );
+  const [depA, depB] = bulk2.results.map((r) => r.item.id);
+  await client.callTool({
+    name: "link_items",
+    arguments: { source_id: depA, target_id: depB, rel: "blocks" },
+  });
+  const depLinks = JSON.parse(
+    textOf(await client.callTool({ name: "get_links", arguments: { id: depB } })),
+  );
+  check(
+    "get_links reports typed blocks/blockedBy edges",
+    depLinks.blockedBy.some((l) => l.id === depA),
+  );
+  const depItem = JSON.parse(
+    textOf(await client.callTool({ name: "get_item", arguments: { id: depB } })),
+  );
+  check("get_item derives blocked from a live blocker", depItem.blocked === true);
+  const overdueList = JSON.parse(
+    textOf(await client.callTool({ name: "list_items", arguments: { overdue: true } })),
+  );
+  check(
+    "list_items overdue finds the past-due ticket",
+    overdueList.length === 1 && overdueList[0].id === depB,
+  );
+  await client.callTool({
+    name: "move_item",
+    arguments: { id: depB, status: "todo", position: "top" },
+  });
+  const todoTop = JSON.parse(
+    textOf(await client.callTool({ name: "list_items", arguments: { status: "todo" } })),
+  );
+  check("move_item position: top sorts the item first", todoTop[0]?.id === depB);
+  const activity = JSON.parse(
+    textOf(await client.callTool({ name: "get_activity", arguments: { id: depB } })),
+  );
+  check(
+    "get_activity records the mutations with the client as actor",
+    activity.length > 0 && activity.every((e) => e.actor === "smoke"),
+    activity.map((e) => e.op).join(","),
+  );
 
   // remove_column: refuses while occupied, migrates when told to.
   const occupied = await client.callTool({

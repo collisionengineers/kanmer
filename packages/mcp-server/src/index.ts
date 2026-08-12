@@ -8,6 +8,7 @@ import path from "node:path";
 import { z } from "zod";
 import {
   KanmerStore,
+  computeBlockedIds,
   getLinkGraph,
   linkItems,
   serialiseItem,
@@ -52,6 +53,8 @@ async function ensureInit() {
 /** Wrap a write handler: lazily create the .kanmer skeleton, then run it under guard(). */
 function write<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeof ok>>) {
   return guard(async (...args: A) => {
+    // Attribute this mutation in the activity log to the calling client.
+    store.setActor(actorName(args[1]));
     await ensureInit();
     return fn(...args);
   });
@@ -102,9 +105,9 @@ async function confirmDestructive(message: string): Promise<boolean> {
  * Trim an item to a list-friendly summary (no body). Every key is always
  * present so agents never have to guess whether an absent key means "no" or
  * "not reported": docs/checklist are null for legacy-layout items, taken is
- * null when the ticket isn't taken.
+ * null when the ticket isn't taken, due/order are null when unset.
  */
-async function summarise(item: Item) {
+async function summarise(item: Item, blockedIds: Set<string>) {
   const info = item.type === "ticket" ? await store.getTicketDocsInfo(item.id) : null;
   return {
     id: item.id,
@@ -115,6 +118,9 @@ async function summarise(item: Item) {
     priority: item.priority,
     assignee: item.assignee,
     labels: item.labels,
+    due: item.due ?? null,
+    order: item.order ?? null,
+    blocked: blockedIds.has(item.id),
     created: item.created,
     updated: item.updated,
     archived: item.archived,
@@ -124,6 +130,13 @@ async function summarise(item: Item) {
     docs: info?.docs ?? null,
     checklist: info?.checklist ?? null,
   };
+}
+
+/** Which item ids are currently blocked (live blocker, per the whole board). */
+async function blockedSet(): Promise<Set<string>> {
+  const all = await store.listItems({ includeArchived: true });
+  const board = await store.getBoard();
+  return computeBlockedIds(all, board.statuses[board.statuses.length - 1]?.id);
 }
 
 const itemTypeEnum = z.enum(["ticket", "plan", "research"]);
@@ -137,8 +150,10 @@ const createFields = {
   area: z.string().optional().describe("Area id (see list_board → areas)"),
   priority: z.string().optional().describe("Priority id (see list_board → priorities)"),
   assignee: z.string().optional(),
+  due: z.string().optional().describe("Deadline, date-only: YYYY-MM-DD"),
   labels: z.array(z.string()).optional(),
   links: z.array(z.string()).optional().describe("Ids of related items (must exist)"),
+  blocks: z.array(z.string()).optional().describe("Ids this item blocks (must exist)"),
   body: z.string().optional().describe("Markdown body; may contain [[id]] wiki-links"),
 };
 
@@ -221,30 +236,54 @@ server.registerTool(
         .string()
         .optional()
         .describe("Only items whose `updated` is after this ISO timestamp"),
+      due_before: z
+        .string()
+        .optional()
+        .describe("Only items with a due date before this day (YYYY-MM-DD)"),
+      overdue: z
+        .boolean()
+        .optional()
+        .describe("Only items due before today that haven't reached the final stage"),
       sort: z.enum(["id", "updated_desc"]).optional().describe("Sort order (default id)"),
       limit: z.number().int().positive().optional().describe("Return at most this many"),
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  guard(async ({ type, status, area, label, include_archived, updated_since, sort, limit }) => {
-    const { items, warnings } = await store.listItemsWithWarnings({
+  guard(
+    async ({
       type,
       status,
       area,
       label,
-      includeArchived: include_archived,
-    });
-    let selected = items;
-    if (updated_since !== undefined) {
-      selected = selected.filter((i) => i.updated > updated_since);
-    }
-    if (sort === "updated_desc") {
-      selected = [...selected].sort((a, b) => (a.updated < b.updated ? 1 : -1));
-    }
-    if (limit !== undefined) selected = selected.slice(0, limit);
-    const summaries = await Promise.all(selected.map(summarise));
-    return ok(warnings.length ? { items: summaries, warnings } : summaries);
-  }),
+      include_archived,
+      updated_since,
+      due_before,
+      overdue,
+      sort,
+      limit,
+    }) => {
+      const { items, warnings } = await store.listItemsWithWarnings({
+        type,
+        status,
+        area,
+        label,
+        includeArchived: include_archived,
+        dueBefore: due_before,
+        overdue,
+      });
+      let selected = items;
+      if (updated_since !== undefined) {
+        selected = selected.filter((i) => i.updated > updated_since);
+      }
+      if (sort === "updated_desc") {
+        selected = [...selected].sort((a, b) => (a.updated < b.updated ? 1 : -1));
+      }
+      if (limit !== undefined) selected = selected.slice(0, limit);
+      const blocked = await blockedSet();
+      const summaries = await Promise.all(selected.map((i) => summarise(i, blocked)));
+      return ok(warnings.length ? { items: summaries, warnings } : summaries);
+    },
+  ),
 );
 
 server.registerTool(
@@ -260,7 +299,10 @@ server.registerTool(
     const item = await store.getItem(id);
     if (!item) return fail(`No item with id "${id}"`);
     const info = await store.getTicketDocsInfo(id);
-    return ok(info ? { ...item, docs: info.docs, checklist: info.checklist } : item);
+    const blocked = (await blockedSet()).has(id);
+    return ok(
+      info ? { ...item, blocked, docs: info.docs, checklist: info.checklist } : { ...item, blocked },
+    );
   }),
 );
 
@@ -294,9 +336,14 @@ server.registerTool(
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  guard(async ({ query, type }) =>
-    ok(await Promise.all((await store.searchItems(query, { type })).map(summarise))),
-  ),
+  guard(async ({ query, type }) => {
+    const blocked = await blockedSet();
+    return ok(
+      await Promise.all(
+        (await store.searchItems(query, { type })).map((i) => summarise(i, blocked)),
+      ),
+    );
+  }),
 );
 
 server.registerTool(
@@ -304,21 +351,43 @@ server.registerTool(
   {
     title: "Get links and backlinks",
     description:
-      "Return the items this item links to (frontmatter links[] plus [[wiki]] links in its body) and the items that link back to it. Each id is annotated with its title.",
+      "Return the items this item links to (frontmatter links[] plus [[wiki]] links in its body), the items that link back to it, plus the typed dependency edges: blocks (stored) and blockedBy (derived — never stored). Each id is annotated with its title.",
     inputSchema: { id: z.string().describe("Item id, e.g. API-001") },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   guard(async ({ id }) => {
     const graph = await getLinkGraph(store, id);
-    const titles = new Map((await store.listItems()).map((i) => [i.id, i.title]));
+    const titles = new Map(
+      (await store.listItems({ includeArchived: true })).map((i) => [i.id, i.title]),
+    );
     const withTitles = (ids: string[]) =>
       ids.map((linkId) => ({ id: linkId, title: titles.get(linkId) ?? null }));
     return ok({
       id: graph.id,
       links: withTitles(graph.links),
       backlinks: withTitles(graph.backlinks),
+      blocks: withTitles(graph.blocks),
+      blockedBy: withTitles(graph.blockedBy),
     });
   }),
+);
+
+server.registerTool(
+  "get_activity",
+  {
+    title: "Read the activity log",
+    description:
+      "What actually happened on the board: one entry per mutation ({ts, id, op, field, from, to, actor}), oldest-first. Filter by item id and/or since (ISO timestamp); limit keeps the most recent N. Derived convenience, not truth — the log is safe to delete and never consulted for state.",
+    inputSchema: {
+      id: z.string().optional().describe("Only entries for this item"),
+      since: z.string().optional().describe("Only entries after this ISO timestamp"),
+      limit: z.number().int().positive().optional().describe("Most recent N entries (default 200)"),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  guard(async ({ id, since, limit }) =>
+    ok(await store.getActivity({ id, since, limit: limit ?? 200 })),
+  ),
 );
 
 // ---------------------------------------------------------------------------
@@ -378,8 +447,11 @@ server.registerTool(
       area: z.string().optional(),
       priority: z.string().optional(),
       assignee: z.string().optional(),
+      due: z.string().optional().describe("YYYY-MM-DD; pass \"\" to clear the deadline"),
+      order: z.number().optional().describe("Manual sort key (move_item's position computes this)"),
       labels: z.array(z.string()).optional(),
       links: z.array(z.string()).optional(),
+      blocks: z.array(z.string()).optional().describe("Ids this item blocks"),
       body: z.string().optional(),
       archived: z.boolean().optional(),
       expected_updated: z
@@ -401,10 +473,14 @@ server.registerTool(
   {
     title: "Move an item to a workflow stage",
     description:
-      "Kanban move: set an item's status, i.e. move it to a workflow stage (see list_board → statuses). Rejects a status that is not on the board. Moving a ticket to the final stage requires its proof.md to exist. Convenience wrapper over update_item.",
+      "Kanban move: set an item's status, i.e. move it to a workflow stage (see list_board → statuses). Rejects a status that is not on the board. Moving a ticket to the final stage requires its proof.md to exist. Optional position places the item within the column: \"top\", \"bottom\", or { after: \"API-003\" } — this maintains the manual order humans see.",
     inputSchema: {
       id: z.string().describe("Item id to move"),
       status: z.string().describe("Target status id (workflow stage)"),
+      position: z
+        .union([z.enum(["top", "bottom"]), z.object({ after: z.string() })])
+        .optional()
+        .describe("Where in the column to place the item"),
       expected_updated: z
         .string()
         .optional()
@@ -414,8 +490,8 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  write(async ({ id, status, expected_updated }) =>
-    ok(await store.moveItem(id, { status, expectedUpdated: expected_updated })),
+  write(async ({ id, status, position, expected_updated }) =>
+    ok(await store.moveItem(id, { status, position, expectedUpdated: expected_updated })),
   ),
 );
 
@@ -476,16 +552,17 @@ server.registerTool(
   {
     title: "Link or unlink two items",
     description:
-      "Add or remove a structured relation from source_id to target_id (stored in the source item's frontmatter links[]). Adding requires the target to exist; removal works even on dangling links.",
+      "Add or remove a structured relation from source_id to target_id. rel \"relates\" (default) writes the source's links[]; rel \"blocks\" writes blocks[] — meaning the source blocks the target (blocked-by is derived, never stored). Adding requires the target to exist; removal works even on dangling links.",
     inputSchema: {
       source_id: z.string().describe("The item that will hold the link"),
-      target_id: z.string().describe("The item being linked to"),
+      target_id: z.string().describe("The item being linked to / blocked"),
       action: z.enum(["add", "remove"]).default("add"),
+      rel: z.enum(["relates", "blocks"]).default("relates"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  write(async ({ source_id, target_id, action }) =>
-    ok(await linkItems(store, source_id, target_id, action)),
+  write(async ({ source_id, target_id, action, rel }) =>
+    ok(await linkItems(store, source_id, target_id, action, rel)),
   ),
 );
 

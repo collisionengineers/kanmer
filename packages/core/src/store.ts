@@ -35,6 +35,7 @@ import {
   writeBoard,
 } from "./board.js";
 import { parseWikiLinks } from "./links.js";
+import { appendActivity, readActivity, type ActivityEntry } from "./activity.js";
 import { CURRENT_FORMAT, readVersion, writeVersion } from "./version.js";
 import {
   ItemTypeSchema,
@@ -49,6 +50,7 @@ import {
   type ItemFilter,
   type ItemType,
   type ItemWarning,
+  type MovePosition,
   type TakeTicketInput,
   type TicketDoc,
   type TicketDocsInfo,
@@ -79,9 +81,31 @@ type ItemLocation =
 export class KanmerStore {
   readonly paths: KanmerPaths;
   private formatCache: 1 | 2 | null = null;
+  private actor = "gui";
 
-  constructor(projectRoot: string) {
+  constructor(projectRoot: string, opts: { actor?: string } = {}) {
     this.paths = resolvePaths(projectRoot);
+    if (opts.actor) this.actor = opts.actor;
+  }
+
+  /** Who mutations are attributed to in the activity log (MCP sets the client name). */
+  setActor(name: string): void {
+    if (name) this.actor = name;
+  }
+
+  private activity(
+    id: string,
+    op: ActivityEntry["op"],
+    extra: Partial<Pick<ActivityEntry, "field" | "from" | "to">> = {},
+  ): ActivityEntry {
+    return { ts: nowIso(), id, op, ...extra, actor: this.actor };
+  }
+
+  /** Read the activity log (derived convenience — never consulted for state). */
+  async getActivity(
+    opts: { id?: string; since?: string; limit?: number } = {},
+  ): Promise<ActivityEntry[]> {
+    return readActivity(this.paths, opts);
   }
 
   /**
@@ -361,10 +385,16 @@ export class KanmerStore {
       }
     }
 
-    return {
-      items: items.filter((item) => matchesFilter(item, filter)).sort(byIdAsc),
-      warnings,
-    };
+    let filtered = items.filter((item) => matchesFilter(item, filter));
+    if (filter.overdue) {
+      const board = await this.getBoard();
+      const lastStage = board.statuses[board.statuses.length - 1]?.id;
+      const today = new Date().toISOString().slice(0, 10);
+      filtered = filtered.filter(
+        (i) => i.due !== undefined && i.due < today && i.status !== lastStage,
+      );
+    }
+    return { items: filtered.sort(byOrderThenId), warnings };
   }
 
   /** Locate an item's file: v2 areas layout first, then the v1 type dirs. */
@@ -402,7 +432,8 @@ export class KanmerStore {
     if (input.status !== undefined) assertFieldAgainstBoard(board, "status", input.status);
     if (input.area !== undefined) assertFieldAgainstBoard(board, "area", input.area);
     if (input.priority !== undefined) assertFieldAgainstBoard(board, "priority", input.priority);
-    for (const target of input.links ?? []) {
+    if (input.due !== undefined) assertDueDate(input.due);
+    for (const target of [...(input.links ?? []), ...(input.blocks ?? [])]) {
       if (!(await this.getItem(target))) {
         throw new Error(`No item with id "${target}" to link to`);
       }
@@ -451,6 +482,8 @@ export class KanmerStore {
         updated: now,
         body: input.body ?? "",
       };
+      if (input.due !== undefined && input.due !== "") item.due = input.due;
+      if (input.blocks !== undefined && input.blocks.length > 0) item.blocks = input.blocks;
       const file =
         format === 2
           ? ticketFileIn(this.paths, area, id)
@@ -466,6 +499,7 @@ export class KanmerStore {
       }
       if (format === 2) await recordAllocatedPrefix(this.paths, prefix, n);
       else await recordAllocatedId(this.paths, type, n);
+      await appendActivity(this.paths, [this.activity(id, "create", { to: item.status })]);
       return item;
     }
     throw new Error(`Could not allocate a unique ${type} id after ${CREATE_ATTEMPTS} attempts`);
@@ -481,6 +515,7 @@ export class KanmerStore {
       if (fields.priority !== undefined)
         assertFieldAgainstBoard(board, "priority", fields.priority);
     }
+    if (fields.due !== undefined && fields.due !== "") assertDueDate(fields.due);
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
@@ -493,7 +528,8 @@ export class KanmerStore {
       );
     }
     const pruned = pruneUndefined(fields);
-    if (!patchChangesItem(current, pruned)) {
+    const changed = changedFields(current, pruned);
+    if (changed.length === 0) {
       // No-op writes must not bump `updated` — staleness reporting and the
       // GUI watcher both key off it.
       return current;
@@ -503,6 +539,7 @@ export class KanmerStore {
       ...pruned,
       updated: nowIso(),
     };
+    if (pruned.due === "") delete next.due; // "" clears the deadline
     if (next.status !== current.status && current.type === "ticket" && loc.kind === "v2") {
       board ??= await this.getBoard();
       await this.assertProofGate(loc.dir, board, id, next.status);
@@ -521,15 +558,81 @@ export class KanmerStore {
       }
     }
     await writeFileAtomic(file, serialiseItem(next));
+    await appendActivity(
+      this.paths,
+      changed.map((k) =>
+        this.activity(
+          id,
+          "update",
+          k === "body"
+            ? { field: "body" } // bodies are too big for a log line
+            : {
+                field: k,
+                from: (current as Record<string, unknown>)[k],
+                to: (next as Record<string, unknown>)[k],
+              },
+        ),
+      ),
+    );
     return next;
   }
 
-  /** Kanban-move convenience: move an item to a workflow stage. */
+  /**
+   * Kanban-move convenience: move an item to a workflow stage, optionally to
+   * a specific position in the column (top / bottom / after another item) —
+   * that computes a fractional `order` for the item.
+   */
   async moveItem(
     id: string,
-    to: { status: string; expectedUpdated?: string },
+    to: { status: string; expectedUpdated?: string; position?: MovePosition },
   ): Promise<Item> {
-    return this.updateItem(id, to);
+    const { position, ...patch } = to;
+    if (position === undefined) return this.updateItem(id, patch);
+    const order = await this.computeOrder(id, to.status, position);
+    return this.updateItem(id, { ...patch, order });
+  }
+
+  /**
+   * The fractional order for placing `id` at `position` within `status`.
+   * Lazily materialises orders for the whole column the first time a
+   * position verb is used there, and rebalances when midpoints run dry.
+   */
+  private async computeOrder(
+    id: string,
+    status: string,
+    position: MovePosition,
+  ): Promise<number> {
+    const column = async () =>
+      (await this.listItems()).filter((i) => i.status === status && i.id !== id);
+    const materialise = async (items: Item[]) => {
+      let n = 10;
+      for (const item of items) {
+        await this.updateItem(item.id, { order: n });
+        n += 10;
+      }
+      return column();
+    };
+    let items = await column();
+    if (items.some((i) => i.order === undefined) && items.length > 0) {
+      items = await materialise(items);
+    }
+    if (position === "top") return items.length ? items[0].order! - 10 : 10;
+    if (position === "bottom") return items.length ? items[items.length - 1].order! + 10 : 10;
+    const idx = items.findIndex((i) => i.id === position.after);
+    if (idx === -1) {
+      throw new Error(
+        `position.after "${position.after}" is not an item in stage "${status}"`,
+      );
+    }
+    const before = items[idx].order!;
+    const successor = items[idx + 1];
+    const mid = successor ? (before + successor.order!) / 2 : before + 10;
+    if (mid > before && (!successor || mid < successor.order!)) return mid;
+    // Midpoints exhausted between these two — rebalance and recompute.
+    items = await materialise(items);
+    const i2 = items.findIndex((i) => i.id === position.after);
+    const s2 = items[i2 + 1];
+    return s2 ? (items[i2].order! + s2.order!) / 2 : items[i2].order! + 10;
   }
 
   /**
@@ -575,6 +678,12 @@ export class KanmerStore {
     else delete next.worktree; // a force-retake must not keep a stale worktree
     if (input.assignee !== undefined) next.assignee = input.assignee;
     await writeFileAtomic(loc.file, serialiseItem(next));
+    await appendActivity(this.paths, [
+      this.activity(id, "take", { field: "branch", to: input.branch }),
+      ...(next.status !== current.status
+        ? [this.activity(id, "update", { field: "status", from: current.status, to: next.status })]
+        : []),
+    ]);
     return next;
   }
 
@@ -589,6 +698,9 @@ export class KanmerStore {
     delete next.branch;
     delete next.worktree;
     await writeFileAtomic(loc.file, serialiseItem(next));
+    await appendActivity(this.paths, [
+      this.activity(id, "release", { field: "branch", from: current.branch }),
+    ]);
     return next;
   }
 
@@ -628,6 +740,9 @@ export class KanmerStore {
       if (existing.trim()) text = `${existing.trimEnd()}\n\n${content.trim()}\n`;
     }
     await writeFileAtomic(file, text);
+    await appendActivity(this.paths, [
+      this.activity(id, "doc", { field: doc, to: opts.append ? "append" : "write" }),
+    ]);
   }
 
   /** Which pipeline docs exist for a ticket + checklist progress; null for legacy items. */
@@ -668,12 +783,20 @@ export class KanmerStore {
     } else {
       await removeFile(loc.file);
     }
+    await appendActivity(this.paths, [this.activity(id, "delete")]);
     const remaining = (await this.listItemsWithWarnings({ includeArchived: true })).items;
     const cleanedLinks: string[] = [];
     const bodyReferencesRemain: string[] = [];
     for (const item of remaining) {
+      const patch: UpdateItemPatch = {};
       if ((item.links ?? []).includes(id)) {
-        await this.updateItem(item.id, { links: (item.links ?? []).filter((l) => l !== id) });
+        patch.links = (item.links ?? []).filter((l) => l !== id);
+      }
+      if ((item.blocks ?? []).includes(id)) {
+        patch.blocks = (item.blocks ?? []).filter((l) => l !== id);
+      }
+      if (Object.keys(patch).length > 0) {
+        await this.updateItem(item.id, patch);
         cleanedLinks.push(item.id);
       }
       if (parseWikiLinks(item.body).includes(id)) {
@@ -758,18 +881,28 @@ function defaultPriority(board: BoardConfig): string {
   return middle?.id ?? "medium";
 }
 
-/** True if applying `pruned` to `current` would actually change the file. */
-function patchChangesItem(current: Item, pruned: Partial<UpdateItemPatch>): boolean {
+/** Reject a malformed date-only deadline. */
+function assertDueDate(due: string): void {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) {
+    throw new Error(`Invalid due date "${due}" — use YYYY-MM-DD`);
+  }
+}
+
+/** The fields of `pruned` whose application would actually change the file. */
+function changedFields(current: Item, pruned: Partial<UpdateItemPatch>): string[] {
+  const changed: string[] = [];
   for (const [key, value] of Object.entries(pruned)) {
     const existing = (current as Record<string, unknown>)[key];
     if (key === "body") {
       // serialiseItem writes body.trim(), so compare what would be stored.
-      if (String(value).trim() !== String(existing ?? "").trim()) return true;
+      if (String(value).trim() !== String(existing ?? "").trim()) changed.push(key);
+    } else if (key === "due" && value === "") {
+      if (existing !== undefined) changed.push(key); // "" clears an existing due
     } else if (JSON.stringify(value) !== JSON.stringify(existing)) {
-      return true;
+      changed.push(key);
     }
   }
-  return false;
+  return changed;
 }
 
 function matchesFilter(item: Item, filter: ItemFilter): boolean {
@@ -778,6 +911,7 @@ function matchesFilter(item: Item, filter: ItemFilter): boolean {
   if (filter.status && item.status !== filter.status) return false;
   if (filter.area && item.area !== filter.area) return false;
   if (filter.label && !(item.labels ?? []).includes(filter.label)) return false;
+  if (filter.dueBefore && !(item.due !== undefined && item.due < filter.dueBefore)) return false;
   return true;
 }
 
@@ -793,7 +927,11 @@ function columnList(board: BoardConfig, kind: ColumnKind): BoardColumn[] {
   }
 }
 
-function byIdAsc(a: Item, b: Item): number {
+/** Manual order first (unordered items sort last), id as the tiebreak. */
+function byOrderThenId(a: Item, b: Item): number {
+  const ao = a.order ?? Number.POSITIVE_INFINITY;
+  const bo = b.order ?? Number.POSITIVE_INFINITY;
+  if (ao !== bo) return ao < bo ? -1 : 1;
   return a.id.localeCompare(b.id, undefined, { numeric: true });
 }
 

@@ -463,6 +463,156 @@ describe("format v2", () => {
   });
 });
 
+describe("activity log", () => {
+  it("appends one well-formed line per mutation with from/to and actor", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A" });
+    await store.updateItem(t.id, { title: "B", priority: "high" });
+    await store.moveItem(t.id, { status: "review" });
+    await store.takeTicket(t.id, { branch: "feat/x" });
+    await store.releaseTicket(t.id);
+    await store.setDoc(t.id, "research", "notes");
+    await store.deleteItem(t.id);
+    const entries = await store.getActivity();
+    const ops = entries.map((e) => e.op);
+    expect(ops).toEqual([
+      "create",
+      "update", // title
+      "update", // priority
+      "update", // status → review
+      "take",
+      "update", // status → implementing (take's stage move)
+      "release",
+      "doc",
+      "delete",
+    ]);
+    const statusMove = entries[3];
+    expect(statusMove).toMatchObject({ id: t.id, field: "status", from: "todo", to: "review" });
+    expect(entries.every((e) => e.actor === "gui")).toBe(true);
+    expect(entries.every((e) => typeof e.ts === "string" && e.ts.length > 0)).toBe(true);
+  });
+
+  it("filters by id and since; deleting the log breaks nothing", async () => {
+    const a = await store.createItem({ type: "ticket", title: "A" });
+    const b = await store.createItem({ type: "ticket", title: "B" });
+    expect((await store.getActivity({ id: b.id })).length).toBe(1);
+    const all = await store.getActivity();
+    const sinceLast = await store.getActivity({ since: all[0].ts });
+    expect(sinceLast.length).toBeLessThan(all.length);
+    await fs.rm(path.join(root, ".kanmer", "data", "activity.jsonl"));
+    expect(await store.getActivity()).toEqual([]);
+    await store.updateItem(a.id, { title: "A2" }); // logging resumes
+    expect((await store.getActivity()).length).toBe(1);
+  });
+
+  it("rotates: past ~5k lines the oldest half is dropped", async () => {
+    const file = path.join(root, ".kanmer", "data", "activity.jsonl");
+    const pad = "x".repeat(80);
+    const line = (i: number) =>
+      JSON.stringify({ ts: `t${i}`, id: "TICK-001", op: "update", field: pad, actor: "gui" });
+    await fs.writeFile(file, Array.from({ length: 5100 }, (_, i) => line(i)).join("\n") + "\n");
+    const t = await store.createItem({ type: "ticket", title: "A" });
+    const entries = await store.getActivity();
+    expect(entries.length).toBeLessThanOrEqual(2500);
+    expect(entries[entries.length - 1].id).toBe(t.id); // newest survived
+  });
+});
+
+describe("blocks / due / order", () => {
+  it("rel blocks writes blocks[]; blocked-by derives; default rel keeps links[]", async () => {
+    const a = await store.createItem({ type: "ticket", title: "A" });
+    const b = await store.createItem({ type: "ticket", title: "B" });
+    await linkItems(store, a.id, b.id, "add", "blocks");
+    expect((await store.getItem(a.id))?.blocks).toEqual([b.id]);
+    expect((await store.getItem(a.id))?.links).toEqual([]);
+    const graph = await getLinkGraph(store, b.id);
+    expect(graph.blockedBy).toEqual([a.id]);
+    expect(graph.backlinks).toEqual([]); // blocks edges are typed, not plain links
+    await linkItems(store, a.id, b.id, "remove", "blocks");
+    expect((await store.getItem(a.id))?.blocks).toEqual([]);
+  });
+
+  it("blocked flips off when the blocker reaches the last stage or is archived", async () => {
+    const { computeBlockedIds } = await import("./links.js");
+    const a = await store.createItem({ type: "ticket", title: "Blocker" });
+    const b = await store.createItem({ type: "ticket", title: "Blocked" });
+    await linkItems(store, a.id, b.id, "add", "blocks");
+    const board = await store.getBoard();
+    const last = board.statuses[board.statuses.length - 1].id;
+    const blockedNow = computeBlockedIds(await store.listItems({ includeArchived: true }), last);
+    expect(blockedNow.has(b.id)).toBe(true);
+    await store.setDoc(a.id, "proof", "done");
+    await store.moveItem(a.id, { status: last });
+    const afterDone = computeBlockedIds(await store.listItems({ includeArchived: true }), last);
+    expect(afterDone.has(b.id)).toBe(false);
+    await store.moveItem(a.id, { status: "todo" });
+    await store.updateItem(a.id, { archived: true });
+    const afterArchive = computeBlockedIds(await store.listItems({ includeArchived: true }), last);
+    expect(afterArchive.has(b.id)).toBe(false);
+  });
+
+  it("due: validates format, filters due_before/overdue with last-stage exemption", async () => {
+    await expect(
+      store.createItem({ type: "ticket", title: "X", due: "soon" }),
+    ).rejects.toThrow(/Invalid due date/);
+    const past = await store.createItem({ type: "ticket", title: "P", due: "2000-01-01" });
+    const future = await store.createItem({ type: "ticket", title: "F", due: "2999-01-01" });
+    await store.createItem({ type: "ticket", title: "N" });
+    expect((await store.listItems({ dueBefore: "2500-01-01" })).map((i) => i.id)).toEqual([
+      past.id,
+    ]);
+    expect((await store.listItems({ overdue: true })).map((i) => i.id)).toEqual([past.id]);
+    // Reaching the final stage exempts from overdue.
+    await store.setDoc(past.id, "proof", "done");
+    await store.moveItem(past.id, { status: "done" });
+    expect((await store.listItems({ overdue: true })).length).toBe(0);
+    // Clearing with "".
+    const cleared = await store.updateItem(future.id, { due: "" });
+    expect(cleared.due).toBeUndefined();
+    const raw = await fs.readFile(
+      path.join(root, ".kanmer", "areas", "_none", future.id, `${future.id}.md`),
+      "utf8",
+    );
+    expect(raw).not.toContain("due:");
+  });
+
+  it("orders: position verbs materialise, midpoint-insert, unordered sorts last", async () => {
+    const a = await store.createItem({ type: "ticket", title: "A" });
+    const b = await store.createItem({ type: "ticket", title: "B" });
+    const c = await store.createItem({ type: "ticket", title: "C" });
+    // Move C to the top of todo: materialises A/B and places C before them.
+    await store.moveItem(c.id, { status: "todo", position: "top" });
+    let ids = (await store.listItems({ status: "todo" })).map((i) => i.id);
+    expect(ids).toEqual([c.id, a.id, b.id]);
+    // Insert A after C — midpoint between C and B's orders.
+    await store.moveItem(a.id, { status: "todo", position: { after: c.id } });
+    ids = (await store.listItems({ status: "todo" })).map((i) => i.id);
+    expect(ids).toEqual([c.id, a.id, b.id]);
+    // Bottom placement.
+    await store.moveItem(c.id, { status: "todo", position: "bottom" });
+    ids = (await store.listItems({ status: "todo" })).map((i) => i.id);
+    expect(ids).toEqual([a.id, b.id, c.id]);
+    // A new unordered item sorts after all ordered ones.
+    const d = await store.createItem({ type: "ticket", title: "D" });
+    ids = (await store.listItems({ status: "todo" })).map((i) => i.id);
+    expect(ids[ids.length - 1]).toBe(d.id);
+    // position.after must name an item in the target stage.
+    await expect(
+      store.moveItem(d.id, { status: "review", position: { after: a.id } }),
+    ).rejects.toThrow(/not an item in stage/);
+  });
+
+  it("items without new keys serialise without new-key noise", async () => {
+    const t = await store.createItem({ type: "ticket", title: "Plain" });
+    const raw = await fs.readFile(
+      path.join(root, ".kanmer", "areas", "_none", t.id, `${t.id}.md`),
+      "utf8",
+    );
+    for (const key of ["due:", "order:", "blocks:", "taken_at:", "branch:", "worktree:"]) {
+      expect(raw).not.toContain(key);
+    }
+  });
+});
+
 describe("format v1 compatibility", () => {
   let v1root: string;
   let v1store: KanmerStore;

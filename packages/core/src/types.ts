@@ -102,8 +102,19 @@ export const ItemFrontmatterSchema = z
     branch: z.string().optional(),
     /** The worktree path the taken work happens in, if any. */
     worktree: z.string().optional(),
+    /** Optional date-only deadline (YYYY-MM-DD). YAML parses bare dates to Date. */
+    due: z
+      .preprocess(
+        (v) => (v instanceof Date ? v.toISOString().slice(0, 10) : v),
+        z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      )
+      .optional(),
+    /** Optional fractional sort key; unordered items sort after ordered ones. */
+    order: z.number().optional(),
     labels: z.array(z.string()).default([]),
     links: z.array(z.string()).default([]),
+    /** Ids this item blocks. Blocked-by is derived as backlinks, never stored. */
+    blocks: z.array(z.string()).optional(),
     archived: z.boolean().default(false),
     created: TimestampSchema.default(""),
     updated: TimestampSchema.default(""),
@@ -125,6 +136,10 @@ export interface ItemFilter {
   label?: string;
   /** Include archived items (default false). */
   includeArchived?: boolean;
+  /** Only items with a due date strictly before this date (YYYY-MM-DD). */
+  dueBefore?: string;
+  /** Only items due before today that haven't reached the final stage. */
+  overdue?: boolean;
 }
 
 /** Input for creating an item. id/created/updated are allocated by the store. */
@@ -137,6 +152,8 @@ export interface CreateItemInput {
   assignee?: string;
   labels?: string[];
   links?: string[];
+  blocks?: string[];
+  due?: string;
   body?: string;
 }
 
@@ -149,6 +166,11 @@ export interface UpdateItemPatch {
   assignee?: string;
   labels?: string[];
   links?: string[];
+  blocks?: string[];
+  /** YYYY-MM-DD; pass "" to clear. */
+  due?: string;
+  /** Fractional sort key (moveItem's `position` computes this for you). */
+  order?: number;
   body?: string;
   archived?: boolean;
   /**
@@ -180,6 +202,9 @@ export interface ItemWarning {
 /** Where a board config came from: a real board.yml or the synthesized default. */
 export type BoardSource = "file" | "default";
 
+/** Where moveItem places an item within its target column. */
+export type MovePosition = "top" | "bottom" | { after: string };
+
 /** Input for takeTicket: who/where the work is happening. */
 export interface TakeTicketInput {
   /** The branch the work happens on (required — it's the point of taking). */
@@ -200,4 +225,8 @@ export interface LinkGraph {
   links: string[];
   /** ids that point at this item. */
   backlinks: string[];
+  /** ids this item blocks (frontmatter blocks[]). */
+  blocks: string[];
+  /** ids blocking this item — derived backlinks over blocks edges. */
+  blockedBy: string[];
 }

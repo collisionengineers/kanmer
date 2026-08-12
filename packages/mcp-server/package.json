@@ -1,0 +1,28 @@
+{
+  "name": "@kanmer/mcp-server",
+  "version": "0.1.0",
+  "description": "Local stdio MCP server exposing the .kanmer store to AI agents (codex, Claude, any MCP client).",
+  "type": "module",
+  "bin": {
+    "kanmer-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup && tsup --config tsup.standalone.config.ts",
+    "build:standalone": "tsup --config tsup.standalone.config.ts",
+    "dev": "tsup --watch",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kanmer/core": "*",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0"
+  }
+}

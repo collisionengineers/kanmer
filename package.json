@@ -1,0 +1,24 @@
+{
+  "name": "kanmer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP-driven Kanban / ticket / plan / research manager with an Electron GUI, sharing one .kanmer file store between AI agents and humans.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @kanmer/core && npm run build -w @kanmer/mcp-server",
+    "build:core": "npm run build -w @kanmer/core",
+    "build:server": "npm run build -w @kanmer/mcp-server",
+    "test": "npm run test -w @kanmer/core",
+    "dev:gui": "npm run dev -w @kanmer/gui",
+    "setup": "npm install && npm run build && npm run build -w @kanmer/gui",
+    "app": "npm run build -w @kanmer/gui && npm run start -w @kanmer/gui",
+    "dist": "npm run build && npm run build -w @kanmer/gui && npm run dist -w @kanmer/gui",
+    "inspect": "npm run build && npx @modelcontextprotocol/inspector node packages/mcp-server/dist/index.js --root ./sandbox"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

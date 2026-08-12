@@ -1,0 +1,26 @@
+# Example codex MCP registration for Kanmer.
+#
+# Add this block to your project-scoped .codex/config.toml (recommended) or to
+# ~/.codex/config.toml. codex launches the server over stdio.
+#
+# The server resolves the project root (where .kanmer lives) from, in order:
+#   1. a --root <path> argument
+#   2. the KANMER_ROOT environment variable
+#   3. the process working directory (cwd)
+#
+# Using `cwd` (below) points the server at THIS project's .kanmer folder.
+
+[mcp_servers.kanmer]
+command = "node"
+args = ["C:/Users/Alex/Documents/GitHub/kanmer/packages/mcp-server/dist/index.js"]
+cwd = "C:/path/to/your/project"
+
+# Alternatively, pin the root explicitly instead of relying on cwd:
+#
+# [mcp_servers.kanmer]
+# command = "node"
+# args = [
+#   "C:/Users/Alex/Documents/GitHub/kanmer/packages/mcp-server/dist/index.js",
+#   "--root",
+#   "C:/path/to/your/project",
+# ]

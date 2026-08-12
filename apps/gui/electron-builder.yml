@@ -1,0 +1,31 @@
+appId: com.kanmer.app
+productName: Kanmer
+# Electron is hoisted to the workspace root, so pin the version explicitly.
+electronVersion: 31.7.7
+directories:
+  output: release
+  buildResources: build
+
+# Everything the app needs at runtime is bundled into out/** by electron-vite,
+# so we ship only that plus package.json (for the main entry + version).
+files:
+  - out/**/*
+  - package.json
+
+# The self-contained MCP server bundle, placed at resources/mcp/kanmer-mcp.cjs
+# inside the install. The app launches it via ELECTRON_RUN_AS_NODE.
+extraResources:
+  - from: ../../packages/mcp-server/dist/standalone/kanmer-mcp.cjs
+    to: mcp/kanmer-mcp.cjs
+
+win:
+  target:
+    - nsis
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Kanmer

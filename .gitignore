@@ -1,0 +1,14 @@
+node_modules/
+dist/
+out/
+build/
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+sandbox/
+.env
+.env.local
+# Electron build output
+apps/gui/out/
+apps/gui/dist/
+apps/gui/release/

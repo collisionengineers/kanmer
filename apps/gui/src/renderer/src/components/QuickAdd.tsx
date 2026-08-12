@@ -40,8 +40,9 @@ export function QuickAdd({ onAdd, label = "Add", placeholder = "Title…" }: Qui
         }
       }}
       onBlur={() => {
-        commit();
-        setOpen(false);
+        // Blur never creates: Enter commits, Escape cancels. Typed text keeps
+        // the input open so an accidental click elsewhere loses nothing.
+        if (!title.trim()) setOpen(false);
       }}
     />
   );

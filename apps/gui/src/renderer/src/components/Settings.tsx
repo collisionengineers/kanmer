@@ -23,36 +23,73 @@ export function Settings({
 }: SettingsProps): JSX.Element {
   const [draft, setDraft] = useState<BoardConfig>(() => structuredClone(board));
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   // Usage counts so deleting an in-use column shows a soft warning.
   const usage = useMemo(() => countUsage(items), [items]);
+
+  const modified = useMemo(
+    () => JSON.stringify(draft) !== JSON.stringify(board),
+    [draft, board],
+  );
 
   const setColumns = (kind: ColumnKind, cols: BoardColumn[]) =>
     setDraft((d) => ({ ...d, [pluralKey(kind)]: cols }));
 
   const save = async () => {
+    const problems = validateDraft(draft);
+    if (problems.length > 0) {
+      setError(problems.join(" · "));
+      return;
+    }
     setSaving(true);
+    setError(null);
     try {
       await onSaveBoard(draft);
       onClose();
+    } catch (err) {
+      // e.g. a zod/prefix-uniqueness rejection from core — keep the modal
+      // open so nothing invalid ever lands (or half-lands) on screen.
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
   };
 
+  const requestClose = () => {
+    if (modified) setConfirmDiscard(true);
+    else onClose();
+  };
+
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={requestClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h2>Settings</h2>
           <div className="spacer" />
-          <button className="ghost sm" onClick={onClose}>
+          <button className="ghost sm" onClick={requestClose}>
             Cancel
           </button>
           <button className="primary sm" disabled={saving} onClick={() => void save()}>
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
+
+        {error && <div className="banner error">{error}</div>}
+        {confirmDiscard && (
+          <div className="banner warn">
+            <span>Discard your board changes?</span>
+            <div className="conflict-actions">
+              <button className="ghost xs" onClick={() => setConfirmDiscard(false)}>
+                Keep editing
+              </button>
+              <button className="danger xs" onClick={onClose}>
+                Discard
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="modal-body">
           <div className="settings-grid">
@@ -260,6 +297,39 @@ function ColumnEditor({
 
 function pluralKey(kind: ColumnKind): keyof BoardConfig {
   return kind === "status" ? "statuses" : kind === "area" ? "areas" : "priorities";
+}
+
+/** Mirror of core's write-side checks, so problems surface inline pre-save. */
+function validateDraft(draft: BoardConfig): string[] {
+  const problems: string[] = [];
+  if (draft.statuses.length === 0) problems.push("The board needs at least one stage.");
+  for (const [label, cols] of [
+    ["stage", draft.statuses],
+    ["area", draft.areas],
+    ["priority", draft.priorities],
+  ] as const) {
+    if (cols.some((c) => !c.name.trim())) problems.push(`Every ${label} needs a name.`);
+  }
+  if (draft.priorities.length === 0) problems.push("The board needs at least one priority.");
+  for (const [t, p] of Object.entries(draft.idPrefixes)) {
+    if (!p.trim()) problems.push(`The ${t} id prefix can't be empty.`);
+  }
+  // Area id prefixes (explicit or derived) must be unique and distinct from
+  // the type prefixes — they share one id space.
+  const seen = new Map<string, string>(
+    Object.entries(draft.idPrefixes).map(([t, p]) => [p, `the ${t} prefix`]),
+  );
+  for (const area of draft.areas) {
+    const derived = area.id.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const prefix = area.prefix ?? (derived.length >= 2 ? derived.slice(0, 6) : `${derived}XX`.slice(0, 2));
+    const holder = seen.get(prefix);
+    if (holder) {
+      problems.push(`Area "${area.name}" would use id prefix "${prefix}", already used by ${holder}.`);
+    } else {
+      seen.set(prefix, `area "${area.name}"`);
+    }
+  }
+  return problems;
 }
 
 function countUsage(items: Item[]) {

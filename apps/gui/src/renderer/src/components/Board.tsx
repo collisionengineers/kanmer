@@ -94,6 +94,20 @@ export function Board(props: BoardProps): JSX.Element {
                       style={group.color ? { background: group.color } : undefined}
                     />
                     {group.name}
+                    <span className="area-add">
+                      <QuickAdd
+                        label=""
+                        placeholder={`New in ${group.name}…`}
+                        onAdd={(title) =>
+                          onQuickAdd({
+                            type: "ticket",
+                            title,
+                            status: status.id,
+                            area: group.id,
+                          })
+                        }
+                      />
+                    </span>
                   </div>
                 )}
                 {group.cards.map((item) => (

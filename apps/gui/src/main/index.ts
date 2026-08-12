@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { join } from "node:path";
 import {
   KanmerStore,
@@ -47,6 +47,19 @@ function createWindow(): void {
   } else {
     void mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
   }
+
+  // External links open in the default browser — never navigate the app
+  // window away (an https link in a markdown preview used to strand the UI).
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:/i.test(url)) void shell.openExternal(url);
+    return { action: "deny" };
+  });
+  mainWindow.webContents.on("will-navigate", (e, url) => {
+    const isDev = devUrl && url.startsWith(devUrl);
+    if (isDev || url.startsWith("file:")) return; // in-app loads stay
+    e.preventDefault();
+    if (/^https?:/i.test(url)) void shell.openExternal(url);
+  });
 
   // Smoke mode: verify the app boots and renders, then exit cleanly.
   if (process.env["KANMER_SMOKE"]) {

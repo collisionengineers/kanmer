@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BoardConfig, CreateItemInput, Item, ItemType } from "@kanmer/core";
 import type { AppSettings } from "../../shared/ipc.js";
 import { Board } from "./components/Board.js";
@@ -29,6 +29,12 @@ export function App(): JSX.Element {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
+
+  // Whether the editor holds unsaved edits — a ref so reporting dirtiness
+  // doesn't re-render the app on every keystroke.
+  const editorDirty = useRef(false);
+  const [pendingNav, setPendingNav] = useState<{ id: string | null } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -45,12 +51,46 @@ export function App(): JSX.Element {
   }, []);
 
   const openProject = useCallback(async (path: string) => {
-    const res = await window.kanmer.openProject(path);
-    setRoot(res.root);
-    setBoard(res.board);
-    setItems(res.items);
-    setSelectedId(null);
-    setSettings(await window.kanmer.getSettings());
+    setOpening(true);
+    try {
+      const res = await window.kanmer.openProject(path);
+      setRoot(res.root);
+      setBoard(res.board);
+      setItems(res.items);
+      setSelectedId(null);
+      setSettings(await window.kanmer.getSettings());
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setOpening(false);
+    }
+  }, []);
+
+  /** Every deselection/navigation goes through here so edits can't be lost silently. */
+  const trySelect = useCallback(
+    (id: string | null) => {
+      setSelectedId((current) => {
+        if (id !== current && editorDirty.current) {
+          setPendingNav({ id });
+          return current;
+        }
+        return id;
+      });
+    },
+    [],
+  );
+
+  // Window close with unsaved edits gets the native "leave?" prompt.
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (editorDirty.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
   }, []);
 
   // Load settings + apply theme, then restore any already-open project.
@@ -75,16 +115,21 @@ export function App(): JSX.Element {
   }, [root, refresh]);
 
   const pickAndOpen = useCallback(async () => {
-    const path = await window.kanmer.pickProject();
-    if (path) await openProject(path);
+    try {
+      const path = await window.kanmer.pickProject();
+      if (path) await openProject(path);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
   }, [openProject]);
 
   const setTheme = useCallback(async (theme: "dark" | "light") => {
     setSettings(await window.kanmer.setTheme(theme));
   }, []);
 
+  // Not optimistic: an invalid board must never render (or half-render and
+  // then throw) — the modal shows the validation error instead.
   const saveBoard = useCallback(async (next: BoardConfig) => {
-    setBoard(next); // optimistic; the watcher refresh confirms
     setBoard(await window.kanmer.setBoard(next));
   }, []);
 
@@ -116,9 +161,12 @@ export function App(): JSX.Element {
         onPick={pickAndOpen}
         onOpen={openProject}
         error={error}
+        opening={opening}
       />
     );
   }
+
+  const allViewItems = items.filter((i) => i.type === view);
 
   return (
     <div className="app">
@@ -163,9 +211,14 @@ export function App(): JSX.Element {
               board={board}
               items={viewItems}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              onSelect={trySelect}
               onMove={async (id, to) => {
-                await window.kanmer.moveItem(id, to);
+                try {
+                  await window.kanmer.moveItem(id, to);
+                  setError(null);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : String(err));
+                }
                 await refresh();
               }}
               onQuickAdd={(input) => void createItem(input)}
@@ -176,9 +229,32 @@ export function App(): JSX.Element {
               items={viewItems}
               board={board}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              onSelect={trySelect}
               onQuickAdd={(title) => void createItem({ type: view, title })}
             />
+          )}
+          {allViewItems.length === 0 && (
+            <div className="content-empty">
+              <p>
+                {view === "ticket"
+                  ? "No tickets yet — add a card, or connect an agent in Settings."
+                  : `No ${VIEW_LABELS[view].toLowerCase()} yet.`}
+              </p>
+            </div>
+          )}
+          {allViewItems.length > 0 && viewItems.length === 0 && (
+            <div className="content-empty">
+              <p>No matches for the current filters.</p>
+              <button
+                className="ghost sm"
+                onClick={() => {
+                  setSearch("");
+                  setFilters(EMPTY_FILTERS);
+                }}
+              >
+                Clear filters
+              </button>
+            </div>
           )}
         </section>
 
@@ -189,20 +265,48 @@ export function App(): JSX.Element {
             board={board}
             items={items}
             knownIds={knownIds}
-            onClose={() => setSelectedId(null)}
-            onNavigate={setSelectedId}
+            onClose={() => trySelect(null)}
+            onNavigate={trySelect}
+            onDirtyChange={(d) => {
+              editorDirty.current = d;
+            }}
             onSave={async (patch) => {
-              await window.kanmer.updateItem(selected.id, patch);
+              const saved = await window.kanmer.updateItem(selected.id, patch);
               await refresh();
+              return saved;
             }}
             onDelete={async () => {
               await window.kanmer.deleteItem(selected.id);
+              editorDirty.current = false;
               setSelectedId(null);
               await refresh();
             }}
           />
         )}
       </div>
+
+      {pendingNav && (
+        <div className="modal-backdrop" onClick={() => setPendingNav(null)}>
+          <div className="modal confirm" onClick={(e) => e.stopPropagation()}>
+            <p>Discard changes to {selectedId}?</p>
+            <div className="confirm-actions">
+              <button className="ghost sm" onClick={() => setPendingNav(null)}>
+                Keep editing
+              </button>
+              <button
+                className="danger sm"
+                onClick={() => {
+                  editorDirty.current = false;
+                  setSelectedId(pendingNav.id);
+                  setPendingNav(null);
+                }}
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {settingsOpen && (
         <Settings

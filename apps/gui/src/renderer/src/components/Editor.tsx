@@ -9,8 +9,51 @@ interface EditorProps {
   knownIds: Set<string>;
   onClose: () => void;
   onNavigate: (id: string) => void;
-  onSave: (patch: UpdateItemPatch) => Promise<void>;
+  /** Saves a diff patch; resolves with the item as written to disk. */
+  onSave: (patch: UpdateItemPatch) => Promise<Item>;
   onDelete: () => Promise<void>;
+  /** Reports dirty-state changes so App can guard against losing edits. */
+  onDirtyChange?: (dirty: boolean) => void;
+}
+
+/** The editable fields, as flat strings (lists joined for the inputs). */
+interface Snapshot {
+  title: string;
+  status: string;
+  area: string;
+  priority: string;
+  assignee: string;
+  labels: string;
+  links: string;
+  body: string;
+  /** The `updated` stamp this snapshot came from — the conflict reference. */
+  updated: string;
+}
+
+const FIELD_KEYS = [
+  "title",
+  "status",
+  "area",
+  "priority",
+  "assignee",
+  "labels",
+  "links",
+  "body",
+] as const;
+type FieldKey = (typeof FIELD_KEYS)[number];
+
+function snapOf(item: Item): Snapshot {
+  return {
+    title: item.title,
+    status: item.status,
+    area: item.area,
+    priority: item.priority,
+    assignee: item.assignee,
+    labels: (item.labels ?? []).join(", "),
+    links: (item.links ?? []).join(", "),
+    body: item.body,
+    updated: item.updated,
+  };
 }
 
 /** Ensure the item's current value is selectable even if not in board config. */
@@ -21,20 +64,22 @@ function withCurrent(options: BoardColumn[], current: string): BoardColumn[] {
 }
 
 export function Editor(props: EditorProps): JSX.Element {
-  const { item, board, items, knownIds, onClose, onNavigate, onSave, onDelete } = props;
+  const { item, board, items, knownIds, onClose, onNavigate, onSave, onDelete, onDirtyChange } =
+    props;
 
-  const [title, setTitle] = useState(item.title);
-  const [status, setStatus] = useState(item.status);
-  const [area, setArea] = useState(item.area);
-  const [priority, setPriority] = useState(item.priority);
-  const [assignee, setAssignee] = useState(item.assignee);
-  const [labels, setLabels] = useState(item.labels.join(", "));
-  const [links, setLinks] = useState(item.links.join(", "));
-  const [body, setBody] = useState(item.body);
+  const [form, setForm] = useState<Snapshot>(() => snapOf(item));
+  // The item as last read/written: saves diff against this, never against
+  // the live prop — so a concurrent agent edit to a field the user never
+  // touched is left alone instead of being clobbered.
+  const baseline = useRef<Snapshot>(snapOf(item));
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [graph, setGraph] = useState<LinkGraph | null>(null);
+  const [conflict, setConflict] = useState<{ fields: FieldKey[]; theirs: Partial<Snapshot> } | null>(
+    null,
+  );
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Wiki-link autocomplete state.
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -47,42 +92,104 @@ export function Editor(props: EditorProps): JSX.Element {
     void window.kanmer.getLinks(item.id).then(setGraph);
   }, [item.id, item.updated]);
 
+  const dirtyKeys = useMemo(
+    () => FIELD_KEYS.filter((k) => form[k] !== baseline.current[k]),
+    [form],
+  );
+  const dirty = dirtyKeys.length > 0;
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+  // On unmount the editor's edits are gone either way — report clean.
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+
+  // The latest form values, readable from effects without re-running them.
+  const formRef = useRef(form);
+  formRef.current = form;
+
+  // Live re-sync: the item changed on disk while the editor is open (agent
+  // edit, second window…). Untouched fields silently adopt the new values;
+  // a field the user is editing that ALSO changed on disk raises the
+  // conflict banner instead of anyone's version being silently dropped.
+  useEffect(() => {
+    if (item.updated === baseline.current.updated) return;
+    const incoming = snapOf(item);
+    const prev = formRef.current;
+    const touched = FIELD_KEYS.filter((k) => prev[k] !== baseline.current[k]);
+    const conflicts = touched.filter(
+      (k) => incoming[k] !== baseline.current[k] && incoming[k] !== prev[k],
+    );
+    const next: Snapshot = { ...incoming };
+    for (const k of touched) next[k] = prev[k];
+    baseline.current = incoming;
+    setForm(next);
+    if (conflicts.length > 0) {
+      setConflict({
+        fields: conflicts,
+        theirs: Object.fromEntries(conflicts.map((k) => [k, incoming[k]])),
+      });
+    }
+  }, [item]);
+
   const statusOpts = withCurrent(board.statuses, item.status);
   const priorityOpts = withCurrent(board.priorities, item.priority);
   const areaOpts = withCurrent(board.areas, item.area);
 
-  const patch = useMemo<UpdateItemPatch>(
-    () => ({
-      title,
-      status,
-      area,
-      priority,
-      assignee,
-      labels: splitList(labels),
-      links: splitList(links),
-      body,
-    }),
-    [title, status, area, priority, assignee, labels, links, body],
-  );
-
-  const dirty =
-    title !== item.title ||
-    status !== item.status ||
-    area !== item.area ||
-    priority !== item.priority ||
-    assignee !== item.assignee ||
-    labels !== item.labels.join(", ") ||
-    links !== item.links.join(", ") ||
-    body !== item.body;
+  /** Build the diff patch: only fields where local ≠ baseline. */
+  const buildPatch = (keys: FieldKey[]): UpdateItemPatch => {
+    const patch: UpdateItemPatch = {};
+    for (const k of keys) {
+      if (k === "labels") patch.labels = splitList(form.labels);
+      else if (k === "links") patch.links = splitList(form.links);
+      else patch[k] = form[k];
+    }
+    return patch;
+  };
 
   const save = async () => {
+    const keys = FIELD_KEYS.filter((k) => form[k] !== baseline.current[k]);
+    if (keys.length === 0) return;
     setSaving(true);
+    setSaveError(null);
     try {
-      await onSave(patch);
+      // Close the watcher-debounce race: check the file just before writing.
+      const fresh = await window.kanmer.getItem(item.id);
+      if (fresh && fresh.updated !== baseline.current.updated) {
+        const incoming = snapOf(fresh);
+        const conflicts = keys.filter(
+          (k) => incoming[k] !== baseline.current[k] && incoming[k] !== form[k],
+        );
+        setForm((prev) => {
+          const next: Snapshot = { ...incoming };
+          for (const k of keys) next[k] = prev[k];
+          return next;
+        });
+        baseline.current = incoming;
+        if (conflicts.length > 0) {
+          setConflict({
+            fields: conflicts,
+            theirs: Object.fromEntries(conflicts.map((k) => [k, incoming[k]])),
+          });
+          return; // don't save over a live conflict — the user decides first
+        }
+      }
+      const saved = await onSave({
+        ...buildPatch(keys),
+        expectedUpdated: baseline.current.updated,
+      });
+      const snap = snapOf(saved);
+      baseline.current = snap;
+      setForm(snap);
+      setConflict(null);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
   };
+
+  const set = (k: FieldKey, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const onPreviewClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -117,8 +224,9 @@ export function Editor(props: EditorProps): JSX.Element {
 
   const insertSuggestion = (chosen: Item) => {
     if (!suggest) return;
-    const next = body.slice(0, suggest.from) + `[[${chosen.id}]]` + body.slice(suggest.caret);
-    setBody(next);
+    const next =
+      form.body.slice(0, suggest.from) + `[[${chosen.id}]]` + form.body.slice(suggest.caret);
+    set("body", next);
     setSuggest(null);
     requestAnimationFrame(() => {
       const el = bodyRef.current;
@@ -169,14 +277,38 @@ export function Editor(props: EditorProps): JSX.Element {
         </button>
       </div>
 
+      {conflict && (
+        <div className="banner warn conflict-banner">
+          <span>
+            Changed on disk while editing ({conflict.fields.join(", ")}) — keep your version or
+            take the one from disk?
+          </span>
+          <div className="conflict-actions">
+            <button className="ghost xs" onClick={() => setConflict(null)}>
+              Keep mine
+            </button>
+            <button
+              className="ghost xs"
+              onClick={() => {
+                setForm((f) => ({ ...f, ...conflict.theirs }));
+                setConflict(null);
+              }}
+            >
+              Take theirs
+            </button>
+          </div>
+        </div>
+      )}
+      {saveError && <div className="banner error">{saveError}</div>}
+
       <label className="field">
         <span>Title</span>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} />
+        <input value={form.title} onChange={(e) => set("title", e.target.value)} />
       </label>
 
       <label className="field">
         <span>Stage</span>
-        <select value={status} onChange={(e) => setStatus(e.target.value)}>
+        <select value={form.status} onChange={(e) => set("status", e.target.value)}>
           {statusOpts.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -188,7 +320,7 @@ export function Editor(props: EditorProps): JSX.Element {
       <div className="field-row">
         <label className="field">
           <span>Area</span>
-          <select value={area} onChange={(e) => setArea(e.target.value)}>
+          <select value={form.area} onChange={(e) => set("area", e.target.value)}>
             <option value="">— none —</option>
             {areaOpts.map((a) => (
               <option key={a.id} value={a.id}>
@@ -199,7 +331,7 @@ export function Editor(props: EditorProps): JSX.Element {
         </label>
         <label className="field">
           <span>Priority</span>
-          <select value={priority} onChange={(e) => setPriority(e.target.value)}>
+          <select value={form.priority} onChange={(e) => set("priority", e.target.value)}>
             {priorityOpts.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -211,17 +343,17 @@ export function Editor(props: EditorProps): JSX.Element {
 
       <label className="field">
         <span>Assignee</span>
-        <input value={assignee} onChange={(e) => setAssignee(e.target.value)} />
+        <input value={form.assignee} onChange={(e) => set("assignee", e.target.value)} />
       </label>
 
       <label className="field">
         <span>Labels (comma-separated)</span>
-        <input value={labels} onChange={(e) => setLabels(e.target.value)} />
+        <input value={form.labels} onChange={(e) => set("labels", e.target.value)} />
       </label>
 
       <label className="field">
         <span>Links (comma-separated ids)</span>
-        <input value={links} onChange={(e) => setLinks(e.target.value)} />
+        <input value={form.links} onChange={(e) => set("links", e.target.value)} />
       </label>
 
       <div className="field">
@@ -235,21 +367,21 @@ export function Editor(props: EditorProps): JSX.Element {
           <div
             className="preview markdown"
             onClick={onPreviewClick}
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(body, knownIds) }}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(form.body, knownIds) }}
           />
         ) : (
           <div className="body-wrap">
             <textarea
               ref={bodyRef}
               className="body"
-              value={body}
+              value={form.body}
               spellCheck={false}
               onChange={(e) => {
-                setBody(e.target.value);
+                set("body", e.target.value);
                 recomputeSuggest(e.target.value, e.target.selectionStart ?? 0);
               }}
               onKeyDown={onBodyKeyDown}
-              onClick={(e) => recomputeSuggest(body, e.currentTarget.selectionStart ?? 0)}
+              onClick={(e) => recomputeSuggest(form.body, e.currentTarget.selectionStart ?? 0)}
               placeholder="Markdown… reference other items with [[TICK-001]]"
             />
             {suggest && suggestions.length > 0 && (

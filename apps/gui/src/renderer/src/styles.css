@@ -168,6 +168,24 @@ textarea:focus {
   background: #2a1416;
   border-bottom: 1px solid #43201f;
 }
+.banner.warn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #2a2414;
+  border-bottom: 1px solid #433a1f;
+  color: var(--warn, #ffcf7a);
+}
+.conflict-banner {
+  border-radius: var(--radius);
+  border: 1px solid #433a1f;
+  margin-bottom: 8px;
+}
+.conflict-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
 
 .main {
   flex: 1;
@@ -178,13 +196,33 @@ textarea:focus {
   flex: 1;
   overflow: auto;
   padding: 14px;
+  position: relative;
+}
+.content-empty {
+  position: absolute;
+  inset: 48px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--muted);
+  text-align: center;
+  pointer-events: none;
+}
+.content-empty button {
+  pointer-events: auto;
 }
 
 /* Board */
 .board {
   display: grid;
   gap: 8px;
-  align-items: start;
+  /* Header row + one cell row that stretches: cells reach the column bottom
+     so a drop under a short stack still lands in the column. */
+  grid-template-rows: auto 1fr;
+  min-height: 100%;
+  align-items: stretch;
 }
 .col-head {
   position: sticky;
@@ -654,6 +692,31 @@ button.danger {
 .modal-body {
   padding: 16px;
   overflow: auto;
+}
+.modal.confirm {
+  width: 380px;
+  padding: 18px;
+}
+.modal.confirm p {
+  margin: 0 0 14px;
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.area-add {
+  margin-left: auto;
+  display: inline-flex;
+}
+.area-add .quickadd-btn {
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.area-add .quickadd-input {
+  width: 140px;
+  font-size: 11px;
 }
 .settings-grid {
   display: grid;

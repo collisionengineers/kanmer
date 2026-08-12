@@ -33,17 +33,22 @@ Omitting empty sections matters: the value of this report is that the user reads
 it in fifteen seconds and knows where to look, and a skeleton of "none" headings
 buries that.
 
+The stage sections describe **tickets**. Plans and research notes park in `todo`
+by convention rather than being worked through the stages, so they aren't "up
+next" — surface them only where they need attention (see Flags).
+
 ### Board: <project folder name>
 
-**In flight** — items in planning, implementing or verifying (review has its own
-section, so it isn't counted here). One line each: `ID title (stage, area,
-priority)` — drop the area slot if the item has none — plus a few words of real
+**In flight** — tickets in planning, implementing or verifying (review has its
+own section, so it isn't counted here). One line each: `ID title (stage, area,
+priority)` — drop the area slot if the ticket has none — plus a few words of real
 state. Mark anything whose `updated` is more than 7 days old as *stale*.
 
-**In review** — items in review and who they're waiting on: the `assignee` if
+**In review** — tickets in review and who they're waiting on: the `assignee` if
 set, otherwise say it's unassigned.
 
-**Up next** — top of the todo column, highest priority first. 3–5 items max.
+**Up next** — the tickets at the top of the todo column, highest priority first.
+3–5 max.
 
 **Recently done** — done items whose `updated` falls in the last 7 days. Give a
 count plus the highlights, not the full list.

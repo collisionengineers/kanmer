@@ -1,15 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface QuickAddProps {
   onAdd: (title: string) => void;
   label?: string;
   placeholder?: string;
+  /** When this number changes, the input opens (keyboard shortcut hook). */
+  autoOpenSignal?: number;
 }
 
 /** A "+" affordance that expands into an inline title input (Enter to add). */
-export function QuickAdd({ onAdd, label = "Add", placeholder = "Title…" }: QuickAddProps): JSX.Element {
+export function QuickAdd({
+  onAdd,
+  label = "Add",
+  placeholder = "Title…",
+  autoOpenSignal,
+}: QuickAddProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
+
+  useEffect(() => {
+    if (autoOpenSignal !== undefined && autoOpenSignal > 0) setOpen(true);
+  }, [autoOpenSignal]);
 
   const commit = () => {
     const t = title.trim();

@@ -1,13 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { BoardColumn, BoardConfig, ColumnKind, Item } from "@kanmer/core";
-import type { ConnectResult, ConnectTarget } from "../../../shared/ipc.js";
+import type { ConnectResult, ConnectTarget, Theme } from "../../../shared/ipc.js";
 
 interface SettingsProps {
   board: BoardConfig;
   items: Item[];
-  theme: "dark" | "light";
+  theme: Theme;
+  notifications: boolean;
   onSaveBoard: (next: BoardConfig) => Promise<void>;
-  onSetTheme: (theme: "dark" | "light") => void;
+  onSetTheme: (theme: Theme) => void;
+  onSetNotifications: (on: boolean) => void;
   onClose: () => void;
 }
 
@@ -17,8 +19,10 @@ export function Settings({
   board,
   items,
   theme,
+  notifications,
   onSaveBoard,
   onSetTheme,
+  onSetNotifications,
   onClose,
 }: SettingsProps): JSX.Element {
   const [draft, setDraft] = useState<BoardConfig>(() => structuredClone(board));
@@ -62,9 +66,48 @@ export function Settings({
     else onClose();
   };
 
+  // Focus trap: focus the dialog on open, cycle Tab inside it, restore after.
+  const modalRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const modal = modalRef.current;
+    if (!modal) return;
+    const focusables = () =>
+      [...modal.querySelectorAll<HTMLElement>("button, input, select, textarea, [tabindex]")].filter(
+        (el) => !el.hasAttribute("disabled"),
+      );
+    focusables()[0]?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const list = focusables();
+      if (list.length === 0) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    modal.addEventListener("keydown", onKey);
+    return () => {
+      modal.removeEventListener("keydown", onKey);
+      previous?.focus();
+    };
+  }, []);
+
   return (
     <div className="modal-backdrop" onClick={requestClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Settings"
+        ref={modalRef}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-head">
           <h2>Settings</h2>
           <div className="spacer" />
@@ -140,7 +183,7 @@ export function Settings({
           <div className="settings-section">
             <h3>Theme</h3>
             <div className="theme-toggle">
-              {(["dark", "light"] as const).map((t) => (
+              {(["dark", "light", "system"] as const).map((t) => (
                 <button
                   key={t}
                   className={t === theme ? "tab active" : "tab"}
@@ -150,6 +193,18 @@ export function Settings({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="settings-section">
+            <h3>Notifications</h3>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={notifications}
+                onChange={(e) => onSetNotifications(e.target.checked)}
+              />
+              Toast when an agent changes the board while the window is unfocused
+            </label>
           </div>
 
           <ConnectSection />
@@ -255,26 +310,39 @@ function ColumnEditor({
             value={c.color ?? DEFAULT_COLOR}
             onChange={(e) => update(i, { color: e.target.value })}
             title="Colour"
+            aria-label={`Colour for ${c.name}`}
           />
           <input
             className="col-name"
             value={c.name}
             onChange={(e) => update(i, { name: e.target.value })}
+            aria-label={`Name of ${kind} ${c.id}`}
           />
           <span className="col-id" title="id (stable)">
             {c.id}
             {usage[c.id] ? <span className="usage"> ·{usage[c.id]}</span> : null}
           </span>
-          <button className="ghost xs" onClick={() => move(i, -1)} disabled={i === 0}>
+          <button
+            className="ghost xs"
+            onClick={() => move(i, -1)}
+            disabled={i === 0}
+            aria-label={`Move ${c.name} up`}
+          >
             ↑
           </button>
-          <button className="ghost xs" onClick={() => move(i, 1)} disabled={i === columns.length - 1}>
+          <button
+            className="ghost xs"
+            onClick={() => move(i, 1)}
+            disabled={i === columns.length - 1}
+            aria-label={`Move ${c.name} down`}
+          >
             ↓
           </button>
           <button
             className="ghost xs"
             onClick={() => remove(i)}
             title={usage[c.id] ? `${usage[c.id]} item(s) still use this` : "Delete"}
+            aria-label={`Delete ${kind} ${c.name}`}
           >
             ✕
           </button>

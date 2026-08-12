@@ -2,6 +2,9 @@ node_modules/
 dist/
 out/
 build/
+# electron-builder buildResources are committed inputs, not outputs
+!apps/gui/build/
+!apps/gui/build/icon.ico
 *.tsbuildinfo
 .DS_Store
 Thumbs.db

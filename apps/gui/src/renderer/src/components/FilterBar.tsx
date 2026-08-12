@@ -6,7 +6,6 @@ export interface Filters {
   priority?: string;
   assignee?: string;
   label?: string;
-  showArchived: boolean;
 }
 
 interface FilterBarProps {
@@ -16,6 +15,7 @@ interface FilterBarProps {
   onSearch: (q: string) => void;
   filters: Filters;
   onFilters: (f: Filters) => void;
+  searchRef?: React.RefObject<HTMLInputElement>;
 }
 
 export function FilterBar({
@@ -25,6 +25,7 @@ export function FilterBar({
   onSearch,
   filters,
   onFilters,
+  searchRef,
 }: FilterBarProps): JSX.Element {
   const assignees = distinct(items.map((i) => i.assignee));
   const labels = distinct(items.flatMap((i) => i.labels ?? []));
@@ -34,15 +35,15 @@ export function FilterBar({
     filters.area !== undefined ||
     !!filters.priority ||
     !!filters.assignee ||
-    !!filters.label ||
-    filters.showArchived;
+    !!filters.label;
 
   return (
     <div className="filterbar">
       <input
+        ref={searchRef}
         className="search"
         type="search"
-        placeholder="Search…"
+        placeholder="Search…  (Ctrl+F)"
         value={search}
         onChange={(e) => onSearch(e.target.value)}
       />
@@ -104,21 +105,12 @@ export function FilterBar({
         </select>
       )}
 
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={filters.showArchived}
-          onChange={(e) => set({ showArchived: e.target.checked })}
-        />
-        Archived
-      </label>
-
       {active && (
         <button
           className="ghost xs"
           onClick={() => {
             onSearch("");
-            onFilters({ showArchived: false });
+            onFilters({});
           }}
         >
           Clear

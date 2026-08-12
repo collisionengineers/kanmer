@@ -9,7 +9,13 @@ interface BoardProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onMove: (id: string, to: { status: string }) => void;
+  /** Keyboard drag equivalent: move one stage left (-1) or right (+1). */
+  onMoveRelative: (id: string, dir: -1 | 1) => void;
   onQuickAdd: (input: CreateItemInput) => void;
+  /** Native right-click menu for a card. */
+  onContext: (item: Item) => void;
+  /** Increment to auto-open the first column's quick-add (Ctrl+N). */
+  quickAddSignal?: number;
 }
 
 /** Merge configured columns with any extra values found on items (fallback columns). */
@@ -32,7 +38,17 @@ interface AreaGroup {
  * related work without adding a second workflow dimension.
  */
 export function Board(props: BoardProps): JSX.Element {
-  const { board, items, selectedId, onSelect, onMove, onQuickAdd } = props;
+  const {
+    board,
+    items,
+    selectedId,
+    onSelect,
+    onMove,
+    onMoveRelative,
+    onQuickAdd,
+    onContext,
+    quickAddSignal,
+  } = props;
   const [dropTarget, setDropTarget] = useState<string | null>(null);
 
   const statuses = mergeColumns(board.statuses, items.map((i) => i.status));
@@ -67,7 +83,7 @@ export function Board(props: BoardProps): JSX.Element {
         </div>
       ))}
 
-      {statuses.map((status) => {
+      {statuses.map((status, statusIdx) => {
         const groups = groupByArea(items.filter((i) => i.status === status.id));
         return (
           <div
@@ -117,12 +133,15 @@ export function Board(props: BoardProps): JSX.Element {
                     board={board}
                     selected={item.id === selectedId}
                     onSelect={onSelect}
+                    onMoveRelative={onMoveRelative}
+                    onContext={onContext}
                   />
                 ))}
               </div>
             ))}
             <QuickAdd
               label="card"
+              autoOpenSignal={statusIdx === 0 ? quickAddSignal : undefined}
               onAdd={(title) => onQuickAdd({ type: "ticket", title, status: status.id })}
             />
           </div>
@@ -137,25 +156,59 @@ function Card({
   board,
   selected,
   onSelect,
+  onMoveRelative,
+  onContext,
 }: {
   item: Item;
   board: BoardConfig;
   selected: boolean;
   onSelect: (id: string) => void;
+  onMoveRelative: (id: string, dir: -1 | 1) => void;
+  onContext: (item: Item) => void;
 }): JSX.Element {
   const areaColor = columnColor(board.areas, item.area);
   const priColor = columnColor(board.priorities, item.priority);
   const priName = board.priorities.find((p) => p.id === item.priority)?.name ?? item.priority;
+  const areaName = item.area
+    ? board.areas.find((a) => a.id === item.area)?.name ?? item.area
+    : "";
+  const stageName = board.statuses.find((s) => s.id === item.status)?.name ?? item.status;
   return (
     <article
       className={selected ? "card selected" : "card"}
       style={areaColor ? { borderLeft: `3px solid ${areaColor}` } : undefined}
       draggable
+      tabIndex={0}
+      role="button"
+      aria-label={`${item.id} ${item.title || "Untitled"}, stage ${stageName}${
+        areaName ? `, area ${areaName}` : ""
+      }`}
       onDragStart={(e) => e.dataTransfer.setData("text/plain", item.id)}
       onClick={() => onSelect(item.id)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onContext(item);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect(item.id);
+        } else if ((e.ctrlKey || e.metaKey) && e.key === "ArrowLeft") {
+          e.preventDefault();
+          onMoveRelative(item.id, -1);
+        } else if ((e.ctrlKey || e.metaKey) && e.key === "ArrowRight") {
+          e.preventDefault();
+          onMoveRelative(item.id, 1);
+        }
+      }}
     >
       <div className="card-top">
         <span className="card-id">{item.id}</span>
+        {item.taken_at && (
+          <span className="chip taken" title={`Taken${item.branch ? ` on ${item.branch}` : ""}`}>
+            ⛏ {item.branch ?? "taken"}
+          </span>
+        )}
         {item.priority && (
           <span className="pri" style={priColor ? { color: priColor } : undefined}>
             {priName}

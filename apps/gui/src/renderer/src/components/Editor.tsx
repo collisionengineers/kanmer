@@ -11,7 +11,6 @@ interface EditorProps {
   onNavigate: (id: string) => void;
   /** Saves a diff patch; resolves with the item as written to disk. */
   onSave: (patch: UpdateItemPatch) => Promise<Item>;
-  onDelete: () => Promise<void>;
   /** Reports dirty-state changes so App can guard against losing edits. */
   onDirtyChange?: (dirty: boolean) => void;
 }
@@ -64,8 +63,7 @@ function withCurrent(options: BoardColumn[], current: string): BoardColumn[] {
 }
 
 export function Editor(props: EditorProps): JSX.Element {
-  const { item, board, items, knownIds, onClose, onNavigate, onSave, onDelete, onDirtyChange } =
-    props;
+  const { item, board, items, knownIds, onClose, onNavigate, onSave, onDirtyChange } = props;
 
   const [form, setForm] = useState<Snapshot>(() => snapOf(item));
   // The item as last read/written: saves diff against this, never against
@@ -74,7 +72,6 @@ export function Editor(props: EditorProps): JSX.Element {
   const baseline = useRef<Snapshot>(snapOf(item));
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [graph, setGraph] = useState<LinkGraph | null>(null);
   const [conflict, setConflict] = useState<{ fields: FieldKey[]; theirs: Partial<Snapshot> } | null>(
     null,
@@ -191,6 +188,20 @@ export function Editor(props: EditorProps): JSX.Element {
 
   const set = (k: FieldKey, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Ctrl+S saves from anywhere in the editor.
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        void saveRef.current();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   const onPreviewClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === "A") {
@@ -250,6 +261,7 @@ export function Editor(props: EditorProps): JSX.Element {
       e.preventDefault();
       insertSuggestion(suggestions[activeIdx]);
     } else if (e.key === "Escape") {
+      e.stopPropagation(); // just close the popup, not the editor
       setSuggest(null);
     }
   };
@@ -260,18 +272,13 @@ export function Editor(props: EditorProps): JSX.Element {
         <span className="editor-id">{item.id}</span>
         {item.archived && <span className="chip subtle archived-tag">archived</span>}
         <div className="spacer" />
-        <button className="ghost sm" onClick={() => void onSave({ archived: !item.archived })}>
+        <button
+          className="ghost sm"
+          title={item.archived ? undefined : "Hides from the board; restore from the Archived view"}
+          onClick={() => void onSave({ archived: !item.archived })}
+        >
           {item.archived ? "Unarchive" : "Archive"}
         </button>
-        {confirmDelete ? (
-          <button className="danger sm" onClick={() => void onDelete()}>
-            Confirm delete
-          </button>
-        ) : (
-          <button className="ghost sm" onClick={() => setConfirmDelete(true)}>
-            Delete
-          </button>
-        )}
         <button className="ghost sm" onClick={onClose}>
           Close
         </button>

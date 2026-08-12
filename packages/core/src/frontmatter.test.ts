@@ -5,8 +5,7 @@ const SAMPLE = `---
 id: TICK-001
 type: ticket
 title: Wire up create_item tool
-phase: build
-status: in-progress
+status: implementing
 priority: medium
 assignee: ""
 labels:
@@ -45,5 +44,15 @@ describe("frontmatter", () => {
     const item = parseItem(withExtra);
     expect((item as Record<string, unknown>).sprint).toBe("q3");
     expect(serialiseItem(item)).toContain("sprint: q3");
+  });
+
+  it("round-trips a legacy file that still carries phase:", () => {
+    // Boards written before status/phase were consolidated have a phase key.
+    // It should ride along untouched rather than break the parse.
+    const legacy = SAMPLE.replace("status: implementing", "phase: build\nstatus: implementing");
+    const item = parseItem(legacy);
+    expect(item.status).toBe("implementing");
+    expect((item as Record<string, unknown>).phase).toBe("build");
+    expect(parseItem(serialiseItem(item))).toEqual(item);
   });
 });

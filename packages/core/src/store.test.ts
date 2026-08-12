@@ -22,8 +22,40 @@ describe("KanmerStore", () => {
   it("initialises the .kanmer skeleton with a default board", async () => {
     expect(await store.exists()).toBe(true);
     const board = await store.getBoard();
-    expect(board.phases.length).toBeGreaterThan(0);
     expect(board.idPrefixes.ticket).toBe("TICK");
+  });
+
+  it("seeds the six default workflow stages as the only stage dimension", async () => {
+    const board = await store.getBoard();
+    expect(board.statuses.map((s) => s.id)).toEqual([
+      "todo",
+      "planning",
+      "implementing",
+      "review",
+      "verifying",
+      "done",
+    ]);
+    expect(board).not.toHaveProperty("phases");
+  });
+
+  it("loads a legacy board that still has a phases array, dropping it", async () => {
+    // Simulate a board.yml written before the consolidation.
+    const legacy = [
+      "phases:",
+      "  - { id: build, name: Build }",
+      "statuses:",
+      "  - { id: todo, name: Todo }",
+      "  - { id: done, name: Done }",
+      "areas: []",
+      "priorities:",
+      "  - { id: medium, name: Medium }",
+      "idPrefixes: { ticket: TICK, plan: PLAN, research: RES }",
+      "",
+    ].join("\n");
+    await fs.writeFile(path.join(root, ".kanmer", "data", "board.yml"), legacy, "utf8");
+    const board = await store.getBoard();
+    expect(board).not.toHaveProperty("phases");
+    expect(board.statuses.map((s) => s.id)).toEqual(["todo", "done"]);
   });
 
   it("allocates sequential, zero-padded ids per type", async () => {
@@ -35,11 +67,9 @@ describe("KanmerStore", () => {
     expect(p.id).toBe("PLAN-001");
   });
 
-  it("defaults phase/status to the first board columns", async () => {
+  it("defaults status to the first stage", async () => {
     const t = await store.createItem({ type: "ticket", title: "A" });
-    const board = await store.getBoard();
-    expect(t.phase).toBe(board.phases[0].id);
-    expect(t.status).toBe(board.statuses[0].id);
+    expect(t.status).toBe("todo");
   });
 
   it("updates fields and stamps updated", async () => {
@@ -51,7 +81,7 @@ describe("KanmerStore", () => {
     expect(reloaded?.status).toBe("review");
   });
 
-  it("filters by phase, status and label", async () => {
+  it("filters by status and label", async () => {
     await store.createItem({ type: "ticket", title: "A", status: "todo", labels: ["x"] });
     await store.createItem({ type: "ticket", title: "B", status: "done", labels: ["y"] });
     expect((await store.listItems({ status: "done" })).length).toBe(1);
@@ -71,9 +101,9 @@ describe("KanmerStore", () => {
     expect(await store.getItem(t.id)).toBeNull();
   });
 
-  it("adds a phase to the board", async () => {
-    const board = await store.addColumn("phase", { id: "qa", name: "QA" });
-    expect(board.phases.some((p) => p.id === "qa")).toBe(true);
+  it("adds a stage to the board", async () => {
+    const board = await store.addColumn("status", { id: "blocked", name: "Blocked" });
+    expect(board.statuses.some((s) => s.id === "blocked")).toBe(true);
   });
 
   it("seeds default priorities and empty areas", async () => {

@@ -8,11 +8,11 @@ interface BoardProps {
   items: Item[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onMove: (id: string, to: { phase?: string; status?: string }) => void;
+  onMove: (id: string, to: { status: string }) => void;
   onQuickAdd: (input: CreateItemInput) => void;
 }
 
-/** Merge configured columns with any extra values found on items (fallback lanes). */
+/** Merge configured columns with any extra values found on items (fallback columns). */
 function mergeColumns(defined: BoardColumn[], present: string[]): BoardColumn[] {
   const ids = new Set(defined.map((c) => c.id));
   const extra = [...new Set(present)].filter((id) => id && !ids.has(id));
@@ -26,15 +26,18 @@ interface AreaGroup {
   cards: Item[];
 }
 
+/**
+ * The board is a single row of workflow-stage columns (statuses). Within each
+ * column, cards cluster by area under a colour-coded sub-header — areas group
+ * related work without adding a second workflow dimension.
+ */
 export function Board(props: BoardProps): JSX.Element {
   const { board, items, selectedId, onSelect, onMove, onQuickAdd } = props;
   const [dropTarget, setDropTarget] = useState<string | null>(null);
 
-  const phases = mergeColumns(board.phases, items.map((i) => i.phase));
   const statuses = mergeColumns(board.statuses, items.map((i) => i.status));
   const usingAreas = board.areas.length > 0 || items.some((i) => i.area);
 
-  /** Cards in a cell, grouped and ordered by area (No area last). */
   function groupByArea(cards: Item[]): AreaGroup[] {
     if (!usingAreas) return cards.length ? [{ id: "", name: "", cards }] : [];
     const order = [...board.areas.map((a) => a.id)];
@@ -53,76 +56,64 @@ export function Board(props: BoardProps): JSX.Element {
   return (
     <div
       className="board"
-      style={{ gridTemplateColumns: `160px repeat(${statuses.length}, minmax(230px, 1fr))` }}
+      style={{ gridTemplateColumns: `repeat(${statuses.length}, minmax(230px, 1fr))` }}
     >
-      <div className="board-corner" />
       {statuses.map((s) => (
         <div key={s.id} className="col-head">
           {s.name}
+          <span className="col-count">
+            {items.filter((i) => i.status === s.id).length || ""}
+          </span>
         </div>
       ))}
 
-      {phases.map((phase) => (
-        <div key={phase.id} className="lane" style={{ display: "contents" }}>
-          <div className="lane-head">
-            <span
-              className="lane-dot"
-              style={phase.color ? { background: phase.color } : undefined}
-            />
-            {phase.name}
-          </div>
-          {statuses.map((status) => {
-            const key = `${phase.id}::${status.id}`;
-            const groups = groupByArea(items.filter((i) => i.phase === phase.id && i.status === status.id));
-            return (
-              <div
-                key={key}
-                className={dropTarget === key ? "cell drop" : "cell"}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDropTarget(key);
-                }}
-                onDragLeave={() => setDropTarget((t) => (t === key ? null : t))}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDropTarget(null);
-                  const id = e.dataTransfer.getData("text/plain");
-                  if (id) onMove(id, { phase: phase.id, status: status.id });
-                }}
-              >
-                {groups.map((group) => (
-                  <div key={group.id || "__none__"} className="area-group">
-                    {usingAreas && (
-                      <div className="area-head">
-                        <span
-                          className="area-dot"
-                          style={group.color ? { background: group.color } : undefined}
-                        />
-                        {group.name}
-                      </div>
-                    )}
-                    {group.cards.map((item) => (
-                      <Card
-                        key={item.id}
-                        item={item}
-                        board={board}
-                        selected={item.id === selectedId}
-                        onSelect={onSelect}
-                      />
-                    ))}
+      {statuses.map((status) => {
+        const groups = groupByArea(items.filter((i) => i.status === status.id));
+        return (
+          <div
+            key={status.id}
+            className={dropTarget === status.id ? "cell drop" : "cell"}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDropTarget(status.id);
+            }}
+            onDragLeave={() => setDropTarget((t) => (t === status.id ? null : t))}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDropTarget(null);
+              const id = e.dataTransfer.getData("text/plain");
+              if (id) onMove(id, { status: status.id });
+            }}
+          >
+            {groups.map((group) => (
+              <div key={group.id || "__none__"} className="area-group">
+                {usingAreas && (
+                  <div className="area-head">
+                    <span
+                      className="area-dot"
+                      style={group.color ? { background: group.color } : undefined}
+                    />
+                    {group.name}
                   </div>
+                )}
+                {group.cards.map((item) => (
+                  <Card
+                    key={item.id}
+                    item={item}
+                    board={board}
+                    selected={item.id === selectedId}
+                    onSelect={onSelect}
+                  />
                 ))}
-                <QuickAdd
-                  label="card"
-                  onAdd={(title) =>
-                    onQuickAdd({ type: "ticket", title, phase: phase.id, status: status.id })
-                  }
-                />
               </div>
-            );
-          })}
-        </div>
-      ))}
+            ))}
+            <QuickAdd
+              label="card"
+              onAdd={(title) => onQuickAdd({ type: "ticket", title, status: status.id })}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }

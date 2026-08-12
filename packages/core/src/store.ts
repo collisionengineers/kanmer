@@ -57,7 +57,7 @@ export class KanmerStore {
     await writeBoard(this.paths, board);
   }
 
-  /** Add a phase or status to the board (used by MCP add_phase). */
+  /** Add a stage, area or priority to the board (used by MCP add_column). */
   async addColumn(kind: ColumnKind, column: BoardColumn): Promise<BoardConfig> {
     const board = await this.getBoard();
     const list = columnList(board, kind);
@@ -117,7 +117,6 @@ export class KanmerStore {
       id,
       type,
       title: input.title,
-      phase: input.phase ?? board.phases[0]?.id ?? "",
       status: input.status ?? board.statuses[0]?.id ?? "",
       area: input.area ?? "",
       priority: input.priority ?? "medium",
@@ -146,8 +145,8 @@ export class KanmerStore {
     return next;
   }
 
-  /** Kanban-move convenience: change phase and/or status. */
-  async moveItem(id: string, to: { phase?: string; status?: string }): Promise<Item> {
+  /** Kanban-move convenience: move an item to a workflow stage. */
+  async moveItem(id: string, to: { status: string }): Promise<Item> {
     return this.updateItem(id, to);
   }
 
@@ -180,7 +179,6 @@ export class KanmerStore {
 
 function matchesFilter(item: Item, filter: ItemFilter): boolean {
   if (!filter.includeArchived && item.archived) return false;
-  if (filter.phase && item.phase !== filter.phase) return false;
   if (filter.status && item.status !== filter.status) return false;
   if (filter.area && item.area !== filter.area) return false;
   if (filter.label && !(item.labels ?? []).includes(filter.label)) return false;
@@ -190,8 +188,6 @@ function matchesFilter(item: Item, filter: ItemFilter): boolean {
 /** The mutable column array on a board for a given kind. */
 function columnList(board: BoardConfig, kind: ColumnKind): BoardColumn[] {
   switch (kind) {
-    case "phase":
-      return board.phases;
     case "status":
       return board.statuses;
     case "area":

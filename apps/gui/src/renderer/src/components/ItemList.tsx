@@ -43,7 +43,9 @@ export function ItemList({
               {item.archived && <span className="chip subtle archived-tag">archived</span>}
             </span>
             {item.area && <span className="chip subtle">{columnName(board.areas, item.area)}</span>}
-            {item.phase && <span className="chip subtle">{columnName(board.phases, item.phase)}</span>}
+            {item.status && (
+              <span className="chip subtle">{columnName(board.statuses, item.status)}</span>
+            )}
             <span className="list-updated">{formatDate(item.updated)}</span>
           </button>
         );

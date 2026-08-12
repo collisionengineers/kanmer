@@ -10,7 +10,7 @@ export type ItemType = z.infer<typeof ItemTypeSchema>;
  */
 export type Priority = string;
 
-/** A phase, status, area or priority entry in board.yml. */
+/** A status, area or priority entry in board.yml. */
 export const BoardColumnSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -42,9 +42,14 @@ const TimestampSchema = z.preprocess(
   z.string(),
 );
 
-/** board.yml — the phase/status/area/priority definitions that drive tools and GUI. */
+/**
+ * board.yml — the status/area/priority definitions that drive tools and GUI.
+ *
+ * `statuses` is the single workflow dimension (the board's columns). Boards
+ * written before that consolidation also carried a `phases` array; zod strips
+ * that unknown key on read, so old boards load cleanly and drop it on save.
+ */
 export const BoardConfigSchema = z.object({
-  phases: z.array(BoardColumnSchema).min(1),
   statuses: z.array(BoardColumnSchema).min(1),
   areas: z.array(BoardColumnSchema).default([]),
   priorities: z.array(BoardColumnSchema).min(1).default(DEFAULT_PRIORITIES),
@@ -53,18 +58,19 @@ export const BoardConfigSchema = z.object({
 export type BoardConfig = z.infer<typeof BoardConfigSchema>;
 
 /** The kinds of configurable column in board.yml. */
-export type ColumnKind = "phase" | "status" | "area" | "priority";
+export type ColumnKind = "status" | "area" | "priority";
 
 /**
  * The frontmatter of an item file. Unknown keys are preserved on write so a
- * human's hand-added fields survive a round-trip through an agent edit.
+ * human's hand-added fields survive a round-trip through an agent edit — which
+ * is also why a legacy `phase:` value in an older file is harmless: it rides
+ * along untouched and nothing reads it.
  */
 export const ItemFrontmatterSchema = z
   .object({
     id: z.string().min(1),
     type: ItemTypeSchema,
     title: z.string().default(""),
-    phase: z.string().default(""),
     status: z.string().default(""),
     area: z.string().default(""),
     priority: z.string().default("medium"),
@@ -87,7 +93,6 @@ export interface Item extends ItemFrontmatter {
 /** Filters accepted by listItems / MCP list_items. */
 export interface ItemFilter {
   type?: ItemType;
-  phase?: string;
   status?: string;
   area?: string;
   label?: string;
@@ -99,7 +104,6 @@ export interface ItemFilter {
 export interface CreateItemInput {
   type: ItemType;
   title: string;
-  phase?: string;
   status?: string;
   area?: string;
   priority?: Priority;
@@ -112,7 +116,6 @@ export interface CreateItemInput {
 /** A patch for updateItem: any frontmatter field plus body. All optional. */
 export interface UpdateItemPatch {
   title?: string;
-  phase?: string;
   status?: string;
   area?: string;
   priority?: Priority;

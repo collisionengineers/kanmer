@@ -99,7 +99,7 @@ function registerIpc(): void {
   ipcMain.handle(CH.updateItem, (_e, id: string, patch: UpdateItemPatch) =>
     requireStore().updateItem(id, patch),
   );
-  ipcMain.handle(CH.moveItem, (_e, id: string, to: { phase?: string; status?: string }) =>
+  ipcMain.handle(CH.moveItem, (_e, id: string, to: { status: string }) =>
     requireStore().moveItem(id, to),
   );
   ipcMain.handle(CH.deleteItem, (_e, id: string) => requireStore().deleteItem(id));

@@ -12,3 +12,4 @@ sandbox/
 apps/gui/out/
 apps/gui/dist/
 apps/gui/release/
+sandbox-harness/

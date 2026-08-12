@@ -17,29 +17,41 @@ directly; the tools keep ids, timestamps and frontmatter consistent.
 
 1. **Orient first.** Call `list_board` once per session for the stages, areas
    and priorities — ids vary per project, and inventing one silently mis-files
-   the item. Default stages: todo → planning → implementing → review →
-   verifying → done. Then `list_items` for current state, and `search_items`
-   before creating: if something close already exists, update or link it rather
-   than filing a near-duplicate.
+   the item (`move_item`/`create_item`/`update_item` reject a status the board
+   doesn't define). Default stages **on a fresh board**: todo → planning →
+   implementing → review → verifying → done. Older boards commonly differ —
+   e.g. a single `in-progress` stage instead of `planning`/`implementing`. The
+   `list_board` result you just fetched defines which stages exist and their
+   order; never assume the six defaults. Then `list_items` for current state,
+   and `search_items` before creating: if something close already exists,
+   update or link it rather than filing a near-duplicate.
 2. **One ticket per unit of work**, created before you start (`create_item`
    with `type: "ticket"`, body from `assets/ticket-template.md`). New tickets
-   belong in `todo` — filing a ticket isn't the same as starting it, so if the
-   user only asked you to file one, create it and stop there. Set `area` and
-   `priority` from step 1's ids; if the board has no areas defined yet, omit
-   `area` rather than inventing one. Labels are free-form — use them only where
-   the project already has a convention.
+   belong in the board's first configured stage (leave `status` unset —
+   `create_item` defaults to it) — filing a ticket isn't the same as starting
+   it, so if the user only asked you to file one, create it and stop there.
+   Set `area` and `priority` from step 1's ids; if the board has no areas
+   defined yet, omit `area` rather than inventing one. Labels are free-form —
+   use them only where the project already has a convention.
 3. **Move through the stages as you work.** Call `move_item` at each real
-   transition: `planning` while you design the approach, `implementing` while
-   you write code, `review` when it needs the user's eyes, `verifying` while
-   tests or checks run, `done` once verified. The human reads these transitions
-   to know where you are, so move as you go rather than batching at the end —
-   and don't mark something done that you haven't actually checked.
+   transition, choosing the id from the `list_board` list you fetched in step 1
+   by what it *means*, not by matching one of the names below literally:
+   designing the approach, writing code, awaiting the user's eyes, verifying
+   with tests or checks, finished. On a fresh board that's `planning` →
+   `implementing` → `review` → `verifying` → `done`; on an older board it's
+   commonly just `in-progress` → `review` → `done`. If no configured stage
+   clearly matches what you're doing, ask rather than inventing one — an
+   invented id is rejected outright. The human reads these transitions to know
+   where you are, so move as you go rather than batching at the end — and
+   don't mark something done that you haven't actually checked.
 4. **Plans coordinate tickets.** For multi-ticket work, create the tickets
    first and then the plan (`assets/plan-template.md`) with their real ids in
-   its table — that order saves you rewriting the plan body afterwards. Give
-   each ticket `links: ["PLAN-00X"]` once the plan exists, or link it later with
-   `link_items`. Note that `update_item` replaces the whole `body`, so a late
-   edit means re-sending it in full.
+   its table — that order saves you rewriting the plan body afterwards. The
+   plan's Tickets table carries the `[[TICK-00X]]` links, so the relation is
+   already recorded — do **not** also add `links: ["PLAN-00X"]` to each
+   ticket; `get_links` on a ticket shows its plan as a backlink for free.
+   Note that `update_item` replaces the whole `body`, so a late edit means
+   re-sending it in full.
 5. **Research feeds decisions.** Findings worth keeping outlive the
    conversation, so put them in a research note
    (`assets/research-template.md`), linked from the ticket or plan that
@@ -54,8 +66,8 @@ directly; the tools keep ids, timestamps and frontmatter consistent.
    reserve it for items the user explicitly wants gone.
 
 Plans and research notes carry a status like anything else, but they aren't
-worked through the stages the way tickets are. Leave them in `todo` unless the
-user wants them tracked on the board.
+worked through the stages the way tickets are. Leave them in the board's first
+stage unless the user wants them tracked on the board.
 
 ## Conventions that keep the board useful
 
@@ -68,7 +80,10 @@ user wants them tracked on the board.
   week, `medium` is normal, `low` is nice-to-have. If the user's wording is
   genuinely ambiguous, ask instead of guessing.
 - If the board's stages don't fit the work, ask before restructuring —
-  `add_column` changes the board for everyone who looks at it.
+  `add_column` changes the board for everyone who looks at it. It's also
+  append-only (rejects a duplicate id, can't remove/rename/reorder), so it can
+  add a missing stage but can't replace the existing set — a genuine
+  restructure needs the Kanmer app's Settings editor.
 
 For exact tool parameters and what each field means, read
 `references/tool-reference.md`.

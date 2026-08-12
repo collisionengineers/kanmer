@@ -28,6 +28,22 @@ function guard<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeo
   };
 }
 
+/** Create the .kanmer skeleton on first write — never merely because we booted. */
+let initialised = false;
+async function ensureInit() {
+  if (initialised) return;
+  await store.init();
+  initialised = true;
+}
+
+/** Wrap a write handler: lazily create the .kanmer skeleton, then run it under guard(). */
+function write<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeof ok>>) {
+  return guard(async (...args: A) => {
+    await ensureInit();
+    return fn(...args);
+  });
+}
+
 /** Trim an item to a list-friendly summary (no body). */
 function summarise(item: Item) {
   return {
@@ -40,6 +56,7 @@ function summarise(item: Item) {
     assignee: item.assignee,
     labels: item.labels,
     updated: item.updated,
+    archived: item.archived,
   };
 }
 
@@ -170,7 +187,7 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
-  guard(async (input) => ok(await store.createItem(input))),
+  write(async (input) => ok(await store.createItem(input))),
 );
 
 server.registerTool(
@@ -178,7 +195,7 @@ server.registerTool(
   {
     title: "Update an item",
     description:
-      "Patch any frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically. Set archived to true to hide an item from the board without deleting it.",
+      "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically. Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here — create a new item and archive the old one instead.",
     inputSchema: {
       id: z.string().describe("Item id to update"),
       title: z.string().optional(),
@@ -193,7 +210,7 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  guard(async ({ id, ...patch }) => ok(await store.updateItem(id, patch))),
+  write(async ({ id, ...patch }) => ok(await store.updateItem(id, patch))),
 );
 
 server.registerTool(
@@ -208,7 +225,7 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  guard(async ({ id, status }) => ok(await store.moveItem(id, { status }))),
+  write(async ({ id, status }) => ok(await store.moveItem(id, { status }))),
 );
 
 server.registerTool(
@@ -224,7 +241,7 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  guard(async ({ source_id, target_id, action }) =>
+  write(async ({ source_id, target_id, action }) =>
     ok(await linkItems(store, source_id, target_id, action)),
   ),
 );
@@ -243,7 +260,7 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
-  guard(async ({ id, name, kind, color }) =>
+  write(async ({ id, name, kind, color }) =>
     ok(await store.addColumn(kind, { id, name, ...(color ? { color } : {}) })),
   ),
 );
@@ -257,7 +274,7 @@ server.registerTool(
     inputSchema: { id: z.string().describe("Item id to delete") },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
   },
-  guard(async ({ id }) => {
+  write(async ({ id }) => {
     const deleted = await store.deleteItem(id);
     return deleted ? ok({ deleted: id }) : fail(`No item with id "${id}"`);
   }),
@@ -268,7 +285,9 @@ server.registerTool(
 // ---------------------------------------------------------------------------
 
 async function main() {
-  await store.init(); // ensure the .kanmer skeleton exists for this project
+  // No store.init() here: a read-only session in a workspace that never
+  // opted into Kanmer must not create .kanmer/ just by being opened.
+  // Write handlers call ensureInit() lazily instead.
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // Never write logs to stdout — that stream is the MCP transport.

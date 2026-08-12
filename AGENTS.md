@@ -68,10 +68,10 @@ kanmer/
   plugins/
     kanmer/               # Cross-agent plugin (Claude Code + codex)
       .claude-plugin/plugin.json   # Claude manifest → mcp/claude.mcp.json
-      .codex-plugin/plugin.json    # codex manifest  → mcp/codex.mcp.json
+      .codex-plugin/plugin.json    # codex manifest  → ../.mcp.json
+      .mcp.json           # codex companion ({"mcpServers":…} + ${PLUGIN_ROOT}) — must live at plugin root
       mcp/
         claude.mcp.json   # {"mcpServers":…} + ${CLAUDE_PLUGIN_ROOT}
-        codex.mcp.json    # direct server map + ${PLUGIN_ROOT}
         kanmer-mcp.cjs    # committed build artifact (npm run plugin:build)
       skills/
         kanmer-workflow/  # SKILL.md + references/tool-reference.md + assets/*-template.md
@@ -196,7 +196,7 @@ Body Markdown. Reference other items with [[RES-001]] wiki-links.
 The only place that touches `.kanmer` files. Public API via `index.ts`. Key entry point: **`KanmerStore`** (`store.ts`) — construct with a project root, call `init()`, then `listItems/getItem/createItem/updateItem/moveItem/deleteItem/searchItems/getBoard/setBoard/addColumn`. Links live in `links.ts` (`getLinkGraph`, `linkItems`, `parseWikiLinks`). Everything is covered by `*.test.ts` (vitest).
 
 ### `@kanmer/mcp-server` (packages/mcp-server)
-`index.ts` builds an `McpServer` and registers **11 tools**, then connects a `StdioServerTransport`. Root resolution in `root.ts`. Two builds:
+`index.ts` builds an `McpServer` and registers **11 tools**, then connects a `StdioServerTransport`. Root resolution in `root.ts`. **Init is lazy**: boot never calls `store.init()` — a read-only session (or a host that spawns the server in a workspace nobody opted into Kanmer for) must not create `.kanmer/` just by connecting. Write tools call `ensureInit()` first, which creates the skeleton once on the first actual write; read tools degrade to empty/default results when `.kanmer/` doesn't exist yet. Two builds:
 - `dist/index.js` — ESM, deps external (for dev / `node …`).
 - `dist/standalone/kanmer-mcp.cjs` — self-contained CJS, everything bundled (shipped inside the GUI, run via Electron-as-Node).
 
@@ -304,7 +304,7 @@ node packages/mcp-server/src/smoke.mjs
 - No custom app icon (uses default Electron icon).
 - No card reordering within a column, no due dates, no typed link relations (blocks/blocked-by).
 - No automated CI; verification is the manual checklist above.
-- Deleting an in-use board column doesn't rewrite referencing items — they fall back to an auto column/group (by design for now).
+- Deleting an in-use board column doesn't rewrite referencing items — they fall back to an auto column/group (by design for now). This is a read-side fallback only: `create_item`/`update_item`/`move_item` reject writing a `status` the board doesn't currently define (see `assertKnownStatus` in `store.ts`), so new writes can't create fresh instances of this state — it can only arise from a column later being removed out from under existing items.
 - **Concurrent `create_item` id race.** Id allocation reads `counters.json`,
   reconciles against the on-disk max, and writes back ([ids.ts](packages/core/src/ids.ts)).
   Two agents calling `create_item` in the same instant could interleave that

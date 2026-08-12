@@ -30,6 +30,8 @@ Part B — the plugin. Plugins are cross-agent codex has a near-identical standa
 
 \- Host nuance Claude reads `{mcpServers…}` + `${CLAUDE\_PLUGIN\_ROOT}`; codex reads a direct map + `${PLUGIN\_ROOT}` → ship two tiny MCP configs, each manifest pointing at its own (no shared `.mcp.json` at plugin root).
 
+&#x20; **Reversed in PR #1 review.** codex's `mcpServers` manifest key only accepts a path that resolves to a `.mcp.json` at the plugin root — not an arbitrary relative path. The codex config now lives at `plugins/kanmer/.mcp.json`; Claude's `mcp/claude.mcp.json` is unaffected since it does accept a custom relative path. Two configs remains correct (different expanded variables), just not the layout described above.
+
 
 
 \---

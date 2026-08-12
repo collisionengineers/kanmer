@@ -81,6 +81,26 @@ describe("KanmerStore", () => {
     expect(reloaded?.status).toBe("review");
   });
 
+  it("rejects moving an item to a status the board doesn't define", async () => {
+    await store.setBoard({
+      ...(await store.getBoard()),
+      statuses: [
+        { id: "todo", name: "Todo" },
+        { id: "done", name: "Done" },
+      ],
+    });
+    const t = await store.createItem({ type: "ticket", title: "A" });
+    await expect(store.moveItem(t.id, { status: "planning" })).rejects.toThrow(/Unknown status/);
+    const moved = await store.moveItem(t.id, { status: "done" });
+    expect(moved.status).toBe("done");
+  });
+
+  it("rejects creating an item with a status the board doesn't define", async () => {
+    await expect(
+      store.createItem({ type: "ticket", title: "A", status: "nope" }),
+    ).rejects.toThrow(/Unknown status/);
+  });
+
   it("filters by status and label", async () => {
     await store.createItem({ type: "ticket", title: "A", status: "todo", labels: ["x"] });
     await store.createItem({ type: "ticket", title: "B", status: "done", labels: ["y"] });

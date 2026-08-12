@@ -11,23 +11,35 @@ user has to configure themselves.
 
 ## Steps
 
-1. **Check state.** Call `list_board`, then `list_items`. The server creates
-   `.kanmer/` on first contact, so `list_board` succeeding tells you nothing
-   about whether the project has been used before — `list_items` does. If it
-   returns items, this isn't a fresh onboard: switch to the normal workflow
-   rather than seeding on top of real work.
+1. **Check state.** Call `list_items` with `include_archived: true`. If it
+   returns *anything* — active or archived — this project has been used
+   before: stop and switch to the `kanmer-workflow` skill rather than seeding
+   on top of real history. An archived-only board (everything tidied away
+   rather than deleted) is a finished project, not a fresh one, and a plain
+   `list_items` would miss it entirely since archived items are excluded by
+   default. Also call `list_board`, not as a freshness check — the server only
+   creates `.kanmer/` on the first actual write, so its existence is a
+   trustworthy signal too — but to read the existing stages, areas and
+   priorities before proposing changes to them.
 2. **Learn the project.** Read before proposing structure: README, docs, any
    TODO/ROADMAP/BACKLOG files, issue templates, and the top-level folder names
    (those usually reveal the natural areas — `api/`, `ui/`, `infra/`).
 3. **Propose, then apply.** Put it to the user in one short message:
    - **Areas** with hex colours, from the codebase's real seams — 3–6 of them.
      Areas exist so a human can group cards at a glance, and too many defeats
-     that. Roadmap *themes* usually make better plans than areas.
+     that. Roadmap *themes* usually make better plans than areas. Apply the
+     agreed set yourself, one `add_column` call per area (`kind: "area"`).
    - **Stages** only if the defaults (todo → planning → implementing → review →
-     verifying → done) genuinely don't fit. Most projects should keep them,
-     since the tools and the GUI assume their meaning.
-   Apply the agreed set with one `add_column` call per column
-   (`kind: "area"` / `"status"`).
+     verifying → done) genuinely don't fit — bias hard toward keeping them,
+     since the tools and the GUI assume their meaning, and changing them costs
+     the user a manual step (below). You **cannot apply a stage change
+     yourself**: `add_column` only appends and rejects a duplicate id, it
+     cannot remove or reorder, so calling it once per agreed stage would leave
+     all six defaults in place alongside whatever you added rather than
+     replacing them. If the user agrees new stages are needed, tell them
+     plainly that you can't apply this part, ask them to edit the stages in
+     the Kanmer app's Settings editor (the only surface with a whole-board
+     save), and list the exact stage set they agreed to so they can copy it in.
 4. **Seed the backlog — tickets first, then plans.** Create the tickets before
    the plans, so each plan's body can reference real ticket ids instead of
    needing a rewrite afterwards. There's no bulk tool, so that's one

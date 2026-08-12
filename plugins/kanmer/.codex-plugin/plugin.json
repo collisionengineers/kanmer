@@ -11,7 +11,7 @@
   "license": "MIT",
   "keywords": ["kanban", "tickets", "mcp", "project-management"],
   "skills": "./skills/",
-  "mcpServers": "./mcp/codex.mcp.json",
+  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Kanmer",
     "shortDescription": "Kanban board shared between AI agents and humans",

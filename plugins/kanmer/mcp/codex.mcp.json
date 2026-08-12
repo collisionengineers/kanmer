@@ -1,6 +1,0 @@
-{
-  "kanmer": {
-    "command": "node",
-    "args": ["${PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"]
-  }
-}

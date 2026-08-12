@@ -37568,6 +37568,7 @@ var KanmerStore = class {
   async createItem(input) {
     const type = ItemTypeSchema.parse(input.type);
     const board = await this.getBoard();
+    if (input.status !== void 0) assertKnownStatus(board, input.status);
     const id = await allocateId(this.paths, type, board.idPrefixes[type]);
     const now = nowIso();
     const item = {
@@ -37589,6 +37590,7 @@ var KanmerStore = class {
     return item;
   }
   async updateItem(id, patch) {
+    if (patch.status !== void 0) assertKnownStatus(await this.getBoard(), patch.status);
     const found = await this.findFile(id);
     if (!found) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(found.file));
@@ -37627,6 +37629,13 @@ var KanmerStore = class {
     });
   }
 };
+function assertKnownStatus(board, status) {
+  if (!board.statuses.some((s) => s.id === status)) {
+    throw new Error(
+      `Unknown status "${status}". Valid stages: ${board.statuses.map((s) => s.id).join(", ")}`
+    );
+  }
+}
 function matchesFilter(item, filter) {
   if (!filter.includeArchived && item.archived) return false;
   if (filter.status && item.status !== filter.status) return false;
@@ -37731,6 +37740,18 @@ function guard(fn) {
     }
   };
 }
+var initialised = false;
+async function ensureInit() {
+  if (initialised) return;
+  await store.init();
+  initialised = true;
+}
+function write(fn) {
+  return guard(async (...args) => {
+    await ensureInit();
+    return fn(...args);
+  });
+}
 function summarise(item) {
   return {
     id: item.id,
@@ -37741,7 +37762,8 @@ function summarise(item) {
     priority: item.priority,
     assignee: item.assignee,
     labels: item.labels,
-    updated: item.updated
+    updated: item.updated,
+    archived: item.archived
   };
 }
 var itemTypeEnum = external_exports.enum(["ticket", "plan", "research"]);
@@ -37847,13 +37869,13 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
   },
-  guard(async (input) => ok(await store.createItem(input)))
+  write(async (input) => ok(await store.createItem(input)))
 );
 server.registerTool(
   "update_item",
   {
     title: "Update an item",
-    description: "Patch any frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically. Set archived to true to hide an item from the board without deleting it.",
+    description: "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically. Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here \u2014 create a new item and archive the old one instead.",
     inputSchema: {
       id: external_exports.string().describe("Item id to update"),
       title: external_exports.string().optional(),
@@ -37868,7 +37890,7 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
   },
-  guard(async ({ id, ...patch }) => ok(await store.updateItem(id, patch)))
+  write(async ({ id, ...patch }) => ok(await store.updateItem(id, patch)))
 );
 server.registerTool(
   "move_item",
@@ -37881,7 +37903,7 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
   },
-  guard(async ({ id, status }) => ok(await store.moveItem(id, { status })))
+  write(async ({ id, status }) => ok(await store.moveItem(id, { status })))
 );
 server.registerTool(
   "link_items",
@@ -37895,7 +37917,7 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
   },
-  guard(
+  write(
     async ({ source_id, target_id, action }) => ok(await linkItems(store, source_id, target_id, action))
   )
 );
@@ -37912,7 +37934,7 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
   },
-  guard(
+  write(
     async ({ id, name, kind, color }) => ok(await store.addColumn(kind, { id, name, ...color ? { color } : {} }))
   )
 );
@@ -37924,13 +37946,12 @@ server.registerTool(
     inputSchema: { id: external_exports.string().describe("Item id to delete") },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true }
   },
-  guard(async ({ id }) => {
+  write(async ({ id }) => {
     const deleted = await store.deleteItem(id);
     return deleted ? ok({ deleted: id }) : fail(`No item with id "${id}"`);
   })
 );
 async function main() {
-  await store.init();
   const transport = new StdioServerTransport();
   await server.connect(transport);
   process.stderr.write(`kanmer-mcp ready \u2014 root: ${projectRoot}

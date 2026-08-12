@@ -111,6 +111,7 @@ export class KanmerStore {
   async createItem(input: CreateItemInput): Promise<Item> {
     const type = ItemTypeSchema.parse(input.type);
     const board = await this.getBoard();
+    if (input.status !== undefined) assertKnownStatus(board, input.status);
     const id = await allocateId(this.paths, type, board.idPrefixes[type]);
     const now = nowIso();
     const item: Item = {
@@ -133,6 +134,7 @@ export class KanmerStore {
   }
 
   async updateItem(id: string, patch: UpdateItemPatch): Promise<Item> {
+    if (patch.status !== undefined) assertKnownStatus(await this.getBoard(), patch.status);
     const found = await this.findFile(id);
     if (!found) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(found.file));
@@ -174,6 +176,15 @@ export class KanmerStore {
         .toLowerCase();
       return haystack.includes(q);
     });
+  }
+}
+
+/** Reject a status the board doesn't define — the write-path guard against silent misfiling. */
+function assertKnownStatus(board: BoardConfig, status: string): void {
+  if (!board.statuses.some((s) => s.id === status)) {
+    throw new Error(
+      `Unknown status "${status}". Valid stages: ${board.statuses.map((s) => s.id).join(", ")}`,
+    );
   }
 }
 

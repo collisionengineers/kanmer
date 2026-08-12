@@ -12,7 +12,10 @@ One or two sentences: the concrete change or outcome this ticket delivers.
 
 ## Why
 
-The problem or need driving it. Link context inline: see [[PLAN-001]] or [[RES-003]].
+The problem or need driving it. Link context inline: see [[RES-003]]. (Don't
+add a `[[PLAN-…]]` link back to the covering plan — the plan's Tickets table
+already links plan → ticket, and that one direction is enough; `get_links`
+shows the plan as a derived backlink.)
 
 ## Approach
 

@@ -24,7 +24,6 @@ export function Editor(props: EditorProps): JSX.Element {
   const { item, board, items, knownIds, onClose, onNavigate, onSave, onDelete } = props;
 
   const [title, setTitle] = useState(item.title);
-  const [phase, setPhase] = useState(item.phase);
   const [status, setStatus] = useState(item.status);
   const [area, setArea] = useState(item.area);
   const [priority, setPriority] = useState(item.priority);
@@ -48,7 +47,6 @@ export function Editor(props: EditorProps): JSX.Element {
     void window.kanmer.getLinks(item.id).then(setGraph);
   }, [item.id, item.updated]);
 
-  const phaseOpts = withCurrent(board.phases, item.phase);
   const statusOpts = withCurrent(board.statuses, item.status);
   const priorityOpts = withCurrent(board.priorities, item.priority);
   const areaOpts = withCurrent(board.areas, item.area);
@@ -56,7 +54,6 @@ export function Editor(props: EditorProps): JSX.Element {
   const patch = useMemo<UpdateItemPatch>(
     () => ({
       title,
-      phase,
       status,
       area,
       priority,
@@ -65,12 +62,11 @@ export function Editor(props: EditorProps): JSX.Element {
       links: splitList(links),
       body,
     }),
-    [title, phase, status, area, priority, assignee, labels, links, body],
+    [title, status, area, priority, assignee, labels, links, body],
   );
 
   const dirty =
     title !== item.title ||
-    phase !== item.phase ||
     status !== item.status ||
     area !== item.area ||
     priority !== item.priority ||
@@ -178,28 +174,16 @@ export function Editor(props: EditorProps): JSX.Element {
         <input value={title} onChange={(e) => setTitle(e.target.value)} />
       </label>
 
-      <div className="field-row">
-        <label className="field">
-          <span>Phase</span>
-          <select value={phase} onChange={(e) => setPhase(e.target.value)}>
-            {phaseOpts.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>Status</span>
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
-            {statusOpts.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <label className="field">
+        <span>Stage</span>
+        <select value={status} onChange={(e) => setStatus(e.target.value)}>
+          {statusOpts.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <div className="field-row">
         <label className="field">

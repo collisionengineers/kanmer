@@ -16,6 +16,8 @@
     "setup": "npm install && npm run build && npm run build -w @kanmer/gui",
     "app": "npm run build -w @kanmer/gui && npm run start -w @kanmer/gui",
     "dist": "npm run build && npm run build -w @kanmer/gui && npm run dist -w @kanmer/gui",
+    "plugin:build": "npm run build && node scripts/build-plugin.mjs",
+    "plugin:check": "node scripts/check-plugin-sync.mjs",
     "inspect": "npm run build && npx @modelcontextprotocol/inspector node packages/mcp-server/dist/index.js --root ./sandbox"
   },
   "engines": {

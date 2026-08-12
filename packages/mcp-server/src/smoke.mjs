@@ -48,19 +48,36 @@ try {
   check("list_items is read-only", list?.annotations?.readOnlyHint === true);
   check("add_column tool exists", tools.tools.some((t) => t.name === "add_column"));
 
-  const phases = await client.callTool({ name: "list_phases", arguments: {} });
-  const board = JSON.parse(textOf(phases));
-  check("list_phases returns board", board.phases.some((p) => p.id === "build"));
+  const boardRes = await client.callTool({ name: "list_board", arguments: {} });
+  const board = JSON.parse(textOf(boardRes));
+  check(
+    "list_board returns the six workflow stages",
+    JSON.stringify(board.statuses.map((s) => s.id)) ===
+      JSON.stringify(["todo", "planning", "implementing", "review", "verifying", "done"]),
+    board.statuses.map((s) => s.id).join(">"),
+  );
+  check("board has no phases dimension", board.phases === undefined);
   check("board carries priorities", board.priorities.some((p) => p.id === "urgent"));
   check("board carries areas array", Array.isArray(board.areas));
 
+  const itemsBeforeWrite = await client.callTool({ name: "list_items", arguments: {} });
+  check("list_items works before any write", JSON.parse(textOf(itemsBeforeWrite)).length === 0);
+  check(
+    "reads alone do not create .kanmer/ (lazy init)",
+    !fs.existsSync(path.join(sandbox, ".kanmer")),
+  );
+
   const created = await client.callTool({
     name: "create_item",
-    arguments: { type: "ticket", title: "Smoke ticket", phase: "build", body: "See [[PLAN-001]]" },
+    arguments: { type: "ticket", title: "Smoke ticket", body: "See [[PLAN-001]]" },
   });
   const createdItem = JSON.parse(textOf(created));
   check("create_item allocates TICK-001", createdItem.id === "TICK-001", createdItem.id);
-  check("create_item honours phase", createdItem.phase === "build");
+  check("create_item defaults to the first stage", createdItem.status === "todo", createdItem.status);
+  check(
+    "first write lazily creates .kanmer/",
+    fs.existsSync(path.join(sandbox, ".kanmer")),
+  );
 
   const plan = await client.callTool({
     name: "create_item",
@@ -74,6 +91,12 @@ try {
   });
   check("move_item changes status", JSON.parse(textOf(moved)).status === "review");
 
+  const badMove = await client.callTool({
+    name: "move_item",
+    arguments: { id: "TICK-001", status: "in-progress" },
+  });
+  check("move_item rejects a status the board doesn't define", badMove.isError === true);
+
   const links = await client.callTool({ name: "get_links", arguments: { id: "PLAN-001" } });
   check("get_links resolves wiki backlink", textOf(links).includes("TICK-001"));
 
@@ -82,6 +105,25 @@ try {
 
   const onDisk = fs.existsSync(path.join(sandbox, ".kanmer", "tickets", "TICK-001.md"));
   check("ticket file written to .kanmer/tickets", onDisk);
+
+  const summaryKeys = Object.keys(JSON.parse(textOf(search))[0]).sort();
+  const expectedKeys = [
+    "archived",
+    "area",
+    "assignee",
+    "id",
+    "labels",
+    "priority",
+    "status",
+    "title",
+    "type",
+    "updated",
+  ];
+  check(
+    "list_items/search_items summary has exactly the documented fields",
+    JSON.stringify(summaryKeys) === JSON.stringify(expectedKeys),
+    summaryKeys.join(","),
+  );
 
   // Areas: add an area column, create a ticket in it, filter by it.
   const addArea = await client.callTool({

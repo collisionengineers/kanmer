@@ -68,7 +68,7 @@ export interface KanmerApi {
   getItem(id: string): Promise<Item | null>;
   createItem(input: CreateItemInput): Promise<Item>;
   updateItem(id: string, patch: UpdateItemPatch): Promise<Item>;
-  moveItem(id: string, to: { phase?: string; status?: string }): Promise<Item>;
+  moveItem(id: string, to: { status: string }): Promise<Item>;
   deleteItem(id: string): Promise<boolean>;
   addColumn(kind: ColumnKind, column: BoardColumn): Promise<BoardConfig>;
   linkItems(source: string, target: string, action: "add" | "remove"): Promise<Item>;

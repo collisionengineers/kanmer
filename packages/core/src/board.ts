@@ -3,19 +3,18 @@ import { BoardConfigSchema, type BoardConfig } from "./types.js";
 import { pathExists, readText, writeFileAtomic } from "./io.js";
 import type { KanmerPaths } from "./paths.js";
 
-/** The board config written into a fresh project. */
+/**
+ * The board config written into a fresh project. `statuses` is the single
+ * workflow dimension — the stages a ticket moves through, left to right.
+ */
 export function defaultBoardConfig(): BoardConfig {
   return {
-    phases: [
-      { id: "backlog", name: "Backlog" },
-      { id: "discovery", name: "Discovery" },
-      { id: "build", name: "Build" },
-      { id: "ship", name: "Ship" },
-    ],
     statuses: [
-      { id: "todo", name: "To Do" },
-      { id: "in-progress", name: "In Progress" },
+      { id: "todo", name: "Todo" },
+      { id: "planning", name: "Planning" },
+      { id: "implementing", name: "Implementing" },
       { id: "review", name: "Review" },
+      { id: "verifying", name: "Verifying" },
       { id: "done", name: "Done" },
     ],
     areas: [],

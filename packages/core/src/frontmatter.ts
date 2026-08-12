@@ -6,7 +6,6 @@ const KEY_ORDER = [
   "id",
   "type",
   "title",
-  "phase",
   "status",
   "area",
   "priority",

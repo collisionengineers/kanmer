@@ -57,7 +57,7 @@ export class KanmerStore {
     await writeBoard(this.paths, board);
   }
 
-  /** Add a phase or status to the board (used by MCP add_phase). */
+  /** Add a stage, area or priority to the board (used by MCP add_column). */
   async addColumn(kind: ColumnKind, column: BoardColumn): Promise<BoardConfig> {
     const board = await this.getBoard();
     const list = columnList(board, kind);
@@ -111,13 +111,13 @@ export class KanmerStore {
   async createItem(input: CreateItemInput): Promise<Item> {
     const type = ItemTypeSchema.parse(input.type);
     const board = await this.getBoard();
+    if (input.status !== undefined) assertKnownStatus(board, input.status);
     const id = await allocateId(this.paths, type, board.idPrefixes[type]);
     const now = nowIso();
     const item: Item = {
       id,
       type,
       title: input.title,
-      phase: input.phase ?? board.phases[0]?.id ?? "",
       status: input.status ?? board.statuses[0]?.id ?? "",
       area: input.area ?? "",
       priority: input.priority ?? "medium",
@@ -134,6 +134,7 @@ export class KanmerStore {
   }
 
   async updateItem(id: string, patch: UpdateItemPatch): Promise<Item> {
+    if (patch.status !== undefined) assertKnownStatus(await this.getBoard(), patch.status);
     const found = await this.findFile(id);
     if (!found) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(found.file));
@@ -146,8 +147,8 @@ export class KanmerStore {
     return next;
   }
 
-  /** Kanban-move convenience: change phase and/or status. */
-  async moveItem(id: string, to: { phase?: string; status?: string }): Promise<Item> {
+  /** Kanban-move convenience: move an item to a workflow stage. */
+  async moveItem(id: string, to: { status: string }): Promise<Item> {
     return this.updateItem(id, to);
   }
 
@@ -178,9 +179,17 @@ export class KanmerStore {
   }
 }
 
+/** Reject a status the board doesn't define — the write-path guard against silent misfiling. */
+function assertKnownStatus(board: BoardConfig, status: string): void {
+  if (!board.statuses.some((s) => s.id === status)) {
+    throw new Error(
+      `Unknown status "${status}". Valid stages: ${board.statuses.map((s) => s.id).join(", ")}`,
+    );
+  }
+}
+
 function matchesFilter(item: Item, filter: ItemFilter): boolean {
   if (!filter.includeArchived && item.archived) return false;
-  if (filter.phase && item.phase !== filter.phase) return false;
   if (filter.status && item.status !== filter.status) return false;
   if (filter.area && item.area !== filter.area) return false;
   if (filter.label && !(item.labels ?? []).includes(filter.label)) return false;
@@ -190,8 +199,6 @@ function matchesFilter(item: Item, filter: ItemFilter): boolean {
 /** The mutable column array on a board for a given kind. */
 function columnList(board: BoardConfig, kind: ColumnKind): BoardColumn[] {
   switch (kind) {
-    case "phase":
-      return board.phases;
     case "status":
       return board.statuses;
     case "area":

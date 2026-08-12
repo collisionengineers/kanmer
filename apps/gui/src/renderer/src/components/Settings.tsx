@@ -57,14 +57,7 @@ export function Settings({
         <div className="modal-body">
           <div className="settings-grid">
             <ColumnEditor
-              title="Phases (swimlanes)"
-              kind="phase"
-              columns={draft.phases}
-              usage={usage.phase}
-              onChange={(c) => setColumns("phase", c)}
-            />
-            <ColumnEditor
-              title="Statuses (columns)"
+              title="Stages (board columns)"
               kind="status"
               columns={draft.statuses}
               usage={usage.status}
@@ -266,24 +259,16 @@ function ColumnEditor({
 }
 
 function pluralKey(kind: ColumnKind): keyof BoardConfig {
-  return kind === "phase"
-    ? "phases"
-    : kind === "status"
-      ? "statuses"
-      : kind === "area"
-        ? "areas"
-        : "priorities";
+  return kind === "status" ? "statuses" : kind === "area" ? "areas" : "priorities";
 }
 
 function countUsage(items: Item[]) {
   const acc = {
-    phase: {} as Record<string, number>,
     status: {} as Record<string, number>,
     area: {} as Record<string, number>,
     priority: {} as Record<string, number>,
   };
   for (const i of items) {
-    if (i.phase) acc.phase[i.phase] = (acc.phase[i.phase] ?? 0) + 1;
     if (i.status) acc.status[i.status] = (acc.status[i.status] ?? 0) + 1;
     if (i.area) acc.area[i.area] = (acc.area[i.area] ?? 0) + 1;
     if (i.priority) acc.priority[i.priority] = (acc.priority[i.priority] ?? 0) + 1;

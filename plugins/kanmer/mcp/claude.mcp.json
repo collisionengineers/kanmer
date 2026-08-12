@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "kanmer": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"]
+    }
+  }
+}

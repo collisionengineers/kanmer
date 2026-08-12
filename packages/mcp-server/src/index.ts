@@ -28,19 +28,35 @@ function guard<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeo
   };
 }
 
+/** Create the .kanmer skeleton on first write — never merely because we booted. */
+let initialised = false;
+async function ensureInit() {
+  if (initialised) return;
+  await store.init();
+  initialised = true;
+}
+
+/** Wrap a write handler: lazily create the .kanmer skeleton, then run it under guard(). */
+function write<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeof ok>>) {
+  return guard(async (...args: A) => {
+    await ensureInit();
+    return fn(...args);
+  });
+}
+
 /** Trim an item to a list-friendly summary (no body). */
 function summarise(item: Item) {
   return {
     id: item.id,
     type: item.type,
     title: item.title,
-    phase: item.phase,
     status: item.status,
     area: item.area,
     priority: item.priority,
     assignee: item.assignee,
     labels: item.labels,
     updated: item.updated,
+    archived: item.archived,
   };
 }
 
@@ -53,11 +69,11 @@ const server = new McpServer({ name: "kanmer", version: "0.1.0" });
 // ---------------------------------------------------------------------------
 
 server.registerTool(
-  "list_phases",
+  "list_board",
   {
     title: "List board configuration",
     description:
-      "Return the board configuration: the ordered phases and statuses (kanban columns), the areas, the priorities, and the id prefixes for each item type. Call this first to learn valid phase/status/area/priority ids before creating or moving items.",
+      "Return the board configuration: the ordered statuses (the workflow stages, which are the kanban columns), the areas, the priorities, and the id prefixes for each item type. Call this first to learn valid status/area/priority ids before creating or moving items.",
     inputSchema: {},
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
@@ -69,23 +85,21 @@ server.registerTool(
   {
     title: "List items",
     description:
-      "List tickets, plans and research items as summaries (no body). Optionally filter by type, phase, status, area or label. Archived items are excluded unless include_archived is true. Use get_item to read an item's full body.",
+      "List tickets, plans and research items as summaries (no body). Optionally filter by type, status (workflow stage), area or label. Archived items are excluded unless include_archived is true. Use get_item to read an item's full body.",
     inputSchema: {
       type: itemTypeEnum.optional().describe("Restrict to one item type"),
-      phase: z.string().optional().describe("Filter by phase id"),
-      status: z.string().optional().describe("Filter by status id"),
+      status: z.string().optional().describe("Filter by status id (workflow stage)"),
       area: z.string().optional().describe("Filter by area id"),
       label: z.string().optional().describe("Filter by a label"),
       include_archived: z.boolean().optional().describe("Include archived items"),
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  guard(async ({ type, phase, status, area, label, include_archived }) =>
+  guard(async ({ type, status, area, label, include_archived }) =>
     ok(
       (
         await store.listItems({
           type,
-          phase,
           status,
           area,
           label,
@@ -159,14 +173,13 @@ server.registerTool(
   {
     title: "Create an item",
     description:
-      "Create a ticket, plan or research note. Returns the created item including its allocated id. phase/status default to the first board columns if omitted; call list_phases for valid ids. Link to other items via links[] and/or [[id]] references in the body.",
+      "Create a ticket, plan or research note. Returns the created item including its allocated id. status defaults to the first workflow stage if omitted; call list_board for valid ids. Link to other items via links[] and/or [[id]] references in the body.",
     inputSchema: {
       type: itemTypeEnum.describe("ticket | plan | research"),
       title: z.string().describe("Short title"),
-      phase: z.string().optional().describe("Phase id (defaults to first phase)"),
-      status: z.string().optional().describe("Status id (defaults to first status)"),
-      area: z.string().optional().describe("Area id (see list_phases → areas)"),
-      priority: z.string().optional().describe("Priority id (see list_phases → priorities); defaults to medium"),
+      status: z.string().optional().describe("Status id / workflow stage (defaults to the first stage)"),
+      area: z.string().optional().describe("Area id (see list_board → areas)"),
+      priority: z.string().optional().describe("Priority id (see list_board → priorities); defaults to medium"),
       assignee: z.string().optional(),
       labels: z.array(z.string()).optional(),
       links: z.array(z.string()).optional().describe("Ids of related items"),
@@ -174,7 +187,7 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
-  guard(async (input) => ok(await store.createItem(input))),
+  write(async (input) => ok(await store.createItem(input))),
 );
 
 server.registerTool(
@@ -182,11 +195,10 @@ server.registerTool(
   {
     title: "Update an item",
     description:
-      "Patch any frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically. Set archived to true to hide an item from the board without deleting it.",
+      "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically. Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here — create a new item and archive the old one instead.",
     inputSchema: {
       id: z.string().describe("Item id to update"),
       title: z.string().optional(),
-      phase: z.string().optional(),
       status: z.string().optional(),
       area: z.string().optional(),
       priority: z.string().optional(),
@@ -198,23 +210,22 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  guard(async ({ id, ...patch }) => ok(await store.updateItem(id, patch))),
+  write(async ({ id, ...patch }) => ok(await store.updateItem(id, patch))),
 );
 
 server.registerTool(
   "move_item",
   {
-    title: "Move an item",
+    title: "Move an item to a workflow stage",
     description:
-      "Kanban move: change an item's phase and/or status. Convenience wrapper over update_item.",
+      "Kanban move: set an item's status, i.e. move it to a workflow stage (see list_board → statuses). Convenience wrapper over update_item.",
     inputSchema: {
       id: z.string().describe("Item id to move"),
-      phase: z.string().optional().describe("Target phase id"),
-      status: z.string().optional().describe("Target status id"),
+      status: z.string().describe("Target status id (workflow stage)"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  guard(async ({ id, phase, status }) => ok(await store.moveItem(id, { phase, status }))),
+  write(async ({ id, status }) => ok(await store.moveItem(id, { status }))),
 );
 
 server.registerTool(
@@ -230,7 +241,7 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  guard(async ({ source_id, target_id, action }) =>
+  write(async ({ source_id, target_id, action }) =>
     ok(await linkItems(store, source_id, target_id, action)),
   ),
 );
@@ -240,16 +251,16 @@ server.registerTool(
   {
     title: "Add a board column",
     description:
-      "Add a new column to the board: a phase, status, area or priority. Areas group tickets on the board and are colour-coded; provide a hex color for them. Returns the updated board configuration.",
+      "Add a new column to the board: a status (workflow stage), area or priority. Areas group tickets within stage columns and are colour-coded; provide a hex color for them. Returns the updated board configuration.",
     inputSchema: {
       id: z.string().describe("New column id, e.g. ui"),
       name: z.string().describe("Display name, e.g. UI"),
-      kind: z.enum(["phase", "status", "area", "priority"]).default("phase"),
+      kind: z.enum(["status", "area", "priority"]).default("area"),
       color: z.string().optional().describe("Hex colour, e.g. #5b8cff (recommended for areas)"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
-  guard(async ({ id, name, kind, color }) =>
+  write(async ({ id, name, kind, color }) =>
     ok(await store.addColumn(kind, { id, name, ...(color ? { color } : {}) })),
   ),
 );
@@ -263,7 +274,7 @@ server.registerTool(
     inputSchema: { id: z.string().describe("Item id to delete") },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
   },
-  guard(async ({ id }) => {
+  write(async ({ id }) => {
     const deleted = await store.deleteItem(id);
     return deleted ? ok({ deleted: id }) : fail(`No item with id "${id}"`);
   }),
@@ -274,7 +285,9 @@ server.registerTool(
 // ---------------------------------------------------------------------------
 
 async function main() {
-  await store.init(); // ensure the .kanmer skeleton exists for this project
+  // No store.init() here: a read-only session in a workspace that never
+  // opted into Kanmer must not create .kanmer/ just by being opened.
+  // Write handlers call ensureInit() lazily instead.
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // Never write logs to stdout — that stream is the MCP transport.

@@ -1,0 +1,15 @@
+{
+  "name": "kanmer",
+  "version": "0.1.0",
+  "description": "File-based kanban for AI agents: track tickets, plans and research in a .kanmer folder shared live with the Kanmer desktop GUI.",
+  "author": {
+    "name": "Kanmer contributors",
+    "url": "https://github.com/collisionengineers/kanmer"
+  },
+  "homepage": "https://github.com/collisionengineers/kanmer",
+  "repository": "https://github.com/collisionengineers/kanmer",
+  "license": "MIT",
+  "keywords": ["kanban", "tickets", "mcp", "project-management"],
+  "skills": "./skills/",
+  "mcpServers": "./mcp/claude.mcp.json"
+}

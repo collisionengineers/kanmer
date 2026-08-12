@@ -1,5 +1,14 @@
 # Example codex MCP registration for Kanmer.
 #
+# NOTE: the easier route is the Kanmer plugin, which bundles this server plus
+# workflow skills and templates:
+#
+#   codex plugin marketplace add collisionengineers/kanmer
+#   # then install "kanmer" from /plugins
+#
+# Use this manual config instead if you don't want the plugin — not both, or the
+# tools get listed twice.
+#
 # Add this block to your project-scoped .codex/config.toml (recommended) or to
 # ~/.codex/config.toml. codex launches the server over stdio.
 #

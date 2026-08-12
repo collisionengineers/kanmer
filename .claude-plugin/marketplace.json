@@ -1,0 +1,16 @@
+{
+  "name": "kanmer",
+  "description": "The Kanmer plugin: file-based kanban tooling and workflow skills for tracking tickets, plans and research alongside a live desktop board.",
+  "owner": {
+    "name": "Kanmer contributors",
+    "url": "https://github.com/collisionengineers/kanmer"
+  },
+  "plugins": [
+    {
+      "name": "kanmer",
+      "source": "./plugins/kanmer",
+      "description": "File-based kanban for AI agents — tickets, plans and research shared live with the Kanmer desktop GUI.",
+      "category": "productivity"
+    }
+  ]
+}

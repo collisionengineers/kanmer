@@ -15,8 +15,29 @@ export const BoardColumnSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   color: z.string().optional(),
+  /**
+   * Areas only (format 2): the id prefix for tickets born in this area,
+   * e.g. `API` → `API-001`. Uppercase alphanumeric, 2–6 chars. When unset,
+   * derived from the area id. A ticket's prefix is a birth certificate, not
+   * a live address — moving the ticket to another area never changes its id.
+   */
+  prefix: z
+    .string()
+    .regex(/^[A-Z0-9]{2,6}$/, "prefix must be 2-6 uppercase alphanumerics")
+    .optional(),
 });
 export type BoardColumn = z.infer<typeof BoardColumnSchema>;
+
+/** The five pipeline documents that live inside a ticket's folder (format 2). */
+export const TICKET_DOCS = ["research", "impact", "plan", "checklist", "proof"] as const;
+export type TicketDoc = (typeof TICKET_DOCS)[number];
+
+/** Which pipeline docs exist for a ticket, plus checklist progress if present. */
+export interface TicketDocsInfo {
+  docs: Record<TicketDoc, boolean>;
+  /** Parsed from `- [ ]` / `- [x]` lines in checklist.md; null when absent. */
+  checklist: { checked: number; total: number } | null;
+}
 
 export const IdPrefixesSchema = z.object({
   ticket: z.string().min(1).default("TICK"),
@@ -75,6 +96,12 @@ export const ItemFrontmatterSchema = z
     area: z.string().default(""),
     priority: z.string().default("medium"),
     assignee: z.string().default(""),
+    /** Set while a ticket is taken (being actively worked); absent otherwise. */
+    taken_at: TimestampSchema.optional(),
+    /** The branch the taken work happens on. */
+    branch: z.string().optional(),
+    /** The worktree path the taken work happens in, if any. */
+    worktree: z.string().optional(),
     labels: z.array(z.string()).default([]),
     links: z.array(z.string()).default([]),
     archived: z.boolean().default(false),
@@ -152,6 +179,19 @@ export interface ItemWarning {
 
 /** Where a board config came from: a real board.yml or the synthesized default. */
 export type BoardSource = "file" | "default";
+
+/** Input for takeTicket: who/where the work is happening. */
+export interface TakeTicketInput {
+  /** The branch the work happens on (required — it's the point of taking). */
+  branch: string;
+  /** Worktree path, when working in one. */
+  worktree?: string;
+  /** Stage to move to; defaults to the board's `implementing` stage if it has one. */
+  stage?: string;
+  assignee?: string;
+  /** Take over a ticket that is already taken. */
+  force?: boolean;
+}
 
 /** Forward + backward relations for one item (get_links). */
 export interface LinkGraph {

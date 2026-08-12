@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { KanmerStore } from "./store.js";
 import { getLinkGraph, linkItems } from "./links.js";
+import { migrateToV2 } from "./migrate.js";
 
 let root: string;
 let store: KanmerStore;
@@ -58,13 +59,38 @@ describe("KanmerStore", () => {
     expect(board.statuses.map((s) => s.id)).toEqual(["todo", "done"]);
   });
 
-  it("allocates sequential, zero-padded ids per type", async () => {
+  it("allocates sequential, zero-padded ids", async () => {
     const a = await store.createItem({ type: "ticket", title: "A" });
     const b = await store.createItem({ type: "ticket", title: "B" });
-    const p = await store.createItem({ type: "plan", title: "Plan" });
     expect(a.id).toBe("TICK-001");
     expect(b.id).toBe("TICK-002");
-    expect(p.id).toBe("PLAN-001");
+  });
+
+  it("gives tickets area-based ids and places them in the area's folder", async () => {
+    await store.addColumn("area", { id: "api", name: "API" });
+    const t = await store.createItem({ type: "ticket", title: "A", area: "api" });
+    expect(t.id).toBe("API-001");
+    expect(
+      await fs
+        .access(path.join(root, ".kanmer", "areas", "api", "API-001", "API-001.md"))
+        .then(() => true),
+    ).toBe(true);
+    const none = await store.createItem({ type: "ticket", title: "B" });
+    expect(none.id).toBe("TICK-001");
+    expect(
+      await fs
+        .access(path.join(root, ".kanmer", "areas", "_none", "TICK-001", "TICK-001.md"))
+        .then(() => true),
+    ).toBe(true);
+  });
+
+  it("rejects standalone plan/research creation on a v2 board, naming set_ticket_doc", async () => {
+    await expect(store.createItem({ type: "plan", title: "P" })).rejects.toThrow(
+      /set_ticket_doc/,
+    );
+    await expect(store.createItem({ type: "research", title: "R" })).rejects.toThrow(
+      /set_ticket_doc/,
+    );
   });
 
   it("defaults status to the first stage", async () => {
@@ -86,13 +112,14 @@ describe("KanmerStore", () => {
       ...(await store.getBoard()),
       statuses: [
         { id: "todo", name: "Todo" },
+        { id: "wip", name: "WIP" },
         { id: "done", name: "Done" },
       ],
     });
     const t = await store.createItem({ type: "ticket", title: "A" });
     await expect(store.moveItem(t.id, { status: "planning" })).rejects.toThrow(/Unknown status/);
-    const moved = await store.moveItem(t.id, { status: "done" });
-    expect(moved.status).toBe("done");
+    const moved = await store.moveItem(t.id, { status: "wip" });
+    expect(moved.status).toBe("wip");
   });
 
   it("rejects creating an item with a status the board doesn't define", async () => {
@@ -111,11 +138,14 @@ describe("KanmerStore", () => {
 
   it("validates area only when the board defines areas; empty area always legal", async () => {
     // No areas configured: anything goes (legacy boards tag undeclared areas).
+    const board = await store.getBoard();
+    await store.setBoard({ ...board, areas: [] });
     await store.createItem({ type: "ticket", title: "A", area: "anything" });
+    await store.setBoard(board);
     await store.addColumn("area", { id: "ui", name: "UI" });
     await expect(
       store.createItem({ type: "ticket", title: "B", area: "api" }),
-    ).rejects.toThrow(/Unknown area "api"\. Valid areas: ui/);
+    ).rejects.toThrow(/Unknown area "api"\. Valid areas: pr-review, ui/);
     const ok = await store.createItem({ type: "ticket", title: "C", area: "" });
     expect(ok.area).toBe("");
   });
@@ -178,26 +208,56 @@ describe("KanmerStore", () => {
 
   it("rejects createItem links to items that don't exist", async () => {
     await expect(
-      store.createItem({ type: "plan", title: "P", links: ["TICK-999"] }),
+      store.createItem({ type: "ticket", title: "P", links: ["TICK-999"] }),
     ).rejects.toThrow(/No item with id "TICK-999" to link to/);
   });
 
-  it("surfaces malformed files and filename/id mismatches as warnings", async () => {
+  it("surfaces malformed files, id mismatches and hand-moved folders as warnings", async () => {
     await store.createItem({ type: "ticket", title: "Good" });
-    const dir = path.join(root, ".kanmer", "tickets");
-    await fs.writeFile(path.join(dir, "BROKEN-001.md"), "---\nid: [not: valid\n---\n", "utf8");
+    const none = path.join(root, ".kanmer", "areas", "_none");
+    await fs.mkdir(path.join(none, "BROKEN-001"), { recursive: true });
     await fs.writeFile(
-      path.join(dir, "TICK-999.md"),
+      path.join(none, "BROKEN-001", "BROKEN-001.md"),
+      "---\nid: [not: valid\n---\n",
+      "utf8",
+    );
+    await fs.mkdir(path.join(none, "TICK-999"), { recursive: true });
+    await fs.writeFile(
+      path.join(none, "TICK-999", "TICK-999.md"),
       "---\nid: TICK-042\ntype: ticket\ntitle: Misnamed\n---\nbody\n",
+      "utf8",
+    );
+    // A ticket whose frontmatter area disagrees with the folder it sits in.
+    await fs.mkdir(path.join(none, "TICK-500"), { recursive: true });
+    await fs.writeFile(
+      path.join(none, "TICK-500", "TICK-500.md"),
+      "---\nid: TICK-500\ntype: ticket\ntitle: Strayed\narea: pr-review\n---\nbody\n",
       "utf8",
     );
     const { items, warnings } = await store.listItemsWithWarnings();
     expect(items.some((i) => i.id === "TICK-001")).toBe(true);
-    expect(warnings.length).toBe(2);
+    expect(warnings.length).toBe(3);
     expect(warnings.some((w) => w.file.endsWith("BROKEN-001.md"))).toBe(true);
     expect(warnings.some((w) => w.message.includes("TICK-042"))).toBe(true);
+    expect(warnings.some((w) => w.message.includes("frontmatter wins"))).toBe(true);
     // Plain listItems keeps working and still returns the parseable items.
-    expect((await store.listItems()).length).toBe(2);
+    expect((await store.listItems()).length).toBe(3);
+  });
+
+  it("reconciles a hand-moved folder to the frontmatter area on the next write", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A", area: "pr-review" });
+    // Hand-move the folder out of its area.
+    const from = path.join(root, ".kanmer", "areas", "pr-review", t.id);
+    const to = path.join(root, ".kanmer", "areas", "_none", t.id);
+    await fs.mkdir(path.dirname(to), { recursive: true });
+    await fs.rename(from, to);
+    await store.updateItem(t.id, { title: "B" });
+    expect(
+      await fs.access(path.join(root, ".kanmer", "areas", "pr-review", t.id)).then(
+        () => true,
+        () => false,
+      ),
+    ).toBe(true);
   });
 
   it("reports the board source", async () => {
@@ -229,9 +289,9 @@ describe("KanmerStore", () => {
 
   it("cleans frontmatter links of items referencing a deleted id, reports body refs", async () => {
     const target = await store.createItem({ type: "ticket", title: "Target" });
-    const linker = await store.createItem({ type: "plan", title: "Linker", links: [target.id] });
+    const linker = await store.createItem({ type: "ticket", title: "Linker", links: [target.id] });
     const mentioner = await store.createItem({
-      type: "research",
+      type: "ticket",
       title: "Mentioner",
       body: `see [[${target.id}]]`,
     });
@@ -248,10 +308,19 @@ describe("KanmerStore", () => {
     expect(board.statuses.some((s) => s.id === "blocked")).toBe(true);
   });
 
-  it("seeds default priorities and empty areas", async () => {
+  it("seeds default priorities and the PR Review default area", async () => {
     const board = await store.getBoard();
     expect(board.priorities.map((p) => p.id)).toContain("urgent");
-    expect(board.areas).toEqual([]);
+    expect(board.areas.map((a) => a.id)).toEqual(["pr-review"]);
+    expect(board.areas[0].prefix).toBe("PR");
+  });
+
+  it("stamps version.json with the current format on init", async () => {
+    const raw = JSON.parse(
+      await fs.readFile(path.join(root, ".kanmer", "version.json"), "utf8"),
+    );
+    expect(raw.format).toBe(2);
+    expect(await store.detectFormat()).toBe(2);
   });
 
   it("creates with an area and filters by it", async () => {
@@ -288,11 +357,11 @@ describe("links", () => {
   it("computes forward and backlinks from frontmatter and wiki-links", async () => {
     const a = await store.createItem({ type: "ticket", title: "A" });
     const b = await store.createItem({
-      type: "research",
+      type: "ticket",
       title: "B",
       body: `refers to [[${a.id}]]`,
     });
-    const c = await store.createItem({ type: "plan", title: "C", links: [a.id] });
+    const c = await store.createItem({ type: "ticket", title: "C", links: [a.id] });
 
     const graphA = await getLinkGraph(store, a.id);
     expect(graphA.backlinks.sort()).toEqual([b.id, c.id].sort());
@@ -317,5 +386,222 @@ describe("links", () => {
     );
     // A dangling link (e.g. hand-edited) can still be removed.
     await expect(linkItems(store, a.id, "TICK-999", "remove")).resolves.toBeDefined();
+  });
+});
+
+describe("format v2", () => {
+  it("moves the ticket folder when the area changes; the id never changes", async () => {
+    await store.addColumn("area", { id: "api", name: "API" });
+    const t = await store.createItem({ type: "ticket", title: "A", area: "api" });
+    expect(t.id).toBe("API-001");
+    const moved = await store.updateItem(t.id, { area: "pr-review" });
+    expect(moved.id).toBe("API-001");
+    expect(moved.area).toBe("pr-review");
+    const newFile = path.join(root, ".kanmer", "areas", "pr-review", "API-001", "API-001.md");
+    expect(await fs.access(newFile).then(() => true)).toBe(true);
+    expect(
+      await fs.access(path.join(root, ".kanmer", "areas", "api", "API-001")).then(
+        () => true,
+        () => false,
+      ),
+    ).toBe(false);
+    expect((await store.getItem("API-001"))?.area).toBe("pr-review");
+  });
+
+  it("round-trips ticket docs, appends without clobbering, reports checklist progress", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A" });
+    expect(await store.getDoc(t.id, "research")).toBeNull();
+    await store.setDoc(t.id, "research", "# Findings\n\nStuff");
+    expect(await store.getDoc(t.id, "research")).toBe("# Findings\n\nStuff\n");
+    await store.setDoc(t.id, "research", "More stuff", { append: true });
+    expect(await store.getDoc(t.id, "research")).toBe("# Findings\n\nStuff\n\nMore stuff\n");
+    await store.setDoc(t.id, "checklist", "- [x] one\n- [ ] two\n- [X] three\nnot a box");
+    const info = await store.getTicketDocsInfo(t.id);
+    expect(info?.docs).toEqual({
+      research: true,
+      impact: false,
+      plan: false,
+      checklist: true,
+      proof: false,
+    });
+    expect(info?.checklist).toEqual({ checked: 2, total: 3 });
+  });
+
+  it("takes and releases a ticket", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A" });
+    const taken = await store.takeTicket(t.id, { branch: "feat/x", worktree: "wt/x" });
+    expect(taken.taken_at).toBeTruthy();
+    expect(taken.branch).toBe("feat/x");
+    expect(taken.worktree).toBe("wt/x");
+    expect(taken.status).toBe("implementing");
+    await expect(store.takeTicket(t.id, { branch: "feat/y" })).rejects.toThrow(
+      /already taken/,
+    );
+    const retaken = await store.takeTicket(t.id, { branch: "feat/y", force: true });
+    expect(retaken.branch).toBe("feat/y");
+    expect(retaken.worktree).toBeUndefined();
+    const released = await store.releaseTicket(t.id);
+    expect(released.taken_at).toBeUndefined();
+    expect(released.branch).toBeUndefined();
+    // The file itself must not carry null-valued taken keys.
+    const raw = await fs.readFile(
+      path.join(root, ".kanmer", "areas", "_none", t.id, `${t.id}.md`),
+      "utf8",
+    );
+    expect(raw).not.toContain("taken_at");
+    expect(raw).not.toContain("branch");
+  });
+
+  it("gates the final stage on proof.md and names set_ticket_doc in the error", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A" });
+    await expect(store.moveItem(t.id, { status: "done" })).rejects.toThrow(
+      /proof\.md is missing.*set_ticket_doc/s,
+    );
+    await store.setDoc(t.id, "proof", "Tests: 35/35 green.");
+    const done = await store.moveItem(t.id, { status: "done" });
+    expect(done.status).toBe("done");
+  });
+});
+
+describe("format v1 compatibility", () => {
+  let v1root: string;
+  let v1store: KanmerStore;
+
+  beforeEach(async () => {
+    v1root = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-v1-"));
+    const k = path.join(v1root, ".kanmer");
+    await fs.mkdir(path.join(k, "data"), { recursive: true });
+    await fs.mkdir(path.join(k, "tickets"), { recursive: true });
+    await fs.mkdir(path.join(k, "plans"), { recursive: true });
+    await fs.mkdir(path.join(k, "research"), { recursive: true });
+    await fs.writeFile(
+      path.join(k, "data", "board.yml"),
+      [
+        "statuses:",
+        "  - { id: todo, name: Todo }",
+        "  - { id: in-progress, name: In progress }",
+        "  - { id: done, name: Done }",
+        "areas:",
+        "  - { id: api, name: API }",
+        "priorities:",
+        "  - { id: medium, name: Medium }",
+        "idPrefixes: { ticket: TICK, plan: PLAN, research: RES }",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const ticket = [
+      "---",
+      "id: TICK-001",
+      "type: ticket",
+      "title: Legacy ticket",
+      "status: in-progress",
+      "area: api",
+      "links: [PLAN-001]",
+      "---",
+      "Legacy body.",
+      "",
+    ].join("\n");
+    const plan = [
+      "---",
+      "id: PLAN-001",
+      "type: plan",
+      "title: Legacy plan",
+      "status: todo",
+      "---",
+      "Plan body for [[TICK-001]].",
+      "",
+    ].join("\n");
+    const orphan = [
+      "---",
+      "id: RES-001",
+      "type: research",
+      "title: Orphan research",
+      "status: todo",
+      "---",
+      "Nobody links me.",
+      "",
+    ].join("\n");
+    await fs.writeFile(path.join(k, "tickets", "TICK-001.md"), ticket, "utf8");
+    await fs.writeFile(path.join(k, "plans", "PLAN-001.md"), plan, "utf8");
+    await fs.writeFile(path.join(k, "research", "RES-001.md"), orphan, "utf8");
+    v1store = new KanmerStore(v1root);
+  });
+
+  afterEach(async () => {
+    await fs.rm(v1root, { recursive: true, force: true });
+  });
+
+  it("detects format 1 and keeps reading/writing the legacy layout", async () => {
+    expect(await v1store.detectFormat()).toBe(1);
+    expect((await v1store.listItems()).length).toBe(3);
+    const updated = await v1store.updateItem("TICK-001", { title: "Renamed" });
+    expect(updated.title).toBe("Renamed");
+    const created = await v1store.createItem({ type: "ticket", title: "Another" });
+    expect(created.id).toBe("TICK-002");
+    expect(
+      await fs.access(path.join(v1root, ".kanmer", "tickets", "TICK-002.md")).then(() => true),
+    ).toBe(true);
+    // Plan creation is still allowed on a v1 board.
+    const p = await v1store.createItem({ type: "plan", title: "New plan" });
+    expect(p.id).toBe("PLAN-002");
+    // init() must not stamp v2 onto a v1 board.
+    await v1store.init();
+    expect(
+      await fs.access(path.join(v1root, ".kanmer", "version.json")).then(
+        () => true,
+        () => false,
+      ),
+    ).toBe(false);
+  });
+
+  it("migrates v1 to v2: dry run, real run, idempotent re-run", async () => {
+    const dry = await migrateToV2(v1store, { dryRun: true });
+    expect(dry.alreadyV2).toBe(false);
+    expect(dry.ticketMoves).toEqual([
+      { id: "TICK-001", to: path.join("areas", "api", "TICK-001") },
+    ]);
+    expect(dry.foldedDocs).toEqual([{ source: "PLAN-001", intoTicket: "TICK-001", doc: "plan" }]);
+    expect(dry.convertedToTickets).toEqual([{ id: "RES-001", label: "legacy-research" }]);
+    expect(dry.areaPrefixes).toEqual({ api: "API" });
+    // Dry run touched nothing.
+    expect(await v1store.detectFormat()).toBe(1);
+    expect(
+      await fs.access(path.join(v1root, ".kanmer", "tickets", "TICK-001.md")).then(() => true),
+    ).toBe(true);
+
+    const bodyBefore = (await v1store.getItem("TICK-001"))?.body;
+    const report = await migrateToV2(v1store);
+    expect(report.alreadyV2).toBe(false);
+    expect(await v1store.detectFormat()).toBe(2);
+
+    const ticketFile = path.join(v1root, ".kanmer", "areas", "api", "TICK-001", "TICK-001.md");
+    expect(await fs.access(ticketFile).then(() => true)).toBe(true);
+    expect((await v1store.getItem("TICK-001"))?.body).toBe(bodyBefore);
+    const planDoc = await v1store.getDoc("TICK-001", "plan");
+    expect(planDoc).toContain("# Legacy plan");
+    expect(planDoc).toContain("Plan body for [[TICK-001]].");
+
+    const orphan = await v1store.getItem("RES-001");
+    expect(orphan?.type).toBe("ticket");
+    expect(orphan?.labels).toContain("legacy-research");
+
+    const version = JSON.parse(
+      await fs.readFile(path.join(v1root, ".kanmer", "version.json"), "utf8"),
+    );
+    expect(version).toMatchObject({ format: 2, migratedFrom: 1 });
+
+    const board = await v1store.getBoard();
+    expect(board.areas.find((a) => a.id === "api")?.prefix).toBe("API");
+
+    // Legacy dirs are gone; re-run is a no-op.
+    expect(
+      await fs.access(path.join(v1root, ".kanmer", "tickets")).then(
+        () => true,
+        () => false,
+      ),
+    ).toBe(false);
+    const again = await migrateToV2(v1store);
+    expect(again.alreadyV2).toBe(true);
   });
 });

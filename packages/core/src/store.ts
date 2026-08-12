@@ -8,13 +8,36 @@ import {
   writeFileAtomic,
   writeFileExclusive,
 } from "./io.js";
-import { itemFile, resolvePaths, typeDir, type KanmerPaths } from "./paths.js";
+import {
+  areaFolderName,
+  docFileIn,
+  itemFile,
+  resolvePaths,
+  ticketDirIn,
+  ticketFileIn,
+  typeDir,
+  type KanmerPaths,
+} from "./paths.js";
 import { parseItem, serialiseItem } from "./frontmatter.js";
-import { formatId, nextIdNumber, recordAllocatedId } from "./ids.js";
-import { defaultBoardConfig, readBoard, readBoardWithSource, writeBoard } from "./board.js";
+import {
+  formatId,
+  nextIdNumber,
+  nextPrefixNumber,
+  recordAllocatedId,
+  recordAllocatedPrefix,
+} from "./ids.js";
+import {
+  areaPrefix,
+  defaultBoardConfig,
+  readBoard,
+  readBoardWithSource,
+  writeBoard,
+} from "./board.js";
 import { parseWikiLinks } from "./links.js";
+import { CURRENT_FORMAT, readVersion, writeVersion } from "./version.js";
 import {
   ItemTypeSchema,
+  TICKET_DOCS,
   type BoardColumn,
   type BoardConfig,
   type BoardSource,
@@ -25,6 +48,9 @@ import {
   type ItemFilter,
   type ItemType,
   type ItemWarning,
+  type TakeTicketInput,
+  type TicketDoc,
+  type TicketDocsInfo,
   type UpdateItemPatch,
 } from "./types.js";
 
@@ -37,23 +63,68 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+/** Where an item's file lives: the v2 areas layout or a v1 type folder. */
+type ItemLocation =
+  | { kind: "v2"; file: string; dir: string; areaFolder: string }
+  | { kind: "v1"; file: string; type: ItemType };
+
 /**
  * A store bound to one project root (the folder containing `.kanmer`).
  * Both the MCP server and the Electron main process construct one of these.
+ *
+ * Reads are format-transparent (both layouts are always scanned); writes
+ * follow the detected format, so an unmigrated v1 board keeps working.
  */
 export class KanmerStore {
   readonly paths: KanmerPaths;
+  private formatCache: 1 | 2 | null = null;
 
   constructor(projectRoot: string) {
     this.paths = resolvePaths(projectRoot);
   }
 
-  /** Create the `.kanmer` skeleton and default board.yml if missing. */
+  /**
+   * Which storage format this board uses. version.json is authoritative;
+   * without it, a legacy `tickets/` folder means format 1, and a fresh
+   * project starts at the current format.
+   */
+  async detectFormat(): Promise<1 | 2> {
+    if (this.formatCache !== null) return this.formatCache;
+    const version = await readVersion(this.paths);
+    if (version) {
+      this.formatCache = version.format >= 2 ? 2 : 1;
+    } else if (await pathExists(this.paths.tickets)) {
+      this.formatCache = 1;
+    } else {
+      this.formatCache = 2;
+    }
+    return this.formatCache;
+  }
+
+  /** Forget the cached format — call after migrating this project. */
+  resetFormatCache(): void {
+    this.formatCache = null;
+  }
+
+  /**
+   * Create the `.kanmer` skeleton and default board.yml if missing. On an
+   * existing v1 board this maintains the v1 skeleton and does NOT stamp
+   * version.json — upgrading a board is migration's job, never a side
+   * effect of opening it.
+   */
   async init(): Promise<void> {
+    const format = await this.detectFormat();
     await ensureDir(this.paths.data);
-    await ensureDir(this.paths.tickets);
-    await ensureDir(this.paths.plans);
-    await ensureDir(this.paths.research);
+    if (format === 1) {
+      await ensureDir(this.paths.tickets);
+      await ensureDir(this.paths.plans);
+      await ensureDir(this.paths.research);
+    } else {
+      await ensureDir(this.paths.areasRoot);
+      if (!(await readVersion(this.paths))) {
+        await writeVersion(this.paths, { format: CURRENT_FORMAT });
+      }
+    }
     if (!(await pathExists(this.paths.boardFile))) {
       await writeBoard(this.paths, defaultBoardConfig());
     }
@@ -96,15 +167,66 @@ export class KanmerStore {
 
   /**
    * Like listItems, but also surfaces problems that would otherwise be
-   * silently swallowed: files that fail to parse, and files whose frontmatter
-   * id doesn't match their filename.
+   * silently swallowed: files that fail to parse, filename/id mismatches,
+   * and tickets whose folder disagrees with their frontmatter area.
    */
   async listItemsWithWarnings(
     filter: ItemFilter = {},
   ): Promise<{ items: Item[]; warnings: ItemWarning[] }> {
-    const types = filter.type ? [filter.type] : ITEM_TYPES;
     const items: Item[] = [];
     const warnings: ItemWarning[] = [];
+
+    // Format 2 layout: areas/<areaFolder>/<ticketId>/<ticketId>.md
+    let areaFolders: string[] = [];
+    try {
+      areaFolders = await fs.readdir(this.paths.areasRoot);
+    } catch {
+      // no areas/ dir — v1 board or empty project
+    }
+    for (const areaFolder of areaFolders) {
+      const areaPath = path.join(this.paths.areasRoot, areaFolder);
+      let entries: string[];
+      try {
+        entries = await fs.readdir(areaPath, { withFileTypes: true }).then((d) =>
+          d.filter((e) => e.isDirectory()).map((e) => e.name),
+        );
+      } catch {
+        continue;
+      }
+      for (const ticketFolder of entries) {
+        const file = path.join(areaPath, ticketFolder, `${ticketFolder}.md`);
+        if (!(await pathExists(file))) continue;
+        try {
+          const item = parseItem(await readText(file));
+          if (item.id !== ticketFolder) {
+            warnings.push({
+              file,
+              message:
+                `frontmatter id "${item.id}" doesn't match its folder "${ticketFolder}" — ` +
+                `rename the folder and file to the id (lookups go by folder name)`,
+            });
+          }
+          const expectedFolder = safeAreaFolder(item.area);
+          if (expectedFolder !== null && expectedFolder !== areaFolder) {
+            warnings.push({
+              file,
+              message:
+                `ticket area is "${item.area || "(none)"}" but its folder is under ` +
+                `areas/${areaFolder}/ — frontmatter wins; the folder moves on the next write`,
+            });
+          }
+          items.push(item);
+        } catch (err) {
+          warnings.push({
+            file,
+            message: `failed to parse: ${err instanceof Error ? err.message : String(err)}`,
+          });
+        }
+      }
+    }
+
+    // Format 1 legacy layout: tickets|plans|research/<id>.md
+    const types = filter.type ? [filter.type] : ITEM_TYPES;
     for (const type of types) {
       const dir = typeDir(this.paths, type);
       let names: string[];
@@ -136,25 +258,40 @@ export class KanmerStore {
         }
       }
     }
+
     return {
       items: items.filter((item) => matchesFilter(item, filter)).sort(byIdAsc),
       warnings,
     };
   }
 
-  /** Locate the file for an id by checking each type folder. */
-  private async findFile(id: string): Promise<{ type: ItemType; file: string } | null> {
+  /** Locate an item's file: v2 areas layout first, then the v1 type dirs. */
+  private async locateItem(id: string): Promise<ItemLocation | null> {
+    // itemFile/ticketDirIn validate below too, but failing fast keeps the
+    // traversal guard on every path.
+    itemFile(this.paths, "ticket", id);
+    let areaFolders: string[] = [];
+    try {
+      areaFolders = await fs.readdir(this.paths.areasRoot);
+    } catch {
+      // fall through to v1
+    }
+    for (const areaFolder of areaFolders) {
+      const dir = path.join(this.paths.areasRoot, areaFolder, id);
+      const file = path.join(dir, `${id}.md`);
+      if (await pathExists(file)) return { kind: "v2", file, dir, areaFolder };
+    }
     for (const type of ITEM_TYPES) {
       const file = itemFile(this.paths, type, id);
-      if (await pathExists(file)) return { type, file };
+      if (await pathExists(file)) return { kind: "v1", file, type };
     }
     return null;
   }
 
   async getItem(id: string): Promise<Item | null> {
-    const found = await this.findFile(id);
-    if (!found) return null;
-    return parseItem(await readText(found.file));
+    const loc = await this.locateItem(id);
+    if (!loc) return null;
+    return parseItem(await readText(loc.file));
   }
 
   async createItem(input: CreateItemInput): Promise<Item> {
@@ -168,13 +305,33 @@ export class KanmerStore {
         throw new Error(`No item with id "${target}" to link to`);
       }
     }
+    const format = await this.detectFormat();
+    if (format === 2 && type !== "ticket") {
+      throw new Error(
+        `This board stores ${type === "plan" ? "plans" : "research"} inside ticket folders, ` +
+          `not as standalone items. Create a ticket, then write the document with ` +
+          `set_ticket_doc(doc: "${type}").`,
+      );
+    }
+
+    const area = input.area ?? "";
+    const areaEntry = board.areas.find((a) => a.id === area);
+    const prefix =
+      format === 2
+        ? areaEntry
+          ? areaPrefix(areaEntry)
+          : board.idPrefixes.ticket
+        : board.idPrefixes[type];
+
     // The item file itself is the allocation lock: compute a candidate id,
     // try to create the file exclusively, and on EEXIST (someone else claimed
     // it between our read and our write) recompute one number higher.
-    const prefix = board.idPrefixes[type];
     let lastTried = 0;
     for (let attempt = 0; attempt < CREATE_ATTEMPTS; attempt++) {
-      const n = await nextIdNumber(this.paths, type, prefix, lastTried);
+      const n =
+        format === 2
+          ? await nextPrefixNumber(this.paths, prefix, lastTried)
+          : await nextIdNumber(this.paths, type, prefix, lastTried);
       const id = formatId(prefix, n);
       const now = nowIso();
       const item: Item = {
@@ -182,7 +339,7 @@ export class KanmerStore {
         type,
         title: input.title,
         status: input.status ?? board.statuses[0]?.id ?? "",
-        area: input.area ?? "",
+        area,
         priority: input.priority ?? defaultPriority(board),
         assignee: input.assignee ?? "",
         labels: input.labels ?? [],
@@ -192,8 +349,12 @@ export class KanmerStore {
         updated: now,
         body: input.body ?? "",
       };
+      const file =
+        format === 2
+          ? ticketFileIn(this.paths, area, id)
+          : itemFile(this.paths, type, id);
       try {
-        await writeFileExclusive(itemFile(this.paths, type, id), serialiseItem(item));
+        await writeFileExclusive(file, serialiseItem(item));
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code === "EEXIST") {
           lastTried = n;
@@ -201,7 +362,8 @@ export class KanmerStore {
         }
         throw err;
       }
-      await recordAllocatedId(this.paths, type, n);
+      if (format === 2) await recordAllocatedPrefix(this.paths, prefix, n);
+      else await recordAllocatedId(this.paths, type, n);
       return item;
     }
     throw new Error(`Could not allocate a unique ${type} id after ${CREATE_ATTEMPTS} attempts`);
@@ -209,15 +371,17 @@ export class KanmerStore {
 
   async updateItem(id: string, patch: UpdateItemPatch): Promise<Item> {
     const { expectedUpdated, ...fields } = patch;
+    let board: BoardConfig | null = null;
     if (fields.status !== undefined || fields.area !== undefined || fields.priority !== undefined) {
-      const board = await this.getBoard();
+      board = await this.getBoard();
       if (fields.status !== undefined) assertFieldAgainstBoard(board, "status", fields.status);
       if (fields.area !== undefined) assertFieldAgainstBoard(board, "area", fields.area);
-      if (fields.priority !== undefined) assertFieldAgainstBoard(board, "priority", fields.priority);
+      if (fields.priority !== undefined)
+        assertFieldAgainstBoard(board, "priority", fields.priority);
     }
-    const found = await this.findFile(id);
-    if (!found) throw new Error(`No item with id "${id}"`);
-    const current = parseItem(await readText(found.file));
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
     if (expectedUpdated !== undefined && current.updated !== expectedUpdated) {
       const { body: _body, ...frontmatter } = current;
       throw new Error(
@@ -237,7 +401,24 @@ export class KanmerStore {
       ...pruned,
       updated: nowIso(),
     };
-    await writeFileAtomic(found.file, serialiseItem(next));
+    if (next.status !== current.status && current.type === "ticket" && loc.kind === "v2") {
+      board ??= await this.getBoard();
+      await this.assertProofGate(loc.dir, board, id, next.status);
+    }
+    let file = loc.file;
+    if (loc.kind === "v2") {
+      // Frontmatter `area` is authoritative over folder location: an area
+      // change (or a hand-moved folder being written to) moves the folder.
+      // The id — and with it every [[link]] — never changes.
+      const targetFolder = safeAreaFolder(next.area ?? "");
+      if (targetFolder !== null && targetFolder !== loc.areaFolder) {
+        const newDir = ticketDirIn(this.paths, next.area ?? "", id);
+        await ensureDir(path.dirname(newDir));
+        await fs.rename(loc.dir, newDir);
+        file = path.join(newDir, `${id}.md`);
+      }
+    }
+    await writeFileAtomic(file, serialiseItem(next));
     return next;
   }
 
@@ -250,14 +431,141 @@ export class KanmerStore {
   }
 
   /**
-   * Delete an item file, then rewrite the frontmatter links[] of anything
-   * that pointed at it. Body [[wiki]] references are prose and stay put —
-   * they're reported so the caller can mention the residue.
+   * Take a ticket: record when, on which branch and (optionally) in which
+   * worktree the work happens, and move it into the working stage. The agent
+   * workflow calls this before touching code so the human's board shows who
+   * is where.
+   */
+  async takeTicket(id: string, input: TakeTicketInput): Promise<Item> {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
+    if (current.type !== "ticket") {
+      throw new Error(`Only tickets can be taken; "${id}" is a ${current.type}`);
+    }
+    if (current.taken_at && !input.force) {
+      throw new Error(
+        `"${id}" is already taken (taken_at ${current.taken_at}` +
+          `${current.branch ? `, branch ${current.branch}` : ""}). ` +
+          `Release it first, or pass force to take it over.`,
+      );
+    }
+    const board = await this.getBoard();
+    let stage = input.stage;
+    if (stage !== undefined) {
+      assertFieldAgainstBoard(board, "status", stage);
+    } else {
+      stage = board.statuses.some((s) => s.id === "implementing")
+        ? "implementing"
+        : current.status;
+    }
+    if (stage !== current.status && loc.kind === "v2") {
+      await this.assertProofGate(loc.dir, board, id, stage);
+    }
+    const next: Item = {
+      ...current,
+      status: stage,
+      taken_at: nowIso(),
+      branch: input.branch,
+      updated: nowIso(),
+    };
+    if (input.worktree !== undefined) next.worktree = input.worktree;
+    else delete next.worktree; // a force-retake must not keep a stale worktree
+    if (input.assignee !== undefined) next.assignee = input.assignee;
+    await writeFileAtomic(loc.file, serialiseItem(next));
+    return next;
+  }
+
+  /** Release a taken ticket: clear taken_at / branch / worktree. */
+  async releaseTicket(id: string): Promise<Item> {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
+    if (!current.taken_at && !current.branch && !current.worktree) return current;
+    const next: Item = { ...current, updated: nowIso() };
+    delete next.taken_at;
+    delete next.branch;
+    delete next.worktree;
+    await writeFileAtomic(loc.file, serialiseItem(next));
+    return next;
+  }
+
+  /** Read one of a ticket's pipeline documents; null when it doesn't exist yet. */
+  async getDoc(id: string, doc: TicketDoc): Promise<string | null> {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    if (loc.kind !== "v2") return null;
+    const file = docFileIn(loc.dir, doc);
+    if (!(await pathExists(file))) return null;
+    return readText(file);
+  }
+
+  /**
+   * Write (or append to) one of a ticket's pipeline documents. Docs are plain
+   * Markdown with no frontmatter. `append` adds after a blank line so
+   * progress notes never clobber existing content.
+   */
+  async setDoc(
+    id: string,
+    doc: TicketDoc,
+    content: string,
+    opts: { append?: boolean } = {},
+  ): Promise<void> {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    if (loc.kind !== "v2") {
+      throw new Error(
+        `"${id}" is stored in the legacy layout, which has no ticket folders — ` +
+          `migrate this board to format 2 first.`,
+      );
+    }
+    const file = docFileIn(loc.dir, doc);
+    let text = `${content.trim()}\n`;
+    if (opts.append) {
+      const existing = (await pathExists(file)) ? await readText(file) : "";
+      if (existing.trim()) text = `${existing.trimEnd()}\n\n${content.trim()}\n`;
+    }
+    await writeFileAtomic(file, text);
+  }
+
+  /** Which pipeline docs exist for a ticket + checklist progress; null for legacy items. */
+  async getTicketDocsInfo(id: string): Promise<TicketDocsInfo | null> {
+    const loc = await this.locateItem(id);
+    if (!loc || loc.kind !== "v2") return null;
+    const docs = {} as Record<TicketDoc, boolean>;
+    for (const doc of TICKET_DOCS) {
+      docs[doc] = await pathExists(docFileIn(loc.dir, doc));
+    }
+    let checklist: TicketDocsInfo["checklist"] = null;
+    if (docs.checklist) {
+      const text = await readText(docFileIn(loc.dir, "checklist"));
+      let checked = 0;
+      let total = 0;
+      for (const line of text.split("\n")) {
+        const m = /^\s*[-*]\s+\[( |x|X)\]/.exec(line);
+        if (!m) continue;
+        total++;
+        if (m[1] !== " ") checked++;
+      }
+      checklist = { checked, total };
+    }
+    return { docs, checklist };
+  }
+
+  /**
+   * Delete an item, then rewrite the frontmatter links[] of anything that
+   * pointed at it. In the v2 layout this removes the whole ticket folder —
+   * docs and attachments included. Body [[wiki]] references are prose and
+   * stay put — they're reported so the caller can mention the residue.
    */
   async deleteItem(id: string): Promise<DeleteItemResult> {
-    const found = await this.findFile(id);
-    if (!found) return { deleted: false, cleanedLinks: [], bodyReferencesRemain: [] };
-    await removeFile(found.file);
+    const loc = await this.locateItem(id);
+    if (!loc) return { deleted: false, cleanedLinks: [], bodyReferencesRemain: [] };
+    if (loc.kind === "v2") {
+      await fs.rm(loc.dir, { recursive: true, force: true });
+    } else {
+      await removeFile(loc.file);
+    }
     const remaining = (await this.listItemsWithWarnings({ includeArchived: true })).items;
     const cleanedLinks: string[] = [];
     const bodyReferencesRemain: string[] = [];
@@ -290,6 +598,32 @@ export class KanmerStore {
         .toLowerCase();
       return haystack.includes(q);
     });
+  }
+
+  /** The proof gate: a ticket may only reach the final stage with proof.md written. */
+  private async assertProofGate(
+    ticketDir: string,
+    board: BoardConfig,
+    id: string,
+    nextStatus: string,
+  ): Promise<void> {
+    const lastStage = board.statuses[board.statuses.length - 1]?.id;
+    if (nextStatus !== lastStage) return;
+    if (!(await pathExists(docFileIn(ticketDir, "proof")))) {
+      throw new Error(
+        `${id} cannot move to "${nextStatus}": proof.md is missing. ` +
+          `Write the evidence first with set_ticket_doc(doc: "proof").`,
+      );
+    }
+  }
+}
+
+/** areaFolderName, but null instead of throwing (for read-side comparisons). */
+function safeAreaFolder(area: string | undefined): string | null {
+  try {
+    return areaFolderName(area ?? "");
+  } catch {
+    return null;
   }
 }
 
@@ -338,6 +672,7 @@ function patchChangesItem(current: Item, pruned: Partial<UpdateItemPatch>): bool
 
 function matchesFilter(item: Item, filter: ItemFilter): boolean {
   if (!filter.includeArchived && item.archived) return false;
+  if (filter.type && item.type !== filter.type) return false;
   if (filter.status && item.status !== filter.status) return false;
   if (filter.area && item.area !== filter.area) return false;
   if (filter.label && !(item.labels ?? []).includes(filter.label)) return false;

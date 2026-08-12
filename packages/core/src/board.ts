@@ -1,5 +1,10 @@
 import YAML from "yaml";
-import { BoardConfigSchema, type BoardConfig, type BoardSource } from "./types.js";
+import {
+  BoardConfigSchema,
+  type BoardColumn,
+  type BoardConfig,
+  type BoardSource,
+} from "./types.js";
 import { pathExists, readText, writeFileAtomic } from "./io.js";
 import type { KanmerPaths } from "./paths.js";
 
@@ -17,7 +22,9 @@ export function defaultBoardConfig(): BoardConfig {
       { id: "verifying", name: "Verifying" },
       { id: "done", name: "Done" },
     ],
-    areas: [],
+    // PR Review is a default area on every new board: agents file PR feedback
+    // tickets there without having to invent a home for them first.
+    areas: [{ id: "pr-review", name: "PR Review", prefix: "PR", color: "#b48cff" }],
     priorities: [
       { id: "low", name: "Low", color: "#6b7280" },
       { id: "medium", name: "Medium", color: "#5b8cff" },
@@ -26,6 +33,42 @@ export function defaultBoardConfig(): BoardConfig {
     ],
     idPrefixes: { ticket: "TICK", plan: "PLAN", research: "RES" },
   };
+}
+
+/**
+ * The id prefix tickets born in this area get: the explicit `prefix`, or one
+ * derived from the area id (uppercased, non-alphanumerics dropped, max 6).
+ */
+export function areaPrefix(area: BoardColumn): string {
+  if (area.prefix) return area.prefix;
+  const cleaned = area.id.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return cleaned.length >= 2 ? cleaned.slice(0, 6) : `${cleaned}XX`.slice(0, 2);
+}
+
+/**
+ * Every area prefix (explicit or derived) must be unique, and must not
+ * collide with the type prefixes (`TICK` etc.) that no-area tickets and
+ * legacy items use — two prefixes sharing an id space would collide on
+ * allocation.
+ */
+function assertUniquePrefixes(board: BoardConfig): void {
+  const seen = new Map<string, string>();
+  for (const [owner, prefix] of Object.entries(board.idPrefixes).map(
+    ([type, p]) => [`idPrefixes.${type}`, p] as const,
+  )) {
+    seen.set(prefix, owner);
+  }
+  for (const area of board.areas) {
+    const prefix = areaPrefix(area);
+    const holder = seen.get(prefix);
+    if (holder) {
+      throw new Error(
+        `Area "${area.id}" would use id prefix "${prefix}", which ${holder} already uses. ` +
+          `Set a distinct "prefix" on the area.`,
+      );
+    }
+    seen.set(prefix, `area "${area.id}"`);
+  }
 }
 
 export async function readBoard(paths: KanmerPaths): Promise<BoardConfig> {
@@ -50,5 +93,6 @@ export async function readBoardWithSource(
 
 export async function writeBoard(paths: KanmerPaths, board: BoardConfig): Promise<void> {
   const validated = BoardConfigSchema.parse(board);
+  assertUniquePrefixes(validated);
   await writeFileAtomic(paths.boardFile, YAML.stringify(validated));
 }

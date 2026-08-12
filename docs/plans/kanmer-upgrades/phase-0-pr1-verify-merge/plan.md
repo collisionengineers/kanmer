@@ -63,3 +63,15 @@ The committed bundle `plugins/kanmer/mcp/kanmer-mcp.cjs` was confirmed rebuilt (
   1.7 `expectedUpdated`/`expected_updated` optimistic concurrency,
   1.8 `writeFileExclusive` (temp+`fs.link`, `wx` fallback) + candidate/claim id loop.
   Verified: vitest 35/35, smoke 30/30, GUI typecheck, `plugin:build` + `plugin:check` green. Tool-reference + AGENTS.md updated (lockfile suggestion replaced by exclusive-create rationale).
+
+- **Phase 2 — Format v2 storage engine + migration: DONE.** All 8 items landed:
+  2.1 `version.ts` + `detectFormat()` (version.json authoritative; legacy `tickets/` ⇒ v1; fresh ⇒ v2; `init()` never stamps v2 onto a v1 board),
+  2.2 area `prefix` (zod-validated, derived when unset via `areaPrefix()`, uniqueness enforced in `writeBoard`) + PR Review default area,
+  2.3 paths v2 (`areasRoot`, `areaDir`, `ticketDirIn`, `ticketFileIn`, `docFileIn`, `_none`),
+  2.4 store v2 (reads scan BOTH layouts transparently; v2 creates are ticket-only with area-prefix ids — plan/research creation errors pointing at `set_ticket_doc`; area change moves the folder via `fs.rename`, id immutable; delete removes the folder recursively; area/folder mismatch warned + reconciled on next write),
+  2.5 docs API (`getDoc`/`setDoc` with append, `getTicketDocsInfo` with checklist progress),
+  2.6 `takeTicket`/`releaseTicket` (taken_at/branch/worktree; force-retake clears stale worktree),
+  2.7 proof gate on the last stage naming `set_ticket_doc(doc: "proof")`,
+  2.8 `migrate.ts` (dry-run report, folds linked plans/research into ticket folders, orphans → labeled tickets, prefixes pinned, counters re-keyed, idempotent).
+  Verified: vitest 45/45 (incl. v1-fixture compat + full migration round-trip), smoke 33/33, GUI typecheck, plugin rebuilt + sync OK.
+  Known accepted edge: two concurrent creates sharing the TICK fallback prefix in *different* undeclared areas could double-allocate a number — only reachable when a v2 board's `areas` list has been emptied.

@@ -84,7 +84,16 @@ try {
     name: "create_item",
     arguments: { type: "plan", title: "Smoke plan" },
   });
-  check("create_item allocates PLAN-001", JSON.parse(textOf(plan)).id === "PLAN-001");
+  check(
+    "create_item rejects standalone plans on a v2 board, naming set_ticket_doc",
+    plan.isError === true && textOf(plan).includes("set_ticket_doc"),
+  );
+
+  const second = await client.callTool({
+    name: "create_item",
+    arguments: { type: "ticket", title: "Second ticket", body: "See [[TICK-001]]" },
+  });
+  check("create_item allocates TICK-002", JSON.parse(textOf(second)).id === "TICK-002");
 
   const moved = await client.callTool({
     name: "move_item",
@@ -115,14 +124,20 @@ try {
   const traversal = await client.callTool({ name: "get_item", arguments: { id: "../evil" } });
   check("get_item rejects a traversal id", traversal.isError === true);
 
-  const links = await client.callTool({ name: "get_links", arguments: { id: "PLAN-001" } });
-  check("get_links resolves wiki backlink", textOf(links).includes("TICK-001"));
+  const links = await client.callTool({ name: "get_links", arguments: { id: "TICK-001" } });
+  check("get_links resolves wiki backlink", textOf(links).includes("TICK-002"));
 
   const search = await client.callTool({ name: "search_items", arguments: { query: "Smoke ticket" } });
   check("search_items finds the ticket", textOf(search).includes("TICK-001"));
 
-  const onDisk = fs.existsSync(path.join(sandbox, ".kanmer", "tickets", "TICK-001.md"));
-  check("ticket file written to .kanmer/tickets", onDisk);
+  const onDisk = fs.existsSync(
+    path.join(sandbox, ".kanmer", "areas", "_none", "TICK-001", "TICK-001.md"),
+  );
+  check("ticket lives in its own folder under areas/_none", onDisk);
+  check(
+    "version.json stamped with format 2",
+    JSON.parse(fs.readFileSync(path.join(sandbox, ".kanmer", "version.json"), "utf8")).format === 2,
+  );
 
   const summaryKeys = Object.keys(JSON.parse(textOf(search))[0]).sort();
   const expectedKeys = [
@@ -149,25 +164,34 @@ try {
     arguments: { kind: "area", id: "ui", name: "UI", color: "#5b8cff" },
   });
   check("add_column area updates board", textOf(addArea).includes('"ui"'));
-  await client.callTool({
+  const uiCard = await client.callTool({
     name: "create_item",
     arguments: { type: "ticket", title: "UI card", area: "ui" },
   });
+  check(
+    "ticket born in an area gets the area-based id",
+    JSON.parse(textOf(uiCard)).id === "UI-001",
+    JSON.parse(textOf(uiCard)).id,
+  );
   const uiList = await client.callTool({ name: "list_items", arguments: { area: "ui" } });
   check("list_items filters by area", JSON.parse(textOf(uiList)).length === 1);
 
   // Archive: hide from default listing, visible with include_archived.
-  await client.callTool({ name: "update_item", arguments: { id: "PLAN-001", archived: true } });
-  const activePlans = await client.callTool({ name: "list_items", arguments: { type: "plan" } });
-  check("archived item excluded by default", JSON.parse(textOf(activePlans)).length === 0);
-  const allPlans = await client.callTool({
+  await client.callTool({ name: "update_item", arguments: { id: "UI-001", archived: true } });
+  const activeUi = await client.callTool({ name: "list_items", arguments: { area: "ui" } });
+  check("archived item excluded by default", JSON.parse(textOf(activeUi)).length === 0);
+  const allUi = await client.callTool({
     name: "list_items",
-    arguments: { type: "plan", include_archived: true },
+    arguments: { area: "ui", include_archived: true },
   });
-  check("archived item shown with include_archived", JSON.parse(textOf(allPlans)).length === 1);
+  check("archived item shown with include_archived", JSON.parse(textOf(allUi)).length === 1);
 
   const del1 = await client.callTool({ name: "delete_item", arguments: { id: "TICK-001" } });
-  check("delete_item removes the file", textOf(del1).includes("TICK-001") && !fs.existsSync(path.join(sandbox, ".kanmer", "tickets", "TICK-001.md")));
+  check(
+    "delete_item removes the ticket folder",
+    textOf(del1).includes("TICK-001") &&
+      !fs.existsSync(path.join(sandbox, ".kanmer", "areas", "_none", "TICK-001")),
+  );
   const delPayload = JSON.parse(textOf(del1));
   check(
     "delete_item reports cleanedLinks and bodyReferencesRemain",

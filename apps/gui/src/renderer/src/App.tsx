@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { BoardConfig, CreateItemInput, Item, MigrationReport } from "@kanmer/core";
+import type {
+  BoardConfig,
+  CreateItemInput,
+  Item,
+  MigrationReport,
+  MovePosition,
+} from "@kanmer/core";
+import { blockedIds, columnCards, optimisticOrder } from "./lib/board.js";
 import type { AppSettings, ChangePayload, Theme } from "../../shared/ipc.js";
 import { Board } from "./components/Board.js";
 import { ArchivedList } from "./components/ArchivedList.js";
@@ -293,16 +300,34 @@ export function App(): JSX.Element {
 
   const announce = useCallback((text: string) => setAnnouncement(text), []);
 
-  /** Optimistic drag: the card lands instantly; errors roll back via refresh. */
+  /**
+   * Optimistic drag: the card lands instantly, at the position it was dropped
+   * — the board sorts by order-then-id, so patching `order` as well as
+   * `status` is what makes the drop land where the user aimed before the
+   * write returns. The awaited write and the watcher then reconcile the real
+   * fractional value; errors roll back via refresh.
+   */
   const onMove = useCallback(
-    async (id: string, to: { status: string }) => {
-      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status: to.status } : i)));
+    async (id: string, to: { status: string; position?: MovePosition }) => {
+      setItems((prev) => {
+        const target = prev.find((i) => i.id === id);
+        if (!target) return prev;
+        const order =
+          to.position === undefined
+            ? target.order
+            : optimisticOrder(columnCards(prev, to.status), to.position, id);
+        return prev.map((i) => (i.id === id ? { ...i, status: to.status, order } : i));
+      });
       try {
         await window.kanmer.moveItem(id, to);
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        // Roll back FIRST: refresh() clears `error` on success, so setting the
+        // message before it would leave a rejected move (the proof gate, a
+        // conflict) silently undone with nothing on screen.
+        const message = err instanceof Error ? err.message : String(err);
         await refresh();
+        setError(message);
       }
     },
     [refresh],
@@ -407,6 +432,14 @@ export function App(): JSX.Element {
   }, [settingsOpen, paletteOpen, activityOpen, trySelect]);
 
   const knownIds = useMemo(() => new Set(items.map((i) => i.id)), [items]);
+  const lastStage = board?.statuses[board.statuses.length - 1]?.id;
+  // Card badge inputs: computed once here, read per card as booleans so
+  // Card's memoization survives (a Set prop would re-render every card).
+  const blocked = useMemo(() => blockedIds(items, lastStage), [items, lastStage]);
+  // Re-derived when the board changes rather than on a timer: a date that is
+  // one render stale cannot mislabel anything a user is looking at.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), [changeSignal]);
   const selected = useMemo(
     () => items.find((i) => i.id === selectedId) ?? null,
     [items, selectedId],
@@ -555,6 +588,8 @@ export function App(): JSX.Element {
               onMoveRelative={onMoveRelative}
               onQuickAdd={onQuickAdd}
               onContext={onCardContext}
+              blocked={blocked}
+              today={today}
               quickAddSignal={quickAddSignal}
             />
           ) : view === "standup" ? (

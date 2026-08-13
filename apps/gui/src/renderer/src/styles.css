@@ -9,6 +9,7 @@
   --accent: #5b8cff;
   --accent-dim: #2b3a63;
   --danger: #ff6b6b;
+  --warn: #ffcf7a;
   --radius: 8px;
   color-scheme: dark;
 }
@@ -24,6 +25,7 @@
   --accent: #2f6bff;
   --accent-dim: #dbe6ff;
   --danger: #d92d20;
+  --warn: #a05e03;
   color-scheme: light;
 }
 
@@ -263,6 +265,26 @@ textarea:focus {
   border-radius: var(--radius);
   padding: 8px 10px;
   cursor: pointer;
+  /* anchors the drag insertion lines below */
+  position: relative;
+}
+/* Insertion point for a manual-ordering drop, on the half being aimed at. */
+.card.drop-before::before,
+.card.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.card.drop-before::before {
+  top: -4px;
+}
+.card.drop-after::after {
+  bottom: -4px;
 }
 .card:hover {
   border-color: var(--accent);
@@ -273,9 +295,14 @@ textarea:focus {
 }
 .card-top {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
   margin-bottom: 4px;
+}
+/* Priority stays hard right whatever badges sit between it and the id. */
+.card-top .pri {
+  margin-left: auto;
 }
 .card-id {
   font-size: 11px;
@@ -728,6 +755,16 @@ button.danger {
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip.blocked {
+  color: var(--danger);
+  border-color: currentColor;
+  white-space: nowrap;
+}
+.chip.overdue {
+  color: var(--warn);
+  border-color: currentColor;
   white-space: nowrap;
 }
 .list-row {

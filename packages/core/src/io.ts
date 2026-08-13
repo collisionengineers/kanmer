@@ -1,6 +1,16 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Stats } from "node:fs";
+import { createHash } from "node:crypto";
+
+/**
+ * Version token for a document's exact bytes. Content-hashed, not mtime:
+ * immune to coarse mtime granularity and to writeFileAtomic's rename (which
+ * replaces the inode, so anything identity-based would false-positive).
+ */
+export function contentVersion(text: string): string {
+  return createHash("sha256").update(text, "utf8").digest("hex").slice(0, 16);
+}
 
 /** Ensure a directory (and parents) exists. */
 export async function ensureDir(dir: string): Promise<void> {

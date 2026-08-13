@@ -311,7 +311,7 @@ server.registerTool(
   {
     title: "Read a ticket document",
     description:
-      "Read one of a ticket's pipeline documents (research, impact, plan, checklist, proof) from its folder. Returns content: null when the document hasn't been written yet.",
+      "Read one of a ticket's pipeline documents (research, impact, plan, checklist, proof) from its folder. Returns content: null when the document hasn't been written yet. `version` is a token for the document's current bytes — pass it back as `expected_version` on set_ticket_doc to be rejected instead of overwriting a concurrent edit.",
     inputSchema: {
       id: z.string().describe("Ticket id"),
       doc: ticketDocEnum.describe("Which document"),
@@ -319,8 +319,8 @@ server.registerTool(
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   guard(async ({ id, doc }) => {
-    const content = await store.getDoc(id, doc);
-    return ok({ id, doc, exists: content !== null, content });
+    const { content, version } = await store.getDocWithVersion(id, doc);
+    return ok({ id, doc, exists: content !== null, content, version });
   }),
 );
 
@@ -532,18 +532,28 @@ server.registerTool(
   {
     title: "Write a ticket document",
     description:
-      "Write one of a ticket's pipeline documents (research, impact, plan, checklist, proof) into its folder. Plain Markdown, no frontmatter. Pass append: true to add below the existing content (for progress notes) instead of replacing it. proof.md is required before the ticket can reach the final stage.",
+      "Write one of a ticket's pipeline documents (research, impact, plan, checklist, proof) into its folder. Plain Markdown, no frontmatter. Pass append: true to add below the existing content (for progress notes) instead of replacing it. proof.md is required before the ticket can reach the final stage. Pass the `version` you last read from get_ticket_doc as `expected_version` to be rejected instead of overwriting a concurrent edit; the result carries the new `version`.",
     inputSchema: {
       id: z.string().describe("Ticket id"),
       doc: ticketDocEnum.describe("Which document"),
       content: z.string().describe("Markdown content"),
       append: z.boolean().optional().describe("Append below existing content instead of replacing"),
+      expected_version: z
+        .string()
+        .optional()
+        .describe(
+          "Optimistic concurrency: the `version` you last read from get_ticket_doc. " +
+            "Rejected as a conflict if the document changed since. Omit for last-write-wins.",
+        ),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
-  write(async ({ id, doc, content, append }) => {
-    await store.setDoc(id, doc, content, { append });
-    return ok({ id, doc, written: true, appended: append === true });
+  write(async ({ id, doc, content, append, expected_version }) => {
+    const { version } = await store.setDoc(id, doc, content, {
+      append,
+      expectedVersion: expected_version,
+    });
+    return ok({ id, doc, written: true, appended: append === true, version });
   }),
 );
 

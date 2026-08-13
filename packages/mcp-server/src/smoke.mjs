@@ -209,6 +209,60 @@ try {
     enrichedItem.docs.research === true && enrichedItem.docs.proof === false,
   );
 
+  // Optimistic concurrency on the doc pipeline.
+  check(
+    "get_ticket_doc returns a version token",
+    typeof researchDoc.version === "string" && researchDoc.version.length > 0,
+    String(researchDoc.version),
+  );
+  const staleVersion = researchDoc.version;
+  // Someone else writes, so our token goes stale.
+  await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: "TICK-002", doc: "research", content: "Newer agent write." },
+  });
+  const conflicted = await client.callTool({
+    name: "set_ticket_doc",
+    arguments: {
+      id: "TICK-002",
+      doc: "research",
+      content: "Clobber",
+      expected_version: staleVersion,
+    },
+  });
+  check(
+    "set_ticket_doc rejects a stale expected_version",
+    conflicted.isError === true && textOf(conflicted).includes("Conflict"),
+  );
+  const afterConflict = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "get_ticket_doc",
+        arguments: { id: "TICK-002", doc: "research" },
+      }),
+    ),
+  );
+  check(
+    "set_ticket_doc left the newer content in place",
+    afterConflict.content.includes("Newer agent write") &&
+      !afterConflict.content.includes("Clobber"),
+  );
+  const accepted = await client.callTool({
+    name: "set_ticket_doc",
+    arguments: {
+      id: "TICK-002",
+      doc: "research",
+      content: "Applied on top.",
+      expected_version: afterConflict.version,
+    },
+  });
+  check(
+    "set_ticket_doc accepts a fresh expected_version and returns the new one",
+    accepted.isError !== true &&
+      typeof JSON.parse(textOf(accepted)).version === "string" &&
+      JSON.parse(textOf(accepted)).version !== afterConflict.version,
+  );
+
   // Proof gate through move_item.
   const gated = await client.callTool({
     name: "move_item",

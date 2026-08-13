@@ -32,6 +32,19 @@ export type BoardColumn = z.infer<typeof BoardColumnSchema>;
 export const TICKET_DOCS = ["research", "impact", "plan", "checklist", "proof"] as const;
 export type TicketDoc = (typeof TICKET_DOCS)[number];
 
+/** Options for writing a ticket's pipeline document. */
+export interface SetDocOptions {
+  /** Append below the existing content instead of replacing it. */
+  append?: boolean;
+  /**
+   * Optimistic concurrency, opt-in exactly like `expectedUpdated` on an item
+   * patch: `undefined` skips the check (last-write-wins, the historical
+   * behaviour); a string is the `version` the caller last read; `null` means
+   * the caller expects the document not to exist yet.
+   */
+  expectedVersion?: string | null;
+}
+
 /** Which pipeline docs exist for a ticket, plus checklist progress if present. */
 export interface TicketDocsInfo {
   docs: Record<TicketDoc, boolean>;

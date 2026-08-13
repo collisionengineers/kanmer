@@ -4,6 +4,7 @@ import {
   ensureDir,
   pathExists,
   removeFile,
+  contentVersion,
   readText,
   statOrNull,
   writeFileAtomic,
@@ -53,6 +54,7 @@ import {
   type ItemType,
   type ItemWarning,
   type MovePosition,
+  type SetDocOptions,
   type TakeTicketInput,
   type TicketDoc,
   type TicketDocsInfo,
@@ -805,16 +807,40 @@ export class KanmerStore {
   }
 
   /**
+   * Read a pipeline document together with a version token for its exact
+   * bytes. Pass that token back as `expectedVersion` on setDoc to be rejected
+   * instead of overwriting a concurrent edit. getDoc's signature is left
+   * unchanged so no existing caller breaks.
+   */
+  async getDocWithVersion(
+    id: string,
+    doc: TicketDoc,
+  ): Promise<{ content: string | null; version: string | null }> {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    if (loc.kind !== "v2") return { content: null, version: null };
+    const file = docFileIn(loc.dir, doc);
+    if (!(await pathExists(file))) return { content: null, version: null };
+    const content = await readText(file);
+    return { content, version: contentVersion(content) };
+  }
+
+  /**
    * Write (or append to) one of a ticket's pipeline documents. Docs are plain
    * Markdown with no frontmatter. `append` adds after a blank line so
    * progress notes never clobber existing content.
+   *
+   * Pass `expectedVersion` for optimistic concurrency (see SetDocOptions) —
+   * omitted, this stays last-write-wins for every existing caller. Returns
+   * the version token of what was actually written, so the caller's token
+   * stays accurate across the trim/append normalisation.
    */
   async setDoc(
     id: string,
     doc: TicketDoc,
     content: string,
-    opts: { append?: boolean } = {},
-  ): Promise<void> {
+    opts: SetDocOptions = {},
+  ): Promise<{ version: string }> {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     if (loc.kind !== "v2") {
@@ -824,15 +850,26 @@ export class KanmerStore {
       );
     }
     const file = docFileIn(loc.dir, doc);
+    // One read serves both the version check and the append.
+    const existing = (await pathExists(file)) ? await readText(file) : null;
+    if (opts.expectedVersion !== undefined) {
+      const actual = existing === null ? null : contentVersion(existing);
+      if (actual !== opts.expectedVersion) {
+        throw new Error(
+          `Conflict: ${doc}.md on "${id}" changed since you read it. ` +
+            `Re-read it with get_ticket_doc and re-apply your change.`,
+        );
+      }
+    }
     let text = `${content.trim()}\n`;
-    if (opts.append) {
-      const existing = (await pathExists(file)) ? await readText(file) : "";
-      if (existing.trim()) text = `${existing.trimEnd()}\n\n${content.trim()}\n`;
+    if (opts.append && existing !== null && existing.trim()) {
+      text = `${existing.trimEnd()}\n\n${content.trim()}\n`;
     }
     await writeFileAtomic(file, text);
     await appendActivity(this.paths, [
       this.activity(id, "doc", { field: doc, to: opts.append ? "append" : "write" }),
     ]);
+    return { version: contentVersion(text) };
   }
 
   /** Which pipeline docs exist for a ticket + checklist progress; null for legacy items. */

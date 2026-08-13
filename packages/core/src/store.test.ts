@@ -436,6 +436,62 @@ describe("format v2", () => {
     expect(info?.checklist).toEqual({ checked: 2, total: 3 });
   });
 
+  it("setDoc rejects a stale expectedVersion and leaves the file alone", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A" });
+    const { version: stale } = await store.setDoc(t.id, "research", "A");
+    await store.setDoc(t.id, "research", "B"); // a concurrent, newer write
+    await expect(
+      store.setDoc(t.id, "research", "C", { expectedVersion: stale }),
+    ).rejects.toThrow(/Conflict/);
+    expect(await store.getDoc(t.id, "research")).toContain("B");
+  });
+
+  it("setDoc accepts a fresh expectedVersion", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A" });
+    await store.setDoc(t.id, "research", "A");
+    const read = await store.getDocWithVersion(t.id, "research");
+    expect(read.content).toBe("A\n");
+    const { version } = await store.setDoc(t.id, "research", "B", {
+      expectedVersion: read.version,
+    });
+    // The returned token describes what was actually written.
+    expect((await store.getDocWithVersion(t.id, "research")).version).toBe(version);
+  });
+
+  it("expectedVersion: null means the document must not exist yet", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A" });
+    await expect(
+      store.setDoc(t.id, "impact", "first", { expectedVersion: null }),
+    ).resolves.toBeDefined();
+    await expect(
+      store.setDoc(t.id, "impact", "again", { expectedVersion: null }),
+    ).rejects.toThrow(/Conflict/);
+    expect(await store.getDoc(t.id, "impact")).toContain("first");
+  });
+
+  it("append honours expectedVersion", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A" });
+    const { version: stale } = await store.setDoc(t.id, "research", "one");
+    await store.setDoc(t.id, "research", "two", { append: true });
+    const before = await store.getDoc(t.id, "research");
+    await expect(
+      store.setDoc(t.id, "research", "three", { append: true, expectedVersion: stale }),
+    ).rejects.toThrow(/Conflict/);
+    expect(await store.getDoc(t.id, "research")).toBe(before);
+  });
+
+  it("setDoc without expectedVersion is still last-write-wins", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A" });
+    await store.setDoc(t.id, "research", "A");
+    await store.setDoc(t.id, "research", "B");
+    expect(await store.getDoc(t.id, "research")).toBe("B\n");
+    // Legacy-layout items report null for both halves, as getDoc does.
+    expect(await store.getDocWithVersion(t.id, "plan")).toEqual({
+      content: null,
+      version: null,
+    });
+  });
+
   it("takes and releases a ticket", async () => {
     const t = await store.createItem({ type: "ticket", title: "A" });
     const taken = await store.takeTicket(t.id, { branch: "feat/x", worktree: "wt/x" });

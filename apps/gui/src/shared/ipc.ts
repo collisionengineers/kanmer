@@ -189,6 +189,18 @@ export interface AgentChangePayload {
   event: "add" | "change" | "unlink";
 }
 
+/**
+ * Agent MCP sessions running from the installed app. The NSIS installer kills
+ * every process under the install dir, and the MCP server IS Kanmer.exe there
+ * (connect.ts), so these are exactly what an update closes. `unknown` means the
+ * probe failed — warn generically, never block.
+ */
+export interface McpSessions {
+  count: number;
+  projects: string[];
+  unknown: boolean;
+}
+
 /** What the native card context menu needs to build itself. */
 export interface ItemMenuPayload {
   id: string;

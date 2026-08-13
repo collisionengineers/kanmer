@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { pathExists, readText, writeFileAtomic } from "./io.js";
 import { areaFolderName, NO_AREA_DIR, ticketDirIn, type KanmerPaths } from "./paths.js";
-import { serialiseItem } from "./frontmatter.js";
+import { parseItem, serialiseItem } from "./frontmatter.js";
 import { parseWikiLinks } from "./links.js";
 import { areaPrefix } from "./board.js";
 import { writeVersion } from "./version.js";
@@ -23,6 +23,11 @@ export interface MigrationReport {
   /** The id prefix now pinned on each area. */
   areaPrefixes: Record<string, string>;
   notes: string[];
+  /**
+   * Fatal problems found before anything was touched. A dry run returns them
+   * so the caller can show them and refuse to start; a real run throws.
+   */
+  blockers: string[];
 }
 
 function emptyReport(dryRun: boolean, alreadyV2 = false): MigrationReport {
@@ -34,6 +39,7 @@ function emptyReport(dryRun: boolean, alreadyV2 = false): MigrationReport {
     convertedToTickets: [],
     areaPrefixes: {},
     notes: [],
+    blockers: [],
   };
 }
 
@@ -136,9 +142,61 @@ export async function migrateToV2(
       "Folded documents keep their title and body; their old frontmatter (labels, links, archived) is dropped — the ticket's own frontmatter governs now.",
     );
   }
+  // ---- Pre-flight: refuse a run whose destinations collide. ----------------
+  // Two prefixes on one board can produce the same id, and then the move
+  // loop's rename target and the conversion loop's write target are the same
+  // file — one silently overwrites the other. Plan the paths first and
+  // refuse before touching anything.
+  // A source is identified by type *and* id, not id alone: the collision this
+  // exists to catch is a ticket and a plan that share one id (two prefixes
+  // resolving the same), which live in different legacy dirs but land on one
+  // v2 path. Keying by id alone would see them as the same source.
+  const sourceKey = (item: Item): string => `${item.type} "${item.id}"`;
+  const claimedBy = new Map<string, string>(); // destFile -> source key
+  const claim = (destFile: string, source: string): boolean => {
+    const holder = claimedBy.get(destFile);
+    if (holder !== undefined && holder !== source) {
+      report.blockers.push(
+        `${source} and ${holder} would both be written to ${destFile}. ` +
+          `Two id prefixes on this board produce the same id — fix board.yml (idPrefixes / area ` +
+          `prefixes must all be distinct) or rename one item, then migrate again.`,
+      );
+      return false;
+    }
+    claimedBy.set(destFile, source);
+    return true;
+  };
+
+  const ticketDestFile = new Map<string, string>();
+  for (const t of tickets) {
+    const dir = ticketDirIn(paths, ticketDest.get(t.id) === NO_AREA_DIR ? "" : t.area ?? "", t.id);
+    const dest = path.join(dir, `${t.id}.md`);
+    ticketDestFile.set(t.id, dest);
+    claim(dest, sourceKey(t));
+  }
+  // Conversion destinations are resolved once here (rather than inside the
+  // loop as before) so the pre-flight and the loop cannot disagree, and so
+  // destAreaFolder's note is pushed exactly once per item.
+  const conversionDest = new Map<string, string>();
+  for (const c of conversions) {
+    const folder = destAreaFolder(c, report.notes);
+    const dir = ticketDirIn(paths, folder === NO_AREA_DIR ? "" : c.area ?? "", c.id);
+    const dest = path.join(dir, `${c.id}.md`);
+    conversionDest.set(c.id, dest);
+    claim(dest, sourceKey(c));
+  }
+
+  if (report.blockers.length > 0) {
+    if (dryRun) return report; // the caller shows them and refuses to start
+    throw new Error(`Migration refused:\n- ${report.blockers.join("\n- ")}`);
+  }
   if (dryRun) return report;
 
   // ---- Execute. ------------------------------------------------------------
+  // Every loop below is check-before-act: a run interrupted part-way (an
+  // EPERM/EBUSY rename under Defender or OneDrive is ordinary on Windows)
+  // must be resumable, never an ENOENT trap, and must never duplicate or
+  // overwrite what a previous run already did.
   await fs.mkdir(paths.areasRoot, { recursive: true });
   await store.setBoard(board); // pins the area prefixes
 
@@ -148,10 +206,32 @@ export async function migrateToV2(
     return path.join(dir, `${item.id}.md`);
   };
 
+  let resumed = false;
+
   for (const t of tickets) {
-    const dir = ticketDirIn(paths, ticketDest.get(t.id) === NO_AREA_DIR ? "" : t.area ?? "", t.id);
+    const dest = ticketDestFile.get(t.id)!;
+    const dir = path.dirname(dest);
+    const src = legacyFile(t);
+    const destExists = await pathExists(dest);
+    const srcExists = await pathExists(src);
+    if (destExists && srcExists) {
+      report.notes.push(
+        `${t.id} already exists at its v2 location; the legacy copy at ` +
+          `${path.relative(paths.kanmer, src)} was left in place — compare and delete it by hand.`,
+      );
+      resumed = true;
+      continue; // never overwrite
+    }
+    if (destExists) {
+      resumed = true;
+      continue; // a prior run moved it
+    }
+    if (!srcExists) {
+      report.notes.push(`${t.id} has no file at either its legacy or its v2 location — skipped.`);
+      continue; // note, don't ENOENT
+    }
     await fs.mkdir(dir, { recursive: true });
-    await fs.rename(legacyFile(t), path.join(dir, `${t.id}.md`));
+    await fs.rename(src, dest);
   }
 
   for (const f of folds) {
@@ -161,6 +241,17 @@ export async function migrateToV2(
     const content = `# ${f.doc.title}\n\n${f.doc.body.trim()}\n`;
     if (await pathExists(target)) {
       const existing = await readText(target);
+      if (existing.includes(content.trim())) {
+        // A prior run wrote the doc but crashed before removing the legacy
+        // source, so it re-entered `folds`. Appending again would duplicate
+        // the content below a separator.
+        report.notes.push(
+          `${f.ticket.id}'s ${f.as}.md already holds "${f.doc.id}" — left as it was.`,
+        );
+        resumed = true;
+        await fs.rm(legacyFile(f.doc), { force: true });
+        continue;
+      }
       await writeFileAtomic(target, `${existing.trimEnd()}\n\n---\n\n${content}`);
       report.notes.push(
         `${f.ticket.id} already had a ${f.as}.md — "${f.doc.id}" was appended below a separator.`,
@@ -173,16 +264,46 @@ export async function migrateToV2(
 
   for (const c of conversions) {
     const label = c.type === "plan" ? "legacy-plan" : "legacy-research";
-    const folder = destAreaFolder(c, report.notes);
-    const dir = ticketDirIn(paths, folder === NO_AREA_DIR ? "" : c.area ?? "", c.id);
+    const destFile = conversionDest.get(c.id)!;
+    if (await pathExists(destFile)) {
+      let already = false;
+      try {
+        const existing = parseItem(await readText(destFile));
+        already = existing.id === c.id && (existing.labels ?? []).includes(label);
+      } catch {
+        // Unparseable: fall through and rewrite it. The pre-flight has
+        // already proven no other source claims this path.
+      }
+      if (already) {
+        report.notes.push(`${c.id} was already converted to a ticket — left as it was.`);
+        resumed = true;
+        await fs.rm(legacyFile(c), { force: true });
+        continue;
+      }
+    }
+    // Last line of defence: never overwrite a file this run already wrote,
+    // even if the pre-flight above is later refactored away.
+    if (claimedBy.get(destFile) !== sourceKey(c)) {
+      report.notes.push(
+        `${sourceKey(c)} was not converted — ${destFile} is already claimed by ` +
+          `${claimedBy.get(destFile)}. The legacy file was left in place.`,
+      );
+      continue;
+    }
     const converted: Item = {
       ...c,
       type: "ticket",
       labels: [...new Set([...(c.labels ?? []), label])],
     };
-    await fs.mkdir(dir, { recursive: true });
-    await writeFileAtomic(path.join(dir, `${c.id}.md`), serialiseItem(converted));
+    await fs.mkdir(path.dirname(destFile), { recursive: true });
+    await writeFileAtomic(destFile, serialiseItem(converted));
     await fs.rm(legacyFile(c), { force: true });
+  }
+
+  if (resumed) {
+    report.notes.push(
+      "This run resumed a previously interrupted migration — already-migrated items were left as they were.",
+    );
   }
 
   // Legacy dirs: only removed when empty — anything a human left in there

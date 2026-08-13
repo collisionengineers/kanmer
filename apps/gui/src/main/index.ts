@@ -217,6 +217,21 @@ function createWindow(): void {
   // the only success, so every way of *not* rendering has to exit non-zero —
   // otherwise the check cannot fail and is worse than no check.
   if (process.env["KANMER_SMOKE"]) {
+    // The packaged app with no app-update.yml is the exact "works in dev,
+    // silently dead when packaged" failure: it boots, the board works, and the
+    // updater never finds a feed. Only a packaged run can see this, so assert
+    // it here rather than in a unit test.
+    if (app.isPackaged) {
+      const feed = join(process.resourcesPath, "app-update.yml");
+      if (!existsSync(feed)) {
+        console.error(`KANMER_SMOKE: ${feed} is missing — the packaged app has no update feed`);
+        app.exit(1);
+        // app.exit() tears the window down but this function keeps running;
+        // without the return the watchdog wiring below dereferences a window
+        // that is already gone.
+        return;
+      }
+    }
     let readyToShow = false;
     mainWindow.once("ready-to-show", () => {
       readyToShow = true;

@@ -15,6 +15,10 @@ sandbox/
 apps/gui/out/
 apps/gui/dist/
 apps/gui/release/
+# any alternate electron-builder output dir (--config.directories.output)
+apps/gui/release-*/
 sandbox-harness/
 # per-ticket git worktrees (see kanmer-execute / kanmer-closeout skills)
 .worktrees/
+# local updater test feed config — never committed, never packaged
+apps/gui/dev-app-update.yml

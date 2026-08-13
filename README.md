@@ -103,6 +103,16 @@ Run `Kanmer Setup ….exe` → Start-Menu shortcut, normal desktop app. The MCP 
 
 > **Antivirus note:** electron-builder downloads a 7-Zip helper that Windows Defender sometimes false-positive quarantines. If `npm run dist` fails with `ENOENT … 7za.exe`, restore the file from Defender's quarantine (or add a folder exclusion for the repo) and re-run. electron-builder ≥26 (pinned here) fetches it fresh, which usually avoids this.
 
+## Updates
+
+Kanmer keeps itself up to date from GitHub Releases.
+
+- It checks about **30 seconds after launch** and every **6 hours**, downloads in the background, and shows a banner when an update is ready.
+- **Restart now** installs immediately. **Later** costs nothing — the update installs the next time you quit Kanmer.
+- **An update closes any agent MCP session running from the installed app.** The installer stops every process in the install folder, and the MCP server *is* the app's own binary. Kanmer tells you how many sessions are open before it restarts, and asks again if you quit with an update staged. Your board is safe — `.kanmer/` writes are atomic — it is the agent's connection that drops, and the agent reconnects against the new server.
+- The installer is **unsigned**, so SmartScreen warns on a *manual* download — but not on an auto-update, which is spawned by an already-trusted process with no Mark-of-the-Web. The friction is paid once, on first install.
+- **To go back one version:** re-run `%LOCALAPPDATA%\@kanmergui-updater\installer.exe` — the previously installed installer keeps a copy of itself there. There is no automatic rollback; the normal remedy for a bad release is a higher version.
+
 ## Develop / run from source
 
 ```bash
@@ -246,7 +256,32 @@ npm run plugin:build && npm run plugin:check
 node scripts/verify-agents-block.mjs
 ```
 
+```bash
+# 6. If you touched GUI packaging or the updater: the PACKAGED app can auto-update
+npm run dist:check
+cd apps/gui && KANMER_SMOKE=1 KANMER_OPEN="C:/path/to/project" \
+  ./release/win-unpacked/Kanmer.exe --user-data-dir="C:/path/to/a/fresh/dir"
+```
+
 **The real test — human + agent, one dataset:** open a project in the GUI, then have codex `create_item` / `move_item` against the same folder. The board updates live. Edit a card's frontmatter in the GUI, then have codex `get_item` — it sees your change.
+
+### Release (maintainers)
+
+```bash
+# edit apps/gui/release-notes.md first — the script refuses stale notes
+GH_TOKEN=<pat with repo scope> npm run release 0.2.0
+```
+
+It verifies everything (tests, both smokes, the agents-block check, the plugin
+bundle's bytes, GUI typecheck), bumps `apps/gui/package.json`, builds, packs
+once **without** publishing and checks the package, tags `v0.2.0`, publishes a
+**non-draft** GitHub release with the installer + blockmap + `latest.yml`, then
+re-fetches `/releases/latest` to prove installed clients can actually see it.
+Add `--dry-run` to stop after the verification gate without writing anything.
+
+Never delete assets from an old release: a missing old `.blockmap` silently
+costs every client on that version a full ~77 MB download instead of a
+differential one.
 
 ## Not yet
 

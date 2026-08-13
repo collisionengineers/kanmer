@@ -77,9 +77,12 @@ import {
 import {
   checkForUpdatesNow,
   initUpdater,
+  installUpdateNow,
   isUpdaterEnabled,
   maybeBlockQuitForUpdate,
+  updateState,
 } from "./updater.js";
+import { mcpSessions } from "./mcp-sessions.js";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -730,6 +733,18 @@ function registerIpc(): void {
     (_e, p: string, opts?: { id?: string; since?: string; limit?: number }) =>
       requireStore(p).getActivity(opts),
   );
+
+  ipcMain.handle(CH.getUpdateState, () => updateState());
+  ipcMain.handle(CH.mcpSessions, () => mcpSessions());
+  ipcMain.handle(CH.installUpdate, () => {
+    // Defensive: the renderer owns the guards (quitAndInstall cannot be undone
+    // once called, so a guard placed after it never runs), but nothing else may
+    // ever spawn an installer either.
+    if (updateState().status.phase !== "downloaded") {
+      throw new Error("No downloaded update to install");
+    }
+    installUpdateNow();
+  });
 }
 
 app.whenReady().then(async () => {

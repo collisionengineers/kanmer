@@ -79,6 +79,12 @@ export const CH = {
   menu: "kanmer:menu",
   /** Main → renderer: a change NOT made by this GUI (agent/manual edit). */
   agentChange: "kanmer:agentChange",
+  /** Renderer → main: current update state (for a renderer that mounted late). */
+  getUpdateState: "kanmer:getUpdateState",
+  /** Renderer → main: install the downloaded update and restart. Guarded in the renderer. */
+  installUpdate: "kanmer:installUpdate",
+  /** Renderer → main: agent MCP sessions an update would force-kill. */
+  mcpSessions: "kanmer:mcpSessions",
   /** Main → renderer: auto-update state changes. */
   updateStatus: "kanmer:updateStatus",
 } as const;
@@ -390,4 +396,18 @@ export interface KanmerApi {
   onMenu(cb: (cmd: MenuCommand) => void): () => void;
   /** Subscribe to changes made by someone other than this GUI. */
   onAgentChange(cb: (payload: AgentChangePayload) => void): () => void;
+  /** Current auto-update state (`disabled` in dev/smoke). */
+  getUpdateState(): Promise<UpdateStatusEvent>;
+  /**
+   * Install the downloaded update and restart. NOT CANCELLABLE — BaseUpdater
+   * spawns the installer BEFORE app.quit(), and the installer force-kills every
+   * process under the install dir. Every guard (unsaved edits, live agent
+   * sessions) must run in the renderer BEFORE this is called. Main refuses
+   * unless an update is actually downloaded.
+   */
+  installUpdate(): Promise<void>;
+  /** Agent MCP sessions an update would close. Probe before offering "Restart now". */
+  mcpSessions(): Promise<McpSessions>;
+  /** Subscribe to auto-update state changes. Returns an unsubscribe fn. */
+  onUpdateStatus(cb: (payload: UpdateStatusEvent) => void): () => void;
 }

@@ -7,6 +7,7 @@ import {
   type KanmerApi,
   type MenuCommand,
   type RevealPayload,
+  type UpdateStatusEvent,
 } from "../shared/ipc.js";
 
 const api: KanmerApi = {
@@ -88,6 +89,14 @@ const api: KanmerApi = {
     const listener = (_e: unknown, payload: AgentChangePayload) => cb(payload);
     ipcRenderer.on(CH.agentChange, listener);
     return () => ipcRenderer.removeListener(CH.agentChange, listener);
+  },
+  getUpdateState: () => ipcRenderer.invoke(CH.getUpdateState),
+  installUpdate: () => ipcRenderer.invoke(CH.installUpdate),
+  mcpSessions: () => ipcRenderer.invoke(CH.mcpSessions),
+  onUpdateStatus: (cb) => {
+    const listener = (_e: unknown, payload: UpdateStatusEvent) => cb(payload);
+    ipcRenderer.on(CH.updateStatus, listener);
+    return () => ipcRenderer.removeListener(CH.updateStatus, listener);
   },
 };
 

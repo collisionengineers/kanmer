@@ -79,7 +79,37 @@ export const CH = {
   menu: "kanmer:menu",
   /** Main → renderer: a change NOT made by this GUI (agent/manual edit). */
   agentChange: "kanmer:agentChange",
+  /** Main → renderer: auto-update state changes. */
+  updateStatus: "kanmer:updateStatus",
 } as const;
+
+/**
+ * Where the auto-updater is in its cycle. One channel carries all of it —
+ * download progress is a phase, not a second channel, so there is one
+ * KanmerApi method and one preload wrapper for one concept. Main throttles
+ * `downloading` to whole percents.
+ */
+export type UpdatePhase =
+  | { phase: "idle" }
+  | { phase: "checking" }
+  | { phase: "available"; version: string }
+  | { phase: "downloading"; version: string; percent: number }
+  | { phase: "downloaded"; version: string; releaseNotes?: string }
+  /** Up to date; `version` is the installed one. */
+  | { phase: "none"; version: string }
+  | { phase: "error"; message: string }
+  /** Dev or smoke run — the updater is not running at all. */
+  | { phase: "disabled" };
+
+/**
+ * An update state change. `source` is what triggered the check: an `auto` check
+ * that finds nothing, or fails because the laptop is offline, is not news and
+ * the renderer stays silent about it.
+ */
+export interface UpdateStatusEvent {
+  status: UpdatePhase;
+  source: "auto" | "manual";
+}
 
 export type Theme = "dark" | "light" | "system";
 export type CardDensity = "comfortable" | "compact";

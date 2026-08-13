@@ -74,6 +74,12 @@ import {
   listDispatches,
   onDispatchStatus,
 } from "./dispatch.js";
+import {
+  checkForUpdatesNow,
+  initUpdater,
+  isUpdaterEnabled,
+  maybeBlockQuitForUpdate,
+} from "./updater.js";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -305,6 +311,14 @@ function buildMenu(): void {
     {
       label: "&Help",
       submenu: [
+        // buildMenu() re-runs on every openProject (the recents submenu), so
+        // this item has to stay cheap and stateless. It is.
+        {
+          label: "Check for Updates…",
+          enabled: isUpdaterEnabled(),
+          click: () => checkForUpdatesNow("manual"),
+        },
+        { type: "separator" },
         {
           label: "Kanmer on GitHub",
           click: () => void shell.openExternal("https://github.com/collisionengineers/kanmer"),
@@ -735,6 +749,13 @@ app.whenReady().then(async () => {
     }
   }
   createWindow();
+  // After createWindow, and wrapped: a failing updater must never be the reason
+  // the app does not start.
+  try {
+    initUpdater((payload) => mainWindow?.webContents.send(CH.updateStatus, payload));
+  } catch (err) {
+    console.error("[updater] init failed:", err);
+  }
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -744,7 +765,18 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-app.on("before-quit", () => {
+// The quit guard runs on before-quit because that is the only event that can
+// still be cancelled. The watcher close moved to will-quit deliberately:
+// preventDefault() does NOT stop other listeners on the SAME event, so leaving
+// watch.close() on before-quit would tear the watcher down even when the user
+// cancels the quit — the app would keep running with live-reload silently dead.
+// will-quit fires only when before-quit was not prevented, and `quit` (where
+// electron-updater's autoInstallOnAppQuit installs) fires after it.
+app.on("before-quit", (e) => {
+  maybeBlockQuitForUpdate(e);
+});
+
+app.on("will-quit", () => {
   for (const ctx of contexts.values()) void ctx.watch.close();
   killAllDispatches(); // tree-kill background agents so none is orphaned
 });

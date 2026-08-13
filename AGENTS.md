@@ -45,21 +45,24 @@ kanmer/
     core/                 # @kanmer/core — the shared store. THE HEART.
       src/
         types.ts          # zod schemas + TS types (BoardConfig, Item, filters…)
-        paths.ts          # .kanmer path resolution + per-type subfolders
-        io.ts             # atomic writes (temp + rename), fs helpers
+        paths.ts          # .kanmer path resolution: v2 area/ticket folders + legacy dirs
+        io.ts             # atomic writes (temp + rename), exclusive create, fs helpers
         frontmatter.ts    # parse/serialise Markdown+frontmatter (gray-matter)
-        ids.ts            # sequential id allocation (TICK-001…) + disk reconcile
-        board.ts          # read/write board.yml + defaultBoardConfig()
-        store.ts          # KanmerStore: CRUD, move, search, addColumn
-        links.ts          # forward links + backlinks, [[wiki]] parsing, linkItems
-        watch.ts          # chokidar wrapper (debounced) the GUI subscribes to
+        ids.ts            # id allocation: v2 per-prefix + legacy per-type, disk reconcile
+        board.ts          # read/write board.yml, defaultBoardConfig(), area prefixes
+        version.ts        # version.json (storage format marker)
+        activity.ts       # append-only activity.jsonl (derived change log)
+        store.ts          # KanmerStore: CRUD, move, take/release, docs, columns
+        links.ts          # links + backlinks + blocks/blockedBy, [[wiki]] parsing
+        migrate.ts        # v1 → v2 migration (dry-run + real, idempotent)
+        watch.ts          # chokidar wrapper (per-file debounced) the GUI subscribes to
         index.ts          # barrel — the package's public API
-        *.test.ts         # vitest suites (frontmatter, store, links)
+        *.test.ts         # vitest suites (frontmatter, store, links, migration…)
       tsup.config.ts      # ESM build → dist/
 
     mcp-server/           # @kanmer/mcp-server — local stdio MCP server
       src/
-        index.ts          # McpServer + 11 tools + stdio transport
+        index.ts          # McpServer + 20 tools + resources/prompts + stdio transport
         root.ts           # resolve project root: --root → KANMER_ROOT → cwd
         smoke.mjs         # standalone stdio smoke test (spawns the server)
       tsup.config.ts            # ESM dev build (deps external) → dist/index.js
@@ -74,9 +77,9 @@ kanmer/
         claude.mcp.json   # {"mcpServers":…} + ${CLAUDE_PLUGIN_ROOT}
         kanmer-mcp.cjs    # committed build artifact (npm run plugin:build)
       skills/
-        kanmer-workflow/  # SKILL.md + references/tool-reference.md + assets/*-template.md
-        kanmer-standup/   # board status report
-        kanmer-onboard/   # first-time project setup
+        kanmer-workflow/  # ticket lifecycle + references/tool-reference.md + doc templates
+        kanmer-standup/   # fact-based board report (activity log + summaries)
+        kanmer-setup/     # greenfield/brownfield/upgrade setup + AGENTS.md block
   .claude-plugin/marketplace.json  # Claude marketplace entry (repo-hosted)
   .agents/plugins/marketplace.json # codex marketplace entry (repo-hosted)
 
@@ -88,11 +91,13 @@ kanmer/
     gui/                  # @kanmer/gui — Electron + React desktop app
       electron.vite.config.ts   # electron-vite: bundles everything into out/
       electron-builder.yml      # Windows NSIS installer config
+      build/icon.ico            # committed buildResource (regen: scripts/make-icon.mjs)
+      scripts/make-icon.mjs     # dependency-free PNG/ICO generator for the app icon
       src/
         main/
-          index.ts        # Electron main: window, IPC handlers, watcher
-          settings.ts     # user-global settings (theme, recent projects) in userData
-          connect.ts      # one-click `codex/claude mcp add` registration
+          index.ts        # Electron main: window, menu, toasts, IPC handlers, watcher
+          settings.ts     # user-global settings (theme, notifications, bounds, recents)
+          connect.ts      # one-click per-project `codex/claude mcp add` registration
         preload/
           index.ts        # contextBridge → window.kanmer typed API
           index.d.ts      # global Window typing
@@ -102,8 +107,10 @@ kanmer/
           index.html
           src/
             main.tsx      # React root
-            App.tsx       # top-level state, layout, filtering pipeline
-            components/   # Board, Editor, ItemList, FilterBar, Settings, Welcome, QuickAdd
+            App.tsx       # top-level state, views, shortcuts, scoped refresh
+            components/   # Board, Editor (doc tabs), Standup, ActivityPanel,
+                          # ArchivedList, CommandPalette, ChipInput, FilterBar,
+                          # Settings, Welcome, QuickAdd
             lib/          # board.ts (column lookups), markdown.ts ([[wiki]] render)
             styles.css    # theme tokens (dark + [data-theme=light]) + all component CSS
 ```
@@ -127,83 +134,113 @@ kanmer/
 
 ---
 
-## 4. Data model
+## 4. Data model (format 2)
 
 ### The `.kanmer/` folder (per project)
 
 ```
 .kanmer/
+  version.json          # { "format": 2 } (+ migratedFrom/migratedAt after upgrade)
   data/
-    board.yml         # phases, statuses, areas, priorities, idPrefixes
-    counters.json     # last-used numeric id per type
-  tickets/  TICK-001.md …
-  plans/    PLAN-001.md …
-  research/ RES-001.md …
+    board.yml           # statuses, areas (with prefixes), priorities, idPrefixes
+    counters.json       # last-used numeric id per PREFIX ({ "API": 3, "TICK": 1 })
+    activity.jsonl      # append-only change log — derived, safe to delete
+  areas/
+    api/                # folder name = area id
+      API-001/          # folder name = ticket id
+        API-001.md      # THE TICKET — governs everything in this folder
+        research.md     # ┐
+        impact.md       # │ the document pipeline: research + impact → plan
+        plan.md         # │ → checklist + proof. proof.md is REQUIRED before
+        checklist.md    # │ the ticket may reach the board's final stage.
+        proof.md        # ┘
+    pr-review/          # default area on new boards (prefix PR)
+    _none/              # tickets with no area (prefix from idPrefixes.ticket)
 ```
+
+**The ticket is the governing unit.** Its id is born from its area's `prefix`
+(`API-001`) and is **immutable** — an area change moves the ticket's folder
+(`fs.rename`) but never re-ids it, so `[[API-001]]` references stay valid. The
+frontmatter `area` is authoritative over folder location: a hand-moved folder
+produces a listing warning and reconciles on the next write. Format 1 boards
+(flat `tickets/`, `plans/`, `research/` dirs) keep working unmigrated — reads
+scan BOTH layouts — and `migrate.ts` upgrades them (fold linked plans/research
+into ticket docs, convert orphans to labelled tickets, pin prefixes, re-key
+counters, stamp version.json). On format-2 boards, standalone `plan`/`research`
+items are rejected at create time — those live inside tickets as documents.
 
 ### `board.yml` — drives both tools and GUI columns
 
 ```yaml
-statuses:   [{ id, name, color? }, …]   # THE workflow dimension = board columns
-areas:      [{ id, name, color? }, …]   # colour-coded clusters within columns
-priorities: [{ id, name, color? }, …]   # configurable (default: low/medium/high/urgent)
-idPrefixes: { ticket: TICK, plan: PLAN, research: RES }
+statuses:   [{ id, name, color? }, …]           # THE workflow dimension = board columns
+areas:      [{ id, name, color?, prefix? }, …]  # colour clusters + ticket id prefixes
+priorities: [{ id, name, color? }, …]           # configurable (default: low/medium/high/urgent)
+idPrefixes: { ticket: TICK, plan: PLAN, research: RES }  # _none fallback + legacy items
 ```
 
-**One stage dimension, deliberately.** An earlier model had both `phases`
-(swimlanes) and `statuses` (columns); they overlapped so heavily
-("backlog"≈"todo", "build"≈"in progress") that the board was harder to read
-than the work it described. `status` is now the only workflow axis, with six
-default stages:
+Area `prefix` is 2–6 uppercase alphanumerics, derived from the id when unset
+(`areaPrefix()` in board.ts), and uniqueness — including against the
+`idPrefixes` values — is enforced on every board write. `status` is the only
+workflow axis, with six default stages:
 
 ```
 todo → planning → implementing → review → verifying → done
 ```
 
-Legacy data loads without migration: a `phases:` array in an old `board.yml` is
-stripped by zod on read, and a `phase:` key in an old item file rides along via
-`passthrough()` while nothing reads it. Old projects keep their own `statuses`
-list; unknown status values still render through the Board's `mergeColumns`
-fallback.
+The FIRST stage is where new items land; the LAST stage is proof-gated. A
+`phases:` array in a pre-consolidation `board.yml` is stripped by zod on read;
+unknown status values on items still render via the Board's `mergeColumns`
+fallback (read-side only — writes reject unknown ids).
 
 ### An item file (frontmatter is what the GUI edits; body is free Markdown)
 
 ```markdown
 ---
-id: TICK-001
-type: ticket           # ticket | plan | research
+id: API-001
+type: ticket           # ticket | plan | research (v2 boards: ticket only)
 title: …
 status: implementing   # the workflow stage = board column
-area: api              # optional; clusters + colours the card
+area: api              # optional; clusters + colours the card, owns the folder
 priority: high         # a string id into board.priorities
-assignee: ""
+due: 2026-09-01        # optional date-only deadline
+order: 20              # optional fractional sort key (manual ordering)
+assignee: claude
+taken_at: 2026-08-13T…Z  # ┐ set while an agent works the ticket
+branch: feat/x           # │ (take_ticket writes, release clears)
+worktree: wt/x           # ┘
 labels: [mcp]
-links: [PLAN-001]      # structured relations (tool-queryable)
-archived: false        # hidden from the board unless "Show archived"
+links: [API-002]       # structured relations (tool-queryable)
+blocks: [API-003]      # this item blocks API-003; blocked-by is derived
+archived: false        # hidden from the board unless the Archived view
 created: 2026-08-12T…Z
 updated: 2026-08-12T…Z
 ---
-Body Markdown. Reference other items with [[RES-001]] wiki-links.
+Body Markdown. Reference other items with [[API-002]] wiki-links.
 ```
 
-**Linking is two mechanisms** resolved into one backlink graph: the `links:` frontmatter array *and* inline `[[ID]]` wiki-links in the body (see `links.ts`).
+All the new keys are optional and omitted when unset, so old files gain zero
+noise on rewrite. **Linking is two mechanisms** resolved into one backlink
+graph: the `links:` frontmatter array *and* inline `[[ID]]` wiki-links in the
+body; `blocks:` adds typed dependency edges on top (see `links.ts`). Every
+mutation appends a `{ts, id, op, field, from, to, actor}` line to
+`activity.jsonl` — a derived convenience, never consulted for state.
 
 ---
 
 ## 5. The three surfaces in detail
 
 ### `@kanmer/core` (packages/core)
-The only place that touches `.kanmer` files. Public API via `index.ts`. Key entry point: **`KanmerStore`** (`store.ts`) — construct with a project root, call `init()`, then `listItems/getItem/createItem/updateItem/moveItem/deleteItem/searchItems/getBoard/setBoard/addColumn`. Links live in `links.ts` (`getLinkGraph`, `linkItems`, `parseWikiLinks`). Everything is covered by `*.test.ts` (vitest).
+The only place that touches `.kanmer` files. Public API via `index.ts`. Key entry point: **`KanmerStore`** (`store.ts`) — construct with a project root, then `listItems(WithWarnings)/getItem/createItem/updateItem/moveItem/deleteItem/searchItems`, `takeTicket/releaseTicket`, `getDoc/setDoc/getTicketDocsInfo`, `getBoard(WithSource)/setBoard/addColumn/updateColumn/removeColumn/reorderColumns`, `detectFormat`, `getActivity`. `init()` maintains whichever format exists (it never stamps v2 onto a v1 board — that's `migrateToV2`'s job). Links live in `links.ts` (`getLinkGraph`, `linkItems`, `computeBlockedIds`, `parseWikiLinks`). Everything is covered by `*.test.ts` (vitest), including a v1 fixture suite and the migration round-trip.
 
 ### `@kanmer/mcp-server` (packages/mcp-server)
-`index.ts` builds an `McpServer` and registers **11 tools**, then connects a `StdioServerTransport`. Root resolution in `root.ts`. **Init is lazy**: boot never calls `store.init()` — a read-only session (or a host that spawns the server in a workspace nobody opted into Kanmer for) must not create `.kanmer/` just by connecting. Write tools call `ensureInit()` first, which creates the skeleton once on the first actual write; read tools degrade to empty/default results when `.kanmer/` doesn't exist yet. Two builds:
+`index.ts` builds an `McpServer` and registers **20 tools**, plus MCP resources (`kanmer://board`, `kanmer://items/{id}` with `subscribe` support) and two prompts (`standup`, `take-ticket`), then connects a `StdioServerTransport`. Root resolution in `root.ts`. **Init is lazy**: boot never calls `store.init()` — a read-only session (or a host that spawns the server in a workspace nobody opted into Kanmer for) must not create `.kanmer/` just by connecting. Write tools call `ensureInit()` first, which creates the skeleton once on the first actual write; read tools degrade to empty/default results when `.kanmer/` doesn't exist yet. Write tools also stamp the activity-log actor from the client's identity, and destructive ops (`delete_item`, `remove_column` with `migrate_to`) confirm via elicitation when the host supports it. Two builds:
 - `dist/index.js` — ESM, deps external (for dev / `node …`).
 - `dist/standalone/kanmer-mcp.cjs` — self-contained CJS, everything bundled (shipped inside the GUI, run via Electron-as-Node).
 
 **Tools** (all carry annotations so codex approval modes / Claude read-write split behave):
-- Read (`readOnlyHint`): `list_board`, `list_items`, `get_item`, `search_items`, `get_links`
-- Write: `create_item`, `update_item`, `move_item`, `link_items`, `add_column`
-- Destructive (`destructiveHint`): `delete_item`
+- Read (`readOnlyHint`): `get_status`, `list_board`, `list_items`, `get_item`, `get_ticket_doc`, `search_items`, `get_links`, `get_activity`
+- Write: `create_item`, `create_items`, `update_item`, `move_item`, `take_ticket`, `set_ticket_doc`, `link_items`, `add_column`, `update_column`, `reorder_columns`
+- Destructive (`destructiveHint`): `delete_item`, `remove_column`
 
 The plugin's `kanmer-workflow` skill documents this surface for agents — see the
 sync rule in §7.
@@ -304,10 +341,10 @@ node packages/mcp-server/src/smoke.mjs
 ## 11. Known limitations / roadmap
 
 - Windows installer only so far (macOS/Linux electron-builder targets not configured).
-- No custom app icon (uses default Electron icon).
-- No card reordering within a column, no due dates, no typed link relations (blocks/blocked-by).
 - No automated CI; verification is the manual checklist above.
-- Deleting an in-use board column doesn't rewrite referencing items — they fall back to an auto column/group (by design for now). This is a read-side fallback only: `create_item`/`update_item`/`move_item` reject writing a `status` the board doesn't currently define (see `assertKnownStatus` in `store.ts`), so new writes can't create fresh instances of this state — it can only arise from a column later being removed out from under existing items.
+- Column removal: the MCP `remove_column` tool refuses while items reference the column (or migrates them with `migrate_to`), but the GUI Settings editor's whole-board save can still drop an in-use column — those items fall back to an auto column/group on read (`mergeColumns`), and writes to the now-undefined id are rejected (`assertFieldAgainstBoard` in `store.ts`).
+- Two concurrent creates that share the TICK fallback prefix in *different* undeclared areas could double-allocate an id number — only reachable when a v2 board's `areas` list has been emptied (the exclusive-create lock is per file path).
+- `ttlMs`/`cacheScope` on `tools/list` (2026-07-28 cacheable lists) awaits SDK support — noted in `mcp-server/src/index.ts` `main()`.
 - ~~Concurrent `create_item` id race~~ **closed by exclusive create.** The item
   file itself is the allocation lock: `createItem` computes a candidate id and
   claims it with `writeFileExclusive` ([io.ts](packages/core/src/io.ts)) — a
@@ -317,5 +354,5 @@ node packages/mcp-server/src/smoke.mjs
   crash-safe by construction and keeps `io.ts` the only file-touching layer.
 - **Duplicate registration is confusing, not harmful.** If a user installs the
   plugin *and* registers the server manually (GUI "Connect" or `mcp add`), the
-  agent lists all 11 tools twice under different server names. Both work; the
+  agent lists all the tools twice under different server names. Both work; the
   README tells users to pick one.

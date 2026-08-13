@@ -2,16 +2,18 @@
 
 Master overview. Each phase has its own folder with a detailed, self-contained plan:
 
-| Phase | Folder | Theme |
-|---|---|---|
-| 1 | [phase-1-core-correctness/](phase-1-core-correctness/plan.md) | Core correctness & safety (validation, path safety, races) |
-| 2 | [phase-2-format-v2-storage/](phase-2-format-v2-storage/plan.md) | Format v2 storage engine + migration (area folders, ticket folders, doc pipeline) |
-| 3 | [phase-3-mcp-surface/](phase-3-mcp-surface/plan.md) | MCP surface v2 + 2026-07-28 modernization |
-| 4 | [phase-4-gui-trust/](phase-4-gui-trust/plan.md) | GUI trust (no data loss, honest errors) |
-| 5 | [phase-5-windows-app/](phase-5-windows-app/plan.md) | Real Windows app (icon, toasts, shortcuts, a11y) |
-| 6 | [phase-6-data-model/](phase-6-data-model/plan.md) | Data-model extras (activity log, blocks, due, ordering) |
-| 7 | [phase-7-gui-evolution/](phase-7-gui-evolution/plan.md) | GUI evolution & delight (doc tabs, standup, perf) |
-| 8 | [phase-8-skills-plugin-docs/](phase-8-skills-plugin-docs/plan.md) | Skills, plugin, docs (workflow rewrite, kanmer-setup) |
+| Phase | Folder | Theme | Status |
+|---|---|---|---|
+| 1 | [phase-1-core-correctness/](phase-1-core-correctness/plan.md) | Core correctness & safety (validation, path safety, races) | ✅ done |
+| 2 | [phase-2-format-v2-storage/](phase-2-format-v2-storage/plan.md) | Format v2 storage engine + migration (area folders, ticket folders, doc pipeline) | ✅ done |
+| 3 | [phase-3-mcp-surface/](phase-3-mcp-surface/plan.md) | MCP surface v2 + 2026-07-28 modernization | ✅ done (cacheable tools/list awaits SDK) |
+| 4 | [phase-4-gui-trust/](phase-4-gui-trust/plan.md) | GUI trust (no data loss, honest errors) | ✅ done |
+| 5 | [phase-5-windows-app/](phase-5-windows-app/plan.md) | Real Windows app (icon, toasts, shortcuts, a11y) | ✅ done |
+| 6 | [phase-6-data-model/](phase-6-data-model/plan.md) | Data-model extras (activity log, blocks, due, ordering) | ✅ done |
+| 7 | [phase-7-gui-evolution/](phase-7-gui-evolution/plan.md) | GUI evolution & delight (doc tabs, standup, perf) | ✅ done |
+| 8 | [phase-8-skills-plugin-docs/](phase-8-skills-plugin-docs/plan.md) | Skills, plugin, docs (workflow rewrite, kanmer-setup) | ✅ done |
+
+Implementation log: [phase-0-pr1-verify-merge/plan.md](phase-0-pr1-verify-merge/plan.md).
 
 ## Context
 

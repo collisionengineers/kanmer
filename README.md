@@ -1,6 +1,6 @@
 # Kanmer
 
-A Kanban / ticket / plan / research manager where **AI agents and a human share one dataset**.
+A Kanban / ticket manager where **AI agents and a human share one dataset**.
 
 Agents (codex, Claude Code, Claude Desktop — any MCP client) create and update work through a local **MCP server**; you review, re-arrange and edit the same work through a **Windows desktop GUI**. Both sides operate on one source of truth: a `.kanmer/` folder of Markdown-with-frontmatter files inside each project. Neither talks to the other — they sync through the files, and the GUI live-reloads when anything changes on disk.
 
@@ -14,39 +14,61 @@ codex / Claude / any MCP client ──stdio──► kanmer-mcp ─┐
 ## Layout
 
 ```
-packages/core         Shared store: types, frontmatter, ids, links, watcher
-packages/mcp-server   Local stdio MCP server (11 tools) — the agent surface
+packages/core         Shared store: types, frontmatter, ids, links, docs, activity, migration, watcher
+packages/mcp-server   Local stdio MCP server (20 tools) — the agent surface
 apps/gui              Electron + React kanban desktop app — the human surface
 examples/             Example codex config
 ```
 
 ## The `.kanmer/` folder
 
-Created automatically in each project (by the GUI's "Open project" or on MCP server start):
+Created in a project the first time something is actually written to the board
+(the GUI's "Open project", or an agent's first write — a read-only MCP session
+never creates it):
 
 ```
 .kanmer/
-  data/board.yml       Stages (kanban columns), areas, priorities, id prefixes
-  data/counters.json   Per-type id counters
-  tickets/  TICK-001.md ...
-  plans/    PLAN-001.md ...
-  research/ RES-001.md ...
+  version.json          { "format": 2 } — storage format marker
+  data/board.yml        Stages (kanban columns), areas (+ id prefixes), priorities
+  data/counters.json    Per-prefix id counters
+  data/activity.jsonl   Append-only change log (derived — safe to delete)
+  areas/
+    api/                One folder per area (folder name = area id)
+      API-001/          One folder per ticket (folder name = ticket id)
+        API-001.md      THE TICKET — governs everything in this folder
+        research.md     What was learned for it
+        impact.md       The files/modules the change touches
+        plan.md         Written from research + impact
+        checklist.md    The plan as tickable steps
+        proof.md        Evidence it works — REQUIRED to reach the final stage
+    pr-review/          Default area on new boards (prefix PR)
+    _none/              Tickets with no area (prefix TICK)
 ```
 
-Each item is Markdown with frontmatter; the body may reference other items with `[[ID]]` wiki-links, and `links:` holds structured relations. Both are resolved into a backlink graph.
+**The ticket is the governing unit.** Its id comes from the area it was born in
+(`API-001`) and never changes — moving a ticket to another area moves its
+folder, not its id, so `[[API-001]]` references stay valid forever. The five
+pipeline documents live beside the ticket file, and `proof.md` is enforced: the
+board rejects moving a ticket to the final stage without it.
+
+Each item is Markdown with frontmatter; the body may reference other items with `[[ID]]` wiki-links, `links:` holds structured relations, and `blocks:` holds dependency edges (blocked-by is derived, never stored).
 
 ```markdown
 ---
-id: TICK-001
+id: API-001
 type: ticket
 title: Wire up create_item tool
 status: implementing
 area: api
 priority: high
+due: 2026-09-01
+assignee: claude
+taken_at: 2026-08-13T09:12:00.000Z
+branch: feat/create-item
 labels: [mcp]
-links: [PLAN-001]
+links: [API-002]
 ---
-Implements the tool. See [[PLAN-001]] and [[RES-001]].
+Implements the tool. See [[API-002]].
 ```
 
 **One workflow dimension.** A ticket has a single `status` — the stage it's at.
@@ -58,7 +80,13 @@ Todo → Planning → Implementing → Review → Verifying → Done
 
 `area` is an orthogonal, colour-coded grouping (UI, API, Infra…) that clusters
 cards *within* each column. Stages, areas and priorities are all editable in the
-app's Settings.
+app's Settings — or by agents through the board-management tools.
+
+**Upgrading an old board:** projects created before format 2 (flat `tickets/`,
+`plans/`, `research/` folders) keep working unmigrated. The GUI shows a
+"Migrate to v2" banner when it opens one: the migration moves tickets into
+their folders, folds legacy plans/research into the tickets they relate to,
+and converts orphans to labelled tickets so nothing is lost. Ids never change.
 
 ## Install — the easy way (Windows installer)
 
@@ -80,19 +108,29 @@ Run `Kanmer Setup ….exe` → Start-Menu shortcut, normal desktop app. The MCP 
 ```bash
 npm install
 npm run build            # core + mcp-server
-npm test                 # core test suite
+npm test                 # core + GUI test suites
 npm run app              # build + launch the GUI
 # or hot-reload dev:
 npm run dev:gui
 ```
 
+> **Windows, from source:** Electron derives its user-data folder from the
+> workspace package name (`@kanmer/gui`), and on that path the single-instance
+> lock can fail, so the app quits immediately without a window. If that happens,
+> launch it with its own folder instead:
+> `cd apps/gui && npx electron . --user-data-dir=<a fresh dir>`. Installed
+> builds are unaffected.
+
 Click **Open project folder…** and pick any project (recently opened folders are listed, and the last one re-opens on launch). Kanmer creates/loads its `.kanmer/` folder there.
 
-- **Board** — one row of workflow-stage columns. Drag cards between stages to move them; within each column cards **cluster by area** under colour-coded sub-labels and carry an area stripe.
-- **Editor** — click a card to edit every frontmatter field (incl. **stage**, **area**, configurable **priority**) and the Markdown body; `[[ID]]` gets **autocomplete**; **Archive** hides an item, and Delete asks first.
-- **Search + filter bar** — filter by area, priority, assignee, label; toggle archived.
-- **Settings** (gear) — add/rename/recolour/reorder/delete **stages, areas, priorities**, edit **id prefixes**, and switch **theme** — all written to `board.yml`/app settings, reflected instantly. No file editing required.
-- **Inline quick-add** — type a title into any column's “+ card” and press Enter; it gets an auto id.
+- **Board** — one row of workflow-stage columns. Drag cards between stages **and to a position within a stage** — an insertion line shows where the card will land, and it lands instantly (optimistically). Manual order is shared with agents (`move_item position`). Within each column cards **cluster by area** under colour-coded sub-labels, carry an area stripe, and show a ⛏ badge while an agent has them taken, plus ⛔ / ⏰ badges when a ticket is blocked or overdue.
+- **Editor** — click a card for the frontmatter fields plus **document tabs** (Ticket | Research | Impact | Plan | Checklist | Proof) — the checklist renders as live checkboxes. Ticket-field saves are **diff-based** (only the fields you changed); concurrent agent edits re-sync live and a same-field conflict offers Keep mine / Take theirs. **Document saves are whole-document and version-checked** — if an agent changed the document while you were editing, the save is refused with a conflict banner offering Reload from disk or Overwrite anyway. Switching document tabs, closing, navigating or opening another project with unsaved text all prompt first. `[[ID]]` gets **autocomplete**; labels and links are chip editors with suggestions.
+- **Standup view** — in flight, in review, up next, recently done (7 days), blocked, overdue, what happened since yesterday, and flags — grouped by assignee/actor where it helps, with **Copy as Markdown** emitting exactly the `kanmer-standup` skill's shape.
+- **Activity** — a bell with the change feed (who did what, when); native Windows toasts when an agent changes the board while you're away, in-app toasts while you're looking.
+- **Archived view** — restore, or permanently delete behind a two-click confirm. Everywhere else, delete means archive.
+- **Search + filter bar** — filter by area, priority, assignee, label; `Ctrl+K` opens a command palette (jump to an item, or move / take / release the selected one); full keyboard support (`Ctrl+N` new card, `Ctrl+←/→` moves a focused card between stages).
+- **Settings** (gear) — add/rename/recolour/reorder/delete **stages, areas, priorities**, edit **id prefixes**, switch **theme** (dark / light / system) and toggle notifications — validated before saving, reflected instantly.
+- **Inline quick-add** — type a title into any column's "+ card" (or an area header's "+") and press Enter; it gets an auto id in that area's prefix.
 
 ## Install as a plugin (Claude Code & codex) — recommended for agents
 
@@ -121,9 +159,9 @@ The plugin ships three skills:
 
 | Skill | What it does |
 |---|---|
-| `kanmer-workflow` | The working loop — a ticket per unit of work, moved through the stages as you go — plus ticket/plan/research body templates. |
-| `kanmer-standup` | Board status report: in flight, in review, up next, recently done, flags. |
-| `kanmer-onboard` | First-time setup: propose areas from the codebase, seed the backlog from TODOs/roadmaps. |
+| `kanmer-workflow` | The ticket lifecycle — orient with `get_status`, take a ticket (branch/worktree recorded), work the research → impact → plan → checklist → proof pipeline, move stages as you go, release when done — plus templates for the ticket body and all five documents. |
+| `kanmer-standup` | Fact-based board report from the activity log and live summaries: in flight (with branches), in review, up next, recently done, blocked, overdue, flags. |
+| `kanmer-setup` | Setup in three modes — **greenfield** (propose areas + seed a backlog), **brownfield** (mine the codebase for a starter backlog), **upgrade** (drive the v1 → v2 migration) — and it installs Kanmer operating instructions at the **top of the repo's `AGENTS.md`** (a marker-delimited managed block, refreshed idempotently), so any agent that opens the repo knows the board exists. |
 
 > Use **either** the plugin **or** a manual registration (the GUI's Connect
 > button / `mcp add`) — with both, the agent lists all the tools twice. Harmless,
@@ -133,52 +171,59 @@ The plugin ships three skills:
 
 The server speaks MCP over **stdio**. It resolves the project root from `--root`, then `KANMER_ROOT`, then the working directory.
 
-**codex** — add to your project's `.codex/config.toml` (see [examples/codex-config.toml](examples/codex-config.toml)):
+**codex** — add to your project's `.codex/config.toml`, replacing `<kanmer-repo>` with wherever you cloned this repo (see [examples/codex-config.toml](examples/codex-config.toml)):
 
 ```toml
 [mcp_servers.kanmer]
 command = "node"
-args = ["C:/Users/Alex/Documents/GitHub/kanmer/packages/mcp-server/dist/index.js"]
+args = ["<kanmer-repo>/packages/mcp-server/dist/index.js"]
 cwd = "C:/path/to/your/project"
 ```
 
 **Claude Code** — from your project folder:
 
 ```bash
-claude mcp add kanmer -- node C:/Users/Alex/Documents/GitHub/kanmer/packages/mcp-server/dist/index.js --root .
+claude mcp add kanmer -- node <kanmer-repo>/packages/mcp-server/dist/index.js --root .
 ```
 
 ### Tools
 
-Read: `list_board`, `list_items`, `get_item`, `search_items`, `get_links`
-Write: `create_item`, `update_item`, `move_item`, `link_items`, `add_column`
-Destructive: `delete_item`
+Read: `get_status`, `list_board`, `list_items`, `get_item`, `get_ticket_doc`, `search_items`, `get_links`, `get_activity`
+Write: `create_item`, `create_items`, `update_item`, `move_item`, `take_ticket`, `set_ticket_doc`, `link_items`, `add_column`, `update_column`, `reorder_columns`
+Destructive: `delete_item`, `remove_column`
 
-Items carry a `status` (the workflow stage), a configurable `area` (colour-coded, groups cards within a stage) and `priority`, and can be `archived` (hidden from the board, via `update_item`). `add_column` manages stages, areas and priorities.
+Items carry a `status` (the workflow stage), a configurable `area` (colour-coded, groups cards within a stage, and gives tickets their id prefix), `priority`, optional `due` / `blocks` / manual `order`, taken state (`taken_at`/`branch`/`worktree`), and can be `archived` (hidden from the board, via `update_item`). The column tools manage stages, areas and priorities end-to-end — including safe removal with `migrate_to`.
 
-Read tools carry `readOnlyHint`; `delete_item` carries `destructiveHint`, so codex approval modes and Claude's read/write split behave correctly.
+Read tools carry `readOnlyHint`; `delete_item` and `remove_column` carry `destructiveHint`, so codex approval modes and Claude's read/write split behave correctly. The server never creates `.kanmer/` just by being started — only an actual write does.
 
 ## Verify end-to-end
 
 ```bash
-# 1. Core unit tests
+# 1. Core + GUI unit tests
 npm test
 
 # 2. MCP server over real stdio (spawns the server, exercises every tool)
 node packages/mcp-server/src/smoke.mjs
 
+# 2b. Every protocol version the SDK supports, plus the client-identity path
+node packages/mcp-server/src/smoke-protocol.mjs
+
 # 3. GUI boots and renders (opens the window briefly, then exits)
 npm run build -w @kanmer/gui
-cd apps/gui && KANMER_SMOKE=1 KANMER_OPEN="C:/path/to/project" npx electron .
+cd apps/gui && KANMER_SMOKE=1 KANMER_OPEN="C:/path/to/project" \
+  npx electron . --user-data-dir="C:/path/to/a/fresh/dir"
 ```
 
 ```bash
-# 4. Plugin: bundled server is current and its skills match the tool surface
+# 4. Plugin: bundled server is current (byte-for-byte) and its skills match the tool surface
 npm run plugin:build && npm run plugin:check
+
+# 5. The kanmer-setup AGENTS.md managed block, end to end
+node scripts/verify-agents-block.mjs
 ```
 
 **The real test — human + agent, one dataset:** open a project in the GUI, then have codex `create_item` / `move_item` against the same folder. The board updates live. Edit a card's frontmatter in the GUI, then have codex `get_item` — it sees your change.
 
-## Not in this MVP
+## Not yet
 
-Installer/MCPB packaging, remote/multi-user sync, auth, comment history, an in-app board-config editor (edit `data/board.yml` by hand), and a full graph view. All are natural follow-ups.
+Remote/multi-user sync, auth, macOS/Linux installers, and a full graph view. All are natural follow-ups.

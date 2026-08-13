@@ -1,16 +1,83 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { BoardColumn, BoardConfig, Item, LinkGraph, UpdateItemPatch } from "@kanmer/core";
+import type {
+  BoardColumn,
+  BoardConfig,
+  Item,
+  LinkGraph,
+  TicketDoc,
+  TicketDocsInfo,
+  UpdateItemPatch,
+} from "@kanmer/core";
 import { renderMarkdown } from "../lib/markdown.js";
+import { ChipInput } from "./ChipInput.js";
+import { ConfirmModal } from "./ConfirmModal.js";
 
 interface EditorProps {
   item: Item;
   board: BoardConfig;
   items: Item[];
   knownIds: Set<string>;
+  /** Bumped on every on-disk change so open documents can re-sync. */
+  changeSignal: number;
   onClose: () => void;
   onNavigate: (id: string) => void;
-  onSave: (patch: UpdateItemPatch) => Promise<void>;
-  onDelete: () => Promise<void>;
+  /** Saves a diff patch; resolves with the item as written to disk. */
+  onSave: (patch: UpdateItemPatch) => Promise<Item>;
+  /** Reports dirty-state changes so App can guard against losing edits. */
+  onDirtyChange?: (dirty: boolean) => void;
+}
+
+/** The editable fields, as flat strings (lists joined for the inputs). */
+interface Snapshot {
+  title: string;
+  status: string;
+  area: string;
+  priority: string;
+  assignee: string;
+  due: string;
+  labels: string;
+  links: string;
+  body: string;
+  /** The `updated` stamp this snapshot came from — the conflict reference. */
+  updated: string;
+}
+
+const FIELD_KEYS = [
+  "title",
+  "status",
+  "area",
+  "priority",
+  "assignee",
+  "due",
+  "labels",
+  "links",
+  "body",
+] as const;
+type FieldKey = (typeof FIELD_KEYS)[number];
+
+const DOC_TABS: { key: TicketDoc; label: string }[] = [
+  { key: "research", label: "Research" },
+  { key: "impact", label: "Impact" },
+  { key: "plan", label: "Plan" },
+  { key: "checklist", label: "Checklist" },
+  { key: "proof", label: "Proof" },
+];
+
+const MIN_WIDTH = 320;
+
+function snapOf(item: Item): Snapshot {
+  return {
+    title: item.title,
+    status: item.status,
+    area: item.area,
+    priority: item.priority,
+    assignee: item.assignee,
+    due: item.due ?? "",
+    labels: (item.labels ?? []).join(", "),
+    links: (item.links ?? []).join(", "),
+    body: item.body,
+    updated: item.updated,
+  };
 }
 
 /** Ensure the item's current value is selectable even if not in board config. */
@@ -21,20 +88,66 @@ function withCurrent(options: BoardColumn[], current: string): BoardColumn[] {
 }
 
 export function Editor(props: EditorProps): JSX.Element {
-  const { item, board, items, knownIds, onClose, onNavigate, onSave, onDelete } = props;
+  const {
+    item,
+    board,
+    items,
+    knownIds,
+    changeSignal,
+    onClose,
+    onNavigate,
+    onSave,
+    onDirtyChange,
+  } = props;
 
-  const [title, setTitle] = useState(item.title);
-  const [status, setStatus] = useState(item.status);
-  const [area, setArea] = useState(item.area);
-  const [priority, setPriority] = useState(item.priority);
-  const [assignee, setAssignee] = useState(item.assignee);
-  const [labels, setLabels] = useState(item.labels.join(", "));
-  const [links, setLinks] = useState(item.links.join(", "));
-  const [body, setBody] = useState(item.body);
+  const [form, setForm] = useState<Snapshot>(() => snapOf(item));
+  // The item as last read/written: saves diff against this, never against
+  // the live prop — so a concurrent agent edit to a field the user never
+  // touched is left alone instead of being clobbered.
+  const baseline = useRef<Snapshot>(snapOf(item));
+  const [tab, setTab] = useState<"ticket" | TicketDoc>("ticket");
+  const [pendingTab, setPendingTab] = useState<"ticket" | TicketDoc | null>(null);
+  const [docsInfo, setDocsInfo] = useState<TicketDocsInfo | null>(null);
+  const [docDirty, setDocDirty] = useState(false);
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [graph, setGraph] = useState<LinkGraph | null>(null);
+  const [conflict, setConflict] = useState<{ fields: FieldKey[]; theirs: Partial<Snapshot> } | null>(
+    null,
+  );
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Resizable width, persisted.
+  const [width, setWidth] = useState<number>(() => {
+    const saved = Number(localStorage.getItem("kanmer:editorWidth"));
+    return Number.isFinite(saved) && saved >= MIN_WIDTH ? saved : 420;
+  });
+  const dragging = useRef(false);
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!dragging.current) return;
+      const next = Math.min(
+        Math.max(window.innerWidth - e.clientX, MIN_WIDTH),
+        Math.floor(window.innerWidth / 2),
+      );
+      setWidth(next);
+    };
+    const onUp = () => {
+      if (!dragging.current) return;
+      dragging.current = false;
+      document.body.style.cursor = "";
+      setWidth((w) => {
+        localStorage.setItem("kanmer:editorWidth", String(w));
+        return w;
+      });
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
 
   // Wiki-link autocomplete state.
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -47,41 +160,142 @@ export function Editor(props: EditorProps): JSX.Element {
     void window.kanmer.getLinks(item.id).then(setGraph);
   }, [item.id, item.updated]);
 
+  useEffect(() => {
+    if (item.type !== "ticket") return;
+    void window.kanmer.getDocsInfo(item.id).then(setDocsInfo);
+  }, [item.id, item.updated, changeSignal, item.type]);
+
+  const dirtyKeys = useMemo(
+    () => FIELD_KEYS.filter((k) => form[k] !== baseline.current[k]),
+    [form],
+  );
+  const dirty = dirtyKeys.length > 0 || docDirty;
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+  // On unmount the editor's edits are gone either way — report clean.
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+
+  // The latest form values, readable from effects without re-running them.
+  const formRef = useRef(form);
+  formRef.current = form;
+
+  // Live re-sync: the item changed on disk while the editor is open (agent
+  // edit, second window…). Untouched fields silently adopt the new values;
+  // a field the user is editing that ALSO changed on disk raises the
+  // conflict banner instead of anyone's version being silently dropped.
+  useEffect(() => {
+    if (item.updated === baseline.current.updated) return;
+    const incoming = snapOf(item);
+    const prev = formRef.current;
+    const touched = FIELD_KEYS.filter((k) => prev[k] !== baseline.current[k]);
+    const conflicts = touched.filter(
+      (k) => incoming[k] !== baseline.current[k] && incoming[k] !== prev[k],
+    );
+    const next: Snapshot = { ...incoming };
+    for (const k of touched) next[k] = prev[k];
+    baseline.current = incoming;
+    setForm(next);
+    if (conflicts.length > 0) {
+      setConflict({
+        fields: conflicts,
+        theirs: Object.fromEntries(conflicts.map((k) => [k, incoming[k]])),
+      });
+    }
+  }, [item]);
+
   const statusOpts = withCurrent(board.statuses, item.status);
   const priorityOpts = withCurrent(board.priorities, item.priority);
   const areaOpts = withCurrent(board.areas, item.area);
-
-  const patch = useMemo<UpdateItemPatch>(
-    () => ({
-      title,
-      status,
-      area,
-      priority,
-      assignee,
-      labels: splitList(labels),
-      links: splitList(links),
-      body,
-    }),
-    [title, status, area, priority, assignee, labels, links, body],
+  const labelSuggestions = useMemo(
+    () =>
+      [...new Set(items.flatMap((i) => i.labels ?? []))].map((l) => ({ id: l })),
+    [items],
+  );
+  const linkSuggestions = useMemo(
+    () => items.filter((i) => i.id !== item.id).map((i) => ({ id: i.id, hint: i.title })),
+    [items, item.id],
   );
 
-  const dirty =
-    title !== item.title ||
-    status !== item.status ||
-    area !== item.area ||
-    priority !== item.priority ||
-    assignee !== item.assignee ||
-    labels !== item.labels.join(", ") ||
-    links !== item.links.join(", ") ||
-    body !== item.body;
+  /** Build the diff patch: only fields where local ≠ baseline. */
+  const buildPatch = (keys: FieldKey[]): UpdateItemPatch => {
+    const patch: UpdateItemPatch = {};
+    for (const k of keys) {
+      if (k === "labels") patch.labels = splitList(form.labels);
+      else if (k === "links") patch.links = splitList(form.links);
+      else patch[k] = form[k];
+    }
+    return patch;
+  };
 
   const save = async () => {
+    const keys = FIELD_KEYS.filter((k) => form[k] !== baseline.current[k]);
+    if (keys.length === 0) return;
     setSaving(true);
+    setSaveError(null);
     try {
-      await onSave(patch);
+      // Close the watcher-debounce race: check the file just before writing.
+      const fresh = await window.kanmer.getItem(item.id);
+      if (fresh && fresh.updated !== baseline.current.updated) {
+        const incoming = snapOf(fresh);
+        const conflicts = keys.filter(
+          (k) => incoming[k] !== baseline.current[k] && incoming[k] !== form[k],
+        );
+        setForm((prev) => {
+          const next: Snapshot = { ...incoming };
+          for (const k of keys) next[k] = prev[k];
+          return next;
+        });
+        baseline.current = incoming;
+        if (conflicts.length > 0) {
+          setConflict({
+            fields: conflicts,
+            theirs: Object.fromEntries(conflicts.map((k) => [k, incoming[k]])),
+          });
+          return; // don't save over a live conflict — the user decides first
+        }
+      }
+      const saved = await onSave({
+        ...buildPatch(keys),
+        expectedUpdated: baseline.current.updated,
+      });
+      const snap = snapOf(saved);
+      baseline.current = snap;
+      setForm(snap);
+      setConflict(null);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
+  };
+
+  const set = (k: FieldKey, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Ctrl+S saves from anywhere in the editor (ticket tab only; doc tabs
+  // have their own save flow).
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        void saveRef.current();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  /**
+   * Tab switches lose the document editor's unsaved text (both the doc→doc
+   * key change and the doc→Ticket unmount), so they are guarded where the
+   * loss happens rather than by stretching App's item-level trySelect.
+   */
+  const tryTab = (next: "ticket" | TicketDoc) => {
+    if (next !== tab && docDirty) setPendingTab(next);
+    else setTab(next);
   };
 
   const onPreviewClick = (e: React.MouseEvent) => {
@@ -117,8 +331,9 @@ export function Editor(props: EditorProps): JSX.Element {
 
   const insertSuggestion = (chosen: Item) => {
     if (!suggest) return;
-    const next = body.slice(0, suggest.from) + `[[${chosen.id}]]` + body.slice(suggest.caret);
-    setBody(next);
+    const next =
+      form.body.slice(0, suggest.from) + `[[${chosen.id}]]` + form.body.slice(suggest.caret);
+    set("body", next);
     setSuggest(null);
     requestAnimationFrame(() => {
       const el = bodyRef.current;
@@ -142,168 +357,523 @@ export function Editor(props: EditorProps): JSX.Element {
       e.preventDefault();
       insertSuggestion(suggestions[activeIdx]);
     } else if (e.key === "Escape") {
+      e.stopPropagation(); // just close the popup, not the editor
       setSuggest(null);
     }
   };
 
   return (
-    <aside className="editor">
+    <aside className="editor" style={{ width }}>
+      <div
+        className="editor-resize"
+        title="Drag to resize"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          dragging.current = true;
+          document.body.style.cursor = "col-resize";
+        }}
+      />
       <div className="editor-head">
         <span className="editor-id">{item.id}</span>
         {item.archived && <span className="chip subtle archived-tag">archived</span>}
         <div className="spacer" />
-        <button className="ghost sm" onClick={() => void onSave({ archived: !item.archived })}>
+        <button
+          className="ghost sm"
+          title={item.archived ? undefined : "Hides from the board; restore from the Archived view"}
+          onClick={() => void onSave({ archived: !item.archived })}
+        >
           {item.archived ? "Unarchive" : "Archive"}
         </button>
-        {confirmDelete ? (
-          <button className="danger sm" onClick={() => void onDelete()}>
-            Confirm delete
-          </button>
-        ) : (
-          <button className="ghost sm" onClick={() => setConfirmDelete(true)}>
-            Delete
-          </button>
-        )}
         <button className="ghost sm" onClick={onClose}>
           Close
         </button>
       </div>
 
-      <label className="field">
-        <span>Title</span>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} />
-      </label>
-
-      <label className="field">
-        <span>Stage</span>
-        <select value={status} onChange={(e) => setStatus(e.target.value)}>
-          {statusOpts.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <div className="field-row">
-        <label className="field">
-          <span>Area</span>
-          <select value={area} onChange={(e) => setArea(e.target.value)}>
-            <option value="">— none —</option>
-            {areaOpts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>Priority</span>
-          <select value={priority} onChange={(e) => setPriority(e.target.value)}>
-            {priorityOpts.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <label className="field">
-        <span>Assignee</span>
-        <input value={assignee} onChange={(e) => setAssignee(e.target.value)} />
-      </label>
-
-      <label className="field">
-        <span>Labels (comma-separated)</span>
-        <input value={labels} onChange={(e) => setLabels(e.target.value)} />
-      </label>
-
-      <label className="field">
-        <span>Links (comma-separated ids)</span>
-        <input value={links} onChange={(e) => setLinks(e.target.value)} />
-      </label>
-
-      <div className="field">
-        <div className="body-head">
-          <span>Body</span>
-          <button className="ghost xs" onClick={() => setPreview((p) => !p)}>
-            {preview ? "Edit" : "Preview"}
+      {item.type === "ticket" && docsInfo && (
+        <nav className="doc-tabs">
+          <button
+            className={tab === "ticket" ? "tab active" : "tab"}
+            onClick={() => tryTab("ticket")}
+          >
+            Ticket
           </button>
-        </div>
-        {preview ? (
-          <div
-            className="preview markdown"
-            onClick={onPreviewClick}
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(body, knownIds) }}
-          />
-        ) : (
-          <div className="body-wrap">
-            <textarea
-              ref={bodyRef}
-              className="body"
-              value={body}
-              spellCheck={false}
-              onChange={(e) => {
-                setBody(e.target.value);
-                recomputeSuggest(e.target.value, e.target.selectionStart ?? 0);
-              }}
-              onKeyDown={onBodyKeyDown}
-              onClick={(e) => recomputeSuggest(body, e.currentTarget.selectionStart ?? 0)}
-              placeholder="Markdown… reference other items with [[TICK-001]]"
-            />
-            {suggest && suggestions.length > 0 && (
-              <ul className="autocomplete">
-                {suggestions.map((s, i) => (
-                  <li
-                    key={s.id}
-                    className={i === activeIdx ? "active" : ""}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      insertSuggestion(s);
-                    }}
-                  >
-                    <span className="ac-id">{s.id}</span>
-                    <span className="ac-title">{s.title}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
-
-      {graph && (graph.links.length > 0 || graph.backlinks.length > 0) && (
-        <div className="links-panel">
-          {graph.links.length > 0 && (
-            <div className="links-group">
-              <span className="links-title">Links to</span>
-              {graph.links.map((id) => (
-                <button key={id} className="chip link" onClick={() => onNavigate(id)}>
-                  {id}
-                </button>
-              ))}
-            </div>
-          )}
-          {graph.backlinks.length > 0 && (
-            <div className="links-group">
-              <span className="links-title">Linked from</span>
-              {graph.backlinks.map((id) => (
-                <button key={id} className="chip link" onClick={() => onNavigate(id)}>
-                  {id}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+          {DOC_TABS.map((d) => (
+            <button
+              key={d.key}
+              className={tab === d.key ? "tab active" : "tab"}
+              onClick={() => tryTab(d.key)}
+            >
+              {d.label}
+              {docsInfo.docs[d.key] && <span className="doc-dot" aria-label="exists" />}
+              {d.key === "checklist" && docsInfo.checklist && (
+                <span className="count">
+                  {docsInfo.checklist.checked}/{docsInfo.checklist.total}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
       )}
 
-      <div className="editor-foot">
-        <button className="primary" disabled={!dirty || saving} onClick={() => void save()}>
-          {saving ? "Saving…" : dirty ? "Save changes" : "Saved"}
+      {conflict && (
+        <div className="banner warn conflict-banner">
+          <span>
+            Changed on disk while editing ({conflict.fields.join(", ")}) — keep your version or
+            take the one from disk?
+          </span>
+          <div className="conflict-actions">
+            <button className="ghost xs" onClick={() => setConflict(null)}>
+              Keep mine
+            </button>
+            <button
+              className="ghost xs"
+              onClick={() => {
+                setForm((f) => ({ ...f, ...conflict.theirs }));
+                setConflict(null);
+              }}
+            >
+              Take theirs
+            </button>
+          </div>
+        </div>
+      )}
+      {saveError && <div className="banner error">{saveError}</div>}
+
+      {pendingTab !== null && (
+        <ConfirmModal
+          message={`Discard changes to ${item.id} ${tab}.md?`}
+          actionLabel="Discard"
+          onCancel={() => setPendingTab(null)}
+          onConfirm={() => {
+            // Clear docDirty first: otherwise the outer `dirty` is still true
+            // for the render in which the tab has already changed.
+            setDocDirty(false);
+            setTab(pendingTab);
+            setPendingTab(null);
+          }}
+        />
+      )}
+
+      {tab !== "ticket" ? (
+        <DocEditor
+          key={`${item.id}:${tab}`}
+          id={item.id}
+          doc={tab}
+          knownIds={knownIds}
+          changeSignal={changeSignal}
+          onDirty={setDocDirty}
+          onNavigate={onNavigate}
+        />
+      ) : (
+        <>
+          <label className="field">
+            <span>Title</span>
+            <input value={form.title} onChange={(e) => set("title", e.target.value)} />
+          </label>
+
+          <label className="field">
+            <span>Stage</span>
+            <select value={form.status} onChange={(e) => set("status", e.target.value)}>
+              {statusOpts.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="field-row">
+            <label className="field">
+              <span>Area</span>
+              <select value={form.area} onChange={(e) => set("area", e.target.value)}>
+                <option value="">— none —</option>
+                {areaOpts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Priority</span>
+              <select value={form.priority} onChange={(e) => set("priority", e.target.value)}>
+                {priorityOpts.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="field-row">
+            <label className="field">
+              <span>Assignee</span>
+              <input value={form.assignee} onChange={(e) => set("assignee", e.target.value)} />
+            </label>
+            <label className="field">
+              <span>Due</span>
+              <input
+                type="date"
+                value={form.due}
+                onChange={(e) => set("due", e.target.value)}
+              />
+            </label>
+          </div>
+
+          {item.taken_at && (
+            <div className="taken-note">
+              ⛏ Taken {item.branch ? `on ${item.branch}` : ""}
+              {item.worktree ? ` in ${item.worktree}` : ""} since{" "}
+              {new Date(item.taken_at).toLocaleString()}
+            </div>
+          )}
+
+          <div className="field">
+            <span>Labels</span>
+            <ChipInput
+              value={splitList(form.labels)}
+              onChange={(arr) => set("labels", arr.join(", "))}
+              suggestions={labelSuggestions}
+              placeholder="Add label…"
+              ariaLabel="Labels"
+            />
+          </div>
+
+          <div className="field">
+            <span>Links</span>
+            <ChipInput
+              value={splitList(form.links)}
+              onChange={(arr) => set("links", arr.join(", "))}
+              suggestions={linkSuggestions}
+              placeholder="Link an item id…"
+              ariaLabel="Links"
+            />
+          </div>
+
+          <div className="field">
+            <div className="body-head">
+              <span>Body</span>
+              <button className="ghost xs" onClick={() => setPreview((p) => !p)}>
+                {preview ? "Edit" : "Preview"}
+              </button>
+            </div>
+            {preview ? (
+              <div
+                className="preview markdown"
+                onClick={onPreviewClick}
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(form.body, knownIds) }}
+              />
+            ) : (
+              <div className="body-wrap">
+                <textarea
+                  ref={bodyRef}
+                  className="body"
+                  value={form.body}
+                  spellCheck={false}
+                  onChange={(e) => {
+                    set("body", e.target.value);
+                    recomputeSuggest(e.target.value, e.target.selectionStart ?? 0);
+                  }}
+                  onKeyDown={onBodyKeyDown}
+                  onClick={(e) => recomputeSuggest(form.body, e.currentTarget.selectionStart ?? 0)}
+                  placeholder="Markdown… reference other items with [[TICK-001]]"
+                />
+                {suggest && suggestions.length > 0 && (
+                  <ul className="autocomplete">
+                    {suggestions.map((s, i) => (
+                      <li
+                        key={s.id}
+                        className={i === activeIdx ? "active" : ""}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          insertSuggestion(s);
+                        }}
+                      >
+                        <span className="ac-id">{s.id}</span>
+                        <span className="ac-title">{s.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+
+          {graph &&
+            (graph.links.length > 0 ||
+              graph.backlinks.length > 0 ||
+              graph.blocks.length > 0 ||
+              graph.blockedBy.length > 0) && (
+              <div className="links-panel">
+                {graph.links.length > 0 && (
+                  <LinkGroup title="Links to" ids={graph.links} onNavigate={onNavigate} />
+                )}
+                {graph.backlinks.length > 0 && (
+                  <LinkGroup title="Linked from" ids={graph.backlinks} onNavigate={onNavigate} />
+                )}
+                {graph.blocks.length > 0 && (
+                  <LinkGroup title="Blocks" ids={graph.blocks} onNavigate={onNavigate} />
+                )}
+                {graph.blockedBy.length > 0 && (
+                  <LinkGroup title="Blocked by" ids={graph.blockedBy} onNavigate={onNavigate} />
+                )}
+              </div>
+            )}
+
+          <div className="editor-foot">
+            <button className="primary" disabled={!dirty || saving} onClick={() => void save()}>
+              {saving ? "Saving…" : dirtyKeys.length > 0 ? "Save changes" : "Saved"}
+            </button>
+          </div>
+        </>
+      )}
+    </aside>
+  );
+}
+
+function LinkGroup({
+  title,
+  ids,
+  onNavigate,
+}: {
+  title: string;
+  ids: string[];
+  onNavigate: (id: string) => void;
+}): JSX.Element {
+  return (
+    <div className="links-group">
+      <span className="links-title">{title}</span>
+      {ids.map((id) => (
+        <button key={id} className="chip link" onClick={() => onNavigate(id)}>
+          {id}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * One pipeline document: edit/preview/save whole-doc, with the checklist tab
+ * rendering interactive checkboxes that write straight back to disk.
+ */
+function DocEditor({
+  id,
+  doc,
+  knownIds,
+  changeSignal,
+  onDirty,
+  onNavigate,
+}: {
+  id: string;
+  doc: TicketDoc;
+  knownIds: Set<string>;
+  changeSignal: number;
+  onDirty: (dirty: boolean) => void;
+  onNavigate: (id: string) => void;
+}): JSX.Element {
+  const [content, setContent] = useState<string | null>(null);
+  const [version, setVersion] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<string | null>(null);
+  const [text, setText] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const dirty = editing && text !== (content ?? "");
+  // What the last save tried to write — "Overwrite anyway" re-issues exactly
+  // that, which matters for the checklist toggle (its content never reaches
+  // `text`).
+  const lastAttempt = useRef("");
+
+  useEffect(() => {
+    onDirty(dirty);
+  }, [dirty, onDirty]);
+  useEffect(() => () => onDirty(false), [onDirty]);
+
+  // Load — and re-sync on external changes while the user isn't editing.
+  // `dirty` is in the deps on purpose: it flips true→false on Cancel and
+  // after a save, which re-runs the load and re-syncs both content and the
+  // version token. That is what closes the otherwise unbounded window in
+  // which a cancelled edit left a stale token behind. It cannot loop — after
+  // a load `dirty` is already false and does not change.
+  useEffect(() => {
+    if (dirty) return;
+    void window.kanmer.getDoc(id, doc).then(({ content: c, version: v }) => {
+      setContent(c);
+      setVersion(v);
+      setText(c ?? "");
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, doc, changeSignal, dirty]);
+
+  /**
+   * Save the whole document. `expectedVersion` makes a concurrent write
+   * (an agent over MCP, a second window) a visible conflict instead of a
+   * silent overwrite; `force` re-issues the same save without it.
+   */
+  const saveDoc = async (next: string, force = false) => {
+    lastAttempt.current = next;
+    setSaving(true);
+    try {
+      const written = next.trim() ? `${next.trim()}\n` : next;
+      const res = await window.kanmer.setDoc(
+        id,
+        doc,
+        next,
+        force ? undefined : { expectedVersion: version },
+      );
+      setContent(written);
+      setText(written);
+      setVersion(res.version);
+      setConflict(null);
+      setEditing(false);
+    } catch (err) {
+      // Keep `editing` — the user's text must survive the rejection.
+      setConflict(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleCheckbox = async (boxIndex: number) => {
+    if (content === null) return;
+    let seen = -1;
+    const next = content
+      .split("\n")
+      .map((line) => {
+        const m = /^(\s*[-*]\s+\[)( |x|X)(\].*)$/.exec(line);
+        if (!m) return line;
+        seen++;
+        if (seen !== boxIndex) return line;
+        return `${m[1]}${m[2] === " " ? "x" : " "}${m[3]}`;
+      })
+      .join("\n");
+    await saveDoc(next);
+  };
+
+  const conflictBanner =
+    conflict === null ? null : (
+      <div className="banner warn conflict-banner">
+        <span>{conflict}</span>
+        <div className="conflict-actions">
+          <button
+            className="ghost xs"
+            onClick={() => {
+              // dirty goes false, so the load effect re-runs and re-syncs.
+              setConflict(null);
+              setEditing(false);
+            }}
+          >
+            Reload from disk
+          </button>
+          <button
+            className="ghost xs"
+            onClick={() => {
+              setConflict(null);
+              void saveDoc(lastAttempt.current, true);
+            }}
+          >
+            Overwrite anyway
+          </button>
+        </div>
+      </div>
+    );
+
+  if (content === null && !editing) {
+    return (
+      <div className="doc-empty">
+        <p>No {doc}.md yet.</p>
+        <button
+          className="primary sm"
+          onClick={() => {
+            setText(`# ${id} ${doc}\n\n`);
+            setEditing(true);
+          }}
+        >
+          Create {doc}.md
         </button>
       </div>
-    </aside>
+    );
+  }
+
+  if (editing) {
+    return (
+      <div className="doc-editor">
+        {conflictBanner}
+        <textarea
+          className="body doc-body"
+          value={text}
+          spellCheck={false}
+          autoFocus
+          onChange={(e) => setText(e.target.value)}
+        />
+        <div className="editor-foot">
+          <button
+            className="ghost sm"
+            onClick={() => {
+              setText(content ?? "");
+              setEditing(false);
+            }}
+          >
+            Cancel
+          </button>
+          <button className="primary" disabled={saving} onClick={() => void saveDoc(text)}>
+            {saving ? "Saving…" : `Save ${doc}.md`}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (doc === "checklist") {
+    let boxIndex = -1;
+    return (
+      <div className="doc-editor">
+        {conflictBanner}
+        <div className="doc-view checklist-view">
+          {(content ?? "").split("\n").map((line, i) => {
+            const m = /^(\s*)[-*]\s+\[( |x|X)\]\s?(.*)$/.exec(line);
+            if (!m) return <div key={i} className="checklist-text">{line}</div>;
+            boxIndex++;
+            const idx = boxIndex;
+            const checked = m[2] !== " ";
+            return (
+              <label key={i} className="checklist-item" style={{ paddingLeft: m[1].length * 8 }}>
+                <input type="checkbox" checked={checked} onChange={() => void toggleCheckbox(idx)} />
+                <span className={checked ? "done" : ""}>{m[3]}</span>
+              </label>
+            );
+          })}
+        </div>
+        <div className="editor-foot">
+          <button className="ghost sm" onClick={() => setEditing(true)}>
+            Edit
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="doc-editor">
+      {conflictBanner}
+      <div
+        className="preview markdown doc-view"
+        onClick={(e) => {
+          const target = e.target as HTMLElement;
+          const href = target.tagName === "A" ? target.getAttribute("href") ?? "" : "";
+          if (href.startsWith("kanmer:")) {
+            e.preventDefault();
+            onNavigate(href.slice("kanmer:".length));
+          }
+        }}
+        dangerouslySetInnerHTML={{ __html: renderMarkdown(content ?? "", knownIds) }}
+      />
+      <div className="editor-foot">
+        <button className="ghost sm" onClick={() => setEditing(true)}>
+          Edit
+        </button>
+      </div>
+    </div>
   );
 }
 

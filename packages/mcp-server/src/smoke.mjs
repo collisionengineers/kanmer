@@ -40,13 +40,19 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
-  check("tools/list returns 11 tools", tools.tools.length === 11, `got ${tools.tools.length}`);
+  check("tools/list returns 20 tools", tools.tools.length === 20, `got ${tools.tools.length}`);
 
   const del = tools.tools.find((t) => t.name === "delete_item");
   check("delete_item is destructive", del?.annotations?.destructiveHint === true);
   const list = tools.tools.find((t) => t.name === "list_items");
   check("list_items is read-only", list?.annotations?.readOnlyHint === true);
   check("add_column tool exists", tools.tools.some((t) => t.name === "add_column"));
+  const gs = tools.tools.find((t) => t.name === "get_status");
+  check("get_status is read-only", gs?.annotations?.readOnlyHint === true);
+  const gtd = tools.tools.find((t) => t.name === "get_ticket_doc");
+  check("get_ticket_doc is read-only", gtd?.annotations?.readOnlyHint === true);
+  const rmc = tools.tools.find((t) => t.name === "remove_column");
+  check("remove_column is destructive", rmc?.annotations?.destructiveHint === true);
 
   const boardRes = await client.callTool({ name: "list_board", arguments: {} });
   const board = JSON.parse(textOf(boardRes));
@@ -59,9 +65,19 @@ try {
   check("board has no phases dimension", board.phases === undefined);
   check("board carries priorities", board.priorities.some((p) => p.id === "urgent"));
   check("board carries areas array", Array.isArray(board.areas));
+  check("list_board reports source: default before any write", board.source === "default", board.source);
 
   const itemsBeforeWrite = await client.callTool({ name: "list_items", arguments: {} });
   check("list_items works before any write", JSON.parse(textOf(itemsBeforeWrite)).length === 0);
+  const statusBefore = JSON.parse(
+    textOf(await client.callTool({ name: "get_status", arguments: {} })),
+  );
+  check(
+    "get_status reports exists=false, format 2, default board on a fresh root",
+    statusBefore.exists === false &&
+      statusBefore.format === 2 &&
+      statusBefore.boardSource === "default",
+  );
   check(
     "reads alone do not create .kanmer/ (lazy init)",
     !fs.existsSync(path.join(sandbox, ".kanmer")),
@@ -83,7 +99,16 @@ try {
     name: "create_item",
     arguments: { type: "plan", title: "Smoke plan" },
   });
-  check("create_item allocates PLAN-001", JSON.parse(textOf(plan)).id === "PLAN-001");
+  check(
+    "create_item rejects standalone plans on a v2 board, naming set_ticket_doc",
+    plan.isError === true && textOf(plan).includes("set_ticket_doc"),
+  );
+
+  const second = await client.callTool({
+    name: "create_item",
+    arguments: { type: "ticket", title: "Second ticket", body: "See [[TICK-001]]" },
+  });
+  check("create_item allocates TICK-002", JSON.parse(textOf(second)).id === "TICK-002");
 
   const moved = await client.callTool({
     name: "move_item",
@@ -97,24 +122,304 @@ try {
   });
   check("move_item rejects a status the board doesn't define", badMove.isError === true);
 
-  const links = await client.callTool({ name: "get_links", arguments: { id: "PLAN-001" } });
-  check("get_links resolves wiki backlink", textOf(links).includes("TICK-001"));
+  const boardAfterWrite = JSON.parse(
+    textOf(await client.callTool({ name: "list_board", arguments: {} })),
+  );
+  check("list_board reports source: file once board.yml exists", boardAfterWrite.source === "file");
+
+  const conflict = await client.callTool({
+    name: "update_item",
+    arguments: { id: "TICK-001", title: "New", expected_updated: "2000-01-01T00:00:00.000Z" },
+  });
+  check(
+    "update_item with stale expected_updated returns a conflict",
+    conflict.isError === true && textOf(conflict).includes("Conflict"),
+  );
+
+  const traversal = await client.callTool({ name: "get_item", arguments: { id: "../evil" } });
+  check("get_item rejects a traversal id", traversal.isError === true);
+
+  const statusAfter = JSON.parse(
+    textOf(await client.callTool({ name: "get_status", arguments: {} })),
+  );
+  check(
+    "get_status reflects the created state",
+    statusAfter.exists === true &&
+      statusAfter.boardSource === "file" &&
+      statusAfter.counts.byStage.review === 1,
+    JSON.stringify(statusAfter.counts.byStage),
+  );
+
+  // Take / release lifecycle.
+  const taken = await client.callTool({
+    name: "take_ticket",
+    arguments: { id: "TICK-002", branch: "feat/smoke", worktree: "wt/smoke" },
+  });
+  const takenItem = JSON.parse(textOf(taken));
+  check(
+    "take_ticket records taken_at/branch and moves to implementing",
+    Boolean(takenItem.taken_at) &&
+      takenItem.branch === "feat/smoke" &&
+      takenItem.status === "implementing",
+  );
+  check(
+    "take_ticket defaults assignee to the client name",
+    takenItem.assignee === "smoke",
+    takenItem.assignee,
+  );
+  const doubleTake = await client.callTool({
+    name: "take_ticket",
+    arguments: { id: "TICK-002", branch: "feat/other" },
+  });
+  check("take_ticket rejects an already-taken ticket", doubleTake.isError === true);
+  const noBranch = await client.callTool({
+    name: "take_ticket",
+    arguments: { id: "TICK-002", action: "take", force: true },
+  });
+  check("take_ticket requires a branch", noBranch.isError === true);
+
+  // Doc pipeline round-trip.
+  await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: "TICK-002", doc: "research", content: "# Findings\n\nInitial." },
+  });
+  await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: "TICK-002", doc: "research", content: "Later note.", append: true },
+  });
+  const researchDoc = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "get_ticket_doc",
+        arguments: { id: "TICK-002", doc: "research" },
+      }),
+    ),
+  );
+  check(
+    "set_ticket_doc append keeps earlier content",
+    researchDoc.exists === true &&
+      researchDoc.content.includes("Initial.") &&
+      researchDoc.content.includes("Later note."),
+  );
+  const enrichedItem = JSON.parse(
+    textOf(await client.callTool({ name: "get_item", arguments: { id: "TICK-002" } })),
+  );
+  check(
+    "get_item reports doc presence",
+    enrichedItem.docs.research === true && enrichedItem.docs.proof === false,
+  );
+
+  // Optimistic concurrency on the doc pipeline.
+  check(
+    "get_ticket_doc returns a version token",
+    typeof researchDoc.version === "string" && researchDoc.version.length > 0,
+    String(researchDoc.version),
+  );
+  const staleVersion = researchDoc.version;
+  // Someone else writes, so our token goes stale.
+  await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: "TICK-002", doc: "research", content: "Newer agent write." },
+  });
+  const conflicted = await client.callTool({
+    name: "set_ticket_doc",
+    arguments: {
+      id: "TICK-002",
+      doc: "research",
+      content: "Clobber",
+      expected_version: staleVersion,
+    },
+  });
+  check(
+    "set_ticket_doc rejects a stale expected_version",
+    conflicted.isError === true && textOf(conflicted).includes("Conflict"),
+  );
+  const afterConflict = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "get_ticket_doc",
+        arguments: { id: "TICK-002", doc: "research" },
+      }),
+    ),
+  );
+  check(
+    "set_ticket_doc left the newer content in place",
+    afterConflict.content.includes("Newer agent write") &&
+      !afterConflict.content.includes("Clobber"),
+  );
+  const accepted = await client.callTool({
+    name: "set_ticket_doc",
+    arguments: {
+      id: "TICK-002",
+      doc: "research",
+      content: "Applied on top.",
+      expected_version: afterConflict.version,
+    },
+  });
+  check(
+    "set_ticket_doc accepts a fresh expected_version and returns the new one",
+    accepted.isError !== true &&
+      typeof JSON.parse(textOf(accepted)).version === "string" &&
+      JSON.parse(textOf(accepted)).version !== afterConflict.version,
+  );
+
+  // Proof gate through move_item.
+  const gated = await client.callTool({
+    name: "move_item",
+    arguments: { id: "TICK-002", status: "done" },
+  });
+  check(
+    "move_item to the final stage is proof-gated",
+    gated.isError === true && textOf(gated).includes("proof.md"),
+  );
+  await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: "TICK-002", doc: "proof", content: "Smoke evidence." },
+  });
+  const nowDone = await client.callTool({
+    name: "move_item",
+    arguments: { id: "TICK-002", status: "done" },
+  });
+  check("move_item succeeds once proof.md exists", JSON.parse(textOf(nowDone)).status === "done");
+  const released = await client.callTool({
+    name: "take_ticket",
+    arguments: { id: "TICK-002", action: "release" },
+  });
+  check("take_ticket release clears the taken fields", !JSON.parse(textOf(released)).taken_at);
+
+  // A status reorder that would make a stage final is gated the same way a
+  // move is: TICK-001 sits in "review" with no proof.md.
+  const gatedReorder = await client.callTool({
+    name: "reorder_columns",
+    arguments: {
+      kind: "status",
+      order: ["todo", "planning", "implementing", "verifying", "done", "review"],
+    },
+  });
+  check(
+    "reorder_columns status is proof-gated",
+    gatedReorder.isError === true && textOf(gatedReorder).includes("proof.md"),
+    textOf(gatedReorder).slice(0, 80),
+  );
+  const boardStillDone = JSON.parse(
+    textOf(await client.callTool({ name: "list_board", arguments: {} })),
+  );
+  check(
+    "the refused status reorder left the board untouched",
+    boardStillDone.statuses[boardStillDone.statuses.length - 1].id === "done",
+  );
+
+  // Bulk create with partial failure.
+  const bulk = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "create_items",
+        arguments: {
+          items: [
+            { title: "Bulk A" },
+            { title: "Bulk B" },
+            { title: "Bulk bad", status: "not-a-stage" },
+          ],
+        },
+      }),
+    ),
+  );
+  check(
+    "create_items reports per-entry results with partial success",
+    bulk.created === 2 && bulk.failed === 1 && bulk.results[2].ok === false,
+  );
+
+  // list_items upgrades.
+  const nothingNew = await client.callTool({
+    name: "list_items",
+    arguments: { updated_since: "2999-01-01T00:00:00.000Z" },
+  });
+  check("list_items updated_since filters", JSON.parse(textOf(nothingNew)).length === 0);
+  const newestOne = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "list_items",
+        arguments: { sort: "updated_desc", limit: 1 },
+      }),
+    ),
+  );
+  check("list_items sort+limit returns the single newest item", newestOne.length === 1);
+
+  // Board management verbs.
+  const renamed = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "update_column",
+        arguments: { kind: "priority", id: "low", name: "Someday" },
+      }),
+    ),
+  );
+  check(
+    "update_column renames in place",
+    renamed.priorities.find((p) => p.id === "low")?.name === "Someday",
+  );
+  const badOrder = await client.callTool({
+    name: "reorder_columns",
+    arguments: { kind: "priority", order: ["low", "medium"] },
+  });
+  check("reorder_columns rejects a non-permutation", badOrder.isError === true);
+  const reordered = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "reorder_columns",
+        arguments: { kind: "priority", order: ["urgent", "high", "medium", "low"] },
+      }),
+    ),
+  );
+  check(
+    "reorder_columns applies the permutation",
+    reordered.priorities[0].id === "urgent",
+  );
+  await client.callTool({
+    name: "add_column",
+    arguments: { kind: "status", id: "qa", name: "QA" },
+  });
+  const removedEmpty = JSON.parse(
+    textOf(
+      await client.callTool({ name: "remove_column", arguments: { kind: "status", id: "qa" } }),
+    ),
+  );
+  check(
+    "remove_column drops an empty column",
+    removedEmpty.board.statuses.every((s) => s.id !== "qa"),
+  );
+
+  const links = await client.callTool({ name: "get_links", arguments: { id: "TICK-001" } });
+  check("get_links resolves wiki backlink", textOf(links).includes("TICK-002"));
 
   const search = await client.callTool({ name: "search_items", arguments: { query: "Smoke ticket" } });
   check("search_items finds the ticket", textOf(search).includes("TICK-001"));
 
-  const onDisk = fs.existsSync(path.join(sandbox, ".kanmer", "tickets", "TICK-001.md"));
-  check("ticket file written to .kanmer/tickets", onDisk);
+  const onDisk = fs.existsSync(
+    path.join(sandbox, ".kanmer", "areas", "_none", "TICK-001", "TICK-001.md"),
+  );
+  check("ticket lives in its own folder under areas/_none", onDisk);
+  check(
+    "version.json stamped with format 2",
+    JSON.parse(fs.readFileSync(path.join(sandbox, ".kanmer", "version.json"), "utf8")).format === 2,
+  );
 
   const summaryKeys = Object.keys(JSON.parse(textOf(search))[0]).sort();
   const expectedKeys = [
     "archived",
     "area",
     "assignee",
+    "blocked",
+    "checklist",
+    "created",
+    "docs",
+    "due",
     "id",
     "labels",
+    "order",
     "priority",
     "status",
+    "taken",
     "title",
     "type",
     "updated",
@@ -131,25 +436,115 @@ try {
     arguments: { kind: "area", id: "ui", name: "UI", color: "#5b8cff" },
   });
   check("add_column area updates board", textOf(addArea).includes('"ui"'));
-  await client.callTool({
+  const uiCard = await client.callTool({
     name: "create_item",
     arguments: { type: "ticket", title: "UI card", area: "ui" },
   });
+  check(
+    "ticket born in an area gets the area-based id",
+    JSON.parse(textOf(uiCard)).id === "UI-001",
+    JSON.parse(textOf(uiCard)).id,
+  );
   const uiList = await client.callTool({ name: "list_items", arguments: { area: "ui" } });
   check("list_items filters by area", JSON.parse(textOf(uiList)).length === 1);
 
   // Archive: hide from default listing, visible with include_archived.
-  await client.callTool({ name: "update_item", arguments: { id: "PLAN-001", archived: true } });
-  const activePlans = await client.callTool({ name: "list_items", arguments: { type: "plan" } });
-  check("archived item excluded by default", JSON.parse(textOf(activePlans)).length === 0);
-  const allPlans = await client.callTool({
+  await client.callTool({ name: "update_item", arguments: { id: "UI-001", archived: true } });
+  const activeUi = await client.callTool({ name: "list_items", arguments: { area: "ui" } });
+  check("archived item excluded by default", JSON.parse(textOf(activeUi)).length === 0);
+  const allUi = await client.callTool({
     name: "list_items",
-    arguments: { type: "plan", include_archived: true },
+    arguments: { area: "ui", include_archived: true },
   });
-  check("archived item shown with include_archived", JSON.parse(textOf(allPlans)).length === 1);
+  check("archived item shown with include_archived", JSON.parse(textOf(allUi)).length === 1);
+
+  // Phase 6: blocks / due / order / activity.
+  const bulk2 = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "create_items",
+        arguments: { items: [{ title: "Dep A" }, { title: "Dep B", due: "2000-01-01" }] },
+      }),
+    ),
+  );
+  const [depA, depB] = bulk2.results.map((r) => r.item.id);
+  await client.callTool({
+    name: "link_items",
+    arguments: { source_id: depA, target_id: depB, rel: "blocks" },
+  });
+  const depLinks = JSON.parse(
+    textOf(await client.callTool({ name: "get_links", arguments: { id: depB } })),
+  );
+  check(
+    "get_links reports typed blocks/blockedBy edges",
+    depLinks.blockedBy.some((l) => l.id === depA),
+  );
+  const depItem = JSON.parse(
+    textOf(await client.callTool({ name: "get_item", arguments: { id: depB } })),
+  );
+  check("get_item derives blocked from a live blocker", depItem.blocked === true);
+  const overdueList = JSON.parse(
+    textOf(await client.callTool({ name: "list_items", arguments: { overdue: true } })),
+  );
+  check(
+    "list_items overdue finds the past-due ticket",
+    overdueList.length === 1 && overdueList[0].id === depB,
+  );
+  await client.callTool({
+    name: "move_item",
+    arguments: { id: depB, status: "todo", position: "top" },
+  });
+  const todoTop = JSON.parse(
+    textOf(await client.callTool({ name: "list_items", arguments: { status: "todo" } })),
+  );
+  check("move_item position: top sorts the item first", todoTop[0]?.id === depB);
+  const activity = JSON.parse(
+    textOf(await client.callTool({ name: "get_activity", arguments: { id: depB } })),
+  );
+  check(
+    "get_activity records the mutations with the client as actor",
+    activity.length > 0 && activity.every((e) => e.actor === "smoke"),
+    activity.map((e) => e.op).join(","),
+  );
+
+  // remove_column: refuses while occupied, migrates when told to.
+  const occupied = await client.callTool({
+    name: "remove_column",
+    arguments: { kind: "area", id: "ui" },
+  });
+  check(
+    "remove_column refuses an occupied column without migrate_to",
+    occupied.isError === true && textOf(occupied).includes("still has"),
+  );
+  const migratedRes = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "remove_column",
+        arguments: { kind: "area", id: "ui", migrate_to: "pr-review" },
+      }),
+    ),
+  );
+  check(
+    "remove_column migrate_to rewrites the items and drops the column",
+    migratedRes.migrated.includes("UI-001") &&
+      migratedRes.board.areas.every((a) => a.id !== "ui"),
+  );
+  check(
+    "area migration moved the ticket folder",
+    fs.existsSync(path.join(sandbox, ".kanmer", "areas", "pr-review", "UI-001", "UI-001.md")),
+  );
 
   const del1 = await client.callTool({ name: "delete_item", arguments: { id: "TICK-001" } });
-  check("delete_item removes the file", textOf(del1).includes("TICK-001") && !fs.existsSync(path.join(sandbox, ".kanmer", "tickets", "TICK-001.md")));
+  check(
+    "delete_item removes the ticket folder",
+    textOf(del1).includes("TICK-001") &&
+      !fs.existsSync(path.join(sandbox, ".kanmer", "areas", "_none", "TICK-001")),
+  );
+  const delPayload = JSON.parse(textOf(del1));
+  check(
+    "delete_item reports cleanedLinks and bodyReferencesRemain",
+    Array.isArray(delPayload.cleanedLinks) && Array.isArray(delPayload.bodyReferencesRemain),
+  );
 } finally {
   await client.close();
   fs.rmSync(sandbox, { recursive: true, force: true });

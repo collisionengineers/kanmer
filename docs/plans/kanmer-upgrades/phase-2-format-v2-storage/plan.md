@@ -34,6 +34,9 @@ Doc pipeline: research + impact are inputs to plan; plan is the source for check
 ### 2.1 `version.json` + format detection — S
 - New `packages/core/src/version.ts`: read/write `{ format: 2 }`; `store.init()` stamps it on new boards. Detection: `version.json` absent + legacy `tickets/` dir present → format 1; absent + nothing → fresh (init as v2). Store caches the detected format per instance.
 
+> **Amended by the PR #2 review remediation:** the per-instance format cache is now stat-stamped against `version.json` and re-validated on every read, and is not cached at all while `version.json` is absent (half-migrated boards), so a second live instance sees a migration immediately.
+
+
 ### 2.2 Board schema: area prefixes + PR Review default — S
 - **Where:** `packages/core/src/types.ts`, `board.ts`.
 - Areas gain `prefix` (zod default: area id uppercased, filtered to `[A-Z0-9]`, 2–6 chars). `defaultBoardConfig()` adds area `{ id: "pr-review", name: "PR Review", prefix: "PR" }`. `writeBoard` validates prefix uniqueness across areas + the `TICK` fallback and the plan/research legacy prefixes.
@@ -65,6 +68,9 @@ Doc pipeline: research + impact are inputs to plan; plan is the source for check
 ### 2.8 Migration v1 → v2 — L
 - **Where:** new `packages/core/src/migrate.ts`.
 - Steps: (1) dry-run produces a report (for the GUI prompt); (2) move each ticket into `areas/<area|_none>/<id>/` — ids keep their `TICK-` prefix (immutable); (3) fold each legacy plan/research into the ticket it links to (via `links[]` ∪ backlinks) as `plan.md`/`research.md`; multi-linked → first ticket + report note; unlinked → converted to a ticket (title/body preserved, label `legacy-plan`/`legacy-research`) so nothing is lost; (4) add `prefix` to existing areas (auto-derived, uniqueness-checked); (5) rewrite `counters.json` keyed by prefix; (6) write `version.json` with `migratedFrom`/`migratedAt`; (7) return a human-readable report. Idempotent — re-run on a v2 board is a no-op.
+
+> **Amended by the PR #2 review remediation:** "re-run is a no-op" covered only *completed* runs. `migrateToV2` is now resumable **mid-run**: all three loops check-before-act, a pre-flight claim map refuses colliding destinations via `MigrationReport.blockers` rather than half-writing, and `migrate.test.ts` covers interruption in both the move and fold loops. This matters on Windows, where `fs.rename` can fail `EPERM`/`EBUSY` under Defender or OneDrive.
+
 - Core reads BOTH formats transparently until migrated; the GUI prompts "Migrate to v2?" on opening a v1 board (Phase 7 wires the prompt); `kanmer-setup` upgrade mode drives the same function for agent-only flows (Phase 8).
 
 ## Verification

@@ -2,6 +2,9 @@
 
 **Goal:** surface the v2 model in the GUI (doc tabs, taken/blocked/due badges, migration prompt), add the standup view and activity feed, and fix the performance ceiling. All in `apps/gui`.
 
+> **Amended by the PR #2 review remediation:** A2 — the blocked and due **card badges** named in this goal were not built at the time (only the taken badge was). They now exist as ⛔ / ⏰ chips, passed to the memoized `Card` as booleans.
+
+
 **Depends on:** Phase 3 (doc/take IPC), Phase 6 (activity, blocks, due, order). Scoped refresh (7.5) before the activity feed (7.4) — its diffing feeds the feed.
 
 ## Items
@@ -13,11 +16,17 @@
 ### 7.2 Ticket doc tabs in Editor — L
 - **Where:** `components/Editor.tsx` (or a new `TicketEditor.tsx` wrapper).
 - Tab strip: **Ticket | Research | Impact | Plan | Checklist | Proof**. Missing docs show an empty-state tab with "Create research.md" writing via `setDoc`. Checklist tab renders `- [ ]` lines as interactive checkboxes writing back through `setDoc`; other docs get the same Edit/Preview markdown treatment as the body. Doc saves are whole-doc (docs are single-writer in practice; the Phase 4 baseline/conflict pattern applies per tab).
+
+> **Amended by the PR #2 review remediation:** the per-tab baseline/conflict pattern was not implemented. Documents have no frontmatter to hold `updated`, so they now use a **content-hash version token** instead: `getDocWithVersion` returns it, `setDoc`'s `expectedVersion` rejects a stale write, and the editor shows a conflict banner with Reload from disk / Overwrite anyway.
+
 - Topbar simplifies: Plans/Research tabs go away (plan/research live inside tickets now); Board remains, Standup joins (7.3), Archived view from Phase 5.10.
 
 ### 7.3 Standup view — M
 - **Where:** new `components/Standup.tsx`, topbar entry.
 - Derived from `items` + `get_activity`: In flight (taken, with branch), In review, Recently done (activity says moved to last stage <48h), Up next (top of first stage by `order`), Blocked (derived from `blocks`), Overdue. Grouped by assignee/actor. **Copy as Markdown** button — same shape the `kanmer-standup` skill emits, so human and agent standups match.
+
+> **Amended by the PR #2 review remediation:** A5 — as built the view diverged from the skill on grouping, two whole sections (What happened since yesterday, Flags) and the recently-done window. Rewritten over pure `buildStandup`/`standupMarkdown` helpers so the eight sections and the copied markdown match the skill.
+
 
 ### 7.4 Activity feed — M
 - **Where:** new `components/ActivityPanel.tsx`, `App.tsx`, `styles.css`.
@@ -38,6 +47,8 @@
 
 ### 7.9 Command palette — M/L
 - **Where:** new `CommandPalette.tsx`, `App.tsx` (Ctrl+K). Fuzzy overlay: jump-to-item + verbs (New ticket, Move ▸, Take/Release, Switch view, Theme, Settings) dispatching existing App callbacks; reuse `.autocomplete` styling; plain substring scoring, no dependency. Build after Phase 5.6 (shares shortcut plumbing).
+
+> **Amended by the PR #2 review remediation:** A6 — Move ▸ and Take/Release were not in the palette as shipped. All three are now contextual on the selected item. Move sends no `position` (AGENTS.md §11).
 
 ## Verification
 - Open a v1 fixture board → prompt → dry-run report → migrate → board renders v2 with folded docs visible in tabs.

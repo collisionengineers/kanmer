@@ -47,4 +47,6 @@ Core changes compile into the plugin bundle: after landing, `npm run build && np
 
 ## Verification
 - vitest (`packages/core/src/store.test.ts` + friends): validation error lists valid ids; traversal ids rejected from every store method; no-op update leaves `updated` and file mtime unchanged; concurrent `createItem` (Promise.all ×10) yields unique ids, no lost files; link add to missing target rejected; delete cleans referencing `links[]`; malformed fixture file appears in warnings.
+
+> **Amended by the PR #2 review remediation:** A9 — the **file mtime** half of the no-op assertion was never written; the test checked `updated` only. `store.test.ts` now stats the ticket file before and after a no-op patch (and asserts the stamp *does* move on a real change, so the assertion cannot pass vacuously).
 - `packages/mcp-server/src/smoke.mjs`: bad-stage `move_item` returns the valid-list error; `expected_updated` mismatch returns conflict payload.

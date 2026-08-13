@@ -24,6 +24,8 @@
 - **Where:** `types.ts`, `frontmatter.ts`, `store.ts` sort + move, server `move_item`, GUI `Board.tsx` drag.
 - Optional fractional `order: number`; sort `(order ?? +Infinity, id)` so unordered files sort after ordered ones — no migration. `move_item` gains `position: top|bottom|{after: id}` computing a midpoint; rebalance lazily when gaps exhaust. GUI drag-and-drop writes `position` (insertion point from drop target). Makes "top of the todo column" meaningful for agents; plain YAML number stays hand-editable.
 
+> **Amended by the PR #2 review remediation:** A1 — the GUI half was never built: the drop handler was column-scoped and the IPC contract carried no `position`, so every drag left the card's old `order`. Now built — per-card drop targets with an insertion line, a `"bottom"` fallback on the column cell, and an optimistic status+order swap.
+
 ## Release rail
 `get_activity` + `link_items rel` + `move_item position` + new filters → tool-reference rows/params, `kanmer-standup` + `kanmer-workflow` SKILL.md updates, bundle rebuild, `plugin:check`.
 
@@ -31,4 +33,7 @@
 - vitest: every mutation appends one well-formed activity line with correct `from`/`to`; rotation truncates; deleting the log breaks nothing.
 - Blocked derivation flips when the blocker reaches the last stage or is archived; `rel` default keeps old `link_items` calls byte-identical.
 - Overdue filter respects last-stage exemption. Ordering: midpoint insertion between neighbors, unordered-after-ordered, rebalance path.
+
+> **Amended by the PR #2 review remediation:** A9 — the rebalance path had no test until now; `store.test.ts` drives it with two adjacent doubles rather than a 60-iteration insertion loop.
+
 - Old boards without any new keys round-trip unchanged (serialise → parse → byte-equal).

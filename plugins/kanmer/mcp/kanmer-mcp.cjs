@@ -3225,8 +3225,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path4) {
-      let input = path4;
+    function removeDotSegments(path8) {
+      let input = path8;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3478,8 +3478,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path4, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path4 && path4 !== "/" ? path4 : void 0;
+        const [path8, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path8 && path8 !== "/" ? path8 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -6898,12 +6898,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs4, exportName) {
+    function addFormats(ajv, list, fs5, exportName) {
       var _a;
       var _b;
       (_a = (_b = ajv.opts.code).formats) !== null && _a !== void 0 ? _a : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs4[f]);
+        ajv.addFormat(f, fs5[f]);
     }
     module2.exports = exports2 = formatsPlugin;
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -10288,7 +10288,7 @@ var require_parse = __commonJS({
 var require_gray_matter = __commonJS({
   "../../node_modules/gray-matter/index.js"(exports2, module2) {
     "use strict";
-    var fs4 = require("fs");
+    var fs5 = require("fs");
     var sections = require_section_matter();
     var defaults = require_defaults2();
     var stringify = require_stringify();
@@ -10372,7 +10372,7 @@ var require_gray_matter = __commonJS({
       return stringify(file, data, options2);
     };
     matter2.read = function(filepath, options2) {
-      const str2 = fs4.readFileSync(filepath, "utf8");
+      const str2 = fs5.readFileSync(filepath, "utf8");
       const file = matter2(str2, options2);
       file.path = filepath;
       return file;
@@ -10477,17 +10477,17 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path4) {
-      const ctrl = callVisitor(key, node, visitor, path4);
+    function visit_(key, node, visitor, path8) {
+      const ctrl = callVisitor(key, node, visitor, path8);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path4, ctrl);
-        return visit_(key, ctrl, visitor, path4);
+        replaceNode(key, path8, ctrl);
+        return visit_(key, ctrl, visitor, path8);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path4 = Object.freeze(path4.concat(node));
+          path8 = Object.freeze(path8.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = visit_(i, node.items[i], visitor, path4);
+            const ci = visit_(i, node.items[i], visitor, path8);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -10498,13 +10498,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path4 = Object.freeze(path4.concat(node));
-          const ck = visit_("key", node.key, visitor, path4);
+          path8 = Object.freeze(path8.concat(node));
+          const ck = visit_("key", node.key, visitor, path8);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = visit_("value", node.value, visitor, path4);
+          const cv = visit_("value", node.value, visitor, path8);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -10525,17 +10525,17 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path4) {
-      const ctrl = await callVisitor(key, node, visitor, path4);
+    async function visitAsync_(key, node, visitor, path8) {
+      const ctrl = await callVisitor(key, node, visitor, path8);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path4, ctrl);
-        return visitAsync_(key, ctrl, visitor, path4);
+        replaceNode(key, path8, ctrl);
+        return visitAsync_(key, ctrl, visitor, path8);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path4 = Object.freeze(path4.concat(node));
+          path8 = Object.freeze(path8.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = await visitAsync_(i, node.items[i], visitor, path4);
+            const ci = await visitAsync_(i, node.items[i], visitor, path8);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -10546,13 +10546,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path4 = Object.freeze(path4.concat(node));
-          const ck = await visitAsync_("key", node.key, visitor, path4);
+          path8 = Object.freeze(path8.concat(node));
+          const ck = await visitAsync_("key", node.key, visitor, path8);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = await visitAsync_("value", node.value, visitor, path4);
+          const cv = await visitAsync_("value", node.value, visitor, path8);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -10579,23 +10579,23 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path4) {
+    function callVisitor(key, node, visitor, path8) {
       if (typeof visitor === "function")
-        return visitor(key, node, path4);
+        return visitor(key, node, path8);
       if (identity.isMap(node))
-        return visitor.Map?.(key, node, path4);
+        return visitor.Map?.(key, node, path8);
       if (identity.isSeq(node))
-        return visitor.Seq?.(key, node, path4);
+        return visitor.Seq?.(key, node, path8);
       if (identity.isPair(node))
-        return visitor.Pair?.(key, node, path4);
+        return visitor.Pair?.(key, node, path8);
       if (identity.isScalar(node))
-        return visitor.Scalar?.(key, node, path4);
+        return visitor.Scalar?.(key, node, path8);
       if (identity.isAlias(node))
-        return visitor.Alias?.(key, node, path4);
+        return visitor.Alias?.(key, node, path8);
       return void 0;
     }
-    function replaceNode(key, path4, node) {
-      const parent = path4[path4.length - 1];
+    function replaceNode(key, path8, node) {
+      const parent = path8[path8.length - 1];
       if (identity.isCollection(parent)) {
         parent.items[key] = node;
       } else if (identity.isPair(parent)) {
@@ -11205,10 +11205,10 @@ var require_Collection = __commonJS({
     var createNode = require_createNode();
     var identity = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema, path4, value) {
+    function collectionFromPath(schema, path8, value) {
       let v = value;
-      for (let i = path4.length - 1; i >= 0; --i) {
-        const k = path4[i];
+      for (let i = path8.length - 1; i >= 0; --i) {
+        const k = path8[i];
         if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
           const a = [];
           a[k] = v;
@@ -11227,7 +11227,7 @@ var require_Collection = __commonJS({
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
-    var isEmptyPath = (path4) => path4 == null || typeof path4 === "object" && !!path4[Symbol.iterator]().next().done;
+    var isEmptyPath = (path8) => path8 == null || typeof path8 === "object" && !!path8[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
       constructor(type, schema) {
         super(type);
@@ -11257,11 +11257,11 @@ var require_Collection = __commonJS({
        * be a Pair instance or a `{ key, value }` object, which may not have a key
        * that already exists in the map.
        */
-      addIn(path4, value) {
-        if (isEmptyPath(path4))
+      addIn(path8, value) {
+        if (isEmptyPath(path8))
           this.add(value);
         else {
-          const [key, ...rest] = path4;
+          const [key, ...rest] = path8;
           const node = this.get(key, true);
           if (identity.isCollection(node))
             node.addIn(rest, value);
@@ -11275,8 +11275,8 @@ var require_Collection = __commonJS({
        * Removes a value from the collection.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path4) {
-        const [key, ...rest] = path4;
+      deleteIn(path8) {
+        const [key, ...rest] = path8;
         if (rest.length === 0)
           return this.delete(key);
         const node = this.get(key, true);
@@ -11290,8 +11290,8 @@ var require_Collection = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path4, keepScalar) {
-        const [key, ...rest] = path4;
+      getIn(path8, keepScalar) {
+        const [key, ...rest] = path8;
         const node = this.get(key, true);
         if (rest.length === 0)
           return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -11309,8 +11309,8 @@ var require_Collection = __commonJS({
       /**
        * Checks if the collection includes a value with the key `key`.
        */
-      hasIn(path4) {
-        const [key, ...rest] = path4;
+      hasIn(path8) {
+        const [key, ...rest] = path8;
         if (rest.length === 0)
           return this.has(key);
         const node = this.get(key, true);
@@ -11320,8 +11320,8 @@ var require_Collection = __commonJS({
        * Sets a value in this collection. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path4, value) {
-        const [key, ...rest] = path4;
+      setIn(path8, value) {
+        const [key, ...rest] = path8;
         if (rest.length === 0) {
           this.set(key, value);
         } else {
@@ -13836,9 +13836,9 @@ var require_Document = __commonJS({
           this.contents.add(value);
       }
       /** Adds a value to the document. */
-      addIn(path4, value) {
+      addIn(path8, value) {
         if (assertCollection(this.contents))
-          this.contents.addIn(path4, value);
+          this.contents.addIn(path8, value);
       }
       /**
        * Create a new `Alias` node, ensuring that the target `node` has the required anchor.
@@ -13913,14 +13913,14 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path4) {
-        if (Collection.isEmptyPath(path4)) {
+      deleteIn(path8) {
+        if (Collection.isEmptyPath(path8)) {
           if (this.contents == null)
             return false;
           this.contents = null;
           return true;
         }
-        return assertCollection(this.contents) ? this.contents.deleteIn(path4) : false;
+        return assertCollection(this.contents) ? this.contents.deleteIn(path8) : false;
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -13935,10 +13935,10 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path4, keepScalar) {
-        if (Collection.isEmptyPath(path4))
+      getIn(path8, keepScalar) {
+        if (Collection.isEmptyPath(path8))
           return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-        return identity.isCollection(this.contents) ? this.contents.getIn(path4, keepScalar) : void 0;
+        return identity.isCollection(this.contents) ? this.contents.getIn(path8, keepScalar) : void 0;
       }
       /**
        * Checks if the document includes a value with the key `key`.
@@ -13949,10 +13949,10 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value at `path`.
        */
-      hasIn(path4) {
-        if (Collection.isEmptyPath(path4))
+      hasIn(path8) {
+        if (Collection.isEmptyPath(path8))
           return this.contents !== void 0;
-        return identity.isCollection(this.contents) ? this.contents.hasIn(path4) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path8) : false;
       }
       /**
        * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -13969,13 +13969,13 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path4, value) {
-        if (Collection.isEmptyPath(path4)) {
+      setIn(path8, value) {
+        if (Collection.isEmptyPath(path8)) {
           this.contents = value;
         } else if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, Array.from(path4), value);
+          this.contents = Collection.collectionFromPath(this.schema, Array.from(path8), value);
         } else if (assertCollection(this.contents)) {
-          this.contents.setIn(path4, value);
+          this.contents.setIn(path8, value);
         }
       }
       /**
@@ -15935,9 +15935,9 @@ var require_cst_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    visit.itemAtPath = (cst, path4) => {
+    visit.itemAtPath = (cst, path8) => {
       let item = cst;
-      for (const [field, index] of path4) {
+      for (const [field, index] of path8) {
         const tok = item?.[field];
         if (tok && "items" in tok) {
           item = tok.items[index];
@@ -15946,23 +15946,23 @@ var require_cst_visit = __commonJS({
       }
       return item;
     };
-    visit.parentCollection = (cst, path4) => {
-      const parent = visit.itemAtPath(cst, path4.slice(0, -1));
-      const field = path4[path4.length - 1][0];
+    visit.parentCollection = (cst, path8) => {
+      const parent = visit.itemAtPath(cst, path8.slice(0, -1));
+      const field = path8[path8.length - 1][0];
       const coll = parent?.[field];
       if (coll && "items" in coll)
         return coll;
       throw new Error("Parent collection not found");
     };
-    function _visit(path4, item, visitor) {
-      let ctrl = visitor(item, path4);
+    function _visit(path8, item, visitor) {
+      let ctrl = visitor(item, path8);
       if (typeof ctrl === "symbol")
         return ctrl;
       for (const field of ["key", "value"]) {
         const token = item[field];
         if (token && "items" in token) {
           for (let i = 0; i < token.items.length; ++i) {
-            const ci = _visit(Object.freeze(path4.concat([[field, i]])), token.items[i], visitor);
+            const ci = _visit(Object.freeze(path8.concat([[field, i]])), token.items[i], visitor);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -15973,10 +15973,10 @@ var require_cst_visit = __commonJS({
             }
           }
           if (typeof ctrl === "function" && field === "key")
-            ctrl = ctrl(item, path4);
+            ctrl = ctrl(item, path8);
         }
       }
-      return typeof ctrl === "function" ? ctrl(item, path4) : ctrl;
+      return typeof ctrl === "function" ? ctrl(item, path8) : ctrl;
     }
     exports2.visit = visit;
   }
@@ -17278,14 +17278,14 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs4 = this.flowScalar(this.type);
+              const fs5 = this.flowScalar(this.type);
               if (atNextItem || it.value) {
-                map.items.push({ start, key: fs4, sep: [] });
+                map.items.push({ start, key: fs5, sep: [] });
                 this.onKeyLine = true;
               } else if (it.sep) {
-                this.stack.push(fs4);
+                this.stack.push(fs5);
               } else {
-                Object.assign(it, { key: fs4, sep: [] });
+                Object.assign(it, { key: fs5, sep: [] });
                 this.onKeyLine = true;
               }
               return;
@@ -17413,13 +17413,13 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs4 = this.flowScalar(this.type);
+              const fs5 = this.flowScalar(this.type);
               if (!it || it.value)
-                fc.items.push({ start: [], key: fs4, sep: [] });
+                fc.items.push({ start: [], key: fs5, sep: [] });
               else if (it.sep)
-                this.stack.push(fs4);
+                this.stack.push(fs5);
               else
-                Object.assign(it, { key: fs4, sep: [] });
+                Object.assign(it, { key: fs5, sep: [] });
               return;
             }
             case "flow-map-end":
@@ -17731,7 +17731,7 @@ var require_dist2 = __commonJS({
 var require_constants = __commonJS({
   "../../node_modules/picomatch/lib/constants.js"(exports2, module2) {
     "use strict";
-    var path4 = require("path");
+    var path8 = require("path");
     var WIN_SLASH = "\\\\/";
     var WIN_NO_SLASH = `[^${WIN_SLASH}]`;
     var DEFAULT_MAX_EXTGLOB_RECURSION = 0;
@@ -17905,7 +17905,7 @@ var require_constants = __commonJS({
       /* | */
       CHAR_ZERO_WIDTH_NOBREAK_SPACE: 65279,
       /* \uFEFF */
-      SEP: path4.sep,
+      SEP: path8.sep,
       /**
        * Create EXTGLOB_CHARS
        */
@@ -17932,7 +17932,7 @@ var require_constants = __commonJS({
 var require_utils3 = __commonJS({
   "../../node_modules/picomatch/lib/utils.js"(exports2) {
     "use strict";
-    var path4 = require("path");
+    var path8 = require("path");
     var win32 = process.platform === "win32";
     var {
       REGEX_BACKSLASH,
@@ -17961,7 +17961,7 @@ var require_utils3 = __commonJS({
       if (options2 && typeof options2.windows === "boolean") {
         return options2.windows;
       }
-      return win32 === true || path4.sep === "\\";
+      return win32 === true || path8.sep === "\\";
     };
     exports2.escapeLast = (input, char, lastIdx) => {
       const idx = input.lastIndexOf(char, lastIdx);
@@ -19325,7 +19325,7 @@ var require_parse2 = __commonJS({
 var require_picomatch = __commonJS({
   "../../node_modules/picomatch/lib/picomatch.js"(exports2, module2) {
     "use strict";
-    var path4 = require("path");
+    var path8 = require("path");
     var scan = require_scan();
     var parse4 = require_parse2();
     var utils = require_utils3();
@@ -19410,7 +19410,7 @@ var require_picomatch = __commonJS({
     };
     picomatch.matchBase = (input, glob, options2, posix = utils.isWindows(options2)) => {
       const regex = glob instanceof RegExp ? glob : picomatch.makeRe(glob, options2);
-      return regex.test(path4.basename(input));
+      return regex.test(path8.basename(input));
     };
     picomatch.isMatch = (str2, patterns, options2) => picomatch(patterns, options2)(str2);
     picomatch.parse = (pattern, options2) => {
@@ -19474,15 +19474,15 @@ var require_picomatch2 = __commonJS({
 var require_readdirp = __commonJS({
   "../../node_modules/readdirp/index.js"(exports2, module2) {
     "use strict";
-    var fs4 = require("fs");
+    var fs5 = require("fs");
     var { Readable } = require("stream");
     var sysPath = require("path");
     var { promisify } = require("util");
     var picomatch = require_picomatch2();
-    var readdir = promisify(fs4.readdir);
-    var stat = promisify(fs4.stat);
-    var lstat = promisify(fs4.lstat);
-    var realpath = promisify(fs4.realpath);
+    var readdir = promisify(fs5.readdir);
+    var stat = promisify(fs5.stat);
+    var lstat = promisify(fs5.lstat);
+    var realpath = promisify(fs5.realpath);
     var BANG = "!";
     var RECURSIVE_ERROR_CODE = "READDIRP_RECURSIVE_ERROR";
     var NORMAL_FLOW_ERRORS = /* @__PURE__ */ new Set(["ENOENT", "EPERM", "EACCES", "ELOOP", RECURSIVE_ERROR_CODE]);
@@ -19526,8 +19526,8 @@ var require_readdirp = __commonJS({
         return {
           root: ".",
           /* eslint-disable no-unused-vars */
-          fileFilter: (path4) => true,
-          directoryFilter: (path4) => true,
+          fileFilter: (path8) => true,
+          directoryFilter: (path8) => true,
           /* eslint-enable no-unused-vars */
           type: FILE_TYPE,
           lstat: false,
@@ -19547,7 +19547,7 @@ var require_readdirp = __commonJS({
         this._directoryFilter = normalizeFilter(opts.directoryFilter);
         const statMethod = opts.lstat ? lstat : stat;
         if (wantBigintFsStats) {
-          this._stat = (path4) => statMethod(path4, { bigint: true });
+          this._stat = (path8) => statMethod(path8, { bigint: true });
         } else {
           this._stat = statMethod;
         }
@@ -19556,7 +19556,7 @@ var require_readdirp = __commonJS({
         this._wantsFile = [FILE_TYPE, FILE_DIR_TYPE, EVERYTHING_TYPE].includes(type);
         this._wantsEverything = type === EVERYTHING_TYPE;
         this._root = sysPath.resolve(root);
-        this._isDirent = "Dirent" in fs4 && !opts.alwaysStat;
+        this._isDirent = "Dirent" in fs5 && !opts.alwaysStat;
         this._statsProp = this._isDirent ? "dirent" : "stats";
         this._rdOptions = { encoding: "utf8", withFileTypes: this._isDirent };
         this.parents = [this._exploreDir(root, 1)];
@@ -19568,9 +19568,9 @@ var require_readdirp = __commonJS({
         this.reading = true;
         try {
           while (!this.destroyed && batch > 0) {
-            const { path: path4, depth, files = [] } = this.parent || {};
+            const { path: path8, depth, files = [] } = this.parent || {};
             if (files.length > 0) {
-              const slice = files.splice(0, batch).map((dirent) => this._formatEntry(dirent, path4));
+              const slice = files.splice(0, batch).map((dirent) => this._formatEntry(dirent, path8));
               for (const entry of await Promise.all(slice)) {
                 if (this.destroyed) return;
                 const entryType = await this._getEntryType(entry);
@@ -19605,20 +19605,20 @@ var require_readdirp = __commonJS({
           this.reading = false;
         }
       }
-      async _exploreDir(path4, depth) {
+      async _exploreDir(path8, depth) {
         let files;
         try {
-          files = await readdir(path4, this._rdOptions);
+          files = await readdir(path8, this._rdOptions);
         } catch (error2) {
           this._onError(error2);
         }
-        return { files, depth, path: path4 };
+        return { files, depth, path: path8 };
       }
-      async _formatEntry(dirent, path4) {
+      async _formatEntry(dirent, path8) {
         let entry;
         try {
           const basename = this._isDirent ? dirent.name : dirent;
-          const fullPath = sysPath.resolve(sysPath.join(path4, basename));
+          const fullPath = sysPath.resolve(sysPath.join(path8, basename));
           entry = { path: sysPath.relative(this._root, fullPath), fullPath, basename };
           entry[this._statsProp] = this._isDirent ? dirent : await this._stat(fullPath);
         } catch (err) {
@@ -19704,22 +19704,22 @@ var require_readdirp = __commonJS({
 var require_normalize_path = __commonJS({
   "../../node_modules/normalize-path/index.js"(exports2, module2) {
     "use strict";
-    module2.exports = function(path4, stripTrailing) {
-      if (typeof path4 !== "string") {
+    module2.exports = function(path8, stripTrailing) {
+      if (typeof path8 !== "string") {
         throw new TypeError("expected path to be a string");
       }
-      if (path4 === "\\" || path4 === "/") return "/";
-      var len = path4.length;
-      if (len <= 1) return path4;
+      if (path8 === "\\" || path8 === "/") return "/";
+      var len = path8.length;
+      if (len <= 1) return path8;
       var prefix = "";
-      if (len > 4 && path4[3] === "\\") {
-        var ch = path4[2];
-        if ((ch === "?" || ch === ".") && path4.slice(0, 2) === "\\\\") {
-          path4 = path4.slice(2);
+      if (len > 4 && path8[3] === "\\") {
+        var ch = path8[2];
+        if ((ch === "?" || ch === ".") && path8.slice(0, 2) === "\\\\") {
+          path8 = path8.slice(2);
           prefix = "//";
         }
       }
-      var segs = path4.split(/[/\\]+/);
+      var segs = path8.split(/[/\\]+/);
       if (stripTrailing !== false && segs[segs.length - 1] === "") {
         segs.pop();
       }
@@ -19757,17 +19757,17 @@ var require_anymatch = __commonJS({
       if (!isList && typeof _path !== "string") {
         throw new TypeError("anymatch: second argument must be a string: got " + Object.prototype.toString.call(_path));
       }
-      const path4 = normalizePath(_path, false);
+      const path8 = normalizePath(_path, false);
       for (let index = 0; index < negPatterns.length; index++) {
         const nglob = negPatterns[index];
-        if (nglob(path4)) {
+        if (nglob(path8)) {
           return returnIndex ? -1 : false;
         }
       }
-      const applied = isList && [path4].concat(args.slice(1));
+      const applied = isList && [path8].concat(args.slice(1));
       for (let index = 0; index < patterns.length; index++) {
         const pattern = patterns[index];
-        if (isList ? pattern(...applied) : pattern(path4)) {
+        if (isList ? pattern(...applied) : pattern(path8)) {
           return returnIndex ? index : true;
         }
       }
@@ -21337,10 +21337,10 @@ var require_binary_extensions2 = __commonJS({
 var require_is_binary_path = __commonJS({
   "../../node_modules/is-binary-path/index.js"(exports2, module2) {
     "use strict";
-    var path4 = require("path");
+    var path8 = require("path");
     var binaryExtensions = require_binary_extensions2();
     var extensions = new Set(binaryExtensions);
-    module2.exports = (filePath) => extensions.has(path4.extname(filePath).slice(1).toLowerCase());
+    module2.exports = (filePath) => extensions.has(path8.extname(filePath).slice(1).toLowerCase());
   }
 });
 
@@ -21412,7 +21412,7 @@ var require_constants3 = __commonJS({
 var require_nodefs_handler = __commonJS({
   "../../node_modules/chokidar/lib/nodefs-handler.js"(exports2, module2) {
     "use strict";
-    var fs4 = require("fs");
+    var fs5 = require("fs");
     var sysPath = require("path");
     var { promisify } = require("util");
     var isBinaryPath = require_is_binary_path();
@@ -21435,11 +21435,11 @@ var require_nodefs_handler = __commonJS({
       STAR
     } = require_constants3();
     var THROTTLE_MODE_WATCH = "watch";
-    var open = promisify(fs4.open);
-    var stat = promisify(fs4.stat);
-    var lstat = promisify(fs4.lstat);
-    var close = promisify(fs4.close);
-    var fsrealpath = promisify(fs4.realpath);
+    var open = promisify(fs5.open);
+    var stat = promisify(fs5.stat);
+    var lstat = promisify(fs5.lstat);
+    var close = promisify(fs5.close);
+    var fsrealpath = promisify(fs5.realpath);
     var statMethods = { lstat, stat };
     var foreach = (val, fn) => {
       if (val instanceof Set) {
@@ -21473,20 +21473,20 @@ var require_nodefs_handler = __commonJS({
     };
     var isEmptySet = (val) => val instanceof Set ? val.size === 0 : !val;
     var FsWatchInstances = /* @__PURE__ */ new Map();
-    function createFsWatchInstance(path4, options2, listener, errHandler, emitRaw) {
+    function createFsWatchInstance(path8, options2, listener, errHandler, emitRaw) {
       const handleEvent = (rawEvent, evPath) => {
-        listener(path4);
-        emitRaw(rawEvent, evPath, { watchedPath: path4 });
-        if (evPath && path4 !== evPath) {
+        listener(path8);
+        emitRaw(rawEvent, evPath, { watchedPath: path8 });
+        if (evPath && path8 !== evPath) {
           fsWatchBroadcast(
-            sysPath.resolve(path4, evPath),
+            sysPath.resolve(path8, evPath),
             KEY_LISTENERS,
-            sysPath.join(path4, evPath)
+            sysPath.join(path8, evPath)
           );
         }
       };
       try {
-        return fs4.watch(path4, options2, handleEvent);
+        return fs5.watch(path8, options2, handleEvent);
       } catch (error2) {
         errHandler(error2);
       }
@@ -21498,13 +21498,13 @@ var require_nodefs_handler = __commonJS({
         listener(val1, val2, val3);
       });
     };
-    var setFsWatchListener = (path4, fullPath, options2, handlers) => {
+    var setFsWatchListener = (path8, fullPath, options2, handlers) => {
       const { listener, errHandler, rawEmitter } = handlers;
       let cont = FsWatchInstances.get(fullPath);
       let watcher;
       if (!options2.persistent) {
         watcher = createFsWatchInstance(
-          path4,
+          path8,
           options2,
           listener,
           errHandler,
@@ -21518,7 +21518,7 @@ var require_nodefs_handler = __commonJS({
         addAndConvert(cont, KEY_RAW, rawEmitter);
       } else {
         watcher = createFsWatchInstance(
-          path4,
+          path8,
           options2,
           fsWatchBroadcast.bind(null, fullPath, KEY_LISTENERS),
           errHandler,
@@ -21531,7 +21531,7 @@ var require_nodefs_handler = __commonJS({
           cont.watcherUnusable = true;
           if (isWindows && error2.code === "EPERM") {
             try {
-              const fd = await open(path4, "r");
+              const fd = await open(path8, "r");
               await close(fd);
               broadcastErr(error2);
             } catch (err) {
@@ -21562,7 +21562,7 @@ var require_nodefs_handler = __commonJS({
       };
     };
     var FsWatchFileInstances = /* @__PURE__ */ new Map();
-    var setFsWatchFileListener = (path4, fullPath, options2, handlers) => {
+    var setFsWatchFileListener = (path8, fullPath, options2, handlers) => {
       const { listener, rawEmitter } = handlers;
       let cont = FsWatchFileInstances.get(fullPath);
       let listeners = /* @__PURE__ */ new Set();
@@ -21571,7 +21571,7 @@ var require_nodefs_handler = __commonJS({
       if (copts && (copts.persistent < options2.persistent || copts.interval > options2.interval)) {
         listeners = cont.listeners;
         rawEmitters = cont.rawEmitters;
-        fs4.unwatchFile(fullPath);
+        fs5.unwatchFile(fullPath);
         cont = void 0;
       }
       if (cont) {
@@ -21582,13 +21582,13 @@ var require_nodefs_handler = __commonJS({
           listeners: listener,
           rawEmitters: rawEmitter,
           options: options2,
-          watcher: fs4.watchFile(fullPath, options2, (curr, prev) => {
+          watcher: fs5.watchFile(fullPath, options2, (curr, prev) => {
             foreach(cont.rawEmitters, (rawEmitter2) => {
               rawEmitter2(EV_CHANGE, fullPath, { curr, prev });
             });
             const currmtime = curr.mtimeMs;
             if (curr.size !== prev.size || currmtime > prev.mtimeMs || currmtime === 0) {
-              foreach(cont.listeners, (listener2) => listener2(path4, curr));
+              foreach(cont.listeners, (listener2) => listener2(path8, curr));
             }
           })
         };
@@ -21599,7 +21599,7 @@ var require_nodefs_handler = __commonJS({
         delFromSet(cont, KEY_RAW, rawEmitter);
         if (isEmptySet(cont.listeners)) {
           FsWatchFileInstances.delete(fullPath);
-          fs4.unwatchFile(fullPath);
+          fs5.unwatchFile(fullPath);
           cont.options = cont.watcher = void 0;
           Object.freeze(cont);
         }
@@ -21619,24 +21619,24 @@ var require_nodefs_handler = __commonJS({
        * @param {Function} listener on fs change
        * @returns {Function} closer for the watcher instance
        */
-      _watchWithNodeFs(path4, listener) {
+      _watchWithNodeFs(path8, listener) {
         const opts = this.fsw.options;
-        const directory = sysPath.dirname(path4);
-        const basename = sysPath.basename(path4);
+        const directory = sysPath.dirname(path8);
+        const basename = sysPath.basename(path8);
         const parent = this.fsw._getWatchedDir(directory);
         parent.add(basename);
-        const absolutePath = sysPath.resolve(path4);
+        const absolutePath = sysPath.resolve(path8);
         const options2 = { persistent: opts.persistent };
         if (!listener) listener = EMPTY_FN;
         let closer;
         if (opts.usePolling) {
           options2.interval = opts.enableBinaryInterval && isBinaryPath(basename) ? opts.binaryInterval : opts.interval;
-          closer = setFsWatchFileListener(path4, absolutePath, options2, {
+          closer = setFsWatchFileListener(path8, absolutePath, options2, {
             listener,
             rawEmitter: this.fsw._emitRaw
           });
         } else {
-          closer = setFsWatchListener(path4, absolutePath, options2, {
+          closer = setFsWatchListener(path8, absolutePath, options2, {
             listener,
             errHandler: this._boundHandleError,
             rawEmitter: this.fsw._emitRaw
@@ -21660,7 +21660,7 @@ var require_nodefs_handler = __commonJS({
         const parent = this.fsw._getWatchedDir(dirname);
         let prevStats = stats;
         if (parent.has(basename)) return;
-        const listener = async (path4, newStats) => {
+        const listener = async (path8, newStats) => {
           if (!this.fsw._throttle(THROTTLE_MODE_WATCH, file, 5)) return;
           if (!newStats || newStats.mtimeMs === 0) {
             try {
@@ -21672,9 +21672,9 @@ var require_nodefs_handler = __commonJS({
                 this.fsw._emit(EV_CHANGE, file, newStats2);
               }
               if (isLinux && prevStats.ino !== newStats2.ino) {
-                this.fsw._closeFile(path4);
+                this.fsw._closeFile(path8);
                 prevStats = newStats2;
-                this.fsw._addPathCloser(path4, this._watchWithNodeFs(file, listener));
+                this.fsw._addPathCloser(path8, this._watchWithNodeFs(file, listener));
               } else {
                 prevStats = newStats2;
               }
@@ -21705,7 +21705,7 @@ var require_nodefs_handler = __commonJS({
        * @param {String} item basename of this item
        * @returns {Promise<Boolean>} true if no more processing is needed for this entry.
        */
-      async _handleSymlink(entry, directory, path4, item) {
+      async _handleSymlink(entry, directory, path8, item) {
         if (this.fsw.closed) {
           return;
         }
@@ -21715,7 +21715,7 @@ var require_nodefs_handler = __commonJS({
           this.fsw._incrReadyCount();
           let linkPath;
           try {
-            linkPath = await fsrealpath(path4);
+            linkPath = await fsrealpath(path8);
           } catch (e) {
             this.fsw._emitReady();
             return true;
@@ -21724,12 +21724,12 @@ var require_nodefs_handler = __commonJS({
           if (dir.has(item)) {
             if (this.fsw._symlinkPaths.get(full) !== linkPath) {
               this.fsw._symlinkPaths.set(full, linkPath);
-              this.fsw._emit(EV_CHANGE, path4, entry.stats);
+              this.fsw._emit(EV_CHANGE, path8, entry.stats);
             }
           } else {
             dir.add(item);
             this.fsw._symlinkPaths.set(full, linkPath);
-            this.fsw._emit(EV_ADD, path4, entry.stats);
+            this.fsw._emit(EV_ADD, path8, entry.stats);
           }
           this.fsw._emitReady();
           return true;
@@ -21757,9 +21757,9 @@ var require_nodefs_handler = __commonJS({
             return;
           }
           const item = entry.path;
-          let path4 = sysPath.join(directory, item);
+          let path8 = sysPath.join(directory, item);
           current.add(item);
-          if (entry.stats.isSymbolicLink() && await this._handleSymlink(entry, directory, path4, item)) {
+          if (entry.stats.isSymbolicLink() && await this._handleSymlink(entry, directory, path8, item)) {
             return;
           }
           if (this.fsw.closed) {
@@ -21768,8 +21768,8 @@ var require_nodefs_handler = __commonJS({
           }
           if (item === target || !target && !previous.has(item)) {
             this.fsw._incrReadyCount();
-            path4 = sysPath.join(dir, sysPath.relative(dir, path4));
-            this._addToNodeFs(path4, initialAdd, wh, depth + 1);
+            path8 = sysPath.join(dir, sysPath.relative(dir, path8));
+            this._addToNodeFs(path8, initialAdd, wh, depth + 1);
           }
         }).on(EV_ERROR, this._boundHandleError);
         return new Promise(
@@ -21839,13 +21839,13 @@ var require_nodefs_handler = __commonJS({
        * @param {String=} target Child path actually targeted for watch
        * @returns {Promise}
        */
-      async _addToNodeFs(path4, initialAdd, priorWh, depth, target) {
+      async _addToNodeFs(path8, initialAdd, priorWh, depth, target) {
         const ready = this.fsw._emitReady;
-        if (this.fsw._isIgnored(path4) || this.fsw.closed) {
+        if (this.fsw._isIgnored(path8) || this.fsw.closed) {
           ready();
           return false;
         }
-        const wh = this.fsw._getWatchHelpers(path4, depth);
+        const wh = this.fsw._getWatchHelpers(path8, depth);
         if (!wh.hasGlob && priorWh) {
           wh.hasGlob = priorWh.hasGlob;
           wh.globFilter = priorWh.globFilter;
@@ -21859,11 +21859,11 @@ var require_nodefs_handler = __commonJS({
             ready();
             return false;
           }
-          const follow = this.fsw.options.followSymlinks && !path4.includes(STAR) && !path4.includes(BRACE_START);
+          const follow = this.fsw.options.followSymlinks && !path8.includes(STAR) && !path8.includes(BRACE_START);
           let closer;
           if (stats.isDirectory()) {
-            const absPath = sysPath.resolve(path4);
-            const targetPath = follow ? await fsrealpath(path4) : path4;
+            const absPath = sysPath.resolve(path8);
+            const targetPath = follow ? await fsrealpath(path8) : path8;
             if (this.fsw.closed) return;
             closer = await this._handleDir(wh.watchPath, stats, initialAdd, depth, target, wh, targetPath);
             if (this.fsw.closed) return;
@@ -21871,26 +21871,26 @@ var require_nodefs_handler = __commonJS({
               this.fsw._symlinkPaths.set(absPath, targetPath);
             }
           } else if (stats.isSymbolicLink()) {
-            const targetPath = follow ? await fsrealpath(path4) : path4;
+            const targetPath = follow ? await fsrealpath(path8) : path8;
             if (this.fsw.closed) return;
             const parent = sysPath.dirname(wh.watchPath);
             this.fsw._getWatchedDir(parent).add(wh.watchPath);
             this.fsw._emit(EV_ADD, wh.watchPath, stats);
-            closer = await this._handleDir(parent, stats, initialAdd, depth, path4, wh, targetPath);
+            closer = await this._handleDir(parent, stats, initialAdd, depth, path8, wh, targetPath);
             if (this.fsw.closed) return;
             if (targetPath !== void 0) {
-              this.fsw._symlinkPaths.set(sysPath.resolve(path4), targetPath);
+              this.fsw._symlinkPaths.set(sysPath.resolve(path8), targetPath);
             }
           } else {
             closer = this._handleFile(wh.watchPath, stats, initialAdd);
           }
           ready();
-          this.fsw._addPathCloser(path4, closer);
+          this.fsw._addPathCloser(path8, closer);
           return false;
         } catch (error2) {
           if (this.fsw._handleError(error2)) {
             ready();
-            return path4;
+            return path8;
           }
         }
       }
@@ -21903,7 +21903,7 @@ var require_nodefs_handler = __commonJS({
 var require_fsevents_handler = __commonJS({
   "../../node_modules/chokidar/lib/fsevents-handler.js"(exports2, module2) {
     "use strict";
-    var fs4 = require("fs");
+    var fs5 = require("fs");
     var sysPath = require("path");
     var { promisify } = require("util");
     var fsevents;
@@ -21948,9 +21948,9 @@ var require_fsevents_handler = __commonJS({
       IDENTITY_FN
     } = require_constants3();
     var Depth = (value) => isNaN(value) ? {} : { depth: value };
-    var stat = promisify(fs4.stat);
-    var lstat = promisify(fs4.lstat);
-    var realpath = promisify(fs4.realpath);
+    var stat = promisify(fs5.stat);
+    var lstat = promisify(fs5.lstat);
+    var realpath = promisify(fs5.realpath);
     var statMethods = { stat, lstat };
     var FSEventsWatchers = /* @__PURE__ */ new Map();
     var consolidateThreshhold = 10;
@@ -21964,18 +21964,18 @@ var require_fsevents_handler = __commonJS({
       131840,
       262912
     ]);
-    var createFSEventsInstance = (path4, callback) => {
-      const stop = fsevents.watch(path4, callback);
+    var createFSEventsInstance = (path8, callback) => {
+      const stop = fsevents.watch(path8, callback);
       return { stop };
     };
-    function setFSEventsListener(path4, realPath, listener, rawEmitter) {
+    function setFSEventsListener(path8, realPath, listener, rawEmitter) {
       let watchPath = sysPath.extname(realPath) ? sysPath.dirname(realPath) : realPath;
       const parentPath = sysPath.dirname(watchPath);
       let cont = FSEventsWatchers.get(watchPath);
       if (couldConsolidate(parentPath)) {
         watchPath = parentPath;
       }
-      const resolvedPath = sysPath.resolve(path4);
+      const resolvedPath = sysPath.resolve(path8);
       const hasSymlink = resolvedPath !== realPath;
       const filteredListener = (fullPath, flags, info) => {
         if (hasSymlink) fullPath = fullPath.replace(realPath, resolvedPath);
@@ -22020,10 +22020,10 @@ var require_fsevents_handler = __commonJS({
         }
       };
     }
-    var couldConsolidate = (path4) => {
+    var couldConsolidate = (path8) => {
       let count = 0;
       for (const watchPath of FSEventsWatchers.keys()) {
-        if (watchPath.indexOf(path4) === 0) {
+        if (watchPath.indexOf(path8) === 0) {
           count++;
           if (count >= consolidateThreshhold) {
             return true;
@@ -22033,9 +22033,9 @@ var require_fsevents_handler = __commonJS({
       return false;
     };
     var canUse = () => fsevents && FSEventsWatchers.size < 128;
-    var calcDepth = (path4, root) => {
+    var calcDepth = (path8, root) => {
       let i = 0;
-      while (!path4.indexOf(root) && (path4 = sysPath.dirname(path4)) !== root) i++;
+      while (!path8.indexOf(root) && (path8 = sysPath.dirname(path8)) !== root) i++;
       return i;
     };
     var sameTypes = (info, stats) => info.type === FSEVENT_TYPE_DIRECTORY && stats.isDirectory() || info.type === FSEVENT_TYPE_SYMLINK && stats.isSymbolicLink() || info.type === FSEVENT_TYPE_FILE && stats.isFile();
@@ -22046,41 +22046,41 @@ var require_fsevents_handler = __commonJS({
       constructor(fsw) {
         this.fsw = fsw;
       }
-      checkIgnored(path4, stats) {
+      checkIgnored(path8, stats) {
         const ipaths = this.fsw._ignoredPaths;
-        if (this.fsw._isIgnored(path4, stats)) {
-          ipaths.add(path4);
+        if (this.fsw._isIgnored(path8, stats)) {
+          ipaths.add(path8);
           if (stats && stats.isDirectory()) {
-            ipaths.add(path4 + ROOT_GLOBSTAR);
+            ipaths.add(path8 + ROOT_GLOBSTAR);
           }
           return true;
         }
-        ipaths.delete(path4);
-        ipaths.delete(path4 + ROOT_GLOBSTAR);
+        ipaths.delete(path8);
+        ipaths.delete(path8 + ROOT_GLOBSTAR);
       }
-      addOrChange(path4, fullPath, realPath, parent, watchedDir, item, info, opts) {
+      addOrChange(path8, fullPath, realPath, parent, watchedDir, item, info, opts) {
         const event = watchedDir.has(item) ? EV_CHANGE : EV_ADD;
-        this.handleEvent(event, path4, fullPath, realPath, parent, watchedDir, item, info, opts);
+        this.handleEvent(event, path8, fullPath, realPath, parent, watchedDir, item, info, opts);
       }
-      async checkExists(path4, fullPath, realPath, parent, watchedDir, item, info, opts) {
+      async checkExists(path8, fullPath, realPath, parent, watchedDir, item, info, opts) {
         try {
-          const stats = await stat(path4);
+          const stats = await stat(path8);
           if (this.fsw.closed) return;
           if (sameTypes(info, stats)) {
-            this.addOrChange(path4, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.addOrChange(path8, fullPath, realPath, parent, watchedDir, item, info, opts);
           } else {
-            this.handleEvent(EV_UNLINK, path4, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.handleEvent(EV_UNLINK, path8, fullPath, realPath, parent, watchedDir, item, info, opts);
           }
         } catch (error2) {
           if (error2.code === "EACCES") {
-            this.addOrChange(path4, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.addOrChange(path8, fullPath, realPath, parent, watchedDir, item, info, opts);
           } else {
-            this.handleEvent(EV_UNLINK, path4, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.handleEvent(EV_UNLINK, path8, fullPath, realPath, parent, watchedDir, item, info, opts);
           }
         }
       }
-      handleEvent(event, path4, fullPath, realPath, parent, watchedDir, item, info, opts) {
-        if (this.fsw.closed || this.checkIgnored(path4)) return;
+      handleEvent(event, path8, fullPath, realPath, parent, watchedDir, item, info, opts) {
+        if (this.fsw.closed || this.checkIgnored(path8)) return;
         if (event === EV_UNLINK) {
           const isDirectory = info.type === FSEVENT_TYPE_DIRECTORY;
           if (isDirectory || watchedDir.has(item)) {
@@ -22088,16 +22088,16 @@ var require_fsevents_handler = __commonJS({
           }
         } else {
           if (event === EV_ADD) {
-            if (info.type === FSEVENT_TYPE_DIRECTORY) this.fsw._getWatchedDir(path4);
+            if (info.type === FSEVENT_TYPE_DIRECTORY) this.fsw._getWatchedDir(path8);
             if (info.type === FSEVENT_TYPE_SYMLINK && opts.followSymlinks) {
               const curDepth = opts.depth === void 0 ? void 0 : calcDepth(fullPath, realPath) + 1;
-              return this._addToFsEvents(path4, false, true, curDepth);
+              return this._addToFsEvents(path8, false, true, curDepth);
             }
             this.fsw._getWatchedDir(parent).add(item);
           }
           const eventName = info.type === FSEVENT_TYPE_DIRECTORY ? event + DIR_SUFFIX : event;
-          this.fsw._emit(eventName, path4);
-          if (eventName === EV_ADD_DIR) this._addToFsEvents(path4, false, true);
+          this.fsw._emit(eventName, path8);
+          if (eventName === EV_ADD_DIR) this._addToFsEvents(path8, false, true);
         }
       }
       /**
@@ -22114,41 +22114,41 @@ var require_fsevents_handler = __commonJS({
         const watchCallback = async (fullPath, flags, info) => {
           if (this.fsw.closed) return;
           if (opts.depth !== void 0 && calcDepth(fullPath, realPath) > opts.depth) return;
-          const path4 = transform2(sysPath.join(
+          const path8 = transform2(sysPath.join(
             watchPath,
             sysPath.relative(watchPath, fullPath)
           ));
-          if (globFilter && !globFilter(path4)) return;
-          const parent = sysPath.dirname(path4);
-          const item = sysPath.basename(path4);
+          if (globFilter && !globFilter(path8)) return;
+          const parent = sysPath.dirname(path8);
+          const item = sysPath.basename(path8);
           const watchedDir = this.fsw._getWatchedDir(
-            info.type === FSEVENT_TYPE_DIRECTORY ? path4 : parent
+            info.type === FSEVENT_TYPE_DIRECTORY ? path8 : parent
           );
           if (wrongEventFlags.has(flags) || info.event === FSEVENT_UNKNOWN) {
             if (typeof opts.ignored === FUNCTION_TYPE) {
               let stats;
               try {
-                stats = await stat(path4);
+                stats = await stat(path8);
               } catch (error2) {
               }
               if (this.fsw.closed) return;
-              if (this.checkIgnored(path4, stats)) return;
+              if (this.checkIgnored(path8, stats)) return;
               if (sameTypes(info, stats)) {
-                this.addOrChange(path4, fullPath, realPath, parent, watchedDir, item, info, opts);
+                this.addOrChange(path8, fullPath, realPath, parent, watchedDir, item, info, opts);
               } else {
-                this.handleEvent(EV_UNLINK, path4, fullPath, realPath, parent, watchedDir, item, info, opts);
+                this.handleEvent(EV_UNLINK, path8, fullPath, realPath, parent, watchedDir, item, info, opts);
               }
             } else {
-              this.checkExists(path4, fullPath, realPath, parent, watchedDir, item, info, opts);
+              this.checkExists(path8, fullPath, realPath, parent, watchedDir, item, info, opts);
             }
           } else {
             switch (info.event) {
               case FSEVENT_CREATED:
               case FSEVENT_MODIFIED:
-                return this.addOrChange(path4, fullPath, realPath, parent, watchedDir, item, info, opts);
+                return this.addOrChange(path8, fullPath, realPath, parent, watchedDir, item, info, opts);
               case FSEVENT_DELETED:
               case FSEVENT_MOVED:
-                return this.checkExists(path4, fullPath, realPath, parent, watchedDir, item, info, opts);
+                return this.checkExists(path8, fullPath, realPath, parent, watchedDir, item, info, opts);
             }
           }
         };
@@ -22180,12 +22180,12 @@ var require_fsevents_handler = __commonJS({
             return this.fsw._emitReady();
           }
           this.fsw._incrReadyCount();
-          this._addToFsEvents(linkTarget || linkPath, (path4) => {
+          this._addToFsEvents(linkTarget || linkPath, (path8) => {
             let aliasedPath = linkPath;
             if (linkTarget && linkTarget !== DOT_SLASH) {
-              aliasedPath = path4.replace(linkTarget, linkPath);
-            } else if (path4 !== DOT_SLASH) {
-              aliasedPath = sysPath.join(linkPath, path4);
+              aliasedPath = path8.replace(linkTarget, linkPath);
+            } else if (path8 !== DOT_SLASH) {
+              aliasedPath = sysPath.join(linkPath, path8);
             }
             return transform2(aliasedPath);
           }, false, curDepth);
@@ -22212,7 +22212,7 @@ var require_fsevents_handler = __commonJS({
           this.fsw._emit(isDir ? EV_ADD_DIR : EV_ADD, pp, stats);
         }
       }
-      initWatch(realPath, path4, wh, processPath) {
+      initWatch(realPath, path8, wh, processPath) {
         if (this.fsw.closed) return;
         const closer = this._watchWithFsEvents(
           wh.watchPath,
@@ -22220,7 +22220,7 @@ var require_fsevents_handler = __commonJS({
           processPath,
           wh.globFilter
         );
-        this.fsw._addPathCloser(path4, closer);
+        this.fsw._addPathCloser(path8, closer);
       }
       /**
        * Handle added path with fsevents
@@ -22230,13 +22230,13 @@ var require_fsevents_handler = __commonJS({
        * @param {Number=} priorDepth Level of subdirectories already traversed.
        * @returns {Promise<void>}
        */
-      async _addToFsEvents(path4, transform2, forceAdd, priorDepth) {
+      async _addToFsEvents(path8, transform2, forceAdd, priorDepth) {
         if (this.fsw.closed) {
           return;
         }
         const opts = this.fsw.options;
         const processPath = typeof transform2 === FUNCTION_TYPE ? transform2 : IDENTITY_FN;
-        const wh = this.fsw._getWatchHelpers(path4);
+        const wh = this.fsw._getWatchHelpers(path8);
         try {
           const stats = await statMethods[wh.statMethod](wh.watchPath);
           if (this.fsw.closed) return;
@@ -22244,7 +22244,7 @@ var require_fsevents_handler = __commonJS({
             throw null;
           }
           if (stats.isDirectory()) {
-            if (!wh.globFilter) this.emitAdd(processPath(path4), stats, processPath, opts, forceAdd);
+            if (!wh.globFilter) this.emitAdd(processPath(path8), stats, processPath, opts, forceAdd);
             if (priorDepth && priorDepth > opts.depth) return;
             this.fsw._readdirp(wh.watchPath, {
               fileFilter: (entry) => wh.filterPath(entry),
@@ -22278,14 +22278,14 @@ var require_fsevents_handler = __commonJS({
         }
         if (opts.persistent && forceAdd !== true) {
           if (typeof transform2 === FUNCTION_TYPE) {
-            this.initWatch(void 0, path4, wh, processPath);
+            this.initWatch(void 0, path8, wh, processPath);
           } else {
             let realPath;
             try {
               realPath = await realpath(wh.watchPath);
             } catch (e) {
             }
-            this.initWatch(realPath, path4, wh, processPath);
+            this.initWatch(realPath, path8, wh, processPath);
           }
         }
       }
@@ -22300,7 +22300,7 @@ var require_chokidar = __commonJS({
   "../../node_modules/chokidar/index.js"(exports2) {
     "use strict";
     var { EventEmitter } = require("events");
-    var fs4 = require("fs");
+    var fs5 = require("fs");
     var sysPath = require("path");
     var { promisify } = require("util");
     var readdirp = require_readdirp();
@@ -22345,8 +22345,8 @@ var require_chokidar = __commonJS({
       isMacos,
       isIBMi
     } = require_constants3();
-    var stat = promisify(fs4.stat);
-    var readdir = promisify(fs4.readdir);
+    var stat = promisify(fs5.stat);
+    var readdir = promisify(fs5.readdir);
     var arrify = (value = []) => Array.isArray(value) ? value : [value];
     var flatten = (list, result = []) => {
       list.forEach((item) => {
@@ -22379,19 +22379,19 @@ var require_chokidar = __commonJS({
       }
       return str2;
     };
-    var normalizePathToUnix = (path4) => toUnix(sysPath.normalize(toUnix(path4)));
-    var normalizeIgnored = (cwd = EMPTY_STR) => (path4) => {
-      if (typeof path4 !== STRING_TYPE) return path4;
-      return normalizePathToUnix(sysPath.isAbsolute(path4) ? path4 : sysPath.join(cwd, path4));
+    var normalizePathToUnix = (path8) => toUnix(sysPath.normalize(toUnix(path8)));
+    var normalizeIgnored = (cwd = EMPTY_STR) => (path8) => {
+      if (typeof path8 !== STRING_TYPE) return path8;
+      return normalizePathToUnix(sysPath.isAbsolute(path8) ? path8 : sysPath.join(cwd, path8));
     };
-    var getAbsolutePath = (path4, cwd) => {
-      if (sysPath.isAbsolute(path4)) {
-        return path4;
+    var getAbsolutePath = (path8, cwd) => {
+      if (sysPath.isAbsolute(path8)) {
+        return path8;
       }
-      if (path4.startsWith(BANG)) {
-        return BANG + sysPath.join(cwd, path4.slice(1));
+      if (path8.startsWith(BANG)) {
+        return BANG + sysPath.join(cwd, path8.slice(1));
       }
-      return sysPath.join(cwd, path4);
+      return sysPath.join(cwd, path8);
     };
     var undef = (opts, key) => opts[key] === void 0;
     var DirEntry = class {
@@ -22447,16 +22447,16 @@ var require_chokidar = __commonJS({
     var STAT_METHOD_F = "stat";
     var STAT_METHOD_L = "lstat";
     var WatchHelper = class {
-      constructor(path4, watchPath, follow, fsw) {
+      constructor(path8, watchPath, follow, fsw) {
         this.fsw = fsw;
-        this.path = path4 = path4.replace(REPLACER_RE, EMPTY_STR);
+        this.path = path8 = path8.replace(REPLACER_RE, EMPTY_STR);
         this.watchPath = watchPath;
         this.fullWatchPath = sysPath.resolve(watchPath);
-        this.hasGlob = watchPath !== path4;
-        if (path4 === EMPTY_STR) this.hasGlob = false;
+        this.hasGlob = watchPath !== path8;
+        if (path8 === EMPTY_STR) this.hasGlob = false;
         this.globSymlink = this.hasGlob && follow ? void 0 : false;
-        this.globFilter = this.hasGlob ? anymatch(path4, void 0, ANYMATCH_OPTS) : false;
-        this.dirParts = this.getDirParts(path4);
+        this.globFilter = this.hasGlob ? anymatch(path8, void 0, ANYMATCH_OPTS) : false;
+        this.dirParts = this.getDirParts(path8);
         this.dirParts.forEach((parts) => {
           if (parts.length > 1) parts.pop();
         });
@@ -22485,12 +22485,12 @@ var require_chokidar = __commonJS({
         const matchesGlob = this.hasGlob && typeof this.globFilter === FUNCTION_TYPE ? this.globFilter(resolvedPath) : true;
         return matchesGlob && this.fsw._isntIgnored(resolvedPath, stats) && this.fsw._hasReadPermissions(stats);
       }
-      getDirParts(path4) {
+      getDirParts(path8) {
         if (!this.hasGlob) return [];
         const parts = [];
-        const expandedPath = path4.includes(BRACE_START) ? braces.expand(path4) : [path4];
-        expandedPath.forEach((path5) => {
-          parts.push(sysPath.relative(this.watchPath, path5).split(SLASH_OR_BACK_SLASH_RE));
+        const expandedPath = path8.includes(BRACE_START) ? braces.expand(path8) : [path8];
+        expandedPath.forEach((path9) => {
+          parts.push(sysPath.relative(this.watchPath, path9).split(SLASH_OR_BACK_SLASH_RE));
         });
         return parts;
       }
@@ -22596,34 +22596,34 @@ var require_chokidar = __commonJS({
         this.closed = false;
         let paths = unifyPaths(paths_);
         if (cwd) {
-          paths = paths.map((path4) => {
-            const absPath = getAbsolutePath(path4, cwd);
-            if (disableGlobbing || !isGlob(path4)) {
+          paths = paths.map((path8) => {
+            const absPath = getAbsolutePath(path8, cwd);
+            if (disableGlobbing || !isGlob(path8)) {
               return absPath;
             }
             return normalizePath(absPath);
           });
         }
-        paths = paths.filter((path4) => {
-          if (path4.startsWith(BANG)) {
-            this._ignoredPaths.add(path4.slice(1));
+        paths = paths.filter((path8) => {
+          if (path8.startsWith(BANG)) {
+            this._ignoredPaths.add(path8.slice(1));
             return false;
           }
-          this._ignoredPaths.delete(path4);
-          this._ignoredPaths.delete(path4 + SLASH_GLOBSTAR);
+          this._ignoredPaths.delete(path8);
+          this._ignoredPaths.delete(path8 + SLASH_GLOBSTAR);
           this._userIgnored = void 0;
           return true;
         });
         if (this.options.useFsEvents && this._fsEventsHandler) {
           if (!this._readyCount) this._readyCount = paths.length;
           if (this.options.persistent) this._readyCount += paths.length;
-          paths.forEach((path4) => this._fsEventsHandler._addToFsEvents(path4));
+          paths.forEach((path8) => this._fsEventsHandler._addToFsEvents(path8));
         } else {
           if (!this._readyCount) this._readyCount = 0;
           this._readyCount += paths.length;
           Promise.all(
-            paths.map(async (path4) => {
-              const res = await this._nodeFsHandler._addToNodeFs(path4, !_internal, 0, 0, _origAdd);
+            paths.map(async (path8) => {
+              const res = await this._nodeFsHandler._addToNodeFs(path8, !_internal, 0, 0, _origAdd);
               if (res) this._emitReady();
               return res;
             })
@@ -22645,15 +22645,15 @@ var require_chokidar = __commonJS({
         if (this.closed) return this;
         const paths = unifyPaths(paths_);
         const { cwd } = this.options;
-        paths.forEach((path4) => {
-          if (!sysPath.isAbsolute(path4) && !this._closers.has(path4)) {
-            if (cwd) path4 = sysPath.join(cwd, path4);
-            path4 = sysPath.resolve(path4);
+        paths.forEach((path8) => {
+          if (!sysPath.isAbsolute(path8) && !this._closers.has(path8)) {
+            if (cwd) path8 = sysPath.join(cwd, path8);
+            path8 = sysPath.resolve(path8);
           }
-          this._closePath(path4);
-          this._ignoredPaths.add(path4);
-          if (this._watched.has(path4)) {
-            this._ignoredPaths.add(path4 + SLASH_GLOBSTAR);
+          this._closePath(path8);
+          this._ignoredPaths.add(path8);
+          if (this._watched.has(path8)) {
+            this._ignoredPaths.add(path8 + SLASH_GLOBSTAR);
           }
           this._userIgnored = void 0;
         });
@@ -22711,36 +22711,36 @@ var require_chokidar = __commonJS({
        * @param {*=} val3
        * @returns the error if defined, otherwise the value of the FSWatcher instance's `closed` flag
        */
-      async _emit(event, path4, val1, val2, val3) {
+      async _emit(event, path8, val1, val2, val3) {
         if (this.closed) return;
         const opts = this.options;
-        if (isWindows) path4 = sysPath.normalize(path4);
-        if (opts.cwd) path4 = sysPath.relative(opts.cwd, path4);
-        const args = [event, path4];
+        if (isWindows) path8 = sysPath.normalize(path8);
+        if (opts.cwd) path8 = sysPath.relative(opts.cwd, path8);
+        const args = [event, path8];
         if (val3 !== void 0) args.push(val1, val2, val3);
         else if (val2 !== void 0) args.push(val1, val2);
         else if (val1 !== void 0) args.push(val1);
         const awf = opts.awaitWriteFinish;
         let pw;
-        if (awf && (pw = this._pendingWrites.get(path4))) {
+        if (awf && (pw = this._pendingWrites.get(path8))) {
           pw.lastChange = /* @__PURE__ */ new Date();
           return this;
         }
         if (opts.atomic) {
           if (event === EV_UNLINK) {
-            this._pendingUnlinks.set(path4, args);
+            this._pendingUnlinks.set(path8, args);
             setTimeout(() => {
-              this._pendingUnlinks.forEach((entry, path5) => {
+              this._pendingUnlinks.forEach((entry, path9) => {
                 this.emit(...entry);
                 this.emit(EV_ALL, ...entry);
-                this._pendingUnlinks.delete(path5);
+                this._pendingUnlinks.delete(path9);
               });
             }, typeof opts.atomic === "number" ? opts.atomic : 100);
             return this;
           }
-          if (event === EV_ADD && this._pendingUnlinks.has(path4)) {
+          if (event === EV_ADD && this._pendingUnlinks.has(path8)) {
             event = args[0] = EV_CHANGE;
-            this._pendingUnlinks.delete(path4);
+            this._pendingUnlinks.delete(path8);
           }
         }
         if (awf && (event === EV_ADD || event === EV_CHANGE) && this._readyEmitted) {
@@ -22758,15 +22758,15 @@ var require_chokidar = __commonJS({
               this.emitWithAll(event, args);
             }
           };
-          this._awaitWriteFinish(path4, awf.stabilityThreshold, event, awfEmit);
+          this._awaitWriteFinish(path8, awf.stabilityThreshold, event, awfEmit);
           return this;
         }
         if (event === EV_CHANGE) {
-          const isThrottled = !this._throttle(EV_CHANGE, path4, 50);
+          const isThrottled = !this._throttle(EV_CHANGE, path8, 50);
           if (isThrottled) return this;
         }
         if (opts.alwaysStat && val1 === void 0 && (event === EV_ADD || event === EV_ADD_DIR || event === EV_CHANGE)) {
-          const fullPath = opts.cwd ? sysPath.join(opts.cwd, path4) : path4;
+          const fullPath = opts.cwd ? sysPath.join(opts.cwd, path8) : path8;
           let stats;
           try {
             stats = await stat(fullPath);
@@ -22797,28 +22797,28 @@ var require_chokidar = __commonJS({
        * @param {Number} timeout duration of time to suppress duplicate actions
        * @returns {Object|false} tracking object or false if action should be suppressed
        */
-      _throttle(actionType, path4, timeout) {
+      _throttle(actionType, path8, timeout) {
         if (!this._throttled.has(actionType)) {
           this._throttled.set(actionType, /* @__PURE__ */ new Map());
         }
         const action = this._throttled.get(actionType);
-        const actionPath = action.get(path4);
+        const actionPath = action.get(path8);
         if (actionPath) {
           actionPath.count++;
           return false;
         }
         let timeoutObject;
         const clear = () => {
-          const item = action.get(path4);
+          const item = action.get(path8);
           const count = item ? item.count : 0;
-          action.delete(path4);
+          action.delete(path8);
           clearTimeout(timeoutObject);
           if (item) clearTimeout(item.timeoutObject);
           return count;
         };
         timeoutObject = setTimeout(clear, timeout);
         const thr = { timeoutObject, clear, count: 0 };
-        action.set(path4, thr);
+        action.set(path8, thr);
         return thr;
       }
       _incrReadyCount() {
@@ -22832,27 +22832,27 @@ var require_chokidar = __commonJS({
        * @param {EventName} event
        * @param {Function} awfEmit Callback to be called when ready for event to be emitted.
        */
-      _awaitWriteFinish(path4, threshold, event, awfEmit) {
+      _awaitWriteFinish(path8, threshold, event, awfEmit) {
         let timeoutHandler;
-        let fullPath = path4;
-        if (this.options.cwd && !sysPath.isAbsolute(path4)) {
-          fullPath = sysPath.join(this.options.cwd, path4);
+        let fullPath = path8;
+        if (this.options.cwd && !sysPath.isAbsolute(path8)) {
+          fullPath = sysPath.join(this.options.cwd, path8);
         }
         const now = /* @__PURE__ */ new Date();
         const awaitWriteFinish = (prevStat) => {
-          fs4.stat(fullPath, (err, curStat) => {
-            if (err || !this._pendingWrites.has(path4)) {
+          fs5.stat(fullPath, (err, curStat) => {
+            if (err || !this._pendingWrites.has(path8)) {
               if (err && err.code !== "ENOENT") awfEmit(err);
               return;
             }
             const now2 = Number(/* @__PURE__ */ new Date());
             if (prevStat && curStat.size !== prevStat.size) {
-              this._pendingWrites.get(path4).lastChange = now2;
+              this._pendingWrites.get(path8).lastChange = now2;
             }
-            const pw = this._pendingWrites.get(path4);
+            const pw = this._pendingWrites.get(path8);
             const df = now2 - pw.lastChange;
             if (df >= threshold) {
-              this._pendingWrites.delete(path4);
+              this._pendingWrites.delete(path8);
               awfEmit(void 0, curStat);
             } else {
               timeoutHandler = setTimeout(
@@ -22863,11 +22863,11 @@ var require_chokidar = __commonJS({
             }
           });
         };
-        if (!this._pendingWrites.has(path4)) {
-          this._pendingWrites.set(path4, {
+        if (!this._pendingWrites.has(path8)) {
+          this._pendingWrites.set(path8, {
             lastChange: now,
             cancelWait: () => {
-              this._pendingWrites.delete(path4);
+              this._pendingWrites.delete(path8);
               clearTimeout(timeoutHandler);
               return event;
             }
@@ -22887,20 +22887,20 @@ var require_chokidar = __commonJS({
        * @param {fs.Stats=} stats result of fs.stat
        * @returns {Boolean}
        */
-      _isIgnored(path4, stats) {
-        if (this.options.atomic && DOT_RE.test(path4)) return true;
+      _isIgnored(path8, stats) {
+        if (this.options.atomic && DOT_RE.test(path8)) return true;
         if (!this._userIgnored) {
           const { cwd } = this.options;
           const ign = this.options.ignored;
           const ignored = ign && ign.map(normalizeIgnored(cwd));
-          const paths = arrify(ignored).filter((path5) => typeof path5 === STRING_TYPE && !isGlob(path5)).map((path5) => path5 + SLASH_GLOBSTAR);
+          const paths = arrify(ignored).filter((path9) => typeof path9 === STRING_TYPE && !isGlob(path9)).map((path9) => path9 + SLASH_GLOBSTAR);
           const list = this._getGlobIgnored().map(normalizeIgnored(cwd)).concat(ignored, paths);
           this._userIgnored = anymatch(list, void 0, ANYMATCH_OPTS);
         }
-        return this._userIgnored([path4, stats]);
+        return this._userIgnored([path8, stats]);
       }
-      _isntIgnored(path4, stat2) {
-        return !this._isIgnored(path4, stat2);
+      _isntIgnored(path8, stat2) {
+        return !this._isIgnored(path8, stat2);
       }
       /**
        * Provides a set of common helpers and properties relating to symlink and glob handling.
@@ -22908,10 +22908,10 @@ var require_chokidar = __commonJS({
        * @param {Number=} depth at any depth > 0, this isn't a glob
        * @returns {WatchHelper} object containing helpers for this path
        */
-      _getWatchHelpers(path4, depth) {
-        const watchPath = depth || this.options.disableGlobbing || !isGlob(path4) ? path4 : globParent(path4);
+      _getWatchHelpers(path8, depth) {
+        const watchPath = depth || this.options.disableGlobbing || !isGlob(path8) ? path8 : globParent(path8);
         const follow = this.options.followSymlinks;
-        return new WatchHelper(path4, watchPath, follow, this);
+        return new WatchHelper(path8, watchPath, follow, this);
       }
       // Directory helpers
       // -----------------
@@ -22950,66 +22950,66 @@ var require_chokidar = __commonJS({
        * @returns {void}
       */
       _remove(directory, item, isDirectory) {
-        const path4 = sysPath.join(directory, item);
-        const fullPath = sysPath.resolve(path4);
-        isDirectory = isDirectory != null ? isDirectory : this._watched.has(path4) || this._watched.has(fullPath);
-        if (!this._throttle("remove", path4, 100)) return;
+        const path8 = sysPath.join(directory, item);
+        const fullPath = sysPath.resolve(path8);
+        isDirectory = isDirectory != null ? isDirectory : this._watched.has(path8) || this._watched.has(fullPath);
+        if (!this._throttle("remove", path8, 100)) return;
         if (!isDirectory && !this.options.useFsEvents && this._watched.size === 1) {
           this.add(directory, item, true);
         }
-        const wp = this._getWatchedDir(path4);
+        const wp = this._getWatchedDir(path8);
         const nestedDirectoryChildren = wp.getChildren();
-        nestedDirectoryChildren.forEach((nested) => this._remove(path4, nested));
+        nestedDirectoryChildren.forEach((nested) => this._remove(path8, nested));
         const parent = this._getWatchedDir(directory);
         const wasTracked = parent.has(item);
         parent.remove(item);
         if (this._symlinkPaths.has(fullPath)) {
           this._symlinkPaths.delete(fullPath);
         }
-        let relPath = path4;
-        if (this.options.cwd) relPath = sysPath.relative(this.options.cwd, path4);
+        let relPath = path8;
+        if (this.options.cwd) relPath = sysPath.relative(this.options.cwd, path8);
         if (this.options.awaitWriteFinish && this._pendingWrites.has(relPath)) {
           const event = this._pendingWrites.get(relPath).cancelWait();
           if (event === EV_ADD) return;
         }
-        this._watched.delete(path4);
+        this._watched.delete(path8);
         this._watched.delete(fullPath);
         const eventName = isDirectory ? EV_UNLINK_DIR : EV_UNLINK;
-        if (wasTracked && !this._isIgnored(path4)) this._emit(eventName, path4);
+        if (wasTracked && !this._isIgnored(path8)) this._emit(eventName, path8);
         if (!this.options.useFsEvents) {
-          this._closePath(path4);
+          this._closePath(path8);
         }
       }
       /**
        * Closes all watchers for a path
        * @param {Path} path
        */
-      _closePath(path4) {
-        this._closeFile(path4);
-        const dir = sysPath.dirname(path4);
-        this._getWatchedDir(dir).remove(sysPath.basename(path4));
+      _closePath(path8) {
+        this._closeFile(path8);
+        const dir = sysPath.dirname(path8);
+        this._getWatchedDir(dir).remove(sysPath.basename(path8));
       }
       /**
        * Closes only file-specific watchers
        * @param {Path} path
        */
-      _closeFile(path4) {
-        const closers = this._closers.get(path4);
+      _closeFile(path8) {
+        const closers = this._closers.get(path8);
         if (!closers) return;
         closers.forEach((closer) => closer());
-        this._closers.delete(path4);
+        this._closers.delete(path8);
       }
       /**
        *
        * @param {Path} path
        * @param {Function} closer
        */
-      _addPathCloser(path4, closer) {
+      _addPathCloser(path8, closer) {
         if (!closer) return;
-        let list = this._closers.get(path4);
+        let list = this._closers.get(path8);
         if (!list) {
           list = [];
-          this._closers.set(path4, list);
+          this._closers.set(path8, list);
         }
         list.push(closer);
       }
@@ -23518,8 +23518,8 @@ function getErrorMap() {
 
 // ../../node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path4, errorMaps, issueData } = params;
-  const fullPath = [...path4, ...issueData.path || []];
+  const { data, path: path8, errorMaps, issueData } = params;
+  const fullPath = [...path8, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -23635,11 +23635,11 @@ var errorUtil;
 
 // ../../node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path4, key) {
+  constructor(parent, value, path8, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path4;
+    this._path = path8;
     this._key = key;
   }
   get path() {
@@ -27276,10 +27276,10 @@ function assignProp(target, prop, value) {
     configurable: true
   });
 }
-function getElementAtPath(obj, path4) {
-  if (!path4)
+function getElementAtPath(obj, path8) {
+  if (!path8)
     return obj;
-  return path4.reduce((acc, key) => acc?.[key], obj);
+  return path8.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -27599,11 +27599,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path4, issues) {
+function prefixIssues(path8, issues) {
   return issues.map((iss) => {
     var _a;
     (_a = iss).path ?? (_a.path = []);
-    iss.path.unshift(path4);
+    iss.path.unshift(path8);
     return iss;
   });
 }
@@ -31014,11 +31014,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path4) {
-  if (path4.length === 0) {
+function getDotPath(path8) {
+  if (path8.length === 0) {
     return "object root";
   }
-  return path4.reduce((acc, seg, index) => {
+  return path8.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -36302,6 +36302,228 @@ var McpZodTypeKind;
   McpZodTypeKind2["Completable"] = "McpCompletable";
 })(McpZodTypeKind || (McpZodTypeKind = {}));
 
+// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/uriTemplate.js
+var MAX_TEMPLATE_LENGTH = 1e6;
+var MAX_VARIABLE_LENGTH = 1e6;
+var MAX_TEMPLATE_EXPRESSIONS = 1e4;
+var MAX_REGEX_LENGTH = 1e6;
+var UriTemplate = class _UriTemplate {
+  /**
+   * Returns true if the given string contains any URI template expressions.
+   * A template expression is a sequence of characters enclosed in curly braces,
+   * like {foo} or {?bar}.
+   */
+  static isTemplate(str2) {
+    return /\{[^}\s]+\}/.test(str2);
+  }
+  static validateLength(str2, max, context) {
+    if (str2.length > max) {
+      throw new Error(`${context} exceeds maximum length of ${max} characters (got ${str2.length})`);
+    }
+  }
+  get variableNames() {
+    return this.parts.flatMap((part) => typeof part === "string" ? [] : part.names);
+  }
+  constructor(template) {
+    _UriTemplate.validateLength(template, MAX_TEMPLATE_LENGTH, "Template");
+    this.template = template;
+    this.parts = this.parse(template);
+  }
+  toString() {
+    return this.template;
+  }
+  parse(template) {
+    const parts = [];
+    let currentText = "";
+    let i = 0;
+    let expressionCount = 0;
+    while (i < template.length) {
+      if (template[i] === "{") {
+        if (currentText) {
+          parts.push(currentText);
+          currentText = "";
+        }
+        const end = template.indexOf("}", i);
+        if (end === -1)
+          throw new Error("Unclosed template expression");
+        expressionCount++;
+        if (expressionCount > MAX_TEMPLATE_EXPRESSIONS) {
+          throw new Error(`Template contains too many expressions (max ${MAX_TEMPLATE_EXPRESSIONS})`);
+        }
+        const expr = template.slice(i + 1, end);
+        const operator = this.getOperator(expr);
+        const exploded = expr.includes("*");
+        const names = this.getNames(expr);
+        const name = names[0];
+        for (const name2 of names) {
+          _UriTemplate.validateLength(name2, MAX_VARIABLE_LENGTH, "Variable name");
+        }
+        parts.push({ name, operator, names, exploded });
+        i = end + 1;
+      } else {
+        currentText += template[i];
+        i++;
+      }
+    }
+    if (currentText) {
+      parts.push(currentText);
+    }
+    return parts;
+  }
+  getOperator(expr) {
+    const operators = ["+", "#", ".", "/", "?", "&"];
+    return operators.find((op) => expr.startsWith(op)) || "";
+  }
+  getNames(expr) {
+    const operator = this.getOperator(expr);
+    return expr.slice(operator.length).split(",").map((name) => name.replace("*", "").trim()).filter((name) => name.length > 0);
+  }
+  encodeValue(value, operator) {
+    _UriTemplate.validateLength(value, MAX_VARIABLE_LENGTH, "Variable value");
+    if (operator === "+" || operator === "#") {
+      return encodeURI(value);
+    }
+    return encodeURIComponent(value);
+  }
+  expandPart(part, variables) {
+    if (part.operator === "?" || part.operator === "&") {
+      const pairs = part.names.map((name) => {
+        const value2 = variables[name];
+        if (value2 === void 0)
+          return "";
+        const encoded2 = Array.isArray(value2) ? value2.map((v) => this.encodeValue(v, part.operator)).join(",") : this.encodeValue(value2.toString(), part.operator);
+        return `${name}=${encoded2}`;
+      }).filter((pair) => pair.length > 0);
+      if (pairs.length === 0)
+        return "";
+      const separator = part.operator === "?" ? "?" : "&";
+      return separator + pairs.join("&");
+    }
+    if (part.names.length > 1) {
+      const values2 = part.names.map((name) => variables[name]).filter((v) => v !== void 0);
+      if (values2.length === 0)
+        return "";
+      return values2.map((v) => Array.isArray(v) ? v[0] : v).join(",");
+    }
+    const value = variables[part.name];
+    if (value === void 0)
+      return "";
+    const values = Array.isArray(value) ? value : [value];
+    const encoded = values.map((v) => this.encodeValue(v, part.operator));
+    switch (part.operator) {
+      case "":
+        return encoded.join(",");
+      case "+":
+        return encoded.join(",");
+      case "#":
+        return "#" + encoded.join(",");
+      case ".":
+        return "." + encoded.join(".");
+      case "/":
+        return "/" + encoded.join("/");
+      default:
+        return encoded.join(",");
+    }
+  }
+  expand(variables) {
+    let result = "";
+    let hasQueryParam = false;
+    for (const part of this.parts) {
+      if (typeof part === "string") {
+        result += part;
+        continue;
+      }
+      const expanded = this.expandPart(part, variables);
+      if (!expanded)
+        continue;
+      if ((part.operator === "?" || part.operator === "&") && hasQueryParam) {
+        result += expanded.replace("?", "&");
+      } else {
+        result += expanded;
+      }
+      if (part.operator === "?" || part.operator === "&") {
+        hasQueryParam = true;
+      }
+    }
+    return result;
+  }
+  escapeRegExp(str2) {
+    return str2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+  partToRegExp(part) {
+    const patterns = [];
+    for (const name2 of part.names) {
+      _UriTemplate.validateLength(name2, MAX_VARIABLE_LENGTH, "Variable name");
+    }
+    if (part.operator === "?" || part.operator === "&") {
+      for (let i = 0; i < part.names.length; i++) {
+        const name2 = part.names[i];
+        const prefix = i === 0 ? "\\" + part.operator : "&";
+        patterns.push({
+          pattern: prefix + this.escapeRegExp(name2) + "=([^&]+)",
+          name: name2
+        });
+      }
+      return patterns;
+    }
+    let pattern;
+    const name = part.name;
+    switch (part.operator) {
+      case "":
+        pattern = part.exploded ? "([^/,]+(?:,[^/,]+)*)" : "([^/,]+)";
+        break;
+      case "+":
+      case "#":
+        pattern = "(.+)";
+        break;
+      case ".":
+        pattern = "\\.([^/,]+)";
+        break;
+      case "/":
+        pattern = "/" + (part.exploded ? "([^/,]+(?:,[^/,]+)*)" : "([^/,]+)");
+        break;
+      default:
+        pattern = "([^/]+)";
+    }
+    patterns.push({ pattern, name });
+    return patterns;
+  }
+  match(uri) {
+    _UriTemplate.validateLength(uri, MAX_TEMPLATE_LENGTH, "URI");
+    let pattern = "^";
+    const names = [];
+    for (const part of this.parts) {
+      if (typeof part === "string") {
+        pattern += this.escapeRegExp(part);
+      } else {
+        const patterns = this.partToRegExp(part);
+        for (const { pattern: partPattern, name } of patterns) {
+          pattern += partPattern;
+          names.push({ name, exploded: part.exploded });
+        }
+      }
+    }
+    pattern += "$";
+    _UriTemplate.validateLength(pattern, MAX_REGEX_LENGTH, "Generated regex pattern");
+    const regex = new RegExp(pattern);
+    const match = uri.match(regex);
+    if (!match)
+      return null;
+    const result = {};
+    for (let i = 0; i < names.length; i++) {
+      const { name, exploded } = names[i];
+      const value = match[i + 1];
+      const cleanName = name.replace("*", "");
+      if (exploded && value.includes(",")) {
+        result[cleanName] = value.split(",");
+      } else {
+        result[cleanName] = value;
+      }
+    }
+    return result;
+  }
+};
+
 // ../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/toolNameValidation.js
 var TOOL_NAME_REGEX = /^[A-Za-z0-9._-]{1,128}$/;
 function validateToolName(name) {
@@ -37091,6 +37313,30 @@ var McpServer = class {
     }
   }
 };
+var ResourceTemplate = class {
+  constructor(uriTemplate, _callbacks) {
+    this._callbacks = _callbacks;
+    this._uriTemplate = typeof uriTemplate === "string" ? new UriTemplate(uriTemplate) : uriTemplate;
+  }
+  /**
+   * Gets the URI template pattern.
+   */
+  get uriTemplate() {
+    return this._uriTemplate;
+  }
+  /**
+   * Gets the list callback, if one was provided.
+   */
+  get listCallback() {
+    return this._callbacks.list;
+  }
+  /**
+   * Gets the callback for completing a specific URI template variable, if one was provided.
+   */
+  completeCallback(variable) {
+    return this._callbacks.complete?.[variable];
+  }
+};
 var EMPTY_OBJECT_JSON_SCHEMA = {
   type: "object",
   properties: {}
@@ -37274,21 +37520,37 @@ var StdioServerTransport = class {
   }
 };
 
+// src/index.ts
+var import_node_path2 = __toESM(require("path"), 1);
+
 // ../core/dist/index.js
 var import_path = __toESM(require("path"), 1);
 var import_promises = __toESM(require("fs/promises"), 1);
 var import_path2 = __toESM(require("path"), 1);
+var import_crypto = require("crypto");
 var import_gray_matter = __toESM(require_gray_matter(), 1);
 var import_promises2 = __toESM(require("fs/promises"), 1);
+var import_path3 = __toESM(require("path"), 1);
 var import_yaml = __toESM(require_dist2(), 1);
 var import_promises3 = __toESM(require("fs/promises"), 1);
+var import_path4 = __toESM(require("path"), 1);
+var import_promises4 = __toESM(require("fs/promises"), 1);
+var import_path5 = __toESM(require("path"), 1);
 var import_chokidar = __toESM(require_chokidar(), 1);
 var ItemTypeSchema = external_exports.enum(["ticket", "plan", "research"]);
 var BoardColumnSchema = external_exports.object({
   id: external_exports.string().min(1),
   name: external_exports.string().min(1),
-  color: external_exports.string().optional()
+  color: external_exports.string().optional(),
+  /**
+   * Areas only (format 2): the id prefix for tickets born in this area,
+   * e.g. `API` → `API-001`. Uppercase alphanumeric, 2–6 chars. When unset,
+   * derived from the area id. A ticket's prefix is a birth certificate, not
+   * a live address — moving the ticket to another area never changes its id.
+   */
+  prefix: external_exports.string().regex(/^[A-Z0-9]{2,6}$/, "prefix must be 2-6 uppercase alphanumerics").optional()
 });
+var TICKET_DOCS = ["research", "impact", "plan", "checklist", "proof"];
 var IdPrefixesSchema = external_exports.object({
   ticket: external_exports.string().min(1).default("TICK"),
   plan: external_exports.string().min(1).default("PLAN"),
@@ -37318,8 +37580,23 @@ var ItemFrontmatterSchema = external_exports.object({
   area: external_exports.string().default(""),
   priority: external_exports.string().default("medium"),
   assignee: external_exports.string().default(""),
+  /** Set while a ticket is taken (being actively worked); absent otherwise. */
+  taken_at: TimestampSchema.optional(),
+  /** The branch the taken work happens on. */
+  branch: external_exports.string().optional(),
+  /** The worktree path the taken work happens in, if any. */
+  worktree: external_exports.string().optional(),
+  /** Optional date-only deadline (YYYY-MM-DD). YAML parses bare dates to Date. */
+  due: external_exports.preprocess(
+    (v) => v instanceof Date ? v.toISOString().slice(0, 10) : v,
+    external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+  ).optional(),
+  /** Optional fractional sort key; unordered items sort after ordered ones. */
+  order: external_exports.number().optional(),
   labels: external_exports.array(external_exports.string()).default([]),
   links: external_exports.array(external_exports.string()).default([]),
+  /** Ids this item blocks. Blocked-by is derived as backlinks, never stored. */
+  blocks: external_exports.array(external_exports.string()).optional(),
   archived: external_exports.boolean().default(false),
   created: TimestampSchema.default(""),
   updated: TimestampSchema.default("")
@@ -37330,6 +37607,7 @@ var TYPE_DIRS = {
   plan: "plans",
   research: "research"
 };
+var NO_AREA_DIR = "_none";
 function resolvePaths(projectRoot2) {
   const root = import_path.default.resolve(projectRoot2);
   const kanmer = import_path.default.join(root, KANMER_DIR);
@@ -37340,6 +37618,9 @@ function resolvePaths(projectRoot2) {
     data,
     boardFile: import_path.default.join(data, "board.yml"),
     countersFile: import_path.default.join(data, "counters.json"),
+    versionFile: import_path.default.join(kanmer, "version.json"),
+    /** Format 2: area folders live here, one per area id, plus `_none`. */
+    areasRoot: import_path.default.join(kanmer, "areas"),
     tickets: import_path.default.join(kanmer, TYPE_DIRS.ticket),
     plans: import_path.default.join(kanmer, TYPE_DIRS.plan),
     research: import_path.default.join(kanmer, TYPE_DIRS.research)
@@ -37348,8 +37629,43 @@ function resolvePaths(projectRoot2) {
 function typeDir(paths, type) {
   return import_path.default.join(paths.kanmer, TYPE_DIRS[type]);
 }
+var SAFE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+function assertSafeId(id) {
+  if (!SAFE_ID_RE.test(id) || id.includes("..")) {
+    throw new Error(`Invalid item id "${id}"`);
+  }
+}
 function itemFile(paths, type, id) {
-  return import_path.default.join(typeDir(paths, type), `${id}.md`);
+  assertSafeId(id);
+  const dir = typeDir(paths, type);
+  const file = import_path.default.join(dir, `${id}.md`);
+  if (!import_path.default.resolve(file).startsWith(import_path.default.resolve(dir) + import_path.default.sep)) {
+    throw new Error(`Invalid item id "${id}"`);
+  }
+  return file;
+}
+function areaFolderName(areaId) {
+  if (areaId === "" || areaId === NO_AREA_DIR) return NO_AREA_DIR;
+  if (!SAFE_ID_RE.test(areaId) || areaId.includes("..")) {
+    throw new Error(`Invalid area id "${areaId}"`);
+  }
+  return areaId;
+}
+function areaDir(paths, areaId) {
+  return import_path.default.join(paths.areasRoot, areaFolderName(areaId));
+}
+function ticketDirIn(paths, areaId, id) {
+  assertSafeId(id);
+  return import_path.default.join(areaDir(paths, areaId), id);
+}
+function ticketFileIn(paths, areaId, id) {
+  return import_path.default.join(ticketDirIn(paths, areaId, id), `${id}.md`);
+}
+function docFileIn(ticketDir, doc) {
+  return import_path.default.join(ticketDir, `${doc}.md`);
+}
+function contentVersion(text) {
+  return (0, import_crypto.createHash)("sha256").update(text, "utf8").digest("hex").slice(0, 16);
 }
 async function ensureDir(dir) {
   await import_promises.default.mkdir(dir, { recursive: true });
@@ -37362,12 +37678,37 @@ async function pathExists(p) {
     return false;
   }
 }
+async function statOrNull(p) {
+  try {
+    return await import_promises.default.stat(p);
+  } catch {
+    return null;
+  }
+}
 async function writeFileAtomic(file, contents) {
   const dir = import_path2.default.dirname(file);
   await ensureDir(dir);
   const tmp = import_path2.default.join(dir, `.${import_path2.default.basename(file)}.tmp-${process.pid}-${tmpCounter()}`);
   await import_promises.default.writeFile(tmp, contents, "utf8");
   await import_promises.default.rename(tmp, file);
+}
+async function writeFileExclusive(file, contents) {
+  const dir = import_path2.default.dirname(file);
+  await ensureDir(dir);
+  const tmp = import_path2.default.join(dir, `.${import_path2.default.basename(file)}.tmp-${process.pid}-${tmpCounter()}`);
+  await import_promises.default.writeFile(tmp, contents, "utf8");
+  try {
+    await import_promises.default.link(tmp, file);
+  } catch (err) {
+    const code = err.code;
+    if (code === "EPERM" || code === "ENOSYS" || code === "ENOTSUP") {
+      await import_promises.default.writeFile(file, contents, { encoding: "utf8", flag: "wx" });
+    } else {
+      throw err;
+    }
+  } finally {
+    await import_promises.default.rm(tmp, { force: true });
+  }
 }
 async function readText(file) {
   return import_promises.default.readFile(file, "utf8");
@@ -37387,9 +37728,15 @@ var KEY_ORDER = [
   "status",
   "area",
   "priority",
+  "due",
+  "order",
   "assignee",
+  "taken_at",
+  "branch",
+  "worktree",
   "labels",
   "links",
+  "blocks",
   "archived",
   "created",
   "updated"
@@ -37446,14 +37793,59 @@ async function maxOnDisk(paths, type, prefix) {
   }
   return max;
 }
-async function allocateId(paths, type, prefix) {
+function formatId(prefix, n) {
+  return `${prefix}-${String(n).padStart(3, "0")}`;
+}
+async function nextIdNumber(paths, type, prefix, atLeast = 0) {
   const counters = await readCounters(paths);
   const fromCounter = counters[type] ?? 0;
   const fromDisk = await maxOnDisk(paths, type, prefix);
-  const next = Math.max(fromCounter, fromDisk) + 1;
-  counters[type] = next;
-  await writeCounters(paths, counters);
-  return `${prefix}-${String(next).padStart(3, "0")}`;
+  return Math.max(fromCounter, fromDisk, atLeast) + 1;
+}
+async function recordAllocatedId(paths, type, n) {
+  try {
+    const counters = await readCounters(paths);
+    counters[type] = Math.max(counters[type] ?? 0, n);
+    await writeCounters(paths, counters);
+  } catch {
+  }
+}
+async function maxOnDiskForPrefix(paths, prefix) {
+  let areaFolders;
+  try {
+    areaFolders = await import_promises2.default.readdir(paths.areasRoot);
+  } catch {
+    return 0;
+  }
+  const re = new RegExp(`^${escapeRegExp(prefix)}-(\\d+)$`);
+  let max = 0;
+  for (const areaFolder of areaFolders) {
+    let entries;
+    try {
+      entries = await import_promises2.default.readdir(import_path3.default.join(paths.areasRoot, areaFolder));
+    } catch {
+      continue;
+    }
+    for (const name of entries) {
+      const m = re.exec(name);
+      if (m) max = Math.max(max, Number(m[1]));
+    }
+  }
+  return max;
+}
+async function nextPrefixNumber(paths, prefix, atLeast = 0) {
+  const counters = await readCounters(paths);
+  const fromCounter = counters[prefix] ?? 0;
+  const fromDisk = await maxOnDiskForPrefix(paths, prefix);
+  return Math.max(fromCounter, fromDisk, atLeast) + 1;
+}
+async function recordAllocatedPrefix(paths, prefix, n) {
+  try {
+    const counters = await readCounters(paths);
+    counters[prefix] = Math.max(counters[prefix] ?? 0, n);
+    await writeCounters(paths, counters);
+  } catch {
+  }
 }
 function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -37468,7 +37860,9 @@ function defaultBoardConfig() {
       { id: "verifying", name: "Verifying" },
       { id: "done", name: "Done" }
     ],
-    areas: [],
+    // PR Review is a default area on every new board: agents file PR feedback
+    // tickets there without having to invent a home for them first.
+    areas: [{ id: "pr-review", name: "PR Review", prefix: "PR", color: "#b48cff" }],
     priorities: [
       { id: "low", name: "Low", color: "#6b7280" },
       { id: "medium", name: "Medium", color: "#5b8cff" },
@@ -37478,190 +37872,106 @@ function defaultBoardConfig() {
     idPrefixes: { ticket: "TICK", plan: "PLAN", research: "RES" }
   };
 }
+function lastStageId(board) {
+  return board.statuses[board.statuses.length - 1]?.id;
+}
+function areaPrefix(area) {
+  if (area.prefix) return area.prefix;
+  const cleaned = area.id.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return cleaned.length >= 2 ? cleaned.slice(0, 6) : `${cleaned}XX`.slice(0, 2);
+}
+function assertUniquePrefixes(board) {
+  const seen = /* @__PURE__ */ new Map();
+  for (const [type, prefix] of Object.entries(board.idPrefixes)) {
+    const owner = `idPrefixes.${type}`;
+    const holder = seen.get(prefix);
+    if (holder) {
+      throw new Error(
+        `${owner} would use id prefix "${prefix}", which ${holder} already uses. Every prefix must be unique \u2014 ids are allocated per prefix, so two owners sharing one would collide on the same id path.`
+      );
+    }
+    seen.set(prefix, owner);
+  }
+  for (const area of board.areas) {
+    const prefix = areaPrefix(area);
+    const holder = seen.get(prefix);
+    if (holder) {
+      throw new Error(
+        `Area "${area.id}" would use id prefix "${prefix}", which ${holder} already uses. Set a distinct "prefix" on the area.`
+      );
+    }
+    seen.set(prefix, `area "${area.id}"`);
+  }
+}
 async function readBoard(paths) {
+  return (await readBoardWithSource(paths)).board;
+}
+async function readBoardWithSource(paths) {
   if (!await pathExists(paths.boardFile)) {
-    return defaultBoardConfig();
+    return { board: defaultBoardConfig(), source: "default" };
   }
   const raw = await readText(paths.boardFile);
   const data = import_yaml.default.parse(raw);
-  return BoardConfigSchema.parse(data);
+  return { board: BoardConfigSchema.parse(data), source: "file" };
 }
 async function writeBoard(paths, board) {
   const validated = BoardConfigSchema.parse(board);
+  assertUniquePrefixes(validated);
   await writeFileAtomic(paths.boardFile, import_yaml.default.stringify(validated));
 }
-var ITEM_TYPES = ["ticket", "plan", "research"];
-function nowIso() {
-  return (/* @__PURE__ */ new Date()).toISOString();
-}
-var KanmerStore = class {
-  paths;
-  constructor(projectRoot2) {
-    this.paths = resolvePaths(projectRoot2);
-  }
-  /** Create the `.kanmer` skeleton and default board.yml if missing. */
-  async init() {
-    await ensureDir(this.paths.data);
-    await ensureDir(this.paths.tickets);
-    await ensureDir(this.paths.plans);
-    await ensureDir(this.paths.research);
-    if (!await pathExists(this.paths.boardFile)) {
-      await writeBoard(this.paths, defaultBoardConfig());
-    }
-  }
-  /** True if this project already has a `.kanmer` folder. */
-  async exists() {
-    return pathExists(this.paths.kanmer);
-  }
-  async getBoard() {
-    return readBoard(this.paths);
-  }
-  async setBoard(board) {
-    await writeBoard(this.paths, board);
-  }
-  /** Add a stage, area or priority to the board (used by MCP add_column). */
-  async addColumn(kind, column) {
-    const board = await this.getBoard();
-    const list = columnList(board, kind);
-    if (list.some((c) => c.id === column.id)) {
-      throw new Error(`${kind} "${column.id}" already exists`);
-    }
-    list.push(column);
-    await this.setBoard(board);
-    return board;
-  }
-  /** Read every item (optionally filtered). Includes body. */
-  async listItems(filter = {}) {
-    const types = filter.type ? [filter.type] : ITEM_TYPES;
-    const items = [];
-    for (const type of types) {
-      const dir = typeDir(this.paths, type);
-      let names;
-      try {
-        names = await import_promises3.default.readdir(dir);
-      } catch {
-        continue;
-      }
-      for (const name of names) {
-        if (!name.endsWith(".md")) continue;
-        try {
-          items.push(parseItem(await readText(`${dir}/${name}`)));
-        } catch {
-        }
-      }
-    }
-    return items.filter((item) => matchesFilter(item, filter)).sort(byIdAsc);
-  }
-  /** Locate the file for an id by checking each type folder. */
-  async findFile(id) {
-    for (const type of ITEM_TYPES) {
-      const file = itemFile(this.paths, type, id);
-      if (await pathExists(file)) return { type, file };
-    }
+var CURRENT_FORMAT = 2;
+async function readVersion(paths) {
+  if (!await pathExists(paths.versionFile)) return null;
+  try {
+    const parsed = JSON.parse(await readText(paths.versionFile));
+    return typeof parsed.format === "number" ? parsed : null;
+  } catch {
     return null;
   }
-  async getItem(id) {
-    const found = await this.findFile(id);
-    if (!found) return null;
-    return parseItem(await readText(found.file));
-  }
-  async createItem(input) {
-    const type = ItemTypeSchema.parse(input.type);
-    const board = await this.getBoard();
-    if (input.status !== void 0) assertKnownStatus(board, input.status);
-    const id = await allocateId(this.paths, type, board.idPrefixes[type]);
-    const now = nowIso();
-    const item = {
-      id,
-      type,
-      title: input.title,
-      status: input.status ?? board.statuses[0]?.id ?? "",
-      area: input.area ?? "",
-      priority: input.priority ?? "medium",
-      assignee: input.assignee ?? "",
-      labels: input.labels ?? [],
-      links: input.links ?? [],
-      archived: false,
-      created: now,
-      updated: now,
-      body: input.body ?? ""
-    };
-    await writeFileAtomic(itemFile(this.paths, type, id), serialiseItem(item));
-    return item;
-  }
-  async updateItem(id, patch) {
-    if (patch.status !== void 0) assertKnownStatus(await this.getBoard(), patch.status);
-    const found = await this.findFile(id);
-    if (!found) throw new Error(`No item with id "${id}"`);
-    const current = parseItem(await readText(found.file));
-    const next = {
-      ...current,
-      ...pruneUndefined(patch),
-      updated: nowIso()
-    };
-    await writeFileAtomic(found.file, serialiseItem(next));
-    return next;
-  }
-  /** Kanban-move convenience: move an item to a workflow stage. */
-  async moveItem(id, to) {
-    return this.updateItem(id, to);
-  }
-  async deleteItem(id) {
-    const found = await this.findFile(id);
-    if (!found) return false;
-    await removeFile(found.file);
-    return true;
-  }
-  /** Plain text search over id, title, body, labels, assignee. */
-  async searchItems(query, filter = {}) {
-    const q = query.trim().toLowerCase();
-    if (!q) return this.listItems(filter);
-    const all = await this.listItems(filter);
-    return all.filter((item) => {
-      const haystack = [
-        item.id,
-        item.title,
-        item.body,
-        item.assignee,
-        ...item.labels ?? []
-      ].join("\n").toLowerCase();
-      return haystack.includes(q);
-    });
-  }
-};
-function assertKnownStatus(board, status) {
-  if (!board.statuses.some((s) => s.id === status)) {
-    throw new Error(
-      `Unknown status "${status}". Valid stages: ${board.statuses.map((s) => s.id).join(", ")}`
-    );
+}
+async function writeVersion(paths, version2) {
+  await writeFileAtomic(paths.versionFile, `${JSON.stringify(version2, null, 2)}
+`);
+}
+var MAX_LINES = 5e3;
+var SIZE_CHECK_BYTES = 512e3;
+function activityFile(paths) {
+  return import_path4.default.join(paths.data, "activity.jsonl");
+}
+async function appendActivity(paths, entries) {
+  if (entries.length === 0) return;
+  const file = activityFile(paths);
+  try {
+    await import_promises3.default.mkdir(paths.data, { recursive: true });
+    await import_promises3.default.appendFile(file, entries.map((e) => `${JSON.stringify(e)}
+`).join(""), "utf8");
+    const stat = await import_promises3.default.stat(file);
+    if (stat.size > SIZE_CHECK_BYTES) {
+      const lines = (await readText(file)).split("\n").filter(Boolean);
+      if (lines.length > MAX_LINES) {
+        const keep = lines.slice(-Math.floor(MAX_LINES / 2));
+        await writeFileAtomic(file, `${keep.join("\n")}
+`);
+      }
+    }
+  } catch {
   }
 }
-function matchesFilter(item, filter) {
-  if (!filter.includeArchived && item.archived) return false;
-  if (filter.status && item.status !== filter.status) return false;
-  if (filter.area && item.area !== filter.area) return false;
-  if (filter.label && !(item.labels ?? []).includes(filter.label)) return false;
-  return true;
-}
-function columnList(board, kind) {
-  switch (kind) {
-    case "status":
-      return board.statuses;
-    case "area":
-      return board.areas;
-    case "priority":
-      return board.priorities;
+async function readActivity(paths, opts = {}) {
+  const file = activityFile(paths);
+  if (!await pathExists(file)) return [];
+  const entries = [];
+  for (const line of (await readText(file)).split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      const parsed = JSON.parse(line);
+      if (opts.id !== void 0 && parsed.id !== opts.id) continue;
+      if (opts.since !== void 0 && parsed.ts <= opts.since) continue;
+      entries.push(parsed);
+    } catch {
+    }
   }
-}
-function byIdAsc(a, b) {
-  return a.id.localeCompare(b.id, void 0, { numeric: true });
-}
-function pruneUndefined(obj) {
-  const out = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (v !== void 0) out[k] = v;
-  }
-  return out;
+  return opts.limit !== void 0 && entries.length > opts.limit ? entries.slice(-opts.limit) : entries;
 }
 var WIKILINK_RE = /\[\[([^\]|]+?)(?:\|[^\]]*)?\]\]/g;
 function parseWikiLinks(body) {
@@ -37680,7 +37990,13 @@ function forwardLinks(item) {
 function buildLinkIndex(items) {
   const index = /* @__PURE__ */ new Map();
   for (const item of items) {
-    index.set(item.id, { id: item.id, links: forwardLinks(item), backlinks: [] });
+    index.set(item.id, {
+      id: item.id,
+      links: forwardLinks(item),
+      backlinks: [],
+      blocks: [...item.blocks ?? []],
+      blockedBy: []
+    });
   }
   for (const item of items) {
     for (const target of forwardLinks(item)) {
@@ -37689,25 +38005,900 @@ function buildLinkIndex(items) {
         entry.backlinks.push(item.id);
       }
     }
+    for (const target of item.blocks ?? []) {
+      const entry = index.get(target);
+      if (entry && !entry.blockedBy.includes(item.id)) {
+        entry.blockedBy.push(item.id);
+      }
+    }
   }
   return index;
 }
-async function getLinkGraph(store2, id) {
-  const items = await store2.listItems();
-  const index = buildLinkIndex(items);
-  return index.get(id) ?? { id, links: [], backlinks: [] };
+function computeBlockedIds(items, lastStageId2) {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  const blocked = /* @__PURE__ */ new Set();
+  for (const item of items) {
+    if (item.archived) continue;
+    for (const target of item.blocks ?? []) {
+      if (item.status !== lastStageId2) blocked.add(target);
+    }
+  }
+  for (const id of [...blocked]) if (!byId.has(id)) blocked.delete(id);
+  return blocked;
 }
-async function linkItems(store2, sourceId, targetId, action) {
+async function getLinkGraph(store2, id) {
+  const items = await store2.listItems({ includeArchived: true });
+  const index = buildLinkIndex(items);
+  return index.get(id) ?? { id, links: [], backlinks: [], blocks: [], blockedBy: [] };
+}
+async function linkItems(store2, sourceId, targetId, action, rel = "relates") {
   const source = await store2.getItem(sourceId);
   if (!source) throw new Error(`No item with id "${sourceId}"`);
-  const links = new Set(source.links ?? []);
+  const field = rel === "blocks" ? "blocks" : "links";
+  const set = new Set(source[field] ?? []);
   if (action === "add") {
     if (targetId === sourceId) throw new Error("An item cannot link to itself");
-    links.add(targetId);
+    if (!await store2.getItem(targetId)) {
+      throw new Error(`No item with id "${targetId}" to link to`);
+    }
+    set.add(targetId);
   } else {
-    links.delete(targetId);
+    set.delete(targetId);
   }
-  return store2.updateItem(sourceId, { links: [...links] });
+  return store2.updateItem(sourceId, { [field]: [...set] });
+}
+var ITEM_TYPES = ["ticket", "plan", "research"];
+var CREATE_ATTEMPTS = 20;
+function nowIso() {
+  return (/* @__PURE__ */ new Date()).toISOString();
+}
+var KanmerStore = class {
+  paths;
+  formatCache = null;
+  actor = "gui";
+  constructor(projectRoot2, opts = {}) {
+    this.paths = resolvePaths(projectRoot2);
+    if (opts.actor) this.actor = opts.actor;
+  }
+  /** Who mutations are attributed to in the activity log (MCP sets the client name). */
+  setActor(name) {
+    if (name) this.actor = name;
+  }
+  activity(id, op, extra = {}) {
+    return { ts: nowIso(), id, op, ...extra, actor: this.actor };
+  }
+  /** Read the activity log (derived convenience — never consulted for state). */
+  async getActivity(opts = {}) {
+    return readActivity(this.paths, opts);
+  }
+  /**
+   * Which storage format this board uses. version.json is authoritative;
+   * without it, a legacy `tickets/` folder means format 1, and a fresh
+   * project starts at the current format.
+   */
+  async detectFormat() {
+    const st = await statOrNull(this.paths.versionFile);
+    if (st === null) {
+      this.formatCache = null;
+      if (await pathExists(this.paths.tickets)) return 1;
+      return 2;
+    }
+    const stamp = `${st.mtimeMs}:${st.size}`;
+    if (this.formatCache && this.formatCache.stamp === stamp) return this.formatCache.format;
+    const version2 = await readVersion(this.paths);
+    const format = version2 && version2.format >= 2 ? 2 : 1;
+    this.formatCache = { format, stamp };
+    return format;
+  }
+  /** Forget the cached format — call after migrating this project. */
+  resetFormatCache() {
+    this.formatCache = null;
+  }
+  /**
+   * Create the `.kanmer` skeleton and default board.yml if missing. On an
+   * existing v1 board this maintains the v1 skeleton and does NOT stamp
+   * version.json — upgrading a board is migration's job, never a side
+   * effect of opening it.
+   */
+  async init() {
+    const format = await this.detectFormat();
+    await ensureDir(this.paths.data);
+    if (format === 1) {
+      await ensureDir(this.paths.tickets);
+      await ensureDir(this.paths.plans);
+      await ensureDir(this.paths.research);
+    } else {
+      await ensureDir(this.paths.areasRoot);
+      if (!await readVersion(this.paths)) {
+        await writeVersion(this.paths, { format: CURRENT_FORMAT });
+      }
+    }
+    if (!await pathExists(this.paths.boardFile)) {
+      await writeBoard(this.paths, defaultBoardConfig());
+    }
+  }
+  /** True if this project already has a `.kanmer` folder. */
+  async exists() {
+    return pathExists(this.paths.kanmer);
+  }
+  async getBoard() {
+    return readBoard(this.paths);
+  }
+  /** Board plus whether it came from a real board.yml or the synthesized default. */
+  async getBoardWithSource() {
+    return readBoardWithSource(this.paths);
+  }
+  /**
+   * Write the whole board. Every board mutation funnels through here — the
+   * MCP column verbs, the GUI Settings save and migration's prefix pinning —
+   * so this is where the "the last stage is proof-gated" invariant is
+   * defended: a write that makes a *different* stage final must not strand
+   * proofless tickets in it.
+   */
+  async setBoard(board) {
+    const previous = await this.getBoard();
+    const prevLast = lastStageId(previous);
+    const nextLast = lastStageId(board);
+    if (nextLast !== void 0 && nextLast !== prevLast) {
+      await this.assertFinalStageProven(nextLast);
+    }
+    await writeBoard(this.paths, board);
+  }
+  /** Add a stage, area or priority to the board (used by MCP add_column). */
+  async addColumn(kind, column) {
+    const board = await this.getBoard();
+    const list = columnList(board, kind);
+    if (list.some((c) => c.id === column.id)) {
+      throw new Error(`${kind} "${column.id}" already exists`);
+    }
+    list.push(column);
+    await this.setBoard(board);
+    return board;
+  }
+  /**
+   * Rename/recolour a column (and, for areas, pin its id prefix). The id
+   * itself is immutable — items reference columns by id.
+   */
+  async updateColumn(kind, id, patch) {
+    if (patch.prefix !== void 0 && kind !== "area") {
+      throw new Error("prefix only applies to areas");
+    }
+    const board = await this.getBoard();
+    const list = columnList(board, kind);
+    const column = list.find((c) => c.id === id);
+    if (!column) {
+      throw new Error(`No ${kind} "${id}". Valid ids: ${list.map((c) => c.id).join(", ")}`);
+    }
+    if (patch.name !== void 0) column.name = patch.name;
+    if (patch.color !== void 0) column.color = patch.color;
+    if (patch.prefix !== void 0) column.prefix = patch.prefix;
+    await this.setBoard(board);
+    return board;
+  }
+  /**
+   * Remove a column. Refuses while items still reference it unless
+   * `migrateTo` names another column of the same kind — then every matching
+   * item is rewritten first (through updateItem, so validation, folder moves
+   * and the proof gate all apply).
+   */
+  async removeColumn(kind, id, opts = {}) {
+    const board = await this.getBoard();
+    const list = columnList(board, kind);
+    if (!list.some((c) => c.id === id)) {
+      throw new Error(`No ${kind} "${id}". Valid ids: ${list.map((c) => c.id).join(", ")}`);
+    }
+    if (opts.migrateTo !== void 0) {
+      if (opts.migrateTo === id) throw new Error(`migrate_to must differ from the removed ${kind}`);
+      if (!list.some((c) => c.id === opts.migrateTo)) {
+        throw new Error(
+          `migrate_to "${opts.migrateTo}" is not a ${kind} on this board. Valid ids: ${list.map((c) => c.id).join(", ")}`
+        );
+      }
+    }
+    const field = kind === "status" ? "status" : kind === "area" ? "area" : "priority";
+    const affected = (await this.listItems({ includeArchived: true })).filter(
+      (i) => i[field] === id
+    );
+    if (affected.length > 0 && opts.migrateTo === void 0) {
+      const sample = affected.slice(0, 5).map((i) => i.id).join(", ");
+      throw new Error(
+        `${kind} "${id}" still has ${affected.length} item(s) (${sample}${affected.length > 5 ? ", \u2026" : ""}). Pass migrate_to with another ${kind} id to move them, or move them yourself first.`
+      );
+    }
+    const migrated = [];
+    for (const item of affected) {
+      await this.updateItem(item.id, { [field]: opts.migrateTo });
+      migrated.push(item.id);
+    }
+    const remaining = list.filter((c) => c.id !== id);
+    list.splice(0, list.length, ...remaining);
+    await this.setBoard(board);
+    if (kind === "area") {
+      try {
+        await import_promises4.default.rmdir(areaDir(this.paths, id));
+      } catch {
+      }
+    }
+    return { board, migrated };
+  }
+  /** Reorder a column list; `orderedIds` must be a permutation of the existing ids. */
+  async reorderColumns(kind, orderedIds) {
+    const board = await this.getBoard();
+    const list = columnList(board, kind);
+    const current = list.map((c) => c.id);
+    const isPermutation = orderedIds.length === current.length && [...orderedIds].sort().join("\n") === [...current].sort().join("\n");
+    if (!isPermutation) {
+      throw new Error(
+        `order must be a permutation of the existing ${kind} ids: ${current.join(", ")}`
+      );
+    }
+    const byId = new Map(list.map((c) => [c.id, c]));
+    list.splice(0, list.length, ...orderedIds.map((cid) => byId.get(cid)));
+    await this.setBoard(board);
+    return board;
+  }
+  /** Read every item (optionally filtered). Includes body. */
+  async listItems(filter = {}) {
+    return (await this.listItemsWithWarnings(filter)).items;
+  }
+  /**
+   * Like listItems, but also surfaces problems that would otherwise be
+   * silently swallowed: files that fail to parse, filename/id mismatches,
+   * and tickets whose folder disagrees with their frontmatter area.
+   */
+  async listItemsWithWarnings(filter = {}) {
+    const items = [];
+    const warnings = [];
+    let areaFolders = [];
+    try {
+      areaFolders = await import_promises4.default.readdir(this.paths.areasRoot);
+    } catch {
+    }
+    for (const areaFolder of areaFolders) {
+      const areaPath = import_path5.default.join(this.paths.areasRoot, areaFolder);
+      let entries;
+      try {
+        entries = await import_promises4.default.readdir(areaPath, { withFileTypes: true }).then(
+          (d) => d.filter((e) => e.isDirectory()).map((e) => e.name)
+        );
+      } catch {
+        continue;
+      }
+      for (const ticketFolder of entries) {
+        const file = import_path5.default.join(areaPath, ticketFolder, `${ticketFolder}.md`);
+        if (!await pathExists(file)) continue;
+        try {
+          const item = parseItem(await readText(file));
+          if (item.id !== ticketFolder) {
+            warnings.push({
+              file,
+              message: `frontmatter id "${item.id}" doesn't match its folder "${ticketFolder}" \u2014 rename the folder and file to the id (lookups go by folder name)`
+            });
+          }
+          const expectedFolder = safeAreaFolder(item.area);
+          if (expectedFolder !== null && expectedFolder !== areaFolder) {
+            warnings.push({
+              file,
+              message: `ticket area is "${item.area || "(none)"}" but its folder is under areas/${areaFolder}/ \u2014 frontmatter wins; the folder moves on the next write`
+            });
+          }
+          items.push(item);
+        } catch (err) {
+          warnings.push({
+            file,
+            message: `failed to parse: ${err instanceof Error ? err.message : String(err)}`
+          });
+        }
+      }
+    }
+    const types = filter.type ? [filter.type] : ITEM_TYPES;
+    for (const type of types) {
+      const dir = typeDir(this.paths, type);
+      let names;
+      try {
+        names = await import_promises4.default.readdir(dir);
+      } catch {
+        continue;
+      }
+      for (const name of names) {
+        if (!name.endsWith(".md")) continue;
+        const file = import_path5.default.join(dir, name);
+        try {
+          const item = parseItem(await readText(file));
+          const fromName = import_path5.default.basename(name, ".md");
+          if (item.id !== fromName) {
+            warnings.push({
+              file,
+              message: `frontmatter id "${item.id}" doesn't match filename "${name}" \u2014 rename the file to ${item.id}.md or fix the id (lookups go by filename)`
+            });
+          }
+          items.push(item);
+        } catch (err) {
+          warnings.push({
+            file,
+            message: `failed to parse: ${err instanceof Error ? err.message : String(err)}`
+          });
+        }
+      }
+    }
+    let filtered = items.filter((item) => matchesFilter(item, filter));
+    if (filter.overdue) {
+      const board = await this.getBoard();
+      const lastStage = lastStageId(board);
+      const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+      filtered = filtered.filter(
+        (i) => i.due !== void 0 && i.due < today && i.status !== lastStage
+      );
+    }
+    return { items: filtered.sort(byOrderThenId), warnings };
+  }
+  /** Locate an item's file: v2 areas layout first, then the v1 type dirs. */
+  async locateItem(id) {
+    itemFile(this.paths, "ticket", id);
+    let areaFolders = [];
+    try {
+      areaFolders = await import_promises4.default.readdir(this.paths.areasRoot);
+    } catch {
+    }
+    for (const areaFolder of areaFolders) {
+      const dir = import_path5.default.join(this.paths.areasRoot, areaFolder, id);
+      const file = import_path5.default.join(dir, `${id}.md`);
+      if (await pathExists(file)) return { kind: "v2", file, dir, areaFolder };
+    }
+    for (const type of ITEM_TYPES) {
+      const file = itemFile(this.paths, type, id);
+      if (await pathExists(file)) return { kind: "v1", file, type };
+    }
+    return null;
+  }
+  async getItem(id) {
+    const loc = await this.locateItem(id);
+    if (!loc) return null;
+    return parseItem(await readText(loc.file));
+  }
+  async createItem(input) {
+    const type = ItemTypeSchema.parse(input.type);
+    const board = await this.getBoard();
+    if (input.status !== void 0) assertFieldAgainstBoard(board, "status", input.status);
+    if (input.area !== void 0) assertFieldAgainstBoard(board, "area", input.area);
+    if (input.priority !== void 0) assertFieldAgainstBoard(board, "priority", input.priority);
+    if (input.due !== void 0) assertDueDate(input.due);
+    for (const target of [...input.links ?? [], ...input.blocks ?? []]) {
+      if (!await this.getItem(target)) {
+        throw new Error(`No item with id "${target}" to link to`);
+      }
+    }
+    const format = await this.detectFormat();
+    if (format === 2 && type !== "ticket") {
+      throw new Error(
+        `This board stores ${type === "plan" ? "plans" : "research"} inside ticket folders, not as standalone items. Create a ticket, then write the document with set_ticket_doc(doc: "${type}").`
+      );
+    }
+    const last = lastStageId(board);
+    if (format === 2 && type === "ticket" && input.status !== void 0 && board.statuses.length > 1 && input.status === last) {
+      throw new Error(
+        `Cannot create "${input.title}" directly in "${input.status}": that is the board's final stage, which requires proof.md. Create it in an earlier stage, write the evidence with set_ticket_doc(doc: "proof"), then move it.`
+      );
+    }
+    const area = input.area ?? "";
+    const areaEntry = board.areas.find((a) => a.id === area);
+    const prefix = format === 2 ? areaEntry ? areaPrefix(areaEntry) : board.idPrefixes.ticket : board.idPrefixes[type];
+    let lastTried = 0;
+    for (let attempt = 0; attempt < CREATE_ATTEMPTS; attempt++) {
+      const n = format === 2 ? await nextPrefixNumber(this.paths, prefix, lastTried) : await nextIdNumber(this.paths, type, prefix, lastTried);
+      const id = formatId(prefix, n);
+      if (await this.locateItem(id)) {
+        lastTried = n;
+        continue;
+      }
+      const now = nowIso();
+      const item = {
+        id,
+        type,
+        title: input.title,
+        status: input.status ?? board.statuses[0]?.id ?? "",
+        area,
+        priority: input.priority ?? defaultPriority(board),
+        assignee: input.assignee ?? "",
+        labels: input.labels ?? [],
+        links: input.links ?? [],
+        archived: false,
+        created: now,
+        updated: now,
+        body: input.body ?? ""
+      };
+      if (input.due !== void 0 && input.due !== "") item.due = input.due;
+      if (input.blocks !== void 0 && input.blocks.length > 0) item.blocks = input.blocks;
+      const file = format === 2 ? ticketFileIn(this.paths, area, id) : itemFile(this.paths, type, id);
+      try {
+        await writeFileExclusive(file, serialiseItem(item));
+      } catch (err) {
+        if (err.code === "EEXIST") {
+          lastTried = n;
+          continue;
+        }
+        throw err;
+      }
+      if (format === 2) await recordAllocatedPrefix(this.paths, prefix, n);
+      else await recordAllocatedId(this.paths, type, n);
+      await appendActivity(this.paths, [this.activity(id, "create", { to: item.status })]);
+      return item;
+    }
+    throw new Error(`Could not allocate a unique ${type} id after ${CREATE_ATTEMPTS} attempts`);
+  }
+  async updateItem(id, patch) {
+    const { expectedUpdated, ...fields } = patch;
+    let board = null;
+    if (fields.status !== void 0 || fields.area !== void 0 || fields.priority !== void 0) {
+      board = await this.getBoard();
+      if (fields.status !== void 0) assertFieldAgainstBoard(board, "status", fields.status);
+      if (fields.area !== void 0) assertFieldAgainstBoard(board, "area", fields.area);
+      if (fields.priority !== void 0)
+        assertFieldAgainstBoard(board, "priority", fields.priority);
+    }
+    if (fields.due !== void 0 && fields.due !== "") assertDueDate(fields.due);
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
+    if (expectedUpdated !== void 0 && current.updated !== expectedUpdated) {
+      throw this.conflictError(id, current, expectedUpdated);
+    }
+    const pruned = pruneUndefined(fields);
+    const changed = changedFields(current, pruned);
+    if (changed.length === 0) {
+      return current;
+    }
+    const next = {
+      ...current,
+      ...pruned,
+      updated: nowIso()
+    };
+    if (pruned.due === "") delete next.due;
+    if (next.status !== current.status && current.type === "ticket" && loc.kind === "v2") {
+      board ??= await this.getBoard();
+      await this.assertProofGate(loc.dir, board, id, next.status);
+    }
+    let file = loc.file;
+    if (loc.kind === "v2") {
+      const targetFolder = safeAreaFolder(next.area ?? "");
+      if (targetFolder !== null && targetFolder !== loc.areaFolder) {
+        const newDir = ticketDirIn(this.paths, next.area ?? "", id);
+        await ensureDir(import_path5.default.dirname(newDir));
+        await import_promises4.default.rename(loc.dir, newDir);
+        file = import_path5.default.join(newDir, `${id}.md`);
+      }
+    }
+    await writeFileAtomic(file, serialiseItem(next));
+    await appendActivity(
+      this.paths,
+      changed.map(
+        (k) => this.activity(
+          id,
+          "update",
+          k === "body" ? { field: "body" } : {
+            field: k,
+            from: current[k],
+            to: next[k]
+          }
+        )
+      )
+    );
+    return next;
+  }
+  /**
+   * Kanban-move convenience: move an item to a workflow stage, optionally to
+   * a specific position in the column (top / bottom / after another item) —
+   * that computes a fractional `order` for the item.
+   */
+  async moveItem(id, to) {
+    const { position, ...patch } = to;
+    if (position === void 0) return this.updateItem(id, patch);
+    await this.assertMoveAllowed(id, to.status, to.expectedUpdated);
+    const order = await this.computeOrder(id, to.status, position);
+    return this.updateItem(id, { ...patch, order });
+  }
+  /**
+   * Every rejection moveItem can suffer, run before computeOrder writes
+   * anything: the item must exist, `expectedUpdated` must be fresh, the
+   * target stage must be on the board, and the proof gate must allow it.
+   * The final updateItem re-checks — that is cheap and closes the window
+   * between the two reads.
+   */
+  async assertMoveAllowed(id, status, expectedUpdated) {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
+    if (expectedUpdated !== void 0 && current.updated !== expectedUpdated) {
+      throw this.conflictError(id, current, expectedUpdated);
+    }
+    const board = await this.getBoard();
+    assertFieldAgainstBoard(board, "status", status);
+    if (status !== current.status && current.type === "ticket" && loc.kind === "v2") {
+      await this.assertProofGate(loc.dir, board, id, status);
+    }
+  }
+  /**
+   * The shared stale-read rejection. The wording is matched on by tests and
+   * by smoke.mjs (/Conflict/) — do not change it.
+   */
+  conflictError(id, current, expectedUpdated) {
+    const { body: _body, ...frontmatter } = current;
+    return new Error(
+      `Conflict: "${id}" changed since you read it (updated is now ${current.updated}, you expected ${expectedUpdated}). Re-read the item and re-apply your change. Current frontmatter: ${JSON.stringify(frontmatter)}`
+    );
+  }
+  /**
+   * The fractional order for placing `id` at `position` within `status`.
+   * Lazily materialises orders for the whole column the first time a
+   * position verb is used there, and rebalances when midpoints run dry.
+   */
+  async computeOrder(id, status, position) {
+    const column = async () => (await this.listItems()).filter((i) => i.status === status && i.id !== id);
+    const materialise = async (items2) => {
+      let n = 10;
+      for (const item of items2) {
+        await this.updateItem(item.id, { order: n });
+        n += 10;
+      }
+      return column();
+    };
+    let items = await column();
+    if (items.some((i) => i.order === void 0) && items.length > 0) {
+      items = await materialise(items);
+    }
+    if (position === "top") return items.length ? items[0].order - 10 : 10;
+    if (position === "bottom") return items.length ? items[items.length - 1].order + 10 : 10;
+    const idx = items.findIndex((i) => i.id === position.after);
+    if (idx === -1) {
+      throw new Error(
+        `position.after "${position.after}" is not an item in stage "${status}"`
+      );
+    }
+    const before = items[idx].order;
+    const successor = items[idx + 1];
+    const mid = successor ? (before + successor.order) / 2 : before + 10;
+    if (mid > before && (!successor || mid < successor.order)) return mid;
+    items = await materialise(items);
+    const i2 = items.findIndex((i) => i.id === position.after);
+    const s2 = items[i2 + 1];
+    return s2 ? (items[i2].order + s2.order) / 2 : items[i2].order + 10;
+  }
+  /**
+   * Take a ticket: record when, on which branch and (optionally) in which
+   * worktree the work happens, and move it into the working stage. The agent
+   * workflow calls this before touching code so the human's board shows who
+   * is where.
+   */
+  async takeTicket(id, input) {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
+    if (current.type !== "ticket") {
+      throw new Error(`Only tickets can be taken; "${id}" is a ${current.type}`);
+    }
+    if (current.taken_at && !input.force) {
+      throw new Error(
+        `"${id}" is already taken (taken_at ${current.taken_at}${current.branch ? `, branch ${current.branch}` : ""}). Release it first, or pass force to take it over.`
+      );
+    }
+    const board = await this.getBoard();
+    let stage = input.stage;
+    if (stage !== void 0) {
+      assertFieldAgainstBoard(board, "status", stage);
+    } else {
+      stage = board.statuses.some((s) => s.id === "implementing") ? "implementing" : current.status;
+    }
+    if (stage !== current.status && loc.kind === "v2") {
+      await this.assertProofGate(loc.dir, board, id, stage);
+    }
+    const next = {
+      ...current,
+      status: stage,
+      taken_at: nowIso(),
+      branch: input.branch,
+      updated: nowIso()
+    };
+    if (input.worktree !== void 0) next.worktree = input.worktree;
+    else delete next.worktree;
+    if (input.assignee !== void 0) next.assignee = input.assignee;
+    await writeFileAtomic(loc.file, serialiseItem(next));
+    await appendActivity(this.paths, [
+      this.activity(id, "take", { field: "branch", to: input.branch }),
+      ...next.status !== current.status ? [this.activity(id, "update", { field: "status", from: current.status, to: next.status })] : []
+    ]);
+    return next;
+  }
+  /** Release a taken ticket: clear taken_at / branch / worktree. */
+  async releaseTicket(id) {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
+    if (!current.taken_at && !current.branch && !current.worktree) return current;
+    const next = { ...current, updated: nowIso() };
+    delete next.taken_at;
+    delete next.branch;
+    delete next.worktree;
+    await writeFileAtomic(loc.file, serialiseItem(next));
+    await appendActivity(this.paths, [
+      this.activity(id, "release", { field: "branch", from: current.branch })
+    ]);
+    return next;
+  }
+  /** Read one of a ticket's pipeline documents; null when it doesn't exist yet. */
+  async getDoc(id, doc) {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    if (loc.kind !== "v2") return null;
+    const file = docFileIn(loc.dir, doc);
+    if (!await pathExists(file)) return null;
+    return readText(file);
+  }
+  /**
+   * Read a pipeline document together with a version token for its exact
+   * bytes. Pass that token back as `expectedVersion` on setDoc to be rejected
+   * instead of overwriting a concurrent edit. getDoc's signature is left
+   * unchanged so no existing caller breaks.
+   */
+  async getDocWithVersion(id, doc) {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    if (loc.kind !== "v2") return { content: null, version: null };
+    const file = docFileIn(loc.dir, doc);
+    if (!await pathExists(file)) return { content: null, version: null };
+    const content = await readText(file);
+    return { content, version: contentVersion(content) };
+  }
+  /**
+   * Write (or append to) one of a ticket's pipeline documents. Docs are plain
+   * Markdown with no frontmatter. `append` adds after a blank line so
+   * progress notes never clobber existing content.
+   *
+   * Pass `expectedVersion` for optimistic concurrency (see SetDocOptions) —
+   * omitted, this stays last-write-wins for every existing caller. Returns
+   * the version token of what was actually written, so the caller's token
+   * stays accurate across the trim/append normalisation.
+   */
+  async setDoc(id, doc, content, opts = {}) {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    if (loc.kind !== "v2") {
+      throw new Error(
+        `"${id}" is stored in the legacy layout, which has no ticket folders \u2014 migrate this board to format 2 first.`
+      );
+    }
+    const file = docFileIn(loc.dir, doc);
+    const existing = await pathExists(file) ? await readText(file) : null;
+    if (opts.expectedVersion !== void 0) {
+      const actual = existing === null ? null : contentVersion(existing);
+      if (actual !== opts.expectedVersion) {
+        throw new Error(
+          `Conflict: ${doc}.md on "${id}" changed since you read it. Re-read it with get_ticket_doc and re-apply your change.`
+        );
+      }
+    }
+    let text = `${content.trim()}
+`;
+    if (opts.append && existing !== null && existing.trim()) {
+      text = `${existing.trimEnd()}
+
+${content.trim()}
+`;
+    }
+    await writeFileAtomic(file, text);
+    await appendActivity(this.paths, [
+      this.activity(id, "doc", { field: doc, to: opts.append ? "append" : "write" })
+    ]);
+    return { version: contentVersion(text) };
+  }
+  /** Which pipeline docs exist for a ticket + checklist progress; null for legacy items. */
+  async getTicketDocsInfo(id) {
+    const loc = await this.locateItem(id);
+    if (!loc || loc.kind !== "v2") return null;
+    const docs = {};
+    for (const doc of TICKET_DOCS) {
+      docs[doc] = await pathExists(docFileIn(loc.dir, doc));
+    }
+    let checklist = null;
+    if (docs.checklist) {
+      const text = await readText(docFileIn(loc.dir, "checklist"));
+      let checked = 0;
+      let total = 0;
+      for (const line of text.split("\n")) {
+        const m = /^\s*[-*]\s+\[( |x|X)\]/.exec(line);
+        if (!m) continue;
+        total++;
+        if (m[1] !== " ") checked++;
+      }
+      checklist = { checked, total };
+    }
+    return { docs, checklist };
+  }
+  /**
+   * Delete an item, then rewrite the frontmatter links[] of anything that
+   * pointed at it. In the v2 layout this removes the whole ticket folder —
+   * docs and attachments included. Body [[wiki]] references are prose and
+   * stay put — they're reported so the caller can mention the residue.
+   */
+  async deleteItem(id) {
+    const loc = await this.locateItem(id);
+    if (!loc) return { deleted: false, cleanedLinks: [], bodyReferencesRemain: [] };
+    if (loc.kind === "v2") {
+      await import_promises4.default.rm(loc.dir, { recursive: true, force: true });
+    } else {
+      await removeFile(loc.file);
+    }
+    await appendActivity(this.paths, [this.activity(id, "delete")]);
+    const remaining = (await this.listItemsWithWarnings({ includeArchived: true })).items;
+    const cleanedLinks = [];
+    const bodyReferencesRemain = [];
+    for (const item of remaining) {
+      const patch = {};
+      if ((item.links ?? []).includes(id)) {
+        patch.links = (item.links ?? []).filter((l) => l !== id);
+      }
+      if ((item.blocks ?? []).includes(id)) {
+        patch.blocks = (item.blocks ?? []).filter((l) => l !== id);
+      }
+      if (Object.keys(patch).length > 0) {
+        await this.updateItem(item.id, patch);
+        cleanedLinks.push(item.id);
+      }
+      if (parseWikiLinks(item.body).includes(id)) {
+        bodyReferencesRemain.push(item.id);
+      }
+    }
+    return { deleted: true, cleanedLinks, bodyReferencesRemain };
+  }
+  /** Plain text search over id, title, body, labels, assignee. */
+  async searchItems(query, filter = {}) {
+    const q = query.trim().toLowerCase();
+    if (!q) return this.listItems(filter);
+    const all = await this.listItems(filter);
+    return all.filter((item) => {
+      const haystack = [
+        item.id,
+        item.title,
+        item.body,
+        item.assignee,
+        ...item.labels ?? []
+      ].join("\n").toLowerCase();
+      return haystack.includes(q);
+    });
+  }
+  /** The proof gate: a ticket may only reach the final stage with proof.md written. */
+  async assertProofGate(ticketDir, board, id, nextStatus) {
+    if (nextStatus !== lastStageId(board)) return;
+    if (!await pathExists(docFileIn(ticketDir, "proof"))) {
+      throw new Error(
+        `${id} cannot move to "${nextStatus}": proof.md is missing. Write the evidence first with set_ticket_doc(doc: "proof").`
+      );
+    }
+  }
+  /**
+   * Refuse a board write that would make a stage final while proofless
+   * tickets sit in it. Rejecting (rather than grandfathering) matches
+   * removeColumn's in-use refusal and keeps "the LAST stage is proof-gated"
+   * literally true. Archived tickets are off the board and are not gated.
+   */
+  async assertFinalStageProven(stageId) {
+    const occupants = await this.listItems({ status: stageId });
+    const offenders = [];
+    for (const item of occupants) {
+      if (item.type !== "ticket") continue;
+      const loc = await this.locateItem(item.id);
+      if (!loc || loc.kind !== "v2") continue;
+      if (!await pathExists(docFileIn(loc.dir, "proof"))) offenders.push(item.id);
+    }
+    if (offenders.length === 0) return;
+    throw new Error(
+      `Cannot make "${stageId}" the final stage: ${offenders.length} ticket(s) there have no proof.md (${offenders.slice(0, 5).join(", ")}${offenders.length > 5 ? ", \u2026" : ""}). Write the evidence with set_ticket_doc(doc: "proof"), or move them out of that stage first.`
+    );
+  }
+};
+function safeAreaFolder(area) {
+  try {
+    return areaFolderName(area ?? "");
+  } catch {
+    return null;
+  }
+}
+function assertFieldAgainstBoard(board, kind, value) {
+  if (kind === "area" && (value === "" || board.areas.length === 0)) return;
+  const list = columnList(board, kind);
+  if (!list.some((c) => c.id === value)) {
+    const label = kind === "status" ? "stages" : `${kind === "area" ? "areas" : "priorities"}`;
+    throw new Error(
+      `Unknown ${kind} "${value}". Valid ${label}: ${list.map((c) => c.id).join(", ")}`
+    );
+  }
+}
+function defaultPriority(board) {
+  if (board.priorities.some((p) => p.id === "medium")) return "medium";
+  const middle = board.priorities[Math.floor((board.priorities.length - 1) / 2)];
+  return middle?.id ?? "medium";
+}
+function assertDueDate(due) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) {
+    throw new Error(`Invalid due date "${due}" \u2014 use YYYY-MM-DD`);
+  }
+}
+function changedFields(current, pruned) {
+  const changed = [];
+  for (const [key, value] of Object.entries(pruned)) {
+    const existing = current[key];
+    if (key === "body") {
+      if (String(value).trim() !== String(existing ?? "").trim()) changed.push(key);
+    } else if (key === "due" && value === "") {
+      if (existing !== void 0) changed.push(key);
+    } else if (JSON.stringify(value) !== JSON.stringify(existing)) {
+      changed.push(key);
+    }
+  }
+  return changed;
+}
+function matchesFilter(item, filter) {
+  if (!filter.includeArchived && item.archived) return false;
+  if (filter.type && item.type !== filter.type) return false;
+  if (filter.status && item.status !== filter.status) return false;
+  if (filter.area && item.area !== filter.area) return false;
+  if (filter.label && !(item.labels ?? []).includes(filter.label)) return false;
+  if (filter.dueBefore && !(item.due !== void 0 && item.due < filter.dueBefore)) return false;
+  return true;
+}
+function columnList(board, kind) {
+  switch (kind) {
+    case "status":
+      return board.statuses;
+    case "area":
+      return board.areas;
+    case "priority":
+      return board.priorities;
+  }
+}
+function byOrderThenId(a, b) {
+  const ao = a.order ?? Number.POSITIVE_INFINITY;
+  const bo = b.order ?? Number.POSITIVE_INFINITY;
+  if (ao !== bo) return ao < bo ? -1 : 1;
+  return a.id.localeCompare(b.id, void 0, { numeric: true });
+}
+function pruneUndefined(obj) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== void 0) out[k] = v;
+  }
+  return out;
+}
+function watchKanmer(projectRoot2, onChange, options2 = {}) {
+  const paths = resolvePaths(projectRoot2);
+  const debounceMs = options2.debounceMs ?? 120;
+  const watcher = import_chokidar.default.watch(paths.kanmer, {
+    ignoreInitial: true,
+    // Ignore the atomic-write temp files (.<name>.tmp-...).
+    ignored: /(^|[/\\])\.[^/\\]*\.tmp-/,
+    awaitWriteFinish: { stabilityThreshold: 80, pollInterval: 20 }
+  });
+  let timer = null;
+  const pending = /* @__PURE__ */ new Map();
+  const flush = () => {
+    const batch = [...pending.entries()];
+    pending.clear();
+    timer = null;
+    for (const [file, event] of batch) onChange(event, file);
+  };
+  const schedule = (event) => (file) => {
+    pending.set(file, event);
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(flush, debounceMs);
+  };
+  watcher.on("add", schedule("add"));
+  watcher.on("change", schedule("change"));
+  watcher.on("unlink", schedule("unlink"));
+  return {
+    async close() {
+      if (timer) clearTimeout(timer);
+      await watcher.close();
+    }
+  };
 }
 
 // src/root.ts
@@ -37748,11 +38939,40 @@ async function ensureInit() {
 }
 function write(fn) {
   return guard(async (...args) => {
+    store.setActor(actorName(args[1]));
     await ensureInit();
     return fn(...args);
   });
 }
-function summarise(item) {
+function actorName(extra) {
+  const meta = extra?._meta;
+  const candidates = [
+    meta?.["io.modelcontextprotocol/client"]?.name,
+    meta?.["clientInfo"]?.name
+  ];
+  for (const c of candidates) if (typeof c === "string" && c) return c;
+  return server.server.getClientVersion()?.name ?? "agent";
+}
+async function confirmDestructive(message) {
+  if (!server.server.getClientCapabilities()?.elicitation) return true;
+  try {
+    const res = await server.server.elicitInput({
+      message,
+      requestedSchema: {
+        type: "object",
+        properties: {
+          confirm: { type: "boolean", description: "true to proceed" }
+        },
+        required: ["confirm"]
+      }
+    });
+    return res.action === "accept" && res.content?.confirm === true;
+  } catch {
+    return true;
+  }
+}
+async function summarise(item, blockedIds) {
+  const info = item.type === "ticket" ? await store.getTicketDocsInfo(item.id) : null;
   return {
     id: item.id,
     type: item.type,
@@ -37762,59 +38982,179 @@ function summarise(item) {
     priority: item.priority,
     assignee: item.assignee,
     labels: item.labels,
+    due: item.due ?? null,
+    order: item.order ?? null,
+    blocked: blockedIds.has(item.id),
+    created: item.created,
     updated: item.updated,
-    archived: item.archived
+    archived: item.archived,
+    taken: item.taken_at ? { taken_at: item.taken_at, branch: item.branch ?? null, worktree: item.worktree ?? null } : null,
+    docs: info?.docs ?? null,
+    checklist: info?.checklist ?? null
   };
 }
+async function blockedSet() {
+  const all = await store.listItems({ includeArchived: true });
+  const board = await store.getBoard();
+  return computeBlockedIds(all, board.statuses[board.statuses.length - 1]?.id);
+}
 var itemTypeEnum = external_exports.enum(["ticket", "plan", "research"]);
+var ticketDocEnum = external_exports.enum(["research", "impact", "plan", "checklist", "proof"]);
+var columnKindEnum = external_exports.enum(["status", "area", "priority"]);
+var createFields = {
+  type: itemTypeEnum.default("ticket").describe("ticket | plan | research (v2 boards: ticket only)"),
+  title: external_exports.string().describe("Short title"),
+  status: external_exports.string().optional().describe("Status id / workflow stage (defaults to the first stage)"),
+  area: external_exports.string().optional().describe("Area id (see list_board \u2192 areas)"),
+  priority: external_exports.string().optional().describe("Priority id (see list_board \u2192 priorities)"),
+  assignee: external_exports.string().optional(),
+  due: external_exports.string().optional().describe("Deadline, date-only: YYYY-MM-DD"),
+  labels: external_exports.array(external_exports.string()).optional(),
+  links: external_exports.array(external_exports.string()).optional().describe("Ids of related items (must exist)"),
+  blocks: external_exports.array(external_exports.string()).optional().describe("Ids this item blocks (must exist)"),
+  body: external_exports.string().optional().describe("Markdown body; may contain [[id]] wiki-links")
+};
 var server = new McpServer({ name: "kanmer", version: "0.1.0" });
+server.registerTool(
+  "get_status",
+  {
+    title: "Project status",
+    description: "Orientation call \u2014 use it first, every session. Returns the project root, whether .kanmer/ exists (this tool never creates it), the storage format version, whether the board came from a real board.yml or is the synthesized default, per-stage and per-type item counts, archived/taken counts, and how many file warnings the listing produced.",
+    inputSchema: {},
+    annotations: { readOnlyHint: true, openWorldHint: false }
+  },
+  guard(async () => {
+    const exists = await store.exists();
+    const format = await store.detectFormat();
+    const { board, source } = await store.getBoardWithSource();
+    const { items, warnings } = await store.listItemsWithWarnings({ includeArchived: true });
+    const active = items.filter((i) => !i.archived);
+    const byStage = {};
+    for (const s of board.statuses) byStage[s.id] = 0;
+    let offBoardStage = 0;
+    const byType = {};
+    for (const item of active) {
+      if (item.status in byStage) byStage[item.status]++;
+      else offBoardStage++;
+      byType[item.type] = (byType[item.type] ?? 0) + 1;
+    }
+    return ok({
+      projectRoot,
+      kanmerDir: store.paths.kanmer,
+      exists,
+      format,
+      boardSource: source,
+      counts: {
+        byStage,
+        byType,
+        offBoardStage,
+        archived: items.length - active.length,
+        taken: active.filter((i) => i.taken_at).length
+      },
+      warningsCount: warnings.length
+    });
+  })
+);
 server.registerTool(
   "list_board",
   {
     title: "List board configuration",
-    description: "Return the board configuration: the ordered statuses (the workflow stages, which are the kanban columns), the areas, the priorities, and the id prefixes for each item type. Call this first to learn valid status/area/priority ids before creating or moving items.",
+    description: 'Return the board configuration: the ordered statuses (the workflow stages, which are the kanban columns), the areas (each with the id prefix its tickets are born with), the priorities, and the legacy id prefixes. Call this to learn valid status/area/priority ids before creating or moving items. The `source` field says whether this is a real board.yml ("file") or the synthesized default for a project with no board yet ("default").',
     inputSchema: {},
     annotations: { readOnlyHint: true, openWorldHint: false }
   },
-  guard(async () => ok(await store.getBoard()))
+  guard(async () => {
+    const { board, source } = await store.getBoardWithSource();
+    return ok({ ...board, source });
+  })
 );
 server.registerTool(
   "list_items",
   {
     title: "List items",
-    description: "List tickets, plans and research items as summaries (no body). Optionally filter by type, status (workflow stage), area or label. Archived items are excluded unless include_archived is true. Use get_item to read an item's full body.",
+    description: "List items as summaries (no body). Filter by type, status (workflow stage), area, label, or updated_since (ISO timestamp \u2014 only items changed after it). Sort by id (default) or updated_desc; cap with limit. Archived items are excluded unless include_archived is true (summaries carry `archived` either way). Summaries also carry `taken` (who/where, when a ticket is taken) and `docs`/`checklist` (pipeline document presence and checklist progress). Normally returns a plain array; if any files in .kanmer are malformed or misnamed, returns { items, warnings } instead so the problem is visible.",
     inputSchema: {
       type: itemTypeEnum.optional().describe("Restrict to one item type"),
       status: external_exports.string().optional().describe("Filter by status id (workflow stage)"),
       area: external_exports.string().optional().describe("Filter by area id"),
       label: external_exports.string().optional().describe("Filter by a label"),
-      include_archived: external_exports.boolean().optional().describe("Include archived items")
+      include_archived: external_exports.boolean().optional().describe("Include archived items"),
+      updated_since: external_exports.string().optional().describe("Only items whose `updated` is after this ISO timestamp"),
+      due_before: external_exports.string().optional().describe("Only items with a due date before this day (YYYY-MM-DD)"),
+      overdue: external_exports.boolean().optional().describe("Only items due before today that haven't reached the final stage"),
+      sort: external_exports.enum(["id", "updated_desc"]).optional().describe("Sort order (default id)"),
+      limit: external_exports.number().int().positive().optional().describe("Return at most this many")
     },
     annotations: { readOnlyHint: true, openWorldHint: false }
   },
   guard(
-    async ({ type, status, area, label, include_archived }) => ok(
-      (await store.listItems({
+    async ({
+      type,
+      status,
+      area,
+      label,
+      include_archived,
+      updated_since,
+      due_before,
+      overdue,
+      sort,
+      limit
+    }) => {
+      const { items, warnings } = await store.listItemsWithWarnings({
         type,
         status,
         area,
         label,
-        includeArchived: include_archived
-      })).map(summarise)
-    )
+        includeArchived: include_archived,
+        dueBefore: due_before,
+        overdue
+      });
+      let selected = items;
+      if (updated_since !== void 0) {
+        selected = selected.filter((i) => i.updated > updated_since);
+      }
+      if (sort === "updated_desc") {
+        selected = [...selected].sort((a, b) => a.updated < b.updated ? 1 : -1);
+      }
+      if (limit !== void 0) selected = selected.slice(0, limit);
+      const blocked = await blockedSet();
+      const summaries = await Promise.all(selected.map((i) => summarise(i, blocked)));
+      return ok(warnings.length ? { items: summaries, warnings } : summaries);
+    }
   )
 );
 server.registerTool(
   "get_item",
   {
     title: "Get an item",
-    description: "Return the full frontmatter and markdown body of one item by id (e.g. TICK-001).",
-    inputSchema: { id: external_exports.string().describe("Item id, e.g. TICK-001") },
+    description: "Return the full frontmatter and markdown body of one item by id (e.g. API-001). For tickets this also reports which pipeline documents exist (docs) and checklist progress \u2014 read the documents themselves with get_ticket_doc.",
+    inputSchema: { id: external_exports.string().describe("Item id, e.g. API-001") },
     annotations: { readOnlyHint: true, openWorldHint: false }
   },
   guard(async ({ id }) => {
     const item = await store.getItem(id);
-    return item ? ok(item) : fail(`No item with id "${id}"`);
+    if (!item) return fail(`No item with id "${id}"`);
+    const info = await store.getTicketDocsInfo(id);
+    const blocked = (await blockedSet()).has(id);
+    return ok(
+      info ? { ...item, blocked, docs: info.docs, checklist: info.checklist } : { ...item, blocked }
+    );
+  })
+);
+server.registerTool(
+  "get_ticket_doc",
+  {
+    title: "Read a ticket document",
+    description: "Read one of a ticket's pipeline documents (research, impact, plan, checklist, proof) from its folder. Returns content: null when the document hasn't been written yet. `version` is a token for the document's current bytes \u2014 pass it back as `expected_version` on set_ticket_doc to be rejected instead of overwriting a concurrent edit.",
+    inputSchema: {
+      id: external_exports.string().describe("Ticket id"),
+      doc: ticketDocEnum.describe("Which document")
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false }
+  },
+  guard(async ({ id, doc }) => {
+    const { content, version: version2 } = await store.getDocWithVersion(id, doc);
+    return ok({ id, doc, exists: content !== null, content, version: version2 });
   })
 );
 server.registerTool(
@@ -37828,54 +39168,95 @@ server.registerTool(
     },
     annotations: { readOnlyHint: true, openWorldHint: false }
   },
-  guard(
-    async ({ query, type }) => ok((await store.searchItems(query, { type })).map(summarise))
-  )
+  guard(async ({ query, type }) => {
+    const blocked = await blockedSet();
+    return ok(
+      await Promise.all(
+        (await store.searchItems(query, { type })).map((i) => summarise(i, blocked))
+      )
+    );
+  })
 );
 server.registerTool(
   "get_links",
   {
     title: "Get links and backlinks",
-    description: "Return the items this item links to (frontmatter links[] plus [[wiki]] links in its body) and the items that link back to it. Each id is annotated with its title.",
-    inputSchema: { id: external_exports.string().describe("Item id, e.g. TICK-001") },
+    description: "Return the items this item links to (frontmatter links[] plus [[wiki]] links in its body), the items that link back to it, plus the typed dependency edges: blocks (stored) and blockedBy (derived \u2014 never stored). Each id is annotated with its title.",
+    inputSchema: { id: external_exports.string().describe("Item id, e.g. API-001") },
     annotations: { readOnlyHint: true, openWorldHint: false }
   },
   guard(async ({ id }) => {
     const graph = await getLinkGraph(store, id);
-    const titles = new Map((await store.listItems()).map((i) => [i.id, i.title]));
+    const titles = new Map(
+      (await store.listItems({ includeArchived: true })).map((i) => [i.id, i.title])
+    );
     const withTitles = (ids) => ids.map((linkId) => ({ id: linkId, title: titles.get(linkId) ?? null }));
     return ok({
       id: graph.id,
       links: withTitles(graph.links),
-      backlinks: withTitles(graph.backlinks)
+      backlinks: withTitles(graph.backlinks),
+      blocks: withTitles(graph.blocks),
+      blockedBy: withTitles(graph.blockedBy)
     });
   })
+);
+server.registerTool(
+  "get_activity",
+  {
+    title: "Read the activity log",
+    description: "What actually happened on the board: one entry per mutation ({ts, id, op, field, from, to, actor}), oldest-first. Filter by item id and/or since (ISO timestamp); limit keeps the most recent N. Derived convenience, not truth \u2014 the log is safe to delete and never consulted for state.",
+    inputSchema: {
+      id: external_exports.string().optional().describe("Only entries for this item"),
+      since: external_exports.string().optional().describe("Only entries after this ISO timestamp"),
+      limit: external_exports.number().int().positive().optional().describe("Most recent N entries (default 200)")
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false }
+  },
+  guard(
+    async ({ id, since, limit }) => ok(await store.getActivity({ id, since, limit: limit ?? 200 }))
+  )
 );
 server.registerTool(
   "create_item",
   {
     title: "Create an item",
-    description: "Create a ticket, plan or research note. Returns the created item including its allocated id. status defaults to the first workflow stage if omitted; call list_board for valid ids. Link to other items via links[] and/or [[id]] references in the body.",
-    inputSchema: {
-      type: itemTypeEnum.describe("ticket | plan | research"),
-      title: external_exports.string().describe("Short title"),
-      status: external_exports.string().optional().describe("Status id / workflow stage (defaults to the first stage)"),
-      area: external_exports.string().optional().describe("Area id (see list_board \u2192 areas)"),
-      priority: external_exports.string().optional().describe("Priority id (see list_board \u2192 priorities); defaults to medium"),
-      assignee: external_exports.string().optional(),
-      labels: external_exports.array(external_exports.string()).optional(),
-      links: external_exports.array(external_exports.string()).optional().describe("Ids of related items"),
-      body: external_exports.string().optional().describe("Markdown body; may contain [[id]] wiki-links")
-    },
+    description: "Create a ticket. Returns the created item including its allocated id \u2014 tickets born in an area get that area's prefix (e.g. API-007); area-less tickets get the fallback prefix. status defaults to the first workflow stage; status/area/priority are validated against the board and links[] targets must exist. A ticket cannot be created directly in the board's final stage \u2014 that stage requires proof.md; create it earlier and move it. On format-2 boards plans and research are documents inside a ticket's folder (set_ticket_doc), not standalone items.",
+    inputSchema: createFields,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
   },
   write(async (input) => ok(await store.createItem(input)))
 );
 server.registerTool(
+  "create_items",
+  {
+    title: "Create several items",
+    description: "Bulk create up to 50 items in one call (sequential, so ids stay ordered). Each entry takes the same fields as create_item, including the rule that a ticket cannot be created directly in the board's final stage \u2014 that stage requires proof.md; create it earlier and move it. Partial success is possible: the result carries one { ok, item | error } per entry, in order.",
+    inputSchema: {
+      items: external_exports.array(external_exports.object(createFields)).min(1).max(50).describe("Entries to create, in order")
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+  },
+  write(async ({ items }) => {
+    const results = [];
+    for (const entry of items) {
+      try {
+        results.push({ ok: true, item: await store.createItem(entry) });
+      } catch (err) {
+        results.push({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    return ok({
+      created: results.filter((r) => r.ok).length,
+      failed: results.filter((r) => !r.ok).length,
+      results
+    });
+  })
+);
+server.registerTool(
   "update_item",
   {
     title: "Update an item",
-    description: "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically. Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here \u2014 create a new item and archive the old one instead.",
+    description: "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically (a patch that changes nothing does NOT bump `updated`). Changing a ticket's area moves its folder \u2014 the id never changes. Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here \u2014 create a new item and archive the old one instead. Pass expected_updated (the `updated` you last read) when rewriting the body so a concurrent edit is rejected as a conflict instead of overwritten.",
     inputSchema: {
       id: external_exports.string().describe("Item id to update"),
       title: external_exports.string().optional(),
@@ -37883,72 +39264,318 @@ server.registerTool(
       area: external_exports.string().optional(),
       priority: external_exports.string().optional(),
       assignee: external_exports.string().optional(),
+      due: external_exports.string().optional().describe('YYYY-MM-DD; pass "" to clear the deadline'),
+      order: external_exports.number().optional().describe("Manual sort key (move_item's position computes this)"),
       labels: external_exports.array(external_exports.string()).optional(),
       links: external_exports.array(external_exports.string()).optional(),
+      blocks: external_exports.array(external_exports.string()).optional().describe("Ids this item blocks"),
       body: external_exports.string().optional(),
-      archived: external_exports.boolean().optional()
+      archived: external_exports.boolean().optional(),
+      expected_updated: external_exports.string().optional().describe(
+        "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the item changed since."
+      )
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
   },
-  write(async ({ id, ...patch }) => ok(await store.updateItem(id, patch)))
+  write(
+    async ({ id, expected_updated, ...patch }) => ok(await store.updateItem(id, { ...patch, expectedUpdated: expected_updated }))
+  )
 );
 server.registerTool(
   "move_item",
   {
     title: "Move an item to a workflow stage",
-    description: "Kanban move: set an item's status, i.e. move it to a workflow stage (see list_board \u2192 statuses). Convenience wrapper over update_item.",
+    description: `Kanban move: set an item's status, i.e. move it to a workflow stage (see list_board \u2192 statuses). Rejects a status that is not on the board. Moving a ticket to the final stage requires its proof.md to exist. Optional position places the item within the column: "top", "bottom", or { after: "API-003" } \u2014 this maintains the manual order humans see.`,
     inputSchema: {
       id: external_exports.string().describe("Item id to move"),
-      status: external_exports.string().describe("Target status id (workflow stage)")
+      status: external_exports.string().describe("Target status id (workflow stage)"),
+      position: external_exports.union([external_exports.enum(["top", "bottom"]), external_exports.object({ after: external_exports.string() })]).optional().describe("Where in the column to place the item"),
+      expected_updated: external_exports.string().optional().describe(
+        "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the item changed since."
+      )
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
   },
-  write(async ({ id, status }) => ok(await store.moveItem(id, { status })))
+  write(
+    async ({ id, status, position, expected_updated }) => ok(await store.moveItem(id, { status, position, expectedUpdated: expected_updated }))
+  )
+);
+server.registerTool(
+  "take_ticket",
+  {
+    title: "Take or release a ticket",
+    description: "Take a ticket before working it: records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client's name), and moves the ticket to the working stage (default: the board's `implementing` stage). Errors if the ticket is already taken unless force is true. action: \"release\" clears taken_at/branch/worktree when the work ends.",
+    inputSchema: {
+      id: external_exports.string().describe("Ticket id"),
+      action: external_exports.enum(["take", "release"]).default("take"),
+      branch: external_exports.string().optional().describe("Branch the work happens on (required for take)"),
+      worktree: external_exports.string().optional().describe("Worktree path, when working in one"),
+      stage: external_exports.string().optional().describe("Stage to move to (default: implementing)"),
+      assignee: external_exports.string().optional().describe("Defaults to the calling client's name"),
+      force: external_exports.boolean().optional().describe("Take over an already-taken ticket")
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+  },
+  write(async ({ id, action, branch, worktree, stage, assignee, force }, extra) => {
+    if (action === "release") return ok(await store.releaseTicket(id));
+    if (!branch) return fail(`branch is required when taking a ticket \u2014 it's the point of taking`);
+    return ok(
+      await store.takeTicket(id, {
+        branch,
+        worktree,
+        stage,
+        assignee: assignee ?? actorName(extra),
+        force
+      })
+    );
+  })
+);
+server.registerTool(
+  "set_ticket_doc",
+  {
+    title: "Write a ticket document",
+    description: "Write one of a ticket's pipeline documents (research, impact, plan, checklist, proof) into its folder. Plain Markdown, no frontmatter. Pass append: true to add below the existing content (for progress notes) instead of replacing it. proof.md is required before the ticket can reach the final stage. Pass the `version` you last read from get_ticket_doc as `expected_version` to be rejected instead of overwriting a concurrent edit; the result carries the new `version`.",
+    inputSchema: {
+      id: external_exports.string().describe("Ticket id"),
+      doc: ticketDocEnum.describe("Which document"),
+      content: external_exports.string().describe("Markdown content"),
+      append: external_exports.boolean().optional().describe("Append below existing content instead of replacing"),
+      expected_version: external_exports.string().optional().describe(
+        "Optimistic concurrency: the `version` you last read from get_ticket_doc. Rejected as a conflict if the document changed since. Omit for last-write-wins."
+      )
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+  },
+  write(async ({ id, doc, content, append, expected_version }) => {
+    const { version: version2 } = await store.setDoc(id, doc, content, {
+      append,
+      expectedVersion: expected_version
+    });
+    return ok({ id, doc, written: true, appended: append === true, version: version2 });
+  })
 );
 server.registerTool(
   "link_items",
   {
     title: "Link or unlink two items",
-    description: "Add or remove a structured relation from source_id to target_id (stored in the source item's frontmatter links[]).",
+    description: `Add or remove a structured relation from source_id to target_id. rel "relates" (default) writes the source's links[]; rel "blocks" writes blocks[] \u2014 meaning the source blocks the target (blocked-by is derived, never stored). Adding requires the target to exist; removal works even on dangling links.`,
     inputSchema: {
       source_id: external_exports.string().describe("The item that will hold the link"),
-      target_id: external_exports.string().describe("The item being linked to"),
-      action: external_exports.enum(["add", "remove"]).default("add")
+      target_id: external_exports.string().describe("The item being linked to / blocked"),
+      action: external_exports.enum(["add", "remove"]).default("add"),
+      rel: external_exports.enum(["relates", "blocks"]).default("relates")
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
   },
   write(
-    async ({ source_id, target_id, action }) => ok(await linkItems(store, source_id, target_id, action))
+    async ({ source_id, target_id, action, rel }) => ok(await linkItems(store, source_id, target_id, action, rel))
   )
 );
 server.registerTool(
   "add_column",
   {
     title: "Add a board column",
-    description: "Add a new column to the board: a status (workflow stage), area or priority. Areas group tickets within stage columns and are colour-coded; provide a hex color for them. Returns the updated board configuration.",
+    description: "Add a new column to the board: a status (workflow stage), area or priority. Areas group tickets within stage columns and are colour-coded; provide a hex color, and optionally a 2-6 uppercase-alphanumeric id prefix for tickets born there (derived from the id when omitted). Returns the updated board configuration.",
     inputSchema: {
       id: external_exports.string().describe("New column id, e.g. ui"),
       name: external_exports.string().describe("Display name, e.g. UI"),
-      kind: external_exports.enum(["status", "area", "priority"]).default("area"),
-      color: external_exports.string().optional().describe("Hex colour, e.g. #5b8cff (recommended for areas)")
+      kind: columnKindEnum.default("area"),
+      color: external_exports.string().optional().describe("Hex colour, e.g. #5b8cff (recommended for areas)"),
+      prefix: external_exports.string().optional().describe("Areas only: id prefix for tickets born in this area, e.g. API")
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
   },
   write(
-    async ({ id, name, kind, color }) => ok(await store.addColumn(kind, { id, name, ...color ? { color } : {} }))
+    async ({ id, name, kind, color, prefix }) => ok(
+      await store.addColumn(kind, {
+        id,
+        name,
+        ...color ? { color } : {},
+        ...prefix ? { prefix } : {}
+      })
+    )
   )
+);
+server.registerTool(
+  "update_column",
+  {
+    title: "Update a board column",
+    description: "Rename or recolour a status/area/priority, or pin an area's id prefix. The column id itself is immutable (items reference it).",
+    inputSchema: {
+      kind: columnKindEnum,
+      id: external_exports.string().describe("Column id to update"),
+      name: external_exports.string().optional(),
+      color: external_exports.string().optional(),
+      prefix: external_exports.string().optional().describe("Areas only")
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
+  },
+  write(
+    async ({ kind, id, name, color, prefix }) => ok(await store.updateColumn(kind, id, { name, color, prefix }))
+  )
+);
+server.registerTool(
+  "remove_column",
+  {
+    title: "Remove a board column",
+    description: "Remove a status/area/priority from the board. Refuses while items still use it unless migrate_to names another column of the same kind \u2014 then every matching item is rewritten to it first (an area migration moves ticket folders; migrating tickets into the final stage still requires their proof.md). Returns the updated board plus the ids that were migrated.",
+    inputSchema: {
+      kind: columnKindEnum,
+      id: external_exports.string().describe("Column id to remove"),
+      migrate_to: external_exports.string().optional().describe("Column id (same kind) to move the referencing items to")
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false }
+  },
+  write(async ({ kind, id, migrate_to }) => {
+    if (migrate_to !== void 0) {
+      const proceed = await confirmDestructive(
+        `Remove ${kind} "${id}" and move every item using it to "${migrate_to}"?`
+      );
+      if (!proceed) return fail("cancelled by user");
+    }
+    return ok(await store.removeColumn(kind, id, { migrateTo: migrate_to }));
+  })
+);
+server.registerTool(
+  "reorder_columns",
+  {
+    title: "Reorder board columns",
+    description: "Reorder the statuses, areas or priorities. `order` must be a permutation of the existing ids. Note that the FIRST status is where new items land and the LAST status is the proof-gated final stage.",
+    inputSchema: {
+      kind: columnKindEnum,
+      order: external_exports.array(external_exports.string()).min(1).describe("Every existing id, in the new order")
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
+  },
+  write(async ({ kind, order }) => ok(await store.reorderColumns(kind, order)))
 );
 server.registerTool(
   "delete_item",
   {
     title: "Delete an item",
-    description: "Permanently delete an item file by id. This cannot be undone. Backlinks from other items are not rewritten.",
+    description: "Permanently delete an item by id. For tickets this removes the whole ticket folder \u2014 pipeline documents and attachments included. This cannot be undone (prefer update_item with archived: true). Frontmatter links[] in other items that pointed at the deleted id are cleaned up automatically (cleanedLinks); [[wiki]] references in bodies are prose and stay put (bodyReferencesRemain).",
     inputSchema: { id: external_exports.string().describe("Item id to delete") },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true }
   },
   write(async ({ id }) => {
-    const deleted = await store.deleteItem(id);
-    return deleted ? ok({ deleted: id }) : fail(`No item with id "${id}"`);
+    const proceed = await confirmDestructive(
+      `Permanently delete "${id}" (its whole folder, documents and attachments included)?`
+    );
+    if (!proceed) return fail("cancelled by user");
+    const result = await store.deleteItem(id);
+    return result.deleted ? ok({
+      deleted: id,
+      cleanedLinks: result.cleanedLinks,
+      bodyReferencesRemain: result.bodyReferencesRemain
+    }) : fail(`No item with id "${id}"`);
+  })
+);
+server.registerResource(
+  "board",
+  "kanmer://board",
+  {
+    title: "Kanmer board configuration",
+    description: "The stages, areas and priorities driving this project's board",
+    mimeType: "application/json"
+  },
+  async (uri) => ({
+    contents: [
+      {
+        uri: uri.href,
+        mimeType: "application/json",
+        text: JSON.stringify(await store.getBoardWithSource(), null, 2)
+      }
+    ]
+  })
+);
+server.registerResource(
+  "item",
+  new ResourceTemplate("kanmer://items/{id}", {
+    list: async () => ({
+      resources: (await store.listItems()).map((i) => ({
+        uri: `kanmer://items/${i.id}`,
+        name: i.id,
+        description: i.title,
+        mimeType: "text/markdown"
+      }))
+    })
+  }),
+  {
+    title: "Kanmer items",
+    description: "Each ticket/plan/research item as Markdown with frontmatter",
+    mimeType: "text/markdown"
+  },
+  async (uri, variables) => {
+    const id = String(variables["id"]);
+    const item = await store.getItem(id);
+    if (!item) throw new Error(`No item with id "${id}"`);
+    return {
+      contents: [{ uri: uri.href, mimeType: "text/markdown", text: serialiseItem(item) }]
+    };
+  }
+);
+var subscriptions = /* @__PURE__ */ new Set();
+var subscriptionWatch = null;
+function ensureSubscriptionWatcher() {
+  if (subscriptionWatch) return;
+  subscriptionWatch = watchKanmer(projectRoot, (_event, file) => {
+    const base = import_node_path2.default.basename(file);
+    if (base === "board.yml" && subscriptions.has("kanmer://board")) {
+      void server.server.sendResourceUpdated({ uri: "kanmer://board" });
+    }
+    if (base.endsWith(".md")) {
+      const uri = `kanmer://items/${base.slice(0, -3)}`;
+      if (subscriptions.has(uri)) {
+        void server.server.sendResourceUpdated({ uri });
+      }
+    }
+  });
+}
+server.server.registerCapabilities({ resources: { subscribe: true } });
+server.server.setRequestHandler(SubscribeRequestSchema, async (req) => {
+  subscriptions.add(req.params.uri);
+  ensureSubscriptionWatcher();
+  return {};
+});
+server.server.setRequestHandler(UnsubscribeRequestSchema, async (req) => {
+  subscriptions.delete(req.params.uri);
+  return {};
+});
+server.registerPrompt(
+  "standup",
+  {
+    title: "Board standup",
+    description: "Summarise what happened on the Kanmer board and what needs attention"
+  },
+  () => ({
+    messages: [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: "Give me a standup from the Kanmer board. Call get_status first, then list_items (sort: updated_desc) for the current picture. Group by the board's configured stages by role \u2014 first stage is Up next, last stage is Recently done, a review-like stage is In review, everything between is In flight (include taken branch/worktree info). Flag stale items, off-board stages, and any warnings. Keep it scannable: one line per item."
+        }
+      }
+    ]
+  })
+);
+server.registerPrompt(
+  "take-ticket",
+  {
+    title: "Take a ticket",
+    description: "Take a Kanmer ticket and work it through the doc pipeline",
+    argsSchema: { id: external_exports.string().describe("Ticket id to take") }
+  },
+  ({ id }) => ({
+    messages: [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: `Take Kanmer ticket ${id} and work it: call get_item to read it, take_ticket (with the real branch and worktree you'll work on), then follow the document pipeline with get_ticket_doc/set_ticket_doc \u2014 research.md and impact.md first, write plan.md from them, derive checklist.md, work the checklist (append progress notes), and write proof.md with real evidence before moving the ticket to the final stage and releasing it.`
+        }
+      }
+    ]
   })
 );
 async function main() {

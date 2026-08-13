@@ -2,16 +2,20 @@
 
 Master overview. Each phase has its own folder with a detailed, self-contained plan:
 
-| Phase | Folder | Theme |
-|---|---|---|
-| 1 | [phase-1-core-correctness/](phase-1-core-correctness/plan.md) | Core correctness & safety (validation, path safety, races) |
-| 2 | [phase-2-format-v2-storage/](phase-2-format-v2-storage/plan.md) | Format v2 storage engine + migration (area folders, ticket folders, doc pipeline) |
-| 3 | [phase-3-mcp-surface/](phase-3-mcp-surface/plan.md) | MCP surface v2 + 2026-07-28 modernization |
-| 4 | [phase-4-gui-trust/](phase-4-gui-trust/plan.md) | GUI trust (no data loss, honest errors) |
-| 5 | [phase-5-windows-app/](phase-5-windows-app/plan.md) | Real Windows app (icon, toasts, shortcuts, a11y) |
-| 6 | [phase-6-data-model/](phase-6-data-model/plan.md) | Data-model extras (activity log, blocks, due, ordering) |
-| 7 | [phase-7-gui-evolution/](phase-7-gui-evolution/plan.md) | GUI evolution & delight (doc tabs, standup, perf) |
-| 8 | [phase-8-skills-plugin-docs/](phase-8-skills-plugin-docs/plan.md) | Skills, plugin, docs (workflow rewrite, kanmer-setup) |
+| Phase | Folder | Theme | Status |
+|---|---|---|---|
+| 1 | [phase-1-core-correctness/](phase-1-core-correctness/plan.md) | Core correctness & safety (validation, path safety, races) | ✅ done |
+| 2 | [phase-2-format-v2-storage/](phase-2-format-v2-storage/plan.md) | Format v2 storage engine + migration (area folders, ticket folders, doc pipeline) | ✅ done |
+| 3 | [phase-3-mcp-surface/](phase-3-mcp-surface/plan.md) | MCP surface v2 + 2026-07-28 modernization | ✅ done (cacheable tools/list awaits SDK) |
+| 4 | [phase-4-gui-trust/](phase-4-gui-trust/plan.md) | GUI trust (no data loss, honest errors) | ✅ done |
+| 5 | [phase-5-windows-app/](phase-5-windows-app/plan.md) | Real Windows app (icon, toasts, shortcuts, a11y) | ✅ done |
+| 6 | [phase-6-data-model/](phase-6-data-model/plan.md) | Data-model extras (activity log, blocks, due, ordering) | ✅ done |
+| 7 | [phase-7-gui-evolution/](phase-7-gui-evolution/plan.md) | GUI evolution & delight (doc tabs, standup, perf) | ✅ done |
+| 8 | [phase-8-skills-plugin-docs/](phase-8-skills-plugin-docs/plan.md) | Skills, plugin, docs (workflow rewrite, kanmer-setup) | ✅ done |
+
+> **Amended by the PR #2 review remediation:** the PR #2 adherence review found three of these rows overstated at the time, all since fixed on this branch. **Phase 3:** it is the whole 2026-07-28 revision that is unavailable in SDK 1.30, not only cacheable `tools/list`; the SDK negotiates at most `2025-11-25` (A4). **Phase 6:** manual ordering shipped core-only — the GUI drag writer did not exist (A1). **Phase 7:** the blocked/overdue card badges (A2), the standup's parity with the `kanmer-standup` skill (A5) and the palette's Move/Take/Release verbs (A6) were not built. See `docs/plans/pr-2-review/`.
+
+Implementation log: [phase-0-pr1-verify-merge/plan.md](phase-0-pr1-verify-merge/plan.md).
 
 ## Context
 
@@ -65,6 +69,9 @@ The full roadmap was chosen, with the data model redesigned around one idea: **t
 - **Frontmatter `area` stays authoritative**; folder location is derived from it. A hand-moved file that disagrees is reported as a warning and reconciled on next write.
 - **Format detection:** `version.json` absent + `tickets/` present = format 1. Core reads BOTH formats transparently; the GUI offers "Migrate to v2?" on opening a v1 board; `kanmer-setup` upgrade mode does the same for agent-only flows.
 
+> **Amended by the PR #2 review remediation:** `kanmer-setup` upgrade mode does **not** do the same for agent-only flows: there is no MCP migrate tool, so the skill asks the user to click "Migrate to v2" in the GUI. A plugin user with no GUI installed cannot upgrade a v1 board. Migration is now resumable and refuses colliding destinations, so an interrupted run is recoverable — but still only from the GUI. Filed as a follow-up.
+
+
 ## Sequencing
 
 Phase 1 → 2 → 3 is the core track; Phases 4 → 5 (GUI) can run in parallel with 2–3; Phase 6 after 2; Phase 7 after 3 + 6; Phase 8 tracks every tool change and finalizes last.
@@ -81,6 +88,9 @@ Any change to the MCP tool surface or core behavior must ride this rail or the p
 ## Verification (roadmap-level)
 
 - **Core:** vitest — validation errors list valid ids; traversal ids rejected; no-op update leaves `updated`/mtime unchanged; exclusive-create under concurrency; migration round-trip (v1 fixture → migrate → v2, content preserved, idempotent); doc API; proof gate; taken semantics.
+
+> **Amended by the PR #2 review remediation:** the mtime half of the no-op assertion was never written (only `updated` was checked) and is now in `store.test.ts`, together with the `computeOrder` rebalance branch (A9).
+
 - **Server:** extend `smoke.mjs` for every new tool + annotation; run against both dev build and plugin bundle.
 - **GUI:** `KANMER_SMOKE=1` launch check; manual pass per AGENTS.md §10 — v1 board → migration prompt → migrate → renders; edit while an agent moves the same ticket (no clobber); unfocused toast; keyboard-only session; `npm run dist` installer shows icon + taskbar grouping.
 - **End-to-end:** register the plugin in Claude Code against a scratch repo; `kanmer-setup` greenfield (AGENTS.md gets the instructions block); take a ticket through research → proof → done; GUI mirrors every step live.

@@ -35,6 +35,8 @@
 
   Rules: if `AGENTS.md` is missing, create it with the block + a stub heading for the repo's own content. If present, insert the block above everything else. Upgrade mode refreshes only the content **between the markers** (idempotent — never touches the rest of the file). If a `CLAUDE.md` exists that doesn't reference `AGENTS.md`, add a one-line pointer to it.
 
+> **Amended by the PR #2 review remediation:** A8 — these were model instructions with nothing behind them. They are now implemented by `scripts/agents-block.mjs` (which the skill calls) and verified end-to-end by `scripts/verify-agents-block.mjs`.
+
 ### 8.3 `kanmer-standup` rewrite — S
 - **Where:** `plugins/kanmer/skills/kanmer-standup/SKILL.md`.
 - Facts over heuristics: `get_activity since:<yesterday>` for what actually happened (moves, takes, actor attribution); `list_items updated_since/sort:updated_desc` for the current picture; Blocked from derived `blocked`; Overdue from `due`; In flight shows branch/worktree from taken fields. Surface `list_items` warnings if present.
@@ -48,10 +50,16 @@
 ### 8.5 Repo docs — S
 - **AGENTS.md:** §4 data model → v2 (layout, doc pipeline, taken, proof gate, versioning); fix the stale `phases` mention in the §folder-layout block (~line 137); shrink §11 known-limitations as items land; note the exclusive-create decision (replaces the lockfile suggestion).
 - **README.md:** v2 layout + doc pipeline for end users; fix the hardcoded `C:/Users/Alex/...` path in the manual-registration examples (~lines 141–148); document `kanmer-setup` modes and the AGENTS.md block.
+
+> **Amended by the PR #2 review remediation:** A7 — the README was fixed but `examples/codex-config.toml` still carried the hardcoded `C:/Users/Alex/...` path on two lines. Now `<kanmer-repo>`, matching the README.
+
 - **This roadmap:** check off phases as they land.
 
 ## Verification
 - Fresh scratch repo, plugin installed: `kanmer-setup` greenfield creates the board, seeds tickets, and `AGENTS.md` starts with the managed block; running it again changes nothing (idempotent).
 - Repo with an existing `AGENTS.md`: block lands at the very top, existing content untouched; upgrade mode refreshes only between markers.
+
+> **Amended by the PR #2 review remediation:** A8 — these end-to-end cases were never run. `scripts/verify-agents-block.mjs` runs them (and four more, including the malformed-marker negative) on every invocation.
+
 - v1 fixture repo: upgrade mode migrates and reports accurately.
 - Full lifecycle driven by `kanmer-workflow` in Claude Code: take → research/impact → plan → checklist → proof → done, GUI mirroring live; `npm run plugin:check` green at the end of every phase.

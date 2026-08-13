@@ -572,12 +572,7 @@ export class KanmerStore {
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
     if (expectedUpdated !== undefined && current.updated !== expectedUpdated) {
-      const { body: _body, ...frontmatter } = current;
-      throw new Error(
-        `Conflict: "${id}" changed since you read it (updated is now ${current.updated}, ` +
-          `you expected ${expectedUpdated}). Re-read the item and re-apply your change. ` +
-          `Current frontmatter: ${JSON.stringify(frontmatter)}`,
-      );
+      throw this.conflictError(id, current, expectedUpdated);
     }
     const pruned = pruneUndefined(fields);
     const changed = changedFields(current, pruned);
@@ -640,8 +635,51 @@ export class KanmerStore {
   ): Promise<Item> {
     const { position, ...patch } = to;
     if (position === undefined) return this.updateItem(id, patch);
+    // Every rejection this move can suffer must be raised BEFORE computeOrder,
+    // because computeOrder materialises `order` on the whole target column as
+    // a side effect. Without this, a move that is then refused still rewrote
+    // (and re-stamped `updated` on) every sibling and logged the activity.
+    await this.assertMoveAllowed(id, to.status, to.expectedUpdated);
     const order = await this.computeOrder(id, to.status, position);
     return this.updateItem(id, { ...patch, order });
+  }
+
+  /**
+   * Every rejection moveItem can suffer, run before computeOrder writes
+   * anything: the item must exist, `expectedUpdated` must be fresh, the
+   * target stage must be on the board, and the proof gate must allow it.
+   * The final updateItem re-checks — that is cheap and closes the window
+   * between the two reads.
+   */
+  private async assertMoveAllowed(
+    id: string,
+    status: string,
+    expectedUpdated?: string,
+  ): Promise<void> {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
+    if (expectedUpdated !== undefined && current.updated !== expectedUpdated) {
+      throw this.conflictError(id, current, expectedUpdated);
+    }
+    const board = await this.getBoard();
+    assertFieldAgainstBoard(board, "status", status);
+    if (status !== current.status && current.type === "ticket" && loc.kind === "v2") {
+      await this.assertProofGate(loc.dir, board, id, status);
+    }
+  }
+
+  /**
+   * The shared stale-read rejection. The wording is matched on by tests and
+   * by smoke.mjs (/Conflict/) — do not change it.
+   */
+  private conflictError(id: string, current: Item, expectedUpdated: string): Error {
+    const { body: _body, ...frontmatter } = current;
+    return new Error(
+      `Conflict: "${id}" changed since you read it (updated is now ${current.updated}, ` +
+        `you expected ${expectedUpdated}). Re-read the item and re-apply your change. ` +
+        `Current frontmatter: ${JSON.stringify(frontmatter)}`,
+    );
   }
 
   /**

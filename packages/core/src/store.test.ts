@@ -690,6 +690,55 @@ describe("blocks / due / order", () => {
     ).rejects.toThrow(/not an item in stage/);
   });
 
+  it("a rejected positioned move leaves the target column's siblings untouched", async () => {
+    const s1 = await store.createItem({ type: "ticket", title: "S1", status: "planning" });
+    const s2 = await store.createItem({ type: "ticket", title: "S2", status: "planning" });
+    const s3 = await store.createItem({ type: "ticket", title: "S3", status: "planning" });
+    const t = await store.createItem({ type: "ticket", title: "T", status: "todo" });
+    const siblings = [s1, s2, s3];
+    for (const s of siblings) expect(s.order).toBeUndefined();
+    const before = new Map(siblings.map((s) => [s.id, s.updated]));
+    const activityBefore = (await store.getActivity()).length;
+
+    // Make expectedUpdated stale.
+    await new Promise((r) => setTimeout(r, 5));
+    await store.updateItem(t.id, { title: "T2" });
+    await expect(
+      store.moveItem(t.id, {
+        status: "planning",
+        position: "top",
+        expectedUpdated: t.updated,
+      }),
+    ).rejects.toThrow(/Conflict/);
+
+    for (const s of siblings) {
+      const reloaded = await store.getItem(s.id);
+      expect(reloaded?.order).toBeUndefined();
+      expect(reloaded?.updated).toBe(before.get(s.id));
+    }
+    expect((await store.getActivity()).slice(activityBefore).filter((e) => e.field === "order"))
+      .toEqual([]);
+  });
+
+  it("a proof-gated positioned move leaves the final stage's siblings untouched", async () => {
+    const a = await store.createItem({ type: "ticket", title: "A", status: "verifying" });
+    const b = await store.createItem({ type: "ticket", title: "B", status: "verifying" });
+    for (const p of [a, b]) {
+      await store.setDoc(p.id, "proof", "evidence");
+      await store.moveItem(p.id, { status: "done" });
+    }
+    expect((await store.getItem(a.id))?.order).toBeUndefined();
+    const proofless = await store.createItem({ type: "ticket", title: "P", status: "todo" });
+
+    await expect(
+      store.moveItem(proofless.id, { status: "done", position: "top" }),
+    ).rejects.toThrow(/proof\.md is missing/);
+
+    for (const p of [a, b]) {
+      expect((await store.getItem(p.id))?.order).toBeUndefined();
+    }
+  });
+
   it("items without new keys serialise without new-key noise", async () => {
     const t = await store.createItem({ type: "ticket", title: "Plain" });
     const raw = await fs.readFile(

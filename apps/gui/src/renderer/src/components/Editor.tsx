@@ -10,6 +10,7 @@ import type {
 } from "@kanmer/core";
 import { renderMarkdown } from "../lib/markdown.js";
 import { ChipInput } from "./ChipInput.js";
+import { ConfirmModal } from "./ConfirmModal.js";
 
 interface EditorProps {
   item: Item;
@@ -105,6 +106,7 @@ export function Editor(props: EditorProps): JSX.Element {
   // touched is left alone instead of being clobbered.
   const baseline = useRef<Snapshot>(snapOf(item));
   const [tab, setTab] = useState<"ticket" | TicketDoc>("ticket");
+  const [pendingTab, setPendingTab] = useState<"ticket" | TicketDoc | null>(null);
   const [docsInfo, setDocsInfo] = useState<TicketDocsInfo | null>(null);
   const [docDirty, setDocDirty] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -286,6 +288,16 @@ export function Editor(props: EditorProps): JSX.Element {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  /**
+   * Tab switches lose the document editor's unsaved text (both the doc→doc
+   * key change and the doc→Ticket unmount), so they are guarded where the
+   * loss happens rather than by stretching App's item-level trySelect.
+   */
+  const tryTab = (next: "ticket" | TicketDoc) => {
+    if (next !== tab && docDirty) setPendingTab(next);
+    else setTab(next);
+  };
+
   const onPreviewClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === "A") {
@@ -381,7 +393,7 @@ export function Editor(props: EditorProps): JSX.Element {
         <nav className="doc-tabs">
           <button
             className={tab === "ticket" ? "tab active" : "tab"}
-            onClick={() => setTab("ticket")}
+            onClick={() => tryTab("ticket")}
           >
             Ticket
           </button>
@@ -389,7 +401,7 @@ export function Editor(props: EditorProps): JSX.Element {
             <button
               key={d.key}
               className={tab === d.key ? "tab active" : "tab"}
-              onClick={() => setTab(d.key)}
+              onClick={() => tryTab(d.key)}
             >
               {d.label}
               {docsInfo.docs[d.key] && <span className="doc-dot" aria-label="exists" />}
@@ -426,6 +438,21 @@ export function Editor(props: EditorProps): JSX.Element {
         </div>
       )}
       {saveError && <div className="banner error">{saveError}</div>}
+
+      {pendingTab !== null && (
+        <ConfirmModal
+          message={`Discard changes to ${item.id} ${tab}.md?`}
+          actionLabel="Discard"
+          onCancel={() => setPendingTab(null)}
+          onConfirm={() => {
+            // Clear docDirty first: otherwise the outer `dirty` is still true
+            // for the render in which the tab has already changed.
+            setDocDirty(false);
+            setTab(pendingTab);
+            setPendingTab(null);
+          }}
+        />
+      )}
 
       {tab !== "ticket" ? (
         <DocEditor
@@ -646,10 +673,16 @@ function DocEditor({
   onNavigate: (id: string) => void;
 }): JSX.Element {
   const [content, setContent] = useState<string | null>(null);
+  const [version, setVersion] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const dirty = editing && text !== (content ?? "");
+  // What the last save tried to write — "Overwrite anyway" re-issues exactly
+  // that, which matters for the checklist toggle (its content never reaches
+  // `text`).
+  const lastAttempt = useRef("");
 
   useEffect(() => {
     onDirty(dirty);
@@ -657,22 +690,45 @@ function DocEditor({
   useEffect(() => () => onDirty(false), [onDirty]);
 
   // Load — and re-sync on external changes while the user isn't editing.
+  // `dirty` is in the deps on purpose: it flips true→false on Cancel and
+  // after a save, which re-runs the load and re-syncs both content and the
+  // version token. That is what closes the otherwise unbounded window in
+  // which a cancelled edit left a stale token behind. It cannot loop — after
+  // a load `dirty` is already false and does not change.
   useEffect(() => {
     if (dirty) return;
-    void window.kanmer.getDoc(id, doc).then(({ content: c }) => {
+    void window.kanmer.getDoc(id, doc).then(({ content: c, version: v }) => {
       setContent(c);
+      setVersion(v);
       setText(c ?? "");
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, doc, changeSignal]);
+  }, [id, doc, changeSignal, dirty]);
 
-  const saveDoc = async (next: string) => {
+  /**
+   * Save the whole document. `expectedVersion` makes a concurrent write
+   * (an agent over MCP, a second window) a visible conflict instead of a
+   * silent overwrite; `force` re-issues the same save without it.
+   */
+  const saveDoc = async (next: string, force = false) => {
+    lastAttempt.current = next;
     setSaving(true);
     try {
-      await window.kanmer.setDoc(id, doc, next);
-      setContent(next.trim() ? `${next.trim()}\n` : next);
-      setText(next.trim() ? `${next.trim()}\n` : next);
+      const written = next.trim() ? `${next.trim()}\n` : next;
+      const res = await window.kanmer.setDoc(
+        id,
+        doc,
+        next,
+        force ? undefined : { expectedVersion: version },
+      );
+      setContent(written);
+      setText(written);
+      setVersion(res.version);
+      setConflict(null);
       setEditing(false);
+    } catch (err) {
+      // Keep `editing` — the user's text must survive the rejection.
+      setConflict(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
@@ -694,6 +750,34 @@ function DocEditor({
     await saveDoc(next);
   };
 
+  const conflictBanner =
+    conflict === null ? null : (
+      <div className="banner warn conflict-banner">
+        <span>{conflict}</span>
+        <div className="conflict-actions">
+          <button
+            className="ghost xs"
+            onClick={() => {
+              // dirty goes false, so the load effect re-runs and re-syncs.
+              setConflict(null);
+              setEditing(false);
+            }}
+          >
+            Reload from disk
+          </button>
+          <button
+            className="ghost xs"
+            onClick={() => {
+              setConflict(null);
+              void saveDoc(lastAttempt.current, true);
+            }}
+          >
+            Overwrite anyway
+          </button>
+        </div>
+      </div>
+    );
+
   if (content === null && !editing) {
     return (
       <div className="doc-empty">
@@ -714,6 +798,7 @@ function DocEditor({
   if (editing) {
     return (
       <div className="doc-editor">
+        {conflictBanner}
         <textarea
           className="body doc-body"
           value={text}
@@ -743,6 +828,7 @@ function DocEditor({
     let boxIndex = -1;
     return (
       <div className="doc-editor">
+        {conflictBanner}
         <div className="doc-view checklist-view">
           {(content ?? "").split("\n").map((line, i) => {
             const m = /^(\s*)[-*]\s+\[( |x|X)\]\s?(.*)$/.exec(line);
@@ -769,6 +855,7 @@ function DocEditor({
 
   return (
     <div className="doc-editor">
+      {conflictBanner}
       <div
         className="preview markdown doc-view"
         onClick={(e) => {

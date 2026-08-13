@@ -383,10 +383,19 @@ function validateDraft(draft: BoardConfig): string[] {
     if (!p.trim()) problems.push(`The ${t} id prefix can't be empty.`);
   }
   // Area id prefixes (explicit or derived) must be unique and distinct from
-  // the type prefixes — they share one id space.
-  const seen = new Map<string, string>(
-    Object.entries(draft.idPrefixes).map(([t, p]) => [p, `the ${t} prefix`]),
-  );
+  // the type prefixes — they share one id space. Mirrors core's
+  // assertUniquePrefixes() (packages/core/src/board.ts); the renderer may only
+  // import *types* from core, so this is a deliberate second copy.
+  //
+  // Built with an explicit loop, not `new Map(entries)`: the Map constructor
+  // silently keeps only the last entry per duplicate key, which is exactly the
+  // blind spot that let two type prefixes share a value.
+  const seen = new Map<string, string>();
+  for (const [t, p] of Object.entries(draft.idPrefixes)) {
+    const holder = seen.get(p);
+    if (holder) problems.push(`The ${t} id prefix "${p}" is already used by ${holder}.`);
+    else seen.set(p, `the ${t} prefix`);
+  }
   for (const area of draft.areas) {
     const derived = area.id.toUpperCase().replace(/[^A-Z0-9]/g, "");
     const prefix = area.prefix ?? (derived.length >= 2 ? derived.slice(0, 6) : `${derived}XX`.slice(0, 2));

@@ -9,6 +9,7 @@ import { Settings } from "./components/Settings.js";
 import { Standup } from "./components/Standup.js";
 import { ActivityPanel } from "./components/ActivityPanel.js";
 import { CommandPalette, type PaletteCommand } from "./components/CommandPalette.js";
+import { ConfirmModal } from "./components/ConfirmModal.js";
 import { Welcome } from "./components/Welcome.js";
 
 type View = "ticket" | "standup" | "archived";
@@ -21,6 +22,9 @@ const VIEW_LABELS: Record<View, string> = {
 
 const EMPTY_FILTERS: Filters = {};
 const DOC_NAMES = new Set(["research", "impact", "plan", "checklist", "proof"]);
+
+/** A project the user asked to open: pick one, or a known path. */
+type OpenTarget = { kind: "pick" } | { kind: "path"; path: string };
 
 interface Toast {
   seq: number;
@@ -55,17 +59,23 @@ export function App(): JSX.Element {
   // doesn't re-render the app on every keystroke.
   const editorDirty = useRef(false);
   const [pendingNav, setPendingNav] = useState<{ id: string | null } | null>(null);
+  const [pendingProject, setPendingProject] = useState<OpenTarget | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const toastSeq = useRef(0);
 
   const refresh = useCallback(async () => {
     try {
-      const [b, list] = await Promise.all([
+      // `format` is re-fetched here too: onDiskChange calls refresh()
+      // specifically for version.json, so an external migration (an agent,
+      // another window) clears the "old layout" banner by itself.
+      const [b, list, f] = await Promise.all([
         window.kanmer.getBoard(),
         window.kanmer.listItems({ includeArchived: true }),
+        window.kanmer.getFormat(),
       ]);
       setBoard(b);
       setItems(list);
+      setFormat(f);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -216,22 +226,41 @@ export function App(): JSX.Element {
     });
   }, [trySelect]);
 
-  const pickAndOpen = useCallback(async () => {
-    try {
-      const path = await window.kanmer.pickProject();
-      if (path) await openProject(path);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }, [openProject]);
+  const runOpen = useCallback(
+    async (target: OpenTarget) => {
+      try {
+        const path = target.kind === "pick" ? await window.kanmer.pickProject() : target.path;
+        if (path) await openProject(path);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    },
+    [openProject],
+  );
+
+  /**
+   * Opening another project replaces root/board/items outright, so
+   * trySelect's pendingNav cannot defer it — it only re-targets selectedId.
+   * The confirm runs BEFORE pickProject() opens the native dialog, so the
+   * user is never asked twice.
+   */
+  const requestOpen = useCallback(
+    (target: OpenTarget) => {
+      if (editorDirty.current) setPendingProject(target);
+      else void runOpen(target);
+    },
+    [runOpen],
+  );
+
+  const pickAndOpen = useCallback(() => requestOpen({ kind: "pick" }), [requestOpen]);
 
   // Application-menu commands.
   useEffect(() => {
     return window.kanmer.onMenu((cmd) => {
-      if (cmd.type === "pick-project") void pickAndOpen();
-      else void openProject(cmd.path);
+      if (cmd.type === "pick-project") requestOpen({ kind: "pick" });
+      else requestOpen({ kind: "path", path: cmd.path });
     });
-  }, [pickAndOpen, openProject]);
+  }, [requestOpen]);
 
   const setTheme = useCallback(async (theme: Theme) => {
     setSettings(await window.kanmer.setTheme(theme));
@@ -481,7 +510,15 @@ export function App(): JSX.Element {
           <div className="conflict-actions">
             <button
               className="primary xs"
-              onClick={() => void window.kanmer.migrate(true).then(setMigrateReport)}
+              onClick={() =>
+                void window.kanmer
+                  .migrate(true)
+                  .then(setMigrateReport)
+                  // Without this, a dry run that refuses (colliding id
+                  // prefixes) is an unhandled rejection with no modal and no
+                  // message — the blockers below would never be seen.
+                  .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+              }
             >
               Migrate to v2…
             </button>
@@ -623,26 +660,30 @@ export function App(): JSX.Element {
       </div>
 
       {pendingNav && (
-        <div className="modal-backdrop" onClick={() => setPendingNav(null)}>
-          <div className="modal confirm" role="alertdialog" onClick={(e) => e.stopPropagation()}>
-            <p>Discard changes to {selectedId}?</p>
-            <div className="confirm-actions">
-              <button className="ghost sm" onClick={() => setPendingNav(null)}>
-                Keep editing
-              </button>
-              <button
-                className="danger sm"
-                onClick={() => {
-                  editorDirty.current = false;
-                  setSelectedId(pendingNav.id);
-                  setPendingNav(null);
-                }}
-              >
-                Discard
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmModal
+          message={`Discard changes to ${selectedId}?`}
+          actionLabel="Discard"
+          onCancel={() => setPendingNav(null)}
+          onConfirm={() => {
+            editorDirty.current = false;
+            setSelectedId(pendingNav.id);
+            setPendingNav(null);
+          }}
+        />
+      )}
+
+      {pendingProject && (
+        <ConfirmModal
+          message={`Discard unsaved changes to ${selectedId} and open another project?`}
+          actionLabel="Discard and open"
+          onCancel={() => setPendingProject(null)}
+          onConfirm={() => {
+            editorDirty.current = false;
+            const target = pendingProject;
+            setPendingProject(null);
+            void runOpen(target);
+          }}
+        />
       )}
 
       {migrateReport && (
@@ -656,6 +697,18 @@ export function App(): JSX.Element {
                 <p>This board is already format 2 — nothing to do.</p>
               ) : (
                 <>
+                  {migrateReport.blockers.length > 0 && (
+                    <div className="banner error">
+                      <div>
+                        <strong>Migration is blocked.</strong>
+                        <ul className="migrate-list">
+                          {migrateReport.blockers.map((b, i) => (
+                            <li key={i}>{b}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
                   <p>
                     {migrateReport.ticketMoves.length} ticket(s) move into area folders,{" "}
                     {migrateReport.foldedDocs.length} plan/research document(s) fold into their
@@ -687,7 +740,7 @@ export function App(): JSX.Element {
               {!migrateReport.alreadyV2 && (
                 <button
                   className="primary sm"
-                  disabled={migrating}
+                  disabled={migrating || migrateReport.blockers.length > 0}
                   onClick={async () => {
                     setMigrating(true);
                     try {
@@ -696,7 +749,14 @@ export function App(): JSX.Element {
                       setMigrateReport(null);
                       await refresh();
                     } catch (err) {
-                      setError(err instanceof Error ? err.message : String(err));
+                      // The antidote to the destructive workaround: a failed
+                      // migration is resumable, and deleting the legacy dirs
+                      // is what actually loses tickets.
+                      setError(
+                        "The board may now be partially migrated — do not delete the legacy " +
+                          "`tickets/`, `plans/` or `research/` folders; run Migrate again. " +
+                          (err instanceof Error ? err.message : String(err)),
+                      );
                     } finally {
                       setMigrating(false);
                     }

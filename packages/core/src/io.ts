@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { Stats } from "node:fs";
 
 /** Ensure a directory (and parents) exists. */
 export async function ensureDir(dir: string): Promise<void> {
@@ -13,6 +14,18 @@ export async function pathExists(p: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * `fs.stat` for a path, or null when it doesn't exist (or can't be read).
+ * Lets a caller cheaply ask "has this file changed?" without a try/catch.
+ */
+export async function statOrNull(p: string): Promise<Stats | null> {
+  try {
+    return await fs.stat(p);
+  } catch {
+    return null;
   }
 }
 

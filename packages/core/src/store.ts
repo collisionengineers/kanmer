@@ -5,6 +5,7 @@ import {
   pathExists,
   removeFile,
   readText,
+  statOrNull,
   writeFileAtomic,
   writeFileExclusive,
 } from "./io.js";
@@ -81,7 +82,7 @@ type ItemLocation =
  */
 export class KanmerStore {
   readonly paths: KanmerPaths;
-  private formatCache: 1 | 2 | null = null;
+  private formatCache: { format: 1 | 2; stamp: string } | null = null;
   private actor = "gui";
 
   constructor(projectRoot: string, opts: { actor?: string } = {}) {
@@ -115,16 +116,24 @@ export class KanmerStore {
    * project starts at the current format.
    */
   async detectFormat(): Promise<1 | 2> {
-    if (this.formatCache !== null) return this.formatCache;
-    const version = await readVersion(this.paths);
-    if (version) {
-      this.formatCache = version.format >= 2 ? 2 : 1;
-    } else if (await pathExists(this.paths.tickets)) {
-      this.formatCache = 1;
-    } else {
-      this.formatCache = 2;
+    // version.json is authoritative. Cache it, but re-stat first: a second
+    // process (the GUI) can migrate the board underneath a long-lived MCP
+    // server, and the GUI's resetFormatCache() cannot reach that server's
+    // instance. A stale `1` there re-issues an id that is already live.
+    const st = await statOrNull(this.paths.versionFile);
+    if (st === null) {
+      // Half-migrated / v1 / fresh: never cache. The answer can change under
+      // us, and the derivation is two cheap syscalls anyway.
+      this.formatCache = null;
+      if (await pathExists(this.paths.tickets)) return 1;
+      return 2;
     }
-    return this.formatCache;
+    const stamp = `${st.mtimeMs}:${st.size}`;
+    if (this.formatCache && this.formatCache.stamp === stamp) return this.formatCache.format;
+    const version = await readVersion(this.paths);
+    const format: 1 | 2 = version && version.format >= 2 ? 2 : 1;
+    this.formatCache = { format, stamp };
+    return format;
   }
 
   /** Forget the cached format — call after migrating this project. */
@@ -500,6 +509,15 @@ export class KanmerStore {
           ? await nextPrefixNumber(this.paths, prefix, lastTried)
           : await nextIdNumber(this.paths, type, prefix, lastTried);
       const id = formatId(prefix, n);
+      // Never hand back an id that already resolves somewhere on disk.
+      // Exclusive create only locks one path, so it cannot see the same id
+      // living in the other layout or another area folder — which is how a
+      // stale format cache re-issued a live TICK-001. Also hardens the
+      // pre-existing TICK-fallback race (AGENTS.md §11).
+      if (await this.locateItem(id)) {
+        lastTried = n;
+        continue;
+      }
       const now = nowIso();
       const item: Item = {
         id,

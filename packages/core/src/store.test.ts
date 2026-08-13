@@ -845,4 +845,31 @@ describe("format v1 compatibility", () => {
     const again = await migrateToV2(v1store);
     expect(again.alreadyV2).toBe(true);
   });
+
+  it("a second store instance sees the new format after another instance migrates", async () => {
+    // Two processes, one board: the GUI migrates while a long-lived MCP
+    // server holds its own store. resetFormatCache() cannot reach across.
+    const a = new KanmerStore(v1root);
+    const b = new KanmerStore(v1root);
+    expect(await a.detectFormat()).toBe(1); // a caches 1
+    await migrateToV2(b);
+    expect(await a.detectFormat()).toBe(2);
+  });
+
+  it("does not re-issue an id that already exists in the other layout", async () => {
+    await migrateToV2(v1store);
+    const before = (await v1store.listItems({ includeArchived: true })).map((i) => i.id);
+    expect(before).toContain("TICK-001");
+    // Force the v1 allocation path by hand, as a stale format cache would.
+    await fs.mkdir(path.join(v1root, ".kanmer", "tickets"), { recursive: true });
+    await fs.writeFile(
+      path.join(v1root, ".kanmer", "version.json"),
+      JSON.stringify({ format: 1 }),
+      "utf8",
+    );
+    const fresh = new KanmerStore(v1root);
+    expect(await fresh.detectFormat()).toBe(1);
+    const created = await fresh.createItem({ type: "ticket", title: "New" });
+    expect(before).not.toContain(created.id);
+  });
 });

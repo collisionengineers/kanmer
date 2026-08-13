@@ -233,6 +233,28 @@ try {
   });
   check("take_ticket release clears the taken fields", !JSON.parse(textOf(released)).taken_at);
 
+  // A status reorder that would make a stage final is gated the same way a
+  // move is: TICK-001 sits in "review" with no proof.md.
+  const gatedReorder = await client.callTool({
+    name: "reorder_columns",
+    arguments: {
+      kind: "status",
+      order: ["todo", "planning", "implementing", "verifying", "done", "review"],
+    },
+  });
+  check(
+    "reorder_columns status is proof-gated",
+    gatedReorder.isError === true && textOf(gatedReorder).includes("proof.md"),
+    textOf(gatedReorder).slice(0, 80),
+  );
+  const boardStillDone = JSON.parse(
+    textOf(await client.callTool({ name: "list_board", arguments: {} })),
+  );
+  check(
+    "the refused status reorder left the board untouched",
+    boardStillDone.statuses[boardStillDone.statuses.length - 1].id === "done",
+  );
+
   // Bulk create with partial failure.
   const bulk = JSON.parse(
     textOf(

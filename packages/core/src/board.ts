@@ -36,6 +36,16 @@ export function defaultBoardConfig(): BoardConfig {
 }
 
 /**
+ * The board's final stage — the proof-gated one. Undefined only on a board
+ * with no stages. "Last stage" is re-derived in several places (the proof
+ * gate, the overdue filter, the create gate); this is the single definition
+ * they share.
+ */
+export function lastStageId(board: BoardConfig): string | undefined {
+  return board.statuses[board.statuses.length - 1]?.id;
+}
+
+/**
  * The id prefix tickets born in this area get: the explicit `prefix`, or one
  * derived from the area id (uppercased, non-alphanumerics dropped, max 6).
  */
@@ -46,16 +56,24 @@ export function areaPrefix(area: BoardColumn): string {
 }
 
 /**
- * Every area prefix (explicit or derived) must be unique, and must not
- * collide with the type prefixes (`TICK` etc.) that no-area tickets and
- * legacy items use — two prefixes sharing an id space would collide on
- * allocation.
+ * Every id prefix on the board must be unique — *within* `idPrefixes` (the
+ * type prefixes `TICK`/`PLAN`/`RES` that no-area tickets and legacy items
+ * use) as well as across the area prefixes (explicit or derived). Ids are
+ * allocated per prefix, so two owners sharing one would collide on the same
+ * id — and, during migration, on the same file path.
  */
 function assertUniquePrefixes(board: BoardConfig): void {
   const seen = new Map<string, string>();
-  for (const [owner, prefix] of Object.entries(board.idPrefixes).map(
-    ([type, p]) => [`idPrefixes.${type}`, p] as const,
-  )) {
+  for (const [type, prefix] of Object.entries(board.idPrefixes)) {
+    const owner = `idPrefixes.${type}`;
+    const holder = seen.get(prefix);
+    if (holder) {
+      throw new Error(
+        `${owner} would use id prefix "${prefix}", which ${holder} already uses. ` +
+          `Every prefix must be unique — ids are allocated per prefix, so two owners ` +
+          `sharing one would collide on the same id path.`,
+      );
+    }
     seen.set(prefix, owner);
   }
   for (const area of board.areas) {

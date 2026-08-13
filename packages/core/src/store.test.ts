@@ -461,6 +461,65 @@ describe("format v2", () => {
     const done = await store.moveItem(t.id, { status: "done" });
     expect(done.status).toBe("done");
   });
+
+  it("refuses a status reorder that would strand a proofless ticket in the final stage", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A", status: "review" });
+    await expect(
+      store.reorderColumns("status", [
+        "todo",
+        "planning",
+        "implementing",
+        "verifying",
+        "done",
+        "review",
+      ]),
+    ).rejects.toThrow(/no proof\.md/);
+    expect(t.status).toBe("review");
+    // The board was NOT written.
+    expect((await store.getBoard()).statuses.at(-1)?.id).toBe("done");
+  });
+
+  it("allows a status reorder once every occupant of the new final stage has proof.md", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A", status: "review" });
+    await store.setDoc(t.id, "proof", "evidence");
+    await store.reorderColumns("status", [
+      "todo",
+      "planning",
+      "implementing",
+      "verifying",
+      "done",
+      "review",
+    ]);
+    expect((await store.getBoard()).statuses.at(-1)?.id).toBe("review");
+  });
+
+  it("refuses the same thing through a whole-board setBoard, as the Settings editor does", async () => {
+    await store.createItem({ type: "ticket", title: "A", status: "review" });
+    const board = await store.getBoard();
+    const review = board.statuses.find((s) => s.id === "review")!;
+    board.statuses = [...board.statuses.filter((s) => s.id !== "review"), review];
+    await expect(store.setBoard(board)).rejects.toThrow(/no proof\.md/);
+    expect((await store.getBoard()).statuses.at(-1)?.id).toBe("done");
+  });
+
+  it("reordering non-status columns never touches the proof gate", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A", status: "review" });
+    // Put a proofless ticket in the current final stage by hand — reordering
+    // priorities must not care.
+    await fs.writeFile(
+      path.join(root, ".kanmer", "areas", "_none", t.id, `${t.id}.md`),
+      (
+        await fs.readFile(
+          path.join(root, ".kanmer", "areas", "_none", t.id, `${t.id}.md`),
+          "utf8",
+        )
+      ).replace("status: review", "status: done"),
+      "utf8",
+    );
+    await expect(
+      store.reorderColumns("priority", ["urgent", "high", "medium", "low"]),
+    ).resolves.toBeDefined();
+  });
 });
 
 describe("activity log", () => {

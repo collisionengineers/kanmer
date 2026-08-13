@@ -30,6 +30,7 @@ import {
 import {
   areaPrefix,
   defaultBoardConfig,
+  lastStageId,
   readBoard,
   readBoardWithSource,
   writeBoard,
@@ -169,7 +170,20 @@ export class KanmerStore {
     return readBoardWithSource(this.paths);
   }
 
+  /**
+   * Write the whole board. Every board mutation funnels through here — the
+   * MCP column verbs, the GUI Settings save and migration's prefix pinning —
+   * so this is where the "the last stage is proof-gated" invariant is
+   * defended: a write that makes a *different* stage final must not strand
+   * proofless tickets in it.
+   */
   async setBoard(board: BoardConfig): Promise<void> {
+    const previous = await this.getBoard(); // re-reads disk = the true prior state
+    const prevLast = lastStageId(previous);
+    const nextLast = lastStageId(board);
+    if (nextLast !== undefined && nextLast !== prevLast) {
+      await this.assertFinalStageProven(nextLast);
+    }
     await writeBoard(this.paths, board);
   }
 
@@ -388,7 +402,7 @@ export class KanmerStore {
     let filtered = items.filter((item) => matchesFilter(item, filter));
     if (filter.overdue) {
       const board = await this.getBoard();
-      const lastStage = board.statuses[board.statuses.length - 1]?.id;
+      const lastStage = lastStageId(board);
       const today = new Date().toISOString().slice(0, 10);
       filtered = filtered.filter(
         (i) => i.due !== undefined && i.due < today && i.status !== lastStage,
@@ -832,14 +846,36 @@ export class KanmerStore {
     id: string,
     nextStatus: string,
   ): Promise<void> {
-    const lastStage = board.statuses[board.statuses.length - 1]?.id;
-    if (nextStatus !== lastStage) return;
+    if (nextStatus !== lastStageId(board)) return;
     if (!(await pathExists(docFileIn(ticketDir, "proof")))) {
       throw new Error(
         `${id} cannot move to "${nextStatus}": proof.md is missing. ` +
           `Write the evidence first with set_ticket_doc(doc: "proof").`,
       );
     }
+  }
+
+  /**
+   * Refuse a board write that would make a stage final while proofless
+   * tickets sit in it. Rejecting (rather than grandfathering) matches
+   * removeColumn's in-use refusal and keeps "the LAST stage is proof-gated"
+   * literally true. Archived tickets are off the board and are not gated.
+   */
+  private async assertFinalStageProven(stageId: string): Promise<void> {
+    const occupants = await this.listItems({ status: stageId }); // non-archived only
+    const offenders: string[] = [];
+    for (const item of occupants) {
+      if (item.type !== "ticket") continue;
+      const loc = await this.locateItem(item.id);
+      if (!loc || loc.kind !== "v2") continue; // legacy layout has no doc folder to gate on
+      if (!(await pathExists(docFileIn(loc.dir, "proof")))) offenders.push(item.id);
+    }
+    if (offenders.length === 0) return;
+    throw new Error(
+      `Cannot make "${stageId}" the final stage: ${offenders.length} ticket(s) there have no ` +
+        `proof.md (${offenders.slice(0, 5).join(", ")}${offenders.length > 5 ? ", …" : ""}). ` +
+        `Write the evidence with set_ticket_doc(doc: "proof"), or move them out of that stage first.`,
+    );
   }
 }
 

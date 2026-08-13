@@ -820,6 +820,8 @@ describe("format v1 compatibility", () => {
     const planDoc = await v1store.getDoc("TICK-001", "plan");
     expect(planDoc).toContain("# Legacy plan");
     expect(planDoc).toContain("Plan body for [[TICK-001]].");
+    // PLAN-001 is now a document, not an item — nothing may still link to it.
+    expect((await v1store.getItem("TICK-001"))?.links).not.toContain("PLAN-001");
 
     const orphan = await v1store.getItem("RES-001");
     expect(orphan?.type).toBe("ticket");

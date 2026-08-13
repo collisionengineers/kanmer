@@ -70,6 +70,53 @@ describe("migration: colliding destinations", () => {
   });
 });
 
+describe("migration: folded ids in structured relations", () => {
+  it("strips folded ids from blocks[] too", async () => {
+    await writeBoardYml([
+      "statuses:",
+      "  - { id: todo, name: Todo }",
+      "  - { id: done, name: Done }",
+      "areas: []",
+      "priorities:",
+      "  - { id: medium, name: Medium }",
+      "idPrefixes: { ticket: TICK, plan: PLAN, research: RES }",
+      "",
+    ]);
+    await fs.mkdir(path.join(k, "tickets"), { recursive: true });
+    await fs.mkdir(path.join(k, "plans"), { recursive: true });
+    await fs.writeFile(
+      path.join(k, "tickets", "TICK-001.md"),
+      itemFile(
+        [
+          "id: TICK-001",
+          "type: ticket",
+          "title: Ticket",
+          "status: todo",
+          "links: [PLAN-001]",
+          "blocks: [PLAN-001]",
+        ],
+        "Mentions [[PLAN-001]] in prose.",
+      ),
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(k, "plans", "PLAN-001.md"),
+      itemFile(["id: PLAN-001", "type: plan", "title: The plan", "status: todo"], "Plan body."),
+      "utf8",
+    );
+    const store = new KanmerStore(root);
+
+    const report = await migrateToV2(store);
+
+    const ticket = await store.getItem("TICK-001");
+    expect(ticket?.links).not.toContain("PLAN-001");
+    expect(ticket?.blocks ?? []).toEqual([]);
+    // Bodies are prose: the mention stays, and is reported.
+    expect(ticket?.body).toContain("[[PLAN-001]]");
+    expect(report.notes.some((n) => n.includes("left as prose"))).toBe(true);
+  });
+});
+
 describe("migration: resumability", () => {
   /** A board caught mid-migration: TICK-001 already moved, TICK-002 not yet. */
   async function halfMigrated(): Promise<KanmerStore> {

@@ -7,7 +7,7 @@ import { parseWikiLinks } from "./links.js";
 import { areaPrefix } from "./board.js";
 import { writeVersion } from "./version.js";
 import type { KanmerStore } from "./store.js";
-import type { Item } from "./types.js";
+import type { Item, UpdateItemPatch } from "./types.js";
 
 /** What a v1 → v2 migration did (or would do, for a dry run). */
 export interface MigrationReport {
@@ -298,6 +298,41 @@ export async function migrateToV2(
     await fs.mkdir(path.dirname(destFile), { recursive: true });
     await writeFileAtomic(destFile, serialiseItem(converted));
     await fs.rm(legacyFile(c), { force: true });
+  }
+
+  // ---- Folded ids no longer name anything: sweep them out of links/blocks.
+  // Runs after the move/fold/conversion loops so store.updateItem resolves
+  // every item at its final v2 path. Conversions survive as tickets, so only
+  // `folds` produce an id that has genuinely vanished.
+  const foldedIds = new Set(folds.map((f) => f.doc.id));
+  if (foldedIds.size > 0) {
+    const cleaned: string[] = [];
+    const bodyRefs: string[] = [];
+    // Mirrors deleteItem's cleanup (store.ts) deliberately, rather than
+    // sharing code: extracting a helper would mean refactoring the store's
+    // most-exercised destructive path. Filed as a deferred tidy-up.
+    for (const item of await store.listItems({ includeArchived: true })) {
+      const links = (item.links ?? []).filter((l) => !foldedIds.has(l));
+      const blocks = (item.blocks ?? []).filter((b) => !foldedIds.has(b));
+      const patch: UpdateItemPatch = {};
+      if (links.length !== (item.links ?? []).length) patch.links = links;
+      if (blocks.length !== (item.blocks ?? []).length) patch.blocks = blocks;
+      if (Object.keys(patch).length > 0) {
+        await store.updateItem(item.id, patch);
+        cleaned.push(item.id);
+      }
+      // Body [[wiki]] mentions are prose — follow deleteItem's precedent and
+      // report them rather than rewriting a human's sentences.
+      if (parseWikiLinks(item.body).some((id) => foldedIds.has(id))) bodyRefs.push(item.id);
+    }
+    if (cleaned.length) {
+      report.notes.push(`Removed folded ids from links/blocks on: ${cleaned.join(", ")}.`);
+    }
+    if (bodyRefs.length) {
+      report.notes.push(
+        `[[wiki]] mentions of folded documents were left as prose in: ${bodyRefs.join(", ")}.`,
+      );
+    }
   }
 
   if (resumed) {

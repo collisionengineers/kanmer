@@ -15,8 +15,13 @@ sandbox/
 apps/gui/out/
 apps/gui/dist/
 apps/gui/release/
+<<<<<<< Updated upstream
 # any alternate electron-builder output dir (--config.directories.output)
 apps/gui/release-*/
+=======
+apps/gui/release-build/
+apps/gui/release-check/
+>>>>>>> Stashed changes
 sandbox-harness/
 # per-ticket git worktrees (see kanmer-execute / kanmer-closeout skills)
 .worktrees/

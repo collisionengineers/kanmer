@@ -61,9 +61,16 @@ function write<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeo
 }
 
 /**
- * Who is calling: the per-request `_meta` client identity (2026-07-28 spec)
- * when present, else the clientInfo negotiated at initialize, else "agent".
- * Used to default take_ticket's assignee (and, later, activity attribution).
+ * Who is calling: the per-request `_meta` client identity, else the
+ * clientInfo negotiated at initialize, else "agent". Used to default
+ * take_ticket's assignee and to attribute activity-log entries.
+ *
+ * The `io.modelcontextprotocol/client` key is the 2026-07-28 spec's client-
+ * identity carrier. SDK 1.30 negotiates at most protocol 2025-11-25 and no
+ * 2025-11-25 host sends that key, so in practice today the actor comes from
+ * getClientVersion(). The branch is kept deliberately — it is the forward
+ * path, and the SDK does deliver params._meta to handlers on every protocol
+ * — and it is exercised for real by smoke-protocol.mjs.
  */
 function actorName(extra?: unknown): string {
   const meta = (extra as { _meta?: Record<string, unknown> } | undefined)?._meta;
@@ -839,8 +846,11 @@ async function main() {
   // opted into Kanmer must not create .kanmer/ just by being opened.
   // Write handlers call ensureInit() lazily instead.
   //
-  // 2026-07-28 note: cacheable list results (ttlMs/cacheScope on tools/list)
-  // aren't exposed by SDK 1.30 yet — adopt when the SDK grows support.
+  // 2026-07-28 note: the whole revision — not just cacheable list results
+  // (ttlMs/cacheScope on tools/list) — is unavailable in SDK 1.30. Its
+  // SUPPORTED_PROTOCOL_VERSIONS tops out at 2025-11-25 and contains no
+  // 2026-07-28 entry, so nothing in this repo can negotiate it. Adopt when
+  // the SDK grows support; smoke-protocol.mjs covers what is reachable today.
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // Never write logs to stdout — that stream is the MCP transport.

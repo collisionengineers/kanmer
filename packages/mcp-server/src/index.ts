@@ -399,7 +399,7 @@ server.registerTool(
   {
     title: "Create an item",
     description:
-      "Create a ticket. Returns the created item including its allocated id — tickets born in an area get that area's prefix (e.g. API-007); area-less tickets get the fallback prefix. status defaults to the first workflow stage; status/area/priority are validated against the board and links[] targets must exist. On format-2 boards plans and research are documents inside a ticket's folder (set_ticket_doc), not standalone items.",
+      "Create a ticket. Returns the created item including its allocated id — tickets born in an area get that area's prefix (e.g. API-007); area-less tickets get the fallback prefix. status defaults to the first workflow stage; status/area/priority are validated against the board and links[] targets must exist. A ticket cannot be created directly in the board's final stage — that stage requires proof.md; create it earlier and move it. On format-2 boards plans and research are documents inside a ticket's folder (set_ticket_doc), not standalone items.",
     inputSchema: createFields,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
@@ -411,7 +411,7 @@ server.registerTool(
   {
     title: "Create several items",
     description:
-      "Bulk create up to 50 items in one call (sequential, so ids stay ordered). Each entry takes the same fields as create_item. Partial success is possible: the result carries one { ok, item | error } per entry, in order.",
+      "Bulk create up to 50 items in one call (sequential, so ids stay ordered). Each entry takes the same fields as create_item, including the rule that a ticket cannot be created directly in the board's final stage — that stage requires proof.md; create it earlier and move it. Partial success is possible: the result carries one { ok, item | error } per entry, in order.",
     inputSchema: {
       items: z.array(z.object(createFields)).min(1).max(50).describe("Entries to create, in order"),
     },

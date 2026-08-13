@@ -268,7 +268,16 @@ describe("KanmerStore", () => {
 
   it("filters by status and label", async () => {
     await store.createItem({ type: "ticket", title: "A", status: "todo", labels: ["x"] });
-    await store.createItem({ type: "ticket", title: "B", status: "done", labels: ["y"] });
+    // A ticket cannot be created straight into the final stage — take the
+    // real path: create earlier, write proof, then move.
+    const b = await store.createItem({
+      type: "ticket",
+      title: "B",
+      status: "verifying",
+      labels: ["y"],
+    });
+    await store.setDoc(b.id, "proof", "Evidence.");
+    await store.moveItem(b.id, { status: "done" });
     expect((await store.listItems({ status: "done" })).length).toBe(1);
     expect((await store.listItems({ label: "x" })).length).toBe(1);
   });
@@ -460,6 +469,27 @@ describe("format v2", () => {
     await store.setDoc(t.id, "proof", "Tests: 35/35 green.");
     const done = await store.moveItem(t.id, { status: "done" });
     expect(done.status).toBe("done");
+  });
+
+  it("refuses to create a ticket directly in the final stage", async () => {
+    await expect(
+      store.createItem({ type: "ticket", title: "Born done", status: "done" }),
+    ).rejects.toThrow(/final stage.*set_ticket_doc/s);
+    expect((await store.listItems({ includeArchived: true })).length).toBe(0);
+  });
+
+  it("still allows creating into any non-final stage, and the default stage", async () => {
+    const defaulted = await store.createItem({ type: "ticket", title: "A" });
+    expect(defaulted.status).toBe("todo");
+    const explicit = await store.createItem({ type: "ticket", title: "B", status: "verifying" });
+    expect(explicit.status).toBe("verifying");
+  });
+
+  it("does not gate creation on a single-stage board", async () => {
+    const board = await store.getBoard();
+    await store.setBoard({ ...board, statuses: [{ id: "only", name: "Only" }] });
+    const t = await store.createItem({ type: "ticket", title: "A", status: "only" });
+    expect(t.status).toBe("only");
   });
 
   it("refuses a status reorder that would strand a proofless ticket in the final stage", async () => {

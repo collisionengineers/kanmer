@@ -461,6 +461,26 @@ export class KanmerStore {
       );
     }
 
+    // A ticket cannot be born in the final stage: proof.md is required there
+    // and the ticket's folder does not exist yet, so there is nothing that
+    // could satisfy it. Each guard is load-bearing — v1 boards have no doc
+    // folders, a default create lands in statuses[0], and on a one-stage
+    // board first === last so every create would otherwise fail.
+    const last = lastStageId(board);
+    if (
+      format === 2 &&
+      type === "ticket" &&
+      input.status !== undefined &&
+      board.statuses.length > 1 &&
+      input.status === last
+    ) {
+      throw new Error(
+        `Cannot create "${input.title}" directly in "${input.status}": that is the board's final ` +
+          `stage, which requires proof.md. Create it in an earlier stage, write the evidence with ` +
+          `set_ticket_doc(doc: "proof"), then move it.`,
+      );
+    }
+
     const area = input.area ?? "";
     const areaEntry = board.areas.find((a) => a.id === area);
     const prefix =

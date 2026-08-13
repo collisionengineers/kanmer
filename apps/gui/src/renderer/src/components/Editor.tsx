@@ -659,7 +659,7 @@ function DocEditor({
   // Load — and re-sync on external changes while the user isn't editing.
   useEffect(() => {
     if (dirty) return;
-    void window.kanmer.getDoc(id, doc).then((c) => {
+    void window.kanmer.getDoc(id, doc).then(({ content: c }) => {
       setContent(c);
       setText(c ?? "");
     });

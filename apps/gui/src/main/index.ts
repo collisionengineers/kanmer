@@ -24,6 +24,8 @@ import {
   type ColumnKind,
   type CreateItemInput,
   type ItemFilter,
+  type MovePosition,
+  type TakeTicketInput,
   type TicketDoc,
   type UpdateItemPatch,
   type WatchHandle,
@@ -410,6 +412,9 @@ function registerIpc(): void {
     return requireStore().getBoard();
   });
   ipcMain.handle(CH.listItems, (_e, filter?: ItemFilter) => requireStore().listItems(filter));
+  ipcMain.handle(CH.listItemsWithWarnings, (_e, filter?: ItemFilter) =>
+    requireStore().listItemsWithWarnings(filter),
+  );
   ipcMain.handle(CH.getItem, (_e, id: string) => requireStore().getItem(id));
   ipcMain.handle(CH.createItem, async (_e, input: CreateItemInput) => {
     const item = await requireStore().createItem(input);
@@ -420,13 +425,23 @@ function registerIpc(): void {
     markOwnWrite(id);
     return requireStore().updateItem(id, patch);
   });
-  ipcMain.handle(CH.moveItem, (_e, id: string, to: { status: string }) => {
-    markOwnWrite(id);
-    return requireStore().moveItem(id, to);
-  });
+  ipcMain.handle(
+    CH.moveItem,
+    (_e, id: string, to: { status: string; position?: MovePosition }) => {
+      markOwnWrite(id);
+      // `position` goes straight through: core's assertMoveAllowed runs every
+      // rejection (conflict, unknown stage, proof gate) before computeOrder
+      // materialises any sibling's order, so a refused drop writes nothing.
+      return requireStore().moveItem(id, to);
+    },
+  );
   ipcMain.handle(CH.deleteItem, (_e, id: string) => {
     markOwnWrite(id);
     return requireStore().deleteItem(id);
+  });
+  ipcMain.handle(CH.takeTicket, (_e, id: string, input: TakeTicketInput) => {
+    markOwnWrite(id);
+    return requireStore().takeTicket(id, input);
   });
   ipcMain.handle(CH.releaseTicket, (_e, id: string) => {
     markOwnWrite(id);
@@ -453,11 +468,23 @@ function registerIpc(): void {
   ipcMain.handle(CH.migrate, (_e, dryRun: boolean) =>
     migrateToV2(requireStore(), { dryRun }),
   );
-  ipcMain.handle(CH.getDoc, (_e, id: string, doc: TicketDoc) => requireStore().getDoc(id, doc));
-  ipcMain.handle(CH.setDoc, (_e, id: string, doc: TicketDoc, content: string, append?: boolean) => {
-    markOwnWrite(id);
-    return requireStore().setDoc(id, doc, content, { append });
-  });
+  ipcMain.handle(CH.getFormat, () => requireStore().detectFormat());
+  ipcMain.handle(CH.getDoc, (_e, id: string, doc: TicketDoc) =>
+    requireStore().getDocWithVersion(id, doc),
+  );
+  ipcMain.handle(
+    CH.setDoc,
+    (
+      _e,
+      id: string,
+      doc: TicketDoc,
+      content: string,
+      opts?: { append?: boolean; expectedVersion?: string | null },
+    ) => {
+      markOwnWrite(id);
+      return requireStore().setDoc(id, doc, content, opts);
+    },
+  );
   ipcMain.handle(CH.getDocsInfo, (_e, id: string) => requireStore().getTicketDocsInfo(id));
   ipcMain.handle(CH.getActivity, (_e, opts?: { id?: string; since?: string; limit?: number }) =>
     requireStore().getActivity(opts),

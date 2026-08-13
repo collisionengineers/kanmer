@@ -7,8 +7,11 @@ import type {
   DeleteItemResult,
   Item,
   ItemFilter,
+  ItemWarning,
   LinkGraph,
   MigrationReport,
+  MovePosition,
+  TakeTicketInput,
   TicketDoc,
   TicketDocsInfo,
   UpdateItemPatch,
@@ -22,11 +25,13 @@ export const CH = {
   getBoard: "kanmer:getBoard",
   setBoard: "kanmer:setBoard",
   listItems: "kanmer:listItems",
+  listItemsWithWarnings: "kanmer:listItemsWithWarnings",
   getItem: "kanmer:getItem",
   createItem: "kanmer:createItem",
   updateItem: "kanmer:updateItem",
   moveItem: "kanmer:moveItem",
   deleteItem: "kanmer:deleteItem",
+  takeTicket: "kanmer:takeTicket",
   releaseTicket: "kanmer:releaseTicket",
   addColumn: "kanmer:addColumn",
   linkItems: "kanmer:linkItems",
@@ -37,6 +42,7 @@ export const CH = {
   connectAgent: "kanmer:connectAgent",
   showItemMenu: "kanmer:showItemMenu",
   migrate: "kanmer:migrate",
+  getFormat: "kanmer:getFormat",
   getDoc: "kanmer:getDoc",
   setDoc: "kanmer:setDoc",
   getDocsInfo: "kanmer:getDocsInfo",
@@ -115,11 +121,22 @@ export interface KanmerApi {
   getBoard(): Promise<BoardConfig>;
   setBoard(board: BoardConfig): Promise<BoardConfig>;
   listItems(filter?: ItemFilter): Promise<Item[]>;
+  /** Like listItems, but also surfaces unparseable/mislocated files. */
+  listItemsWithWarnings(
+    filter?: ItemFilter,
+  ): Promise<{ items: Item[]; warnings: ItemWarning[] }>;
   getItem(id: string): Promise<Item | null>;
   createItem(input: CreateItemInput): Promise<Item>;
   updateItem(id: string, patch: UpdateItemPatch): Promise<Item>;
-  moveItem(id: string, to: { status: string }): Promise<Item>;
+  /**
+   * Move an item to a stage, optionally to a position within that column.
+   * `position` is column-scoped (`order` is a column-wide key), and optional
+   * at every layer: omitting it is the plain stage change.
+   */
+  moveItem(id: string, to: { status: string; position?: MovePosition }): Promise<Item>;
   deleteItem(id: string): Promise<DeleteItemResult>;
+  /** Take a ticket: record branch/worktree and move it into the working stage. */
+  takeTicket(id: string, input: TakeTicketInput): Promise<Item>;
   /** Clear an agent's taken_at/branch/worktree (e.g. a stuck ticket). */
   releaseTicket(id: string): Promise<Item>;
   addColumn(kind: ColumnKind, column: BoardColumn): Promise<BoardConfig>;
@@ -134,10 +151,27 @@ export interface KanmerApi {
   showItemMenu(payload: ItemMenuPayload): Promise<ItemMenuAction | null>;
   /** Migrate the open v1 project to format 2 (dryRun for the report only). */
   migrate(dryRun: boolean): Promise<MigrationReport>;
-  /** Read a ticket pipeline document (null when not written yet). */
-  getDoc(id: string, doc: TicketDoc): Promise<string | null>;
-  /** Write (or append to) a ticket pipeline document. */
-  setDoc(id: string, doc: TicketDoc, content: string, append?: boolean): Promise<void>;
+  /** The store's current on-disk format — re-read after an external migration. */
+  getFormat(): Promise<1 | 2>;
+  /**
+   * Read a ticket pipeline document with its version token (both null when
+   * not written yet, or for a legacy item). Pass `version` back as
+   * `expectedVersion` on setDoc to be rejected instead of overwriting a
+   * concurrent edit.
+   */
+  getDoc(id: string, doc: TicketDoc): Promise<{ content: string | null; version: string | null }>;
+  /**
+   * Write (or append to) a ticket pipeline document, resolving with the
+   * version token of exactly what was written. `expectedVersion: undefined`
+   * is last-write-wins; a string expects those exact bytes; `null` expects
+   * the document not to exist yet.
+   */
+  setDoc(
+    id: string,
+    doc: TicketDoc,
+    content: string,
+    opts?: { append?: boolean; expectedVersion?: string | null },
+  ): Promise<{ version: string }>;
   /** Which pipeline docs exist + checklist progress; null for legacy items. */
   getDocsInfo(id: string): Promise<TicketDocsInfo | null>;
   /** Read the activity log. */

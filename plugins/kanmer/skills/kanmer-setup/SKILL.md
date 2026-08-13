@@ -92,7 +92,19 @@ This repo's work is tracked on a Kanmer board in `.kanmer/`.
 <!-- kanmer:instructions:end -->
 ```
 
-Rules:
+**Don't hand-edit — run the script that owns this block:**
+
+```
+node <plugin-root>/../../scripts/agents-block.mjs <repo> ["# <project> contributor guide"]
+```
+
+It implements all four rules below, is idempotent, and refuses to guess at a
+file whose markers are malformed. `scripts/verify-agents-block.mjs` in the
+Kanmer repo is its end-to-end test. The block text above is the literal body
+the script writes — keep the two in step if you change either.
+
+Hand-edit **only** if the script isn't available (a plugin install without the
+repo checked out), in which case the rules are:
 
 - The block is the **very first thing in the file** — above any existing
   content, so it's read before anything else.
@@ -101,6 +113,10 @@ Rules:
 - `AGENTS.md` present → insert the block at the top; **never modify anything
   outside the markers**.
 - Block already present → refresh only the content **between the markers**
-  (idempotent — running setup twice changes nothing the second time).
+  (idempotent — running setup twice changes nothing the second time). Leave the
+  block where it already sits; moving it would rewrite bytes outside the
+  markers.
 - If a `CLAUDE.md` exists and doesn't reference `AGENTS.md`, add a one-line
   pointer to it.
+- If the markers are malformed (end before start, or only one present), stop
+  and tell the user — never guess at a half-marked file.

@@ -37527,6 +37527,7 @@ var import_node_path2 = __toESM(require("path"), 1);
 var import_path = __toESM(require("path"), 1);
 var import_promises = __toESM(require("fs/promises"), 1);
 var import_path2 = __toESM(require("path"), 1);
+var import_crypto = require("crypto");
 var import_gray_matter = __toESM(require_gray_matter(), 1);
 var import_promises2 = __toESM(require("fs/promises"), 1);
 var import_path3 = __toESM(require("path"), 1);
@@ -37663,6 +37664,9 @@ function ticketFileIn(paths, areaId, id) {
 function docFileIn(ticketDir, doc) {
   return import_path.default.join(ticketDir, `${doc}.md`);
 }
+function contentVersion(text) {
+  return (0, import_crypto.createHash)("sha256").update(text, "utf8").digest("hex").slice(0, 16);
+}
 async function ensureDir(dir) {
   await import_promises.default.mkdir(dir, { recursive: true });
 }
@@ -37672,6 +37676,13 @@ async function pathExists(p) {
     return true;
   } catch {
     return false;
+  }
+}
+async function statOrNull(p) {
+  try {
+    return await import_promises.default.stat(p);
+  } catch {
+    return null;
   }
 }
 async function writeFileAtomic(file, contents) {
@@ -37861,6 +37872,9 @@ function defaultBoardConfig() {
     idPrefixes: { ticket: "TICK", plan: "PLAN", research: "RES" }
   };
 }
+function lastStageId(board) {
+  return board.statuses[board.statuses.length - 1]?.id;
+}
 function areaPrefix(area) {
   if (area.prefix) return area.prefix;
   const cleaned = area.id.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -37868,9 +37882,14 @@ function areaPrefix(area) {
 }
 function assertUniquePrefixes(board) {
   const seen = /* @__PURE__ */ new Map();
-  for (const [owner, prefix] of Object.entries(board.idPrefixes).map(
-    ([type, p]) => [`idPrefixes.${type}`, p]
-  )) {
+  for (const [type, prefix] of Object.entries(board.idPrefixes)) {
+    const owner = `idPrefixes.${type}`;
+    const holder = seen.get(prefix);
+    if (holder) {
+      throw new Error(
+        `${owner} would use id prefix "${prefix}", which ${holder} already uses. Every prefix must be unique \u2014 ids are allocated per prefix, so two owners sharing one would collide on the same id path.`
+      );
+    }
     seen.set(prefix, owner);
   }
   for (const area of board.areas) {
@@ -37995,13 +38014,13 @@ function buildLinkIndex(items) {
   }
   return index;
 }
-function computeBlockedIds(items, lastStageId) {
+function computeBlockedIds(items, lastStageId2) {
   const byId = new Map(items.map((i) => [i.id, i]));
   const blocked = /* @__PURE__ */ new Set();
   for (const item of items) {
     if (item.archived) continue;
     for (const target of item.blocks ?? []) {
-      if (item.status !== lastStageId) blocked.add(target);
+      if (item.status !== lastStageId2) blocked.add(target);
     }
   }
   for (const id of [...blocked]) if (!byId.has(id)) blocked.delete(id);
@@ -38058,16 +38077,18 @@ var KanmerStore = class {
    * project starts at the current format.
    */
   async detectFormat() {
-    if (this.formatCache !== null) return this.formatCache;
-    const version2 = await readVersion(this.paths);
-    if (version2) {
-      this.formatCache = version2.format >= 2 ? 2 : 1;
-    } else if (await pathExists(this.paths.tickets)) {
-      this.formatCache = 1;
-    } else {
-      this.formatCache = 2;
+    const st = await statOrNull(this.paths.versionFile);
+    if (st === null) {
+      this.formatCache = null;
+      if (await pathExists(this.paths.tickets)) return 1;
+      return 2;
     }
-    return this.formatCache;
+    const stamp = `${st.mtimeMs}:${st.size}`;
+    if (this.formatCache && this.formatCache.stamp === stamp) return this.formatCache.format;
+    const version2 = await readVersion(this.paths);
+    const format = version2 && version2.format >= 2 ? 2 : 1;
+    this.formatCache = { format, stamp };
+    return format;
   }
   /** Forget the cached format — call after migrating this project. */
   resetFormatCache() {
@@ -38107,7 +38128,20 @@ var KanmerStore = class {
   async getBoardWithSource() {
     return readBoardWithSource(this.paths);
   }
+  /**
+   * Write the whole board. Every board mutation funnels through here — the
+   * MCP column verbs, the GUI Settings save and migration's prefix pinning —
+   * so this is where the "the last stage is proof-gated" invariant is
+   * defended: a write that makes a *different* stage final must not strand
+   * proofless tickets in it.
+   */
   async setBoard(board) {
+    const previous = await this.getBoard();
+    const prevLast = lastStageId(previous);
+    const nextLast = lastStageId(board);
+    if (nextLast !== void 0 && nextLast !== prevLast) {
+      await this.assertFinalStageProven(nextLast);
+    }
     await writeBoard(this.paths, board);
   }
   /** Add a stage, area or priority to the board (used by MCP add_column). */
@@ -38290,7 +38324,7 @@ var KanmerStore = class {
     let filtered = items.filter((item) => matchesFilter(item, filter));
     if (filter.overdue) {
       const board = await this.getBoard();
-      const lastStage = board.statuses[board.statuses.length - 1]?.id;
+      const lastStage = lastStageId(board);
       const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
       filtered = filtered.filter(
         (i) => i.due !== void 0 && i.due < today && i.status !== lastStage
@@ -38340,6 +38374,12 @@ var KanmerStore = class {
         `This board stores ${type === "plan" ? "plans" : "research"} inside ticket folders, not as standalone items. Create a ticket, then write the document with set_ticket_doc(doc: "${type}").`
       );
     }
+    const last = lastStageId(board);
+    if (format === 2 && type === "ticket" && input.status !== void 0 && board.statuses.length > 1 && input.status === last) {
+      throw new Error(
+        `Cannot create "${input.title}" directly in "${input.status}": that is the board's final stage, which requires proof.md. Create it in an earlier stage, write the evidence with set_ticket_doc(doc: "proof"), then move it.`
+      );
+    }
     const area = input.area ?? "";
     const areaEntry = board.areas.find((a) => a.id === area);
     const prefix = format === 2 ? areaEntry ? areaPrefix(areaEntry) : board.idPrefixes.ticket : board.idPrefixes[type];
@@ -38347,6 +38387,10 @@ var KanmerStore = class {
     for (let attempt = 0; attempt < CREATE_ATTEMPTS; attempt++) {
       const n = format === 2 ? await nextPrefixNumber(this.paths, prefix, lastTried) : await nextIdNumber(this.paths, type, prefix, lastTried);
       const id = formatId(prefix, n);
+      if (await this.locateItem(id)) {
+        lastTried = n;
+        continue;
+      }
       const now = nowIso();
       const item = {
         id,
@@ -38397,10 +38441,7 @@ var KanmerStore = class {
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
     if (expectedUpdated !== void 0 && current.updated !== expectedUpdated) {
-      const { body: _body, ...frontmatter } = current;
-      throw new Error(
-        `Conflict: "${id}" changed since you read it (updated is now ${current.updated}, you expected ${expectedUpdated}). Re-read the item and re-apply your change. Current frontmatter: ${JSON.stringify(frontmatter)}`
-      );
+      throw this.conflictError(id, current, expectedUpdated);
     }
     const pruned = pruneUndefined(fields);
     const changed = changedFields(current, pruned);
@@ -38452,8 +38493,39 @@ var KanmerStore = class {
   async moveItem(id, to) {
     const { position, ...patch } = to;
     if (position === void 0) return this.updateItem(id, patch);
+    await this.assertMoveAllowed(id, to.status, to.expectedUpdated);
     const order = await this.computeOrder(id, to.status, position);
     return this.updateItem(id, { ...patch, order });
+  }
+  /**
+   * Every rejection moveItem can suffer, run before computeOrder writes
+   * anything: the item must exist, `expectedUpdated` must be fresh, the
+   * target stage must be on the board, and the proof gate must allow it.
+   * The final updateItem re-checks — that is cheap and closes the window
+   * between the two reads.
+   */
+  async assertMoveAllowed(id, status, expectedUpdated) {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
+    if (expectedUpdated !== void 0 && current.updated !== expectedUpdated) {
+      throw this.conflictError(id, current, expectedUpdated);
+    }
+    const board = await this.getBoard();
+    assertFieldAgainstBoard(board, "status", status);
+    if (status !== current.status && current.type === "ticket" && loc.kind === "v2") {
+      await this.assertProofGate(loc.dir, board, id, status);
+    }
+  }
+  /**
+   * The shared stale-read rejection. The wording is matched on by tests and
+   * by smoke.mjs (/Conflict/) — do not change it.
+   */
+  conflictError(id, current, expectedUpdated) {
+    const { body: _body, ...frontmatter } = current;
+    return new Error(
+      `Conflict: "${id}" changed since you read it (updated is now ${current.updated}, you expected ${expectedUpdated}). Re-read the item and re-apply your change. Current frontmatter: ${JSON.stringify(frontmatter)}`
+    );
   }
   /**
    * The fractional order for placing `id` at `position` within `status`.
@@ -38562,9 +38634,29 @@ var KanmerStore = class {
     return readText(file);
   }
   /**
+   * Read a pipeline document together with a version token for its exact
+   * bytes. Pass that token back as `expectedVersion` on setDoc to be rejected
+   * instead of overwriting a concurrent edit. getDoc's signature is left
+   * unchanged so no existing caller breaks.
+   */
+  async getDocWithVersion(id, doc) {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    if (loc.kind !== "v2") return { content: null, version: null };
+    const file = docFileIn(loc.dir, doc);
+    if (!await pathExists(file)) return { content: null, version: null };
+    const content = await readText(file);
+    return { content, version: contentVersion(content) };
+  }
+  /**
    * Write (or append to) one of a ticket's pipeline documents. Docs are plain
    * Markdown with no frontmatter. `append` adds after a blank line so
    * progress notes never clobber existing content.
+   *
+   * Pass `expectedVersion` for optimistic concurrency (see SetDocOptions) —
+   * omitted, this stays last-write-wins for every existing caller. Returns
+   * the version token of what was actually written, so the caller's token
+   * stays accurate across the trim/append normalisation.
    */
   async setDoc(id, doc, content, opts = {}) {
     const loc = await this.locateItem(id);
@@ -38575,11 +38667,19 @@ var KanmerStore = class {
       );
     }
     const file = docFileIn(loc.dir, doc);
+    const existing = await pathExists(file) ? await readText(file) : null;
+    if (opts.expectedVersion !== void 0) {
+      const actual = existing === null ? null : contentVersion(existing);
+      if (actual !== opts.expectedVersion) {
+        throw new Error(
+          `Conflict: ${doc}.md on "${id}" changed since you read it. Re-read it with get_ticket_doc and re-apply your change.`
+        );
+      }
+    }
     let text = `${content.trim()}
 `;
-    if (opts.append) {
-      const existing = await pathExists(file) ? await readText(file) : "";
-      if (existing.trim()) text = `${existing.trimEnd()}
+    if (opts.append && existing !== null && existing.trim()) {
+      text = `${existing.trimEnd()}
 
 ${content.trim()}
 `;
@@ -38588,6 +38688,7 @@ ${content.trim()}
     await appendActivity(this.paths, [
       this.activity(id, "doc", { field: doc, to: opts.append ? "append" : "write" })
     ]);
+    return { version: contentVersion(text) };
   }
   /** Which pipeline docs exist for a ticket + checklist progress; null for legacy items. */
   async getTicketDocsInfo(id) {
@@ -38666,13 +38767,32 @@ ${content.trim()}
   }
   /** The proof gate: a ticket may only reach the final stage with proof.md written. */
   async assertProofGate(ticketDir, board, id, nextStatus) {
-    const lastStage = board.statuses[board.statuses.length - 1]?.id;
-    if (nextStatus !== lastStage) return;
+    if (nextStatus !== lastStageId(board)) return;
     if (!await pathExists(docFileIn(ticketDir, "proof"))) {
       throw new Error(
         `${id} cannot move to "${nextStatus}": proof.md is missing. Write the evidence first with set_ticket_doc(doc: "proof").`
       );
     }
+  }
+  /**
+   * Refuse a board write that would make a stage final while proofless
+   * tickets sit in it. Rejecting (rather than grandfathering) matches
+   * removeColumn's in-use refusal and keeps "the LAST stage is proof-gated"
+   * literally true. Archived tickets are off the board and are not gated.
+   */
+  async assertFinalStageProven(stageId) {
+    const occupants = await this.listItems({ status: stageId });
+    const offenders = [];
+    for (const item of occupants) {
+      if (item.type !== "ticket") continue;
+      const loc = await this.locateItem(item.id);
+      if (!loc || loc.kind !== "v2") continue;
+      if (!await pathExists(docFileIn(loc.dir, "proof"))) offenders.push(item.id);
+    }
+    if (offenders.length === 0) return;
+    throw new Error(
+      `Cannot make "${stageId}" the final stage: ${offenders.length} ticket(s) there have no proof.md (${offenders.slice(0, 5).join(", ")}${offenders.length > 5 ? ", \u2026" : ""}). Write the evidence with set_ticket_doc(doc: "proof"), or move them out of that stage first.`
+    );
   }
 };
 function safeAreaFolder(area) {
@@ -39025,7 +39145,7 @@ server.registerTool(
   "get_ticket_doc",
   {
     title: "Read a ticket document",
-    description: "Read one of a ticket's pipeline documents (research, impact, plan, checklist, proof) from its folder. Returns content: null when the document hasn't been written yet.",
+    description: "Read one of a ticket's pipeline documents (research, impact, plan, checklist, proof) from its folder. Returns content: null when the document hasn't been written yet. `version` is a token for the document's current bytes \u2014 pass it back as `expected_version` on set_ticket_doc to be rejected instead of overwriting a concurrent edit.",
     inputSchema: {
       id: external_exports.string().describe("Ticket id"),
       doc: ticketDocEnum.describe("Which document")
@@ -39033,8 +39153,8 @@ server.registerTool(
     annotations: { readOnlyHint: true, openWorldHint: false }
   },
   guard(async ({ id, doc }) => {
-    const content = await store.getDoc(id, doc);
-    return ok({ id, doc, exists: content !== null, content });
+    const { content, version: version2 } = await store.getDocWithVersion(id, doc);
+    return ok({ id, doc, exists: content !== null, content, version: version2 });
   })
 );
 server.registerTool(
@@ -39100,7 +39220,7 @@ server.registerTool(
   "create_item",
   {
     title: "Create an item",
-    description: "Create a ticket. Returns the created item including its allocated id \u2014 tickets born in an area get that area's prefix (e.g. API-007); area-less tickets get the fallback prefix. status defaults to the first workflow stage; status/area/priority are validated against the board and links[] targets must exist. On format-2 boards plans and research are documents inside a ticket's folder (set_ticket_doc), not standalone items.",
+    description: "Create a ticket. Returns the created item including its allocated id \u2014 tickets born in an area get that area's prefix (e.g. API-007); area-less tickets get the fallback prefix. status defaults to the first workflow stage; status/area/priority are validated against the board and links[] targets must exist. A ticket cannot be created directly in the board's final stage \u2014 that stage requires proof.md; create it earlier and move it. On format-2 boards plans and research are documents inside a ticket's folder (set_ticket_doc), not standalone items.",
     inputSchema: createFields,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
   },
@@ -39110,7 +39230,7 @@ server.registerTool(
   "create_items",
   {
     title: "Create several items",
-    description: "Bulk create up to 50 items in one call (sequential, so ids stay ordered). Each entry takes the same fields as create_item. Partial success is possible: the result carries one { ok, item | error } per entry, in order.",
+    description: "Bulk create up to 50 items in one call (sequential, so ids stay ordered). Each entry takes the same fields as create_item, including the rule that a ticket cannot be created directly in the board's final stage \u2014 that stage requires proof.md; create it earlier and move it. Partial success is possible: the result carries one { ok, item | error } per entry, in order.",
     inputSchema: {
       items: external_exports.array(external_exports.object(createFields)).min(1).max(50).describe("Entries to create, in order")
     },
@@ -39214,18 +39334,24 @@ server.registerTool(
   "set_ticket_doc",
   {
     title: "Write a ticket document",
-    description: "Write one of a ticket's pipeline documents (research, impact, plan, checklist, proof) into its folder. Plain Markdown, no frontmatter. Pass append: true to add below the existing content (for progress notes) instead of replacing it. proof.md is required before the ticket can reach the final stage.",
+    description: "Write one of a ticket's pipeline documents (research, impact, plan, checklist, proof) into its folder. Plain Markdown, no frontmatter. Pass append: true to add below the existing content (for progress notes) instead of replacing it. proof.md is required before the ticket can reach the final stage. Pass the `version` you last read from get_ticket_doc as `expected_version` to be rejected instead of overwriting a concurrent edit; the result carries the new `version`.",
     inputSchema: {
       id: external_exports.string().describe("Ticket id"),
       doc: ticketDocEnum.describe("Which document"),
       content: external_exports.string().describe("Markdown content"),
-      append: external_exports.boolean().optional().describe("Append below existing content instead of replacing")
+      append: external_exports.boolean().optional().describe("Append below existing content instead of replacing"),
+      expected_version: external_exports.string().optional().describe(
+        "Optimistic concurrency: the `version` you last read from get_ticket_doc. Rejected as a conflict if the document changed since. Omit for last-write-wins."
+      )
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
   },
-  write(async ({ id, doc, content, append }) => {
-    await store.setDoc(id, doc, content, { append });
-    return ok({ id, doc, written: true, appended: append === true });
+  write(async ({ id, doc, content, append, expected_version }) => {
+    const { version: version2 } = await store.setDoc(id, doc, content, {
+      append,
+      expectedVersion: expected_version
+    });
+    return ok({ id, doc, written: true, appended: append === true, version: version2 });
   })
 );
 server.registerTool(

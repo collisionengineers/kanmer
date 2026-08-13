@@ -18,10 +18,12 @@
 #   3. the process working directory (cwd)
 #
 # Using `cwd` (below) points the server at THIS project's .kanmer folder.
+#
+# Replace `<kanmer-repo>` with wherever you cloned this repo.
 
 [mcp_servers.kanmer]
 command = "node"
-args = ["C:/Users/Alex/Documents/GitHub/kanmer/packages/mcp-server/dist/index.js"]
+args = ["<kanmer-repo>/packages/mcp-server/dist/index.js"]
 cwd = "C:/path/to/your/project"
 
 # Alternatively, pin the root explicitly instead of relying on cwd:
@@ -29,7 +31,7 @@ cwd = "C:/path/to/your/project"
 # [mcp_servers.kanmer]
 # command = "node"
 # args = [
-#   "C:/Users/Alex/Documents/GitHub/kanmer/packages/mcp-server/dist/index.js",
+#   "<kanmer-repo>/packages/mcp-server/dist/index.js",
 #   "--root",
 #   "C:/path/to/your/project",
 # ]

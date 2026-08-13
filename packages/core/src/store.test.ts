@@ -170,15 +170,21 @@ describe("KanmerStore", () => {
     }
   });
 
-  it("does not bump updated on a no-op patch", async () => {
+  it("does not bump updated on a no-op patch, and never touches the file", async () => {
     const t = await store.createItem({ type: "ticket", title: "A", body: "hello" });
-    await new Promise((r) => setTimeout(r, 5));
+    const file = path.join(root, ".kanmer", "areas", "_none", t.id, `${t.id}.md`);
+    const mtimeBefore = (await fs.stat(file)).mtimeMs;
+    // Beat coarse filesystem mtime granularity: if a no-op rewrote the file,
+    // the stamp would have moved by the time we re-stat it.
+    await new Promise((r) => setTimeout(r, 20));
     const same = await store.updateItem(t.id, { title: "A", body: "hello\n" });
     expect(same.updated).toBe(t.updated);
     const empty = await store.updateItem(t.id, {});
     expect(empty.updated).toBe(t.updated);
+    expect((await fs.stat(file)).mtimeMs).toBe(mtimeBefore);
     const changed = await store.updateItem(t.id, { title: "B" });
     expect(changed.updated >= t.updated).toBe(true);
+    expect((await fs.stat(file)).mtimeMs).toBeGreaterThan(mtimeBefore);
   });
 
   it("rejects a stale expectedUpdated with a conflict error; accepts a fresh one", async () => {
@@ -744,6 +750,23 @@ describe("blocks / due / order", () => {
     await expect(
       store.moveItem(d.id, { status: "review", position: { after: a.id } }),
     ).rejects.toThrow(/not an item in stage/);
+  });
+
+  it("rebalances when midpoints between two neighbours are exhausted", async () => {
+    const a = await store.createItem({ type: "ticket", title: "A" });
+    const b = await store.createItem({ type: "ticket", title: "B" });
+    const c = await store.createItem({ type: "ticket", title: "C" });
+    // Two adjacent doubles: (10 + 10.000000000000002) / 2 is not strictly
+    // between them, which is the only way to reach computeOrder's rebalance.
+    await store.updateItem(a.id, { order: 10 });
+    await store.updateItem(b.id, { order: 10.000000000000002 });
+    await store.moveItem(c.id, { status: "todo", position: { after: a.id } });
+    const ids = (await store.listItems({ status: "todo" })).map((i) => i.id);
+    expect(ids).toEqual([a.id, c.id, b.id]);
+    // The rebalance rewrote the pathological values into the 10/20 ladder.
+    expect((await store.getItem(a.id))?.order).toBe(10);
+    expect((await store.getItem(b.id))?.order).toBe(20);
+    expect((await store.getItem(c.id))?.order).toBe(15);
   });
 
   it("a rejected positioned move leaves the target column's siblings untouched", async () => {

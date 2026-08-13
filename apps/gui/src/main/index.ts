@@ -55,6 +55,18 @@ let watch: WatchHandle | null = null;
 // Single instance: a second launch focuses the existing window instead.
 // ---------------------------------------------------------------------------
 if (!app.requestSingleInstanceLock()) {
+  if (process.env["KANMER_SMOKE"]) {
+    // The boot smoke must not be able to pass without booting. Losing the lock
+    // means this process is about to quit having rendered nothing — and a plain
+    // app.quit() here exits 0, which made the checklist step §10.5 a false pass.
+    // Give each smoke run its own lock with:
+    //   npx electron . --user-data-dir=<fresh dir>
+    console.error(
+      "KANMER_SMOKE: single-instance lock not acquired — quitting without rendering. " +
+        "Close any running Kanmer, or pass --user-data-dir=<fresh dir>.",
+    );
+    app.exit(1);
+  }
   app.quit();
 }
 app.on("second-instance", () => {
@@ -158,10 +170,27 @@ function createWindow(): void {
     if (/^https?:/i.test(url)) void shell.openExternal(url);
   });
 
-  // Smoke mode: verify the app boots and renders, then exit cleanly.
+  // Smoke mode: verify the app boots and renders, then exit cleanly. Exit 0 is
+  // the only success, so every way of *not* rendering has to exit non-zero —
+  // otherwise the check cannot fail and is worse than no check.
   if (process.env["KANMER_SMOKE"]) {
+    let readyToShow = false;
+    mainWindow.once("ready-to-show", () => {
+      readyToShow = true;
+    });
+    const watchdog = setTimeout(() => {
+      console.error("KANMER_SMOKE: renderer never finished loading within 20s");
+      app.exit(1);
+    }, 20_000);
     mainWindow.webContents.once("did-finish-load", () => {
-      setTimeout(() => app.exit(0), 1500);
+      setTimeout(() => {
+        clearTimeout(watchdog);
+        if (!readyToShow) {
+          console.error("KANMER_SMOKE: renderer loaded but the window never reached ready-to-show");
+          app.exit(1);
+        }
+        app.exit(0);
+      }, 1500);
     });
   }
 }

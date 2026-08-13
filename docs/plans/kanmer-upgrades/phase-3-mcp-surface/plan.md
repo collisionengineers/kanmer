@@ -30,6 +30,9 @@ Reference: the 2026-07-28 spec release (stateless core, Extensions framework, MR
 - **Prompts** — S. Register `standup` and `take-ticket` as MCP prompts (host slash-command affordance).
 - **MCP Apps** — exploratory only (server-rendered board summary in hosts like VS Code); not committed this roadmap.
 
+> **Amended by the PR #2 review remediation:** A4 — the 2026-07-28 revision does not exist in `@modelcontextprotocol/sdk@^1.30.0`, which negotiates at most `2025-11-25`. `ttlMs`/`cacheScope` on `tools/list` are therefore unimplementable here, and no current host emits `io.modelcontextprotocol/client`. The `_meta` actor path is **not** dead code, though: the SDK forwards `params._meta` on every protocol and `smoke-protocol.mjs` proves the branch with a hand-written frame. The back-compat protocol run this section promised was never done at the time and is now `packages/mcp-server/src/smoke-protocol.mjs`.
+
+
 ## Companion fix (GUI main, same theme)
 
 - **Connect scope** — S/M. `apps/gui/src/main/connect.ts` currently registers one user-scope `kanmer` entry with a hardcoded `--root`; a second project silently rewrites it. Switch to per-project registration (project `.mcp.json` for Claude Code; per-project server names for codex), keep the copy-paste fallback string.

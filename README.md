@@ -108,20 +108,27 @@ Run `Kanmer Setup ….exe` → Start-Menu shortcut, normal desktop app. The MCP 
 ```bash
 npm install
 npm run build            # core + mcp-server
-npm test                 # core test suite
+npm test                 # core + GUI test suites
 npm run app              # build + launch the GUI
 # or hot-reload dev:
 npm run dev:gui
 ```
 
+> **Windows, from source:** Electron derives its user-data folder from the
+> workspace package name (`@kanmer/gui`), and on that path the single-instance
+> lock can fail, so the app quits immediately without a window. If that happens,
+> launch it with its own folder instead:
+> `cd apps/gui && npx electron . --user-data-dir=<a fresh dir>`. Installed
+> builds are unaffected.
+
 Click **Open project folder…** and pick any project (recently opened folders are listed, and the last one re-opens on launch). Kanmer creates/loads its `.kanmer/` folder there.
 
-- **Board** — one row of workflow-stage columns. Drag cards between stages (optimistically — they land instantly); within each column cards **cluster by area** under colour-coded sub-labels, carry an area stripe, and show a ⛏ badge while an agent has them taken.
-- **Editor** — click a card for the frontmatter fields plus **document tabs** (Ticket | Research | Impact | Plan | Checklist | Proof) — the checklist renders as live checkboxes. Saves are **diff-based** (only the fields you changed), concurrent agent edits re-sync live, and a same-field conflict offers Keep mine / Take theirs. `[[ID]]` gets **autocomplete**; labels and links are chip editors with suggestions.
-- **Standup view** — in flight (with branch), in review, up next, recently done, blocked, overdue — with **Copy as Markdown**, matching the agent skill's output.
+- **Board** — one row of workflow-stage columns. Drag cards between stages **and to a position within a stage** — an insertion line shows where the card will land, and it lands instantly (optimistically). Manual order is shared with agents (`move_item position`). Within each column cards **cluster by area** under colour-coded sub-labels, carry an area stripe, and show a ⛏ badge while an agent has them taken, plus ⛔ / ⏰ badges when a ticket is blocked or overdue.
+- **Editor** — click a card for the frontmatter fields plus **document tabs** (Ticket | Research | Impact | Plan | Checklist | Proof) — the checklist renders as live checkboxes. Ticket-field saves are **diff-based** (only the fields you changed); concurrent agent edits re-sync live and a same-field conflict offers Keep mine / Take theirs. **Document saves are whole-document and version-checked** — if an agent changed the document while you were editing, the save is refused with a conflict banner offering Reload from disk or Overwrite anyway. Switching document tabs, closing, navigating or opening another project with unsaved text all prompt first. `[[ID]]` gets **autocomplete**; labels and links are chip editors with suggestions.
+- **Standup view** — in flight, in review, up next, recently done (7 days), blocked, overdue, what happened since yesterday, and flags — grouped by assignee/actor where it helps, with **Copy as Markdown** emitting exactly the `kanmer-standup` skill's shape.
 - **Activity** — a bell with the change feed (who did what, when); native Windows toasts when an agent changes the board while you're away, in-app toasts while you're looking.
 - **Archived view** — restore, or permanently delete behind a two-click confirm. Everywhere else, delete means archive.
-- **Search + filter bar** — filter by area, priority, assignee, label; `Ctrl+K` opens a command palette; full keyboard support (`Ctrl+N` new card, `Ctrl+←/→` moves a focused card between stages).
+- **Search + filter bar** — filter by area, priority, assignee, label; `Ctrl+K` opens a command palette (jump to an item, or move / take / release the selected one); full keyboard support (`Ctrl+N` new card, `Ctrl+←/→` moves a focused card between stages).
 - **Settings** (gear) — add/rename/recolour/reorder/delete **stages, areas, priorities**, edit **id prefixes**, switch **theme** (dark / light / system) and toggle notifications — validated before saving, reflected instantly.
 - **Inline quick-add** — type a title into any column's "+ card" (or an area header's "+") and press Enter; it gets an auto id in that area's prefix.
 
@@ -192,20 +199,27 @@ Read tools carry `readOnlyHint`; `delete_item` and `remove_column` carry `destru
 ## Verify end-to-end
 
 ```bash
-# 1. Core unit tests
+# 1. Core + GUI unit tests
 npm test
 
 # 2. MCP server over real stdio (spawns the server, exercises every tool)
 node packages/mcp-server/src/smoke.mjs
 
+# 2b. Every protocol version the SDK supports, plus the client-identity path
+node packages/mcp-server/src/smoke-protocol.mjs
+
 # 3. GUI boots and renders (opens the window briefly, then exits)
 npm run build -w @kanmer/gui
-cd apps/gui && KANMER_SMOKE=1 KANMER_OPEN="C:/path/to/project" npx electron .
+cd apps/gui && KANMER_SMOKE=1 KANMER_OPEN="C:/path/to/project" \
+  npx electron . --user-data-dir="C:/path/to/a/fresh/dir"
 ```
 
 ```bash
-# 4. Plugin: bundled server is current and its skills match the tool surface
+# 4. Plugin: bundled server is current (byte-for-byte) and its skills match the tool surface
 npm run plugin:build && npm run plugin:check
+
+# 5. The kanmer-setup AGENTS.md managed block, end to end
+node scripts/verify-agents-block.mjs
 ```
 
 **The real test — human + agent, one dataset:** open a project in the GUI, then have codex `create_item` / `move_item` against the same folder. The board updates live. Edit a card's frontmatter in the GUI, then have codex `get_item` — it sees your change.

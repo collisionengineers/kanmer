@@ -179,9 +179,11 @@ idPrefixes: { ticket: TICK, plan: PLAN, research: RES }  # _none fallback + lega
 ```
 
 Area `prefix` is 2–6 uppercase alphanumerics, derived from the id when unset
-(`areaPrefix()` in board.ts), and uniqueness — including against the
-`idPrefixes` values — is enforced on every board write. `status` is the only
-workflow axis, with six default stages:
+(`areaPrefix()` in board.ts), and uniqueness — including *among* the
+`idPrefixes` values and against them — is enforced on every board write. The
+final stage's proof gate is re-checked whenever a board write changes which
+stage is last, and a ticket cannot be *created* directly in the final stage
+either. `status` is the only workflow axis, with six default stages:
 
 ```
 todo → planning → implementing → review → verifying → done
@@ -230,7 +232,7 @@ mutation appends a `{ts, id, op, field, from, to, actor}` line to
 ## 5. The three surfaces in detail
 
 ### `@kanmer/core` (packages/core)
-The only place that touches `.kanmer` files. Public API via `index.ts`. Key entry point: **`KanmerStore`** (`store.ts`) — construct with a project root, then `listItems(WithWarnings)/getItem/createItem/updateItem/moveItem/deleteItem/searchItems`, `takeTicket/releaseTicket`, `getDoc/setDoc/getTicketDocsInfo`, `getBoard(WithSource)/setBoard/addColumn/updateColumn/removeColumn/reorderColumns`, `detectFormat`, `getActivity`. `init()` maintains whichever format exists (it never stamps v2 onto a v1 board — that's `migrateToV2`'s job). Links live in `links.ts` (`getLinkGraph`, `linkItems`, `computeBlockedIds`, `parseWikiLinks`). Everything is covered by `*.test.ts` (vitest), including a v1 fixture suite and the migration round-trip.
+The only place that touches `.kanmer` files. Public API via `index.ts`. Key entry point: **`KanmerStore`** (`store.ts`) — construct with a project root, then `listItems(WithWarnings)/getItem/createItem/updateItem/moveItem/deleteItem/searchItems`, `takeTicket/releaseTicket`, `getDoc/getDocWithVersion/setDoc/getTicketDocsInfo`, `getBoard(WithSource)/setBoard/addColumn/updateColumn/removeColumn/reorderColumns`, `detectFormat`, `getActivity`. `init()` maintains whichever format exists (it never stamps v2 onto a v1 board — that's `migrateToV2`'s job). Links live in `links.ts` (`getLinkGraph`, `linkItems`, `computeBlockedIds`, `parseWikiLinks`). Everything is covered by `*.test.ts` (vitest), including a v1 fixture suite and the migration round-trip.
 
 ### `@kanmer/mcp-server` (packages/mcp-server)
 `index.ts` builds an `McpServer` and registers **20 tools**, plus MCP resources (`kanmer://board`, `kanmer://items/{id}` with `subscribe` support) and two prompts (`standup`, `take-ticket`), then connects a `StdioServerTransport`. Root resolution in `root.ts`. **Init is lazy**: boot never calls `store.init()` — a read-only session (or a host that spawns the server in a workspace nobody opted into Kanmer for) must not create `.kanmer/` just by connecting. Write tools call `ensureInit()` first, which creates the skeleton once on the first actual write; read tools degrade to empty/default results when `.kanmer/` doesn't exist yet. Write tools also stamp the activity-log actor from the client's identity, and destructive ops (`delete_item`, `remove_column` with `migrate_to`) confirm via elicitation when the host supports it. Two builds:
@@ -259,15 +261,18 @@ Run from the repo root unless noted.
 | `npm run setup` | install + build core, server, and GUI |
 | `npm run build` | build core + mcp-server (incl. standalone bundle) |
 | `npm run build:core` / `npm run build:server` | build just one package |
-| `npm test` | core vitest suite |
+| `npm test` | core **and GUI** vitest suites |
 | `npm run typecheck -w @kanmer/gui` | GUI type check (each package has a `typecheck` script) |
 | `npm run app` | build + launch the GUI |
 | `npm run dev:gui` | GUI with hot reload |
 | `npm run dist` | build everything **and** produce `apps/gui/release/Kanmer Setup <v>.exe` |
 | `npm run plugin:build` | build, then copy the standalone MCP bundle into `plugins/kanmer/mcp/` |
-| `npm run plugin:check` | fail if MCP tool names drift from the skill's tool reference |
+| `npm run plugin:check` | fail if MCP tool names drift from the skill's tool reference **or if the committed plugin bundle differs from a fresh build (requires `npm run build` first)** |
 | `npm run inspect` | build, then open MCP Inspector against the server (root `./sandbox`) |
 | `node packages/mcp-server/src/smoke.mjs` | stdio smoke test against the built server |
+| `npm run smoke:protocol` | raw-JSON-RPC stdio check against every protocol version the SDK supports, plus the per-request `_meta` client-identity path |
+| `npm run verify:agents-block` | end-to-end check of the `kanmer-setup` AGENTS.md managed block (insert, refresh, idempotence, CLAUDE.md pointer, malformed markers) |
+| `node scripts/agents-block.mjs <repo>` | write/refresh that block in a target repo (what `kanmer-setup` calls) |
 
 **Smoke test env overrides** (in `smoke.mjs`): `KANMER_SERVER=<path>` points at a different server entry (e.g. the standalone bundle); `KANMER_NODE=<electron.exe>` runs it via Electron-as-Node (sets `ELECTRON_RUN_AS_NODE=1`). Example — test the packaged server exactly as shipped:
 ```bash
@@ -276,7 +281,17 @@ KANMER_SERVER="apps/gui/release/win-unpacked/resources/mcp/kanmer-mcp.cjs" \
 node packages/mcp-server/src/smoke.mjs
 ```
 
-**GUI boot smoke** (exits after render): `KANMER_SMOKE=1 KANMER_OPEN=<projectDir> npx electron .` from `apps/gui`.
+**GUI boot smoke** (exits after render), from `apps/gui`:
+```bash
+KANMER_SMOKE=1 KANMER_OPEN=<projectDir> npx electron . --user-data-dir=<a fresh dir>
+```
+`--user-data-dir` is **not optional** when running from source: Electron takes
+`app.getName()` from `apps/gui/package.json`, so the scoped name `@kanmer/gui`
+makes userData `%APPDATA%\@kanmer/gui` and `requestSingleInstanceLock()`
+returns false on that path even with nothing else running (§11). Smoke mode now
+exits **1** with a message when that happens, and also when the renderer loads
+without the window reaching `ready-to-show` — the check used to exit 0 either
+way, so it could not fail.
 
 ---
 
@@ -297,6 +312,10 @@ node packages/mcp-server/src/smoke.mjs
   (and the SKILL.md if the *workflow* changed, not just the signature), run
   `npm run plugin:build` to refresh the bundled server, and run
   `npm run plugin:check` — it fails on tool-name drift.
+- **Document writes carry an optional version token.** `getDocWithVersion`/`get_ticket_doc` return a content hash; passing it back as `setDoc`'s `expectedVersion` / `set_ticket_doc`'s `expected_version` turns a concurrent overwrite into a conflict, exactly like `expectedUpdated` on `updateItem`. Omitting it is last-write-wins. Documents have no frontmatter to hold `updated`, which is why this is a hash and not a timestamp.
+- **Renderer logic that could be pure, is.** `renderer/src/lib/` holds the DOM-free modules — `markdown.ts`, `board.ts` (column lookups, the blocked/overdue rules, drop-position and optimistic-order arithmetic) and `standup.ts` (the whole standup report plus its markdown). They are the **only** renderer code with vitest coverage, so put new logic there rather than in JSX, export it, and take `now`/`today` as an argument instead of calling `Date.now()` inside.
+- **`board.ts`'s `blockedIds` is the renderer's only copy of core's live-blocker rule** (`links.ts computeBlockedIds`), consumed by both the card badges and the Standup view. Likewise `Settings.tsx validateDraft()` mirrors `board.ts assertUniquePrefixes()`. The renderer may only `import type` from core, so these cannot share code — change one, change the other.
+- **`plugin:check` sees tool names and bundle bytes only.** Everything below `## Field semantics` in `references/tool-reference.md` is deliberately invisible to it (`check-plugin-sync.mjs:41-45` splits the document there so field names aren't mistaken for tools) — re-read that prose by hand whenever the data model changes.
 - **Match the surrounding style** — small focused modules, JSDoc on exported functions, no clever one-liners.
 
 ---
@@ -310,7 +329,8 @@ node packages/mcp-server/src/smoke.mjs
 5. **electron-builder bundles nothing from `node_modules`** because the GUI's runtime deps are moved to `devDependencies` and everything is bundled into `out/` by electron-vite. If you add a runtime dep the main process needs *unbundled* (rare, e.g. a native `.node`), you must revisit this.
 6. **Antivirus + electron-builder:** Windows Defender sometimes quarantines electron-builder's bundled `7za.exe` mid-build (`ENOENT … 7za.exe`). Pinned electron-builder ≥26 fetches 7-Zip fresh and usually avoids it; otherwise restore from quarantine / add a repo exclusion.
 7. **The watcher ignores atomic-write temp files** (`.<name>.tmp-*`) and debounces (`watch.ts`). Don't remove the ignore or you'll get double refreshes.
-8. **`plugins/kanmer/mcp/kanmer-mcp.cjs` is a committed build artifact** — deliberately, unlike every other `dist/` output. Plugin installs fetch this repo, so the server has to already be there and runnable; there is no build step on the user's side. Refresh it with `npm run plugin:build` whenever the server changes, or installed plugins silently keep running the old server.
+8. **`plugins/kanmer/mcp/kanmer-mcp.cjs` is a committed build artifact** — deliberately, unlike every other `dist/` output. Plugin installs fetch this repo, so the server has to already be there and runnable; there is no build step on the user's side. Refresh it with `npm run plugin:build` whenever the server changes, or installed plugins silently keep running the old server. Core compiles *into* it, so **core-only fixes need the rebuild too**; `plugin:check` now sha256s the committed bundle against a fresh build so a stale one fails loudly instead of silently.
+9. **`order` is column-scoped; the board renders by area.** `computeOrder` filters on `status` only (`store.ts:697-698`), while `Board.tsx` groups cards by area inside each column (`groupByArea`). Any drag-and-drop neighbour computation must use `columnCards(items, statusId)` (`lib/board.ts:70`), never a group's cards — otherwise "drop above this card" silently means a different slot, and a single-area test board will not reveal it. `Card` is `memo`ized (`Board.tsx:221`), so pass badge and drop-hint state to it as primitives (`blocked: boolean`, `overdue: boolean`, `dropEdge: "before" | "after" | null`), never a `Set` or object rebuilt each render. `e.stopPropagation()` on the card's `onDrop` is load-bearing: without it the cell handler also fires and issues a second, position-less `moveItem`.
 
 ---
 
@@ -328,13 +348,14 @@ node packages/mcp-server/src/smoke.mjs
 
 ## 10. Verification checklist (before you call something done)
 
-1. `npm test` — core suite green.
-2. `node packages/mcp-server/src/smoke.mjs` — stdio checks green (add one for your change).
+1. `npm test` — core + GUI suites green.
+2. `node packages/mcp-server/src/smoke.mjs` **and** `node packages/mcp-server/src/smoke-protocol.mjs` — stdio checks green (add one for your change).
 3. `npm run typecheck -w @kanmer/gui` — GUI types clean.
 4. `npm run build -w @kanmer/gui` — GUI builds.
-5. If GUI-facing: `KANMER_SMOKE=1 KANMER_OPEN=<sandbox> npx electron .` boots (exit 0).
-6. If the tool surface changed: `npm run plugin:check` passes, and `npm run plugin:build` was re-run so the bundled server isn't stale.
+5. If GUI-facing: `KANMER_SMOKE=1 KANMER_OPEN=<sandbox> npx electron . --user-data-dir=<fresh dir>` boots (exit 0). Non-zero means it did not render — see §6.
+6. If the server changed: `npm run build && npm run plugin:build && npm run plugin:check` (the check now verifies the committed bundle's bytes, not just tool names), plus both smoke scripts with `KANMER_SERVER=plugins/kanmer/mcp/kanmer-mcp.cjs`.
 7. The real test: open a project in the GUI, have an agent `create_item`/`move_item` against it, confirm the board live-updates; edit in the GUI, confirm the agent's `get_item` sees it.
+8. If the setup skill or its managed block changed: `node scripts/verify-agents-block.mjs`.
 
 ---
 
@@ -343,8 +364,17 @@ node packages/mcp-server/src/smoke.mjs
 - Windows installer only so far (macOS/Linux electron-builder targets not configured).
 - No automated CI; verification is the manual checklist above.
 - Column removal: the MCP `remove_column` tool refuses while items reference the column (or migrates them with `migrate_to`), but the GUI Settings editor's whole-board save can still drop an in-use column — those items fall back to an auto column/group on read (`mergeColumns`), and writes to the now-undefined id are rejected (`assertFieldAgainstBoard` in `store.ts`).
-- Two concurrent creates that share the TICK fallback prefix in *different* undeclared areas could double-allocate an id number — only reachable when a v2 board's `areas` list has been emptied (the exclusive-create lock is per file path).
-- `ttlMs`/`cacheScope` on `tools/list` (2026-07-28 cacheable lists) awaits SDK support — noted in `mcp-server/src/index.ts` `main()`.
+- Two concurrent creates that share the TICK fallback prefix in *different* undeclared areas could double-allocate an id number — only reachable when a v2 board's `areas` list has been emptied (the exclusive-create lock is per file path). Narrowed: `createItem` now refuses an id that `locateItem` can already resolve (`store.ts:519-522`), so only a genuine concurrent-create window remains.
+- **The MCP SDK caps at protocol `2025-11-25`.** `@modelcontextprotocol/sdk@^1.30.0` contains no `2026-07-28` support, so `ttlMs`/`cacheScope` on `tools/list` are unavailable and no current host sends the spec's `io.modelcontextprotocol/client` identity key. The server *does* read it, and that branch is **live, not dead**: the SDK forwards `params._meta` to handlers on every protocol (`shared/protocol.js:321`), and `smoke-protocol.mjs` proves it by sending a hand-written frame carrying the key and asserting the activity actor comes back as `future-host`. So actor attribution is forward-compatible today and falls back to `clientInfo`/`getClientVersion()` in practice. `smoke-protocol.mjs` also covers the back-compat run against `2025-11-25`, `2025-06-18`, `2025-03-26` and `2024-11-05`. Revisit `tools/list` caching when the SDK ships the revision.
+- **Migration has no agent-reachable entry point.** `migrateToV2` is reachable only from the GUI (`main/index.ts` `CH.migrate`); there is no MCP tool. `kanmer-setup`'s Upgrade mode therefore asks the user to click "Migrate to v2" in the app, and a plugin user with no GUI installed cannot upgrade a v1 board. Migration *is* now resumable and refuses colliding boards, so an interrupted run is recoverable — but only from the GUI.
+- **Keyboard stage moves (Ctrl+←/→) set no position.** Drag-and-drop now writes an insertion point; the keyboard path (`Board.tsx:303-309` → `App.tsx:352`) changes the stage and leaves the card's existing `order`, so it can land somewhere other than where the eye expects. The command palette's Move ▸ verb has the same gap. Giving either an insertion point needs a "move within column" mode that does not exist.
+- **Running from source does not launch.** Electron takes `app.getName()` from `apps/gui/package.json`, so a from-source run gets the scoped name `@kanmer/gui`, userData `%APPDATA%\@kanmer/gui`, and `requestSingleInstanceLock()` returning **false** on that mixed-separator path with no other instance running — `npx electron .`, `npm run app` and `npm run dev:gui` then quit in ~1 s. Workaround: `--user-data-dir=<fresh dir>`. The **packaged** app is unaffected (electron-builder sets `productName: Kanmer` → `%APPDATA%\Kanmer`). A one-line `app.setName("Kanmer")` would fix it but moves where dev settings live and makes a dev run share the installed app's lock, so it is left as a product decision. The boot smoke no longer hides this: it exits 1 rather than 0.
+- **The `beforeunload` confirm on window close is unverified in this Electron configuration** (`sandbox: false`, no `will-prevent-unload` handling in `main/index.ts`). Historically version-dependent; no harness exists to settle it. Every *in-app* way of leaving a dirty editor — card click, Close, wiki-link, tab switch, project switch, palette jump, Escape, standup line, activity panel, toast click — is guarded by `trySelect` (`App.tsx:117-125`) or `tryTab` (`Editor.tsx:296-299`).
+- **The checklist tab never linkifies `[[ID]]`.** `Editor.tsx:827-854` parses lines to JSX itself and never calls `renderMarkdown`, so a wiki-link inside a checklist item is literal text.
+- **Agent-change toast suppression is ticket-granular, not doc-granular.** A GUI write to `checklist.md` suppresses the toast for a concurrent agent write to `research.md` on the same ticket within 2 s — `toastKey()` maps every pipeline document to its ticket folder (`main/index.ts:270-280`) and `ownWrites` is keyed by that. Conflict *detection* is unaffected; only the toast.
+- **A doc save that fails for any reason shows the conflict banner.** `Editor.tsx:729-732` sets `conflict` from the caught error whatever it was, so a disk-full or permission failure also offers "Overwrite anyway" — which re-issues the save without `expectedVersion` and will fail the same way.
+- **The Standup's Blocked section lists blocked items but does not name their blockers.** `kanmer-standup/SKILL.md:68` suggests naming them from `get_links` "when it matters"; doing so is an IPC call per blocked item, so the GUI lists the items only (`lib/standup.ts:53-56`).
+- **The GUI takes tickets as `gui`, and does not set an assignee at all.** The store's default actor is `"gui"` and the Electron main never overrides it (`store.ts:88`; no `setActor` call in `main/`), so every GUI mutation is attributed to the app rather than a named human. The palette's Take sends only `{ branch }` (`App.tsx:386`) and core writes `assignee` only when supplied (`store.ts:771`), so unlike MCP's `take_ticket` — which defaults it to the client name — the GUI leaves `assignee` untouched. The take modal's hint text (`App.tsx:819`) still says the assignee defaults to `"gui"`; it does not.
 - ~~Concurrent `create_item` id race~~ **closed by exclusive create.** The item
   file itself is the allocation lock: `createItem` computes a candidate id and
   claims it with `writeFileExclusive` ([io.ts](packages/core/src/io.ts)) — a

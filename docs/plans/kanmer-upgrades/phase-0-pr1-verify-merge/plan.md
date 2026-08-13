@@ -93,3 +93,40 @@ The committed bundle `plugins/kanmer/mcp/kanmer-mcp.cjs` was confirmed rebuilt (
 
 - **Phase 8 — skills, plugin, docs: DONE.** 8.1 `kanmer-workflow` rewritten around the ticket lifecycle (get_status → take_ticket w/ branch → research+impact → plan → checklist (append notes) → proof → final stage → release) with all five doc templates in `assets/` (+ new impact/checklist/proof; plan/research templates repurposed as doc templates; ticket template kept); 8.2 `kanmer-onboard` → **`kanmer-setup`** (git mv; both manifests point at `./skills/` so no manifest change) with greenfield/brownfield/upgrade modes and the **AGENTS.md managed block** (top-of-file, marker-delimited, idempotent refresh, CLAUDE.md pointer rule); note: stage replacement is now agent-capable via the board verbs, so the old "GUI-only" caveat is gone; upgrade mode routes the actual migration through the GUI prompt and verifies via get_status; 8.3 `kanmer-standup` rewritten on facts (get_status → list_board roles → list_items sort:updated_desc w/ taken/blocked/due/checklist → get_activity since-yesterday with actors; off-board stages + file warnings → Flags); 8.4 release rail ran every phase (final: plugin-sync 20 tools, bundle smoke 62/62); 8.5 repo docs — AGENTS.md §2 tree (new core/gui files, kanmer-setup), §4 rewritten for format 2 (folders, prefixes, doc pipeline, proof gate, activity, migration), §5 (KanmerStore API + 20 tools + resources/prompts + lazy init), §11 refreshed (fixed items removed; GUI whole-board-save stranding, TICK-fallback race, SDK cacheable-list gap documented); README rewritten (v2 tree + doc pipeline + lifecycle GUI features, 20 tools, `<kanmer-repo>` placeholders replacing the hardcoded `C:/Users/Alex/...` paths, kanmer-setup row incl. the AGENTS.md block); roadmap index checked off.
   Final verification: `npm run build`, vitest **53/53**, smoke **62/62** (dev + committed bundle), GUI typecheck **0 errors** + build + boot smoke exit 0, `plugin:build` + `plugin:check` **20 tools match**.
+
+---
+
+## Corrections (PR #2 review)
+
+The DONE entries above are accurate about the **core and MCP** halves of each
+phase. The PR #2 adherence review (`docs/plans/pr-2-review/`) found that several
+of them recorded only that half, and reported a phase complete while its GUI or
+verification half was missing. The historical lines are left exactly as written;
+this section is the correction. Every item below is fixed on
+`kanmer-upgrades-phases-1-8`.
+
+| Id | What the record said | What was actually true |
+|---|---|---|
+| **A1** | Phase 6 "6.4 fractional `order` … `move_item position`" — read as complete. | Core-only. The GUI drop handler was column-scoped and the IPC contract carried no `position`, so every drag left the card's old `order`. The plan's own 6.4 line named the GUI drag writer. |
+| **A2** | Phase 7 goal: "taken/blocked/due badges". | Only the taken (⛏) badge existed. Blocked and overdue card badges were not built. |
+| **A4** | Phase 3 "Modernization on SDK ^1.30: actor from per-request `_meta` w/ clientInfo fallback"; roadmap row "done (cacheable tools/list awaits SDK)". | SDK 1.30 negotiates at most protocol `2025-11-25` — the whole 2026-07-28 revision is unavailable, not just cacheable lists, and no current host sends `io.modelcontextprotocol/client`. The server's `_meta` branch is nonetheless live (the SDK forwards `params._meta` on every protocol), which nothing verified. The back-compat protocol run promised at `phase-3-mcp-surface/plan.md:39` was never performed. |
+| **A5** | Phase 7 "7.3 Standup view (role-based stage buckets matching the skill)". | The view diverged from `kanmer-standup/SKILL.md` on grouping, on two whole sections (What happened since yesterday, Flags) and on the recently-done window. |
+| **A6** | Phase 7 "7.9 Ctrl+K command palette (jump-to-item + verbs…)". | The verbs shipped were New ticket / Switch view / Theme / Settings. Move ▸ and Take/Release — the two the plan named first — were absent. |
+| **A7** | Phase 8 "README rewritten … `<kanmer-repo>` placeholders replacing the hardcoded `C:/Users/Alex/…` paths". | True of the README; `examples/codex-config.toml` still carried the hardcoded path on two lines. |
+| **A8** | Phase 8 "the **AGENTS.md managed block** (top-of-file, marker-delimited, idempotent refresh, CLAUDE.md pointer rule)". | Four rules stated as prose in `kanmer-setup/SKILL.md`, with no tool, function or test behind them, and the end-to-end cases at `phase-8-skills-plugin-docs/plan.md:54-55` were never run. |
+| **A9** | Phase 6 verification: "rebalance path"; roadmap verification: "no-op update leaves `updated`/mtime unchanged". | Neither assertion existed. The no-op test checked `updated` only, and no test reached `computeOrder`'s rebalance branch. |
+
+**A3** (a stale `## Item types` section in the plugin tool reference, still
+describing the format-1 flat layout) is not traceable to a DONE line — it is
+drift the release rail's name-only `plugin:check` could not see. It is fixed,
+and `plugin:check` now also compares the committed bundle's bytes.
+
+Two items are deferred rather than fixed, deliberately:
+
+1. **Agent-reachable migration** — an MCP `migrate_board` tool, so
+   `kanmer-setup`'s Upgrade mode works for plugin-only users. The resumability
+   and collision work in this pass is its prerequisite.
+2. **Extract `cleanReferencesTo()`** — `deleteItem` and `migrateToV2`'s fold
+   sweep duplicate the same links/blocks cleanup, which
+   `phase-1-core-correctness/plan.md:27-29` called for building on
+   `buildLinkIndex`. Extract once, with tests, outside a remediation pass.

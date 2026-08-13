@@ -18,13 +18,19 @@
 - **Where:** `Editor.tsx` (report `dirty` upward via `onDirtyChange` into a ref — no re-render), `App.tsx`.
 - Route every deselection through one `trySelect(id)` gate — card click, editor Close, wiki-link navigate, tab switch — with a small plain-CSS confirm ("Discard changes to TICK-012?"). `window.onbeforeunload` while dirty for window close. With 4.1/4.2, "dirty" shrinks to genuinely-edited fields, so the guard fires rarely and honestly.
 
+> **Amended by the PR #2 review remediation:** document-tab switches are guarded by a tab-level `tryTab` inside `Editor.tsx`, not by routing through `trySelect` (the tab strip never deselects the item). Project switching was unguarded and is now covered by `pendingProject`/`requestOpen` in `App.tsx`. Delete-while-open stays deliberately unguarded — the item is gone. The `beforeunload` half remains unverified in this Electron configuration (AGENTS.md §11).
+
 ### 4.4 Settings validation + error surfacing — M
 - **Where:** `components/Settings.tsx`, `App.tsx` (`saveBoard`, lines ~86–89).
 - Validate the draft before IPC: ≥1 stage, non-blank column names, non-empty ID prefixes, unique area prefixes (v2). Render inline error in the modal head instead of closing. Wrap `onSaveBoard` in try/catch and show thrown zod messages. Drop the optimistic `setBoard(next)` (or revert in catch) so an invalid board never renders. Backdrop-click/Cancel with a modified draft → confirm discard.
 
+> **Amended by the PR #2 review remediation:** `validateDraft` cannot mirror the last-stage proof check — the renderer has no `proof.md` visibility — so core's rejection surfaces through `Settings.save()`'s catch instead. It now also mirrors core's *duplicate `idPrefixes`* rule, not just area-vs-area uniqueness.
+
 ### 4.5 External links open in the default browser — S
 - **Where:** `apps/gui/src/main/index.ts` (`createWindow`), `renderer/src/lib/markdown.ts`.
 - Today an `https://` link in a markdown preview navigates the BrowserWindow away with no way back. Add `will-navigate` → `preventDefault()` + `shell.openExternal(url)` for `https?:` (allow the dev-server/file URL through), and `setWindowOpenHandler` → openExternal + deny. Bundle: disable raw-HTML passthrough in `renderMarkdown` (marked renderer override, zero deps) — CSP remains the backstop for `dangerouslySetInnerHTML`.
+
+> **Amended by the PR #2 review remediation:** as built, the raw-HTML override escaped the wiki anchors the same function generated, so `[[ID]]` rendered as literal text. `[[…]]` is now a `marked` **inline extension**, so no raw HTML is produced at all and the escaping stays exactly as strict as specified.
 
 ### 4.6 Empty / loading / error states — S
 - **Where:** `App.tsx`, `components/{Board,ItemList,Welcome}.tsx`, `styles.css`.

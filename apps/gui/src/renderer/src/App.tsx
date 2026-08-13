@@ -33,6 +33,11 @@ const DOC_NAMES = new Set(["research", "impact", "plan", "checklist", "proof"]);
 /** A project the user asked to open: pick one, or a known path. */
 type OpenTarget = { kind: "pick" } | { kind: "path"; path: string };
 
+/** The branch name the take modal offers by default. */
+function defaultBranch(id: string): string {
+  return `feat/${id.toLowerCase()}`;
+}
+
 interface Toast {
   seq: number;
   id: string | null;
@@ -67,6 +72,7 @@ export function App(): JSX.Element {
   const editorDirty = useRef(false);
   const [pendingNav, setPendingNav] = useState<{ id: string | null } | null>(null);
   const [pendingProject, setPendingProject] = useState<OpenTarget | null>(null);
+  const [pendingTake, setPendingTake] = useState<{ id: string; branch: string } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const toastSeq = useRef(0);
 
@@ -356,6 +362,39 @@ export function App(): JSX.Element {
 
   const onQuickAdd = useCallback((input: CreateItemInput) => void createItem(input), [createItem]);
 
+  const releaseTicket = useCallback(
+    async (id: string) => {
+      try {
+        await window.kanmer.releaseTicket(id);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+      await refresh();
+    },
+    [refresh],
+  );
+
+  /**
+   * Take a ticket from the palette. takeTicket runs the proof gate when the
+   * stage changes (store.ts), so it can be refused — surface it, never
+   * swallow it.
+   */
+  const takeTicket = useCallback(
+    async (id: string, branch: string) => {
+      try {
+        await window.kanmer.takeTicket(id, { branch });
+        setPendingTake(null);
+        setError(null);
+        await refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        setPendingTake(null);
+      }
+    },
+    [refresh],
+  );
+
   const onContext = useCallback(
     async (item: Item) => {
       if (!board) return;
@@ -458,6 +497,8 @@ export function App(): JSX.Element {
     [allViewItems, search, filters, view],
   );
 
+  const projectName = useMemo(() => projectNameOf(root), [root]);
+
   const paletteCommands = useMemo<PaletteCommand[]>(
     () => [
       {
@@ -468,6 +509,38 @@ export function App(): JSX.Element {
           setQuickAddSignal((n) => n + 1);
         },
       },
+      // The three item verbs are contextual on the selection: with nothing
+      // selected they do not appear, which is honest for a verb that needs a
+      // subject. Substring scoring in the palette filters them.
+      ...(selected && board
+        ? board.statuses
+            .filter((s) => s.id !== selected.status)
+            .map((s) => ({
+              id: `move-${s.id}`,
+              label: `Move ${selected.id} → ${s.name}`,
+              // No position: a palette move is a stage change, like the
+              // context menu's "Move to".
+              run: () => void onMove(selected.id, { status: s.id }),
+            }))
+        : []),
+      ...(selected && !selected.taken_at
+        ? [
+            {
+              id: "take",
+              label: `Take ${selected.id}…`,
+              run: () => setPendingTake({ id: selected.id, branch: defaultBranch(selected.id) }),
+            },
+          ]
+        : []),
+      ...(selected?.taken_at
+        ? [
+            {
+              id: "release",
+              label: `Release ${selected.id}`,
+              run: () => void releaseTicket(selected.id),
+            },
+          ]
+        : []),
       { id: "view-board", label: "Go to Board", run: () => setView("ticket") },
       { id: "view-standup", label: "Go to Standup", run: () => setView("standup") },
       { id: "view-archived", label: "Go to Archived", run: () => setView("archived") },
@@ -478,7 +551,7 @@ export function App(): JSX.Element {
       { id: "theme-system", label: "Theme: system", run: () => void setTheme("system") },
       { id: "open-project", label: "Open project…", run: () => void pickAndOpen() },
     ],
-    [setTheme, pickAndOpen],
+    [setTheme, pickAndOpen, selected, board, onMove, releaseTicket],
   );
 
   if (!root || !board) {
@@ -596,6 +669,8 @@ export function App(): JSX.Element {
             <Standup
               board={board}
               items={items}
+              projectName={projectName}
+              changeSignal={changeSignal}
               onSelect={(id) => {
                 setView("ticket");
                 trySelect(id);
@@ -719,6 +794,44 @@ export function App(): JSX.Element {
             void runOpen(target);
           }}
         />
+      )}
+
+      {pendingTake && (
+        <div className="modal-backdrop" onClick={() => setPendingTake(null)}>
+          <div className="modal confirm" role="dialog" onClick={(e) => e.stopPropagation()}>
+            <p>Take {pendingTake.id} — which branch is the work on?</p>
+            <label className="field">
+              <span>Branch</span>
+              <input
+                autoFocus
+                value={pendingTake.branch}
+                onChange={(e) =>
+                  setPendingTake((t) => (t ? { ...t, branch: e.target.value } : t))
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && pendingTake.branch.trim()) {
+                    void takeTicket(pendingTake.id, pendingTake.branch.trim());
+                  }
+                }}
+              />
+            </label>
+            <p className="hint">
+              The assignee defaults to the store&apos;s actor (&quot;gui&quot;).
+            </p>
+            <div className="confirm-actions">
+              <button className="ghost sm" onClick={() => setPendingTake(null)}>
+                Cancel
+              </button>
+              <button
+                className="primary sm"
+                disabled={!pendingTake.branch.trim()}
+                onClick={() => void takeTicket(pendingTake.id, pendingTake.branch.trim())}
+              >
+                Take
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {migrateReport && (
@@ -848,6 +961,12 @@ function applyFilters(list: Item[], search: string, filters: Filters): Item[] {
     }
     return true;
   });
+}
+
+/** The project's folder name — what the standup reports as the board name. */
+function projectNameOf(p: string | null): string {
+  const parts = (p ?? "").split(/[\\/]/).filter(Boolean);
+  return parts[parts.length - 1] ?? "";
 }
 
 function shortenPath(p: string): string {

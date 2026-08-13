@@ -952,6 +952,15 @@ button.danger {
 .standup-section li {
   margin: 3px 0;
 }
+/* Group label (assignee / actor), shown only when a section has >1 group.
+   Uses --muted, defined in both the dark block and [data-theme=light]. */
+.standup-group {
+  margin: 8px 0 2px;
+  font-size: 12px;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--muted);
+}
 .linklike {
   background: none;
   border: none;

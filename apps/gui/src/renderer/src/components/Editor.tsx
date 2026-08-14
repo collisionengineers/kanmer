@@ -10,6 +10,7 @@ import type {
   UpdateItemPatch,
 } from "@kanmer/core";
 import { renderMarkdown } from "../lib/markdown.js";
+import { progressDocId } from "../lib/docProgress.js";
 import { ChipInput } from "./ChipInput.js";
 import { ConfirmModal } from "./ConfirmModal.js";
 
@@ -336,7 +337,7 @@ export function Editor(props: EditorProps): JSX.Element {
     }
   };
 
-  const progressDoc = docTypes.find((d) => d.progress)?.id;
+  const progressDoc = progressDocId(docTypes);
   const showDeployment = board.deployment !== undefined;
   const deploymentOptions = ["n/a", "not-deployed", ...(board.deployment?.environments ?? [])];
 

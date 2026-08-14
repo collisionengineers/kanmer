@@ -752,7 +752,7 @@ export function App(): JSX.Element {
         id: "dispatches",
         label: "Show background dispatches",
         run: () => {
-          void window.kanmer.listDispatches().then(setDispatches);
+          if (root) void window.kanmer.listDispatches(root).then(setDispatches);
           setDispatchesOpen(true);
         },
       },
@@ -999,7 +999,7 @@ export function App(): JSX.Element {
                   {d.state === "running" && (
                     <button
                       className="ghost xs"
-                      onClick={() => void window.kanmer.cancelDispatch(d.ticketId)}
+                      onClick={() => void window.kanmer.cancelDispatch(d.dispatchId)}
                     >
                       Cancel
                     </button>

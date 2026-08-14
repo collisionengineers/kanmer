@@ -17,6 +17,7 @@ import type {
   UiPreferences,
 } from "../../../shared/ipc.js";
 import { useClient } from "../lib/client.js";
+import { boardDraftModified, reconcileBoardDraft } from "../lib/settingsDraft.js";
 
 type SettingsTab = "board" | "documents" | "appearance" | "connect";
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
@@ -66,10 +67,7 @@ export function Settings({
   // Usage counts so deleting an in-use column shows a soft warning.
   const usage = useMemo(() => countUsage(items), [items]);
 
-  const modified = useMemo(
-    () => JSON.stringify(draft) !== JSON.stringify(board),
-    [draft, board],
-  );
+  const modified = useMemo(() => boardDraftModified(draft, board), [draft, board]);
 
   const setColumns = (kind: ColumnKind, cols: BoardColumn[]) =>
     setDraft((d) => ({ ...d, [pluralKey(kind)]: cols }));
@@ -107,14 +105,19 @@ export function Settings({
     if (modified || backfilling) return;
     setBackfilling(true);
     setError(null);
+    let result;
     try {
-      const result = await client.backfillBoard(false);
+      result = await client.backfillBoard(false);
+    } catch (err) {
+      setError(`Backfill failed: ${err instanceof Error ? err.message : String(err)}`);
+      setBackfilling(false);
+      return;
+    }
+    try {
       const refreshed = await client.getBoard();
-      setDraft(structuredClone(refreshed));
+      setDraft(reconcileBoardDraft(refreshed));
       setReloadRequired(false);
-      setBackfillMsg(
-        result.addedStages.length ? `Added: ${result.addedStages.join(", ")}` : "Already current.",
-      );
+      setBackfillMsg(result.addedStages.length ? `Added: ${result.addedStages.join(", ")}` : "Already current.");
     } catch (err) {
       setReloadRequired(true);
       setError(`Backfill applied but Settings could not refresh: ${err instanceof Error ? err.message : String(err)}`);

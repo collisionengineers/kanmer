@@ -39,15 +39,6 @@ export function blockedIds(items: Item[], lastStage: string | undefined): Set<st
   return blocked;
 }
 
-/**
- * True when the item has a due date before `today` and has not reached the
- * final stage. Mirrors listItemsWithWarnings' overdue filter (store.ts:414).
- * `todayIso` is passed in (YYYY-MM-DD) so the rule stays pure.
- */
-export function isOverdue(item: Item, todayIso: string, lastStage: string | undefined): boolean {
-  return item.due !== undefined && item.due < todayIso && item.status !== lastStage;
-}
-
 /** Core's ordering rule: by `order`, unordered last, ties broken by id. */
 function byOrderThenId(a: Item, b: Item): number {
   const ao = a.order ?? Number.POSITIVE_INFINITY;

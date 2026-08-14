@@ -1,6 +1,6 @@
 import { memo, useCallback, useRef, useState } from "react";
 import type { BoardColumn, BoardConfig, CreateItemInput, Item, MovePosition } from "@kanmer/core";
-import { columnColor, columnCards, isOverdue, positionForDrop } from "../lib/board.js";
+import { columnColor, columnCards, positionForDrop } from "../lib/board.js";
 import { QuickAdd } from "./QuickAdd.js";
 
 interface BoardProps {
@@ -16,10 +16,6 @@ interface BoardProps {
   onContext: (item: Item) => void;
   /** Ids with a live blocker — computed once in App, read per card as a boolean. */
   blocked: Set<string>;
-  /** Today as YYYY-MM-DD, so the overdue rule stays pure. */
-  today: string;
-  /** Increment to auto-open the first column's quick-add (Ctrl+N). */
-  quickAddSignal?: number;
 }
 
 /** Merge configured columns with any extra values found on items (fallback columns). */
@@ -58,8 +54,6 @@ export function Board(props: BoardProps): JSX.Element {
     onQuickAdd,
     onContext,
     blocked,
-    today,
-    quickAddSignal,
   } = props;
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [dropHint, setDropHint] = useState<{ id: string; edge: "before" | "after" } | null>(null);
@@ -69,8 +63,6 @@ export function Board(props: BoardProps): JSX.Element {
   // Card on every board change, which is exactly what Phase 7.5 removed.
   const itemsRef = useRef(items);
   itemsRef.current = items;
-
-  const lastStage = board.statuses[board.statuses.length - 1]?.id;
 
   const onCardDragOver = useCallback((statusId: string, id: string, edge: "before" | "after") => {
     setDropHint((h) => (h && h.id === id && h.edge === edge ? h : { id, edge }));
@@ -130,7 +122,7 @@ export function Board(props: BoardProps): JSX.Element {
         </div>
       ))}
 
-      {statuses.map((status, statusIdx) => {
+      {statuses.map((status) => {
         // One sorted column feeds both the rendering and the drop maths, so
         // the insertion line and the computed neighbour can never disagree.
         const groups = groupByArea(columnCards(items, status.id));
@@ -186,7 +178,6 @@ export function Board(props: BoardProps): JSX.Element {
                     board={board}
                     selected={item.id === selectedId}
                     blocked={blocked.has(item.id)}
-                    overdue={isOverdue(item, today, lastStage)}
                     dropEdge={dropHint?.id === item.id ? dropHint.edge : null}
                     statusId={status.id}
                     onSelect={onSelect}
@@ -201,7 +192,6 @@ export function Board(props: BoardProps): JSX.Element {
             ))}
             <QuickAdd
               label="card"
-              autoOpenSignal={statusIdx === 0 ? quickAddSignal : undefined}
               onAdd={(title) => onQuickAdd({ type: "ticket", title, status: status.id })}
             />
           </div>
@@ -223,7 +213,6 @@ const Card = memo(function CardInner({
   board,
   selected,
   blocked,
-  overdue,
   dropEdge,
   statusId,
   onSelect,
@@ -237,7 +226,6 @@ const Card = memo(function CardInner({
   board: BoardConfig;
   selected: boolean;
   blocked: boolean;
-  overdue: boolean;
   dropEdge: "before" | "after" | null;
   statusId: string;
   onSelect: (id: string) => void;
@@ -271,7 +259,9 @@ const Card = memo(function CardInner({
       role="button"
       aria-label={`${item.id} ${item.title || "Untitled"}, stage ${stageName}${
         areaName ? `, area ${areaName}` : ""
-      }${blocked ? ", blocked" : ""}${overdue ? `, overdue ${item.due}` : ""}`}
+      }${blocked ? ", blocked" : ""}${
+        item.deployment && item.deployment !== "n/a" ? `, deployment ${item.deployment}` : ""
+      }`}
       onDragStart={(e) => e.dataTransfer.setData("text/plain", item.id)}
       onDragOver={(e) => {
         e.preventDefault();
@@ -321,9 +311,17 @@ const Card = memo(function CardInner({
             ⛔ blocked
           </span>
         )}
-        {overdue && (
-          <span className="chip overdue" title={`Due ${item.due}`}>
-            ⏰ {item.due}
+        {item.deployment && item.deployment !== "n/a" && (
+          <span
+            className={item.deployment === "not-deployed" ? "chip deploy off" : "chip deploy"}
+            title={`Deployment: ${item.deployment}`}
+          >
+            🚀 {item.deployment}
+          </span>
+        )}
+        {(item.prs?.length ?? 0) > 0 && (
+          <span className="chip pr" title={`${item.prs!.length} PR(s)`}>
+            ⇅ {item.prs!.length}
           </span>
         )}
         {item.priority && (

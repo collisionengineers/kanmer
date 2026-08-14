@@ -35,6 +35,9 @@ const api: KanmerApi = {
   getDoc: (id, doc) => ipcRenderer.invoke(CH.getDoc, id, doc),
   setDoc: (id, doc, content, opts) => ipcRenderer.invoke(CH.setDoc, id, doc, content, opts),
   getDocsInfo: (id) => ipcRenderer.invoke(CH.getDocsInfo, id),
+  getDocTypes: (id) => ipcRenderer.invoke(CH.getDocTypes, id),
+  openRepoDoc: (rel) => ipcRenderer.invoke(CH.openRepoDoc, rel),
+  getRepoDoc: (rel) => ipcRenderer.invoke(CH.getRepoDoc, rel),
   getActivity: (opts) => ipcRenderer.invoke(CH.getActivity, opts),
   onChange: (cb) => {
     const listener = (_e: unknown, payload: ChangePayload) => cb(payload);

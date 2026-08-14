@@ -65,7 +65,7 @@ function fullInput(): Partial<StandupInput> {
     item({ id: "TICK-005", status: "done", updated: ago(3 * DAY) }),
     item({ id: "TICK-006", status: "todo", blocks: ["TICK-007"] }),
     item({ id: "TICK-007", status: "todo" }),
-    item({ id: "TICK-008", status: "todo", due: "2026-08-01" }),
+    item({ id: "TICK-008", status: "todo" }),
     item({ id: "TICK-009", status: "nowhere" }),
   ];
   const activity: ActivityEntry[] = [
@@ -88,7 +88,7 @@ function fullInput(): Partial<StandupInput> {
 }
 
 describe("buildStandup", () => {
-  it("emits the skill's eight sections in the skill's order", () => {
+  it("emits the skill's seven sections in the skill's order", () => {
     const r = build(fullInput());
     expect(titles(r)).toEqual([
       "In flight",
@@ -96,7 +96,6 @@ describe("buildStandup", () => {
       "Up next",
       "Recently done",
       "Blocked",
-      "Overdue",
       "What happened since yesterday",
       "Flags",
     ]);

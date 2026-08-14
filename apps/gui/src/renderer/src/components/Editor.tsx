@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   BoardColumn,
   BoardConfig,
+  DocType,
   Item,
   LinkGraph,
   TicketDoc,
@@ -34,9 +35,10 @@ interface Snapshot {
   area: string;
   priority: string;
   assignee: string;
-  due: string;
   labels: string;
   links: string;
+  refs: string;
+  deployment: string;
   body: string;
   /** The `updated` stamp this snapshot came from — the conflict reference. */
   updated: string;
@@ -48,22 +50,13 @@ const FIELD_KEYS = [
   "area",
   "priority",
   "assignee",
-  "due",
   "labels",
   "links",
+  "refs",
+  "deployment",
   "body",
 ] as const;
 type FieldKey = (typeof FIELD_KEYS)[number];
-
-const DOC_TABS: { key: TicketDoc; label: string }[] = [
-  { key: "research", label: "Research" },
-  { key: "impact", label: "Impact" },
-  { key: "plan", label: "Plan" },
-  { key: "checklist", label: "Checklist" },
-  { key: "proof", label: "Proof" },
-];
-
-const MIN_WIDTH = 320;
 
 function snapOf(item: Item): Snapshot {
   return {
@@ -72,9 +65,10 @@ function snapOf(item: Item): Snapshot {
     area: item.area,
     priority: item.priority,
     assignee: item.assignee,
-    due: item.due ?? "",
     labels: (item.labels ?? []).join(", "),
     links: (item.links ?? []).join(", "),
+    refs: (item.refs ?? []).join(", "),
+    deployment: item.deployment ?? "",
     body: item.body,
     updated: item.updated,
   };
@@ -108,6 +102,7 @@ export function Editor(props: EditorProps): JSX.Element {
   const [tab, setTab] = useState<"ticket" | TicketDoc>("ticket");
   const [pendingTab, setPendingTab] = useState<"ticket" | TicketDoc | null>(null);
   const [docsInfo, setDocsInfo] = useState<TicketDocsInfo | null>(null);
+  const [docTypes, setDocTypes] = useState<DocType[]>([]);
   const [docDirty, setDocDirty] = useState(false);
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -116,38 +111,6 @@ export function Editor(props: EditorProps): JSX.Element {
     null,
   );
   const [saveError, setSaveError] = useState<string | null>(null);
-
-  // Resizable width, persisted.
-  const [width, setWidth] = useState<number>(() => {
-    const saved = Number(localStorage.getItem("kanmer:editorWidth"));
-    return Number.isFinite(saved) && saved >= MIN_WIDTH ? saved : 420;
-  });
-  const dragging = useRef(false);
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (!dragging.current) return;
-      const next = Math.min(
-        Math.max(window.innerWidth - e.clientX, MIN_WIDTH),
-        Math.floor(window.innerWidth / 2),
-      );
-      setWidth(next);
-    };
-    const onUp = () => {
-      if (!dragging.current) return;
-      dragging.current = false;
-      document.body.style.cursor = "";
-      setWidth((w) => {
-        localStorage.setItem("kanmer:editorWidth", String(w));
-        return w;
-      });
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, []);
 
   // Wiki-link autocomplete state.
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -164,6 +127,16 @@ export function Editor(props: EditorProps): JSX.Element {
     if (item.type !== "ticket") return;
     void window.kanmer.getDocsInfo(item.id).then(setDocsInfo);
   }, [item.id, item.updated, changeSignal, item.type]);
+
+  // Doc tabs come from the ticket area's configured doc set (Phase 1), resolved
+  // in the main process (core is node-only, so the renderer can't import it).
+  useEffect(() => {
+    if (item.type !== "ticket") {
+      setDocTypes([]);
+      return;
+    }
+    void window.kanmer.getDocTypes(item.id).then(setDocTypes);
+  }, [item.id, item.area, item.type]);
 
   const dirtyKeys = useMemo(
     () => FIELD_KEYS.filter((k) => form[k] !== baseline.current[k]),
@@ -224,6 +197,7 @@ export function Editor(props: EditorProps): JSX.Element {
     for (const k of keys) {
       if (k === "labels") patch.labels = splitList(form.labels);
       else if (k === "links") patch.links = splitList(form.links);
+      else if (k === "refs") patch.refs = splitList(form.refs);
       else patch[k] = form[k];
     }
     return patch;
@@ -362,17 +336,18 @@ export function Editor(props: EditorProps): JSX.Element {
     }
   };
 
+  const progressDoc = docTypes.find((d) => d.progress)?.id;
+  const showDeployment = board.deployment !== undefined;
+  const deploymentOptions = ["n/a", "not-deployed", ...(board.deployment?.environments ?? [])];
+
   return (
-    <aside className="editor" style={{ width }}>
+    <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div
-        className="editor-resize"
-        title="Drag to resize"
-        onMouseDown={(e) => {
-          e.preventDefault();
-          dragging.current = true;
-          document.body.style.cursor = "col-resize";
-        }}
-      />
+        className={tab === "ticket" ? "modal editor-pop" : "modal editor-pop doc-full"}
+        role="dialog"
+        aria-label={`Ticket ${item.id}`}
+        onClick={(e) => e.stopPropagation()}
+      >
       <div className="editor-head">
         <span className="editor-id">{item.id}</span>
         {item.archived && <span className="chip subtle archived-tag">archived</span>}
@@ -397,15 +372,15 @@ export function Editor(props: EditorProps): JSX.Element {
           >
             Ticket
           </button>
-          {DOC_TABS.map((d) => (
+          {docTypes.map((d) => (
             <button
-              key={d.key}
-              className={tab === d.key ? "tab active" : "tab"}
-              onClick={() => tryTab(d.key)}
+              key={d.id}
+              className={tab === d.id ? "tab active" : "tab"}
+              onClick={() => tryTab(d.id)}
             >
-              {d.label}
-              {docsInfo.docs[d.key] && <span className="doc-dot" aria-label="exists" />}
-              {d.key === "checklist" && docsInfo.checklist && (
+              {d.name}
+              {docsInfo.docs[d.id] && <span className="doc-dot" aria-label="exists" />}
+              {d.id === progressDoc && docsInfo.checklist && (
                 <span className="count">
                   {docsInfo.checklist.checked}/{docsInfo.checklist.total}
                 </span>
@@ -511,14 +486,22 @@ export function Editor(props: EditorProps): JSX.Element {
               <span>Assignee</span>
               <input value={form.assignee} onChange={(e) => set("assignee", e.target.value)} />
             </label>
-            <label className="field">
-              <span>Due</span>
-              <input
-                type="date"
-                value={form.due}
-                onChange={(e) => set("due", e.target.value)}
-              />
-            </label>
+            {showDeployment && (
+              <label className="field">
+                <span>Deployment</span>
+                <select
+                  value={form.deployment}
+                  onChange={(e) => set("deployment", e.target.value)}
+                >
+                  <option value="">— unset —</option>
+                  {deploymentOptions.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
 
           {item.taken_at && (
@@ -550,6 +533,52 @@ export function Editor(props: EditorProps): JSX.Element {
               ariaLabel="Links"
             />
           </div>
+
+          <div className="field">
+            <span>Governing docs</span>
+            <ChipInput
+              value={splitList(form.refs)}
+              onChange={(arr) => set("refs", arr.join(", "))}
+              suggestions={[]}
+              placeholder="docs/prd/…"
+              ariaLabel="Governing document paths"
+            />
+            {splitList(form.refs).length > 0 && (
+              <div className="refs-open">
+                {splitList(form.refs).map((r) => (
+                  <button
+                    key={r}
+                    className="chip link"
+                    title="Open in the default app"
+                    onClick={() => void window.kanmer.openRepoDoc(r)}
+                  >
+                    ↗ {r}
+                  </button>
+                ))}
+              </div>
+            )}
+            {item.docs_todo && (
+              <span className="hint">A governing doc is still to be created (docs_todo).</span>
+            )}
+          </div>
+
+          {((item.commits?.length ?? 0) > 0 || (item.prs?.length ?? 0) > 0) && (
+            <div className="field">
+              <span>Traceability</span>
+              <div className="trace-row">
+                {(item.commits ?? []).map((c) => (
+                  <span key={c} className="chip subtle" title="Commit">
+                    ⎇ {c.slice(0, 10)}
+                  </span>
+                ))}
+                {(item.prs ?? []).map((p) => (
+                  <span key={p} className="chip subtle" title="Pull request">
+                    ⇅ {p}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="field">
             <div className="body-head">
@@ -628,7 +657,8 @@ export function Editor(props: EditorProps): JSX.Element {
           </div>
         </>
       )}
-    </aside>
+      </div>
+    </div>
   );
 }
 

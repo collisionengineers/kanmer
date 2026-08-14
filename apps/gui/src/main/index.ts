@@ -12,12 +12,15 @@ import {
   type MenuItemConstructorOptions,
 } from "electron";
 import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import {
   KanmerStore,
+  assertSafeRepoPath,
   getLinkGraph,
   linkItems,
   migrateToV2,
+  resolveDocTypes,
   watchKanmer,
   type BoardColumn,
   type BoardConfig,
@@ -515,6 +518,22 @@ function registerIpc(): void {
     },
   );
   ipcMain.handle(CH.getDocsInfo, (_e, id: string) => requireStore().getTicketDocsInfo(id));
+  ipcMain.handle(CH.getDocTypes, async (_e, id: string) => {
+    const store = requireStore();
+    const [item, board] = await Promise.all([store.getItem(id), store.getBoard()]);
+    return resolveDocTypes(board, item?.area ?? "");
+  });
+  ipcMain.handle(CH.openRepoDoc, async (_e, rel: string) => {
+    // assertSafeRepoPath rejects a path escaping the project root before shell touches it.
+    await shell.openPath(assertSafeRepoPath(requireStore().paths.projectRoot, rel));
+  });
+  ipcMain.handle(CH.getRepoDoc, async (_e, rel: string) => {
+    try {
+      return await readFile(assertSafeRepoPath(requireStore().paths.projectRoot, rel), "utf8");
+    } catch {
+      return null;
+    }
+  });
   ipcMain.handle(CH.getActivity, (_e, opts?: { id?: string; since?: string; limit?: number }) =>
     requireStore().getActivity(opts),
   );

@@ -1225,3 +1225,85 @@ button.danger {
   font-family: ui-monospace, monospace;
   white-space: pre-wrap;
 }
+
+/* ── Phase 3: ticket popout + document full-container + add dialog ───────── */
+
+/* The ticket popout: a centred modal (replaces the docked resizable aside). */
+.modal.editor-pop {
+  width: 760px;
+  max-width: 94vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  text-align: left;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* When a document tab is active, the popout becomes a near-fullscreen container. */
+.modal.editor-pop.doc-full {
+  width: 96vw;
+  height: 92vh;
+  max-width: 96vw;
+  max-height: 92vh;
+}
+.modal.editor-pop .doc-editor,
+.modal.editor-pop .doc-view {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* The full add-ticket dialog. */
+.modal.ticket-create {
+  width: 580px;
+  max-width: 94vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  text-align: left;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.modal.ticket-create textarea.body {
+  min-height: 120px;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.check-row input {
+  width: auto;
+}
+
+.refs-open {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.trace-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Card badges (deployment / PR). */
+.chip.deploy {
+  background: color-mix(in srgb, var(--accent, #5b8cff) 22%, transparent);
+}
+.chip.deploy.off {
+  background: color-mix(in srgb, var(--muted, #6b7280) 22%, transparent);
+}
+.chip.pr {
+  background: color-mix(in srgb, var(--accent, #5b8cff) 16%, transparent);
+}
+
+.newbtn {
+  margin-right: 6px;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Item } from "@kanmer/core";
-import { blockedIds, columnCards, isOverdue, optimisticOrder, positionForDrop } from "./board.js";
+import { blockedIds, columnCards, optimisticOrder, positionForDrop } from "./board.js";
 
 function item(partial: Partial<Item> & { id: string }): Item {
   return {
@@ -44,18 +44,6 @@ describe("blockedIds", () => {
   });
 });
 
-describe("isOverdue", () => {
-  it("excludes items in the final stage and items with no due date", () => {
-    const today = "2026-08-13";
-    expect(isOverdue(item({ id: "A", due: "2026-08-12" }), today, "done")).toBe(true);
-    expect(isOverdue(item({ id: "B", due: "2026-08-13" }), today, "done")).toBe(false);
-    expect(isOverdue(item({ id: "C", due: "2026-08-14" }), today, "done")).toBe(false);
-    expect(isOverdue(item({ id: "D" }), today, "done")).toBe(false);
-    expect(isOverdue(item({ id: "E", due: "2020-01-01", status: "done" }), today, "done")).toBe(
-      false,
-    );
-  });
-});
 
 describe("columnCards", () => {
   it("returns only the stage's cards, ordered by order-then-id", () => {

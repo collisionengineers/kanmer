@@ -50,9 +50,11 @@ import {
   recordRecentProject,
   setNotifications,
   setOpenTabs,
+  setPreferences,
   setTheme,
   setWindowBounds,
   type Theme,
+  type UiPreferences,
   type WindowBounds,
 } from "./settings.js";
 import { connectAgent, disconnectAgent, type ConnectTarget } from "./connect.js";
@@ -538,6 +540,7 @@ function registerIpc(): void {
   ipcMain.handle(CH.getSettings, () => readSettings());
   ipcMain.handle(CH.setTheme, (_e, theme: Theme) => setTheme(theme));
   ipcMain.handle(CH.setNotifications, (_e, on: boolean) => setNotifications(on));
+  ipcMain.handle(CH.setPreferences, (_e, patch: Partial<UiPreferences>) => setPreferences(patch));
   ipcMain.handle(CH.setOpenTabs, (_e, openTabs: string[], activeTab: string) =>
     setOpenTabs(openTabs, activeTab),
   );

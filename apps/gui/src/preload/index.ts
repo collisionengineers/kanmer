@@ -32,6 +32,7 @@ const api: KanmerApi = {
   getSettings: () => ipcRenderer.invoke(CH.getSettings),
   setTheme: (theme) => ipcRenderer.invoke(CH.setTheme, theme),
   setNotifications: (on) => ipcRenderer.invoke(CH.setNotifications, on),
+  setPreferences: (patch) => ipcRenderer.invoke(CH.setPreferences, patch),
   setOpenTabs: (openTabs, activeTab) => ipcRenderer.invoke(CH.setOpenTabs, openTabs, activeTab),
   connectAgent: (p, target) => ipcRenderer.invoke(CH.connectAgent, p, target),
   disconnectAgent: (p, target) => ipcRenderer.invoke(CH.disconnectAgent, p, target),

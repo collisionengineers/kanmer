@@ -19,6 +19,8 @@ interface BoardProps {
   blocked: Set<string>;
   /** Ids with a background agent dispatch in flight. */
   dispatching?: Set<string>;
+  /** Card density preference (Phase 4.4): "compact" tightens padding/gaps. */
+  density?: "comfortable" | "compact";
 }
 
 /** Merge configured columns with any extra values found on items (fallback columns). */
@@ -58,6 +60,7 @@ export function Board(props: BoardProps): JSX.Element {
     onContext,
     blocked,
     dispatching,
+    density,
   } = props;
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [dropHint, setDropHint] = useState<{ id: string; edge: "before" | "after" } | null>(null);
@@ -125,7 +128,7 @@ export function Board(props: BoardProps): JSX.Element {
 
   return (
     <div
-      className="board"
+      className={density === "compact" ? "board compact" : "board"}
       style={{ gridTemplateColumns: `repeat(${statuses.length}, minmax(230px, 1fr))` }}
     >
       {statuses.map((s) => (

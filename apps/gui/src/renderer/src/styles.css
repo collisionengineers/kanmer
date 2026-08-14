@@ -269,6 +269,20 @@ textarea:focus {
 .cell.gated.drop {
   background: color-mix(in srgb, var(--danger) 20%, transparent);
 }
+/* Compact card density (Phase 4.4): tighter cards fit more per column. */
+.board.compact .cell {
+  gap: 4px;
+  min-height: 40px;
+}
+.board.compact .card {
+  padding: 4px 8px;
+}
+.board.compact .card .card-title {
+  font-size: 13px;
+}
+.board.compact .area-group {
+  gap: 4px;
+}
 .card {
   background: var(--bg-2);
   border: 1px solid var(--line-2);

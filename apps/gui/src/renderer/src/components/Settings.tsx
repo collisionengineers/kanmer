@@ -13,6 +13,7 @@ import type {
   DocModel,
   ProviderInfo,
   Theme,
+  UiPreferences,
 } from "../../../shared/ipc.js";
 import { useClient } from "../lib/client.js";
 
@@ -29,9 +30,11 @@ interface SettingsProps {
   items: Item[];
   theme: Theme;
   notifications: boolean;
+  preferences: UiPreferences;
   onSaveBoard: (next: BoardConfig) => Promise<void>;
   onSetTheme: (theme: Theme) => void;
   onSetNotifications: (on: boolean) => void;
+  onSetPreferences: (patch: Partial<UiPreferences>) => void;
   onClose: () => void;
 }
 
@@ -42,9 +45,11 @@ export function Settings({
   items,
   theme,
   notifications,
+  preferences,
   onSaveBoard,
   onSetTheme,
   onSetNotifications,
+  onSetPreferences,
   onClose,
 }: SettingsProps): JSX.Element {
   const [draft, setDraft] = useState<BoardConfig>(() => structuredClone(board));
@@ -251,6 +256,75 @@ export function Settings({
                     />
                     Toast when an agent changes the board while the window is unfocused
                   </label>
+                </div>
+
+                <div className="settings-section">
+                  <h3>Card density</h3>
+                  <div className="theme-toggle">
+                    {(["comfortable", "compact"] as const).map((d) => (
+                      <button
+                        key={d}
+                        className={d === preferences.cardDensity ? "tab active" : "tab"}
+                        onClick={() => onSetPreferences({ cardDensity: d })}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="settings-section">
+                  <h3>Behaviour</h3>
+                  <label className="check">
+                    <input
+                      type="checkbox"
+                      checked={preferences.confirmOnDelete}
+                      onChange={(e) => onSetPreferences({ confirmOnDelete: e.target.checked })}
+                    />
+                    Ask for confirmation before deleting a ticket
+                  </label>
+                </div>
+
+                <div className="settings-section">
+                  <h3>New-ticket defaults</h3>
+                  <p className="hint">
+                    Pre-fill the &quot;New ticket&quot; dialog. Applied only when the id exists on
+                    this board.
+                  </p>
+                  <div className="field-row">
+                    <label className="field">
+                      <span>Default area</span>
+                      <select
+                        value={board.areas.some((a) => a.id === preferences.defaultArea) ? preferences.defaultArea : ""}
+                        onChange={(e) => onSetPreferences({ defaultArea: e.target.value })}
+                      >
+                        <option value="">— none —</option>
+                        {board.areas.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>Default priority</span>
+                      <select
+                        value={
+                          board.priorities.some((p) => p.id === preferences.defaultPriority)
+                            ? preferences.defaultPriority
+                            : ""
+                        }
+                        onChange={(e) => onSetPreferences({ defaultPriority: e.target.value })}
+                      >
+                        <option value="">— board default —</option>
+                        {board.priorities.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
                 </div>
               </>
             )}

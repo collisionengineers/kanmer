@@ -43,6 +43,7 @@ export const CH = {
   getSettings: "kanmer:getSettings",
   setTheme: "kanmer:setTheme",
   setNotifications: "kanmer:setNotifications",
+  setPreferences: "kanmer:setPreferences",
   connectAgent: "kanmer:connectAgent",
   disconnectAgent: "kanmer:disconnectAgent",
   listProviders: "kanmer:listProviders",
@@ -75,6 +76,20 @@ export const CH = {
 } as const;
 
 export type Theme = "dark" | "light" | "system";
+export type CardDensity = "comfortable" | "compact";
+
+/**
+ * App-global UI preferences (Phase 4.4) — behaviour/appearance knobs that aren't
+ * board data: card density, delete confirmation, and the defaults a new ticket
+ * starts with. `defaultArea`/`defaultPriority` are matched against the active
+ * board by id and fall back gracefully when the id isn't on that board.
+ */
+export interface UiPreferences {
+  cardDensity: CardDensity;
+  confirmOnDelete: boolean;
+  defaultPriority: string;
+  defaultArea: string;
+}
 
 /** The agent hosts Connect supports (mirrors main/providers.ts ProviderId). */
 export type ConnectTarget = "codex" | "claude" | "opencode" | "grok" | "antigravity";
@@ -105,7 +120,7 @@ export interface DispatchStatus {
   tail?: string[];
 }
 
-export interface AppSettings {
+export interface AppSettings extends UiPreferences {
   theme: Theme;
   recentProjects: string[];
   notifications: boolean;
@@ -225,6 +240,8 @@ export interface KanmerApi {
   getSettings(): Promise<AppSettings>;
   setTheme(theme: Theme): Promise<AppSettings>;
   setNotifications(on: boolean): Promise<AppSettings>;
+  /** Merge a partial UI-preferences patch (Phase 4.4). */
+  setPreferences(patch: Partial<UiPreferences>): Promise<AppSettings>;
   /** Persist the open-tab session (project roots + the active one). */
   setOpenTabs(openTabs: string[], activeTab: string): Promise<AppSettings>;
   /** Register the MCP server + install skills for the given host in a project. */

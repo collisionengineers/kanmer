@@ -11,7 +11,13 @@ import { classifyKanmerPath } from "../../shared/kanmerPath.js";
 import { ClientContext, makeClient, type ProjectClient } from "./lib/client.js";
 import { restoreTabs, restoredActiveTab } from "./lib/session.js";
 import { tabCloseDecision } from "./lib/tabClose.js";
-import type { AppSettings, ChangePayload, DispatchStatus, Theme } from "../../shared/ipc.js";
+import type {
+  AppSettings,
+  ChangePayload,
+  DispatchStatus,
+  Theme,
+  UiPreferences,
+} from "../../shared/ipc.js";
 import { Board } from "./components/Board.js";
 import { TabStrip, type Tab } from "./components/TabStrip.js";
 import { ArchivedList } from "./components/ArchivedList.js";
@@ -102,6 +108,7 @@ export function App(): JSX.Element {
   const [pendingNav, setPendingNav] = useState<{ kind: "select"; id: string | null } | { kind: "close"; projectId: string } | null>(null);
   const [pendingProject, setPendingProject] = useState<OpenTarget | null>(null);
   const [pendingTake, setPendingTake] = useState<{ id: string; branch: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const toastSeq = useRef(0);
   const sessionHydrated = useRef(false);
@@ -436,6 +443,34 @@ export function App(): JSX.Element {
     setSettings(await window.kanmer.setNotifications(on));
   }, []);
 
+  const setPreferences = useCallback(async (patch: Partial<UiPreferences>) => {
+    setSettings(await window.kanmer.setPreferences(patch));
+  }, []);
+
+  // Permanently delete a ticket, then reconcile selection + refresh.
+  const doDelete = useCallback(
+    async (id: string) => {
+      try {
+        await clientRef.current!.deleteItem(id);
+        setSelectedId((cur) => (cur === id ? null : cur));
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+      await refresh();
+    },
+    [refresh],
+  );
+  // Honour the confirm-on-delete preference (Phase 4.4): on → route through the
+  // shared ConfirmModal; off → delete straight away.
+  const requestDelete = useCallback(
+    (id: string) => {
+      if (settings?.confirmOnDelete === false) void doDelete(id);
+      else setPendingDelete({ id });
+    },
+    [settings?.confirmOnDelete, doDelete],
+  );
+
   // Not optimistic: an invalid board must never render (or half-render and
   // then throw) — the modal shows the validation error instead.
   const saveBoard = useCallback(async (next: BoardConfig) => {
@@ -573,8 +608,7 @@ export function App(): JSX.Element {
         else if (action.type === "unarchive")
           await clientRef.current!.updateItem(item.id, { archived: false });
         else if (action.type === "delete") {
-          await clientRef.current!.deleteItem(item.id);
-          setSelectedId((cur) => (cur === item.id ? null : cur));
+          requestDelete(item.id);
         } else if (action.type === "dispatch") {
           await clientRef.current!.dispatchAgent(item.id, action.target);
         }
@@ -584,7 +618,7 @@ export function App(): JSX.Element {
       }
       await refresh();
     },
-    [board, trySelect, onMove, refresh],
+    [board, trySelect, onMove, refresh, requestDelete],
   );
 
   const onCardContext = useCallback((item: Item) => void onContext(item), [onContext]);
@@ -856,6 +890,7 @@ export function App(): JSX.Element {
               onContext={onCardContext}
               blocked={blocked}
               dispatching={dispatching}
+              density={settings?.cardDensity ?? "comfortable"}
             />
           ) : view === "standup" ? (
             <Standup
@@ -1064,6 +1099,20 @@ export function App(): JSX.Element {
         </div>
       )}
 
+      {pendingDelete && (
+        <ConfirmModal
+          message={`Delete ${pendingDelete.id} permanently? This can't be undone.`}
+          actionLabel="Delete"
+          cancelLabel="Cancel"
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            const id = pendingDelete.id;
+            setPendingDelete(null);
+            void doDelete(id);
+          }}
+        />
+      )}
+
       {migrateReport && (
         <div className="modal-backdrop" onClick={() => !migrating && setMigrateReport(null)}>
           <div className="modal migrate" role="dialog" onClick={(e) => e.stopPropagation()}>
@@ -1166,9 +1215,16 @@ export function App(): JSX.Element {
           items={items}
           theme={settings?.theme ?? "dark"}
           notifications={settings?.notifications ?? true}
+          preferences={{
+            cardDensity: settings?.cardDensity ?? "comfortable",
+            confirmOnDelete: settings?.confirmOnDelete ?? true,
+            defaultPriority: settings?.defaultPriority ?? "",
+            defaultArea: settings?.defaultArea ?? "",
+          }}
           onSaveBoard={saveBoard}
           onSetTheme={setTheme}
           onSetNotifications={setNotifications}
+          onSetPreferences={setPreferences}
           onClose={() => setSettingsOpen(false)}
         />
       )}
@@ -1177,6 +1233,8 @@ export function App(): JSX.Element {
         <TicketCreate
           board={board}
           items={items}
+          defaultArea={settings?.defaultArea ?? ""}
+          defaultPriority={settings?.defaultPriority ?? ""}
           onClose={() => setCreateOpen(false)}
           onCreate={async (input) => {
             const created = await createItem(input, { select: true });

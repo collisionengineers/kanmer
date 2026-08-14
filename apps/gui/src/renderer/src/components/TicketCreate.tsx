@@ -6,6 +6,9 @@ import { useClient } from "../lib/client.js";
 interface TicketCreateProps {
   board: BoardConfig;
   items: Item[];
+  /** Preferred initial area/priority (Phase 4.4); used only when on this board. */
+  defaultArea?: string;
+  defaultPriority?: string;
   onClose: () => void;
   /** Create the ticket; resolves with the created item, or null on failure. */
   onCreate: (input: CreateItemInput) => Promise<Item | null>;
@@ -17,13 +20,26 @@ interface TicketCreateProps {
  * GUI-created ticket isn't stranded by the standard leave-backlog gate. The
  * per-column inline QuickAdd stays as the one-field fast path.
  */
-export function TicketCreate({ board, items, onClose, onCreate }: TicketCreateProps): JSX.Element {
+export function TicketCreate({
+  board,
+  items,
+  defaultArea = "",
+  defaultPriority = "",
+  onClose,
+  onCreate,
+}: TicketCreateProps): JSX.Element {
   const client = useClient();
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState(board.statuses[0]?.id ?? "");
-  const [area, setArea] = useState("");
+  const [area, setArea] = useState(
+    board.areas.some((a) => a.id === defaultArea) ? defaultArea : "",
+  );
   const [priority, setPriority] = useState(
-    board.priorities.some((p) => p.id === "medium") ? "medium" : board.priorities[0]?.id ?? "",
+    board.priorities.some((p) => p.id === defaultPriority)
+      ? defaultPriority
+      : board.priorities.some((p) => p.id === "medium")
+        ? "medium"
+        : board.priorities[0]?.id ?? "",
   );
   const [assignee, setAssignee] = useState("");
   const [labels, setLabels] = useState<string[]>([]);

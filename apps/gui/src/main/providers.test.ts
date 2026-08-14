@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { PROVIDERS, codexServerName, providerById, type Invocation } from "./providers.js";
+import {
+  PROVIDERS,
+  codexServerName,
+  isNewerVersion,
+  providerById,
+  type Invocation,
+} from "./providers.js";
 import { applyManagedBlock, removeManagedBlock, START, END } from "./agentsBlock.js";
 
 const inv: Invocation = {
@@ -129,5 +135,24 @@ describe("AGENTS.md managed block", () => {
 
   it("throws on a malformed half-marked file", () => {
     expect(() => applyManagedBlock(`${END}\nx\n${START}\n`, "BODY")).toThrow();
+  });
+});
+
+describe("isNewerVersion (skills update marker)", () => {
+  it("is true only when the bundled version is strictly newer", () => {
+    expect(isNewerVersion("0.2.0", "0.1.0")).toBe(true);
+    expect(isNewerVersion("1.0.0", "0.9.9")).toBe(true);
+    expect(isNewerVersion("0.1.10", "0.1.2")).toBe(true); // numeric, not lexical
+  });
+
+  it("is false when equal or older", () => {
+    expect(isNewerVersion("0.1.0", "0.1.0")).toBe(false);
+    expect(isNewerVersion("0.1.0", "0.2.0")).toBe(false);
+    expect(isNewerVersion("1.0.0", "1.0.0")).toBe(false);
+  });
+
+  it("treats a short version as zero-padded", () => {
+    expect(isNewerVersion("0.1.1", "0.1")).toBe(true);
+    expect(isNewerVersion("0.1", "0.1.0")).toBe(false);
   });
 });

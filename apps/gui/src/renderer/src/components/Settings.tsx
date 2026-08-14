@@ -12,6 +12,7 @@ import type {
   ConnectTarget,
   DocModel,
   ProviderInfo,
+  SkillsStatus,
   Theme,
   UiPreferences,
 } from "../../../shared/ipc.js";
@@ -342,12 +343,23 @@ function ConnectSection(): JSX.Element {
   const client = useClient();
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [skills, setSkills] = useState<Record<string, SkillsStatus>>({});
   const [result, setResult] = useState<
-    (ConnectResult & { target: ConnectTarget; action: "connect" | "disconnect" }) | null
+    (ConnectResult & { target: ConnectTarget; action: "connect" | "disconnect" | "update" }) | null
   >(null);
 
+  const refreshSkills = (list: ProviderInfo[]) => {
+    for (const p of list) {
+      void client.getSkillsStatus(p.id).then((s) => setSkills((cur) => ({ ...cur, [p.id]: s })));
+    }
+  };
+
   useEffect(() => {
-    void window.kanmer.listProviders().then(setProviders);
+    void window.kanmer.listProviders().then((list) => {
+      setProviders(list);
+      refreshSkills(list);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const run = async (target: ConnectTarget, action: "connect" | "disconnect") => {
@@ -358,6 +370,18 @@ function ConnectSection(): JSX.Element {
           ? await client.connectAgent(target)
           : await client.disconnectAgent(target);
       setResult({ ...res, target, action });
+      void client.getSkillsStatus(target).then((s) => setSkills((cur) => ({ ...cur, [target]: s })));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const update = async (target: ConnectTarget) => {
+    setBusy(`update:${target}`);
+    try {
+      const res = await client.updateSkills(target);
+      setResult({ ...res, target, action: "update" });
+      void client.getSkillsStatus(target).then((s) => setSkills((cur) => ({ ...cur, [target]: s })));
     } finally {
       setBusy(null);
     }
@@ -378,10 +402,27 @@ function ConnectSection(): JSX.Element {
             <span className="provider-name">
               {p.label}
               {!p.dispatch && <span className="hint"> · register-only</span>}
+              {skills[p.id]?.updateAvailable && (
+                <span className="hint">
+                  {" "}
+                  · skills v{skills[p.id]!.installedVersion} →{" "}
+                  {skills[p.id]!.bundledVersion}
+                </span>
+              )}
             </span>
             <button className="ghost sm" disabled={busy !== null} onClick={() => void run(p.id, "connect")}>
               {busy === `connect:${p.id}` ? "Connecting…" : "Connect"}
             </button>
+            {skills[p.id]?.updateAvailable && (
+              <button
+                className="ghost sm"
+                disabled={busy !== null}
+                onClick={() => void update(p.id)}
+                title={`Bundled skills (v${skills[p.id]!.bundledVersion}) are newer than the copy in this project (v${skills[p.id]!.installedVersion})`}
+              >
+                {busy === `update:${p.id}` ? "Updating…" : "Update skills"}
+              </button>
+            )}
             <button
               className="ghost sm"
               disabled={busy !== null}
@@ -397,7 +438,7 @@ function ConnectSection(): JSX.Element {
         <div className={result.ok ? "connect-result ok" : "connect-result err"}>
           <div className="connect-status">
             {result.ok
-              ? `✓ ${result.action === "connect" ? "Connected" : "Disconnected"} ${result.target}. ${result.output}`
+              ? `✓ ${result.action === "connect" ? "Connected" : result.action === "update" ? "Updated skills for" : "Disconnected"} ${result.target}. ${result.output}`
               : `Couldn't ${result.action} ${result.target}.${result.action === "connect" ? " Run this yourself:" : ""}`}
           </div>
           {result.command && (

@@ -47,6 +47,8 @@ export const CH = {
   connectAgent: "kanmer:connectAgent",
   disconnectAgent: "kanmer:disconnectAgent",
   listProviders: "kanmer:listProviders",
+  getSkillsStatus: "kanmer:getSkillsStatus",
+  updateSkills: "kanmer:updateSkills",
   dispatchAgent: "kanmer:dispatchAgent",
   cancelDispatch: "kanmer:cancelDispatch",
   listDispatches: "kanmer:listDispatches",
@@ -105,6 +107,14 @@ export interface ProviderInfo {
   id: ConnectTarget;
   label: string;
   dispatch: boolean;
+}
+
+/** Whether a host's copied skill set is present and outdated (Phase 6.2). */
+export interface SkillsStatus {
+  scope: "marketplace" | "project" | "agentsOnly";
+  installedVersion: string | null;
+  bundledVersion: string;
+  updateAvailable: boolean;
 }
 
 /** A background agent dispatch's live status. */
@@ -250,6 +260,10 @@ export interface KanmerApi {
   disconnectAgent(projectId: string, target: ConnectTarget): Promise<ConnectResult>;
   /** The agent hosts Connect can register (drives the Connect tab). */
   listProviders(): Promise<ProviderInfo[]>;
+  /** Whether the host's copied skill set is present and outdated (Phase 6.2). */
+  getSkillsStatus(projectId: string, target: ConnectTarget): Promise<SkillsStatus>;
+  /** Re-copy the bundled skills for a host ("Update skills"). */
+  updateSkills(projectId: string, target: ConnectTarget): Promise<ConnectResult>;
   /** Spawn a background agent to work a ticket end-to-end (request #10). */
   dispatchAgent(projectId: string, ticketId: string, target: ConnectTarget): Promise<DispatchStatus>;
   /** Cancel a dispatch by its globally unique dispatch id (tree-kills the child). */

@@ -57,7 +57,13 @@ import {
   type UiPreferences,
   type WindowBounds,
 } from "./settings.js";
-import { connectAgent, disconnectAgent, type ConnectTarget } from "./connect.js";
+import {
+  connectAgent,
+  disconnectAgent,
+  skillsStatus,
+  updateSkills,
+  type ConnectTarget,
+} from "./connect.js";
 import { dispatchableProviders, listProviders } from "./providers.js";
 import {
   cancelDispatch,
@@ -551,6 +557,12 @@ function registerIpc(): void {
     disconnectAgent(target, requireStore(p).paths.projectRoot),
   );
   ipcMain.handle(CH.listProviders, () => listProviders());
+  ipcMain.handle(CH.getSkillsStatus, (_e, p: string, target: ConnectTarget) =>
+    skillsStatus(target, requireStore(p).paths.projectRoot),
+  );
+  ipcMain.handle(CH.updateSkills, (_e, p: string, target: ConnectTarget) =>
+    updateSkills(target, requireStore(p).paths.projectRoot),
+  );
   ipcMain.handle(CH.dispatchAgent, (_e, p: string, ticketId: string, target: ConnectTarget) =>
     dispatchTicket(requireStore(p), target, p, ticketId),
   );

@@ -18,7 +18,13 @@ import type {
   TicketDocsInfo,
   UpdateItemPatch,
 } from "@kanmer/core";
-import type { ConnectResult, ConnectTarget, DispatchStatus, DocModel } from "../../../shared/ipc.js";
+import type {
+  ConnectResult,
+  ConnectTarget,
+  DispatchStatus,
+  DocModel,
+  SkillsStatus,
+} from "../../../shared/ipc.js";
 
 /**
  * The project-scoped subset of the IPC API, with `projectId` already bound
@@ -44,6 +50,8 @@ export interface ProjectClient {
   getLinks(id: string): Promise<LinkGraph>;
   connectAgent(target: ConnectTarget): Promise<ConnectResult>;
   disconnectAgent(target: ConnectTarget): Promise<ConnectResult>;
+  getSkillsStatus(target: ConnectTarget): Promise<SkillsStatus>;
+  updateSkills(target: ConnectTarget): Promise<ConnectResult>;
   dispatchAgent(ticketId: string, target: ConnectTarget): Promise<DispatchStatus>;
   migrate(dryRun: boolean): Promise<MigrationReport>;
   backfillBoard(dryRun: boolean): Promise<{ addedStages: string[] }>;
@@ -86,6 +94,8 @@ export function makeClient(projectId: string): ProjectClient {
     getLinks: (id) => k.getLinks(projectId, id),
     connectAgent: (t) => k.connectAgent(projectId, t),
     disconnectAgent: (t) => k.disconnectAgent(projectId, t),
+    getSkillsStatus: (t) => k.getSkillsStatus(projectId, t),
+    updateSkills: (t) => k.updateSkills(projectId, t),
     dispatchAgent: (ticketId, t) => k.dispatchAgent(projectId, ticketId, t),
     migrate: (d) => k.migrate(projectId, d),
     backfillBoard: (d) => k.backfillBoard(projectId, d),

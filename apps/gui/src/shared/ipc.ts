@@ -108,6 +108,8 @@ export interface AppSettings {
   openTabs: string[];
   /** The active tab's project root. */
   activeTab: string;
+  /** Whether an empty openTabs array is an intentional persisted session. */
+  sessionInitialized: boolean;
 }
 
 export interface OpenProjectResult {

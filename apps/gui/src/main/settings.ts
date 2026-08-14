@@ -22,6 +22,7 @@ export interface AppSettings {
   openTabs: string[];
   /** The active tab's project root. */
   activeTab: string;
+  sessionInitialized: boolean;
 }
 
 const DEFAULTS: AppSettings = {
@@ -30,6 +31,7 @@ const DEFAULTS: AppSettings = {
   notifications: true,
   openTabs: [],
   activeTab: "",
+  sessionInitialized: false,
 };
 const MAX_RECENT = 8;
 
@@ -48,6 +50,7 @@ export function readSettings(): AppSettings {
       notifications: parsed.notifications !== false,
       openTabs: Array.isArray(parsed.openTabs) ? parsed.openTabs : [],
       activeTab: typeof parsed.activeTab === "string" ? parsed.activeTab : "",
+      sessionInitialized: parsed.sessionInitialized === true,
       ...(bounds && typeof bounds.width === "number" && typeof bounds.height === "number"
         ? { windowBounds: bounds }
         : {}),
@@ -62,6 +65,7 @@ export function setOpenTabs(openTabs: string[], activeTab: string): AppSettings 
   const settings = readSettings();
   settings.openTabs = openTabs.slice(0, MAX_RECENT);
   settings.activeTab = activeTab;
+  settings.sessionInitialized = true;
   writeSettings(settings);
   return settings;
 }

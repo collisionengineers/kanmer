@@ -92,11 +92,12 @@ export function App(): JSX.Element {
   // Whether the editor holds unsaved edits — a ref so reporting dirtiness
   // doesn't re-render the app on every keystroke.
   const editorDirty = useRef(false);
-  const [pendingNav, setPendingNav] = useState<{ id: string | null } | null>(null);
+  const [pendingNav, setPendingNav] = useState<{ kind: "select"; id: string | null } | { kind: "close"; projectId: string } | null>(null);
   const [pendingProject, setPendingProject] = useState<OpenTarget | null>(null);
   const [pendingTake, setPendingTake] = useState<{ id: string; branch: string } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const toastSeq = useRef(0);
+  const sessionHydrated = useRef(false);
 
   // Value refs so a tab switch can snapshot the outgoing tab's UI without
   // stale closures.
@@ -166,13 +167,10 @@ export function App(): JSX.Element {
     }
   }, []);
 
-  /** Close a tab: drop its main context + saved state, switch away if it was active. */
-  const closeTab = useCallback(
+  const performCloseTab = useCallback(
     (projectId: string) => {
       void window.kanmer.closeProject(projectId);
       savedStates.current.delete(projectId);
-      // Editing is lost on close either way; report clean so no stale guard fires.
-      if (projectId === rootRef.current) editorDirty.current = false;
       setTabs((ts) => {
         const remaining = ts.filter((t) => t.projectId !== projectId);
         if (projectId === rootRef.current) {
@@ -190,11 +188,19 @@ export function App(): JSX.Element {
     [openProject],
   );
 
+  const closeTab = useCallback((projectId: string) => {
+    if (projectId === rootRef.current && editorDirty.current) {
+      setPendingNav((pending) => pending ?? { kind: "close", projectId });
+      return;
+    }
+    performCloseTab(projectId);
+  }, [performCloseTab]);
+
   /** Every deselection/navigation goes through here so edits can't be lost silently. */
   const trySelect = useCallback((id: string | null) => {
     setSelectedId((current) => {
       if (id !== current && editorDirty.current) {
-        setPendingNav({ id });
+        setPendingNav({ kind: "select", id });
         return current;
       }
       return id;
@@ -219,11 +225,14 @@ export function App(): JSX.Element {
       const s = await window.kanmer.getSettings();
       setSettings(s);
       let toOpen = s.openTabs;
-      if (toOpen.length === 0) {
+      if (toOpen.length === 0 && !s.sessionInitialized) {
         const current = await window.kanmer.currentProject();
         toOpen = current ? [current] : [];
       }
-      if (toOpen.length === 0) return;
+      if (toOpen.length === 0) {
+        sessionHydrated.current = true;
+        return;
+      }
       const active =
         s.activeTab && toOpen.includes(s.activeTab) ? s.activeTab : toOpen[toOpen.length - 1];
       // Open background tabs (their main context + watcher go live) without
@@ -241,17 +250,14 @@ export function App(): JSX.Element {
         }
       }
       await openProject(active);
+      sessionHydrated.current = true;
     })();
   }, [openProject]);
 
   // Persist the open-tab session so it restores next boot.
   useEffect(() => {
-    if (tabs.length > 0) {
-      void window.kanmer.setOpenTabs(
-        tabs.map((t) => t.projectId),
-        root ?? "",
-      );
-    }
+    if (!sessionHydrated.current) return;
+    void window.kanmer.setOpenTabs(tabs.map((t) => t.projectId), root ?? "");
   }, [tabs, root]);
 
   // Apply theme to the document; "system" follows the OS live.
@@ -938,13 +944,15 @@ export function App(): JSX.Element {
 
       {pendingNav && (
         <ConfirmModal
-          message={`Discard changes to ${selectedId}?`}
+          message={pendingNav.kind === "close" ? `Discard changes to ${selectedId} and close this project?` : `Discard changes to ${selectedId}?`}
           actionLabel="Discard"
           onCancel={() => setPendingNav(null)}
           onConfirm={() => {
             editorDirty.current = false;
-            setSelectedId(pendingNav.id);
+            const pending = pendingNav;
             setPendingNav(null);
+            if (pending.kind === "close") performCloseTab(pending.projectId);
+            else setSelectedId(pending.id);
           }}
         />
       )}

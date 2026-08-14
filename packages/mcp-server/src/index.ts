@@ -125,7 +125,6 @@ async function summarise(item: Item, blockedIds: Set<string>) {
     priority: item.priority,
     assignee: item.assignee,
     labels: item.labels,
-    due: item.due ?? null,
     order: item.order ?? null,
     blocked: blockedIds.has(item.id),
     created: item.created,
@@ -147,7 +146,9 @@ async function blockedSet(): Promise<Set<string>> {
 }
 
 const itemTypeEnum = z.enum(["ticket", "plan", "research"]);
-const ticketDocEnum = z.enum(["research", "impact", "plan", "checklist", "proof"]);
+// Doc names are per-area configurable data now (board.docs); core validates a
+// write against the ticket area's set, so the wire type is a plain string.
+const ticketDocEnum = z.string();
 const columnKindEnum = z.enum(["status", "area", "priority"]);
 
 const createFields = {
@@ -157,7 +158,6 @@ const createFields = {
   area: z.string().optional().describe("Area id (see list_board → areas)"),
   priority: z.string().optional().describe("Priority id (see list_board → priorities)"),
   assignee: z.string().optional(),
-  due: z.string().optional().describe("Deadline, date-only: YYYY-MM-DD"),
   labels: z.array(z.string()).optional(),
   links: z.array(z.string()).optional().describe("Ids of related items (must exist)"),
   blocks: z.array(z.string()).optional().describe("Ids this item blocks (must exist)"),
@@ -243,40 +243,19 @@ server.registerTool(
         .string()
         .optional()
         .describe("Only items whose `updated` is after this ISO timestamp"),
-      due_before: z
-        .string()
-        .optional()
-        .describe("Only items with a due date before this day (YYYY-MM-DD)"),
-      overdue: z
-        .boolean()
-        .optional()
-        .describe("Only items due before today that haven't reached the final stage"),
       sort: z.enum(["id", "updated_desc"]).optional().describe("Sort order (default id)"),
       limit: z.number().int().positive().optional().describe("Return at most this many"),
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   guard(
-    async ({
-      type,
-      status,
-      area,
-      label,
-      include_archived,
-      updated_since,
-      due_before,
-      overdue,
-      sort,
-      limit,
-    }) => {
+    async ({ type, status, area, label, include_archived, updated_since, sort, limit }) => {
       const { items, warnings } = await store.listItemsWithWarnings({
         type,
         status,
         area,
         label,
         includeArchived: include_archived,
-        dueBefore: due_before,
-        overdue,
       });
       let selected = items;
       if (updated_since !== undefined) {
@@ -454,7 +433,6 @@ server.registerTool(
       area: z.string().optional(),
       priority: z.string().optional(),
       assignee: z.string().optional(),
-      due: z.string().optional().describe("YYYY-MM-DD; pass \"\" to clear the deadline"),
       order: z.number().optional().describe("Manual sort key (move_item's position computes this)"),
       labels: z.array(z.string()).optional(),
       links: z.array(z.string()).optional(),

@@ -15,7 +15,8 @@ import type { KanmerPaths } from "./paths.js";
 export function defaultBoardConfig(): BoardConfig {
   return {
     statuses: [
-      { id: "todo", name: "Todo" },
+      { id: "backlog", name: "Backlog" },
+      { id: "researching", name: "Researching" },
       { id: "planning", name: "Planning" },
       { id: "implementing", name: "Implementing" },
       { id: "review", name: "Review" },

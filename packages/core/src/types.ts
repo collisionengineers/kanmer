@@ -28,9 +28,13 @@ export const BoardColumnSchema = z.object({
 });
 export type BoardColumn = z.infer<typeof BoardColumnSchema>;
 
-/** The five pipeline documents that live inside a ticket's folder (format 2). */
-export const TICKET_DOCS = ["research", "impact", "plan", "checklist", "proof"] as const;
-export type TicketDoc = (typeof TICKET_DOCS)[number];
+/**
+ * A ticket document name. The doc set is per-area configurable data now (see
+ * `board.docs` and `resolveDocTypes` in docs.ts), so this is just a string; the
+ * store validates a write against the ticket area's configured set. The shipped
+ * default set lives in `DEFAULT_DOC_TYPES` (docs.ts).
+ */
+export type TicketDoc = string;
 
 /** Options for writing a ticket's pipeline document. */
 export interface SetDocOptions {
@@ -47,8 +51,9 @@ export interface SetDocOptions {
 
 /** Which pipeline docs exist for a ticket, plus checklist progress if present. */
 export interface TicketDocsInfo {
-  docs: Record<TicketDoc, boolean>;
-  /** Parsed from `- [ ]` / `- [x]` lines in checklist.md; null when absent. */
+  /** Keyed by the ticket area's resolved doc-type ids. */
+  docs: Record<string, boolean>;
+  /** Parsed from `- [ ]` / `- [x]` lines in the progress doc; null when absent. */
   checklist: { checked: number; total: number } | null;
 }
 
@@ -76,6 +81,112 @@ const TimestampSchema = z.preprocess(
   z.string(),
 );
 
+// ---------------------------------------------------------------------------
+// Document model (board.docs): per-area doc types, a hierarchy and hard gates.
+// Everything here is optional so boards written before v2 load unchanged; the
+// resolvers in docs.ts fall back to the shipped defaults when a board omits it.
+// ---------------------------------------------------------------------------
+
+/** One configurable document type in a ticket's pipeline. */
+export const DocTypeSchema = z.object({
+  /** Lowercase-kebab id; also the on-disk filename (`<id>.md`). */
+  id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "doc id must be lowercase-kebab"),
+  name: z.string().min(1),
+  /** Doc ids that must exist before this one may be written (doc-before-doc). */
+  requires: z.array(z.string()).optional(),
+  /** Parse `- [ ]`/`- [x]` progress from this doc (at most one type should set it). */
+  progress: z.boolean().optional(),
+});
+export type DocType = z.infer<typeof DocTypeSchema>;
+
+/**
+ * Validate a doc-type list: the reserved `scratch-` prefix, `requires` entries
+ * that name a doc absent from the list, and `requires` cycles. Shared by config
+ * parsing (below) and mirrored by the Phase 4 Settings editor's validateDraft.
+ */
+function refineDocTypes(types: DocType[], ctx: z.RefinementCtx): void {
+  const ids = new Set(types.map((t) => t.id));
+  for (const t of types) {
+    if (t.id.startsWith("scratch-")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `doc id "${t.id}" must not start with "scratch-" (reserved for scratch files)`,
+      });
+    }
+    for (const req of t.requires ?? []) {
+      if (!ids.has(req)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `doc "${t.id}" requires "${req}", which is not a doc type in this set`,
+        });
+      }
+    }
+  }
+  // Cycle detection over the `requires` edges (a requires b requires a).
+  const edges = new Map(types.map((t) => [t.id, t.requires ?? []]));
+  const state = new Map<string, 1 | 2>(); // 1 = on stack, 2 = done
+  const hasCycle = (id: string): boolean => {
+    if (state.get(id) === 2) return false;
+    if (state.get(id) === 1) return true;
+    state.set(id, 1);
+    for (const next of edges.get(id) ?? []) {
+      if (edges.has(next) && hasCycle(next)) return true;
+    }
+    state.set(id, 2);
+    return false;
+  };
+  for (const t of types) {
+    if (hasCycle(t.id)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `doc "${t.id}" is part of a requires cycle`,
+      });
+      break;
+    }
+  }
+}
+
+export const DocTypeArraySchema = z.array(DocTypeSchema).superRefine(refineDocTypes);
+
+/** One hard gate: a doc (or a governing repo-doc) required to cross a stage boundary. */
+export const GateRuleSchema = z
+  .object({
+    needs: z.string().optional(),
+    needsRepoDoc: z.array(z.string()).optional(),
+    before: z
+      .object({ leave: z.string().optional(), enter: z.string().optional() })
+      .refine((b) => (b.leave === undefined) !== (b.enter === undefined), {
+        message: "gate `before` needs exactly one of `leave`/`enter`",
+      }),
+  })
+  .refine((g) => (g.needs === undefined) !== (g.needsRepoDoc === undefined), {
+    message: "gate needs exactly one of `needs`/`needsRepoDoc`",
+  });
+export type GateRule = z.infer<typeof GateRuleSchema>;
+
+/** Per-area document override: its own types and/or gates (each falls back to the default). */
+export const AreaDocsSchema = z.object({
+  types: DocTypeArraySchema.optional(),
+  gates: z.array(GateRuleSchema).optional(),
+});
+export type AreaDocs = z.infer<typeof AreaDocsSchema>;
+
+/** The `docs` block on board.yml — the whole configurable document model. */
+export const DocsConfigSchema = z.object({
+  /** Governing-doc kind → repo-relative glob (e.g. prd → docs/prd/**). */
+  repoDocs: z.record(z.string()).optional(),
+  default: AreaDocsSchema.optional(),
+  areas: z.record(AreaDocsSchema).optional(),
+});
+export type DocsConfig = z.infer<typeof DocsConfigSchema>;
+
+/** The `deployment` block on board.yml — absent for non-cloud projects. */
+export const DeploymentConfigSchema = z.object({
+  /** Ordered environments; the last one is "live". */
+  environments: z.array(z.string().min(1)).min(1),
+});
+export type DeploymentConfig = z.infer<typeof DeploymentConfigSchema>;
+
 /**
  * board.yml — the status/area/priority definitions that drive tools and GUI.
  *
@@ -88,6 +199,10 @@ export const BoardConfigSchema = z.object({
   areas: z.array(BoardColumnSchema).default([]),
   priorities: z.array(BoardColumnSchema).min(1).default(DEFAULT_PRIORITIES),
   idPrefixes: IdPrefixesSchema,
+  /** The configurable document model. Absent ⇒ the shipped defaults (docs.ts). */
+  docs: DocsConfigSchema.optional(),
+  /** Deployment tracking. Absent ⇒ no per-ticket deployment field at all. */
+  deployment: DeploymentConfigSchema.optional(),
 });
 export type BoardConfig = z.infer<typeof BoardConfigSchema>;
 
@@ -115,19 +230,22 @@ export const ItemFrontmatterSchema = z
     branch: z.string().optional(),
     /** The worktree path the taken work happens in, if any. */
     worktree: z.string().optional(),
-    /** Optional date-only deadline (YYYY-MM-DD). YAML parses bare dates to Date. */
-    due: z
-      .preprocess(
-        (v) => (v instanceof Date ? v.toISOString().slice(0, 10) : v),
-        z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      )
-      .optional(),
     /** Optional fractional sort key; unordered items sort after ordered ones. */
     order: z.number().optional(),
     labels: z.array(z.string()).default([]),
     links: z.array(z.string()).default([]),
     /** Ids this item blocks. Blocked-by is derived as backlinks, never stored. */
     blocks: z.array(z.string()).optional(),
+    /** Repo-relative POSIX paths to governing docs (PRD/FRD/ADR) in the repo's own /docs/. */
+    refs: z.array(z.string()).optional(),
+    /** A governing doc is still to be created/linked — satisfies the repo-doc gate. */
+    docs_todo: z.boolean().optional(),
+    /** Commit SHAs associated with this ticket (emitted only when non-empty). */
+    commits: z.array(z.string()).optional(),
+    /** PR references — number or URL — associated with this ticket (emitted only when non-empty). */
+    prs: z.array(z.string()).optional(),
+    /** Deployment status; only meaningful when the board declares environments. */
+    deployment: z.string().optional(),
     archived: z.boolean().default(false),
     created: TimestampSchema.default(""),
     updated: TimestampSchema.default(""),
@@ -149,10 +267,6 @@ export interface ItemFilter {
   label?: string;
   /** Include archived items (default false). */
   includeArchived?: boolean;
-  /** Only items with a due date strictly before this date (YYYY-MM-DD). */
-  dueBefore?: string;
-  /** Only items due before today that haven't reached the final stage. */
-  overdue?: boolean;
 }
 
 /** Input for creating an item. id/created/updated are allocated by the store. */
@@ -166,7 +280,14 @@ export interface CreateItemInput {
   labels?: string[];
   links?: string[];
   blocks?: string[];
-  due?: string;
+  /** Repo-relative POSIX paths to governing docs (validated to exist under the project root). */
+  refs?: string[];
+  /** Declare that a governing doc is still to be created — satisfies the repo-doc gate. */
+  docs_todo?: boolean;
+  commits?: string[];
+  prs?: string[];
+  /** Deployment status; only accepted when the board declares environments. */
+  deployment?: string;
   body?: string;
 }
 
@@ -180,8 +301,13 @@ export interface UpdateItemPatch {
   labels?: string[];
   links?: string[];
   blocks?: string[];
-  /** YYYY-MM-DD; pass "" to clear. */
-  due?: string;
+  /** Repo-relative POSIX paths to governing docs (validated to exist under the project root). */
+  refs?: string[];
+  docs_todo?: boolean;
+  commits?: string[];
+  prs?: string[];
+  /** Deployment status; only accepted when the board declares environments. */
+  deployment?: string;
   /** Fractional sort key (moveItem's `position` computes this for you). */
   order?: number;
   body?: string;

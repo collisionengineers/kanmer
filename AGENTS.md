@@ -205,15 +205,16 @@ idPrefixes: { ticket: TICK, plan: PLAN, research: RES }  # _none fallback + lega
 Area `prefix` is 2–6 uppercase alphanumerics, derived from the id when unset
 (`areaPrefix()` in board.ts), and uniqueness — including *among* the
 `idPrefixes` values and against them — is enforced on every board write. The
-final stage's proof gate is re-checked whenever a board write changes which
-stage is last, and a ticket cannot be *created* directly in the final stage
+final stage's configured document-gate boundary is re-checked whenever a board
+write changes which stage is last, and a ticket cannot be *created* directly in the final stage
 either. `status` is the only workflow axis, with six default stages:
 
 ```
 todo → planning → implementing → review → verifying → done
 ```
 
-The FIRST stage is where new items land; the LAST stage is proof-gated. A
+The FIRST stage is where new items land; the LAST stage is governed by the
+resolved configured document gates. A
 `phases:` array in a pre-consolidation `board.yml` is stripped by zod on read;
 unknown status values on items still render via the Board's `mergeColumns`
 fallback (read-side only — writes reject unknown ids).

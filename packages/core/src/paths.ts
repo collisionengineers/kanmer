@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { ItemType, TicketDoc } from "./types.js";
+import type { ItemType } from "./types.js";
 
 export const KANMER_DIR = ".kanmer";
 
@@ -74,6 +74,21 @@ export function itemFile(paths: KanmerPaths, type: ItemType, id: string): string
 }
 
 /**
+ * Resolve a repo-relative path (e.g. `docs/prd/checkout.md`) to an absolute
+ * path *under* the project root, or throw. Refs come from model output and the
+ * create dialog, so this is the same traversal guard `itemFile` applies to ids:
+ * a `../` path, or an absolute one, escapes the root and is rejected.
+ */
+export function assertSafeRepoPath(projectRoot: string, rel: string): string {
+  const root = path.resolve(projectRoot);
+  const abs = path.resolve(root, rel);
+  if (abs !== root && !abs.startsWith(root + path.sep)) {
+    throw new Error(`Repo doc path "${rel}" escapes the project root`);
+  }
+  return abs;
+}
+
+/**
  * The folder name under `areas/` for an area id (`_none` for "no area").
  * Area ids come from board.yml or model output, so they get the same
  * traversal guard as item ids.
@@ -102,7 +117,40 @@ export function ticketFileIn(paths: KanmerPaths, areaId: string, id: string): st
   return path.join(ticketDirIn(paths, areaId, id), `${id}.md`);
 }
 
+/**
+ * A document name safe to embed in a ticket-folder filename: lowercase-kebab,
+ * no separators, no `..`. Doc names arrive from board config and model output,
+ * so they get the same traversal guard as ids. Scratch files (`scratch-<slug>`)
+ * are still valid kebab names — the reserved-prefix rule that keeps a *doc type*
+ * from being called `scratch-*` lives in the config schema, not here.
+ */
+const SAFE_DOC_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export function assertSafeDocName(doc: string): void {
+  if (!SAFE_DOC_RE.test(doc) || doc.includes("..")) {
+    throw new Error(`Invalid document name "${doc}"`);
+  }
+}
+
 /** Format 2: one of the pipeline documents inside a ticket folder. */
-export function docFileIn(ticketDir: string, doc: TicketDoc): string {
+export function docFileIn(ticketDir: string, doc: string): string {
+  assertSafeDocName(doc);
   return path.join(ticketDir, `${doc}.md`);
+}
+
+/** Filename prefix for per-ticket scratch notes (`scratch-<slug>.md`). */
+export const SCRATCH_PREFIX = "scratch-";
+
+/**
+ * Format 2: a per-ticket scratch file (`scratch-<slug>.md`) inside a ticket
+ * folder. `slug` is validated like a doc name so it can't escape the folder.
+ */
+export function scratchFileIn(ticketDir: string, slug: string): string {
+  assertSafeDocName(slug);
+  return path.join(ticketDir, `${SCRATCH_PREFIX}${slug}.md`);
+}
+
+/** True for a ticket-folder filename that is a scratch note, not a pipeline doc. */
+export function isScratchFile(fileName: string): boolean {
+  return fileName.startsWith(SCRATCH_PREFIX) && fileName.endsWith(".md");
 }

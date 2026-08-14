@@ -13,9 +13,13 @@ import {
 import {
   areaDir,
   areaFolderName,
+  assertSafeRepoPath,
   docFileIn,
+  isScratchFile,
   itemFile,
   resolvePaths,
+  scratchFileIn,
+  SCRATCH_PREFIX,
   ticketDirIn,
   ticketFileIn,
   typeDir,
@@ -40,9 +44,9 @@ import {
 import { parseWikiLinks } from "./links.js";
 import { appendActivity, readActivity, type ActivityEntry } from "./activity.js";
 import { CURRENT_FORMAT, readVersion, writeVersion } from "./version.js";
+import { evaluateGates, repoDocKindOf, resolveDocTypes, resolveGates } from "./docs.js";
 import {
   ItemTypeSchema,
-  TICKET_DOCS,
   type BoardColumn,
   type BoardConfig,
   type BoardSource,
@@ -193,7 +197,7 @@ export class KanmerStore {
     const prevLast = lastStageId(previous);
     const nextLast = lastStageId(board);
     if (nextLast !== undefined && nextLast !== prevLast) {
-      await this.assertFinalStageProven(nextLast);
+      await this.assertFinalStageGates(board, nextLast);
     }
     await writeBoard(this.paths, board);
   }
@@ -410,15 +414,7 @@ export class KanmerStore {
       }
     }
 
-    let filtered = items.filter((item) => matchesFilter(item, filter));
-    if (filter.overdue) {
-      const board = await this.getBoard();
-      const lastStage = lastStageId(board);
-      const today = new Date().toISOString().slice(0, 10);
-      filtered = filtered.filter(
-        (i) => i.due !== undefined && i.due < today && i.status !== lastStage,
-      );
-    }
+    const filtered = items.filter((item) => matchesFilter(item, filter));
     return { items: filtered.sort(byOrderThenId), warnings };
   }
 
@@ -457,7 +453,8 @@ export class KanmerStore {
     if (input.status !== undefined) assertFieldAgainstBoard(board, "status", input.status);
     if (input.area !== undefined) assertFieldAgainstBoard(board, "area", input.area);
     if (input.priority !== undefined) assertFieldAgainstBoard(board, "priority", input.priority);
-    if (input.due !== undefined) assertDueDate(input.due);
+    if (input.refs !== undefined) await this.assertRefs(input.refs);
+    if (input.deployment !== undefined) assertDeploymentAgainstBoard(board, input.deployment);
     for (const target of [...(input.links ?? []), ...(input.blocks ?? [])]) {
       if (!(await this.getItem(target))) {
         throw new Error(`No item with id "${target}" to link to`);
@@ -472,25 +469,10 @@ export class KanmerStore {
       );
     }
 
-    // A ticket cannot be born in the final stage: proof.md is required there
-    // and the ticket's folder does not exist yet, so there is nothing that
-    // could satisfy it. Each guard is load-bearing — v1 boards have no doc
-    // folders, a default create lands in statuses[0], and on a one-stage
-    // board first === last so every create would otherwise fail.
-    const last = lastStageId(board);
-    if (
-      format === 2 &&
-      type === "ticket" &&
-      input.status !== undefined &&
-      board.statuses.length > 1 &&
-      input.status === last
-    ) {
-      throw new Error(
-        `Cannot create "${input.title}" directly in "${input.status}": that is the board's final ` +
-          `stage, which requires proof.md. Create it in an earlier stage, write the evidence with ` +
-          `set_ticket_doc(doc: "proof"), then move it.`,
-      );
-    }
+    // Creation is deliberately ungated (D6): gates fire on transitions only, so
+    // imports and backfills of already-finished work can be created directly in
+    // any stage — including the final one — without the folder's docs existing
+    // yet. Moving a ticket still enforces every gate.
 
     const area = input.area ?? "";
     const areaEntry = board.areas.find((a) => a.id === area);
@@ -536,8 +518,12 @@ export class KanmerStore {
         updated: now,
         body: input.body ?? "",
       };
-      if (input.due !== undefined && input.due !== "") item.due = input.due;
       if (input.blocks !== undefined && input.blocks.length > 0) item.blocks = input.blocks;
+      if (input.refs !== undefined && input.refs.length > 0) item.refs = input.refs;
+      if (input.docs_todo === true) item.docs_todo = true;
+      if (input.commits !== undefined && input.commits.length > 0) item.commits = input.commits;
+      if (input.prs !== undefined && input.prs.length > 0) item.prs = input.prs;
+      if (input.deployment !== undefined && input.deployment !== "") item.deployment = input.deployment;
       const file =
         format === 2
           ? ticketFileIn(this.paths, area, id)
@@ -562,14 +548,21 @@ export class KanmerStore {
   async updateItem(id: string, patch: UpdateItemPatch): Promise<Item> {
     const { expectedUpdated, ...fields } = patch;
     let board: BoardConfig | null = null;
-    if (fields.status !== undefined || fields.area !== undefined || fields.priority !== undefined) {
+    if (
+      fields.status !== undefined ||
+      fields.area !== undefined ||
+      fields.priority !== undefined ||
+      fields.deployment !== undefined
+    ) {
       board = await this.getBoard();
       if (fields.status !== undefined) assertFieldAgainstBoard(board, "status", fields.status);
       if (fields.area !== undefined) assertFieldAgainstBoard(board, "area", fields.area);
       if (fields.priority !== undefined)
         assertFieldAgainstBoard(board, "priority", fields.priority);
+      if (fields.deployment !== undefined && fields.deployment !== "")
+        assertDeploymentAgainstBoard(board, fields.deployment);
     }
-    if (fields.due !== undefined && fields.due !== "") assertDueDate(fields.due);
+    if (fields.refs !== undefined) await this.assertRefs(fields.refs);
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
@@ -588,10 +581,14 @@ export class KanmerStore {
       ...pruned,
       updated: nowIso(),
     };
-    if (pruned.due === "") delete next.due; // "" clears the deadline
+    if (pruned.deployment === "") delete next.deployment; // "" clears deployment
+    if (next.docs_todo === false) delete next.docs_todo;
+    if (next.refs && next.refs.length === 0) delete next.refs;
+    if (next.commits && next.commits.length === 0) delete next.commits;
+    if (next.prs && next.prs.length === 0) delete next.prs;
     if (next.status !== current.status && current.type === "ticket" && loc.kind === "v2") {
       board ??= await this.getBoard();
-      await this.assertProofGate(loc.dir, board, id, next.status);
+      await this.assertDocGate(loc.dir, board, next, current.status, next.status);
     }
     let file = loc.file;
     if (loc.kind === "v2") {
@@ -667,7 +664,7 @@ export class KanmerStore {
     const board = await this.getBoard();
     assertFieldAgainstBoard(board, "status", status);
     if (status !== current.status && current.type === "ticket" && loc.kind === "v2") {
-      await this.assertProofGate(loc.dir, board, id, status);
+      await this.assertDocGate(loc.dir, board, current, current.status, status);
     }
   }
 
@@ -757,7 +754,7 @@ export class KanmerStore {
         : current.status;
     }
     if (stage !== current.status && loc.kind === "v2") {
-      await this.assertProofGate(loc.dir, board, id, stage);
+      await this.assertDocGate(loc.dir, board, current, current.status, stage);
     }
     const next: Item = {
       ...current,
@@ -849,6 +846,25 @@ export class KanmerStore {
           `migrate this board to format 2 first.`,
       );
     }
+    // Validate the doc name against the ticket area's configured doc set, and
+    // enforce the requires hierarchy: a prerequisite doc must exist first.
+    const owner = parseItem(await readText(loc.file));
+    const board = await this.getBoard();
+    const types = resolveDocTypes(board, owner.area);
+    const type = types.find((t) => t.id === doc);
+    if (!type) {
+      throw new Error(
+        `Unknown document "${doc}" for area "${owner.area || "(none)"}". ` +
+          `Valid documents: ${types.map((t) => t.id).join(", ")}.`,
+      );
+    }
+    for (const req of type.requires ?? []) {
+      if (!(await pathExists(docFileIn(loc.dir, req)))) {
+        throw new Error(
+          `Cannot write ${doc}.md on "${id}" before ${req}.md exists (${doc} requires ${req}).`,
+        );
+      }
+    }
     const file = docFileIn(loc.dir, doc);
     // One read serves both the version check and the append.
     const existing = (await pathExists(file)) ? await readText(file) : null;
@@ -876,13 +892,17 @@ export class KanmerStore {
   async getTicketDocsInfo(id: string): Promise<TicketDocsInfo | null> {
     const loc = await this.locateItem(id);
     if (!loc || loc.kind !== "v2") return null;
-    const docs = {} as Record<TicketDoc, boolean>;
-    for (const doc of TICKET_DOCS) {
-      docs[doc] = await pathExists(docFileIn(loc.dir, doc));
+    const item = parseItem(await readText(loc.file));
+    const board = await this.getBoard();
+    const types = resolveDocTypes(board, item.area);
+    const docs: Record<string, boolean> = {};
+    for (const t of types) {
+      docs[t.id] = await pathExists(docFileIn(loc.dir, t.id));
     }
     let checklist: TicketDocsInfo["checklist"] = null;
-    if (docs.checklist) {
-      const text = await readText(docFileIn(loc.dir, "checklist"));
+    const progressType = types.find((t) => t.progress);
+    if (progressType && docs[progressType.id]) {
+      const text = await readText(docFileIn(loc.dir, progressType.id));
       let checked = 0;
       let total = 0;
       for (const line of text.split("\n")) {
@@ -952,42 +972,147 @@ export class KanmerStore {
     });
   }
 
-  /** The proof gate: a ticket may only reach the final stage with proof.md written. */
-  private async assertProofGate(
-    ticketDir: string,
-    board: BoardConfig,
-    id: string,
-    nextStatus: string,
-  ): Promise<void> {
-    if (nextStatus !== lastStageId(board)) return;
-    if (!(await pathExists(docFileIn(ticketDir, "proof")))) {
-      throw new Error(
-        `${id} cannot move to "${nextStatus}": proof.md is missing. ` +
-          `Write the evidence first with set_ticket_doc(doc: "proof").`,
-      );
+  /** Validate governing-doc refs: each must resolve under the project root and exist. */
+  private async assertRefs(refs: string[]): Promise<void> {
+    for (const rel of refs) {
+      const abs = assertSafeRepoPath(this.paths.projectRoot, rel);
+      if (!(await pathExists(abs))) {
+        throw new Error(`Referenced document "${rel}" does not exist under the project root.`);
+      }
     }
   }
 
   /**
-   * Refuse a board write that would make a stage final while proofless
-   * tickets sit in it. Rejecting (rather than grandfathering) matches
-   * removeColumn's in-use refusal and keeps "the LAST stage is proof-gated"
-   * literally true. Archived tickets are off the board and are not gated.
+   * Hard document gates on a transition — the generalisation of the old proof
+   * gate. Resolve the ticket area's gates, evaluate them against the from→to
+   * move (threshold semantics in {@link evaluateGates}), and throw once listing
+   * every unmet requirement. Gates whose boundary stage is absent on the board
+   * are inert, so this is safe on custom and backfilled boards. The default set
+   * preserves today's proof-before-final-stage behaviour exactly.
    */
-  private async assertFinalStageProven(stageId: string): Promise<void> {
+  private async assertDocGate(
+    ticketDir: string,
+    board: BoardConfig,
+    item: Item,
+    fromStatus: string,
+    toStatus: string,
+  ): Promise<void> {
+    const gates = resolveGates(board, item.area);
+    if (gates.length === 0) return;
+    const context = await this.gateContext(ticketDir, board, item, gates);
+    const violations = evaluateGates(gates, {
+      statuses: board.statuses.map((s) => s.id),
+      from: fromStatus,
+      to: toStatus,
+      ...context,
+    });
+    if (violations.length === 0) return;
+    const lines = violations.map((v) => `  - ${v.reason}`).join("\n");
+    throw new Error(
+      `${item.id} cannot move from "${fromStatus}" to "${toStatus}" — ` +
+        `${violations.length} document gate(s) unmet:\n${lines}\n` +
+        `Write the missing document(s) with set_ticket_doc (or link a governing doc via refs / set docs_todo), then move.`,
+    );
+  }
+
+  /** Collect the ticket-specific inputs shared by every configured gate check. */
+  private async gateContext(
+    ticketDir: string,
+    board: BoardConfig,
+    item: Item,
+    gates: ReturnType<typeof resolveGates>,
+  ): Promise<{
+    hasDoc: (doc: string) => boolean;
+    repoDocSatisfied: (kinds: string[]) => boolean;
+  }> {
+    const needed = new Set<string>();
+    for (const g of gates) if (g.needs !== undefined) needed.add(g.needs);
+    const present = new Set<string>();
+    for (const doc of needed) {
+      if (await pathExists(docFileIn(ticketDir, doc))) present.add(doc);
+    }
+    const repoDocSatisfied = (kinds: string[]): boolean => {
+      if (item.docs_todo === true) return true;
+      for (const rel of item.refs ?? []) {
+        const kind = repoDocKindOf(board, rel);
+        if (kind !== null && kinds.includes(kind)) return true;
+      }
+      return false;
+    };
+    return { hasDoc: (doc) => present.has(doc), repoDocSatisfied };
+  }
+
+  /**
+   * Append a note to a per-ticket scratch file (`scratch-<slug>.md`). Uses
+   * `fs.appendFile` (the true append primitive, cf. activity.ts) rather than the
+   * atomic temp+rename of setDoc: scratch is a running note, not a versioned doc.
+   * A blank line separates successive appends. Emits one activity line per call —
+   * callers that stream must batch. Scratch is exempt from doc-type validation.
+   */
+  async appendScratch(id: string, slug: string, content: string): Promise<{ file: string }> {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    if (loc.kind !== "v2") {
+      throw new Error(
+        `"${id}" is stored in the legacy layout, which has no ticket folders — ` +
+          `migrate this board to format 2 first.`,
+      );
+    }
+    const file = scratchFileIn(loc.dir, slug);
+    const had = await pathExists(file);
+    await fs.mkdir(loc.dir, { recursive: true });
+    const block = `${content.trim()}\n`;
+    await fs.appendFile(file, had ? `\n${block}` : block, "utf8");
+    await appendActivity(this.paths, [
+      this.activity(id, "doc", { field: `${SCRATCH_PREFIX}${slug}`, to: "append" }),
+    ]);
+    return { file };
+  }
+
+  /** Read a per-ticket scratch file back; null when it doesn't exist. */
+  async getScratch(id: string, slug: string): Promise<string | null> {
+    return this.getDoc(id, `${SCRATCH_PREFIX}${slug}`);
+  }
+
+  /** The slugs of a ticket's scratch files (`scratch-<slug>.md` → `<slug>`), sorted. */
+  async listScratch(id: string): Promise<string[]> {
+    const loc = await this.locateItem(id);
+    if (!loc || loc.kind !== "v2") return [];
+    const names = await fs.readdir(loc.dir).catch(() => [] as string[]);
+    return names
+      .filter(isScratchFile)
+      .map((n) => n.slice(SCRATCH_PREFIX.length, -3))
+      .sort();
+  }
+
+  /**
+   * Refuse a board write that would make a stage final while its occupants do
+   * not meet the configured gate boundary. Archived and legacy tickets are
+   * outside the v2 document-gate model and are not gated here.
+   */
+  private async assertFinalStageGates(board: BoardConfig, stageId: string): Promise<void> {
+    const prior = board.statuses.at(-2)?.id;
+    if (prior === undefined) return;
     const occupants = await this.listItems({ status: stageId }); // non-archived only
-    const offenders: string[] = [];
+    const failures: string[] = [];
     for (const item of occupants) {
       if (item.type !== "ticket") continue;
       const loc = await this.locateItem(item.id);
       if (!loc || loc.kind !== "v2") continue; // legacy layout has no doc folder to gate on
-      if (!(await pathExists(docFileIn(loc.dir, "proof")))) offenders.push(item.id);
+      const gates = resolveGates(board, item.area);
+      const context = await this.gateContext(loc.dir, board, item, gates);
+      const violations = evaluateGates(gates, {
+        statuses: board.statuses.map((s) => s.id),
+        from: prior,
+        to: stageId,
+        ...context,
+      });
+      for (const violation of violations) failures.push(`${item.id}: ${violation.reason}`);
     }
-    if (offenders.length === 0) return;
+    if (failures.length === 0) return;
     throw new Error(
-      `Cannot make "${stageId}" the final stage: ${offenders.length} ticket(s) there have no ` +
-        `proof.md (${offenders.slice(0, 5).join(", ")}${offenders.length > 5 ? ", …" : ""}). ` +
-        `Write the evidence with set_ticket_doc(doc: "proof"), or move them out of that stage first.`,
+      `Cannot make "${stageId}" the final stage — configured document gates are unmet:\n` +
+        failures.map((failure) => `  - ${failure}`).join("\n"),
     );
   }
 }
@@ -1030,10 +1155,25 @@ function defaultPriority(board: BoardConfig): string {
   return middle?.id ?? "medium";
 }
 
-/** Reject a malformed date-only deadline. */
-function assertDueDate(due: string): void {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) {
-    throw new Error(`Invalid due date "${due}" — use YYYY-MM-DD`);
+/**
+ * Validate a per-ticket deployment value against the board's declared
+ * environments. `n/a` (not deployable) and `not-deployed` are always accepted;
+ * any other value must be one of `board.deployment.environments`. Rejected
+ * entirely when the board declares no deployment block (like an unknown field).
+ */
+function assertDeploymentAgainstBoard(board: BoardConfig, value: string): void {
+  if (value === "") return;
+  if (!board.deployment) {
+    throw new Error(
+      `This board has no deployment tracking, so "deployment" can't be set. ` +
+        `Add a deployment block to board.yml (or leave it unset).`,
+    );
+  }
+  if (value === "n/a" || value === "not-deployed") return;
+  if (!board.deployment.environments.includes(value)) {
+    throw new Error(
+      `Unknown deployment "${value}". Valid: n/a, not-deployed, ${board.deployment.environments.join(", ")}.`,
+    );
   }
 }
 
@@ -1045,8 +1185,8 @@ function changedFields(current: Item, pruned: Partial<UpdateItemPatch>): string[
     if (key === "body") {
       // serialiseItem writes body.trim(), so compare what would be stored.
       if (String(value).trim() !== String(existing ?? "").trim()) changed.push(key);
-    } else if (key === "due" && value === "") {
-      if (existing !== undefined) changed.push(key); // "" clears an existing due
+    } else if (key === "deployment" && value === "") {
+      if (existing !== undefined) changed.push(key); // "" clears deployment
     } else if (JSON.stringify(value) !== JSON.stringify(existing)) {
       changed.push(key);
     }
@@ -1060,7 +1200,6 @@ function matchesFilter(item: Item, filter: ItemFilter): boolean {
   if (filter.status && item.status !== filter.status) return false;
   if (filter.area && item.area !== filter.area) return false;
   if (filter.label && !(item.labels ?? []).includes(filter.label)) return false;
-  if (filter.dueBefore && !(item.due !== undefined && item.due < filter.dueBefore)) return false;
   return true;
 }
 

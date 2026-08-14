@@ -199,7 +199,40 @@ export class KanmerStore {
     if (nextLast !== undefined && nextLast !== prevLast) {
       await this.assertFinalStageGates(board, nextLast);
     }
+    // A whole-board write must not strand items on a removed column — the same
+    // protection removeColumn has, so no GUI/agent setBoard path can silently
+    // drop a stage/area/priority that items still reference (audit A3).
+    await this.assertNoStrandedColumns(previous, board);
     await writeBoard(this.paths, board);
+  }
+
+  /** Reject a board write that removes a column still referenced by an item. */
+  private async assertNoStrandedColumns(
+    previous: BoardConfig,
+    next: BoardConfig,
+  ): Promise<void> {
+    const removed = (prev: BoardColumn[], cur: BoardColumn[]) =>
+      prev.filter((c) => !cur.some((n) => n.id === c.id)).map((c) => c.id);
+    const dims: [ColumnKind, keyof Item, BoardColumn[], BoardColumn[]][] = [
+      ["status", "status", previous.statuses, next.statuses],
+      ["area", "area", previous.areas, next.areas],
+      ["priority", "priority", previous.priorities, next.priorities],
+    ];
+    const gone = dims.flatMap(([kind, field, prev, cur]) =>
+      removed(prev, cur).map((id) => ({ kind, field, id })),
+    );
+    if (gone.length === 0) return;
+    const all = await this.listItems({ includeArchived: true });
+    for (const { kind, field, id } of gone) {
+      const users = all.filter((i) => (i as Record<string, unknown>)[field] === id);
+      if (users.length > 0) {
+        const sample = users.slice(0, 5).map((i) => i.id).join(", ");
+        throw new Error(
+          `Cannot remove ${kind} "${id}": ${users.length} item(s) still use it ` +
+            `(${sample}${users.length > 5 ? ", …" : ""}). Move them to another ${kind} first.`,
+        );
+      }
+    }
   }
 
   /** Add a stage, area or priority to the board (used by MCP add_column). */

@@ -6,6 +6,7 @@ import type {
   CreateItemInput,
   DeleteItemResult,
   DocType,
+  GateRule,
   Item,
   ItemFilter,
   ItemWarning,
@@ -48,6 +49,7 @@ export const CH = {
   setDoc: "kanmer:setDoc",
   getDocsInfo: "kanmer:getDocsInfo",
   getDocTypes: "kanmer:getDocTypes",
+  getDocModel: "kanmer:getDocModel",
   openRepoDoc: "kanmer:openRepoDoc",
   getRepoDoc: "kanmer:getRepoDoc",
   getActivity: "kanmer:getActivity",
@@ -87,6 +89,13 @@ export interface OpenProjectResult {
 export interface ChangePayload {
   event: "add" | "change" | "unlink";
   file: string;
+}
+
+/** The board's resolved document model — the defaults a board inherits when it has no `docs` block. */
+export interface DocModel {
+  repoDocs: Record<string, string>;
+  defaultTypes: DocType[];
+  defaultGates: GateRule[];
 }
 
 /** A change on disk that this GUI didn't make (agent or manual edit). */
@@ -180,6 +189,8 @@ export interface KanmerApi {
   getDocsInfo(id: string): Promise<TicketDocsInfo | null>;
   /** The ticket area's resolved doc types (name/order/requires/progress) — for the doc tabs. */
   getDocTypes(id: string): Promise<DocType[]>;
+  /** The board's resolved default document model — seeds the Settings Documents tab. */
+  getDocModel(): Promise<DocModel>;
   /** Open a governing doc (a repo-relative path under the project root) in the OS default app. */
   openRepoDoc(relPath: string): Promise<void>;
   /** Read a governing doc's text for the in-app view; null when missing/unreadable. */

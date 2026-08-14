@@ -1,6 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { BoardColumn, BoardConfig, ColumnKind, Item } from "@kanmer/core";
-import type { ConnectResult, ConnectTarget, Theme } from "../../../shared/ipc.js";
+import type {
+  BoardColumn,
+  BoardConfig,
+  ColumnKind,
+  DocType,
+  GateRule,
+  Item,
+} from "@kanmer/core";
+import type { ConnectResult, ConnectTarget, DocModel, Theme } from "../../../shared/ipc.js";
+
+type SettingsTab = "board" | "documents" | "appearance" | "connect";
+const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
+  { id: "board", label: "Board" },
+  { id: "documents", label: "Documents" },
+  { id: "appearance", label: "Appearance" },
+  { id: "connect", label: "Connect" },
+];
 
 interface SettingsProps {
   board: BoardConfig;
@@ -29,6 +44,7 @@ export function Settings({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [tab, setTab] = useState<SettingsTab>("board");
 
   // Usage counts so deleting an in-use column shows a soft warning.
   const usage = useMemo(() => countUsage(items), [items]);
@@ -42,7 +58,7 @@ export function Settings({
     setDraft((d) => ({ ...d, [pluralKey(kind)]: cols }));
 
   const save = async () => {
-    const problems = validateDraft(draft);
+    const problems = validateDraft(draft, board, items);
     if (problems.length > 0) {
       setError(problems.join(" · "));
       return;
@@ -101,7 +117,7 @@ export function Settings({
   return (
     <div className="modal-backdrop" onClick={requestClose}>
       <div
-        className="modal"
+        className="modal settings"
         role="dialog"
         aria-modal="true"
         aria-label="Settings"
@@ -134,80 +150,106 @@ export function Settings({
           </div>
         )}
 
-        <div className="modal-body">
-          <div className="settings-grid">
-            <ColumnEditor
-              title="Stages (board columns)"
-              kind="status"
-              columns={draft.statuses}
-              usage={usage.status}
-              onChange={(c) => setColumns("status", c)}
-            />
-            <ColumnEditor
-              title="Areas (colour-grouped)"
-              kind="area"
-              columns={draft.areas}
-              usage={usage.area}
-              onChange={(c) => setColumns("area", c)}
-            />
-            <ColumnEditor
-              title="Priorities"
-              kind="priority"
-              columns={draft.priorities}
-              usage={usage.priority}
-              onChange={(c) => setColumns("priority", c)}
-            />
-          </div>
+        <div className="settings-shell">
+          <nav className="settings-rail">
+            {SETTINGS_TABS.map((t) => (
+              <button
+                key={t.id}
+                className={tab === t.id ? "tab active" : "tab"}
+                onClick={() => setTab(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </nav>
 
-          <div className="settings-section">
-            <h3>ID prefixes</h3>
-            <p className="hint">Applies to newly created items only; existing ids are unchanged.</p>
-            <div className="field-row">
-              {(["ticket", "plan", "research"] as const).map((t) => (
-                <label key={t} className="field">
-                  <span>{t}</span>
-                  <input
-                    value={draft.idPrefixes[t]}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        idPrefixes: { ...d.idPrefixes, [t]: e.target.value },
-                      }))
-                    }
+          <div className="settings-pane">
+            {tab === "board" && (
+              <>
+                <div className="settings-cols">
+                  <ColumnEditor
+                    title="Stages (board columns)"
+                    kind="status"
+                    columns={draft.statuses}
+                    usage={usage.status}
+                    onChange={(c) => setColumns("status", c)}
                   />
-                </label>
-              ))}
-            </div>
-          </div>
+                  <ColumnEditor
+                    title="Areas (colour-grouped)"
+                    kind="area"
+                    columns={draft.areas}
+                    usage={usage.area}
+                    onChange={(c) => setColumns("area", c)}
+                  />
+                  <ColumnEditor
+                    title="Priorities"
+                    kind="priority"
+                    columns={draft.priorities}
+                    usage={usage.priority}
+                    onChange={(c) => setColumns("priority", c)}
+                  />
+                </div>
 
-          <div className="settings-section">
-            <h3>Theme</h3>
-            <div className="theme-toggle">
-              {(["dark", "light", "system"] as const).map((t) => (
-                <button
-                  key={t}
-                  className={t === theme ? "tab active" : "tab"}
-                  onClick={() => onSetTheme(t)}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
+                <div className="settings-section">
+                  <h3>ID prefixes</h3>
+                  <p className="hint">
+                    Applies to newly created items only; existing ids are unchanged.
+                  </p>
+                  <div className="field-row">
+                    {(["ticket", "plan", "research"] as const).map((t) => (
+                      <label key={t} className="field">
+                        <span>{t}</span>
+                        <input
+                          value={draft.idPrefixes[t]}
+                          onChange={(e) =>
+                            setDraft((d) => ({
+                              ...d,
+                              idPrefixes: { ...d.idPrefixes, [t]: e.target.value },
+                            }))
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
-          <div className="settings-section">
-            <h3>Notifications</h3>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={notifications}
-                onChange={(e) => onSetNotifications(e.target.checked)}
-              />
-              Toast when an agent changes the board while the window is unfocused
-            </label>
-          </div>
+            {tab === "documents" && <DocumentsTab draft={draft} setDraft={setDraft} />}
 
-          <ConnectSection />
+            {tab === "appearance" && (
+              <>
+                <div className="settings-section">
+                  <h3>Theme</h3>
+                  <div className="theme-toggle">
+                    {(["dark", "light", "system"] as const).map((t) => (
+                      <button
+                        key={t}
+                        className={t === theme ? "tab active" : "tab"}
+                        onClick={() => onSetTheme(t)}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="settings-section">
+                  <h3>Notifications</h3>
+                  <label className="check">
+                    <input
+                      type="checkbox"
+                      checked={notifications}
+                      onChange={(e) => onSetNotifications(e.target.checked)}
+                    />
+                    Toast when an agent changes the board while the window is unfocused
+                  </label>
+                </div>
+              </>
+            )}
+
+            {tab === "connect" && <ConnectSection />}
+          </div>
         </div>
       </div>
     </div>
@@ -263,6 +305,246 @@ function ConnectSection(): JSX.Element {
           {!result.ok && <div className="connect-out">{result.output}</div>}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The Documents tab: where D5's "fully customizable" promise lives. Edits the
+ * board's default doc types (order = hierarchy, `requires` prerequisites), the
+ * gate rules (as friendly sentences), and the deployment toggle. A board with no
+ * `docs` block inherits the shipped defaults (fetched via getDocModel); the
+ * "Customize" action materialises them into the draft so they can be edited.
+ */
+function DocumentsTab({
+  draft,
+  setDraft,
+}: {
+  draft: BoardConfig;
+  setDraft: React.Dispatch<React.SetStateAction<BoardConfig>>;
+}): JSX.Element {
+  const [model, setModel] = useState<DocModel | null>(null);
+  useEffect(() => {
+    void window.kanmer.getDocModel().then(setModel);
+  }, []);
+
+  const customized = draft.docs?.default?.types !== undefined;
+  const types = draft.docs?.default?.types ?? model?.defaultTypes ?? [];
+  const gates = draft.docs?.default?.gates ?? model?.defaultGates ?? [];
+  const stageName = (id: string) => draft.statuses.find((s) => s.id === id)?.name ?? id;
+
+  const patchDefault = (patch: { types?: DocType[]; gates?: GateRule[] }) =>
+    setDraft((d) => ({
+      ...d,
+      docs: {
+        repoDocs: d.docs?.repoDocs ?? model?.repoDocs,
+        areas: d.docs?.areas,
+        default: {
+          types: patch.types ?? d.docs?.default?.types ?? model?.defaultTypes ?? [],
+          gates: patch.gates ?? d.docs?.default?.gates ?? model?.defaultGates ?? [],
+        },
+      },
+    }));
+
+  const resetDefaults = () =>
+    setDraft((d) => {
+      const docs = { ...(d.docs ?? {}) };
+      delete (docs as { default?: unknown }).default;
+      const empty = !docs.repoDocs && !docs.areas;
+      return { ...d, docs: empty ? undefined : docs };
+    });
+
+  const setTypeName = (i: number, name: string) =>
+    patchDefault({ types: types.map((t, idx) => (idx === i ? { ...t, name } : t)) });
+  const setTypeRequires = (i: number, requires: string[]) =>
+    patchDefault({
+      types: types.map((t, idx) => (idx === i ? { ...t, requires: requires.length ? requires : undefined } : t)),
+    });
+  const moveType = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= types.length) return;
+    const next = [...types];
+    [next[i], next[j]] = [next[j], next[i]];
+    patchDefault({ types: next });
+  };
+  const removeType = (i: number) => patchDefault({ types: types.filter((_, idx) => idx !== i) });
+
+  const [newType, setNewType] = useState("");
+  const addType = () => {
+    const name = newType.trim();
+    if (!name) return;
+    const id = slug(name);
+    if (!id || types.some((t) => t.id === id)) return;
+    patchDefault({ types: [...types, { id, name }] });
+    setNewType("");
+  };
+
+  const removeGate = (i: number) => patchDefault({ gates: gates.filter((_, idx) => idx !== i) });
+
+  return (
+    <>
+      <div className="settings-section">
+        <div className="section-head">
+          <h3>Document types</h3>
+          {customized ? (
+            <button className="ghost xs" onClick={resetDefaults}>
+              Reset to defaults
+            </button>
+          ) : (
+            <button className="ghost xs" onClick={() => patchDefault({})} disabled={!model}>
+              Customize…
+            </button>
+          )}
+        </div>
+        <p className="hint">
+          Order is the hierarchy; each doc&apos;s <em>requires</em> must exist before it can be
+          written. {customized ? "" : "This board uses the defaults — Customize to edit."}
+        </p>
+        {types.map((t, i) => (
+          <div key={t.id} className="doc-type-row">
+            <input
+              className="col-name"
+              value={t.name}
+              disabled={!customized}
+              onChange={(e) => setTypeName(i, e.target.value)}
+              aria-label={`Name of doc ${t.id}`}
+            />
+            <span className="col-id" title="doc id (stable)">
+              {t.id}
+              {t.progress ? <span className="usage"> ·progress</span> : null}
+            </span>
+            <input
+              className="doc-requires"
+              value={(t.requires ?? []).join(", ")}
+              disabled={!customized}
+              placeholder="requires…"
+              onChange={(e) =>
+                setTypeRequires(
+                  i,
+                  e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
+                )
+              }
+              aria-label={`Requires for ${t.id}`}
+            />
+            <button className="ghost xs" disabled={!customized || i === 0} onClick={() => moveType(i, -1)}>
+              ↑
+            </button>
+            <button
+              className="ghost xs"
+              disabled={!customized || i === types.length - 1}
+              onClick={() => moveType(i, 1)}
+            >
+              ↓
+            </button>
+            <button className="ghost xs" disabled={!customized} onClick={() => removeType(i)}>
+              ✕
+            </button>
+          </div>
+        ))}
+        {customized && (
+          <div className="col-add">
+            <input
+              placeholder="Add document type…"
+              value={newType}
+              onChange={(e) => setNewType(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addType()}
+            />
+            <button className="ghost xs" onClick={addType}>
+              + Add
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="settings-section">
+        <h3>Gate rules</h3>
+        <p className="hint">Documents required to cross a stage boundary.</p>
+        {gates.length === 0 && <p className="empty">No gates.</p>}
+        {gates.map((g, i) => {
+          const boundary = g.before.leave
+            ? `leave ${stageName(g.before.leave)}`
+            : `enter ${stageName(g.before.enter ?? "")}`;
+          const need = g.needs
+            ? `the ${g.needs} document must exist`
+            : `a governing doc (${(g.needsRepoDoc ?? []).join("/")}) must be linked`;
+          return (
+            <div key={i} className="gate-row">
+              <span>
+                To <strong>{boundary}</strong>, {need}.
+              </span>
+              <button className="ghost xs" disabled={!customized} onClick={() => removeGate(i)}>
+                ✕
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="settings-section">
+        <h3>Deployment tracking</h3>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={draft.deployment !== undefined}
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                deployment: e.target.checked
+                  ? { environments: d.deployment?.environments?.length ? d.deployment.environments : ["production"] }
+                  : undefined,
+              }))
+            }
+          />
+          Track a deployment status on tickets (adds the n/a · not-deployed · &lt;env&gt; field)
+        </label>
+        {draft.deployment && (
+          <EnvEditor
+            environments={draft.deployment.environments}
+            onChange={(envs) => setDraft((d) => ({ ...d, deployment: { environments: envs } }))}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
+/** Edit the ordered deployment environments (the last is "live"). */
+function EnvEditor({
+  environments,
+  onChange,
+}: {
+  environments: string[];
+  onChange: (envs: string[]) => void;
+}): JSX.Element {
+  const [name, setName] = useState("");
+  return (
+    <div className="env-editor">
+      {environments.map((env, i) => (
+        <span key={env} className="chip">
+          {env}
+          {i === environments.length - 1 ? " (live)" : ""}
+          <button
+            className="chip-x"
+            aria-label={`Remove ${env}`}
+            onClick={() => onChange(environments.filter((_, idx) => idx !== i))}
+          >
+            ×
+          </button>
+        </span>
+      ))}
+      <input
+        className="env-add"
+        placeholder="Add environment…"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            const v = slug(name);
+            if (v && !environments.includes(v)) onChange([...environments, v]);
+            setName("");
+          }
+        }}
+      />
     </div>
   );
 }
@@ -368,7 +650,7 @@ function pluralKey(kind: ColumnKind): keyof BoardConfig {
 }
 
 /** Mirror of core's write-side checks, so problems surface inline pre-save. */
-function validateDraft(draft: BoardConfig): string[] {
+function validateDraft(draft: BoardConfig, board: BoardConfig, items: Item[]): string[] {
   const problems: string[] = [];
   if (draft.statuses.length === 0) problems.push("The board needs at least one stage.");
   for (const [label, cols] of [
@@ -404,6 +686,66 @@ function validateDraft(draft: BoardConfig): string[] {
       problems.push(`Area "${area.name}" would use id prefix "${prefix}", already used by ${holder}.`);
     } else {
       seen.set(prefix, `area "${area.name}"`);
+    }
+  }
+
+  // Column-stranding (mirrors core's setBoard check): don't remove a stage/area/
+  // priority that items still reference.
+  for (const [kind, field, prev, cur] of [
+    ["stage", "status", board.statuses, draft.statuses],
+    ["area", "area", board.areas, draft.areas],
+    ["priority", "priority", board.priorities, draft.priorities],
+  ] as const) {
+    for (const c of prev) {
+      if (cur.some((n) => n.id === c.id)) continue;
+      const users = items.filter((i) => (i as Record<string, unknown>)[field] === c.id);
+      if (users.length > 0) {
+        const sample = users.slice(0, 5).map((i) => i.id).join(", ");
+        problems.push(
+          `Can't remove ${kind} "${c.name}": ${users.length} item(s) still use it (${sample}${users.length > 5 ? ", …" : ""}).`,
+        );
+      }
+    }
+  }
+
+  // Document model (mirrors core's DocTypeArray/GateRule refinements).
+  const docTypes = draft.docs?.default?.types;
+  if (docTypes) {
+    const ids = new Set(docTypes.map((t) => t.id));
+    for (const t of docTypes) {
+      if (t.id.startsWith("scratch-")) problems.push(`Doc id "${t.id}" can't start with "scratch-".`);
+      for (const r of t.requires ?? []) {
+        if (!ids.has(r)) problems.push(`Doc "${t.id}" requires "${r}", which isn't a doc type.`);
+      }
+    }
+    const edges = new Map(docTypes.map((t) => [t.id, t.requires ?? []]));
+    const state = new Map<string, 1 | 2>();
+    const cyclic = (id: string): boolean => {
+      if (state.get(id) === 2) return false;
+      if (state.get(id) === 1) return true;
+      state.set(id, 1);
+      for (const n of edges.get(id) ?? []) if (edges.has(n) && cyclic(n)) return true;
+      state.set(id, 2);
+      return false;
+    };
+    if (docTypes.some((t) => cyclic(t.id))) problems.push("Document `requires` form a cycle.");
+  }
+  const gates = draft.docs?.default?.gates;
+  if (gates) {
+    const docIds = new Set((docTypes ?? []).map((t) => t.id));
+    const stageIds = new Set(draft.statuses.map((s) => s.id));
+    const kinds = new Set(Object.keys(draft.docs?.repoDocs ?? { prd: "", frd: "", adr: "" }));
+    for (const g of gates) {
+      const bstage = g.before.leave ?? g.before.enter;
+      if (bstage && !stageIds.has(bstage)) {
+        problems.push(`A gate names stage "${bstage}", which isn't on the board.`);
+      }
+      if (g.needs && docTypes && !docIds.has(g.needs)) {
+        problems.push(`A gate needs document "${g.needs}", which isn't a doc type.`);
+      }
+      for (const k of g.needsRepoDoc ?? []) {
+        if (!kinds.has(k)) problems.push(`A gate names governing-doc kind "${k}", which isn't configured.`);
+      }
     }
   }
   return problems;

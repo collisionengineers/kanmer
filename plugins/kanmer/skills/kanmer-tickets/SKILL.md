@@ -89,7 +89,9 @@ A ticket's life is driven phase by phase; hand off rather than improvising:
 | Review finished work or handle PR feedback | `kanmer-review` |
 | Clean up after the PR merged | `kanmer-closeout` |
 | Clear a whole area's tickets autonomously | `kanmer-auto` |
-| Report current state / history | `kanmer-standup` / `kanmer-retro` |
+| Report current state / history | `kanmer-report` |
+| Link/create a governing PRD/FRD/ADR | `kanmer-docs` |
+| Verify a merged ticket → proof.md | `kanmer-verify` |
 | Tidy the backlog itself | `kanmer-groom` |
 | Pull GitHub issues or PR comments onto the board | `kanmer-import` |
 

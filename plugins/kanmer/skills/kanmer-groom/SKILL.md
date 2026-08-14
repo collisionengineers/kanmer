@@ -1,6 +1,6 @@
 ---
 name: kanmer-groom
-description: Groom and triage a Kanmer board by actually fixing it — dedupe near-duplicate tickets, fill in missing areas and priorities, split oversized tickets, archive dead ones, chase stale taken tickets, and repair off-board statuses. Use when the user says "groom the backlog", "tidy the board", "triage", "clean up the tickets". DO NOT USE FOR reporting problems without changing anything (kanmer-standup) or historical analysis (kanmer-retro).
+description: Groom and triage a Kanmer board by actually fixing it — dedupe near-duplicate tickets, fill in missing areas and priorities, split oversized tickets, archive dead ones, chase stale taken tickets, and repair off-board statuses. Use when the user says "groom the backlog", "tidy the board", "triage", "clean up the tickets". DO NOT USE FOR reporting problems without changing anything (kanmer-report).
 ---
 
 # Grooming a Kanmer board

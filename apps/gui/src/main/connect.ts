@@ -7,6 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import {
   providerById,
+  SKILLS_VERSION_FILE,
   type AgentProvider,
   type Invocation,
   type ProviderId,

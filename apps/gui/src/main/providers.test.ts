@@ -77,6 +77,19 @@ describe("provider registry", () => {
     expect(providerById("antigravity")!.dispatch).toBe(false);
     expect(providerById("claude")!.dispatch).toBe(true);
   });
+
+  it("dispatchable hosts build the headless CLI + args carrying the prompt", () => {
+    expect(providerById("claude")!.dispatchArgs!("PROMPT", ROOT)).toEqual(["-p", "PROMPT"]);
+    expect(providerById("codex")!.dispatchArgs!("PROMPT", ROOT)).toEqual(["exec", "PROMPT"]);
+    expect(providerById("opencode")!.dispatchArgs!("PROMPT", ROOT)).toEqual(["run", "PROMPT"]);
+    expect(providerById("grok")!.dispatchArgs!("PROMPT", ROOT)).toEqual([
+      "-p",
+      "PROMPT",
+      "--cwd",
+      ROOT,
+    ]);
+    expect(providerById("antigravity")!.dispatchArgs).toBeUndefined();
+  });
 });
 
 describe("AGENTS.md managed block", () => {

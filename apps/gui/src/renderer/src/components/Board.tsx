@@ -16,6 +16,8 @@ interface BoardProps {
   onContext: (item: Item) => void;
   /** Ids with a live blocker — computed once in App, read per card as a boolean. */
   blocked: Set<string>;
+  /** Ids with a background agent dispatch in flight. */
+  dispatching?: Set<string>;
 }
 
 /** Merge configured columns with any extra values found on items (fallback columns). */
@@ -54,6 +56,7 @@ export function Board(props: BoardProps): JSX.Element {
     onQuickAdd,
     onContext,
     blocked,
+    dispatching,
   } = props;
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [dropHint, setDropHint] = useState<{ id: string; edge: "before" | "after" } | null>(null);
@@ -178,6 +181,7 @@ export function Board(props: BoardProps): JSX.Element {
                     board={board}
                     selected={item.id === selectedId}
                     blocked={blocked.has(item.id)}
+                    dispatching={dispatching?.has(item.id) ?? false}
                     dropEdge={dropHint?.id === item.id ? dropHint.edge : null}
                     statusId={status.id}
                     onSelect={onSelect}
@@ -213,6 +217,7 @@ const Card = memo(function CardInner({
   board,
   selected,
   blocked,
+  dispatching,
   dropEdge,
   statusId,
   onSelect,
@@ -226,6 +231,7 @@ const Card = memo(function CardInner({
   board: BoardConfig;
   selected: boolean;
   blocked: boolean;
+  dispatching: boolean;
   dropEdge: "before" | "after" | null;
   statusId: string;
   onSelect: (id: string) => void;
@@ -309,6 +315,11 @@ const Card = memo(function CardInner({
         {blocked && (
           <span className="chip blocked" title="Blocked by an unfinished ticket">
             ⛔ blocked
+          </span>
+        )}
+        {dispatching && (
+          <span className="chip dispatch" title="A background agent is working this ticket">
+            ⏳ agent
           </span>
         )}
         {item.deployment && item.deployment !== "n/a" && (

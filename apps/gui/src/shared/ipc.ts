@@ -44,6 +44,11 @@ export const CH = {
   connectAgent: "kanmer:connectAgent",
   disconnectAgent: "kanmer:disconnectAgent",
   listProviders: "kanmer:listProviders",
+  dispatchAgent: "kanmer:dispatchAgent",
+  cancelDispatch: "kanmer:cancelDispatch",
+  listDispatches: "kanmer:listDispatches",
+  /** Main → renderer: a background dispatch's status changed. */
+  dispatchStatus: "kanmer:dispatchStatus",
   showItemMenu: "kanmer:showItemMenu",
   migrate: "kanmer:migrate",
   getFormat: "kanmer:getFormat",
@@ -80,6 +85,17 @@ export interface ProviderInfo {
   id: ConnectTarget;
   label: string;
   dispatch: boolean;
+}
+
+/** A background agent dispatch's live status. */
+export interface DispatchStatus {
+  dispatchId: string;
+  ticketId: string;
+  provider: ConnectTarget;
+  state: "running" | "done" | "failed" | "cancelled" | "timed-out";
+  startedAt: number;
+  exitCode?: number | null;
+  tail?: string[];
 }
 
 export interface AppSettings {
@@ -131,7 +147,8 @@ export type ItemMenuAction =
   | { type: "release" }
   | { type: "archive" }
   | { type: "unarchive" }
-  | { type: "delete" };
+  | { type: "delete" }
+  | { type: "dispatch"; target: ConnectTarget };
 
 /** Application-menu commands forwarded to the renderer. */
 export type MenuCommand = { type: "pick-project" } | { type: "open-project"; path: string };
@@ -174,6 +191,14 @@ export interface KanmerApi {
   disconnectAgent(target: ConnectTarget): Promise<ConnectResult>;
   /** The agent hosts Connect can register (drives the Connect tab). */
   listProviders(): Promise<ProviderInfo[]>;
+  /** Spawn a background agent to work a ticket end-to-end (request #10). */
+  dispatchAgent(ticketId: string, target: ConnectTarget): Promise<DispatchStatus>;
+  /** Cancel the in-flight dispatch for a ticket (tree-kills the child). */
+  cancelDispatch(ticketId: string): Promise<boolean>;
+  /** Current running/finished dispatches. */
+  listDispatches(): Promise<DispatchStatus[]>;
+  /** Subscribe to background-dispatch status updates. Returns an unsubscribe fn. */
+  onDispatchStatus(cb: (status: DispatchStatus) => void): () => void;
   /** Show the native right-click menu for a card; resolves with the chosen action. */
   showItemMenu(payload: ItemMenuPayload): Promise<ItemMenuAction | null>;
   /** Migrate the open v1 project to format 2 (dryRun for the report only). */

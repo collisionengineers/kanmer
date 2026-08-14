@@ -3,6 +3,7 @@ import {
   CH,
   type AgentChangePayload,
   type ChangePayload,
+  type DispatchStatus,
   type KanmerApi,
   type MenuCommand,
 } from "../shared/ipc.js";
@@ -31,6 +32,14 @@ const api: KanmerApi = {
   connectAgent: (target) => ipcRenderer.invoke(CH.connectAgent, target),
   disconnectAgent: (target) => ipcRenderer.invoke(CH.disconnectAgent, target),
   listProviders: () => ipcRenderer.invoke(CH.listProviders),
+  dispatchAgent: (ticketId, target) => ipcRenderer.invoke(CH.dispatchAgent, ticketId, target),
+  cancelDispatch: (ticketId) => ipcRenderer.invoke(CH.cancelDispatch, ticketId),
+  listDispatches: () => ipcRenderer.invoke(CH.listDispatches),
+  onDispatchStatus: (cb) => {
+    const listener = (_e: unknown, status: DispatchStatus) => cb(status);
+    ipcRenderer.on(CH.dispatchStatus, listener);
+    return () => ipcRenderer.removeListener(CH.dispatchStatus, listener);
+  },
   showItemMenu: (payload) => ipcRenderer.invoke(CH.showItemMenu, payload),
   migrate: (dryRun) => ipcRenderer.invoke(CH.migrate, dryRun),
   getFormat: () => ipcRenderer.invoke(CH.getFormat),

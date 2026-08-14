@@ -1431,3 +1431,8 @@ button.danger {
   flex: 1 1 auto;
   min-width: 0;
 }
+
+/* ── Phase 7: dispatched-ticket badge ───────────────────────────────────── */
+.chip.dispatch {
+  background: color-mix(in srgb, var(--accent, #5b8cff) 20%, transparent);
+}

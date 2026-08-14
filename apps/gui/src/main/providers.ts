@@ -42,6 +42,12 @@ export interface AgentProvider {
   install: InstallSpec;
   /** Headless dispatch supported in v1 (Phase 7)? antigravity is register-only. */
   dispatch: boolean;
+  /**
+   * The CLI + args to spawn for a background dispatch (the executable is `cli`,
+   * the args carry the prompt). Absent when the host isn't dispatchable.
+   */
+  dispatchCli?: string;
+  dispatchArgs?: (prompt: string, root: string) => string[];
 }
 
 /** Quote a shell argument for the copy-paste fallback command line. */
@@ -142,6 +148,8 @@ export const PROVIDERS: AgentProvider[] = [
       marketplaceCommands: (dir) => [`codex plugin marketplace add ${q(dir)}`],
     },
     dispatch: true,
+    dispatchCli: "codex",
+    dispatchArgs: (prompt) => ["exec", prompt],
   },
   {
     id: "claude",
@@ -162,6 +170,8 @@ export const PROVIDERS: AgentProvider[] = [
       ],
     },
     dispatch: true,
+    dispatchCli: "claude",
+    dispatchArgs: (prompt) => ["-p", prompt],
   },
   {
     id: "opencode",
@@ -177,6 +187,8 @@ export const PROVIDERS: AgentProvider[] = [
     // on the AGENTS.md block, which opencode reads.
     install: { kind: "copySkills", skillsScope: "agentsOnly" },
     dispatch: true,
+    dispatchCli: "opencode",
+    dispatchArgs: (prompt) => ["run", prompt],
   },
   {
     id: "grok",
@@ -190,6 +202,8 @@ export const PROVIDERS: AgentProvider[] = [
     },
     install: { kind: "copySkills", skillsScope: "project", skillsDir: ".grok/skills" },
     dispatch: true,
+    dispatchCli: "grok",
+    dispatchArgs: (prompt, root) => ["-p", prompt, "--cwd", root],
   },
   {
     id: "antigravity",
@@ -214,4 +228,12 @@ export function providerById(id: string): AgentProvider | undefined {
 /** The provider list the Connect UI renders from (no hardcoded host names). */
 export function listProviders(): { id: ProviderId; label: string; dispatch: boolean }[] {
   return PROVIDERS.map((p) => ({ id: p.id, label: p.label, dispatch: p.dispatch }));
+}
+
+/** Providers that support a background dispatch (for the "Dispatch to agent →" menu). */
+export function dispatchableProviders(): { id: ProviderId; label: string }[] {
+  return PROVIDERS.filter((p) => p.dispatch && p.dispatchCli && p.dispatchArgs).map((p) => ({
+    id: p.id,
+    label: p.label,
+  }));
 }

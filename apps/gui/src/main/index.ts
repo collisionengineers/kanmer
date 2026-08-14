@@ -51,7 +51,14 @@ import {
   type WindowBounds,
 } from "./settings.js";
 import { connectAgent, disconnectAgent, type ConnectTarget } from "./connect.js";
-import { listProviders } from "./providers.js";
+import { dispatchableProviders, listProviders } from "./providers.js";
+import {
+  cancelDispatch,
+  dispatchTicket,
+  killAllDispatches,
+  listDispatches,
+  onDispatchStatus,
+} from "./dispatch.js";
 
 let mainWindow: BrowserWindow | null = null;
 let store: KanmerStore | null = null;
@@ -399,6 +406,14 @@ function showItemMenu(
       ...(payload.taken
         ? [{ label: "Release ticket", click: () => done({ type: "release" }) }]
         : []),
+      {
+        label: "Dispatch to agent",
+        enabled: !payload.taken,
+        submenu: dispatchableProviders().map((p) => ({
+          label: p.label,
+          click: () => done({ type: "dispatch", target: p.id }),
+        })),
+      },
       { type: "separator" as const },
       {
         label: "Copy ID",
@@ -501,6 +516,12 @@ function registerIpc(): void {
     disconnectAgent(target, requireStore().paths.projectRoot),
   );
   ipcMain.handle(CH.listProviders, () => listProviders());
+  ipcMain.handle(CH.dispatchAgent, (_e, ticketId: string, target: ConnectTarget) =>
+    dispatchTicket(requireStore(), target, ticketId),
+  );
+  ipcMain.handle(CH.cancelDispatch, (_e, ticketId: string) => cancelDispatch(ticketId));
+  ipcMain.handle(CH.listDispatches, () => listDispatches());
+  onDispatchStatus((s) => mainWindow?.webContents.send(CH.dispatchStatus, s));
   ipcMain.handle(CH.showItemMenu, (e, payload: ItemMenuPayload) =>
     showItemMenu(e.sender, payload),
   );
@@ -582,4 +603,5 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   void watch?.close();
+  killAllDispatches(); // tree-kill background agents so none is orphaned
 });

@@ -63,6 +63,7 @@ export function App(): JSX.Element {
   const [opening, setOpening] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [dispatching, setDispatching] = useState<Set<string>>(() => new Set());
   const [changeSignal, setChangeSignal] = useState(0);
   const [migrateReport, setMigrateReport] = useState<MigrationReport | null>(null);
   const [migrating, setMigrating] = useState(false);
@@ -243,6 +244,27 @@ export function App(): JSX.Element {
       trySelect(id);
     });
   }, [trySelect]);
+
+  // Background-dispatch status: track running tickets for the card spinner
+  // badge, and toast a line when one finishes.
+  useEffect(() => {
+    return window.kanmer.onDispatchStatus((s) => {
+      setDispatching((prev) => {
+        const next = new Set(prev);
+        if (s.state === "running") next.add(s.ticketId);
+        else next.delete(s.ticketId);
+        return next;
+      });
+      if (s.state !== "running") {
+        const seq = ++toastSeq.current;
+        setToasts((t) => [
+          ...t.slice(-2),
+          { seq, id: s.ticketId, text: `Dispatch ${s.state}: ${s.ticketId} (${s.provider})` },
+        ]);
+        setTimeout(() => setToasts((t) => t.filter((x) => x.seq !== seq)), 4500);
+      }
+    });
+  }, []);
 
   const runOpen = useCallback(
     async (target: OpenTarget) => {
@@ -427,6 +449,8 @@ export function App(): JSX.Element {
         else if (action.type === "delete") {
           await window.kanmer.deleteItem(item.id);
           setSelectedId((cur) => (cur === item.id ? null : cur));
+        } else if (action.type === "dispatch") {
+          await window.kanmer.dispatchAgent(item.id, action.target);
         }
         setError(null);
       } catch (err) {
@@ -675,6 +699,7 @@ export function App(): JSX.Element {
               onQuickAdd={onQuickAdd}
               onContext={onCardContext}
               blocked={blocked}
+              dispatching={dispatching}
             />
           ) : view === "standup" ? (
             <Standup

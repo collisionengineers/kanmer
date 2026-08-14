@@ -9,6 +9,8 @@ import type {
 import { blockedIds, columnCards, optimisticOrder } from "./lib/board.js";
 import { classifyKanmerPath } from "../../shared/kanmerPath.js";
 import { ClientContext, makeClient, type ProjectClient } from "./lib/client.js";
+import { restoreTabs, restoredActiveTab } from "./lib/session.js";
+import { tabCloseDecision } from "./lib/tabClose.js";
 import type { AppSettings, ChangePayload, Theme } from "../../shared/ipc.js";
 import { Board } from "./components/Board.js";
 import { TabStrip, type Tab } from "./components/TabStrip.js";
@@ -190,7 +192,7 @@ export function App(): JSX.Element {
   );
 
   const closeTab = useCallback((projectId: string) => {
-    if (projectId === rootRef.current && editorDirty.current) {
+    if (tabCloseDecision(projectId, rootRef.current, editorDirty.current) === "confirm") {
       setPendingNav((pending) => pending ?? { kind: "close", projectId });
       return;
     }
@@ -225,17 +227,12 @@ export function App(): JSX.Element {
     void (async () => {
       const s = await window.kanmer.getSettings();
       setSettings(s);
-      let toOpen = s.openTabs;
-      if (toOpen.length === 0 && !s.sessionInitialized) {
-        const current = await window.kanmer.currentProject();
-        toOpen = current ? [current] : [];
-      }
+      const toOpen = restoreTabs(s, await window.kanmer.currentProject());
       if (toOpen.length === 0) {
         sessionHydrated.current = true;
         return;
       }
-      const active =
-        s.activeTab && toOpen.includes(s.activeTab) ? s.activeTab : toOpen[toOpen.length - 1];
+      const active = restoredActiveTab(toOpen, s.activeTab)!;
       // Open background tabs (their main context + watcher go live) without
       // activating them, so counts/unread update; then activate the last.
       for (const p of toOpen) {

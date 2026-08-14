@@ -60,6 +60,8 @@ export interface ProjectClient {
   getDocModel(): Promise<DocModel>;
   openRepoDoc(relPath: string): Promise<void>;
   getRepoDoc(relPath: string): Promise<string | null>;
+  pickRepoDoc(): Promise<string | null>;
+  getGateStatus(id: string): Promise<Record<string, string[]>>;
   getActivity(opts?: { id?: string; since?: string; limit?: number }): Promise<ActivityEntry[]>;
 }
 
@@ -95,6 +97,8 @@ export function makeClient(projectId: string): ProjectClient {
     getDocModel: () => k.getDocModel(projectId),
     openRepoDoc: (rel) => k.openRepoDoc(projectId, rel),
     getRepoDoc: (rel) => k.getRepoDoc(projectId, rel),
+    pickRepoDoc: () => k.pickRepoDoc(projectId),
+    getGateStatus: (id) => k.getGateStatus(projectId, id),
     getActivity: (opts) => k.getActivity(projectId, opts),
   };
 }

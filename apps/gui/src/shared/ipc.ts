@@ -62,6 +62,8 @@ export const CH = {
   getDocModel: "kanmer:getDocModel",
   openRepoDoc: "kanmer:openRepoDoc",
   getRepoDoc: "kanmer:getRepoDoc",
+  pickRepoDoc: "kanmer:pickRepoDoc",
+  getGateStatus: "kanmer:getGateStatus",
   getActivity: "kanmer:getActivity",
   changed: "kanmer:changed",
   /** Main → renderer: reveal an item (toast click, etc.). */
@@ -281,6 +283,13 @@ export interface KanmerApi {
   openRepoDoc(projectId: string, relPath: string): Promise<void>;
   /** Read a governing doc's text for the in-app view; null when missing/unreadable. */
   getRepoDoc(projectId: string, relPath: string): Promise<string | null>;
+  /** Native file picker rooted at the project; resolves to a repo-relative path or null. */
+  pickRepoDoc(projectId: string): Promise<string | null>;
+  /**
+   * For a ticket, per board stage: the unmet gate reasons if it moved there from
+   * its current stage (empty array = the move is allowed). Backs the drag lock-tint.
+   */
+  getGateStatus(projectId: string, id: string): Promise<Record<string, string[]>>;
   /** Read the activity log. */
   getActivity(
     projectId: string,

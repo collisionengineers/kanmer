@@ -13,15 +13,17 @@ import {
 } from "electron";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import { classifyKanmerPath } from "../shared/kanmerPath.js";
 import {
   KanmerStore,
   assertSafeRepoPath,
+  evaluateGates,
   getLinkGraph,
   linkItems,
   migrateBoard,
   migrateToV2,
+  repoDocKindOf,
   repoDocsMap,
   resolveDocTypes,
   resolveGates,
@@ -607,6 +609,52 @@ function registerIpc(): void {
     } catch {
       return null;
     }
+  });
+  ipcMain.handle(CH.pickRepoDoc, async (_e, p: string) => {
+    const root = requireStore(p).paths.projectRoot;
+    const res = await dialog.showOpenDialog({
+      title: "Pick a governing document",
+      defaultPath: join(root, "docs"),
+      properties: ["openFile"],
+    });
+    if (res.canceled || res.filePaths.length === 0) return null;
+    const abs = res.filePaths[0];
+    if (abs !== root && !abs.startsWith(root + sep)) return null;
+    return relative(root, abs).split(sep).join("/");
+  });
+  ipcMain.handle(CH.getGateStatus, async (_e, p: string, id: string) => {
+    const store = requireStore(p);
+    const [item, board, info] = await Promise.all([
+      store.getItem(id),
+      store.getBoard(),
+      store.getTicketDocsInfo(id),
+    ]);
+    const out: Record<string, string[]> = {};
+    if (!item) return out;
+    const gates = resolveGates(board, item.area);
+    const statuses = board.statuses.map((s) => s.id);
+    const present = info?.docs ?? {};
+    const repoDocSatisfied = (kinds: string[]) =>
+      item.docs_todo === true ||
+      (item.refs ?? []).some((rel) => {
+        const kind = repoDocKindOf(board, rel);
+        return kind !== null && kinds.includes(kind);
+      });
+    for (const stage of statuses) {
+      if (stage === item.status) {
+        out[stage] = [];
+        continue;
+      }
+      const violations = evaluateGates(gates, {
+        statuses,
+        from: item.status,
+        to: stage,
+        hasDoc: (d) => present[d] === true,
+        repoDocSatisfied,
+      });
+      out[stage] = violations.map((v) => v.reason);
+    }
+    return out;
   });
   ipcMain.handle(
     CH.getActivity,

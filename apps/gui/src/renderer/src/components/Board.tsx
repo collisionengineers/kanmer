@@ -1,6 +1,7 @@
 import { memo, useCallback, useRef, useState } from "react";
 import type { BoardColumn, BoardConfig, CreateItemInput, Item, MovePosition } from "@kanmer/core";
 import { columnColor, columnCards, positionForDrop } from "../lib/board.js";
+import { useClient } from "../lib/client.js";
 import { QuickAdd } from "./QuickAdd.js";
 
 interface BoardProps {
@@ -60,6 +61,17 @@ export function Board(props: BoardProps): JSX.Element {
   } = props;
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [dropHint, setDropHint] = useState<{ id: string; edge: "before" | "after" } | null>(null);
+  // During a drag, which stages the dragged ticket can't enter (→ lock tint).
+  const client = useClient();
+  const [gated, setGated] = useState<Record<string, string[]> | null>(null);
+  const onDragBegin = useCallback(
+    (id: string) => {
+      void client.getGateStatus(id).then(setGated);
+    },
+    [client],
+  );
+  // Clear the tint when the drag ends anywhere (drop, cancel, or off-board).
+  const onDragFinish = useCallback(() => setGated(null), []);
 
   // The drop handlers must see the current items without being rebuilt when
   // items change: a fresh callback identity would re-render every memoized
@@ -132,7 +144,13 @@ export function Board(props: BoardProps): JSX.Element {
         return (
           <div
             key={status.id}
-            className={dropTarget === status.id ? "cell drop" : "cell"}
+            className={[
+              dropTarget === status.id ? "cell drop" : "cell",
+              gated?.[status.id]?.length ? "gated" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            title={gated?.[status.id]?.length ? `Gated: ${gated[status.id].join("; ")}` : undefined}
             onDragOver={(e) => {
               e.preventDefault();
               setDropTarget(status.id);
@@ -145,6 +163,7 @@ export function Board(props: BoardProps): JSX.Element {
               e.preventDefault();
               setDropTarget(null);
               setDropHint(null);
+              setGated(null);
               const id = e.dataTransfer.getData("text/plain");
               if (id) onMove(id, { status: status.id, position: "bottom" });
             }}
@@ -190,6 +209,8 @@ export function Board(props: BoardProps): JSX.Element {
                     onCardDragOver={onCardDragOver}
                     onCardDragLeave={onCardDragLeave}
                     onCardDrop={onCardDrop}
+                    onDragBegin={onDragBegin}
+                    onDragFinish={onDragFinish}
                   />
                 ))}
               </div>
@@ -226,6 +247,8 @@ const Card = memo(function CardInner({
   onCardDragOver,
   onCardDragLeave,
   onCardDrop,
+  onDragBegin,
+  onDragFinish,
 }: {
   item: Item;
   board: BoardConfig;
@@ -245,6 +268,8 @@ const Card = memo(function CardInner({
     edge: "before" | "after",
     dragged: string,
   ) => void;
+  onDragBegin: (id: string) => void;
+  onDragFinish: () => void;
 }): JSX.Element {
   const areaColor = columnColor(board.areas, item.area);
   const priColor = columnColor(board.priorities, item.priority);
@@ -268,7 +293,11 @@ const Card = memo(function CardInner({
       }${blocked ? ", blocked" : ""}${
         item.deployment && item.deployment !== "n/a" ? `, deployment ${item.deployment}` : ""
       }`}
-      onDragStart={(e) => e.dataTransfer.setData("text/plain", item.id)}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", item.id);
+        onDragBegin(item.id);
+      }}
+      onDragEnd={() => onDragFinish()}
       onDragOver={(e) => {
         e.preventDefault();
         // Load-bearing: without it the cell's handler also fires and issues a

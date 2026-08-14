@@ -259,6 +259,16 @@ textarea:focus {
   border: 1px dashed var(--accent);
   background: var(--accent-dim);
 }
+/* Lock-tint: while dragging, columns the ticket can't enter yet (missing a
+   gated doc) show a muted danger wash so the drop reads as "will be refused". */
+.cell.gated {
+  border: 1px dashed var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  cursor: not-allowed;
+}
+.cell.gated.drop {
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+}
 .card {
   background: var(--bg-2);
   border: 1px solid var(--line-2);

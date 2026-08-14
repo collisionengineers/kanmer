@@ -166,9 +166,9 @@ if (dryRun) {
   console.log("  2. npm install --package-lock-only");
   console.log("  3. build the GUI, pack with --publish never, run check-updater-package.mjs");
   console.log(`  4. git commit -am "release: v${version}" && git tag v${version}`);
-  console.log("  5. pack again with --publish always");
-  console.log(`  6. verify /releases/latest is v${version} and latest.yml is fetchable`);
-  console.log("  7. git push && git push --tags");
+  console.log("  5. git push && git push --tags (GitHub requires the tag to exist before it will publish against it)");
+  console.log("  6. pack again with --publish always");
+  console.log(`  7. verify /releases/latest is v${version} and latest.yml is fetchable`);
   console.log("\nNothing was written. The tree is untouched.");
   process.exit(0);
 }
@@ -199,12 +199,20 @@ run("npx electron-builder --win --publish never", guiDir);
 run("node scripts/check-updater-package.mjs");
 
 // ---------------------------------------------------------------------------
-// 7. Commit and tag locally, so the tag points at exactly this commit. The
-//    publisher does NOT create a git tag — it creates a RELEASE whose tag_name
-//    is v<version>, and GitHub materialises the tag when the release publishes.
+// 7. Commit, tag, and push immediately. GitHub will not create a non-draft
+//    release for a tag it has never seen: createRelease() sends no
+//    target_commitish, and a *published* (draft: false) release requires the
+//    tag_name to already exist as a real ref — otherwise the API returns 422
+//    "Published releases must have a valid tag". Discovered the hard way on
+//    the first non-dry-run execution of this script: publishing before
+//    pushing let GitHub silently create a broken release (wrong commit, no
+//    assets) while still returning that error to the client. So the tag must
+//    be live on origin *before* pass 2 tries to publish against it.
 // ---------------------------------------------------------------------------
 run(`git commit -am "release: v${version}"`);
 run(`git tag v${version}`);
+run("git push");
+run("git push --tags");
 
 // ---------------------------------------------------------------------------
 // 8. Pass 2: publish for real.
@@ -233,13 +241,7 @@ if (!head.ok) {
 console.log(`\nverified: /releases/latest is v${version} and latest.yml is fetchable`);
 
 // ---------------------------------------------------------------------------
-// 10. Push.
-// ---------------------------------------------------------------------------
-run("git push");
-run("git push --tags");
-
-// ---------------------------------------------------------------------------
-// 11. What the script cannot enforce.
+// 10. What the script cannot enforce.
 // ---------------------------------------------------------------------------
 console.log(`
 released v${version}

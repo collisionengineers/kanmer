@@ -608,6 +608,32 @@ describe("format v2", () => {
     expect((await store.getBoard()).statuses.at(-1)?.id).toBe("done");
   });
 
+  it("uses an area's configured final-boundary gate, including leave rules", async () => {
+    const board = await store.getBoard();
+    await store.setBoard({
+      ...board,
+      areas: [...board.areas, { id: "api", name: "API", prefix: "API" }],
+      docs: {
+        default: { gates: [] },
+        areas: {
+          api: {
+            types: [{ id: "tasks", name: "Tasks", progress: true }],
+            gates: [{ needs: "tasks", before: { enter: "review" } }],
+          },
+        },
+      },
+    });
+    const ticket = await store.createItem({ type: "ticket", title: "API", area: "api", status: "review" });
+    const before = await fs.readFile(path.join(root, ".kanmer", "data", "board.yml"), "utf8");
+    await expect(
+      store.reorderColumns("status", ["backlog", "researching", "planning", "implementing", "verifying", "done", "review"]),
+    ).rejects.toThrow(/tasks\.md is missing/);
+    expect(await fs.readFile(path.join(root, ".kanmer", "data", "board.yml"), "utf8")).toBe(before);
+    await store.setDoc(ticket.id, "tasks", "- [x] shipped");
+    await store.reorderColumns("status", ["backlog", "researching", "planning", "implementing", "verifying", "done", "review"]);
+    expect((await store.getBoard()).statuses.at(-1)?.id).toBe("review");
+  });
+
   it("reordering non-status columns never touches the proof gate", async () => {
     const t = await store.createItem({ type: "ticket", title: "A", status: "review" });
     // Put a proofless ticket in the current final stage by hand — reordering

@@ -36,6 +36,7 @@ const api: KanmerApi = {
   setDoc: (id, doc, content, opts) => ipcRenderer.invoke(CH.setDoc, id, doc, content, opts),
   getDocsInfo: (id) => ipcRenderer.invoke(CH.getDocsInfo, id),
   getDocTypes: (id) => ipcRenderer.invoke(CH.getDocTypes, id),
+  getDocModel: () => ipcRenderer.invoke(CH.getDocModel),
   openRepoDoc: (rel) => ipcRenderer.invoke(CH.openRepoDoc, rel),
   getRepoDoc: (rel) => ipcRenderer.invoke(CH.getRepoDoc, rel),
   getActivity: (opts) => ipcRenderer.invoke(CH.getActivity, opts),

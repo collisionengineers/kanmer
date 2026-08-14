@@ -20,7 +20,9 @@ import {
   getLinkGraph,
   linkItems,
   migrateToV2,
+  repoDocsMap,
   resolveDocTypes,
+  resolveGates,
   watchKanmer,
   type BoardColumn,
   type BoardConfig,
@@ -522,6 +524,14 @@ function registerIpc(): void {
     const store = requireStore();
     const [item, board] = await Promise.all([store.getItem(id), store.getBoard()]);
     return resolveDocTypes(board, item?.area ?? "");
+  });
+  ipcMain.handle(CH.getDocModel, async () => {
+    const board = await requireStore().getBoard();
+    return {
+      repoDocs: repoDocsMap(board),
+      defaultTypes: resolveDocTypes(board, ""),
+      defaultGates: resolveGates(board, ""),
+    };
   });
   ipcMain.handle(CH.openRepoDoc, async (_e, rel: string) => {
     // assertSafeRepoPath rejects a path escaping the project root before shell touches it.

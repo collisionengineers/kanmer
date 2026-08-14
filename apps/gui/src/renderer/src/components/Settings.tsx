@@ -7,7 +7,13 @@ import type {
   GateRule,
   Item,
 } from "@kanmer/core";
-import type { ConnectResult, ConnectTarget, DocModel, Theme } from "../../../shared/ipc.js";
+import type {
+  ConnectResult,
+  ConnectTarget,
+  DocModel,
+  ProviderInfo,
+  Theme,
+} from "../../../shared/ipc.js";
 
 type SettingsTab = "board" | "documents" | "appearance" | "connect";
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
@@ -256,15 +262,26 @@ export function Settings({
   );
 }
 
-/** One-click register the MCP server with codex / Claude Code for this project. */
+/** Register the MCP server + install skills for any supported host (data-driven). */
 function ConnectSection(): JSX.Element {
-  const [busy, setBusy] = useState<ConnectTarget | null>(null);
-  const [result, setResult] = useState<(ConnectResult & { target: ConnectTarget }) | null>(null);
+  const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [result, setResult] = useState<
+    (ConnectResult & { target: ConnectTarget; action: "connect" | "disconnect" }) | null
+  >(null);
 
-  const connect = async (target: ConnectTarget) => {
-    setBusy(target);
+  useEffect(() => {
+    void window.kanmer.listProviders().then(setProviders);
+  }, []);
+
+  const run = async (target: ConnectTarget, action: "connect" | "disconnect") => {
+    setBusy(`${action}:${target}`);
     try {
-      setResult({ ...(await window.kanmer.connectAgent(target)), target });
+      const res =
+        action === "connect"
+          ? await window.kanmer.connectAgent(target)
+          : await window.kanmer.disconnectAgent(target);
+      setResult({ ...res, target, action });
     } finally {
       setBusy(null);
     }
@@ -274,34 +291,48 @@ function ConnectSection(): JSX.Element {
     <div className="settings-section">
       <h3>Connect an AI agent</h3>
       <p className="hint">
-        Registers this project's Kanmer board with the agent's MCP client. Runs its
-        <code> mcp add</code> command for you — no Node install needed.
+        Registers this project's Kanmer board with the host's MCP client and installs the skills —
+        via its plugin marketplace, or the shared AGENTS.md block for hosts without one.
       </p>
-      <div className="theme-toggle">
-        <button className="ghost" disabled={busy !== null} onClick={() => void connect("codex")}>
-          {busy === "codex" ? "Connecting…" : "Connect codex"}
-        </button>
-        <button className="ghost" disabled={busy !== null} onClick={() => void connect("claude")}>
-          {busy === "claude" ? "Connecting…" : "Connect Claude Code"}
-        </button>
+      <div className="provider-list">
+        {providers.map((p) => (
+          <div key={p.id} className="provider-row">
+            <span className="provider-name">
+              {p.label}
+              {!p.dispatch && <span className="hint"> · register-only</span>}
+            </span>
+            <button className="ghost sm" disabled={busy !== null} onClick={() => void run(p.id, "connect")}>
+              {busy === `connect:${p.id}` ? "Connecting…" : "Connect"}
+            </button>
+            <button
+              className="ghost sm"
+              disabled={busy !== null}
+              onClick={() => void run(p.id, "disconnect")}
+            >
+              {busy === `disconnect:${p.id}` ? "…" : "Disconnect"}
+            </button>
+          </div>
+        ))}
       </div>
 
       {result && (
         <div className={result.ok ? "connect-result ok" : "connect-result err"}>
           <div className="connect-status">
             {result.ok
-              ? `✓ Registered with ${result.target}. Restart the agent to pick it up.`
-              : `Couldn't run ${result.target}'s CLI. Run this command yourself:`}
+              ? `✓ ${result.action === "connect" ? "Connected" : "Disconnected"} ${result.target}. ${result.output}`
+              : `Couldn't ${result.action} ${result.target}.${result.action === "connect" ? " Run this yourself:" : ""}`}
           </div>
-          <div className="connect-cmd">
-            <code>{result.command}</code>
-            <button
-              className="ghost xs"
-              onClick={() => void navigator.clipboard.writeText(result.command)}
-            >
-              Copy
-            </button>
-          </div>
+          {result.command && (
+            <div className="connect-cmd">
+              <code>{result.command}</code>
+              <button
+                className="ghost xs"
+                onClick={() => void navigator.clipboard.writeText(result.command)}
+              >
+                Copy
+              </button>
+            </div>
+          )}
           {!result.ok && <div className="connect-out">{result.output}</div>}
         </div>
       )}

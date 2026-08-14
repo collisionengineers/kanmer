@@ -17,6 +17,10 @@ files:
 extraResources:
   - from: ../../packages/mcp-server/dist/standalone/kanmer-mcp.cjs
     to: mcp/kanmer-mcp.cjs
+  # The plugin (skills + marketplace source) so Connect can install skills and
+  # register a local marketplace for the packaged app.
+  - from: ../../plugins/kanmer
+    to: plugins/kanmer
 
 win:
   target:

@@ -1,28 +1,33 @@
 import { app } from "electron";
 import { exec } from "node:child_process";
 import { existsSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { cp, mkdir, readdir, readFile, rename, rm, rmdir, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
+import {
+  providerById,
+  type AgentProvider,
+  type Invocation,
+  type ProviderId,
+} from "./providers.js";
+import { applyManagedBlock, removeManagedBlock } from "./agentsBlock.js";
 
 const execAsync = promisify(exec);
+const SKILLS_VERSION_FILE = ".kanmer-skills-version";
 
-export type ConnectTarget = "codex" | "claude";
+/** Back-compat alias — the IPC layer still refers to a "connect target". */
+export type ConnectTarget = ProviderId;
 
 export interface ConnectResult {
   ok: boolean;
-  /** The exact command a user could run by hand (for the copy fallback). */
+  /** The exact command a user could run by hand (for the copy fallback), or a note. */
   command: string;
   output: string;
 }
 
-interface Invocation {
-  command: string; // the executable that runs the server (the Electron binary)
-  args: string[]; // [serverScript, "--root", projectRoot]
-  env: Record<string, string>;
-}
-
 /**
- * How to launch the MCP server. We run it via the Electron binary as Node
+ * How to launch the MCP server: via the Electron binary as Node
  * (ELECTRON_RUN_AS_NODE=1), so the target machine needs no separate Node.
  */
 function serverInvocation(projectRoot: string): Invocation {
@@ -31,87 +36,191 @@ function serverInvocation(projectRoot: string): Invocation {
   if (app.isPackaged) {
     script = join(process.resourcesPath, "mcp", "kanmer-mcp.cjs");
   } else {
-    // Dev: prefer the standalone bundle, fall back to the ESM dist.
     const repoRoot = resolve(app.getAppPath(), "..", "..");
-    const standalone = join(
-      repoRoot,
-      "packages",
-      "mcp-server",
-      "dist",
-      "standalone",
-      "kanmer-mcp.cjs",
-    );
+    const standalone = join(repoRoot, "packages", "mcp-server", "dist", "standalone", "kanmer-mcp.cjs");
     const esm = join(repoRoot, "packages", "mcp-server", "dist", "index.js");
     script = existsSync(standalone) ? standalone : esm;
   }
   return { command: process.execPath, args: [script, "--root", projectRoot], env };
 }
 
-/** Quote an argument for a cmd.exe / shell command line if needed. */
-function q(s: string): string {
-  return /[\s"]/.test(s) ? `"${s.replace(/"/g, '\\"')}"` : s;
+/** Where the bundled plugin (skills + marketplace source) lives — dev vs packaged. */
+function pluginRoot(): string {
+  if (app.isPackaged) return join(process.resourcesPath, "plugins", "kanmer");
+  return join(resolve(app.getAppPath(), "..", ".."), "plugins", "kanmer");
 }
 
-/**
- * codex has no project scope, so each project registers under its own server
- * name — otherwise a second project would silently rewrite the first one's
- * hardcoded --root.
- */
-function codexServerName(projectRoot: string): string {
-  const cleaned = basename(projectRoot)
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 32);
-  return `kanmer-${cleaned || "project"}`;
+async function writeAtomic(file: string, contents: string): Promise<void> {
+  await mkdir(dirname(file), { recursive: true });
+  const tmp = `${file}.tmp-${process.pid}`;
+  await writeFile(tmp, contents, "utf8");
+  await rename(tmp, file);
 }
 
-/** Build the `<cli> mcp add …` command line for a target. */
-function addCommand(target: ConnectTarget, inv: Invocation, projectRoot: string): string {
-  const envFlag = target === "codex" ? "--env" : "-e";
-  const envParts = Object.entries(inv.env).flatMap(([k, v]) => [envFlag, `${k}=${v}`]);
-  // Claude Code: project scope writes <project>/.mcp.json, so the entry
-  // travels with the project instead of one user-scope entry per machine
-  // being silently rewritten by whichever project connected last.
-  const name = target === "claude" ? "kanmer" : codexServerName(projectRoot);
-  const scope = target === "claude" ? ["-s", "project"] : [];
-  const server = [inv.command, ...inv.args];
-  const parts = [target, "mcp", "add", name, ...scope, ...envParts, "--", ...server];
-  return parts.map(q).join(" ");
+/** Resolve a provider config path (`~/` = home) to an absolute path. */
+function resolveConfigPath(rel: string, root: string): string {
+  return rel.startsWith("~/") ? join(homedir(), rel.slice(2)) : join(root, rel);
 }
 
-function removeCommands(target: ConnectTarget, projectRoot: string): string[] {
-  if (target === "claude") {
-    return [
-      "claude mcp remove kanmer -s project",
-      // Clean up the stale user-scope entry older Kanmer versions wrote.
-      "claude mcp remove kanmer -s user",
-    ];
+async function ensureAgentsBlock(root: string): Promise<void> {
+  const file = join(root, "AGENTS.md");
+  const existing = existsSync(file) ? await readFile(file, "utf8") : null;
+  await writeAtomic(file, applyManagedBlock(existing));
+}
+
+async function dropAgentsBlock(root: string): Promise<void> {
+  const file = join(root, "AGENTS.md");
+  if (!existsSync(file)) return;
+  const next = removeManagedBlock(await readFile(file, "utf8"));
+  if (next === null) await rm(file, { force: true });
+  else await writeAtomic(file, next);
+}
+
+/** Remove only the bundled skills Kanmer owns, preserving any host/user skills. */
+export async function removeBundledSkillsOnly(
+  root: string,
+  skillsDir: string,
+  bundledSkillsRoot = join(pluginRoot(), "skills"),
+): Promise<void> {
+  const destination = join(root, skillsDir);
+  if (!existsSync(destination)) return;
+  const bundled = await readdir(bundledSkillsRoot, { withFileTypes: true });
+  for (const entry of bundled) {
+    // Bundled skill folders are direct children; never let a path escape the destination.
+    if (!entry.isDirectory() || entry.name.includes("/") || entry.name.includes("\\") || entry.name === ".") continue;
+    await rm(join(destination, entry.name), { recursive: true, force: true });
   }
-  return [`codex mcp remove ${codexServerName(projectRoot)}`];
+  await rm(join(destination, SKILLS_VERSION_FILE), { force: true });
+  if ((await readdir(destination)).length === 0) await rmdir(destination);
+}
+
+/** True only when the provider's project config still names Kanmer. */
+async function isRegistered(provider: AgentProvider, root: string): Promise<boolean> {
+  if (provider.register.kind !== "configFile") return false;
+  const file = resolveConfigPath(provider.register.configPath, root);
+  if (!existsSync(file)) return false;
+  try {
+    const parsed: unknown = JSON.parse(await readFile(file, "utf8"));
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return false;
+    const obj = parsed as Record<string, unknown>;
+    const entries = provider.id === "opencode" ? obj.mcp : obj.mcpServers;
+    return typeof entries === "object" && entries !== null && !Array.isArray(entries) &&
+      Object.hasOwn(entries as object, "kanmer");
+  } catch {
+    // A malformed/indeterminate configuration must retain shared instructions.
+    return true;
+  }
+}
+
+async function hasRegisteredCopySkillsPeer(id: ProviderId, root: string): Promise<boolean> {
+  const peers = ["opencode", "grok", "antigravity"]
+    .map((peerId) => providerById(peerId))
+    .filter((peer): peer is AgentProvider => peer !== undefined && peer.id !== id && peer.install.kind === "copySkills");
+  for (const peer of peers) {
+    if (await isRegistered(peer, root)) return true;
+  }
+  return false;
+}
+
+/** Install skills for a provider; returns a short human note. */
+async function installSkills(provider: AgentProvider, root: string): Promise<string> {
+  if (provider.install.kind === "marketplace") {
+    const notes: string[] = [];
+    for (const cmd of provider.install.marketplaceCommands(pluginRoot())) {
+      try {
+        await execAsync(cmd, { cwd: root });
+        notes.push("plugin installed");
+      } catch (e) {
+        notes.push(`plugin cmd skipped (${e instanceof Error ? e.message.split("\n")[0] : e})`);
+      }
+    }
+    return notes.join("; ");
+  }
+  // copySkills: always ensure the AGENTS.md block; copy skills for a project dir.
+  await ensureAgentsBlock(root);
+  if (provider.install.skillsScope === "project" && provider.install.skillsDir) {
+    const dest = join(root, provider.install.skillsDir);
+    await mkdir(dest, { recursive: true });
+    await cp(join(pluginRoot(), "skills"), dest, { recursive: true });
+    return `skills → ${provider.install.skillsDir}, AGENTS.md block ensured`;
+  }
+  return "AGENTS.md block ensured (host reads AGENTS.md for skills)";
 }
 
 /**
- * Register Kanmer's MCP server with codex or Claude Code by running their
- * `mcp add` CLI, scoped per project. Remove-then-add makes it idempotent.
- * Returns the command line either way so the UI can offer a copy-paste
- * fallback if the CLI isn't found (for Claude Code, run it from the project
- * folder — project scope writes .mcp.json into the current directory).
+ * Connect a provider: register Kanmer's MCP server (a CLI `mcp add` or a
+ * config-file merge) and install the skills (a marketplace CLI, or the AGENTS.md
+ * block + a project skills copy). Idempotent — re-running just refreshes.
  */
-export async function connectAgent(
-  target: ConnectTarget,
-  projectRoot: string,
-): Promise<ConnectResult> {
+export async function connectAgent(id: ProviderId, projectRoot: string): Promise<ConnectResult> {
+  const provider = providerById(id);
+  if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
   const inv = serverInvocation(projectRoot);
-  const command = addCommand(target, inv, projectRoot);
   try {
-    for (const rm of removeCommands(target, projectRoot)) {
-      await execAsync(rm, { cwd: projectRoot }).catch(() => undefined); // ignore "not found"
+    let command: string;
+    let output: string;
+    if (provider.register.kind === "cli") {
+      command = provider.register.addCommand(inv, projectRoot);
+      for (const cmd of provider.register.removeCommands(projectRoot)) {
+        await execAsync(cmd, { cwd: projectRoot }).catch(() => undefined); // ignore "not found"
+      }
+      const { stdout, stderr } = await execAsync(command, { cwd: projectRoot });
+      output = (stdout || stderr || "Registered.").trim();
+    } else {
+      const path = resolveConfigPath(provider.register.configPath, projectRoot);
+      const existing = existsSync(path) ? await readFile(path, "utf8") : null;
+      await writeAtomic(path, provider.register.merge(existing, inv));
+      command = `wrote ${provider.register.configPath}`;
+      output = `Registered Kanmer in ${provider.register.configPath}.`;
     }
-    const { stdout, stderr } = await execAsync(command, { cwd: projectRoot });
-    return { ok: true, command, output: (stdout || stderr || "Added.").trim() };
+    const skills = await installSkills(provider, projectRoot).catch(
+      (e) => `skills failed: ${e instanceof Error ? e.message : e}`,
+    );
+    return { ok: true, command, output: `${output} ${skills}`.trim() };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, command, output: msg };
+    const command =
+      provider.register.kind === "cli"
+        ? provider.register.addCommand(inv, projectRoot)
+        : `edit ${provider.register.configPath}`;
+    return { ok: false, command, output: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** Disconnect a provider: unregister the server and remove copied skills + the block. */
+export async function disconnectAgent(id: ProviderId, projectRoot: string): Promise<ConnectResult> {
+  const provider = providerById(id);
+  if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
+  try {
+    const cleanupNotes: string[] = ["provider registration removed"];
+    if (provider.register.kind === "cli") {
+      for (const cmd of provider.register.removeCommands(projectRoot)) {
+        await execAsync(cmd, { cwd: projectRoot }).catch(() => undefined);
+      }
+    } else {
+      const path = resolveConfigPath(provider.register.configPath, projectRoot);
+      if (existsSync(path)) {
+        await writeAtomic(path, provider.register.unmerge(await readFile(path, "utf8")));
+      }
+    }
+    if (provider.install.kind === "copySkills") {
+      if (provider.install.skillsScope === "project" && provider.install.skillsDir) {
+        await removeBundledSkillsOnly(projectRoot, provider.install.skillsDir);
+        cleanupNotes.push("bundled copied skills removed");
+      }
+      const peerRemains = await hasRegisteredCopySkillsPeer(id, projectRoot);
+      if (peerRemains) {
+        cleanupNotes.push("AGENTS.md block retained for another connected host");
+      } else {
+        await dropAgentsBlock(projectRoot);
+        cleanupNotes.push("AGENTS.md block removed; no connected copy-skills host remains");
+      }
+    }
+    return { ok: true, command: `disconnect ${id}`, output: cleanupNotes.join("; ") };
+  } catch (err) {
+    return {
+      ok: false,
+      command: `disconnect ${id}`,
+      output: err instanceof Error ? err.message : String(err),
+    };
   }
 }

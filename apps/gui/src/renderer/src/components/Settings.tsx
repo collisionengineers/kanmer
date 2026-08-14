@@ -53,11 +53,15 @@ export function Settings({
   onSetPreferences,
   onClose,
 }: SettingsProps): JSX.Element {
+  const client = useClient();
   const [draft, setDraft] = useState<BoardConfig>(() => structuredClone(board));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [tab, setTab] = useState<SettingsTab>("board");
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
+  const [reloadRequired, setReloadRequired] = useState(false);
 
   // Usage counts so deleting an in-use column shows a soft warning.
   const usage = useMemo(() => countUsage(items), [items]);
@@ -71,6 +75,10 @@ export function Settings({
     setDraft((d) => ({ ...d, [pluralKey(kind)]: cols }));
 
   const save = async () => {
+    if (reloadRequired) {
+      setError("Reload Settings before saving: the board changed but this draft could not be refreshed.");
+      return;
+    }
     const problems = validateDraft(draft, board, items);
     if (problems.length > 0) {
       setError(problems.join(" · "));
@@ -93,6 +101,26 @@ export function Settings({
   const requestClose = () => {
     if (modified) setConfirmDiscard(true);
     else onClose();
+  };
+
+  const backfill = async () => {
+    if (modified || backfilling) return;
+    setBackfilling(true);
+    setError(null);
+    try {
+      const result = await client.backfillBoard(false);
+      const refreshed = await client.getBoard();
+      setDraft(structuredClone(refreshed));
+      setReloadRequired(false);
+      setBackfillMsg(
+        result.addedStages.length ? `Added: ${result.addedStages.join(", ")}` : "Already current.",
+      );
+    } catch (err) {
+      setReloadRequired(true);
+      setError(`Backfill applied but Settings could not refresh: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBackfilling(false);
+    }
   };
 
   // Focus trap: focus the dialog on open, cycle Tab inside it, restore after.
@@ -143,7 +171,7 @@ export function Settings({
           <button className="ghost sm" onClick={requestClose}>
             Cancel
           </button>
-          <button className="primary sm" disabled={saving} onClick={() => void save()}>
+          <button className="primary sm" disabled={saving || reloadRequired} onClick={() => void save()}>
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
@@ -228,7 +256,16 @@ export function Settings({
               </>
             )}
 
-            {tab === "documents" && <DocumentsTab draft={draft} setDraft={setDraft} />}
+            {tab === "documents" && (
+              <DocumentsTab
+                draft={draft}
+                setDraft={setDraft}
+                onBackfill={backfill}
+                backfilling={backfilling}
+                backfillMsg={backfillMsg}
+                backfillDisabled={modified}
+              />
+            )}
 
             {tab === "appearance" && (
               <>
@@ -469,13 +506,20 @@ function ConnectSection(): JSX.Element {
 function DocumentsTab({
   draft,
   setDraft,
+  onBackfill,
+  backfilling,
+  backfillMsg,
+  backfillDisabled,
 }: {
   draft: BoardConfig;
   setDraft: React.Dispatch<React.SetStateAction<BoardConfig>>;
+  onBackfill: () => void;
+  backfilling: boolean;
+  backfillMsg: string | null;
+  backfillDisabled: boolean;
 }): JSX.Element {
   const client = useClient();
   const [model, setModel] = useState<DocModel | null>(null);
-  const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
   useEffect(() => {
     void client.getDocModel().then(setModel);
   }, [client]);
@@ -713,18 +757,15 @@ function DocumentsTab({
           <p className="hint">
             This board is missing canonical stages ({missingStages.join(", ")}). Backfill inserts
             them in order — additive, never renaming/reordering existing stages, never touching item
-            files. Applies to the saved board immediately; reopen Settings to see the result.
+            files. Backfill refreshes this draft before it can be saved.
           </p>
           <button
             className="ghost sm"
-            onClick={async () => {
-              const r = await client.backfillBoard(false);
-              setBackfillMsg(
-                r.addedStages.length ? `Added: ${r.addedStages.join(", ")}` : "Already current.",
-              );
-            }}
+            disabled={backfillDisabled || backfilling}
+            title={backfillDisabled ? "Save or discard Settings changes before backfilling." : undefined}
+            onClick={onBackfill}
           >
-            Backfill missing stages
+            {backfilling ? "Backfilling…" : "Backfill missing stages"}
           </button>
           {backfillMsg && <p className="hint">{backfillMsg}</p>}
         </div>

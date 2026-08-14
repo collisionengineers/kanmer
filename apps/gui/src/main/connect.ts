@@ -16,7 +16,6 @@ import {
 import { applyManagedBlock, removeManagedBlock } from "./agentsBlock.js";
 
 const execAsync = promisify(exec);
-const SKILLS_VERSION_FILE = ".kanmer-skills-version";
 
 /** Back-compat alias — the IPC layer still refers to a "connect target". */
 export type ConnectTarget = ProviderId;

@@ -11,6 +11,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverEntry =
   process.env.KANMER_SERVER ?? path.join(__dirname, "..", "dist", "index.js");
 const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), "kanmer-smoke-"));
+// A governing doc in the repo's own /docs/, for the refs / link_doc coverage.
+fs.mkdirSync(path.join(sandbox, "docs", "prd"), { recursive: true });
+fs.writeFileSync(path.join(sandbox, "docs", "prd", "smoke.md"), "# PRD\n", "utf8");
 
 function textOf(res) {
   return res.content.map((c) => c.text).join("\n");
@@ -40,7 +43,14 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
-  check("tools/list returns 20 tools", tools.tools.length === 20, `got ${tools.tools.length}`);
+  check("tools/list returns 24 tools", tools.tools.length === 24, `got ${tools.tools.length}`);
+  for (const name of ["append_scratch", "link_doc", "get_doc_gates", "migrate_board"]) {
+    check(`${name} tool exists`, tools.tools.some((t) => t.name === name));
+  }
+  check(
+    "get_doc_gates is read-only",
+    tools.tools.find((t) => t.name === "get_doc_gates")?.annotations?.readOnlyHint === true,
+  );
 
   const del = tools.tools.find((t) => t.name === "delete_item");
   check("delete_item is destructive", del?.annotations?.destructiveHint === true);
@@ -467,11 +477,13 @@ try {
     "blocked",
     "checklist",
     "created",
+    "deployment",
     "docs",
     "id",
     "labels",
     "order",
     "priority",
+    "refs",
     "status",
     "taken",
     "title",
@@ -579,6 +591,119 @@ try {
   check(
     "area migration moved the ticket folder",
     fs.existsSync(path.join(sandbox, ".kanmer", "areas", "pr-review", "UI-001", "UI-001.md")),
+  );
+
+  // Phase 2: doc gates, refs / link_doc, scratch, dynamic doc names, migrate.
+  const gateProbe = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "create_item",
+        arguments: { type: "ticket", title: "Gate probe" },
+      }),
+    ),
+  );
+  const gpId = gateProbe.id;
+  const gatesForProbe = JSON.parse(
+    textOf(await client.callTool({ name: "get_doc_gates", arguments: { id: gpId } })),
+  );
+  check(
+    "get_doc_gates reports the ticket's doc types and gates",
+    Array.isArray(gatesForProbe.docTypes) && Array.isArray(gatesForProbe.gates),
+  );
+  const blockedLeave = await client.callTool({
+    name: "move_item",
+    arguments: { id: gpId, status: "researching" },
+  });
+  check(
+    "leaving backlog is gated on a governing doc",
+    blockedLeave.isError === true && /governing/i.test(textOf(blockedLeave)),
+  );
+  const linked = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "link_doc",
+        arguments: { id: gpId, path: "docs/prd/smoke.md", action: "add" },
+      }),
+    ),
+  );
+  check("link_doc adds a governing-doc ref", (linked.refs ?? []).includes("docs/prd/smoke.md"));
+  const nowLeaves = await client.callTool({
+    name: "move_item",
+    arguments: { id: gpId, status: "researching" },
+  });
+  check(
+    "a linked governing doc satisfies the leave-backlog gate",
+    JSON.parse(textOf(nowLeaves)).status === "researching",
+  );
+  const unlinked = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "link_doc",
+        arguments: { id: gpId, path: "docs/prd/smoke.md", action: "remove" },
+      }),
+    ),
+  );
+  check("link_doc removes a ref", !(unlinked.refs ?? []).includes("docs/prd/smoke.md"));
+
+  // A configured non-legacy doc name is accepted; an unknown one is rejected.
+  const openQ = await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: gpId, doc: "open-questions", content: "- anything unresolved?" },
+  });
+  check("set_ticket_doc accepts a configured non-legacy doc name", openQ.isError !== true);
+  const bogusDoc = await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: gpId, doc: "totally-made-up", content: "x" },
+  });
+  check(
+    "set_ticket_doc rejects an unknown doc name, listing valid ids",
+    bogusDoc.isError === true && textOf(bogusDoc).includes("Unknown document"),
+  );
+
+  // Scratch: append, read back through get_ticket_doc(scratch-<slug>).
+  await client.callTool({
+    name: "append_scratch",
+    arguments: { id: gpId, slug: "research", content: "scratch line one" },
+  });
+  await client.callTool({
+    name: "append_scratch",
+    arguments: { id: gpId, slug: "research", content: "scratch line two" },
+  });
+  const scratchBack = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "get_ticket_doc",
+        arguments: { id: gpId, doc: "scratch-research" },
+      }),
+    ),
+  );
+  check(
+    "append_scratch is read back through get_ticket_doc(scratch-<slug>)",
+    scratchBack.content?.includes("scratch line one") &&
+      scratchBack.content?.includes("scratch line two"),
+  );
+  const probeDocs = JSON.parse(
+    textOf(await client.callTool({ name: "get_item", arguments: { id: gpId } })),
+  );
+  check(
+    "scratch is not counted among the pipeline docs",
+    probeDocs.docs["scratch-research"] === undefined,
+  );
+
+  // Board-level doc model + a no-op migrate dry run.
+  const boardGates = JSON.parse(
+    textOf(await client.callTool({ name: "get_doc_gates", arguments: {} })),
+  );
+  check(
+    "get_doc_gates without id returns the board's doc model",
+    Array.isArray(boardGates.default?.types) && typeof boardGates.repoDocs === "object",
+  );
+  const migratePreview = JSON.parse(
+    textOf(await client.callTool({ name: "migrate_board", arguments: { dry_run: true } })),
+  );
+  check(
+    "migrate_board dry_run reports on an already-current board",
+    migratePreview.backfill && Array.isArray(migratePreview.backfill.addedStages),
   );
 
   const del1 = await client.callTool({ name: "delete_item", arguments: { id: "TICK-001" } });

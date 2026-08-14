@@ -1,7 +1,7 @@
 import { app } from "electron";
 import { exec } from "node:child_process";
 import { existsSync } from "node:fs";
-import { cp, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, rename, rm, rmdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -73,6 +73,48 @@ async function dropAgentsBlock(root: string): Promise<void> {
   const next = removeManagedBlock(await readFile(file, "utf8"));
   if (next === null) await rm(file, { force: true });
   else await writeAtomic(file, next);
+}
+
+/** Remove only the bundled skills Kanmer owns, preserving any host/user skills. */
+async function removeBundledSkillsOnly(root: string, skillsDir: string): Promise<void> {
+  const destination = join(root, skillsDir);
+  if (!existsSync(destination)) return;
+  const bundled = await readdir(join(pluginRoot(), "skills"), { withFileTypes: true });
+  for (const entry of bundled) {
+    // Bundled skill folders are direct children; never let a path escape the destination.
+    if (!entry.isDirectory() || entry.name.includes("/") || entry.name.includes("\\") || entry.name === ".") continue;
+    await rm(join(destination, entry.name), { recursive: true, force: true });
+  }
+  await rm(join(destination, SKILLS_VERSION_FILE), { force: true });
+  if ((await readdir(destination)).length === 0) await rmdir(destination);
+}
+
+/** True only when the provider's project config still names Kanmer. */
+async function isRegistered(provider: AgentProvider, root: string): Promise<boolean> {
+  if (provider.register.kind !== "configFile") return false;
+  const file = resolveConfigPath(provider.register.configPath, root);
+  if (!existsSync(file)) return false;
+  try {
+    const parsed: unknown = JSON.parse(await readFile(file, "utf8"));
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return false;
+    const obj = parsed as Record<string, unknown>;
+    const entries = provider.id === "opencode" ? obj.mcp : obj.mcpServers;
+    return typeof entries === "object" && entries !== null && !Array.isArray(entries) &&
+      Object.hasOwn(entries as object, "kanmer");
+  } catch {
+    // A malformed/indeterminate configuration must retain shared instructions.
+    return true;
+  }
+}
+
+async function hasRegisteredCopySkillsPeer(id: ProviderId, root: string): Promise<boolean> {
+  const peers = ["opencode", "grok", "antigravity"]
+    .map((peerId) => providerById(peerId))
+    .filter((peer): peer is AgentProvider => peer !== undefined && peer.id !== id && peer.install.kind === "copySkills");
+  for (const peer of peers) {
+    if (await isRegistered(peer, root)) return true;
+  }
+  return false;
 }
 
 /** Install skills for a provider; returns a short human note. */
@@ -156,9 +198,9 @@ export async function disconnectAgent(id: ProviderId, projectRoot: string): Prom
     }
     if (provider.install.kind === "copySkills") {
       if (provider.install.skillsScope === "project" && provider.install.skillsDir) {
-        await rm(join(projectRoot, provider.install.skillsDir), { recursive: true, force: true });
+        await removeBundledSkillsOnly(projectRoot, provider.install.skillsDir);
       }
-      await dropAgentsBlock(projectRoot);
+      if (!(await hasRegisteredCopySkillsPeer(id, projectRoot))) await dropAgentsBlock(projectRoot);
     }
     return { ok: true, command: `disconnect ${id}`, output: "Disconnected." };
   } catch (err) {

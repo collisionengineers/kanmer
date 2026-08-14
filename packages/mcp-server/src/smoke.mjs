@@ -57,9 +57,17 @@ try {
   const boardRes = await client.callTool({ name: "list_board", arguments: {} });
   const board = JSON.parse(textOf(boardRes));
   check(
-    "list_board returns the six workflow stages",
+    "list_board returns the seven workflow stages",
     JSON.stringify(board.statuses.map((s) => s.id)) ===
-      JSON.stringify(["todo", "planning", "implementing", "review", "verifying", "done"]),
+      JSON.stringify([
+        "backlog",
+        "researching",
+        "planning",
+        "implementing",
+        "review",
+        "verifying",
+        "done",
+      ]),
     board.statuses.map((s) => s.id).join(">"),
   );
   check("board has no phases dimension", board.phases === undefined);
@@ -89,7 +97,11 @@ try {
   });
   const createdItem = JSON.parse(textOf(created));
   check("create_item allocates TICK-001", createdItem.id === "TICK-001", createdItem.id);
-  check("create_item defaults to the first stage", createdItem.status === "todo", createdItem.status);
+  check(
+    "create_item defaults to the first stage",
+    createdItem.status === "backlog",
+    createdItem.status,
+  );
   check(
     "first write lazily creates .kanmer/",
     fs.existsSync(path.join(sandbox, ".kanmer")),
@@ -104,17 +116,28 @@ try {
     plan.isError === true && textOf(plan).includes("set_ticket_doc"),
   );
 
+  // Created directly in implementing — creation is ungated, so imports/backfills
+  // of in-flight work land wherever they belong.
   const second = await client.callTool({
     name: "create_item",
-    arguments: { type: "ticket", title: "Second ticket", body: "See [[TICK-001]]" },
+    arguments: {
+      type: "ticket",
+      title: "Second ticket",
+      status: "implementing",
+      body: "See [[TICK-001]]",
+    },
   });
-  check("create_item allocates TICK-002", JSON.parse(textOf(second)).id === "TICK-002");
+  check("create_item allocates TICK-002 into implementing", JSON.parse(textOf(second)).id === "TICK-002");
 
-  const moved = await client.callTool({
+  // Document gate: entering review needs post-implementation-report.md.
+  const gatedReview = await client.callTool({
     name: "move_item",
-    arguments: { id: "TICK-001", status: "review" },
+    arguments: { id: "TICK-002", status: "review" },
   });
-  check("move_item changes status", JSON.parse(textOf(moved)).status === "review");
+  check(
+    "move_item into review is gated on post-implementation-report.md",
+    gatedReview.isError === true && textOf(gatedReview).includes("post-implementation-report"),
+  );
 
   const badMove = await client.callTool({
     name: "move_item",
@@ -146,18 +169,19 @@ try {
     "get_status reflects the created state",
     statusAfter.exists === true &&
       statusAfter.boardSource === "file" &&
-      statusAfter.counts.byStage.review === 1,
+      statusAfter.counts.byStage.implementing === 1,
     JSON.stringify(statusAfter.counts.byStage),
   );
 
-  // Take / release lifecycle.
+  // Take / release lifecycle. TICK-002 is already in implementing, so take's
+  // default stage is a no-op move rather than a gated jump.
   const taken = await client.callTool({
     name: "take_ticket",
     arguments: { id: "TICK-002", branch: "feat/smoke", worktree: "wt/smoke" },
   });
   const takenItem = JSON.parse(textOf(taken));
   check(
-    "take_ticket records taken_at/branch and moves to implementing",
+    "take_ticket records taken_at/branch and keeps it in implementing",
     Boolean(takenItem.taken_at) &&
       takenItem.branch === "feat/smoke" &&
       takenItem.status === "implementing",
@@ -207,6 +231,16 @@ try {
   check(
     "get_item reports doc presence",
     enrichedItem.docs.research === true && enrichedItem.docs.proof === false,
+  );
+
+  // set_ticket_doc validates the doc name against the area's configured set.
+  const unknownDoc = await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: "TICK-002", doc: "not-a-doc", content: "x" },
+  });
+  check(
+    "set_ticket_doc rejects an unknown document name",
+    unknownDoc.isError === true && textOf(unknownDoc).includes("Unknown document"),
   );
 
   // Optimistic concurrency on the doc pipeline.
@@ -263,7 +297,24 @@ try {
       JSON.parse(textOf(accepted)).version !== afterConflict.version,
   );
 
-  // Proof gate through move_item.
+  // Walk TICK-002 through the late pipeline: post-implementation-report unlocks
+  // review, proof unlocks done.
+  await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: "TICK-002", doc: "post-implementation-report", content: "What changed." },
+  });
+  const intoReview = await client.callTool({
+    name: "move_item",
+    arguments: { id: "TICK-002", status: "review" },
+  });
+  check(
+    "move_item into review succeeds once post-implementation-report.md exists",
+    JSON.parse(textOf(intoReview)).status === "review",
+  );
+  await client.callTool({
+    name: "move_item",
+    arguments: { id: "TICK-002", status: "verifying" },
+  });
   const gated = await client.callTool({
     name: "move_item",
     arguments: { id: "TICK-002", status: "done" },
@@ -287,13 +338,17 @@ try {
   });
   check("take_ticket release clears the taken fields", !JSON.parse(textOf(released)).taken_at);
 
-  // A status reorder that would make a stage final is gated the same way a
-  // move is: TICK-001 sits in "review" with no proof.md.
+  // A status reorder that would make a stage final is gated the same way a move
+  // is: a proofless ticket created directly into "review".
+  await client.callTool({
+    name: "create_item",
+    arguments: { type: "ticket", title: "Reorder victim", status: "review" },
+  });
   const gatedReorder = await client.callTool({
     name: "reorder_columns",
     arguments: {
       kind: "status",
-      order: ["todo", "planning", "implementing", "verifying", "done", "review"],
+      order: ["backlog", "researching", "planning", "implementing", "verifying", "done", "review"],
     },
   });
   check(
@@ -413,7 +468,6 @@ try {
     "checklist",
     "created",
     "docs",
-    "due",
     "id",
     "labels",
     "order",
@@ -458,12 +512,12 @@ try {
   });
   check("archived item shown with include_archived", JSON.parse(textOf(allUi)).length === 1);
 
-  // Phase 6: blocks / due / order / activity.
+  // blocks / order / activity.
   const bulk2 = JSON.parse(
     textOf(
       await client.callTool({
         name: "create_items",
-        arguments: { items: [{ title: "Dep A" }, { title: "Dep B", due: "2000-01-01" }] },
+        arguments: { items: [{ title: "Dep A" }, { title: "Dep B" }] },
       }),
     ),
   );
@@ -483,21 +537,14 @@ try {
     textOf(await client.callTool({ name: "get_item", arguments: { id: depB } })),
   );
   check("get_item derives blocked from a live blocker", depItem.blocked === true);
-  const overdueList = JSON.parse(
-    textOf(await client.callTool({ name: "list_items", arguments: { overdue: true } })),
-  );
-  check(
-    "list_items overdue finds the past-due ticket",
-    overdueList.length === 1 && overdueList[0].id === depB,
-  );
   await client.callTool({
     name: "move_item",
-    arguments: { id: depB, status: "todo", position: "top" },
+    arguments: { id: depB, status: "backlog", position: "top" },
   });
-  const todoTop = JSON.parse(
-    textOf(await client.callTool({ name: "list_items", arguments: { status: "todo" } })),
+  const backlogTop = JSON.parse(
+    textOf(await client.callTool({ name: "list_items", arguments: { status: "backlog" } })),
   );
-  check("move_item position: top sorts the item first", todoTop[0]?.id === depB);
+  check("move_item position: top sorts the item first", backlogTop[0]?.id === depB);
   const activity = JSON.parse(
     textOf(await client.callTool({ name: "get_activity", arguments: { id: depB } })),
   );

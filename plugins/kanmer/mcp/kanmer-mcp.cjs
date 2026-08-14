@@ -37550,7 +37550,6 @@ var BoardColumnSchema = external_exports.object({
    */
   prefix: external_exports.string().regex(/^[A-Z0-9]{2,6}$/, "prefix must be 2-6 uppercase alphanumerics").optional()
 });
-var TICKET_DOCS = ["research", "impact", "plan", "checklist", "proof"];
 var IdPrefixesSchema = external_exports.object({
   ticket: external_exports.string().min(1).default("TICK"),
   plan: external_exports.string().min(1).default("PLAN"),
@@ -37566,11 +37565,88 @@ var TimestampSchema = external_exports.preprocess(
   (v) => v instanceof Date ? v.toISOString() : v,
   external_exports.string()
 );
+var DocTypeSchema = external_exports.object({
+  /** Lowercase-kebab id; also the on-disk filename (`<id>.md`). */
+  id: external_exports.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "doc id must be lowercase-kebab"),
+  name: external_exports.string().min(1),
+  /** Doc ids that must exist before this one may be written (doc-before-doc). */
+  requires: external_exports.array(external_exports.string()).optional(),
+  /** Parse `- [ ]`/`- [x]` progress from this doc (at most one type should set it). */
+  progress: external_exports.boolean().optional()
+});
+function refineDocTypes(types, ctx) {
+  const ids = new Set(types.map((t) => t.id));
+  for (const t of types) {
+    if (t.id.startsWith("scratch-")) {
+      ctx.addIssue({
+        code: external_exports.ZodIssueCode.custom,
+        message: `doc id "${t.id}" must not start with "scratch-" (reserved for scratch files)`
+      });
+    }
+    for (const req of t.requires ?? []) {
+      if (!ids.has(req)) {
+        ctx.addIssue({
+          code: external_exports.ZodIssueCode.custom,
+          message: `doc "${t.id}" requires "${req}", which is not a doc type in this set`
+        });
+      }
+    }
+  }
+  const edges = new Map(types.map((t) => [t.id, t.requires ?? []]));
+  const state = /* @__PURE__ */ new Map();
+  const hasCycle = (id) => {
+    if (state.get(id) === 2) return false;
+    if (state.get(id) === 1) return true;
+    state.set(id, 1);
+    for (const next of edges.get(id) ?? []) {
+      if (edges.has(next) && hasCycle(next)) return true;
+    }
+    state.set(id, 2);
+    return false;
+  };
+  for (const t of types) {
+    if (hasCycle(t.id)) {
+      ctx.addIssue({
+        code: external_exports.ZodIssueCode.custom,
+        message: `doc "${t.id}" is part of a requires cycle`
+      });
+      break;
+    }
+  }
+}
+var DocTypeArraySchema = external_exports.array(DocTypeSchema).superRefine(refineDocTypes);
+var GateRuleSchema = external_exports.object({
+  needs: external_exports.string().optional(),
+  needsRepoDoc: external_exports.array(external_exports.string()).optional(),
+  before: external_exports.object({ leave: external_exports.string().optional(), enter: external_exports.string().optional() }).refine((b) => b.leave === void 0 !== (b.enter === void 0), {
+    message: "gate `before` needs exactly one of `leave`/`enter`"
+  })
+}).refine((g) => g.needs === void 0 !== (g.needsRepoDoc === void 0), {
+  message: "gate needs exactly one of `needs`/`needsRepoDoc`"
+});
+var AreaDocsSchema = external_exports.object({
+  types: DocTypeArraySchema.optional(),
+  gates: external_exports.array(GateRuleSchema).optional()
+});
+var DocsConfigSchema = external_exports.object({
+  /** Governing-doc kind → repo-relative glob (e.g. prd → docs/prd/**). */
+  repoDocs: external_exports.record(external_exports.string()).optional(),
+  default: AreaDocsSchema.optional(),
+  areas: external_exports.record(AreaDocsSchema).optional()
+});
+var DeploymentConfigSchema = external_exports.object({
+  /** Ordered environments; the last one is "live". */
+  environments: external_exports.array(external_exports.string().min(1)).min(1)
+});
 var BoardConfigSchema = external_exports.object({
   statuses: external_exports.array(BoardColumnSchema).min(1),
   areas: external_exports.array(BoardColumnSchema).default([]),
   priorities: external_exports.array(BoardColumnSchema).min(1).default(DEFAULT_PRIORITIES),
-  idPrefixes: IdPrefixesSchema
+  idPrefixes: IdPrefixesSchema,
+  /** The configurable document model. Absent ⇒ the shipped defaults (docs.ts). */
+  docs: DocsConfigSchema.optional(),
+  /** Deployment tracking. Absent ⇒ no per-ticket deployment field at all. */
+  deployment: DeploymentConfigSchema.optional()
 });
 var ItemFrontmatterSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -37586,17 +37662,22 @@ var ItemFrontmatterSchema = external_exports.object({
   branch: external_exports.string().optional(),
   /** The worktree path the taken work happens in, if any. */
   worktree: external_exports.string().optional(),
-  /** Optional date-only deadline (YYYY-MM-DD). YAML parses bare dates to Date. */
-  due: external_exports.preprocess(
-    (v) => v instanceof Date ? v.toISOString().slice(0, 10) : v,
-    external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/)
-  ).optional(),
   /** Optional fractional sort key; unordered items sort after ordered ones. */
   order: external_exports.number().optional(),
   labels: external_exports.array(external_exports.string()).default([]),
   links: external_exports.array(external_exports.string()).default([]),
   /** Ids this item blocks. Blocked-by is derived as backlinks, never stored. */
   blocks: external_exports.array(external_exports.string()).optional(),
+  /** Repo-relative POSIX paths to governing docs (PRD/FRD/ADR) in the repo's own /docs/. */
+  refs: external_exports.array(external_exports.string()).optional(),
+  /** A governing doc is still to be created/linked — satisfies the repo-doc gate. */
+  docs_todo: external_exports.boolean().optional(),
+  /** Commit SHAs associated with this ticket (emitted only when non-empty). */
+  commits: external_exports.array(external_exports.string()).optional(),
+  /** PR references — number or URL — associated with this ticket (emitted only when non-empty). */
+  prs: external_exports.array(external_exports.string()).optional(),
+  /** Deployment status; only meaningful when the board declares environments. */
+  deployment: external_exports.string().optional(),
   archived: external_exports.boolean().default(false),
   created: TimestampSchema.default(""),
   updated: TimestampSchema.default("")
@@ -37644,6 +37725,14 @@ function itemFile(paths, type, id) {
   }
   return file;
 }
+function assertSafeRepoPath(projectRoot2, rel) {
+  const root = import_path.default.resolve(projectRoot2);
+  const abs = import_path.default.resolve(root, rel);
+  if (abs !== root && !abs.startsWith(root + import_path.default.sep)) {
+    throw new Error(`Repo doc path "${rel}" escapes the project root`);
+  }
+  return abs;
+}
 function areaFolderName(areaId) {
   if (areaId === "" || areaId === NO_AREA_DIR) return NO_AREA_DIR;
   if (!SAFE_ID_RE.test(areaId) || areaId.includes("..")) {
@@ -37661,8 +37750,23 @@ function ticketDirIn(paths, areaId, id) {
 function ticketFileIn(paths, areaId, id) {
   return import_path.default.join(ticketDirIn(paths, areaId, id), `${id}.md`);
 }
+var SAFE_DOC_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+function assertSafeDocName(doc) {
+  if (!SAFE_DOC_RE.test(doc) || doc.includes("..")) {
+    throw new Error(`Invalid document name "${doc}"`);
+  }
+}
 function docFileIn(ticketDir, doc) {
+  assertSafeDocName(doc);
   return import_path.default.join(ticketDir, `${doc}.md`);
+}
+var SCRATCH_PREFIX = "scratch-";
+function scratchFileIn(ticketDir, slug) {
+  assertSafeDocName(slug);
+  return import_path.default.join(ticketDir, `${SCRATCH_PREFIX}${slug}.md`);
+}
+function isScratchFile(fileName) {
+  return fileName.startsWith(SCRATCH_PREFIX) && fileName.endsWith(".md");
 }
 function contentVersion(text) {
   return (0, import_crypto.createHash)("sha256").update(text, "utf8").digest("hex").slice(0, 16);
@@ -37728,7 +37832,6 @@ var KEY_ORDER = [
   "status",
   "area",
   "priority",
-  "due",
   "order",
   "assignee",
   "taken_at",
@@ -37737,6 +37840,11 @@ var KEY_ORDER = [
   "labels",
   "links",
   "blocks",
+  "refs",
+  "docs_todo",
+  "commits",
+  "prs",
+  "deployment",
   "archived",
   "created",
   "updated"
@@ -37853,7 +37961,8 @@ function escapeRegExp(s) {
 function defaultBoardConfig() {
   return {
     statuses: [
-      { id: "todo", name: "Todo" },
+      { id: "backlog", name: "Backlog" },
+      { id: "researching", name: "Researching" },
       { id: "planning", name: "Planning" },
       { id: "implementing", name: "Implementing" },
       { id: "review", name: "Review" },
@@ -37918,6 +38027,96 @@ async function writeBoard(paths, board) {
   const validated = BoardConfigSchema.parse(board);
   assertUniquePrefixes(validated);
   await writeFileAtomic(paths.boardFile, import_yaml.default.stringify(validated));
+}
+var DEFAULT_DOC_TYPES = [
+  { id: "research", name: "Research" },
+  { id: "impact", name: "Impact" },
+  { id: "open-questions", name: "Open questions" },
+  { id: "plan", name: "Plan", requires: ["research", "impact"] },
+  { id: "checklist", name: "Checklist", requires: ["plan"], progress: true },
+  { id: "post-implementation-report", name: "Post-implementation report" },
+  { id: "proof", name: "Proof" }
+];
+var DEFAULT_GATES = [
+  { needsRepoDoc: ["prd", "frd", "adr"], before: { leave: "backlog" } },
+  { needs: "research", before: { leave: "researching" } },
+  { needs: "impact", before: { leave: "researching" } },
+  { needs: "plan", before: { leave: "planning" } },
+  { needs: "checklist", before: { leave: "planning" } },
+  { needs: "post-implementation-report", before: { enter: "review" } },
+  { needs: "proof", before: { enter: "done" } }
+];
+var DEFAULT_REPO_DOCS = {
+  prd: "docs/prd/**",
+  frd: "docs/frd/**",
+  adr: "docs/adr/**"
+};
+function resolveDocTypes(board, areaId) {
+  const areaOverride = areaId ? board.docs?.areas?.[areaId]?.types : void 0;
+  return areaOverride ?? board.docs?.default?.types ?? DEFAULT_DOC_TYPES;
+}
+function resolveGates(board, areaId) {
+  const areaOverride = areaId ? board.docs?.areas?.[areaId]?.gates : void 0;
+  return areaOverride ?? board.docs?.default?.gates ?? DEFAULT_GATES;
+}
+function repoDocsMap(board) {
+  return board.docs?.repoDocs ?? DEFAULT_REPO_DOCS;
+}
+function repoDocKindOf(board, relPath) {
+  const norm = relPath.replace(/\\/g, "/");
+  for (const [kind, glob] of Object.entries(repoDocsMap(board))) {
+    if (globToRegExp(glob).test(norm)) return kind;
+  }
+  return null;
+}
+function globToRegExp(glob) {
+  let re = "";
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i];
+    if (c === "*") {
+      if (glob[i + 1] === "*") {
+        re += ".*";
+        i++;
+      } else {
+        re += "[^/]*";
+      }
+    } else if (c === "?") {
+      re += "[^/]";
+    } else if (".+^${}()|[]\\".includes(c)) {
+      re += `\\${c}`;
+    } else {
+      re += c;
+    }
+  }
+  return new RegExp(`^${re}$`);
+}
+function evaluateGates(gates, ctx) {
+  const idxOf = (s) => ctx.statuses.indexOf(s);
+  const toIdx = idxOf(ctx.to);
+  if (toIdx === -1) return [];
+  const fromIdx = idxOf(ctx.from);
+  const violations = [];
+  for (const gate of gates) {
+    const boundary = gate.before.leave ?? gate.before.enter;
+    if (boundary === void 0) continue;
+    const stageIdx = idxOf(boundary);
+    if (stageIdx === -1) continue;
+    const threshold = gate.before.leave !== void 0 ? stageIdx + 1 : stageIdx;
+    if (!(toIdx >= threshold && fromIdx < threshold)) continue;
+    if (gate.needs !== void 0) {
+      if (!ctx.hasDoc(gate.needs)) {
+        violations.push({ gate, reason: `${gate.needs}.md is missing` });
+      }
+    } else if (gate.needsRepoDoc !== void 0) {
+      if (!ctx.repoDocSatisfied(gate.needsRepoDoc)) {
+        violations.push({
+          gate,
+          reason: `a governing document (${gate.needsRepoDoc.join("/")}) must be linked in refs, or docs_todo set`
+        });
+      }
+    }
+  }
+  return violations;
 }
 var CURRENT_FORMAT = 2;
 async function readVersion(paths) {
@@ -38321,15 +38520,7 @@ var KanmerStore = class {
         }
       }
     }
-    let filtered = items.filter((item) => matchesFilter(item, filter));
-    if (filter.overdue) {
-      const board = await this.getBoard();
-      const lastStage = lastStageId(board);
-      const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-      filtered = filtered.filter(
-        (i) => i.due !== void 0 && i.due < today && i.status !== lastStage
-      );
-    }
+    const filtered = items.filter((item) => matchesFilter(item, filter));
     return { items: filtered.sort(byOrderThenId), warnings };
   }
   /** Locate an item's file: v2 areas layout first, then the v1 type dirs. */
@@ -38362,7 +38553,8 @@ var KanmerStore = class {
     if (input.status !== void 0) assertFieldAgainstBoard(board, "status", input.status);
     if (input.area !== void 0) assertFieldAgainstBoard(board, "area", input.area);
     if (input.priority !== void 0) assertFieldAgainstBoard(board, "priority", input.priority);
-    if (input.due !== void 0) assertDueDate(input.due);
+    if (input.refs !== void 0) await this.assertRefs(input.refs);
+    if (input.deployment !== void 0) assertDeploymentAgainstBoard(board, input.deployment);
     for (const target of [...input.links ?? [], ...input.blocks ?? []]) {
       if (!await this.getItem(target)) {
         throw new Error(`No item with id "${target}" to link to`);
@@ -38372,12 +38564,6 @@ var KanmerStore = class {
     if (format === 2 && type !== "ticket") {
       throw new Error(
         `This board stores ${type === "plan" ? "plans" : "research"} inside ticket folders, not as standalone items. Create a ticket, then write the document with set_ticket_doc(doc: "${type}").`
-      );
-    }
-    const last = lastStageId(board);
-    if (format === 2 && type === "ticket" && input.status !== void 0 && board.statuses.length > 1 && input.status === last) {
-      throw new Error(
-        `Cannot create "${input.title}" directly in "${input.status}": that is the board's final stage, which requires proof.md. Create it in an earlier stage, write the evidence with set_ticket_doc(doc: "proof"), then move it.`
       );
     }
     const area = input.area ?? "";
@@ -38407,8 +38593,12 @@ var KanmerStore = class {
         updated: now,
         body: input.body ?? ""
       };
-      if (input.due !== void 0 && input.due !== "") item.due = input.due;
       if (input.blocks !== void 0 && input.blocks.length > 0) item.blocks = input.blocks;
+      if (input.refs !== void 0 && input.refs.length > 0) item.refs = input.refs;
+      if (input.docs_todo === true) item.docs_todo = true;
+      if (input.commits !== void 0 && input.commits.length > 0) item.commits = input.commits;
+      if (input.prs !== void 0 && input.prs.length > 0) item.prs = input.prs;
+      if (input.deployment !== void 0 && input.deployment !== "") item.deployment = input.deployment;
       const file = format === 2 ? ticketFileIn(this.paths, area, id) : itemFile(this.paths, type, id);
       try {
         await writeFileExclusive(file, serialiseItem(item));
@@ -38429,14 +38619,16 @@ var KanmerStore = class {
   async updateItem(id, patch) {
     const { expectedUpdated, ...fields } = patch;
     let board = null;
-    if (fields.status !== void 0 || fields.area !== void 0 || fields.priority !== void 0) {
+    if (fields.status !== void 0 || fields.area !== void 0 || fields.priority !== void 0 || fields.deployment !== void 0) {
       board = await this.getBoard();
       if (fields.status !== void 0) assertFieldAgainstBoard(board, "status", fields.status);
       if (fields.area !== void 0) assertFieldAgainstBoard(board, "area", fields.area);
       if (fields.priority !== void 0)
         assertFieldAgainstBoard(board, "priority", fields.priority);
+      if (fields.deployment !== void 0 && fields.deployment !== "")
+        assertDeploymentAgainstBoard(board, fields.deployment);
     }
-    if (fields.due !== void 0 && fields.due !== "") assertDueDate(fields.due);
+    if (fields.refs !== void 0) await this.assertRefs(fields.refs);
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
@@ -38453,10 +38645,14 @@ var KanmerStore = class {
       ...pruned,
       updated: nowIso()
     };
-    if (pruned.due === "") delete next.due;
+    if (pruned.deployment === "") delete next.deployment;
+    if (next.docs_todo === false) delete next.docs_todo;
+    if (next.refs && next.refs.length === 0) delete next.refs;
+    if (next.commits && next.commits.length === 0) delete next.commits;
+    if (next.prs && next.prs.length === 0) delete next.prs;
     if (next.status !== current.status && current.type === "ticket" && loc.kind === "v2") {
       board ??= await this.getBoard();
-      await this.assertProofGate(loc.dir, board, id, next.status);
+      await this.assertDocGate(loc.dir, board, next, current.status, next.status);
     }
     let file = loc.file;
     if (loc.kind === "v2") {
@@ -38514,7 +38710,7 @@ var KanmerStore = class {
     const board = await this.getBoard();
     assertFieldAgainstBoard(board, "status", status);
     if (status !== current.status && current.type === "ticket" && loc.kind === "v2") {
-      await this.assertProofGate(loc.dir, board, id, status);
+      await this.assertDocGate(loc.dir, board, current, current.status, status);
     }
   }
   /**
@@ -38589,7 +38785,7 @@ var KanmerStore = class {
       stage = board.statuses.some((s) => s.id === "implementing") ? "implementing" : current.status;
     }
     if (stage !== current.status && loc.kind === "v2") {
-      await this.assertProofGate(loc.dir, board, id, stage);
+      await this.assertDocGate(loc.dir, board, current, current.status, stage);
     }
     const next = {
       ...current,
@@ -38666,6 +38862,22 @@ var KanmerStore = class {
         `"${id}" is stored in the legacy layout, which has no ticket folders \u2014 migrate this board to format 2 first.`
       );
     }
+    const owner = parseItem(await readText(loc.file));
+    const board = await this.getBoard();
+    const types = resolveDocTypes(board, owner.area);
+    const type = types.find((t) => t.id === doc);
+    if (!type) {
+      throw new Error(
+        `Unknown document "${doc}" for area "${owner.area || "(none)"}". Valid documents: ${types.map((t) => t.id).join(", ")}.`
+      );
+    }
+    for (const req of type.requires ?? []) {
+      if (!await pathExists(docFileIn(loc.dir, req))) {
+        throw new Error(
+          `Cannot write ${doc}.md on "${id}" before ${req}.md exists (${doc} requires ${req}).`
+        );
+      }
+    }
     const file = docFileIn(loc.dir, doc);
     const existing = await pathExists(file) ? await readText(file) : null;
     if (opts.expectedVersion !== void 0) {
@@ -38694,13 +38906,17 @@ ${content.trim()}
   async getTicketDocsInfo(id) {
     const loc = await this.locateItem(id);
     if (!loc || loc.kind !== "v2") return null;
+    const item = parseItem(await readText(loc.file));
+    const board = await this.getBoard();
+    const types = resolveDocTypes(board, item.area);
     const docs = {};
-    for (const doc of TICKET_DOCS) {
-      docs[doc] = await pathExists(docFileIn(loc.dir, doc));
+    for (const t of types) {
+      docs[t.id] = await pathExists(docFileIn(loc.dir, t.id));
     }
     let checklist = null;
-    if (docs.checklist) {
-      const text = await readText(docFileIn(loc.dir, "checklist"));
+    const progressType = types.find((t) => t.progress);
+    if (progressType && docs[progressType.id]) {
+      const text = await readText(docFileIn(loc.dir, progressType.id));
       let checked = 0;
       let total = 0;
       for (const line of text.split("\n")) {
@@ -38765,14 +38981,92 @@ ${content.trim()}
       return haystack.includes(q);
     });
   }
-  /** The proof gate: a ticket may only reach the final stage with proof.md written. */
-  async assertProofGate(ticketDir, board, id, nextStatus) {
-    if (nextStatus !== lastStageId(board)) return;
-    if (!await pathExists(docFileIn(ticketDir, "proof"))) {
+  /** Validate governing-doc refs: each must resolve under the project root and exist. */
+  async assertRefs(refs) {
+    for (const rel of refs) {
+      const abs = assertSafeRepoPath(this.paths.projectRoot, rel);
+      if (!await pathExists(abs)) {
+        throw new Error(`Referenced document "${rel}" does not exist under the project root.`);
+      }
+    }
+  }
+  /**
+   * Hard document gates on a transition — the generalisation of the old proof
+   * gate. Resolve the ticket area's gates, evaluate them against the from→to
+   * move (threshold semantics in {@link evaluateGates}), and throw once listing
+   * every unmet requirement. Gates whose boundary stage is absent on the board
+   * are inert, so this is safe on custom and backfilled boards. The default set
+   * preserves today's proof-before-final-stage behaviour exactly.
+   */
+  async assertDocGate(ticketDir, board, item, fromStatus, toStatus) {
+    const gates = resolveGates(board, item.area);
+    if (gates.length === 0) return;
+    const needed = /* @__PURE__ */ new Set();
+    for (const g of gates) if (g.needs !== void 0) needed.add(g.needs);
+    const present = /* @__PURE__ */ new Set();
+    for (const doc of needed) {
+      if (await pathExists(docFileIn(ticketDir, doc))) present.add(doc);
+    }
+    const repoDocSatisfied = (kinds) => {
+      if (item.docs_todo === true) return true;
+      for (const rel of item.refs ?? []) {
+        const kind = repoDocKindOf(board, rel);
+        if (kind !== null && kinds.includes(kind)) return true;
+      }
+      return false;
+    };
+    const violations = evaluateGates(gates, {
+      statuses: board.statuses.map((s) => s.id),
+      from: fromStatus,
+      to: toStatus,
+      hasDoc: (doc) => present.has(doc),
+      repoDocSatisfied
+    });
+    if (violations.length === 0) return;
+    const lines = violations.map((v) => `  - ${v.reason}`).join("\n");
+    throw new Error(
+      `${item.id} cannot move from "${fromStatus}" to "${toStatus}" \u2014 ${violations.length} document gate(s) unmet:
+${lines}
+Write the missing document(s) with set_ticket_doc (or link a governing doc via refs / set docs_todo), then move.`
+    );
+  }
+  /**
+   * Append a note to a per-ticket scratch file (`scratch-<slug>.md`). Uses
+   * `fs.appendFile` (the true append primitive, cf. activity.ts) rather than the
+   * atomic temp+rename of setDoc: scratch is a running note, not a versioned doc.
+   * A blank line separates successive appends. Emits one activity line per call —
+   * callers that stream must batch. Scratch is exempt from doc-type validation.
+   */
+  async appendScratch(id, slug, content) {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    if (loc.kind !== "v2") {
       throw new Error(
-        `${id} cannot move to "${nextStatus}": proof.md is missing. Write the evidence first with set_ticket_doc(doc: "proof").`
+        `"${id}" is stored in the legacy layout, which has no ticket folders \u2014 migrate this board to format 2 first.`
       );
     }
+    const file = scratchFileIn(loc.dir, slug);
+    const had = await pathExists(file);
+    await import_promises4.default.mkdir(loc.dir, { recursive: true });
+    const block = `${content.trim()}
+`;
+    await import_promises4.default.appendFile(file, had ? `
+${block}` : block, "utf8");
+    await appendActivity(this.paths, [
+      this.activity(id, "doc", { field: `${SCRATCH_PREFIX}${slug}`, to: "append" })
+    ]);
+    return { file };
+  }
+  /** Read a per-ticket scratch file back; null when it doesn't exist. */
+  async getScratch(id, slug) {
+    return this.getDoc(id, `${SCRATCH_PREFIX}${slug}`);
+  }
+  /** The slugs of a ticket's scratch files (`scratch-<slug>.md` → `<slug>`), sorted. */
+  async listScratch(id) {
+    const loc = await this.locateItem(id);
+    if (!loc || loc.kind !== "v2") return [];
+    const names = await import_promises4.default.readdir(loc.dir).catch(() => []);
+    return names.filter(isScratchFile).map((n) => n.slice(SCRATCH_PREFIX.length, -3)).sort();
   }
   /**
    * Refuse a board write that would make a stage final while proofless
@@ -38817,9 +39111,18 @@ function defaultPriority(board) {
   const middle = board.priorities[Math.floor((board.priorities.length - 1) / 2)];
   return middle?.id ?? "medium";
 }
-function assertDueDate(due) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) {
-    throw new Error(`Invalid due date "${due}" \u2014 use YYYY-MM-DD`);
+function assertDeploymentAgainstBoard(board, value) {
+  if (value === "") return;
+  if (!board.deployment) {
+    throw new Error(
+      `This board has no deployment tracking, so "deployment" can't be set. Add a deployment block to board.yml (or leave it unset).`
+    );
+  }
+  if (value === "n/a" || value === "not-deployed") return;
+  if (!board.deployment.environments.includes(value)) {
+    throw new Error(
+      `Unknown deployment "${value}". Valid: n/a, not-deployed, ${board.deployment.environments.join(", ")}.`
+    );
   }
 }
 function changedFields(current, pruned) {
@@ -38828,7 +39131,7 @@ function changedFields(current, pruned) {
     const existing = current[key];
     if (key === "body") {
       if (String(value).trim() !== String(existing ?? "").trim()) changed.push(key);
-    } else if (key === "due" && value === "") {
+    } else if (key === "deployment" && value === "") {
       if (existing !== void 0) changed.push(key);
     } else if (JSON.stringify(value) !== JSON.stringify(existing)) {
       changed.push(key);
@@ -38842,7 +39145,6 @@ function matchesFilter(item, filter) {
   if (filter.status && item.status !== filter.status) return false;
   if (filter.area && item.area !== filter.area) return false;
   if (filter.label && !(item.labels ?? []).includes(filter.label)) return false;
-  if (filter.dueBefore && !(item.due !== void 0 && item.due < filter.dueBefore)) return false;
   return true;
 }
 function columnList(board, kind) {
@@ -38982,7 +39284,6 @@ async function summarise(item, blockedIds) {
     priority: item.priority,
     assignee: item.assignee,
     labels: item.labels,
-    due: item.due ?? null,
     order: item.order ?? null,
     blocked: blockedIds.has(item.id),
     created: item.created,
@@ -38999,7 +39300,7 @@ async function blockedSet() {
   return computeBlockedIds(all, board.statuses[board.statuses.length - 1]?.id);
 }
 var itemTypeEnum = external_exports.enum(["ticket", "plan", "research"]);
-var ticketDocEnum = external_exports.enum(["research", "impact", "plan", "checklist", "proof"]);
+var ticketDocEnum = external_exports.string();
 var columnKindEnum = external_exports.enum(["status", "area", "priority"]);
 var createFields = {
   type: itemTypeEnum.default("ticket").describe("ticket | plan | research (v2 boards: ticket only)"),
@@ -39008,7 +39309,6 @@ var createFields = {
   area: external_exports.string().optional().describe("Area id (see list_board \u2192 areas)"),
   priority: external_exports.string().optional().describe("Priority id (see list_board \u2192 priorities)"),
   assignee: external_exports.string().optional(),
-  due: external_exports.string().optional().describe("Deadline, date-only: YYYY-MM-DD"),
   labels: external_exports.array(external_exports.string()).optional(),
   links: external_exports.array(external_exports.string()).optional().describe("Ids of related items (must exist)"),
   blocks: external_exports.array(external_exports.string()).optional().describe("Ids this item blocks (must exist)"),
@@ -39080,34 +39380,19 @@ server.registerTool(
       label: external_exports.string().optional().describe("Filter by a label"),
       include_archived: external_exports.boolean().optional().describe("Include archived items"),
       updated_since: external_exports.string().optional().describe("Only items whose `updated` is after this ISO timestamp"),
-      due_before: external_exports.string().optional().describe("Only items with a due date before this day (YYYY-MM-DD)"),
-      overdue: external_exports.boolean().optional().describe("Only items due before today that haven't reached the final stage"),
       sort: external_exports.enum(["id", "updated_desc"]).optional().describe("Sort order (default id)"),
       limit: external_exports.number().int().positive().optional().describe("Return at most this many")
     },
     annotations: { readOnlyHint: true, openWorldHint: false }
   },
   guard(
-    async ({
-      type,
-      status,
-      area,
-      label,
-      include_archived,
-      updated_since,
-      due_before,
-      overdue,
-      sort,
-      limit
-    }) => {
+    async ({ type, status, area, label, include_archived, updated_since, sort, limit }) => {
       const { items, warnings } = await store.listItemsWithWarnings({
         type,
         status,
         area,
         label,
-        includeArchived: include_archived,
-        dueBefore: due_before,
-        overdue
+        includeArchived: include_archived
       });
       let selected = items;
       if (updated_since !== void 0) {
@@ -39264,7 +39549,6 @@ server.registerTool(
       area: external_exports.string().optional(),
       priority: external_exports.string().optional(),
       assignee: external_exports.string().optional(),
-      due: external_exports.string().optional().describe('YYYY-MM-DD; pass "" to clear the deadline'),
       order: external_exports.number().optional().describe("Manual sort key (move_item's position computes this)"),
       labels: external_exports.array(external_exports.string()).optional(),
       links: external_exports.array(external_exports.string()).optional(),

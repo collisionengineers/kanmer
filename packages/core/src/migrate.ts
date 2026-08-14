@@ -373,5 +373,97 @@ export async function migrateToV2(
     migratedAt: new Date().toISOString(),
   });
   store.resetFormatCache();
+  // Migrated boards land on the 7-stage default (alias-aware, additive).
+  const backfill = await backfillStages(store);
+  if (backfill.addedStages.length > 0) {
+    report.notes.push(`Backfilled workflow stages: ${backfill.addedStages.join(", ")}.`);
+  }
   return report;
+}
+
+/**
+ * The canonical 7-stage pipeline, each with the near-synonyms a hand-made board
+ * might already use. A canonical stage counts as *present* when the board has a
+ * status with its id **or** one of its aliases — so backfill never adds a second
+ * near-duplicate (a `[todo, doing, shipped]` board keeps those three and gains
+ * the middle stages, not a second final column).
+ */
+const CANONICAL_STAGES: { id: string; name: string; aliases: string[] }[] = [
+  { id: "backlog", name: "Backlog", aliases: ["todo", "to-do", "to_do", "inbox"] },
+  { id: "researching", name: "Researching", aliases: ["research", "discovery", "discover"] },
+  { id: "planning", name: "Planning", aliases: ["plan", "design", "designing"] },
+  {
+    id: "implementing",
+    name: "Implementing",
+    aliases: ["doing", "in-progress", "in_progress", "inprogress", "wip", "development", "dev"],
+  },
+  { id: "review", name: "Review", aliases: ["in-review", "reviewing", "pr", "code-review"] },
+  { id: "verifying", name: "Verifying", aliases: ["verify", "qa", "testing", "test"] },
+  {
+    id: "done",
+    name: "Done",
+    aliases: ["complete", "completed", "shipped", "closed", "released"],
+  },
+];
+
+export interface BackfillReport {
+  /** Canonical stage ids inserted (empty on a board already covering all seven). */
+  addedStages: string[];
+}
+
+/**
+ * Backfill the 7-stage default onto an existing board: for every canonical stage
+ * the board lacks (alias-aware presence test), insert it after the nearest
+ * preceding present stage. Additive only — existing stages are never renamed,
+ * reordered or removed, no item file is ever touched, and a board that already
+ * covers all seven is a no-op. Idempotent: a second run adds nothing.
+ *
+ * The document model is *not* materialised here: `resolveDocTypes`/`resolveGates`
+ * fall back to the shipped defaults when a board omits `docs`, so a backfilled
+ * board already has the default gates on without pinning a copy into board.yml.
+ */
+export async function backfillStages(
+  store: KanmerStore,
+  opts: { dryRun?: boolean } = {},
+): Promise<BackfillReport> {
+  const board = await store.getBoard();
+  const statuses = [...board.statuses];
+  const findIdx = (canon: (typeof CANONICAL_STAGES)[number]): number =>
+    statuses.findIndex((s) => s.id === canon.id || canon.aliases.includes(s.id));
+  const added: string[] = [];
+  let prevIdx = -1; // board index of the last canonical stage seen present/inserted
+  for (const canon of CANONICAL_STAGES) {
+    const idx = findIdx(canon);
+    if (idx !== -1) {
+      prevIdx = idx;
+      continue;
+    }
+    const insertAt = prevIdx + 1;
+    statuses.splice(insertAt, 0, { id: canon.id, name: canon.name });
+    added.push(canon.id);
+    prevIdx = insertAt;
+  }
+  if (!opts.dryRun && added.length > 0) {
+    board.statuses = statuses;
+    await store.setBoard(board);
+  }
+  return { addedStages: added };
+}
+
+/**
+ * The umbrella upgrade: bring a board fully current. Runs the v1→v2 migration
+ * when needed, then backfills the 7-stage default. `dryRun` reports what each
+ * step would do without writing. Callers must surface the preview before
+ * applying (the GUI prompt in Phase 4, the agent's `migrate_board` in Phase 2).
+ */
+export async function migrateBoard(
+  store: KanmerStore,
+  opts: { dryRun?: boolean } = {},
+): Promise<{ v2: MigrationReport; backfill: BackfillReport }> {
+  const dryRun = opts.dryRun ?? false;
+  const v2 = await migrateToV2(store, { dryRun });
+  // A real v1→v2 run already backfilled; run it again (idempotent) so an
+  // already-v2 board still gets the stage backfill through this entry point.
+  const backfill = await backfillStages(store, { dryRun });
+  return { v2, backfill };
 }

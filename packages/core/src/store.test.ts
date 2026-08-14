@@ -26,10 +26,11 @@ describe("KanmerStore", () => {
     expect(board.idPrefixes.ticket).toBe("TICK");
   });
 
-  it("seeds the six default workflow stages as the only stage dimension", async () => {
+  it("seeds the seven default workflow stages as the only stage dimension", async () => {
     const board = await store.getBoard();
     expect(board.statuses.map((s) => s.id)).toEqual([
-      "todo",
+      "backlog",
+      "researching",
       "planning",
       "implementing",
       "review",
@@ -95,16 +96,18 @@ describe("KanmerStore", () => {
 
   it("defaults status to the first stage", async () => {
     const t = await store.createItem({ type: "ticket", title: "A" });
-    expect(t.status).toBe("todo");
+    expect(t.status).toBe("backlog");
   });
 
   it("updates fields and stamps updated", async () => {
-    const t = await store.createItem({ type: "ticket", title: "A" });
-    const moved = await store.moveItem(t.id, { status: "review" });
-    expect(moved.status).toBe("review");
+    // Create in review (creation is ungated) and move across an ungated
+    // boundary (review→verifying) so this stays a test about `updated`, not gates.
+    const t = await store.createItem({ type: "ticket", title: "A", status: "review" });
+    const moved = await store.moveItem(t.id, { status: "verifying" });
+    expect(moved.status).toBe("verifying");
     expect(moved.updated >= t.updated).toBe(true);
     const reloaded = await store.getItem(t.id);
-    expect(reloaded?.status).toBe("review");
+    expect(reloaded?.status).toBe("verifying");
   });
 
   it("rejects moving an item to a status the board doesn't define", async () => {
@@ -273,7 +276,7 @@ describe("KanmerStore", () => {
   });
 
   it("filters by status and label", async () => {
-    await store.createItem({ type: "ticket", title: "A", status: "todo", labels: ["x"] });
+    await store.createItem({ type: "ticket", title: "A", status: "backlog", labels: ["x"] });
     // A ticket cannot be created straight into the final stage — take the
     // real path: create earlier, write proof, then move.
     const b = await store.createItem({
@@ -430,13 +433,18 @@ describe("format v2", () => {
     expect(await store.getDoc(t.id, "research")).toBe("# Findings\n\nStuff\n");
     await store.setDoc(t.id, "research", "More stuff", { append: true });
     expect(await store.getDoc(t.id, "research")).toBe("# Findings\n\nStuff\n\nMore stuff\n");
+    // checklist requires plan, plan requires research+impact — write them first.
+    await store.setDoc(t.id, "impact", "impact");
+    await store.setDoc(t.id, "plan", "plan");
     await store.setDoc(t.id, "checklist", "- [x] one\n- [ ] two\n- [X] three\nnot a box");
     const info = await store.getTicketDocsInfo(t.id);
     expect(info?.docs).toEqual({
       research: true,
-      impact: false,
-      plan: false,
+      impact: true,
+      "open-questions": false,
+      plan: true,
       checklist: true,
+      "post-implementation-report": false,
       proof: false,
     });
     expect(info?.checklist).toEqual({ checked: 2, total: 3 });
@@ -499,7 +507,9 @@ describe("format v2", () => {
   });
 
   it("takes and releases a ticket", async () => {
-    const t = await store.createItem({ type: "ticket", title: "A" });
+    // Created in implementing (ungated) so take's default stage is a no-op move,
+    // not a gated jump through the whole pipeline.
+    const t = await store.createItem({ type: "ticket", title: "A", status: "implementing" });
     const taken = await store.takeTicket(t.id, { branch: "feat/x", worktree: "wt/x" });
     expect(taken.taken_at).toBeTruthy();
     expect(taken.branch).toBe("feat/x");
@@ -524,7 +534,8 @@ describe("format v2", () => {
   });
 
   it("gates the final stage on proof.md and names set_ticket_doc in the error", async () => {
-    const t = await store.createItem({ type: "ticket", title: "A" });
+    // Created in verifying (creation ungated) so only the proof→done gate is in play.
+    const t = await store.createItem({ type: "ticket", title: "A", status: "verifying" });
     await expect(store.moveItem(t.id, { status: "done" })).rejects.toThrow(
       /proof\.md is missing.*set_ticket_doc/s,
     );
@@ -533,16 +544,17 @@ describe("format v2", () => {
     expect(done.status).toBe("done");
   });
 
-  it("refuses to create a ticket directly in the final stage", async () => {
-    await expect(
-      store.createItem({ type: "ticket", title: "Born done", status: "done" }),
-    ).rejects.toThrow(/final stage.*set_ticket_doc/s);
-    expect((await store.listItems({ includeArchived: true })).length).toBe(0);
+  it("allows creating a ticket directly in the final stage (creation is ungated)", async () => {
+    // D6: gates fire on transitions only, so imports/backfills of finished work
+    // may be created straight into the final stage without proof.md existing.
+    const born = await store.createItem({ type: "ticket", title: "Born done", status: "done" });
+    expect(born.status).toBe("done");
+    expect((await store.listItems({ includeArchived: true })).length).toBe(1);
   });
 
-  it("still allows creating into any non-final stage, and the default stage", async () => {
+  it("still allows creating into any stage, and the default first stage", async () => {
     const defaulted = await store.createItem({ type: "ticket", title: "A" });
-    expect(defaulted.status).toBe("todo");
+    expect(defaulted.status).toBe("backlog");
     const explicit = await store.createItem({ type: "ticket", title: "B", status: "verifying" });
     expect(explicit.status).toBe("verifying");
   });
@@ -558,7 +570,8 @@ describe("format v2", () => {
     const t = await store.createItem({ type: "ticket", title: "A", status: "review" });
     await expect(
       store.reorderColumns("status", [
-        "todo",
+        "backlog",
+        "researching",
         "planning",
         "implementing",
         "verifying",
@@ -575,7 +588,8 @@ describe("format v2", () => {
     const t = await store.createItem({ type: "ticket", title: "A", status: "review" });
     await store.setDoc(t.id, "proof", "evidence");
     await store.reorderColumns("status", [
-      "todo",
+      "backlog",
+      "researching",
       "planning",
       "implementing",
       "verifying",
@@ -616,9 +630,11 @@ describe("format v2", () => {
 
 describe("activity log", () => {
   it("appends one well-formed line per mutation with from/to and actor", async () => {
-    const t = await store.createItem({ type: "ticket", title: "A" });
+    // review→verifying and the backward take→implementing are ungated, so this
+    // stays a test about activity entries, not gate satisfaction.
+    const t = await store.createItem({ type: "ticket", title: "A", status: "review" });
     await store.updateItem(t.id, { title: "B", priority: "high" });
-    await store.moveItem(t.id, { status: "review" });
+    await store.moveItem(t.id, { status: "verifying" });
     await store.takeTicket(t.id, { branch: "feat/x" });
     await store.releaseTicket(t.id);
     await store.setDoc(t.id, "research", "notes");
@@ -629,7 +645,7 @@ describe("activity log", () => {
       "create",
       "update", // title
       "update", // priority
-      "update", // status → review
+      "update", // status → verifying
       "take",
       "update", // status → implementing (take's stage move)
       "release",
@@ -637,7 +653,7 @@ describe("activity log", () => {
       "delete",
     ]);
     const statusMove = entries[3];
-    expect(statusMove).toMatchObject({ id: t.id, field: "status", from: "todo", to: "review" });
+    expect(statusMove).toMatchObject({ id: t.id, field: "status", from: "review", to: "verifying" });
     expect(entries.every((e) => e.actor === "gui")).toBe(true);
     expect(entries.every((e) => typeof e.ts === "string" && e.ts.length > 0)).toBe(true);
   });
@@ -668,7 +684,7 @@ describe("activity log", () => {
   });
 });
 
-describe("blocks / due / order", () => {
+describe("blocks / order", () => {
   it("rel blocks writes blocks[]; blocked-by derives; default rel keeps links[]", async () => {
     const a = await store.createItem({ type: "ticket", title: "A" });
     const b = await store.createItem({ type: "ticket", title: "B" });
@@ -684,7 +700,8 @@ describe("blocks / due / order", () => {
 
   it("blocked flips off when the blocker reaches the last stage or is archived", async () => {
     const { computeBlockedIds } = await import("./links.js");
-    const a = await store.createItem({ type: "ticket", title: "Blocker" });
+    // Blocker starts in verifying so the only gate to the final stage is proof.
+    const a = await store.createItem({ type: "ticket", title: "Blocker", status: "verifying" });
     const b = await store.createItem({ type: "ticket", title: "Blocked" });
     await linkItems(store, a.id, b.id, "add", "blocks");
     const board = await store.getBoard();
@@ -695,64 +712,66 @@ describe("blocks / due / order", () => {
     await store.moveItem(a.id, { status: last });
     const afterDone = computeBlockedIds(await store.listItems({ includeArchived: true }), last);
     expect(afterDone.has(b.id)).toBe(false);
-    await store.moveItem(a.id, { status: "todo" });
+    await store.moveItem(a.id, { status: "backlog" });
     await store.updateItem(a.id, { archived: true });
     const afterArchive = computeBlockedIds(await store.listItems({ includeArchived: true }), last);
     expect(afterArchive.has(b.id)).toBe(false);
   });
 
-  it("due: validates format, filters due_before/overdue with last-stage exemption", async () => {
-    await expect(
-      store.createItem({ type: "ticket", title: "X", due: "soon" }),
-    ).rejects.toThrow(/Invalid due date/);
-    const past = await store.createItem({ type: "ticket", title: "P", due: "2000-01-01" });
-    const future = await store.createItem({ type: "ticket", title: "F", due: "2999-01-01" });
-    await store.createItem({ type: "ticket", title: "N" });
-    expect((await store.listItems({ dueBefore: "2500-01-01" })).map((i) => i.id)).toEqual([
-      past.id,
-    ]);
-    expect((await store.listItems({ overdue: true })).map((i) => i.id)).toEqual([past.id]);
-    // Reaching the final stage exempts from overdue.
-    await store.setDoc(past.id, "proof", "done");
-    await store.moveItem(past.id, { status: "done" });
-    expect((await store.listItems({ overdue: true })).length).toBe(0);
-    // Clearing with "".
-    const cleared = await store.updateItem(future.id, { due: "" });
-    expect(cleared.due).toBeUndefined();
-    const raw = await fs.readFile(
-      path.join(root, ".kanmer", "areas", "_none", future.id, `${future.id}.md`),
-      "utf8",
-    );
-    expect(raw).not.toContain("due:");
+  it("a file still carrying a legacy due: loads fine (passthrough) and is not read by any filter", async () => {
+    const t = await store.createItem({ type: "ticket", title: "X" });
+    const file = path.join(root, ".kanmer", "areas", "_none", t.id, `${t.id}.md`);
+    const raw = await fs.readFile(file, "utf8");
+    // Hand-add a legacy `due:` the way a board written before v2 would carry it.
+    await fs.writeFile(file, raw.replace("status:", "due: 2020-01-01\nstatus:"), "utf8");
+    // It loads without error and is preserved as an unknown passthrough key;
+    // nothing in the store reads `due` any more.
+    const loaded = await store.getItem(t.id);
+    expect(loaded?.title).toBe("X");
+    expect((loaded as Record<string, unknown>).due).toBeDefined();
   });
 
   it("orders: position verbs materialise, midpoint-insert, unordered sorts last", async () => {
+    // A gate-free custom board (non-canonical stage ids) so this stays a test of
+    // the fractional-order machinery, isolated from document gates.
+    await store.setBoard({
+      ...(await store.getBoard()),
+      statuses: [
+        { id: "col1", name: "One" },
+        { id: "col2", name: "Two" },
+      ],
+    });
     const a = await store.createItem({ type: "ticket", title: "A" });
     const b = await store.createItem({ type: "ticket", title: "B" });
     const c = await store.createItem({ type: "ticket", title: "C" });
-    // Move C to the top of todo: materialises A/B and places C before them.
-    await store.moveItem(c.id, { status: "todo", position: "top" });
-    let ids = (await store.listItems({ status: "todo" })).map((i) => i.id);
+    // Move C to the top of col1: materialises A/B and places C before them.
+    await store.moveItem(c.id, { status: "col1", position: "top" });
+    let ids = (await store.listItems({ status: "col1" })).map((i) => i.id);
     expect(ids).toEqual([c.id, a.id, b.id]);
     // Insert A after C — midpoint between C and B's orders.
-    await store.moveItem(a.id, { status: "todo", position: { after: c.id } });
-    ids = (await store.listItems({ status: "todo" })).map((i) => i.id);
+    await store.moveItem(a.id, { status: "col1", position: { after: c.id } });
+    ids = (await store.listItems({ status: "col1" })).map((i) => i.id);
     expect(ids).toEqual([c.id, a.id, b.id]);
     // Bottom placement.
-    await store.moveItem(c.id, { status: "todo", position: "bottom" });
-    ids = (await store.listItems({ status: "todo" })).map((i) => i.id);
+    await store.moveItem(c.id, { status: "col1", position: "bottom" });
+    ids = (await store.listItems({ status: "col1" })).map((i) => i.id);
     expect(ids).toEqual([a.id, b.id, c.id]);
     // A new unordered item sorts after all ordered ones.
     const d = await store.createItem({ type: "ticket", title: "D" });
-    ids = (await store.listItems({ status: "todo" })).map((i) => i.id);
+    ids = (await store.listItems({ status: "col1" })).map((i) => i.id);
     expect(ids[ids.length - 1]).toBe(d.id);
     // position.after must name an item in the target stage.
     await expect(
-      store.moveItem(d.id, { status: "review", position: { after: a.id } }),
+      store.moveItem(d.id, { status: "col2", position: { after: a.id } }),
     ).rejects.toThrow(/not an item in stage/);
   });
 
   it("rebalances when midpoints between two neighbours are exhausted", async () => {
+    // Single gate-free stage so the move is only about order rebalancing.
+    await store.setBoard({
+      ...(await store.getBoard()),
+      statuses: [{ id: "col1", name: "One" }],
+    });
     const a = await store.createItem({ type: "ticket", title: "A" });
     const b = await store.createItem({ type: "ticket", title: "B" });
     const c = await store.createItem({ type: "ticket", title: "C" });
@@ -760,8 +779,8 @@ describe("blocks / due / order", () => {
     // between them, which is the only way to reach computeOrder's rebalance.
     await store.updateItem(a.id, { order: 10 });
     await store.updateItem(b.id, { order: 10.000000000000002 });
-    await store.moveItem(c.id, { status: "todo", position: { after: a.id } });
-    const ids = (await store.listItems({ status: "todo" })).map((i) => i.id);
+    await store.moveItem(c.id, { status: "col1", position: { after: a.id } });
+    const ids = (await store.listItems({ status: "col1" })).map((i) => i.id);
     expect(ids).toEqual([a.id, c.id, b.id]);
     // The rebalance rewrote the pathological values into the 10/20 ladder.
     expect((await store.getItem(a.id))?.order).toBe(10);
@@ -773,7 +792,7 @@ describe("blocks / due / order", () => {
     const s1 = await store.createItem({ type: "ticket", title: "S1", status: "planning" });
     const s2 = await store.createItem({ type: "ticket", title: "S2", status: "planning" });
     const s3 = await store.createItem({ type: "ticket", title: "S3", status: "planning" });
-    const t = await store.createItem({ type: "ticket", title: "T", status: "todo" });
+    const t = await store.createItem({ type: "ticket", title: "T", status: "backlog" });
     const siblings = [s1, s2, s3];
     for (const s of siblings) expect(s.order).toBeUndefined();
     const before = new Map(siblings.map((s) => [s.id, s.updated]));
@@ -807,7 +826,7 @@ describe("blocks / due / order", () => {
       await store.moveItem(p.id, { status: "done" });
     }
     expect((await store.getItem(a.id))?.order).toBeUndefined();
-    const proofless = await store.createItem({ type: "ticket", title: "P", status: "todo" });
+    const proofless = await store.createItem({ type: "ticket", title: "P", status: "backlog" });
 
     await expect(
       store.moveItem(proofless.id, { status: "done", position: "top" }),

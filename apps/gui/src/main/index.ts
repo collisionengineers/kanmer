@@ -13,7 +13,8 @@ import {
 } from "electron";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
+import { join } from "node:path";
+import { classifyKanmerPath } from "../shared/kanmerPath.js";
 import {
   KanmerStore,
   assertSafeRepoPath,
@@ -45,6 +46,7 @@ import {
   readSettings,
   recordRecentProject,
   setNotifications,
+  setOpenTabs,
   setTheme,
   setWindowBounds,
   type Theme,
@@ -61,8 +63,16 @@ import {
 } from "./dispatch.js";
 
 let mainWindow: BrowserWindow | null = null;
-let store: KanmerStore | null = null;
-let watch: WatchHandle | null = null;
+
+/** One open project. projectId is its canonical root (D2). */
+interface ProjectContext {
+  root: string;
+  store: KanmerStore;
+  watch: WatchHandle;
+  /** Recent writes this GUI made, so its own file changes don't self-toast. */
+  ownWrites: Map<string, number>;
+}
+const contexts = new Map<string, ProjectContext>();
 
 // ---------------------------------------------------------------------------
 // Single instance: a second launch focuses the existing window instead.
@@ -89,9 +99,13 @@ app.on("second-instance", () => {
   mainWindow.focus();
 });
 
-function requireStore(): KanmerStore {
-  if (!store) throw new Error("No project open");
-  return store;
+function requireCtx(projectId: string): ProjectContext {
+  const ctx = contexts.get(projectId);
+  if (!ctx) throw new Error(`Project not open: ${projectId}`);
+  return ctx;
+}
+function requireStore(projectId: string): KanmerStore {
+  return requireCtx(projectId).store;
 }
 
 /** The theme actually in effect ("system" resolved against the OS). */
@@ -274,29 +288,20 @@ function buildMenu(): void {
 // Toasts for agent changes: the watcher fires for our own writes too, so IPC
 // write handlers leave a marker and matching events within 2s stay silent.
 // ---------------------------------------------------------------------------
-const ownWrites = new Map<string, number>();
-function markOwnWrite(key: string): void {
-  ownWrites.set(key, Date.now());
+function markOwnWrite(projectId: string, key: string): void {
+  contexts.get(projectId)?.ownWrites.set(key, Date.now());
 }
 
 /** Toast key for a changed file: item id, "board", or null (uninteresting). */
 function toastKey(file: string): string | null {
-  const base = basename(file);
-  if (base === "board.yml") return "board";
-  if (!base.endsWith(".md")) return null;
-  const name = base.slice(0, -3);
-  // Pipeline docs live inside the ticket's folder — attribute to the ticket.
-  if (["research", "impact", "plan", "checklist", "proof"].includes(name)) {
-    return basename(dirname(file));
-  }
-  return name;
+  return classifyKanmerPath(file)?.key ?? null;
 }
 
-let pendingToasts: { key: string; event: string }[] = [];
+let pendingToasts: { projectId: string; key: string; event: string }[] = [];
 let toastTimer: NodeJS.Timeout | null = null;
 
-function queueToast(key: string, event: string): void {
-  pendingToasts.push({ key, event });
+function queueToast(projectId: string, key: string, event: string): void {
+  pendingToasts.push({ projectId, key, event });
   if (toastTimer) return;
   toastTimer = setTimeout(() => void flushToasts(), 1800);
 }
@@ -308,18 +313,19 @@ async function flushToasts(): Promise<void> {
   if (batch.length === 0 || !Notification.isSupported()) return;
   const distinct = [...new Set(batch.map((b) => b.key))];
   let notification: Notification;
-  let revealId: string | null = null;
+  let reveal: { projectId: string; id: string } | null = null;
   if (batch.length > 3) {
     notification = new Notification({
       title: "Kanmer board updated",
       body: `${batch.length} changes across ${distinct.length} item(s)`,
     });
   } else {
-    const { key, event } = batch[batch.length - 1];
+    const { projectId, key, event } = batch[batch.length - 1];
+    const store = contexts.get(projectId)?.store;
     if (key === "board") {
       notification = new Notification({ title: "Board configuration changed", body: "" });
     } else {
-      revealId = key;
+      reveal = { projectId, id: key };
       let title = `${key} ${event === "add" ? "created" : event === "unlink" ? "deleted" : "updated"}`;
       let body = "";
       try {
@@ -342,42 +348,56 @@ async function flushToasts(): Promise<void> {
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.show();
     mainWindow.focus();
-    if (revealId) mainWindow.webContents.send(CH.reveal, revealId);
+    if (reveal) mainWindow.webContents.send(CH.reveal, reveal);
   });
   notification.show();
 }
 
-/** Point the app at a project folder: (re)build store + watcher, return snapshot. */
+/** Open a project (or focus it if already open), building a per-project context. */
 async function openProject(root: string): Promise<OpenProjectResult> {
-  if (watch) {
-    await watch.close();
-    watch = null;
-  }
-  store = new KanmerStore(root);
-  await store.init();
-  recordRecentProject(store.paths.projectRoot);
-  buildMenu(); // refresh the Open Recent submenu
+  const store = new KanmerStore(root);
+  const projectId = store.paths.projectRoot; // canonical id (D2): dedups the same folder
+  const existing = contexts.get(projectId);
+  if (existing) return snapshotOf(existing);
 
-  watch = watchKanmer(root, (event, file) => {
-    mainWindow?.webContents.send(CH.changed, { event, file });
+  await store.init();
+  recordRecentProject(projectId);
+  const ownWrites = new Map<string, number>();
+  const watch = watchKanmer(projectId, (event, file) => {
+    mainWindow?.webContents.send(CH.changed, { projectId, event, file });
     const key = toastKey(file);
     if (!key) return;
     const own = ownWrites.get(key);
     if (own && Date.now() - own < 2000) return;
-    // Someone else changed the board (agent, hand edit): the renderer shows
-    // this in the activity bell / in-app toasts even while focused.
-    mainWindow?.webContents.send(CH.agentChange, { key, event });
+    // Someone else changed this project's board (agent, hand edit): the renderer
+    // shows it in the activity bell / in-app toasts, scoped to that tab.
+    mainWindow?.webContents.send(CH.agentChange, { projectId, key, event });
     if (!readSettings().notifications) return;
     if (mainWindow?.isFocused()) return;
-    queueToast(key, event);
+    queueToast(projectId, key, event);
   });
+  const ctx: ProjectContext = { root: projectId, store, watch, ownWrites };
+  contexts.set(projectId, ctx);
+  buildMenu(); // refresh the Open Recent submenu
+  return snapshotOf(ctx);
+}
 
+async function snapshotOf(ctx: ProjectContext): Promise<OpenProjectResult> {
   return {
-    root: store.paths.projectRoot,
-    board: await store.getBoard(),
-    items: await store.listItems({ includeArchived: true }),
-    format: await store.detectFormat(),
+    projectId: ctx.root,
+    root: ctx.root,
+    board: await ctx.store.getBoard(),
+    items: await ctx.store.listItems({ includeArchived: true }),
+    format: await ctx.store.detectFormat(),
   };
+}
+
+/** Close a project's watcher and drop its context. */
+async function closeProject(projectId: string): Promise<void> {
+  const ctx = contexts.get(projectId);
+  if (!ctx) return;
+  await ctx.watch.close();
+  contexts.delete(projectId);
 }
 
 /** Native right-click menu for a card; resolves with what the user picked. */
@@ -454,124 +474,138 @@ function registerIpc(): void {
   });
 
   ipcMain.handle(CH.openProject, (_e, root: string) => openProject(root));
-  ipcMain.handle(CH.currentProject, () => store?.paths.projectRoot ?? null);
-  ipcMain.handle(CH.getBoard, () => requireStore().getBoard());
-  ipcMain.handle(CH.setBoard, async (_e, board: BoardConfig) => {
-    markOwnWrite("board");
-    await requireStore().setBoard(board);
-    return requireStore().getBoard();
+  ipcMain.handle(CH.closeProject, (_e, projectId: string) => closeProject(projectId));
+  ipcMain.handle(CH.currentProject, () => [...contexts.keys()][0] ?? null);
+  ipcMain.handle(CH.getBoard, (_e, p: string) => requireStore(p).getBoard());
+  ipcMain.handle(CH.setBoard, async (_e, p: string, board: BoardConfig) => {
+    markOwnWrite(p, "board");
+    await requireStore(p).setBoard(board);
+    return requireStore(p).getBoard();
   });
-  ipcMain.handle(CH.listItems, (_e, filter?: ItemFilter) => requireStore().listItems(filter));
-  ipcMain.handle(CH.listItemsWithWarnings, (_e, filter?: ItemFilter) =>
-    requireStore().listItemsWithWarnings(filter),
+  ipcMain.handle(CH.listItems, (_e, p: string, filter?: ItemFilter) =>
+    requireStore(p).listItems(filter),
   );
-  ipcMain.handle(CH.getItem, (_e, id: string) => requireStore().getItem(id));
-  ipcMain.handle(CH.createItem, async (_e, input: CreateItemInput) => {
-    const item = await requireStore().createItem(input);
-    markOwnWrite(item.id);
+  ipcMain.handle(CH.listItemsWithWarnings, (_e, p: string, filter?: ItemFilter) =>
+    requireStore(p).listItemsWithWarnings(filter),
+  );
+  ipcMain.handle(CH.getItem, (_e, p: string, id: string) => requireStore(p).getItem(id));
+  ipcMain.handle(CH.createItem, async (_e, p: string, input: CreateItemInput) => {
+    const item = await requireStore(p).createItem(input);
+    markOwnWrite(p, item.id);
     return item;
   });
-  ipcMain.handle(CH.updateItem, (_e, id: string, patch: UpdateItemPatch) => {
-    markOwnWrite(id);
-    return requireStore().updateItem(id, patch);
+  ipcMain.handle(CH.updateItem, (_e, p: string, id: string, patch: UpdateItemPatch) => {
+    markOwnWrite(p, id);
+    return requireStore(p).updateItem(id, patch);
   });
   ipcMain.handle(
     CH.moveItem,
-    (_e, id: string, to: { status: string; position?: MovePosition }) => {
-      markOwnWrite(id);
+    (_e, p: string, id: string, to: { status: string; position?: MovePosition }) => {
+      markOwnWrite(p, id);
       // `position` goes straight through: core's assertMoveAllowed runs every
-      // rejection (conflict, unknown stage, proof gate) before computeOrder
+      // rejection (conflict, unknown stage, gates) before computeOrder
       // materialises any sibling's order, so a refused drop writes nothing.
-      return requireStore().moveItem(id, to);
+      return requireStore(p).moveItem(id, to);
     },
   );
-  ipcMain.handle(CH.deleteItem, (_e, id: string) => {
-    markOwnWrite(id);
-    return requireStore().deleteItem(id);
+  ipcMain.handle(CH.deleteItem, (_e, p: string, id: string) => {
+    markOwnWrite(p, id);
+    return requireStore(p).deleteItem(id);
   });
-  ipcMain.handle(CH.takeTicket, (_e, id: string, input: TakeTicketInput) => {
-    markOwnWrite(id);
-    return requireStore().takeTicket(id, input);
+  ipcMain.handle(CH.takeTicket, (_e, p: string, id: string, input: TakeTicketInput) => {
+    markOwnWrite(p, id);
+    return requireStore(p).takeTicket(id, input);
   });
-  ipcMain.handle(CH.releaseTicket, (_e, id: string) => {
-    markOwnWrite(id);
-    return requireStore().releaseTicket(id);
+  ipcMain.handle(CH.releaseTicket, (_e, p: string, id: string) => {
+    markOwnWrite(p, id);
+    return requireStore(p).releaseTicket(id);
   });
-  ipcMain.handle(CH.addColumn, (_e, kind: ColumnKind, column: BoardColumn) => {
-    markOwnWrite("board");
-    return requireStore().addColumn(kind, column);
+  ipcMain.handle(CH.addColumn, (_e, p: string, kind: ColumnKind, column: BoardColumn) => {
+    markOwnWrite(p, "board");
+    return requireStore(p).addColumn(kind, column);
   });
-  ipcMain.handle(CH.linkItems, (_e, source: string, target: string, action: "add" | "remove") => {
-    markOwnWrite(source);
-    return linkItems(requireStore(), source, target, action);
-  });
-  ipcMain.handle(CH.getLinks, (_e, id: string) => getLinkGraph(requireStore(), id));
+  ipcMain.handle(
+    CH.linkItems,
+    (_e, p: string, source: string, target: string, action: "add" | "remove") => {
+      markOwnWrite(p, source);
+      return linkItems(requireStore(p), source, target, action);
+    },
+  );
+  ipcMain.handle(CH.getLinks, (_e, p: string, id: string) => getLinkGraph(requireStore(p), id));
   ipcMain.handle(CH.getSettings, () => readSettings());
   ipcMain.handle(CH.setTheme, (_e, theme: Theme) => setTheme(theme));
   ipcMain.handle(CH.setNotifications, (_e, on: boolean) => setNotifications(on));
-  ipcMain.handle(CH.connectAgent, (_e, target: ConnectTarget) =>
-    connectAgent(target, requireStore().paths.projectRoot),
+  ipcMain.handle(CH.setOpenTabs, (_e, openTabs: string[], activeTab: string) =>
+    setOpenTabs(openTabs, activeTab),
   );
-  ipcMain.handle(CH.disconnectAgent, (_e, target: ConnectTarget) =>
-    disconnectAgent(target, requireStore().paths.projectRoot),
+  ipcMain.handle(CH.connectAgent, (_e, p: string, target: ConnectTarget) =>
+    connectAgent(target, requireStore(p).paths.projectRoot),
+  );
+  ipcMain.handle(CH.disconnectAgent, (_e, p: string, target: ConnectTarget) =>
+    disconnectAgent(target, requireStore(p).paths.projectRoot),
   );
   ipcMain.handle(CH.listProviders, () => listProviders());
-  ipcMain.handle(CH.dispatchAgent, (_e, ticketId: string, target: ConnectTarget) =>
-    dispatchTicket(requireStore(), target, ticketId),
+  ipcMain.handle(CH.dispatchAgent, (_e, p: string, ticketId: string, target: ConnectTarget) =>
+    dispatchTicket(requireStore(p), target, p, ticketId),
   );
-  ipcMain.handle(CH.cancelDispatch, (_e, ticketId: string) => cancelDispatch(ticketId));
-  ipcMain.handle(CH.listDispatches, () => listDispatches());
+  ipcMain.handle(CH.cancelDispatch, (_e, dispatchId: string) => cancelDispatch(dispatchId));
+  ipcMain.handle(CH.listDispatches, (_e, p: string) => listDispatches(p));
   onDispatchStatus((s) => mainWindow?.webContents.send(CH.dispatchStatus, s));
   ipcMain.handle(CH.showItemMenu, (e, payload: ItemMenuPayload) =>
     showItemMenu(e.sender, payload),
   );
-  ipcMain.handle(CH.migrate, (_e, dryRun: boolean) =>
-    migrateToV2(requireStore(), { dryRun }),
+  ipcMain.handle(CH.migrate, (_e, p: string, dryRun: boolean) =>
+    migrateToV2(requireStore(p), { dryRun }),
   );
-  ipcMain.handle(CH.getFormat, () => requireStore().detectFormat());
-  ipcMain.handle(CH.getDoc, (_e, id: string, doc: TicketDoc) =>
-    requireStore().getDocWithVersion(id, doc),
+  ipcMain.handle(CH.getFormat, (_e, p: string) => requireStore(p).detectFormat());
+  ipcMain.handle(CH.getDoc, (_e, p: string, id: string, doc: TicketDoc) =>
+    requireStore(p).getDocWithVersion(id, doc),
   );
   ipcMain.handle(
     CH.setDoc,
     (
       _e,
+      p: string,
       id: string,
       doc: TicketDoc,
       content: string,
       opts?: { append?: boolean; expectedVersion?: string | null },
     ) => {
-      markOwnWrite(id);
-      return requireStore().setDoc(id, doc, content, opts);
+      markOwnWrite(p, id);
+      return requireStore(p).setDoc(id, doc, content, opts);
     },
   );
-  ipcMain.handle(CH.getDocsInfo, (_e, id: string) => requireStore().getTicketDocsInfo(id));
-  ipcMain.handle(CH.getDocTypes, async (_e, id: string) => {
-    const store = requireStore();
+  ipcMain.handle(CH.getDocsInfo, (_e, p: string, id: string) =>
+    requireStore(p).getTicketDocsInfo(id),
+  );
+  ipcMain.handle(CH.getDocTypes, async (_e, p: string, id: string) => {
+    const store = requireStore(p);
     const [item, board] = await Promise.all([store.getItem(id), store.getBoard()]);
     return resolveDocTypes(board, item?.area ?? "");
   });
-  ipcMain.handle(CH.getDocModel, async () => {
-    const board = await requireStore().getBoard();
+  ipcMain.handle(CH.getDocModel, async (_e, p: string) => {
+    const board = await requireStore(p).getBoard();
     return {
       repoDocs: repoDocsMap(board),
       defaultTypes: resolveDocTypes(board, ""),
       defaultGates: resolveGates(board, ""),
     };
   });
-  ipcMain.handle(CH.openRepoDoc, async (_e, rel: string) => {
+  ipcMain.handle(CH.openRepoDoc, async (_e, p: string, rel: string) => {
     // assertSafeRepoPath rejects a path escaping the project root before shell touches it.
-    await shell.openPath(assertSafeRepoPath(requireStore().paths.projectRoot, rel));
+    await shell.openPath(assertSafeRepoPath(requireStore(p).paths.projectRoot, rel));
   });
-  ipcMain.handle(CH.getRepoDoc, async (_e, rel: string) => {
+  ipcMain.handle(CH.getRepoDoc, async (_e, p: string, rel: string) => {
     try {
-      return await readFile(assertSafeRepoPath(requireStore().paths.projectRoot, rel), "utf8");
+      return await readFile(assertSafeRepoPath(requireStore(p).paths.projectRoot, rel), "utf8");
     } catch {
       return null;
     }
   });
-  ipcMain.handle(CH.getActivity, (_e, opts?: { id?: string; since?: string; limit?: number }) =>
-    requireStore().getActivity(opts),
+  ipcMain.handle(
+    CH.getActivity,
+    (_e, p: string, opts?: { id?: string; since?: string; limit?: number }) =>
+      requireStore(p).getActivity(opts),
   );
 }
 
@@ -602,6 +636,6 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
-  void watch?.close();
+  for (const ctx of contexts.values()) void ctx.watch.close();
   killAllDispatches(); // tree-kill background agents so none is orphaned
 });

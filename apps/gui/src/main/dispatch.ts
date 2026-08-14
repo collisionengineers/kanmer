@@ -19,8 +19,10 @@ interface Handle {
   timer?: NodeJS.Timeout;
 }
 
-/** In-flight dispatches, keyed by ticket id (one dispatch per ticket = the lock). */
+/** In-flight dispatches, keyed by their globally unique dispatch id. */
 const active = new Map<string, Handle>();
+/** Secondary lock: a ticket may run once per project, not once application-wide. */
+const activeByProjectTicket = new Map<string, Map<string, string>>();
 let emit: (s: DispatchStatus) => void = () => {};
 
 /** Register the renderer status sink (main wires it to a webContents.send). */
@@ -39,8 +41,10 @@ let spawnFn: SpawnFn = defaultSpawn;
 export function __setSpawnForTests(fn: SpawnFn | null): void {
   spawnFn = fn ?? defaultSpawn;
 }
-export function listDispatches(): DispatchStatus[] {
-  return [...active.values()].map((h) => ({ ...h.status, tail: h.tail.slice(-50) }));
+export function listDispatches(projectId?: string): DispatchStatus[] {
+  return [...active.values()]
+    .filter((h) => projectId === undefined || h.status.projectId === projectId)
+    .map((h) => ({ ...h.status, tail: h.tail.slice(-50) }));
 }
 
 /**
@@ -70,6 +74,7 @@ function treeKill(proc: ChildProcess): void {
 export async function dispatchTicket(
   store: KanmerStore,
   providerId: ProviderId,
+  projectId: string,
   ticketId: string,
   opts: { timeoutMs?: number } = {},
 ): Promise<DispatchStatus> {
@@ -77,7 +82,9 @@ export async function dispatchTicket(
   if (!provider?.dispatch || !provider.dispatchCli || !provider.dispatchArgs) {
     throw new Error(`"${providerId}" doesn't support background dispatch.`);
   }
-  if (active.has(ticketId)) throw new Error(`${ticketId} already has a dispatch in flight.`);
+  if (activeByProjectTicket.get(projectId)?.has(ticketId)) {
+    throw new Error(`${ticketId} already has a dispatch in flight for this project.`);
+  }
   const item = await store.getItem(ticketId);
   if (!item) throw new Error(`No ticket "${ticketId}".`);
   if (item.taken_at) {
@@ -112,6 +119,7 @@ export async function dispatchTicket(
 
   const status: DispatchStatus = {
     dispatchId,
+    projectId,
     ticketId,
     provider: providerId,
     state: "running",
@@ -119,7 +127,10 @@ export async function dispatchTicket(
   };
   const tail: string[] = [];
   const handle: Handle = { proc, status, tail };
-  active.set(ticketId, handle);
+  active.set(dispatchId, handle);
+  const projectDispatches = activeByProjectTicket.get(projectId) ?? new Map<string, string>();
+  projectDispatches.set(ticketId, dispatchId);
+  activeByProjectTicket.set(projectId, projectDispatches);
 
   const onData = (buf: Buffer) => {
     const text = buf.toString();
@@ -133,7 +144,13 @@ export async function dispatchTicket(
     emit({ ...status, tail: tail.slice(-50) });
   };
   let terminal = false;
-  const removeActive = () => active.delete(ticketId);
+  const removeActive = () => {
+    active.delete(dispatchId);
+    const projectDispatches = activeByProjectTicket.get(projectId);
+    if (!projectDispatches) return;
+    projectDispatches.delete(ticketId);
+    if (projectDispatches.size === 0) activeByProjectTicket.delete(projectId);
+  };
   proc.stdout?.on("data", onData);
   proc.stderr?.on("data", onData);
   proc.once("error", (err) => {
@@ -179,9 +196,9 @@ export async function dispatchTicket(
   return { ...status };
 }
 
-/** Cancel the in-flight dispatch for a ticket (tree-kills the child). */
-export function cancelDispatch(ticketId: string): boolean {
-  const h = active.get(ticketId);
+/** Cancel the dispatch identified by its globally unique dispatch id. */
+export function cancelDispatch(dispatchId: string): boolean {
+  const h = active.get(dispatchId);
   if (!h) return false;
   h.status.state = "cancelled";
   treeKill(h.proc);

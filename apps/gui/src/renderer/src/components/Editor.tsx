@@ -9,8 +9,9 @@ import type {
   TicketDocsInfo,
   UpdateItemPatch,
 } from "@kanmer/core";
-import { renderMarkdown } from "../lib/markdown.js";
+import { useClient } from "../lib/client.js";
 import { progressDocId } from "../lib/docProgress.js";
+import { renderMarkdown } from "../lib/markdown.js";
 import { ChipInput } from "./ChipInput.js";
 import { ConfirmModal } from "./ConfirmModal.js";
 
@@ -95,6 +96,7 @@ export function Editor(props: EditorProps): JSX.Element {
     onDirtyChange,
   } = props;
 
+  const client = useClient();
   const [form, setForm] = useState<Snapshot>(() => snapOf(item));
   // The item as last read/written: saves diff against this, never against
   // the live prop — so a concurrent agent edit to a field the user never
@@ -121,12 +123,12 @@ export function Editor(props: EditorProps): JSX.Element {
   const [activeIdx, setActiveIdx] = useState(0);
 
   useEffect(() => {
-    void window.kanmer.getLinks(item.id).then(setGraph);
+    void client.getLinks(item.id).then(setGraph);
   }, [item.id, item.updated]);
 
   useEffect(() => {
     if (item.type !== "ticket") return;
-    void window.kanmer.getDocsInfo(item.id).then(setDocsInfo);
+    void client.getDocsInfo(item.id).then(setDocsInfo);
   }, [item.id, item.updated, changeSignal, item.type]);
 
   // Doc tabs come from the ticket area's configured doc set (Phase 1), resolved
@@ -136,7 +138,7 @@ export function Editor(props: EditorProps): JSX.Element {
       setDocTypes([]);
       return;
     }
-    void window.kanmer.getDocTypes(item.id).then(setDocTypes);
+    void client.getDocTypes(item.id).then(setDocTypes);
   }, [item.id, item.area, item.type]);
 
   const dirtyKeys = useMemo(
@@ -211,7 +213,7 @@ export function Editor(props: EditorProps): JSX.Element {
     setSaveError(null);
     try {
       // Close the watcher-debounce race: check the file just before writing.
-      const fresh = await window.kanmer.getItem(item.id);
+      const fresh = await client.getItem(item.id);
       if (fresh && fresh.updated !== baseline.current.updated) {
         const incoming = snapOf(fresh);
         const conflicts = keys.filter(
@@ -552,7 +554,7 @@ export function Editor(props: EditorProps): JSX.Element {
                     key={r}
                     className="chip link"
                     title="Open in the default app"
-                    onClick={() => void window.kanmer.openRepoDoc(r)}
+                    onClick={() => void client.openRepoDoc(r)}
                   >
                     ↗ {r}
                   </button>
@@ -706,6 +708,7 @@ function DocEditor({
   onDirty: (dirty: boolean) => void;
   onNavigate: (id: string) => void;
 }): JSX.Element {
+  const client = useClient();
   const [content, setContent] = useState<string | null>(null);
   const [version, setVersion] = useState<string | null>(null);
   const [conflict, setConflict] = useState<string | null>(null);
@@ -731,7 +734,7 @@ function DocEditor({
   // a load `dirty` is already false and does not change.
   useEffect(() => {
     if (dirty) return;
-    void window.kanmer.getDoc(id, doc).then(({ content: c, version: v }) => {
+    void client.getDoc(id, doc).then(({ content: c, version: v }) => {
       setContent(c);
       setVersion(v);
       setText(c ?? "");
@@ -749,7 +752,7 @@ function DocEditor({
     setSaving(true);
     try {
       const written = next.trim() ? `${next.trim()}\n` : next;
-      const res = await window.kanmer.setDoc(
+      const res = await client.setDoc(
         id,
         doc,
         next,

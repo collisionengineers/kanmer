@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ActivityEntry, BoardConfig, Item, ItemWarning } from "@kanmer/core";
 import { buildStandup, standupMarkdown, RECENT_DONE_MS } from "../lib/standup.js";
+import { useClient } from "../lib/client.js";
 
 interface StandupProps {
   board: BoardConfig;
@@ -25,6 +26,7 @@ export function Standup({
   changeSignal,
   onSelect,
 }: StandupProps): JSX.Element {
+  const client = useClient();
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [warnings, setWarnings] = useState<ItemWarning[]>([]);
   const [copied, setCopied] = useState(false);
@@ -35,13 +37,13 @@ export function Standup({
   useEffect(() => {
     const since = new Date(Date.now() - RECENT_DONE_MS).toISOString();
     void Promise.all([
-      window.kanmer.getActivity({ since }),
-      window.kanmer.listItemsWithWarnings({ includeArchived: true }),
+      client.getActivity({ since }),
+      client.listItemsWithWarnings({ includeArchived: true }),
     ]).then(([a, w]) => {
       setActivity(a);
       setWarnings(w.warnings);
     });
-  }, [changeSignal]);
+  }, [changeSignal, client]);
 
   const report = useMemo(
     () =>

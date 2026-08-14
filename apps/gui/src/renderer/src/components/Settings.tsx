@@ -14,6 +14,7 @@ import type {
   ProviderInfo,
   Theme,
 } from "../../../shared/ipc.js";
+import { useClient } from "../lib/client.js";
 
 type SettingsTab = "board" | "documents" | "appearance" | "connect";
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
@@ -264,6 +265,7 @@ export function Settings({
 
 /** Register the MCP server + install skills for any supported host (data-driven). */
 function ConnectSection(): JSX.Element {
+  const client = useClient();
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [result, setResult] = useState<
@@ -279,8 +281,8 @@ function ConnectSection(): JSX.Element {
     try {
       const res =
         action === "connect"
-          ? await window.kanmer.connectAgent(target)
-          : await window.kanmer.disconnectAgent(target);
+          ? await client.connectAgent(target)
+          : await client.disconnectAgent(target);
       setResult({ ...res, target, action });
     } finally {
       setBusy(null);
@@ -354,10 +356,11 @@ function DocumentsTab({
   draft: BoardConfig;
   setDraft: React.Dispatch<React.SetStateAction<BoardConfig>>;
 }): JSX.Element {
+  const client = useClient();
   const [model, setModel] = useState<DocModel | null>(null);
   useEffect(() => {
-    void window.kanmer.getDocModel().then(setModel);
-  }, []);
+    void client.getDocModel().then(setModel);
+  }, [client]);
 
   const customized = draft.docs?.default?.types !== undefined;
   const types = draft.docs?.default?.types ?? model?.defaultTypes ?? [];

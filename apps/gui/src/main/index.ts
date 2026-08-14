@@ -13,7 +13,8 @@ import {
 } from "electron";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
+import { join } from "node:path";
+import { classifyKanmerPath } from "../shared/kanmerPath.js";
 import {
   KanmerStore,
   assertSafeRepoPath,
@@ -293,15 +294,7 @@ function markOwnWrite(projectId: string, key: string): void {
 
 /** Toast key for a changed file: item id, "board", or null (uninteresting). */
 function toastKey(file: string): string | null {
-  const base = basename(file);
-  if (base === "board.yml") return "board";
-  if (!base.endsWith(".md")) return null;
-  const name = base.slice(0, -3);
-  // Pipeline docs live inside the ticket's folder — attribute to the ticket.
-  if (["research", "impact", "plan", "checklist", "proof"].includes(name)) {
-    return basename(dirname(file));
-  }
-  return name;
+  return classifyKanmerPath(file)?.key ?? null;
 }
 
 let pendingToasts: { projectId: string; key: string; event: string }[] = [];

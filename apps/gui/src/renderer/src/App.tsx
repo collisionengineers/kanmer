@@ -7,6 +7,7 @@ import type {
   MovePosition,
 } from "@kanmer/core";
 import { blockedIds, columnCards, optimisticOrder } from "./lib/board.js";
+import { classifyKanmerPath } from "../../shared/kanmerPath.js";
 import { ClientContext, makeClient, type ProjectClient } from "./lib/client.js";
 import type { AppSettings, ChangePayload, Theme } from "../../shared/ipc.js";
 import { Board } from "./components/Board.js";
@@ -289,9 +290,8 @@ export function App(): JSX.Element {
       // change is ignored here (it refreshes when that tab is next focused).
       if (payload.projectId !== rootRef.current) return;
       setChangeSignal((n) => n + 1);
-      const parts = payload.file.split(/[\\/]/);
-      const base = parts[parts.length - 1] ?? "";
-      if (base === "board.yml") {
+      const change = classifyKanmerPath(payload.file);
+      if (change?.kind === "board") {
         try {
           setBoard(await clientRef.current!.getBoard());
         } catch {
@@ -299,18 +299,12 @@ export function App(): JSX.Element {
         }
         return;
       }
-      if (!base.endsWith(".md")) {
-        if (base === "version.json") await refresh();
+      if (!change) {
+        if (payload.file.split(/[\\/]/).at(-1) === "version.json") await refresh();
         return; // counters.json / activity.jsonl — nothing to re-render here
       }
-      let id = base.slice(0, -3);
-      // A doc file is areas/<area>/<ticketId>/<doc>.md — its parent folder is
-      // the ticket id and differs from the file's own basename. A ticket file is
-      // areas/<area>/<ticketId>/<ticketId>.md, where the two match. This is
-      // doc-name agnostic (per-area configurable docs + scratch-*).
-      const parent = parts[parts.length - 2];
-      const isDoc = parent !== undefined && parent !== id;
-      if (isDoc) id = parent;
+      const id = change.key;
+      const isDoc = change.kind === "document";
       if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id)) {
         await refresh();
         return;

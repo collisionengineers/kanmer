@@ -50,7 +50,8 @@ import {
   type Theme,
   type WindowBounds,
 } from "./settings.js";
-import { connectAgent, type ConnectTarget } from "./connect.js";
+import { connectAgent, disconnectAgent, type ConnectTarget } from "./connect.js";
+import { listProviders } from "./providers.js";
 
 let mainWindow: BrowserWindow | null = null;
 let store: KanmerStore | null = null;
@@ -496,6 +497,10 @@ function registerIpc(): void {
   ipcMain.handle(CH.connectAgent, (_e, target: ConnectTarget) =>
     connectAgent(target, requireStore().paths.projectRoot),
   );
+  ipcMain.handle(CH.disconnectAgent, (_e, target: ConnectTarget) =>
+    disconnectAgent(target, requireStore().paths.projectRoot),
+  );
+  ipcMain.handle(CH.listProviders, () => listProviders());
   ipcMain.handle(CH.showItemMenu, (e, payload: ItemMenuPayload) =>
     showItemMenu(e.sender, payload),
   );

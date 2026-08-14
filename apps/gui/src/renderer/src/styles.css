@@ -1414,3 +1414,20 @@ button.danger {
 .chip-x:hover {
   opacity: 1;
 }
+
+/* ── Phase 6: Connect provider list ─────────────────────────────────────── */
+.provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+}
+.provider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.provider-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}

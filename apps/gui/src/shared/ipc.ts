@@ -42,6 +42,8 @@ export const CH = {
   setTheme: "kanmer:setTheme",
   setNotifications: "kanmer:setNotifications",
   connectAgent: "kanmer:connectAgent",
+  disconnectAgent: "kanmer:disconnectAgent",
+  listProviders: "kanmer:listProviders",
   showItemMenu: "kanmer:showItemMenu",
   migrate: "kanmer:migrate",
   getFormat: "kanmer:getFormat",
@@ -64,12 +66,20 @@ export const CH = {
 
 export type Theme = "dark" | "light" | "system";
 
-export type ConnectTarget = "codex" | "claude";
+/** The agent hosts Connect supports (mirrors main/providers.ts ProviderId). */
+export type ConnectTarget = "codex" | "claude" | "opencode" | "grok" | "antigravity";
 
 export interface ConnectResult {
   ok: boolean;
   command: string;
   output: string;
+}
+
+/** One entry in the Connect tab's provider list. */
+export interface ProviderInfo {
+  id: ConnectTarget;
+  label: string;
+  dispatch: boolean;
 }
 
 export interface AppSettings {
@@ -158,8 +168,12 @@ export interface KanmerApi {
   getSettings(): Promise<AppSettings>;
   setTheme(theme: Theme): Promise<AppSettings>;
   setNotifications(on: boolean): Promise<AppSettings>;
-  /** Register the MCP server with codex / Claude Code for the open project. */
+  /** Register the MCP server + install skills for the given host in the open project. */
   connectAgent(target: ConnectTarget): Promise<ConnectResult>;
+  /** Unregister the host and remove the copied skills / AGENTS.md block. */
+  disconnectAgent(target: ConnectTarget): Promise<ConnectResult>;
+  /** The agent hosts Connect can register (drives the Connect tab). */
+  listProviders(): Promise<ProviderInfo[]>;
   /** Show the native right-click menu for a card; resolves with the chosen action. */
   showItemMenu(payload: ItemMenuPayload): Promise<ItemMenuAction | null>;
   /** Migrate the open v1 project to format 2 (dryRun for the report only). */

@@ -1504,3 +1504,40 @@ button.danger {
 .proj-new:hover {
   color: var(--fg, #e8e8e8);
 }
+
+/* ── Dispatches drawer (finish Phase 7) ─────────────────────────────────── */
+.dispatch-row {
+  border-bottom: 1px solid var(--border, #2a2a2a);
+  padding: 8px 0;
+}
+.dispatch-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dispatch-provider {
+  font-size: 11px;
+  color: var(--muted, #9aa0a6);
+}
+.chip.dispatch-state.running {
+  background: color-mix(in srgb, var(--accent, #5b8cff) 22%, transparent);
+}
+.chip.dispatch-state.done {
+  background: color-mix(in srgb, #3ddc84 22%, transparent);
+}
+.chip.dispatch-state.failed,
+.chip.dispatch-state.timed-out,
+.chip.dispatch-state.cancelled {
+  background: color-mix(in srgb, var(--danger, #ff6b6b) 22%, transparent);
+}
+.dispatch-tail {
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  background: var(--bg, #121212);
+  border-radius: 4px;
+  font-size: 10px;
+  max-height: 90px;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: var(--muted, #9aa0a6);
+}

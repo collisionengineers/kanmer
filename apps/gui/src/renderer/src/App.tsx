@@ -11,7 +11,7 @@ import { classifyKanmerPath } from "../../shared/kanmerPath.js";
 import { ClientContext, makeClient, type ProjectClient } from "./lib/client.js";
 import { restoreTabs, restoredActiveTab } from "./lib/session.js";
 import { tabCloseDecision } from "./lib/tabClose.js";
-import type { AppSettings, ChangePayload, Theme } from "../../shared/ipc.js";
+import type { AppSettings, ChangePayload, DispatchStatus, Theme } from "../../shared/ipc.js";
 import { Board } from "./components/Board.js";
 import { TabStrip, type Tab } from "./components/TabStrip.js";
 import { ArchivedList } from "./components/ArchivedList.js";
@@ -70,6 +70,8 @@ export function App(): JSX.Element {
   clientRef.current = client;
   const rootRef = useRef<string | null>(null);
   rootRef.current = root;
+  const tabsRef = useRef<Tab[]>([]);
+  tabsRef.current = tabs;
   const [board, setBoard] = useState<BoardConfig | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [format, setFormat] = useState<1 | 2>(2);
@@ -88,6 +90,8 @@ export function App(): JSX.Element {
   const [announcement, setAnnouncement] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [dispatching, setDispatching] = useState<Set<string>>(() => new Set());
+  const [dispatches, setDispatches] = useState<DispatchStatus[]>([]);
+  const [dispatchesOpen, setDispatchesOpen] = useState(false);
   const [changeSignal, setChangeSignal] = useState(0);
   const [migrateReport, setMigrateReport] = useState<MigrationReport | null>(null);
   const [migrating, setMigrating] = useState(false);
@@ -375,6 +379,8 @@ export function App(): JSX.Element {
         else next.delete(s.ticketId);
         return next;
       });
+      // Upsert into the dispatches drawer's list (most-recent per dispatchId).
+      setDispatches((prev) => [s, ...prev.filter((d) => d.dispatchId !== s.dispatchId)].slice(0, 30));
       if (s.state !== "running") {
         const seq = ++toastSeq.current;
         setToasts((t) => [
@@ -592,6 +598,7 @@ export function App(): JSX.Element {
       if (e.key === "Escape") {
         if (paletteOpen) setPaletteOpen(false);
         else if (activityOpen) setActivityOpen(false);
+        else if (dispatchesOpen) setDispatchesOpen(false);
         else if (settingsOpen) setSettingsOpen(false);
         else trySelect(null);
         return;
@@ -599,6 +606,18 @@ export function App(): JSX.Element {
       if (ctrl && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen((o) => !o);
+        return;
+      }
+      if (ctrl && e.key === "Tab") {
+        // Cycle project tabs (Ctrl+Tab forward, Ctrl+Shift+Tab back).
+        e.preventDefault();
+        const list = tabsRef.current;
+        if (list.length > 1 && rootRef.current) {
+          const idx = list.findIndex((t) => t.projectId === rootRef.current);
+          const dir = e.shiftKey ? -1 : 1;
+          const next = list[(idx + dir + list.length) % list.length];
+          if (next) requestOpen({ kind: "path", path: next.projectId });
+        }
         return;
       }
       if (ctrl && e.key === ",") {
@@ -622,7 +641,7 @@ export function App(): JSX.Element {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [settingsOpen, paletteOpen, activityOpen, trySelect]);
+  }, [settingsOpen, paletteOpen, activityOpen, dispatchesOpen, trySelect, requestOpen]);
 
   const knownIds = useMemo(() => new Set(items.map((i) => i.id)), [items]);
   const lastStage = board?.statuses[board.statuses.length - 1]?.id;
@@ -695,6 +714,14 @@ export function App(): JSX.Element {
       { id: "view-standup", label: "Go to Standup", run: () => setView("standup") },
       { id: "view-archived", label: "Go to Archived", run: () => setView("archived") },
       { id: "activity", label: "Show activity", run: () => setActivityOpen(true) },
+      {
+        id: "dispatches",
+        label: "Show background dispatches",
+        run: () => {
+          void window.kanmer.listDispatches().then(setDispatches);
+          setDispatchesOpen(true);
+        },
+      },
       { id: "settings", label: "Open Settings", run: () => setSettingsOpen(true) },
       { id: "theme-dark", label: "Theme: dark", run: () => void setTheme("dark") },
       { id: "theme-light", label: "Theme: light", run: () => void setTheme("light") },
@@ -913,6 +940,42 @@ export function App(): JSX.Element {
             }}
             onClose={() => setActivityOpen(false)}
           />
+        )}
+
+        {dispatchesOpen && (
+          <aside className="activity-panel" role="dialog" aria-label="Background dispatches">
+            <div className="activity-head">
+              <h3>Dispatches</h3>
+              <div className="spacer" />
+              <button className="ghost sm" onClick={() => setDispatchesOpen(false)}>
+                Close
+              </button>
+            </div>
+            {dispatches.length === 0 && <p className="empty">No dispatches this session.</p>}
+            {dispatches.map((d) => (
+              <div key={d.dispatchId} className="dispatch-row">
+                <div className="dispatch-head">
+                  <button className="linklike" onClick={() => trySelect(d.ticketId)}>
+                    {d.ticketId}
+                  </button>
+                  <span className={`chip dispatch-state ${d.state}`}>{d.state}</span>
+                  <span className="dispatch-provider">{d.provider}</span>
+                  <div className="spacer" />
+                  {d.state === "running" && (
+                    <button
+                      className="ghost xs"
+                      onClick={() => void window.kanmer.cancelDispatch(d.ticketId)}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+                {d.tail && d.tail.length > 0 && (
+                  <pre className="dispatch-tail">{d.tail.slice(-8).join("\n")}</pre>
+                )}
+              </div>
+            ))}
+          </aside>
         )}
       </div>
 

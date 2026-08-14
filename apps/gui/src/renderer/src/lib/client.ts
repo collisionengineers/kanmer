@@ -46,6 +46,7 @@ export interface ProjectClient {
   disconnectAgent(target: ConnectTarget): Promise<ConnectResult>;
   dispatchAgent(ticketId: string, target: ConnectTarget): Promise<DispatchStatus>;
   migrate(dryRun: boolean): Promise<MigrationReport>;
+  backfillBoard(dryRun: boolean): Promise<{ addedStages: string[] }>;
   getFormat(): Promise<1 | 2>;
   getDoc(id: string, doc: TicketDoc): Promise<{ content: string | null; version: string | null }>;
   setDoc(
@@ -85,6 +86,7 @@ export function makeClient(projectId: string): ProjectClient {
     disconnectAgent: (t) => k.disconnectAgent(projectId, t),
     dispatchAgent: (ticketId, t) => k.dispatchAgent(projectId, ticketId, t),
     migrate: (d) => k.migrate(projectId, d),
+    backfillBoard: (d) => k.backfillBoard(projectId, d),
     getFormat: () => k.getFormat(projectId),
     getDoc: (id, doc) => k.getDoc(projectId, id, doc),
     setDoc: (id, doc, content, opts) => k.setDoc(projectId, id, doc, content, opts),

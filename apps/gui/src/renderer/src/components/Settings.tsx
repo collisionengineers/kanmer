@@ -294,7 +294,9 @@ function ConnectSection(): JSX.Element {
       <h3>Connect an AI agent</h3>
       <p className="hint">
         Registers this project's Kanmer board with the host's MCP client and installs the skills —
-        via its plugin marketplace, or the shared AGENTS.md block for hosts without one.
+        via its plugin marketplace (Claude Code, Codex), a project skills dir (Grok), or the shared
+        AGENTS.md block for hosts that only read skills globally (opencode, Antigravity), so nothing
+        is written outside this project.
       </p>
       <div className="provider-list">
         {providers.map((p) => (
@@ -358,33 +360,65 @@ function DocumentsTab({
 }): JSX.Element {
   const client = useClient();
   const [model, setModel] = useState<DocModel | null>(null);
+  const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
   useEffect(() => {
     void client.getDocModel().then(setModel);
   }, [client]);
+  const missingStages = [
+    "backlog",
+    "researching",
+    "planning",
+    "implementing",
+    "review",
+    "verifying",
+    "done",
+  ].filter((c) => !draft.statuses.some((s) => s.id === c));
 
-  const customized = draft.docs?.default?.types !== undefined;
-  const types = draft.docs?.default?.types ?? model?.defaultTypes ?? [];
-  const gates = draft.docs?.default?.gates ?? model?.defaultGates ?? [];
+  // Scope: "" = the board default, else a per-area override (D5). The editor
+  // below operates on whichever scope is selected.
+  const [activeArea, setActiveArea] = useState("");
+  const scopeTypes = activeArea ? draft.docs?.areas?.[activeArea]?.types : draft.docs?.default?.types;
+  const scopeGates = activeArea ? draft.docs?.areas?.[activeArea]?.gates : draft.docs?.default?.gates;
+  const customized = scopeTypes !== undefined;
+  const types = scopeTypes ?? model?.defaultTypes ?? [];
+  const gates = scopeGates ?? model?.defaultGates ?? [];
   const stageName = (id: string) => draft.statuses.find((s) => s.id === id)?.name ?? id;
 
   const patchDefault = (patch: { types?: DocType[]; gates?: GateRule[] }) =>
-    setDraft((d) => ({
-      ...d,
-      docs: {
-        repoDocs: d.docs?.repoDocs ?? model?.repoDocs,
-        areas: d.docs?.areas,
-        default: {
-          types: patch.types ?? d.docs?.default?.types ?? model?.defaultTypes ?? [],
-          gates: patch.gates ?? d.docs?.default?.gates ?? model?.defaultGates ?? [],
-        },
-      },
-    }));
+    setDraft((d) => {
+      const docs = { ...(d.docs ?? {}) };
+      docs.repoDocs = docs.repoDocs ?? model?.repoDocs;
+      const scope = {
+        types:
+          patch.types ??
+          (activeArea ? docs.areas?.[activeArea]?.types : docs.default?.types) ??
+          model?.defaultTypes ??
+          [],
+        gates:
+          patch.gates ??
+          (activeArea ? docs.areas?.[activeArea]?.gates : docs.default?.gates) ??
+          model?.defaultGates ??
+          [],
+      };
+      if (activeArea) docs.areas = { ...(docs.areas ?? {}), [activeArea]: scope };
+      else docs.default = scope;
+      return { ...d, docs };
+    });
 
   const resetDefaults = () =>
     setDraft((d) => {
       const docs = { ...(d.docs ?? {}) };
-      delete (docs as { default?: unknown }).default;
-      const empty = !docs.repoDocs && !docs.areas;
+      if (activeArea) {
+        const areas = { ...(docs.areas ?? {}) };
+        delete areas[activeArea];
+        docs.areas = Object.keys(areas).length ? areas : undefined;
+      } else {
+        delete (docs as { default?: unknown }).default;
+      }
+      const empty =
+        !docs.repoDocs &&
+        !docs.default &&
+        (!docs.areas || Object.keys(docs.areas).length === 0);
       return { ...d, docs: empty ? undefined : docs };
     });
 
@@ -418,11 +452,25 @@ function DocumentsTab({
   return (
     <>
       <div className="settings-section">
+        <label className="field">
+          <span>Editing document model for</span>
+          <select value={activeArea} onChange={(e) => setActiveArea(e.target.value)}>
+            <option value="">Default (all areas)</option>
+            {draft.areas.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name} {draft.docs?.areas?.[a.id]?.types ? "(customized)" : "(inherits default)"}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="settings-section">
         <div className="section-head">
           <h3>Document types</h3>
           {customized ? (
             <button className="ghost xs" onClick={resetDefaults}>
-              Reset to defaults
+              {activeArea ? "Reset to default" : "Reset to defaults"}
             </button>
           ) : (
             <button className="ghost xs" onClick={() => patchDefault({})} disabled={!model}>
@@ -432,7 +480,12 @@ function DocumentsTab({
         </div>
         <p className="hint">
           Order is the hierarchy; each doc&apos;s <em>requires</em> must exist before it can be
-          written. {customized ? "" : "This board uses the defaults — Customize to edit."}
+          written.{" "}
+          {customized
+            ? ""
+            : activeArea
+              ? "This area inherits the default set — Customize to override it."
+              : "This board uses the defaults — Customize to edit."}
         </p>
         {types.map((t, i) => (
           <div key={t.id} className="doc-type-row">
@@ -538,6 +591,29 @@ function DocumentsTab({
           />
         )}
       </div>
+
+      {missingStages.length > 0 && (
+        <div className="settings-section">
+          <h3>Upgrade board</h3>
+          <p className="hint">
+            This board is missing canonical stages ({missingStages.join(", ")}). Backfill inserts
+            them in order — additive, never renaming/reordering existing stages, never touching item
+            files. Applies to the saved board immediately; reopen Settings to see the result.
+          </p>
+          <button
+            className="ghost sm"
+            onClick={async () => {
+              const r = await client.backfillBoard(false);
+              setBackfillMsg(
+                r.addedStages.length ? `Added: ${r.addedStages.join(", ")}` : "Already current.",
+              );
+            }}
+          >
+            Backfill missing stages
+          </button>
+          {backfillMsg && <p className="hint">{backfillMsg}</p>}
+        </div>
+      )}
     </>
   );
 }

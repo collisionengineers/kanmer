@@ -53,6 +53,7 @@ export const CH = {
   dispatchStatus: "kanmer:dispatchStatus",
   showItemMenu: "kanmer:showItemMenu",
   migrate: "kanmer:migrate",
+  backfillBoard: "kanmer:backfillBoard",
   getFormat: "kanmer:getFormat",
   getDoc: "kanmer:getDoc",
   setDoc: "kanmer:setDoc",
@@ -242,6 +243,8 @@ export interface KanmerApi {
   showItemMenu(payload: ItemMenuPayload): Promise<ItemMenuAction | null>;
   /** Migrate a v1 project to format 2 (dryRun for the report only). */
   migrate(projectId: string, dryRun: boolean): Promise<MigrationReport>;
+  /** Backfill the 7-stage default onto an already-v2 board (dryRun previews). */
+  backfillBoard(projectId: string, dryRun: boolean): Promise<{ addedStages: string[] }>;
   /** A project's current on-disk format — re-read after an external migration. */
   getFormat(projectId: string): Promise<1 | 2>;
   /**

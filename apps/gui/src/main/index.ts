@@ -20,6 +20,7 @@ import {
   assertSafeRepoPath,
   getLinkGraph,
   linkItems,
+  migrateBoard,
   migrateToV2,
   repoDocsMap,
   resolveDocTypes,
@@ -557,6 +558,11 @@ function registerIpc(): void {
   ipcMain.handle(CH.migrate, (_e, p: string, dryRun: boolean) =>
     migrateToV2(requireStore(p), { dryRun }),
   );
+  ipcMain.handle(CH.backfillBoard, async (_e, p: string, dryRun: boolean) => {
+    if (!dryRun) markOwnWrite(p, "board");
+    const { backfill } = await migrateBoard(requireStore(p), { dryRun });
+    return { addedStages: backfill.addedStages };
+  });
   ipcMain.handle(CH.getFormat, (_e, p: string) => requireStore(p).detectFormat());
   ipcMain.handle(CH.getDoc, (_e, p: string, id: string, doc: TicketDoc) =>
     requireStore(p).getDocWithVersion(id, doc),

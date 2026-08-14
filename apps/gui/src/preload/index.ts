@@ -46,6 +46,7 @@ const api: KanmerApi = {
   },
   showItemMenu: (payload) => ipcRenderer.invoke(CH.showItemMenu, payload),
   migrate: (p, dryRun) => ipcRenderer.invoke(CH.migrate, p, dryRun),
+  backfillBoard: (p, dryRun) => ipcRenderer.invoke(CH.backfillBoard, p, dryRun),
   getFormat: (p) => ipcRenderer.invoke(CH.getFormat, p),
   getDoc: (p, id, doc) => ipcRenderer.invoke(CH.getDoc, p, id, doc),
   setDoc: (p, id, doc, content, opts) => ipcRenderer.invoke(CH.setDoc, p, id, doc, content, opts),

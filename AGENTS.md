@@ -77,8 +77,17 @@ kanmer/
         claude.mcp.json   # {"mcpServers":…} + ${CLAUDE_PLUGIN_ROOT}
         kanmer-mcp.cjs    # committed build artifact (npm run plugin:build)
       skills/
-        kanmer-workflow/  # ticket lifecycle + references/tool-reference.md + doc templates
+        kanmer-tickets/   # ticket management + references/tool-reference.md + ticket template
+        kanmer-research/  # research.md + impact.md phase (+ their templates)
+        kanmer-plan/      # plan.md + checklist.md phase (+ their templates)
+        kanmer-execute/   # worktree/branch, checklist, proof.md, PR (+ proof/PR templates)
+        kanmer-review/    # proof-vs-evidence review, PR feedback → PR Review tickets
+        kanmer-closeout/  # post-merge: final stage, remove worktree/branch, release
+        kanmer-auto/      # clear an area via parallel subagents in conflict-free waves
         kanmer-standup/   # fact-based board report (activity log + summaries)
+        kanmer-retro/     # look-back digest: shipped, cycle time, stalls
+        kanmer-groom/     # board-editing triage: dedupe, split, archive, fields
+        kanmer-import/    # GitHub issues / PR comments → tickets, idempotent
         kanmer-setup/     # greenfield/brownfield/upgrade setup + AGENTS.md block
   .claude-plugin/marketplace.json  # Claude marketplace entry (repo-hosted)
   .agents/plugins/marketplace.json # codex marketplace entry (repo-hosted)
@@ -244,7 +253,7 @@ The only place that touches `.kanmer` files. Public API via `index.ts`. Key entr
 - Write: `create_item`, `create_items`, `update_item`, `move_item`, `take_ticket`, `set_ticket_doc`, `link_items`, `add_column`, `update_column`, `reorder_columns`
 - Destructive (`destructiveHint`): `delete_item`, `remove_column`
 
-The plugin's `kanmer-workflow` skill documents this surface for agents — see the
+The plugin's `kanmer-tickets` skill documents this surface for agents — see the
 sync rule in §7.
 
 ### `@kanmer/gui` (apps/gui)
@@ -308,7 +317,7 @@ way, so it could not fail.
 - **Plugin/skill sync.** The plugin's skills describe the MCP tool surface, so a
   rename that lands on only one side leaves agents following instructions for
   tools that no longer exist. Whenever you add, rename or change a tool or its
-  parameters: update `plugins/kanmer/skills/kanmer-workflow/references/tool-reference.md`
+  parameters: update `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md`
   (and the SKILL.md if the *workflow* changed, not just the signature), run
   `npm run plugin:build` to refresh the bundled server, and run
   `npm run plugin:check` — it fails on tool-name drift.

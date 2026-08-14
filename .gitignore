@@ -16,3 +16,5 @@ apps/gui/out/
 apps/gui/dist/
 apps/gui/release/
 sandbox-harness/
+# per-ticket git worktrees (see kanmer-execute / kanmer-closeout skills)
+.worktrees/

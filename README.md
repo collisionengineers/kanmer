@@ -155,12 +155,22 @@ codex plugin marketplace add collisionengineers/kanmer
 
 Then install **kanmer** from `/plugins`.
 
-The plugin ships three skills:
+The plugin ships twelve skills — ticket management, one skill per phase of a
+ticket's life, an autonomous orchestrator, and board reporting/hygiene:
 
 | Skill | What it does |
 |---|---|
-| `kanmer-workflow` | The ticket lifecycle — orient with `get_status`, take a ticket (branch/worktree recorded), work the research → impact → plan → checklist → proof pipeline, move stages as you go, release when done — plus templates for the ticket body and all five documents. |
-| `kanmer-standup` | Fact-based board report from the activity log and live summaries: in flight (with branches), in review, up next, recently done, blocked, overdue, flags. |
+| `kanmer-tickets` | Ticket management — orient with `get_status`, create/update/link/order/archive tickets, board conventions — plus the ticket body template and the full MCP tool reference. Routes each phase of the actual work to the skills below. |
+| `kanmer-research` | The research phase: investigate a ticket and write its `research.md` (findings) and `impact.md` (files touched, ripple effects). Read-only — no branch needed. |
+| `kanmer-plan` | The planning phase: turn research + impact into `plan.md` and an executable `checklist.md`. Refuses to plan around missing research. |
+| `kanmer-execute` | The implementation phase: take the ticket in its own **git worktree** (`.worktrees/<id>`) and branch (`<id>-<slug>`), work the checklist with live progress notes, write `proof.md`, open the PR (description assembled from the ticket's own docs). |
+| `kanmer-review` | Review finished work: check `proof.md` against real evidence, review the PR diff, turn review feedback into tickets in the PR Review area that block the original. |
+| `kanmer-closeout` | After the PR merges: finalise proof, move to the final stage, record the outcome, then **remove the worktree, delete the branch, release** — record-keeping first, git cleanup second, release last — so nothing stale accumulates. |
+| `kanmer-auto` | Autonomously clear an area up to a target point ("clear API up to review"): research all tickets in parallel subagents, partition into conflict-free lanes by file overlap, then plan → execute → review → closeout per ticket in waves. |
+| `kanmer-standup` | Fact-based *current-state* report from the activity log and live summaries: in flight (with branches), in review, up next, recently done, blocked, overdue, flags. |
+| `kanmer-retro` | *Look-back* digest over a period: what shipped, cycle times, where work stalled, throughput by actor — from the activity log. |
+| `kanmer-groom` | Board-editing triage (propose, then apply): dedupe near-duplicates, fill missing areas/priorities, split oversized tickets, archive dead ones, chase stale takes. |
+| `kanmer-import` | Bring external work onto the board: GitHub issues and PR review comments become tickets in the right area, linked to their source, idempotently. |
 | `kanmer-setup` | Setup in three modes — **greenfield** (propose areas + seed a backlog), **brownfield** (mine the codebase for a starter backlog), **upgrade** (drive the v1 → v2 migration) — and it installs Kanmer operating instructions at the **top of the repo's `AGENTS.md`** (a marker-delimited managed block, refreshed idempotently), so any agent that opens the repo knows the board exists. |
 
 > Use **either** the plugin **or** a manual registration (the GUI's Connect

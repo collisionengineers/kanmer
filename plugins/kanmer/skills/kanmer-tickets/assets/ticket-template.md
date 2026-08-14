@@ -25,6 +25,8 @@ plan, checklist, proof — lives in this ticket's own documents
 
 - [ ] How to check this is done (command, test, observable behaviour).
 
-## Notes
+## Outcome
 
-Anything discovered while working: gotchas, follow-ups spun off, links to commits/PRs.
+Filled at closeout: PR link, merge date, follow-up ticket ids, anything that
+shipped differently than planned. (In-flight notes go in checklist.md's
+Progress notes, not here.)

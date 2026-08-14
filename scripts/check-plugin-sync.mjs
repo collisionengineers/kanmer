@@ -23,7 +23,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const serverPath = join(root, "packages/mcp-server/src/index.ts");
 const refPath = join(
   root,
-  "plugins/kanmer/skills/kanmer-workflow/references/tool-reference.md",
+  "plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md",
 );
 
 for (const p of [serverPath, refPath]) {

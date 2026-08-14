@@ -566,7 +566,7 @@ describe("format v2", () => {
     expect(t.status).toBe("only");
   });
 
-  it("refuses a status reorder that would strand a proofless ticket in the final stage", async () => {
+  it("refuses a status reorder when the new final boundary's configured gate is unmet", async () => {
     const t = await store.createItem({ type: "ticket", title: "A", status: "review" });
     await expect(
       store.reorderColumns("status", [
@@ -578,15 +578,15 @@ describe("format v2", () => {
         "done",
         "review",
       ]),
-    ).rejects.toThrow(/no proof\.md/);
+    ).rejects.toThrow(/post-implementation-report\.md is missing/);
     expect(t.status).toBe("review");
     // The board was NOT written.
     expect((await store.getBoard()).statuses.at(-1)?.id).toBe("done");
   });
 
-  it("allows a status reorder once every occupant of the new final stage has proof.md", async () => {
+  it("allows a status reorder once every occupant satisfies the new final boundary gate", async () => {
     const t = await store.createItem({ type: "ticket", title: "A", status: "review" });
-    await store.setDoc(t.id, "proof", "evidence");
+    await store.setDoc(t.id, "post-implementation-report", "evidence");
     await store.reorderColumns("status", [
       "backlog",
       "researching",
@@ -604,7 +604,7 @@ describe("format v2", () => {
     const board = await store.getBoard();
     const review = board.statuses.find((s) => s.id === "review")!;
     board.statuses = [...board.statuses.filter((s) => s.id !== "review"), review];
-    await expect(store.setBoard(board)).rejects.toThrow(/no proof\.md/);
+    await expect(store.setBoard(board)).rejects.toThrow(/post-implementation-report\.md is missing/);
     expect((await store.getBoard()).statuses.at(-1)?.id).toBe("done");
   });
 

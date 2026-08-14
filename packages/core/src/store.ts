@@ -197,7 +197,7 @@ export class KanmerStore {
     const prevLast = lastStageId(previous);
     const nextLast = lastStageId(board);
     if (nextLast !== undefined && nextLast !== prevLast) {
-      await this.assertFinalStageProven(nextLast);
+      await this.assertFinalStageGates(board, nextLast);
     }
     await writeBoard(this.paths, board);
   }
@@ -999,6 +999,32 @@ export class KanmerStore {
   ): Promise<void> {
     const gates = resolveGates(board, item.area);
     if (gates.length === 0) return;
+    const context = await this.gateContext(ticketDir, board, item, gates);
+    const violations = evaluateGates(gates, {
+      statuses: board.statuses.map((s) => s.id),
+      from: fromStatus,
+      to: toStatus,
+      ...context,
+    });
+    if (violations.length === 0) return;
+    const lines = violations.map((v) => `  - ${v.reason}`).join("\n");
+    throw new Error(
+      `${item.id} cannot move from "${fromStatus}" to "${toStatus}" — ` +
+        `${violations.length} document gate(s) unmet:\n${lines}\n` +
+        `Write the missing document(s) with set_ticket_doc (or link a governing doc via refs / set docs_todo), then move.`,
+    );
+  }
+
+  /** Collect the ticket-specific inputs shared by every configured gate check. */
+  private async gateContext(
+    ticketDir: string,
+    board: BoardConfig,
+    item: Item,
+    gates: ReturnType<typeof resolveGates>,
+  ): Promise<{
+    hasDoc: (doc: string) => boolean;
+    repoDocSatisfied: (kinds: string[]) => boolean;
+  }> {
     const needed = new Set<string>();
     for (const g of gates) if (g.needs !== undefined) needed.add(g.needs);
     const present = new Set<string>();
@@ -1013,20 +1039,7 @@ export class KanmerStore {
       }
       return false;
     };
-    const violations = evaluateGates(gates, {
-      statuses: board.statuses.map((s) => s.id),
-      from: fromStatus,
-      to: toStatus,
-      hasDoc: (doc) => present.has(doc),
-      repoDocSatisfied,
-    });
-    if (violations.length === 0) return;
-    const lines = violations.map((v) => `  - ${v.reason}`).join("\n");
-    throw new Error(
-      `${item.id} cannot move from "${fromStatus}" to "${toStatus}" — ` +
-        `${violations.length} document gate(s) unmet:\n${lines}\n` +
-        `Write the missing document(s) with set_ticket_doc (or link a governing doc via refs / set docs_todo), then move.`,
-    );
+    return { hasDoc: (doc) => present.has(doc), repoDocSatisfied };
   }
 
   /**
@@ -1073,25 +1086,33 @@ export class KanmerStore {
   }
 
   /**
-   * Refuse a board write that would make a stage final while proofless
-   * tickets sit in it. Rejecting (rather than grandfathering) matches
-   * removeColumn's in-use refusal and keeps "the LAST stage is proof-gated"
-   * literally true. Archived tickets are off the board and are not gated.
+   * Refuse a board write that would make a stage final while its occupants do
+   * not meet the configured gate boundary. Archived and legacy tickets are
+   * outside the v2 document-gate model and are not gated here.
    */
-  private async assertFinalStageProven(stageId: string): Promise<void> {
+  private async assertFinalStageGates(board: BoardConfig, stageId: string): Promise<void> {
+    const prior = board.statuses.at(-2)?.id;
+    if (prior === undefined) return;
     const occupants = await this.listItems({ status: stageId }); // non-archived only
-    const offenders: string[] = [];
+    const failures: string[] = [];
     for (const item of occupants) {
       if (item.type !== "ticket") continue;
       const loc = await this.locateItem(item.id);
       if (!loc || loc.kind !== "v2") continue; // legacy layout has no doc folder to gate on
-      if (!(await pathExists(docFileIn(loc.dir, "proof")))) offenders.push(item.id);
+      const gates = resolveGates(board, item.area);
+      const context = await this.gateContext(loc.dir, board, item, gates);
+      const violations = evaluateGates(gates, {
+        statuses: board.statuses.map((s) => s.id),
+        from: prior,
+        to: stageId,
+        ...context,
+      });
+      for (const violation of violations) failures.push(`${item.id}: ${violation.reason}`);
     }
-    if (offenders.length === 0) return;
+    if (failures.length === 0) return;
     throw new Error(
-      `Cannot make "${stageId}" the final stage: ${offenders.length} ticket(s) there have no ` +
-        `proof.md (${offenders.slice(0, 5).join(", ")}${offenders.length > 5 ? ", …" : ""}). ` +
-        `Write the evidence with set_ticket_doc(doc: "proof"), or move them out of that stage first.`,
+      `Cannot make "${stageId}" the final stage — configured document gates are unmet:\n` +
+        failures.map((failure) => `  - ${failure}`).join("\n"),
     );
   }
 }

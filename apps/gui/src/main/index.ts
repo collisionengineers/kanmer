@@ -74,6 +74,15 @@ import {
   listDispatches,
   onDispatchStatus,
 } from "./dispatch.js";
+import {
+  checkForUpdatesNow,
+  initUpdater,
+  installUpdateNow,
+  isUpdaterEnabled,
+  maybeBlockQuitForUpdate,
+  updateState,
+} from "./updater.js";
+import { mcpSessions } from "./mcp-sessions.js";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -217,6 +226,21 @@ function createWindow(): void {
   // the only success, so every way of *not* rendering has to exit non-zero —
   // otherwise the check cannot fail and is worse than no check.
   if (process.env["KANMER_SMOKE"]) {
+    // The packaged app with no app-update.yml is the exact "works in dev,
+    // silently dead when packaged" failure: it boots, the board works, and the
+    // updater never finds a feed. Only a packaged run can see this, so assert
+    // it here rather than in a unit test.
+    if (app.isPackaged) {
+      const feed = join(process.resourcesPath, "app-update.yml");
+      if (!existsSync(feed)) {
+        console.error(`KANMER_SMOKE: ${feed} is missing — the packaged app has no update feed`);
+        app.exit(1);
+        // app.exit() tears the window down but this function keeps running;
+        // without the return the watchdog wiring below dereferences a window
+        // that is already gone.
+        return;
+      }
+    }
     let readyToShow = false;
     mainWindow.once("ready-to-show", () => {
       readyToShow = true;
@@ -290,6 +314,14 @@ function buildMenu(): void {
     {
       label: "&Help",
       submenu: [
+        // buildMenu() re-runs on every openProject (the recents submenu), so
+        // this item has to stay cheap and stateless. It is.
+        {
+          label: "Check for Updates…",
+          enabled: isUpdaterEnabled(),
+          click: () => checkForUpdatesNow("manual"),
+        },
+        { type: "separator" },
         {
           label: "Kanmer on GitHub",
           click: () => void shell.openExternal("https://github.com/collisionengineers/kanmer"),
@@ -701,6 +733,18 @@ function registerIpc(): void {
     (_e, p: string, opts?: { id?: string; since?: string; limit?: number }) =>
       requireStore(p).getActivity(opts),
   );
+
+  ipcMain.handle(CH.getUpdateState, () => updateState());
+  ipcMain.handle(CH.mcpSessions, () => mcpSessions());
+  ipcMain.handle(CH.installUpdate, () => {
+    // Defensive: the renderer owns the guards (quitAndInstall cannot be undone
+    // once called, so a guard placed after it never runs), but nothing else may
+    // ever spawn an installer either.
+    if (updateState().status.phase !== "downloaded") {
+      throw new Error("No downloaded update to install");
+    }
+    installUpdateNow();
+  });
 }
 
 app.whenReady().then(async () => {
@@ -720,6 +764,13 @@ app.whenReady().then(async () => {
     }
   }
   createWindow();
+  // After createWindow, and wrapped: a failing updater must never be the reason
+  // the app does not start.
+  try {
+    initUpdater((payload) => mainWindow?.webContents.send(CH.updateStatus, payload));
+  } catch (err) {
+    console.error("[updater] init failed:", err);
+  }
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -729,7 +780,18 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-app.on("before-quit", () => {
+// The quit guard runs on before-quit because that is the only event that can
+// still be cancelled. The watcher close moved to will-quit deliberately:
+// preventDefault() does NOT stop other listeners on the SAME event, so leaving
+// watch.close() on before-quit would tear the watcher down even when the user
+// cancels the quit — the app would keep running with live-reload silently dead.
+// will-quit fires only when before-quit was not prevented, and `quit` (where
+// electron-updater's autoInstallOnAppQuit installs) fires after it.
+app.on("before-quit", (e) => {
+  maybeBlockQuitForUpdate(e);
+});
+
+app.on("will-quit", () => {
   for (const ctx of contexts.values()) void ctx.watch.close();
   killAllDispatches(); // tree-kill background agents so none is orphaned
 });

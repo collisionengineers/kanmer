@@ -115,11 +115,14 @@ kanmer/
   scripts/
     build-plugin.mjs      # copy standalone MCP bundle into plugins/kanmer/mcp/
     check-plugin-sync.mjs # fail if tool names drift from the skill's tool reference
+    check-updater-package.mjs # fail if the PACKAGED app can't auto-update (6 checks)
+    release.mjs           # one-command release: verify, bump, pack, tag, publish, prove
 
   apps/
     gui/                  # @kanmer/gui — Electron + React desktop app
       electron.vite.config.ts   # electron-vite: bundles everything into out/
-      electron-builder.yml      # Windows NSIS installer config
+      electron-builder.yml      # Windows NSIS installer config + GitHub publish feed
+      release-notes.md          # GitHub release body; release.mjs refuses stale notes
       build/icon.ico            # committed buildResource (regen: scripts/make-icon.mjs)
       scripts/make-icon.mjs     # dependency-free PNG/ICO generator for the app icon
       src/
@@ -127,11 +130,14 @@ kanmer/
           index.ts        # Electron main: window, menu, toasts, IPC handlers, watcher
           settings.ts     # user-global settings (theme, notifications, bounds, recents)
           connect.ts      # one-click per-project `codex/claude mcp add` registration
+          updater.ts      # electron-updater: schedule, events, quitAndInstall
+          mcp-sessions.ts # which agent MCP servers an update would kill
         preload/
           index.ts        # contextBridge → window.kanmer typed API
           index.d.ts      # global Window typing
         shared/
           ipc.ts          # IPC channel names + KanmerApi contract (main↔renderer)
+          mcp-sessions.ts # pure CIM-output parser (tested)
         renderer/
           index.html
           src/
@@ -140,7 +146,8 @@ kanmer/
             components/   # Board, Editor (doc tabs), Standup, ActivityPanel,
                           # ArchivedList, CommandPalette, ChipInput, FilterBar,
                           # Settings, Welcome, QuickAdd
-            lib/          # board.ts (column lookups), markdown.ts ([[wiki]] render)
+            lib/          # board.ts (column lookups), markdown.ts ([[wiki]] render),
+                          # update.ts (update surface + the Restart-now gate)
             styles.css    # theme tokens (dark + [data-theme=light]) + all component CSS
 ```
 
@@ -278,7 +285,7 @@ The plugin's `kanmer-tickets` skill documents this surface for agents — see th
 sync rule in §7.
 
 ### `@kanmer/gui` (apps/gui)
-Electron. **Main** (`main/index.ts`) imports `@kanmer/core` and owns *all* file access + the chokidar watcher; **renderer** (React) is pure UI and reaches main only through the typed `window.kanmer` bridge (`shared/ipc.ts` → `preload/index.ts`). `connect.ts` runs the agent `mcp add` CLI. `settings.ts` stores theme + recent projects in Electron `userData` (these are user-global, not per-project).
+Electron. **Main** (`main/index.ts`) imports `@kanmer/core` and owns *all* file access + the chokidar watcher; **renderer** (React) is pure UI and reaches main only through the typed `window.kanmer` bridge (`shared/ipc.ts` → `preload/index.ts`). `connect.ts` runs the agent `mcp add` CLI. `settings.ts` stores theme + recent projects in Electron `userData` (these are user-global, not per-project). **Main owns the auto-updater** (`updater.ts`); the renderer only ever *asks* to install, and the ask is gated on unsaved edits and live agent sessions before it becomes an IPC call.
 
 ---
 
@@ -296,6 +303,8 @@ Run from the repo root unless noted.
 | `npm run app` | build + launch the GUI |
 | `npm run dev:gui` | GUI with hot reload |
 | `npm run dist` | build everything **and** produce `apps/gui/release/Kanmer Setup <v>.exe` |
+| `npm run dist:check` | `dist`, then `check-updater-package.mjs` — the six things that must be true for the **packaged** app to auto-update |
+| `npm run release <version>` | the whole release: verify, bump, pack twice, tag, publish, prove clients can see it. Needs `GH_TOKEN` (or `GITHUB_RELEASE_TOKEN`/`GITHUB_TOKEN`). `--dry-run` stops after the verification gate |
 | `npm run plugin:build` | build, then copy the standalone MCP bundle into `plugins/kanmer/mcp/` |
 | `npm run plugin:check` | fail if MCP tool names drift from the skill's tool reference **or if the committed plugin bundle differs from a fresh build (requires `npm run build` first)** |
 | `npm run inspect` | build, then open MCP Inspector against the server (root `./sandbox`) |
@@ -315,6 +324,17 @@ node packages/mcp-server/src/smoke.mjs
 ```bash
 KANMER_SMOKE=1 KANMER_OPEN=<projectDir> npx electron . --user-data-dir=<a fresh dir>
 ```
+**Updater dev loop** (no packaging). The updater is inert in dev unless you opt
+in, so a normal `npm run dev:gui` never touches the network. To exercise it,
+write `apps/gui/dev-app-update.yml` (gitignored) pointing at a local feed, serve
+a directory containing a `latest.yml` + payload, then:
+```bash
+cd apps/gui && KANMER_DEV_UPDATE=1 npx electron . --user-data-dir=<a fresh dir>
+```
+`[updater]` lines on stderr trace check → available → progress → downloaded.
+Use a **dummy payload**, never a real installer: nothing in that loop should be
+able to install anything.
+
 `--user-data-dir` is **not optional** when running from source: Electron takes
 `app.getName()` from `apps/gui/package.json`, so the scoped name `@kanmer/gui`
 makes userData `%APPDATA%\@kanmer/gui` and `requestSingleInstanceLock()`
@@ -346,6 +366,9 @@ way, so it could not fail.
 - **Renderer logic that could be pure, is.** `renderer/src/lib/` holds the DOM-free modules — `markdown.ts`, `board.ts` (column lookups, the blocked/overdue rules, drop-position and optimistic-order arithmetic) and `standup.ts` (the whole standup report plus its markdown). They are the **only** renderer code with vitest coverage, so put new logic there rather than in JSX, export it, and take `now`/`today` as an argument instead of calling `Date.now()` inside.
 - **`board.ts`'s `blockedIds` is the renderer's only copy of core's live-blocker rule** (`links.ts computeBlockedIds`), consumed by both the card badges and the Standup view. Likewise `Settings.tsx validateDraft()` mirrors `board.ts assertUniquePrefixes()`. The renderer may only `import type` from core, so these cannot share code — change one, change the other.
 - **`plugin:check` sees tool names and bundle bytes only.** Everything below `## Field semantics` in `references/tool-reference.md` is deliberately invisible to it (`check-plugin-sync.mjs:41-45` splits the document there so field names aren't mistaken for tools) — re-read that prose by hand whenever the data model changes.
+- **`quitAndInstall()` is not cancellable.** `BaseUpdater` spawns the installer **before** `app.quit()` (`BaseUpdater.js:13-23`), and the installer force-kills every process under the install dir — so a guard placed after the IPC call is a guard that never runs. `CH.installUpdate` has exactly **two** renderer call sites, both downstream of `restartWarning()`; main refuses the call unless an update is actually downloaded. Do not add a third call site, and do not call `quitAndInstall()` from anywhere but `installUpdateNow()`.
+- **`electron-updater` is the one externalized production dependency**, via `external: ["electron-updater"]` in the **main build only**. Do **not** replace it with `externalizeDepsPlugin()` — that externalizes every future `dependencies` entry, and gotcha 1 requires gray-matter to stay bundled in the CJS main output.
+- **`watch?.close()` belongs on `will-quit`, never `before-quit`.** `preventDefault()` on `before-quit` does not stop other listeners on the same event, so a cancelled quit would otherwise leave the app running with a dead watcher.
 - **Match the surrounding style** — small focused modules, JSDoc on exported functions, no clever one-liners.
 
 ---
@@ -356,11 +379,13 @@ way, so it could not fail.
 2. **YAML parses ISO date strings into JS `Date`.** `created`/`updated` are coerced back to strings via `TimestampSchema` in `types.ts`. Keep that if you add date fields.
 3. **`priority` is a string, not an enum.** It became configurable (an id into `board.priorities`). Don't reintroduce a fixed enum. Default list lives in `DEFAULT_PRIORITIES` (`types.ts`) and migrates old boards.
 4. **The installed app runs the MCP server as Electron-as-Node.** `connect.ts` registers `command = <Kanmer.exe>`, `args = [<resources/mcp/kanmer-mcp.cjs>, --root, <project>]`, `env = { ELECTRON_RUN_AS_NODE: "1" }`. The standalone bundle must therefore be self-contained (no node_modules at runtime).
-5. **electron-builder bundles nothing from `node_modules`** because the GUI's runtime deps are moved to `devDependencies` and everything is bundled into `out/` by electron-vite. If you add a runtime dep the main process needs *unbundled* (rare, e.g. a native `.node`), you must revisit this.
+5. **electron-builder bundles exactly one thing from `node_modules`: `electron-updater`.** Everything else is moved to `devDependencies` and bundled into `out/` by electron-vite. Having a real `dependencies` entry is what turns on `NodeModulesCollector` — and `files:` needs **no** entry for it, because a *separate* node-module matcher starts from `**/*` (verified in `fileMatcher.js:177-219` and in `builder-debug.yml`'s `nodeModuleFilePatterns`). Do not add `node_modules/electron-updater/**/*` to `files:`; do not assume a new runtime dep is packed just because this one is (it will be, but only if it is in `dependencies` **and** externalized in the Vite main config).
 6. **Antivirus + electron-builder:** Windows Defender sometimes quarantines electron-builder's bundled `7za.exe` mid-build (`ENOENT … 7za.exe`). Pinned electron-builder ≥26 fetches 7-Zip fresh and usually avoids it; otherwise restore from quarantine / add a repo exclusion.
 7. **The watcher ignores atomic-write temp files** (`.<name>.tmp-*`) and debounces (`watch.ts`). Don't remove the ignore or you'll get double refreshes.
 8. **`plugins/kanmer/mcp/kanmer-mcp.cjs` is a committed build artifact** — deliberately, unlike every other `dist/` output. Plugin installs fetch this repo, so the server has to already be there and runnable; there is no build step on the user's side. Refresh it with `npm run plugin:build` whenever the server changes, or installed plugins silently keep running the old server. Core compiles *into* it, so **core-only fixes need the rebuild too**; `plugin:check` now sha256s the committed bundle against a fresh build so a stale one fails loudly instead of silently.
 9. **`order` is column-scoped; the board renders by area.** `computeOrder` filters on `status` only (`store.ts:697-698`), while `Board.tsx` groups cards by area inside each column (`groupByArea`). Any drag-and-drop neighbour computation must use `columnCards(items, statusId)` (`lib/board.ts:70`), never a group's cards — otherwise "drop above this card" silently means a different slot, and a single-area test board will not reveal it. `Card` is `memo`ized (`Board.tsx:221`), so pass badge and drop-hint state to it as primitives (`blocked: boolean`, `overdue: boolean`, `dropEdge: "before" | "after" | null`), never a `Set` or object rebuilt each render. `e.stopPropagation()` on the card's `onDrop` is load-bearing: without it the cell handler also fires and issues a second, position-less `moveItem`.
+10. **An update force-kills agent MCP servers.** `allowOnlyOneInstallerInstance.nsh:79-101` stops every process whose path is under `$INSTDIR` — **by path prefix, not image name** — and `connect.ts` registers `command = process.execPath`, so the agent's MCP server **is** a process in the install dir. electron-updater passes `--updated`, which suppresses the installer's own prompt (`NsisUpdater.js:113`), so it happens silently. This is why `mcp-sessions.ts` exists: it runs the installer's own predicate so we can *name* what dies before the user commits to it. Failing open (`unknown: true`) is deliberate — the probe may never block an update.
+11. **`releaseType` defaults to `draft`, and drafts are invisible.** `GitHubProvider` reads `releases.atom` and `/releases/latest`; neither lists drafts, so a draft release silently reaches **zero** installed clients. `electron-builder.yml` sets `releaseType: release` explicitly. Never revert it. Related: `latest.yml` records the **GitHub upload name** (spaces→dashes, `computeSafeArtifactNameIfNeeded` in `platformPackager.js:690`), not the on-disk filename — never rename release assets by hand, because that mapping is re-derived independently by `GitHubProvider.resolveFiles` and the two must agree.
 
 ---
 
@@ -386,6 +411,7 @@ way, so it could not fail.
 6. If the server changed: `npm run build && npm run plugin:build && npm run plugin:check` (the check now verifies the committed bundle's bytes, not just tool names), plus both smoke scripts with `KANMER_SERVER=plugins/kanmer/mcp/kanmer-mcp.cjs`.
 7. The real test: open a project in the GUI, have an agent `create_item`/`move_item` against it, confirm the board live-updates; edit in the GUI, confirm the agent's `get_item` sees it.
 8. If the setup skill or its managed block changed: `node scripts/verify-agents-block.mjs`.
+9. **If the GUI packaging or the updater changed:** `npm run dist:check`, then boot the **packaged** binary under `KANMER_SMOKE` (`release/win-unpacked/Kanmer.exe --user-data-dir=<fresh dir>`). Compiling is not evidence — this pair is what catches "works in dev, silently dead when packaged", which is the most likely way an updater change ships broken. If `npm run dist` fails with `EBUSY` because a Kanmer is running from `release/`, build elsewhere instead: `npx electron-builder --win --config.directories.output=release-check` from `apps/gui`, then `node scripts/check-updater-package.mjs --out apps/gui/release-check`.
 
 ---
 
@@ -393,12 +419,17 @@ way, so it could not fail.
 
 - Windows installer only so far (macOS/Linux electron-builder targets not configured).
 - No automated CI; verification is the manual checklist above.
+- **Unsigned auto-update has a stated expiry.** `NsisUpdater.verifySignature` returns "pass" when `publisherName` is absent from `app-update.yml`, and `publisherName` is only written when a signing cert exists — so unsigned updates install today. electron-builder PR #10056 deprecates that fail-open and states **v28 will fail closed**. We are on electron-builder 26.15.3 / electron-updater `^6.8.9`, and the caret cannot cross into v7, so nothing breaks by drift. Read the release notes before any major bump, and treat "get a signing story" as scheduled, not someday. Once signing is on, `publisherName` lands in `app-update.yml` and turns verification **on** for all future clients — changing the cert subject later then breaks updates for everyone on the old build. It is a one-way door.
+- **An update closes live agent MCP sessions.** Unavoidable with NSIS (gotcha 10). We warn with a count and never install without a user action; the store is crash-safe, so the loss is a dropped transport, not data. The long-term fix is shipping the MCP server as a separate binary outside `$INSTDIR`, or a launcher shim that survives updates.
+- **The registered MCP command path can go stale.** `allowToChangeInstallationDirectory: true` means a *manual* re-install can move the install dir; every project's `.mcp.json` / codex entry then points at a path that no longer exists. electron-updater's silent update passes no `/D=`, so auto-updates keep the directory. Not detected today; a "recorded MCP command ≠ `process.execPath` → offer Reconnect" check is the follow-up.
+- **No CI: releases are cut from one machine** by `npm run release <version>`. The script runs the whole verification gate first and refuses on a dirty tree, a bad version, a missing token or stale release notes — but it is still one laptop's toolchain. A ~30-line GitHub Actions workflow on tag push is the real fix.
+- **The auto-updater's end-to-end install path is not yet proven on a real two-version cycle.** Event wiring, the packaged feed, the banner and the Restart-now gate are all verified, but no build has actually updated itself from one version to the next on this machine (that proof uninstalls and reinstalls Kanmer, so it is run deliberately — see `docs/plans/updater/plan.md` Phase 7). Until it has been run once, treat the first real release as the experiment.
 - Column removal: the MCP `remove_column` tool refuses while items reference the column (or migrates them with `migrate_to`), but the GUI Settings editor's whole-board save can still drop an in-use column — those items fall back to an auto column/group on read (`mergeColumns`), and writes to the now-undefined id are rejected (`assertFieldAgainstBoard` in `store.ts`).
 - Two concurrent creates that share the TICK fallback prefix in *different* undeclared areas could double-allocate an id number — only reachable when a v2 board's `areas` list has been emptied (the exclusive-create lock is per file path). Narrowed: `createItem` now refuses an id that `locateItem` can already resolve (`store.ts:519-522`), so only a genuine concurrent-create window remains.
 - **The MCP SDK caps at protocol `2025-11-25`.** `@modelcontextprotocol/sdk@^1.30.0` contains no `2026-07-28` support, so `ttlMs`/`cacheScope` on `tools/list` are unavailable and no current host sends the spec's `io.modelcontextprotocol/client` identity key. The server *does* read it, and that branch is **live, not dead**: the SDK forwards `params._meta` to handlers on every protocol (`shared/protocol.js:321`), and `smoke-protocol.mjs` proves it by sending a hand-written frame carrying the key and asserting the activity actor comes back as `future-host`. So actor attribution is forward-compatible today and falls back to `clientInfo`/`getClientVersion()` in practice. `smoke-protocol.mjs` also covers the back-compat run against `2025-11-25`, `2025-06-18`, `2025-03-26` and `2024-11-05`. Revisit `tools/list` caching when the SDK ships the revision.
 - **Migration has no agent-reachable entry point.** `migrateToV2` is reachable only from the GUI (`main/index.ts` `CH.migrate`); there is no MCP tool. `kanmer-setup`'s Upgrade mode therefore asks the user to click "Migrate to v2" in the app, and a plugin user with no GUI installed cannot upgrade a v1 board. Migration *is* now resumable and refuses colliding boards, so an interrupted run is recoverable — but only from the GUI.
 - **Keyboard stage moves (Ctrl+←/→) set no position.** Drag-and-drop now writes an insertion point; the keyboard path (`Board.tsx:303-309` → `App.tsx:352`) changes the stage and leaves the card's existing `order`, so it can land somewhere other than where the eye expects. The command palette's Move ▸ verb has the same gap. Giving either an insertion point needs a "move within column" mode that does not exist.
-- **Running from source does not launch.** Electron takes `app.getName()` from `apps/gui/package.json`, so a from-source run gets the scoped name `@kanmer/gui`, userData `%APPDATA%\@kanmer/gui`, and `requestSingleInstanceLock()` returning **false** on that mixed-separator path with no other instance running — `npx electron .`, `npm run app` and `npm run dev:gui` then quit in ~1 s. Workaround: `--user-data-dir=<fresh dir>`. The **packaged** app is unaffected (electron-builder sets `productName: Kanmer` → `%APPDATA%\Kanmer`). A one-line `app.setName("Kanmer")` would fix it but moves where dev settings live and makes a dev run share the installed app's lock, so it is left as a product decision. The boot smoke no longer hides this: it exits 1 rather than 0.
+- **Running from source does not launch.** Electron takes `app.getName()` from `apps/gui/package.json`, so a from-source run gets the scoped name `@kanmer/gui`, userData `%APPDATA%\@kanmer/gui`, and `requestSingleInstanceLock()` returning **false** on that mixed-separator path with no other instance running — `npx electron .`, `npm run app` and `npm run dev:gui` then quit in ~1 s. Workaround: `--user-data-dir=<fresh dir>`. The boot smoke no longer hides this: it exits 1 rather than 0. The **packaged** app is *not* unaffected, contrary to what this bullet used to say. electron-builder's `productName` never reaches the `package.json` inside `app.asar` — that file is `{"name":"@kanmer/gui","version":…}` with scripts and devDependencies stripped and no `productName` injected. So `app.getName()` is `@kanmer/gui` in the packaged app too: the installed app's userData is `%APPDATA%\@kanmer\gui\` (verified on disk — it holds the real `settings.json`, and there is no `%APPDATA%\Kanmer` at all), and the updater cache dir inherits it as `%LOCALAPPDATA%\@kanmergui-updater` (confirmed in the generated `app-update.yml`, which carries `updaterCacheDirName: '@kanmergui-updater'`). Only the *single-instance-lock* symptom is dev-only. A one-line `app.setName("Kanmer")` would fix all three paths at once, but it silently orphans every existing user's settings, so it stays a product decision — and if it is ever taken it must ship with a one-time settings migration, in its own release, never alongside a change to the update mechanism itself.
 - **The `beforeunload` confirm on window close is unverified in this Electron configuration** (`sandbox: false`, no `will-prevent-unload` handling in `main/index.ts`). Historically version-dependent; no harness exists to settle it. Every *in-app* way of leaving a dirty editor — card click, Close, wiki-link, tab switch, project switch, palette jump, Escape, standup line, activity panel, toast click — is guarded by `trySelect` (`App.tsx:117-125`) or `tryTab` (`Editor.tsx:296-299`).
 - **The checklist tab never linkifies `[[ID]]`.** `Editor.tsx:827-854` parses lines to JSX itself and never calls `renderMarkdown`, so a wiki-link inside a checklist item is literal text.
 - **Agent-change toast suppression is ticket-granular, not doc-granular.** A GUI write to `checklist.md` suppresses the toast for a concurrent agent write to `research.md` on the same ticket within 2 s — `toastKey()` maps every pipeline document to its ticket folder (`main/index.ts:270-280`) and `ownWrites` is keyed by that. Conflict *detection* is unaffected; only the toast.

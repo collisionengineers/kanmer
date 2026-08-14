@@ -11,12 +11,14 @@ import { classifyKanmerPath } from "../../shared/kanmerPath.js";
 import { ClientContext, makeClient, type ProjectClient } from "./lib/client.js";
 import { restoreTabs, restoredActiveTab } from "./lib/session.js";
 import { tabCloseDecision } from "./lib/tabClose.js";
+import { restartWarning, updateSurface } from "./lib/update.js";
 import type {
   AppSettings,
   ChangePayload,
   DispatchStatus,
   Theme,
   UiPreferences,
+  UpdateStatusEvent,
 } from "../../shared/ipc.js";
 import { Board } from "./components/Board.js";
 import { TabStrip, type Tab } from "./components/TabStrip.js";
@@ -101,6 +103,14 @@ export function App(): JSX.Element {
   const [changeSignal, setChangeSignal] = useState(0);
   const [migrateReport, setMigrateReport] = useState<MigrationReport | null>(null);
   const [migrating, setMigrating] = useState(false);
+
+  // Auto-update. `updateDismissed` is per-session only (no "skip this version"
+  // persistence): "Later" costs nothing, since the update installs on the next
+  // normal quit anyway.
+  const [update, setUpdate] = useState<UpdateStatusEvent | null>(null);
+  const [updateDismissed, setUpdateDismissed] = useState(false);
+  const [pendingRestart, setPendingRestart] = useState<string | null>(null);
+  const toastedVersion = useRef<string | null>(null);
 
   // Whether the editor holds unsaved edits — a ref so reporting dirtiness
   // doesn't re-render the app on every keystroke.
@@ -398,6 +408,49 @@ export function App(): JSX.Element {
       }
     });
   }, []);
+
+  // Auto-update state. No `root` dependency: updates are app-global, not
+  // project-scoped. getUpdateState() covers a renderer that mounted after main
+  // had already found something.
+  useEffect(() => {
+    void window.kanmer.getUpdateState().then(setUpdate);
+    return window.kanmer.onUpdateStatus(setUpdate);
+  }, []);
+
+  const updateView = updateSurface(update, updateDismissed);
+
+  // Push update toasts into the existing toast stack, deduped by version so a
+  // download's many `downloading` emits produce one toast, not a hundred.
+  useEffect(() => {
+    if (updateView.kind !== "toast") return;
+    if (toastedVersion.current === updateView.text) return;
+    toastedVersion.current = updateView.text;
+    const seq = ++toastSeq.current;
+    setToasts((t) => [...t.slice(-2), { seq, id: null, text: updateView.text }]);
+    const timer = setTimeout(() => setToasts((t) => t.filter((x) => x.seq !== seq)), 4500);
+    return () => clearTimeout(timer);
+  }, [updateView.kind, updateView.kind === "toast" ? updateView.text : null]);
+
+  /**
+   * The "Restart now" gate. The probe and the confirm BOTH happen here, before
+   * any IPC call: quitAndInstall() spawns the installer before app.quit(), so a
+   * guard placed after window.kanmer.installUpdate() is a guard that never runs.
+   *
+   * INVARIANT: window.kanmer.installUpdate() has exactly TWO call sites — the
+   * `warning === null` early return below and the pendingRestart modal's
+   * onConfirm. Both are downstream of this probe. Nothing else may call it.
+   */
+  const onRestartToUpdate = useCallback(async () => {
+    const sessions = await window.kanmer
+      .mcpSessions()
+      .catch(() => ({ count: 0, projects: [], unknown: true }));
+    const warning = restartWarning(editorDirty.current ? selectedId : null, sessions);
+    if (warning === null) {
+      void window.kanmer.installUpdate();
+      return;
+    }
+    setPendingRestart(warning);
+  }, [selectedId]);
 
   const runOpen = useCallback(
     async (target: OpenTarget) => {
@@ -859,6 +912,24 @@ export function App(): JSX.Element {
         </div>
       )}
 
+      {updateView.kind === "banner" && (
+        <div className="banner info">
+          <span>Kanmer {updateView.version} is ready to install.</span>
+          <div className="conflict-actions">
+            <button className="primary xs" onClick={() => void onRestartToUpdate()}>
+              Restart now
+            </button>
+            <button
+              className="ghost xs"
+              title="Installs the next time you quit Kanmer."
+              onClick={() => setUpdateDismissed(true)}
+            >
+              Later
+            </button>
+          </div>
+        </div>
+      )}
+
       {view === "ticket" && (
         <FilterBar
           board={board}
@@ -1057,6 +1128,20 @@ export function App(): JSX.Element {
             const target = pendingProject;
             setPendingProject(null);
             void runOpen(target);
+          }}
+        />
+      )}
+
+      {pendingRestart && (
+        <ConfirmModal
+          message={pendingRestart}
+          actionLabel="Restart and update"
+          onCancel={() => setPendingRestart(null)}
+          onConfirm={() => {
+            editorDirty.current = false;
+            setPendingRestart(null);
+            // Second and last call site — see onRestartToUpdate's invariant.
+            void window.kanmer.installUpdate();
           }}
         />
       )}

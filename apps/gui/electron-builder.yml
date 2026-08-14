@@ -22,6 +22,17 @@ extraResources:
   - from: ../../plugins/kanmer
     to: plugins/kanmer
 
+# Auto-update feed. owner/repo are explicit because neither package.json has a
+# `repository` field, so electron-builder's auto-detection has nothing to read.
+# releaseType MUST NOT be the default `draft`: GitHubProvider reads
+# releases.atom and /releases/latest, and neither lists drafts — a draft release
+# is invisible to every installed client, silently.
+publish:
+  - provider: github
+    owner: collisionengineers
+    repo: kanmer
+    releaseType: release
+
 win:
   target:
     - nsis

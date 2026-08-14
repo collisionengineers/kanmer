@@ -178,6 +178,14 @@ textarea:focus {
   border-bottom: 1px solid #433a1f;
   color: var(--warn, #ffcf7a);
 }
+.banner.info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #14202a;
+  border-bottom: 1px solid #1f3543;
+  color: var(--accent, #7ac0ff);
+}
 .conflict-banner {
   border-radius: var(--radius);
   border: 1px solid #433a1f;

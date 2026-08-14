@@ -43,9 +43,12 @@ export const CH = {
   getSettings: "kanmer:getSettings",
   setTheme: "kanmer:setTheme",
   setNotifications: "kanmer:setNotifications",
+  setPreferences: "kanmer:setPreferences",
   connectAgent: "kanmer:connectAgent",
   disconnectAgent: "kanmer:disconnectAgent",
   listProviders: "kanmer:listProviders",
+  getSkillsStatus: "kanmer:getSkillsStatus",
+  updateSkills: "kanmer:updateSkills",
   dispatchAgent: "kanmer:dispatchAgent",
   cancelDispatch: "kanmer:cancelDispatch",
   listDispatches: "kanmer:listDispatches",
@@ -53,6 +56,7 @@ export const CH = {
   dispatchStatus: "kanmer:dispatchStatus",
   showItemMenu: "kanmer:showItemMenu",
   migrate: "kanmer:migrate",
+  backfillBoard: "kanmer:backfillBoard",
   getFormat: "kanmer:getFormat",
   getDoc: "kanmer:getDoc",
   setDoc: "kanmer:setDoc",
@@ -61,6 +65,8 @@ export const CH = {
   getDocModel: "kanmer:getDocModel",
   openRepoDoc: "kanmer:openRepoDoc",
   getRepoDoc: "kanmer:getRepoDoc",
+  pickRepoDoc: "kanmer:pickRepoDoc",
+  getGateStatus: "kanmer:getGateStatus",
   getActivity: "kanmer:getActivity",
   changed: "kanmer:changed",
   /** Main → renderer: reveal an item (toast click, etc.). */
@@ -72,6 +78,20 @@ export const CH = {
 } as const;
 
 export type Theme = "dark" | "light" | "system";
+export type CardDensity = "comfortable" | "compact";
+
+/**
+ * App-global UI preferences (Phase 4.4) — behaviour/appearance knobs that aren't
+ * board data: card density, delete confirmation, and the defaults a new ticket
+ * starts with. `defaultArea`/`defaultPriority` are matched against the active
+ * board by id and fall back gracefully when the id isn't on that board.
+ */
+export interface UiPreferences {
+  cardDensity: CardDensity;
+  confirmOnDelete: boolean;
+  defaultPriority: string;
+  defaultArea: string;
+}
 
 /** The agent hosts Connect supports (mirrors main/providers.ts ProviderId). */
 export type ConnectTarget = "codex" | "claude" | "opencode" | "grok" | "antigravity";
@@ -89,6 +109,14 @@ export interface ProviderInfo {
   dispatch: boolean;
 }
 
+/** Whether a host's copied skill set is present and outdated (Phase 6.2). */
+export interface SkillsStatus {
+  scope: "marketplace" | "project" | "agentsOnly";
+  installedVersion: string | null;
+  bundledVersion: string;
+  updateAvailable: boolean;
+}
+
 /** A background agent dispatch's live status. */
 export interface DispatchStatus {
   dispatchId: string;
@@ -102,7 +130,7 @@ export interface DispatchStatus {
   tail?: string[];
 }
 
-export interface AppSettings {
+export interface AppSettings extends UiPreferences {
   theme: Theme;
   recentProjects: string[];
   notifications: boolean;
@@ -222,6 +250,8 @@ export interface KanmerApi {
   getSettings(): Promise<AppSettings>;
   setTheme(theme: Theme): Promise<AppSettings>;
   setNotifications(on: boolean): Promise<AppSettings>;
+  /** Merge a partial UI-preferences patch (Phase 4.4). */
+  setPreferences(patch: Partial<UiPreferences>): Promise<AppSettings>;
   /** Persist the open-tab session (project roots + the active one). */
   setOpenTabs(openTabs: string[], activeTab: string): Promise<AppSettings>;
   /** Register the MCP server + install skills for the given host in a project. */
@@ -230,6 +260,10 @@ export interface KanmerApi {
   disconnectAgent(projectId: string, target: ConnectTarget): Promise<ConnectResult>;
   /** The agent hosts Connect can register (drives the Connect tab). */
   listProviders(): Promise<ProviderInfo[]>;
+  /** Whether the host's copied skill set is present and outdated (Phase 6.2). */
+  getSkillsStatus(projectId: string, target: ConnectTarget): Promise<SkillsStatus>;
+  /** Re-copy the bundled skills for a host ("Update skills"). */
+  updateSkills(projectId: string, target: ConnectTarget): Promise<ConnectResult>;
   /** Spawn a background agent to work a ticket end-to-end (request #10). */
   dispatchAgent(projectId: string, ticketId: string, target: ConnectTarget): Promise<DispatchStatus>;
   /** Cancel a dispatch by its globally unique dispatch id (tree-kills the child). */
@@ -242,6 +276,8 @@ export interface KanmerApi {
   showItemMenu(payload: ItemMenuPayload): Promise<ItemMenuAction | null>;
   /** Migrate a v1 project to format 2 (dryRun for the report only). */
   migrate(projectId: string, dryRun: boolean): Promise<MigrationReport>;
+  /** Backfill the 7-stage default onto an already-v2 board (dryRun previews). */
+  backfillBoard(projectId: string, dryRun: boolean): Promise<{ addedStages: string[] }>;
   /** A project's current on-disk format — re-read after an external migration. */
   getFormat(projectId: string): Promise<1 | 2>;
   /**
@@ -278,6 +314,13 @@ export interface KanmerApi {
   openRepoDoc(projectId: string, relPath: string): Promise<void>;
   /** Read a governing doc's text for the in-app view; null when missing/unreadable. */
   getRepoDoc(projectId: string, relPath: string): Promise<string | null>;
+  /** Native file picker rooted at the project; resolves to a repo-relative path or null. */
+  pickRepoDoc(projectId: string): Promise<string | null>;
+  /**
+   * For a ticket, per board stage: the unmet gate reasons if it moved there from
+   * its current stage (empty array = the move is allowed). Backs the drag lock-tint.
+   */
+  getGateStatus(projectId: string, id: string): Promise<Record<string, string[]>>;
   /** Read the activity log. */
   getActivity(
     projectId: string,

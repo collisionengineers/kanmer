@@ -349,7 +349,8 @@ try {
   check("take_ticket release clears the taken fields", !JSON.parse(textOf(released)).taken_at);
 
   // A status reorder that would make a stage final is gated the same way a move
-  // is: a proofless ticket created directly into "review".
+  // is: a ticket created directly into "review" without the configured
+  // post-implementation report needed to cross its new final boundary.
   await client.callTool({
     name: "create_item",
     arguments: { type: "ticket", title: "Reorder victim", status: "review" },
@@ -362,8 +363,8 @@ try {
     },
   });
   check(
-    "reorder_columns status is proof-gated",
-    gatedReorder.isError === true && textOf(gatedReorder).includes("proof.md"),
+    "reorder_columns status applies the configured final-stage gate",
+    gatedReorder.isError === true && textOf(gatedReorder).includes("post-implementation-report.md"),
     textOf(gatedReorder).slice(0, 80),
   );
   const boardStillDone = JSON.parse(

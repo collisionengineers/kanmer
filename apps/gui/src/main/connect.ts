@@ -6,7 +6,9 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import {
+  isNewerVersion,
   providerById,
+  SKILLS_VERSION_FILE,
   type AgentProvider,
   type Invocation,
   type ProviderId,
@@ -14,7 +16,6 @@ import {
 import { applyManagedBlock, removeManagedBlock } from "./agentsBlock.js";
 
 const execAsync = promisify(exec);
-const SKILLS_VERSION_FILE = ".kanmer-skills-version";
 
 /** Back-compat alias — the IPC layer still refers to a "connect target". */
 export type ConnectTarget = ProviderId;
@@ -48,6 +49,18 @@ function serverInvocation(projectRoot: string): Invocation {
 function pluginRoot(): string {
   if (app.isPackaged) return join(process.resourcesPath, "plugins", "kanmer");
   return join(resolve(app.getAppPath(), "..", ".."), "plugins", "kanmer");
+}
+
+/** The version of the bundled skill set, read from the plugin manifest. */
+async function bundledSkillsVersion(): Promise<string> {
+  try {
+    const manifest = JSON.parse(
+      await readFile(join(pluginRoot(), ".claude-plugin", "plugin.json"), "utf8"),
+    ) as { version?: unknown };
+    return typeof manifest.version === "string" ? manifest.version : "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
 }
 
 async function writeAtomic(file: string, contents: string): Promise<void> {
@@ -142,9 +155,68 @@ async function installSkills(provider: AgentProvider, root: string): Promise<str
     const dest = join(root, provider.install.skillsDir);
     await mkdir(dest, { recursive: true });
     await cp(join(pluginRoot(), "skills"), dest, { recursive: true });
-    return `skills → ${provider.install.skillsDir}, AGENTS.md block ensured`;
+    // Stamp the copy so getSkillsStatus can offer "Update skills" later.
+    const version = await bundledSkillsVersion();
+    await writeFile(join(dest, SKILLS_VERSION_FILE), `${version}\n`, "utf8");
+    return `skills v${version} → ${provider.install.skillsDir}, AGENTS.md block ensured`;
   }
   return "AGENTS.md block ensured (host reads AGENTS.md for skills)";
+}
+
+export interface SkillsStatus {
+  /** How this host receives skills. */
+  scope: "marketplace" | "project" | "agentsOnly";
+  /** The stamped version of the copied skill set (project scope only), else null. */
+  installedVersion: string | null;
+  /** The version bundled with this app. */
+  bundledVersion: string;
+  /** True when a copied skill set is present but older than the bundled one. */
+  updateAvailable: boolean;
+}
+
+/**
+ * Report whether a copied skill set is present and outdated (Phase 6.2). Only
+ * meaningful for project-scope copies (grok): marketplace hosts manage their own
+ * plugin, and agentsOnly hosts read the always-refreshed AGENTS.md block.
+ */
+export async function skillsStatus(id: ProviderId, projectRoot: string): Promise<SkillsStatus> {
+  const provider = providerById(id);
+  const bundledVersion = await bundledSkillsVersion();
+  const base: SkillsStatus = {
+    scope: "marketplace",
+    installedVersion: null,
+    bundledVersion,
+    updateAvailable: false,
+  };
+  if (!provider || provider.install.kind === "marketplace") return base;
+  if (provider.install.skillsScope !== "project" || !provider.install.skillsDir) {
+    return { ...base, scope: "agentsOnly" };
+  }
+  const marker = join(projectRoot, provider.install.skillsDir, SKILLS_VERSION_FILE);
+  let installedVersion: string | null = null;
+  if (existsSync(marker)) installedVersion = (await readFile(marker, "utf8")).trim() || null;
+  return {
+    scope: "project",
+    installedVersion,
+    bundledVersion,
+    updateAvailable: installedVersion !== null && isNewerVersion(bundledVersion, installedVersion),
+  };
+}
+
+/** Re-copy the bundled skills for a provider (the "Update skills" action). */
+export async function updateSkills(id: ProviderId, projectRoot: string): Promise<ConnectResult> {
+  const provider = providerById(id);
+  if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
+  try {
+    const note = await installSkills(provider, projectRoot);
+    return { ok: true, command: `update-skills ${id}`, output: note };
+  } catch (err) {
+    return {
+      ok: false,
+      command: `update-skills ${id}`,
+      output: err instanceof Error ? err.message : String(err),
+    };
+  }
 }
 
 /**

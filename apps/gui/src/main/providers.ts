@@ -55,6 +55,32 @@ export function q(s: string): string {
   return /[\s"]/.test(s) ? `"${s.replace(/"/g, '\\"')}"` : s;
 }
 
+/** The stamp a copied skill set carries so Connect can offer "Update skills". */
+export const SKILLS_VERSION_FILE = ".kanmer-skills-version";
+
+/**
+ * True when `bundled` is a strictly newer version than `installed` (Phase 6.2).
+ * Dot-separated numeric compare with a lexical tail fallback; a null/blank
+ * `installed` (never stamped) is not "newer" — that's "not installed", handled
+ * by the caller. Pure, so it's unit-testable without the filesystem.
+ */
+export function isNewerVersion(bundled: string, installed: string): boolean {
+  const parse = (v: string) => v.trim().split(".").map((p) => ({ n: Number(p), raw: p }));
+  const a = parse(bundled);
+  const b = parse(installed);
+  const len = Math.max(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    const x = a[i] ?? { n: 0, raw: "0" };
+    const y = b[i] ?? { n: 0, raw: "0" };
+    if (Number.isFinite(x.n) && Number.isFinite(y.n)) {
+      if (x.n !== y.n) return x.n > y.n;
+    } else if (x.raw !== y.raw) {
+      return x.raw > y.raw;
+    }
+  }
+  return false;
+}
+
 /**
  * codex has no project scope, so each project registers under its own server
  * name — otherwise a second project silently rewrites the first one's --root.

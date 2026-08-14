@@ -1,6 +1,6 @@
 ---
 name: kanmer-closeout
-description: Close out a finished Kanmer ticket after its PR merges — verify the merge, finalise proof.md, move the ticket to the final stage, record the outcome, then remove the worktree, delete the branch, and release, so nothing stale accumulates. Use when the user says "the PR merged", "close out <ID>", "wrap up this ticket", "clean up the worktree/branch", or when a taken ticket's PR has landed. DO NOT USE FOR deciding whether the work is good (kanmer-review) or for tickets whose PR hasn't merged yet.
+description: Close out a verified Kanmer ticket — confirm proof.md is final, record its commits/PRs and deployment status, then remove the worktree, delete the branch, and release, so nothing stale accumulates. Runs after kanmer-verify has validated the merged result and moved the ticket to Done. Use when the user says "close out <ID>", "wrap up this ticket", or "clean up the worktree/branch". DO NOT USE FOR deciding whether the work is good (kanmer-review), verifying on merged main (kanmer-verify), or tickets whose PR hasn't merged yet.
 ---
 
 # Closing out a Kanmer ticket
@@ -27,13 +27,18 @@ Proceed only on `state: "MERGED"`. `OPEN` → not a closeout; stop and say so.
 
 ## 1. Kanmer half
 
-1. **Finalise `proof.md`** — append the PR URL and merge date to the
-   evidence (`set_ticket_doc doc: "proof", append: true`).
-2. **`move_item` to the board's last stage** (resolve via `list_board`; the
-   proof gate is now satisfied).
-3. **Record the Outcome** in the ticket body's Outcome section
-   (`update_item` with `expected_updated`): PR link, merge date, follow-up
-   ticket ids, anything that shipped differently than planned.
+The ticket is already at **Done** — `kanmer-verify` validated the merged result
+and wrote `proof.md` on merged main. Closeout is record-keeping, not a stage move.
+
+1. **Confirm `proof.md` is final** (`get_ticket_doc doc: "proof"`); append the PR
+   URL and merge date if verify didn't.
+2. **Record traceability** (`update_item` with `expected_updated`): `commits`
+   (the merged SHAs), `prs` (the merged PR ref), and — if the board tracks
+   deployment — set `deployment` (`n/a` for non-deployable work, `not-deployed`,
+   or the environment it shipped to). CI auto-detection is out of scope; set it
+   from what actually happened.
+3. **Record the Outcome** in the ticket body's Outcome section: follow-up ticket
+   ids and anything that shipped differently than planned.
 
 ## 2. Git half
 

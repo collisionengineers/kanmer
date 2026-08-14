@@ -3,6 +3,15 @@ import { join } from "node:path";
 import { readFileSync, writeFileSync } from "node:fs";
 
 export type Theme = "dark" | "light" | "system";
+export type CardDensity = "comfortable" | "compact";
+
+/** App-global UI preferences (Phase 4.4). Mirror of shared/ipc.ts UiPreferences. */
+export interface UiPreferences {
+  cardDensity: CardDensity;
+  confirmOnDelete: boolean;
+  defaultPriority: string;
+  defaultArea: string;
+}
 
 export interface WindowBounds {
   x?: number;
@@ -12,7 +21,7 @@ export interface WindowBounds {
   maximized: boolean;
 }
 
-export interface AppSettings {
+export interface AppSettings extends UiPreferences {
   theme: Theme;
   recentProjects: string[];
   /** Native toasts for agent-made board changes (default on). */
@@ -32,6 +41,10 @@ const DEFAULTS: AppSettings = {
   openTabs: [],
   activeTab: "",
   sessionInitialized: false,
+  cardDensity: "comfortable",
+  confirmOnDelete: true,
+  defaultPriority: "",
+  defaultArea: "",
 };
 const MAX_RECENT = 8;
 
@@ -51,6 +64,10 @@ export function readSettings(): AppSettings {
       openTabs: Array.isArray(parsed.openTabs) ? parsed.openTabs : [],
       activeTab: typeof parsed.activeTab === "string" ? parsed.activeTab : "",
       sessionInitialized: parsed.sessionInitialized === true,
+      cardDensity: parsed.cardDensity === "compact" ? "compact" : "comfortable",
+      confirmOnDelete: parsed.confirmOnDelete !== false,
+      defaultPriority: typeof parsed.defaultPriority === "string" ? parsed.defaultPriority : "",
+      defaultArea: typeof parsed.defaultArea === "string" ? parsed.defaultArea : "",
       ...(bounds && typeof bounds.width === "number" && typeof bounds.height === "number"
         ? { windowBounds: bounds }
         : {}),
@@ -84,6 +101,19 @@ export function setTheme(theme: Theme): AppSettings {
 export function setNotifications(on: boolean): AppSettings {
   const settings = readSettings();
   settings.notifications = on;
+  writeSettings(settings);
+  return settings;
+}
+
+/** Merge a partial UI-preferences patch (Phase 4.4). */
+export function setPreferences(patch: Partial<UiPreferences>): AppSettings {
+  const settings = readSettings();
+  if (patch.cardDensity === "compact" || patch.cardDensity === "comfortable") {
+    settings.cardDensity = patch.cardDensity;
+  }
+  if (typeof patch.confirmOnDelete === "boolean") settings.confirmOnDelete = patch.confirmOnDelete;
+  if (typeof patch.defaultPriority === "string") settings.defaultPriority = patch.defaultPriority;
+  if (typeof patch.defaultArea === "string") settings.defaultArea = patch.defaultArea;
   writeSettings(settings);
   return settings;
 }

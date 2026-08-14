@@ -547,6 +547,18 @@ export function Editor(props: EditorProps): JSX.Element {
               placeholder="docs/prd/…"
               ariaLabel="Governing document paths"
             />
+            <button
+              type="button"
+              className="ghost xs"
+              onClick={async () => {
+                const picked = await client.pickRepoDoc();
+                if (!picked) return;
+                const cur = splitList(form.refs);
+                if (!cur.includes(picked)) set("refs", [...cur, picked].join(", "));
+              }}
+            >
+              Browse…
+            </button>
             {splitList(form.refs).length > 0 && (
               <div className="refs-open">
                 {splitList(form.refs).map((r) => (

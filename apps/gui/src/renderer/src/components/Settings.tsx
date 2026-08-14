@@ -12,9 +12,12 @@ import type {
   ConnectTarget,
   DocModel,
   ProviderInfo,
+  SkillsStatus,
   Theme,
+  UiPreferences,
 } from "../../../shared/ipc.js";
 import { useClient } from "../lib/client.js";
+import { boardDraftModified, reconcileBoardDraft } from "../lib/settingsDraft.js";
 
 type SettingsTab = "board" | "documents" | "appearance" | "connect";
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
@@ -29,9 +32,11 @@ interface SettingsProps {
   items: Item[];
   theme: Theme;
   notifications: boolean;
+  preferences: UiPreferences;
   onSaveBoard: (next: BoardConfig) => Promise<void>;
   onSetTheme: (theme: Theme) => void;
   onSetNotifications: (on: boolean) => void;
+  onSetPreferences: (patch: Partial<UiPreferences>) => void;
   onClose: () => void;
 }
 
@@ -42,29 +47,36 @@ export function Settings({
   items,
   theme,
   notifications,
+  preferences,
   onSaveBoard,
   onSetTheme,
   onSetNotifications,
+  onSetPreferences,
   onClose,
 }: SettingsProps): JSX.Element {
+  const client = useClient();
   const [draft, setDraft] = useState<BoardConfig>(() => structuredClone(board));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [tab, setTab] = useState<SettingsTab>("board");
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
+  const [reloadRequired, setReloadRequired] = useState(false);
 
   // Usage counts so deleting an in-use column shows a soft warning.
   const usage = useMemo(() => countUsage(items), [items]);
 
-  const modified = useMemo(
-    () => JSON.stringify(draft) !== JSON.stringify(board),
-    [draft, board],
-  );
+  const modified = useMemo(() => boardDraftModified(draft, board), [draft, board]);
 
   const setColumns = (kind: ColumnKind, cols: BoardColumn[]) =>
     setDraft((d) => ({ ...d, [pluralKey(kind)]: cols }));
 
   const save = async () => {
+    if (reloadRequired) {
+      setError("Reload Settings before saving: the board changed but this draft could not be refreshed.");
+      return;
+    }
     const problems = validateDraft(draft, board, items);
     if (problems.length > 0) {
       setError(problems.join(" · "));
@@ -87,6 +99,31 @@ export function Settings({
   const requestClose = () => {
     if (modified) setConfirmDiscard(true);
     else onClose();
+  };
+
+  const backfill = async () => {
+    if (modified || backfilling) return;
+    setBackfilling(true);
+    setError(null);
+    let result;
+    try {
+      result = await client.backfillBoard(false);
+    } catch (err) {
+      setError(`Backfill failed: ${err instanceof Error ? err.message : String(err)}`);
+      setBackfilling(false);
+      return;
+    }
+    try {
+      const refreshed = await client.getBoard();
+      setDraft(reconcileBoardDraft(refreshed));
+      setReloadRequired(false);
+      setBackfillMsg(result.addedStages.length ? `Added: ${result.addedStages.join(", ")}` : "Already current.");
+    } catch (err) {
+      setReloadRequired(true);
+      setError(`Backfill applied but Settings could not refresh: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBackfilling(false);
+    }
   };
 
   // Focus trap: focus the dialog on open, cycle Tab inside it, restore after.
@@ -137,7 +174,7 @@ export function Settings({
           <button className="ghost sm" onClick={requestClose}>
             Cancel
           </button>
-          <button className="primary sm" disabled={saving} onClick={() => void save()}>
+          <button className="primary sm" disabled={saving || reloadRequired} onClick={() => void save()}>
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
@@ -222,7 +259,16 @@ export function Settings({
               </>
             )}
 
-            {tab === "documents" && <DocumentsTab draft={draft} setDraft={setDraft} />}
+            {tab === "documents" && (
+              <DocumentsTab
+                draft={draft}
+                setDraft={setDraft}
+                onBackfill={backfill}
+                backfilling={backfilling}
+                backfillMsg={backfillMsg}
+                backfillDisabled={modified}
+              />
+            )}
 
             {tab === "appearance" && (
               <>
@@ -252,6 +298,75 @@ export function Settings({
                     Toast when an agent changes the board while the window is unfocused
                   </label>
                 </div>
+
+                <div className="settings-section">
+                  <h3>Card density</h3>
+                  <div className="theme-toggle">
+                    {(["comfortable", "compact"] as const).map((d) => (
+                      <button
+                        key={d}
+                        className={d === preferences.cardDensity ? "tab active" : "tab"}
+                        onClick={() => onSetPreferences({ cardDensity: d })}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="settings-section">
+                  <h3>Behaviour</h3>
+                  <label className="check">
+                    <input
+                      type="checkbox"
+                      checked={preferences.confirmOnDelete}
+                      onChange={(e) => onSetPreferences({ confirmOnDelete: e.target.checked })}
+                    />
+                    Ask for confirmation before deleting a ticket
+                  </label>
+                </div>
+
+                <div className="settings-section">
+                  <h3>New-ticket defaults</h3>
+                  <p className="hint">
+                    Pre-fill the &quot;New ticket&quot; dialog. Applied only when the id exists on
+                    this board.
+                  </p>
+                  <div className="field-row">
+                    <label className="field">
+                      <span>Default area</span>
+                      <select
+                        value={board.areas.some((a) => a.id === preferences.defaultArea) ? preferences.defaultArea : ""}
+                        onChange={(e) => onSetPreferences({ defaultArea: e.target.value })}
+                      >
+                        <option value="">— none —</option>
+                        {board.areas.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>Default priority</span>
+                      <select
+                        value={
+                          board.priorities.some((p) => p.id === preferences.defaultPriority)
+                            ? preferences.defaultPriority
+                            : ""
+                        }
+                        onChange={(e) => onSetPreferences({ defaultPriority: e.target.value })}
+                      >
+                        <option value="">— board default —</option>
+                        {board.priorities.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </div>
               </>
             )}
 
@@ -268,12 +383,23 @@ function ConnectSection(): JSX.Element {
   const client = useClient();
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [skills, setSkills] = useState<Record<string, SkillsStatus>>({});
   const [result, setResult] = useState<
-    (ConnectResult & { target: ConnectTarget; action: "connect" | "disconnect" }) | null
+    (ConnectResult & { target: ConnectTarget; action: "connect" | "disconnect" | "update" }) | null
   >(null);
 
+  const refreshSkills = (list: ProviderInfo[]) => {
+    for (const p of list) {
+      void client.getSkillsStatus(p.id).then((s) => setSkills((cur) => ({ ...cur, [p.id]: s })));
+    }
+  };
+
   useEffect(() => {
-    void window.kanmer.listProviders().then(setProviders);
+    void window.kanmer.listProviders().then((list) => {
+      setProviders(list);
+      refreshSkills(list);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const run = async (target: ConnectTarget, action: "connect" | "disconnect") => {
@@ -284,6 +410,18 @@ function ConnectSection(): JSX.Element {
           ? await client.connectAgent(target)
           : await client.disconnectAgent(target);
       setResult({ ...res, target, action });
+      void client.getSkillsStatus(target).then((s) => setSkills((cur) => ({ ...cur, [target]: s })));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const update = async (target: ConnectTarget) => {
+    setBusy(`update:${target}`);
+    try {
+      const res = await client.updateSkills(target);
+      setResult({ ...res, target, action: "update" });
+      void client.getSkillsStatus(target).then((s) => setSkills((cur) => ({ ...cur, [target]: s })));
     } finally {
       setBusy(null);
     }
@@ -294,7 +432,9 @@ function ConnectSection(): JSX.Element {
       <h3>Connect an AI agent</h3>
       <p className="hint">
         Registers this project's Kanmer board with the host's MCP client and installs the skills —
-        via its plugin marketplace, or the shared AGENTS.md block for hosts without one.
+        via its plugin marketplace (Claude Code, Codex), a project skills dir (Grok), or the shared
+        AGENTS.md block for hosts that only read skills globally (opencode, Antigravity), so nothing
+        is written outside this project.
       </p>
       <div className="provider-list">
         {providers.map((p) => (
@@ -302,10 +442,27 @@ function ConnectSection(): JSX.Element {
             <span className="provider-name">
               {p.label}
               {!p.dispatch && <span className="hint"> · register-only</span>}
+              {skills[p.id]?.updateAvailable && (
+                <span className="hint">
+                  {" "}
+                  · skills v{skills[p.id]!.installedVersion} →{" "}
+                  {skills[p.id]!.bundledVersion}
+                </span>
+              )}
             </span>
             <button className="ghost sm" disabled={busy !== null} onClick={() => void run(p.id, "connect")}>
               {busy === `connect:${p.id}` ? "Connecting…" : "Connect"}
             </button>
+            {skills[p.id]?.updateAvailable && (
+              <button
+                className="ghost sm"
+                disabled={busy !== null}
+                onClick={() => void update(p.id)}
+                title={`Bundled skills (v${skills[p.id]!.bundledVersion}) are newer than the copy in this project (v${skills[p.id]!.installedVersion})`}
+              >
+                {busy === `update:${p.id}` ? "Updating…" : "Update skills"}
+              </button>
+            )}
             <button
               className="ghost sm"
               disabled={busy !== null}
@@ -321,7 +478,7 @@ function ConnectSection(): JSX.Element {
         <div className={result.ok ? "connect-result ok" : "connect-result err"}>
           <div className="connect-status">
             {result.ok
-              ? `✓ ${result.action === "connect" ? "Connected" : "Disconnected"} ${result.target}. ${result.output}`
+              ? `✓ ${result.action === "connect" ? "Connected" : result.action === "update" ? "Updated skills for" : "Disconnected"} ${result.target}. ${result.output}`
               : `Couldn't ${result.action} ${result.target}.${result.action === "connect" ? " Run this yourself:" : ""}`}
           </div>
           {result.command && (
@@ -352,39 +509,78 @@ function ConnectSection(): JSX.Element {
 function DocumentsTab({
   draft,
   setDraft,
+  onBackfill,
+  backfilling,
+  backfillMsg,
+  backfillDisabled,
 }: {
   draft: BoardConfig;
   setDraft: React.Dispatch<React.SetStateAction<BoardConfig>>;
+  onBackfill: () => void;
+  backfilling: boolean;
+  backfillMsg: string | null;
+  backfillDisabled: boolean;
 }): JSX.Element {
   const client = useClient();
   const [model, setModel] = useState<DocModel | null>(null);
   useEffect(() => {
     void client.getDocModel().then(setModel);
   }, [client]);
+  const missingStages = [
+    "backlog",
+    "researching",
+    "planning",
+    "implementing",
+    "review",
+    "verifying",
+    "done",
+  ].filter((c) => !draft.statuses.some((s) => s.id === c));
 
-  const customized = draft.docs?.default?.types !== undefined;
-  const types = draft.docs?.default?.types ?? model?.defaultTypes ?? [];
-  const gates = draft.docs?.default?.gates ?? model?.defaultGates ?? [];
+  // Scope: "" = the board default, else a per-area override (D5). The editor
+  // below operates on whichever scope is selected.
+  const [activeArea, setActiveArea] = useState("");
+  const scopeTypes = activeArea ? draft.docs?.areas?.[activeArea]?.types : draft.docs?.default?.types;
+  const scopeGates = activeArea ? draft.docs?.areas?.[activeArea]?.gates : draft.docs?.default?.gates;
+  const customized = scopeTypes !== undefined;
+  const types = scopeTypes ?? model?.defaultTypes ?? [];
+  const gates = scopeGates ?? model?.defaultGates ?? [];
   const stageName = (id: string) => draft.statuses.find((s) => s.id === id)?.name ?? id;
 
   const patchDefault = (patch: { types?: DocType[]; gates?: GateRule[] }) =>
-    setDraft((d) => ({
-      ...d,
-      docs: {
-        repoDocs: d.docs?.repoDocs ?? model?.repoDocs,
-        areas: d.docs?.areas,
-        default: {
-          types: patch.types ?? d.docs?.default?.types ?? model?.defaultTypes ?? [],
-          gates: patch.gates ?? d.docs?.default?.gates ?? model?.defaultGates ?? [],
-        },
-      },
-    }));
+    setDraft((d) => {
+      const docs = { ...(d.docs ?? {}) };
+      docs.repoDocs = docs.repoDocs ?? model?.repoDocs;
+      const scope = {
+        types:
+          patch.types ??
+          (activeArea ? docs.areas?.[activeArea]?.types : docs.default?.types) ??
+          model?.defaultTypes ??
+          [],
+        gates:
+          patch.gates ??
+          (activeArea ? docs.areas?.[activeArea]?.gates : docs.default?.gates) ??
+          model?.defaultGates ??
+          [],
+      };
+      if (activeArea) docs.areas = { ...(docs.areas ?? {}), [activeArea]: scope };
+      else docs.default = scope;
+      return { ...d, docs };
+    });
 
   const resetDefaults = () =>
     setDraft((d) => {
       const docs = { ...(d.docs ?? {}) };
-      delete (docs as { default?: unknown }).default;
-      const empty = !docs.repoDocs && !docs.areas;
+      if (activeArea) {
+        const areas = { ...(docs.areas ?? {}) };
+        delete areas[activeArea];
+        docs.areas = Object.keys(areas).length ? areas : undefined;
+      } else {
+        delete (docs as { default?: unknown }).default;
+      }
+      const empty =
+        !docs.repoDocs &&
+        !docs.default &&
+        (!docs.areas || Object.keys(docs.areas).length === 0);
       return { ...d, docs: empty ? undefined : docs };
     });
 
@@ -418,11 +614,25 @@ function DocumentsTab({
   return (
     <>
       <div className="settings-section">
+        <label className="field">
+          <span>Editing document model for</span>
+          <select value={activeArea} onChange={(e) => setActiveArea(e.target.value)}>
+            <option value="">Default (all areas)</option>
+            {draft.areas.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name} {draft.docs?.areas?.[a.id]?.types ? "(customized)" : "(inherits default)"}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="settings-section">
         <div className="section-head">
           <h3>Document types</h3>
           {customized ? (
             <button className="ghost xs" onClick={resetDefaults}>
-              Reset to defaults
+              {activeArea ? "Reset to default" : "Reset to defaults"}
             </button>
           ) : (
             <button className="ghost xs" onClick={() => patchDefault({})} disabled={!model}>
@@ -432,7 +642,12 @@ function DocumentsTab({
         </div>
         <p className="hint">
           Order is the hierarchy; each doc&apos;s <em>requires</em> must exist before it can be
-          written. {customized ? "" : "This board uses the defaults — Customize to edit."}
+          written.{" "}
+          {customized
+            ? ""
+            : activeArea
+              ? "This area inherits the default set — Customize to override it."
+              : "This board uses the defaults — Customize to edit."}
         </p>
         {types.map((t, i) => (
           <div key={t.id} className="doc-type-row">
@@ -538,6 +753,26 @@ function DocumentsTab({
           />
         )}
       </div>
+
+      {missingStages.length > 0 && (
+        <div className="settings-section">
+          <h3>Upgrade board</h3>
+          <p className="hint">
+            This board is missing canonical stages ({missingStages.join(", ")}). Backfill inserts
+            them in order — additive, never renaming/reordering existing stages, never touching item
+            files. Backfill refreshes this draft before it can be saved.
+          </p>
+          <button
+            className="ghost sm"
+            disabled={backfillDisabled || backfilling}
+            title={backfillDisabled ? "Save or discard Settings changes before backfilling." : undefined}
+            onClick={onBackfill}
+          >
+            {backfilling ? "Backfilling…" : "Backfill missing stages"}
+          </button>
+          {backfillMsg && <p className="hint">{backfillMsg}</p>}
+        </div>
+      )}
     </>
   );
 }

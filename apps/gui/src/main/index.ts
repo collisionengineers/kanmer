@@ -13,14 +13,17 @@ import {
 } from "electron";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import { classifyKanmerPath } from "../shared/kanmerPath.js";
 import {
   KanmerStore,
   assertSafeRepoPath,
+  evaluateGates,
   getLinkGraph,
   linkItems,
+  migrateBoard,
   migrateToV2,
+  repoDocKindOf,
   repoDocsMap,
   resolveDocTypes,
   resolveGates,
@@ -47,12 +50,20 @@ import {
   recordRecentProject,
   setNotifications,
   setOpenTabs,
+  setPreferences,
   setTheme,
   setWindowBounds,
   type Theme,
+  type UiPreferences,
   type WindowBounds,
 } from "./settings.js";
-import { connectAgent, disconnectAgent, type ConnectTarget } from "./connect.js";
+import {
+  connectAgent,
+  disconnectAgent,
+  skillsStatus,
+  updateSkills,
+  type ConnectTarget,
+} from "./connect.js";
 import { dispatchableProviders, listProviders } from "./providers.js";
 import {
   cancelDispatch,
@@ -535,6 +546,7 @@ function registerIpc(): void {
   ipcMain.handle(CH.getSettings, () => readSettings());
   ipcMain.handle(CH.setTheme, (_e, theme: Theme) => setTheme(theme));
   ipcMain.handle(CH.setNotifications, (_e, on: boolean) => setNotifications(on));
+  ipcMain.handle(CH.setPreferences, (_e, patch: Partial<UiPreferences>) => setPreferences(patch));
   ipcMain.handle(CH.setOpenTabs, (_e, openTabs: string[], activeTab: string) =>
     setOpenTabs(openTabs, activeTab),
   );
@@ -545,6 +557,12 @@ function registerIpc(): void {
     disconnectAgent(target, requireStore(p).paths.projectRoot),
   );
   ipcMain.handle(CH.listProviders, () => listProviders());
+  ipcMain.handle(CH.getSkillsStatus, (_e, p: string, target: ConnectTarget) =>
+    skillsStatus(target, requireStore(p).paths.projectRoot),
+  );
+  ipcMain.handle(CH.updateSkills, (_e, p: string, target: ConnectTarget) =>
+    updateSkills(target, requireStore(p).paths.projectRoot),
+  );
   ipcMain.handle(CH.dispatchAgent, (_e, p: string, ticketId: string, target: ConnectTarget) =>
     dispatchTicket(requireStore(p), target, p, ticketId),
   );
@@ -557,6 +575,11 @@ function registerIpc(): void {
   ipcMain.handle(CH.migrate, (_e, p: string, dryRun: boolean) =>
     migrateToV2(requireStore(p), { dryRun }),
   );
+  ipcMain.handle(CH.backfillBoard, async (_e, p: string, dryRun: boolean) => {
+    if (!dryRun) markOwnWrite(p, "board");
+    const { backfill } = await migrateBoard(requireStore(p), { dryRun });
+    return { addedStages: backfill.addedStages };
+  });
   ipcMain.handle(CH.getFormat, (_e, p: string) => requireStore(p).detectFormat());
   ipcMain.handle(CH.getDoc, (_e, p: string, id: string, doc: TicketDoc) =>
     requireStore(p).getDocWithVersion(id, doc),
@@ -601,6 +624,52 @@ function registerIpc(): void {
     } catch {
       return null;
     }
+  });
+  ipcMain.handle(CH.pickRepoDoc, async (_e, p: string) => {
+    const root = requireStore(p).paths.projectRoot;
+    const res = await dialog.showOpenDialog({
+      title: "Pick a governing document",
+      defaultPath: join(root, "docs"),
+      properties: ["openFile"],
+    });
+    if (res.canceled || res.filePaths.length === 0) return null;
+    const abs = res.filePaths[0];
+    if (abs !== root && !abs.startsWith(root + sep)) return null;
+    return relative(root, abs).split(sep).join("/");
+  });
+  ipcMain.handle(CH.getGateStatus, async (_e, p: string, id: string) => {
+    const store = requireStore(p);
+    const [item, board, info] = await Promise.all([
+      store.getItem(id),
+      store.getBoard(),
+      store.getTicketDocsInfo(id),
+    ]);
+    const out: Record<string, string[]> = {};
+    if (!item) return out;
+    const gates = resolveGates(board, item.area);
+    const statuses = board.statuses.map((s) => s.id);
+    const present = info?.docs ?? {};
+    const repoDocSatisfied = (kinds: string[]) =>
+      item.docs_todo === true ||
+      (item.refs ?? []).some((rel) => {
+        const kind = repoDocKindOf(board, rel);
+        return kind !== null && kinds.includes(kind);
+      });
+    for (const stage of statuses) {
+      if (stage === item.status) {
+        out[stage] = [];
+        continue;
+      }
+      const violations = evaluateGates(gates, {
+        statuses,
+        from: item.status,
+        to: stage,
+        hasDoc: (d) => present[d] === true,
+        repoDocSatisfied,
+      });
+      out[stage] = violations.map((v) => v.reason);
+    }
+    return out;
   });
   ipcMain.handle(
     CH.getActivity,

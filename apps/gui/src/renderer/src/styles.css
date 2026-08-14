@@ -259,6 +259,30 @@ textarea:focus {
   border: 1px dashed var(--accent);
   background: var(--accent-dim);
 }
+/* Lock-tint: while dragging, columns the ticket can't enter yet (missing a
+   gated doc) show a muted danger wash so the drop reads as "will be refused". */
+.cell.gated {
+  border: 1px dashed var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  cursor: not-allowed;
+}
+.cell.gated.drop {
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+}
+/* Compact card density (Phase 4.4): tighter cards fit more per column. */
+.board.compact .cell {
+  gap: 4px;
+  min-height: 40px;
+}
+.board.compact .card {
+  padding: 4px 8px;
+}
+.board.compact .card .card-title {
+  font-size: 13px;
+}
+.board.compact .area-group {
+  gap: 4px;
+}
 .card {
   background: var(--bg-2);
   border: 1px solid var(--line-2);
@@ -1503,4 +1527,41 @@ button.danger {
 }
 .proj-new:hover {
   color: var(--fg, #e8e8e8);
+}
+
+/* ── Dispatches drawer (finish Phase 7) ─────────────────────────────────── */
+.dispatch-row {
+  border-bottom: 1px solid var(--border, #2a2a2a);
+  padding: 8px 0;
+}
+.dispatch-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dispatch-provider {
+  font-size: 11px;
+  color: var(--muted, #9aa0a6);
+}
+.chip.dispatch-state.running {
+  background: color-mix(in srgb, var(--accent, #5b8cff) 22%, transparent);
+}
+.chip.dispatch-state.done {
+  background: color-mix(in srgb, #3ddc84 22%, transparent);
+}
+.chip.dispatch-state.failed,
+.chip.dispatch-state.timed-out,
+.chip.dispatch-state.cancelled {
+  background: color-mix(in srgb, var(--danger, #ff6b6b) 22%, transparent);
+}
+.dispatch-tail {
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  background: var(--bg, #121212);
+  border-radius: 4px;
+  font-size: 10px;
+  max-height: 90px;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: var(--muted, #9aa0a6);
 }

@@ -18,7 +18,11 @@ true`, and `get_activity` for recent movement. Look for:
 - **Near-duplicates** — `search_items` on suspicious title pairs; two
   tickets describing one unit of work.
 - **Missing fields** — no `area` on a board that has areas; no priority
-  where the user uses them; `due` dates long past.
+  where the user uses them.
+- **Doc-gate debt** — tickets with `docs_todo: true` whose governing PRD/FRD/ADR
+  was never linked, or missing a doc a later stage requires (`get_doc_gates`
+  names the gap). These silently stall at the next gate; hand them to
+  `kanmer-docs` to link/write the doc, or `link_doc` an existing one.
 - **Oversized tickets** — bodies describing several units of work, or
   checklists that sprawl past one deliverable.
 - **Dead tickets** — untouched for months, superseded, or describing code

@@ -371,6 +371,7 @@ export function App(): JSX.Element {
   // badge, and toast a line when one finishes.
   useEffect(() => {
     return window.kanmer.onDispatchStatus((s) => {
+      if (s.projectId !== rootRef.current) return;
       setDispatching((prev) => {
         const next = new Set(prev);
         if (s.state === "running") next.add(s.ticketId);

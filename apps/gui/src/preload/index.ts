@@ -37,8 +37,8 @@ const api: KanmerApi = {
   disconnectAgent: (p, target) => ipcRenderer.invoke(CH.disconnectAgent, p, target),
   listProviders: () => ipcRenderer.invoke(CH.listProviders),
   dispatchAgent: (p, ticketId, target) => ipcRenderer.invoke(CH.dispatchAgent, p, ticketId, target),
-  cancelDispatch: (ticketId) => ipcRenderer.invoke(CH.cancelDispatch, ticketId),
-  listDispatches: () => ipcRenderer.invoke(CH.listDispatches),
+  cancelDispatch: (dispatchId) => ipcRenderer.invoke(CH.cancelDispatch, dispatchId),
+  listDispatches: (p) => ipcRenderer.invoke(CH.listDispatches, p),
   onDispatchStatus: (cb) => {
     const listener = (_e: unknown, status: DispatchStatus) => cb(status);
     ipcRenderer.on(CH.dispatchStatus, listener);

@@ -92,6 +92,8 @@ export interface ProviderInfo {
 /** A background agent dispatch's live status. */
 export interface DispatchStatus {
   dispatchId: string;
+  /** Canonical project root that owns this dispatch. */
+  projectId: string;
   ticketId: string;
   provider: ConnectTarget;
   state: "running" | "done" | "failed" | "cancelled" | "timed-out";
@@ -175,7 +177,7 @@ export type MenuCommand = { type: "pick-project" } | { type: "open-project"; pat
  * The API exposed to the renderer on `window.kanmer`. Project-scoped methods
  * take the canonical project root as their first argument (`projectId`) so the
  * main process routes them to the right per-project context (Phase 5). Global
- * methods (settings, providers, dispatch listing, menus) take none.
+ * methods (settings, providers, menus) take none.
  */
 export interface KanmerApi {
   pickProject(): Promise<string | null>;
@@ -230,10 +232,10 @@ export interface KanmerApi {
   listProviders(): Promise<ProviderInfo[]>;
   /** Spawn a background agent to work a ticket end-to-end (request #10). */
   dispatchAgent(projectId: string, ticketId: string, target: ConnectTarget): Promise<DispatchStatus>;
-  /** Cancel the in-flight dispatch for a ticket (tree-kills the child). */
-  cancelDispatch(ticketId: string): Promise<boolean>;
-  /** Current running/finished dispatches. */
-  listDispatches(): Promise<DispatchStatus[]>;
+  /** Cancel a dispatch by its globally unique dispatch id (tree-kills the child). */
+  cancelDispatch(dispatchId: string): Promise<boolean>;
+  /** Current in-flight dispatches for a project. */
+  listDispatches(projectId: string): Promise<DispatchStatus[]>;
   /** Subscribe to background-dispatch status updates. Returns an unsubscribe fn. */
   onDispatchStatus(cb: (status: DispatchStatus) => void): () => void;
   /** Show the native right-click menu for a card; resolves with the chosen action. */

@@ -546,10 +546,10 @@ function registerIpc(): void {
   );
   ipcMain.handle(CH.listProviders, () => listProviders());
   ipcMain.handle(CH.dispatchAgent, (_e, p: string, ticketId: string, target: ConnectTarget) =>
-    dispatchTicket(requireStore(p), target, ticketId),
+    dispatchTicket(requireStore(p), target, p, ticketId),
   );
-  ipcMain.handle(CH.cancelDispatch, (_e, ticketId: string) => cancelDispatch(ticketId));
-  ipcMain.handle(CH.listDispatches, () => listDispatches());
+  ipcMain.handle(CH.cancelDispatch, (_e, dispatchId: string) => cancelDispatch(dispatchId));
+  ipcMain.handle(CH.listDispatches, (_e, p: string) => listDispatches(p));
   onDispatchStatus((s) => mainWindow?.webContents.send(CH.dispatchStatus, s));
   ipcMain.handle(CH.showItemMenu, (e, payload: ItemMenuPayload) =>
     showItemMenu(e.sender, payload),

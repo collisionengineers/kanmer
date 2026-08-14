@@ -18,9 +18,19 @@ export interface AppSettings {
   /** Native toasts for agent-made board changes (default on). */
   notifications: boolean;
   windowBounds?: WindowBounds;
+  /** The open-tab session (project roots) restored on next boot. */
+  openTabs: string[];
+  /** The active tab's project root. */
+  activeTab: string;
 }
 
-const DEFAULTS: AppSettings = { theme: "dark", recentProjects: [], notifications: true };
+const DEFAULTS: AppSettings = {
+  theme: "dark",
+  recentProjects: [],
+  notifications: true,
+  openTabs: [],
+  activeTab: "",
+};
 const MAX_RECENT = 8;
 
 function file(): string {
@@ -36,6 +46,8 @@ export function readSettings(): AppSettings {
         parsed.theme === "light" || parsed.theme === "system" ? parsed.theme : "dark",
       recentProjects: Array.isArray(parsed.recentProjects) ? parsed.recentProjects : [],
       notifications: parsed.notifications !== false,
+      openTabs: Array.isArray(parsed.openTabs) ? parsed.openTabs : [],
+      activeTab: typeof parsed.activeTab === "string" ? parsed.activeTab : "",
       ...(bounds && typeof bounds.width === "number" && typeof bounds.height === "number"
         ? { windowBounds: bounds }
         : {}),
@@ -43,6 +55,15 @@ export function readSettings(): AppSettings {
   } catch {
     return { ...DEFAULTS };
   }
+}
+
+/** Persist the open-tab session (capped at MAX_RECENT). */
+export function setOpenTabs(openTabs: string[], activeTab: string): AppSettings {
+  const settings = readSettings();
+  settings.openTabs = openTabs.slice(0, MAX_RECENT);
+  settings.activeTab = activeTab;
+  writeSettings(settings);
+  return settings;
 }
 
 function writeSettings(settings: AppSettings): void {

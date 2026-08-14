@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ActivityEntry } from "@kanmer/core";
+import { useClient } from "../lib/client.js";
 
 interface ActivityPanelProps {
   /** Bumped by App whenever the board changes, to re-fetch. */
@@ -14,11 +15,12 @@ export function ActivityPanel({
   onSelect,
   onClose,
 }: ActivityPanelProps): JSX.Element {
+  const client = useClient();
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
 
   useEffect(() => {
-    void window.kanmer.getActivity({ limit: 150 }).then((list) => setEntries(list.reverse()));
-  }, [refreshSignal]);
+    void client.getActivity({ limit: 150 }).then((list) => setEntries(list.reverse()));
+  }, [refreshSignal, client]);
 
   return (
     <aside className="activity-panel" role="dialog" aria-label="Activity">

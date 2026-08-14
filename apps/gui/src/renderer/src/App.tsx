@@ -7,8 +7,10 @@ import type {
   MovePosition,
 } from "@kanmer/core";
 import { blockedIds, columnCards, optimisticOrder } from "./lib/board.js";
+import { ClientContext, makeClient, type ProjectClient } from "./lib/client.js";
 import type { AppSettings, ChangePayload, Theme } from "../../shared/ipc.js";
 import { Board } from "./components/Board.js";
+import { TabStrip, type Tab } from "./components/TabStrip.js";
 import { ArchivedList } from "./components/ArchivedList.js";
 import { Editor } from "./components/Editor.js";
 import { FilterBar, type Filters } from "./components/FilterBar.js";
@@ -44,8 +46,27 @@ interface Toast {
   text: string;
 }
 
+/** Per-tab transient UI state, preserved across tab switches. */
+interface SavedTabState {
+  view: View;
+  filters: Filters;
+  search: string;
+  selectedId: string | null;
+}
+
 export function App(): JSX.Element {
+  // `root` is the active project's id (its canonical root). `tabs` is every open
+  // project; switching a tab swaps `root` and restores that tab's saved UI state.
   const [root, setRoot] = useState<string | null>(null);
+  const [tabs, setTabs] = useState<Tab[]>([]);
+  const savedStates = useRef<Map<string, SavedTabState>>(new Map());
+  const client = useMemo(() => (root ? makeClient(root) : null), [root]);
+  // A ref to the active client so stable useCallbacks bind to the current
+  // project without re-creating on every switch.
+  const clientRef = useRef<ProjectClient | null>(null);
+  clientRef.current = client;
+  const rootRef = useRef<string | null>(null);
+  rootRef.current = root;
   const [board, setBoard] = useState<BoardConfig | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [format, setFormat] = useState<1 | 2>(2);
@@ -77,15 +98,26 @@ export function App(): JSX.Element {
   const searchRef = useRef<HTMLInputElement>(null);
   const toastSeq = useRef(0);
 
+  // Value refs so a tab switch can snapshot the outgoing tab's UI without
+  // stale closures.
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+  const searchValRef = useRef(search);
+  searchValRef.current = search;
+  const selectedRef = useRef(selectedId);
+  selectedRef.current = selectedId;
+
   const refresh = useCallback(async () => {
     try {
       // `format` is re-fetched here too: onDiskChange calls refresh()
       // specifically for version.json, so an external migration (an agent,
       // another window) clears the "old layout" banner by itself.
       const [b, list, f] = await Promise.all([
-        window.kanmer.getBoard(),
-        window.kanmer.listItems({ includeArchived: true }),
-        window.kanmer.getFormat(),
+        clientRef.current!.getBoard(),
+        clientRef.current!.listItems({ includeArchived: true }),
+        clientRef.current!.getFormat(),
       ]);
       setBoard(b);
       setItems(list);
@@ -99,20 +131,64 @@ export function App(): JSX.Element {
   const openProject = useCallback(async (path: string) => {
     setOpening(true);
     try {
+      // Snapshot the outgoing tab's UI state before switching.
+      const prev = rootRef.current;
+      if (prev) {
+        savedStates.current.set(prev, {
+          view: viewRef.current,
+          filters: filtersRef.current,
+          search: searchValRef.current,
+          selectedId: selectedRef.current,
+        });
+      }
       const res = await window.kanmer.openProject(path);
-      setRoot(res.root);
+      setRoot(res.projectId);
       setBoard(res.board);
       setItems(res.items);
       setFormat(res.format);
-      setSelectedId(null);
-      setSettings(await window.kanmer.getSettings());
       setError(null);
+      // Add/refresh the tab and clear its unread now that it's active.
+      setTabs((ts) => {
+        const rest = ts.filter((t) => t.projectId !== res.projectId);
+        return [...rest, { projectId: res.projectId, root: res.root, name: projectNameOf(res.root), unread: 0 }];
+      });
+      // Restore this tab's saved UI state (or defaults for a fresh tab).
+      const saved = savedStates.current.get(res.projectId);
+      setView(saved?.view ?? "ticket");
+      setFilters(saved?.filters ?? EMPTY_FILTERS);
+      setSearch(saved?.search ?? "");
+      setSelectedId(saved?.selectedId ?? null);
+      setSettings(await window.kanmer.getSettings());
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setOpening(false);
     }
   }, []);
+
+  /** Close a tab: drop its main context + saved state, switch away if it was active. */
+  const closeTab = useCallback(
+    (projectId: string) => {
+      void window.kanmer.closeProject(projectId);
+      savedStates.current.delete(projectId);
+      // Editing is lost on close either way; report clean so no stale guard fires.
+      if (projectId === rootRef.current) editorDirty.current = false;
+      setTabs((ts) => {
+        const remaining = ts.filter((t) => t.projectId !== projectId);
+        if (projectId === rootRef.current) {
+          const next = remaining[remaining.length - 1];
+          if (next) void openProject(next.projectId);
+          else {
+            setRoot(null);
+            setBoard(null);
+            setItems([]);
+          }
+        }
+        return remaining;
+      });
+    },
+    [openProject],
+  );
 
   /** Every deselection/navigation goes through here so edits can't be lost silently. */
   const trySelect = useCallback((id: string | null) => {
@@ -137,15 +213,46 @@ export function App(): JSX.Element {
     return () => window.removeEventListener("beforeunload", handler);
   }, []);
 
-  // Load settings + apply theme, then restore any already-open project.
+  // Load settings + apply theme, then restore the open-tab session.
   useEffect(() => {
     void (async () => {
       const s = await window.kanmer.getSettings();
       setSettings(s);
-      const current = await window.kanmer.currentProject();
-      if (current) await openProject(current);
+      let toOpen = s.openTabs;
+      if (toOpen.length === 0) {
+        const current = await window.kanmer.currentProject();
+        toOpen = current ? [current] : [];
+      }
+      if (toOpen.length === 0) return;
+      const active =
+        s.activeTab && toOpen.includes(s.activeTab) ? s.activeTab : toOpen[toOpen.length - 1];
+      // Open background tabs (their main context + watcher go live) without
+      // activating them, so counts/unread update; then activate the last.
+      for (const p of toOpen) {
+        if (p === active) continue;
+        try {
+          const res = await window.kanmer.openProject(p);
+          setTabs((ts) => [
+            ...ts.filter((t) => t.projectId !== res.projectId),
+            { projectId: res.projectId, root: res.root, name: projectNameOf(res.root), unread: 0 },
+          ]);
+        } catch {
+          // skip an unopenable restored tab
+        }
+      }
+      await openProject(active);
     })();
   }, [openProject]);
+
+  // Persist the open-tab session so it restores next boot.
+  useEffect(() => {
+    if (tabs.length > 0) {
+      void window.kanmer.setOpenTabs(
+        tabs.map((t) => t.projectId),
+        root ?? "",
+      );
+    }
+  }, [tabs, root]);
 
   // Apply theme to the document; "system" follows the OS live.
   useEffect(() => {
@@ -161,18 +268,26 @@ export function App(): JSX.Element {
     return () => mq.removeEventListener("change", apply);
   }, [settings?.theme]);
 
+  // The window title tracks the active project so the taskbar identifies it.
+  useEffect(() => {
+    document.title = root ? `${projectNameOf(root)} — Kanmer` : "Kanmer";
+  }, [root]);
+
   /**
    * Scoped refresh: a change to one item file patches just that item
    * instead of re-fetching every body — O(1) per agent edit, not O(board).
    */
   const onDiskChange = useCallback(
     async (payload: ChangePayload) => {
+      // Only the active tab's board is mounted; a background project's disk
+      // change is ignored here (it refreshes when that tab is next focused).
+      if (payload.projectId !== rootRef.current) return;
       setChangeSignal((n) => n + 1);
       const parts = payload.file.split(/[\\/]/);
       const base = parts[parts.length - 1] ?? "";
       if (base === "board.yml") {
         try {
-          setBoard(await window.kanmer.getBoard());
+          setBoard(await clientRef.current!.getBoard());
         } catch {
           await refresh();
         }
@@ -199,7 +314,7 @@ export function App(): JSX.Element {
         return;
       }
       try {
-        const item = await window.kanmer.getItem(id);
+        const item = await clientRef.current!.getItem(id);
         setItems((prev) => {
           if (!item) return prev.filter((i) => i.id !== id);
           const idx = prev.findIndex((i) => i.id === id);
@@ -223,8 +338,14 @@ export function App(): JSX.Element {
   // Changes made by agents (never our own writes): bell counter + in-app
   // toast while focused (native toasts cover the unfocused case).
   useEffect(() => {
-    if (!root) return;
-    return window.kanmer.onAgentChange(({ key, event }) => {
+    return window.kanmer.onAgentChange(({ projectId, key, event }) => {
+      if (projectId !== rootRef.current) {
+        // Background project: bump that tab's unread dot; no toast.
+        setTabs((ts) =>
+          ts.map((t) => (t.projectId === projectId ? { ...t, unread: (t.unread ?? 0) + 1 } : t)),
+        );
+        return;
+      }
       setUnread((n) => (activityOpen ? 0 : n + 1));
       if (!document.hasFocus()) return;
       const seq = ++toastSeq.current;
@@ -235,15 +356,16 @@ export function App(): JSX.Element {
       setToasts((t) => [...t.slice(-2), { seq, id: key === "board" ? null : key, text }]);
       setTimeout(() => setToasts((t) => t.filter((x) => x.seq !== seq)), 4500);
     });
-  }, [root, activityOpen]);
+  }, [activityOpen]);
 
-  // Toast clicks reveal the item they were about.
+  // Toast clicks reveal the item they were about — focusing its project's tab.
   useEffect(() => {
-    return window.kanmer.onReveal((id) => {
+    return window.kanmer.onReveal(({ projectId, id }) => {
       setView("ticket");
-      trySelect(id);
+      if (projectId === rootRef.current) trySelect(id);
+      else void openProject(projectId).then(() => trySelect(id));
     });
-  }, [trySelect]);
+  }, [trySelect, openProject]);
 
   // Background-dispatch status: track running tickets for the card spinner
   // badge, and toast a line when one finishes.
@@ -313,13 +435,13 @@ export function App(): JSX.Element {
   // Not optimistic: an invalid board must never render (or half-render and
   // then throw) — the modal shows the validation error instead.
   const saveBoard = useCallback(async (next: BoardConfig) => {
-    setBoard(await window.kanmer.setBoard(next));
+    setBoard(await clientRef.current!.setBoard(next));
   }, []);
 
   const createItem = useCallback(
     async (input: CreateItemInput, opts: { select?: boolean } = {}) => {
       try {
-        const created = await window.kanmer.createItem(input);
+        const created = await clientRef.current!.createItem(input);
         await refresh();
         if (opts.select) setSelectedId(created.id);
         return created;
@@ -352,7 +474,7 @@ export function App(): JSX.Element {
         return prev.map((i) => (i.id === id ? { ...i, status: to.status, order } : i));
       });
       try {
-        await window.kanmer.moveItem(id, to);
+        await clientRef.current!.moveItem(id, to);
         setError(null);
       } catch (err) {
         // Roll back FIRST: refresh() clears `error` on success, so setting the
@@ -397,7 +519,7 @@ export function App(): JSX.Element {
   const releaseTicket = useCallback(
     async (id: string) => {
       try {
-        await window.kanmer.releaseTicket(id);
+        await clientRef.current!.releaseTicket(id);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
@@ -415,7 +537,7 @@ export function App(): JSX.Element {
   const takeTicket = useCallback(
     async (id: string, branch: string) => {
       try {
-        await window.kanmer.takeTicket(id, { branch });
+        await clientRef.current!.takeTicket(id, { branch });
         setPendingTake(null);
         setError(null);
         await refresh();
@@ -441,16 +563,16 @@ export function App(): JSX.Element {
       try {
         if (action.type === "open") trySelect(item.id);
         else if (action.type === "move") await onMove(item.id, { status: action.status });
-        else if (action.type === "release") await window.kanmer.releaseTicket(item.id);
+        else if (action.type === "release") await clientRef.current!.releaseTicket(item.id);
         else if (action.type === "archive")
-          await window.kanmer.updateItem(item.id, { archived: true });
+          await clientRef.current!.updateItem(item.id, { archived: true });
         else if (action.type === "unarchive")
-          await window.kanmer.updateItem(item.id, { archived: false });
+          await clientRef.current!.updateItem(item.id, { archived: false });
         else if (action.type === "delete") {
-          await window.kanmer.deleteItem(item.id);
+          await clientRef.current!.deleteItem(item.id);
           setSelectedId((cur) => (cur === item.id ? null : cur));
         } else if (action.type === "dispatch") {
-          await window.kanmer.dispatchAgent(item.id, action.target);
+          await clientRef.current!.dispatchAgent(item.id, action.target);
         }
         setError(null);
       } catch (err) {
@@ -597,7 +719,16 @@ export function App(): JSX.Element {
   }
 
   return (
+    <ClientContext.Provider value={client}>
     <div className="app">
+      <TabStrip
+        tabs={tabs}
+        activeId={root}
+        dirty={editorDirty.current}
+        onSelect={(pid) => requestOpen({ kind: "path", path: pid })}
+        onClose={closeTab}
+        onNew={pickAndOpen}
+      />
       <header className="topbar">
         <div className="brand">Kanmer</div>
         <nav className="tabs">
@@ -654,7 +785,7 @@ export function App(): JSX.Element {
             <button
               className="primary xs"
               onClick={() =>
-                void window.kanmer
+                void clientRef.current!
                   .migrate(true)
                   .then(setMigrateReport)
                   // Without this, a dry run that refuses (colliding id
@@ -719,11 +850,11 @@ export function App(): JSX.Element {
               selectedId={selectedId}
               onSelect={trySelect}
               onRestore={async (id) => {
-                await window.kanmer.updateItem(id, { archived: false });
+                await clientRef.current!.updateItem(id, { archived: false });
                 await refresh();
               }}
               onDelete={async (id) => {
-                await window.kanmer.deleteItem(id);
+                await clientRef.current!.deleteItem(id);
                 setSelectedId((cur) => (cur === id ? null : cur));
                 await refresh();
               }}
@@ -768,7 +899,7 @@ export function App(): JSX.Element {
               editorDirty.current = d;
             }}
             onSave={async (patch) => {
-              const saved = await window.kanmer.updateItem(selected.id, patch);
+              const saved = await clientRef.current!.updateItem(selected.id, patch);
               await refresh();
               return saved;
             }}
@@ -928,7 +1059,7 @@ export function App(): JSX.Element {
                   onClick={async () => {
                     setMigrating(true);
                     try {
-                      await window.kanmer.migrate(false);
+                      await clientRef.current!.migrate(false);
                       setFormat(2);
                       setMigrateReport(null);
                       await refresh();
@@ -992,6 +1123,7 @@ export function App(): JSX.Element {
         />
       )}
     </div>
+    </ClientContext.Provider>
   );
 }
 

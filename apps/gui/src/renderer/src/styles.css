@@ -1436,3 +1436,71 @@ button.danger {
 .chip.dispatch {
   background: color-mix(in srgb, var(--accent, #5b8cff) 20%, transparent);
 }
+
+/* ── Phase 5: project tab strip ─────────────────────────────────────────── */
+.tab-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 4px 8px 0;
+  background: var(--panel, #1a1a1a);
+  border-bottom: 1px solid var(--border, #2a2a2a);
+  overflow-x: auto;
+}
+.proj-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px 5px 12px;
+  max-width: 220px;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  color: var(--muted, #9aa0a6);
+  border: 1px solid transparent;
+  border-bottom: none;
+}
+.proj-tab.active {
+  background: var(--bg, #121212);
+  color: var(--fg, #e8e8e8);
+  border-color: var(--border, #2a2a2a);
+}
+.proj-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.proj-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.proj-dot.dirty {
+  background: var(--accent, #5b8cff);
+}
+.proj-dot.unread {
+  background: var(--danger, #ff6b6b);
+}
+.proj-close {
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.5;
+  padding: 0 2px;
+  line-height: 1;
+}
+.proj-close:hover {
+  opacity: 1;
+}
+.proj-new {
+  border: none;
+  background: none;
+  color: var(--muted, #9aa0a6);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 8px;
+}
+.proj-new:hover {
+  color: var(--fg, #e8e8e8);
+}

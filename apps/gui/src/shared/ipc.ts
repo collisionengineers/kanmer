@@ -23,7 +23,9 @@ import type {
 export const CH = {
   pickProject: "kanmer:pickProject",
   openProject: "kanmer:openProject",
+  closeProject: "kanmer:closeProject",
   currentProject: "kanmer:currentProject",
+  setOpenTabs: "kanmer:setOpenTabs",
   getBoard: "kanmer:getBoard",
   setBoard: "kanmer:setBoard",
   listItems: "kanmer:listItems",
@@ -102,9 +104,15 @@ export interface AppSettings {
   theme: Theme;
   recentProjects: string[];
   notifications: boolean;
+  /** Open-tab session restored on boot (project roots). */
+  openTabs: string[];
+  /** The active tab's project root. */
+  activeTab: string;
 }
 
 export interface OpenProjectResult {
+  /** Canonical project root — the projectId every scoped call carries. */
+  projectId: string;
   root: string;
   board: BoardConfig;
   items: Item[];
@@ -113,8 +121,15 @@ export interface OpenProjectResult {
 }
 
 export interface ChangePayload {
+  projectId: string;
   event: "add" | "change" | "unlink";
   file: string;
+}
+
+/** A notification-click reveal request, scoped to its project. */
+export interface RevealPayload {
+  projectId: string;
+  id: string;
 }
 
 /** The board's resolved document model — the defaults a board inherits when it has no `docs` block. */
@@ -126,6 +141,7 @@ export interface DocModel {
 
 /** A change on disk that this GUI didn't make (agent or manual edit). */
 export interface AgentChangePayload {
+  projectId: string;
   /** Item id, or "board". */
   key: string;
   event: "add" | "change" | "unlink";
@@ -153,46 +169,65 @@ export type ItemMenuAction =
 /** Application-menu commands forwarded to the renderer. */
 export type MenuCommand = { type: "pick-project" } | { type: "open-project"; path: string };
 
-/** The API exposed to the renderer on `window.kanmer`. */
+/**
+ * The API exposed to the renderer on `window.kanmer`. Project-scoped methods
+ * take the canonical project root as their first argument (`projectId`) so the
+ * main process routes them to the right per-project context (Phase 5). Global
+ * methods (settings, providers, dispatch listing, menus) take none.
+ */
 export interface KanmerApi {
   pickProject(): Promise<string | null>;
   openProject(root: string): Promise<OpenProjectResult>;
+  /** Close a project's watcher + context (a tab was closed). */
+  closeProject(projectId: string): Promise<void>;
   currentProject(): Promise<string | null>;
-  getBoard(): Promise<BoardConfig>;
-  setBoard(board: BoardConfig): Promise<BoardConfig>;
-  listItems(filter?: ItemFilter): Promise<Item[]>;
+  getBoard(projectId: string): Promise<BoardConfig>;
+  setBoard(projectId: string, board: BoardConfig): Promise<BoardConfig>;
+  listItems(projectId: string, filter?: ItemFilter): Promise<Item[]>;
   /** Like listItems, but also surfaces unparseable/mislocated files. */
   listItemsWithWarnings(
+    projectId: string,
     filter?: ItemFilter,
   ): Promise<{ items: Item[]; warnings: ItemWarning[] }>;
-  getItem(id: string): Promise<Item | null>;
-  createItem(input: CreateItemInput): Promise<Item>;
-  updateItem(id: string, patch: UpdateItemPatch): Promise<Item>;
+  getItem(projectId: string, id: string): Promise<Item | null>;
+  createItem(projectId: string, input: CreateItemInput): Promise<Item>;
+  updateItem(projectId: string, id: string, patch: UpdateItemPatch): Promise<Item>;
   /**
    * Move an item to a stage, optionally to a position within that column.
    * `position` is column-scoped (`order` is a column-wide key), and optional
    * at every layer: omitting it is the plain stage change.
    */
-  moveItem(id: string, to: { status: string; position?: MovePosition }): Promise<Item>;
-  deleteItem(id: string): Promise<DeleteItemResult>;
+  moveItem(
+    projectId: string,
+    id: string,
+    to: { status: string; position?: MovePosition },
+  ): Promise<Item>;
+  deleteItem(projectId: string, id: string): Promise<DeleteItemResult>;
   /** Take a ticket: record branch/worktree and move it into the working stage. */
-  takeTicket(id: string, input: TakeTicketInput): Promise<Item>;
+  takeTicket(projectId: string, id: string, input: TakeTicketInput): Promise<Item>;
   /** Clear an agent's taken_at/branch/worktree (e.g. a stuck ticket). */
-  releaseTicket(id: string): Promise<Item>;
-  addColumn(kind: ColumnKind, column: BoardColumn): Promise<BoardConfig>;
-  linkItems(source: string, target: string, action: "add" | "remove"): Promise<Item>;
-  getLinks(id: string): Promise<LinkGraph>;
+  releaseTicket(projectId: string, id: string): Promise<Item>;
+  addColumn(projectId: string, kind: ColumnKind, column: BoardColumn): Promise<BoardConfig>;
+  linkItems(
+    projectId: string,
+    source: string,
+    target: string,
+    action: "add" | "remove",
+  ): Promise<Item>;
+  getLinks(projectId: string, id: string): Promise<LinkGraph>;
   getSettings(): Promise<AppSettings>;
   setTheme(theme: Theme): Promise<AppSettings>;
   setNotifications(on: boolean): Promise<AppSettings>;
-  /** Register the MCP server + install skills for the given host in the open project. */
-  connectAgent(target: ConnectTarget): Promise<ConnectResult>;
+  /** Persist the open-tab session (project roots + the active one). */
+  setOpenTabs(openTabs: string[], activeTab: string): Promise<AppSettings>;
+  /** Register the MCP server + install skills for the given host in a project. */
+  connectAgent(projectId: string, target: ConnectTarget): Promise<ConnectResult>;
   /** Unregister the host and remove the copied skills / AGENTS.md block. */
-  disconnectAgent(target: ConnectTarget): Promise<ConnectResult>;
+  disconnectAgent(projectId: string, target: ConnectTarget): Promise<ConnectResult>;
   /** The agent hosts Connect can register (drives the Connect tab). */
   listProviders(): Promise<ProviderInfo[]>;
   /** Spawn a background agent to work a ticket end-to-end (request #10). */
-  dispatchAgent(ticketId: string, target: ConnectTarget): Promise<DispatchStatus>;
+  dispatchAgent(projectId: string, ticketId: string, target: ConnectTarget): Promise<DispatchStatus>;
   /** Cancel the in-flight dispatch for a ticket (tree-kills the child). */
   cancelDispatch(ticketId: string): Promise<boolean>;
   /** Current running/finished dispatches. */
@@ -201,17 +236,21 @@ export interface KanmerApi {
   onDispatchStatus(cb: (status: DispatchStatus) => void): () => void;
   /** Show the native right-click menu for a card; resolves with the chosen action. */
   showItemMenu(payload: ItemMenuPayload): Promise<ItemMenuAction | null>;
-  /** Migrate the open v1 project to format 2 (dryRun for the report only). */
-  migrate(dryRun: boolean): Promise<MigrationReport>;
-  /** The store's current on-disk format — re-read after an external migration. */
-  getFormat(): Promise<1 | 2>;
+  /** Migrate a v1 project to format 2 (dryRun for the report only). */
+  migrate(projectId: string, dryRun: boolean): Promise<MigrationReport>;
+  /** A project's current on-disk format — re-read after an external migration. */
+  getFormat(projectId: string): Promise<1 | 2>;
   /**
    * Read a ticket pipeline document with its version token (both null when
    * not written yet, or for a legacy item). Pass `version` back as
    * `expectedVersion` on setDoc to be rejected instead of overwriting a
    * concurrent edit.
    */
-  getDoc(id: string, doc: TicketDoc): Promise<{ content: string | null; version: string | null }>;
+  getDoc(
+    projectId: string,
+    id: string,
+    doc: TicketDoc,
+  ): Promise<{ content: string | null; version: string | null }>;
   /**
    * Write (or append to) a ticket pipeline document, resolving with the
    * version token of exactly what was written. `expectedVersion: undefined`
@@ -219,27 +258,31 @@ export interface KanmerApi {
    * the document not to exist yet.
    */
   setDoc(
+    projectId: string,
     id: string,
     doc: TicketDoc,
     content: string,
     opts?: { append?: boolean; expectedVersion?: string | null },
   ): Promise<{ version: string }>;
   /** Which pipeline docs exist + checklist progress; null for legacy items. */
-  getDocsInfo(id: string): Promise<TicketDocsInfo | null>;
+  getDocsInfo(projectId: string, id: string): Promise<TicketDocsInfo | null>;
   /** The ticket area's resolved doc types (name/order/requires/progress) — for the doc tabs. */
-  getDocTypes(id: string): Promise<DocType[]>;
+  getDocTypes(projectId: string, id: string): Promise<DocType[]>;
   /** The board's resolved default document model — seeds the Settings Documents tab. */
-  getDocModel(): Promise<DocModel>;
+  getDocModel(projectId: string): Promise<DocModel>;
   /** Open a governing doc (a repo-relative path under the project root) in the OS default app. */
-  openRepoDoc(relPath: string): Promise<void>;
+  openRepoDoc(projectId: string, relPath: string): Promise<void>;
   /** Read a governing doc's text for the in-app view; null when missing/unreadable. */
-  getRepoDoc(relPath: string): Promise<string | null>;
+  getRepoDoc(projectId: string, relPath: string): Promise<string | null>;
   /** Read the activity log. */
-  getActivity(opts?: { id?: string; since?: string; limit?: number }): Promise<ActivityEntry[]>;
+  getActivity(
+    projectId: string,
+    opts?: { id?: string; since?: string; limit?: number },
+  ): Promise<ActivityEntry[]>;
   /** Subscribe to on-disk changes (e.g. an agent editing via MCP). Returns an unsubscribe fn. */
   onChange(cb: (payload: ChangePayload) => void): () => void;
-  /** Subscribe to reveal requests (notification clicks). */
-  onReveal(cb: (id: string) => void): () => void;
+  /** Subscribe to reveal requests (notification clicks) — scoped to a project. */
+  onReveal(cb: (payload: RevealPayload) => void): () => void;
   /** Subscribe to application-menu commands. */
   onMenu(cb: (cmd: MenuCommand) => void): () => void;
   /** Subscribe to changes made by someone other than this GUI. */

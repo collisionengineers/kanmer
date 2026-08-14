@@ -5,6 +5,7 @@ export * from "./frontmatter.js";
 export * from "./ids.js";
 export * from "./board.js";
 export * from "./docs.js";
+export * from "./prompts.js";
 export * from "./version.js";
 export * from "./activity.js";
 export * from "./store.js";

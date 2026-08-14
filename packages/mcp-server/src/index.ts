@@ -11,7 +11,12 @@ import {
   computeBlockedIds,
   getLinkGraph,
   linkItems,
+  migrateBoard,
+  repoDocsMap,
+  resolveDocTypes,
+  resolveGates,
   serialiseItem,
+  takeTicketPromptText,
   watchKanmer,
   type Item,
   type WatchHandle,
@@ -112,7 +117,7 @@ async function confirmDestructive(message: string): Promise<boolean> {
  * Trim an item to a list-friendly summary (no body). Every key is always
  * present so agents never have to guess whether an absent key means "no" or
  * "not reported": docs/checklist are null for legacy-layout items, taken is
- * null when the ticket isn't taken, due/order are null when unset.
+ * null when the ticket isn't taken, order/refs/deployment are null when unset.
  */
 async function summarise(item: Item, blockedIds: Set<string>) {
   const info = item.type === "ticket" ? await store.getTicketDocsInfo(item.id) : null;
@@ -127,6 +132,8 @@ async function summarise(item: Item, blockedIds: Set<string>) {
     labels: item.labels,
     order: item.order ?? null,
     blocked: blockedIds.has(item.id),
+    refs: item.refs ?? null,
+    deployment: item.deployment ?? null,
     created: item.created,
     updated: item.updated,
     archived: item.archived,
@@ -161,6 +168,20 @@ const createFields = {
   labels: z.array(z.string()).optional(),
   links: z.array(z.string()).optional().describe("Ids of related items (must exist)"),
   blocks: z.array(z.string()).optional().describe("Ids this item blocks (must exist)"),
+  refs: z
+    .array(z.string())
+    .optional()
+    .describe("Repo-relative paths to governing docs (PRD/FRD/ADR); each must exist"),
+  docs_todo: z
+    .boolean()
+    .optional()
+    .describe("A governing doc is still to be created — satisfies the leave-backlog gate"),
+  commits: z.array(z.string()).optional().describe("Commit SHAs associated with this ticket"),
+  prs: z.array(z.string()).optional().describe("PR references (number or URL)"),
+  deployment: z
+    .string()
+    .optional()
+    .describe("Deployment status (only when the board declares environments): n/a | not-deployed | <env-id>"),
   body: z.string().optional().describe("Markdown body; may contain [[id]] wiki-links"),
 };
 
@@ -200,6 +221,7 @@ server.registerTool(
       exists,
       format,
       boardSource: source,
+      deploymentTracking: board.deployment !== undefined,
       counts: {
         byStage,
         byType,
@@ -223,7 +245,18 @@ server.registerTool(
   },
   guard(async () => {
     const { board, source } = await store.getBoardWithSource();
-    return ok({ ...board, source });
+    // Surface the resolved document model so a skill learns the doc types +
+    // gates without a bespoke call. `docModel` reflects the fallbacks too, so it
+    // is populated even when board.docs is absent.
+    return ok({
+      ...board,
+      source,
+      docModel: {
+        repoDocs: repoDocsMap(board),
+        default: { types: resolveDocTypes(board, ""), gates: resolveGates(board, "") },
+        deploymentTracking: board.deployment !== undefined,
+      },
+    });
   }),
 );
 
@@ -297,7 +330,7 @@ server.registerTool(
   {
     title: "Read a ticket document",
     description:
-      "Read one of a ticket's pipeline documents (research, impact, plan, checklist, proof) from its folder. Returns content: null when the document hasn't been written yet. `version` is a token for the document's current bytes — pass it back as `expected_version` on set_ticket_doc to be rejected instead of overwriting a concurrent edit.",
+      "Read one of a ticket's pipeline documents from its folder. `doc` is a document id from the ticket area's configured doc types (see get_doc_gates / list_board → docModel), or a scratch file as `scratch-<slug>`. Returns content: null when the document hasn't been written yet. `version` is a token for the document's current bytes — pass it back as `expected_version` on set_ticket_doc to be rejected instead of overwriting a concurrent edit.",
     inputSchema: {
       id: z.string().describe("Ticket id"),
       doc: ticketDocEnum.describe("Which document"),
@@ -376,6 +409,48 @@ server.registerTool(
   ),
 );
 
+server.registerTool(
+  "get_doc_gates",
+  {
+    title: "Inspect the document model and gates",
+    description:
+      "With an `id`: the ticket's resolved doc types, which of them exist, its area and current status, and the per-area gate rules — enough to self-check before move_item instead of failing into a gate. Without an `id`: the board's document model (default + per-area doc types and gates, the governing-doc path globs, and whether deployment tracking is on).",
+    inputSchema: {
+      id: z.string().optional().describe("Ticket id to inspect; omit for the board's config"),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  guard(async ({ id }) => {
+    const board = await store.getBoard();
+    if (id !== undefined) {
+      const item = await store.getItem(id);
+      if (!item) return fail(`No item with id "${id}"`);
+      const info = await store.getTicketDocsInfo(id);
+      return ok({
+        id,
+        area: item.area,
+        status: item.status,
+        statuses: board.statuses.map((s) => s.id),
+        docTypes: resolveDocTypes(board, item.area),
+        docsPresent: info?.docs ?? null,
+        gates: resolveGates(board, item.area),
+        refs: item.refs ?? [],
+        docs_todo: item.docs_todo === true,
+      });
+    }
+    const areas: Record<string, unknown> = {};
+    for (const areaId of Object.keys(board.docs?.areas ?? {})) {
+      areas[areaId] = { types: resolveDocTypes(board, areaId), gates: resolveGates(board, areaId) };
+    }
+    return ok({
+      repoDocs: repoDocsMap(board),
+      default: { types: resolveDocTypes(board, ""), gates: resolveGates(board, "") },
+      areas,
+      deploymentTracking: board.deployment ?? null,
+    });
+  }),
+);
+
 // ---------------------------------------------------------------------------
 // Write tools
 // ---------------------------------------------------------------------------
@@ -385,7 +460,7 @@ server.registerTool(
   {
     title: "Create an item",
     description:
-      "Create a ticket. Returns the created item including its allocated id — tickets born in an area get that area's prefix (e.g. API-007); area-less tickets get the fallback prefix. status defaults to the first workflow stage; status/area/priority are validated against the board and links[] targets must exist. A ticket cannot be created directly in the board's final stage — that stage requires proof.md; create it earlier and move it. On format-2 boards plans and research are documents inside a ticket's folder (set_ticket_doc), not standalone items.",
+      "Create a ticket. Returns the created item including its allocated id — tickets born in an area get that area's prefix (e.g. API-007); area-less tickets get the fallback prefix. status defaults to the first workflow stage; status/area/priority are validated against the board and links[] targets must exist. Creation is ungated: a ticket may be created directly in any stage (imports/backfills of finished work) — the document gates apply on move_item, not creation. Link governing docs with refs (each must exist) or set docs_todo. On format-2 boards plans and research are documents inside a ticket's folder (set_ticket_doc), not standalone items.",
     inputSchema: createFields,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
@@ -437,6 +512,17 @@ server.registerTool(
       labels: z.array(z.string()).optional(),
       links: z.array(z.string()).optional(),
       blocks: z.array(z.string()).optional().describe("Ids this item blocks"),
+      refs: z
+        .array(z.string())
+        .optional()
+        .describe("Repo-relative governing-doc paths (each must exist); [] clears them"),
+      docs_todo: z.boolean().optional().describe("A governing doc is still to be created"),
+      commits: z.array(z.string()).optional().describe("Commit SHAs; [] clears them"),
+      prs: z.array(z.string()).optional().describe("PR references; [] clears them"),
+      deployment: z
+        .string()
+        .optional()
+        .describe("Deployment status; pass \"\" to clear (only when the board declares environments)"),
       body: z.string().optional(),
       archived: z.boolean().optional(),
       expected_updated: z
@@ -458,7 +544,7 @@ server.registerTool(
   {
     title: "Move an item to a workflow stage",
     description:
-      "Kanban move: set an item's status, i.e. move it to a workflow stage (see list_board → statuses). Rejects a status that is not on the board. Moving a ticket to the final stage requires its proof.md to exist. Optional position places the item within the column: \"top\", \"bottom\", or { after: \"API-003\" } — this maintains the manual order humans see.",
+      "Kanban move: set an item's status, i.e. move it to a workflow stage (see list_board → statuses). Rejects a status that is not on the board. Enforces the ticket area's document gates — e.g. proof.md before the final stage, post-implementation-report before review — and on failure names every missing document/governing-doc and the boundary. Call get_doc_gates to self-check first. Optional position places the item within the column: \"top\", \"bottom\", or { after: \"API-003\" } — this maintains the manual order humans see.",
     inputSchema: {
       id: z.string().describe("Item id to move"),
       status: z.string().describe("Target status id (workflow stage)"),
@@ -517,7 +603,7 @@ server.registerTool(
   {
     title: "Write a ticket document",
     description:
-      "Write one of a ticket's pipeline documents (research, impact, plan, checklist, proof) into its folder. Plain Markdown, no frontmatter. Pass append: true to add below the existing content (for progress notes) instead of replacing it. proof.md is required before the ticket can reach the final stage. Pass the `version` you last read from get_ticket_doc as `expected_version` to be rejected instead of overwriting a concurrent edit; the result carries the new `version`.",
+      "Write one of a ticket's pipeline documents into its folder. `doc` is a document id from the ticket area's configured doc types (see get_doc_gates); an unknown id is rejected with the valid ids, and a doc that `requires` others is rejected until they exist. Plain Markdown, no frontmatter. Pass append: true to add below the existing content (for progress notes) instead of replacing it. For free-form notes use append_scratch instead. Pass the `version` you last read from get_ticket_doc as `expected_version` to be rejected instead of overwriting a concurrent edit; the result carries the new `version`.",
     inputSchema: {
       id: z.string().describe("Ticket id"),
       doc: ticketDocEnum.describe("Which document"),
@@ -539,6 +625,49 @@ server.registerTool(
       expectedVersion: expected_version,
     });
     return ok({ id, doc, written: true, appended: append === true, version });
+  }),
+);
+
+server.registerTool(
+  "append_scratch",
+  {
+    title: "Append a scratch note",
+    description:
+      'Append a free-form working note to a ticket\'s scratch file (scratch-<slug>.md). Separate from set_ticket_doc: scratch is never gated or validated against the doc types — it is the agent\'s running notepad. Read it back with get_ticket_doc(doc: "scratch-<slug>"). Successive appends are separated by a blank line. slug defaults to "notes".',
+    inputSchema: {
+      id: z.string().describe("Ticket id"),
+      slug: z.string().optional().describe('Scratch slug (default "notes") → scratch-<slug>.md'),
+      content: z.string().describe("Markdown to append below a blank line"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  },
+  write(async ({ id, slug, content }) => {
+    const useSlug = slug ?? "notes";
+    const { file } = await store.appendScratch(id, useSlug, content);
+    return ok({ id, slug: useSlug, appended: true, file });
+  }),
+);
+
+server.registerTool(
+  "link_doc",
+  {
+    title: "Link or unlink a governing document",
+    description:
+      "Maintain a ticket's refs[] — repo-relative paths to governing docs (PRD/FRD/ADR) in the repo's own /docs/. add validates the path exists under the project root; remove drops it. Distinct from link_items (item↔item); this is item↔repo-file. A linked governing doc satisfies the leave-backlog gate.",
+    inputSchema: {
+      id: z.string().describe("Ticket id"),
+      path: z.string().describe("Repo-relative path, e.g. docs/prd/checkout.md"),
+      action: z.enum(["add", "remove"]).default("add"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  },
+  write(async ({ id, path: refPath, action }) => {
+    const item = await store.getItem(id);
+    if (!item) return fail(`No item with id "${id}"`);
+    const refs = new Set(item.refs ?? []);
+    if (action === "remove") refs.delete(refPath);
+    else refs.add(refPath);
+    return ok(await store.updateItem(id, { refs: [...refs] }));
   }),
 );
 
@@ -651,6 +780,20 @@ server.registerTool(
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
   write(async ({ kind, order }) => ok(await store.reorderColumns(kind, order))),
+);
+
+server.registerTool(
+  "migrate_board",
+  {
+    title: "Migrate / upgrade the board",
+    description:
+      "Bring the board fully current: run the v1→v2 migration if needed, then backfill the 7-stage default (alias-aware, additive — never renames or reorders existing stages, never touches item files). Pass dry_run: true to preview what would move and which stages would be added without writing. The agent-facing route to the same upgrade the GUI offers.",
+    inputSchema: {
+      dry_run: z.boolean().optional().describe("Preview without writing"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  },
+  write(async ({ dry_run }) => ok(await migrateBoard(store, { dryRun: dry_run }))),
 );
 
 server.registerTool(
@@ -800,16 +943,7 @@ server.registerPrompt(
     messages: [
       {
         role: "user" as const,
-        content: {
-          type: "text" as const,
-          text:
-            `Take Kanmer ticket ${id} and work it: call get_item to read it, take_ticket ` +
-            `(with the real branch and worktree you'll work on), then follow the document ` +
-            `pipeline with get_ticket_doc/set_ticket_doc — research.md and impact.md first, ` +
-            `write plan.md from them, derive checklist.md, work the checklist (append ` +
-            `progress notes), and write proof.md with real evidence before moving the ` +
-            `ticket to the final stage and releasing it.`,
-        },
+        content: { type: "text" as const, text: takeTicketPromptText(id) },
       },
     ],
   }),

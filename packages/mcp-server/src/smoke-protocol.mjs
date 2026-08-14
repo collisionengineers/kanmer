@@ -157,8 +157,8 @@ for (const proto of PROTOCOLS) {
 
     const tools = await server.send("tools/list", {});
     check(
-      `tools/list returns 20 tools on ${proto}`,
-      tools.result?.tools?.length === 20,
+      `tools/list returns 24 tools on ${proto}`,
+      tools.result?.tools?.length === 24,
       `got ${tools.result?.tools?.length}`,
     );
 

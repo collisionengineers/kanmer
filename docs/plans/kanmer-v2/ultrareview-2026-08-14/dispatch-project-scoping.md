@@ -100,3 +100,8 @@ Core interface diff:
 
 Acceptance is two simultaneous same-id dispatches with correct status, reveal,
 cancel, timeout and scratch attribution in both projects.
+
+## Remediation evidence
+
+Remediated on PR #12 (`7160dd3`): dispatches carry `projectId`, use a
+project-ticket secondary lock, list by project, and cancel by dispatch id. Focused tests passed.

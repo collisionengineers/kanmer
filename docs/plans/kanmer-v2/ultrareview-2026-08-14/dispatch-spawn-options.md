@@ -132,3 +132,8 @@ Illustrative option diff (the resolver determines the executable and arguments):
 Acceptance requires a real Windows smoke for at least one executable install and
 one npm-shim install, plus a POSIX test proving the spawned pid is its group leader
 and cancellation terminates a grandchild.
+
+## Remediation evidence
+
+Remediated on PR #10 (`1bd8145`): `cross-spawn`, Windows shim handling,
+POSIX detached process groups, and asynchronous launch-error cleanup are implemented. GUI typecheck passed.

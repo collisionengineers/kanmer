@@ -95,3 +95,8 @@ Replace `assertFinalStageProven(stageId)` with a version that mirrors `assertDoc
 
 Acceptance: board reordering gives the same answer and missing-requirement text
 that a corresponding configured transition would give, without changing D6.
+
+## Remediation evidence
+
+Remediated on PR #5 (`2780042`): final-stage writes evaluate resolved configured
+gates, including an area-specific final-boundary gate and atomic rejected write. Core store suite: 67 passed.

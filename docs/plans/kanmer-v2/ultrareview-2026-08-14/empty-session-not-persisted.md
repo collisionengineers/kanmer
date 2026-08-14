@@ -67,3 +67,8 @@ Either remove the `> 0` guard so an empty session is written (simplest — take 
 
 Acceptance: after closing the last tab, settings readback is exactly
 `openTabs: []`, `activeTab: ""`, and the next launch stays on Welcome.
+
+## Remediation evidence
+
+Remediated on PR #12 (`7160dd3`): `restoreTabs` preserves initialized empty
+sessions and focused tests cover legacy fallback and invalid active selection. GUI boot smoke exited 0.

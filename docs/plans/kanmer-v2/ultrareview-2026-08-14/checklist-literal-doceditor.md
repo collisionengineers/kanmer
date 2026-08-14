@@ -74,3 +74,8 @@ Thread `progressDoc` from `Editor` (already computed at Editor.tsx:341) into `Do
 
 Acceptance: any valid configured progress doc has the same counter, interactive
 checkboxes, conflict behavior and persistence as the default checklist.
+
+## Remediation evidence
+
+Remediated on PR #7 (`8c63243`): `progressDocId` is used by the editor and is
+covered for default, renamed, area-resolved, and absent progress documents. Final GUI suite: 73 passed.

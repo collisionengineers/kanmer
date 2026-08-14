@@ -81,3 +81,8 @@ Any of (in order of minimalness):
 
 Acceptance: every inserted stage remains after a later Settings save, and closing
 immediately after backfill produces no false discard prompt.
+
+## Remediation evidence
+
+Remediated on PR #13 (`f89cd69`): backfill failure is distinct from successful
+write/readback failure, and refreshed drafts are reconciled through a pure helper. Final GUI suite: 73 passed.

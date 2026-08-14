@@ -89,3 +89,8 @@ Illustrative ownership diff:
 
 Acceptance requires byte-identical preservation of foreign skills/config keys and
 the correct shared-block lifetime across every disconnect order.
+
+## Remediation evidence
+
+Remediated on PR #9 (`91906b2`, replayed at `9fae897`): bundled-skill deletion
+is ownership-scoped and malformed peer registration retains the shared block. Focused GUI tests and typecheck passed.

@@ -117,3 +117,8 @@ This closes all three regressions with one edit and restores parity with the ren
 Acceptance requires correct patching, toast text, reveal and own-write suppression
 for both supported storage formats. The original four-line heuristic must not be
 implemented as written.
+
+## Remediation evidence
+
+Remediated on PR #12 (`7160dd3`): one shared v1/v2 Kanmer path classifier is
+used by both main-process attribution and the renderer, with seven focused tests. Final GUI suite: 73 passed.

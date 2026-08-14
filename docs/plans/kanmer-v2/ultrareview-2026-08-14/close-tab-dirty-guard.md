@@ -75,3 +75,8 @@ Extend the existing `pendingNav` state with a `kind: 'close'` variant (or introd
 
 Acceptance: body and document edits survive Cancel; Discard closes exactly once;
 no clean-tab path gains an unnecessary prompt.
+
+## Remediation evidence
+
+Remediated on PR #12 (`7160dd3`): `tabCloseDecision` isolates the dirty-active
+confirmation rule and has focused tests. Final GUI suite: 73 passed.

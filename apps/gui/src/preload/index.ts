@@ -33,6 +33,14 @@ const api: KanmerApi = {
   setTheme: (theme) => ipcRenderer.invoke(CH.setTheme, theme),
   setNotifications: (on) => ipcRenderer.invoke(CH.setNotifications, on),
   setPreferences: (patch) => ipcRenderer.invoke(CH.setPreferences, patch),
+  setKanmerGitPreferences: (prefs) => ipcRenderer.invoke(CH.setKanmerGitPreferences, prefs),
+  getKanmerGitStatus: (p) => ipcRenderer.invoke(CH.getKanmerGitStatus, p),
+  syncKanmerNow: (p) => ipcRenderer.invoke(CH.syncKanmerNow, p),
+  onGitStatus: (cb) => {
+    const listener = (_e: unknown, status: Parameters<typeof cb>[0]) => cb(status);
+    ipcRenderer.on(CH.gitStatus, listener);
+    return () => ipcRenderer.removeListener(CH.gitStatus, listener);
+  },
   setOpenTabs: (openTabs, activeTab) => ipcRenderer.invoke(CH.setOpenTabs, openTabs, activeTab),
   connectAgent: (p, target) => ipcRenderer.invoke(CH.connectAgent, p, target),
   disconnectAgent: (p, target) => ipcRenderer.invoke(CH.disconnectAgent, p, target),

@@ -123,6 +123,19 @@ npm run dev:gui
 
 Click **Open project folder…** and pick any project (recently opened folders are listed, and the last one re-opens on launch). Kanmer creates/loads its `.kanmer/` folder there.
 
+### Shared board worktree
+
+For Git repositories, the GUI keeps the board in a canonical worktree at
+`<source-root>/.worktrees/kanmer` on the global **Kanmer branch** (default
+`kanmer-board`). The project tab, governing documents, agent skills, and agent
+working directory stay bound to the source root; only the MCP server is rooted
+at the board worktree. The Git settings tab can enable a whole-minute automatic
+sync or run one manual sync. On a conflict or authentication failure, sync is
+paused for that project and local board commits are retained; use **Retry**
+after resolving access or content conflicts. A second machine only needs the
+source checkout: opening it in Kanmer fetches and attaches the configured board
+branch automatically.
+
 - **Board** — one row of workflow-stage columns. Drag cards between stages **and to a position within a stage** — an insertion line shows where the card will land, and it lands instantly (optimistically). Manual order is shared with agents (`move_item position`). Within each column cards **cluster by area** under colour-coded sub-labels, carry an area stripe, and show a ⛏ badge while an agent has them taken, plus ⛔ / ⏰ badges when a ticket is blocked or overdue.
 - **Editor** — click a card for the frontmatter fields plus **document tabs** (Ticket | Research | Impact | Plan | Checklist | Proof) — the checklist renders as live checkboxes. Ticket-field saves are **diff-based** (only the fields you changed); concurrent agent edits re-sync live and a same-field conflict offers Keep mine / Take theirs. **Document saves are whole-document and version-checked** — if an agent changed the document while you were editing, the save is refused with a conflict banner offering Reload from disk or Overwrite anyway. Switching document tabs, closing, navigating or opening another project with unsaved text all prompt first. `[[ID]]` gets **autocomplete**; labels and links are chip editors with suggestions.
 - **Standup view** — in flight, in review, up next, recently done (7 days), blocked, overdue, what happened since yesterday, and flags — grouped by assignee/actor where it helps, with **Copy as Markdown** emitting exactly the `kanmer-standup` skill's shape.

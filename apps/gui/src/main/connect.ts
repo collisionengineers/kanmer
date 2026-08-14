@@ -224,10 +224,10 @@ export async function updateSkills(id: ProviderId, projectRoot: string): Promise
  * config-file merge) and install the skills (a marketplace CLI, or the AGENTS.md
  * block + a project skills copy). Idempotent — re-running just refreshes.
  */
-export async function connectAgent(id: ProviderId, projectRoot: string): Promise<ConnectResult> {
+export async function connectAgent(id: ProviderId, projectRoot: string, boardRoot = projectRoot): Promise<ConnectResult> {
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
-  const inv = serverInvocation(projectRoot);
+  const inv = serverInvocation(boardRoot);
   try {
     let command: string;
     let output: string;

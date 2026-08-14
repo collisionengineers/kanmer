@@ -32,6 +32,8 @@ export interface AppSettings extends UiPreferences {
   /** The active tab's project root. */
   activeTab: string;
   sessionInitialized: boolean;
+  kanmerBranch: string;
+  gitSyncMinutes: number;
 }
 
 const DEFAULTS: AppSettings = {
@@ -45,6 +47,8 @@ const DEFAULTS: AppSettings = {
   confirmOnDelete: true,
   defaultPriority: "",
   defaultArea: "",
+  kanmerBranch: "kanmer-board",
+  gitSyncMinutes: 0,
 };
 const MAX_RECENT = 8;
 
@@ -68,6 +72,8 @@ export function readSettings(): AppSettings {
       confirmOnDelete: parsed.confirmOnDelete !== false,
       defaultPriority: typeof parsed.defaultPriority === "string" ? parsed.defaultPriority : "",
       defaultArea: typeof parsed.defaultArea === "string" ? parsed.defaultArea : "",
+      kanmerBranch: typeof parsed.kanmerBranch === "string" && parsed.kanmerBranch.trim() ? parsed.kanmerBranch.trim() : "kanmer-board",
+      gitSyncMinutes: Number.isInteger(parsed.gitSyncMinutes) && (parsed.gitSyncMinutes ?? 0) > 0 ? parsed.gitSyncMinutes! : 0,
       ...(bounds && typeof bounds.width === "number" && typeof bounds.height === "number"
         ? { windowBounds: bounds }
         : {}),
@@ -75,6 +81,15 @@ export function readSettings(): AppSettings {
   } catch {
     return { ...DEFAULTS };
   }
+}
+
+/** Persist Git board preferences. Invalid intervals deliberately mean sync off. */
+export function setKanmerGitPreferences(kanmerBranch: string, gitSyncMinutes: number): AppSettings {
+  const settings = readSettings();
+  settings.kanmerBranch = kanmerBranch.trim() || "kanmer-board";
+  settings.gitSyncMinutes = Number.isInteger(gitSyncMinutes) && gitSyncMinutes > 0 ? gitSyncMinutes : 0;
+  writeSettings(settings);
+  return settings;
 }
 
 /** Persist the open-tab session (capped at MAX_RECENT). */

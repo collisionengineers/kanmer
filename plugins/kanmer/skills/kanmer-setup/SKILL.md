@@ -23,33 +23,40 @@ If `exists: true`, `format: 2` and items exist, this project is already set
 up — switch to the `kanmer-tickets` skill instead of seeding on top of real
 history. An archived-only board is a finished project, not a fresh one.
 
-## Greenfield
+## Greenfield (brief → docs → board)
 
-1. **Learn the project.** README, docs, TODO/ROADMAP files, top-level folder
-   names — those reveal the natural areas (`api/`, `ui/`, `infra/`).
-2. **Propose, then apply.** One short message to the user:
-   - **Areas** with hex colours and 2–6 letter id prefixes, from the
-     codebase's real seams — 3–6 of them. Tickets born in an area carry its
-     prefix (`API-001`), so pick prefixes the user will like reading.
-     **PR Review** (prefix `PR`) is already on every new board — keep it.
-   - **Stages** only if the defaults (todo → planning → implementing →
-     review → verifying → done) genuinely don't fit. You can now apply stage
-     changes yourself: `add_column` / `update_column` / `reorder_columns`,
-     and `remove_column` (with `migrate_to` if items already sit in one).
-     Still bias toward keeping the defaults — the proof gate lives on the
-     LAST stage and new items land in the FIRST, so a restructure changes
-     behaviour, not just labels.
-3. **Apply areas** with one `add_column` call each (`kind: "area"`, with
-   `color` and `prefix`).
-4. **Seed the backlog** with a single `create_items` call (tickets only —
-   plans and research live inside tickets as documents now). Check the
-   per-entry results. Body from the `kanmer-tickets` skill's ticket
-   template; leave `status` unset so everything lands in the first stage.
-5. **Prepare for worktrees**: make sure `.worktrees/` is in the repo's
-   `.gitignore` (add the line if missing) — agents work each ticket in its
-   own worktree there, per the `kanmer-execute` skill.
-6. **Install the operating instructions** (below), then finish with
-   `get_status` and report what was created.
+A real product brief can imply a hundred tickets — so this flow is
+**docs-first**, and nothing is created until the user confirms a preview.
+
+0. **Require a brief.** If the user hasn't given one, ask for a paragraph or two:
+   what they're building and for whom. Don't invent a product; a fresh repo with
+   no brief means stop and ask.
+1. **Annotate the brief → `docs/product/vision.md`** — the durable statement of
+   what and why.
+2. **Split into governing docs** via `kanmer-docs`: each product span becomes a
+   **PRD** (`docs/prd/`), each PRD's behaviour a **FRD** (`docs/frd/`, with
+   acceptance criteria), each cross-cutting decision an **ADR** (`docs/adr/`).
+   Unresolved questions go to `docs/product/open-questions.md` — surfaced, not
+   guessed.
+3. **Materialise the `/docs/` tree** + `docs/contributing/doc-structure.md` (from
+   `kanmer-docs`'s `doc-structure` template).
+4. **Board setup — preview first.** Propose, in one message the user confirms:
+   - **Areas** (3–6) from the FRDs/ADRs, plus the 4 built-in areas (Bugs, PR
+     Review, UI, Documentation) with their default doc-sets; hex colours + 2–6
+     letter prefixes.
+   - **Stages** only if the 7 defaults (backlog → researching → planning →
+     implementing → review → verifying → done) don't fit — bias to keeping them
+     (the gates and stage contract assume them).
+   - **The backlog with counts** — "N PRDs → M FRDs → K tickets" — because a real
+     brief can yield 100+ tickets. Only after the user confirms: `add_column`
+     each area, then one `create_items` call — **one ticket per FRD acceptance-
+     criterion / ADR consequence**, each created with **`refs`** to the doc it
+     implements (so it satisfies the leave-Backlog gate; use `docs_todo` only
+     where a doc is still owed). Leave `status` unset (first stage).
+5. **Wire it up**: ensure `.worktrees/` is in `.gitignore`; install the operating
+   instructions (below); ask whether to keep the **PRD/FRD/ADR gate on** (the
+   default) or disable it for a repo that declines a `/docs/` tree. Finish with
+   `get_status` + report the doc → ticket link map.
 
 ## Brownfield
 
@@ -71,10 +78,16 @@ source URLs); run it as part of seeding instead of duplicating its logic.
    they relate to (as plan.md / research.md) or become tickets labelled
    `legacy-plan`/`legacy-research` if nothing links them, areas get pinned id
    prefixes, ids never change.
-3. The migration itself runs from the Kanmer app (it prompts on opening a v1
-   board) — ask the user to click **Migrate to v2** there. If they'd rather
-   you drive, they can run it via the GUI once and you verify after.
-4. Verify with `get_status` (`format: 2`, counts intact) and summarize what
+3. The migration runs from the Kanmer app (it prompts on opening a v1 board) —
+   ask the user to click **Migrate to v2**. As an agent you can also drive it
+   with the **`migrate_board`** tool (`dry_run: true` first to preview — it also
+   backfills the 7-stage default). Either way it's additive and idempotent.
+4. **Don't let the new gates strand old tickets.** Set `docs_todo: true` on
+   existing tickets that have no governing-doc `refs` yet, so the leave-Backlog
+   gate doesn't retroactively block work already in flight. `kanmer-groom`
+   surfaces this doc-gate debt later. (Or, per §Greenfield step 5, the user can
+   disable the PRD/FRD/ADR gate entirely for a repo that declines `/docs/`.)
+5. Verify with `get_status` (`format: 2`, counts intact) and summarize what
    moved. Then refresh the AGENTS.md block (below) — upgrade mode only ever
    rewrites between the markers.
 

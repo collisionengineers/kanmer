@@ -1,8 +1,9 @@
 # PR description template
 
-Assemble the PR body from the ticket's own documents — writing it is an
-assembly job, not authorship. Sources: `get_item` for the body,
-`get_ticket_doc` for checklist and proof.
+The **PR description** (the `gh pr create --body`), distinct from the 4 review
+docs `kanmer-review` writes into the ticket. Assemble it from the ticket's own
+documents — an assembly job, not authorship. Sources: `get_item` for the body,
+`get_ticket_doc` for checklist and the post-implementation-report.
 
 ---
 

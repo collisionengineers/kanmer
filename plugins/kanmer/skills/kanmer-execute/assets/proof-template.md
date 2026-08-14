@@ -1,12 +1,12 @@
 # Proof — <ticket id>
 
-Evidence the work is done and verified — required before this ticket can
-reach the board's final stage. Real output only: paste what actually ran,
-not what should have.
+Verification evidence gathered on **merged `main`** (not the feature branch) by
+`kanmer-verify` — the **Verifying → Done** gate. Real output only: paste what
+actually ran, not what should have.
 
 ## What was verified
 
-- The behaviour/requirement, and how.
+- The behaviour/requirement, how, and the commit of `main` it was verified on.
 
 ## Evidence
 

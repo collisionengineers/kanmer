@@ -33,11 +33,17 @@ than filing a near-duplicate.
 One ticket per unit of work, created before the work starts (`create_item`,
 body from `assets/ticket-template.md`). Set `area` from the board's list —
 the area determines the ticket's id prefix (a ticket born in `api` becomes
-`API-00X`) — and put PR feedback in the default **PR Review** area. New
-tickets belong in the board's first stage (leave `status` unset). Filing a
-ticket isn't the same as starting it: if the user only asked you to file one,
-create it and stop there. For several at once use `create_items` and check
-its per-entry results.
+`API-00X`). New tickets belong in the board's first stage (leave `status`
+unset). For several at once use `create_items` and check its per-entry results.
+
+**Link or create a governing doc.** The standard board gates *leaving Backlog*
+on a governing PRD/FRD/ADR: give the ticket `refs` to the doc it implements
+(`link_doc <id> docs/frd/<slug>.md`), or set **`docs_todo: true`** when the doc
+is still to be written (hand off to `kanmer-docs`). Without one of the two a
+ticket can't leave Backlog. Quick-filed tickets default to `docs_todo`.
+
+Filing a ticket isn't the same as starting it: if the user only asked you to
+file one, create it and stop there.
 
 ## Linking
 

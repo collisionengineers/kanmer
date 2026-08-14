@@ -10,28 +10,30 @@ research.md and impact.md — never before them, never instead of them.
 
 ## Steps
 
-1. **Check the inputs.** `get_item` for the ticket, then `get_ticket_doc`
-   for `research` and `impact`. If either is missing or visibly stale
-   (the code it describes has moved on), do the `kanmer-research` skill's
-   job first — don't plan around the gap.
-2. **Keep the ticket in the designing stage** (resolve against `list_board`)
-   while planning; research usually already moved it there.
-3. **Write `plan.md`** from `assets/plan-template.md`: the chosen approach
-   and why it beat the alternatives, concrete ordered steps, how proof will
-   be produced (the tests to run, the behaviours to observe), and risks with
-   mitigations. Every open question from research.md must be either resolved
-   here or listed as a risk — silence is how plans go wrong.
-4. **Distill `checklist.md`** from `assets/checklist-template.md`: one
-   `- [ ]` box per plan step, ending with the verification run that produces
-   proof.md. The checklist is what `kanmer-execute` actually works through
-   and what the human watches tick over on the board, so each box must be
-   independently checkable — "wire the retry call" not "do the backend".
-5. **Sanity-check scope.** If the plan grew beyond one unit of work, split
-   it: file the extra tickets (`kanmer-tickets`), link with `rel: "blocks"`
-   where order matters, and shrink this plan back to its ticket.
-6. **If the plan changes anything user-visible or contested, show it to the
-   user before implementation starts** — a paragraph summary, not the whole
-   document. Their board renders plan.md; they can read the rest there.
+1. **Check the inputs.** `get_item` for the ticket, then `get_ticket_doc` for
+   `research` and `impact`. If either is missing or visibly stale, do the
+   `kanmer-research` job first — the **Researching → Planning** gate won't let
+   the ticket into Planning without them, and you shouldn't plan around the gap.
+2. **The ticket is in the Planning stage** (it left Researching once research +
+   impact existed). Resolve stage ids against `list_board`.
+3. **Write `plan.md`** from `assets/plan-template.md`: the chosen approach and
+   why it beat the alternatives, concrete ordered steps, how proof will be
+   produced, and risks with mitigations. It **must** carry a **Governing docs**
+   section — how the plan meets each linked PRD/FRD/ADR (`refs`), or, *only with
+   explicit user authorization*, how it modifies one, or why a new ADR is being
+   written. Design decisions become **ADRs** via `kanmer-docs`, linked into
+   `refs`. (Gates check a doc exists; this content rule is enforced here and
+   checked by `kanmer-review`.)
+4. **Distill `checklist.md`** from `assets/checklist-template.md`: one `- [ ]`
+   box per plan step, ending with the verification the post-implementation
+   report will summarise. Each box must be independently checkable — "wire the
+   retry call", not "do the backend".
+5. **Sanity-check scope.** If the plan grew beyond one unit of work, split it:
+   file the extra tickets (`kanmer-tickets`), link with `rel: "blocks"` where
+   order matters, and shrink this plan back to its ticket.
+6. **If the plan changes anything user-visible or contested, show it to the user
+   before implementation starts** — a paragraph summary, not the whole document.
 
-When plan.md and checklist.md exist, the ticket is ready for
-`kanmer-execute`.
+`plan.md` + `checklist.md` are the **Planning → Implementing** gate. When they
+exist and the user has approved, `get_doc_gates <id>` will show the move is
+clear, and the ticket is ready for `kanmer-execute`.

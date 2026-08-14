@@ -1,6 +1,6 @@
 ---
 name: kanmer-import
-description: Bring external work onto a Kanmer board — turn GitHub issues and PR review comments into tickets in the right area, each linked back to its source, idempotently (re-running updates instead of duplicating). Use when the user says "import the GitHub issues", "put this issue on the board", "turn the PR feedback into tickets", "sync the board with the issue tracker". DO NOT USE FOR first-time board setup and seeding from the codebase itself (kanmer-setup) or writing the review feedback yourself (kanmer-review).
+description: Bring external work onto a Kanmer board — turn GitHub issues into tickets in the right area, each linked back to its source, idempotently (re-running updates instead of duplicating). Use when the user says "import the GitHub issues", "put this issue on the board", "sync the board with the issue tracker". DO NOT USE FOR first-time board setup (kanmer-setup) or PR review feedback — that is kanmer-review's job now.
 ---
 
 # Importing external work onto the board
@@ -26,17 +26,17 @@ before creating anything, so running twice changes nothing the second time.
 4. **Create** via `kanmer-tickets` conventions (`create_items` for bulk,
    check per-entry results): title stays imperative (rewrite the issue title
    if it's a complaint, not an instruction), body carries the What/Why
-   distilled from the issue plus a `Source: <url>` line. Leave `status`
-   unset. Issues referencing each other become `links` / `rel: "blocks"`.
+   distilled from the issue plus a `Source: <url>` line. Leave `status` unset,
+   and set **`docs_todo: true`** — an imported ticket has no governing doc yet,
+   so the flag keeps the leave-Backlog gate from stranding it until
+   `kanmer-docs` links or writes one. Issues referencing each other become
+   `links` / `rel: "blocks"`.
 
-## PR review comments
+## PR review feedback → kanmer-review
 
-Feedback on a PR you're tracking: each substantive comment becomes a ticket
-in the **PR Review** area (they get the `PR-` prefix), body quoting the
-comment with its URL, linked `rel: "blocks"` to the ticket the PR belongs to
-(the `Kanmer: <ID>` footer in the PR body names it). This is the same rule
-`kanmer-review` applies — use whichever skill is already in play; the
-tickets come out identical.
+Import no longer handles PR comments. Turning PR review feedback into blocking
+tickets is `kanmer-review`'s job (its `pr-comments` / `pr-comment-disposition`
+docs) — one owner, so the same feedback can't be double-filed.
 
 ## Report
 

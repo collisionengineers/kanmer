@@ -1,6 +1,6 @@
 ---
 name: kanmer-auto
-description: Autonomously clear a set of Kanmer tickets — target an area (or filter) and drive every eligible ticket through research → plan → execute → review → closeout up to a specified point, orchestrating parallel subagents in conflict-free waves. Use when the user says "clear the API area", "work through the backlog", "burn down UI up to review", "do all the tickets in <area>". DO NOT USE FOR a single ticket — use the phase skills (kanmer-research/plan/execute/review/closeout) directly.
+description: Autonomously clear a set of Kanmer tickets — target an area (or filter) and drive every eligible ticket through research → plan → execute → review → verify → closeout up to a specified point, orchestrating parallel subagents in conflict-free waves and respecting the document gates. Use when the user says "clear the API area", "work through the backlog", "burn down UI up to review", "do all the tickets in <area>". DO NOT USE FOR a single ticket — use the phase skills directly.
 ---
 
 # Clearing an area autonomously
@@ -20,6 +20,11 @@ which tickets, in what order, and how many at once.
   the default is full closeout (merge permitting — if merging is the human's
   call, tickets park in review and you say so). Resolve stage names against
   `list_board`.
+- **Gates are hard.** Every lane obeys the document gates (`get_doc_gates`): it
+  can't leave Backlog without a governing doc (`link_doc`/`docs_todo`), leave
+  Planning without plan+checklist, enter Review without the post-implementation
+  report, or reach Done without proof. Set `docs_todo` on tickets that need a
+  governing doc written so they aren't stranded at the first gate.
 - Tell the user the roster before starting: which tickets, target point,
   what was skipped and why.
 
@@ -47,8 +52,9 @@ reviews stay manageable.
 
 Each lane's current ticket runs in its own subagent: `kanmer-plan` →
 `kanmer-execute` (own worktree `.worktrees/<id>`, own branch) →
-`kanmer-review` if the target point includes it → `kanmer-closeout` if the
-PR merges. After anything merges to main, lanes still in flight rebase
+`kanmer-review` (which merges on pass) → `kanmer-verify` (validate on merged
+main, write proof) → `kanmer-closeout` — each phase only as far as the target
+point allows. After anything merges to main, lanes still in flight rebase
 before opening their PRs:
 
 ```sh

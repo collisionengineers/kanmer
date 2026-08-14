@@ -434,6 +434,7 @@ export function Editor(props: EditorProps): JSX.Element {
           key={`${item.id}:${tab}`}
           id={item.id}
           doc={tab}
+          progressDoc={progressDoc}
           knownIds={knownIds}
           changeSignal={changeSignal}
           onDirty={setDocDirty}
@@ -690,6 +691,7 @@ function LinkGroup({
 function DocEditor({
   id,
   doc,
+  progressDoc,
   knownIds,
   changeSignal,
   onDirty,
@@ -697,6 +699,7 @@ function DocEditor({
 }: {
   id: string;
   doc: TicketDoc;
+  progressDoc: TicketDoc | undefined;
   knownIds: Set<string>;
   changeSignal: number;
   onDirty: (dirty: boolean) => void;
@@ -854,12 +857,12 @@ function DocEditor({
     );
   }
 
-  if (doc === "checklist") {
+  if (doc === progressDoc) {
     let boxIndex = -1;
     return (
       <div className="doc-editor">
         {conflictBanner}
-        <div className="doc-view checklist-view">
+        <div className="doc-view progress-view">
           {(content ?? "").split("\n").map((line, i) => {
             const m = /^(\s*)[-*]\s+\[( |x|X)\]\s?(.*)$/.exec(line);
             if (!m) return <div key={i} className="checklist-text">{line}</div>;

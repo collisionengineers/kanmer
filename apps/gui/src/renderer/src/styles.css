@@ -861,7 +861,7 @@ button.danger {
 .doc-view {
   overflow: auto;
 }
-.checklist-view {
+.progress-view {
   display: flex;
   flex-direction: column;
   gap: 2px;

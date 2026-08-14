@@ -77,6 +77,7 @@ export async function dispatchTicket(
   projectId: string,
   ticketId: string,
   opts: { timeoutMs?: number } = {},
+  sourceRoot = store.paths.projectRoot,
 ): Promise<DispatchStatus> {
   const provider = providerById(providerId);
   if (!provider?.dispatch || !provider.dispatchCli || !provider.dispatchArgs) {
@@ -93,7 +94,7 @@ export async function dispatchTicket(
     );
   }
 
-  const root = store.paths.projectRoot;
+  const root = sourceRoot;
   const prompt = takeTicketPromptText(ticketId);
   const args = provider.dispatchArgs(prompt, root);
   const dispatchId = `${ticketId}-${++counter}`;

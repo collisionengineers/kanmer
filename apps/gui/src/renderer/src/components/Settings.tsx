@@ -13,17 +13,18 @@ import type {
   DocModel,
   ProviderInfo,
   SkillsStatus,
-  Theme,
+  Theme, KanmerGitStatus,
   UiPreferences,
 } from "../../../shared/ipc.js";
 import { useClient } from "../lib/client.js";
 import { boardDraftModified, reconcileBoardDraft } from "../lib/settingsDraft.js";
 
-type SettingsTab = "board" | "documents" | "appearance" | "connect";
+type SettingsTab = "board" | "documents" | "appearance" | "git" | "connect";
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: "board", label: "Board" },
   { id: "documents", label: "Documents" },
   { id: "appearance", label: "Appearance" },
+  { id: "git", label: "Git" },
   { id: "connect", label: "Connect" },
 ];
 
@@ -270,6 +271,8 @@ export function Settings({
               />
             )}
 
+            {tab === "git" && <GitTab />}
+
             {tab === "appearance" && (
               <>
                 <div className="settings-section">
@@ -497,6 +500,32 @@ function ConnectSection(): JSX.Element {
       )}
     </div>
   );
+}
+
+/** Global board-branch settings, with the active project's safe manual sync. */
+function GitTab(): JSX.Element {
+  const client = useClient();
+  const [branch, setBranch] = useState("kanmer-board");
+  const [minutes, setMinutes] = useState(0);
+  const [status, setStatus] = useState<KanmerGitStatus | null>(null);
+  useEffect(() => {
+    void Promise.all([window.kanmer.getSettings(), window.kanmer.getKanmerGitStatus(client.projectId)]).then(([s, st]) => {
+      setBranch(s.kanmerBranch); setMinutes(s.gitSyncMinutes); setStatus(st);
+    });
+  }, [client.projectId]);
+  const save = async () => window.kanmer.setKanmerGitPreferences({ kanmerBranch: branch, gitSyncMinutes: minutes });
+  return <div className="settings-section">
+    <h3>Shared board Git branch</h3>
+    <p className="hint">Kanmer stores the board in <code>.worktrees/kanmer</code>; your source checkout remains the project tab.</p>
+    <label className="field"><span>Kanmer branch</span><input value={branch} onChange={(e) => setBranch(e.target.value)} onBlur={() => void save()} /></label>
+    <label className="check"><input type="checkbox" checked={minutes > 0} onChange={(e) => { const next = e.target.checked ? 1 : 0; setMinutes(next); void window.kanmer.setKanmerGitPreferences({ kanmerBranch: branch, gitSyncMinutes: next }); }} /> Automatic sync</label>
+    {minutes > 0 && <label className="field"><span>Minutes</span><input type="number" min={1} step={1} value={minutes} onChange={(e) => setMinutes(Math.max(1, Math.trunc(Number(e.target.value) || 1)))} onBlur={() => void save()} /></label>}
+    {!status?.available ? <p className="hint">Git sync is unavailable for this non-Git project.</p> : <>
+      <p className="hint">Board worktree: <code>{status.boardRoot}</code>{status.lastSync ? ` · last sync ${status.lastSync}` : ""}</p>
+      {status.error && <p className="error">{status.error}</p>}
+      <button className="ghost sm" onClick={() => void window.kanmer.syncKanmerNow(client.projectId).then(setStatus)}>{status.paused ? "Retry" : "Sync now"}</button>
+    </>}
+  </div>;
 }
 
 /**

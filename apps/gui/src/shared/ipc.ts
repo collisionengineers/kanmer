@@ -44,6 +44,10 @@ export const CH = {
   setTheme: "kanmer:setTheme",
   setNotifications: "kanmer:setNotifications",
   setPreferences: "kanmer:setPreferences",
+  setKanmerGitPreferences: "kanmer:setKanmerGitPreferences",
+  getKanmerGitStatus: "kanmer:getKanmerGitStatus",
+  syncKanmerNow: "kanmer:syncKanmerNow",
+  gitStatus: "kanmer:gitStatus",
   connectAgent: "kanmer:connectAgent",
   disconnectAgent: "kanmer:disconnectAgent",
   listProviders: "kanmer:listProviders",
@@ -140,12 +144,18 @@ export interface AppSettings extends UiPreferences {
   activeTab: string;
   /** Whether an empty openTabs array is an intentional persisted session. */
   sessionInitialized: boolean;
+  kanmerBranch: string;
+  gitSyncMinutes: number;
 }
+
+export interface KanmerGitPreferences { kanmerBranch: string; gitSyncMinutes: number; }
+export interface KanmerGitStatus { available: boolean; boardRoot: string | null; branch: string; lastSync: string | null; error: string | null; paused: boolean; }
 
 export interface OpenProjectResult {
   /** Canonical project root — the projectId every scoped call carries. */
   projectId: string;
   root: string;
+  boardRoot: string;
   board: BoardConfig;
   items: Item[];
   /** Storage format: 1 = legacy layout (offer migration), 2 = current. */
@@ -252,6 +262,10 @@ export interface KanmerApi {
   setNotifications(on: boolean): Promise<AppSettings>;
   /** Merge a partial UI-preferences patch (Phase 4.4). */
   setPreferences(patch: Partial<UiPreferences>): Promise<AppSettings>;
+  setKanmerGitPreferences(prefs: KanmerGitPreferences): Promise<AppSettings>;
+  getKanmerGitStatus(projectId: string): Promise<KanmerGitStatus>;
+  syncKanmerNow(projectId: string): Promise<KanmerGitStatus>;
+  onGitStatus(cb: (status: KanmerGitStatus & { projectId: string }) => void): () => void;
   /** Persist the open-tab session (project roots + the active one). */
   setOpenTabs(openTabs: string[], activeTab: string): Promise<AppSettings>;
   /** Register the MCP server + install skills for the given host in a project. */

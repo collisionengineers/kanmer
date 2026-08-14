@@ -52,11 +52,13 @@ import {
   setOpenTabs,
   setPreferences,
   setTheme,
+  setKanmerGitPreferences,
   setWindowBounds,
   type Theme,
   type UiPreferences,
   type WindowBounds,
 } from "./settings.js";
+import { ensureBoardWorktree, syncBoard, type KanmerGitStatus } from "./kanmerGit.js";
 import {
   connectAgent,
   disconnectAgent,
@@ -77,11 +79,14 @@ let mainWindow: BrowserWindow | null = null;
 
 /** One open project. projectId is its canonical root (D2). */
 interface ProjectContext {
-  root: string;
+  sourceRoot: string;
+  boardRoot: string;
   store: KanmerStore;
   watch: WatchHandle;
   /** Recent writes this GUI made, so its own file changes don't self-toast. */
   ownWrites: Map<string, number>;
+  syncTimer?: NodeJS.Timeout;
+  syncStatus: KanmerGitStatus;
 }
 const contexts = new Map<string, ProjectContext>();
 
@@ -366,10 +371,14 @@ async function flushToasts(): Promise<void> {
 
 /** Open a project (or focus it if already open), building a per-project context. */
 async function openProject(root: string): Promise<OpenProjectResult> {
-  const store = new KanmerStore(root);
-  const projectId = store.paths.projectRoot; // canonical id (D2): dedups the same folder
+  const sourceStore = new KanmerStore(root);
+  const projectId = sourceStore.paths.projectRoot; // canonical id (D2): dedups the same folder
   const existing = contexts.get(projectId);
   if (existing) return snapshotOf(existing);
+
+  const syncStatus = await ensureBoardWorktree(projectId, readSettings().kanmerBranch);
+  const boardRoot = syncStatus.boardRoot ?? projectId;
+  const store = new KanmerStore(boardRoot);
 
   await store.init();
   recordRecentProject(projectId);
@@ -387,7 +396,9 @@ async function openProject(root: string): Promise<OpenProjectResult> {
     if (mainWindow?.isFocused()) return;
     queueToast(projectId, key, event);
   });
-  const ctx: ProjectContext = { root: projectId, store, watch, ownWrites };
+  const ctx: ProjectContext = { sourceRoot: projectId, boardRoot, store, watch, ownWrites, syncStatus };
+  const minutes = readSettings().gitSyncMinutes;
+  if (syncStatus.available && minutes > 0) ctx.syncTimer = setInterval(() => void syncProject(projectId), minutes * 60_000);
   contexts.set(projectId, ctx);
   buildMenu(); // refresh the Open Recent submenu
   return snapshotOf(ctx);
@@ -395,8 +406,9 @@ async function openProject(root: string): Promise<OpenProjectResult> {
 
 async function snapshotOf(ctx: ProjectContext): Promise<OpenProjectResult> {
   return {
-    projectId: ctx.root,
-    root: ctx.root,
+    projectId: ctx.sourceRoot,
+    root: ctx.sourceRoot,
+    boardRoot: ctx.boardRoot,
     board: await ctx.store.getBoard(),
     items: await ctx.store.listItems({ includeArchived: true }),
     format: await ctx.store.detectFormat(),
@@ -408,7 +420,15 @@ async function closeProject(projectId: string): Promise<void> {
   const ctx = contexts.get(projectId);
   if (!ctx) return;
   await ctx.watch.close();
+  if (ctx.syncTimer) clearInterval(ctx.syncTimer);
   contexts.delete(projectId);
+}
+
+async function syncProject(projectId: string): Promise<KanmerGitStatus> {
+  const ctx = requireCtx(projectId);
+  ctx.syncStatus = await syncBoard(ctx.syncStatus);
+  mainWindow?.webContents.send(CH.gitStatus, { projectId, ...ctx.syncStatus });
+  return ctx.syncStatus;
 }
 
 /** Native right-click menu for a card; resolves with what the user picked. */
@@ -547,24 +567,29 @@ function registerIpc(): void {
   ipcMain.handle(CH.setTheme, (_e, theme: Theme) => setTheme(theme));
   ipcMain.handle(CH.setNotifications, (_e, on: boolean) => setNotifications(on));
   ipcMain.handle(CH.setPreferences, (_e, patch: Partial<UiPreferences>) => setPreferences(patch));
+  ipcMain.handle(CH.setKanmerGitPreferences, (_e, prefs: { kanmerBranch: string; gitSyncMinutes: number }) =>
+    setKanmerGitPreferences(prefs.kanmerBranch, prefs.gitSyncMinutes),
+  );
+  ipcMain.handle(CH.getKanmerGitStatus, (_e, p: string) => requireCtx(p).syncStatus);
+  ipcMain.handle(CH.syncKanmerNow, (_e, p: string) => syncProject(p));
   ipcMain.handle(CH.setOpenTabs, (_e, openTabs: string[], activeTab: string) =>
     setOpenTabs(openTabs, activeTab),
   );
   ipcMain.handle(CH.connectAgent, (_e, p: string, target: ConnectTarget) =>
-    connectAgent(target, requireStore(p).paths.projectRoot),
+    connectAgent(target, requireCtx(p).sourceRoot, requireCtx(p).boardRoot),
   );
   ipcMain.handle(CH.disconnectAgent, (_e, p: string, target: ConnectTarget) =>
-    disconnectAgent(target, requireStore(p).paths.projectRoot),
+    disconnectAgent(target, requireCtx(p).sourceRoot),
   );
   ipcMain.handle(CH.listProviders, () => listProviders());
   ipcMain.handle(CH.getSkillsStatus, (_e, p: string, target: ConnectTarget) =>
-    skillsStatus(target, requireStore(p).paths.projectRoot),
+    skillsStatus(target, requireCtx(p).sourceRoot),
   );
   ipcMain.handle(CH.updateSkills, (_e, p: string, target: ConnectTarget) =>
-    updateSkills(target, requireStore(p).paths.projectRoot),
+    updateSkills(target, requireCtx(p).sourceRoot),
   );
   ipcMain.handle(CH.dispatchAgent, (_e, p: string, ticketId: string, target: ConnectTarget) =>
-    dispatchTicket(requireStore(p), target, p, ticketId),
+    dispatchTicket(requireStore(p), target, p, ticketId, {}, requireCtx(p).sourceRoot),
   );
   ipcMain.handle(CH.cancelDispatch, (_e, dispatchId: string) => cancelDispatch(dispatchId));
   ipcMain.handle(CH.listDispatches, (_e, p: string) => listDispatches(p));
@@ -616,17 +641,17 @@ function registerIpc(): void {
   });
   ipcMain.handle(CH.openRepoDoc, async (_e, p: string, rel: string) => {
     // assertSafeRepoPath rejects a path escaping the project root before shell touches it.
-    await shell.openPath(assertSafeRepoPath(requireStore(p).paths.projectRoot, rel));
+    await shell.openPath(assertSafeRepoPath(requireCtx(p).sourceRoot, rel));
   });
   ipcMain.handle(CH.getRepoDoc, async (_e, p: string, rel: string) => {
     try {
-      return await readFile(assertSafeRepoPath(requireStore(p).paths.projectRoot, rel), "utf8");
+      return await readFile(assertSafeRepoPath(requireCtx(p).sourceRoot, rel), "utf8");
     } catch {
       return null;
     }
   });
   ipcMain.handle(CH.pickRepoDoc, async (_e, p: string) => {
-    const root = requireStore(p).paths.projectRoot;
+    const root = requireCtx(p).sourceRoot;
     const res = await dialog.showOpenDialog({
       title: "Pick a governing document",
       defaultPath: join(root, "docs"),

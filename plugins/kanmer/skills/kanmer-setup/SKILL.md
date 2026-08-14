@@ -9,7 +9,10 @@ One skill, three modes — detect which one applies before touching anything.
 
 ## Detect the mode
 
-Call `get_status` first (it never creates `.kanmer/`):
+Call `get_status` first (it never creates `.kanmer/`). When setup is performed
+through the GUI in a Git repository, its canonical board worktree is
+`.worktrees/kanmer` on the configured `kanmer-board` branch; MCP is already
+rooted there. Do not create, switch, or push that board branch from an agent.
 
 - **greenfield** — `exists: false`, and `list_items include_archived: true`
   returns nothing: a fresh project. Propose structure, seed a backlog.

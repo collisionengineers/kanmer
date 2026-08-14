@@ -39,7 +39,6 @@ let spawnFn: SpawnFn = defaultSpawn;
 export function __setSpawnForTests(fn: SpawnFn | null): void {
   spawnFn = fn ?? defaultSpawn;
 }
-
 export function listDispatches(): DispatchStatus[] {
   return [...active.values()].map((h) => ({ ...h.status, tail: h.tail.slice(-50) }));
 }

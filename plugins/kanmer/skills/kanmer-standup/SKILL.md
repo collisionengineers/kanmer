@@ -1,6 +1,6 @@
 ---
 name: kanmer-standup
-description: Summarise the current state of a project's Kanmer board — what's in progress, what's blocked or stale, what changed recently. Use whenever the user asks for a standup, status update, board summary, progress report, "where are we", "what's left", or wants to groom/triage the backlog in a project with a .kanmer folder.
+description: Summarise the current state of a project's Kanmer board — what's in progress, what's blocked or stale, what changed recently. Use whenever the user asks for a standup, status update, board summary, progress report, "where are we", "what's left" in a project with a .kanmer folder. DO NOT USE FOR look-backs over a period like "what shipped last month" (kanmer-retro) or for actually fixing what the report flags (kanmer-groom).
 ---
 
 # Kanmer standup / board report

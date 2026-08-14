@@ -17,6 +17,8 @@ Master overview. Each phase has its own folder with a detailed, self-contained p
 
 Implementation log: [phase-0-pr1-verify-merge/plan.md](phase-0-pr1-verify-merge/plan.md).
 
+> **Superseded note (2026-08-14):** after Phase 8 shipped, the single `kanmer-workflow` skill it describes was split on disk into a **12-skill roster** (`kanmer-tickets`/`-research`/`-plan`/`-execute` + `kanmer-review`, `-closeout`, `-auto`, `-retro`, `-groom`, `-import`, alongside `-standup` and `-setup`), with templates and the tool reference relocated accordingly. This index and the Phase 8 plan text predate that split — the current baseline is documented in [`../kanmer-v2/phase-0-baseline/current-architecture.md`](../kanmer-v2/phase-0-baseline/current-architecture.md), and the audit of these plans in [`../implementation-audit.md`](../implementation-audit.md).
+
 ## Context
 
 Kanmer (v0.1.0) is a file-based kanban where AI agents (11-tool stdio MCP server) and a human (Electron GUI) share `.kanmer/` Markdown+YAML files as the single source of truth, synced through a chokidar watcher. Exploration found real problems: the GUI editor silently clobbers concurrent agent edits; the store validates nothing against the board (typo'd stages create phantom columns); `../` in an id escapes `.kanmer/`; concurrent creates can silently lose a ticket; the shipped app has no icon, no AppUserModelId, stock Electron menu with DevTools, zero keyboard/ARIA support; agents lack bulk ops, change queries, and any "where am I" check.

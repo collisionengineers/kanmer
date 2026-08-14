@@ -20,7 +20,7 @@ Call `get_status` first (it never creates `.kanmer/`):
   current layout. Run the migration; don't seed anything.
 
 If `exists: true`, `format: 2` and items exist, this project is already set
-up — switch to the `kanmer-workflow` skill instead of seeding on top of real
+up — switch to the `kanmer-tickets` skill instead of seeding on top of real
 history. An archived-only board is a finished project, not a fresh one.
 
 ## Greenfield
@@ -43,9 +43,12 @@ history. An archived-only board is a finished project, not a fresh one.
    `color` and `prefix`).
 4. **Seed the backlog** with a single `create_items` call (tickets only —
    plans and research live inside tickets as documents now). Check the
-   per-entry results. Body from the workflow skill's ticket template; leave
-   `status` unset so everything lands in the first stage.
-5. **Install the operating instructions** (below), then finish with
+   per-entry results. Body from the `kanmer-tickets` skill's ticket
+   template; leave `status` unset so everything lands in the first stage.
+5. **Prepare for worktrees**: make sure `.worktrees/` is in the repo's
+   `.gitignore` (add the line if missing) — agents work each ticket in its
+   own worktree there, per the `kanmer-execute` skill.
+6. **Install the operating instructions** (below), then finish with
    `get_status` and report what was created.
 
 ## Brownfield
@@ -55,6 +58,10 @@ comments, failing or skipped tests, README "known issues", half-finished
 directories. Propose the backlog to the user before bulk-creating; their
 repo, their priorities. Link related tickets as you create them
 (`links` at create time, `rel: "blocks"` where order genuinely matters).
+
+If the repo tracks work in GitHub issues, don't re-derive those from the
+code — that's the `kanmer-import` skill's job (it's idempotent and records
+source URLs); run it as part of seeding instead of duplicating its logic.
 
 ## Upgrade
 
@@ -84,11 +91,13 @@ exists and how to behave on it:
 This repo's work is tracked on a Kanmer board in `.kanmer/`.
 
 - Start every session with `get_status`, then `list_board` / `list_items` to find your ticket.
-- Take a ticket before working: `take_ticket` records the time, branch and worktree, and moves the stage.
+- Work each ticket on its own branch and worktree: worktree `.worktrees/<id>`, branch `<id>-<slug>`; `take_ticket` records both and moves the stage.
 - Follow the doc pipeline in the ticket's folder: research.md + impact.md → plan.md → checklist.md → proof.md.
 - proof.md is required before a ticket can reach the final stage.
 - Add progress notes with `set_ticket_doc` (append: true) — don't rewrite whole documents to add a line.
+- When the PR merges, close out: proof → final stage → outcome → remove worktree → delete branch → release last.
 - Archive, don't delete. Reference other items with [[ID]] wiki-links.
+- The kanmer plugin's skills cover each phase: kanmer-tickets (manage), -research, -plan, -execute, -review, -closeout, -auto, -standup, -retro, -groom, -import, -setup.
 <!-- kanmer:instructions:end -->
 ```
 

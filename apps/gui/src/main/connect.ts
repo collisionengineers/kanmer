@@ -77,10 +77,14 @@ async function dropAgentsBlock(root: string): Promise<void> {
 }
 
 /** Remove only the bundled skills Kanmer owns, preserving any host/user skills. */
-async function removeBundledSkillsOnly(root: string, skillsDir: string): Promise<void> {
+export async function removeBundledSkillsOnly(
+  root: string,
+  skillsDir: string,
+  bundledSkillsRoot = join(pluginRoot(), "skills"),
+): Promise<void> {
   const destination = join(root, skillsDir);
   if (!existsSync(destination)) return;
-  const bundled = await readdir(join(pluginRoot(), "skills"), { withFileTypes: true });
+  const bundled = await readdir(bundledSkillsRoot, { withFileTypes: true });
   for (const entry of bundled) {
     // Bundled skill folders are direct children; never let a path escape the destination.
     if (!entry.isDirectory() || entry.name.includes("/") || entry.name.includes("\\") || entry.name === ".") continue;
@@ -187,6 +191,7 @@ export async function disconnectAgent(id: ProviderId, projectRoot: string): Prom
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
   try {
+    const cleanupNotes: string[] = ["provider registration removed"];
     if (provider.register.kind === "cli") {
       for (const cmd of provider.register.removeCommands(projectRoot)) {
         await execAsync(cmd, { cwd: projectRoot }).catch(() => undefined);
@@ -200,10 +205,17 @@ export async function disconnectAgent(id: ProviderId, projectRoot: string): Prom
     if (provider.install.kind === "copySkills") {
       if (provider.install.skillsScope === "project" && provider.install.skillsDir) {
         await removeBundledSkillsOnly(projectRoot, provider.install.skillsDir);
+        cleanupNotes.push("bundled copied skills removed");
       }
-      if (!(await hasRegisteredCopySkillsPeer(id, projectRoot))) await dropAgentsBlock(projectRoot);
+      const peerRemains = await hasRegisteredCopySkillsPeer(id, projectRoot);
+      if (peerRemains) {
+        cleanupNotes.push("AGENTS.md block retained for another connected host");
+      } else {
+        await dropAgentsBlock(projectRoot);
+        cleanupNotes.push("AGENTS.md block removed; no connected copy-skills host remains");
+      }
     }
-    return { ok: true, command: `disconnect ${id}`, output: "Disconnected." };
+    return { ok: true, command: `disconnect ${id}`, output: cleanupNotes.join("; ") };
   } catch (err) {
     return {
       ok: false,

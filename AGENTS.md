@@ -1,3 +1,18 @@
+<!-- kanmer:instructions:start — managed by kanmer-setup; edits inside will be overwritten -->
+# Kanmer operating instructions
+
+This repo's work is tracked on a Kanmer board in `.kanmer/`.
+
+- Start every session with `get_status`, then `list_board` / `list_items` to find your ticket.
+- Work each ticket on its own branch and worktree: worktree `.worktrees/<id>`, branch `<id>-<slug>`; `take_ticket` records both and moves the stage.
+- Follow the doc pipeline in the ticket's folder: research.md + impact.md → plan.md → checklist.md → proof.md.
+- proof.md is required before a ticket can reach the final stage.
+- Add progress notes with `set_ticket_doc` (append: true) — don't rewrite whole documents to add a line.
+- When the PR merges, close out: proof → final stage → outcome → remove worktree → delete branch → release last.
+- Archive, don't delete. Reference other items with [[ID]] wiki-links.
+- The kanmer plugin's skills cover each phase: kanmer-tickets (manage), -research, -plan, -execute, -review, -closeout, -auto, -standup, -retro, -groom, -import, -setup.
+<!-- kanmer:instructions:end -->
+
 # AGENTS.md — Contributor & AI-agent guide to Kanmer
 
 This file is the single source of truth for **how to work on Kanmer**. It's written for an AI coding agent (codex, Claude Code, etc.) or a new human contributor who needs to be productive without reading every file first. `CLAUDE.md` points here.

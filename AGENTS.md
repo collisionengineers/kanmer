@@ -3,14 +3,15 @@
 
 This repo's work is tracked on a Kanmer board in `.kanmer/`.
 
-- Start every session with `get_status`, then `list_board` / `list_items` to find your ticket.
+- Start every session with `get_status`, then `list_board` / `list_items` to find your ticket. `get_doc_gates` shows which documents each stage transition needs.
 - Work each ticket on its own branch and worktree: worktree `.worktrees/<id>`, branch `<id>-<slug>`; `take_ticket` records both and moves the stage.
-- Follow the doc pipeline in the ticket's folder: research.md + impact.md → plan.md → checklist.md → proof.md.
-- proof.md is required before a ticket can reach the final stage.
-- Add progress notes with `set_ticket_doc` (append: true) — don't rewrite whole documents to add a line.
-- When the PR merges, close out: proof → final stage → outcome → remove worktree → delete branch → release last.
+- Stages: backlog → researching → planning → implementing → review → verifying → done — hard document gates guard the transitions.
+- Before a ticket leaves Backlog, link a governing doc (`link_doc` → a PRD/FRD/ADR in `/docs/`) or set `docs_todo`.
+- Doc pipeline: research.md + impact.md → plan.md → checklist.md → post-implementation-report.md; write proof.md on merged main before Done.
+- Add running notes with `append_scratch` (not `set_ticket_doc`) — scratch is the notepad and is never gated.
+- Review passes → the PR is merged → the ticket enters Verifying; write proof.md on merged main, move to Done, then close out (record commits/PRs/deployment).
 - Archive, don't delete. Reference other items with [[ID]] wiki-links.
-- The kanmer plugin's skills cover each phase: kanmer-tickets (manage), -research, -plan, -execute, -review, -closeout, -auto, -standup, -retro, -groom, -import, -setup.
+- Skills, one per phase: kanmer-tickets (manage), -docs, -research, -plan, -execute, -review, -verify, -closeout, -auto, -report, -groom, -import, -setup.
 <!-- kanmer:instructions:end -->
 
 # AGENTS.md — Contributor & AI-agent guide to Kanmer
@@ -93,16 +94,17 @@ kanmer/
         kanmer-mcp.cjs    # committed build artifact (npm run plugin:build)
       skills/
         kanmer-tickets/   # ticket management + references/tool-reference.md + ticket template
-        kanmer-research/  # research.md + impact.md phase (+ their templates)
+        kanmer-docs/      # repo /docs/ governance: PRD/FRD/ADR authoring + link-or-create
+        kanmer-research/  # research.md + impact.md + open-questions phase (Researching)
         kanmer-plan/      # plan.md + checklist.md phase (+ their templates)
-        kanmer-execute/   # worktree/branch, checklist, proof.md, PR (+ proof/PR templates)
-        kanmer-review/    # proof-vs-evidence review, PR feedback → PR Review tickets
-        kanmer-closeout/  # post-merge: final stage, remove worktree/branch, release
+        kanmer-execute/   # worktree/branch, checklist, post-implementation-report.md, PR
+        kanmer-review/    # 4-doc PR review, PR feedback → tickets, then merge → Verifying
+        kanmer-verify/    # Verifying stage: validate on merged main, write proof.md → Done
+        kanmer-closeout/  # post-merge: proof finalized, commits/prs/deployment, cleanup
         kanmer-auto/      # clear an area via parallel subagents in conflict-free waves
-        kanmer-standup/   # fact-based board report (activity log + summaries)
-        kanmer-retro/     # look-back digest: shipped, cycle time, stalls
-        kanmer-groom/     # board-editing triage: dedupe, split, archive, fields
-        kanmer-import/    # GitHub issues / PR comments → tickets, idempotent
+        kanmer-report/    # board report: standup ("now") or retro ("since <period>")
+        kanmer-groom/     # board-editing triage: dedupe, split, archive, doc-gate debt
+        kanmer-import/    # GitHub issues → tickets, idempotent (PR feedback → kanmer-review)
         kanmer-setup/     # greenfield/brownfield/upgrade setup + AGENTS.md block
   .claude-plugin/marketplace.json  # Claude marketplace entry (repo-hosted)
   .agents/plugins/marketplace.json # codex marketplace entry (repo-hosted)

@@ -55,26 +55,32 @@ take_ticket id: <ID>, branch: "<id>-<slug>", worktree: ".worktrees/<id>"
   before coding around it — the documents are the shared truth, not your
   memory.
 
-## Finish: proof, PR, review stage
+## Finish: report, PR, review stage
 
-1. **Write `proof.md`** from `assets/proof-template.md`: what was verified,
-   the pasted real output, and what's knowingly not covered. The board
-   rejects moving a ticket to the final stage without it.
-2. **Push and open the PR**, with the description assembled from the
-   ticket's own documents per `assets/pr-template.md` — the What/Why from
-   the ticket body, the ticked checklist as the change list, the proof
-   evidence as verification, and `Kanmer: <ID>` in the footer so the PR maps
-   back to the ticket:
+1. **Write `post-implementation-report.md`** from
+   `assets/post-implementation-report-template.md`: every file change + its
+   rationale, how the work meets each linked governing doc (`refs`), risks and
+   follow-ups, and what `kanmer-verify` should run on merged `main`. This is the
+   reviewers' brief and the board's **Implementing → Review** gate — call
+   `get_doc_gates` to confirm. (`proof.md` comes later, from `kanmer-verify`, on
+   merged main — not here.)
+2. **Record traceability:** `update_item <id> commits: [...] prs: [...]`, and
+   `link_doc` any governing doc, so the ticket ties back to the code.
+3. **Push and open the PR** from `assets/pr-template.md` (the PR *description*,
+   distinct from `kanmer-review`'s 4 review docs) — What/Why from the ticket
+   body, the ticked checklist as the change list, and `Kanmer: <ID>` in the
+   footer so the PR maps back to the ticket:
 
    ```sh
    git push -u origin <id>-<slug>
    gh pr create --title "<ticket title> (<ID>)" --body-file <assembled>
    ```
 
-3. **Move the ticket to the review stage** (`move_item`, resolve the id
-   against `list_board`) and append the PR URL to checklist.md's progress
-   notes. The ticket stays taken — the work isn't done until the PR merges
-   and `kanmer-closeout` runs.
+4. **Move the ticket to the review stage** (`move_item`, resolve the id against
+   `list_board`) — the post-implementation-report gate must pass first. Record
+   the PR URL with `append_scratch <id> execute "opened PR <url>"`. The ticket
+   stays taken until the PR is merged, verified (`kanmer-verify`), and closed
+   out (`kanmer-closeout`).
 
 ## Pausing instead of finishing
 

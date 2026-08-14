@@ -5,6 +5,7 @@ import type {
   ColumnKind,
   CreateItemInput,
   DeleteItemResult,
+  DocType,
   Item,
   ItemFilter,
   ItemWarning,
@@ -46,6 +47,9 @@ export const CH = {
   getDoc: "kanmer:getDoc",
   setDoc: "kanmer:setDoc",
   getDocsInfo: "kanmer:getDocsInfo",
+  getDocTypes: "kanmer:getDocTypes",
+  openRepoDoc: "kanmer:openRepoDoc",
+  getRepoDoc: "kanmer:getRepoDoc",
   getActivity: "kanmer:getActivity",
   changed: "kanmer:changed",
   /** Main → renderer: reveal an item (toast click, etc.). */
@@ -174,6 +178,12 @@ export interface KanmerApi {
   ): Promise<{ version: string }>;
   /** Which pipeline docs exist + checklist progress; null for legacy items. */
   getDocsInfo(id: string): Promise<TicketDocsInfo | null>;
+  /** The ticket area's resolved doc types (name/order/requires/progress) — for the doc tabs. */
+  getDocTypes(id: string): Promise<DocType[]>;
+  /** Open a governing doc (a repo-relative path under the project root) in the OS default app. */
+  openRepoDoc(relPath: string): Promise<void>;
+  /** Read a governing doc's text for the in-app view; null when missing/unreadable. */
+  getRepoDoc(relPath: string): Promise<string | null>;
   /** Read the activity log. */
   getActivity(opts?: { id?: string; since?: string; limit?: number }): Promise<ActivityEntry[]>;
   /** Subscribe to on-disk changes (e.g. an agent editing via MCP). Returns an unsubscribe fn. */

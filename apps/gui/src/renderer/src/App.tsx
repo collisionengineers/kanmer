@@ -17,6 +17,7 @@ import { Standup } from "./components/Standup.js";
 import { ActivityPanel } from "./components/ActivityPanel.js";
 import { CommandPalette, type PaletteCommand } from "./components/CommandPalette.js";
 import { ConfirmModal } from "./components/ConfirmModal.js";
+import { TicketCreate } from "./components/TicketCreate.js";
 import { Welcome } from "./components/Welcome.js";
 
 type View = "ticket" | "standup" | "archived";
@@ -28,7 +29,6 @@ const VIEW_LABELS: Record<View, string> = {
 };
 
 const EMPTY_FILTERS: Filters = {};
-const DOC_NAMES = new Set(["research", "impact", "plan", "checklist", "proof"]);
 
 /** A project the user asked to open: pick one, or a known path. */
 type OpenTarget = { kind: "pick" } | { kind: "path"; path: string };
@@ -62,7 +62,7 @@ export function App(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
   const [announcement, setAnnouncement] = useState("");
-  const [quickAddSignal, setQuickAddSignal] = useState(0);
+  const [createOpen, setCreateOpen] = useState(false);
   const [changeSignal, setChangeSignal] = useState(0);
   const [migrateReport, setMigrateReport] = useState<MigrationReport | null>(null);
   const [migrating, setMigrating] = useState(false);
@@ -182,8 +182,13 @@ export function App(): JSX.Element {
         return; // counters.json / activity.jsonl — nothing to re-render here
       }
       let id = base.slice(0, -3);
-      const isDoc = DOC_NAMES.has(id);
-      if (isDoc) id = parts[parts.length - 2] ?? id;
+      // A doc file is areas/<area>/<ticketId>/<doc>.md — its parent folder is
+      // the ticket id and differs from the file's own basename. A ticket file is
+      // areas/<area>/<ticketId>/<ticketId>.md, where the two match. This is
+      // doc-name agnostic (per-area configurable docs + scratch-*).
+      const parent = parts[parts.length - 2];
+      const isDoc = parent !== undefined && parent !== id;
+      if (isDoc) id = parent;
       if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id)) {
         await refresh();
         return;
@@ -333,7 +338,7 @@ export function App(): JSX.Element {
         // conflict) silently undone with nothing on screen.
         const message = err instanceof Error ? err.message : String(err);
         await refresh();
-        setError(message);
+        setError(friendlyGateError(message));
       }
     },
     [refresh],
@@ -360,7 +365,12 @@ export function App(): JSX.Element {
     [moveRelative],
   );
 
-  const onQuickAdd = useCallback((input: CreateItemInput) => void createItem(input), [createItem]);
+  // Quick-added tickets default to docs_todo so the standard leave-backlog gate
+  // doesn't strand them; the full dialog lets the user choose.
+  const onQuickAdd = useCallback(
+    (input: CreateItemInput) => void createItem({ docs_todo: true, ...input }),
+    [createItem],
+  );
 
   const releaseTicket = useCallback(
     async (id: string) => {
@@ -456,7 +466,7 @@ export function App(): JSX.Element {
       if (ctrl && e.key.toLowerCase() === "n") {
         e.preventDefault();
         setView("ticket");
-        setQuickAddSignal((n) => n + 1);
+        setCreateOpen(true);
       } else if ((ctrl && e.key.toLowerCase() === "f") || (!inField && e.key === "/")) {
         e.preventDefault();
         searchRef.current?.focus();
@@ -475,10 +485,6 @@ export function App(): JSX.Element {
   // Card badge inputs: computed once here, read per card as booleans so
   // Card's memoization survives (a Set prop would re-render every card).
   const blocked = useMemo(() => blockedIds(items, lastStage), [items, lastStage]);
-  // Re-derived when the board changes rather than on a timer: a date that is
-  // one render stale cannot mislabel anything a user is looking at.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), [changeSignal]);
   const selected = useMemo(
     () => items.find((i) => i.id === selectedId) ?? null,
     [items, selectedId],
@@ -506,7 +512,7 @@ export function App(): JSX.Element {
         label: "New ticket",
         run: () => {
           setView("ticket");
-          setQuickAddSignal((n) => n + 1);
+          setCreateOpen(true);
         },
       },
       // The three item verbs are contextual on the selection: with nothing
@@ -590,6 +596,13 @@ export function App(): JSX.Element {
         </nav>
         <div className="spacer" />
         <button
+          className="primary sm newbtn"
+          onClick={() => setCreateOpen(true)}
+          title="New ticket (Ctrl+N)"
+        >
+          + New
+        </button>
+        <button
           className="ghost bell"
           title="Activity"
           onClick={() => {
@@ -662,8 +675,6 @@ export function App(): JSX.Element {
               onQuickAdd={onQuickAdd}
               onContext={onCardContext}
               blocked={blocked}
-              today={today}
-              quickAddSignal={quickAddSignal}
             />
           ) : view === "standup" ? (
             <Standup
@@ -942,8 +953,36 @@ export function App(): JSX.Element {
           onClose={() => setSettingsOpen(false)}
         />
       )}
+
+      {createOpen && (
+        <TicketCreate
+          board={board}
+          items={items}
+          onClose={() => setCreateOpen(false)}
+          onCreate={async (input) => {
+            const created = await createItem(input, { select: true });
+            if (created) setCreateOpen(false);
+            return created;
+          }}
+        />
+      )}
     </div>
   );
+}
+
+/**
+ * Rewrite a core document-gate rejection into copy for a human: the raw error
+ * tells an agent to call set_ticket_doc (an MCP tool the human can't invoke),
+ * so point them at the ticket instead. Non-gate errors pass through untouched.
+ */
+function friendlyGateError(message: string): string {
+  if (!message.includes("document gate(s) unmet")) return message;
+  return message
+    .replace(
+      /Write the missing document\(s\)[\s\S]*$/,
+      "Open the ticket to add the missing document(s) (or link a governing doc), then move it.",
+    )
+    .replace(/\.md is missing/g, " is missing");
 }
 
 function applyFilters(list: Item[], search: string, filters: Filters): Item[] {

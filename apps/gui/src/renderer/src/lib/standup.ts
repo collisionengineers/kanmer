@@ -1,5 +1,5 @@
 import type { ActivityEntry, BoardConfig, Item, ItemWarning } from "@kanmer/core";
-import { blockedIds, isOverdue } from "./board.js";
+import { blockedIds } from "./board.js";
 
 /**
  * The human's standup as data, so it can be rendered as JSX *and* copied as
@@ -94,7 +94,6 @@ export function buildStandup(input: StandupInput): StandupReport {
   )?.id;
   const working = new Set(stages.slice(1, -1).filter((s) => s !== reviewLike));
   const blocked = blockedIds(active, last);
-  const today = new Date(now).toISOString().slice(0, 10);
   const staleCutoff = new Date(now - STALE_MS).toISOString();
   const stageName = (id: string): string =>
     board.statuses.find((s) => s.id === id)?.name ?? id;
@@ -199,14 +198,6 @@ export function buildStandup(input: StandupInput): StandupReport {
     },
     { title: "Recently done", groups: flat(recentlyDone) },
     { title: "Blocked", groups: flat(active.filter((i) => blocked.has(i.id)).map((i) => line(i))) },
-    {
-      title: "Overdue",
-      groups: flat(
-        active
-          .filter((i) => isOverdue(i, today, last))
-          .map((i) => line(i, ` — due ${i.due}`)),
-      ),
-    },
     { title: "What happened since yesterday", groups: groupBy(happened, (k) => k) },
     { title: "Flags", groups: flat(flags) },
   ];

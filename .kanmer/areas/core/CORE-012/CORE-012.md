@@ -2,13 +2,10 @@
 id: CORE-012
 type: ticket
 title: migrateToV2 downgrades a format-3 board to format 2
-status: review
+status: done
 area: core
 assignee: claude-code
 profile: fix
-taken_at: '2026-08-16T04:42:58.299Z'
-branch: core-012-migrate-v2-guard
-worktree: .worktrees/core-012
 labels:
   - bug
   - v3-phase-2
@@ -17,7 +14,7 @@ refs:
   - docs/functional/frd/FRD-007-fixed-six-stage-board.md
 archived: false
 created: '2026-08-16T04:41:03.043Z'
-updated: '2026-08-16T04:45:25.674Z'
+updated: '2026-08-16T04:46:30.192Z'
 ---
 
 `packages/core/src/migrate.ts:84`:

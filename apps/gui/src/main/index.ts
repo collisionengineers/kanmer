@@ -407,6 +407,33 @@ async function flushToasts(): Promise<void> {
   notification.show();
 }
 
+/**
+ * Start the board watcher for a project.
+ *
+ * Extracted so a migration can stop and restart it — see `CH.migrate`. It has
+ * to be one function, or the restarted watcher drifts from the original and
+ * live sync quietly behaves differently after a migration than before one.
+ */
+function startWatch(
+  projectId: string,
+  boardRoot: string,
+  ownWrites: Map<string, number>,
+): WatchHandle {
+  return watchKanmer(boardRoot, (event, file) => {
+    mainWindow?.webContents.send(CH.changed, { projectId, event, file });
+    const key = toastKey(file);
+    if (!key) return;
+    const own = ownWrites.get(key);
+    if (own && Date.now() - own < 2000) return;
+    // Someone else changed this project's board (agent, hand edit): the renderer
+    // shows it in the activity bell / in-app toasts, scoped to that tab.
+    mainWindow?.webContents.send(CH.agentChange, { projectId, key, event });
+    if (!readSettings().notifications) return;
+    if (mainWindow?.isFocused()) return;
+    queueToast(projectId, key, event);
+  });
+}
+
 /** Open a project (or focus it if already open), building a per-project context. */
 async function openProject(root: string): Promise<OpenProjectResult> {
   const sourceStore = new KanmerStore(root);
@@ -429,19 +456,7 @@ async function openProject(root: string): Promise<OpenProjectResult> {
   // `.kanmer/` — watching `projectId` there is watching a directory that no longer
   // exists, so no agent write ever reaches the renderer. Without git, `boardRoot`
   // falls back to `projectId` and this is the old behaviour.
-  const watch = watchKanmer(boardRoot, (event, file) => {
-    mainWindow?.webContents.send(CH.changed, { projectId, event, file });
-    const key = toastKey(file);
-    if (!key) return;
-    const own = ownWrites.get(key);
-    if (own && Date.now() - own < 2000) return;
-    // Someone else changed this project's board (agent, hand edit): the renderer
-    // shows it in the activity bell / in-app toasts, scoped to that tab.
-    mainWindow?.webContents.send(CH.agentChange, { projectId, key, event });
-    if (!readSettings().notifications) return;
-    if (mainWindow?.isFocused()) return;
-    queueToast(projectId, key, event);
-  });
+  const watch = startWatch(projectId, boardRoot, ownWrites);
   const ctx: ProjectContext = { sourceRoot: projectId, boardRoot, store, watch, ownWrites, syncStatus };
   const minutes = readSettings().gitSyncMinutes;
   if (syncStatus.available && minutes > 0) ctx.syncTimer = setInterval(() => void syncProject(projectId), minutes * 60_000);
@@ -636,9 +651,39 @@ function registerIpc(): void {
   ipcMain.handle(CH.cancelDispatch, (_e, dispatchId: string) => cancelDispatch(dispatchId));
   ipcMain.handle(CH.listDispatches, (_e, p: string) => listDispatches(p));
   onDispatchStatus((s) => mainWindow?.webContents.send(CH.dispatchStatus, s));
-  ipcMain.handle(CH.migrate, (_e, p: string, dryRun: boolean) =>
-    migrateBoard(requireStore(p), { dryRun }),
-  );
+  /**
+   * Migrate the board, with this process's own contention removed first.
+   *
+   * A migration rewrites every ticket file. Left running, the watcher turns each
+   * of those writes into a `changed` event, the renderer answers it with
+   * `getItem` and the toast builder with another — two reads of the files being
+   * written, in the process doing the writing. Meanwhile the git sync timer can
+   * fire `git add -- .kanmer`, which opens every ticket to hash it.
+   *
+   * On Windows any of those handles turns the next `rename` into `EPERM`. Core
+   * now retries, but the fix that matters is not generating the contention.
+   *
+   * Both are restored in a `finally`: a migration that fails must not also
+   * leave live sync dead for the rest of the session.
+   */
+  ipcMain.handle(CH.migrate, async (_e, p: string, dryRun: boolean) => {
+    const ctx = requireCtx(p);
+    // A dry run writes nothing, so there is nothing to protect it from.
+    if (dryRun) return migrateBoard(ctx.store, { dryRun });
+
+    await ctx.watch.close();
+    if (ctx.syncTimer) clearInterval(ctx.syncTimer);
+    ctx.syncTimer = undefined;
+    try {
+      return await migrateBoard(ctx.store, { dryRun });
+    } finally {
+      ctx.watch = startWatch(p, ctx.boardRoot, ctx.ownWrites);
+      const minutes = readSettings().gitSyncMinutes;
+      if (ctx.syncStatus.available && minutes > 0) {
+        ctx.syncTimer = setInterval(() => void syncProject(p), minutes * 60_000);
+      }
+    }
+  });
   ipcMain.handle(CH.backfillBoard, async (_e, p: string, dryRun: boolean) => {
     if (!dryRun) markOwnWrite(p, "board");
     const { backfill } = await migrateBoard(requireStore(p), { dryRun });

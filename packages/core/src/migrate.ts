@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { ensureDir, pathExists, readText, writeFileAtomic } from "./io.js";
+import { ensureDir, pathExists, readText, writeFileAtomic, TMP_FILE_RE } from "./io.js";
 import {
   areaFolderName,
   NO_AREA_DIR,
@@ -479,6 +479,10 @@ export interface V3Report {
   prioritiesStripped: number;
   /** Profile assigned per ticket, counted (FRD-002 implementation note). */
   profileAssignments: { profile: string; count: number }[];
+  /** True when an earlier interrupted run had already migrated some tickets. */
+  resumed: boolean;
+  /** Stale atomic-write temp files removed (residue of an interrupted run). */
+  sweptTempFiles: number;
   /** Things that must be resolved by hand before applying. */
   blockers: string[];
   notes: string[];
@@ -549,6 +553,8 @@ export async function migrateToV3(
   const report: V3Report = {
     alreadyV3: false,
     dryRun,
+    resumed: false,
+    sweptTempFiles: 0,
     stageMapping: [],
     needsRestage: [],
     docMoves: [],
@@ -623,6 +629,7 @@ export async function migrateToV3(
   if (dryRun || report.blockers.length) return report;
 
   // ---- apply -------------------------------------------------------------
+  let resumed = false;
   for (const summary of items) {
     const item = await store.getItem(summary.id);
     if (!item) continue;
@@ -648,6 +655,25 @@ export async function migrateToV3(
       if (!(await pathExists(target))) await fs.rename(src, target);
     }
 
+    // Already in its final shape from an earlier run: skip the write entirely.
+    //
+    // The rewrite below is content-idempotent — a second run produces identical
+    // bytes — but it is not I/O-idempotent, and that is the difference between
+    // a retry that converges and one that restarts. Without this, a run that
+    // failed at ticket 200 of 242 rewrites the 199 already-correct tickets
+    // before reaching the one that failed, taking a fresh chance of an EPERM on
+    // every one. Observed on a real board: three attempts, each dying earlier
+    // than the last.
+    //
+    // The test is per ticket, not `detectFormat()`. The format stamp is
+    // whole-board and deliberately written last, so it cannot distinguish a
+    // half-migrated board from an untouched one — the exact gap the v1→v2
+    // review named and this migration reproduced.
+    if (item.profile !== undefined && (item as { priority?: unknown }).priority === undefined) {
+      resumed = true;
+      continue;
+    }
+
     const mapped = mapStage(item.status);
     const to = mapped ?? "backlog";
     const next: Record<string, unknown> = { ...item, status: to };
@@ -660,6 +686,22 @@ export async function migrateToV3(
       if (next.profile === "custom") next.requires = {};
     }
     await writeFileAtomic(loc.file, serialiseItem(next as unknown as Item));
+  }
+
+  if (resumed) {
+    report.resumed = true;
+    report.notes.push(
+      "This run resumed a previously interrupted migration — tickets already in " +
+        "their format-3 shape were left untouched rather than rewritten.",
+    );
+  }
+
+  report.sweptTempFiles = await sweepStaleTemps(store.paths.kanmer);
+  if (report.sweptTempFiles > 0) {
+    report.notes.push(
+      `Removed ${report.sweptTempFiles} stale atomic-write temp file(s) left by an ` +
+        `interrupted run.`,
+    );
   }
 
   // (e) board.yml: the legacy dimensions out, the v3 vocabulary in.
@@ -686,6 +728,58 @@ export async function migrateToV3(
   });
   store.resetFormatCache();
   return report;
+}
+
+/**
+ * Remove atomic-write temp files an interrupted run left behind.
+ *
+ * Only files older than this are touched. A temp younger than that may belong
+ * to a write happening right now — in another process, or the GUI's own — and
+ * deleting it would turn someone else's successful write into an ENOENT.
+ */
+const STALE_TEMP_MS = 60_000;
+
+/**
+ * Sweep `.tmp-<pid>-<n>` residue beneath `.kanmer`.
+ *
+ * Hygiene, not correctness: the files are invisible to item discovery
+ * (`store.ts` looks for `<folder>/<folder>.md`), to document scans
+ * (`docpaths.ts` filters to `.md`) and to the watcher (`watch.ts` ignores the
+ * pattern). What they are *not* is gitignored, so a board on the sync timer
+ * would commit them.
+ *
+ * Never throws: a failure to tidy must not fail a migration that otherwise
+ * succeeded.
+ */
+async function sweepStaleTemps(kanmerDir: string): Promise<number> {
+  const cutoff = Date.now() - STALE_TEMP_MS;
+  let swept = 0;
+  async function walk(dir: string): Promise<void> {
+    let entries;
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        await walk(full);
+      } else if (TMP_FILE_RE.test(e.name)) {
+        try {
+          const st = await fs.stat(full);
+          if (st.mtimeMs < cutoff) {
+            await fs.rm(full, { force: true });
+            swept++;
+          }
+        } catch {
+          // Vanished, or locked by whatever left it. Either way, not our problem.
+        }
+      }
+    }
+  }
+  await walk(kanmerDir);
+  return swept;
 }
 
 /** Directory listing that treats "missing" as "empty". */

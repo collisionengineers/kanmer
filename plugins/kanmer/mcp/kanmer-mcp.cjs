@@ -37821,13 +37821,33 @@ async function statOrNull(p) {
     return null;
   }
 }
+var RENAME_RETRY_MS = [10, 25, 60, 150, 300];
+var TRANSIENT_RENAME_CODES = /* @__PURE__ */ new Set(["EPERM", "EBUSY", "EACCES"]);
+var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function renameWithRetry(from, to, rename = import_promises.default.rename) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await rename(from, to);
+      return;
+    } catch (err) {
+      const code = err.code ?? "";
+      if (!TRANSIENT_RENAME_CODES.has(code) || attempt >= RENAME_RETRY_MS.length) throw err;
+      await sleep(RENAME_RETRY_MS[attempt]);
+    }
+  }
+}
 async function writeFileAtomic(file, contents) {
   const dir = import_path2.default.dirname(file);
   await ensureDir(dir);
   const tmp = import_path2.default.join(dir, `.${import_path2.default.basename(file)}.tmp-${process.pid}-${tmpCounter()}`);
-  await import_promises.default.writeFile(tmp, contents, "utf8");
-  await import_promises.default.rename(tmp, file);
+  try {
+    await import_promises.default.writeFile(tmp, contents, "utf8");
+    await renameWithRetry(tmp, file);
+  } finally {
+    await import_promises.default.rm(tmp, { force: true }).catch(() => void 0);
+  }
 }
+var TMP_FILE_RE = /^\.[^/\\]+\.tmp-\d+-\d+$/;
 async function writeFileExclusive(file, contents) {
   const dir = import_path2.default.dirname(file);
   await ensureDir(dir);
@@ -40222,6 +40242,8 @@ async function migrateToV3(store2, opts = {}) {
   const report = {
     alreadyV3: false,
     dryRun,
+    resumed: false,
+    sweptTempFiles: 0,
     stageMapping: [],
     needsRestage: [],
     docMoves: [],
@@ -40278,6 +40300,7 @@ async function migrateToV3(store2, opts = {}) {
     );
   }
   if (dryRun || report.blockers.length) return report;
+  let resumed = false;
   for (const summary of items) {
     const item = await store2.getItem(summary.id);
     if (!item) continue;
@@ -40297,6 +40320,10 @@ async function migrateToV3(store2, opts = {}) {
       await ensureDir(import_path8.default.dirname(target));
       if (!await pathExists(target)) await import_promises7.default.rename(src, target);
     }
+    if (item.profile !== void 0 && item.priority === void 0) {
+      resumed = true;
+      continue;
+    }
     const mapped = mapStage(item.status);
     const to = mapped ?? "backlog";
     const next2 = { ...item, status: to };
@@ -40309,6 +40336,18 @@ async function migrateToV3(store2, opts = {}) {
       if (next2.profile === "custom") next2.requires = {};
     }
     await writeFileAtomic(loc.file, serialiseItem(next2));
+  }
+  if (resumed) {
+    report.resumed = true;
+    report.notes.push(
+      "This run resumed a previously interrupted migration \u2014 tickets already in their format-3 shape were left untouched rather than rewritten."
+    );
+  }
+  report.sweptTempFiles = await sweepStaleTemps(store2.paths.kanmer);
+  if (report.sweptTempFiles > 0) {
+    report.notes.push(
+      `Removed ${report.sweptTempFiles} stale atomic-write temp file(s) left by an interrupted run.`
+    );
   }
   const board = await store2.getBoard();
   const next = { ...board };
@@ -40329,6 +40368,36 @@ async function migrateToV3(store2, opts = {}) {
   });
   store2.resetFormatCache();
   return report;
+}
+var STALE_TEMP_MS = 6e4;
+async function sweepStaleTemps(kanmerDir) {
+  const cutoff = Date.now() - STALE_TEMP_MS;
+  let swept = 0;
+  async function walk(dir) {
+    let entries;
+    try {
+      entries = await import_promises7.default.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const full = import_path8.default.join(dir, e.name);
+      if (e.isDirectory()) {
+        await walk(full);
+      } else if (TMP_FILE_RE.test(e.name)) {
+        try {
+          const st = await import_promises7.default.stat(full);
+          if (st.mtimeMs < cutoff) {
+            await import_promises7.default.rm(full, { force: true });
+            swept++;
+          }
+        } catch {
+        }
+      }
+    }
+  }
+  await walk(kanmerDir);
+  return swept;
 }
 async function listDirSafe(dir) {
   try {

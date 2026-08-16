@@ -18,3 +18,24 @@ Derived from plan.md, one box per step.
 - [ ] Verification run: `npm test`, `npm run typecheck`, `npm run plugin:check`, `npm run smoke:protocol`, `smoke.mjs`, `smoke:discovery` + the after-half of the before/after pair (this box produces proof.md)
 
 ## Progress notes
+
+### 2026-08-16 — identity module + build wiring landed
+
+Worktree `.worktrees/mcp-012` off `origin/main` @ `9ac20af` (contains MCP-010
+`741ef81`). Ran `npm install` **inside the worktree** per MCP-010's workaround;
+verified `realpathSync("node_modules/@kanmer/core")` →
+`…\.worktrees\mcp-012\packages\core`, so the branch builds against its own core.
+
+- Falsification captured first — see `scratch/falsification.md`. **Two provably
+  different binaries returned byte-identical `get_status`.**
+- `identity.ts` added; `define`d version via a shared `version-define.mjs`
+  (plain `.mjs`, not `.ts`: `tsconfig.json` only includes `src/**/*`, and `.mjs`
+  removes any esbuild extension-mapping ambiguity for a config-time import).
+- `shims: true` on `tsup.config.ts` only. Verified in the built output:
+  ESM `dist/index.js` has `getFilename = () => fileURLToPath(import.meta.url)`;
+  CJS bundle contains **zero** `import.meta` occurrences and uses native
+  `__filename`. Both carry `"0.3.2"`.
+- Both shapes run and self-identify:
+  `dev-esm` sha `b2558312`, `dev-standalone` sha `97f6ca41`.
+- `repoRootSource` already earns its place: same board, two invocations,
+  `derived` vs `flag` — the second silent divergence, now visible.

@@ -123,6 +123,60 @@ export async function namedSatisfied(
   return docs.some((d) => d.toLowerCase().replace(/\.md$/, "") === want);
 }
 
+/**
+ * A `- [ ]` / `- [x]` line. One regex, used by both callers below, because two
+ * copies of it would drift and the checklist and open-questions conventions are
+ * meant to be the same convention.
+ */
+const CHECKBOX_RE = /^\s*[-*]\s+\[( |x|X)\]/;
+
+/**
+ * The heading below which questions are **parked**, not open (ADR-0011).
+ *
+ * Load-bearing: the `questions-resolved` requirement stops counting here, which
+ * is what makes kanmer-research's "answered or explicitly parked" mechanical
+ * rather than aspirational. Renaming this in the template silently changes what
+ * the gate counts, so a test asserts the exact string.
+ */
+export const PARKED_HEADING_RE = /^\s{0,3}#{1,6}\s+parked\b/i;
+
+export interface CheckboxCount {
+  checked: number;
+  total: number;
+}
+
+/**
+ * Count checkbox lines across every markdown document of a type.
+ *
+ * `stopAtParked` halts counting at the parked heading *within each file*, so a
+ * question moved below it stops being open without being falsely marked
+ * answered. Absent folder → zeroes; "no questions" is not a failure state.
+ */
+export async function countCheckboxes(
+  ticketDir: string,
+  type: string,
+  opts: { stopAtParked?: boolean } = {},
+): Promise<CheckboxCount> {
+  let checked = 0;
+  let total = 0;
+  for (const rel of await listDocs(ticketDir, type)) {
+    let text: string;
+    try {
+      text = await fs.readFile(docPathIn(ticketDir, `${type}/${rel}`), "utf8");
+    } catch {
+      continue; // vanished between listing and reading — not this function's problem
+    }
+    for (const line of text.split("\n")) {
+      if (opts.stopAtParked && PARKED_HEADING_RE.test(line)) break;
+      const m = CHECKBOX_RE.exec(line);
+      if (!m) continue;
+      total++;
+      if (m[1] !== " ") checked++;
+    }
+  }
+  return { checked, total };
+}
+
 /** Per-type document counts for an item summary (FRD-003 T7). */
 export async function docCounts(ticketDir: string): Promise<Record<string, number>> {
   const counts: Record<string, number> = {};

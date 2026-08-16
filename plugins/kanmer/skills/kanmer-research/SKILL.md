@@ -49,6 +49,8 @@ files and any of them satisfies the requirement. Deep research that runs long
 belongs in several named files under `research/` rather than one sprawling one.
 Files under `reference/`, `scratch/` and `assets/` never satisfy a gate.
 
-Re-run `get_doc_gates <id>` when you think you are finished. When it reports the
-next boundary passable and the open questions are answered or explicitly parked,
-the ticket is ready for `kanmer-plan`.
+Re-run `get_doc_gates <id>` when you think you are finished; it is the authority
+on whether the ticket is ready for `kanmer-plan`, including on the questions —
+`questions-resolved` is unmet while `open-questions` holds an unticked `- [ ]`
+above `## Parked (explicitly deferred)`. Write each question as its own `- [ ]`
+so it can be answered and ticked one at a time.

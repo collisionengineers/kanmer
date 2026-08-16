@@ -12,6 +12,8 @@ import {
   DEFAULT_PROFILES,
   DEFAULT_PROFILE_ID,
   DEFAULT_PROOF_TYPES,
+  QUESTIONS_RESOLVED,
+  parseRequirement,
   type ProfileMap,
 } from "./profiles.js";
 
@@ -41,9 +43,66 @@ export function defaultBoardConfig(): BoardConfig {
   };
 }
 
-/** Profiles in force: the board's table, or the shipped defaults. */
+/**
+ * Profiles in force: the board's table, or the shipped defaults — with
+ * `questions-resolved` injected into every boundary either already declares.
+ *
+ * The injection is what makes "existing boards inherit the requirement"
+ * (ADR-0011, FRD-009 R5) actually true. Editing `DEFAULT_PROFILES` alone would
+ * reach **new boards only**: a board that has ever been written by setup or
+ * migration carries its own `profiles:` block, and `board.profiles ?? …` means
+ * the defaults are never consulted again. That gap was found by demonstrating
+ * the gate on a real board and watching it not fire.
+ *
+ * It is injected rather than migrated into `board.yml` so the requirement still
+ * appears in `get_doc_gates` — skills derive their rules from that call and must
+ * not restate them (FRD-023 R1) — without rewriting the user's configuration.
+ * The trade-off, stated because it is real: `board.yml` no longer lists every
+ * effective requirement. `resolveProfiles` is already the seam where board
+ * config meets shipped defaults, which is why it belongs here and not deeper.
+ *
+ * Two limits, both load-bearing:
+ *
+ * **Never `leave-backlog`.** Questions are raised *during* research, which
+ * happens after Backlog — gating entry to the stage where questions get worked
+ * would trap a ticket outside it.
+ *
+ * **Only boundaries the profile already declares.** Adding a *new* gated
+ * boundary would change which multi-stage moves are legal, because
+ * `collapsesPipeline` counts gated boundaries: giving `spike` a gated
+ * `leave-preparing` and `enter-review` would turn its Backlog → Done jump from
+ * one gated boundary into three and refuse it, breaking the acceptance case
+ * FRD-002 exists to protect. So a `spike` gains it at `enter-done` and nowhere
+ * else, and `chore`'s one-jump to Implementing survives untouched. The cost is
+ * a narrow gap — `fix` and `chore` declare no `enter-review`, so a question
+ * raised during implementation is caught at `enter-done` rather than at review.
+ *
+ * A profile with no boundaries at all — `custom: {}`, used by historical
+ * backfill — is untouched, so a backfilled ticket is still nagged about nothing.
+ */
+const QUESTIONS_BOUNDARIES: readonly string[] = ["leave-preparing", "enter-review", "enter-done"];
+
 export function resolveProfiles(board: BoardConfig): Record<string, ProfileMap> {
-  return (board.profiles ?? DEFAULT_PROFILES) as Record<string, ProfileMap>;
+  const base = (board.profiles ?? DEFAULT_PROFILES) as Record<string, ProfileMap>;
+  const out: Record<string, ProfileMap> = {};
+  for (const [id, profile] of Object.entries(base)) {
+    const next: ProfileMap = {};
+    for (const [boundary, reqs] of Object.entries(profile) as [
+      keyof ProfileMap,
+      string[] | undefined,
+    ][]) {
+      // An empty list is vacuous by design and must stay vacuous, or
+      // `custom: {}` and `custom: { "leave-backlog": [] }` would diverge.
+      const eligible =
+        QUESTIONS_BOUNDARIES.includes(boundary as string) &&
+        reqs &&
+        reqs.length &&
+        !reqs.some((r) => parseRequirement(r).type === QUESTIONS_RESOLVED);
+      next[boundary] = eligible ? [...reqs!, QUESTIONS_RESOLVED] : reqs;
+    }
+    out[id] = next;
+  }
+  return out;
 }
 
 /** Proof flavours in force. */

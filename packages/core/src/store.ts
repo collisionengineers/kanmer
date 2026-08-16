@@ -44,6 +44,7 @@ import {
 import { FIRST_STAGE, STAGE_IDS, isStageId, stageIndex } from "./stages.js";
 import {
   GOVERNING_DOC,
+  QUESTIONS_RESOLVED,
   resolveProfileId,
   validateProfileMap,
   type ProfileMap,
@@ -55,6 +56,7 @@ import {
   type GateReport,
 } from "./gates.js";
 import {
+  countCheckboxes,
   docCounts,
   docDirIn,
   docPathIn,
@@ -1042,21 +1044,12 @@ export class KanmerStore {
     const docs: Record<string, boolean> = {};
     for (const [type, n] of Object.entries(counts)) docs[type] = n > 0;
 
+    // Same counter the questions-resolved gate uses — one regex, one meaning.
+    // The checklist counts every box; open-questions stops at the parked
+    // heading, which is the only difference between the two callers.
     let checklist: TicketDocsInfo["checklist"] = null;
-    const checklists = await listDocs(loc.dir, "checklist");
-    if (checklists.length) {
-      let checked = 0;
-      let total = 0;
-      for (const rel of checklists) {
-        const text = await readText(docPathIn(loc.dir, `checklist/${rel}`));
-        for (const line of text.split("\n")) {
-          const m = /^\s*[-*]\s+\[( |x|X)\]/.exec(line);
-          if (!m) continue;
-          total++;
-          if (m[1] !== " ") checked++;
-        }
-      }
-      checklist = { checked, total };
+    if ((await listDocs(loc.dir, "checklist")).length) {
+      checklist = await countCheckboxes(loc.dir, "checklist");
     }
 
     return { docs, counts, checklist, references: await listReferences(loc.dir) };
@@ -1200,6 +1193,11 @@ export class KanmerStore {
         (missing.includes(GOVERNING_DOC)
           ? `, or link a governing doc via refs / set docs_todo`
           : "") +
+        (missing.includes(QUESTIONS_RESOLVED)
+          ? `. "${QUESTIONS_RESOLVED}" is not a document: open-questions/ still has ` +
+            `unticked "- [ ]" lines. Answer them and tick the box, or move them under ` +
+            `"## Parked (explicitly deferred)" with a reason for deferring`
+          : "") +
         `, then move. Call get_doc_gates for the full picture.`,
     );
   }
@@ -1232,6 +1230,12 @@ export class KanmerStore {
         hasProofImages: async () => {
           const files = await listFilesRecursive(docDirIn(ticketDir, "proof"));
           return files.some((f) => /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(f));
+        },
+        unresolvedQuestions: async () => {
+          const { checked, total } = await countCheckboxes(ticketDir, "open-questions", {
+            stopAtParked: true,
+          });
+          return total - checked;
         },
       },
     });

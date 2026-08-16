@@ -49,13 +49,14 @@ Every ticket carries a **profile** that determines which documents each stage bo
 
 | Profile | leave-backlog | leave-preparing | enter-review | enter-done |
 |---|---|---|---|---|
-| feature | governing-doc | research, files, plan, checklist | post-implementation-report | proof |
-| fix | — | files, plan | — | proof |
-| chore | — | plan | — | proof |
-| spike | — | — | — | research |
+| feature | governing-doc | research, files, plan, checklist, questions-resolved | post-implementation-report, questions-resolved | proof, questions-resolved |
+| fix | — | files, plan, questions-resolved | — | proof, questions-resolved |
+| chore | — | plan, questions-resolved | — | proof, questions-resolved |
+| spike | — | — | — | research, questions-resolved |
 
 - P3. `custom` is always available: the ticket carries an inline `requires:` map of the same shape (may name specific files). An empty map = no requirements (used by historical backfill).
 - P4. The `governing-doc` requirement is satisfied by a non-empty `refs` (repo-doc links, maintained by `link_doc`) **or** `docs_todo: true` (absorbed v2 behaviour).
+- P4a. **`questions-resolved`** (ADR-0011, FRD-009 R5) is the second pseudo-type: satisfied when `open-questions/` holds no unticked `- [ ]` above the `## Parked (explicitly deferred)` heading, and by an absent document. It is deliberately **not** the `open-questions` doc type — requirements are satisfied by a document existing, so requiring the document would be satisfied by a file of unanswered questions. It is the only requirement that reads a document's *content*; ADR-0011 bounds that exception and any further content-reading requirement must amend it. Every shipped profile carries it, `spike` included: a carve-out by work type would assert that some work is inherently unambiguous.
 - P5. Proof requirements may carry a type and source (`proof:visual`, `proof:visual@staging`) — semantics in FRD-006.
 - P6. Resolution order for a ticket's profile: explicit `profile:` on the ticket → the ticket's area's default profile (optional per-area setting) → the board default (`fix` on new boards).
 - P7. Profile is mutable (`update_item`); gates re-evaluate immediately. Changing area does not change an explicitly set profile.

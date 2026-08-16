@@ -37,6 +37,18 @@ Write it with `append_scratch <id> review "…"`, which is never gated, covering
    won't-do-because. Nothing said in review silently evaporates.
 4. **Verdict** — pass or needs-changes, and what was actually checked.
 
+## Before applying fixes: check the open questions
+
+Read `open-questions` before changing anything in response to review, and do not
+apply a fix that turns on a question still unticked — put it to the user first.
+
+**This one is a convention, not a gate, and knowing the difference matters.**
+The `questions-resolved` requirement fires on stage *transitions*; review fixes
+happen inside the review stage with no `move_item`, so nothing enforces this and
+nothing will. `enter-review` and `enter-done` are gated, so a question raised
+during implementation cannot get past those — but a fix applied mid-review on a
+guess is invisible to the engine. That gap is why it is written here.
+
 If you are both author and reviewer, say so in the first line. It is not an
 independent review and should not read as one.
 

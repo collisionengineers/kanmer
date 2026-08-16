@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { defaultBoardConfig, lastStageId, writeBoard } from "./board.js";
+import { defaultBoardConfig, lastStageId, resolveProfiles, writeBoard } from "./board.js";
+import { QUESTIONS_RESOLVED } from "./profiles.js";
 import { resolvePaths, type KanmerPaths } from "./paths.js";
 
 let root: string;
@@ -71,5 +72,64 @@ describe("board prefix uniqueness", () => {
     ]);
     expect(board.defaultProfile).toBe("fix");
     expect(board.groupKinds?.map((k) => k.id)).toEqual(["epic", "horizon"]);
+  });
+});
+
+describe("resolveProfiles injects questions-resolved (ADR-0011)", () => {
+  it("adds it to a board that carries its own profiles table", () => {
+    // The case the shipped-defaults edit misses entirely: every board written by
+    // setup or migration has its own `profiles:` block, so `board.profiles ??
+    // DEFAULT_PROFILES` never falls through again.
+    const board = {
+      profiles: {
+        feature: { "leave-preparing": ["plan"], "enter-done": ["proof"] },
+      },
+    } as never;
+    expect(resolveProfiles(board).feature).toEqual({
+      "leave-preparing": ["plan", QUESTIONS_RESOLVED],
+      "enter-done": ["proof", QUESTIONS_RESOLVED],
+    });
+  });
+
+  it("leaves boundaries a profile does not declare undeclared", () => {
+    const board = { profiles: { spike: { "enter-done": ["research"] } } } as never;
+    expect(Object.keys(resolveProfiles(board).spike)).toEqual(["enter-done"]);
+  });
+
+  it("keeps a vacuous boundary vacuous", () => {
+    // `custom: {}` and `custom: { "leave-backlog": [] }` must stay equivalent,
+    // and historical backfill must keep being nagged about nothing.
+    const board = { profiles: { custom: { "leave-backlog": [] } } } as never;
+    expect(resolveProfiles(board).custom["leave-backlog"]).toEqual([]);
+  });
+
+  it("does not double up when the requirement is already declared", () => {
+    const board = {
+      profiles: { fix: { "enter-done": ["proof", QUESTIONS_RESOLVED] } },
+    } as never;
+    expect(resolveProfiles(board).fix["enter-done"]).toEqual(["proof", QUESTIONS_RESOLVED]);
+  });
+});
+
+describe("resolveProfiles never gates leaving Backlog on questions", () => {
+  it("skips leave-backlog", () => {
+    // Questions are raised during research, which happens after Backlog.
+    // Gating entry to the stage where questions get worked would trap the
+    // ticket outside it.
+    const board = {
+      profiles: { feature: { "leave-backlog": ["governing-doc"], "enter-done": ["proof"] } },
+    } as never;
+    const p = resolveProfiles(board).feature;
+    expect(p["leave-backlog"]).toEqual(["governing-doc"]);
+    expect(p["enter-done"]).toEqual(["proof", QUESTIONS_RESOLVED]);
+  });
+
+  it("adds no boundary a profile did not already declare", () => {
+    // Adding one would change which multi-stage moves are legal:
+    // collapsesPipeline counts gated boundaries, so a spike gaining a gated
+    // leave-preparing and enter-review would turn its Backlog → Done jump from
+    // one gated boundary into three and refuse it.
+    const board = { profiles: { spike: { "enter-done": ["research"] } } } as never;
+    expect(Object.keys(resolveProfiles(board).spike)).toEqual(["enter-done"]);
   });
 });

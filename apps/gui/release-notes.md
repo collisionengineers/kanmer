@@ -6,6 +6,40 @@ against shipping the previous release's notes. electron-builder reads this file
 from the app directory (`projectDir` is `apps/gui` when the packer is invoked
 there) and uses it as the GitHub release body.
 
+## 0.3.3 (unreleased — notes accumulating)
+
+### Open questions now block a ticket, instead of being advice
+
+A ticket's `open-questions` document has always said its questions "block the
+plan". Nothing enforced it, and the result was exactly what you would expect:
+every ticket on this project that ever raised a question reached Done — or was
+archived — with the question still sitting there unticked.
+
+Now a question is a real gate. While `open-questions` holds an unticked
+`- [ ]`, the ticket cannot leave Preparing, cannot enter Review, and cannot
+reach Done. Two ways to clear it, and both are honest:
+
+- **Answer it** and tick the box.
+- **Park it** — move it under `## Parked (explicitly deferred)` with a reason.
+  Everything below that heading is not counted.
+
+A ticket with no `open-questions` document is never blocked. Raising no
+questions is not a failure state.
+
+**If you are upgrading a board with work in flight, read this.** The rule
+applies to existing boards, not only new ones — so a ticket sitting in Preparing
+with an unticked box becomes unmovable the moment you upgrade. That is
+deliberate; the fix is one line in a document you already have. Tick it, or park
+it with a reason.
+
+Nothing records *who* answered a question. Kanmer is for one developer, and
+where it is not, the commit that ticks the box already has a name on it.
+
+### Also
+
+`kanmer-auto` can now be pointed at an epic or a horizon, not only an area —
+"clear HZN-003" resolves the roster itself instead of you listing ticket ids.
+
 ## 0.3.2
 
 Fixes updates that could fail to install.

@@ -6,7 +6,8 @@ import { KanmerStore } from "./store.js";
 import { migrateBoard } from "./migrate.js";
 import { repoDocKindOf } from "./docs.js";
 import { boundaryThreshold, stageIndex, STAGE_IDS } from "./stages.js";
-import { parseRequirement, validateProfileMap } from "./profiles.js";
+import { parseRequirement, validateProfileMap, QUESTIONS_RESOLVED } from "./profiles.js";
+import { countCheckboxes, PARKED_HEADING_RE } from "./docpaths.js";
 
 let root: string;
 let store: KanmerStore;
@@ -78,6 +79,9 @@ describe("requirement grammar", () => {
       /unknown environment/,
     );
     expect(validateProfileMap({ "enter-done": ["proof"] }, opts)).toEqual([]);
+    // The second pseudo-type must validate like the first, or a board carrying
+    // the shipped profiles fails to load (ADR-0011).
+    expect(validateProfileMap({ "enter-done": [QUESTIONS_RESOLVED] }, opts)).toEqual([]);
   });
 });
 
@@ -438,5 +442,139 @@ describe("migrateBoard on a current board", () => {
   it("is a no-op", async () => {
     const { v3 } = await migrateBoard(store, { dryRun: true });
     expect(v3.alreadyV3).toBe(true);
+  });
+});
+
+describe("questions-resolved, end to end (ADR-0011)", () => {
+  async function ticketWith(questions: string): Promise<string> {
+    const item = await store.createItem({
+      type: "ticket",
+      title: "Has questions",
+      profile: "chore",
+      status: "preparing",
+    });
+    await store.setDoc(item.id, "plan", "The plan.");
+    if (questions) await store.setDoc(item.id, "open-questions", questions);
+    return item.id;
+  }
+
+  async function open(id: string): Promise<number> {
+    const { checked, total } = await countCheckboxes(
+      path.join(root, ".kanmer", "areas", "general", id),
+      "open-questions",
+      { stopAtParked: true },
+    );
+    return total - checked;
+  }
+
+  it("refuses to leave Preparing while a question is unticked", async () => {
+    const id = await ticketWith("- [ ] **Which way?** — needs deciding.\n");
+    await expect(store.moveItem(id, { status: "implementing" })).rejects.toThrow(
+      /questions-resolved/,
+    );
+  });
+
+  it("says what to do, not just that something is missing", async () => {
+    const id = await ticketWith("- [ ] Unanswered.\n");
+    await expect(store.moveItem(id, { status: "implementing" })).rejects.toThrow(
+      /Parked \(explicitly deferred\)/,
+    );
+  });
+
+  it("clears once the box is ticked", async () => {
+    const id = await ticketWith("- [ ] Unanswered.\n");
+    await store.setDoc(id, "open-questions", "- [x] Answered — we chose B.\n");
+    await expect(store.moveItem(id, { status: "implementing" })).resolves.toBeTruthy();
+  });
+
+  it("clears when the question is parked with a reason instead", async () => {
+    // The honest exit: parking is not the same as pretending it was answered.
+    const id = await ticketWith(
+      "- [x] Decided.\n\n## Parked (explicitly deferred)\n\n- [ ] Later — safe to defer because X.\n",
+    );
+    await expect(store.moveItem(id, { status: "implementing" })).resolves.toBeTruthy();
+  });
+
+  it("never blocks a ticket that raised no questions at all", async () => {
+    const id = await ticketWith("");
+    await expect(store.moveItem(id, { status: "implementing" })).resolves.toBeTruthy();
+  });
+
+  it("blocks entering Done too, so nothing closes on an open question", async () => {
+    const id = await ticketWith("- [x] Settled.\n");
+    await store.moveItem(id, { status: "implementing" });
+    await store.setDoc(id, "proof", "Evidence.");
+    await store.setDoc(id, "open-questions", "- [ ] Reopened during review.\n");
+    await store.moveItem(id, { status: "review" });
+    await store.moveItem(id, { status: "verifying" });
+    await expect(store.moveItem(id, { status: "done" })).rejects.toThrow(/questions-resolved/);
+  });
+});
+
+describe("countCheckboxes", () => {
+  /** The ticket's folder, found rather than guessed — the area is board-defined. */
+  async function dirOf(id: string): Promise<string> {
+    const areas = path.join(root, ".kanmer", "areas");
+    for (const area of await fs.readdir(areas)) {
+      const candidate = path.join(areas, area, id);
+      try {
+        await fs.stat(candidate);
+        return candidate;
+      } catch {
+        /* not this area */
+      }
+    }
+    throw new Error(`no folder for ${id}`);
+  }
+
+  async function write(id: string, body: string): Promise<string> {
+    await store.setDoc(id, "open-questions", body);
+    return dirOf(id);
+  }
+
+  let id: string;
+  beforeEach(async () => {
+    id = (await store.createItem({ type: "ticket", title: "Counting" })).id;
+  });
+
+  it("counts ticked and unticked, in both cases and both bullet styles", async () => {
+    const dir = await write(id, "- [ ] a\n- [x] b\n* [X] c\n- [ ] d\n");
+    expect(await countCheckboxes(dir, "open-questions")).toEqual({ checked: 2, total: 4 });
+  });
+
+  it("stops at the parked heading when asked to", async () => {
+    const dir = await write(id, "- [ ] open\n\n## Parked (explicitly deferred)\n- [ ] parked\n- [ ] also parked\n");
+    expect(await countCheckboxes(dir, "open-questions", { stopAtParked: true })).toEqual({
+      checked: 0,
+      total: 1,
+    });
+    // Without the flag it is a plain count — the checklist caller's behaviour.
+    expect(await countCheckboxes(dir, "open-questions")).toEqual({ checked: 0, total: 3 });
+  });
+
+  it("matches the exact heading the template ships, and nothing looser", async () => {
+    // ADR-0011 consequence: `## Parked` is load-bearing. Renaming it in the
+    // template must fail here rather than silently changing what the gate counts.
+    expect(PARKED_HEADING_RE.test("## Parked (explicitly deferred)")).toBe(true);
+    expect(PARKED_HEADING_RE.test("## parked")).toBe(true);
+    expect(PARKED_HEADING_RE.test("### Parked")).toBe(true);
+    expect(PARKED_HEADING_RE.test("## Parking")).toBe(false);
+    expect(PARKED_HEADING_RE.test("Parked")).toBe(false);
+    expect(PARKED_HEADING_RE.test("- [ ] Parked?")).toBe(false);
+  });
+
+  it("sums across several documents of the type", async () => {
+    await store.setDoc(id, "open-questions", "- [ ] one\n");
+    await store.setDoc(id, "open-questions/second.md", "- [ ] two\n- [x] three\n");
+    expect(await countCheckboxes(await dirOf(id), "open-questions")).toEqual({
+      checked: 1,
+      total: 3,
+    });
+  });
+
+  it("returns zeroes for prose without boxes, and for no document at all", async () => {
+    const dir = await write(id, "Some prose. Nothing to decide.\n");
+    expect(await countCheckboxes(dir, "open-questions")).toEqual({ checked: 0, total: 0 });
+    expect(await countCheckboxes(dir, "research")).toEqual({ checked: 0, total: 0 });
   });
 });

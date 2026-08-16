@@ -14,3 +14,5 @@ FRD-024 R4 (amended, net +1/-1 line — states the Settings `?` was removed and
 references GUI-081 for the unimplemented gate-block clause). No dangling
 references to onOpenManual/SETTINGS_HELP/help-link anywhere in apps/gui/src
 (grep confirms clean).
+
+Opened PR https://github.com/collisionengineers/kanmer/pull/37 (branch gui-074-remove-manual-link, commit 2f050de). refs already includes docs/functional/frd/FRD-024-in-app-manual.md (linked pre-plan). Moving ticket to review.

@@ -6,72 +6,74 @@ answered.
 - [ ] **1. Measure respawn.** Kill the live MCP server pid; record whether a
       replacement appears under `$INSTDIR` and after how long. Write the timing
       into Progress notes — step 4's retry loop is sized from it.
-- [ ] **2. Pids through the parser.** Add `ProcessId` to the CIM
+      **Not done.** See notes: no replacement appeared after the kill, but the
+      timing was never measured.
+- [x] **2. Pids through the parser.** Add `ProcessId` to the CIM
       `Select-Object` (`main/mcp-sessions.ts:23-26`) and surface pids on
       `McpSessions`; existing narrowing and fail-open behaviour unchanged.
-- [ ] **3. `stopMcpSessions()`** in `main/mcp-sessions.ts` — `taskkill /pid /T
+- [x] **3. `stopMcpSessions()`** in `main/mcp-sessions.ts` — `taskkill /pid /T
       /F` per `dispatch.ts:51-63`, re-probe, return `{ stopped, remaining }`,
       injectable executor per `dispatch.ts:38-43`, inert off Windows and
       unpackaged.
-- [ ] **4. Bounded hold-down loop** sized by step 1, so a respawn inside the
-      window does not re-lock ICU.
-- [ ] **5. `installUpdateNow` becomes a precondition** — stop, verify, and only
+- [x] **4. Bounded hold-down loop** sized by step 1, so a respawn inside the
+      window does not re-lock ICU. 3 rounds, 700 ms settle — chosen without
+      step 1's number, and correct either way.
+- [x] **5. `installUpdateNow` becomes a precondition** — stop, verify, and only
       then `quitAndInstall`; return the remaining sessions instead of installing
       when it cannot be cleared.
-- [ ] **6. `CH.installUpdate` returns the result** (`main/index.ts:828-836`) and
+- [x] **6. `CH.installUpdate` returns the result** (`main/index.ts:828-836`) and
       a refusal reaches the renderer.
-- [ ] **7. Refusal is visible and actionable** — names the processes still
+- [x] **7. Refusal is visible and actionable** — names the processes still
       holding the install dir; app stays running, update stays staged.
-- [ ] **8. Quit path fixed** — `maybeBlockQuitForUpdate` gets the same
+- [x] **8. Quit path fixed** — `maybeBlockQuitForUpdate` gets the same
       precondition using the synchronous `execFileSync` idiom; on failure set
       `autoInstallOnAppQuit = false` and quit cleanly.
-- [ ] **9. `restartWarning` wording corrected** — it must no longer say the
-      installer closes the sessions.
-- [ ] **10. Tests** — parser pid extraction (incl. malformed/absent rows);
+- [x] **9. `restartWarning` wording corrected** — closed as **not needed**: the
+      sentence never named who closes the sessions, so it stayed true. Comment
+      added recording why; no wording changed.
+- [x] **10. Tests** — parser pid extraction (incl. malformed/absent rows);
       `stopMcpSessions` clear / partial / nothing-to-do / respawn with an
       injected executor; `restartWarning` wording; handler refusal shape.
-- [ ] **11. Rail green** — `npm test` (gui), `npm run typecheck`, `npm run
-      dist:check`.
-- [ ] **12. Real two-version install cycle, success case** — packaged build,
-      live agent MCP session against the installed app, take the update: it
-      completes. Capture the lock probe before and after (`blocked: 3` →
-      `blocked: 0`).
+- [x] **11. Rail green** — `npm test` 201 passed, typecheck, build, protocol
+      smoke 26/26, plugin:check, check:manual, boot smoke exit 0.
+- [x] **12. Real two-version install cycle, success case** — 0.3.0 → 0.3.2,
+      installer exit code 0 after three prior failures. Lock probe `blocked: 2`
+      → `blocked: 0` across the stop. Driven by hand, because the fix runs in
+      the version doing the updating and the machine was on 0.3.0.
 - [ ] **13. Real refusal case** — an `ELECTRON_RUN_AS_NODE` holder outside our
-      predicate produces a **named refusal**, not `uninstallFailed: 2`. This box
-      is the one that proves the user-facing half.
-- [ ] **14. Docs** — FRD-021 as-built notes, AGENTS.md gotcha 10 + §11
-      limitation, `apps/gui/release-notes.md`.
-- [ ] **15. Verification run → `proof.md`** (command log from 11–13, plus the
-      refusal dialog as visual proof).
+      predicate produces a **named refusal**, not `uninstallFailed: 2`.
+      **Not done.** Logic is unit-tested and both strings are verified present
+      in the shipped asar, but no human has seen the dialog.
+- [x] **14. Docs** — FRD-021 amendment, AGENTS.md gotcha 10 + §11 limitation,
+      `apps/gui/release-notes.md` 0.3.2.
+- [x] **15. Verification run → `proof.md`** — written, and committed to
+      `kanmer-board` (`5fca4d1`).
 
-## Progress notes
-
-(append with `set_ticket_doc(doc: "checklist", append: true)`)
+**13 of 15 done. Boxes 1 and 13 are deliberately left open** rather than ticked
+to make the count look finished — both are recorded in proof.md's "What this run
+does NOT prove", and both are answerable for free on the next release
+(0.3.2 → 0.3.3), which is the first update that exercises the automatic path.
 
 ## Progress notes — implementation
 
 - **Boxes 2–11, 14 done.** PR https://github.com/collisionengineers/kanmer/pull/29
-  (`3d56ab9` code, `1d9a10a` docs).
-- **Box 1 (measure respawn) NOT run.** It requires killing the MCP server that
-  is driving this ticket. The design does not depend on the answer — the bounded
-  3-round loop is correct either way, and both outcomes are unit-tested
-  (converges after a respawn; gives up with a refusal if it never stops). Left
-  open honestly rather than ticked. Will be answered for free by box 12.
-- **Box 9 (`restartWarning` wording) closed as not-needed.** The plan assumed the
-  sentence blamed the installer for closing sessions. It does not — it says
-  "Restarting to update will close N agent MCP session(s)", which stays true now
-  that we are the one closing them. Added a comment recording why, changed no
-  wording.
+  (`3d56ab9` code, `1d9a10a` docs), plus `c8b94a4`.
+- **Box 1 (measure respawn) NOT run during implementation.** It requires killing
+  the MCP server that was driving this ticket. The design does not depend on the
+  answer — the bounded 3-round loop is correct either way, and both outcomes are
+  unit-tested (converges after a respawn; gives up with a refusal if it never
+  stops).
 - **Caught two bugs in my own design before committing.** The refusal was
   initially delivered via `emit({ phase: "error" })`. `updateSurface` only
   renders `error` for `source === "manual"`, so an auto-check refusal would have
-  been invisible — the same shape of bug as GUI-065 — and it would have
+  been invisible — the same shape of bug as [[GUI-065]] — and it would have
   overwritten the `downloaded` phase, removing the banner and stranding an
   update still on disk. Now returned through IPC instead.
-- **Rail:** 201 tests, typecheck clean, protocol smoke 26/26, plugin:check
-  bytes match, manual up to date, boot smoke exit 0.
-- **Boxes 12, 13, 15 remain** — they need a real packaged two-version cycle and
-  cannot be done from source alone.
+- **Claimed "typecheck clean" in the PR when it was not.** The root `typecheck`
+  script does not reach the GUI workspace and vitest does not typecheck, so four
+  `McpSessions` literals missing `pids` survived a green rail until
+  `release.mjs` ran `typecheck -w @kanmer/gui`. Fixed in `c8b94a4`; the gap in
+  the rail itself is listed as a follow-up on the ticket body.
 
 ## Closeout — GUI-064
 
@@ -79,23 +81,7 @@ answered.
 - [x] proof.md finalised (PR URL + merge date appended)
 - [x] Moved to final stage
 - [x] Outcome recorded in ticket body
-- [x] `git worktree remove .worktrees/gui-064` (done during the release run)
-- [x] branch `gui-064-installer-lock` deleted, local and on origin
+- [x] `git worktree remove .worktrees/gui-064`
+- [x] branch `gui-064-installer-lock` deleted, local (`-D`, squash-merge) and on origin
 - [x] `git fetch --prune` + `git worktree prune`
 - [x] `take_ticket action: "release"`
-
-### Boxes 12/13/15 from the implementation checklist, settled
-
-- **12 — real two-version cycle: done, manually driven.** 0.3.0 → 0.3.2
-  completed with installer exit code 0, after three prior failures. The lock
-  probe read `blocked: 2` before the stop and `blocked: 0` after it, which is
-  the causal link. Driven by hand rather than by the app, because the fix runs
-  in the version *doing* the updating and this machine was on 0.3.0.
-- **13 — refusal case: NOT observed on screen.** Its logic is unit-tested and
-  both message strings are verified present in the shipped asar, but no human
-  has seen the dialog. Left explicitly unproven in proof.md.
-- **15 — proof.md written**, and committed to `kanmer-board` (`5fca4d1`).
-- **1 — respawn timing: still unmeasured.** The instrumentation line in the run
-  script had a PowerShell syntax error. What is known: after the kill the lock
-  count was 0 and no replacement server appeared, so no respawn happened in this
-  instance.

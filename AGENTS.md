@@ -49,6 +49,11 @@ Everything else in the codebase follows from that model.
 
 ## 2. Repository layout
 
+> **Governance lives in [`/docs/`](docs/README.md)** — vision, PRDs, FRDs and ADRs. FRDs are the
+> durable end-state specs this codebase is measured against; when this guide and an FRD disagree
+> about intended behaviour, the FRD wins and this guide is the thing to fix. Roadmaps under
+> `docs/plans/` are working documents, not governance.
+
 npm-workspaces monorepo. Build order is core → mcp-server → gui (each depends on the previous).
 
 ```
@@ -57,6 +62,12 @@ kanmer/
   tsconfig.base.json      # shared strict TS config all packages extend
   README.md               # end-user install/usage
   AGENTS.md               # THIS FILE
+  docs/                   # GOVERNANCE — see docs/README.md
+    product/              #   vision + PRDs (why)
+    functional/frd/       #   FRDs (what each feature does) — the spec phases implement
+    architecture/adr/     #   ADRs (why it is built this way)
+    contributing/         #   doc-structure.md — generated mirror of the board's doc model
+    plans/                #   implementation roadmaps (working docs, not governance)
   examples/
     codex-config.toml     # manual codex MCP registration example
 

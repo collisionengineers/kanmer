@@ -24,7 +24,6 @@ import {
   getLinkGraph,
   linkItems,
   migrateBoard,
-  migrateToV2,
   repoDocsMap,
   resolveProfiles,
   resolveProofTypes,
@@ -610,7 +609,7 @@ function registerIpc(): void {
   ipcMain.handle(CH.listDispatches, (_e, p: string) => listDispatches(p));
   onDispatchStatus((s) => mainWindow?.webContents.send(CH.dispatchStatus, s));
   ipcMain.handle(CH.migrate, (_e, p: string, dryRun: boolean) =>
-    migrateToV2(requireStore(p), { dryRun }),
+    migrateBoard(requireStore(p), { dryRun }),
   );
   ipcMain.handle(CH.backfillBoard, async (_e, p: string, dryRun: boolean) => {
     if (!dryRun) markOwnWrite(p, "board");

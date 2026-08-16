@@ -9,18 +9,19 @@ import type {
   BoardConfig,
   CreateItemInput,
   Item,
-  MigrationReport,
   MovePosition,
 } from "@kanmer/core";
 import { blockedIds, columnCards, optimisticOrder } from "./lib/board.js";
 import { classifyKanmerPath } from "../../shared/kanmerPath.js";
 import { ContextMenu, useDismissOnOutside, type MenuItem } from "./components/ContextMenu.js";
 import { ClientContext, makeClient, type ProjectClient } from "./lib/client.js";
+import { readOnlyClient } from "./lib/readOnly.js";
 import { restoreTabs, restoredActiveTab } from "./lib/session.js";
 import { tabCloseDecision } from "./lib/tabClose.js";
 import { restartWarning, updateSurface } from "./lib/update.js";
 import type {
   AppSettings,
+  BoardMigrationReport,
   ChangePayload,
   ConnectTarget,
   DispatchStatus,
@@ -52,6 +53,13 @@ const VIEW_LABELS: Record<View, string> = {
 
 const EMPTY_FILTERS: Filters = {};
 
+/**
+ * Why an unmigrated board refuses writes (FRD-007 M3). Shown by whichever
+ * control the user reached for, so it has to say what to do about it.
+ */
+const READ_ONLY_REASON =
+  "This board is read-only until it is migrated to format 3 — use Migrate in the banner above.";
+
 /** A project the user asked to open: pick one, or a known path. */
 type OpenTarget = { kind: "pick" } | { kind: "path"; path: string };
 
@@ -80,11 +88,7 @@ export function App(): JSX.Element {
   const [root, setRoot] = useState<string | null>(null);
   const [tabs, setTabs] = useState<Tab[]>([]);
   const savedStates = useRef<Map<string, SavedTabState>>(new Map());
-  const client = useMemo(() => (root ? makeClient(root) : null), [root]);
-  // A ref to the active client so stable useCallbacks bind to the current
-  // project without re-creating on every switch.
-  const clientRef = useRef<ProjectClient | null>(null);
-  clientRef.current = client;
+  const baseClient = useMemo(() => (root ? makeClient(root) : null), [root]);
   const rootRef = useRef<string | null>(null);
   rootRef.current = root;
   const tabsRef = useRef<Tab[]>([]);
@@ -92,6 +96,19 @@ export function App(): JSX.Element {
   const [board, setBoard] = useState<BoardConfig | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [format, setFormat] = useState<1 | 2 | 3>(2);
+  // An unmigrated board is a compat rendering: the fixed six stages drawn over
+  // a stage set that may not be them. Reading it is useful; writing to it saves
+  // format-3 shapes into a format-2 board (FRD-007 M3). Wrapping the client is
+  // what makes that hold for components written later — it is the only path
+  // they have to IPC.
+  const client = useMemo(
+    () => (baseClient && format < 3 ? readOnlyClient(baseClient, READ_ONLY_REASON) : baseClient),
+    [baseClient, format],
+  );
+  // A ref to the active client so stable useCallbacks bind to the current
+  // project without re-creating on every switch.
+  const clientRef = useRef<ProjectClient | null>(null);
+  clientRef.current = client;
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [view, setView] = useState<View>("ticket");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -110,7 +127,7 @@ export function App(): JSX.Element {
   const [dispatches, setDispatches] = useState<DispatchStatus[]>([]);
   const [dispatchesOpen, setDispatchesOpen] = useState(false);
   const [changeSignal, setChangeSignal] = useState(0);
-  const [migrateReport, setMigrateReport] = useState<MigrationReport | null>(null);
+  const [migrateReport, setMigrateReport] = useState<BoardMigrationReport | null>(null);
   const [migrating, setMigrating] = useState(false);
   /** An open group detail view, or null. Opened from a group chip or filter. */
   const [openGroup, setOpenGroup] = useState<string | null>(null);
@@ -429,6 +446,20 @@ export function App(): JSX.Element {
   }, []);
 
   const updateView = updateSurface(update, updateDismissed);
+
+  // Migration is one action across three steps, so its blockers and notes read
+  // as one list. A v2 blocker stops the whole thing just as surely as a v3 one —
+  // showing them in separate places would let the user fix one and be surprised.
+  const allBlockers = migrateReport
+    ? [...migrateReport.v2.blockers, ...migrateReport.v3.blockers]
+    : [];
+  const allNotes = migrateReport
+    ? [
+        ...migrateReport.v2.notes,
+        ...migrateReport.backfill.addedStages.map((s) => `Stage "${s}" added by backfill.`),
+        ...migrateReport.v3.notes,
+      ]
+    : [];
 
   // Push update toasts into the existing toast stack, deduped by version so a
   // download's many `downloading` emits produce one toast, not a hundred.
@@ -990,11 +1021,14 @@ export function App(): JSX.Element {
         </button>
       </header>
 
-      {format === 1 && (
+      {format < 3 && (
         <div className="banner warn">
           <span>
-            This board uses the old layout — migrate to v2 to get ticket folders, documents and
-            area-based ids.
+            {format === 1
+              ? "This board uses the original layout. Migrating gives it ticket folders, area-based ids, and format 3's six fixed stages."
+              : "This board is format 2. Migrating maps its stages onto the fixed six, sorts documents into type folders, and assigns each ticket a profile."}{" "}
+            Until then it is <strong>read-only</strong> — you can read the board, but saving
+            format-3 shapes into it would leave a board neither version reads correctly.
           </span>
           <div className="conflict-actions">
             <button
@@ -1009,7 +1043,7 @@ export function App(): JSX.Element {
                   .catch((err) => setError(err instanceof Error ? err.message : String(err)))
               }
             >
-              Migrate to v2…
+              Migrate to format 3…
             </button>
           </div>
         </div>
@@ -1307,42 +1341,130 @@ export function App(): JSX.Element {
         <div className="modal-backdrop" onClick={() => !migrating && setMigrateReport(null)}>
           <div className="modal migrate" role="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h2>Migrate to format 2</h2>
+              <h2>Migrate to format 3</h2>
             </div>
             <div className="modal-body">
-              {migrateReport.alreadyV2 ? (
-                <p>This board is already format 2 — nothing to do.</p>
+              {migrateReport.v3.alreadyV3 ? (
+                <p>This board is already format 3 — nothing to do.</p>
               ) : (
                 <>
-                  {migrateReport.blockers.length > 0 && (
+                  {allBlockers.length > 0 && (
                     <div className="banner error">
                       <div>
                         <strong>Migration is blocked.</strong>
                         <ul className="migrate-list">
-                          {migrateReport.blockers.map((b, i) => (
+                          {allBlockers.map((b, i) => (
                             <li key={i}>{b}</li>
                           ))}
                         </ul>
                       </div>
                     </div>
                   )}
-                  <p>
-                    {migrateReport.ticketMoves.length} ticket(s) move into area folders,{" "}
-                    {migrateReport.foldedDocs.length} plan/research document(s) fold into their
-                    tickets, {migrateReport.convertedToTickets.length} orphan(s) become tickets.
-                  </p>
-                  {migrateReport.foldedDocs.length > 0 && (
-                    <ul className="migrate-list">
-                      {migrateReport.foldedDocs.map((f) => (
-                        <li key={f.source}>
-                          {f.source} → {f.intoTicket}/{f.doc}.md
-                        </li>
-                      ))}
-                    </ul>
+
+                  {/* The v1→v2 half, shown only to a board that still needs it. */}
+                  {!migrateReport.v2.alreadyV2 && (
+                    <section>
+                      <h3>Layout</h3>
+                      <p>
+                        {migrateReport.v2.ticketMoves.length} ticket(s) move into area folders,{" "}
+                        {migrateReport.v2.foldedDocs.length} plan/research document(s) fold into
+                        their tickets, {migrateReport.v2.convertedToTickets.length} orphan(s) become
+                        tickets.
+                      </p>
+                      {migrateReport.v2.foldedDocs.length > 0 && (
+                        <ul className="migrate-list">
+                          {migrateReport.v2.foldedDocs.map((f) => (
+                            <li key={f.source}>
+                              {f.source} → {f.intoTicket}/{f.doc}.md
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
                   )}
-                  {migrateReport.notes.length > 0 && (
+
+                  <section>
+                    <h3>Stages</h3>
+                    {migrateReport.v3.stageMapping.length === 0 ? (
+                      <p className="hint">No stage changes.</p>
+                    ) : (
+                      <table className="stage-map">
+                        <tbody>
+                          {migrateReport.v3.stageMapping.map((m) => (
+                            <tr key={`${m.from}->${m.to}`}>
+                              <td>{m.from}</td>
+                              <td aria-hidden="true">→</td>
+                              <td>{m.to}</td>
+                              <td className="muted">
+                                {m.count} ticket{m.count === 1 ? "" : "s"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                    {/*
+                      Listed, never just counted. These are the tickets that end
+                      up somewhere the user did not put them — a number alone is
+                      too easy to click past.
+                    */}
+                    {migrateReport.v3.needsRestage.length > 0 && (
+                      <div className="banner warn">
+                        <div>
+                          <strong>
+                            {migrateReport.v3.needsRestage.length} ticket(s) have no matching stage.
+                          </strong>{" "}
+                          They move to Backlog and are labelled <code>needs-restage</code> so you
+                          can find them afterwards.
+                          <ul className="migrate-list">
+                            {migrateReport.v3.needsRestage.map((t) => (
+                              <li key={t.id}>
+                                {t.id} — was <code>{t.from}</code>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                  <section>
+                    <h3>Documents</h3>
+                    <p>
+                      {migrateReport.v3.docMoves.length} document(s) move into their type folder.
+                    </p>
+                    {migrateReport.v3.docMoves.length > 0 && (
+                      <ul className="migrate-list">
+                        {migrateReport.v3.docMoves.map((d) => (
+                          <li key={`${d.id}/${d.from}`}>
+                            {d.id}: {d.from} → {d.to}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+
+                  <section>
+                    <h3>Profiles</h3>
+                    <p>
+                      {migrateReport.v3.profileAssignments
+                        .map((pa) => `${pa.count} ${pa.profile}`)
+                        .join(", ") || "No tickets to assign."}
+                    </p>
+                  </section>
+
+                  {/* Data being removed gets its own line, never a footnote. */}
+                  {migrateReport.v3.prioritiesStripped > 0 && (
+                    <p>
+                      <strong>{migrateReport.v3.prioritiesStripped}</strong> ticket(s) lose their{" "}
+                      <code>priority</code> field — format 3 removes it, and the value is not
+                      kept anywhere else.
+                    </p>
+                  )}
+
+                  {allNotes.length > 0 && (
                     <ul className="migrate-list notes">
-                      {migrateReport.notes.map((n, i) => (
+                      {allNotes.map((n, i) => (
                         <li key={i}>{n}</li>
                       ))}
                     </ul>
@@ -1352,17 +1474,17 @@ export function App(): JSX.Element {
             </div>
             <div className="confirm-actions" style={{ padding: "0 16px 16px" }}>
               <button className="ghost sm" disabled={migrating} onClick={() => setMigrateReport(null)}>
-                {migrateReport.alreadyV2 ? "Close" : "Not now"}
+                {migrateReport.v3.alreadyV3 ? "Close" : "Not now"}
               </button>
-              {!migrateReport.alreadyV2 && (
+              {!migrateReport.v3.alreadyV3 && (
                 <button
                   className="primary sm"
-                  disabled={migrating || migrateReport.blockers.length > 0}
+                  disabled={migrating || allBlockers.length > 0}
                   onClick={async () => {
                     setMigrating(true);
                     try {
                       await clientRef.current!.migrate(false);
-                      setFormat(2);
+                      setFormat(3);
                       setMigrateReport(null);
                       await refresh();
                     } catch (err) {

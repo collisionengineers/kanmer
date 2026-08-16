@@ -1147,6 +1147,24 @@ button.danger {
   max-height: 160px;
   overflow: auto;
 }
+.modal.migrate h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 14px 0 6px;
+}
+.stage-map {
+  font-size: 12px;
+  border-collapse: collapse;
+}
+.stage-map td {
+  padding: 2px 8px 2px 0;
+  white-space: nowrap;
+}
+.stage-map td:nth-child(2) {
+  color: var(--muted);
+}
 .area-add .quickadd-btn {
   padding: 0 6px;
   font-size: 12px;

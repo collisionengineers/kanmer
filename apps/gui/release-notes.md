@@ -6,6 +6,47 @@ against shipping the previous release's notes. electron-builder reads this file
 from the app directory (`projectDir` is `apps/gui` when the packer is invoked
 there) and uses it as the GitHub release body.
 
+## 0.3.1
+
+Fixes migrations that could fail part-way on Windows and then refuse to finish.
+
+**If a 0.3.0 migration left your board half-migrated, install this and run
+Migrate again.** It will pick up where it stopped rather than starting over,
+and it clears any stray files the failed run left behind.
+
+### What was wrong
+
+Windows fails a file rename with `EPERM` whenever anything else has the file
+open — a virus scanner reading it, the search indexer, a background `git`. On a
+single write that is rare. Across a few hundred tickets it is close to certain.
+
+The migration did not retry, so one scanner read aborted the whole run. Worse,
+a re-run started from the beginning and rewrote every ticket it had already
+converted, taking a fresh chance of the same failure on each one — so each
+attempt tended to fail *earlier* than the last.
+
+### What changed
+
+- **Writes retry.** A blocked rename is retried briefly instead of failing
+  outright, and never leaves a temporary file behind.
+- **Migration resumes per ticket.** Tickets already converted are skipped, so a
+  second run does only the work left. A board that stopped at ticket 200 of 242
+  now finishes the last 42 instead of redoing all 242.
+- **The app stops competing with itself.** Kanmer now pauses its own file
+  watcher and Git sync while a migration runs — previously it read every file it
+  was writing, which was part of the contention causing the failure.
+- **Stray files are cleaned up.** Leftovers from an interrupted run are removed
+  during the next migration, and are no longer committed by Git sync.
+
+Verified against a real 242-ticket board that had failed three times: it
+completes, skips the 194 tickets already done, finishes the remaining 48, and a
+second run is a clean no-op.
+
+### Note
+
+If your board is still on format 2 it stays read-only until the migration
+finishes — that is deliberate, and Migrate remains available while it is.
+
 ## 0.3.0
 
 **Kanmer v3.** The board format changes, and existing boards are migrated on

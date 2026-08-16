@@ -14,8 +14,6 @@ export { ActivityPanel } from "../../../apps/gui/src/renderer/src/components/Act
 export { ArchivedList } from "../../../apps/gui/src/renderer/src/components/ArchivedList.js";
 export { Board } from "../../../apps/gui/src/renderer/src/components/Board.js";
 export { Manual } from "../../../apps/gui/src/renderer/src/components/Manual.js";
-export { BacklogTable } from "../../../apps/gui/src/renderer/src/components/BacklogTable.js";
-export type { BacklogTableProps } from "../../../apps/gui/src/renderer/src/components/BacklogTable.js";
 export { ChipInput } from "../../../apps/gui/src/renderer/src/components/ChipInput.js";
 export { CommandPalette } from "../../../apps/gui/src/renderer/src/components/CommandPalette.js";
 export type { PaletteCommand } from "../../../apps/gui/src/renderer/src/components/CommandPalette.js";

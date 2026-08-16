@@ -9,7 +9,10 @@
  *
  * The view shortcuts are the exception and are derived from the view list at
  * render time, because a parallel array is exactly what went stale when the
- * Backlog view was added.
+ * Backlog view was added — and stayed correct, with no edit, when that same
+ * view was removed again (GUI-070). Only the human-readable label below is
+ * hand-maintained, so it is the one that has to be updated by hand when the
+ * set of views changes.
  */
 
 export interface Shortcut {
@@ -26,11 +29,8 @@ export const SHORTCUTS: readonly Shortcut[] = Object.freeze([
   { keys: "Ctrl+F  /  /", label: "Focus search", context: "Anywhere" },
   { keys: "Ctrl+,", label: "Settings", context: "Anywhere" },
   { keys: "F1", label: "Manual", context: "Anywhere" },
-  { keys: "Ctrl+1…4", label: "Switch view (Board, Backlog, Standup, Archived)", context: "Anywhere" },
+  { keys: "Ctrl+1…3", label: "Switch view (Board, Standup, Archived)", context: "Anywhere" },
   { keys: "Ctrl+Tab", label: "Next project tab (Shift for previous)", context: "Anywhere" },
   { keys: "Escape", label: "Close the topmost panel, else deselect", context: "Anywhere" },
-  { keys: "↑ / ↓", label: "Move between rows", context: "Backlog" },
-  { keys: "Space", label: "Select the focused row", context: "Backlog" },
-  { keys: "Enter", label: "Open the focused row", context: "Backlog" },
   { keys: "← / →", label: "Move the selected ticket a stage", context: "Board" },
 ]);

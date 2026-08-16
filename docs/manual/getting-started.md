@@ -9,9 +9,12 @@ checklist, proof — each in a folder of its own, and any reference files you dr
 in.
 
 A ticket moves through six stages: **Backlog → Preparing → Implementing →
-Review → Verifying → Done**. Backlog is a list rather than a column, because a
-long queue is something you scan and triage, not something you look at all at
-once.
+Review → Verifying → Done**. All six are columns on one board, Backlog first —
+there is no second place to look. Kanmer did once give Backlog a dedicated list
+view, on the argument that a long queue is something you scan rather than
+something you look at all at once; keeping the same tickets in two places cost
+more than the list was worth, so the list was withdrawn and Backlog came back to
+the board.
 
 ## What a ticket owes
 

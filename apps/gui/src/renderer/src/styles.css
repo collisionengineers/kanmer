@@ -1786,58 +1786,6 @@ button.danger {
   padding: 2px 0;
 }
 
-/* Backlog list view (GUI-015) */
-.backlog {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-}
-.backlog-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--border);
-  font-size: 12px;
-}
-.backlog-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-}
-.backlog-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-.backlog-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--panel, #1b1d22);
-  text-align: left;
-  padding: 6px 8px;
-  cursor: pointer;
-  white-space: nowrap;
-  border-bottom: 1px solid var(--border);
-}
-.backlog-table tbody tr {
-  height: 32px; /* must match ROW_HEIGHT in BacklogTable.tsx */
-}
-.backlog-table tbody tr.selected {
-  background: var(--selected, rgba(91, 140, 255, 0.14));
-}
-.backlog-table td {
-  padding: 0 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.backlog-title {
-  max-width: 46vw;
-}
-
 /* In-app manual (GUI-017) */
 .modal.manual {
   width: min(980px, 92vw);

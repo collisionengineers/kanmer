@@ -50,3 +50,14 @@ workspaces (`@kanmer/core`, `@kanmer/mcp-server`, `@kanmer/ui`, `@kanmer/gui`) t
 clean. `npm test`'s `kanmerGit.test.ts` (real git operations, 20-30s) was flaky once across
 several runs — unrelated to this change (no git/GUI code touched) and passed clean on
 immediate re-run and in the final full-suite run (423/423).
+
+## Closeout — SKILL-018
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt` → MERGED, 2026-08-16T22:43:57Z, mergeCommit fc2045b)
+- [x] proof.md finalised (PR URL + merge context in proof.md body)
+- [x] Moved to final stage (done)
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/skill-018`
+- [ ] `git branch -D skill-018-skill-frontmatter` (squash-merged, not an ancestor of main)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

@@ -2,7 +2,7 @@
 id: SKILL-018
 type: ticket
 title: Fix kanmer-report's frontmatter so Antigravity loads all 12 skills
-status: verifying
+status: done
 area: skills
 assignee: claude-code
 profile: fix
@@ -10,6 +10,7 @@ stageEntered:
   preparing: '2026-08-16T22:27:03.931Z'
   review: '2026-08-16T22:42:25.758Z'
   verifying: '2026-08-16T22:44:14.149Z'
+  done: '2026-08-16T22:57:48.374Z'
 taken_at: '2026-08-16T22:29:17.872Z'
 branch: skill-018-skill-frontmatter
 worktree: .worktrees/skill-018
@@ -27,7 +28,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/42'
 archived: false
 created: '2026-08-16T22:08:48.761Z'
-updated: '2026-08-16T22:44:14.149Z'
+updated: '2026-08-16T22:57:48.374Z'
 ---
 
 ## What

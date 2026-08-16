@@ -1,0 +1,1 @@
+Opened PR https://github.com/collisionengineers/kanmer/pull/42 (branch skill-018-skill-frontmatter, commit 6c81860). Rail green (npm test 423/423, typecheck all 4 workspaces, plugin:check with new frontmatter check). Real-CLI before/after + positive control captured in checklist.md progress notes.

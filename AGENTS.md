@@ -337,6 +337,10 @@ The only place that touches `.kanmer` files. Public API via `index.ts`. Key entr
 - `dist/index.js` — ESM, deps external (for dev / `node …`).
 - `dist/standalone/kanmer-mcp.cjs` — self-contained CJS, everything bundled (shipped inside the GUI, run via Electron-as-Node).
 
+**Server identity** (`identity.ts`, surfaced by `get_status.server`): the build that is answering names itself — release `version`, resolved `path`, a runtime `sha256` of its own bytes, `mtime`, `size`, and a `build` shape (`packaged`/`plugin`/`dev-standalone`/`dev-esm`) classified from the path. `get_status` also reports `repoRoot` and `repoRootSource` beside `rootSource`, because `.codex/config.toml` passes `--repo-root` and `.mcp.json` does not, and that decides where governing-doc `refs` resolve. Two rules constrain this and are easy to break:
+- The version is injected by an esbuild `define` (`version-define.mjs`, shared by both tsup configs, read from the **root** `package.json` — `packages/mcp-server/package.json` is stuck at `0.1.0` and never bumped). It is the *only* build-time input to the bundle's bytes and it must stay a pure function of the source tree: **no build timestamp, no embedded git sha**, or `plugin:check`'s byte comparison fails on every build / every commit respectively.
+- Because the version is compiled in, `scripts/release.mjs` rebuilds the bundle **after** the version bump (step 5b) and the release commit carries it. Detection is one-sided by design: servers older than 0.3.3 omit the `server` block entirely, so **absence** means "pre-0.3.3", not "error".
+
 **Tools** (all carry annotations so codex approval modes / Claude read-write split behave):
 - Read (`readOnlyHint`): `get_status`, `list_board`, `list_items`, `get_item`, `get_ticket_doc`, `search_items`, `get_links`, `get_activity`, `get_doc_gates`
 - Write: `create_item`, `create_items`, `update_item`, `move_item`, `take_ticket`, `set_ticket_doc`, `append_scratch`, `link_items`, `link_doc`, `add_column`, `update_column`, `reorder_columns`, `migrate_board`

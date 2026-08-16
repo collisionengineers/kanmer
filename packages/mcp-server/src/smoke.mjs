@@ -1,6 +1,7 @@
 // Standalone smoke test: spawn the built server over stdio and exercise tools.
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -112,6 +113,76 @@ try {
   check(
     "reads alone do not create .kanmer/ (lazy init)",
     !fs.existsSync(path.join(sandbox, ".kanmer")),
+  );
+
+  // --- Server identity (MCP-012) -------------------------------------------
+  // The point of this block is that a build can be told apart from another
+  // build. Asserting `typeof === "string"` would pass for a server that
+  // reported a constant, so the sha is recomputed here, from the very file this
+  // test spawned, and compared. That is the actual claim.
+  const id = statusBefore.server;
+  check("get_status carries a server identity block", !!id && typeof id === "object");
+  const spawnedPath = path.resolve(serverEntry);
+  check(
+    "server.path is the script the smoke test actually spawned",
+    id?.path === spawnedPath,
+    `${id?.path} vs ${spawnedPath}`,
+  );
+  const expectedSha = createHash("sha256").update(fs.readFileSync(spawnedPath)).digest("hex");
+  check(
+    "server.sha256 is the real hash of that file's bytes",
+    id?.sha256 === expectedSha,
+    `${id?.sha256?.slice(0, 16)}… vs ${expectedSha.slice(0, 16)}…`,
+  );
+  check(
+    "server.sha256Short is the first 8 chars of server.sha256",
+    id?.sha256Short === expectedSha.slice(0, 8),
+    id?.sha256Short,
+  );
+  check(
+    "server.size matches the file on disk",
+    id?.size === fs.statSync(spawnedPath).size,
+    `${id?.size}`,
+  );
+  check("server.mtime parses as a date", !Number.isNaN(Date.parse(id?.mtime ?? "")), id?.mtime);
+  check(
+    "server.build classifies the shape",
+    ["packaged", "plugin", "dev-standalone", "dev-esm", "unknown"].includes(id?.build),
+    id?.build,
+  );
+  // Whichever entry the run used, the classifier must not shrug at it: both the
+  // default (dist/index.js) and KANMER_SERVER=…/dist/standalone/… are known
+  // shapes, and "unknown" for either would be a real regression.
+  check(
+    "server.build is a known shape for this entry, not unknown",
+    id?.build !== "unknown",
+    `${id?.build} for ${spawnedPath}`,
+  );
+  check(
+    "server.version is the injected release version, not the stale 0.1.0",
+    typeof id?.version === "string" && /^\d+\.\d+\.\d+/.test(id.version) && id.version !== "0.1.0",
+    id?.version,
+  );
+  check(
+    "the MCP handshake reports the same version as the identity block",
+    client.getServerVersion()?.version === id?.version,
+    `${client.getServerVersion()?.version} vs ${id?.version}`,
+  );
+
+  // Root provenance: both roots, and how each was reached (MCP-012 / ADR-0012).
+  check("get_status reports rootSource", statusBefore.rootSource === "flag", statusBefore.rootSource);
+  check(
+    "get_status reports repoRoot — what governing-doc refs resolve against",
+    statusBefore.repoRoot === path.resolve(sandbox),
+    statusBefore.repoRoot,
+  );
+  // No --repo-root is passed below, and the sandbox is not a .worktrees/<n>
+  // board, so core falls back to the project root: "derived" is the honest
+  // answer and the flag/env branches must not claim it.
+  check(
+    "get_status reports repoRootSource",
+    statusBefore.repoRootSource === "derived",
+    statusBefore.repoRootSource,
   );
 
   const created = await client.callTool({

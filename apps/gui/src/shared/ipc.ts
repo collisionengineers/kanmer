@@ -57,7 +57,6 @@ export const CH = {
   listDispatches: "kanmer:listDispatches",
   /** Main → renderer: a background dispatch's status changed. */
   dispatchStatus: "kanmer:dispatchStatus",
-  showItemMenu: "kanmer:showItemMenu",
   migrate: "kanmer:migrate",
   backfillBoard: "kanmer:backfillBoard",
   getFormat: "kanmer:getFormat",
@@ -342,7 +341,6 @@ export interface KanmerApi {
   /** Subscribe to background-dispatch status updates. Returns an unsubscribe fn. */
   onDispatchStatus(cb: (status: DispatchStatus) => void): () => void;
   /** Show the native right-click menu for a card; resolves with the chosen action. */
-  showItemMenu(payload: ItemMenuPayload): Promise<ItemMenuAction | null>;
   /** Migrate a v1 project to format 2 (dryRun for the report only). */
   migrate(projectId: string, dryRun: boolean): Promise<MigrationReport>;
   /** Backfill the 7-stage default onto an already-v2 board (dryRun previews). */

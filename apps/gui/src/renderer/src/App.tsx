@@ -14,6 +14,7 @@ import type {
 } from "@kanmer/core";
 import { blockedIds, columnCards, optimisticOrder } from "./lib/board.js";
 import { classifyKanmerPath } from "../../shared/kanmerPath.js";
+import { ContextMenu, useDismissOnOutside, type MenuItem } from "./components/ContextMenu.js";
 import { ClientContext, makeClient, type ProjectClient } from "./lib/client.js";
 import { restoreTabs, restoredActiveTab } from "./lib/session.js";
 import { tabCloseDecision } from "./lib/tabClose.js";
@@ -21,6 +22,7 @@ import { restartWarning, updateSurface } from "./lib/update.js";
 import type {
   AppSettings,
   ChangePayload,
+  ConnectTarget,
   DispatchStatus,
   Theme,
   UiPreferences,
@@ -647,40 +649,132 @@ export function App(): JSX.Element {
     [refresh],
   );
 
-  const onContext = useCallback(
-    async (item: Item) => {
-      if (!board) return;
-      const action = await window.kanmer.showItemMenu({
-        id: item.id,
-        archived: item.archived,
-        taken: Boolean(item.taken_at),
-        currentStatus: item.status,
-        statuses: STAGES.map((s) => ({ id: s.id, name: s.name })),
-      });
-      if (!action) return;
+  // The card context menu is rendered, not native (FRD-019 R6): a native menu
+  // cannot use the app's theme variables, so it is always subtly wrong in one
+  // theme. Opening it is now local state rather than an IPC round-trip.
+  const [cardMenu, setCardMenu] = useState<{ item: Item; x: number; y: number } | null>(null);
+  /** Per-stage "why not" for the open menu's ticket, from get_doc_gates. */
+  const [cardMenuGates, setCardMenuGates] = useState<Record<string, string[]> | null>(null);
+  const [dispatchTargets, setDispatchTargets] = useState<{ id: ConnectTarget; label: string }[]>([]);
+  const closeCardMenu = useCallback(() => {
+    setCardMenu(null);
+    setCardMenuGates(null);
+  }, []);
+  useDismissOnOutside(closeCardMenu, cardMenu !== null);
+
+  // Gates are fetched when the menu opens rather than held for every card:
+  // it is one call for the one ticket the user is actually acting on, and it is
+  // always current at the moment the choices are shown.
+  useEffect(() => {
+    if (!cardMenu) return;
+    let cancelled = false;
+    void clientRef.current
+      ?.getGateStatus(cardMenu.item.id)
+      .then((g) => {
+        if (!cancelled) setCardMenuGates(g);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [cardMenu]);
+
+  useEffect(() => {
+    void window.kanmer
+      .listProviders()
+      .then((ps) =>
+        setDispatchTargets(
+          ps.filter((p) => p.dispatch).map((p) => ({ id: p.id as ConnectTarget, label: p.label })),
+        ),
+      )
+      .catch(() => undefined);
+  }, []);
+
+  const runCardAction = useCallback(
+    async (fn: () => Promise<unknown> | unknown) => {
       try {
-        if (action.type === "open") trySelect(item.id);
-        else if (action.type === "move") await onMove(item.id, { status: action.status });
-        else if (action.type === "release") await clientRef.current!.releaseTicket(item.id);
-        else if (action.type === "archive")
-          await clientRef.current!.updateItem(item.id, { archived: true });
-        else if (action.type === "unarchive")
-          await clientRef.current!.updateItem(item.id, { archived: false });
-        else if (action.type === "delete") {
-          requestDelete(item.id);
-        } else if (action.type === "dispatch") {
-          await clientRef.current!.dispatchAgent(item.id, action.target);
-        }
+        await fn();
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
       await refresh();
     },
-    [board, trySelect, onMove, refresh, requestDelete],
+    [refresh],
   );
 
-  const onCardContext = useCallback((item: Item) => void onContext(item), [onContext]);
+  const cardMenuItems = useCallback(
+    (item: Item): MenuItem[] => {
+      const client = clientRef.current!;
+      const gated = cardMenuGates;
+      return [
+        { id: "open", label: "Open", onSelect: () => trySelect(item.id) },
+        {
+          id: "move",
+          label: "Move to",
+          items: STAGES.filter((s) => s.id !== item.status).map((s) => {
+            // Gate reasons come from get_doc_gates, so a disabled entry can say
+            // exactly which document is missing rather than just greying out.
+            const reasons = gated?.[s.id] ?? [];
+            return {
+              id: `move-${s.id}`,
+              label: s.name,
+              disabled: reasons.length > 0,
+              disabledReason: reasons.join("; "),
+              onSelect: () => void runCardAction(() => onMove(item.id, { status: s.id })),
+            };
+          }),
+        },
+        ...(item.taken_at
+          ? [
+              {
+                id: "release",
+                label: "Release",
+                onSelect: () => void runCardAction(() => client.releaseTicket(item.id)),
+              },
+            ]
+          : []),
+        {
+          id: "dispatch",
+          label: "Dispatch to agent",
+          items: dispatchTargets.map((p) => ({
+            id: `dispatch-${p.id}`,
+            label: p.label,
+            onSelect: () => void runCardAction(() => client.dispatchAgent(item.id, p.id)),
+          })),
+        },
+        {
+          id: "copy-id",
+          label: "Copy ID",
+          separatorBefore: true,
+          onSelect: () => void navigator.clipboard.writeText(item.id),
+        },
+        {
+          id: "copy-link",
+          label: "Copy [[wiki-link]]",
+          onSelect: () => void navigator.clipboard.writeText(`[[${item.id}]]`),
+        },
+        {
+          id: "archive",
+          label: item.archived ? "Unarchive" : "Archive",
+          separatorBefore: true,
+          onSelect: () =>
+            void runCardAction(() => client.updateItem(item.id, { archived: !item.archived })),
+        },
+        {
+          id: "delete",
+          label: "Delete…",
+          danger: true,
+          onSelect: () => requestDelete(item.id),
+        },
+      ];
+    },
+    [trySelect, onMove, runCardAction, requestDelete, cardMenuGates, dispatchTargets],
+  );
+
+  const onCardContext = useCallback((item: Item, x: number, y: number) => {
+    setCardMenu({ item, x, y });
+  }, []);
 
   // Global keyboard shortcuts.
   useEffect(() => {
@@ -1317,6 +1411,16 @@ export function App(): JSX.Element {
           onSetNotifications={setNotifications}
           onSetPreferences={setPreferences}
           onClose={() => setSettingsOpen(false)}
+        />
+      )}
+
+      {cardMenu && (
+        <ContextMenu
+          x={cardMenu.x}
+          y={cardMenu.y}
+          items={cardMenuItems(cardMenu.item)}
+          onClose={closeCardMenu}
+          label={`Actions for ${cardMenu.item.id}`}
         />
       )}
 

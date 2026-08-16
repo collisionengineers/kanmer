@@ -1573,3 +1573,61 @@ button.danger {
   white-space: pre-wrap;
   color: var(--muted, #9aa0a6);
 }
+
+/* ---------------------------------------------------------------------------
+   Context menu (FRD-019 R6). Renderer-drawn so it uses the same tokens as the
+   rest of the app — which is the whole reason it replaced the native Menu.
+   Every colour here is a variable; nothing is hardcoded, so light, dark and
+   system all follow automatically.
+   --------------------------------------------------------------------------- */
+.ctx-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  /* Transparent, but it must catch the click that dismisses the menu. */
+}
+.ctx-menu {
+  position: fixed;
+  z-index: 61;
+  min-width: 180px;
+  max-width: 320px;
+  padding: 4px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  outline: none;
+}
+.ctx-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ctx-item.active:not(.disabled) {
+  background: var(--accent-dim);
+}
+.ctx-item.disabled {
+  color: var(--muted);
+  cursor: default;
+}
+.ctx-item.danger:not(.disabled) {
+  color: var(--danger);
+}
+.ctx-arrow {
+  color: var(--muted);
+}
+.ctx-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--line);
+}

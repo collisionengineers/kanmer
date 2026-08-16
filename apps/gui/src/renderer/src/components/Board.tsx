@@ -15,7 +15,7 @@ interface BoardProps {
   onMoveRelative: (id: string, dir: -1 | 1) => void;
   onQuickAdd: (input: CreateItemInput) => void;
   /** Native right-click menu for a card. */
-  onContext: (item: Item) => void;
+  onContext: (item: Item, x: number, y: number) => void;
   /** Ids with a live blocker — computed once in App, read per card as a boolean. */
   blocked: Set<string>;
   /** Ids with a background agent dispatch in flight. */
@@ -266,7 +266,7 @@ const Card = memo(function CardInner({
   statusId: string;
   onSelect: (id: string) => void;
   onMoveRelative: (id: string, dir: -1 | 1) => void;
-  onContext: (item: Item) => void;
+  onContext: (item: Item, x: number, y: number) => void;
   onCardDragOver: (statusId: string, id: string, edge: "before" | "after") => void;
   onCardDragLeave: (id: string) => void;
   onCardDrop: (
@@ -324,7 +324,7 @@ const Card = memo(function CardInner({
       onClick={() => onSelect(item.id)}
       onContextMenu={(e) => {
         e.preventDefault();
-        onContext(item);
+        onContext(item, e.clientX, e.clientY);
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {

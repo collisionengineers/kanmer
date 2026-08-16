@@ -1,7 +1,6 @@
 import {
   app,
   BrowserWindow,
-  clipboard,
   dialog,
   ipcMain,
   Menu,
@@ -44,8 +43,6 @@ import {
 } from "@kanmer/core";
 import {
   CH,
-  type ItemMenuAction,
-  type ItemMenuPayload,
   type OpenProjectResult,
 } from "../shared/ipc.js";
 import {
@@ -69,7 +66,7 @@ import {
   updateSkills,
   type ConnectTarget,
 } from "./connect.js";
-import { dispatchableProviders, listProviders } from "./providers.js";
+import { listProviders } from "./providers.js";
 import {
   cancelDispatch,
   dispatchTicket,
@@ -472,69 +469,9 @@ async function syncProject(projectId: string): Promise<KanmerGitStatus> {
   return ctx.syncStatus;
 }
 
-/** Native right-click menu for a card; resolves with what the user picked. */
-function showItemMenu(
-  sender: Electron.WebContents,
-  payload: ItemMenuPayload,
-): Promise<ItemMenuAction | null> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const done = (action: ItemMenuAction | null) => {
-      if (!settled) {
-        settled = true;
-        resolve(action);
-      }
-    };
-    const template: MenuItemConstructorOptions[] = [
-      { label: "Open", click: () => done({ type: "open" }) },
-      {
-        label: "Move to",
-        submenu: payload.statuses.map((s) => ({
-          label: s.name,
-          enabled: s.id !== payload.currentStatus,
-          click: () => done({ type: "move", status: s.id }),
-        })),
-      },
-      ...(payload.taken
-        ? [{ label: "Release ticket", click: () => done({ type: "release" }) }]
-        : []),
-      {
-        label: "Dispatch to agent",
-        enabled: !payload.taken,
-        submenu: dispatchableProviders().map((p) => ({
-          label: p.label,
-          click: () => done({ type: "dispatch", target: p.id }),
-        })),
-      },
-      { type: "separator" as const },
-      {
-        label: "Copy ID",
-        click: () => {
-          clipboard.writeText(payload.id);
-          done(null);
-        },
-      },
-      {
-        label: "Copy [[wiki-link]]",
-        click: () => {
-          clipboard.writeText(`[[${payload.id}]]`);
-          done(null);
-        },
-      },
-      { type: "separator" as const },
-      payload.archived
-        ? { label: "Unarchive", click: () => done({ type: "unarchive" }) }
-        : { label: "Archive", click: () => done({ type: "archive" }) },
-      ...(payload.archived
-        ? [{ label: "Delete permanently", click: () => done({ type: "delete" }) }]
-        : []),
-    ];
-    const menu = Menu.buildFromTemplate(template);
-    menu.popup({ window: BrowserWindow.fromWebContents(sender) ?? undefined });
-    // If the menu closes without a pick, resolve null (after click had its chance).
-    menu.on("menu-will-close", () => setTimeout(() => done(null), 120));
-  });
-}
+// The card context menu is drawn by the renderer now (FRD-019 R6). A native
+// Menu cannot read the app's CSS variables, so it was always slightly wrong in
+// one theme; the replacement lives in renderer/src/components/ContextMenu.tsx.
 
 function registerIpc(): void {
   ipcMain.handle(CH.pickProject, async () => {
@@ -635,9 +572,6 @@ function registerIpc(): void {
   ipcMain.handle(CH.cancelDispatch, (_e, dispatchId: string) => cancelDispatch(dispatchId));
   ipcMain.handle(CH.listDispatches, (_e, p: string) => listDispatches(p));
   onDispatchStatus((s) => mainWindow?.webContents.send(CH.dispatchStatus, s));
-  ipcMain.handle(CH.showItemMenu, (e, payload: ItemMenuPayload) =>
-    showItemMenu(e.sender, payload),
-  );
   ipcMain.handle(CH.migrate, (_e, p: string, dryRun: boolean) =>
     migrateToV2(requireStore(p), { dryRun }),
   );

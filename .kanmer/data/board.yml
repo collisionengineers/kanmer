@@ -1,0 +1,62 @@
+statuses:
+  - id: backlog
+    name: Backlog
+  - id: researching
+    name: Researching
+  - id: planning
+    name: Planning
+  - id: implementing
+    name: Implementing
+  - id: review
+    name: Review
+  - id: verifying
+    name: Verifying
+  - id: done
+    name: Done
+areas:
+  - id: pr-review
+    name: PR Review
+    color: "#b48cff"
+    prefix: PR
+  - id: core
+    name: Core
+    color: "#5b8cff"
+    prefix: CORE
+  - id: mcp-server
+    name: MCP Server
+    color: "#5bd1c9"
+    prefix: MCP
+  - id: gui
+    name: GUI
+    color: "#ffcf7a"
+    prefix: GUI
+  - id: skills
+    name: Skills
+    color: "#9fe870"
+    prefix: SKILL
+  - id: docs
+    name: Docs
+    color: "#c8a2ff"
+    prefix: DOC
+priorities:
+  - id: low
+    name: Low
+    color: "#6b7280"
+  - id: medium
+    name: Medium
+    color: "#5b8cff"
+  - id: high
+    name: High
+    color: "#ffcf7a"
+  - id: urgent
+    name: Urgent
+    color: "#ff6b6b"
+idPrefixes:
+  ticket: TICK
+  plan: PLAN
+  research: RES
+docs:
+  repoDocs:
+    prd: docs/product/prd/**
+    frd: docs/functional/frd/**
+    adr: docs/architecture/adr/**

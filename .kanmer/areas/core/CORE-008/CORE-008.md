@@ -1,0 +1,28 @@
+---
+id: CORE-008
+type: ticket
+title: 3.1 Group entity
+status: backlog
+area: core
+priority: medium
+assignee: ''
+labels:
+  - v3-phase-3
+links: []
+blocks:
+  - MCP-001
+  - CORE-009
+docs_todo: true
+archived: false
+created: '2026-08-16T00:30:18.723Z'
+updated: '2026-08-16T00:32:16.759Z'
+---
+
+Board `groupKinds` with prefixes (defaults epic/EPIC, horizon/HZN); item `groups: []`; `groups/<ID>/` folders; group CRUD, archive, shared-doc IO reusing 2.3's path engine. Members and progress are **derived, never stored**. Membership validated against existing group ids; archived groups still render on chips as archived.
+
+**Where:** `packages/core/src/types.ts`, `paths.ts`, `ids.ts`, `store.ts`
+**Plan:** `docs/plans/kanmer-v3/phase-3-groups-mcp/plan.md` § 3.1
+**Governing docs:** FRD-001 G1-G4, ADR-0001
+**Depends:** Phase 2 (frozen core)
+
+Reuse the existing per-prefix id machinery (ids.ts:108-157) for group ids.

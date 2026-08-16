@@ -1,0 +1,31 @@
+---
+id: CORE-004
+type: ticket
+title: 2.3 Folder documents
+status: backlog
+area: core
+priority: medium
+assignee: ''
+labels:
+  - v3-phase-2
+links: []
+blocks:
+  - CORE-005
+  - CORE-007
+  - GUI-010
+docs_todo: true
+archived: false
+created: '2026-08-16T00:30:18.660Z'
+updated: '2026-08-16T00:32:07.761Z'
+---
+
+Type directories with recursive containment, including `reference/` and `open-questions/`. Doc APIs go path-based (`setDoc(id, "research/azure/x.md")`), lazy mkdir, gate satisfaction = recursive >=1 md excluding `reference/`, `scratch/`, `assets/`. Reference enumeration (names + absolute paths for binaries) in item summaries. Unknown top-level folders rejected.
+
+**Where:** `packages/core/src/paths.ts`, `store.ts` doc APIs
+**Plan:** `docs/plans/kanmer-v3/phase-2-core-format3/plan.md` § 2.3
+**Governing docs:** FRD-003, FRD-004, ADR-0004
+**Depends:** 2.1
+
+The largest single change in Phase 2. Today docs are flat `<type>.md` files beside the ticket; `SAFE_DOC_RE`, `docFileIn` and `SCRATCH_PREFIX` (paths.ts:127-156) all give way. Preserve the doc version-hash concurrency token (`getDocWithVersion`, io.ts:11-13).
+
+Verification: nested round-trip; recursive gate count; reference/scratch/assets never satisfy; chore creation writes exactly one file.

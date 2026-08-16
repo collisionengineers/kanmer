@@ -59,3 +59,17 @@ passed (the 8 new `mergeColumns` cases among them, board.test.ts 25/25);
 §10.2); GUI smoke boot `KANMER_SMOKE=1 KANMER_OPEN=<sandbox> npx electron .`
 exit 0 against a purpose-built sandbox holding two `backlog` tickets, one
 `preparing` and one item with the unknown status `triage`.
+
+---
+
+## Closeout — GUI-069
+
+- [x] PR merge verified — PR #38, `state: MERGED`, `mergedAt 2026-08-16T22:14:58Z`
+- [x] proof.md finalised on merged `main` @ `488797d` (PR URL + merge commit recorded in it)
+- [x] Moved to final stage (Done, 2026-08-16T22:18:43Z)
+- [x] Outcome recorded in ticket body (PR link, follow-up GUI-070)
+- [x] `commits` updated to the squash-merge SHA `488797d` — the branch SHA `4936358` is not an ancestor of main and would dangle once the branch is deleted
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-069`
+- [x] `git branch -D gui-069-backlog-first-column` (`-D` because the PR was squash-merged, so its commit is not an ancestor of main; safe only because the merge was verified above)
+- [x] remote branch deleted; `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

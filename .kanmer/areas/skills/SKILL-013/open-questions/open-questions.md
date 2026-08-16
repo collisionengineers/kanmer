@@ -1,133 +1,106 @@
 # Open questions — SKILL-013
 
-*The open questions. Not scratch — these **block** the ticket at three real gates; scratch is a notepad and is never gated.*
+*The open questions. Not scratch — these **block** the ticket at three real gates.*
 
-Six questions. **Two need the operator and are first, marked ⚠️ OPERATOR ONLY.**
-Both are scope decisions about a change that reaches every existing board, and
-neither is answerable from the code — that is the test I applied. The remaining
-four are judgements I can make from FRD-023, ADR-0009/0011 and the code, and each
-is recorded with its reason rather than resolved silently. Over-asking is its own
-failure; so is shipping a board-wide profile change on my own reading of a note.
+Six questions. Two were answered by the operator/scheduler (verbatim in
+`scratch/operator-answers.md`); four are settled here in the plan, each with the
+reason rather than silently. All six are resolved — none parked.
 
 ---
 
-## ⚠️ OPERATOR ONLY — answer these before planning
+## Answered by the operator / scheduler
 
-- [ ] **⚠️ OPERATOR ONLY — Does `fix` gains `enter-review` ship in THIS ticket's
-      PR, or its own?** The ticket is titled "carry the hard rules into AGENTS.md
-      and skill prose". The operator's note adds a **profile change** that
-      "changes what every existing board demands of every `fix`", needs its own
-      ADR, needs resolve-time injection to reach existing boards, and needs a
-      measured four-profile before/after table in `proof`.
+- [x] **⚠️ OPERATOR ONLY — Does `fix` gains `enter-review` ship in THIS ticket's
+      PR, or its own?**
+      **ANSWERED: ship BOTH in one PR.** One ticket, one PR, one revert unit. My
+      split recommendation was declined; the operator accepts that a prose fix
+      which cannot break a board is now coupled to a gate change that can strand
+      in-flight `fix` tickets.
 
-      Those are two different risk profiles in one PR: prose that cannot break a
-      board, and a gate change that can strand in-flight `fix` tickets on
-      upgrade. SKILL-014's precedent was to file the larger question as its own
-      ticket ([[SKILL-015]]) "rather than smuggling a deletion into a
-      normalisation change".
+      **Consequence, and it is the reason this matters:** the migration risk is
+      now this ticket's to *handle*, not to note. Four things follow, all in the
+      plan and the checklist — the ADR is written here; existing boards are
+      reached by resolve-time injection; `proof` carries a **measured**
+      four-profile before/after table; and what happens to a `fix` already in
+      `implementing` is stated explicitly rather than discovered on upgrade.
 
-      **My recommendation: split.** This ticket keeps the AGENTS block, the skill
-      prose, the ADR-0011 amendment and the verification script; a new ticket
-      takes the `fix` profile change, its new ADR, and the four-profile
-      measurement. The ADR-0011 amendment belongs *here* either way, because it
-      documents the mechanism the other ticket will rely on.
+- [x] **⚠️ OPERATOR ONLY — Should the AGENTS block carry the Review-skipping
+      consequence?**
+      **ANSWERED: NO. Mechanism only, plus a pointer to `get_doc_gates`.**
+      Which profiles skip Review is a per-profile requirement fact —
+      configuration-dependent by definition, exactly what `get_doc_gates` exists
+      to answer, and it would be made wrong by this very ticket's gate change.
 
-      **Cannot be defaulted.** The ticket body says "Decide it here"; the operator
-      then decided the *behaviour* but not the *packaging*, and choosing wrong
-      either delays a decided change or couples a safe PR to a risky one.
+      The tension I flagged (the ticket's Why says the block is where rules must
+      reach) resolves cleanly: the block carries the **mechanism** and directs
+      the reader to the tool for the **values**. That is R1 working, not R1 being
+      dodged.
 
-- [ ] **⚠️ OPERATOR ONLY — Should the AGENTS block carry the Review-skipping
-      consequence at all?** After the `fix` change, `chore` and `spike` can still
-      go implementing → done in one move; `feature` and `fix` cannot. That is a
-      real behaviour most agents will never discover — but it is a *per-profile*
-      fact, which is exactly the class finding 2 of `research` says must never be
-      restated, and which changes the moment anyone edits `profiles:`.
-
-      So the block can honestly say the **mechanism** ("a move crosses at most
-      one gated boundary" — already there) but not the **outcome per profile**.
-
-      **My recommendation: mechanism only, and add one sentence pointing at
-      `get_doc_gates(id).reachable`,** which reports the outcome per ticket and
-      is the tool that already answers this. That keeps R1 intact and still gives
-      the agent a way to find out.
-
-      **Needs the operator** because the ticket's Why explicitly frames the block
-      as the place a rule must reach ("a rule absent from it is a rule most
-      agents never see"), and this is the one finding of the ticket that my rule
-      says cannot go there. That is a direct tension between the ticket's premise
-      and its own governing doc, and resolving it against the ticket is not my
-      call to make silently.
+      **And a scope addition:** the per-profile table already in the block must
+      be **DELETED, not extended**. It omits `fix` — the default profile — and
+      omits `questions-resolved` entirely. R1 violation *and* factually wrong.
 
 ---
 
-## Answerable here — recorded with the reason
+## Settled in the plan — with the reason
 
-- [ ] **Does the widened check 7 forbid the five *illustrative* per-profile
-      mentions, or permit them?** Six sites exist (`research` finding 7). One
-      (`kanmer-plan:11-12`) is measurably wrong and must be corrected regardless.
-      The other five each sit immediately beside "ask `get_doc_gates`" and exist
-      to motivate the call.
+- [x] **Does the widened check 7 forbid the five *illustrative* per-profile
+      mentions, or permit them?**
+      **Settled: permit, but only in that exact shape** — one profile named as an
+      example, on a line whose neighbourhood also names `get_doc_gates`. A
+      **list** of profiles-to-requirements is forbidden.
 
-      **Leaning: permit, but only in that exact shape** — a single profile named
-      as an example, on a line or in a sentence that also names `get_doc_gates`.
-      Forbid a *list* of profiles-to-requirements, which is what
-      `kanmer-setup:156` is and what R1's acceptance grep was written for.
+      That is the line that makes the AGENTS block's table a violation while
+      `kanmer-research:14-15` is not, and it is what the surviving prose already
+      does by accident — so the rule is being stated, not invented. It is
+      mechanizable: count distinct profile names on the line, require
+      `get_doc_gates` within N lines. `kanmer-plan:11-12` fails it on the second
+      clause too (it is measurably false), so it is corrected regardless.
 
-      That rule is mechanizable (require `get_doc_gates` within N lines; count
-      distinct profile names on the line) and it is what the existing prose
-      already does by accident. Settling it in the plan, because it decides how
-      many files the sweep touches and that is a planning input, not a research
-      finding.
+- [x] **Does the AGENTS block gain the "`board.yml` is not the effective
+      requirement set" line, given its size cost?**
+      **Settled: yes, as a clause on the existing `get_doc_gates` bullet, not a
+      new bullet.** It is the strongest single reason to make the call, and
+      deleting the per-profile sentence frees more room than the clause costs —
+      so the block gets **shorter**, which is what SKILL-014's binding precedent
+      asks for. The byte count is recorded in `proof`; if it came out
+      net-**longer** this is the line that would have been dropped.
 
-- [ ] **Does the AGENTS block gain the "`board.yml` is not the effective
-      requirement set" line, given its size cost?** SKILL-014's binding
-      precedent: the block "ships into every repo that installs Kanmer, so its
-      size is a cost everyone pays".
+- [x] **Where does the verification script live, and what is it called?**
+      **Settled: `scripts/verify-skill-prose.mjs`, wired as `npm run verify:skills`,
+      added to `release.mjs` beside `verify:agents-block`.** FRD-023 R5 asks for
+      exactly that and `verify-agents-block.mjs` is the established shape.
 
-      **Leaning: yes, as a clause on the existing `get_doc_gates` bullet, not a
-      new bullet.** It is the strongest reason to make the call and it costs ~12
-      words, while deleting the per-profile sentence it replaces frees more than
-      that — so the block gets *shorter*. If the count comes out net-longer in
-      the plan, this is the line to drop.
+      Not deferred to CORE-025: that ticket is about what CI should assert about a
+      *ticket*, a different question. SKILL-014 already parked one iteration of
+      this — parking it twice is how it never ships, and its own proof lists
+      "not committed" as a weakness.
 
-- [ ] **Where does the verification script live, and what is it called?**
-      SKILL-014's is uncommitted, which its own proof lists as a weakness
-      ("nothing prevents recurrence"). This ticket cannot carry rules into prose
-      while its check sits in a scratchpad.
+- [x] **Does `verify-agents-block.mjs` also gain a check that the repo's own
+      `AGENTS.md` carries the current `BLOCK_BODY`?**
+      **Settled: yes — and this stopped being optional during this run.** Connect
+      overwrote this repo's `AGENTS.md` with the stale v2 body from the third
+      copy (`apps/gui/src/main/agentsBlock.ts:11-24`). Nothing detected it; the
+      diff was caught by eye. So the script gains three things: the `AGENTS.md`
+      check, equality of the fenced region instead of `skill.includes()`, and a
+      check that the GUI copy is the canonical body.
 
-      **Leaning: `scripts/verify-skill-prose.mjs`, wired as `verify:skills` and
-      added to `release.mjs` beside `verify:agents-block`** — FRD-023 R5 asks for
-      exactly that, and `verify-agents-block.mjs` is the established shape
-      (`check(name, cond, detail)`, PASS/FAIL lines, exit 1). Not deferred to
-      [[CORE-025]]: CORE-025 is about what CI should assert about a *ticket*,
-      which is a different question, and SKILL-014 already parked one iteration
-      of this — parking it twice is how it never ships.
-
-- [ ] **Does `verify-agents-block.mjs` also gain a check that the repo's own
-      `AGENTS.md` carries the current `BLOCK_BODY`?** Today it compares only the
-      two *sources*; the generated file is kept current by hand and happens to be
-      correct.
-
-      **Leaning: yes, and tighten line 153 from `skill.includes(BLOCK_BODY)` to
-      equality of the fenced region** — a substring test passes on extra text
-      inside the fence. Both are three-line changes to a script this ticket is
-      already touching, and the ticket's Verification box asks that setup
-      "refreshes its AGENTS block", which is untested end-to-end on a real repo.
+      **The third copy is also fixed here rather than filed.** This ticket owns
+      deciding what the canonical body *is*, so it owns making the other copies
+      stop being independent — `connect.ts` points at the canonical body.
+      CORE-023 keeps detection and is in flight.
 
 ## Parked (explicitly deferred)
 
-- **Should `enter-verifying` be used by any profile?** `get_doc_gates` reports
-  five boundaries and no shipped profile declares `enter-verifying`. It is dead
-  configuration surface an agent can see and be confused by.
+- **Should `enter-verifying` be used by any profile?** No shipped profile
+  declares it; it is dead configuration surface an agent can see and be confused
+  by.
 
-  Safe to defer: it costs nothing today, and touching it would add a gated
-  boundary — precisely the move ADR-0011's second limit forbids without
-  re-measuring `collapsesPipeline`. Reopens if a profile is ever proposed that
-  wants evidence before Verifying.
+  Safe to defer, and *more* clearly so after this ticket: adding it would be a
+  second boundary addition, and ADR-0013 spends the whole of this ticket's
+  measurement budget proving that **one** such addition is safe. Reopens if a
+  profile is ever proposed that wants evidence before Verifying.
 
-- **Pruning `.claude/skills/`.** The install currently carries an orphan
-  `run-kanmer/` directory absent from source, because the installer only ever
-  adds. Real, reproducible, and [[CORE-023]] already owns it. Recorded here as
-  evidence, not claimed as work. Reopens if a stale install ever causes an agent
-  to act on a deleted rule — which is the same failure mode this ticket exists to
-  fix, one tier down.
+- **Pruning `.claude/skills/`.** The install carries an orphan `run-kanmer/`
+  directory absent from source; the installer only ever adds. Real, reproducible,
+  and [[CORE-023]] already owns it. Recorded as evidence, not claimed as work.

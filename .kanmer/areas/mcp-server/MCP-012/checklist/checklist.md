@@ -62,3 +62,14 @@ verified `realpathSync("node_modules/@kanmer/core")` →
   reconciliation` times out at 5000ms with EPERM on Windows temp dirs under
   load. `git diff origin/main HEAD -- apps/gui packages/core` is **empty**, so
   that code is byte-identical to main. Passed 230/230 on one full run.
+
+## Closeout — MCP-012
+
+- [x] PR merge verified — #46 `MERGED` 2026-08-16T23:13:45Z, merge commit `efdc9f3`
+- [x] proof.md finalised on merged main in a clean detached checkout with fresh `node_modules`
+- [x] Moved to Done
+- [x] Outcome recorded in ticket body
+- [x] cd out of worktree; `git worktree remove .worktrees/mcp-012` (+ the temporary `.worktrees/verify-mcp012`)
+- [x] `git branch -D mcp-012-server-identity` (squash-merged, so `-d` refuses by design)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

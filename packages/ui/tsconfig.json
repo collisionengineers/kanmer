@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "declaration": true,
+    "declarationMap": false,
+    "sourceMap": false,
+    "types": ["node"],
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/**/*",
+    "../../apps/gui/src/renderer/src/**/*",
+    "../../apps/gui/src/shared/**/*",
+    "../../apps/gui/src/preload/index.d.ts"
+  ],
+  "exclude": ["../../apps/gui/src/renderer/src/**/*.test.ts", "dist"]
+}

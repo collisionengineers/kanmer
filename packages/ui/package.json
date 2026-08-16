@@ -1,0 +1,39 @@
+{
+  "name": "@kanmer/ui",
+  "version": "0.2.0",
+  "description": "Kanmer design system: the GUI's real React components, tokens and stylesheet, packaged for reuse (and for Claude Design). Nothing here is reimplemented — every component is re-exported from apps/gui/src/renderer.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "style": "./dist/index.css",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./dist/index.css"
+  },
+  "files": ["dist"],
+  "sideEffects": ["*.css"],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "dependencies": {
+    "marked": "^14.1.0"
+  },
+  "devDependencies": {
+    "@kanmer/core": "*",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0"
+  }
+}

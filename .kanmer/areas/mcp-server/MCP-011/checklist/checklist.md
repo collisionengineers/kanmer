@@ -60,10 +60,17 @@ unresolvable inside these two files, so it is stated in FRD-012 R6 and owned by
 
 ## Closeout
 
-- [ ] PR merged (gate)
-- [ ] `proof` final, PR URL and merge date recorded
-- [ ] `commits` / `prs` recorded; Outcome written
-- [ ] Worktree `.worktrees/mcp-011` removed
-- [ ] Branch `mcp-011-fix-plugin-manifests` deleted (local + remote)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] Ticket released
+- [x] PR merged (gate)
+- [x] `proof` final, PR URL and merge date recorded
+- [x] `commits` / `prs` recorded; Outcome written
+- [x] Worktree `.worktrees/mcp-011` removed
+- [x] Branch `mcp-011-fix-plugin-manifests` deleted (local + remote)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] Ticket released
+
+**Closeout done** — PR #52 `MERGED` 2026-08-16T23:38:59Z as `29bee81`; `proof`
+final with the PR URL and merge date; `commits`/`prs` recorded and the Outcome
+written. Worktree removed (`git worktree remove` refused on a leftover
+`node_modules`, so the entry was pruned and the directory deleted — the
+documented "lingering but unregistered" path). Branch deleted locally and on
+origin. `git fetch --prune` + `git worktree prune` clean. Ticket released.

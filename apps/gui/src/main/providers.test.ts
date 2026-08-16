@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   PROVIDERS,
   RETIRED_SKILL_PATHS,
@@ -567,5 +570,49 @@ describe("skills stamp", () => {
       "kanmer-import",
       "kanmer-research/assets/impact-template.md",
     ]);
+  });
+});
+
+describe("copySkills destinations stay gitignored (GUI-083)", () => {
+  // apps/gui/src/main -> repo root is four levels up.
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
+  const gitignoreLines = fs
+    .readFileSync(path.join(repoRoot, ".gitignore"), "utf8")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "" && !line.startsWith("#"));
+
+  /**
+   * A `copySkills` destination is ignored only if `.gitignore` carries the
+   * exact directory rule (`<dir>/`) — a bare-prefix or substring match would
+   * pass even when the real ignore line is missing, which defeats the point.
+   */
+  function isDirIgnored(dir: string): boolean {
+    const rule = `${dir.replace(/\/+$/, "")}/`;
+    return gitignoreLines.includes(rule);
+  }
+
+  const skillsDirs = [
+    ...new Set(
+      PROVIDERS.filter((p) => p.install.kind === "copySkills")
+        .map((p) => (p.install as { skillsDir?: string }).skillsDir)
+        .filter((dir): dir is string => Boolean(dir)),
+    ),
+  ];
+
+  it("found copySkills destinations to check (guards against silently checking nothing)", () => {
+    expect(skillsDirs.length).toBeGreaterThan(0);
+  });
+
+  it.each(skillsDirs)("copySkills destination %s has a matching .gitignore rule", (dir) => {
+    expect(isDirIgnored(dir)).toBe(true);
+  });
+
+  it("a copySkills destination with no ignore rule is caught, not silently passed", () => {
+    // This is the check on the check itself (GUI-083): a helper identical to
+    // the one above, run against a destination deliberately absent from
+    // .gitignore, must report it as NOT ignored — proving the assertion style
+    // above actually fails on a real gap rather than trivially passing.
+    expect(isDirIgnored(".totally-fake-provider/skills")).toBe(false);
   });
 });

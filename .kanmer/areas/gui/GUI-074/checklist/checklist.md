@@ -7,7 +7,7 @@
 - [x] Delete the `describe("deep-link targets")` block from `manual.test.ts`
 - [x] Amend FRD-024 R4: remove the Settings-tab `?` clause, state it was
       removed, reference GUI-081 for the unimplemented gate-block clause
-- [ ] Verification run: `npm test`, `npm run typecheck`, `npm run
+- [x] Verification run: `npm test`, `npm run typecheck`, `npm run
       check:manual` all pass; Settings nav shows only named tabs; F1 and
       Help → Manual sanity-checked as untouched (this box produces proof.md)
 

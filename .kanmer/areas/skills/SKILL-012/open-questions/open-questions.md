@@ -7,14 +7,13 @@ pseudo-requirement, gated at `leave-preparing` / `enter-review` / `enter-done`);
 what is left is what only you can decide, because each one changes the contract
 for every board, not just this one.
 
-- [ ] **Which profiles carry the requirement, and at which boundaries?** — This
-      edits the shipped `DEFAULT_PROFILES` table, so it changes what every
-      Kanmer board demands, not just ours. The hard case is `spike`: its
-      deliverable *is* research, and surfacing questions can be the whole point
-      of one — GUI-004 was exactly that, and an `enter-done` requirement would
-      make the profile contradict itself.
-      **Recommendation:** `feature` and `fix` at all three of their boundaries;
-      `chore` at `enter-done` only; `spike` **nothing**.
+- [x] **Which profiles carry the requirement, and at which boundaries?**
+      **Answered by the operator, 2026-08-16: all of them.** My recommendation
+      (exempt `spike`) was rejected — *"there may be open questions from
+      virtually any type of work if it is either new, or it is unclear on the
+      exact specifics."* A carve-out by work type assumes some work is
+      inherently unambiguous, and none is. So: every profile, at every boundary
+      it has. `spike` gets it at `enter-done`, its only boundary.
 
 - [ ] **Does an existing board inherit the requirement, or only new ones?** —
       Gates re-evaluate immediately (`update_item`'s own contract), so shipping

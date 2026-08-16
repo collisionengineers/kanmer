@@ -93,17 +93,26 @@ the `## Parked` heading**. That makes kanmer-research's "answered or explicitly
 parked" mechanically true rather than aspirational, and gives a question an
 honest exit that is not just ticking a box you did not answer.
 
-### F7. A gate *implements* FRD-009 R3 rather than conflicting with it
+### F7. The headless rule is not a constraint on this design
 
-R3, the headless rule: no user available → take the recommended answer, record
-question + assumption, *"and stop at the deliverable — never guess **forward**
-across a decision boundary."*
+*Corrected on the operator's instruction — the first pass gave this far too much
+weight, and the ticket body's worry that a gate might make FRD-009 R3
+unreachable was wrong twice over.*
 
-Under a `leave-preparing` requirement, a headless run writes its questions,
-cannot tick them, and is blocked from entering Implementing. That **is** stopping
-at the deliverable. R3 asks for a decision boundary the agent will not cross; the
-gate makes that boundary literal instead of honour-system. The ticket body's
-worry that this might make R3 unreachable is wrong, and I am correcting it here.
+**Dispatch is for work that has no open questions.** That is what it is for. A
+dispatched task is one whose specifics are already settled; if it hits a genuine
+open question, the correct reading is that the work was not ready to dispatch —
+not that the gate needs an escape hatch so the run can continue.
+
+So R3 needs no reconciliation. Under a `leave-preparing` requirement, a headless
+run that raises a question writes it down and stops. That is exactly R3's *"stop
+at the deliverable — never guess **forward** across a decision boundary"*, with
+the boundary made literal rather than honour-system. No carve-out, no special
+case, nothing for the design to accommodate.
+
+The one thing to carry forward is a **reporting** obligation, not a gate one:
+`kanmer-auto` and dispatch must surface that a ticket stopped on a question
+rather than logging it as a generic failure. Prose in the skill, per F8.
 
 ### F8. Two of the three requested stops are boundaries. One is not
 
@@ -148,12 +157,22 @@ document. It is defensible — the parser is a regex over a convention the
 templates already ship, and the failure mode is a stuck ticket rather than a
 wrong one — but it is a decision, not an implementation detail.
 
-**Profiles must be chosen carefully.** A `spike`'s deliverable *is* research, and
-surfacing questions can be the entire point of one — GUI-004 was exactly that.
-Giving `spike` an `enter-done` requirement would make the profile
-self-contradictory. Proposed: `feature` and `fix` at all three boundaries they
-have; `chore` at `enter-done`; `spike` nothing. This changes the shipped profile
-table, so it is the user's call.
+**Every profile carries it — settled by the operator.** The first pass proposed
+exempting `spike` on the grounds that a spike's deliverable *is* research and
+surfacing questions can be its whole point. That was rejected, and the reasoning
+is better than mine: *open questions can arise from virtually any type of work
+if it is new, or unclear on the exact specifics.* A carve-out by work type
+assumes some kinds of work are inherently unambiguous, and none are.
+
+The `spike` case resolves rather than conflicts. GUI-004 was a spike whose
+question — the closing policy for research-only tickets — **was** answered in
+practice; the failure was that nobody recorded it. An `enter-done` requirement
+would have forced exactly that record. A spike whose output is genuinely a set of
+questions for the operator still closes: the operator answers them, or they move
+under `## Parked` with a reason. Both are honest end states; neither is silence.
+
+So: **all four profiles, at every boundary each one has.** `spike` has only
+`enter-done`, which is the right and only place for it.
 
 **Retroactivity is real but small here.** `update_item`'s contract says gates
 re-evaluate immediately. On this board only SKILL-011/012 are in flight, so

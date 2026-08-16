@@ -1,0 +1,14 @@
+# 8.1 `AGENTS.md`
+
+- **§2 layout** — under `apps/gui/src/main/`: `updater.ts   # electron-updater: schedule, events, quitAndInstall` and `mcp-sessions.ts  # which agent MCP servers an update would kill`. Under `shared/`: `mcp-sessions.ts  # pure CIM-output parser (tested)`. Under `renderer/src/lib/`: `update.ts`. Under `scripts/`: `check-updater-package.mjs`, `release.mjs`. Add `apps/gui/release-notes.md`.
+- **§5 `@kanmer/gui`** — one sentence: main owns the auto-updater; the renderer only ever *asks* to install, and the ask is gated on unsaved edits and live agent sessions before it becomes an IPC call.
+- **§6 commands** — three rows: `npm run dist:check`, `npm run release <version>` (needs `GH_TOKEN`), and the `KANMER_DEV_UPDATE=1` + `dev-app-update.yml` dev-feed run.
+- **§7 conventions** — two bullets:
+  1. *"**`quitAndInstall()` is not cancellable.** `BaseUpdater` spawns the installer **before** `app.quit()`, and the installer force-kills every process under the install dir — so a guard placed after the IPC call is a guard that never runs. `CH.installUpdate` has exactly two renderer call sites, both downstream of `restartWarning()`; main refuses the call unless an update is actually downloaded."*
+  2. *"**`electron-updater` is the one externalized production dependency**, via `external: ["electron-updater"]` in the main build only. Do **not** replace it with `externalizeDepsPlugin()` — that externalizes every future `dependencies` entry, and gotcha 1 requires gray-matter to stay bundled in the CJS main output."*
+- **§8 gotchas** —
+  - **Amend gotcha 5**: it says electron-builder bundles nothing from `node_modules`. It now bundles exactly one thing — `electron-updater` — because `dependencies` is what turns on `NodeModulesCollector`. `files:` needs no entry for it (a *separate* node-module matcher starts from `**/*`).
+  - **New gotcha 10 — the update kills agent MCP servers.** `allowOnlyOneInstallerInstance.nsh:79-101` stops every process whose path is under `$INSTDIR`, and `connect.ts:47` registers `process.execPath` as the MCP command, so the agent's server **is** a process in the install dir. `--updated` suppresses the prompt. This is why `mcp-sessions.ts` exists.
+  - **New gotcha 11 — `releaseType` defaults to `draft`, and drafts are invisible.** `GitHubProvider` reads `releases.atom` and `/releases/latest`; neither lists drafts. `electron-builder.yml` sets `releaseType: release` explicitly. Never revert it.
+- **§10 verification** — new step: *"If the GUI packaging or the updater changed: `npm run dist:check`, then boot the **packaged** binary under `KANMER_SMOKE` (`release/win-unpacked/Kanmer.exe --user-data-dir=<fresh>`). Compiling is not evidence — this is the step that catches 'works in dev, dead when packaged'."*
+- **§11 limitations** — the correction plus new bullets (below).

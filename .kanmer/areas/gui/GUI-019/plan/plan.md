@@ -1,0 +1,4 @@
+# 3.2 Document full-container — M (request #1)
+
+- **Where:** `Editor.tsx:380-404,430-439` (doc tabs), `Editor.tsx:633-791` (`DocEditor`, already self-contained), new `.modal.doc-full` (≈96vw × 92vh).
+- When a doc tab (or a repo-doc link) is opened, mount `DocEditor` in the full-container modal instead of the narrow panel — `DocEditor` already defaults to rendered markdown (edit behind a button) and has the interactive checklist view (`Editor.tsx:742-767`), so the full container inherits both for free. Add a **repo `/docs/` links section** to the ticket form driven by `refs`, opening either the OS default app (`openRepoDoc` → `shell.openPath`) or the in-app full view (`getRepoDoc` → read file). Doc-type tabs come from `resolveDocTypes(board, item.area)` (Phase 1) instead of the hard-coded `DOC_TABS` (`Editor.tsx:57-63`).

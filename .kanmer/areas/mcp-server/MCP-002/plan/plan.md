@@ -1,0 +1,6 @@
+# 2.1 New tools (+4)
+
+- **`append_scratch`** (write) — `{ id, slug?, content }` → `store.appendScratch`. Free-form working notes; deliberately separate from `set_ticket_doc` so gate/doc-type logic never applies to scratch (request #3). Read-back needs no new tool: `get_ticket_doc` accepts `scratch-<slug>` ids via the core whitelist (§1.5).
+- **`link_doc`** (write) — `{ id, path, action: add|remove }` → maintains `refs[]` via the Phase 1 repo-path validator. Distinct from `link_items` (item↔item, requires target item exists) because this is item↔repo-file with path validation (request #13/#16).
+- **`get_doc_gates`** (read, `readOnlyHint`) — `{ id? }`. With `id`: that ticket's resolved doc set, which docs exist, and which transitions are currently gated. Without `id`: the board's per-area doc-type + gate configuration summary. Lets a skill self-check before `move_item` instead of failing into the gate.
+- **`migrate_board`** (write) — `{ dry_run? }` → core `migrateBoard` (§1.6: v1→v2 if needed, then the 7-stage/docs backfill, always previewable). Agent-driven upgrades (`kanmer-setup`'s upgrade path) need an MCP route; the GUI's existing `CH.migrate` (`main/index.ts:453`) repoints to the same core function.

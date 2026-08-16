@@ -1,0 +1,5 @@
+# 5.2 Renderer: tabs + per-tab state
+
+- **Where:** `App.tsx:32-35,144-217,470-472`, new `TabStrip.tsx`/`ProjectView.tsx`/`lib/client.ts`.
+- `root/board/items/format` → `tabs: Tab[]` + `activeId`. A `Tab` holds `{projectId, root, board, items, format, view, filters, search, selectedId, changeSignal, unread, editorDirty, pendingNav, client}`. `App` renders `<TabStrip>` + the active tab's `<ProjectView>` under `ProjectContext.Provider`. `onDiskChange`/`onAgentChange` switch on `payload.projectId` and patch that tab (same scoped-patch algorithm, now on `tabs[i]`); unknown projectIds ignored. `onReveal` focuses the payload's tab (opening it if closed) then `trySelect(id)`.
+- **TabStrip polish (native-app feel):** middle-click closes a tab; tabs drag-reorder; a tab with unsaved edits shows a dirty dot (in addition to the unread dot); the window title becomes `<project name> — Kanmer` so the Windows taskbar identifies the active project. **Shortcuts:** Ctrl+1..3 stay view switches (as today, `App.tsx:340-378`); tabs get **Ctrl+Tab / Ctrl+Shift+Tab** cycle (and Ctrl+PgDn/PgUp as the menu accelerators).

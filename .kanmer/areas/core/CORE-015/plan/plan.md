@@ -1,0 +1,4 @@
+# 1.3 Dynamic doc names
+
+- **Where:** `types.ts` (`TicketDoc` → `string`; `TICKET_DOCS` becomes `DEFAULT_DOC_TYPES` in `docs.ts`), `store.ts` (`getDoc`/`setDoc`/`getTicketDocsInfo` 707-770), `paths.ts` (`docFileIn` 106-108 + `assertSafeDocName`).
+- `TicketDocsInfo.docs` becomes `Record<string, boolean>`. `getTicketDocsInfo` iterates `resolveDocTypes(board, item.area)` instead of the const; `checklist` progress comes from the doc-type flagged `progress: true`. `setDoc` validates the doc id against the area's set (throws listing valid ids) and enforces `requires` (a required prerequisite doc must exist first). `getDoc`/`setDoc` call `assertSafeDocName` (lowercase-kebab, reject `..`/separators). **MCP handoff:** the static `ticketDocEnum` (`mcp-server/src/index.ts:143`) can't survive per-area docs — Phase 2 changes it to `z.string()` and relies on this core validation.

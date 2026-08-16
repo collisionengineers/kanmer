@@ -1,9 +1,9 @@
 {
   "DOC": 5,
-  "CORE": 12,
-  "GUI": 17,
-  "MCP": 1,
-  "SKILL": 7,
+  "CORE": 20,
+  "GUI": 63,
+  "MCP": 4,
+  "SKILL": 10,
   "EPIC": 8,
   "HZN": 2
 }

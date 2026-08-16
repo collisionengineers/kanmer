@@ -1,0 +1,4 @@
+# 3.6 Gate-blocked move UX
+
+- **Where:** `App.tsx:267-280` (the optimistic-move catch), `App.tsx:504` (error banner), `Board.tsx:92-102` (drop targets), a small message-mapping helper.
+- Today a drag onto a gated column snaps back and dumps the raw core error — which tells a human to call `set_ticket_doc`, an MCP tool they can't invoke — into a persistent top-of-app banner cleared only by the next successful mutation. With v2 multiplying one gate into ~5 per area this becomes the everyday experience, so: (a) map gate errors to **human-readable copy** ("Can't move to Review — the Post-implementation report is missing"); (b) surface them as an **anchored toast/dialog at the drop point** with an *"Open <missing doc>"* action that jumps straight into the full-container doc editor (3.2); (c) during a drag, use `getGateStatus` to **mark gated columns** (subtle lock tint + tooltip naming the missing docs) so most failed drops never happen.

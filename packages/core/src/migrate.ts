@@ -662,9 +662,14 @@ export async function migrateToV3(
   // (e) board.yml: the legacy dimensions out, the v3 vocabulary in.
   const board = await store.getBoard();
   const next = { ...board };
+  // repoDocs survives the reshape: it is still how a ref is classified as a
+  // governing doc (FRD-002 P4), and dropping it would silently revert a board
+  // to the shipped globs — which classify nothing on a docs-template tree.
+  next.repoDocs ??= board.docs?.repoDocs;
   delete next.statuses;
   delete next.priorities;
   delete next.docs;
+  if (next.repoDocs === undefined) delete next.repoDocs;
   next.profiles ??= structuredClone(DEFAULT_PROFILES) as Record<string, ProfileMap>;
   next.defaultProfile ??= DEFAULT_PROFILE_ID;
   next.groupKinds ??= structuredClone(DEFAULT_GROUP_KINDS);

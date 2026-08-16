@@ -69,7 +69,9 @@ export function resolveGates(board: BoardConfig, areaId: string | undefined): Ga
 
 /** The repoDocs map for a board (explicit config, else the shipped default). */
 export function repoDocsMap(board: BoardConfig): Record<string, string> {
-  return board.docs?.repoDocs ?? DEFAULT_REPO_DOCS;
+  // Format 3 lifts this to the top level; the v2 `docs.repoDocs` is still read
+  // so an unmigrated board classifies its governing docs correctly.
+  return board.repoDocs ?? board.docs?.repoDocs ?? DEFAULT_REPO_DOCS;
 }
 
 /**

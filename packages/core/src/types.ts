@@ -237,6 +237,8 @@ export const BoardConfigSchema = z.object({
   groupKinds: z.array(GroupKindSchema).optional(),
   /** Proof flavours (FRD-006 R1). Absent ⇒ visual, test-output, command-log. */
   proofTypes: z.array(z.string().min(1)).optional(),
+  /** Governing-doc kind → repo-relative glob (prd → docs/product/prd/**). */
+  repoDocs: z.record(z.string()).optional(),
   /** Deployment tracking. Absent ⇒ no per-ticket deployment field at all. */
   deployment: DeploymentConfigSchema.optional(),
   /** Legacy, read-only: present on format ≤2 boards, dropped on migration. */

@@ -37659,6 +37659,8 @@ var BoardConfigSchema = external_exports.object({
   groupKinds: external_exports.array(GroupKindSchema).optional(),
   /** Proof flavours (FRD-006 R1). Absent ⇒ visual, test-output, command-log. */
   proofTypes: external_exports.array(external_exports.string().min(1)).optional(),
+  /** Governing-doc kind → repo-relative glob (prd → docs/product/prd/**). */
+  repoDocs: external_exports.record(external_exports.string()).optional(),
   /** Deployment tracking. Absent ⇒ no per-ticket deployment field at all. */
   deployment: DeploymentConfigSchema.optional(),
   /** Legacy, read-only: present on format ≤2 boards, dropped on migration. */
@@ -38374,7 +38376,7 @@ var DEFAULT_REPO_DOCS = {
   adr: "docs/adr/**"
 };
 function repoDocsMap(board) {
-  return board.docs?.repoDocs ?? DEFAULT_REPO_DOCS;
+  return board.repoDocs ?? board.docs?.repoDocs ?? DEFAULT_REPO_DOCS;
 }
 function repoDocKindOf(board, relPath) {
   const norm = relPath.replace(/\\/g, "/");
@@ -39976,9 +39978,11 @@ async function migrateToV3(store2, opts = {}) {
   }
   const board = await store2.getBoard();
   const next = { ...board };
+  next.repoDocs ??= board.docs?.repoDocs;
   delete next.statuses;
   delete next.priorities;
   delete next.docs;
+  if (next.repoDocs === void 0) delete next.repoDocs;
   next.profiles ??= structuredClone(DEFAULT_PROFILES);
   next.defaultProfile ??= DEFAULT_PROFILE_ID;
   next.groupKinds ??= structuredClone(DEFAULT_GROUP_KINDS);

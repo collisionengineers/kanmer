@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { KanmerStore } from "./store.js";
 import { migrateToV2, migrateToV3 } from "./migrate.js";
+import { repoDocKindOf } from "./docs.js";
 
 let root: string;
 let k: string;
@@ -387,5 +388,50 @@ describe("migration: v2 → v3", () => {
     await store.setDoc("API-001", "plan", "# Plan");
     await store.setDoc("API-001", "checklist", "- [ ] go");
     expect((await store.moveItem("API-001", { status: "implementing" })).status).toBe("implementing");
+  });
+});
+
+describe("migration: repoDocs survives", () => {
+  it("carries a customised repoDocs across, instead of reverting to the shipped globs", async () => {
+    await fs.writeFile(path.join(k, "version.json"), JSON.stringify({ format: 2 }), "utf8");
+    await writeBoardYml([
+      "statuses:",
+      "  - { id: backlog, name: Backlog }",
+      "  - { id: done, name: Done }",
+      "areas: []",
+      "priorities:",
+      "  - { id: medium, name: Medium }",
+      "idPrefixes: { ticket: TICK, plan: PLAN, research: RES }",
+      "docs:",
+      "  repoDocs:",
+      "    frd: docs/functional/frd/**",
+      "",
+    ]);
+    const store = new KanmerStore(root);
+    await migrateToV3(store);
+
+    // repoDocs is how a ref is classified as a governing doc (FRD-002 P4).
+    // Dropping it with the rest of the v2 `docs` block silently reverted the
+    // board to the shipped globs, which classify nothing on a docs-template
+    // tree — so the leave-Backlog gate became unsatisfiable by refs again.
+    const board = await store.getBoard();
+    expect(board.repoDocs).toEqual({ frd: "docs/functional/frd/**" });
+    expect(board.docs).toBeUndefined();
+    expect(repoDocKindOf(board, "docs/functional/frd/FRD-001.md")).toBe("frd");
+  });
+
+  it("leaves repoDocs absent when the board never configured it", async () => {
+    await fs.writeFile(path.join(k, "version.json"), JSON.stringify({ format: 2 }), "utf8");
+    await writeBoardYml([
+      "statuses:",
+      "  - { id: backlog, name: Backlog }",
+      "areas: []",
+      "priorities: []",
+      "idPrefixes: { ticket: TICK, plan: PLAN, research: RES }",
+      "",
+    ]);
+    const store = new KanmerStore(root);
+    await migrateToV3(store);
+    expect((await store.getBoard()).repoDocs).toBeUndefined();
   });
 });

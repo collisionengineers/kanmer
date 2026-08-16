@@ -9,13 +9,14 @@ profile: feature
 labels: []
 groups:
   - HZN-003
-links: []
+links:
+  - SKILL-013
 refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
   - docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md
 archived: false
 created: '2026-08-16T18:25:18.654Z'
-updated: '2026-08-16T18:25:18.654Z'
+updated: '2026-08-16T18:26:23.130Z'
 ---
 
 ## What

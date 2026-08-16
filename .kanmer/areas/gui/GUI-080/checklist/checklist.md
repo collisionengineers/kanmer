@@ -63,3 +63,15 @@ workspaces named), `npm run verify:agents-block` (26/26).
 - [ ] `git branch -D gui-080-prune-retired-skills` (squash-merged)
 - [ ] `git fetch --prune` + `git worktree prune`
 - [ ] `take_ticket action: "release"`
+
+Closeout completed 2026-08-16:
+
+- [x] Outcome recorded in ticket body (PR link, the two deltas from plan, follow-ups)
+- [x] `git worktree remove .worktrees/gui-080`
+- [x] `git branch -D gui-080-prune-retired-skills` (squash-merged, so `-d` would refuse; merge state verified as MERGED first)
+- [x] `git push origin --delete gui-080-prune-retired-skills` — the host does not auto-delete; confirmed gone with `git ls-remote`
+- [x] `git fetch --prune origin` + `git worktree prune`
+- [x] `take_ticket action: "release"`
+
+No deployment field to set — `get_doc_gates` reports `deploymentTracking: null`
+for this board.

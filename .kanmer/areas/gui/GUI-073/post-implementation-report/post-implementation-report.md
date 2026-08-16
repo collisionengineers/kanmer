@@ -106,3 +106,29 @@ On merged `main`, from the main checkout:
      not a tool listing.
 6. Optional, cheap: `echo hi | agy -p "Reply with exactly: PONG" --print-timeout 120s`
    → `PONG`, exit 0, if `agy` is on the verifying machine.
+
+## Addendum — review fixes (self-review, PR #55)
+
+Four corrections were made to this diff during review; the table above describes
+the **shipped** state, and this records what changed after the first commit.
+
+- **A new false claim was caught before merge.** The blurb's first draft read
+  "Every host also gets the AGENTS.md block", taken from FRD-012 R3. `connect.ts`
+  does not do that: `installSkills` returns at the `kind: "marketplace"` branch
+  before `ensureAgentsBlock(root)`, so Claude Code and codex never receive the
+  block. The sentence now says what the code does (the block accompanies the
+  project skills copies). On a ticket about capability claims that outran their
+  evidence, sourcing a claim from a governing doc rather than the code was the
+  precise failure mode ADR-0009's method clause names — caught by checking.
+- **The divergence itself is filed as [[GUI-088]]** (non-blocking): either
+  `connect.ts` or FRD-012 R3 is wrong, ADR-0009's contract hierarchy suggests the
+  code is, and hoisting `ensureAgentsBlock` changes Connect's *behaviour* for two
+  hosts — out of scope for a copy fix.
+- **"one write, three hosts" → "two hosts."** grok reads `.agents/skills/`
+  (FRD-012 R2) but Kanmer writes `.grok/skills` for it; the original wording
+  conflated what hosts read with what this registry line writes. grok's redundancy
+  is cited to R2 and left to MCP-014.
+- **A quoted command was normalised to one actually run** (`--print-timeout 90s`
+  was the earlier research's invocation, not this branch's), and the connect note
+  now says "Antigravity's CLI (`agy`)" rather than "Antigravity", since only the
+  CLI was measured.

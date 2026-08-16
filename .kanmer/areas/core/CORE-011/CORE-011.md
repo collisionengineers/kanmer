@@ -2,10 +2,13 @@
 id: CORE-011
 type: ticket
 title: Gates cannot tell a document was written after the work
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: claude-code
 profile: feature
+taken_at: '2026-08-16T04:49:50.536Z'
+branch: core-011-one-gate-per-move
+worktree: .worktrees/core-011
 labels:
   - bug
   - v3-phase-2
@@ -15,7 +18,7 @@ refs:
   - docs/product/prd/PRD-001-kanmer-v3.md
 archived: false
 created: '2026-08-16T04:24:49.811Z'
-updated: '2026-08-16T04:46:54.867Z'
+updated: '2026-08-16T04:49:50.536Z'
 ---
 
 Gates check that a document exists, never that it existed before the work it

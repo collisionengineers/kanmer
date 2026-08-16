@@ -690,7 +690,9 @@ away on correctness:
   subcommand) and genuinely needs the skills copy.
 - **Two of the five install paths Connect ships are broken today** (claude:
   wrong directory; codex: missing the install step), and a third (antigravity)
-  writes to a directory the host does not read.
+  writes to a directory the host reads **only in a workspace-bound session that
+  Kanmer never establishes** — so the write is correct and inert, not wrong
+  (corrected per §4d; [[MCP-015]] owns the binding).
 - The single highest-leverage change is **one correct marketplace root, shipped
   in `extraResources`, plus the right second command per host** — after which
   four of five hosts converge on the same mechanism.
@@ -724,3 +726,77 @@ follow-up listing on each of the four CLIs shows no `kanmer` entry. The orphaned
 `~\.codex\plugins\cache\kanmer-plugins` snapshot and the scratch probe project
 were deleted. `git status --porcelain` in the repo shows only pre-existing
 untracked paths — **no repository file was modified by this research**.
+
+---
+
+## Addendum (2026-08-16) — adjudication verdict, and where each finding now lives
+
+Two things happened after this research was first written: the operator accepted
+the split (`scratch/operator-answers.md`), and an adjudication overturned the
+Antigravity conclusion by measurement (`scratch/adjudication.md`). **Where this
+document and the adjudication disagree, the adjudication governs** — the inline
+corrections above (§4c banner, §4d, §Finding 5 table, §Finding 10 point 3 and
+its draft clause) carry the verdict; this addendum records the disposition so
+each sibling ticket inherits the evidence without re-investigating.
+
+### MCP-009 shipped (docs only)
+
+The ADR-0009 ¶19 amendment, the ADR-0009 ¶9 binding caveat, the FRD-012 R2
+install-matrix correction, the FRD-012 AC2 restatement and the FRD-012 R5
+replacement. Nothing under `apps/` or `packages/` was touched.
+
+### Evidence handed to [[MCP-015]] — Antigravity → plugin path + dispatch
+
+- **The gate is a bound workspace folder.** Bare `agy` binds to
+  `default-cli-project`, record `"projectResources": {}` — no folder, nothing to
+  read `.agents/` from, **cwd irrelevant**. `--new-project`, `--project <id>`
+  with a `folderUri`, and `--add-dir <path>` all bind; `--add-dir` persists
+  nothing. Choosing between them is MCP-015's decision.
+- **Three things that are NOT the gate, each tested explicitly:** workspace
+  trust (probe dir untrusted, everything loaded), a git root (does not
+  auto-bind), and project existence (only the flag on the command line binds).
+- **Kanmer establishes no binding today** — verified in this ticket's own
+  worktree: `grep -rn -- "--new-project\|--add-dir\|--project" apps/ packages/`
+  returns nothing, and the only `agy` string in either tree is the stale comment
+  at `providers.ts:451`. So the `.agents/skills/` write is correct and inert.
+- `agy -p "<prompt>"` returns clean stdout at exit 0 (§4b), so `dispatch: false`
+  is stale and `dispatchArgs: (p) => ["-p", p]` is the right shape.
+- `agy plugin install` works (§4a) and is an alternative delivery path, but note
+  it copies to `~/.gemini/config/plugins/<name>/skills/` — **global**, which cuts
+  against ADR-0007's project scoping. Binding the workspace keeps the delivery
+  project-scoped; installing the plugin does not. That trade-off is MCP-015's.
+- `agy plugin validate` is not a usable pre-flight for this layout (§4a).
+
+### Evidence handed to [[MCP-013]] — marketplace root + packaging
+
+Findings 1, 2, 6 and 9 in full: the failing `claude plugin marketplace add`
+against the plugin dir instead of the repo root; the swallowed non-zero exit at
+`connect.ts:152-154` that hid it; `electron-builder.yml` shipping neither
+marketplace JSON (a regression against
+`docs/plans/kanmer-v2/phase-6-agents-connect/plan.md:30`); the two marketplace
+names (`kanmer` for Claude, `kanmer-plugins` for codex); codex's verb being
+`plugin add`, not `plugin install`; the two `${…}_ROOT` variables and their
+per-host expansion behaviour; and the unchosen `--scope user` default. Open
+questions Q4, Q6, Q7 and the `-y` question are parked onto it.
+
+### Evidence handed to [[MCP-014]] — grok → plugin path
+
+Finding 3 in full (`grok plugin install … --trust` works; `grok inspect` is the
+oracle, `grok mcp list` is not), plus Finding 5's result that `.agents/skills/`
+already serves grok, making `.grok/skills` a redundant second write, plus Q8's
+observation that keeping both paths made `grok inspect` list every skill twice.
+
+### Evidence handed to [[GUI-079]] — the `.mcp.json` collision
+
+Finding 7 in full. Settled by the operator: grok moves to its own file,
+`.mcp.json` belongs to Claude alone. Recorded, not fixed here.
+
+### A probing hazard worth generalising beyond any one ticket
+
+**A workspace MCP server does not surface as a named top-level tool.** It
+appears as the generic `call_mcp_tool` / `list_resources` / `read_resource`
+triad. Grepping a tool list for the server's own tool name is a **false negative
+even when the server is connected** — which is how this research produced a
+confident wrong answer while its positive control passed. Anyone probing MCP
+connectivity on any host should call the tool, not look for its name. This is
+the worked example now shipped inside ADR-0009's amended clause.

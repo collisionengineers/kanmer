@@ -17,7 +17,7 @@ refs:
   - docs/functional/frd/FRD-001-groups.md
 archived: false
 created: '2026-08-16T16:11:01.414Z'
-updated: '2026-08-16T16:18:15.993Z'
+updated: '2026-08-16T16:25:50.343Z'
 ---
 
 ## What
@@ -29,13 +29,13 @@ area/filter it accepts today.
 
 The skill's frontmatter says "target an area (or filter)" and §1 builds the
 roster from `list_items` for that area. Groups appear nowhere in the skill, and
-`list_items` has no `group` filter — so "clear 0.3.4" (`HZN-003`) has no
+`list_items` has no `group` filter — so "clear 0.3.3" (`HZN-003`) has no
 supported path. The operator has to improvise the roster by hand from
 `get_group` and feed it in as scope, which is exactly the kind of unwritten
 step that goes wrong silently.
 
 Groups are how releases are actually organised on this board — [[HZN-003]] is
-the 0.3.4 roster — so a burn-down skill that cannot read one is missing its
+the 0.3.3 roster — so a burn-down skill that cannot read one is missing its
 most natural input.
 
 ## Approach
@@ -44,9 +44,9 @@ most natural input.
   (MCP surface change, benefits every caller), or `get_group` inside the skill
   (skill-only, no server change). Research picks one and says why.
 - Update `kanmer-auto` §1 to accept a group id, and its frontmatter/description
-  so "clear HZN-003" / "work through 0.3.4" routes here.
-- Respect group membership order and the same drop rules (archived, blocked,
-  taken-by-someone-else); `blocks` edges still override lane ordering.
+  so "clear HZN-003" / "work through 0.3.3" routes here.
+- Respect the same drop rules (archived, blocked, taken-by-someone-else);
+  `blocks` edges still override lane ordering.
 - Report the roster back naming the group, so the operator sees which tickets
   were resolved from it before anything starts.
 

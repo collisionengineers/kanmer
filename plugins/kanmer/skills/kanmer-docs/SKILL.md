@@ -10,6 +10,21 @@ tickets reference it by path via `refs` (`link_doc`). Per-ticket pipeline
 documents (research, files, plan, checklist, proof) live *inside* the ticket
 folder — not this skill's job.
 
+## Workflow
+
+1. **Decide which kind** you are writing — PRD, FRD or ADR — with the table and
+   the granularity test below.
+2. **Read the board's document model** (`get_doc_gates` with no `id`) for the
+   path globs, and match the filenames already in the directory.
+3. **Author** from the matching template in `assets/`.
+4. **Link it** — `link_doc <id> <path>` — or set `docs_todo` if the doc is
+   genuinely still owed.
+5. **Return** to whatever sent you here.
+
+This skill is stage-agnostic: it is called from Backlog to satisfy the
+link-or-create rule, from Preparing when a plan turns up a design decision, and
+in bulk from setup. It never moves a ticket.
+
 ## Which document am I writing?
 
 | | Answers | Rule |
@@ -78,3 +93,11 @@ and skill-enforced.
 ## Bulk (greenfield)
 `kanmer-setup` calls this skill to split a product brief into PRDs → FRDs → ADRs
 and materialise the `/docs/` tree + `doc-structure.md` before seeding the backlog.
+
+---
+
+**No successor — control returns to the caller.** Three call it:
+`kanmer-tickets` or `kanmer-research` when a ticket needs a governing doc before
+it can leave Backlog, `kanmer-plan` when the plan introduces a design decision
+that deserves an ADR, and `kanmer-setup` in bulk on a greenfield board. Each
+resumes where it left off once the document exists and is linked.

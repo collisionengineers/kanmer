@@ -13,7 +13,7 @@ other phase skills.
 A ticket reaches Verifying after its PR has been reviewed and **merged** (the
 merge point owned by kanmer-review). You validate what actually landed.
 
-## Steps
+## Workflow
 1. `get_item <id>` and `get_doc_gates <id>` — confirm the ticket is in Verifying
    and see the remaining gate (`proof.md` before Done).
 2. Check out merged `main` (not the feature branch) and pull.

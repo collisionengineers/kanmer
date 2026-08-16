@@ -10,6 +10,20 @@ git worktree, so the main checkout stays clean and parallel work never
 collides. `take_ticket` records both on the ticket — the human's board shows
 the ⛏ badge with the branch, which is how they know the work is live.
 
+## Workflow
+
+1. **Check the preconditions** — the plan and checklist exist, and nobody else
+   holds the ticket.
+2. **Create the worktree and branch**, then `take_ticket` with exactly what you
+   created. That moves the ticket into **implementing**.
+3. **Work the checklist**, ticking boxes and appending progress notes as you go.
+4. **Write the post-implementation report** — the reviewer's brief.
+5. **Record traceability**, push, and open the PR.
+6. **Move the ticket to review.**
+
+The ticket stays taken through review, verify and closeout — this skill takes
+it, and `kanmer-closeout` is what releases it.
+
 ## Preconditions
 
 `get_ticket_doc` for `plan` and `checklist`. If either is missing, the
@@ -90,3 +104,9 @@ first append the resume point to the progress notes ("paused; resume in
 `branch`/`worktree` fields — then `take_ticket action: "release"`. Keep the
 worktree and branch; they are the resume point. A ticket left taken looks
 in-progress to everyone.
+
+---
+
+**Hand off to `kanmer-review`** once the PR is open and the ticket is in Review.
+Do not merge your own work on the way past: review owns the merge point, and
+this skill's last act is opening the PR, not landing it.

@@ -15,7 +15,8 @@ branch yourself. Your own ticket worktree is a separate thing, recorded by
 - Write pipeline documents with `set_ticket_doc`. Running notes go to `append_scratch` — scratch is the notepad and is never gated, and neither is anything under `reference/` or `assets/`.
 - Proof is written on merged `main`, after review and the merge, not before.
 - Archive, don't delete. Reference other items with [[ID]] wiki-links.
-- Skills, one per phase: kanmer-tickets (manage), -docs, -research, -plan, -execute, -review, -verify, -closeout, -auto, -report, -groom, -setup.
+- Skills run in this order: kanmer-tickets → -research → -plan → -execute → -review → -verify → -closeout. How far a ticket walks it depends on its profile, so ask `get_doc_gates` rather than assuming every step. Off to the side: -auto (drives that order over many tickets), -docs (governing docs), -groom (fix the board), -report (read-only), -setup (reconcile after a Kanmer update).
+- Each skill ends by naming what comes next — read that line before improvising a hand-off.
 <!-- kanmer:instructions:end -->
 
 # AGENTS.md — Contributor & AI-agent guide to Kanmer

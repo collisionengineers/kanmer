@@ -11,6 +11,16 @@ point**: a passing review merges the PR and moves the ticket to **Verifying**,
 where `kanmer-verify` validates the shipped result on merged main. Review is the
 sole owner of turning PR feedback into tickets.
 
+## Workflow
+
+1. **Gather** — the ticket, its documents and the PR (below). Review runs in the
+   **review** stage; the ticket is already there and already taken.
+2. **Write the review to scratch** — changes, comments, disposition, verdict.
+3. **Check the open questions** before applying any fix.
+4. **Check** — report against diff, governing docs, then the code.
+5. **Decide** — pass, or turn the blocking points into tickets.
+6. On a pass: **merge**, then move the ticket to **verifying**.
+
 ## Gather
 
 `get_item` for the ticket, `get_ticket_doc` for `plan` and
@@ -19,14 +29,18 @@ and the PR itself (`gh pr view <branch> --json url,state,title`, then
 `gh pr diff <branch>`; the PR URL is in the ticket's scratch/notes and the id is
 in the PR body's `Kanmer:` footer).
 
+Also `get_doc_gates <id>` — review is the one skill that both reads evidence and
+**moves the ticket**, so self-check the move you are about to make instead of
+failing into it at the end of a passing review.
+
 ## Write the review to scratch
 
 **Reviews are not pipeline documents.** The legal document types are fixed
 (research, files, plan, checklist, open-questions, post-implementation-report,
 proof) and none of them is a review — `set_ticket_doc` rejects anything else.
-That is correct rather than a gap: `enter-review` gates the author's *report*,
-and a review written into the ticket's own document set would put the reviewer's
-verdict in the author's folder.
+That is correct rather than a gap: the gated evidence entering this stage is the
+author's *report*, and a review written into the ticket's own document set would
+put the reviewer's verdict in the author's folder.
 
 Write it with `append_scratch <id> review "…"`, which is never gated, covering:
 
@@ -45,9 +59,20 @@ apply a fix that turns on a question still unticked — put it to the user first
 **This one is a convention, not a gate, and knowing the difference matters.**
 The `questions-resolved` requirement fires on stage *transitions*; review fixes
 happen inside the review stage with no `move_item`, so nothing enforces this and
-nothing will. `enter-review` and `enter-done` are gated, so a question raised
-during implementation cannot get past those — but a fix applied mid-review on a
-guess is invisible to the engine. That gap is why it is written here.
+nothing will.
+
+Be precise about what *is* enforced, because it is less than it looks. What holds
+universally is **Done**: every profile carries the requirement at `enter-done`,
+so no ticket closes with an open question. What does **not** hold is the merge —
+this skill merges *before* it moves, and `gh pr merge` is a GitHub operation the
+gate engine never sees. Gates constrain `move_item` and nothing else. So on every
+profile, `feature` included, a ticket with an unticked question has a PR exactly
+as mergeable as one without; the boundaries merely refuse the bookkeeping move
+afterwards. (Profiles also differ on which boundaries they declare at all — ask
+`get_doc_gates`, never assume.) Measured on all four profiles and recorded in
+[[SKILL-012]]'s proof.
+
+That is the gap, and it is why this paragraph exists rather than a gate.
 
 If you are both author and reviewer, say so in the first line. It is not an
 independent review and should not read as one.
@@ -80,3 +105,10 @@ independent review and should not read as one.
 A human's review comments on a PR you're tracking follow the same rule: each
 substantive comment becomes a PR Review ticket blocking the original, captured in
 the scratch review's comments and disposition sections.
+
+---
+
+**Hand off to `kanmer-verify`** once the PR is merged and the ticket is in
+Verifying: it validates the shipped result on merged `main` and writes `proof`.
+On a needs-changes verdict nothing is handed off — the blocking tickets go to
+`kanmer-execute`, and this skill runs again when they land.

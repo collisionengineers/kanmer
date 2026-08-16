@@ -50,7 +50,8 @@ Kept in sync with `packages/mcp-server/src/index.ts` — run
 ## What a `list_items` summary contains
 
 Exactly these fields, always all present: `id`, `type`, `title`, `status`,
-`area`, `priority`, `assignee`, `labels`, `order` (number or `null`), `blocked`
+`area`, `profile`, `groups` (group ids, or `null`), `assignee`, `labels`,
+`order` (number or `null`), `blocked`
 (true when a live blocker exists), `refs` (governing-doc paths or `null`),
 `deployment` (deployment status or `null`), `created`, `updated`, `archived`,
 `taken` (`{ taken_at, branch, worktree }` or `null` when not taken), `docs`
@@ -61,16 +62,23 @@ summary means "not reported here", not "no links".
 
 ## Field semantics
 
-- `status` — the single workflow dimension; a column on the human's board.
-  Default stages on a fresh board: backlog → researching → planning →
-  implementing → review → verifying → done. Call `list_board` for the ids that
-  are actually configured — older or customised boards commonly differ, and
-  writes to an id the board doesn't define are rejected. Transitions are subject
-  to the area's document gates (see `get_doc_gates`).
+- `status` — the single workflow dimension; a column on the human's board. The
+  stages are **fixed** and a board cannot change them (ADR-0002): backlog →
+  preparing → implementing → review → verifying → done. Writes to any other id
+  are rejected. Transitions are subject to the ticket's **profile** gates (see
+  `get_doc_gates`) — which boundaries exist varies per profile, so never assume
+  a fixed pipeline.
 - `area` — colour-coded grouping (e.g. UI, API); clusters cards within stage
-  columns. A board can legitimately have **no** areas defined (`areas: []`), in
-  which case leave the field off items.
-- `priority` — id into the board's configurable priority list.
+  columns, and decides the id prefix of tickets born there. Areas are the only
+  configurable column. A board can legitimately have **no** areas defined
+  (`areas: []`), in which case leave the field off items.
+- `profile` — which requirement set the ticket owes: `feature`, `fix`, `chore`,
+  `spike`, or `custom` (which reads the ticket's own inline `requires` instead
+  of the board's table). This, not the stage, is what decides how much evidence
+  the ticket must produce. Changing it re-evaluates the gates immediately.
+- `groups` — ids of the epics/horizons this ticket belongs to. Membership is
+  stored on the **ticket** and derived by the group, never the reverse, so a
+  group's membership cannot go stale. Set with `update_item(groups: [...])`.
 - `assignee` — free-text; the only person field, so it doubles as "who is this
   waiting on" when an item is in review.
 - `links` — array of item ids; combined with `[[ID]]` body wiki-links into a
@@ -104,11 +112,22 @@ summary means "not reported here", not "no links".
 
 ## Item types
 
-Format-2 boards store **tickets only**. A ticket is a folder:
+Format-3 boards store **tickets only**. A ticket is a folder, and each document
+type is a **folder inside it** — so one type can hold several files:
 
     .kanmer/areas/<area|_none>/<ID>/<ID>.md      ← the ticket itself
-                                   research.md impact.md plan.md
-                                   checklist.md proof.md
+                                   research/research.md
+                                   files/files.md
+                                   open-questions/open-questions.md
+                                   plan/plan.md
+                                   checklist/checklist.md
+                                   post-implementation-report/…
+                                   proof/proof.md
+                                   scratch-notes.md        ← never gated
+                                   reference/ assets/      ← never gated
+
+Read the **whole folder** before starting: a document type with three files in it
+looks identical from `get_item`, which reports only that the type exists.
 
 | Type | Where it lives | Id prefix | Use for |
 |---|---|---|---|
@@ -116,11 +135,11 @@ Format-2 boards store **tickets only**. A ticket is a folder:
 | `plan` | **retired** — use `set_ticket_doc(doc: "plan")` | `PLAN` (legacy ids only) | Format-1 boards only |
 | `research` | **retired** — use `set_ticket_doc(doc: "research")` | `RES` (legacy ids only) | Format-1 boards only |
 
-`create_item` with `type: "plan"` or `"research"` is **rejected on format-2 boards** — those
-live inside a ticket folder as documents. Unmigrated format-1 boards still accept them.
-Call `get_status` to see which format a board uses.
+`create_item` with `type: "plan"` or `"research"` is **rejected** — those live
+inside a ticket folder as documents. Unmigrated format-1 boards still accept
+them; call `get_status` to see which format a board uses.
 
-The pipeline documents in a ticket's folder are **per-area configurable** (`board.docs`);
-the five above are the default set. Call `get_doc_gates` for a ticket's actual doc types and
-gates. Creation is **ungated** — a ticket may be created in any stage — but `move_item` enforces
-the area's document gates on every transition.
+Which documents a ticket owes comes from its **profile**, not from its area and
+not from a fixed pipeline — call `get_doc_gates` for the ticket's actual types
+and boundaries. Creation is **ungated**, which is what makes importing and
+backfilling finished work possible; `move_item` is where the gates apply.

@@ -14,7 +14,7 @@ to make planning boring.
 mean the answer differs per ticket: a `spike` may need only research, a `chore`
 only a plan. Ask it rather than assuming a pipeline.
 
-## Steps
+## Workflow
 
 1. **Read the ticket.** `get_item` for the body (the What/Why is your research
    question) and `get_links` for related tickets — prior research on a linked
@@ -54,3 +54,10 @@ on whether the ticket is ready for `kanmer-plan`, including on the questions —
 `questions-resolved` is unmet while `open-questions` holds an unticked `- [ ]`
 above `## Parked (explicitly deferred)`. Write each question as its own `- [ ]`
 so it can be answered and ticked one at a time.
+
+---
+
+**Hand off to `kanmer-plan`**, which writes the plan and checklist from what you
+just wrote — the ticket stays in Preparing across both, because research and
+planning share that stage. A `spike` may be finished here instead: ask
+`get_doc_gates`, which knows what this ticket's profile actually owes.

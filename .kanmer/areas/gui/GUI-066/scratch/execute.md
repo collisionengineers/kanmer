@@ -1,0 +1,1 @@
+opened PR https://github.com/collisionengineers/kanmer/pull/45 (commit fade11c, branch gui-066-verify-release-assets, rebased onto origin/main c81063e — MCP-012 had not landed, so no collision in scripts/release.mjs).

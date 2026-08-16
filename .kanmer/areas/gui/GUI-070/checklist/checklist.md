@@ -74,3 +74,16 @@ was also booted against a throwaway sandbox board with
 The driver script is a throwaway in the agent scratchpad, deliberately not added
 to the repo: a real answer to that gap is a jsdom/testing-library setup, which is
 parked in `open-questions` as its own ticket.
+
+---
+
+## Closeout — GUI-070
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/gui-070`
+- [ ] `git branch -d gui-070-remove-backlog-view` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

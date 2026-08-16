@@ -310,7 +310,10 @@ export type ItemMenuAction =
   | { type: "dispatch"; target: ConnectTarget };
 
 /** Application-menu commands forwarded to the renderer. */
-export type MenuCommand = { type: "pick-project" } | { type: "open-project"; path: string };
+export type MenuCommand =
+  | { type: "pick-project" }
+  | { type: "open-project"; path: string }
+  | { type: "manual"; chapter?: string };
 
 /**
  * The API exposed to the renderer on `window.kanmer`. Project-scoped methods

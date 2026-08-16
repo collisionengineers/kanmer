@@ -45,7 +45,18 @@ interface SettingsProps {
   onSetNotifications: (on: boolean) => void;
   onSetPreferences: (patch: Partial<UiPreferences>) => void;
   onClose: () => void;
+  /** Open the manual at a chapter (the  beside the tabs). */
+  onOpenManual?: (chapter: string) => void;
 }
+
+/** Which manual chapter each Settings tab explains. Asserted in manual.test.ts. */
+const SETTINGS_HELP: Record<SettingsTab, string> = {
+  board: "stages",
+  profiles: "profiles",
+  appearance: "getting-started",
+  git: "board-sync",
+  connect: "dispatch",
+};
 
 const DEFAULT_COLOR = "#5b8cff";
 
@@ -60,6 +71,7 @@ export function Settings({
   onSetNotifications,
   onSetPreferences,
   onClose,
+  onOpenManual,
 }: SettingsProps): JSX.Element {
   const [draft, setDraft] = useState<BoardConfig>(() => structuredClone(board));
   const [saving, setSaving] = useState(false);
@@ -186,6 +198,19 @@ export function Settings({
                 {t.label}
               </button>
             ))}
+            {/*
+              Deep-links into the manual at the chapter for the open tab. The
+              target ids are asserted to exist by manual.test.ts — a dead link
+              opens the manual at nothing and reads as the manual being broken.
+            */}
+            <button
+              className="tab help-link"
+              title="Open the manual for this tab"
+              aria-label="Open the manual for this tab"
+              onClick={() => onOpenManual?.(SETTINGS_HELP[tab])}
+            >
+              ?
+            </button>
           </nav>
 
           <div className="settings-pane">

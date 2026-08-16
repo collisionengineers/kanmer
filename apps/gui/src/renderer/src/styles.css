@@ -1832,3 +1832,53 @@ button.danger {
 .backlog-title {
   max-width: 46vw;
 }
+
+/* In-app manual (GUI-017) */
+.modal.manual {
+  width: min(980px, 92vw);
+  height: min(720px, 86vh);
+  display: flex;
+  flex-direction: column;
+}
+.manual-search {
+  margin-left: 12px;
+  min-width: 220px;
+}
+.manual-shell {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.manual-rail {
+  width: 220px;
+  flex-shrink: 0;
+  overflow: auto;
+  border-right: 1px solid var(--border);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.manual-rail .tab {
+  text-align: left;
+  display: block;
+  width: 100%;
+}
+.manual-hit {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.manual-body {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 12px 18px;
+}
+.help-link {
+  margin-left: auto;
+  opacity: 0.7;
+}

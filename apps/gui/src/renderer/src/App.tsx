@@ -39,6 +39,7 @@ import { ActivityPanel } from "./components/ActivityPanel.js";
 import { CommandPalette, type PaletteCommand } from "./components/CommandPalette.js";
 import { ConfirmModal } from "./components/ConfirmModal.js";
 import { TicketCreate } from "./components/TicketCreate.js";
+import { GroupView } from "./components/GroupView.js";
 import { Welcome } from "./components/Welcome.js";
 
 type View = "ticket" | "standup" | "archived";
@@ -111,6 +112,8 @@ export function App(): JSX.Element {
   const [changeSignal, setChangeSignal] = useState(0);
   const [migrateReport, setMigrateReport] = useState<MigrationReport | null>(null);
   const [migrating, setMigrating] = useState(false);
+  /** An open group detail view, or null. Opened from a group chip or filter. */
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   // Auto-update. `updateDismissed` is per-session only (no "skip this version"
   // persistence): "Later" costs nothing, since the update installs on the next
@@ -1039,6 +1042,7 @@ export function App(): JSX.Element {
           filters={filters}
           onFilters={setFilters}
           searchRef={searchRef}
+          onOpenGroup={setOpenGroup}
         />
       )}
 
@@ -1059,6 +1063,7 @@ export function App(): JSX.Element {
               onMoveRelative={onMoveRelative}
               onQuickAdd={onQuickAdd}
               onContext={onCardContext}
+            onFilterGroup={(g) => setFilters((f) => ({ ...f, group: g }))}
               blocked={blocked}
               dispatching={dispatching}
               density={settings?.cardDensity ?? "comfortable"}
@@ -1411,6 +1416,17 @@ export function App(): JSX.Element {
           onSetNotifications={setNotifications}
           onSetPreferences={setPreferences}
           onClose={() => setSettingsOpen(false)}
+        />
+      )}
+
+      {openGroup && (
+        <GroupView
+          id={openGroup}
+          onClose={() => setOpenGroup(null)}
+          onOpenTicket={(tid) => {
+            setOpenGroup(null);
+            trySelect(tid);
+          }}
         />
       )}
 

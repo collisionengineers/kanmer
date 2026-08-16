@@ -18,6 +18,8 @@ interface BoardProps {
   onContext: (item: Item, x: number, y: number) => void;
   /** Ids with a live blocker — computed once in App, read per card as a boolean. */
   blocked: Set<string>;
+  /** Click a group chip to filter every view to it. */
+  onFilterGroup: (groupId: string) => void;
   /** Ids with a background agent dispatch in flight. */
   dispatching?: Set<string>;
   /** Card density preference (Phase 4.4): "compact" tightens padding/gaps. */
@@ -59,6 +61,7 @@ export function Board(props: BoardProps): JSX.Element {
     onMoveRelative,
     onQuickAdd,
     onContext,
+    onFilterGroup,
     blocked,
     dispatching,
     density,
@@ -213,6 +216,7 @@ export function Board(props: BoardProps): JSX.Element {
                     onSelect={onSelect}
                     onMoveRelative={onMoveRelative}
                     onContext={onContext}
+                    onFilterGroup={onFilterGroup}
                     onCardDragOver={onCardDragOver}
                     onCardDragLeave={onCardDragLeave}
                     onCardDrop={onCardDrop}
@@ -251,6 +255,7 @@ const Card = memo(function CardInner({
   onSelect,
   onMoveRelative,
   onContext,
+  onFilterGroup,
   onCardDragOver,
   onCardDragLeave,
   onCardDrop,
@@ -267,6 +272,7 @@ const Card = memo(function CardInner({
   onSelect: (id: string) => void;
   onMoveRelative: (id: string, dir: -1 | 1) => void;
   onContext: (item: Item, x: number, y: number) => void;
+  onFilterGroup: (groupId: string) => void;
   onCardDragOver: (statusId: string, id: string, edge: "before" | "after") => void;
   onCardDragLeave: (id: string) => void;
   onCardDrop: (
@@ -356,6 +362,22 @@ const Card = memo(function CardInner({
             ⏳ agent
           </span>
         )}
+        {/* Group chips are the cross-cutting lens the labels used to fake.
+            Clicking one filters every view to that group. */}
+        {(item.groups ?? []).map((g) => (
+          <button
+            key={g}
+            type="button"
+            className="chip group"
+            title={`Filter to ${g}`}
+            onClick={(e) => {
+              e.stopPropagation(); // the card's own onClick would also select it
+              onFilterGroup(g);
+            }}
+          >
+            {g}
+          </button>
+        ))}
         {item.deployment && item.deployment !== "n/a" && (
           <span
             className={item.deployment === "not-deployed" ? "chip deploy off" : "chip deploy"}

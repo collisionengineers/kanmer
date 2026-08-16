@@ -1688,3 +1688,55 @@ button.danger {
 .readiness-none {
   margin: 0 0 12px;
 }
+
+/* Group chips and the group detail view (FRD-001 G8). */
+.chip.group {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  background: var(--accent-dim);
+  color: var(--text);
+}
+.chip.group:hover {
+  background: var(--accent);
+}
+.group-view .progress-bar {
+  height: 6px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.group-view .progress-fill {
+  height: 100%;
+  background: var(--accent);
+}
+.group-view .stage-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.group-view .member-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.group-view .member-table td {
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--line);
+}
+.group-view .member-table tr.archived {
+  opacity: 0.55;
+}
+.group-view .group-context {
+  width: 100%;
+  min-height: 8em;
+}
+.linkish {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}

@@ -18,6 +18,8 @@ interface FilterBarProps {
   filters: Filters;
   onFilters: (f: Filters) => void;
   searchRef?: React.RefObject<HTMLInputElement>;
+  /** Open the filtered group's detail view. */
+  onOpenGroup?: (id: string) => void;
 }
 
 export function FilterBar({
@@ -28,6 +30,7 @@ export function FilterBar({
   filters,
   onFilters,
   searchRef,
+  onOpenGroup,
 }: FilterBarProps): JSX.Element {
   // Groups come from the tickets themselves, so the dropdown only ever offers
   // groups something is actually in — an empty group is not a useful lens.
@@ -82,6 +85,15 @@ export function FilterBar({
             </option>
           ))}
         </select>
+      )}
+      {filters.group && onOpenGroup && (
+        <button
+          className="ghost sm"
+          title="Open this group"
+          onClick={() => onOpenGroup(filters.group!)}
+        >
+          Open {filters.group}
+        </button>
       )}
 
       {assignees.length > 0 && (

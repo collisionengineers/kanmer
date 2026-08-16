@@ -4,8 +4,8 @@ type: ticket
 title: 7.3 Convert phase labels to epic groups
 status: backlog
 area: skills
-priority: medium
 assignee: ''
+profile: feature
 labels:
   - v3-phase-7
 links: []

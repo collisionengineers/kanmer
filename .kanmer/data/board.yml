@@ -1,18 +1,3 @@
-statuses:
-  - id: backlog
-    name: Backlog
-  - id: researching
-    name: Researching
-  - id: planning
-    name: Planning
-  - id: implementing
-    name: Implementing
-  - id: review
-    name: Review
-  - id: verifying
-    name: Verifying
-  - id: done
-    name: Done
 areas:
   - id: pr-review
     name: PR Review
@@ -38,25 +23,49 @@ areas:
     name: Docs
     color: "#c8a2ff"
     prefix: DOC
-priorities:
-  - id: low
-    name: Low
-    color: "#6b7280"
-  - id: medium
-    name: Medium
-    color: "#5b8cff"
-  - id: high
-    name: High
-    color: "#ffcf7a"
-  - id: urgent
-    name: Urgent
-    color: "#ff6b6b"
 idPrefixes:
   ticket: TICK
   plan: PLAN
   research: RES
-docs:
-  repoDocs:
-    prd: docs/product/prd/**
-    frd: docs/functional/frd/**
-    adr: docs/architecture/adr/**
+profiles:
+  feature:
+    leave-backlog:
+      - governing-doc
+    leave-preparing:
+      - research
+      - files
+      - plan
+      - checklist
+    enter-review:
+      - post-implementation-report
+    enter-done:
+      - proof
+  fix:
+    leave-preparing:
+      - files
+      - plan
+    enter-done:
+      - proof
+  chore:
+    leave-preparing:
+      - plan
+    enter-done:
+      - proof
+  spike:
+    enter-done:
+      - research
+  custom: {}
+defaultProfile: fix
+groupKinds:
+  - id: epic
+    name: Epic
+    prefix: EPIC
+    color: "#b48cff"
+  - id: horizon
+    name: Horizon
+    prefix: HZN
+    color: "#5bd1c9"
+proofTypes:
+  - visual
+  - test-output
+  - command-log

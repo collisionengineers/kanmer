@@ -4,8 +4,8 @@ type: ticket
 title: 3.1 Group entity
 status: backlog
 area: core
-priority: medium
 assignee: ''
+profile: feature
 labels:
   - v3-phase-3
 links: []

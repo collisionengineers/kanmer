@@ -4,8 +4,9 @@ type: ticket
 title: refs cannot be set on a board-worktree project
 status: done
 area: core
-priority: medium
 assignee: ''
+profile: custom
+requires: {}
 labels:
   - v3-blocker
   - bug

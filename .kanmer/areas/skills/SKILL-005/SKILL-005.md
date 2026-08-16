@@ -4,8 +4,8 @@ type: ticket
 title: 6.5 AGENTS block rewrite
 status: backlog
 area: skills
-priority: medium
 assignee: ''
+profile: feature
 labels:
   - v3-phase-6
 links: []

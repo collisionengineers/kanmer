@@ -1,3 +1,5 @@
 {
-  "format": 2
+  "format": 3,
+  "migratedFrom": 2,
+  "migratedAt": "2026-08-16T03:16:16.576Z"
 }

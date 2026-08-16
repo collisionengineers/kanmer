@@ -4,8 +4,8 @@ type: ticket
 title: 7.1 Migrate this board to format 3
 status: backlog
 area: core
-priority: medium
 assignee: ''
+profile: feature
 labels:
   - v3-phase-7
 links: []

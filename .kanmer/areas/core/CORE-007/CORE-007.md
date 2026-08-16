@@ -4,8 +4,8 @@ type: ticket
 title: 2.6 The format-3 migration
 status: backlog
 area: core
-priority: medium
 assignee: ''
+profile: feature
 labels:
   - v3-phase-2
 links: []

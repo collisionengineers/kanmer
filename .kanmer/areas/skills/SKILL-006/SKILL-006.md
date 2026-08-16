@@ -4,8 +4,8 @@ type: ticket
 title: 7.2 Backfill pre-board history
 status: backlog
 area: skills
-priority: medium
 assignee: ''
+profile: feature
 labels:
   - v3-phase-7
 links: []

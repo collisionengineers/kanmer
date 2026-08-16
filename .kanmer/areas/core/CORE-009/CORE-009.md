@@ -4,8 +4,8 @@ type: ticket
 title: 3.3 Prompt/dispatch SSOT
 status: backlog
 area: core
-priority: medium
 assignee: ''
+profile: feature
 labels:
   - v3-phase-3
 links: []

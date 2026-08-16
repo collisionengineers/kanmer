@@ -4,8 +4,8 @@ type: ticket
 title: 6.1 Roster sweep
 status: backlog
 area: skills
-priority: medium
 assignee: ''
+profile: feature
 labels:
   - v3-phase-6
 links: []

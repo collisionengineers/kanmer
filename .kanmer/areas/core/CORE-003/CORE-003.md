@@ -4,8 +4,8 @@ type: ticket
 title: 2.2 Profiles engine
 status: backlog
 area: core
-priority: medium
 assignee: ''
+profile: feature
 labels:
   - v3-phase-2
 links: []

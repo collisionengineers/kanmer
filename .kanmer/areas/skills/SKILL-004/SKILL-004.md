@@ -4,8 +4,8 @@ type: ticket
 title: 6.4 Setup reconciliation
 status: backlog
 area: skills
-priority: medium
 assignee: ''
+profile: feature
 labels:
   - v3-phase-6
 links: []

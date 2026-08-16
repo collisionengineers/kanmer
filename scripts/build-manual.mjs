@@ -32,7 +32,6 @@ const FROM_FRD = [
   ["groups", "Epics and horizons", "FRD-001-groups.md"],
   ["proof", "Proof", "FRD-006-typed-proof.md"],
   ["references", "Reference files", "FRD-004-reference-files.md"],
-  ["backlog", "The Backlog list", "FRD-011-backlog-list-view.md"],
   ["dispatch", "Dispatching agents", "FRD-010-task-scoped-dispatch.md"],
   ["board-sync", "Sharing the board over Git", "FRD-020-board-git-worktree-sync.md"],
 ];

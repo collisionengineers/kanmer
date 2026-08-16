@@ -24,15 +24,15 @@ A **group** is a cross-cutting, kind-typed collection of tickets with its own fo
 
 - G6. **Skills read group context**: research/plan/execute begin by reading the ticket's groups' shared docs (part of read-everything, FRD-003 T9); the AGENTS block states it.
 - G7. **Label→group migration** (kanmer-groom): propose a mapping from label conventions (capability-id labels → `epic` groups; `now`/`next`/`post-alpha` → `horizon` groups; `blocked` labels → real `blocks:` edges), preview counts, apply on confirm. Idempotent.
-- G8. GUI surface (specified in FRD-011/019): group chips on cards (click → filter), a group dropdown in the FilterBar, and a **group detail view** — the group doc, its shared files, and the derived member list with stages/progress.
+- G8. GUI surface (specified in FRD-019): group chips on cards (click → filter), a group dropdown in the FilterBar, and a **group detail view** — the group doc, its shared files, and the derived member list with stages/progress.
 
 ## Acceptance criteria
 
 1. `EPIC-001` with `context.md`; three member tickets across two areas; `get_group` derives all three with stages; archiving one member updates progress with no group-file write.
 2. An agent researching a member ticket demonstrably consulted `groups/EPIC-001/context.md`.
 3. On a board using label conventions, the migration converts capability-style labels (e.g. `INT-14`) to epic groups and horizon-style labels (`now`/`next`/`post-alpha`) to horizon groups, preview-first — and re-running proposes nothing.
-4. A `horizon` filter (`NOW`) narrows every view (board + backlog) to its members.
+4. A `horizon` filter (`NOW`) narrows every view to its members.
 5. No file anywhere stores a group's member list.
 
 ## Related
-ADR-0001 · D2/D9/D10/D15/D17/D18/D23/D26 · FRD-011 · FRD-019.
+ADR-0001 · D2/D9/D10/D15/D17/D18/D23/D26 · FRD-011 (**withdrawn**, GUI-070) · FRD-019.

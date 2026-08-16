@@ -2,7 +2,7 @@ import type { BoardConfig, Item } from "@kanmer/core";
 import { distinct } from "../lib/board.js";
 
 export interface Filters {
-  /** A group id — the cross-cutting lens (FRD-001 G8, FRD-011 R4). */
+  /** A group id — the cross-cutting lens (FRD-001 G8). */
   group?: string;
   area?: string; // undefined = all, "" = no area, else area id
   priority?: string;

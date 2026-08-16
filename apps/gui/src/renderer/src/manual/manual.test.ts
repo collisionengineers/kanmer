@@ -53,11 +53,13 @@ describe("the shortcuts chapter matches the binding table", () => {
   });
 
   it("documents a view shortcut covering every view", () => {
-    // The bug this ticket found: Ctrl+1..3 against four views, so Archived had
-    // no shortcut and Ctrl+2 opened the wrong one.
+    // The bug this test was written for: Ctrl+1..3 against four views, so
+    // Archived had no shortcut and Ctrl+2 opened the wrong one. GUI-070 removed
+    // the Backlog view, so the set is three again — the assertion has to shrink
+    // with it, but it must still name every view, which is the actual check.
     const entry = SHORTCUTS.find((s) => s.keys.startsWith("Ctrl+1"));
     expect(entry, "a view-switch shortcut must exist").toBeDefined();
-    for (const view of ["Board", "Backlog", "Standup", "Archived"]) {
+    for (const view of ["Board", "Standup", "Archived"]) {
       expect(entry!.label, view).toContain(view);
     }
   });

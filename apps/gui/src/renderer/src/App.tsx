@@ -32,7 +32,6 @@ import type {
 } from "../../shared/ipc.js";
 import { Board } from "./components/Board.js";
 import { Manual } from "./components/Manual.js";
-import { BacklogTable } from "./components/BacklogTable.js";
 import { TabStrip, type Tab } from "./components/TabStrip.js";
 import { ArchivedList } from "./components/ArchivedList.js";
 import { Editor } from "./components/Editor.js";
@@ -46,11 +45,10 @@ import { TicketCreate } from "./components/TicketCreate.js";
 import { GroupView } from "./components/GroupView.js";
 import { Welcome } from "./components/Welcome.js";
 
-type View = "ticket" | "backlog" | "standup" | "archived";
+type View = "ticket" | "standup" | "archived";
 
 const VIEW_LABELS: Record<View, string> = {
   ticket: "Board",
-  backlog: "Backlog",
   standup: "Standup",
   archived: "Archived",
 };
@@ -930,7 +928,10 @@ export function App(): JSX.Element {
         // Derived from the view list, not a parallel array. The old
         // ["ticket","standup","archived"] went stale the moment the Backlog
         // view was added — Ctrl+2 opened Standup while the second tab was
-        // Backlog. Deriving removes the class of bug, not just this instance.
+        // Backlog. Deriving removes the class of bug, not just this instance:
+        // removing that same view again (GUI-070) renumbered Ctrl+1…3 with no
+        // edit here at all. The hand-written label in shared/shortcuts.ts is
+        // the part that still has to be kept in step by hand.
         const views = Object.keys(VIEW_LABELS) as View[];
         const target = views[Number(e.key) - 1];
         if (target) {
@@ -1180,35 +1181,6 @@ export function App(): JSX.Element {
               blocked={blocked}
               dispatching={dispatching}
               density={settings?.cardDensity ?? "comfortable"}
-            />
-          ) : view === "backlog" ? (
-            <BacklogTable
-              items={viewItems.filter((i) => i.status === "backlog" && !i.archived)}
-              selectedId={selectedId}
-              onSelect={trySelect}
-              // Rejects per ticket so a mixed bulk selection partly succeeds;
-              // the table collects the failures and reports them with reasons.
-              onMove={async (id) => {
-                await clientRef.current!.moveItem(id, { status: "preparing" });
-                await refresh();
-              }}
-              onArchive={async (ids) => {
-                for (const id of ids) await clientRef.current!.updateItem(id, { archived: true });
-                await refresh();
-              }}
-              onAddToGroup={async (ids, groupId) => {
-                for (const id of ids) {
-                  // Re-read: the list was captured before this loop began, and
-                  // a patch built from it would drop a group added a moment ago.
-                  const cur = await clientRef.current!.getItem(id);
-                  const groups = cur?.groups ?? [];
-                  if (!groups.includes(groupId)) {
-                    await clientRef.current!.updateItem(id, { groups: [...groups, groupId] });
-                  }
-                }
-                await refresh();
-              }}
-              groups={[...new Set(items.flatMap((i) => i.groups ?? []))].sort()}
             />
           ) : view === "standup" ? (
             <Standup
@@ -1719,7 +1691,7 @@ function applyFilters(list: Item[], search: string, filters: Filters): Item[] {
     if (filters.assignee && item.assignee !== filters.assignee) return false;
     if (filters.label && !(item.labels ?? []).includes(filters.label)) return false;
     // The group lens narrows every view, which is what makes a horizon group
-    // ("what matters now") useful rather than decorative (FRD-001 G8 / FRD-011 R4).
+    // ("what matters now") useful rather than decorative (FRD-001 G8).
     if (filters.group && !(item.groups ?? []).includes(filters.group)) return false;
     if (q) {
       const hay = [item.id, item.title, item.body, item.assignee, ...(item.labels ?? [])]

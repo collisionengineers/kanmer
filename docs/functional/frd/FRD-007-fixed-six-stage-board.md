@@ -25,7 +25,7 @@ Every Kanmer board has the same six stages, in the same order, non-customizable:
 - B1. Stage ids/names/order/colours are constants in `@kanmer/core`; `statuses:` no longer exists in `board.yml` (ADR-0002).
 - B2. Movement: any stage → any stage in one call, gated per FRD-002 G2. Taken semantics (`taken_at`/`branch`/`worktree`) and blocked derivation (`blocks:` edges vs. final stage) are unchanged from v2.
 - B3. Removed surfaces: the GUI Board-settings stage editor; the MCP status-column mutations (`add/update/remove/reorder_column` for statuses). Areas remain fully editable; deployment environments, doc-type vocabulary, and profiles remain configurable (D21).
-- B4. The kanban renders Preparing → Done; Backlog renders as the dedicated list view (FRD-011).
+- B4. The kanban renders **all six stages, Backlog → Done**, Backlog first (GUI-069) — and that is the only place backlog tickets appear. Both halves of this behaviour were once the opposite: the kanban rendered Preparing → Done and Backlog rendered as a dedicated list view (FRD-011). That view was built, shipped, and withdrawn (GUI-070) because two surfaces showing the same tickets cost more than the list was worth; the bulk triage it offered was weighed and dropped rather than moved onto the board, so the Backlog column is deliberately plain.
 - B5. Skills and the GUI may reference stage ids literally; defensive stage resolution (`list_board` before every move) is no longer required, though `list_board` still reports the stages for orientation.
 
 ## Delivery requirement: the format-3 migration (per ADR-0008)
@@ -54,4 +54,4 @@ GUI Board tab shrinks to areas only; palette/context-menu Move verbs use the con
 
 ## Related
 
-ADR-0002 (fixed stages) · ADR-0008 (single migration) · FRD-002 (boundaries) · FRD-008 (priority removal) · FRD-011 (backlog view) · PRD-001.
+ADR-0002 (fixed stages) · ADR-0008 (single migration) · FRD-002 (boundaries) · FRD-008 (priority removal) · FRD-011 (backlog view — **withdrawn**, GUI-070) · PRD-001.

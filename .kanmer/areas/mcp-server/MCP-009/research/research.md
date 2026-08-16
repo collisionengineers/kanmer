@@ -320,10 +320,23 @@ Clean stdout, exit 0. `agy --help` also documents `--output-format
 with `["-p", prompt]` — identical to Claude's shape. [[GUI-073]] asks this exact
 question ("is `dispatch: false` still true?"); the answer is no.
 
-### 4c. But Antigravity does NOT read project skill directories — verified with a control
+### 4c. ⚠ SUPERSEDED — Antigravity DOES read project skill directories
 
-This contradicts ADR-0009, FRD-012 and `providers.ts`, so it was tested twice
-with a positive control.
+> **OVERTURNED 2026-08-16 by adjudication** (`scratch/adjudication.md`). The
+> conclusion originally drawn in this sub-finding — that `agy` reads no project
+> skills directory — is **false**. Ten runs on one throwaway tree, positive
+> controls in every run, corroborated by the probe MCP server's own process log,
+> established that `.agents/skills/` and `.agents/mcp_config.json` **are** read
+> by `agy` 1.1.13 and are functionally live: the skill executed, the MCP server
+> spawned, its tool returned a value. [[GUI-073]] was right.
+>
+> **The gate is a bound workspace folder.** The transcripts below are kept
+> because the observations were real and the *reasons* they misled are the most
+> valuable thing this research produced — see §Finding 4d for the corrected
+> account and the two independent causes.
+
+The original (wrong) reasoning follows, retained for the record. It was tested
+twice with a positive control.
 
 Negative, in the real repo (which has 12 `kanmer-*` skills in `.claude/skills/`):
 ```powershell
@@ -346,17 +359,52 @@ kanmer-plan, kanmer-research, kanmer-review, kanmer-setup, kanmer-tickets,
 kanmer-verify
 ```
 
-The probe detects skills when they are present, so the NONE results are
-evidence of absence rather than absence of evidence. Antigravity's skill
-delivery on this build is **the plugin install**, which copies to
-`~/.gemini/config/plugins/<name>/skills/` (global), not a project tree.
+*(Original conclusion, now retracted: "The probe detects skills when they are
+present, so the NONE results are evidence of absence rather than absence of
+evidence." **This inference was wrong** — see §Finding 4d. The positive control
+proved the probe could see skills delivered by `agy plugin install`; it did not
+prove the probe could see skills delivered by a project tree, because the two
+travel by different mechanisms and only the first was ever exercised
+successfully. A control that passes on a different mechanism is not a control.)*
 
-Consequence: `providers.ts`'s `.agents/skills` write for Antigravity is inert,
-ADR-0009's "Antigravity at project `<root>/.agents/skills/`" is not reproducible
-here, and FRD-012 AC2 ("Connect opencode and Antigravity: both discover the
-roster from one `.agents/skills/` tree") **cannot pass for Antigravity**. See
-open question Q1 — this is one CLI build on one platform, and the operator may
-have verified the *IDE* rather than the CLI.
+### 4d. The corrected account — the gate is a bound workspace folder
+
+Established by the adjudication, all of it tested explicitly:
+
+- `.agents/skills/` and `.agents/mcp_config.json` **are** read by `agy` 1.1.13,
+  and are functionally live end to end — skill executed, MCP server spawned,
+  tool returned a value.
+- **Bare `agy` binds to `default-cli-project`**, whose record carries
+  `"projectResources": {}`. There is no folder, so there is nothing to read
+  `.agents/` from. **The working directory is irrelevant.**
+- `--new-project`, `--project <id>` with a `folderUri`, and `--add-dir <path>`
+  each bind a workspace folder. `--add-dir` persists nothing.
+- **Workspace trust is not the gate** — the probe directory was never trusted
+  and everything loaded regardless.
+- **A git root does not auto-bind.**
+- **Project existence is not enough** — only the flag on the command line binds.
+
+Two independent reasons the original probe returned NONE, both worth recording
+because both will catch the next person:
+
+1. The probe session was almost certainly not workspace-bound, which is the gate.
+2. **A workspace MCP server never surfaces as a named top-level tool.** It
+   appears as the generic `call_mcp_tool` / `list_resources` / `read_resource`
+   triad. **Grepping a tool list for the server's own tool name is a false
+   negative even when the server is connected.** The tool list was a proxy;
+   calling the tool is the mechanism.
+
+The sharper rule this produced, and the one shipped into ADR-0009: a positive
+control is necessary but **not sufficient** — *verify the mechanism you are
+actually testing, not a proxy for it.*
+
+Consequence: `providers.ts`'s `.agents/skills` write for Antigravity is
+**correct**, ADR-0009's convergence claim **holds**, and FRD-012 AC2 is
+satisfiable — but only in a workspace-bound session, and **Kanmer establishes no
+binding today**. A grep across `apps/` and `packages/` for `--project`,
+`--new-project`, `--add-dir` or any `agy` invocation returns nothing, so the
+write is correct and currently **inert**. [[MCP-015]] owns making it live;
+[[GUI-073]] owns saying it.
 
 ---
 

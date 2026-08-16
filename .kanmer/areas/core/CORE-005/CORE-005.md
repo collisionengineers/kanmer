@@ -2,7 +2,7 @@
 id: CORE-005
 type: ticket
 title: 2.4 Typed proof
-status: backlog
+status: done
 area: core
 assignee: ''
 profile: feature
@@ -17,7 +17,7 @@ refs:
   - docs/architecture/adr/ADR-0005-proof-not-deployment.md
 archived: false
 created: '2026-08-16T00:30:18.673Z'
-updated: '2026-08-16T02:24:35.563Z'
+updated: '2026-08-16T03:20:48.862Z'
 ---
 
 Board `proofTypes` with shipped defaults (visual, test-output, command-log), reusing deployment env ids for `@<env>`. Requirement parser for `proof`, `proof:visual`, `proof:visual@staging`. Soft-warning computation inside `getDocGates` — visual with no images under `proof/` warns, never blocks.

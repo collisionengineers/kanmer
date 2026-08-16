@@ -2,7 +2,7 @@
 id: CORE-007
 type: ticket
 title: 2.6 The format-3 migration
-status: backlog
+status: done
 area: core
 assignee: ''
 profile: feature
@@ -18,7 +18,7 @@ refs:
   - docs/functional/frd/FRD-002-requirement-profiles.md
 archived: false
 created: '2026-08-16T00:30:18.696Z'
-updated: '2026-08-16T02:24:35.577Z'
+updated: '2026-08-16T03:20:48.919Z'
 ---
 
 v->3 in one pass: status alias table (case-insensitive, 7 stages collapse to 6), `needs-restage` fallback with a report list, doc folder moves byte-preserved, priority strip with count, profile assignment (**active -> `feature`**, done/archived -> `custom` empty) with report, board.yml rewrite. Dry-run parity, idempotent, resumable, blockers surfaced. Shared core fn used by both MCP and GUI.

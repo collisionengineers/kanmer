@@ -2,7 +2,7 @@
 id: CORE-006
 type: ticket
 title: 2.5 Priority removal
-status: backlog
+status: done
 area: core
 assignee: ''
 profile: feature
@@ -17,7 +17,7 @@ refs:
   - docs/architecture/adr/ADR-0006-priority-removed.md
 archived: false
 created: '2026-08-16T00:30:18.684Z'
-updated: '2026-08-16T02:24:35.570Z'
+updated: '2026-08-16T03:20:48.892Z'
 ---
 
 Drop `priority` from the schema and `KEY_ORDER`; leave passthrough so existing files keep the key harmlessly until migration strips it. Filter params dropped.

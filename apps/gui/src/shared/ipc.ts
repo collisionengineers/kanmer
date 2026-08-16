@@ -86,6 +86,10 @@ export const CH = {
   updateGroup: "kanmer:updateGroup",
   getGroupDoc: "kanmer:getGroupDoc",
   setGroupDoc: "kanmer:setGroupDoc",
+  pickReferences: "kanmer:pickReferences",
+  addReference: "kanmer:addReference",
+  openReference: "kanmer:openReference",
+  removeReference: "kanmer:removeReference",
   getActivity: "kanmer:getActivity",
   changed: "kanmer:changed",
   /** Main → renderer: reveal an item (toast click, etc.). */
@@ -362,6 +366,14 @@ export interface KanmerApi {
   migrate(projectId: string, dryRun: boolean): Promise<BoardMigrationReport>;
   /** Backfill the 7-stage default onto an already-v2 board (dryRun previews). */
   backfillBoard(projectId: string, dryRun: boolean): Promise<{ addedStages: string[] }>;
+  /** Native multi-select picker for reference files; [] when cancelled. */
+  pickReferences(projectId: string): Promise<string[]>;
+  /** Copy a file into the ticket's gate-exempt `reference/` folder. */
+  addReference(projectId: string, id: string, sourcePath: string): Promise<{ name: string }>;
+  /** Open a reference in the OS default application. */
+  openReference(projectId: string, id: string, name: string): Promise<void>;
+  /** Delete a reference. Irreversible — confirm before calling. */
+  removeReference(projectId: string, id: string, name: string): Promise<void>;
   /** A project's current on-disk format — re-read after an external migration. */
   getFormat(projectId: string): Promise<1 | 2 | 3>;
   /**

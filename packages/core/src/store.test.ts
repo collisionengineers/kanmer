@@ -950,3 +950,70 @@ describe("format v1 compatibility", () => {
     expect(before).not.toContain(created.id);
   });
 });
+
+
+describe("reference files", () => {
+  let root: string;
+  let store: KanmerStore;
+  let src: string;
+
+  beforeEach(async () => {
+    root = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-refs-"));
+    store = new KanmerStore(root);
+    await store.init();
+    src = path.join(root, "mockup.png");
+    await fs.writeFile(src, "PNG-BYTES", "utf8");
+  });
+
+  afterEach(async () => {
+    await fs.rm(root, { recursive: true, force: true });
+  });
+
+  it("copies a file in and lists it, without touching gates", async () => {
+    const t = await store.createItem({ type: "ticket", title: "Ref" });
+    expect(await store.addReference(t.id, src)).toEqual({ name: "mockup.png" });
+
+    const info = await store.getTicketDocsInfo(t.id);
+    expect(info?.references.map((r) => r.name)).toEqual(["mockup.png"]);
+
+    // reference/ is gate-exempt: a file here must never satisfy a requirement.
+    expect(info?.docs.research ?? false).toBe(false);
+  });
+
+  it("suffixes a colliding name instead of overwriting", async () => {
+    const t = await store.createItem({ type: "ticket", title: "Ref" });
+    await store.addReference(t.id, src);
+    const second = await store.addReference(t.id, src);
+    expect(second.name).toBe("mockup-2.png");
+    const third = await store.addReference(t.id, src);
+    expect(third.name).toBe("mockup-3.png");
+
+    const info = await store.getTicketDocsInfo(t.id);
+    expect(info?.references).toHaveLength(3);
+    // The first file still holds its original bytes.
+    const first = info!.references.find((r) => r.name === "mockup.png")!;
+    expect(await fs.readFile(first.path, "utf8")).toBe("PNG-BYTES");
+  });
+
+  it("refuses a name that would escape the ticket folder", async () => {
+    const t = await store.createItem({ type: "ticket", title: "Ref" });
+    for (const bad of ["../escape.png", "..", "sub/dir.png", "."]) {
+      await expect(store.addReference(t.id, src, bad), bad).rejects.toThrow();
+    }
+    // Nothing was written anywhere.
+    const info = await store.getTicketDocsInfo(t.id);
+    expect(info?.references ?? []).toEqual([]);
+  });
+
+  it("removes a reference, and refuses to remove outside the folder", async () => {
+    const t = await store.createItem({ type: "ticket", title: "Ref" });
+    await store.addReference(t.id, src);
+    await expect(store.removeReference(t.id, "../../mockup.png")).rejects.toThrow(/outside/);
+    await store.removeReference(t.id, "mockup.png");
+    expect((await store.getTicketDocsInfo(t.id))?.references).toEqual([]);
+  });
+
+  it("errors on an unknown ticket", async () => {
+    await expect(store.addReference("NOPE-001", src)).rejects.toThrow(/No item with id/);
+  });
+});

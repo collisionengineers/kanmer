@@ -75,6 +75,10 @@ const api: KanmerApi = {
   updateGroup: (p, id, patch) => ipcRenderer.invoke(CH.updateGroup, p, id, patch),
   getGroupDoc: (p, id, rel) => ipcRenderer.invoke(CH.getGroupDoc, p, id, rel),
   setGroupDoc: (p, id, rel, c) => ipcRenderer.invoke(CH.setGroupDoc, p, id, rel, c),
+  pickReferences: (p) => ipcRenderer.invoke(CH.pickReferences, p),
+  addReference: (p, id, src) => ipcRenderer.invoke(CH.addReference, p, id, src),
+  openReference: (p, id, name) => ipcRenderer.invoke(CH.openReference, p, id, name),
+  removeReference: (p, id, name) => ipcRenderer.invoke(CH.removeReference, p, id, name),
   getActivity: (p, opts) => ipcRenderer.invoke(CH.getActivity, p, opts),
   onChange: (cb) => {
     const listener = (_e: unknown, payload: ChangePayload) => cb(payload);

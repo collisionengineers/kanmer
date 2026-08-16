@@ -1758,3 +1758,25 @@ button.danger {
   cursor: pointer;
   padding: 0;
 }
+
+/* Reference files (GUI-010) */
+.references {
+  border-top: 1px solid var(--border);
+  padding: 8px 12px;
+}
+.references.dropping {
+  outline: 2px dashed var(--accent, #5b8cff);
+  outline-offset: -4px;
+}
+.reference-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 12px;
+}
+.reference-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}

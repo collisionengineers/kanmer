@@ -32,7 +32,7 @@ prs:
   - '#30'
 archived: false
 created: '2026-08-16T16:11:20.804Z'
-updated: '2026-08-16T17:46:31.535Z'
+updated: '2026-08-16T17:49:04.048Z'
 ---
 
 ## What
@@ -106,32 +106,44 @@ which is the case for demonstrating against real data rather than fixtures:
    never declared, or `spike`'s Backlog → Done jump would have gone from one
    gated boundary to three and been refused.
 
-**Coverage, corrected.** An earlier version of this Outcome said the work
-"shipped narrower than the title suggests" because `fix` and `chore` declare no
-`enter-review` boundary. That was misleading and the operator challenged it.
-Measured across all four profiles with an unticked question and every other
-document present:
+## What is actually guaranteed — corrected twice, by the operator
+
+The first draft of this section called the work "narrower than the title
+suggests" because `fix` and `chore` declare no `enter-review` boundary. Both
+framings that followed were wrong in the same direction, so here is the measured
+position.
+
+Across all four profiles, with an unticked question and every other document
+present:
 
 ```
 fix      implementing -> review   ALLOWED
-fix      review       -> done     REFUSED: entering Done requires questions-resolved
 chore    implementing -> review   ALLOWED
-chore    review       -> done     REFUSED: entering Done requires questions-resolved
-feature  implementing -> review   REFUSED: entering Review requires questions-resolved
 spike    implementing -> review   ALLOWED
-spike    review       -> done     REFUSED: entering Done requires questions-resolved
+feature  implementing -> review   REFUSED: entering Review requires questions-resolved
+
+fix      review -> done           REFUSED: entering Done requires questions-resolved
+chore    review -> done           REFUSED: entering Done requires questions-resolved
+spike    review -> done           REFUSED: entering Done requires questions-resolved
 ```
 
-`enter-done` carries the requirement on **every** profile, so **no ticket reaches
-Done with an open question** — the headline guarantee holds without exception.
-The only difference is *when* the stop lands: `fix`, `chore` and `spike` may sit
-in Review with a question open; `feature` cannot enter Review at all.
+**The guarantee, and it holds without exception: no ticket reaches Done with an
+unresolved question, on any profile.** That is what this ticket promised, and it
+is delivered.
 
-The residue is real but narrow, and belongs at review rather than at Done:
-Review owns the merge point, so on those three profiles a **PR can merge** while
-a question is unanswered. The ticket still cannot close, but the code ships
-first. Only the `kanmer-review` prose convention covers that window, and prose is
-unenforceable — that is the honest statement of the exposure.
+**The merge is protected on no profile, `feature` included.** `kanmer-review`
+merges *then* moves — *"merge the PR (`gh pr merge`), and `move_item <id>
+verifying`"* — and `gh pr merge` is a GitHub operation the gate engine never
+sees. Gates constrain `move_item` and nothing else. A `feature` ticket sitting in
+`implementing` with an open question therefore has a PR exactly as mergeable as a
+`fix` one; its `enter-review` gate only refuses the bookkeeping move *afterwards*,
+once the code has landed.
+
+So the `enter-review` difference between profiles buys nothing at the merge
+point, and giving `fix`/`chore` that boundary — which an earlier note suggested
+as a follow-up — would improve bookkeeping only. Merge-time protection is the
+`kanmer-review` prose convention alone: unenforceable by construction, and not
+improvable by any gate, because the gate engine does not govern git.
 
 **Follow-up not filed as a ticket:** ADR-0011 should gain the two limits above.
 The merged ADR was left stable rather than amended mid-flight; it is a

@@ -122,11 +122,22 @@ argument for demonstrating against real data at all.
   What differs is only *when* the stop lands: `fix`, `chore` and `spike` may sit
   **in Review** with a question open, where `feature` cannot enter Review at all.
 
-  That residue is genuine but small, and worth naming precisely: Review owns the
-  merge point, so on those three profiles a **PR can be merged** while a question
-  is unanswered. The ticket still cannot close — but the code ships first. Only
-  the `kanmer-review` prose convention covers that window, and prose is
-  unenforceable, which is the honest description of the exposure.
+  **And the merge is not protected on any profile — including `feature`.** A
+  second challenge from the operator produced the sharper statement, which
+  supersedes the one this paragraph originally made. `kanmer-review` merges
+  *then* moves: *"merge the PR (`gh pr merge`), and `move_item <id> verifying`."*
+  `gh pr merge` is a GitHub operation the gate engine never sees. Gates constrain
+  `move_item` and nothing else, so a `feature` ticket sitting in `implementing`
+  with an open question has a PR exactly as mergeable as a `fix` one; its
+  `enter-review` gate merely refuses the **bookkeeping move afterwards**, once
+  the code has already landed.
+
+  So the `enter-review` difference between profiles is real for the board's state
+  machine and buys **nothing** at the merge point. What holds universally, and is
+  what the ticket actually promised, is the Done guarantee: no ticket closes with
+  an unresolved question, on any profile. Merge-time protection is the
+  `kanmer-review` convention alone — unenforceable by construction, and not
+  improvable by any gate, because the gate engine does not govern git.
 
 ---
 

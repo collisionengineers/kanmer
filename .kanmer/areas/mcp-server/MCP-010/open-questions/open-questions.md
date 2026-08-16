@@ -1,65 +1,86 @@
 # Open questions — MCP-010
 
-- [ ] **OPERATOR DECISION REQUIRED — is "no board found" fatal, or degraded?**
-      Only the human operator can settle this; it is a product-behaviour call,
-      not a technical one, and the plan must not assume an answer.
-      Today, an MCP server started in a repo with no board still works: the first
-      *write* lazily creates `<cwd>/.kanmer` (`index.ts:58-74` → `store.init()`),
-      which is how `kanmer-setup` onboards a brand-new project. If discovery
-      throwing is fatal at boot, that path disappears — an agent can no longer
-      create a board anywhere without being handed `--root`.
-      Options: **(a)** throw and exit — loudest, but removes bootstrapping;
-      **(b)** boot fine, report `found: false` + the tried list from `get_status`,
-      and throw the full diagnostic from the *first write* — keeps bootstrapping
-      impossible-by-accident while staying loud; **(c)** throw, and add an explicit
-      opt-in (`--init` or `KANMER_INIT=1`) for creating a board at cwd.
-      *Recommendation: (c).* It honours the ticket's "throw, naming every path
-      tried" verbatim, keeps silence impossible, and makes creating a board an
-      explicit act rather than a side effect of a mis-rooted session. (b) is the
-      acceptable fallback if the operator wants zero new flags.
+All five are **resolved**. Q1 by the operator (`scratch/operator-answers.md`,
+2026-08-16); Q2–Q5 by the scheduler (`scratch/scheduling.md`, same day). The
+answers are binding on the plan and are not re-opened here.
 
-- [ ] **Does the ancestor walk pass through a `.git` *file*?** Research says it
-      must: in a git linked worktree `.git` is a file (verified: 66 bytes,
-      `gitdir: …`), and `kanmer-execute` puts every implementing agent inside
-      `.worktrees/<id>`. A boundary of "`.git` exists" would stop there and never
-      find `<repo>/.worktrees/kanmer/.kanmer`. *Recommended answer: the hard
-      boundary is a `.git` **directory** only; a `.git` file is traversed.* This
-      is stated as a question rather than assumed because it is a deliberate
-      narrowing of the wording agreed with the operator ("a `.git` boundary") and
-      must be recorded in ADR-0012 rather than discovered later in a test.
+- [x] **OPERATOR DECISION REQUIRED — is "no board found" fatal, or degraded?**
+      **ANSWERED by the operator: option (c) — throw, PLUS an explicit `--init`
+      opt-in.** (`scratch/operator-answers.md:3-4`.) Concretely, quoting that
+      note: "**Not-found is fatal.** No silent boot into a rootless session. The
+      error names **every path tried**, in order, and names all three
+      recoveries." and "**Bootstrapping survives behind an explicit opt-in.**
+      `--init` (and/or `KANMER_INIT=1`) is what permits creating a board where
+      none was found … it must now be reached only through the opt-in, never by
+      accident."
+      The operator also settled the blast radius: "**`kanmer-setup` is
+      affected.** … Check the skill and any GUI call path that expects lazy
+      creation, and update them in this ticket — a fatal resolver plus a setup
+      flow that assumes lazy creation is a broken product, not two tickets."
+      (`operator-answers.md:27-30`.) `kanmer-setup` is therefore **in scope** for
+      this ticket.
+      And: "The `tried` list in the error is the same list that goes in the
+      `tried` provenance field. One source, two surfaces."
+      (`operator-answers.md:31-32`.)
 
-- [ ] **Which package owns the resolver — `@kanmer/core` or `packages/mcp-server`?**
-      The ticket asks for unit tests with an injected `existsSync`, but
-      `mcp-server` has no vitest, no `test` script, and `FRD-022:48-49` records
-      *deliberately* not adding one. *Recommended answer: `packages/core/src/discover.ts`
-      + `discover.test.ts`, exported from core's barrel, with `root.ts` reduced to
-      the `--root`/`KANMER_ROOT`/discovery composition.* It sits beside
-      `deriveRepoRoot` (its inverse), gets tested by machinery that already runs
-      in `npm test`, and leaves FRD-022's no-vitest statement true. The
-      alternative — adding vitest to `mcp-server` — is defensible but is a
-      governing-doc change on top of a governing-doc change.
+- [x] **Does the ancestor walk pass through a `.git` *file*?**
+      **Yes. Accepted: the hard boundary is a `.git` DIRECTORY only; a `.git`
+      FILE is traversed.** (`scratch/scheduling.md:7-15`.) A linked git worktree's
+      `.git` is a 66-byte `gitdir:` file, and `kanmer-execute` puts every
+      implementing agent inside `.worktrees/<id>` — so "stop wherever `.git`
+      exists" would halt at `<repo>/.worktrees/<ticket-id>` and never find
+      `<repo>/.worktrees/kanmer/.kanmer`, which is the dominant real case.
+      The scheduler flags this as a **correction, not a clarification**: "This
+      corrects the approved plan. The plan document says the walk 'stops at a
+      filesystem root or a `.git` boundary' without distinguishing file from
+      directory. That wording is wrong and is superseded by this note. Say so
+      explicitly in the ADR — a silently corrected premise is how the same
+      mistake returns." (`scheduling.md:17-20`.) ADR-0012 records it as a
+      corrected premise under its own heading.
+      Also accepted there: **probe each level BEFORE applying the boundary**,
+      because the repo root holds both `.git` and `.worktrees/`
+      (`scheduling.md:22-23`).
 
-- [ ] **What is the tie-break when several `.worktrees/*/.kanmer` exist?**
-      `ensureBoardWorktree` creates `.worktrees/kanmer`, but it also adopts a
-      board worktree already checked out at any path (`kanmerGit.ts:119-122`), and
-      `.worktrees/` simultaneously holds per-ticket worktrees that could carry a
-      committed `.kanmer` from their branch. *Recommended answer: exact leaf name
-      `kanmer` wins; otherwise lexicographic first, and name every candidate in
-      the provenance so an ambiguous pick is visible rather than silent.*
-      Cheap to implement, and it makes the failure mode legible.
+- [x] **Which package owns the resolver — `@kanmer/core` or `packages/mcp-server`?**
+      **Accepted: `packages/core/src/discover.ts`**, exported from the core
+      barrel, with `packages/core/src/discover.test.ts` beside it;
+      `packages/mcp-server/src/root.ts` stays thin composition
+      (`scratch/scheduling.md:25-34`). `packages/mcp-server` has no test runner
+      and `FRD-022:48-49` records that absence as deliberate — overturning an
+      approved doc as a side effect of a bug fix is not this ticket's mandate.
+      **No test runner is added to `packages/mcp-server`.**
 
-- [ ] **What is the exact provenance field name and vocabulary?**
-      [[MCP-012]] consumes it in `get_status`, so agreeing it here avoids a rename
-      later. *Recommended answer: `{ root, how, tried }` with
-      `how ∈ "flag" | "env" | "cwd" | "cwd-worktree" | "ancestor" | "ancestor-worktree"`,
-      surfaced as `rootSource` in `get_status` alongside the existing
-      `projectRoot`.* Confirm with whoever plans MCP-012.
+- [x] **What is the tie-break when several `.worktrees/*/.kanmer` exist?**
+      **Accepted: exact leaf `kanmer` wins; otherwise lexicographic; all
+      candidates named in the provenance** (`scratch/scheduling.md:36-41`).
+      `.worktrees/kanmer` is a convention rather than an invariant
+      (`kanmerGit.ts:119-122` adopts a board worktree checked out at any path),
+      so the tie-break must be deterministic and must never silently pick.
+
+- [x] **What is the exact provenance field name and vocabulary?**
+      **Accepted: `{ root, how, tried }` with
+      `how ∈ flag | env | cwd | cwd-worktree | ancestor | ancestor-worktree`,
+      surfaced in `get_status` as `rootSource`** (`scratch/scheduling.md:43-49`).
+      "MCP-010 defines the vocabulary; MCP-012 reports it. MCP-012 does not get
+      to rename it."
+      **One planner-level extension, recorded rather than assumed:** the
+      operator's Q1 answer introduced `--init` *after* Q5 was settled, so the
+      vocabulary has no value for "nothing was found and `--init` permitted a
+      board at cwd". All six settled values keep their exact meaning; a seventh,
+      **`init`**, is added for that case only. Calling it `cwd` would be a lie —
+      `cwd` means "`<cwd>/.kanmer` was found" — and the whole point of this
+      ticket is that a root must never be reported as discovered when it was
+      not. This is an addition, not a rename, so it does not disturb the
+      scheduler's ruling; MCP-012 must report `init` alongside the other six.
+      Recorded in ADR-0012 §Decision.
 
 ## Parked (explicitly deferred)
 
 - [ ] **Should the GUI use the same discovery function?** `openProject` is always
-      given an explicit path, so nothing is broken today. Safe to defer; reopens
-      if a "find my board" affordance is ever added to the welcome screen.
+      given an explicit path, and `connect.ts:47` always emits `--root
+      <boardRoot>`, so no GUI path relies on discovery or on lazy creation and
+      nothing is broken today. Safe to defer; reopens if a "find my board"
+      affordance is ever added to the welcome screen.
 
 - [ ] **Should `--root` pointing at a repo root auto-redirect to its
       `.worktrees/*/.kanmer` board?** Tempting, since the repo-root `.mcp.json`

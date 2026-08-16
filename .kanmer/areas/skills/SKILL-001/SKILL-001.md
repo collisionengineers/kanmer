@@ -2,10 +2,13 @@
 id: SKILL-001
 type: ticket
 title: 6.1 Roster sweep
-status: preparing
+status: implementing
 area: skills
-assignee: ''
+assignee: claude-code
 profile: feature
+taken_at: '2026-08-16T05:02:17.709Z'
+branch: skill-001-roster-sweep
+worktree: .worktrees/skill-001
 labels:
   - v3-phase-6
 links: []
@@ -24,7 +27,7 @@ refs:
   - docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md
 archived: false
 created: '2026-08-16T00:31:38.765Z'
-updated: '2026-08-16T05:00:18.300Z'
+updated: '2026-08-16T05:02:17.709Z'
 ---
 
 All twelve remaining skills: gate prose deleted in favour of `get_doc_gates`; six-stage and folder-path references; read-everything openings including group context; questioning prose per skill; kanmer-research rewritten for quick/deep with source classes; kanmer-auto profile-partitioned waves and files/-overlap lanes; kanmer-verify typed proof; kanmer-execute and kanmer-plan living-docs duties; auto<->dispatch cross-references. **kanmer-import deleted** (13 -> 12).

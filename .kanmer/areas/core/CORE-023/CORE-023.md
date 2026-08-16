@@ -2,12 +2,15 @@
 id: CORE-023
 type: ticket
 title: 'Detect when a repo''s Kanmer is older than the agent''s, and say what is stale'
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-08-16T21:51:29.664Z'
+taken_at: '2026-08-16T23:25:23.323Z'
+branch: core-023-detect-stale-repo
+worktree: .worktrees/core-023
 labels: []
 groups:
   - HZN-003
@@ -17,7 +20,7 @@ refs:
   - docs/architecture/adr/ADR-0008-single-format-3-migration.md
 archived: false
 created: '2026-08-16T18:25:18.669Z'
-updated: '2026-08-16T21:51:29.664Z'
+updated: '2026-08-16T23:25:23.323Z'
 ---
 
 ## What

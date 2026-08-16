@@ -26,8 +26,9 @@ The desktop application around the board.
   - R5b. **Badges and column counts answer different questions, on purpose.**
     The Board's **per-column** counts *do* respond to the active search and
     filters — they count what is visible in that column. So with a filter on,
-    the Board tab may read 131 while the columns beneath it sum to 6. Both
-    numbers are correct: the badge is how much the view holds, the column count
+    the Board tab may read 152 while the columns beneath it sum to 2 (observed
+    under GUI-071 on a 152-ticket board). Both numbers are
+    correct: the badge is how much the view holds, the column count
     is how much matches the filter. This is written down because two numbers in
     the same header area answering different questions otherwise read as a
     defect (GUI-071; before it, R5 was silent on badges and the silence was the

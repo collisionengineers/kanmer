@@ -1,6 +1,6 @@
 ---
 name: kanmer-auto
-description: Autonomously clear a set of Kanmer tickets — target an area (or filter) and drive every eligible ticket through research → plan → execute → review → verify → closeout up to a specified point, orchestrating parallel subagents in conflict-free waves and respecting the document gates. Use when the user says "clear the API area", "work through the backlog", "burn down UI up to review", "do all the tickets in <area>". DO NOT USE FOR a single ticket — use the phase skills directly.
+description: Autonomously clear a set of Kanmer tickets — target an area (or filter) and drive every eligible ticket through its profile's pipeline up to a specified point, orchestrating parallel subagents in conflict-free waves and respecting the document gates. Use when the user says "clear the API area", "work through the backlog", "burn down UI up to review", "do all the tickets in <area>". DO NOT USE FOR a single ticket — use the phase skills directly.
 ---
 
 # Clearing an area autonomously
@@ -12,7 +12,7 @@ which tickets, in what order, and how many at once.
 ## 1. Gather and scope
 
 - `get_status`, then `list_items` for the target area (board order is the
-  human's priority order — respect it).
+  human's ordering — respect it).
 - Drop: archived, `blocked: true`, and tickets taken by someone else
   (coordinate, don't `force`).
 - Parse the **target point** from the request: "up to review" means each
@@ -20,17 +20,23 @@ which tickets, in what order, and how many at once.
   the default is full closeout (merge permitting — if merging is the human's
   call, tickets park in review and you say so). Resolve stage names against
   `list_board`.
-- **Gates are hard.** Every lane obeys the document gates (`get_doc_gates`): it
-  can't leave Backlog without a governing doc (`link_doc`/`docs_todo`), leave
-  Planning without plan+checklist, enter Review without the post-implementation
-  report, or reach Done without proof. Set `docs_todo` on tickets that need a
-  governing doc written so they aren't stranded at the first gate.
+- **Gates are hard, and per-ticket.** Call `get_doc_gates <id>` for every ticket
+  in the roster and drive *that* ticket's boundaries — do not assume a common
+  pipeline. A `spike` may reach Done on research alone; a `chore` skips
+  Backlog→Preparing entirely. Driving every ticket through the `feature` pipeline
+  is the mistake this warning exists to prevent.
+- **One gated boundary per move.** A lane advances a ticket one stage at a time;
+  a move crossing two gated boundaries is refused. Partition the roster by
+  profile so lanes with genuinely different pipeline lengths do not block each
+  other.
+- Set `docs_todo` on tickets that need a governing doc written so they are not
+  stranded at the first gate.
 - Tell the user the roster before starting: which tickets, target point,
   what was skipped and why.
 
 ## 2. Wave 0 — research everything in parallel
 
-Research and impact are read-only: no branches, no worktrees, no conflicts.
+Research is read-only: no branches, no worktrees, no conflicts.
 Run one subagent per ticket concurrently (use your host's subagent/task
 mechanism), each following the `kanmer-research` skill for its ticket.
 Tickets whose research surfaces user-only questions get parked and reported
@@ -38,7 +44,7 @@ Tickets whose research surfaces user-only questions get parked and reported
 
 ## 3. Partition into conflict-free lanes
 
-Compare the impact.md file tables across tickets:
+Compare the file tables in each ticket's `files` document:
 
 - Tickets touching **disjoint** files → different lanes, safe in parallel.
 - Tickets with **overlapping** files → the same lane, run serially.

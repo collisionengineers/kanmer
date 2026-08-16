@@ -1,6 +1,6 @@
 ---
 name: kanmer-execute
-description: Implement a Kanmer ticket — take it in its own git worktree and branch, work through its checklist with live progress notes, write proof.md, and open the PR. Use when the user says "work on", "implement", "take" or "build" a ticket, or when a planned ticket is ready for implementation. DO NOT USE FOR planning (kanmer-plan — required first), reviewing the result (kanmer-review), or post-merge cleanup (kanmer-closeout).
+description: Implement a Kanmer ticket — take it in its own git worktree and branch, work through its checklist with live progress notes, write the post-implementation report, and open the PR. Use when the user says "work on", "implement", "take" or "build" a ticket, or when a planned ticket is ready for implementation. DO NOT USE FOR planning (kanmer-plan — required first), reviewing the result (kanmer-review), or post-merge cleanup (kanmer-closeout).
 ---
 
 # Executing a Kanmer ticket

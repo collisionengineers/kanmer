@@ -47,9 +47,10 @@ A real product brief can imply a hundred tickets — so this flow is
    - **Areas** (3–6) from the FRDs/ADRs, plus the 4 built-in areas (Bugs, PR
      Review, UI, Documentation) with their default doc-sets; hex colours + 2–6
      letter prefixes.
-   - **Stages** only if the 7 defaults (backlog → researching → planning →
-     implementing → review → verifying → done) don't fit — bias to keeping them
-     (the gates and stage contract assume them).
+   - **Stages** are fixed in format 3: backlog → preparing → implementing →
+     review → verifying → done. They are not configurable, so there is nothing
+     to propose here — what varies per ticket is its **profile**, which decides
+     which documents each boundary asks for.
    - **The backlog with counts** — "N PRDs → M FRDs → K tickets" — because a real
      brief can yield 100+ tickets. Only after the user confirms: `add_column`
      each area, then one `create_items` call — **one ticket per FRD acceptance-
@@ -69,9 +70,9 @@ directories. Propose the backlog to the user before bulk-creating; their
 repo, their priorities. Link related tickets as you create them
 (`links` at create time, `rel: "blocks"` where order genuinely matters).
 
-If the repo tracks work in GitHub issues, don't re-derive those from the
-code — that's the `kanmer-import` skill's job (it's idempotent and records
-source URLs); run it as part of seeding instead of duplicating its logic.
+If the repo tracks work in GitHub issues, say so and ask before deriving the
+same work from the code as well — duplicating an existing tracker onto the
+board is worse than leaving it alone.
 
 ## Upgrade
 

@@ -9,12 +9,14 @@ profile: fix
 labels:
   - bug
   - v3-phase-2
+groups:
+  - EPIC-003
 links: []
 refs:
   - docs/functional/frd/FRD-007-fixed-six-stage-board.md
 archived: false
 created: '2026-08-16T04:41:03.043Z'
-updated: '2026-08-16T04:46:30.192Z'
+updated: '2026-08-16T05:34:44.158Z'
 ---
 
 `packages/core/src/migrate.ts:84`:

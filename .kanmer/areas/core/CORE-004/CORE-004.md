@@ -8,6 +8,8 @@ assignee: ''
 profile: feature
 labels:
   - v3-phase-2
+groups:
+  - EPIC-003
 links: []
 blocks:
   - CORE-005
@@ -19,7 +21,7 @@ refs:
   - docs/architecture/adr/ADR-0004-folder-containment-doc-type.md
 archived: false
 created: '2026-08-16T00:30:18.660Z'
-updated: '2026-08-16T03:20:48.833Z'
+updated: '2026-08-16T05:34:44.117Z'
 ---
 
 Type directories with recursive containment, including `reference/` and `open-questions/`. Doc APIs go path-based (`setDoc(id, "research/azure/x.md")`), lazy mkdir, gate satisfaction = recursive >=1 md excluding `reference/`, `scratch/`, `assets/`. Reference enumeration (names + absolute paths for binaries) in item summaries. Unknown top-level folders rejected.

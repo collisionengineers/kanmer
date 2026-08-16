@@ -9,13 +9,15 @@ profile: feature
 labels:
   - bug
   - v3-phase-2
+groups:
+  - EPIC-003
 links: []
 refs:
   - docs/functional/frd/FRD-002-requirement-profiles.md
   - docs/product/prd/PRD-001-kanmer-v3.md
 archived: false
 created: '2026-08-16T04:24:49.811Z'
-updated: '2026-08-16T04:59:42.812Z'
+updated: '2026-08-16T05:34:44.149Z'
 ---
 
 Gates check that a document exists, never that it existed before the work it

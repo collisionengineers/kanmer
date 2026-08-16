@@ -6,8 +6,13 @@ status: done
 area: skills
 assignee: claude-code
 profile: feature
+stageEntered:
+  verifying: '2026-08-16T05:15:47.269Z'
+  done: '2026-08-16T05:15:47.510Z'
 labels:
   - v3-phase-6
+groups:
+  - EPIC-007
 links: []
 refs:
   - docs/functional/frd/FRD-012-connect.md
@@ -18,10 +23,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/16'
 archived: false
 created: '2026-08-16T00:31:38.813Z'
-updated: '2026-08-16T05:15:52.666Z'
-stageEntered:
-  verifying: '2026-08-16T05:15:47.269Z'
-  done: '2026-08-16T05:15:47.510Z'
+updated: '2026-08-16T05:34:44.403Z'
 ---
 
 Orientation essentials only: profiles exist; call `get_doc_gates` before any move; read the whole ticket folder and group context; six stages; where the docs live.

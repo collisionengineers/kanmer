@@ -8,6 +8,8 @@ assignee: ''
 profile: feature
 labels:
   - v3-phase-3
+groups:
+  - EPIC-004
 links: []
 blocks:
   - MCP-001
@@ -17,7 +19,7 @@ refs:
   - docs/architecture/adr/ADR-0001-group-membership-on-ticket.md
 archived: false
 created: '2026-08-16T00:30:18.723Z'
-updated: '2026-08-16T03:42:11.400Z'
+updated: '2026-08-16T05:34:44.181Z'
 ---
 
 Board `groupKinds` with prefixes (defaults epic/EPIC, horizon/HZN); item `groups: []`; `groups/<ID>/` folders; group CRUD, archive, shared-doc IO reusing 2.3's path engine. Members and progress are **derived, never stored**. Membership validated against existing group ids; archived groups still render on chips as archived.

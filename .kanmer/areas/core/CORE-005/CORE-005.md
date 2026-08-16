@@ -8,6 +8,8 @@ assignee: ''
 profile: feature
 labels:
   - v3-phase-2
+groups:
+  - EPIC-003
 links: []
 blocks:
   - CORE-007
@@ -17,7 +19,7 @@ refs:
   - docs/architecture/adr/ADR-0005-proof-not-deployment.md
 archived: false
 created: '2026-08-16T00:30:18.673Z'
-updated: '2026-08-16T03:20:48.862Z'
+updated: '2026-08-16T05:34:44.125Z'
 ---
 
 Board `proofTypes` with shipped defaults (visual, test-output, command-log), reusing deployment env ids for `@<env>`. Requirement parser for `proof`, `proof:visual`, `proof:visual@staging`. Soft-warning computation inside `getDocGates` — visual with no images under `proof/` warns, never blocks.

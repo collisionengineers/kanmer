@@ -8,6 +8,8 @@ assignee: ''
 profile: feature
 labels:
   - v3-phase-2
+groups:
+  - EPIC-003
 links: []
 blocks:
   - CORE-008
@@ -18,7 +20,7 @@ refs:
   - docs/functional/frd/FRD-002-requirement-profiles.md
 archived: false
 created: '2026-08-16T00:30:18.696Z'
-updated: '2026-08-16T03:20:48.919Z'
+updated: '2026-08-16T05:34:44.141Z'
 ---
 
 v->3 in one pass: status alias table (case-insensitive, 7 stages collapse to 6), `needs-restage` fallback with a report list, doc folder moves byte-preserved, priority strip with count, profile assignment (**active -> `feature`**, done/archived -> `custom` empty) with report, board.yml rewrite. Dry-run parity, idempotent, resumable, blockers surfaced. Shared core fn used by both MCP and GUI.

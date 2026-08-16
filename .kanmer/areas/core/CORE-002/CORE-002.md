@@ -8,6 +8,8 @@ assignee: ''
 profile: feature
 labels:
   - v3-phase-2
+groups:
+  - EPIC-003
 links: []
 blocks:
   - CORE-003
@@ -19,7 +21,7 @@ refs:
   - docs/architecture/adr/ADR-0002-fixed-six-stages.md
 archived: false
 created: '2026-08-16T00:30:18.635Z'
-updated: '2026-08-16T03:20:48.764Z'
+updated: '2026-08-16T05:34:44.102Z'
 ---
 
 `statuses` leaves `BoardConfigSchema`; stage ids/names/order/colours become constants in core. Every status validation checks the constant set. The status kind leaves the column-tool surface (area only). Legacy boards stay readable pre-migration, writes refused.

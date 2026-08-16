@@ -6,8 +6,15 @@ status: done
 area: skills
 assignee: claude-code
 profile: feature
+stageEntered:
+  preparing: '2026-08-16T05:22:40.072Z'
+  review: '2026-08-16T05:25:46.730Z'
+  verifying: '2026-08-16T05:26:22.711Z'
+  done: '2026-08-16T05:26:22.963Z'
 labels:
   - v3-phase-6
+groups:
+  - EPIC-007
 links: []
 refs:
   - docs/functional/frd/FRD-014-doc-type-guidance.md
@@ -17,12 +24,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/18'
 archived: false
 created: '2026-08-16T00:31:38.780Z'
-updated: '2026-08-16T05:26:39.697Z'
-stageEntered:
-  preparing: '2026-08-16T05:22:40.072Z'
-  review: '2026-08-16T05:25:46.730Z'
-  verifying: '2026-08-16T05:26:22.711Z'
-  done: '2026-08-16T05:26:22.963Z'
+updated: '2026-08-16T05:34:44.376Z'
 ---
 
 Identity first-lines on every template; the files template with two sections and the contrast rule; per-proof-type templates; group and ticket template updates for the `groups`/`profile` fields; a research summary template for deep mode.

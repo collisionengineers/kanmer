@@ -8,12 +8,14 @@ assignee: ''
 profile: fix
 labels:
   - v3-phase-3
+groups:
+  - EPIC-004
 links: []
 refs:
   - docs/functional/frd/FRD-010-task-scoped-dispatch.md
 archived: false
 created: '2026-08-16T00:30:18.744Z'
-updated: '2026-08-16T03:42:11.434Z'
+updated: '2026-08-16T05:34:44.189Z'
 ---
 
 Move the per-task prompt texts into core so the MCP prompt and Phase 5's dispatch picker share one source and cannot drift.

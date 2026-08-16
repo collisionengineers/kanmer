@@ -3,5 +3,7 @@
   "CORE": 12,
   "GUI": 17,
   "MCP": 1,
-  "SKILL": 7
+  "SKILL": 7,
+  "EPIC": 8,
+  "HZN": 2
 }

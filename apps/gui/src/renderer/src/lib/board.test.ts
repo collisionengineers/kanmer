@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Item } from "@kanmer/core";
-import { blockedIds, columnCards, optimisticOrder, positionForDrop } from "./board.js";
+import { UI_STAGES } from "../../../shared/stages.js";
+import { blockedIds, columnCards, mergeColumns, optimisticOrder, positionForDrop } from "./board.js";
 
 function item(partial: Partial<Item> & { id: string }): Item {
   return {
@@ -143,5 +144,62 @@ describe("optimisticOrder", () => {
 
   it("returns undefined when the after-target is not in the column", () => {
     expect(optimisticOrder(ordered, { after: "NOPE" }, "MOVER")).toBeUndefined();
+  });
+});
+
+describe("mergeColumns", () => {
+  const stageColumns = UI_STAGES.map((s) => ({ id: s.id, name: s.name, color: s.color }));
+  const stageIds = UI_STAGES.map((s) => s.id);
+
+  it("keeps the configured columns in their given order", () => {
+    const cols = mergeColumns(stageColumns, ["preparing", "done"], stageIds);
+    expect(cols.map((c) => c.id)).toEqual(stageIds);
+  });
+
+  it("renders Backlog first, and only once, when backlog tickets are present", () => {
+    // The GUI-069 regression: `backlog` cards used to resurrect the column
+    // through the unknown-status fallback and land it after Done.
+    const cols = mergeColumns(stageColumns, ["backlog", "backlog", "review"], stageIds);
+    expect(cols[0].id).toBe("backlog");
+    expect(cols.filter((c) => c.id === "backlog")).toHaveLength(1);
+    expect(cols[0].name).toBe(UI_STAGES[0].name);
+  });
+
+  it("renders every stage even when no item has that status", () => {
+    // The column list must not gain and lose a column as a count crosses zero.
+    expect(mergeColumns(stageColumns, [], stageIds).map((c) => c.id)).toEqual(stageIds);
+  });
+
+  it("gives a genuinely unknown status a trailing fallback column", () => {
+    const cols = mergeColumns(stageColumns, ["preparing", "triage"], stageIds);
+    expect(cols).toHaveLength(stageIds.length + 1);
+    expect(cols[cols.length - 1]).toEqual({ id: "triage", name: "triage" });
+  });
+
+  it("never resurrects a known status that was deliberately not rendered", () => {
+    // The defect itself: a status the caller declared and then left out of the
+    // rendered list is hidden on purpose, and must stay hidden.
+    const withoutBacklog = stageColumns.filter((c) => c.id !== "backlog");
+    const cols = mergeColumns(withoutBacklog, ["backlog", "preparing"], stageIds);
+    expect(cols.map((c) => c.id)).not.toContain("backlog");
+  });
+
+  it("still falls back for an unknown status while a known one stays hidden", () => {
+    const withoutBacklog = stageColumns.filter((c) => c.id !== "backlog");
+    const cols = mergeColumns(withoutBacklog, ["backlog", "triage"], stageIds);
+    expect(cols.map((c) => c.id)).toEqual([...stageIds.filter((id) => id !== "backlog"), "triage"]);
+  });
+
+  it("ignores an empty status value", () => {
+    expect(mergeColumns(stageColumns, ["", "preparing"], stageIds).map((c) => c.id)).toEqual(
+      stageIds,
+    );
+  });
+
+  it("defaults to the old behaviour when no known set is given", () => {
+    // Without `known`, nothing is hidden — every absent status is "unknown".
+    const withoutBacklog = stageColumns.filter((c) => c.id !== "backlog");
+    const cols = mergeColumns(withoutBacklog, ["backlog"]);
+    expect(cols[cols.length - 1]).toEqual({ id: "backlog", name: "backlog" });
   });
 });

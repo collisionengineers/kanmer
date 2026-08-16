@@ -35,6 +35,25 @@ it with a reason.
 Nothing records *who* answered a question. Kanmer is for one developer, and
 where it is not, the commit that ticks the box already has a name on it.
 
+### Backlog is the board's first column again
+
+The board used to render **BACKLOG after DONE** — the not-started column sitting
+past the finished one, which is the exact opposite of how a kanban reads.
+
+Nobody chose that. The column had been deliberately removed from the board, but
+the code that appends a column for an *unrecognised* status could not tell
+"nobody configured this" apart from "this was configured and then hidden", so
+every board holding a backlogged ticket got the column straight back — at the
+end, labelled with its raw id. The removal was undone by the same change that
+made it.
+
+Backlog is now a real column, first, in stage order, styled like every other
+stage, and it stays put whether or not anything is in it — no column appearing
+and disappearing as the count crosses zero. Dragging a card back into Backlog
+works, and so does Ctrl+← out of Preparing, which previously flung the card to
+the far right of the board. A genuinely unknown status still gets its own
+column at the end, which is what that fallback was always for.
+
 ### Also
 
 `kanmer-auto` can now be pointed at an epic or a horizon, not only an area —

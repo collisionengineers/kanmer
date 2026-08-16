@@ -42,6 +42,7 @@ export {
   columnColor,
   columnName,
   distinct,
+  mergeColumns,
   positionForDrop,
 } from "../../../apps/gui/src/renderer/src/lib/board.js";
 export { renderMarkdown } from "../../../apps/gui/src/renderer/src/lib/markdown.js";

@@ -21,6 +21,37 @@ export function distinct(values: (string | undefined)[]): string[] {
 }
 
 /**
+ * The columns to render: the configured ones in their given order, followed by
+ * a fallback column for any status found on an item that has no column at all.
+ *
+ * `known` is the whole point, and it is why GUI-069 exists. Without it this
+ * function conflates two different situations:
+ *
+ *  - a status **nobody ever declared** (a hand-edited file, an older board) —
+ *    its cards would otherwise be invisible, so it earns a trailing fallback
+ *    column named after its raw id;
+ *  - a status that **is** declared and was deliberately left out of `rendered` —
+ *    hiding it is a decision, and resurrecting it as a fallback silently
+ *    reverses that decision *and* puts the column last, in the wrong place,
+ *    with the wrong name.
+ *
+ * Commit 841c5bc filtered `backlog` out of the board's column list and shipped
+ * exactly the second case: on any board holding a backlogged ticket the column
+ * came straight back, after Done, labelled with its raw id. Pass every status
+ * the caller knows about as `known` and a hidden one stays hidden.
+ */
+export function mergeColumns(
+  rendered: BoardColumn[],
+  present: string[],
+  known: Iterable<string> = [],
+): BoardColumn[] {
+  const shown = new Set(rendered.map((c) => c.id));
+  const hidden = new Set([...known].filter((id) => !shown.has(id)));
+  const extra = [...new Set(present)].filter((id) => id && !shown.has(id) && !hidden.has(id));
+  return [...rendered, ...extra.map((id) => ({ id, name: id }))];
+}
+
+/**
  * Live-blocker rule, mirroring core's computeBlockedIds (links.ts:61-73).
  * The renderer may only `import type` from @kanmer/core (AGENTS.md §7), so
  * this is a deliberate second copy — kept here rather than in Standup.tsx so

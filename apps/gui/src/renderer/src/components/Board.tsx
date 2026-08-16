@@ -1,7 +1,7 @@
 import { memo, useCallback, useRef, useState } from "react";
 import { UI_STAGES as STAGES, uiStageName as stageName } from "../../../shared/stages.js";
-import type { BoardColumn, BoardConfig, CreateItemInput, Item, MovePosition } from "@kanmer/core";
-import { columnColor, columnCards, positionForDrop } from "../lib/board.js";
+import type { BoardConfig, CreateItemInput, Item, MovePosition } from "@kanmer/core";
+import { columnColor, columnCards, mergeColumns, positionForDrop } from "../lib/board.js";
 import { useClient } from "../lib/client.js";
 import { QuickAdd } from "./QuickAdd.js";
 
@@ -24,13 +24,6 @@ interface BoardProps {
   dispatching?: Set<string>;
   /** Card density preference (Phase 4.4): "compact" tightens padding/gaps. */
   density?: "comfortable" | "compact";
-}
-
-/** Merge configured columns with any extra values found on items (fallback columns). */
-function mergeColumns(defined: BoardColumn[], present: string[]): BoardColumn[] {
-  const ids = new Set(defined.map((c) => c.id));
-  const extra = [...new Set(present)].filter((id) => id && !ids.has(id));
-  return [...defined, ...extra.map((id) => ({ id, name: id }))];
 }
 
 interface AreaGroup {
@@ -112,12 +105,14 @@ export function Board(props: BoardProps): JSX.Element {
     [onMove],
   );
 
+  // All six stages, always, in stage order — so Backlog is the first column and
+  // the board never gains or loses a column as a status count crosses zero.
+  // The third argument is what keeps a status the app knows about out of the
+  // unknown-status fallback; see mergeColumns in lib/board.ts.
   const statuses = mergeColumns(
-    // Backlog is a list, not a column (FRD-011). A kanban column is for work
-    // in flight; a backlog is a queue you scan, sort and triage, which a column
-    // cannot do. It lives in the Backlog view instead.
-    STAGES.filter((s) => s.id !== "backlog").map((s) => ({ id: s.id, name: s.name, color: s.color })),
+    STAGES.map((s) => ({ id: s.id, name: s.name, color: s.color })),
     items.map((i) => i.status),
+    STAGES.map((s) => s.id),
   );
   const usingAreas = board.areas.length > 0 || items.some((i) => i.area);
 

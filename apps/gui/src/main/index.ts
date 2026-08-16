@@ -719,6 +719,31 @@ function registerIpc(): void {
     }
     return out;
   });
+  ipcMain.handle(CH.pickReferences, async () => {
+    const res = await dialog.showOpenDialog({
+      title: "Add reference files",
+      properties: ["openFile", "multiSelections"],
+    });
+    return res.canceled ? [] : res.filePaths;
+  });
+  // Core owns the copy and the containment check. Every other path rule in this
+  // system lives there, and a second copy here is how one of them drifts.
+  ipcMain.handle(CH.addReference, (_e, p: string, id: string, src: string) => {
+    markOwnWrite(p, id);
+    return requireStore(p).addReference(id, src);
+  });
+  ipcMain.handle(CH.openReference, async (_e, p: string, id: string, name: string) => {
+    // Resolve through core's own listing rather than joining a path here: the
+    // name arrives from the renderer, and core is what decides where it lives.
+    const info = await requireStore(p).getTicketDocsInfo(id);
+    const ref = info?.references.find((r) => r.name === name);
+    if (!ref) throw new Error(`No reference "${name}" on ${id}`);
+    await shell.openPath(ref.path);
+  });
+  ipcMain.handle(CH.removeReference, (_e, p: string, id: string, name: string) => {
+    markOwnWrite(p, id);
+    return requireStore(p).removeReference(id, name);
+  });
   ipcMain.handle(
     CH.getActivity,
     (_e, p: string, opts?: { id?: string; since?: string; limit?: number }) =>

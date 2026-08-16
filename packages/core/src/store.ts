@@ -972,6 +972,68 @@ export class KanmerStore {
    * (FRD-003 T7) — and reference files are enumerated separately because
    * agents must be able to find human-supplied inputs (FRD-004 R3).
    */
+  /**
+   * Copy a file into a ticket's `reference/` folder (FRD-004 R2).
+   *
+   * The copy lives here rather than in the GUI's main process because
+   * **containment is core's rule**. Every other path in this system is
+   * validated in core — `parseDocPath`, `groupDocPath`, `assertSafeRepoPath` —
+   * and doing it in main would either duplicate that check or skip it. Skipping
+   * it lets a crafted name escape the ticket folder.
+   *
+   * `reference/` is gate-exempt (FRD-003 T5), so nothing here touches gates: a
+   * reference is an input to the work, never evidence of it.
+   *
+   * A name already taken is suffixed `-2`, `-3`. Overwriting would discard a
+   * file the user may have no other copy of, and refusing would make the
+   * ordinary case — two files both called `screenshot.png` — an error.
+   */
+  async addReference(id: string, sourcePath: string, name?: string): Promise<{ name: string }> {
+    const loc = await this.locateItem(id);
+    if (!loc || loc.kind !== "v2") throw new Error(`No item with id "${id}"`);
+    const dir = docDirIn(loc.dir, "reference");
+    const base = (name ?? path.basename(sourcePath)).trim();
+    if (!base || base === "." || base === "..") throw new Error(`Invalid reference name "${base}"`);
+
+    const resolved = path.resolve(dir, base);
+    const root = path.resolve(dir);
+    if (resolved !== path.join(root, path.basename(resolved)) || !resolved.startsWith(root + path.sep)) {
+      throw new Error(`Reference name "${base}" must be a plain filename inside reference/`);
+    }
+
+    await ensureDir(dir);
+    const ext = path.extname(base);
+    const stem = base.slice(0, base.length - ext.length);
+    let final = base;
+    for (let n = 2; await pathExists(path.join(dir, final)); n++) final = `${stem}-${n}${ext}`;
+
+    await fs.copyFile(sourcePath, path.join(dir, final));
+    await this.appendActivityFor(id, "reference", final);
+    return { name: final };
+  }
+
+  /**
+   * Delete a reference file. There is no archive for one — it is an input, not
+   * a record — so callers must confirm before reaching this.
+   */
+  async removeReference(id: string, name: string): Promise<void> {
+    const loc = await this.locateItem(id);
+    if (!loc || loc.kind !== "v2") throw new Error(`No item with id "${id}"`);
+    const dir = docDirIn(loc.dir, "reference");
+    const resolved = path.resolve(dir, name);
+    const root = path.resolve(dir);
+    if (!resolved.startsWith(root + path.sep)) {
+      throw new Error(`Reference "${name}" is outside reference/`);
+    }
+    await removeFile(resolved);
+    await this.appendActivityFor(id, "reference", name);
+  }
+
+  /** One activity line for a reference change; kept private to this pair. */
+  private async appendActivityFor(id: string, field: string, to: string): Promise<void> {
+    await appendActivity(this.paths, [this.activity(id, "update", { field, to })]);
+  }
+
   async getTicketDocsInfo(id: string): Promise<TicketDocsInfo | null> {
     const loc = await this.locateItem(id);
     if (!loc || loc.kind !== "v2") return null;

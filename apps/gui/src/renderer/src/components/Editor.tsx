@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UI_STAGES as STAGES } from "../../../shared/stages.js";
 
 import type {
@@ -111,6 +111,11 @@ export function Editor(props: EditorProps): JSX.Element {
   const [tab, setTab] = useState<"ticket" | TicketDoc>("ticket");
   const [pendingTab, setPendingTab] = useState<"ticket" | TicketDoc | null>(null);
   const [docsInfo, setDocsInfo] = useState<TicketDocsInfo | null>(null);
+  /** Reference upload: drag-over highlight, in-flight flag, remove confirmation. */
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [pendingRemove, setPendingRemove] = useState<string | null>(null);
+  const [refError, setRefError] = useState<string | null>(null);
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
   /** The core gate report — what this ticket owes, and what it already has. */
   const [gates, setGates] = useState<GateReport | null>(null);
@@ -134,10 +139,37 @@ export function Editor(props: EditorProps): JSX.Element {
     void client.getLinks(item.id).then(setGraph);
   }, [item.id, item.updated]);
 
+  const refreshDocsInfo = useCallback(async () => {
+    setDocsInfo(await client.getDocsInfo(item.id));
+  }, [client, item.id]);
+
   useEffect(() => {
     if (item.type !== "ticket") return;
     void client.getDocsInfo(item.id).then(setDocsInfo);
   }, [item.id, item.updated, changeSignal, item.type]);
+
+  /**
+   * Copy files into the ticket's `reference/` folder, one at a time.
+   *
+   * Sequential rather than parallel: core suffixes a colliding name, and two
+   * concurrent copies of the same filename would race on the collision check
+   * and both resolve to the same suffix.
+   */
+  const addReferences = useCallback(
+    async (paths: string[]) => {
+      setUploading(true);
+      setRefError(null);
+      try {
+        for (const p of paths) await client.addReference(item.id, p);
+        await refreshDocsInfo();
+      } catch (err) {
+        setRefError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setUploading(false);
+      }
+    },
+    [client, item.id, refreshDocsInfo],
+  );
 
   // Doc tabs come from the ticket area's configured doc set (Phase 1), resolved
   // in the main process (core is node-only, so the renderer can't import it).
@@ -414,6 +446,91 @@ export function Editor(props: EditorProps): JSX.Element {
             </button>
           ))}
         </nav>
+      )}
+
+      {item.type === "ticket" && docsInfo && (
+        <section
+          className={dragging ? "references dropping" : "references"}
+          aria-label="Reference files"
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            // Electron exposes the real filesystem path on dropped files;
+            // a browser would not, which is why this works here and only here.
+            const paths = [...e.dataTransfer.files]
+              .map((f) => (f as File & { path?: string }).path)
+              .filter((v): v is string => Boolean(v));
+            if (paths.length) void addReferences(paths);
+          }}
+        >
+          <div className="editor-actions">
+            <strong>Attachments</strong>
+            <span className="hint">
+              inputs to the work — never satisfy a document gate
+            </span>
+            <span className="spacer" />
+            <button
+              className="ghost sm"
+              disabled={uploading}
+              onClick={() => {
+                void client
+                  .pickReferences()
+                  .then((paths) => (paths.length ? addReferences(paths) : undefined))
+                  .catch((e) => setRefError(String(e)));
+              }}
+            >
+              {uploading ? "Adding…" : "Add files…"}
+            </button>
+          </div>
+
+          {refError && <p className="error">{refError}</p>}
+
+          {docsInfo.references.length === 0 ? (
+            <p className="hint">
+              Drop a mockup, spec or log here, or use Add files. They live in the
+              ticket&rsquo;s <code>reference/</code> folder and agents can read them.
+            </p>
+          ) : (
+            <ul className="reference-list">
+              {docsInfo.references.map((r) => (
+                <li key={r.name}>
+                  <button className="linkish" onClick={() => void client.openReference(item.id, r.name)}>
+                    {r.name}
+                  </button>
+                  {pendingRemove === r.name ? (
+                    <>
+                      <span className="hint">Delete {r.name}? This cannot be undone.</span>
+                      <button
+                        className="danger xs"
+                        onClick={() => {
+                          setPendingRemove(null);
+                          void client
+                            .removeReference(item.id, r.name)
+                            .then(refreshDocsInfo)
+                            .catch((e) => setRefError(String(e)));
+                        }}
+                      >
+                        Delete
+                      </button>
+                      <button className="ghost xs" onClick={() => setPendingRemove(null)}>
+                        Keep
+                      </button>
+                    </>
+                  ) : (
+                    <button className="ghost xs" onClick={() => setPendingRemove(r.name)}>
+                      Remove
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
 
       {conflict && (

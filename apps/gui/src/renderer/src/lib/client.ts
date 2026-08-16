@@ -78,6 +78,10 @@ export interface ProjectClient {
   updateGroup(id: string, patch: { title?: string; body?: string; archived?: boolean }): Promise<Group>;
   getGroupDoc(id: string, path: string): Promise<string | null>;
   setGroupDoc(id: string, path: string, content: string): Promise<{ file: string }>;
+  pickReferences(): Promise<string[]>;
+  addReference(id: string, sourcePath: string): Promise<{ name: string }>;
+  openReference(id: string, name: string): Promise<void>;
+  removeReference(id: string, name: string): Promise<void>;
   getActivity(opts?: { id?: string; since?: string; limit?: number }): Promise<ActivityEntry[]>;
 }
 
@@ -124,6 +128,10 @@ export function makeClient(projectId: string): ProjectClient {
     updateGroup: (id, patch) => k.updateGroup(projectId, id, patch),
     getGroupDoc: (id, rel) => k.getGroupDoc(projectId, id, rel),
     setGroupDoc: (id, rel, content) => k.setGroupDoc(projectId, id, rel, content),
+    pickReferences: () => k.pickReferences(projectId),
+    addReference: (id, src) => k.addReference(projectId, id, src),
+    openReference: (id, name) => k.openReference(projectId, id, name),
+    removeReference: (id, name) => k.removeReference(projectId, id, name),
     getActivity: (opts) => k.getActivity(projectId, opts),
   };
 }

@@ -17,3 +17,18 @@
 ## Progress notes
 
 (append with `set_ticket_doc(doc: "checklist", append: true)`)
+
+**2026-08-16 — plan correction, step 9.** The plan says "rebuild the plugin
+bundle at the repo root". Reading `scripts/build-plugin.mjs` while working: it
+copies **only** `packages/mcp-server/dist/standalone/kanmer-mcp.cjs` into
+`plugins/kanmer/mcp/`. The skills are not copied anywhere — `plugins/kanmer/skills/`
+*is* the shipped location, so a skills-only change needs no `plugin:build` at all.
+
+`plugin:check` still matters and still runs: `check-plugin-sync.mjs:26` reads
+`tool-reference.md` and asserts the tool names in it match the registered tools.
+Editing that file can break it. It needs `npm run build` first (it compares the
+committed bundle against a fresh one), not `plugin:build`.
+
+Step 9 is therefore `npm run build` → `plugin:check`, not `plugin:build`. The
+worktree trap the step was guarding against ([[SKILL-011]]) does not apply,
+because nothing is being bundled.

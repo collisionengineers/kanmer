@@ -10,7 +10,7 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { detectStaleness, registeredRootIn, SKILLS_STAMP_FILE } from "./staleness.js";
+import { detectStaleness, kanmerRootIn, SKILLS_STAMP_FILE } from "./staleness.js";
 import { resolvePaths } from "./paths.js";
 import { defaultBoardConfig } from "./board.js";
 import type { BoardConfig } from "./types.js";
@@ -171,11 +171,25 @@ describe("detectStaleness — installed skills", () => {
     expect(rowsFor(detect(), "skills")[0]?.state).toBe("behind");
   });
 
-  it("reports a partially installed skill set as behind", () => {
+  it("reports a file missing from INSIDE an installed skill as behind", () => {
+    writeAgents();
+    installSkills(".claude/skills");
+    fs.rmSync(path.join(root, ".claude/skills/kanmer-plan/assets/plan-template.md"));
+    const row = rowsFor(detect(), "skills")[0];
+    expect(row?.state).toBe("behind");
+    expect(row?.detail).toMatch(/1 are missing|missing/);
+    expect(row?.detail).toContain("kanmer-plan");
+  });
+
+  it("DOES NOT report a skill the user chose not to install as missing", () => {
+    // A Claude Code user who keeps three of the twelve chose three. Reporting
+    // the other nine "missing" is the same false positive as counting their own
+    // skill as drift — only an installed folder is judged.
     writeAgents();
     installSkills(".claude/skills");
     fs.rmSync(path.join(root, ".claude/skills/kanmer-plan"), { recursive: true });
-    expect(rowsFor(detect(), "skills")[0]?.detail).toMatch(/missing/);
+    expect(rowsFor(detect(), "skills")).toEqual([]);
+    expect(detect().upToDate).toBe(true);
   });
 
   it("DOES NOT count a skill the user wrote as drift", () => {
@@ -351,12 +365,46 @@ describe("detectStaleness — provider MCP registrations", () => {
     expect(rowsFor(detect(), "mcp-registration")).toEqual([]);
   });
 
-  it("says nothing about a config that does not mention kanmer at all", () => {
+  it("does not read another server's --root as Kanmer's", () => {
+    // The trap a whole-file text scan falls into: any repo that merely LIVES in
+    // a folder called kanmer makes `text.includes("kanmer")` true, and the
+    // first `--root` in the file then gets reported as Kanmer's.
+    writeAgents();
+    put(
+      path.join(root, ".mcp.json"),
+      JSON.stringify({
+        mcpServers: {
+          other: { command: "node", args: ["C:/repos/kanmer/other.js", "--root", "/elsewhere"] },
+          kanmer: { command: "node", args: ["kanmer-mcp.cjs", "--root", root] },
+        },
+      }),
+    );
+    expect(rowsFor(detect(), "mcp-registration")).toEqual([]);
+  });
+
+  it("says nothing about a config with no kanmer entry", () => {
     writeAgents();
     put(
       path.join(root, ".mcp.json"),
       JSON.stringify({ mcpServers: { other: { args: ["--root", "/elsewhere"] } } }),
     );
+    expect(rowsFor(detect(), "mcp-registration")).toEqual([]);
+  });
+
+  it("reads opencode's shape, where the whole argv is `command`", () => {
+    writeAgents();
+    put(
+      path.join(root, "opencode.json"),
+      JSON.stringify({
+        mcp: { kanmer: { type: "local", command: ["node", "kanmer-mcp.cjs", "--root", "/gone"] } },
+      }),
+    );
+    expect(rowsFor(detect(), "mcp-registration")[0]?.state).toBe("behind");
+  });
+
+  it("says nothing about an unparseable JSON config rather than guessing", () => {
+    writeAgents();
+    put(path.join(root, ".mcp.json"), "{ not json at all");
     expect(rowsFor(detect(), "mcp-registration")).toEqual([]);
   });
 
@@ -372,12 +420,25 @@ describe("detectStaleness — provider MCP registrations", () => {
   });
 
   it("is not confused by --repo-root", () => {
-    expect(registeredRootIn('["--repo-root", "C:/a", "--root", "C:/b"]')).toBe("C:/b");
-    expect(registeredRootIn('["--repo-root", "C:/a"]')).toBeNull();
+    const args = (...a: string[]) => JSON.stringify({ mcpServers: { kanmer: { args: a } } });
+    expect(kanmerRootIn(args("--repo-root", "C:/a", "--root", "C:/b"), "json")).toBe("C:/b");
+    expect(kanmerRootIn(args("--repo-root", "C:/a"), "json")).toBeNull();
+    expect(
+      kanmerRootIn('[mcp_servers.kanmer]\nargs = ["--repo-root", "C:/a"]\n', "toml"),
+    ).toBeNull();
+  });
+
+  it("does not read a later TOML table's --root as Kanmer's", () => {
+    const toml =
+      '[mcp_servers.kanmer]\ncommand = "node"\nargs = ["x.cjs"]\n\n' +
+      '[mcp_servers.other]\nargs = ["--root", "C:/elsewhere"]\n';
+    expect(kanmerRootIn(toml, "toml")).toBeNull();
   });
 
   it("unescapes the recorded path", () => {
-    expect(registeredRootIn('"--root", "C:\\\\Users\\\\me\\\\repo"')).toBe("C:\\Users\\me\\repo");
+    expect(
+      kanmerRootIn('[mcp_servers.kanmer]\nargs = ["--root", "C:\\\\Users\\\\me\\\\repo"]\n', "toml"),
+    ).toBe("C:\\Users\\me\\repo");
   });
 });
 

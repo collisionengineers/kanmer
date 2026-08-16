@@ -423,26 +423,38 @@ function skillRows(repoRoot: string, bundledSkillsDir: string | null): StaleEntr
     if (text !== null) reference.set(rel, digest(text));
   }
 
+  // The skill folders this build ships, in bundled-tree order.
+  const bundledFolders = [...new Set(bundled.map(skillFolderOf))];
+
   for (const dest of present) {
+    // Which of Kanmer's skills are actually installed here.
+    //
+    // A skill folder the user simply does not have is **not drift**: a Claude
+    // Code user who keeps three of the twelve has *chosen* three, and reporting
+    // nine "missing" would be the same false positive as counting their own
+    // skill as drift. Only a folder that is installed gets judged — and then a
+    // file missing from inside it is a genuinely incomplete copy.
+    //
+    // It also answers "is this a Kanmer skills directory at all". If none of
+    // them is here, this is somebody else's folder and there is nothing to say
+    // about it — including nothing about its stamp.
+    const installedFolders = new Set(
+      bundledFolders.filter((folder) => isDir(path.join(dest.abs, folder))),
+    );
+    if (installedFolders.size === 0) continue;
+
     const missing: string[] = [];
     const differing: string[] = [];
-    let installed = 0;
 
     for (const [rel, sha] of reference) {
+      if (!installedFolders.has(skillFolderOf(rel))) continue;
       const text = readOrNull(path.join(dest.abs, rel));
       if (text === null) {
-        // Only a *partially* installed Kanmer skill is missing; a destination
-        // with none of them is not "missing everything", it is not a Kanmer
-        // skills directory at all. Counted, then judged below.
         missing.push(rel);
         continue;
       }
-      installed++;
       if (digest(text) !== sha) differing.push(rel);
     }
-
-    // No Kanmer skills here — somebody else's directory. Say nothing.
-    if (installed === 0) continue;
 
     if (missing.length || differing.length) {
       const folders = [...missing, ...differing].map(skillFolderOf);
@@ -452,7 +464,10 @@ function skillRows(repoRoot: string, bundledSkillsDir: string | null): StaleEntr
         detail:
           `${dest.rel}: ${differing.length} file(s) differ from the bundled skills and ` +
           `${missing.length} are missing — affected skills: ${nameList(folders)}.`,
-        fix: `${SETUP_FIX}, or Update skills in the Kanmer app`,
+        // Deliberately not "click Update skills": that button compares
+        // `plugin.json`'s frozen 0.1.0 against the installed stamp, so it has
+        // never lit up for any release ever shipped. Reconnect does copy.
+        fix: `${SETUP_FIX}, or reconnect this project in the Kanmer app`,
       });
     }
 
@@ -556,23 +571,66 @@ function boardConfigRows(board: BoardConfig, source: BoardSource, format: number
   return rows;
 }
 
+/** The `--root` value in an argv array, or null. Tolerates a non-array. */
+function rootFromArgs(args: unknown): string | null {
+  if (!Array.isArray(args)) return null;
+  const at = args.indexOf("--root");
+  if (at === -1) return null;
+  const next: unknown = args[at + 1];
+  return typeof next === "string" && next.trim() !== "" ? next : null;
+}
+
 /**
- * The path a registration's `--root` points at, or null.
+ * The board root a file's **Kanmer** MCP entry is pinned to, or null.
  *
- * One regex over the raw text, which reads JSON and TOML alike — both quote the
- * flag and both quote the value that follows it, and both escape backslashes
- * the same way, so `JSON.parse` unescapes either. That is deliberately worth a
- * little crudeness: the alternative is a TOML parser as a new dependency of
+ * Scoped to Kanmer's own entry rather than scanned across the file, and that
+ * matters more than it looks: a naive `text.includes("kanmer")` is true of every
+ * config in a repo that merely *lives* in a folder called kanmer, and a naive
+ * "first `--root` in the file" would then read some other server's flag and
+ * report it as Kanmer's. This reads the entry.
+ *
+ * JSON hosts (`.mcp.json`, `.agents/mcp_config.json` → `mcpServers.kanmer`;
+ * `opencode.json` → `mcp.kanmer`, whose `command` is the whole argv) are parsed.
+ * The two TOML hosts (`.codex/config.toml`, `.grok/config.toml`) are read by
+ * slicing the `[mcp_servers.kanmer]` table — from its header to the next
+ * top-level `[` — and taking the quoted value after `"--root"` inside it. That
+ * is a deliberate trade: a TOML parser would otherwise become a dependency of
  * core, bundled into every server, to read one string out of two files.
  *
- * `--repo-root` cannot match: the literal `"--root"` includes its opening
- * quote, so the longer flag's tail never aligns.
+ * `--repo-root` cannot be mistaken for it: the JSON path matches array elements
+ * exactly, and the TOML path matches the quoted literal `"--root"`.
  */
-export function registeredRootIn(text: string): string | null {
-  const at = text.indexOf('"--root"');
-  if (at === -1) return null;
-  const rest = text.slice(at + '"--root"'.length);
-  const m = /^[\s,:[\]]*("(?:[^"\\]|\\.)*")/.exec(rest);
+export function kanmerRootIn(text: string, format: "json" | "toml"): string | null {
+  if (format === "json") {
+    let doc: unknown;
+    try {
+      doc = JSON.parse(text);
+    } catch {
+      return null;
+    }
+    if (typeof doc !== "object" || doc === null) return null;
+    const rec = doc as Record<string, unknown>;
+    for (const key of ["mcpServers", "mcp"]) {
+      const servers = rec[key];
+      if (typeof servers !== "object" || servers === null) continue;
+      const entry = (servers as Record<string, unknown>)["kanmer"];
+      if (typeof entry !== "object" || entry === null) continue;
+      const e = entry as Record<string, unknown>;
+      // `args` for the Claude/antigravity shape; `command` is the whole argv
+      // for opencode's `{ type: "local", command: [...] }`.
+      const found = rootFromArgs(e["args"]) ?? rootFromArgs(e["command"]);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  // TOML: slice the [mcp_servers.kanmer] table out, then scan only inside it.
+  const header = /^[ \t]*\[mcp_servers\.kanmer\][ \t]*$/m.exec(text);
+  if (!header) return null;
+  const from = header.index + header[0].length;
+  const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
+  const section = nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
+  const m = /"--root"[\s,]*("(?:[^"\\]|\\.)*")/.exec(section);
   if (!m) return null;
   try {
     const value = JSON.parse(m[1]) as unknown;
@@ -616,8 +674,7 @@ function registrationRows(repoRoot: string, projectRoot: string): StaleEntry[] {
       });
       continue;
     }
-    if (!text.includes("kanmer")) continue;
-    const root = registeredRootIn(text);
+    const root = kanmerRootIn(text, rel.endsWith(".toml") ? "toml" : "json");
     if (root === null || sameRoot(root, projectRoot)) continue;
     rows.push({
       artefact: "mcp-registration",

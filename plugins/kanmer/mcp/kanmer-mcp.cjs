@@ -38880,27 +38880,33 @@ function skillRows(repoRoot, bundledSkillsDir2) {
     const text = readOrNull(import_path7.default.join(bundledSkillsDir2, rel));
     if (text !== null) reference.set(rel, digest(text));
   }
+  const bundledFolders = [...new Set(bundled.map(skillFolderOf))];
   for (const dest of present) {
+    const installedFolders = new Set(
+      bundledFolders.filter((folder) => isDir(import_path7.default.join(dest.abs, folder)))
+    );
+    if (installedFolders.size === 0) continue;
     const missing = [];
     const differing = [];
-    let installed = 0;
     for (const [rel, sha] of reference) {
+      if (!installedFolders.has(skillFolderOf(rel))) continue;
       const text = readOrNull(import_path7.default.join(dest.abs, rel));
       if (text === null) {
         missing.push(rel);
         continue;
       }
-      installed++;
       if (digest(text) !== sha) differing.push(rel);
     }
-    if (installed === 0) continue;
     if (missing.length || differing.length) {
       const folders = [...missing, ...differing].map(skillFolderOf);
       rows.push({
         artefact: "skills",
         state: "behind",
         detail: `${dest.rel}: ${differing.length} file(s) differ from the bundled skills and ${missing.length} are missing \u2014 affected skills: ${nameList(folders)}.`,
-        fix: `${SETUP_FIX}, or Update skills in the Kanmer app`
+        // Deliberately not "click Update skills": that button compares
+        // `plugin.json`'s frozen 0.1.0 against the installed stamp, so it has
+        // never lit up for any release ever shipped. Reconnect does copy.
+        fix: `${SETUP_FIX}, or reconnect this project in the Kanmer app`
       });
     }
     const retired = RETIRED_SKILL_PATHS.filter((rel) => exists(import_path7.default.join(dest.abs, rel)));
@@ -38961,11 +38967,40 @@ function boardConfigRows(board, source, format) {
   }
   return rows;
 }
-function registeredRootIn(text) {
-  const at = text.indexOf('"--root"');
+function rootFromArgs(args) {
+  if (!Array.isArray(args)) return null;
+  const at = args.indexOf("--root");
   if (at === -1) return null;
-  const rest = text.slice(at + '"--root"'.length);
-  const m = /^[\s,:[\]]*("(?:[^"\\]|\\.)*")/.exec(rest);
+  const next = args[at + 1];
+  return typeof next === "string" && next.trim() !== "" ? next : null;
+}
+function kanmerRootIn(text, format) {
+  if (format === "json") {
+    let doc;
+    try {
+      doc = JSON.parse(text);
+    } catch {
+      return null;
+    }
+    if (typeof doc !== "object" || doc === null) return null;
+    const rec = doc;
+    for (const key of ["mcpServers", "mcp"]) {
+      const servers = rec[key];
+      if (typeof servers !== "object" || servers === null) continue;
+      const entry = servers["kanmer"];
+      if (typeof entry !== "object" || entry === null) continue;
+      const e = entry;
+      const found = rootFromArgs(e["args"]) ?? rootFromArgs(e["command"]);
+      if (found) return found;
+    }
+    return null;
+  }
+  const header = /^[ \t]*\[mcp_servers\.kanmer\][ \t]*$/m.exec(text);
+  if (!header) return null;
+  const from = header.index + header[0].length;
+  const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
+  const section = nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
+  const m = /"--root"[\s,]*("(?:[^"\\]|\\.)*")/.exec(section);
   if (!m) return null;
   try {
     const value = JSON.parse(m[1]);
@@ -38993,8 +39028,7 @@ function registrationRows(repoRoot, projectRoot2) {
       });
       continue;
     }
-    if (!text.includes("kanmer")) continue;
-    const root = registeredRootIn(text);
+    const root = kanmerRootIn(text, rel.endsWith(".toml") ? "toml" : "json");
     if (root === null || sameRoot(root, projectRoot2)) continue;
     rows.push({
       artefact: "mcp-registration",

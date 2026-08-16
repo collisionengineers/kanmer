@@ -131,11 +131,18 @@ On merged `main`:
 3. `npm test` — expect `@kanmer/core` 193/193. `@kanmer/gui` may show 1–2
    failures in `kanmerGit.test.ts` from the Windows `EPERM` flake above; re-run
    that file alone to confirm it passes in isolation.
-4. `npm run check:manual` — expect `manual: up to date (12 chapters)`. FRD-012 is
-   **not** among the nine curated FRDs in `scripts/build-manual.mjs` (`FROM_FRD`
-   lists 002, 007, 003, 001, 006, 004, 011, 010, 020 — read, not assumed), so
-   `chapters.generated.ts` needs no regeneration. A failure here would mean that
-   premise was wrong.
+4. `npm run check:manual` — expect `manual: up to date (11 chapters)`. FRD-012 is
+   **not** among the curated FRDs in `scripts/build-manual.mjs` (read, not
+   assumed), so `chapters.generated.ts` needs no regeneration. A failure here
+   would mean that premise was wrong.
+   *Note the moving number:* this ticket first measured **12 chapters / nine
+   curated FRDs** on base `9ac20af`. After rebasing onto `2f06713`
+   (GUI-070, "remove the separate Backlog view") it is **11 chapters / eight
+   curated FRDs** — GUI-070 dropped `FRD-011-backlog-list-view` from `FROM_FRD`.
+   Not caused by this change; verified by reading `FROM_FRD` and
+   `git show 2f06713 --stat`. If the count has moved again by verify time, check
+   `FROM_FRD` rather than treating the number as the assertion — the assertion is
+   that FRD-012 is absent from it and the manual is up to date.
 5. `git diff --stat <merge-base>..HEAD` — expect only the two `docs/` paths. Any
    other path is a scope violation and the reason this check is in the proof.
 6. `grep -rn "go stale in weeks\|current host documentation" docs/` — expect

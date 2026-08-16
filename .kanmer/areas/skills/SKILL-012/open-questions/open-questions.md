@@ -97,7 +97,7 @@ sentence will mean mechanically rather than by assertion.
 
 ## Re-opened during implementation, 2026-08-16
 
-- [ ] **"Existing boards inherit" is not true as implemented. How should it be
+- [x] **"Existing boards inherit" is not true as implemented. How should it be
       made true?** — Found while demonstrating the gate on a copy of this board:
       it did not fire. `resolveProfiles` is
       `board.profiles ?? DEFAULT_PROFILES` (`packages/core/src/board.ts:45-47`),

@@ -217,6 +217,11 @@ const GATE = [
   "node packages/mcp-server/src/smoke.mjs",
   "node packages/mcp-server/src/smoke-protocol.mjs",
   "npm run verify:agents-block",
+  // The manual is a committed generated artifact, so a stale one ships
+  // silently. `npm test` above runs this too — named here as well because this
+  // list is the ship decision and should say what shipping requires (DOC-007;
+  // until then nothing in the repo invoked check:manual at all).
+  "npm run check:manual",
   // Every workspace, not just the GUI. The -w form here is what let c8b94a4
   // ship: the release rail was the only thing running a typecheck at all, and
   // it ran one workspace's (GUI-067).

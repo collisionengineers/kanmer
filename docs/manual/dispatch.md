@@ -1,0 +1,94 @@
+A connected agent can work your board while you talk to it. **Dispatch** is the
+other direction: you point Kanmer at a ticket, choose one job, and it starts a
+background agent to do that job and nothing else.
+
+## Doing it
+
+Right-click a card → **Dispatch to agent** → pick the agent → pick the task.
+
+Four hosts can be dispatched to: Codex, Claude Code, opencode and Grok CLI.
+Antigravity can be connected but not dispatched to, so it does not appear here.
+
+## One deliverable, not "work on this"
+
+The task menu is deliberately narrow. Each entry names what it will produce, and
+the agent stops when that thing exists:
+
+| Task | Produces |
+|---|---|
+| **Research (quick)** | At least one research document |
+| **Deep research** | Several research documents plus a summary |
+| **Map files** | At least one files document |
+| **Write plan + checklist** | A plan and a checklist |
+| **Execute checklist** | The checklist worked through, a post-implementation report, and a pull request open |
+| **Verify + write proof** | At least one proof document |
+
+There is also **Whole ticket**, which hands the agent the ticket and lets it use
+its own judgement. It is the right choice less often than it looks: a background
+agent with an unbounded goal is a background agent you have to supervise, and
+the entire benefit of dispatch is not having to.
+
+A narrow task has a done-condition you can check in three seconds. That is what
+makes it safe to walk away from.
+
+## What the menu tells you before you commit
+
+Two entries turn themselves off when they cannot work:
+
+- **Execute checklist** is disabled with no plan — *"no plan yet — dispatch
+  Write plan + checklist first"*.
+- **Verify + write proof** is disabled until something has merged — *"nothing is
+  merged yet — verify runs on merged main"*.
+
+Others stay available but warn: dispatching a plan with no research says the
+plan will be less grounded; deep research on a ticket that already has research
+says it will add to it rather than start over. The warning is advice, not a
+refusal — sometimes you know something the board does not.
+
+## Watching it
+
+A card with a dispatch in flight shows an **⏳ agent** chip.
+
+For the detail, open the command palette and choose **Show background
+dispatches**. The drawer lists this session's dispatches — the ticket, the
+state, which agent, which task, and the last few lines of output. **Cancel**
+stops one.
+
+You get a toast when a dispatch finishes, whichever way it finished: done,
+failed, cancelled, or timed out. Dispatches time out after thirty minutes, on
+the grounds that an agent still going after half an hour on one deliverable is
+stuck rather than thorough.
+
+When a dispatch ends, a summary — how it exited, how long it took, and the tail
+of its output — is appended to the ticket's scratch notes, so the record
+outlives the session.
+
+## One at a time, and not on a taken ticket
+
+Kanmer will not start a second dispatch on a ticket that already has one
+running, and it will not dispatch a ticket that somebody has taken. Release it
+first. Both rules exist to stop two agents writing the same document.
+
+## Taken tickets and worktrees
+
+An agent doing real work takes the ticket first: that stamps it with who has it
+and which branch the work is on, and moves it to Implementing. The card shows a
+**⛏** badge with the branch name, so the board tells you what is live.
+
+Agents doing implementation work in their own git worktree, one per ticket, is
+the working practice Kanmer's skills follow — it is how parallel work avoids
+colliding. Dispatch itself does not create the worktree; the agent does, as part
+of the execute task.
+
+You can take and release a ticket yourself from the command palette.
+
+## What your agent will say it is doing
+
+If you dispatch to an agent that has Kanmer's skills installed, its output will
+name them: `kanmer-research`, `kanmer-plan`, `kanmer-execute`, `kanmer-review`,
+`kanmer-verify`, `kanmer-closeout`, and a few more for board housekeeping.
+
+They are the working practices behind the stages in this manual — one per job.
+You do not need to learn them; they are listed here only so that seeing
+`kanmer-plan` scroll past reads as *"it is writing the plan"* rather than as
+something going wrong.

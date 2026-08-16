@@ -68,7 +68,17 @@ export interface AgentProvider {
   label: string;
   register: RegisterSpec;
   install: InstallSpec;
-  /** Headless dispatch supported in v1 (Phase 7)? antigravity is register-only. */
+  /**
+   * May Kanmer spawn this host headlessly to work a ticket in the background?
+   *
+   * This is a statement about **dispatch alone** — never a capability tier. A
+   * host with `dispatch: false` still registers the board and still receives the
+   * skills; what it does not do is appear in the "Dispatch to agent →" menu
+   * (`dispatchableProviders()`), and `dispatchTicket` refuses it (`dispatch.ts`).
+   * Anything the UI says about a `false` here must say *that*, and no more: the
+   * badge this once drove read "register-only", which denied a project skills
+   * install the host was in fact getting.
+   */
   dispatch: boolean;
   /**
    * The CLI + args to spawn for a background dispatch (the executable is `cli`,
@@ -377,6 +387,32 @@ export function codexTrustNote(trust: CodexTrust): string | null {
     case "unknown":
       return "Could not read ~/.codex/config.toml to check whether this folder is trusted; codex loads project config for trusted folders only.";
   }
+}
+
+/**
+ * Antigravity's connect-time caveat — the same shape as `codexTrustNote`, and
+ * for the same reason: a per-host *condition* on whether the registration is
+ * read belongs in a sentence the user sees at the moment it is written, not in a
+ * capability tier the UI has to infer.
+ *
+ * Unlike codex's, this one is unconditional. Codex's trust state is recorded in
+ * a file Kanmer can read, so it can say whether *this* folder is trusted;
+ * Antigravity's binding is a **per-session command-line flag**, so there is
+ * nothing on disk to check — no project record, no trust list, no git root makes
+ * it true (all three were tested and none binds). Kanmer establishes no binding
+ * itself (MCP-015), so the caveat applies to every connect until it does.
+ *
+ * Deliberately silent about the Antigravity **IDE**: everything above is `agy`
+ * 1.1.13, the IDE was never exercised, and ADR-0009's method clause makes an
+ * unchecked host a finding rather than a default. So the note names the CLI it
+ * measured and leaves the IDE alone rather than guessing in either direction.
+ */
+export function antigravityBindingNote(projectRoot: string): string {
+  return (
+    `Antigravity's CLI (\`agy\`) reads this file — and the skills — only in a session bound to this folder: ` +
+    `start it with \`agy --add-dir ${q(projectRoot)}\` (or \`--new-project\`), or a bare \`agy\` will not see them. ` +
+    `Verified against agy 1.1.13; the Antigravity IDE was not tested.`
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -717,11 +753,44 @@ export const PROVIDERS: AgentProvider[] = [
       unmerge: mcpServersUnmerge,
       registrationState: mcpServersRegistrationState,
     },
-    // Verified 2026-08-16: `.agents/skills` is Antigravity's *primary* project
-    // location (`.agent/` singular is kept only for backward compatibility), so
-    // it reads the very same tree opencode does — one write, two hosts.
+    // `.agents/skills` is Antigravity's *primary* project location (`.agent/`
+    // singular is kept only for backward compatibility), so it is the very same
+    // tree opencode reads — one write, two hosts. (grok reads it too, per
+    // FRD-012 R2, which is why grok's separate `.grok/skills` write is redundant
+    // — MCP-014's to retire, not this entry's to claim.)
+    //
+    // **With one condition, measured 2026-08-16 against agy 1.1.13.** `agy` reads
+    // a workspace's `.agents/skills/` and `.agents/mcp_config.json` only in a
+    // session **bound to that folder**; ten runs with positive controls, and the
+    // probe MCP server's own process log, established that the binding is the
+    // whole gate. A bare `agy` binds to `default-cli-project`, whose record is
+    // `"projectResources": {}` — no folder, so there is nothing to read `.agents/`
+    // from, and the working directory is irrelevant. `--new-project`,
+    // `--project <id>` (where the record carries a `folderUri`) and
+    // `--add-dir <path>` each bind, and only the flag on the command line does:
+    // workspace *trust* is not the gate, a git root does not auto-bind, and a
+    // project merely existing does not bind. Kanmer establishes no binding today,
+    // so what Connect writes here is **correct and currently inert** — the files
+    // are in the right places and an ordinary `agy` session never looks at them.
+    // MCP-015 owns making it live; `antigravityBindingNote` says so at connect
+    // time so the user is not left to discover it. (ADR-0009's method clause,
+    // FRD-012 R2.)
     install: { kind: "copySkills", skillsScope: "project", skillsDir: ".agents/skills" },
-    // `agy -p` is known-broken piped (GH #318/#76) → register-only in v1.
+    // NOT because `agy -p` is broken. That claim — "known-broken piped, GH
+    // #318/#76" — is **refuted**: `echo hi | agy -p "Reply with exactly: PONG"`
+    // prints `PONG` and exits 0 on 1.1.13 with stdout piped exactly as `spawn`
+    // pipes it, reproduced across ten runs by two independent investigations.
+    // (The two issue numbers were never fetched — no network lookup was made —
+    // so they are recorded as unverified history, not as evidence. The behaviour
+    // was tested against the installed binary instead, which is the stronger
+    // check: ADR-0009.)
+    //
+    // `dispatch` stays false for the binding reason above. `dispatchTicket`
+    // spawns with `cwd: root` and nothing else (`dispatch.ts`), so a dispatched
+    // Antigravity agent would run unbound — blind to the very MCP server Connect
+    // had just registered for it, while appearing in the dispatch menu as though
+    // it worked. Flipping this flag is therefore not a one-line change; it needs
+    // the binding, and MCP-015 owns both.
     dispatch: false,
   },
 ];

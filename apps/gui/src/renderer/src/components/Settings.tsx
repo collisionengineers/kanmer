@@ -381,8 +381,9 @@ function ConnectSection(): JSX.Element {
       <h3>Connect an AI agent</h3>
       <p className="hint">
         Registers this project's Kanmer board with the host's MCP client and installs the skills —
-        via its plugin marketplace (Claude Code, Codex), a project skills dir (Grok), or the shared
-        AGENTS.md block for hosts that only read skills globally (opencode, Antigravity). Every
+        via its plugin marketplace (Claude Code, Codex), or a project skills directory —{" "}
+        <code>.grok/skills</code> for Grok, and one shared <code>.agents/skills</code> tree that
+        opencode and Antigravity both read, alongside the managed AGENTS.md block. Every
         registration Kanmer writes lands inside this project, in a file the host owns.
       </p>
       <div className="provider-list">
@@ -390,7 +391,19 @@ function ConnectSection(): JSX.Element {
           <div key={p.id} className="provider-row">
             <span className="provider-name">
               {p.label}
-              {!p.dispatch && <span className="hint"> · register-only</span>}
+              {/* Names exactly what the flag means. It used to say "register-only",
+                  which read as a capability tier and denied the project skills
+                  install this host does get (GUI-073). Same source as
+                  `dispatchableProviders()`, so badge and menu cannot disagree. */}
+              {!p.dispatch && (
+                <span
+                  className="hint"
+                  title="Kanmer cannot start this host in the background to work a ticket; it registers and receives skills like every other host."
+                >
+                  {" "}
+                  · no background dispatch
+                </span>
+              )}
               {skills[p.id]?.updateAvailable && (
                 <span className="hint">
                   {" "}

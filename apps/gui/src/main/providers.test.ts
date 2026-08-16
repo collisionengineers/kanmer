@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url";
 import {
   PROVIDERS,
   RETIRED_SKILL_PATHS,
+  antigravityBindingNote,
   classifyLegacyCodexEntry,
+  dispatchableProviders,
   codexServerName,
   formatSkillsStamp,
   legacyCodexEntries,
@@ -129,9 +131,41 @@ describe("provider registry", () => {
     expect(state("antigravity", "{ malformed")).toBe("indeterminate");
   });
 
-  it("antigravity is register-only (no dispatch)", () => {
-    expect(providerById("antigravity")!.dispatch).toBe(false);
+  it("antigravity registers AND installs project skills, and is not dispatchable", () => {
+    // The test this replaces was called "antigravity is register-only (no
+    // dispatch)" and asserted the boolean alone — so the suite looked like it
+    // had verified a claim that was wrong in both directions. Antigravity gets a
+    // project MCP registration *and* a project skills tree (measured: `agy`
+    // 1.1.13 reads both, in a workspace-bound session). What it does not get is
+    // background dispatch, and not because `agy -p` is broken — that was refuted
+    // — but because Kanmer establishes no workspace binding, so a dispatched
+    // agent would not see the board (MCP-015).
+    const antigravity = providerById("antigravity")!;
+    const register = antigravity.register;
+    if (register.kind !== "configFile") throw new Error("expected configFile");
+    expect(register.configPath).toBe(".agents/mcp_config.json");
+    expect(antigravity.install).toEqual({
+      kind: "copySkills",
+      skillsScope: "project",
+      skillsDir: ".agents/skills",
+    });
+    expect(antigravity.dispatch).toBe(false);
+    expect(dispatchableProviders().map((p) => p.id)).not.toContain("antigravity");
     expect(providerById("claude")!.dispatch).toBe(true);
+  });
+
+  it("antigravity's connect note names the binding, not a capability tier", () => {
+    // The condition Kanmer does not yet satisfy, said where the user is told the
+    // file was written. Unconditional by nature: the binding is a per-session
+    // flag, so there is no on-disk state to check (unlike codex trust).
+    const note = antigravityBindingNote("C:\\Users\\Me\\proj");
+    expect(note).toContain("--add-dir");
+    expect(note).toContain("C:\\Users\\Me\\proj");
+    expect(note).toContain("agy 1.1.13");
+    expect(note).toMatch(/IDE was not tested/);
+    expect(note).not.toMatch(/register-only/);
+    // Paths with spaces stay one argument in the command it suggests.
+    expect(antigravityBindingNote("C:\\My Projects\\p")).toContain('"C:\\My Projects\\p"');
   });
 
   it("dispatchable hosts build the headless CLI + args carrying the prompt", () => {

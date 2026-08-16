@@ -93,9 +93,10 @@ or `verify:agents-block` fails):
   set — as a clause on the existing `get_doc_gates` bullet, not a new bullet.
 - **ADD** that creation is ungated.
 
-Net effect: the block gets **shorter**, because the deleted sentence is longer
-than the clauses that replace it. That is measured in proof, not asserted —
-SKILL-014's binding precedent is that the block's size is a cost every repo pays.
+Net effect: **~~the block gets shorter~~ — WRONG, see "Correction to Part 2" at
+the end of this document.** Measured, it gets longer (+273 bytes). The size is
+measured in proof, not asserted; SKILL-014's binding precedent is that the
+block's size is a cost every repo pays.
 
 **The three-copy problem**, now a live bug: `apps/gui/src/main/agentsBlock.ts:11-24`
 holds a **stale v2** body (seven stages, `impact.md`, the deleted `-import`
@@ -220,3 +221,29 @@ Unchanged from `files`: no skill voice rewrites, no `kanmer-review/assets/pr-*.m
 (SKILL-015), no `.claude/skills/` pruning (CORE-023), no CI lint beyond this
 script (CORE-025), no `chore`/`spike` behaviour change (operator said keep), no
 making `collapsesPipeline` smarter.
+
+## Correction to Part 2 — the block gets longer, not shorter
+
+**Made during implementation; the plan was wrong here.** Part 2 originally
+predicted "the block gets **shorter**, because the deleted
+sentence is longer than the clauses that replace it". **Measured, it gets
+longer: 2209 → 2482 bytes, +273 bytes / +47 words**, 18 → 20 lines.
+
+The prediction was never plausible: the section itself lists **one** deletion and
+**four** additions. The deleted per-profile sentence is ~130 bytes; the four
+rules cost ~400 even after tightening every one of them.
+
+The pre-registered fallback — from `open-questions` — was "if the count comes out
+net-longer, the `board.yml` clause is the line to drop". **Not taken, and the
+reason is recorded rather than the rule being quietly ignored:** that clause is
+the one `research` finding 3 identifies as *the strongest single reason to call
+`get_doc_gates`*, and dropping it would still leave the block ~150 bytes longer.
+It would trade the most valuable added line for a size target that this ticket's
+own scope made unreachable. What the fallback correctly protects against is
+padding; the response to it here is that all four additions were **tightened**
+and re-measured (a first draft cost +339), not that the size rule was waived.
+
+Stated plainly for `proof`: **this ticket makes the block longer, and that is the
+cost of the four rules it exists to add.** SKILL-014's precedent that the block's
+size is a cost every repo pays still stands — it is a reason to keep the
+additions terse, not a reason a rule-adding ticket cannot add rules.

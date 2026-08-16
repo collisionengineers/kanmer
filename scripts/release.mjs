@@ -158,7 +158,15 @@ const status = capture("git status --porcelain");
 requireOrWarn(
   status.length > 0,
   "the working tree is not clean",
-  "commit or stash first — the release commit must contain only the version bump",
+  // The rule used to read "only the version bump". It is now wider, on purpose
+  // (MCP-012): the release commit contains the version bump AND the artifacts
+  // derived from it — `plugins/kanmer/mcp/kanmer-mcp.cjs`, which is rebuilt
+  // after the bump because the version is compiled into it, and
+  // `package-lock.json`. What must still be true when you START is that
+  // nothing ELSE is pending: everything the commit carries is produced by this
+  // script, below, and nothing is swept in from your working tree.
+  "commit or stash first — the release commit must contain only the version bump " +
+    "and the artifacts this script regenerates from it",
 );
 const branch = capture("git rev-parse --abbrev-ref HEAD");
 requireOrWarn(branch !== "main", `on branch "${branch}", not main`, "release from main");
@@ -194,8 +202,16 @@ console.log(`notes: ${notesPath}`);
 // ---------------------------------------------------------------------------
 const GATE = [
   "npm run build",
-  // NOT plugin:build — that rewrites the committed bundle, which would dirty the
-  // tree mid-release. plugin:check verifies the same bytes without a diff.
+  // NOT plugin:build *here*. The original reason still holds at this point in
+  // the script: this gate runs BEFORE the version bump, the tree is required to
+  // be clean, and rewriting the committed bundle now would dirty it for no
+  // gain — plugin:check verifies the same bytes without producing a diff.
+  //
+  // What changed (MCP-012): the bundle now has the version compiled into it, so
+  // it must be rebuilt AFTER the bump — see step 5b below, which is where
+  // plugin:build moved to, not where it was deleted from. Here the version is
+  // still the current one, so the committed bundle and a fresh build agree and
+  // this check is exactly as meaningful as it always was.
   "npm run plugin:check",
   "npm test",
   "node packages/mcp-server/src/smoke.mjs",
@@ -213,14 +229,21 @@ if (dryRun) {
   console.log("Would now:");
   console.log(`  1. write ${version} into apps/gui/package.json and package.json`);
   console.log("  2. npm install --package-lock-only");
-  console.log("  3. build the GUI, pack with --publish never, run check-updater-package.mjs");
-  console.log(`  4. git commit -am "release: v${version}" && git tag v${version}`);
-  console.log("  5. git push && git push --tags (GitHub requires the tag to exist before it will publish against it)");
-  console.log("  6. pack again with --publish always");
-  console.log(`  7. verify /releases/latest is v${version}, then verify EVERY published asset`);
+  console.log(
+    `  3. npm run build && node scripts/build-plugin.mjs && npm run plugin:check` +
+      ` — rebuild the MCP bundle so it reports ${version}, not ${current}`,
+  );
+  console.log("  4. build the GUI, pack with --publish never, run check-updater-package.mjs");
+  console.log(
+    `  5. git commit -am "release: v${version}" && git tag v${version}` +
+      " — the commit carries the bump AND the rebuilt plugin bundle",
+  );
+  console.log("  6. git push && git push --tags (GitHub requires the tag to exist before it will publish against it)");
+  console.log("  7. pack again with --publish always");
+  console.log(`  8. verify /releases/latest is v${version}, then verify EVERY published asset`);
   console.log("     (installer, blockmap, latest.yml) is present, uploaded, and byte-identical");
   console.log("     to the local build — comparing GitHub's sha256 digest against the local files");
-  console.log("  8. on any gap: re-publish ONCE, re-verify, then refuse loudly without demoting");
+  console.log("  9. on any gap: re-publish ONCE, re-verify, then refuse loudly without demoting");
   console.log("\nNothing was written. The tree is untouched.");
   process.exit(0);
 }
@@ -240,6 +263,39 @@ function bump(path) {
 bump(guiPkgPath);
 bump(rootPkgPath);
 run("npm install --package-lock-only");
+
+// ---------------------------------------------------------------------------
+// 5b. Rebuild the MCP bundle, now that the version is the new one.
+//
+//     The server compiles the release version in at build time (an esbuild
+//     `define` reading the root package.json — packages/mcp-server/
+//     version-define.mjs) so that `get_status` can report which build is
+//     answering. MCP-012 exists because two hosts pointed at the same board
+//     were running different server builds enforcing different gates, and
+//     nothing anywhere said so.
+//
+//     That makes the bundle a function of the version, so the order matters:
+//       bump  ->  rebuild  ->  pack  ->  commit
+//     Without this step v0.3.3 would ship resources/mcp/kanmer-mcp.cjs still
+//     reporting 0.3.2 — a stamp that lies is worse than no stamp — and the
+//     committed plugin bundle would then be stale against a fresh build, so
+//     the NEXT `npm run plugin:check` (including this script's own gate, next
+//     release) would fail on main.
+//
+//     It must run before the pack: electron-builder's extraResources copies
+//     dist/standalone/kanmer-mcp.cjs into the app (apps/gui/electron-builder.yml).
+//
+//     The regenerated plugins/kanmer/mcp/kanmer-mcp.cjs is tracked, so the
+//     `git commit -am` in step 7 carries it — that is deliberate, and it is why
+//     the clean-tree rule above now says "the bump and the artifacts derived
+//     from it". Authorised by the operator for MCP-012.
+// ---------------------------------------------------------------------------
+run("npm run build");
+run("node scripts/build-plugin.mjs");
+// Paranoia, cheap: prove the committed bundle now matches a fresh build at the
+// NEW version before anything is packed, committed, tagged or pushed. If this
+// ever fails, the release stops here with the tree still local and fixable.
+run("npm run plugin:check");
 
 // ---------------------------------------------------------------------------
 // 6. Pass 1: pack WITHOUT publishing, and check the package. Catching "no

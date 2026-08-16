@@ -30,6 +30,7 @@ import {
   type WatchHandle,
 } from "@kanmer/core";
 import { resolveProjectRoot, resolveRepoRoot } from "./root.js";
+import { SERVER_VERSION, serverIdentity } from "./identity.js";
 
 /**
  * Root resolution happens inside `main()`, not here — see `resolveRoot()`
@@ -45,14 +46,35 @@ import { resolveProjectRoot, resolveRepoRoot } from "./root.js";
  */
 let projectRoot!: string;
 let rootSource!: RootSource;
+let repoRootSource!: RepoRootSource;
 let store!: KanmerStore;
+
+/**
+ * How the *repo* root was arrived at — the sibling of `rootSource` for the
+ * second root. `derived` means neither `--repo-root` nor `KANMER_REPO_ROOT`
+ * was given and core worked it out from the board path (`deriveRepoRoot`,
+ * falling back to the board root itself).
+ *
+ * Reported because it is half of a real, measured, previously invisible
+ * divergence: this repo's `.codex/config.toml` passes `--repo-root` and its
+ * `.mcp.json` does not, so the two hosts resolved governing-doc `refs` against
+ * different trees while `get_status` said nothing. MCP-012.
+ */
+type RepoRootSource = "flag" | "env" | "derived";
 
 /** Resolve the board root and build the store. Called once, at the top of main(). */
 function resolveRoot(): void {
-  const resolved = resolveProjectRoot(process.argv.slice(2), process.env);
-  const repoRoot = resolveRepoRoot(process.argv.slice(2), process.env);
+  const argv = process.argv.slice(2);
+  const resolved = resolveProjectRoot(argv, process.env);
+  const repoRoot = resolveRepoRoot(argv, process.env);
   projectRoot = resolved.root;
   rootSource = resolved.how;
+  // Classified here, where resolveRepoRoot's inputs are still in scope — the
+  // store keeps only the resolved value, not how it was reached. Keyed off the
+  // resolved value first, so a valueless `--repo-root` (which readFlag ignores)
+  // is not reported as "flag" when nothing actually came of it.
+  const repoRootFlag = argv.some((a) => a === "--repo-root" || a.startsWith("--repo-root="));
+  repoRootSource = repoRoot === undefined ? "derived" : repoRootFlag ? "flag" : "env";
   store = new KanmerStore(projectRoot, { repoRoot });
 }
 
@@ -229,7 +251,10 @@ const createFields = {
   body: z.string().optional().describe("Markdown body; may contain [[id]] wiki-links"),
 };
 
-const server = new McpServer({ name: "kanmer", version: "0.1.0" });
+// The version is the build-time-injected release, not a hardcoded literal: the
+// old "0.1.0" here was two minor versions stale and never bumped by anything.
+// `get_status.server.version` reports the same value — one fact, one source.
+const server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
 
 // ---------------------------------------------------------------------------
 // Read tools
@@ -240,7 +265,11 @@ server.registerTool(
   {
     title: "Project status",
     description:
-      "Orientation call — use it first, every session. Returns the project root, whether .kanmer/ exists (this tool never creates it), the storage format version, whether the board came from a real board.yml or is the synthesized default, per-stage and per-type item counts, archived/taken counts, and how many file warnings the listing produced.",
+      "Orientation call — use it first, every session. Answers both of the questions you have at session start: WHICH BOARD, and WHICH SERVER. " +
+      "Board: the project root and `rootSource` (how it was found: flag | env | cwd | cwd-worktree | ancestor | ancestor-worktree | init), the `repoRoot` that governing-doc refs resolve against and its `repoRootSource` (flag | env | derived), whether .kanmer/ exists (this tool never creates it), the storage format version, whether the board came from a real board.yml or is the synthesized default, per-stage and per-type item counts, archived/taken counts, and how many file warnings the listing produced. " +
+      "Server: a `server` block naming the build that is answering — the release `version`, the resolved `path` of the running script, the runtime `sha256` of its bytes (plus `sha256Short`), its `mtime` and `size`, and the `build` shape (packaged | plugin | dev-standalone | dev-esm | unknown). " +
+      "Two hosts pointed at the same board can be running different server builds that enforce different gates; comparing `server.sha256` is how you see that instead of guessing. " +
+      "IMPORTANT: the `server` block is absent on servers older than 0.3.3 — that ABSENCE is itself the signal 'this build predates server identity', not an error. Individual fields are null if they could not be read; the call never fails over it.",
     inputSchema: {},
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
@@ -260,9 +289,22 @@ server.registerTool(
       byType[item.type] = (byType[item.type] ?? 0) + 1;
     }
     return ok({
+      // --- Identity: which board, and which server. ---------------------
+      // These four plus `server` are the block an agent reads to know what it
+      // is talking to. `projectRoot`/`rootSource` are MCP-010's, unchanged.
       projectRoot,
+      /** What governing-doc `refs` resolve against — MCP-012. */
+      repoRoot: store.paths.repoRoot,
       /** Which resolution step produced projectRoot — see ADR-0012. */
       rootSource,
+      /** How repoRoot was reached: flag | env | derived — MCP-012. */
+      repoRootSource,
+      /**
+       * Which build is answering. Absent on servers older than 0.3.3, and that
+       * absence is the signal — see the tool description. Never throws: any
+       * field it could not determine is null.
+       */
+      server: serverIdentity(),
       kanmerDir: store.paths.kanmer,
       exists,
       format,
@@ -1126,7 +1168,15 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // Never write logs to stdout — that stream is the MCP transport.
-  process.stderr.write(`kanmer-mcp ready — root: ${projectRoot} (${rootSource})\n`);
+  // The identity goes here too, not only in get_status: a host that never calls
+  // the tool still leaves the answer in its own log, which is where anyone
+  // debugging "why did these two hosts disagree" actually looks first.
+  const id = serverIdentity();
+  process.stderr.write(
+    `kanmer-mcp ready — root: ${projectRoot} (${rootSource}), ` +
+      `repo: ${store.paths.repoRoot} (${repoRootSource}), ` +
+      `build: ${id.build} v${id.version ?? "?"} sha ${id.sha256Short ?? "?"}\n`,
+  );
 }
 
 main().catch((err) => {

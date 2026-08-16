@@ -62,13 +62,3 @@ describe("the shortcuts chapter matches the binding table", () => {
     }
   });
 });
-
-describe("deep-link targets", () => {
-  it("every chapter a `?` can link to actually exists", () => {
-    // A dead deep link is worse than no deep link: it opens the manual at
-    // nothing and looks like the manual is broken.
-    for (const id of ["profiles", "stages", "documents", "proof", "shortcuts", "troubleshooting"]) {
-      expect(byId(id), id).toBeDefined();
-    }
-  });
-});

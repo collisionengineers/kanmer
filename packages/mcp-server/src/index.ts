@@ -669,7 +669,7 @@ server.registerTool(
   {
     title: "Move an item to a workflow stage",
     description:
-      "Kanban move: set an item's status, i.e. move it to a workflow stage (see list_board → statuses). Rejects a status that is not on the board. Enforces the ticket area's document gates — e.g. proof.md before the final stage, post-implementation-report before review — and on failure names every missing document/governing-doc and the boundary. Call get_doc_gates to self-check first. Optional position places the item within the column: \"top\", \"bottom\", or { after: \"API-003\" } — this maintains the manual order humans see.",
+      "Kanban move: set an item's status, i.e. move it to one of the six fixed stages (backlog, preparing, implementing, review, verifying, done). Enforces the ticket's profile gates and names the unmet requirement and boundary on failure. IMPORTANT: a single move may cross at most ONE gated boundary — writing every document and jumping straight to done is refused even though nothing is missing, because the pipeline is meant to be walked, not satisfied at the end. Move one stage at a time; the refusal names the next one. Which boundaries your ticket has depends on its profile, so call get_doc_gates to self-check first. Optional position places the item within the column: \"top\", \"bottom\", or { after: \"API-003\" } — this maintains the manual order humans see.",
     inputSchema: {
       id: z.string().describe("Item id to move"),
       status: z.string().describe("Target status id (workflow stage)"),

@@ -1,6 +1,6 @@
 ---
 name: kanmer-groom
-description: Groom and triage a Kanmer board by actually fixing it — dedupe near-duplicate tickets, fill in missing areas and priorities, split oversized tickets, archive dead ones, chase stale taken tickets, and repair off-board statuses. Use when the user says "groom the backlog", "tidy the board", "triage", "clean up the tickets". DO NOT USE FOR reporting problems without changing anything (kanmer-report).
+description: Groom and triage a Kanmer board by actually fixing it — dedupe near-duplicate tickets, fill in missing areas and profiles, split oversized tickets, archive dead ones, chase stale taken tickets, and repair off-board statuses. Use when the user says "groom the backlog", "tidy the board", "triage", "clean up the tickets". DO NOT USE FOR reporting problems without changing anything (kanmer-report).
 ---
 
 # Grooming a Kanmer board
@@ -17,7 +17,8 @@ true`, and `get_activity` for recent movement. Look for:
 
 - **Near-duplicates** — `search_items` on suspicious title pairs; two
   tickets describing one unit of work.
-- **Missing fields** — no `area` on a board that has areas; no priority
+- **Missing fields** — no `area` on a board that has areas; no `profile`, so
+  the ticket silently inherits its area's default when a different one fits
   where the user uses them.
 - **Doc-gate debt** — tickets with `docs_todo: true` whose governing PRD/FRD/ADR
   was never linked, or missing a doc a later stage requires (`get_doc_gates`

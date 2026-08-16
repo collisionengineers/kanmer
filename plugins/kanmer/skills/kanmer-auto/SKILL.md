@@ -54,6 +54,13 @@ mechanism), each following the `kanmer-research` skill for its ticket.
 Tickets whose research surfaces user-only questions get parked and reported
 — don't guess on the user's behalf.
 
+This is not only a wave-0 concern: a question can surface at any point, and a
+lane that hits one **stops there and is reported as parked-on-a-question, named
+and quoted** — never rolled into the generic failure bucket. The operator can
+answer a question in seconds; they cannot answer one they were never shown. The
+gates enforce the stopping (`questions-resolved` at leave-preparing,
+enter-review and enter-done); reporting it usefully is this skill's job.
+
 ## 3. Partition into conflict-free lanes
 
 Compare the file tables in each ticket's `files` document:
@@ -91,7 +98,8 @@ the lane partition still tells you the safe order.
 
 Finish with a standup-style summary: **cleared** (closed out),
 **at target** (parked at the requested point, e.g. awaiting merge),
-**parked** (user-only questions, with the questions), **skipped**
+**parked** (user-only questions — **quote them**, with the ticket id and the
+recommendation, so the operator can answer inline), **skipped**
 (blocked / taken / failed, with reasons). Every ticket in the roster
 appears in exactly one list — silent drops are how autonomous runs lose
 trust.

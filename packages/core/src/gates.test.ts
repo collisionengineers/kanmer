@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { collapsesPipeline, evaluateGateReport, type BoundaryStatus } from "./gates.js";
-import { DEFAULT_PROFILES } from "./profiles.js";
+import { DEFAULT_PROFILES, QUESTIONS_RESOLVED } from "./profiles.js";
 import { stageIndex } from "./stages.js";
 
 /**
@@ -13,6 +13,7 @@ const ALL_PRESENT = {
   hasNamed: async () => true,
   hasGoverningDoc: () => true,
   hasProofImages: async () => true,
+  unresolvedQuestions: async () => 0,
 };
 
 async function boundariesFor(
@@ -91,5 +92,77 @@ describe("one gated boundary per move (FRD-002 G2, amended)", () => {
     );
     expect(crossed).not.toBeNull();
     expect(crossed!.map((b) => b.boundary)).toEqual(["leave-preparing", "enter-review"]);
+  });
+});
+
+describe("questions-resolved (ADR-0011)", () => {
+  const evidence = (open: number) => ({ ...ALL_PRESENT, unresolvedQuestions: async () => open });
+
+  async function reportFor(profileId: string, open: number, stage = "preparing") {
+    return evaluateGateReport({
+      profiles: DEFAULT_PROFILES as never,
+      profileId,
+      stage,
+      evidence: evidence(open),
+    });
+  }
+
+  function requirement(report: Awaited<ReturnType<typeof reportFor>>, boundary: string) {
+    return report.boundaries
+      .find((b) => b.boundary === boundary)
+      ?.requirements.find((r) => r.type === QUESTIONS_RESOLVED);
+  }
+
+  it("blocks every boundary that declares it while a question is open", async () => {
+    const report = await reportFor("feature", 1);
+    for (const boundary of ["leave-preparing", "enter-review", "enter-done"]) {
+      expect(requirement(report, boundary)?.satisfied, boundary).toBe(false);
+    }
+  });
+
+  it("is satisfied once nothing is open", async () => {
+    const report = await reportFor("feature", 0);
+    for (const boundary of ["leave-preparing", "enter-review", "enter-done"]) {
+      expect(requirement(report, boundary)?.satisfied, boundary).toBe(true);
+    }
+  });
+
+  it("applies to every shipped profile — no carve-out by work type", async () => {
+    // A spike's deliverable is research and its questions can be the point of
+    // it, so enter-done is exactly where it needs recording, not exempting.
+    for (const [profileId, boundary] of [
+      ["feature", "leave-preparing"],
+      ["fix", "leave-preparing"],
+      ["chore", "leave-preparing"],
+      ["spike", "enter-done"],
+    ] as const) {
+      const report = await reportFor(profileId, 2);
+      expect(requirement(report, boundary)?.satisfied, profileId).toBe(false);
+    }
+  });
+
+  it("leaves a profile that does not declare it alone", async () => {
+    // A board-defined profile, not `custom` — custom reads the ticket's inline
+    // `requires` and would ignore the table entirely.
+    const report = await evaluateGateReport({
+      profiles: { ...DEFAULT_PROFILES, minimal: { "enter-done": ["proof"] } } as never,
+      profileId: "minimal",
+      stage: "preparing",
+      evidence: evidence(5),
+    });
+    expect(requirement(report, "enter-done")).toBeUndefined();
+    expect(report.boundaries.find((b) => b.boundary === "enter-done")?.passable).toBe(true);
+  });
+
+  it("names itself in blockedBy so the refusal is actionable", async () => {
+    const report = await reportFor("feature", 1);
+    expect(report.blockedBy.implementing?.join(" ")).toContain(QUESTIONS_RESOLVED);
+  });
+
+  it("never becomes a warning — warnings are the non-blocking channel", async () => {
+    // Unlike the visual-proof check, this one blocks. Putting its explanation in
+    // `warnings` too would make that field mean two different things.
+    const report = await reportFor("feature", 3);
+    expect(report.warnings).toEqual([]);
   });
 });

@@ -18,6 +18,7 @@ import {
 } from "./stages.js";
 import {
   GOVERNING_DOC,
+  QUESTIONS_RESOLVED,
   type ProfileMap,
   type Requirement,
   requirementsFor,
@@ -64,6 +65,13 @@ export interface EvidenceProbe {
   hasGoverningDoc(): boolean;
   /** ≥1 image beneath `proof/` — drives the visual-proof soft warning. */
   hasProofImages(): Promise<boolean>;
+  /**
+   * Unticked `- [ ]` lines above the parked heading in `open-questions/`
+   * (ADR-0011). 0 when there is no document — raising no questions is not a
+   * failure state. The only evidence in this interface read from a document's
+   * *content* rather than its existence.
+   */
+  unresolvedQuestions(): Promise<number>;
 }
 
 export interface EvaluateInput {
@@ -78,6 +86,23 @@ export interface EvaluateInput {
 async function statusOf(req: Requirement, ev: EvidenceProbe): Promise<RequirementStatus> {
   if (req.type === GOVERNING_DOC) {
     return { requirement: req.raw, type: req.type, satisfied: ev.hasGoverningDoc() };
+  }
+
+  if (req.type === QUESTIONS_RESOLVED) {
+    // Blocks rather than warns, unlike the visual-proof check below. That check
+    // asks a machine to judge whether an image is really a screenshot, which it
+    // does badly; this one counts unticked boxes, which it does exactly. The
+    // failure mode is a stuck ticket — visible and one edit from clear — where
+    // an existence gate fails invisibly (ADR-0011).
+    // No `warning` is set even when unsatisfied: warnings are the report's
+    // non-blocking channel, and putting a hard block's explanation there would
+    // make "warnings" mean two things. The actionable advice lives in the
+    // move refusal instead, beside the governing-doc clause.
+    return {
+      requirement: req.raw,
+      type: req.type,
+      satisfied: (await ev.unresolvedQuestions()) === 0,
+    };
   }
 
   const satisfied = req.named

@@ -38,10 +38,19 @@ rather than assuming.
    order matters, and shrink this plan back to its ticket.
 6. **If the plan changes anything user-visible or contested, show it to the user
    before implementation starts** — a paragraph summary, not the whole document.
+7. **Put the open questions to the user, then revise the plan around the
+   answers.** This is the moment for it: research surfaced them, the plan is
+   what would otherwise silently assume one. Ask them together, each with a
+   recommendation, and record the answer in `open-questions` — a question
+   answered in chat and not written down is a question nobody can find later.
+   Take trivial defaults rather than asking; say in the document that you took
+   them.
 
 When the documents exist and the user has approved, `get_doc_gates <id>` shows
 the Preparing → Implementing boundary passable and the ticket is ready for
-`kanmer-execute`.
+`kanmer-execute`. If it still reports `questions-resolved` unmet, step 7 is not
+finished: `open-questions` has unticked `- [ ]` lines. Answer them and tick, or
+move them under `## Parked (explicitly deferred)` with a reason for deferring.
 
 A move may cross **one** gated boundary at a time, so do not try to jump a
 planned ticket further than Implementing — the move is refused, and the refusal

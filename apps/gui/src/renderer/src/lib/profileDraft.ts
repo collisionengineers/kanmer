@@ -25,6 +25,18 @@ export interface Vocabulary {
 /** The pseudo-type satisfied by a governing-doc link rather than a document. */
 export const GOVERNING_DOC = "governing-doc";
 
+/**
+ * The pseudo-type satisfied by having no unresolved open question (ADR-0011).
+ *
+ * Mirrors `QUESTIONS_RESOLVED` in `@kanmer/core`. Both pseudo-types are
+ * duplicated here rather than imported because this module validates drafts in
+ * the renderer; the cost is that they must be kept in step, and a missing one
+ * means Settings rejects a profile the core accepts.
+ */
+export const QUESTIONS_RESOLVED = "questions-resolved";
+
+const PSEUDO_TYPES = [GOVERNING_DOC, QUESTIONS_RESOLVED];
+
 export interface ParsedRequirement {
   raw: string;
   type: string;
@@ -73,8 +85,8 @@ export function validateRequirement(raw: string, vocab: Vocabulary): string | nu
   const trimmed = raw.trim();
   if (!trimmed) return "empty requirement";
   const req = parseRequirementLike(trimmed);
-  if (req.type !== GOVERNING_DOC && !vocab.docTypes.includes(req.type)) {
-    return `unknown document type "${req.type}" — valid: ${[...vocab.docTypes, GOVERNING_DOC].join(", ")}`;
+  if (!PSEUDO_TYPES.includes(req.type) && !vocab.docTypes.includes(req.type)) {
+    return `unknown document type "${req.type}" — valid: ${[...vocab.docTypes, ...PSEUDO_TYPES].join(", ")}`;
   }
   if (req.proofType && req.type !== "proof") return `only \`proof\` takes a type suffix`;
   if (req.proofType && !vocab.proofTypes.includes(req.proofType)) {

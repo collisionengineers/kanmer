@@ -65,6 +65,9 @@ describe("validateRequirement", () => {
   });
 
   it("accepts governing-doc", () => ok("governing-doc"));
+  // Must stay in step with core's QUESTIONS_RESOLVED: if this mirror lags,
+  // Settings rejects a profile the core happily accepts (ADR-0011).
+  it("accepts questions-resolved", () => ok("questions-resolved"));
   it("accepts a typed proof with an environment", () => ok("proof:visual@staging"));
   it("accepts a named document", () => ok("research/findings"));
 

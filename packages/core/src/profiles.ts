@@ -46,6 +46,19 @@ export function isTicketDir(v: string): boolean {
  */
 export const GOVERNING_DOC = "governing-doc";
 
+/**
+ * The pseudo-type satisfied when the ticket has no **unresolved** open question
+ * — no unticked `- [ ]` above the parked heading in `open-questions/`
+ * (ADR-0011, FRD-009).
+ *
+ * Deliberately not the `open-questions` doc type. Requirements are satisfied by
+ * a document *existing*, so requiring the document would be satisfied by a file
+ * of four unanswered questions: it would enforce the paperwork and not the rule.
+ * This is the only requirement permitted to read inside a document, and
+ * ADR-0011 states the three properties that keep it from generalising.
+ */
+export const QUESTIONS_RESOLVED = "questions-resolved";
+
 /** Shipped proof types (FRD-006 R1); boards may add their own. */
 export const DEFAULT_PROOF_TYPES = ["visual", "test-output", "command-log"] as const;
 
@@ -117,20 +130,24 @@ export type ProfileMap = Partial<Record<Boundary, string[]>>;
 export const DEFAULT_PROFILES: Readonly<Record<string, ProfileMap>> = Object.freeze({
   feature: {
     "leave-backlog": [GOVERNING_DOC],
-    "leave-preparing": ["research", "files", "plan", "checklist"],
-    "enter-review": ["post-implementation-report"],
-    "enter-done": ["proof"],
+    "leave-preparing": ["research", "files", "plan", "checklist", QUESTIONS_RESOLVED],
+    "enter-review": ["post-implementation-report", QUESTIONS_RESOLVED],
+    "enter-done": ["proof", QUESTIONS_RESOLVED],
   },
   fix: {
-    "leave-preparing": ["files", "plan"],
-    "enter-done": ["proof"],
+    "leave-preparing": ["files", "plan", QUESTIONS_RESOLVED],
+    "enter-done": ["proof", QUESTIONS_RESOLVED],
   },
   chore: {
-    "leave-preparing": ["plan"],
-    "enter-done": ["proof"],
+    "leave-preparing": ["plan", QUESTIONS_RESOLVED],
+    "enter-done": ["proof", QUESTIONS_RESOLVED],
   },
+  // A spike's deliverable *is* research, and surfacing questions can be the
+  // whole point of one — so its single boundary carries the requirement rather
+  // than being exempt. GUI-004 was exactly this shape: its question was answered
+  // in practice and simply never recorded. Parking remains the honest exit.
   spike: {
-    "enter-done": ["research"],
+    "enter-done": ["research", QUESTIONS_RESOLVED],
   },
   /** Empty by design: historical backfill must nag about nothing. */
   custom: {},
@@ -185,8 +202,8 @@ export function validateProfileMap(
     }
     for (const raw of reqs ?? []) {
       const req = parseRequirement(raw);
-      if (req.type !== GOVERNING_DOC && !isDocType(req.type)) {
-        errors.push(`unknown document type "${req.type}" in "${raw}" — valid: ${DOC_TYPES.join(", ")}, ${GOVERNING_DOC}`);
+      if (req.type !== GOVERNING_DOC && req.type !== QUESTIONS_RESOLVED && !isDocType(req.type)) {
+        errors.push(`unknown document type "${req.type}" in "${raw}" — valid: ${DOC_TYPES.join(", ")}, ${GOVERNING_DOC}, ${QUESTIONS_RESOLVED}`);
       }
       if (req.proofType && req.type !== "proof") {
         errors.push(`"${raw}" — only \`proof\` takes a type suffix`);

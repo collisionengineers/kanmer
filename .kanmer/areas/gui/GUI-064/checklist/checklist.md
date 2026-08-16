@@ -47,3 +47,28 @@ answered.
 ## Progress notes
 
 (append with `set_ticket_doc(doc: "checklist", append: true)`)
+
+## Progress notes — implementation
+
+- **Boxes 2–11, 14 done.** PR https://github.com/collisionengineers/kanmer/pull/29
+  (`3d56ab9` code, `1d9a10a` docs).
+- **Box 1 (measure respawn) NOT run.** It requires killing the MCP server that
+  is driving this ticket. The design does not depend on the answer — the bounded
+  3-round loop is correct either way, and both outcomes are unit-tested
+  (converges after a respawn; gives up with a refusal if it never stops). Left
+  open honestly rather than ticked. Will be answered for free by box 12.
+- **Box 9 (`restartWarning` wording) closed as not-needed.** The plan assumed the
+  sentence blamed the installer for closing sessions. It does not — it says
+  "Restarting to update will close N agent MCP session(s)", which stays true now
+  that we are the one closing them. Added a comment recording why, changed no
+  wording.
+- **Caught two bugs in my own design before committing.** The refusal was
+  initially delivered via `emit({ phase: "error" })`. `updateSurface` only
+  renders `error` for `source === "manual"`, so an auto-check refusal would have
+  been invisible — the same shape of bug as GUI-065 — and it would have
+  overwritten the `downloaded` phase, removing the banner and stranding an
+  update still on disk. Now returned through IPC instead.
+- **Rail:** 201 tests, typecheck clean, protocol smoke 26/26, plugin:check
+  bytes match, manual up to date, boot smoke exit 0.
+- **Boxes 12, 13, 15 remain** — they need a real packaged two-version cycle and
+  cannot be done from source alone.

@@ -44,14 +44,7 @@ import { ConfirmModal } from "./components/ConfirmModal.js";
 import { TicketCreate } from "./components/TicketCreate.js";
 import { GroupView } from "./components/GroupView.js";
 import { Welcome } from "./components/Welcome.js";
-
-type View = "ticket" | "standup" | "archived";
-
-const VIEW_LABELS: Record<View, string> = {
-  ticket: "Board",
-  standup: "Standup",
-  archived: "Archived",
-};
+import { VIEWS, VIEW_IDS, type View, viewCounts, viewItemsFor } from "./lib/views.js";
 
 const EMPTY_FILTERS: Filters = {};
 
@@ -930,10 +923,11 @@ export function App(): JSX.Element {
         // view was added — Ctrl+2 opened Standup while the second tab was
         // Backlog. Deriving removes the class of bug, not just this instance:
         // removing that same view again (GUI-070) renumbered Ctrl+1…3 with no
-        // edit here at all. The hand-written label in shared/shortcuts.ts is
-        // the part that still has to be kept in step by hand.
-        const views = Object.keys(VIEW_LABELS) as View[];
-        const target = views[Number(e.key) - 1];
+        // edit here at all. GUI-071 moved the list itself into lib/views.ts,
+        // where the label, the item set and the badge are keyed together. The
+        // hand-written label in shared/shortcuts.ts is the part that still has
+        // to be kept in step by hand.
+        const target = VIEW_IDS[Number(e.key) - 1];
         if (target) {
           e.preventDefault();
           setView(target);
@@ -954,18 +948,24 @@ export function App(): JSX.Element {
     [items, selectedId],
   );
 
-  const allViewItems = useMemo(
-    () =>
-      view === "archived"
-        ? items.filter((i) => i.archived)
-        : items.filter((i) => i.type === "ticket" && !i.archived),
-    [items, view],
-  );
+  // Stage one: everything the active view holds, before search and filters.
+  // The empty states and the FilterBar's facet lists read this; stage two is
+  // what actually gets rendered. Both come from lib/views.ts, which is also
+  // where every tab's badge comes from — so a badge and its view cannot
+  // disagree (GUI-071).
+  const allViewItems = useMemo(() => viewItemsFor(view, items), [items, view]);
 
   const viewItems = useMemo(
     () => applyFilters(allViewItems, search, view === "archived" ? EMPTY_FILTERS : filters),
     [allViewItems, search, filters, view],
   );
+
+  // Every tab's badge, recomputed only when the board changes. Deliberately
+  // NOT derived from `viewItems`: a badge counts what lives in the view and
+  // ignores the active search and filters, while the board's per-column counts
+  // respond to them. Two numbers in the same header answering two questions —
+  // FRD-019 R5 says which is which.
+  const tabCounts = useMemo(() => viewCounts(items), [items]);
 
   const projectName = useMemo(() => projectNameOf(root), [root]);
 
@@ -1058,20 +1058,14 @@ export function App(): JSX.Element {
       <header className="topbar">
         <div className="brand">Kanmer</div>
         <nav className="tabs">
-          {(Object.keys(VIEW_LABELS) as View[]).map((v) => (
+          {VIEW_IDS.map((v) => (
             <button
               key={v}
               className={v === view ? "tab active" : "tab"}
               onClick={() => setView(v)}
             >
-              {VIEW_LABELS[v]}
-              {v !== "standup" && (
-                <span className="count">
-                  {v === "archived"
-                    ? items.filter((i) => i.archived).length
-                    : items.filter((i) => i.type === "ticket" && !i.archived).length}
-                </span>
-              )}
+              {VIEWS[v].label}
+              {tabCounts[v] !== null && <span className="count">{tabCounts[v]}</span>}
             </button>
           ))}
         </nav>
@@ -1147,10 +1141,14 @@ export function App(): JSX.Element {
         </div>
       )}
 
+      {/* `items` is the view's own unfiltered set — the last inline copy of
+          the view rule, removed by GUI-071. FilterBar renders only in the
+          Board view, where `allViewItems` is exactly the expression it was
+          already given, so its facet lists are unchanged. */}
       {view === "ticket" && (
         <FilterBar
           board={board}
-          items={items.filter((i) => i.type === "ticket" && !i.archived)}
+          items={allViewItems}
           search={search}
           onSearch={setSearch}
           filters={filters}

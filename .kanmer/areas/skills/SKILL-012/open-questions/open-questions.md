@@ -43,15 +43,23 @@ for every board, not just this one.
       the profile-assignment question above is really a consequence of whatever
       the ADR concludes.
 
-- [ ] **Do the five historical cases get revived?** — Research F4: GUI-064's
-      unmeasured MCP respawn timing (Done, admitted in proof.md), GUI-004 and
-      CORE-011 answered in practice but never recorded, GUI-064's checklist
-      closed at 21/23, and CORE-021's four decisions abandoned by archiving —
-      one of which wants an ADR that does not exist.
-      **Recommendation: file one ticket for GUI-064's unmeasured timing** (it is
-      a real gap in shipped evidence, not bookkeeping) **and leave the rest.**
-      Reviving CORE-021 is a separate decision about whether that work is wanted
-      at all.
+- [x] **Do the historical cases get revived?** — **Answered by the operator,
+      2026-08-16, and all twelve questions across the four tickets are now
+      closed in their own documents.** My recommendation to file GUI-064's
+      unmeasured respawn timing as a ticket was **overtaken**: it is folded into
+      [[MCP-005]] instead, which makes the question moot by removing the root
+      cause rather than measuring the race.
+
+      | Ticket | Disposition |
+      |---|---|
+      | GUI-064 (4) | Q1 folded into [[MCP-005]]; Q2/Q4 recorded as answered by implementation and by action; Q3 — existing consent judged sufficient, nothing changes. Both parked items closed. |
+      | GUI-004 (1) | Resolved by events — option (a); the ticket is a `spike` and Done. Recorded. |
+      | CORE-011 (3) | All three answered. Written into a proper `open-questions` doc, since they were posed in the ticket **body** — which is part of why they were never marked resolved. R2 left unbuilt: the structural rule suffices. |
+      | CORE-021 (4) | **Closed by abandonment.** Nothing was implemented (verified: no `child_process` in `packages/core/src`). Q2 — may core shell out to git — is noted as unanswered and likely to recur. |
+
+      This exercise is itself the argument for the ticket: every one of these was
+      either already decided or trivially decidable, and not one had been
+      written down.
 
 ## Parked (explicitly deferred)
 

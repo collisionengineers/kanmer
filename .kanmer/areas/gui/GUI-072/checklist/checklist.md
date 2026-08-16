@@ -56,3 +56,16 @@ pixel-identical to the dark render, before and after.
 regenerated `dist/index.css`, which now carries `.check{display:flex;…}` at line 99
 and no `.filterbar .check` at all. `dist/` is gitignored — `git status` shows only
 the stylesheet and the new test.
+
+---
+
+## Closeout — GUI-072
+
+- [x] PR merge verified — #39 `MERGED` at 2026-08-16T22:23:00Z, merge commit `ed52e39`
+- [x] proof.md finalised — written on merged main at `ed52e39`, six images under `proof/`
+- [x] Moved to final stage (done, 2026-08-16T22:27Z)
+- [x] Outcome recorded in ticket body (PR link, corrected verification list, follow-up GUI-082)
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-072`
+- [x] `git branch -D gui-072-checkbox-rows` (squash-merged, so `-d` refuses by design)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

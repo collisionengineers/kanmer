@@ -2,12 +2,15 @@
 id: SKILL-014
 type: ticket
 title: Give every skill an explicit numbered workflow and correct hand-offs
-status: preparing
+status: implementing
 area: skills
-assignee: ''
+assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-08-16T19:13:06.795Z'
+taken_at: '2026-08-16T19:18:34.989Z'
+branch: skill-014-workflows
+worktree: .worktrees/skill-014
 labels: []
 groups:
   - HZN-003
@@ -18,7 +21,7 @@ refs:
   - docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md
 archived: false
 created: '2026-08-16T18:25:18.654Z'
-updated: '2026-08-16T19:13:06.795Z'
+updated: '2026-08-16T19:18:34.989Z'
 ---
 
 ## What

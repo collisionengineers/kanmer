@@ -52,3 +52,14 @@ roster stamped. That is CORE-023's two named residues repaired in one run.
 
 **Rail green:** `npm test` (core 182 + gui 218), `npm run typecheck` (all four
 workspaces named), `npm run verify:agents-block` (26/26).
+
+## Closeout — GUI-080
+
+- [x] PR merge verified — #41 MERGED 2026-08-16T22:26:38Z, merge commit `9ac20af`
+- [x] proof finalised on merged main (PR URL and merge commit recorded in it)
+- [x] Moved to Done
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/gui-080`
+- [ ] `git branch -D gui-080-prune-retired-skills` (squash-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

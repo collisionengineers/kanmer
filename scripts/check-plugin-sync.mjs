@@ -15,13 +15,80 @@
 // two. It assumes tsup output is reproducible, which it is at this commit; if a
 // future toolchain bump breaks that, the failure message already names the fix
 // (`npm run plugin:build`), which is also the correct action either way.
+//
+// (2) is also only meaningful when the artifact was built where the check runs,
+// so this script REFUSES to run from a linked git worktree (MCP-007). A worktree
+// has no node_modules of its own, so @kanmer/core resolves up to the main
+// checkout's workspace symlink and tsup bundles MAIN's core — both sides of the
+// byte comparison are then built the same wrong way, they agree, and the check
+// reports a pass it cannot support. That is exactly how SKILL-011 (PR #31)
+// merged a bundle that did not contain the feature it shipped. There is
+// deliberately no env-var bypass: a guard you can switch off at 2am is the
+// failure mode this replaces. `plugin:build` stays unguarded — the artifact can
+// still be produced wrong, it just can no longer be validated wrong.
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+/** Refuse, loudly and with the fix. Matches `refuse()` in release.mjs. */
+function refuse(why, fix) {
+  console.error(`plugin:check refused: ${why}`);
+  if (fix) console.error(`  fix: ${fix}`);
+  process.exit(1);
+}
+
+/**
+ * Is `dir` a linked git worktree rather than the main checkout?
+ *
+ * The canonical test is git's own: in a linked worktree --git-dir points at
+ * .git/worktrees/<name> while --git-common-dir points at the shared .git.
+ * Resolve both against `dir` before comparing — git answers one relatively and
+ * one absolutely depending on which case you are in, so comparing the raw
+ * strings is accidentally right at the root and wrong elsewhere. Query with
+ * `cwd: dir` so the answer describes the tree this script belongs to, not
+ * whatever directory the shell happened to be in.
+ *
+ * Fallback when git is off PATH: in a linked worktree `.git` is a file
+ * ("gitdir: …"), not a directory. A superset — it also fires for submodules and
+ * `git clone --separate-git-dir` — which is the safe direction for a refusal
+ * that names its own fix.
+ */
+function isLinkedWorktree(dir) {
+  try {
+    const gitDir = execFileSync("git", ["rev-parse", "--git-dir"], {
+      cwd: dir,
+      encoding: "utf8",
+    }).trim();
+    const commonDir = execFileSync("git", ["rev-parse", "--git-common-dir"], {
+      cwd: dir,
+      encoding: "utf8",
+    }).trim();
+    return resolve(dir, gitDir) !== resolve(dir, commonDir);
+  } catch {
+    try {
+      return statSync(join(dir, ".git")).isFile();
+    } catch {
+      return false;
+    }
+  }
+}
+
+if (isLinkedWorktree(root)) {
+  refuse(
+    `this is a linked git worktree (${root}), where the bundle check cannot mean anything — ` +
+      "a worktree has no node_modules of its own, so @kanmer/core resolves up to the main " +
+      "checkout and the committed bundle and the fresh build are produced the same wrong way, " +
+      "agree, and pass",
+    "run `npm run plugin:check` from the main checkout instead (the repo root that owns " +
+      "node_modules); if the committed bundle needs refreshing, `npm run plugin:build` there too",
+  );
+}
+
 const serverPath = join(root, "packages/mcp-server/src/index.ts");
 const refPath = join(
   root,

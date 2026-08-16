@@ -31,3 +31,11 @@ ds-bundle/
 .design-sync/.cache/
 .design-sync/learnings/
 .design-sync/node_modules
+
+# Machine-local agent config. `.mcp.json` hardcodes absolute paths to this
+# machine's Kanmer install and board worktree; `.claude/skills/` is a local
+# copy of the plugin skills (the canonical ones are plugins/kanmer/skills/).
+# Both are untracked deliberately — and `scripts/release.mjs` counts untracked
+# files as a dirty tree, so leaving them here blocks every release.
+.mcp.json
+.claude/skills/

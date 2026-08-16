@@ -12,6 +12,7 @@ const KEY_ORDER = [
   "assignee",
   "profile",
   "requires",
+  "stageEntered",
   "taken_at",
   "branch",
   "worktree",

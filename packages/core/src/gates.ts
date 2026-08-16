@@ -152,6 +152,47 @@ export function boundariesCrossed(
 }
 
 /**
+ * The boundaries a move crosses that actually ask for a document.
+ *
+ * A profile may declare a boundary with an empty requirement list; that is
+ * vacuous and must not count, or `custom: {}` would behave differently from a
+ * profile that simply omits the key.
+ */
+export function gatedBoundariesCrossed(
+  boundaries: BoundaryStatus[],
+  from: number,
+  to: number,
+): BoundaryStatus[] {
+  return boundariesCrossed(boundaries, from, to).filter((b) => b.requirements.length > 0);
+}
+
+/**
+ * Whether a move collapses the pipeline: more than one gated boundary in a
+ * single step (FRD-002 G2, amended).
+ *
+ * The gates check that a document exists, never that it existed before the work
+ * it gates — so writing all six documents and moving Backlog → Done in one call
+ * produced a ticket that looked fully worked with no pipeline behind it. This
+ * refuses the collapse structurally, which needs no timestamps and so has
+ * nothing to be wrong about.
+ *
+ * It counts *gated* boundaries, not stages, and that distinction is the whole
+ * design: `chore`'s one-jump from Backlog to Implementing crosses two stages but
+ * only one gated boundary, and `spike` goes Backlog → Done across one. Counting
+ * stages would break both shipped acceptance cases.
+ *
+ * Backwards moves cross nothing, so re-opening a ticket is unaffected.
+ */
+export function collapsesPipeline(
+  boundaries: BoundaryStatus[],
+  from: number,
+  to: number,
+): BoundaryStatus[] | null {
+  const crossed = gatedBoundariesCrossed(boundaries, from, to);
+  return crossed.length > 1 ? crossed : null;
+}
+
+/**
  * The first unmet boundary for a move, or null. This is what `move_item`
  * rejects on — "blocked by the first unmet one" (FRD-002 G2), so the error
  * names one concrete next action rather than a wall of everything missing.

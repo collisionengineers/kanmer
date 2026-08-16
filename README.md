@@ -178,7 +178,7 @@ codex plugin marketplace add collisionengineers/kanmer
 
 Then install **kanmer** from `/plugins`.
 
-The plugin ships twelve skills — ticket management, one skill per phase of a
+The plugin ships thirteen skills — ticket management, one skill per phase of a
 ticket's life, an autonomous orchestrator, and board reporting/hygiene:
 
 | Skill | What it does |

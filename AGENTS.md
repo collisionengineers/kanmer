@@ -218,11 +218,14 @@ Area `prefix` is 2–6 uppercase alphanumerics, derived from the id when unset
 (`areaPrefix()` in board.ts), and uniqueness — including *among* the
 `idPrefixes` values and against them — is enforced on every board write. The
 final stage's configured document-gate boundary is re-checked whenever a board
-write changes which stage is last, and a ticket cannot be *created* directly in the final stage
-either. `status` is the only workflow axis, with six default stages:
+write changes which stage is last (`assertFinalStageGates`, store.ts). Creation,
+by contrast, is **deliberately ungated** — a ticket may be created directly in
+any stage, including the last, which is what makes historical backfill possible
+(store.ts `createItem`; asserted in store.test.ts). `status` is the only workflow
+axis, with seven default stages:
 
 ```
-todo → planning → implementing → review → verifying → done
+backlog → researching → planning → implementing → review → verifying → done
 ```
 
 The FIRST stage is where new items land; the LAST stage is governed by the
@@ -241,7 +244,6 @@ title: …
 status: implementing   # the workflow stage = board column
 area: api              # optional; clusters + colours the card, owns the folder
 priority: high         # a string id into board.priorities
-due: 2026-09-01        # optional date-only deadline
 order: 20              # optional fractional sort key (manual ordering)
 assignee: claude
 taken_at: 2026-08-13T…Z  # ┐ set while an agent works the ticket
@@ -250,6 +252,11 @@ worktree: wt/x           # ┘
 labels: [mcp]
 links: [API-002]       # structured relations (tool-queryable)
 blocks: [API-003]      # this item blocks API-003; blocked-by is derived
+refs: [docs/frd/FRD-002.md]  # governing repo docs; satisfies the repo-doc gate
+docs_todo: false       # "a governing doc is still to be written" — also satisfies it
+commits: [a1b2c3d]     # ┐ traceability, emitted only when non-empty
+prs: ["42"]            # ┘
+deployment: staging    # only when board.deployment declares environments
 archived: false        # hidden from the board unless the Archived view
 created: 2026-08-12T…Z
 updated: 2026-08-12T…Z
@@ -272,14 +279,18 @@ mutation appends a `{ts, id, op, field, from, to, actor}` line to
 The only place that touches `.kanmer` files. Public API via `index.ts`. Key entry point: **`KanmerStore`** (`store.ts`) — construct with a project root, then `listItems(WithWarnings)/getItem/createItem/updateItem/moveItem/deleteItem/searchItems`, `takeTicket/releaseTicket`, `getDoc/getDocWithVersion/setDoc/getTicketDocsInfo`, `getBoard(WithSource)/setBoard/addColumn/updateColumn/removeColumn/reorderColumns`, `detectFormat`, `getActivity`. `init()` maintains whichever format exists (it never stamps v2 onto a v1 board — that's `migrateToV2`'s job). Links live in `links.ts` (`getLinkGraph`, `linkItems`, `computeBlockedIds`, `parseWikiLinks`). Everything is covered by `*.test.ts` (vitest), including a v1 fixture suite and the migration round-trip.
 
 ### `@kanmer/mcp-server` (packages/mcp-server)
-`index.ts` builds an `McpServer` and registers **20 tools**, plus MCP resources (`kanmer://board`, `kanmer://items/{id}` with `subscribe` support) and two prompts (`standup`, `take-ticket`), then connects a `StdioServerTransport`. Root resolution in `root.ts`. **Init is lazy**: boot never calls `store.init()` — a read-only session (or a host that spawns the server in a workspace nobody opted into Kanmer for) must not create `.kanmer/` just by connecting. The GUI passes the canonical board-worktree root to MCP while keeping all source-repository operations at the selected source root. Write tools call `ensureInit()` first, which creates the skeleton once on the first actual write; read tools degrade to empty/default results when `.kanmer/` doesn't exist yet. Write tools also stamp the activity-log actor from the client's identity, and destructive ops (`delete_item`, `remove_column` with `migrate_to`) confirm via elicitation when the host supports it. Two builds:
+`index.ts` builds an `McpServer` and registers **24 tools**, plus MCP resources (`kanmer://board`, `kanmer://items/{id}` with `subscribe` support) and two prompts (`standup`, `take-ticket`), then connects a `StdioServerTransport`. Root resolution in `root.ts`. **Init is lazy**: boot never calls `store.init()` — a read-only session (or a host that spawns the server in a workspace nobody opted into Kanmer for) must not create `.kanmer/` just by connecting. The GUI passes the canonical board-worktree root to MCP while keeping all source-repository operations at the selected source root. Write tools call `ensureInit()` first, which creates the skeleton once on the first actual write; read tools degrade to empty/default results when `.kanmer/` doesn't exist yet. Write tools also stamp the activity-log actor from the client's identity, and destructive ops (`delete_item`, `remove_column` with `migrate_to`) confirm via elicitation when the host supports it. Two builds:
 - `dist/index.js` — ESM, deps external (for dev / `node …`).
 - `dist/standalone/kanmer-mcp.cjs` — self-contained CJS, everything bundled (shipped inside the GUI, run via Electron-as-Node).
 
 **Tools** (all carry annotations so codex approval modes / Claude read-write split behave):
-- Read (`readOnlyHint`): `get_status`, `list_board`, `list_items`, `get_item`, `get_ticket_doc`, `search_items`, `get_links`, `get_activity`
-- Write: `create_item`, `create_items`, `update_item`, `move_item`, `take_ticket`, `set_ticket_doc`, `link_items`, `add_column`, `update_column`, `reorder_columns`
+- Read (`readOnlyHint`): `get_status`, `list_board`, `list_items`, `get_item`, `get_ticket_doc`, `search_items`, `get_links`, `get_activity`, `get_doc_gates`
+- Write: `create_item`, `create_items`, `update_item`, `move_item`, `take_ticket`, `set_ticket_doc`, `append_scratch`, `link_items`, `link_doc`, `add_column`, `update_column`, `reorder_columns`, `migrate_board`
 - Destructive (`destructiveHint`): `delete_item`, `remove_column`
+
+That is the whole surface; `npm run plugin:check` fails if this list and the
+registered names drift apart (it reads the *skill's* tool reference, not this
+file — so correct both).
 
 The plugin's `kanmer-tickets` skill documents this surface for agents — see the
 sync rule in §7.

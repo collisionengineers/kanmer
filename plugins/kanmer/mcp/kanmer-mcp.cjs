@@ -39936,7 +39936,7 @@ server.registerTool(
   "create_items",
   {
     title: "Create several items",
-    description: "Bulk create up to 50 items in one call (sequential, so ids stay ordered). Each entry takes the same fields as create_item, including the rule that a ticket cannot be created directly in the board's final stage \u2014 that stage requires proof.md; create it earlier and move it. Partial success is possible: the result carries one { ok, item | error } per entry, in order.",
+    description: "Bulk create up to 50 items in one call (sequential, so ids stay ordered). Each entry takes the same fields as create_item, including that creation is ungated \u2014 an entry may be created directly in any stage, which is what makes importing or backfilling finished work possible. Document gates apply on move_item, not creation. Partial success is possible: the result carries one { ok, item | error } per entry, in order.",
     inputSchema: {
       items: external_exports.array(external_exports.object(createFields)).min(1).max(50).describe("Entries to create, in order")
     },

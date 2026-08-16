@@ -18,9 +18,10 @@ links:
 refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
   - docs/functional/frd/FRD-009-interrogative-workflow.md
+  - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 archived: false
 created: '2026-08-16T16:11:20.804Z'
-updated: '2026-08-16T16:47:51.726Z'
+updated: '2026-08-16T16:53:31.020Z'
 ---
 
 ## What

@@ -2,7 +2,7 @@
 id: CORE-001
 type: ticket
 title: refs cannot be set on a board-worktree project
-status: researching
+status: implementing
 area: core
 priority: medium
 assignee: ''
@@ -15,7 +15,7 @@ blocks:
 docs_todo: true
 archived: false
 created: '2026-08-16T00:29:22.207Z'
-updated: '2026-08-16T02:20:50.802Z'
+updated: '2026-08-16T02:22:18.904Z'
 ---
 
 `assertRefs` (`packages/core/src/store.ts:1009-1016`) resolves each ref against `this.paths.projectRoot`, which for both the MCP server and the GUI is the **board worktree** (`.worktrees/kanmer`). Governing documents live in the **source checkout**. So every `refs` entry is rejected:

@@ -1,6 +1,6 @@
 ---
 name: kanmer-report
-description: Report a Kanmer board's state or history — a standup ("now": in flight/blocked/up next) or a retro ("since <period>": what shipped, throughput). Use for a status update, standup, board summary, "where are we", "what's left", or a look-back like "what shipped last month". DO NOT USE for fixing what it flags (kanmer-groom).
+description: Report a Kanmer board's state or history — a standup (now — in flight/blocked/up next) or a retro (since <period> — what shipped, throughput). Use for a status update, standup, board summary, "where are we", "what's left", or a look-back like "what shipped last month". DO NOT USE for fixing what it flags (kanmer-groom).
 ---
 
 # Kanmer report

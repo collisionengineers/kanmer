@@ -1,4 +1,4 @@
-// Fail if the plugin is out of sync with the server, in two ways:
+// Fail if the plugin is out of sync with the server, in three ways:
 //
 //   1. tool NAMES registered by the server vs. documented in the plugin's tool
 //      reference — the skills describe the tool surface, so a rename that only
@@ -8,6 +8,7 @@
 //      plugins/kanmer/mcp/kanmer-mcp.cjs carries independent compiled copies of
 //      every store method, so behaviour can drift arbitrarily far from source
 //      without a single tool name changing. Names alone cannot see that.
+//   3. every SKILL.md's YAML frontmatter parses under a strict parser (SKILL-018).
 //
 // (2) means plugin:check now requires a prior `npm run build` — consistent with
 // `npm run plugin:build` already running it, and with AGENTS.md §10 pairing the
@@ -15,9 +16,10 @@
 // future toolchain bump breaks that, the failure message already names the fix
 // (`npm run plugin:build`), which is also the correct action either way.
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parse as parseYaml } from "yaml";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const serverPath = join(root, "packages/mcp-server/src/index.ts");
@@ -75,4 +77,46 @@ if (sha(bundlePath) !== sha(distPath)) {
   process.exit(1);
 }
 
-console.log(`plugin-sync OK — ${registered.length} tools match, bundle bytes match`);
+// Every SKILL.md's frontmatter, parsed under a strict YAML parser. Five
+// different hosts parse this frontmatter with five different parsers; a file
+// that looks fine to whichever tool wrote it can still be silently rejected by
+// whichever tool reads it — SKILL-018 was exactly this: an unquoted `": "`
+// inside a plain scalar (`description: … a standup ("now": …)`) broke
+// Antigravity's Go YAML parser, which dropped the skill with no error visible
+// anywhere in Kanmer. `yaml` (already a dependency of @kanmer/core and the
+// GUI, so no new dependency here) enforces the same "a plain scalar cannot
+// contain `: `" rule that caught it.
+function checkSkillFrontmatter() {
+  const skillsDir = join(root, "plugins/kanmer/skills");
+  const skillDirs = existsSync(skillsDir)
+    ? readdirSync(skillsDir, { withFileTypes: true }).filter((d) => d.isDirectory())
+    : [];
+  const errors = [];
+  for (const dir of skillDirs) {
+    const skillPath = join(skillsDir, dir.name, "SKILL.md");
+    if (!existsSync(skillPath)) continue;
+    const text = readFileSync(skillPath, "utf8");
+    const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (!match) {
+      errors.push(`${skillPath}: no --- frontmatter block found`);
+      continue;
+    }
+    try {
+      parseYaml(match[1]);
+    } catch (err) {
+      errors.push(`${skillPath}: ${err.message.split("\n")[0]}`);
+    }
+  }
+  if (errors.length) {
+    console.error("Skill frontmatter failed to parse under a strict YAML parser:");
+    for (const e of errors) console.error(`  ${e}`);
+    process.exit(1);
+  }
+  return skillDirs.length;
+}
+const skillCount = checkSkillFrontmatter();
+
+console.log(
+  `plugin-sync OK — ${registered.length} tools match, bundle bytes match, ` +
+    `${skillCount} skill frontmatters parse`,
+);

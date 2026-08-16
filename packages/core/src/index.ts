@@ -13,6 +13,7 @@ export * from "./groups.js";
 export * from "./docs.js";
 export * from "./prompts.js";
 export * from "./version.js";
+export * from "./staleness.js";
 export * from "./activity.js";
 export * from "./store.js";
 export * from "./links.js";

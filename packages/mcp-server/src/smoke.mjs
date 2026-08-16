@@ -185,6 +185,84 @@ try {
     statusBefore.repoRootSource,
   );
 
+  // --- Repo staleness (CORE-023) -------------------------------------------
+  // Same standard the identity block above was held to: asserting the field
+  // exists would pass for a server that reported a constant. So this makes the
+  // sandbox stale on purpose and requires the verdict to change. The sandbox is
+  // a bare temp dir with no AGENTS.md, no skills and no board.yml, so the only
+  // artefact in play is the managed block — which is the one with a live
+  // regression behind it (CORE-023 scratch-live-reproduction).
+  const repoBefore = statusBefore.repo;
+  check("get_status carries a repo staleness block", !!repoBefore && typeof repoBefore === "object");
+  check(
+    "a repo with nothing installed is not reported as behind",
+    repoBefore?.upToDate === true,
+    JSON.stringify(repoBefore?.stale?.map((e) => `${e.artefact}:${e.state}`) ?? []),
+  );
+  const blockBefore = (repoBefore?.stale ?? []).filter((e) => e.artefact === "agents-block");
+  check(
+    "an absent AGENTS.md is unstamped, not behind",
+    blockBefore.length === 1 && blockBefore[0].state === "unstamped",
+    JSON.stringify(blockBefore),
+  );
+  check(
+    "every staleness entry is itemised: artefact, state, detail and fix",
+    (repoBefore?.stale ?? []).every(
+      (e) =>
+        ["behind", "compensated", "unstamped", "unknown"].includes(e.state) &&
+        typeof e.detail === "string" && e.detail !== "" &&
+        typeof e.fix === "string" && e.fix !== "",
+    ),
+  );
+
+  // Now write a stale managed block — a v2-era body of exactly the shape
+  // Connect really did write over this repo's AGENTS.md — and require the
+  // detector to catch it. This is the ticket's first acceptance criterion,
+  // executed.
+  const BLOCK_START =
+    "<!-- kanmer:instructions:start — managed by kanmer-setup; edits inside will be overwritten -->";
+  const BLOCK_END = "<!-- kanmer:instructions:end -->";
+  fs.writeFileSync(
+    path.join(sandbox, "AGENTS.md"),
+    `${BLOCK_START}\n# Kanmer operating instructions\n\nStages: backlog → researching → planning → implementing → review → verifying → done.\n${BLOCK_END}\n\n# Their guide\n`,
+    "utf8",
+  );
+  const statusStale = JSON.parse(
+    textOf(await client.callTool({ name: "get_status", arguments: {} })),
+  );
+  const blockStale = (statusStale.repo?.stale ?? []).filter((e) => e.artefact === "agents-block");
+  check(
+    "a stale AGENTS.md managed block is reported as behind",
+    blockStale.length === 1 && blockStale[0].state === "behind",
+    JSON.stringify(blockStale),
+  );
+  check(
+    "one behind entry clears repo.upToDate",
+    statusStale.repo?.upToDate === false,
+    `${statusStale.repo?.upToDate}`,
+  );
+  check(
+    "the behind entry names a fix rather than applying one",
+    /kanmer-setup|agents-block/.test(blockStale[0]?.fix ?? ""),
+    blockStale[0]?.fix,
+  );
+  // Detection only: get_status is readOnlyHint and must not have repaired it.
+  check(
+    "get_status did not rewrite the stale block it reported",
+    fs.readFileSync(path.join(sandbox, "AGENTS.md"), "utf8").includes("researching → planning"),
+  );
+  // And the verdict is not cached: undo the damage and it must go clean again
+  // in the same process — the whole reason the detector re-reads per call.
+  fs.rmSync(path.join(sandbox, "AGENTS.md"));
+  const statusFixed = JSON.parse(
+    textOf(await client.callTool({ name: "get_status", arguments: {} })),
+  );
+  check(
+    "the verdict is recomputed, not cached, so a repair is seen immediately",
+    statusFixed.repo?.upToDate === true,
+    JSON.stringify(statusFixed.repo?.stale?.map((e) => `${e.artefact}:${e.state}`) ?? []),
+  );
+
   const created = await client.callTool({
     name: "create_item",
     arguments: { type: "ticket", title: "Smoke ticket", body: "See [[PLAN-001]]" },

@@ -14,6 +14,7 @@ import {
   STAGES,
   STAGE_IDS,
   computeBlockedIds,
+  detectStaleness,
   getLinkGraph,
   lastStageId,
   linkItems,
@@ -31,6 +32,7 @@ import {
 } from "@kanmer/core";
 import { resolveProjectRoot, resolveRepoRoot } from "./root.js";
 import { SERVER_VERSION, serverIdentity } from "./identity.js";
+import { bundledSkillsDir } from "./bundled.js";
 
 /**
  * Root resolution happens inside `main()`, not here — see `resolveRoot()`
@@ -269,7 +271,9 @@ server.registerTool(
       "Board: the project root and `rootSource` (how it was found: flag | env | cwd | cwd-worktree | ancestor | ancestor-worktree | init), the `repoRoot` that governing-doc refs resolve against and its `repoRootSource` (flag | env | derived), whether .kanmer/ exists (this tool never creates it), the storage format version, whether the board came from a real board.yml or is the synthesized default, per-stage and per-type item counts, archived/taken counts, and how many file warnings the listing produced. " +
       "Server: a `server` block naming the build that is answering — the release `version`, the resolved `path` of the running script, the runtime `sha256` of its bytes (plus `sha256Short`), its `mtime` and `size`, and the `build` shape (packaged | plugin | dev-standalone | dev-esm | unknown). " +
       "Two hosts pointed at the same board can be running different server builds that enforce different gates; comparing `server.sha256` is how you see that instead of guessing. " +
-      "IMPORTANT: the `server` block is absent on servers older than 0.3.3 — that ABSENCE is itself the signal 'this build predates server identity', not an error. Individual fields are null if they could not be read; the call never fails over it.",
+      "Repo: a `repo` block answering WHICH KANMER THIS REPO WAS SET UP BY — `{ upToDate, stale: [{ artefact, state, detail, fix }] }`. Itemised, never a bare boolean. Artefacts checked are the ones migration does not touch: the AGENTS.md managed block, the installed skills trees and their `.kanmer-skills-version` stamps, `board.yml`, and the provider MCP registrations — compared by CONTENT HASH against what this build ships, not by version string (no artefact records a product version). " +
+      "`state` is `behind` (act on it), `compensated` (the file is old and the runtime already papers over it — informational, no action), `unstamped` (no evidence either way) or `unknown` (could not be read). `upToDate` is true iff nothing is `behind`. Repair is never automatic: run `kanmer-setup`, which is the reconciliation path (FRD-013). Board format is not listed here — it is the `format` field above. " +
+      "IMPORTANT: the `server` block is absent on servers older than 0.3.3, and the `repo` block on servers older than 0.3.4 — that ABSENCE is itself the signal 'this build predates the check', not an error. Individual fields are null if they could not be read; the call never fails over it.",
     inputSchema: {},
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
@@ -305,6 +309,23 @@ server.registerTool(
        * field it could not determine is null.
        */
       server: serverIdentity(),
+      /**
+       * Whether this REPO's Kanmer artefacts are as new as the build above —
+       * CORE-023. `server` says which binary is answering; this says whether
+       * what it left behind in the repo has kept up. Itemised, because "stale:
+       * true" is not actionable and the whole point is naming what.
+       *
+       * Recomputed every call, not cached: the obvious next move after reading
+       * it is `kanmer-setup`, and a cached answer would survive its own fix.
+       * Never throws — an unreadable artefact reports `unknown`.
+       */
+      repo: detectStaleness({
+        paths: store.paths,
+        board,
+        boardSource: source,
+        format,
+        bundledSkillsDir: bundledSkillsDir(),
+      }),
       kanmerDir: store.paths.kanmer,
       exists,
       format,

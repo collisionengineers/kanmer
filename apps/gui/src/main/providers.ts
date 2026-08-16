@@ -4,6 +4,7 @@
 // merge is a pure function, so connect.ts is a thin dispatcher and the whole
 // surface is unit-testable without spawning anything.
 import { basename } from "node:path";
+import * as TOML from "smol-toml";
 
 export type ProviderId = "codex" | "claude" | "opencode" | "grok" | "antigravity";
 
@@ -29,6 +30,12 @@ export type RegisterSpec =
       merge: (existing: string | null, inv: Invocation) => string;
       /** Remove only the kanmer entry, preserving everything else. Pure. */
       unmerge: (existing: string) => string;
+      /**
+       * Optional best-effort CLI cleanup run alongside the merge — codex uses it
+       * to drain the global `kanmer-<project>` entries older versions wrote.
+       * A failure here must never fail the connect.
+       */
+      removeCommands?: (root: string) => string[];
     };
 
 export type InstallSpec =
@@ -132,6 +139,130 @@ function opencodeUnmerge(existing: string): string {
   });
 }
 
+/**
+ * `<root>/.codex/config.toml` — the project-scoped codex registration.
+ *
+ * `codex mcp add` has no scope flag and always writes the global
+ * `~/.codex/config.toml` (verified against the installed CLI, 2026-08-16), so
+ * merging the project file by hand is the only route to one entry per project
+ * rather than one global entry per project forever (ADR-0007).
+ *
+ * The merge must preserve everything it does not own: a project file can carry
+ * unrelated tables, other MCP servers, and comments-adjacent formatting. Parsing
+ * to a value and re-serialising loses comments — accepted, and the reason the
+ * unmerge is surgical about touching only `mcp_servers.kanmer`.
+ */
+function codexTomlMerge(existing: string | null, inv: Invocation): string {
+  let doc: Record<string, unknown> = {};
+  if (existing && existing.trim()) {
+    try {
+      const parsed = TOML.parse(existing);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        doc = parsed as Record<string, unknown>;
+      }
+    } catch {
+      // An unparseable file is not ours to repair; start clean rather than
+      // silently discarding what we cannot read. The copy-paste fallback in
+      // connect.ts is the user's route out.
+      doc = {};
+    }
+  }
+  const servers = (
+    typeof doc["mcp_servers"] === "object" && doc["mcp_servers"] !== null
+      ? doc["mcp_servers"]
+      : {}
+  ) as Record<string, unknown>;
+  servers["kanmer"] = {
+    command: inv.command,
+    args: inv.args,
+    // ELECTRON_RUN_AS_NODE is not optional: the registered command is the
+    // Electron binary, which runs the server as Node only with this set.
+    env: inv.env,
+  };
+  doc["mcp_servers"] = servers;
+  return `${TOML.stringify(doc)}\n`;
+}
+
+function codexTomlUnmerge(existing: string): string {
+  let doc: Record<string, unknown> = {};
+  try {
+    const parsed = TOML.parse(existing);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      doc = parsed as Record<string, unknown>;
+    }
+  } catch {
+    return existing; // leave a file we cannot parse exactly as we found it
+  }
+  const servers = doc["mcp_servers"];
+  if (typeof servers === "object" && servers !== null) {
+    delete (servers as Record<string, unknown>)["kanmer"];
+    if (Object.keys(servers as Record<string, unknown>).length === 0) {
+      delete doc["mcp_servers"];
+    }
+  }
+  return `${TOML.stringify(doc)}\n`;
+}
+
+/**
+ * Whether codex will actually load a project's `.codex/config.toml`.
+ *
+ * Project-scoped config is honoured for **trusted projects only**, and trust is
+ * recorded in the *global* config as `[projects.'<path>'] trust_level`. That
+ * makes the caveat checkable rather than a warning nobody reads: Connect can
+ * say whether this folder is trusted instead of always hedging.
+ *
+ * Path keys are lowercased on Windows and quoted inconsistently, so matching is
+ * case-insensitive with separators normalised.
+ *
+ * Ancestor inheritance is deliberately reported as *maybe*. A trusted
+ * `c:\users\me` plausibly covers everything beneath it, but whether codex
+ * matches the nearest ancestor or only an exact path is not documented, and
+ * claiming "trusted" on a guess would be worse than saying so.
+ */
+export type CodexTrust = "trusted" | "untrusted" | "maybe-via-ancestor" | "unknown";
+
+export function codexTrustFromConfig(
+  globalConfigToml: string | null,
+  projectRoot: string,
+): CodexTrust {
+  if (!globalConfigToml?.trim()) return "unknown";
+  let doc: Record<string, unknown>;
+  try {
+    doc = TOML.parse(globalConfigToml) as Record<string, unknown>;
+  } catch {
+    return "unknown";
+  }
+  const projects = doc["projects"];
+  if (typeof projects !== "object" || projects === null) return "untrusted";
+
+  const norm = (p: string) => p.replace(/[\\/]+/g, "/").replace(/\/+$/, "").toLowerCase();
+  const want = norm(projectRoot);
+  let ancestor = false;
+
+  for (const [key, value] of Object.entries(projects as Record<string, unknown>)) {
+    const level = (value as { trust_level?: unknown } | null)?.trust_level;
+    if (level !== "trusted") continue;
+    const k = norm(key);
+    if (k === want) return "trusted";
+    if (want.startsWith(`${k}/`)) ancestor = true;
+  }
+  return ancestor ? "maybe-via-ancestor" : "untrusted";
+}
+
+/** Human-readable note for the Connect UI, or null when there is nothing to say. */
+export function codexTrustNote(trust: CodexTrust): string | null {
+  switch (trust) {
+    case "trusted":
+      return null; // nothing to warn about
+    case "untrusted":
+      return "codex will ignore this file until you trust the folder — it loads project config for trusted projects only.";
+    case "maybe-via-ancestor":
+      return "A parent folder is trusted, which may cover this one. If codex ignores the registration, trust this folder explicitly.";
+    case "unknown":
+      return "Could not read ~/.codex/config.toml to check whether this folder is trusted; codex loads project config for trusted folders only.";
+  }
+}
+
 /** The Claude-compatible `mcpServers` shape (antigravity project config, grok .mcp.json). */
 function mcpServersMerge(existing: string | null, inv: Invocation): string {
   return editJson(existing, (o) => {
@@ -165,8 +296,14 @@ export const PROVIDERS: AgentProvider[] = [
     id: "codex",
     label: "Codex",
     register: {
-      kind: "cli",
-      addCommand: (inv, root) => cliAddCommand("codex", inv, root),
+      kind: "configFile",
+      // One entry per project, in the project (ADR-0007). The folder must be
+      // trusted for codex to load it — Connect says so, and can check.
+      configPath: ".codex/config.toml",
+      merge: codexTomlMerge,
+      unmerge: codexTomlUnmerge,
+      // Legacy cleanup: drain the per-project global entries older versions
+      // wrote. Best-effort — a failure here must never fail the connect.
       removeCommands: (root) => [`codex mcp remove ${codexServerName(root)}`],
     },
     install: {
@@ -208,10 +345,12 @@ export const PROVIDERS: AgentProvider[] = [
       merge: opencodeMerge,
       unmerge: opencodeUnmerge,
     },
-    // opencode's documented skills fallback is ~/.claude/skills (Claude's GLOBAL
-    // dir) — writing there duplicates skills across every project, so v1 relies
-    // on the AGENTS.md block, which opencode reads.
-    install: { kind: "copySkills", skillsScope: "agentsOnly" },
+    // Verified 2026-08-16 against opencode's current docs: it searches
+    // `.agents/skills/<name>/SKILL.md` (position 5 of 6), so one project-scoped
+    // tree serves it properly. The old note here said the only fallback was
+    // Claude's *global* dir, which would have leaked skills across every
+    // project — that was the stale fact ADR-0009 exists to catch.
+    install: { kind: "copySkills", skillsScope: "project", skillsDir: ".agents/skills" },
     dispatch: true,
     dispatchCli: "opencode",
     dispatchArgs: (prompt) => ["run", prompt],
@@ -240,8 +379,10 @@ export const PROVIDERS: AgentProvider[] = [
       merge: mcpServersMerge,
       unmerge: mcpServersUnmerge,
     },
-    // Skills live under ~/.gemini/skills (global) — rely on the AGENTS.md block in v1.
-    install: { kind: "copySkills", skillsScope: "agentsOnly" },
+    // Verified 2026-08-16: `.agents/skills` is Antigravity's *primary* project
+    // location (`.agent/` singular is kept only for backward compatibility), so
+    // it reads the very same tree opencode does — one write, two hosts.
+    install: { kind: "copySkills", skillsScope: "project", skillsDir: ".agents/skills" },
     // `agy -p` is known-broken piped (GH #318/#76) → register-only in v1.
     dispatch: false,
   },

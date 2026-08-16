@@ -12,6 +12,8 @@ import {
   type AgentProvider,
   type Invocation,
   type ProviderId,
+  codexTrustFromConfig,
+  codexTrustNote,
 } from "./providers.js";
 import { applyManagedBlock, removeManagedBlock } from "./agentsBlock.js";
 
@@ -246,8 +248,27 @@ export async function connectAgent(id: ProviderId, projectRoot: string, boardRoo
       const path = resolveConfigPath(provider.register.configPath, projectRoot);
       const existing = existsSync(path) ? await readFile(path, "utf8") : null;
       await writeAtomic(path, provider.register.merge(existing, inv));
+      // Legacy cleanup alongside the merge: codex drains the global
+      // `kanmer-<project>` entries older versions wrote. Best-effort — the
+      // registration already succeeded, so a stale CLI must not fail it.
+      for (const cmd of provider.register.removeCommands?.(projectRoot) ?? []) {
+        await execAsync(cmd, { cwd: projectRoot }).catch(() => undefined);
+      }
       command = `wrote ${provider.register.configPath}`;
       output = `Registered Kanmer in ${provider.register.configPath}.`;
+      // codex only reads project config for trusted folders, and trust is
+      // recorded globally — so say whether THIS folder is trusted rather than
+      // showing an unconditional caveat.
+      if (id === "codex") {
+        const globalCfg = join(homedir(), ".codex", "config.toml");
+        const note = codexTrustNote(
+          codexTrustFromConfig(
+            existsSync(globalCfg) ? await readFile(globalCfg, "utf8") : null,
+            projectRoot,
+          ),
+        );
+        if (note) output += ` ${note}`;
+      }
     }
     const skills = await installSkills(provider, projectRoot).catch(
       (e) => `skills failed: ${e instanceof Error ? e.message : e}`,
@@ -276,6 +297,11 @@ export async function disconnectAgent(id: ProviderId, projectRoot: string): Prom
       const path = resolveConfigPath(provider.register.configPath, projectRoot);
       if (existsSync(path)) {
         await writeAtomic(path, provider.register.unmerge(await readFile(path, "utf8")));
+      }
+      // Disconnect should leave nothing behind, including the legacy global
+      // entry a previous version of Kanmer wrote.
+      for (const cmd of provider.register.removeCommands?.(projectRoot) ?? []) {
+        await execAsync(cmd, { cwd: projectRoot }).catch(() => undefined);
       }
     }
     if (provider.install.kind === "copySkills") {

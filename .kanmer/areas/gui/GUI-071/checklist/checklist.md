@@ -89,3 +89,26 @@ closeout is not blocked. Observations in `proof`.
 - [ ] worktree removed
 - [ ] branch deleted (local + remote)
 - [ ] ticket released
+
+### Closeout done — 2026-08-16
+
+- [x] PR merged (gate) — #53 `MERGED` 2026-08-16T23:31:44Z, squash `5cab894`
+- [x] proof.md final — written on merged main, PR URL and merge date included
+- [x] commits / prs recorded — `756d5da`, `7af5d94`, `5cab894`; PR #53.
+      **Deployment not recorded**: the board declares no environments
+      (`get_doc_gates` → `deploymentTracking: null`), so the field is not
+      meaningful here.
+- [x] Outcome recorded on the ticket body
+- [x] worktree removed — `git worktree remove` deregistered it but refused the
+      directory ("Directory not empty": `node_modules`, `package-lock.json` and
+      the `out/` build, all gitignored and so invisible to `status`). Working
+      tree was clean. Followed the skill's "lingering but unregistered" path:
+      `rm -rf .worktrees/gui-071` + `git worktree prune`. No stray
+      `electron.exe` was involved — all four PIDs from each of the two CDP runs
+      were reaped before closeout, deliberately, because a survivor would have
+      held the directory open.
+- [x] branch deleted — local `gui-071-view-tab-counts` (`git branch -d` warned
+      "not yet merged to HEAD", expected after a squash merge, and deleted it
+      anyway at `7af5d94`); remote deleted; `git fetch --prune`. `git branch -a`
+      shows no `gui-071` trace.
+- [x] ticket released

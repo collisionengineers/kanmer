@@ -61,3 +61,18 @@ immediate re-run and in the final full-suite run (423/423).
 - [ ] `git branch -D skill-018-skill-frontmatter` (squash-merged, not an ancestor of main)
 - [ ] `git fetch --prune` + `git worktree prune`
 - [ ] `take_ticket action: "release"`
+
+Closeout complete: `git worktree remove` deregistered the worktree but a leftover
+directory (a stray `node_modules` install I'd added locally for the isolated rail
+run) blocked full on-disk deletion — cleaned with `rm -rf .worktrees/skill-018`
+after confirming `git worktree list` no longer registered it. `git branch -d
+skill-018-skill-frontmatter` succeeded directly (squash-merge, but git recognized
+it via the remote-tracking ref). Remote branch deleted (`git push origin --delete`)
+since this repo doesn't auto-delete on merge. `git fetch --prune` + `git worktree
+prune` clean. Ticket released.
+
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/skill-018` (+ manual cleanup of leftover dir)
+- [x] `git branch -d skill-018-skill-frontmatter`
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

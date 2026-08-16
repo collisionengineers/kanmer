@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-16T22:42:25.758Z'
   verifying: '2026-08-16T22:44:14.149Z'
   done: '2026-08-16T22:57:48.374Z'
-taken_at: '2026-08-16T22:29:17.872Z'
-branch: skill-018-skill-frontmatter
-worktree: .worktrees/skill-018
 labels:
   - install
   - bug
@@ -28,7 +25,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/42'
 archived: false
 created: '2026-08-16T22:08:48.761Z'
-updated: '2026-08-16T22:58:56.881Z'
+updated: '2026-08-16T23:01:00.596Z'
 ---
 
 ## What

@@ -15,9 +15,10 @@ refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
   - docs/functional/frd/FRD-013-setup-as-reconciliation.md
   - docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md
+  - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 archived: false
 created: '2026-08-16T18:25:18.638Z'
-updated: '2026-08-16T18:26:21.571Z'
+updated: '2026-08-16T18:51:50.768Z'
 ---
 
 ## What
@@ -60,6 +61,30 @@ Whether that is correct is a real question. A `chore` arguably *should* be able
 to go straight to Done. A `fix` that opened a PR arguably should not. Decide it
 here rather than leaving it implied by a rule about boundary counting.
 
+## Also in scope: amend ADR-0011 with the limits its implementation found
+
+[[SKILL-012]] discovered two constraints on `questions-resolved` that ADR-0011
+does not state, both found by demonstration rather than by the tests. They live
+only in `board.ts` comments and a closed ticket, which is the wrong place for a
+rule that constrains future work:
+
+- **Never gate `leave-backlog`.** Questions are raised *during* research, so
+  gating entry to the stage where they get worked traps the ticket outside it.
+  The first implementation did exactly this and was wrong.
+- **Never add a boundary a profile did not already declare.**
+  `collapsesPipeline` counts *gated* boundaries, so giving `spike` a gated
+  `leave-preparing` and `enter-review` would turn its Backlog → Done jump from
+  one gated boundary into three and refuse it — breaking the acceptance case
+  FRD-002 exists to protect.
+
+Neither contradicts ADR-0011; they are limits it should have stated. Fold them
+in here because this ticket already owns "the rules that changed must reach the
+places that state them", and the ADR is one of those places.
+
+Note the second limit is the same mechanism as the Review-skipping finding
+above — both are consequences of counting gated boundaries — so whatever is
+decided there should be reflected in the ADR in one pass.
+
 ## Approach
 
 - Audit which enforceable rules are missing from the AGENTS block, starting with
@@ -67,8 +92,9 @@ here rather than leaving it implied by a rule about boundary counting.
 - Make reconciliation actually refresh it: `scripts/agents-block.mjs` holds
   `BLOCK_BODY` as a literal that `verify-agents-block.mjs` asserts is
   byte-identical to the copy in `kanmer-setup/SKILL.md`. Any change touches both.
-- Decide and document the Review-skipping behaviour above; if it should change,
-  that is a profile or stage-contract change and needs its own ADR.
+- Amend ADR-0011 with the two limits above.
+- Decide and document the Review-skipping behaviour; if it should change, that is
+  a profile or stage-contract change and needs its own ADR.
 - Keep to ADR-0009: the block states rules; skills point at `get_doc_gates`.
 
 ## Verification
@@ -76,6 +102,8 @@ here rather than leaving it implied by a rule about boundary counting.
 - [ ] Running setup against a repo on an older Kanmer refreshes its AGENTS block
       to include rules added since.
 - [ ] `verify:agents-block` still passes (both copies byte-identical).
+- [ ] ADR-0011 states both limits, and `board.ts` cites the ADR rather than
+      being the only place they exist.
 - [ ] The Review-skipping behaviour is either documented as intended or changed
       deliberately, with the decision recorded.
 

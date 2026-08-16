@@ -66,6 +66,71 @@ export function q(s: string): string {
 export const SKILLS_VERSION_FILE = ".kanmer-skills-version";
 
 /**
+ * What a destination's stamp records: the bundled version, and the **roster** —
+ * the skill folders Kanmer actually wrote there.
+ *
+ * The roster exists because "what Kanmer currently ships" is not "what Kanmer
+ * installed here". Without it, a skill retired from the bundle is never
+ * mentioned again by install *or* disconnect, so it survives forever in every
+ * project that ever received it. The roster is also the only thing that makes
+ * deleting safe: the destination is shared with skills the user wrote, and a
+ * name-prefix guess would happily delete somebody's own `kanmer-mine`.
+ *
+ * `roster: null` means the stamp predates this format — "I do not know what I
+ * own here" — which callers must treat as a reason to delete less, not more.
+ */
+export interface SkillsStamp {
+  version: string;
+  roster: string[] | null;
+}
+
+/** The marker line that introduces the roster; its presence is what makes an empty roster representable. */
+const SKILLS_ROSTER_MARKER = "skills:";
+
+/**
+ * Serialise a stamp: **version on line 1**, roster below.
+ *
+ * Line-oriented, not JSON, and deliberately so. A Kanmer older than this change
+ * reads the whole file and `.trim()`s it as the version string; fed JSON it
+ * would compare `{"version":…` lexically. Fed this, it gets a multi-line string
+ * that loses every numeric comparison and simply reports "no update available"
+ * — wrong in the harmless direction, on the one thing that reads it.
+ */
+export function formatSkillsStamp(version: string, roster: readonly string[]): string {
+  const names = [...new Set(roster.map((n) => n.trim()).filter((n) => n !== ""))].sort();
+  return `${[version.trim(), SKILLS_ROSTER_MARKER, ...names].join("\n")}\n`;
+}
+
+/** Parse a stamp, tolerating CRLF, blank lines and the legacy bare-version form. */
+export function parseSkillsStamp(contents: string): SkillsStamp {
+  const lines = contents
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  const version = lines[0] ?? "";
+  if (lines[1] !== SKILLS_ROSTER_MARKER) return { version, roster: null };
+  return { version, roster: lines.slice(2) };
+}
+
+/**
+ * Skills Kanmer used to install and no longer does, as destination-relative paths.
+ *
+ * **This list is closed.** It repairs installs made before the roster existed;
+ * nothing is ever added to it. Every retirement from here on is covered by the
+ * recorded roster, which knows what a given destination actually received — and
+ * a tombstone list that grew would be a second, competing source of truth about
+ * what Kanmer owns.
+ *
+ * Both entries were retired by commit `130f837`, and between them they are the
+ * two shapes a retirement takes: a whole skill folder, and a file inside a
+ * folder that survives.
+ */
+export const RETIRED_SKILL_PATHS: readonly string[] = [
+  "kanmer-import",
+  "kanmer-research/assets/impact-template.md",
+];
+
+/**
  * True when `bundled` is a strictly newer version than `installed` (Phase 6.2).
  * Dot-separated numeric compare with a lexical tail fallback; a null/blank
  * `installed` (never stamped) is not "newer" — that's "not installed", handled

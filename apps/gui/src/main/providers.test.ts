@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   PROVIDERS,
+  RETIRED_SKILL_PATHS,
   codexServerName,
+  formatSkillsStamp,
   isNewerVersion,
+  parseSkillsStamp,
   providerById,
   codexTrustFromConfig,
   codexTrustNote,
@@ -291,5 +294,53 @@ describe("codex trust detection", () => {
     expect(codexTrustNote("untrusted")).toMatch(/trust the folder/);
     expect(codexTrustNote("maybe-via-ancestor")).toMatch(/parent folder/);
     expect(codexTrustNote("unknown")).toMatch(/Could not read/);
+  });
+});
+
+describe("skills stamp", () => {
+  it("puts the version on line 1 so an older Kanmer cannot read a roster line as a version", () => {
+    const stamp = formatSkillsStamp("0.2.0", ["kanmer-plan", "kanmer-auto"]);
+    expect(stamp.split("\n")[0]).toBe("0.2.0");
+    expect(parseSkillsStamp(stamp)).toEqual({ version: "0.2.0", roster: ["kanmer-auto", "kanmer-plan"] });
+  });
+
+  it("round-trips, sorting and de-duplicating the roster and ending with a newline", () => {
+    const stamp = formatSkillsStamp("1.0.0", ["b", "a", "b", " ", "c "]);
+    expect(stamp).toBe("1.0.0\nskills:\na\nb\nc\n");
+    expect(parseSkillsStamp(stamp).roster).toEqual(["a", "b", "c"]);
+  });
+
+  it("reports a legacy bare-version stamp as an unknown roster, never an empty one", () => {
+    // The distinction is load-bearing: null means "I do not know what I own
+    // here", which must make callers delete less, not delete everything.
+    expect(parseSkillsStamp("0.1.0\n")).toEqual({ version: "0.1.0", roster: null });
+    expect(parseSkillsStamp("0.1.0")).toEqual({ version: "0.1.0", roster: null });
+    expect(parseSkillsStamp("")).toEqual({ version: "", roster: null });
+  });
+
+  it("represents a genuinely empty roster distinctly from a legacy stamp", () => {
+    expect(parseSkillsStamp(formatSkillsStamp("0.2.0", []))).toEqual({ version: "0.2.0", roster: [] });
+  });
+
+  it("tolerates CRLF, blank lines and surrounding whitespace", () => {
+    expect(parseSkillsStamp("  0.2.0 \r\n\r\nskills:\r\n kanmer-plan \r\n\r\n")).toEqual({
+      version: "0.2.0",
+      roster: ["kanmer-plan"],
+    });
+  });
+
+  it("treats a stamp it cannot recognise as rosterless rather than guessing", () => {
+    expect(parseSkillsStamp('{"version":"0.2.0"}').roster).toBeNull();
+  });
+
+  it("keeps the tombstone list closed at the two paths retired by 130f837", () => {
+    // This assertion is the guard on the decision, not on the code: the list
+    // repairs pre-roster installs and never grows — future retirements are the
+    // recorded roster's job, and a growing list would be a second source of
+    // truth about what Kanmer owns.
+    expect([...RETIRED_SKILL_PATHS]).toEqual([
+      "kanmer-import",
+      "kanmer-research/assets/impact-template.md",
+    ]);
   });
 });

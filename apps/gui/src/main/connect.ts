@@ -6,8 +6,11 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import {
+  formatSkillsStamp,
   isNewerVersion,
+  parseSkillsStamp,
   providerById,
+  RETIRED_SKILL_PATHS,
   SKILLS_VERSION_FILE,
   type AgentProvider,
   type Invocation,
@@ -95,7 +98,120 @@ async function dropAgentsBlock(root: string): Promise<void> {
   else await writeAtomic(file, next);
 }
 
-/** Remove only the bundled skills Kanmer owns, preserving any host/user skills. */
+/**
+ * A single path segment that cannot escape the destination it is joined onto.
+ * Every name below is read off disk or out of a file a user can edit, so this
+ * guard sits between "a name we found" and `rm(..., { recursive: true })`.
+ */
+function isSafeSkillSegment(name: string): boolean {
+  return name !== "" && name !== "." && name !== ".." && !name.includes("/") && !name.includes("\\");
+}
+
+/** The skill folders the current bundle ships — direct children only. */
+async function bundledSkillNames(bundledSkillsRoot: string): Promise<string[]> {
+  const entries = await readdir(bundledSkillsRoot, { withFileTypes: true });
+  return entries.filter((e) => e.isDirectory() && isSafeSkillSegment(e.name)).map((e) => e.name);
+}
+
+/** The roster a previous install stamped here, or null when it predates the roster. */
+async function recordedRoster(destination: string): Promise<string[] | null> {
+  const marker = join(destination, SKILLS_VERSION_FILE);
+  if (!existsSync(marker)) return null;
+  try {
+    const { roster } = parseSkillsStamp(await readFile(marker, "utf8"));
+    return roster === null ? null : roster.filter(isSafeSkillSegment);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Remove the closed tombstone list (see `RETIRED_SKILL_PATHS`) — the repair for
+ * installs made before the roster existed. Returns what it actually deleted.
+ */
+async function removeRetiredPaths(destination: string): Promise<string[]> {
+  const removed: string[] = [];
+  for (const rel of RETIRED_SKILL_PATHS) {
+    const segments = rel.split("/").filter((s) => s !== "");
+    if (segments.length === 0 || !segments.every(isSafeSkillSegment)) continue;
+    const target = join(destination, ...segments);
+    if (!existsSync(target)) continue;
+    await rm(target, { recursive: true, force: true });
+    removed.push(rel);
+  }
+  return removed;
+}
+
+export interface SkillsReconcileResult {
+  /** Owned folders that did not exist here before — nothing could have been lost. */
+  installed: string[];
+  /** Owned folders that existed and were replaced wholesale: any local edit inside them is gone. */
+  replaced: string[];
+  /** Folders and files removed because Kanmer no longer ships them. */
+  removed: string[];
+}
+
+/**
+ * Make the destination match the bundle **for the skills Kanmer owns**, and
+ * touch nothing else. This is the reconciliation that install used to skip:
+ * `cp` merges, so it could only ever add.
+ *
+ * Both roots are parameters rather than resolved from `pluginRoot()` so this is
+ * drivable against real directories in a test — the same seam
+ * `removeBundledSkillsOnly` already used for its bundle root.
+ */
+export async function reconcileSkills(
+  destination: string,
+  bundledSkillsRoot: string,
+  version: string,
+): Promise<SkillsReconcileResult> {
+  const bundled = await bundledSkillNames(bundledSkillsRoot);
+  // The recorded roster is the deletion authority. A stamp without one says "I
+  // do not know what I own here", and the safe answer is the pre-roster
+  // behaviour — the names Kanmer currently ships — which deletes nothing it
+  // cannot account for.
+  const owned = (await recordedRoster(destination)) ?? bundled;
+
+  const removed = new Set<string>();
+  for (const name of owned) {
+    if (bundled.includes(name)) continue;
+    const target = join(destination, name);
+    if (!existsSync(target)) continue;
+    await rm(target, { recursive: true, force: true });
+    removed.add(name);
+  }
+  for (const rel of await removeRetiredPaths(destination)) removed.add(rel);
+
+  await mkdir(destination, { recursive: true });
+  const installed: string[] = [];
+  const replaced: string[] = [];
+  for (const name of bundled) {
+    const target = join(destination, name);
+    const existed = existsSync(target);
+    // Replace, never merge. Retirement has a second shape — a file deleted or
+    // renamed *inside* a folder that survives — and merging leaves it behind
+    // (`kanmer-research/assets/impact-template.md` is exactly that case).
+    if (existed) await rm(target, { recursive: true, force: true });
+    await cp(join(bundledSkillsRoot, name), target, { recursive: true });
+    (existed ? replaced : installed).push(name);
+  }
+
+  // Stamped last on purpose: a crash mid-reconcile leaves a stamp that
+  // under-claims ownership rather than one claiming folders Kanmer never wrote.
+  await writeFile(join(destination, SKILLS_VERSION_FILE), formatSkillsStamp(version, bundled), "utf8");
+  return { installed, replaced, removed: [...removed] };
+}
+
+/**
+ * Remove what Kanmer actually installed here, and nothing else.
+ *
+ * "Owns" is not "currently ships" — that equation was the bug, and it was
+ * written into this function's own doc comment: it enumerated the *live bundle*,
+ * so a skill retired since the install was never named and survived the one
+ * operation whose job is to leave nothing behind. The destination's stamped
+ * roster is the record of what Kanmer wrote. `bundledSkillsRoot` remains as the
+ * fallback for a stamp that predates the roster (and as the tests' seam).
+ */
 export async function removeBundledSkillsOnly(
   root: string,
   skillsDir: string,
@@ -103,12 +219,11 @@ export async function removeBundledSkillsOnly(
 ): Promise<void> {
   const destination = join(root, skillsDir);
   if (!existsSync(destination)) return;
-  const bundled = await readdir(bundledSkillsRoot, { withFileTypes: true });
-  for (const entry of bundled) {
-    // Bundled skill folders are direct children; never let a path escape the destination.
-    if (!entry.isDirectory() || entry.name.includes("/") || entry.name.includes("\\") || entry.name === ".") continue;
-    await rm(join(destination, entry.name), { recursive: true, force: true });
+  const owned = (await recordedRoster(destination)) ?? (await bundledSkillNames(bundledSkillsRoot));
+  for (const name of owned) {
+    await rm(join(destination, name), { recursive: true, force: true });
   }
+  await removeRetiredPaths(destination);
   await rm(join(destination, SKILLS_VERSION_FILE), { force: true });
   if ((await readdir(destination)).length === 0) await rmdir(destination);
 }
@@ -131,10 +246,32 @@ async function isRegistered(provider: AgentProvider, root: string): Promise<bool
   }
 }
 
-async function hasRegisteredCopySkillsPeer(id: ProviderId, root: string): Promise<boolean> {
+/**
+ * Is another copy-skills host still registered?
+ *
+ * With `skillsDir`, only peers writing that same directory count. That
+ * narrower question is the one the skills removal must ask: `.agents/skills`
+ * serves opencode **and** antigravity, so disconnecting one while the other is
+ * connected would strip a connected host's roster — and ADR-0009 makes the
+ * roster's atomicity (every skill cross-references
+ * `kanmer-tickets/references/tool-reference.md`) a stated constraint, so a
+ * half-removed roster is a real breakage. Without `skillsDir` the question stays
+ * the broad one the AGENTS.md block asks: does any copy-skills host remain?
+ */
+async function hasRegisteredCopySkillsPeer(
+  id: ProviderId,
+  root: string,
+  skillsDir?: string,
+): Promise<boolean> {
   const peers = ["opencode", "grok", "antigravity"]
     .map((peerId) => providerById(peerId))
-    .filter((peer): peer is AgentProvider => peer !== undefined && peer.id !== id && peer.install.kind === "copySkills");
+    .filter(
+      (peer): peer is AgentProvider =>
+        peer !== undefined &&
+        peer.id !== id &&
+        peer.install.kind === "copySkills" &&
+        (skillsDir === undefined || peer.install.skillsDir === skillsDir),
+    );
   for (const peer of peers) {
     if (await isRegistered(peer, root)) return true;
   }
@@ -159,12 +296,19 @@ async function installSkills(provider: AgentProvider, root: string): Promise<str
   await ensureAgentsBlock(root);
   if (provider.install.skillsScope === "project" && provider.install.skillsDir) {
     const dest = join(root, provider.install.skillsDir);
-    await mkdir(dest, { recursive: true });
-    await cp(join(pluginRoot(), "skills"), dest, { recursive: true });
-    // Stamp the copy so getSkillsStatus can offer "Update skills" later.
     const version = await bundledSkillsVersion();
-    await writeFile(join(dest, SKILLS_VERSION_FILE), `${version}\n`, "utf8");
-    return `skills v${version} → ${provider.install.skillsDir}, AGENTS.md block ensured`;
+    // Reconcile, don't overlay: the stamp records the roster so retired skills
+    // can be pruned, and it is what lets getSkillsStatus offer "Update skills".
+    const { installed, replaced, removed } = await reconcileSkills(dest, join(pluginRoot(), "skills"), version);
+    const notes = [`skills v${version} → ${provider.install.skillsDir}`];
+    if (installed.length > 0) notes.push(`${installed.length} installed`);
+    // Naming the replaced folders is the accountability for replacing them
+    // wholesale: a local edit inside a Kanmer-owned skill is discarded, and the
+    // user has to learn that from Kanmer rather than by losing it.
+    if (replaced.length > 0) notes.push(`replaced, local edits discarded: ${replaced.join(", ")}`);
+    if (removed.length > 0) notes.push(`retired, removed: ${removed.join(", ")}`);
+    notes.push("AGENTS.md block ensured");
+    return notes.join("; ");
   }
   return "AGENTS.md block ensured (host reads AGENTS.md for skills)";
 }
@@ -200,7 +344,11 @@ export async function skillsStatus(id: ProviderId, projectRoot: string): Promise
   }
   const marker = join(projectRoot, provider.install.skillsDir, SKILLS_VERSION_FILE);
   let installedVersion: string | null = null;
-  if (existsSync(marker)) installedVersion = (await readFile(marker, "utf8")).trim() || null;
+  // Parse rather than trim the whole file: the stamp now carries the roster
+  // below the version line.
+  if (existsSync(marker)) {
+    installedVersion = parseSkillsStamp(await readFile(marker, "utf8")).version || null;
+  }
   return {
     scope: "project",
     installedVersion,
@@ -209,7 +357,14 @@ export async function skillsStatus(id: ProviderId, projectRoot: string): Promise
   };
 }
 
-/** Re-copy the bundled skills for a provider (the "Update skills" action). */
+/**
+ * Re-install the bundled skills for a provider (the "Update skills" action).
+ *
+ * Deliberately still a one-line wrapper: this affordance exists for "my skills
+ * are out of date", and it used to reproduce the overlay bug rather than fix it.
+ * Making `installSkills` reconcile is what fixes it here too — there is nothing
+ * for this function to do differently.
+ */
 export async function updateSkills(id: ProviderId, projectRoot: string): Promise<ConnectResult> {
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
@@ -306,8 +461,17 @@ export async function disconnectAgent(id: ProviderId, projectRoot: string): Prom
     }
     if (provider.install.kind === "copySkills") {
       if (provider.install.skillsScope === "project" && provider.install.skillsDir) {
-        await removeBundledSkillsOnly(projectRoot, provider.install.skillsDir);
-        cleanupNotes.push("bundled copied skills removed");
+        const dir = provider.install.skillsDir;
+        // One directory can serve two hosts (.agents/skills is opencode's and
+        // antigravity's), so removal asks whether a peer writing *this*
+        // directory is still connected — not merely whether any copy-skills
+        // host is, which would keep grok's directory alive for opencode's sake.
+        if (await hasRegisteredCopySkillsPeer(id, projectRoot, dir)) {
+          cleanupNotes.push(`copied skills retained in ${dir} for another connected host`);
+        } else {
+          await removeBundledSkillsOnly(projectRoot, dir);
+          cleanupNotes.push("bundled copied skills removed");
+        }
       }
       const peerRemains = await hasRegisteredCopySkillsPeer(id, projectRoot);
       if (peerRemains) {

@@ -113,7 +113,10 @@ export function Board(props: BoardProps): JSX.Element {
   );
 
   const statuses = mergeColumns(
-    STAGES.map((s) => ({ id: s.id, name: s.name, color: s.color })),
+    // Backlog is a list, not a column (FRD-011). A kanban column is for work
+    // in flight; a backlog is a queue you scan, sort and triage, which a column
+    // cannot do. It lives in the Backlog view instead.
+    STAGES.filter((s) => s.id !== "backlog").map((s) => ({ id: s.id, name: s.name, color: s.color })),
     items.map((i) => i.status),
   );
   const usingAreas = board.areas.length > 0 || items.some((i) => i.area);

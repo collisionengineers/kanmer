@@ -1,3 +1,4 @@
+import type { GateReport } from "@kanmer/core";
 import type {
   ActivityEntry,
   BoardColumn,
@@ -69,6 +70,7 @@ export const CH = {
   getRepoDoc: "kanmer:getRepoDoc",
   pickRepoDoc: "kanmer:pickRepoDoc",
   getGateStatus: "kanmer:getGateStatus",
+  getGates: "kanmer:getGates",
   getActivity: "kanmer:getActivity",
   changed: "kanmer:changed",
   /** Main → renderer: reveal an item (toast click, etc.). */
@@ -388,6 +390,8 @@ export interface KanmerApi {
    * its current stage (empty array = the move is allowed). Backs the drag lock-tint.
    */
   getGateStatus(projectId: string, id: string): Promise<Record<string, string[]>>;
+  /** The full gate report for one ticket — the core resolver, verbatim. */
+  getGates(projectId: string, id: string): Promise<GateReport | null>;
   /** Read the activity log. */
   getActivity(
     projectId: string,

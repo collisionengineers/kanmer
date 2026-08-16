@@ -1631,3 +1631,60 @@ button.danger {
   margin: 4px 6px;
   background: var(--line);
 }
+
+/* Requirements panel (FRD-002 S2). Rows come from the core resolver, so this
+   is presentation only — the renderer never decides what a ticket owes. */
+.readiness {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.9em;
+}
+.readiness > header {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.readiness .gate {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 2px 0;
+}
+.readiness .gate-label {
+  min-width: 11em;
+  color: var(--muted);
+}
+.readiness .gate-reqs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.readiness .req {
+  border: 0;
+  background: transparent;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+  color: var(--text);
+}
+.readiness .req.met {
+  color: var(--muted);
+}
+.readiness .req.missing {
+  color: var(--warn);
+}
+.readiness .req:hover {
+  background: var(--accent-dim);
+}
+.readiness .warn-note {
+  margin: 6px 0 0;
+  color: var(--warn);
+}
+.readiness-none {
+  margin: 0 0 12px;
+}

@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import type { GateReport } from "@kanmer/core";
 import type {
   ActivityEntry,
   BoardColumn,
@@ -70,6 +71,7 @@ export interface ProjectClient {
   getRepoDoc(relPath: string): Promise<string | null>;
   pickRepoDoc(): Promise<string | null>;
   getGateStatus(id: string): Promise<Record<string, string[]>>;
+  getGates(id: string): Promise<GateReport | null>;
   getActivity(opts?: { id?: string; since?: string; limit?: number }): Promise<ActivityEntry[]>;
 }
 
@@ -109,6 +111,7 @@ export function makeClient(projectId: string): ProjectClient {
     getRepoDoc: (rel) => k.getRepoDoc(projectId, rel),
     pickRepoDoc: () => k.pickRepoDoc(projectId),
     getGateStatus: (id) => k.getGateStatus(projectId, id),
+    getGates: (id) => k.getGates(projectId, id),
     getActivity: (opts) => k.getActivity(projectId, opts),
   };
 }

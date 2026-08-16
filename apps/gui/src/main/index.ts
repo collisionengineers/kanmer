@@ -640,6 +640,9 @@ function registerIpc(): void {
     if (abs !== root && !abs.startsWith(root + sep)) return null;
     return relative(root, abs).split(sep).join("/");
   });
+  // The whole report, for the editor readiness panel. getGateStatus stays as
+  // the drag lock-tint's cheaper per-stage view of the same underlying answer.
+  ipcMain.handle(CH.getGates, (_e, p: string, id: string) => requireStore(p).getDocGates(id));
   ipcMain.handle(CH.getGateStatus, async (_e, p: string, id: string) => {
     const store = requireStore(p);
     const [item] = await Promise.all([

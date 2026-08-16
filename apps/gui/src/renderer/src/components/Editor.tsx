@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { UI_STAGES as STAGES } from "../../../shared/stages.js";
+
 import type {
   BoardColumn,
   BoardConfig,
   DocType,
+  GateReport,
   Item,
   LinkGraph,
   TicketDoc,
@@ -11,6 +13,9 @@ import type {
   UpdateItemPatch,
 } from "@kanmer/core";
 import { useClient } from "../lib/client.js";
+
+/** The shipped profiles plus custom — the picker's options (FRD-002 P2/P3). */
+const PROFILE_IDS = ["feature", "fix", "chore", "spike", "custom"] as const;
 import { progressDocId } from "../lib/docProgress.js";
 import { renderMarkdown } from "../lib/markdown.js";
 import { ChipInput } from "./ChipInput.js";
@@ -36,6 +41,7 @@ interface Snapshot {
   title: string;
   status: string;
   area: string;
+  profile: string;
   assignee: string;
   labels: string;
   links: string;
@@ -50,6 +56,7 @@ const FIELD_KEYS = [
   "title",
   "status",
   "area",
+  "profile",
   "assignee",
   "labels",
   "links",
@@ -64,6 +71,7 @@ function snapOf(item: Item): Snapshot {
     title: item.title,
     status: item.status,
     area: item.area,
+    profile: item.profile ?? "",
     assignee: item.assignee,
     labels: (item.labels ?? []).join(", "),
     links: (item.links ?? []).join(", "),
@@ -104,6 +112,8 @@ export function Editor(props: EditorProps): JSX.Element {
   const [pendingTab, setPendingTab] = useState<"ticket" | TicketDoc | null>(null);
   const [docsInfo, setDocsInfo] = useState<TicketDocsInfo | null>(null);
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
+  /** The core gate report — what this ticket owes, and what it already has. */
+  const [gates, setGates] = useState<GateReport | null>(null);
   const [docDirty, setDocDirty] = useState(false);
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -336,6 +346,22 @@ export function Editor(props: EditorProps): JSX.Element {
     }
   };
 
+  // Re-read on every disk change and after a save: a document written in
+  // another tab, or by an agent, must move the readiness rows without a reload.
+  useEffect(() => {
+    if (item.type !== "ticket") return;
+    let cancelled = false;
+    void client
+      .getGates(item.id)
+      .then((g) => {
+        if (!cancelled) setGates(g);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [client, item.id, item.status, item.profile, changeSignal, docsInfo]);
+
   const progressDoc = progressDocId(docTypes);
   const showDeployment = board.deployment !== undefined;
   const deploymentOptions = ["n/a", "not-deployed", ...(board.deployment?.environments ?? [])];
@@ -442,6 +468,7 @@ export function Editor(props: EditorProps): JSX.Element {
         />
       ) : (
         <>
+          {gates && <ReadinessPanel gates={gates} onOpenDoc={(t) => tryTab(t)} />}
           <label className="field">
             <span>Title</span>
             <input value={form.title} onChange={(e) => set("title", e.target.value)} />
@@ -459,6 +486,19 @@ export function Editor(props: EditorProps): JSX.Element {
           </label>
 
           <div className="field-row">
+            <label className="field">
+              <span>Profile</span>
+              {/* What this ticket owes at each boundary. Changing it re-gates
+                  immediately — the readiness panel below updates with it. */}
+              <select value={form.profile} onChange={(e) => set("profile", e.target.value)}>
+                <option value="">— inherit —</option>
+                {PROFILE_IDS.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="field">
               <span>Area</span>
               <select value={form.area} onChange={(e) => set("area", e.target.value)}>
@@ -918,4 +958,66 @@ function splitList(raw: string): string[] {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+
+/**
+ * What this ticket owes, per boundary (FRD-002 S2).
+ *
+ * Every row comes from the core resolver — the renderer computes none of it,
+ * because it cannot import core at runtime and, more importantly, a second
+ * implementation of the rules is exactly what ADR-0009 exists to prevent.
+ * Clicking an unmet requirement opens that document's tab, so the panel is a
+ * to-do list rather than a report.
+ */
+function ReadinessPanel({
+  gates,
+  onOpenDoc,
+}: {
+  gates: GateReport;
+  onOpenDoc: (docType: string) => void;
+}): JSX.Element | null {
+  if (!gates.boundaries.length) {
+    return (
+      <p className="hint readiness-none">
+        Profile <code>{gates.profile}</code> asks nothing of this ticket — it can move freely.
+      </p>
+    );
+  }
+  return (
+    <section className="readiness" aria-label="Requirements">
+      <header>
+        <span>
+          Profile <code>{gates.profile}</code>
+        </span>
+      </header>
+      {gates.boundaries.map((b) => (
+        <div key={b.boundary} className={b.passable ? "gate ok" : "gate unmet"}>
+          <span className="gate-label">{b.label}</span>
+          <span className="gate-reqs">
+            {b.requirements.map((r) => (
+              <button
+                key={r.requirement}
+                type="button"
+                className={r.satisfied ? "req met" : "req missing"}
+                title={
+                  r.satisfied
+                    ? `${r.requirement} — satisfied`
+                    : `${r.requirement} — open the tab to write it`
+                }
+                onClick={() => onOpenDoc(r.type)}
+              >
+                {r.satisfied ? "✓" : "○"} {r.requirement}
+              </button>
+            ))}
+          </span>
+        </div>
+      ))}
+      {gates.warnings.map((w) => (
+        <p key={w} className="hint warn-note">
+          {w}
+        </p>
+      ))}
+    </section>
+  );
 }

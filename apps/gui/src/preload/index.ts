@@ -68,6 +68,7 @@ const api: KanmerApi = {
   getRepoDoc: (p, rel) => ipcRenderer.invoke(CH.getRepoDoc, p, rel),
   pickRepoDoc: (p) => ipcRenderer.invoke(CH.pickRepoDoc, p),
   getGateStatus: (p, id) => ipcRenderer.invoke(CH.getGateStatus, p, id),
+  getGates: (p, id) => ipcRenderer.invoke(CH.getGates, p, id),
   getActivity: (p, opts) => ipcRenderer.invoke(CH.getActivity, p, opts),
   onChange: (cb) => {
     const listener = (_e: unknown, payload: ChangePayload) => cb(payload);

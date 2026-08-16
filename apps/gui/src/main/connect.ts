@@ -31,18 +31,22 @@ export interface ConnectResult {
  * How to launch the MCP server: via the Electron binary as Node
  * (ELECTRON_RUN_AS_NODE=1), so the target machine needs no separate Node.
  */
-function serverInvocation(projectRoot: string): Invocation {
+function serverInvocation(boardRoot: string, sourceRoot: string): Invocation {
   const env = { ELECTRON_RUN_AS_NODE: "1" };
   let script: string;
   if (app.isPackaged) {
     script = join(process.resourcesPath, "mcp", "kanmer-mcp.cjs");
   } else {
-    const repoRoot = resolve(app.getAppPath(), "..", "..");
-    const standalone = join(repoRoot, "packages", "mcp-server", "dist", "standalone", "kanmer-mcp.cjs");
-    const esm = join(repoRoot, "packages", "mcp-server", "dist", "index.js");
+    const installRoot = resolve(app.getAppPath(), "..", "..");
+    const standalone = join(installRoot, "packages", "mcp-server", "dist", "standalone", "kanmer-mcp.cjs");
+    const esm = join(installRoot, "packages", "mcp-server", "dist", "index.js");
     script = existsSync(standalone) ? standalone : esm;
   }
-  return { command: process.execPath, args: [script, "--root", projectRoot], env };
+  const args = [script, "--root", boardRoot];
+  // Only when the board is elsewhere: `refs` resolve against the source
+  // checkout, and the server cannot see it from --root alone.
+  if (resolve(sourceRoot) !== resolve(boardRoot)) args.push("--repo-root", sourceRoot);
+  return { command: process.execPath, args, env };
 }
 
 /** Where the bundled plugin (skills + marketplace source) lives — dev vs packaged. */
@@ -224,10 +228,10 @@ export async function updateSkills(id: ProviderId, projectRoot: string): Promise
  * config-file merge) and install the skills (a marketplace CLI, or the AGENTS.md
  * block + a project skills copy). Idempotent — re-running just refreshes.
  */
-export async function connectAgent(id: ProviderId, projectRoot: string, boardRoot = projectRoot): Promise<ConnectResult> {
+export async function connectAgent(id: ProviderId, projectRoot: string, boardRoot: string): Promise<ConnectResult> {
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
-  const inv = serverInvocation(boardRoot);
+  const inv = serverInvocation(boardRoot, projectRoot);
   try {
     let command: string;
     let output: string;

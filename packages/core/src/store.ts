@@ -91,8 +91,14 @@ export class KanmerStore {
   private formatCache: { format: 1 | 2; stamp: string } | null = null;
   private actor = "gui";
 
-  constructor(projectRoot: string, opts: { actor?: string } = {}) {
-    this.paths = resolvePaths(projectRoot);
+  /**
+   * `repoRoot` is the source checkout governing-doc `refs` resolve against.
+   * Pass it whenever the caller knows both roots (the GUI does); omitted, it
+   * is derived from a `.worktrees/<name>` board path and otherwise equals
+   * `projectRoot`.
+   */
+  constructor(projectRoot: string, opts: { actor?: string; repoRoot?: string } = {}) {
+    this.paths = resolvePaths(projectRoot, opts.repoRoot);
     if (opts.actor) this.actor = opts.actor;
   }
 
@@ -1005,12 +1011,16 @@ export class KanmerStore {
     });
   }
 
-  /** Validate governing-doc refs: each must resolve under the project root and exist. */
+  /**
+   * Validate governing-doc refs: each must resolve under the **repo** root and
+   * exist. Not the project root — on a board-worktree project the store reads
+   * `<repo>/.worktrees/<name>`, while `/docs/` stays in the source checkout.
+   */
   private async assertRefs(refs: string[]): Promise<void> {
     for (const rel of refs) {
-      const abs = assertSafeRepoPath(this.paths.projectRoot, rel);
+      const abs = assertSafeRepoPath(this.paths.repoRoot, rel);
       if (!(await pathExists(abs))) {
-        throw new Error(`Referenced document "${rel}" does not exist under the project root.`);
+        throw new Error(`Referenced document "${rel}" does not exist under the repo root (${this.paths.repoRoot}).`);
       }
     }
   }

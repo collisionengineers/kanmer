@@ -13,16 +13,45 @@ export const TYPE_DIRS: Record<ItemType, string> = {
 /** Folder under `areas/` for tickets with no area (format 2). */
 export const NO_AREA_DIR = "_none";
 
+/** Worktree directory name Kanmer parks a dedicated board branch in. */
+export const WORKTREES_DIR = ".worktrees";
+
+/**
+ * Where the *source checkout* is, given the board root.
+ *
+ * These are the same folder for a colocated board, but not when the board
+ * lives on its own branch: `ensureBoardWorktree` puts it at
+ * `<repo>/.worktrees/<name>`, and the repo's own `/docs/` tree — what `refs`
+ * point at — stays behind in `<repo>`. Callers that know both roots should
+ * pass `repoRoot` explicitly; this recognises the shape Kanmer itself creates
+ * so an already-registered server keeps working without being reconnected.
+ *
+ * Returns null when the board root is not a Kanmer board worktree.
+ */
+export function deriveRepoRoot(boardRoot: string): string | null {
+  const root = path.resolve(boardRoot);
+  const parent = path.dirname(root);
+  if (path.basename(parent) !== WORKTREES_DIR) return null;
+  const repo = path.dirname(parent);
+  return repo && repo !== parent ? repo : null;
+}
+
 /**
  * Resolve all the important paths for a project root. `projectRoot` is the
  * folder that contains (or will contain) the `.kanmer` directory.
+ *
+ * `repoRoot` is the source checkout that governing-doc `refs` resolve against.
+ * It differs from `projectRoot` only when the board lives in its own worktree;
+ * when omitted it is derived from the board path, falling back to `projectRoot`.
  */
-export function resolvePaths(projectRoot: string) {
+export function resolvePaths(projectRoot: string, repoRoot?: string) {
   const root = path.resolve(projectRoot);
   const kanmer = path.join(root, KANMER_DIR);
   const data = path.join(kanmer, "data");
   return {
     projectRoot: root,
+    /** Root that `refs` (governing repo docs) resolve against. */
+    repoRoot: repoRoot ? path.resolve(repoRoot) : (deriveRepoRoot(root) ?? root),
     kanmer,
     data,
     boardFile: path.join(data, "board.yml"),

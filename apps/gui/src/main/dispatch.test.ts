@@ -43,8 +43,8 @@ describe("project-scoped dispatches", () => {
     let next = 0;
     __setSpawnForTests(() => [first, second][next++] as never);
 
-    const one = await dispatchTicket(store("/one"), "claude", "/one", "TICK-1");
-    const two = await dispatchTicket(store("/two"), "claude", "/two", "TICK-1");
+    const one = await dispatchTicket(store("/one"), "claude", "/one", "TICK-1", {}, "/one");
+    const two = await dispatchTicket(store("/two"), "claude", "/two", "TICK-1", {}, "/two");
 
     expect(one.projectId).toBe("/one");
     expect(two.projectId).toBe("/two");
@@ -59,8 +59,8 @@ describe("project-scoped dispatches", () => {
     const proc = child(103);
     __setSpawnForTests(() => proc as never);
     const project = store("/one");
-    await dispatchTicket(project, "claude", "/one", "TICK-1");
-    await expect(dispatchTicket(project, "claude", "/one", "TICK-1")).rejects.toThrow(/in flight/);
+    await dispatchTicket(project, "claude", "/one", "TICK-1", {}, "/one");
+    await expect(dispatchTicket(project, "claude", "/one", "TICK-1", {}, "/one")).rejects.toThrow(/in flight/);
     proc.emit("close", 0);
   });
 });

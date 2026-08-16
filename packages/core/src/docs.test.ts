@@ -242,6 +242,52 @@ describe("repo-doc refs", () => {
     expect(repoDocKindOf(board, "docs\\adr\\y.md")).toBe("adr");
     expect(repoDocKindOf(board, "src/index.ts")).toBeNull();
   });
+
+  // The board can live on its own branch at <repo>/.worktrees/<name>, while the
+  // governing docs stay in the source checkout. refs must resolve against the
+  // repo, not the board — otherwise the leave-backlog gate is unsatisfiable on
+  // every board-worktree project, which is the shipped model.
+  describe("board in a worktree: refs resolve against the repo root", () => {
+    it("accepts a ref that exists in the repo but not under the board root", async () => {
+      const boardRoot = path.join(root, ".worktrees", "kanmer");
+      await fs.mkdir(boardRoot, { recursive: true });
+      await fs.mkdir(path.join(root, "docs", "frd"), { recursive: true });
+      await fs.writeFile(path.join(root, "docs", "frd", "FRD-001.md"), "# FRD", "utf8");
+
+      const boardStore = new KanmerStore(boardRoot);
+      await boardStore.init();
+
+      // Derived from the .worktrees/<name> shape, so an already-registered
+      // server keeps working without being reconnected.
+      expect(boardStore.paths.repoRoot).toBe(path.resolve(root));
+
+      const t = await boardStore.createItem({
+        type: "ticket",
+        title: "A",
+        refs: ["docs/frd/FRD-001.md"],
+      });
+      expect(t.refs).toEqual(["docs/frd/FRD-001.md"]);
+      // ...and the governing-doc gate it exists to satisfy actually opens.
+      expect((await boardStore.moveItem(t.id, { status: "researching" })).status).toBe("researching");
+    });
+
+    it("honours an explicit repoRoot and still rejects a ghost ref", async () => {
+      const boardRoot = path.join(root, "elsewhere", "board");
+      await fs.mkdir(boardRoot, { recursive: true });
+      const boardStore = new KanmerStore(boardRoot, { repoRoot: root });
+      await boardStore.init();
+
+      expect(boardStore.paths.repoRoot).toBe(path.resolve(root));
+      await expect(
+        boardStore.createItem({ type: "ticket", title: "A", refs: ["docs/frd/ghost.md"] }),
+      ).rejects.toThrow(/does not exist/);
+    });
+
+    it("falls back to the project root when the board is colocated", () => {
+      const colocated = new KanmerStore(root);
+      expect(colocated.paths.repoRoot).toBe(path.resolve(root));
+    });
+  });
 });
 
 describe("per-ticket scratch", () => {

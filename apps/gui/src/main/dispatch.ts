@@ -77,7 +77,9 @@ export async function dispatchTicket(
   projectId: string,
   ticketId: string,
   opts: { timeoutMs?: number } = {},
-  sourceRoot = store.paths.projectRoot,
+  // Required, deliberately: `store.paths.projectRoot` is the *board* root, so a
+  // default here would silently spawn agents inside `.worktrees/kanmer`.
+  sourceRoot: string,
 ): Promise<DispatchStatus> {
   const provider = providerById(providerId);
   if (!provider?.dispatch || !provider.dispatchCli || !provider.dispatchArgs) {

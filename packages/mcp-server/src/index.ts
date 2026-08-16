@@ -21,10 +21,11 @@ import {
   type Item,
   type WatchHandle,
 } from "@kanmer/core";
-import { resolveProjectRoot } from "./root.js";
+import { resolveProjectRoot, resolveRepoRoot } from "./root.js";
 
 const projectRoot = resolveProjectRoot(process.argv.slice(2), process.env);
-const store = new KanmerStore(projectRoot);
+const repoRoot = resolveRepoRoot(process.argv.slice(2), process.env);
+const store = new KanmerStore(projectRoot, { repoRoot });
 
 /** JSON tool result. */
 function ok(data: unknown) {

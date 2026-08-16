@@ -410,7 +410,10 @@ async function openProject(root: string): Promise<OpenProjectResult> {
 
   const syncStatus = await ensureBoardWorktree(projectId, readSettings().kanmerBranch);
   const boardRoot = syncStatus.boardRoot ?? projectId;
-  const store = new KanmerStore(boardRoot);
+  // repoRoot is the source checkout: `refs` point at the repo's own /docs/,
+  // which does not move into the board worktree. Passed explicitly because we
+  // know both roots here — core would otherwise have to infer it.
+  const store = new KanmerStore(boardRoot, { repoRoot: projectId });
 
   await store.init();
   recordRecentProject(projectId);

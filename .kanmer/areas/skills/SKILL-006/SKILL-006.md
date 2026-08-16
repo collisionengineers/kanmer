@@ -2,7 +2,7 @@
 id: SKILL-006
 type: ticket
 title: 7.2 Backfill pre-board history
-status: review
+status: done
 area: skills
 assignee: ''
 profile: feature
@@ -10,6 +10,8 @@ stageEntered:
   preparing: '2026-08-16T05:38:46.037Z'
   implementing: '2026-08-16T05:43:17.943Z'
   review: '2026-08-16T05:43:43.308Z'
+  verifying: '2026-08-16T05:44:07.347Z'
+  done: '2026-08-16T05:44:07.636Z'
 labels:
   - v3-phase-7
 groups:
@@ -21,7 +23,7 @@ refs:
   - docs/architecture/adr/ADR-0010-setup-is-reconciliation.md
 archived: false
 created: '2026-08-16T00:31:38.834Z'
-updated: '2026-08-16T05:43:43.308Z'
+updated: '2026-08-16T05:44:07.636Z'
 ---
 
 Run kanmer-setup reconcile on this repo: mine `docs/plans/**` (kanmer-upgrades, kanmer-v2, updater, reviews) **per item** into done tickets — plan content into `plan/`, verification sections seeding `proof/`, `custom` empty-requires profiles, areas proposed from the mining. Preview counts confirmed before creating anything. Any open GitHub issues ingested with the confirm-then-close flow. A re-run creates nothing.

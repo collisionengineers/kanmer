@@ -6,6 +6,37 @@ against shipping the previous release's notes. electron-builder reads this file
 from the app directory (`projectDir` is `apps/gui` when the packer is invoked
 there) and uses it as the GitHub release body.
 
+## 0.3.2
+
+Fixes updates that could fail to install.
+
+If you have seen **"Failed to uninstall old application files. Please try
+running the installer again.: 2"**, this is that. Running the installer again
+did not help, which is the most annoying part of the message.
+
+### What was wrong
+
+An agent's MCP server runs *as the installed Kanmer executable* — that is how
+your agent talks to the board without needing Node installed. It is not a child
+of the app, so closing Kanmer does not close it, and it keeps two of Electron's
+data files open in a way that stops the installer replacing them. The installer
+tries to close such processes itself, but it races its own file replacement and
+sometimes loses, and it gives up after five seconds.
+
+Closing Kanmer looked like it should be enough. It was not, and nothing on
+screen said so.
+
+### What changes
+
+Kanmer now closes agent MCP sessions itself before starting an update, and
+checks they are gone. If they cannot be closed, **the update does not start** —
+you get a message naming the projects still holding the folder, the app keeps
+running, and the download stays on disk so you can close those agents and hit
+restart again. No more bare error code from the installer.
+
+The confirmation before "Restart and update" is unchanged: it still tells you
+which sessions will close, and nothing installs without you asking.
+
 ## 0.3.1
 
 Fixes migrations that could fail part-way on Windows and then refuse to finish.

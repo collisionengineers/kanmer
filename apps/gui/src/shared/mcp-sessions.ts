@@ -17,10 +17,18 @@ import type { McpSessions } from "./ipc.js";
  * updater's `--updated` flag suppresses the installer's prompt, so this happens
  * with no dialog of its own.
  *
- * We cannot prevent it (it is inherent to NSIS overwriting a running install),
- * so we name it: this parser turns the CIM query's JSON into the count and the
- * project paths, which the renderer shows before "Restart now" and the main
- * process shows before an unattended quit-install.
+ * We cannot stop NSIS from killing those processes, so we name them: this
+ * parser turns the CIM query's JSON into the count, the project paths and the
+ * pids, which the renderer shows before "Restart now" and the main process
+ * shows before an unattended quit-install.
+ *
+ * GUI-064 added the pids, because naming them turned out not to be enough. The
+ * installer's kill and its rename race each other, and when the rename loses the
+ * whole update fails with `uninstallFailed: 2` — an MCP server holds `icudtl.dat`
+ * and `v8_context_snapshot.bin` (V8/ICU mmap them without FILE_SHARE_DELETE, so
+ * they cannot be renamed; the .exe and the DLLs can be, which is why the obvious
+ * suspect is innocent). We now stop these processes ourselves, first, and verify
+ * — which needs a pid, not just a count.
  *
  * Zero runtime imports on purpose — the type is type-only — so the vitest suite
  * beside this file needs no electron.
@@ -30,10 +38,11 @@ import type { McpSessions } from "./ipc.js";
 interface CimRow {
   ExecutablePath?: unknown;
   CommandLine?: unknown;
+  ProcessId?: unknown;
 }
 
 /** The conservative answer: warn generically, never block. */
-const UNKNOWN: McpSessions = { count: 0, projects: [], unknown: true };
+const UNKNOWN: McpSessions = { count: 0, projects: [], pids: [], unknown: true };
 
 /** Lowercase + single separator flavour, so path comparison is Windows-honest. */
 function normalize(p: string): string {
@@ -84,13 +93,21 @@ export function parseSessions(stdout: string, installDir: string): McpSessions {
     );
 
     const projects: string[] = [];
+    const pids: number[] = [];
     for (const row of mine) {
-      if (typeof row.CommandLine !== "string") continue;
-      const root = extractRoot(row.CommandLine);
-      if (root && !projects.includes(root)) projects.push(root);
+      if (typeof row.CommandLine === "string") {
+        const root = extractRoot(row.CommandLine);
+        if (root && !projects.includes(root)) projects.push(root);
+      }
+      // A row with no usable pid still counts as a session — it just cannot be
+      // stopped by pid. Callers treat "found but unstoppable" as not-cleared,
+      // which is the safe direction: refuse the install rather than let the
+      // installer walk into a lock.
+      const pid = typeof row.ProcessId === "number" ? row.ProcessId : Number(row.ProcessId);
+      if (Number.isInteger(pid) && pid > 0 && !pids.includes(pid)) pids.push(pid);
     }
 
-    return { count: mine.length, projects, unknown: false };
+    return { count: mine.length, projects, pids, unknown: false };
   } catch {
     return { ...UNKNOWN };
   }

@@ -2,7 +2,12 @@ import { app, dialog } from "electron";
 import { autoUpdater } from "electron-updater";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { mcpSessionsSync } from "./mcp-sessions.js";
+import {
+  mcpSessionsSync,
+  refusalMessage,
+  stopMcpSessions,
+  stopMcpSessionsSync,
+} from "./mcp-sessions.js";
 import type { UpdatePhase, UpdateStatusEvent } from "../shared/ipc.js";
 
 /**
@@ -187,14 +192,35 @@ export function checkForUpdatesNow(source: "auto" | "manual"): void {
 /**
  * Install the downloaded update and restart.
  *
- * NOT CANCELLABLE. BaseUpdater.quitAndInstall spawns the installer via
- * install() BEFORE app.quit() (BaseUpdater.js:13-23), and the installer
- * force-kills every process under the install dir. Every guard — unsaved edits,
- * live agent sessions — must therefore run in the RENDERER, before the IPC call
- * that reaches this function. The only caller is the CH.installUpdate handler.
+ * NOT CANCELLABLE once `quitAndInstall` is reached. BaseUpdater.quitAndInstall
+ * spawns the installer via install() BEFORE app.quit() (BaseUpdater.js:13-23),
+ * and the installer force-kills every process under the install dir. Every
+ * guard — unsaved edits, live agent sessions — must therefore run BEFORE that
+ * call. The only caller is the CH.installUpdate handler.
+ *
+ * GUI-064: the last of those guards is a precondition, not a warning. An agent
+ * MCP server left running keeps `icudtl.dat` and `v8_context_snapshot.bin`
+ * un-renameable, the uninstaller's `un.atomicRMDir` aborts on the first rename
+ * it cannot do, and the update dies as `uninstallFailed: 2`. The installer does
+ * try to kill those processes itself, but that kill races the rename and the
+ * rename can lose. So we clear them first and confirm, and if we cannot, we do
+ * not start an install we know will fail.
+ *
+ * Returns null on success (the app is on its way down) or the refusal reason.
  */
-export function installUpdateNow(): void {
+export async function installUpdateNow(): Promise<string | null> {
+  const result = await stopMcpSessions();
+  if (!result.cleared) {
+    log.warn(`install refused: ${result.remaining.count} MCP session(s) still running`);
+    // Deliberately NOT emit({ phase: "error" }): that would overwrite the
+    // `downloaded` phase, taking the banner away and leaving the user no way to
+    // retry an update that is still sitting on disk, ready. The refusal travels
+    // back as the IPC return value instead, and the update stays installable.
+    return refusalMessage(result.remaining);
+  }
+  if (result.stopped > 0) log.info(`stopped ${result.stopped} agent MCP session(s) before install`);
   autoUpdater.quitAndInstall(true, true);
+  return null;
 }
 
 /**
@@ -242,7 +268,30 @@ export function maybeBlockQuitForUpdate(e: Electron.Event): boolean {
     quitPromptShown = false; // stay open; ask again on the next quit
     return true;
   }
-  if (choice === 1) autoUpdater.autoInstallOnAppQuit = false; // defer to a later quit
+  if (choice === 1) {
+    autoUpdater.autoInstallOnAppQuit = false; // defer to a later quit
+  } else {
+    // "Install and quit". The sessions the user just agreed to lose are the same
+    // ones that would make the install fail (GUI-064), so stop them here rather
+    // than quitting into an installer that aborts with `uninstallFailed: 2`.
+    // Synchronous by necessity: before-quit cannot await.
+    const stop = stopMcpSessionsSync();
+    if (!stop.cleared) {
+      // Quit cleanly WITHOUT installing. A failed install would leave the user
+      // with a modal, no update, and the app gone — strictly worse than keeping
+      // the update staged for the next quit.
+      autoUpdater.autoInstallOnAppQuit = false;
+      log.warn(`quit-install skipped: ${refusalMessage(stop.remaining)}`);
+      dialog.showMessageBoxSync({
+        type: "warning",
+        title: "Update not installed",
+        message: `Kanmer ${version} was not installed.`,
+        detail: `${refusalMessage(stop.remaining)}\n\nThe update stays downloaded and will install next time you quit.`,
+        buttons: ["Quit"],
+        noLink: true,
+      });
+    }
+  }
   // Re-enter quit; quitPromptShown stops this handler prompting twice.
   app.quit();
   return true;

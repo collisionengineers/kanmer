@@ -287,7 +287,24 @@ export interface AgentChangePayload {
 export interface McpSessions {
   count: number;
   projects: string[];
+  /**
+   * Process ids of the sessions found, so they can be stopped and not merely
+   * counted (GUI-064). May be shorter than `count` if a row lacked a usable pid.
+   */
+  pids: number[];
   unknown: boolean;
+}
+
+/**
+ * Outcome of the pre-install attempt to clear agent MCP servers out of the
+ * install directory. `cleared: false` means the update must NOT be started.
+ */
+export interface McpStopResult {
+  cleared: boolean;
+  /** How many processes we actually terminated. */
+  stopped: number;
+  /** Sessions still holding the install dir; the reason a refusal is shown. */
+  remaining: McpSessions;
 }
 
 /** What the native card context menu needs to build itself. */
@@ -482,7 +499,12 @@ export interface KanmerApi {
    * sessions) must run in the renderer BEFORE this is called. Main refuses
    * unless an update is actually downloaded.
    */
-  installUpdate(): Promise<void>;
+  /**
+   * Start the install. Resolves to null when the app is on its way down, or to
+   * a reason when the install was refused because the install folder could not
+   * be cleared (GUI-064). A refusal leaves the update downloaded and retryable.
+   */
+  installUpdate(): Promise<string | null>;
   /** Agent MCP sessions an update would close. Probe before offering "Restart now". */
   mcpSessions(): Promise<McpSessions>;
   /** Subscribe to auto-update state changes. Returns an unsubscribe fn. */

@@ -6,7 +6,7 @@ description: Manage tickets on Kanmer, the file-based kanban shared live with a 
 # Managing Kanmer tickets
 
 Kanmer stores tickets as folders in the project's `.kanmer/` tree — each
-ticket owns its markdown file plus a pipeline of documents (research, impact,
+ticket owns its markdown file plus a pipeline of documents (research, files,
 plan, checklist, proof) that live beside it. The human sees the same data on a
 live kanban board (the Kanmer desktop app), so every item you create or move
 is instantly visible to them — treat the board as your shared workspace, not

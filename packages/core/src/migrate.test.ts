@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { KanmerStore } from "./store.js";
-import { migrateToV2, migrateToV3 } from "./migrate.js";
+import { migrateBoard, migrateToV2, migrateToV3 } from "./migrate.js";
 import { repoDocKindOf } from "./docs.js";
 
 let root: string;
@@ -388,6 +388,34 @@ describe("migration: v2 → v3", () => {
     await store.setDoc("API-001", "plan", "# Plan");
     await store.setDoc("API-001", "checklist", "- [ ] go");
     expect((await store.moveItem("API-001", { status: "implementing" })).status).toBe("implementing");
+  });
+
+  /**
+   * Re-running the umbrella must be a no-op. A single run cannot show this:
+   * the v3 step restamps version.json immediately, so a v1→v2 step that
+   * wrongly fired on a v3 board leaves no trace until the *second* run.
+   */
+  it("migrateBoard on an already-migrated board changes nothing", async () => {
+    const store = await seedV2Board();
+    await migrateBoard(store);
+    const versionFile = path.join(k, "version.json");
+    const stamped = await fs.readFile(versionFile, "utf8");
+    expect(JSON.parse(stamped).format).toBe(3);
+
+    store.resetFormatCache();
+    const again = await migrateBoard(store);
+
+    // Both steps must recognise there is nothing to do. Before the fix
+    // `alreadyV2` was false here, because the guard tested `=== 2` and this
+    // board is 3 — so the v1→v2 migration ran and stamped it back down.
+    expect(again.v2.alreadyV2).toBe(true);
+    expect(again.v3.alreadyV3).toBe(true);
+    expect(again.backfill.addedStages).toEqual([]);
+
+    // The flags can be right while the file churns, so assert the bytes. A
+    // re-stamp shows up here as a fresh `migratedAt` even when nothing else
+    // moved.
+    expect(await fs.readFile(versionFile, "utf8")).toBe(stamped);
   });
 });
 

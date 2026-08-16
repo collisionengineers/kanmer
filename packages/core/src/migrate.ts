@@ -81,7 +81,10 @@ export async function migrateToV2(
   opts: { dryRun?: boolean } = {},
 ): Promise<MigrationReport> {
   const dryRun = opts.dryRun ?? false;
-  if ((await store.detectFormat()) === 2) return emptyReport(dryRun, true);
+  // `>= 2`, not `=== 2`: a format-3 board has nothing for the v1→v2 step to do
+  // either. With equality this guard missed on v3 boards, so the migration ran
+  // and stamped version.json back down to 2 before the v3 step restamped it.
+  if ((await store.detectFormat()) >= 2) return emptyReport(dryRun, true);
 
   const paths: KanmerPaths = store.paths;
   const report = emptyReport(dryRun);

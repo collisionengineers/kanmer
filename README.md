@@ -170,6 +170,19 @@ claude plugin marketplace add collisionengineers/kanmer
 claude plugin install kanmer@kanmer
 ```
 
+No `--root` is needed: the server finds the board by searching upwards from
+where it runs, including a `.worktrees/<name>/.kanmer` layout.
+
+**No Node on the machine?** The Kanmer desktop app carries a Node-compatible
+runtime, so point `KANMER_NODE` at it and nothing else changes:
+
+```bash
+# Windows
+setx KANMER_NODE "%LOCALAPPDATA%\Programs\Kanmer\Kanmer.exe"
+# macOS
+export KANMER_NODE="/Applications/Kanmer.app/Contents/MacOS/Kanmer"
+```
+
 **codex:**
 
 ```bash
@@ -177,6 +190,14 @@ codex plugin marketplace add collisionengineers/kanmer
 ```
 
 Then install **kanmer** from `/plugins`.
+
+For codex the plugin delivers the **skills only**. codex cannot start an MCP
+server that lives inside a plugin directory — it expands no path variable in a
+plugin's MCP config, and the relative working directory that lets it find the
+server is the one that stops the server finding your board. Register the board
+the ordinary way instead (the Kanmer desktop app's **Connect** button does it
+for you, or `codex mcp add`). `KANMER_NODE` does not apply to codex either, so a
+codex install does need Node ≥20 on `PATH`.
 
 The plugin ships twelve skills — ticket management, one skill per phase of a
 ticket's life, an autonomous orchestrator, and board reporting/hygiene:

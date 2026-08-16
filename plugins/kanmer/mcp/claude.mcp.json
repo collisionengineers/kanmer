@@ -1,8 +1,19 @@
 {
+  "_comment": [
+    "Read by Claude Code and by grok (both resolve .claude-plugin/plugin.json).",
+    "Both expand ${CLAUDE_PLUGIN_ROOT} and the shell-style ${VAR:-default} form —",
+    "established by calling a tool through a real plugin install, see MCP-011.",
+    "KANMER_NODE lets a machine with no Node on PATH point at the Kanmer desktop",
+    "binary, which runs this bundle as Node because of ELECTRON_RUN_AS_NODE. Plain",
+    "Node ignores that variable, so it is set unconditionally.",
+    "No --root: the server discovers the board from cwd (ADR-0012, MCP-010).",
+    "Do NOT copy the sibling .mcp.json's cwd form here — it breaks grok's handshake."
+  ],
   "mcpServers": {
     "kanmer": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"]
+      "command": "${KANMER_NODE:-node}",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"],
+      "env": { "ELECTRON_RUN_AS_NODE": "1" }
     }
   }
 }

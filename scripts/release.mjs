@@ -34,6 +34,16 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const guiDir = join(root, "apps", "gui");
 const guiPkgPath = join(guiDir, "package.json");
 const rootPkgPath = join(root, "package.json");
+// The two plugin manifests carry a version too, and it is not decoration:
+// bundledSkillsVersion() reads .claude-plugin/plugin.json, and codex keys its
+// plugin cache directory by the version. Left out of the bump they froze at
+// 0.1.0 across three releases and killed the "Update skills" affordance
+// (MCP-011). plugin:check fails when they disagree; bumping them here is what
+// stops the disagreement happening in the first place.
+const pluginManifestPaths = [
+  join(root, "plugins", "kanmer", ".claude-plugin", "plugin.json"),
+  join(root, "plugins", "kanmer", ".codex-plugin", "plugin.json"),
+];
 const notesPath = join(guiDir, "release-notes.md");
 
 const OWNER = "collisionengineers";
@@ -232,7 +242,9 @@ for (const step of GATE) run(step);
 if (dryRun) {
   console.log("\n--- dry run: the verification gate passed ---");
   console.log("Would now:");
-  console.log(`  1. write ${version} into apps/gui/package.json and package.json`);
+  console.log(
+    `  1. write ${version} into apps/gui/package.json, package.json and both plugin.json manifests`,
+  );
   console.log("  2. npm install --package-lock-only");
   console.log(
     `  3. npm run build && node scripts/build-plugin.mjs && npm run plugin:check` +
@@ -267,6 +279,7 @@ function bump(path) {
 }
 bump(guiPkgPath);
 bump(rootPkgPath);
+for (const path of pluginManifestPaths) bump(path);
 run("npm install --package-lock-only");
 
 // ---------------------------------------------------------------------------

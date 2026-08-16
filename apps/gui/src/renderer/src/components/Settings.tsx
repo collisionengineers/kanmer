@@ -381,9 +381,9 @@ function ConnectSection(): JSX.Element {
       <h3>Connect an AI agent</h3>
       <p className="hint">
         Registers this project's Kanmer board with the host's MCP client and installs the skills —
-        via its plugin marketplace (Claude Code, Codex), or a project skills directory:{" "}
+        via its plugin marketplace (Claude Code, Codex), or a project skills directory —{" "}
         <code>.grok/skills</code> for Grok, and one shared <code>.agents/skills</code> tree that
-        opencode and Antigravity both read. Every host also gets the AGENTS.md block. Every
+        opencode and Antigravity both read, alongside the managed AGENTS.md block. Every
         registration Kanmer writes lands inside this project, in a file the host owns.
       </p>
       <div className="provider-list">
@@ -396,7 +396,10 @@ function ConnectSection(): JSX.Element {
                   install this host does get (GUI-073). Same source as
                   `dispatchableProviders()`, so badge and menu cannot disagree. */}
               {!p.dispatch && (
-                <span className="hint" title="Kanmer cannot start this host in the background to work a ticket; it registers and receives skills like every other host.">
+                <span
+                  className="hint"
+                  title="Kanmer cannot start this host in the background to work a ticket; it registers and receives skills like every other host."
+                >
                   {" "}
                   · no background dispatch
                 </span>

@@ -409,7 +409,7 @@ export function codexTrustNote(trust: CodexTrust): string | null {
  */
 export function antigravityBindingNote(projectRoot: string): string {
   return (
-    `Antigravity reads this file — and the skills — only in an \`agy\` session bound to this folder: ` +
+    `Antigravity's CLI (\`agy\`) reads this file — and the skills — only in a session bound to this folder: ` +
     `start it with \`agy --add-dir ${q(projectRoot)}\` (or \`--new-project\`), or a bare \`agy\` will not see them. ` +
     `Verified against agy 1.1.13; the Antigravity IDE was not tested.`
   );
@@ -755,7 +755,9 @@ export const PROVIDERS: AgentProvider[] = [
     },
     // `.agents/skills` is Antigravity's *primary* project location (`.agent/`
     // singular is kept only for backward compatibility), so it is the very same
-    // tree opencode and grok read — one write, three hosts.
+    // tree opencode reads — one write, two hosts. (grok reads it too, per
+    // FRD-012 R2, which is why grok's separate `.grok/skills` write is redundant
+    // — MCP-014's to retire, not this entry's to claim.)
     //
     // **With one condition, measured 2026-08-16 against agy 1.1.13.** `agy` reads
     // a workspace's `.agents/skills/` and `.agents/mcp_config.json` only in a
@@ -775,8 +777,8 @@ export const PROVIDERS: AgentProvider[] = [
     // FRD-012 R2.)
     install: { kind: "copySkills", skillsScope: "project", skillsDir: ".agents/skills" },
     // NOT because `agy -p` is broken. That claim — "known-broken piped, GH
-    // #318/#76" — is **refuted**: `echo hi | agy -p "…" --print-timeout 90s`
-    // returns immediately with exit 0 on 1.1.13, stdout piped exactly as `spawn`
+    // #318/#76" — is **refuted**: `echo hi | agy -p "Reply with exactly: PONG"`
+    // prints `PONG` and exits 0 on 1.1.13 with stdout piped exactly as `spawn`
     // pipes it, reproduced across ten runs by two independent investigations.
     // (The two issue numbers were never fetched — no network lookup was made —
     // so they are recorded as unverified history, not as evidence. The behaviour

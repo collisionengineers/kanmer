@@ -44,14 +44,24 @@ for every board, not just this one.
       questions, which change the contract for every board — writing it down is
       still the right call. It is a judgement, not a requirement.)*
 
-- [ ] **Write the ADR, and does it block implementation?** — This is the first
-      gate that reads *inside* a document. `gates.ts:174-177` is explicit that
-      the anti-collapse rule was made structural precisely so it "has nothing to
-      be wrong about"; a content parser gives up that property.
-      **Recommendation: yes, write it, and yes, it lands first** — `kanmer-plan`
-      requires design decisions to become ADRs before the plan cites them, and
-      the profile-assignment question above is really a consequence of whatever
-      the ADR concludes.
+- [x] **Write the ADR, and does it block implementation?**
+      **Answered by the operator, 2026-08-16: agreed — write it first.**
+      Done: **ADR-0011 — Gates may read a document's content, for open questions
+      and nothing else**, merged to `main` as `c7ba074` (PR #30) and linked into
+      this ticket's `refs`. It records the three properties that keep the
+      exception from generalising (the convention is already shipped and already
+      parsed; the parser judges syntax rather than meaning; the failure mode is a
+      stuck ticket rather than a wrong one), the four rejected alternatives, and
+      the consequences — including that upgrading boards can strand in-flight
+      tickets, that `## Parked` becomes load-bearing and needs a test asserting
+      the exact string, and that the review-fix stop cannot be delivered as a
+      gate.
+
+---
+
+**All open questions on this ticket are resolved.** The `leave-preparing`
+boundary is clear on this count — which, once this ticket ships, is what that
+sentence will mean mechanically rather than by assertion.
 
 - [x] **Do the historical cases get revived?** — **Answered by the operator,
       2026-08-16, and all twelve questions across the four tickets are now

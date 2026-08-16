@@ -2,27 +2,27 @@
 
 *The open questions. Not scratch — these **block** the plan; scratch is a notepad and is never gated.*
 
-- [ ] **File `update_group` as its own MCP ticket now?** — Research F5: there is
+- [x] **File `update_group` as its own MCP ticket now?** — Research F5: there is
       no way for an agent to rename or archive a group, yet FRD-001 G4 defines
       archiving as the delete and `list_groups`' own description tells the reader
-      to use it. Core has `updateGroup`; only the MCP surface lacks it. I hit
-      this renaming HZN-003 this session and had to go around the tool layer.
-      **Recommendation: yes, a separate MCP-area ticket** — it is surface, not
-      orchestration, and folding it in would make this PR two unrelated changes.
-      Only you can decide whether it belongs in 0.3.3.
+      to use it. Core has `updateGroup`; only the MCP surface lacks it.
+      → **Answered by the operator, 2026-08-16: yes.** Filed as [[MCP-006]] and
+      added to HZN-003, so it ships in 0.3.3 alongside this. Out of scope here.
 
-- [ ] **Should the roster also be resolvable by *several* groups, or a
-      group + area intersection?** — `matchesFilter` composes filters with AND
-      for free, so `{ group: "HZN-003", area: "gui" }` works with no extra code.
-      Multiple groups (OR) would need a different shape.
-      **Recommendation: single group only.** AND composition comes free and
-      covers the real case; multi-group OR has no demand yet and would be the
-      only OR filter on the surface.
+- [x] **Should the roster also be resolvable by *several* groups, or a
+      group + area intersection?**
+      → **Taken as a default, not asked** (FRD-009 R4: trivial defaults are
+      taken, not escalated). **Single group only.** `matchesFilter` composes
+      filters with AND for free, so `{ group: "HZN-003", area: "gui" }` works
+      with no extra code; multi-group OR has no demand and would be the only OR
+      filter on the surface. Reopen if a real case appears.
 
-- [ ] **Do `kanmer-report` and `kanmer-groom` learn group scoping in this
-      ticket?** — The filter is generic; the skills could use it.
-      **Recommendation: no** — this ticket ships the filter and one consumer.
-      Widening it widens the review for no benefit that cannot wait.
+- [x] **Do `kanmer-report` and `kanmer-groom` learn group scoping in this
+      ticket?**
+      → **Taken as a default, not asked.** **No** — this ticket ships the filter
+      and one consumer. The filter is generic, so they can adopt it whenever
+      they need it; widening now widens the review for no benefit that cannot
+      wait.
 
 ## Parked (explicitly deferred)
 

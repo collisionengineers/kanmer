@@ -57,3 +57,13 @@ launch the server. But it then relocates the server's cwd into the plugin cache,
 where MCP-010's discovery correctly finds no board. That trade-off is
 unresolvable inside these two files, so it is stated in FRD-012 R6 and owned by
 [[MCP-016]] rather than being quietly absorbed or dressed up as a fix.
+
+## Closeout
+
+- [ ] PR merged (gate)
+- [ ] `proof` final, PR URL and merge date recorded
+- [ ] `commits` / `prs` recorded; Outcome written
+- [ ] Worktree `.worktrees/mcp-011` removed
+- [ ] Branch `mcp-011-fix-plugin-manifests` deleted (local + remote)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] Ticket released

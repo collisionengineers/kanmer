@@ -6,7 +6,7 @@ function ev(status: UpdatePhase, source: "auto" | "manual" = "auto"): UpdateStat
   return { status, source };
 }
 
-const NO_SESSIONS: McpSessions = { count: 0, projects: [], unknown: false };
+const NO_SESSIONS: McpSessions = { count: 0, projects: [], pids: [], unknown: false };
 
 describe("updateSurface", () => {
   it("shows nothing before anything has happened", () => {
@@ -89,6 +89,7 @@ describe("restartWarning", () => {
     const sessions: McpSessions = {
       count: 2,
       projects: ["C:\\code\\a", "C:\\code\\b"],
+      pids: [111, 222],
       unknown: false,
     };
     expect(restartWarning(null, sessions)).toBe(
@@ -97,7 +98,12 @@ describe("restartWarning", () => {
   });
 
   it("composes both facts into one sentence, so the user is asked once", () => {
-    const sessions: McpSessions = { count: 1, projects: ["C:\\code\\a"], unknown: false };
+    const sessions: McpSessions = {
+      count: 1,
+      projects: ["C:\\code\\a"],
+      pids: [111],
+      unknown: false,
+    };
     expect(restartWarning("API-001", sessions)).toBe(
       "Restarting to update will discard unsaved changes to API-001 and " +
         "close 1 agent MCP session(s) (C:\\code\\a). Continue?",
@@ -105,7 +111,7 @@ describe("restartWarning", () => {
   });
 
   it("falls back to generic wording when the probe failed", () => {
-    const sessions: McpSessions = { count: 0, projects: [], unknown: true };
+    const sessions: McpSessions = { count: 0, projects: [], pids: [], unknown: true };
     expect(restartWarning(null, sessions)).toBe(
       "Restarting to update will close any agent MCP sessions running from this install. Continue?",
     );

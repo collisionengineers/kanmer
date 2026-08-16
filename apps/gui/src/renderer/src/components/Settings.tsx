@@ -9,6 +9,8 @@ import type {
   ConnectResult,
   ConnectTarget,
   DocModel,
+  LegacyCodexDrainResult,
+  LegacyCodexScan,
   ProviderInfo,
   SkillsStatus,
   Theme, KanmerGitStatus,
@@ -380,8 +382,8 @@ function ConnectSection(): JSX.Element {
       <p className="hint">
         Registers this project's Kanmer board with the host's MCP client and installs the skills —
         via its plugin marketplace (Claude Code, Codex), a project skills dir (Grok), or the shared
-        AGENTS.md block for hosts that only read skills globally (opencode, Antigravity), so nothing
-        is written outside this project.
+        AGENTS.md block for hosts that only read skills globally (opencode, Antigravity). Every
+        registration Kanmer writes lands inside this project, in a file the host owns.
       </p>
       <div className="provider-list">
         {providers.map((p) => (
@@ -440,6 +442,149 @@ function ConnectSection(): JSX.Element {
             </div>
           )}
           {!result.ok && <div className="connect-out">{result.output}</div>}
+        </div>
+      )}
+
+      <LegacyCodexSweep />
+    </div>
+  );
+}
+
+/**
+ * The one-time drain of the global codex registrations older Kanmers left
+ * behind (GUI-079, ADR-0010).
+ *
+ * Renders nothing when there is nothing to report, so the second run — and
+ * every run on a clean machine — is invisible.
+ *
+ * The safety property this UI carries: an entry whose project has no
+ * project-scoped replacement is that project's **only working registration**,
+ * so it gets no checkbox at all. Not a pre-unticked one, not one behind a
+ * confirmation — a row that looks like the removable ones is a silent
+ * data-loss button, and the point of the ticket is that it must not exist.
+ */
+function LegacyCodexSweep(): JSX.Element | null {
+  const [scan, setScan] = useState<LegacyCodexScan | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [drained, setDrained] = useState<LegacyCodexDrainResult | null>(null);
+
+  const load = useCallback((next: LegacyCodexScan) => {
+    setScan(next);
+    setSelected(new Set(next.findings.filter((f) => f.recommended).map((f) => f.name)));
+  }, []);
+
+  useEffect(() => {
+    void window.kanmer.scanLegacyCodexRegistrations().then(load);
+  }, [load]);
+
+  if (!scan || scan.findings.length === 0) return null;
+
+  const removable = scan.findings.filter((f) => f.removable);
+  const blocked = scan.findings.filter((f) => !f.removable);
+  const chosen = [...selected].filter((n) => removable.some((f) => f.name === n));
+
+  const toggle = (name: string) =>
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+
+  const drain = async () => {
+    setBusy(true);
+    try {
+      const res = await window.kanmer.drainLegacyCodexRegistrations(chosen);
+      setDrained(res);
+      load(res.scan);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="legacy-sweep">
+      <h4>Legacy codex registrations</h4>
+      <p className="hint">
+        Older versions of Kanmer registered codex globally, one entry per project, in{" "}
+        <code>{scan.configPath}</code> — so these load in every codex session no matter which folder
+        you start it in. {scan.findings.length} left. Reconnecting a project only ever drained its
+        own; this drains the rest.
+      </p>
+
+      {removable.length > 0 && (
+        <div className="legacy-list">
+          {removable.map((f) => (
+            <label key={f.name} className="legacy-row">
+              <input
+                type="checkbox"
+                checked={selected.has(f.name)}
+                disabled={busy}
+                onChange={() => toggle(f.name)}
+              />
+              <span className="legacy-name">
+                <code>{f.name}</code>
+                {f.status === "orphaned" && <span className="hint"> · folder missing</span>}
+              </span>
+              <span className="legacy-detail hint">{f.detail}</span>
+            </label>
+          ))}
+        </div>
+      )}
+
+      {blocked.length > 0 && (
+        <div className="legacy-list">
+          {blocked.map((f) => (
+            <div key={f.name} className="legacy-row blocked">
+              <span className="legacy-warn" aria-hidden="true">
+                ⚠
+              </span>
+              <span className="legacy-name">
+                <code>{f.name}</code> · kept
+              </span>
+              <span className="legacy-detail">{f.detail}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button className="ghost sm" disabled={busy || chosen.length === 0} onClick={() => void drain()}>
+        {busy ? "Removing…" : `Remove ${chosen.length} selected`}
+      </button>
+
+      {drained && (
+        <div className="legacy-results">
+          {drained.removals.length === 0 && <div className="connect-status">Nothing was removed.</div>}
+          {drained.refused.length > 0 && (
+            <div className="connect-result err">
+              <div className="connect-status">
+                Kept {drained.refused.join(", ")} — re-checked at removal time and still not safe to
+                remove.
+              </div>
+            </div>
+          )}
+          {drained.removals.map((r) => (
+            <div key={r.name} className={r.ok ? "connect-result ok" : "connect-result err"}>
+              <div className="connect-status">
+                {r.ok ? `✓ Removed ${r.name}.` : `Couldn't remove ${r.name}. Run this yourself:`}
+              </div>
+              {!r.ok && (
+                <>
+                  <div className="connect-cmd">
+                    <code>{r.command}</code>
+                    <button
+                      className="ghost xs"
+                      onClick={() => void navigator.clipboard.writeText(r.command)}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <div className="connect-out">{r.output}</div>
+                </>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

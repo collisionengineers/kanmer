@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   PROVIDERS,
   RETIRED_SKILL_PATHS,
+  classifyLegacyCodexEntry,
   codexServerName,
   formatSkillsStamp,
+  legacyCodexEntries,
   isNewerVersion,
   parseSkillsStamp,
   providerById,
@@ -64,19 +66,64 @@ describe("provider registry", () => {
     expect(back.theme).toBe("dark");
   });
 
-  it("grok/antigravity use the mcpServers shape into their own config paths", () => {
-    expect((providerById("grok")!.register as { configPath: string }).configPath).toBe(".mcp.json");
+  it("antigravity uses the mcpServers JSON shape in its own config path", () => {
     expect((providerById("antigravity")!.register as { configPath: string }).configPath).toBe(
       ".agents/mcp_config.json",
     );
-    for (const id of ["grok", "antigravity"] as const) {
+    const reg = providerById("antigravity")!.register;
+    if (reg.kind !== "configFile") throw new Error("expected configFile");
+    const obj = JSON.parse(reg.merge(null, inv));
+    expect(obj.mcpServers.kanmer.command).toBe(inv.command);
+    expect(obj.mcpServers.kanmer.args).toEqual(inv.args);
+    expect(obj.mcpServers.kanmer.env.ELECTRON_RUN_AS_NODE).toBe("1");
+  });
+
+  it("no provider writes .mcp.json — it is Claude's, and Claude reaches it through its own CLI", () => {
+    // The defect this replaces: grok merged `mcpServers.kanmer` into the very
+    // file `claude mcp add -s project` writes, so grok's disconnect deleted
+    // Claude's registration. Ownership is now structural, not a heuristic.
+    for (const p of PROVIDERS) {
+      if (p.register.kind === "configFile") expect(p.register.configPath).not.toBe(".mcp.json");
+    }
+  });
+
+  it("grok registers in its own project config.toml", () => {
+    // Established 2026-08-16 against the installed binary (ADR-0009's method
+    // clause, FRD-012 R5), commands recorded in ADR-0012:
+    // `grok mcp add --scope project` writes ./.grok/config.toml, and grok's
+    // shipped docs give the merge order config.toml > Claude > Cursor >
+    // .mcp.json — so this is the highest-priority source, not a fallback.
+    const reg = providerById("grok")!.register;
+    if (reg.kind !== "configFile") throw new Error("expected configFile");
+    expect(reg.configPath).toBe(".grok/config.toml");
+    const out = reg.merge(null, inv);
+    expect(TOML.parse(out)).toMatchObject({
+      mcp_servers: { kanmer: { command: inv.command, env: { ELECTRON_RUN_AS_NODE: "1" } } },
+    });
+    expect(reg.merge(out, inv)).toBe(out); // idempotent
+    expect(TOML.parse(reg.unmerge(out))).toEqual({});
+  });
+
+  it("each config-file provider answers registration from its own file's shape", () => {
+    const state = (id: string, contents: string) => {
       const reg = providerById(id)!.register;
       if (reg.kind !== "configFile") throw new Error("expected configFile");
-      const obj = JSON.parse(reg.merge(null, inv));
-      expect(obj.mcpServers.kanmer.command).toBe(inv.command);
-      expect(obj.mcpServers.kanmer.args).toEqual(inv.args);
-      expect(obj.mcpServers.kanmer.env.ELECTRON_RUN_AS_NODE).toBe("1");
-    }
+      return reg.registrationState(contents);
+    };
+    expect(state("opencode", '{"mcp":{"kanmer":{}}}')).toBe("registered");
+    expect(state("opencode", '{"mcpServers":{"kanmer":{}}}')).toBe("absent");
+    expect(state("antigravity", '{"mcpServers":{"kanmer":{}}}')).toBe("registered");
+    expect(state("antigravity", '{"mcpServers":{"other":{}}}')).toBe("absent");
+    expect(state("grok", "[mcp_servers.kanmer]\ncommand = 'x'\n")).toBe("registered");
+    expect(state("codex", "[mcp_servers.other]\ncommand = 'x'\n")).toBe("absent");
+    // grok is answered out of its own TOML now, so a Claude-written .mcp.json
+    // cannot be mistaken for grok's registration — connect.test.ts asserts that
+    // end to end, against real files.
+    expect(state("grok", "[mcp_servers.other]\ncommand = 'x'\n")).toBe("absent");
+    // "Cannot read" is kept distinct from "no": disconnect keeps the shared
+    // AGENTS.md block on it, the legacy sweep refuses to drain on it.
+    expect(state("codex", "[not valid")).toBe("indeterminate");
+    expect(state("antigravity", "{ malformed")).toBe("indeterminate");
   });
 
   it("antigravity is register-only (no dispatch)", () => {
@@ -231,6 +278,184 @@ describe("codex project-scoped TOML registration (FRD-012 R1)", () => {
     // `codex mcp add` only ever wrote the global config, so every project that
     // connected under an older Kanmer left an entry behind.
     expect(reg.removeCommands?.(ROOT)).toEqual([`codex mcp remove ${codexServerName(ROOT)}`]);
+  });
+});
+
+describe("legacy global codex sweep (GUI-079)", () => {
+  // Synthetic on purpose. The machine that reported this bug no longer
+  // reproduces it — its `~/.codex/config.toml` has no `kanmer-*` entry left —
+  // so the shape below is reconstructed from what the old writer produced:
+  // `--root <boardRoot>` plus `--repo-root <sourceRoot>` when the board lives
+  // in a worktree, alongside a non-Kanmer server that must survive untouched.
+  const GLOBAL = [
+    "# a comment the sweep must never rewrite away",
+    "startup_timeout_sec = 120.0",
+    "",
+    "[projects.'c:\\users\\pc\\documents\\github\\alpha']",
+    'trust_level = "trusted"',
+    "",
+    "[mcp_servers.mcp_microsoftdocs]",
+    'url = "https://learn.microsoft.com/api/mcp"',
+    "",
+    "[mcp_servers.kanmer-alpha]",
+    'command = "Kanmer.exe"',
+    "args = ['kanmer-mcp.cjs', '--root', 'C:\\Users\\PC\\Documents\\GitHub\\alpha\\.worktrees\\kanmer', '--repo-root', 'C:\\Users\\PC\\Documents\\GitHub\\alpha']",
+    "",
+    "[mcp_servers.kanmer-pegasus]",
+    'command = "Kanmer.exe"',
+    "args = ['kanmer-mcp.cjs', '--root', 'C:\\Users\\PC\\Documents\\GitHub\\pegasus']",
+    "",
+  ].join("\n");
+
+  const byName = (toml: string, name: string) =>
+    legacyCodexEntries(toml).find((e) => e.name === name)!;
+
+  it("lists only kanmer-* entries and recovers each project root from its args", () => {
+    const entries = legacyCodexEntries(GLOBAL);
+    expect(entries.map((e) => e.name).sort()).toEqual(["kanmer-alpha", "kanmer-pegasus"]);
+    // --repo-root wins over --root: --root points at the board worktree, which
+    // is not the project. The name is never used for this — codexServerName
+    // lowercases, slugifies and truncates to 32 chars, and basenames are not
+    // unique on a machine.
+    expect(byName(GLOBAL, "kanmer-alpha").projectRoot).toBe(
+      "C:\\Users\\PC\\Documents\\GitHub\\alpha",
+    );
+    expect(byName(GLOBAL, "kanmer-pegasus").projectRoot).toBe(
+      "C:\\Users\\PC\\Documents\\GitHub\\pegasus",
+    );
+  });
+
+  it("two entries whose basenames collide are still told apart by their roots", () => {
+    // `codexServerName` would produce the same slug for both of these, which is
+    // why the has-a-replacement probe keys on the recorded path instead.
+    const toml = [
+      "[mcp_servers.kanmer-app]",
+      "args = ['s.cjs', '--repo-root', '/home/me/one/app']",
+      "[mcp_servers.kanmer-app-2]",
+      "args = ['s.cjs', '--repo-root', '/home/me/two/app']",
+      "",
+    ].join("\n");
+    expect(legacyCodexEntries(toml).map((e) => e.projectRoot)).toEqual([
+      "/home/me/one/app",
+      "/home/me/two/app",
+    ]);
+  });
+
+  it("degrades to nothing rather than guessing on input it cannot read", () => {
+    expect(legacyCodexEntries(null)).toEqual([]);
+    expect(legacyCodexEntries("")).toEqual([]);
+    expect(legacyCodexEntries("this is [not valid toml")).toEqual([]);
+    expect(legacyCodexEntries('model = "o3"')).toEqual([]);
+    // A bare global `kanmer` is not ours: Kanmer only ever wrote `kanmer-<slug>`
+    // globally, so an unprefixed one is the user's own hand-registration.
+    expect(legacyCodexEntries("[mcp_servers.kanmer]\ncommand = 'x'\n")).toEqual([]);
+  });
+
+  it("ignores a name outside the slug alphabet rather than shelling out with it", () => {
+    // TOML *quoted* keys may legally hold anything, and the name is
+    // interpolated into a `codex mcp remove` command line. `codexServerName`
+    // can only ever have produced [A-Za-z0-9_-], so anything else is both not
+    // ours and not something to hand a shell.
+    const hostile = [
+      `[mcp_servers."kanmer-x; rm -rf ~"]`,
+      "args = ['s.cjs', '--repo-root', '/tmp/x']",
+      "[mcp_servers.'kanmer-$(whoami)']",
+      "args = ['s.cjs', '--repo-root', '/tmp/y']",
+      "",
+    ].join("\n");
+    expect(legacyCodexEntries(hostile)).toEqual([]);
+  });
+
+  it("reports an entry with no recoverable root instead of acting on it", () => {
+    const urlOnly = '[mcp_servers.kanmer-remote]\nurl = "https://example.test/mcp"\n';
+    const entry = byName(urlOnly, "kanmer-remote");
+    expect(entry.projectRoot).toBeNull();
+    const finding = classifyLegacyCodexEntry(entry, null);
+    expect(finding.status).toBe("unknown-root");
+    expect(finding.removable).toBe(false);
+  });
+
+  it("an entry whose args carry no --root at all is the same case", () => {
+    const noRoot = "[mcp_servers.kanmer-x]\nargs = ['s.cjs', '--verbose']\n";
+    expect(byName(noRoot, "kanmer-x").projectRoot).toBeNull();
+  });
+
+  it("THE PEGASUS CASE: a project with no replacement is reported and never removable", () => {
+    // The live original: `pegasus/.codex/config.toml` held only an unrelated
+    // server, so the orphaned global entry was pegasus's *only* working
+    // registration. Removing it blind would have silently cut board access to a
+    // project the user was not looking at.
+    const finding = classifyLegacyCodexEntry(byName(GLOBAL, "kanmer-pegasus"), {
+      exists: true,
+      hasProjectRegistration: false,
+      trust: "trusted",
+    });
+    expect(finding.status).toBe("no-replacement");
+    expect(finding.removable).toBe(false);
+    expect(finding.recommended).toBe(false);
+    // The warning has to name the project and say what to do about it.
+    expect(finding.detail).toContain("pegasus");
+    expect(finding.detail).toMatch(/Connect/);
+  });
+
+  it("drains only an entry whose project has a replacement codex will actually load", () => {
+    const entry = byName(GLOBAL, "kanmer-alpha");
+    const drainable = classifyLegacyCodexEntry(entry, {
+      exists: true,
+      hasProjectRegistration: true,
+      trust: "trusted",
+    });
+    expect(drainable.status).toBe("drainable");
+    expect(drainable.removable).toBe(true);
+    expect(drainable.recommended).toBe(true);
+
+    // A replacement codex will not load is not a replacement. Trust is recorded
+    // globally and gates project config, so `codexTrustFromConfig` gates this.
+    for (const trust of ["untrusted", "maybe-via-ancestor", "unknown"] as const) {
+      const held = classifyLegacyCodexEntry(entry, {
+        exists: true,
+        hasProjectRegistration: true,
+        trust,
+      });
+      expect(held.status).toBe("untrusted");
+      expect(held.removable).toBe(false);
+    }
+  });
+
+  it("a vanished project folder is removable but never pre-selected", () => {
+    // Not the protected case — a folder that is not there has no registration
+    // to cut. But the probe can be wrong about an unmounted drive, so it never
+    // rides along with the recommended selection, and the row says so.
+    const finding = classifyLegacyCodexEntry(byName(GLOBAL, "kanmer-alpha"), {
+      exists: false,
+      hasProjectRegistration: false,
+      trust: "unknown",
+    });
+    expect(finding.status).toBe("orphaned");
+    expect(finding.removable).toBe(true);
+    expect(finding.recommended).toBe(false);
+    expect(finding.detail).toMatch(/not mounted/);
+  });
+
+  it("is a no-op on the second run, and still holds back what it held back", () => {
+    // Run one drains kanmer-alpha and refuses kanmer-pegasus. Run two sees the
+    // file codex left behind: the drained entry is gone, the held-back one is
+    // still there, still reported, still not removable (ADR-0010).
+    const afterFirstRun = GLOBAL.split("[mcp_servers.kanmer-alpha]")
+      .join("[mcp_servers.removed-by-codex]");
+    const second = legacyCodexEntries(afterFirstRun);
+    expect(second.map((e) => e.name)).toEqual(["kanmer-pegasus"]);
+    expect(
+      classifyLegacyCodexEntry(second[0]!, {
+        exists: true,
+        hasProjectRegistration: false,
+        trust: "trusted",
+      }).removable,
+    ).toBe(false);
+
+    // And once every project has reconnected there is nothing left to find, so
+    // the panel renders nothing at all.
+    expect(legacyCodexEntries(GLOBAL.replace(/kanmer-/g, "other-"))).toEqual([]);
   });
 });
 

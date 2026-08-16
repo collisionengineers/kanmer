@@ -1281,6 +1281,56 @@ button.danger {
   white-space: pre-wrap;
 }
 
+/* The legacy global-codex sweep (GUI-079). */
+.legacy-sweep {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-2);
+}
+.legacy-sweep h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+.legacy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+}
+.legacy-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+.legacy-name {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.legacy-detail {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+}
+/* A kept entry is a warning, not a row you could mistake for a choice: it is
+   some other project's only working registration, and removing it would cut
+   that project's board access. Deliberately loud and checkbox-free. */
+.legacy-row.blocked {
+  padding: 6px 8px;
+  border: 1px solid var(--danger);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+.legacy-row.blocked .legacy-detail {
+  color: var(--text);
+}
+.legacy-warn {
+  color: var(--danger);
+}
+.legacy-results {
+  margin-top: 8px;
+}
+
 /* ── Phase 3: ticket popout + document full-container + add dialog ───────── */
 
 /* The ticket popout: a centred modal (replaces the docked resizable aside). */

@@ -51,6 +51,71 @@ describe("bundled skill removal", () => {
   });
 });
 
+describe("registration ownership (GUI-079)", () => {
+  /** A project `.mcp.json` exactly as `claude mcp add kanmer -s project` writes it. */
+  const CLAUDE_MCP_JSON = `${JSON.stringify(
+    {
+      mcpServers: {
+        kanmer: {
+          type: "stdio",
+          command: "C:\\Programs\\Kanmer\\Kanmer.exe",
+          args: ["kanmer-mcp.cjs", "--root", "C:\\proj\\.worktrees\\kanmer"],
+          env: { ELECTRON_RUN_AS_NODE: "1" },
+        },
+      },
+    },
+    null,
+    2,
+  )}\n`;
+
+  it("disconnecting grok leaves Claude's .mcp.json byte-intact", async () => {
+    // The defect: grok merged `mcpServers.kanmer` into `.mcp.json` — the same
+    // file and the same key Claude's project registration uses — and its
+    // unmerge deleted that key unconditionally. So disconnecting grok
+    // unregistered Claude. grok now owns `.grok/config.toml` and Kanmer does
+    // not touch `.mcp.json` for grok in either direction.
+    const root = await mkdtemp(join(tmpdir(), "kanmer-connect-"));
+    roots.push(root);
+    await writeFile(join(root, ".mcp.json"), CLAUDE_MCP_JSON);
+    await mkdir(join(root, ".grok"), { recursive: true });
+    await writeFile(
+      join(root, ".grok", "config.toml"),
+      "[mcp_servers.kanmer]\ncommand = 'Kanmer.exe'\n\n[mcp_servers.linear]\nurl = 'https://mcp.linear.app/mcp'\n",
+    );
+
+    const result = await disconnectAgent("grok", root);
+
+    expect(result.ok).toBe(true);
+    await expect(readFile(join(root, ".mcp.json"), "utf8")).resolves.toBe(CLAUDE_MCP_JSON);
+    // And its own file loses only the kanmer entry.
+    const grokConfig = await readFile(join(root, ".grok", "config.toml"), "utf8");
+    expect(grokConfig).not.toContain("mcp_servers.kanmer");
+    expect(grokConfig).toContain("mcp_servers.linear");
+  });
+
+  it("a Claude-only .mcp.json no longer makes grok count as a connected host", async () => {
+    // `isRegistered` read `mcpServers.kanmer` out of `.mcp.json` to decide
+    // whether *grok* was connected, so every Claude-registered project reported
+    // grok connected and kept the AGENTS.md block alive for a host that was
+    // never connected. Fixing the unmerge without fixing the read would have
+    // been half a fix.
+    const root = await mkdtemp(join(tmpdir(), "kanmer-connect-"));
+    roots.push(root);
+    await writeFile(join(root, ".mcp.json"), CLAUDE_MCP_JSON);
+    await mkdir(join(root, ".agents"), { recursive: true });
+    await writeFile(
+      join(root, ".agents", "mcp_config.json"),
+      JSON.stringify({ mcpServers: { kanmer: {} } }),
+    );
+    await writeFile(join(root, "AGENTS.md"), "# Guide\n");
+
+    const result = await disconnectAgent("antigravity", root);
+
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain("no connected copy-skills host remains");
+  });
+});
+
 describe("disconnect peer safety", () => {
   it("retains the shared block when another copy-skills host has malformed registration", async () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-connect-"));

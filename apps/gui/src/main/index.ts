@@ -64,6 +64,8 @@ import { ensureBoardWorktree, renameBoardBranch, syncBoard, type KanmerGitStatus
 import {
   connectAgent,
   disconnectAgent,
+  drainLegacyCodexRegistrations,
+  scanLegacyCodexRegistrations,
   skillsStatus,
   updateSkills,
   type ConnectTarget,
@@ -619,6 +621,12 @@ function registerIpc(): void {
     disconnectAgent(target, requireCtx(p).sourceRoot),
   );
   ipcMain.handle(CH.listProviders, () => listProviders());
+  // Machine-scoped, so no `requireCtx`: these entries belong to *other*
+  // projects, which is exactly why reconnecting this one never drained them.
+  ipcMain.handle(CH.scanLegacyCodexRegistrations, () => scanLegacyCodexRegistrations());
+  ipcMain.handle(CH.drainLegacyCodexRegistrations, (_e, names: string[]) =>
+    drainLegacyCodexRegistrations(Array.isArray(names) ? names.filter((n) => typeof n === "string") : []),
+  );
   ipcMain.handle(CH.getSkillsStatus, (_e, p: string, target: ConnectTarget) =>
     skillsStatus(target, requireCtx(p).sourceRoot),
   );

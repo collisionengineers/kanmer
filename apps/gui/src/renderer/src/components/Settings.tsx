@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   BoardColumn,
   BoardConfig,
@@ -16,6 +16,14 @@ import type {
 } from "../../../shared/ipc.js";
 import { useClient } from "../lib/client.js";
 import { boardDraftModified } from "../lib/settingsDraft.js";
+import {
+  applyProfileEdit,
+  changedProfiles,
+  splitRequirements,
+  ticketsAffected,
+  validateProfiles,
+  type Vocabulary,
+} from "../lib/profileDraft.js";
 
 type SettingsTab = "board" | "profiles" | "appearance" | "git" | "connect";
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
@@ -488,55 +496,195 @@ function GitTab(): JSX.Element {
 }
 
 /**
- * The Profiles pane: which documents each stage boundary asks of a ticket,
- * per profile (FRD-002). Read-only for now — the editor is GUI-007; profiles
- * are edited in board.yml until it lands.
+ * The Profiles pane: which documents each stage boundary asks of a ticket, per
+ * profile (FRD-002 S2), plus area defaults and the proof-type vocabulary
+ * (FRD-006 R1).
+ *
+ * Editing a profile re-gates every ticket resolving to it, immediately. Core
+ * rejects an invalid board; nothing warns about a *valid* one that re-blocks
+ * half the board, so the save button carries the affected count.
+ *
+ * Validation is `lib/profileDraft.ts` — the renderer may only `import type`
+ * from core, so core's rules are mirrored there (AGENTS.md §7, third pairing).
  */
 function ProfilesTab(): JSX.Element {
-  const [model, setModel] = useState<DocModel | null>(null);
   const client = useClient();
-  useEffect(() => {
-    void client.getDocModel().then(setModel);
+  const [model, setModel] = useState<DocModel | null>(null);
+  const [board, setBoard] = useState<BoardConfig | null>(null);
+  const [draft, setDraft] = useState<BoardConfig | null>(null);
+  const [items, setItems] = useState<Item[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const load = useCallback(async () => {
+    const [m, b, list] = await Promise.all([
+      client.getDocModel(),
+      client.getBoard(),
+      client.listItems({ includeArchived: true }),
+    ]);
+    setModel(m);
+    setBoard(b);
+    setDraft(structuredClone(b));
+    setItems(list);
   }, [client]);
 
-  const profiles = model?.profiles ?? {};
-  const boundaries = model?.boundaries ?? [];
+  useEffect(() => {
+    void load().catch((e) => setError(String(e)));
+  }, [load]);
+
+  if (!model || !board || !draft) return <p className="hint">{error ?? "Loading…"}</p>;
+
+  const vocab: Vocabulary = {
+    docTypes: model.docTypes,
+    proofTypes: (draft as { proofTypes?: string[] }).proofTypes ?? model.proofTypes,
+    environments: ((draft as { deployment?: { environments?: { id: string }[] } }).deployment?.environments ?? []).map((e) => e.id),
+    boundaries: model.boundaries,
+  };
+
+  const draftProfiles =
+    (draft as { profiles?: Record<string, Record<string, string[]>> }).profiles ?? model.profiles;
+  const errors = validateProfiles(draftProfiles, vocab);
+  const changed = changedProfiles(board, draft);
+  const dirty = JSON.stringify(board) !== JSON.stringify(draft);
+  const affected = ticketsAffected(items, draft, changed);
+
+  const edit = (profile: string, boundary: string, field: string): void => {
+    setSaved(false);
+    setDraft(applyProfileEdit(draft, profile, boundary, splitRequirements(field)));
+  };
 
   return (
     <>
       <p className="hint">
-        A ticket's <strong>profile</strong> decides what each stage boundary requires of
+        A ticket&rsquo;s <strong>profile</strong> decides what each stage boundary requires of
         it, so requirements scale with the nature of the work rather than with where it
-        lives. A ticket inherits its area's default, then the board's
-        (<code>{model?.defaultProfile ?? "fix"}</code>). <code>custom</code> carries its
+        lives. A ticket inherits its area&rsquo;s default, then the board&rsquo;s
+        (<code>{model.defaultProfile}</code>). <code>custom</code> carries its
         requirements inline on the ticket itself.
       </p>
+
       <div className="settings-section">
         <table className="profiles-table">
           <thead>
             <tr>
               <th>Profile</th>
-              {boundaries.map((b) => (
+              {model.boundaries.map((b) => (
                 <th key={b}>{b.replace("-", " ")}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {Object.entries(profiles).map(([name, map]) => (
+            {Object.keys(draftProfiles).map((name) => (
               <tr key={name}>
                 <td>
                   <code>{name}</code>
                 </td>
-                {boundaries.map((b) => (
-                  <td key={b}>{(map as Record<string, string[]>)[b]?.join(", ") ?? "—"}</td>
-                ))}
+                {model.boundaries.map((b) => {
+                  const key = `${name}.${b}`;
+                  const errs = errors[key];
+                  return (
+                    <td key={b}>
+                      <input
+                        className={errs ? "invalid" : ""}
+                        value={(draftProfiles[name]?.[b] ?? []).join(", ")}
+                        placeholder="—"
+                        aria-label={`${name}, ${b}`}
+                        onChange={(e) => edit(name, b, e.target.value)}
+                      />
+                      {errs && <p className="field-error">{errs.join("; ")}</p>}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
         </table>
+        <p className="hint">
+          Comma-separated. A requirement is a document type, optionally
+          <code>/named</code>, and for proof <code>:type</code> and <code>@environment</code> —
+          e.g. <code>proof:visual@staging</code>.
+        </p>
       </div>
+
+      <div className="settings-section">
+        <h3>Area defaults</h3>
+        <p className="hint">Applied to tickets in that area with no profile of their own.</p>
+        {(draft.areas ?? []).map((a, idx) => (
+          <label className="field" key={a.id}>
+            <span>{a.name}</span>
+            <select
+              value={(a as { defaultProfile?: string }).defaultProfile ?? ""}
+              onChange={(e) => {
+                const next = structuredClone(draft);
+                const area = next.areas![idx] as { defaultProfile?: string };
+                if (e.target.value) area.defaultProfile = e.target.value;
+                else delete area.defaultProfile;
+                setSaved(false);
+                setDraft(next);
+              }}
+            >
+              <option value="">— board default ({model.defaultProfile}) —</option>
+              {Object.keys(draftProfiles).map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+        ))}
+      </div>
+
+      <div className="settings-section">
+        <h3>Proof types</h3>
+        <p className="hint">
+          The vocabulary <code>proof:&lt;type&gt;</code> validates against. Removing one
+          invalidates any requirement naming it.
+        </p>
+        <label className="field">
+          <span>Types</span>
+          <input
+            value={vocab.proofTypes.join(", ")}
+            onChange={(e) => {
+              const next = structuredClone(draft) as BoardConfig & { proofTypes?: string[] };
+              const list = splitRequirements(e.target.value);
+              if (list.length) next.proofTypes = list;
+              else delete next.proofTypes;
+              setSaved(false);
+              setDraft(next);
+            }}
+          />
+        </label>
+      </div>
+
+      <div className="settings-section">
+        {error && <p className="error">{error}</p>}
+        {dirty && changed.length > 0 && (
+          <p className="banner warn">
+            {changed.length} profile{changed.length === 1 ? "" : "s"} changed —{" "}
+            <strong>{affected}</strong> ticket{affected === 1 ? "" : "s"} will be re-gated
+            the moment this saves.
+          </p>
+        )}
+        <button
+          className="primary sm"
+          disabled={!dirty || saving || Object.keys(errors).length > 0}
+          onClick={() => {
+            setSaving(true);
+            setError(null);
+            void client
+              .setBoard(draft)
+              .then(() => load())
+              .then(() => setSaved(true))
+              .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+              .finally(() => setSaving(false));
+          }}
+        >
+          {saving ? "Saving…" : "Save profiles"}
+        </button>
+        {saved && !dirty && <span className="hint"> Saved.</span>}
+      </div>
+
       <p className="hint">
-        Gate-exempt folders — <code>{(model?.gateExemptFolders ?? []).join("</code>, <code>")}</code> —
+        Gate-exempt folders — <code>{(model.gateExemptFolders ?? []).join("</code>, <code>")}</code> —
         hold inputs and provisional notes, so they never satisfy a requirement.
       </p>
     </>

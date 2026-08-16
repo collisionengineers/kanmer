@@ -94,3 +94,25 @@ either. GUI-070 and GUI-071 collide in the same JSX region of `App.tsx` and
 must be sequenced — **GUI-069 → GUI-070 → GUI-071** is the order that avoids
 writing a `backlog` branch only to delete it, and lets GUI-071 write the final
 view list into FRD-019 once.
+
+---
+
+## Sequencing is settled, not recommended
+
+Operator decision 2026-08-16 (`scratch/notes.md`, quoted in full in
+`research`): **GUI-071 lands after GUI-070.** The overlap table above stands,
+but read it as history — by the time this ticket is implemented,
+`App.tsx:49-56` no longer has a `backlog` key, `App.tsx:1184-1212` is gone,
+and every line number in this document will have moved. **Re-locate before
+editing.**
+
+Two consequences for the file list:
+
+- No `backlog` case is written into the view predicate; the views are
+  `ticket | standup | archived`. The `BacklogTable` item-source row in the
+  touched-files table disappears (GUI-070 deleted the component).
+- The Board tab's count keeps its current meaning — **all non-archived
+  tickets, Done included**. So `apps/gui/src/shared/stages.ts` is no longer a
+  context file for a `UL_LAST_STAGE` exclusion; it stays on the list only as
+  the reference for stage ids. The change to `App.tsx` is now purely
+  structural: one predicate, four consumers, no change to what Board reports.

@@ -1,46 +1,53 @@
 # Open questions — GUI-066
 
-## OPERATOR ONLY — these cannot be decided by the planner or implementer
+## OPERATOR ONLY — both ANSWERED 2026-08-16 (verbatim in `scratch/operator-answers.md`)
 
-Both are about what the script does to a **public, already-tagged** release when
+Both were about what the script does to a **public, already-tagged** release when
 it is still broken after the one permitted repair pass. `14f2715` moved
 `git push --tags` ahead of the publish, so by the time verification runs the
 release is live and `/releases/latest` already points at it.
 
-- [ ] **When the second (post-repair) verification still finds a gap, should the
+- [x] **When the second (post-repair) verification still finds a gap, should the
       script demote the release so `/releases/latest` stops pointing at it — mark
       it `prerelease` or `draft` via the API — or leave it published and merely
-      refuse?** Demoting means installed clients fall back to the previous *good*
-      release and keep updating; leaving it published means every client sees a
-      release whose manifest or installer 404s (the 0.3.1 state). Demoting is also
-      destructive-ish and rewrites a public artifact without a human present.
+      refuse?**
+      **ANSWERED: NO demotion. Fail loudly, leave it published.** The script
+      refuses and says precisely what is wrong and what to do — *including the
+      manual demote command as a suggestion*. It does not rewrite a public
+      artifact unattended. Release state is a judgement call and the operator
+      wants to be told, not second-guessed. Use the house `refuse(why, fix)`
+      idiom at `release.mjs:41-45`; a refusal that does not say what to do is
+      half a refusal.
 
-- [ ] **Is a missing or corrupt `.exe.blockmap` a hard failure, or a loud
-      warning?** The installer and `latest.yml` missing means clients are broken.
-      A missing blockmap only means clients pay a full ~78 MB download instead of
-      a differential one — degraded, not broken (this is exactly what 0.3.0
-      shipped as, and the operator has accepted that gap). Making it fatal could
-      block an otherwise working release after the tag is public; making it a
-      warning re-creates the quiet failure this ticket exists to kill. Needs a
-      severity call, not a coin flip.
+- [x] **Is a missing or corrupt `.exe.blockmap` a hard failure, or a loud
+      warning?**
+      **ANSWERED: HARD FAILURE.** Treat it like any other missing asset —
+      verify, re-publish once, re-verify, then fail loudly. Making it a warning
+      re-creates exactly the quiet failure this ticket exists to kill, which is
+      how v0.3.0 shipped without one.
 
-## Planner decisions (recorded, not blocking — the plan should pick and justify)
+## Planner decisions (recorded and now decided in `plan.md`)
 
-- [x] **Where the test for the pure verifier lives, and what runs it.** There is
-      no root vitest config, no root `devDependencies`, no test of any
-      `scripts/*.mjs`, and no `node:test` usage in this repo; both vitest suites
-      are workspace-scoped (`packages/core`, `apps/gui`). Options: (a) root
-      `vitest.config.mjs` + root `vitest` devDependency + `test:scripts` folded
-      into `npm test`; (b) `node:test` kept dependency-free, matching the other
-      scripts' house style; (c) a `--self-test` mode on the script itself. (a)
-      gets the fixtures into the release GATE for free; (b) preserves the
-      dependency-free rule the scripts directory is explicit about. Plan picks.
-- [x] **Behaviour when GitHub's `digest` field is absent on an asset.** Recorded
-      default: degrade to `state` + `size` checks and say so loudly in the output,
-      rather than crash or silently skip.
+- [x] **Where the test for the pure verifier lives, and what runs it.**
+      **DECIDED: `node:test` + `node:assert/strict`, as
+      `"test:scripts": "node --test scripts/"` folded into the root `"test"`
+      script.** Rationale in `plan.md` § "Test-runner decision": every file in
+      `scripts/` states it is deliberately dependency-free, so a runner needing a
+      root devDependency plus a root config contradicts the directory's one
+      explicit rule; it avoids `package-lock.json` churn, which matters because
+      `release.mjs:111-116` refuses on a dirty tree; `engines.node` is already
+      `>=20`. Rejected: root vitest + devDep + `vitest.config.mjs` (lockfile
+      churn, first-ever root devDependencies block, new config file), and a
+      `--self-test` flag (mixes fixtures into a file that runs during a real
+      release, and needs extra wiring to reach `npm test` anyway).
+- [x] **Behaviour when GitHub's `digest` field is absent on an asset.** Degrade
+      to `state` + `size` checks and say so loudly in the output, rather than
+      crash or silently skip. Unit-tested.
 - [x] **Whether `latest.yml`'s recorded `sha512`/`size` are cross-checked against
-      the local installer.** Cheap and catches a manifest that describes a
-      different build; recorded as in scope for the plan.
+      the local installer.** Yes — in scope. Cheap, and it catches a manifest
+      that describes a different build. Note the algorithm mismatch:
+      `latest.yml` records sha512-base64 while GitHub's `digest` is sha256-hex,
+      so the local file is the bridge and is hashed both ways.
 - [x] **Verification transport.** REST `/repos/{owner}/{repo}/releases/tags/v<v>`
       with the token the script already requires, keeping the existing
       `/releases/latest` `tag_name` check (it tests a different thing: draft /
@@ -49,7 +56,8 @@ release is live and `/releases/latest` already points at it.
 ## Parked (explicitly deferred)
 
 - Backfilling v0.3.0's blockmap — **declined by the operator**; accepted gap,
-  recorded in the plan, not a task.
+  recorded in `plan.md` § "Accepted gap", not a task. Re-confirmed still missing
+  on GitHub during planning.
 - Extracting a shared local↔GitHub artifact-name helper between
   `check-updater-package.mjs` and the new verifier — optional cleanup, not
   required by this ticket.

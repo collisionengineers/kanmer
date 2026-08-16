@@ -425,21 +425,29 @@ opencode (`opencode debug skill` — an undocumented but real subcommand under
 `probe-claudedir`, `probe-agentsdir` and `probe-opencodedir`, each with its
 absolute `location`.
 
+**The Antigravity column is corrected per the adjudication** (§4d). The original
+probe was not workspace-bound, so every one of its negatives is void — not
+"no", but *not established*. Only `.agents/skills/` was re-run under a binding.
+
 | Project skills dir | claude | codex | opencode | grok | antigravity (`agy`) |
 |---|---|---|---|---|---|
-| `.claude/skills/` | yes (native) | not probed (plugin host) | **yes** | **yes** (`[claude]` compat) | **no** |
-| `.agents/skills/` | not probed | not probed | **yes** | **yes** | **no** |
-| `.opencode/skills/` | — | — | **yes** | **no** | **no** |
-| `.grok/skills/` | — | — | **no** | **yes** (native) | **no** |
+| `.claude/skills/` | yes (native) | not probed (plugin host) | **yes** | **yes** (`[claude]` compat) | *unestablished* |
+| `.agents/skills/` | not probed | not probed | **yes** | **yes** | **yes — bound workspace only** |
+| `.opencode/skills/` | — | — | **yes** | **no** | *unestablished* |
+| `.grok/skills/` | — | — | **no** | **yes** (native) | *unestablished* |
 
 Two results matter for parity:
 
 - **`.agents/skills/` serves grok as well as opencode** — a third host, which
   ADR-0009's convergence note (opencode + Antigravity) does not mention. grok's
-  `.grok/skills` setting in `providers.ts:368` is therefore an unnecessary
-  second write.
-- **`.agents/skills/` serves Antigravity not at all** — the one host ADR-0009
-  names it for.
+  `.grok/skills` setting in `providers.ts` is therefore an unnecessary second
+  write. *(Unaffected by the adjudication; grok's row stands.)*
+- **`.agents/skills/` serves Antigravity too, in a workspace-bound session** —
+  so ADR-0009's convergence note is right and gains a third host, and the only
+  correction it needs is the binding caveat. Kanmer binds nothing today
+  (verified: `grep -rn -- "--new-project\|--add-dir\|--project" apps/ packages/`
+  returns nothing; the only `agy` string in either tree is a stale comment in
+  `providers.ts`), so the write is correct and inert. [[MCP-015]] owns it.
 
 ---
 
@@ -615,10 +623,15 @@ Three things are wrong with it, and this research demonstrates each:
    material finding in this document came from the binary, not from docs:
    `opencode debug skill` and `grok inspect` are not prominently documented;
    `codex plugin install` is documented-adjacent and does not exist.
-3. **The convergence note is itself now falsified** — `.agents/skills/` serves
-   opencode **and grok**, and does **not** serve Antigravity (Findings 4c, 5).
-   A clause telling readers to re-verify is the clause that most needs to carry
-   a correct fact, since readers quote it instead of re-deriving it.
+3. **The convergence note is incomplete, not falsified** *(corrected 2026-08-16
+   per §4d — this research first claimed it was falsified, and that claim was
+   itself the wrong lesson arriving a second time)*. `.agents/skills/` serves
+   opencode, **grok** and Antigravity. It gains a third host the note never
+   mentioned, and one caveat: Antigravity reads it only in a workspace-bound
+   session, and Kanmer binds nothing today. A clause telling readers to
+   re-verify is the clause that most needs to carry a correct fact, since
+   readers quote it instead of re-deriving it — which is exactly why the
+   near-miss here is worth recording.
 
 `FRD-012-connect.md:18` (R5) repeats the same instruction — "Provider facts are
 re-verified against current host docs at implementation time" — so amending the
@@ -645,11 +658,21 @@ ADR alone leaves the wrong lesson standing in the FRD.
 > skills for a long time, and no host removes skill support. The premise was
 > wrong because nobody checked.
 >
-> Convergence note for Connect, itself established by probe and current only as
-> of the check that established it: one project-scoped write to `.agents/skills/`
-> serves **opencode and grok**. It does **not** serve Antigravity, whose CLI
-> (`agy`) reads no project skills directory and takes the roster through
-> `agy plugin install` instead.
+> **A positive control is necessary but not sufficient: verify the mechanism you
+> are actually testing, not a proxy for it.** *(Worked example added after the
+> adjudication — see §4d. The clause as shipped carries it.)*
+>
+> Convergence note for Connect: one project-scoped write to `.agents/skills/`
+> serves **opencode, grok and Antigravity** — a third host beyond the two
+> originally noted — with one caveat for Antigravity: `agy` reads it only in a
+> **workspace-bound** session, and Kanmer establishes no binding today.
+
+**Superseded draft, retained to show the near-miss:** an earlier version of this
+paragraph read *"It does **not** serve Antigravity, whose CLI (`agy`) reads no
+project skills directory."* That was false, and it would have written a second
+wrong lesson into the very document this ticket exists to correct — arriving
+with an evidence table, which would have made it harder to dislodge than the
+clause it replaced. See §4d.
 
 `FRD-012` R5 should be replaced with a pointer to this clause rather than its
 own paraphrase, so there is one statement of the rule.

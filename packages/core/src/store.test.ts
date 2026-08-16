@@ -262,6 +262,70 @@ describe("KanmerStore", () => {
     expect((await store.listItems({ label: "x" })).length).toBe(1);
   });
 
+  describe("filtering by group", () => {
+    // Membership lives on the ticket and is always derived (FRD-001 G3), so the
+    // filter is a predicate over item.groups — no group file is ever read.
+    async function seed() {
+      const epic = await store.createGroup("epic", "Shipping together");
+      const hzn = await store.createGroup("horizon", "0.3.3");
+      const both = await store.createItem({
+        type: "ticket",
+        title: "In both groups",
+        groups: [epic.id, hzn.id],
+      });
+      const onlyEpic = await store.createItem({
+        type: "ticket",
+        title: "Epic only",
+        status: "preparing",
+        groups: [epic.id],
+      });
+      await store.createItem({ type: "ticket", title: "Ungrouped" });
+      return { epic, hzn, both, onlyEpic };
+    }
+
+    it("returns only that group's members", async () => {
+      const { epic, hzn } = await seed();
+      expect((await store.listItems({ group: epic.id })).map((i) => i.title).sort()).toEqual([
+        "Epic only",
+        "In both groups",
+      ]);
+      expect((await store.listItems({ group: hzn.id })).map((i) => i.title)).toEqual([
+        "In both groups",
+      ]);
+    });
+
+    it("matches a ticket that belongs to several groups, under each of them", async () => {
+      const { epic, hzn, both } = await seed();
+      for (const g of [epic.id, hzn.id]) {
+        expect((await store.listItems({ group: g })).map((i) => i.id)).toContain(both.id);
+      }
+    });
+
+    it("composes with other filters as AND", async () => {
+      const { epic } = await seed();
+      const narrowed = await store.listItems({ group: epic.id, status: "preparing" });
+      expect(narrowed.map((i) => i.title)).toEqual(["Epic only"]);
+    });
+
+    it("returns nothing for an unknown group rather than throwing", async () => {
+      await seed();
+      // A filter asks a question; it does not assert that the group exists.
+      // Group ids are validated on write instead (FRD-001 G3).
+      await expect(store.listItems({ group: "HZN-999" })).resolves.toEqual([]);
+    });
+
+    it("still hides archived members unless asked for them", async () => {
+      const { epic, onlyEpic } = await seed();
+      await store.updateItem(onlyEpic.id, { archived: true });
+      expect((await store.listItems({ group: epic.id })).map((i) => i.title)).toEqual([
+        "In both groups",
+      ]);
+      expect(
+        (await store.listItems({ group: epic.id, includeArchived: true })).length,
+      ).toBe(2);
+    });
+  });
+
   it("searches across title and body", async () => {
     await store.createItem({ type: "ticket", title: "Fix the parser", body: "needle here" });
     await store.createItem({ type: "ticket", title: "Unrelated" });

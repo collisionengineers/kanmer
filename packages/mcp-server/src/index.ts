@@ -291,12 +291,18 @@ server.registerTool(
   {
     title: "List items",
     description:
-      "List items as summaries (no body). Filter by type, status (workflow stage), area, label, or updated_since (ISO timestamp — only items changed after it). Sort by id (default) or updated_desc; cap with limit. Archived items are excluded unless include_archived is true (summaries carry `archived` either way). Summaries also carry `taken` (who/where, when a ticket is taken) and `docs`/`checklist` (pipeline document presence and checklist progress). Normally returns a plain array; if any files in .kanmer are malformed or misnamed, returns { items, warnings } instead so the problem is visible.",
+      "List items as summaries (no body). Filter by type, status (workflow stage), area, label, group, or updated_since (ISO timestamp — only items changed after it). Filters combine with AND, so group + status narrows to one stage of one group. Sort by id (default) or updated_desc; cap with limit. Archived items are excluded unless include_archived is true (summaries carry `archived` either way). Summaries also carry `taken` (who/where, when a ticket is taken), `profile`, and `docs`/`checklist` (pipeline document presence and checklist progress) — which is why this, rather than get_group, is how you build a roster from a group: get_group's derived members carry only id/title/stage. Normally returns a plain array; if any files in .kanmer are malformed or misnamed, returns { items, warnings } instead so the problem is visible.",
     inputSchema: {
       type: itemTypeEnum.optional().describe("Restrict to one item type"),
       status: z.string().optional().describe("Filter by status id (workflow stage)"),
       area: z.string().optional().describe("Filter by area id"),
       label: z.string().optional().describe("Filter by a label"),
+      group: z
+        .string()
+        .optional()
+        .describe(
+          "Filter by group membership, e.g. EPIC-001 or HZN-003. An unknown group id returns no items rather than erroring — a filter asks a question, it does not assert one.",
+        ),
       include_archived: z.boolean().optional().describe("Include archived items"),
       updated_since: z
         .string()
@@ -308,12 +314,13 @@ server.registerTool(
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   guard(
-    async ({ type, status, area, label, include_archived, updated_since, sort, limit }) => {
+    async ({ type, status, area, label, group, include_archived, updated_since, sort, limit }) => {
       const { items, warnings } = await store.listItemsWithWarnings({
         type,
         status,
         area,
         label,
+        group,
         includeArchived: include_archived,
       });
       let selected = items;

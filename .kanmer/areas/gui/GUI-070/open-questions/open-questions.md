@@ -1,70 +1,81 @@
 # Open questions — GUI-070
 
-**The four unticked questions below are OPERATOR-ONLY.** They are not things an
-implementer can decide from the code: three of them change documents that govern
-other tickets, and one sets a repo convention that does not exist yet. They are
-raised **now**, at research time, per the skill — not deferred to planning.
+**All four operator-only questions were answered on 2026-08-16.** The answers are
+recorded verbatim below, beneath the question each settles, and in full in
+`scratch/operator-answers.md`. They are **settled and not reopened** — the plan is
+written around them.
 
-While any of them is unticked, `questions-resolved` is unmet and GUI-070 cannot
-leave Preparing. That is the intended behaviour, not an obstruction.
-
-The scope-setting fork the ticket demanded ("pick one deliberately") is **already
-answered** by the operator in `scratch/notes.md` — option 1, accept the loss — and
-is not reopened here.
+The scope-setting fork the ticket demanded ("pick one deliberately") was answered
+earlier by the operator in `scratch/notes.md` — **option 1, accept the loss** —
+and is likewise not reopened here.
 
 ---
 
-## Operator-only — these block the ticket
+## Operator-only — answered 2026-08-16
 
-- [ ] **Who amends `FRD-007-fixed-six-stage-board.md` B4 — GUI-069 or GUI-070?**
-      B4 currently reads "The kanban renders Preparing → Done; Backlog renders as
-      the dedicated list view (FRD-011)." Both halves reverse: GUI-069 makes the
-      kanban render Backlog → Done, GUI-070 kills the list view. Both tickets are
-      in Preparing right now, so whichever plan claims it, the other must not,
-      or two branches edit the same line. *Recommendation:* GUI-069 amends the
-      first half when it lands (it is the change B4 describes); GUI-070 amends the
-      second half. If the operator prefers one owner, GUI-070 is the safer single
-      owner because it lands second and can state the finished position.
+- [x] **Who amends `FRD-007-fixed-six-stage-board.md` B4 — GUI-069 or GUI-070?**
+      B4 reads "The kanban renders Preparing → Done; Backlog renders as the
+      dedicated list view (FRD-011)." Both halves reverse.
 
-- [ ] **Does `PRD-001-kanmer-v3.md` get amended, and by this ticket?**
-      The PRD states the deleted design in three places — `:16` problem 6 ("a
-      194-card Backlog column is a list problem wearing a kanban costume"), `:25`
-      ("a backlog view built for volume"), `:30` ("the backlog is triaged in the
-      list view"). The ticket body only mandates FRD-011. A PRD is a product-level
-      why, and reversing a stated v3 goal is a product call, not an implementer's.
-      *Recommendation:* amend, minimally — a dated note under problem 6 saying the
-      list view was built, shipped, and withdrawn in favour of a Backlog column,
-      with the bulk-triage loss recorded. Leaving it is the option that produces
-      the "governing docs describe a feature that does not exist" state this
-      ticket exists to avoid.
+      **Answer — SCHEDULER: GUI-070 owns it, entirely.** Verbatim:
 
-- [ ] **What `status` does an amended-into-obsolescence FRD carry?**
-      Every FRD in `docs/functional/frd/` is `status: draft` or `status: approved`;
-      there is no `superseded`/`withdrawn` precedent, and
-      `FRD-014-doc-type-guidance.md:15` only fixes the convention for ADRs ("one
-      decision, superseded never edited"). FRD-011 must stay on disk regardless —
-      `scripts/build-manual.mjs:64` throws on a missing curated FRD. *Recommendation:*
-      `status: withdrawn`, plus an `## Amendment (GUI-070)` section that reverses
-      R5, marks R1/R3/R4/R6 withdrawn, and records that bulk triage was weighed
-      and dropped rather than relocated. This sets a precedent for the whole
-      `docs/` tree, which is why it is asked rather than assumed.
+      > GUI-069 amends no FRD. B4 is one sentence whose both halves reverse, so
+      > splitting it means two branches editing the same line. You land second and
+      > can state the finished position in one edit. You therefore own **FRD-007
+      > B4 and every FRD-011 edit**. GUI-069's plan names you as the ticket that
+      > corrects the temporary falsehood — make sure you actually do.
 
-- [ ] **Confirm the sequence GUI-069 → GUI-070 → GUI-071, and accept that
+      Consequence, stated plainly: **as of `488797d` (GUI-069 merged), FRD-007 B4
+      and FRD-011 R5 are both false on main.** This ticket is the only thing that
+      fixes them.
+
+- [x] **Does `PRD-001-kanmer-v3.md` get amended, and by this ticket?**
+
+      **Answer — OPERATOR: YES.** A **dated note under problem 6** ("a 194-card
+      Backlog column is a list problem wearing a kanban costume"), recording that
+      the list view was built, shipped and withdrawn in favour of a Backlog
+      column, **with the bulk-triage loss named**. The PRD states the deleted
+      design in three places (`:16`, `:25`, `:30`); the dated note is the minimum,
+      and a reader arriving at *any* of the three must reach it — so `:25` and
+      `:30` get inline pointers to the note rather than duplicated prose.
+
+- [x] **What `status` does an amended-into-obsolescence FRD carry?**
+
+      **Answer — OPERATOR: `status: withdrawn`, plus an amendment section.** The
+      operator chose this knowing there is **no prior `withdrawn` or `superseded`
+      FRD in this repo**, i.e. deliberately setting the precedent. Verbatim: *"So
+      write it as a precedent someone will copy."* Concretely:
+
+      - `docs/functional/frd/FRD-011-backlog-list-view.md` → `status: withdrawn`,
+        plus an `## Amendment (GUI-070)` section that **reverses R5** and marks
+        **R1/R3/R4/R6 withdrawn**.
+      - The amendment must **record that bulk triage was weighed and dropped, not
+        relocated.** Multi-select and bulk move/archive/add-to-group go away with
+        `BacklogTable`, and GUI-069's Backlog column is deliberately plain. Do not
+        write it as though the capability moved somewhere.
+      - **FRD-011 stays on disk.** `scripts/build-manual.mjs:64` throws if a
+        curated FRD is missing. Amend in place; never delete. Its **Overview is
+        lead prose** compiled into the committed `chapters.generated.ts`, so the
+        manual must be regenerated and committed or `npm run check:manual` fails.
+
+- [x] **Confirm the sequence GUI-069 → GUI-070 → GUI-071, and accept that
       GUI-071's first verification criterion dies with this ticket.**
-      GUI-070 and GUI-071 both edit `App.tsx:1058-1074`: this ticket removes a key
-      from the `VIEW_LABELS` object the tab `.map()` iterates, GUI-071 rewrites the
-      count expression *inside* that same `.map()`. Worked in parallel they
-      conflict. Worked GUI-071-first, GUI-071 writes a per-view count for a view
-      this ticket then deletes. Landing GUI-070 first voids GUI-071's criterion
-      "Backlog tab count equals the number of rows the Backlog view shows"
-      (`GUI-071.md:64`) — GUI-071 itself anticipates this at `:59-60`, but the
-      criterion is still written and someone must strike it. *Recommendation:*
-      GUI-069 → GUI-070 → GUI-071, and edit GUI-071's verification list to drop
-      that line when this ticket merges.
+
+      **Answer — SCHEDULER: confirmed, GUI-069 → GUI-070 → GUI-071.** Verbatim:
+
+      > You must strike GUI-071's first verification criterion ("Backlog tab count
+      > equals the number of rows the Backlog view shows") when this merges — it
+      > describes a view you deleted. Edit GUI-071's verification list directly;
+      > do not leave it for someone to notice.
+
+      It is therefore a step in this ticket's plan and a box on its checklist, not
+      a note for a future reader.
 
 ---
 
 ## Answered here, with the default taken (no operator time needed)
+
+Confirmed by the operator as "defaults already taken and not re-opened".
 
 - [x] **Remove the `["backlog", "The Backlog list", …]` entry from `FROM_FRD` in
       `scripts/build-manual.mjs`?** — **Yes.** Kept, the in-app manual regenerates

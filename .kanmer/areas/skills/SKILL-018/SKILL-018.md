@@ -2,10 +2,12 @@
 id: SKILL-018
 type: ticket
 title: Fix kanmer-report's frontmatter so Antigravity loads all 12 skills
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-16T22:27:03.931Z'
 labels:
   - install
   - bug
@@ -16,7 +18,7 @@ refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
 archived: false
 created: '2026-08-16T22:08:48.761Z'
-updated: '2026-08-16T22:08:48.761Z'
+updated: '2026-08-16T22:27:03.931Z'
 ---
 
 ## What

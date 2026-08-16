@@ -181,7 +181,122 @@ function checkSkillFrontmatter() {
 }
 const skillCount = checkSkillFrontmatter();
 
+// ---------------------------------------------------------------------------
+// The two plugin manifests and the two MCP configs they point at. Two failures
+// this catches, both of which shipped (MCP-011):
+//
+//   - the plugin.json versions drifting from the repo version. Not cosmetic:
+//     bundledSkillsVersion() (connect.ts) reads .claude-plugin/plugin.json and
+//     installSkills() stamps every copied skill set with that same number, so
+//     while it disagrees with package.json, installed and bundled are written
+//     from one constant and skillsStatus().updateAvailable can never be true —
+//     the "Update skills" button is unreachable by construction. release.mjs
+//     now bumps these, so this check exists for the hand-edit that bypasses it.
+//   - an invocation naming a file that is not there, or using a ${TOKEN} the
+//     reading host does not expand. codex 0.147.0 expands NOTHING in .mcp.json
+//     — not ${PLUGIN_ROOT}, not ${CODEX_PLUGIN_ROOT}, not ${VAR:-default} — and
+//     the server then silently never launches, which is exactly how the
+//     original defect stayed invisible for three releases.
+//
+// The two files deliberately differ and must not be unified: ${CLAUDE_PLUGIN_ROOT}
+// is expanded by Claude Code and grok but not codex, and a relative cwd is
+// resolved by codex against the installed plugin root but collapses grok's
+// handshake. Each rule below is pinned to the host that requires it.
+// ---------------------------------------------------------------------------
+function checkPluginManifests() {
+  const pluginDir = join(root, "plugins/kanmer");
+  const repoVersion = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
+  const problems = [];
+
+  const read = (file) => JSON.parse(readFileSync(file, "utf8"));
+  /** The one server entry a bundled MCP config must declare. */
+  const serverEntry = (file) => {
+    const entry = read(file)?.mcpServers?.kanmer;
+    if (!entry) problems.push(`${file}: no mcpServers.kanmer entry`);
+    return entry ?? {};
+  };
+
+  for (const [manifest, mcpKey] of [
+    [".claude-plugin/plugin.json", "./mcp/claude.mcp.json"],
+    [".codex-plugin/plugin.json", "./.mcp.json"],
+  ]) {
+    const file = join(pluginDir, manifest);
+    if (!existsSync(file)) {
+      problems.push(`missing plugins/kanmer/${manifest}`);
+      continue;
+    }
+    const parsed = read(file);
+    if (parsed.version !== repoVersion) {
+      problems.push(
+        `${manifest}: version "${parsed.version}" != package.json "${repoVersion}" — ` +
+          `while these disagree, skillsStatus().updateAvailable can never fire`,
+      );
+    }
+    if (parsed.mcpServers !== mcpKey) {
+      problems.push(`${manifest}: mcpServers is "${parsed.mcpServers}", expected "${mcpKey}"`);
+    } else if (!existsSync(join(pluginDir, mcpKey))) {
+      problems.push(`${manifest}: mcpServers points at ${mcpKey}, which does not exist`);
+    }
+  }
+
+  // mcp/claude.mcp.json — Claude Code and grok. Both expand ${CLAUDE_PLUGIN_ROOT}.
+  const claudeMcp = join(pluginDir, "mcp/claude.mcp.json");
+  if (existsSync(claudeMcp)) {
+    const entry = serverEntry(claudeMcp);
+    const script = entry.args?.[0] ?? "";
+    const prefix = "${CLAUDE_PLUGIN_ROOT}/";
+    if (!script.startsWith(prefix)) {
+      problems.push(`mcp/claude.mcp.json: args[0] must start with ${prefix} (got "${script}")`);
+    } else if (!existsSync(join(pluginDir, script.slice(prefix.length)))) {
+      problems.push(`mcp/claude.mcp.json: args[0] names a file that does not exist: ${script}`);
+    }
+    if (entry.cwd !== undefined) {
+      problems.push("mcp/claude.mcp.json: must not set cwd — a relative cwd breaks grok's handshake");
+    }
+  }
+
+  // .mcp.json — codex and antigravity/agy. Neither expands any ${…} token, so
+  // the invocation must be token-free and lean on the relative cwd instead.
+  const codexMcp = join(pluginDir, ".mcp.json");
+  if (existsSync(codexMcp)) {
+    const entry = serverEntry(codexMcp);
+    if (JSON.stringify(entry).includes("${")) {
+      problems.push(
+        ".mcp.json: contains a ${…} token; neither codex nor agy expands one, and the " +
+          "server then silently never launches",
+      );
+    }
+    if (entry.cwd !== ".") {
+      problems.push('.mcp.json: cwd must be "." so a relative args path resolves to the plugin root');
+    }
+    const script = entry.args?.[0] ?? "";
+    if (!script || !existsSync(join(pluginDir, script))) {
+      problems.push(`.mcp.json: args[0] "${script}" does not exist under plugins/kanmer`);
+    }
+  }
+
+  // Neither manifest may pin a board. An absolute --root cannot survive a
+  // different machine or user account, and since MCP-010 the server discovers
+  // the board itself (ADR-0012).
+  for (const rel of ["mcp/claude.mcp.json", ".mcp.json"]) {
+    const file = join(pluginDir, rel);
+    if (!existsSync(file)) continue;
+    const args = serverEntry(file).args ?? [];
+    if (args.some((a) => typeof a === "string" && a.startsWith("--root"))) {
+      problems.push(`${rel}: must not pass --root — the server discovers the board (ADR-0012)`);
+    }
+  }
+
+  if (problems.length) {
+    console.error("Plugin manifests are wrong:");
+    for (const p of problems) console.error(`  ${p}`);
+    process.exit(1);
+  }
+  return repoVersion;
+}
+const manifestVersion = checkPluginManifests();
+
 console.log(
   `plugin-sync OK — ${registered.length} tools match, bundle bytes match, ` +
-    `${skillCount} skill frontmatters parse`,
+    `${skillCount} skill frontmatters parse, manifests at v${manifestVersion}`,
 );

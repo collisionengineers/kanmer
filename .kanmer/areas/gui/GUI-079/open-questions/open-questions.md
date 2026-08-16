@@ -1,99 +1,99 @@
 # Open questions — GUI-079
 
-## ⚠ Operator decisions — the plan must not assume these
+All eight are answered. Q1–Q4 were answered **by the operator** on 2026-08-16 —
+full text in `scratch/operator-answers.md`, which is binding and not to be
+re-opened. Q5–Q8 were resolved during planning, empirically where possible.
 
-These four are product/ownership calls, not implementation details. Answer them
-before `kanmer-plan` runs; a plan that guesses will guess wrong in a way that is
-expensive to undo, because two of them change what gets deleted off a user's
-machine.
+## ⚠ Operator decisions — answered 2026-08-16
 
-- [ ] **Q1 — What is the ownership rule for `mcpServers.kanmer` in `.mcp.json`?**
-      Three candidate rules, and they are genuinely different products:
-      **(a) Marker.** Kanmer stamps what it writes (e.g. an extra field) and
-      unmerges only stamped entries. Correct going forward, but every *existing*
-      grok registration is unstamped, so on first run grok's disconnect becomes a
-      no-op — the ticket's defect turns into the opposite defect for one release.
-      **(b) Shape fingerprint.** Claude writes `"type": "stdio"`, grok's merge
-      does not (verified in this repo's own `.mcp.json`). Needs no migration, but
-      it is an inference about another tool's output format, and it silently
-      breaks the day Claude stops writing `type` or grok starts.
-      **(c) Move grok off the shared file** onto its own path, leaving
-      `.mcp.json` to Claude alone. Cleanest ownership, largest change, and it
-      strands users already registered through the shared file until they
-      reconnect — i.e. it recreates in miniature the exact drain problem this
-      ticket exists to fix.
-      Which rule ships?
+- [x] **Q1 — What is the ownership rule for `mcpServers.kanmer` in `.mcp.json`?**
+      **Answer: (c) move grok off the shared file. `.mcp.json` belongs to Claude
+      alone.** Chosen deliberately over the cheaper marker and shape-fingerprint
+      options. Consequences to implement, not re-debate: existing grok users
+      **reconnect once** (say so in the release notes and FRD-012 — do *not*
+      auto-migrate by rewriting `.mcp.json`, which is the behaviour this ticket
+      exists to stop), and **`isRegistered()` (`connect.ts:117`) moves with it**,
+      because it reads `mcpServers.kanmer` to decide whether *grok* is connected,
+      so a Claude-only project reports grok as registered and
+      `hasRegisteredCopySkillsPeer` keeps the AGENTS.md block alive for a host
+      never connected. Fixing unmerge without fixing the read is half a fix.
+      *Implementation:* grok moves to **`.grok/config.toml`** — re-verified today
+      against the installed grok CLI (`grok mcp add --scope project` writes it;
+      `~/.grok/docs/user-guide/07-mcp-servers.md` documents it as the native
+      project scope and the **highest-priority** source, with `.mcp.json` a
+      conditional, lowest-priority *compat* source). Ownership is pushed into
+      the provider registry as `register.isRegistered(contents)`, so the read and
+      the write are answered in one place.
 
-- [ ] **Q2 — When a legacy global entry has no project-scoped replacement, what
-      does the sweep do?** The ticket settles that it must *warn*. It does not
-      settle what the button does. Options: report only and refuse to remove
-      (safest; the pile never fully drains without the user visiting each
-      project); offer "reconnect that project first, then drain" as a single
-      action (best outcome, most work, and it means the sweep starts *writing*
-      other projects' files); or allow removal behind an explicit second
-      confirmation that names the consequence. On this machine that entry was
-      pegasus's only working registration, so the wrong default silently cuts
-      board access for a project the user is not currently looking at.
+- [x] **Q2 — When a legacy global entry has no project-scoped replacement, what
+      does the sweep do?** **Answer: report it and refuse to remove it.** The
+      operator explicitly chose the option that refuses. The warning names the
+      project and says what to do — open it and click Connect first. Kanmer never
+      writes another project's config files; the "reconnect that project for you"
+      option was rejected.
 
-- [ ] **Q3 — Where does the sweep live?** ADR-0010 says setup is reconciliation
-      and that reconciliation belongs to `kanmer-setup`, which argues for the
-      skill. But this sweep is machine-scoped, needs a human confirmation, and
-      its findings are about *other* projects — which argues for the GUI's
-      Connect panel, or a one-time prompt after an app update. It could be both
-      (shared pure core, two front ends). Pick one, because it decides whether
-      this ticket touches `Settings.tsx` + IPC at all, and that is roughly half
-      the file list.
+- [x] **Q3 — Where does the sweep live?** **Answer: the GUI's Connect panel**,
+      not `kanmer-setup`. `Settings.tsx` + IPC are therefore in scope. One
+      prompt, listing every global `kanmer-*` found, each marked as having a
+      project-scoped replacement or not.
 
-- [ ] **Q4 — Does draining a project's registration count as something Kanmer may
-      do without that project being open?** The Connect UI's own hint text
-      currently promises registration writes "nothing outside this project."
-      The sweep breaks that promise by design. Confirm that is intended and the
-      copy should be rewritten, rather than the sweep being scoped to only the
-      currently-open project (which would make it useless).
+- [x] **Q4 — May Kanmer drain a project's registration without that project
+      being open?** **Answer: yes, and the Connect hint copy does NOT need
+      reversing.** Removing a *global* entry is not "writing outside this
+      project" in the sense the copy means. Tighten the wording if it reads
+      ambiguously; do not reverse the promise.
 
-## Technical questions — resolvable during implementation
+## Technical questions — resolved during planning
 
-- [ ] **Q5 — Is `codex mcp remove` formatting-safe on the global config?**
-      Research established that Kanmer's own `smol-toml` round-trip is *not*:
-      it collapses `startup_timeout_sec = 120.0` to `120` and rewrites all 65
-      single-quoted `[projects.'…']` headers (evidence in `scratch/research.md`).
-      So removal should delegate to codex. Circumstantial evidence says codex
-      edits surgically — the live file kept its float and its literal strings
-      through the removal of the pegasus entry — but that has not been proven by
-      running the command against a copied fixture. Prove it before shipping; if
-      it is *not* safe, the fallback is a surgical text-level excision of the
-      `[mcp_servers.kanmer-*]` table blocks, never a parse/stringify rewrite.
+- [x] **Q5 — Is `codex mcp remove` formatting-safe on the global config?**
+      **Answer: yes — proven, not assumed.** Run against a synthetic `CODEX_HOME`
+      fixture carrying `startup_timeout_sec = 120.0`, two literal-quoted
+      `[projects.'c:\…']` trust headers, a top-of-file comment and a second MCP
+      server. `codex mcp remove kanmer-pegasus` printed "Removed global MCP
+      server", and `diff -u` against the pre-image shows exactly one deletion
+      hunk — the `[mcp_servers.kanmer-pegasus]` block and its own preceding
+      comment. The float, the literal quoting and every other byte survived.
+      Removal therefore delegates to `codex mcp remove`; the TOML parse is for
+      **listing only** (F1: Kanmer's own round-trip is destructive).
 
-- [ ] **Q6 — What happens when `codex` is not on PATH?** The sweep can list
-      (pure TOML parse) but cannot drain. `connectAgent` swallows CLI failures
-      with `.catch(() => undefined)`; the sweep must not, or it will report a
-      drain that never happened. Confirm the copy-paste fallback (FRD-012 AC-4)
-      is the right answer here rather than a hard failure.
+- [x] **Q6 — What happens when `codex` is not on PATH?** **Answer: the copy-paste
+      fallback (FRD-012 AC-4), never a swallowed failure.** Listing is a pure
+      TOML parse and still works. Each removal reports its own `ok`/output and
+      carries the exact `codex mcp remove <name>` command; a missing CLI shows up
+      as every entry failing with the command to run by hand. `connectAgent`'s
+      `.catch(() => undefined)` is deliberately *not* copied — a drain that
+      reports success it did not achieve is worse than no sweep.
 
-- [ ] **Q7 — How should the sweep treat an entry whose recorded project root no
-      longer exists on disk?** Deleted repo, renamed folder, or an install-path
-      move (the separate stale-path problem noted at `AGENTS.md:494`). "No
-      project-scoped replacement" and "no project" look identical to a naive
-      probe, but they want opposite treatment: the first must be protected, the
-      second is pure garbage and is the safest thing in the file to remove.
+- [x] **Q7 — An entry whose recorded project root no longer exists on disk?**
+      **Answer: a distinct `orphaned` class — removable, but never
+      pre-selected.** It is not the protected case: a folder that does not exist
+      has no registration to cut. But the probe can be wrong (an unmounted drive,
+      a moved checkout), so it never rides along with the recommended selection
+      and the row says plainly that an unmounted drive is a reason to leave it.
+      The operator's refusal for *no-replacement* is untouched and has no
+      override.
 
-- [ ] **Q8 — Should the sweep also list *well-formed* legacy entries whose
-      project HAS reconnected but which are currently shadowing it?** These are
-      the straightforward drain targets and presumably yes — but note the entry
-      is global and the replacement is project-scoped-and-trust-gated, so for an
-      untrusted folder the global entry is still the only one codex loads.
-      `codexTrustFromConfig` already exists to answer that and should probably
-      gate this classification too.
+- [x] **Q8 — Should the sweep list well-formed legacy entries whose project has
+      reconnected but which are shadowing it?** **Answer: yes, and trust gates
+      the classification.** A project-scoped replacement codex will not load is
+      not a replacement, so `codexTrustFromConfig` runs against the same global
+      string already in hand: only `trusted` makes an entry drainable.
+      `untrusted` and `maybe-via-ancestor` are reported as their own class and
+      are **not removable** — the detail says to trust the folder. Treating
+      "maybe" as not-trusted errs toward leaving the entry in place, which is the
+      safe direction.
 
 ## Parked (explicitly deferred)
 
-- Whether grok should eventually own its own config file regardless of Q1's
-  answer — a follow-up ticket if (a) or (b) ships.
+- Auto-migrating existing grok users off `.mcp.json`. Explicitly rejected by the
+  operator (Q1) — they reconnect once.
 - Repairing stale install paths inside the entries the sweep enumerates. Out of
   scope here (see `files`), but the sweep is the first thing that will have the
   full list in hand, so it is the natural home for that later feature.
 - Extending the sweep to non-codex hosts. None of them ever wrote a global
   per-project entry, so there is nothing to drain today.
+- A comment-preserving TOML writer. `.grok/config.toml` inherits ADR-0007's
+  accepted round-trip tradeoff for *project* files; see ADR-0012's consequences.
 
 ---
 

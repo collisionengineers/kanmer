@@ -135,8 +135,9 @@ kanmer/
     mcp-server/           # @kanmer/mcp-server — local stdio MCP server
       src/
         index.ts          # McpServer + 20 tools + resources/prompts + stdio transport
-        root.ts           # resolve project root: --root → KANMER_ROOT → cwd
+        root.ts           # resolve project root: --root → KANMER_ROOT → discovery → --init, else fatal (ADR-0012)
         smoke.mjs         # standalone stdio smoke test (spawns the server)
+        smoke-discovery.mjs # stdio smoke test for board discovery with no --root
       tsup.config.ts            # ESM dev build (deps external) → dist/index.js
       tsup.standalone.config.ts # self-contained CJS bundle → dist/standalone/kanmer-mcp.cjs
 

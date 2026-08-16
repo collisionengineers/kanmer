@@ -16,10 +16,39 @@ there is nothing to do.
 
 `get_status` (it never creates `.kanmer/`). Report what you found before
 changing anything: whether a board exists, its format, and its counts.
+`rootSource` on that answer says *how* the server found its root — `flag`, `env`,
+`cwd`, `cwd-worktree`, `ancestor`, `ancestor-worktree` or `init`. Read it: a
+board found by discovery is not necessarily the one the user meant.
 
 In a Git repo set up through the GUI the board lives in its own worktree,
 `.worktrees/kanmer`, and MCP is already rooted there. Never create, switch or
 push that board branch yourself.
+
+### If the server would not start at all
+
+A server started without `--root` in a repo that has **no board anywhere** now
+**fails to boot** rather than starting against an empty one (ADR-0012). You will
+see, on stderr or in the host's server log:
+
+```
+Error: no Kanmer board found. Tried:
+  …\proj\.kanmer
+  …\proj\.worktrees\*\.kanmer
+ Pass --root <board>, set KANMER_ROOT,
+ or pass --init to create one here.
+```
+
+That is the one thing setup cannot work around from inside a tool call — there
+is no session to call a tool in. **Onboarding a board-less repo therefore means
+re-registering the server with the `--init` opt-in** (or `KANMER_INIT=1`, or an
+explicit `--root <repo>`), then re-running setup. `--init` does not create
+anything by itself; it re-permits the lazy creation on the **first write**, which
+is what step 6's greenfield path relies on. Tell the user what to change and
+why — do not hand-create a `.kanmer/` folder to route around it, because a board
+built by hand is exactly the drift this skill exists to reconcile.
+
+A board found by discovery, or a root given by `--root`/`KANMER_ROOT`, needs no
+flag: the opt-in matters only when nothing was found.
 
 ## 2. Apply version steps
 
@@ -102,6 +131,10 @@ on the second run is not reconciliation.
 
 A genuinely fresh project has no issues, no plans and no history to mine. Then,
 and only then, build the board from a brief.
+
+This is the path that needs the `--init` opt-in when the server was started
+without a root (see step 1): the board is created lazily by the first write, and
+without the opt-in the server will not have started.
 
 0. **Require a brief.** If the user hasn't given one, ask for a paragraph or two:
    what they're building and for whom. Don't invent a product; a fresh repo with

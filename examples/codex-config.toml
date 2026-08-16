@@ -15,9 +15,14 @@
 # The server resolves the project root (where .kanmer lives) from, in order:
 #   1. a --root <path> argument
 #   2. the KANMER_ROOT environment variable
-#   3. the process working directory (cwd)
+#   3. discovery: from the working directory upwards, looking for .kanmer/ and
+#      then for a board parked in .worktrees/*/.kanmer, stopping at a real .git
+#      directory (a git worktree's .git *file* is passed through)
+#   4. --init / KANMER_INIT=1, which permits creating a board at the working
+#      directory when none was found
+# Finding no board is fatal: the server exits naming every path it tried.
 #
-# Using `cwd` (below) points the server at THIS project's .kanmer folder.
+# Using `cwd` (below) points discovery at THIS project.
 #
 # Replace `<kanmer-repo>` with wherever you cloned this repo.
 

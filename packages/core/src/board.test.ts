@@ -44,11 +44,32 @@ describe("board prefix uniqueness", () => {
 
   it("accepts the default board", async () => {
     await expect(writeBoard(paths, defaultBoardConfig())).resolves.toBeUndefined();
-    expect(await fs.readFile(paths.boardFile, "utf8")).toContain("statuses:");
+    const yaml = await fs.readFile(paths.boardFile, "utf8");
+    // Format 3 writes no stage or priority dimension at all (ADR-0002/0006).
+    expect(yaml).not.toContain("statuses:");
+    expect(yaml).not.toContain("priorities:");
+    expect(yaml).toContain("profiles:");
+    expect(yaml).toContain("proofTypes:");
+    expect(yaml).toContain("groupKinds:");
   });
 
-  it("lastStageId returns the final status id, undefined for an empty board", () => {
+  it("lastStageId is a constant, independent of the board", () => {
     expect(lastStageId(defaultBoardConfig())).toBe("done");
-    expect(lastStageId({ ...defaultBoardConfig(), statuses: [] })).toBeUndefined();
+    // The whole point of ADR-0002: no board shape can change the answer.
+    expect(lastStageId({ ...defaultBoardConfig(), statuses: [] })).toBe("done");
+    expect(lastStageId()).toBe("done");
+  });
+
+  it("the default board ships the four profiles and a sane default", () => {
+    const board = defaultBoardConfig();
+    expect(Object.keys(board.profiles ?? {}).sort()).toEqual([
+      "chore",
+      "custom",
+      "feature",
+      "fix",
+      "spike",
+    ]);
+    expect(board.defaultProfile).toBe("fix");
+    expect(board.groupKinds?.map((k) => k.id)).toEqual(["epic", "horizon"]);
   });
 });

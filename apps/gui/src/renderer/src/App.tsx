@@ -1,4 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  UI_STAGES as STAGES,
+  UI_STAGE_IDS as STAGE_IDS,
+  UI_LAST_STAGE,
+  uiStageName as stageName,
+} from "../../shared/stages.js";
 import type {
   BoardConfig,
   CreateItemInput,
@@ -82,7 +88,7 @@ export function App(): JSX.Element {
   tabsRef.current = tabs;
   const [board, setBoard] = useState<BoardConfig | null>(null);
   const [items, setItems] = useState<Item[]>([]);
-  const [format, setFormat] = useState<1 | 2>(2);
+  const [format, setFormat] = useState<1 | 2 | 3>(2);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [view, setView] = useState<View>("ticket");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -586,12 +592,12 @@ export function App(): JSX.Element {
       if (!board) return;
       const item = items.find((i) => i.id === id);
       if (!item) return;
-      const order = board.statuses.map((s) => s.id);
+      const order: string[] = [...STAGE_IDS];
       const idx = order.indexOf(item.status);
       const target = order[idx + dir];
       if (idx === -1 || !target) return;
       await onMove(id, { status: target });
-      announce(`${id} moved to ${board.statuses.find((s) => s.id === target)?.name ?? target}`);
+      announce(`${id} moved to ${stageName(target)}`);
     },
     [board, items, onMove, announce],
   );
@@ -649,7 +655,7 @@ export function App(): JSX.Element {
         archived: item.archived,
         taken: Boolean(item.taken_at),
         currentStatus: item.status,
-        statuses: board.statuses.map((s) => ({ id: s.id, name: s.name })),
+        statuses: STAGES.map((s) => ({ id: s.id, name: s.name })),
       });
       if (!action) return;
       try {
@@ -731,7 +737,7 @@ export function App(): JSX.Element {
   }, [settingsOpen, paletteOpen, activityOpen, dispatchesOpen, trySelect, requestOpen]);
 
   const knownIds = useMemo(() => new Set(items.map((i) => i.id)), [items]);
-  const lastStage = board?.statuses[board.statuses.length - 1]?.id;
+  const lastStage = UI_LAST_STAGE;
   // Card badge inputs: computed once here, read per card as booleans so
   // Card's memoization survives (a Set prop would re-render every card).
   const blocked = useMemo(() => blockedIds(items, lastStage), [items, lastStage]);
@@ -769,7 +775,7 @@ export function App(): JSX.Element {
       // selected they do not appear, which is honest for a verb that needs a
       // subject. Substring scoring in the palette filters them.
       ...(selected && board
-        ? board.statuses
+        ? STAGES
             .filter((s) => s.id !== selected.status)
             .map((s) => ({
               id: `move-${s.id}`,
@@ -1319,7 +1325,6 @@ export function App(): JSX.Element {
           board={board}
           items={items}
           defaultArea={settings?.defaultArea ?? ""}
-          defaultPriority={settings?.defaultPriority ?? ""}
           onClose={() => setCreateOpen(false)}
           onCreate={async (input) => {
             const created = await createItem(input, { select: true });
@@ -1352,7 +1357,7 @@ function applyFilters(list: Item[], search: string, filters: Filters): Item[] {
   const q = search.trim().toLowerCase();
   return list.filter((item) => {
     if (filters.area !== undefined && item.area !== filters.area) return false;
-    if (filters.priority && item.priority !== filters.priority) return false;
+
     if (filters.assignee && item.assignee !== filters.assignee) return false;
     if (filters.label && !(item.labels ?? []).includes(filters.label)) return false;
     if (q) {

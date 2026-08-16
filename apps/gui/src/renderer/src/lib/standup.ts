@@ -1,3 +1,4 @@
+import { UI_STAGE_IDS as STAGE_IDS, uiStageName as stageName } from "../../../shared/stages.js";
 import type { ActivityEntry, BoardConfig, Item, ItemWarning } from "@kanmer/core";
 import { blockedIds } from "./board.js";
 
@@ -83,25 +84,21 @@ function flat(lines: StandupLine[]): StandupGroup[] {
 
 /** Build the skill's eight sections, in the skill's order. */
 export function buildStandup(input: StandupInput): StandupReport {
-  const { boardName, board, items, warnings, activity, now, checklists } = input;
+  const { boardName, items, warnings, activity, now, checklists } = input;
   const active = items.filter((i) => !i.archived && i.type === "ticket");
-  const stages = board.statuses.map((s) => s.id);
+  const stages: string[] = [...STAGE_IDS];
   const onBoard = new Set(stages);
   const first = stages[0];
   const last = stages[stages.length - 1];
-  const reviewLike = board.statuses.find(
-    (s) => /review|approval/i.test(s.id) || /review|approval/i.test(s.name),
-  )?.id;
+  const reviewLike = "review";
   const working = new Set(stages.slice(1, -1).filter((s) => s !== reviewLike));
   const blocked = blockedIds(active, last);
   const staleCutoff = new Date(now - STALE_MS).toISOString();
-  const stageName = (id: string): string =>
-    board.statuses.find((s) => s.id === id)?.name ?? id;
 
   const describe = (i: Item, extra = ""): string => {
     const bits = [stageName(i.status)];
     if (i.area) bits.push(i.area);
-    if (i.priority) bits.push(i.priority);
+    if (i.profile) bits.push(i.profile);
     const stale = i.updated < staleCutoff ? " — *stale*" : "";
     return `${i.id} ${i.title || "Untitled"} (${bits.join(", ")})${extra}${stale}`;
   };

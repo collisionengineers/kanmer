@@ -55,7 +55,7 @@ export interface ProjectClient {
   dispatchAgent(ticketId: string, target: ConnectTarget): Promise<DispatchStatus>;
   migrate(dryRun: boolean): Promise<MigrationReport>;
   backfillBoard(dryRun: boolean): Promise<{ addedStages: string[] }>;
-  getFormat(): Promise<1 | 2>;
+  getFormat(): Promise<1 | 2 | 3>;
   getDoc(id: string, doc: TicketDoc): Promise<{ content: string | null; version: string | null }>;
   setDoc(
     id: string,

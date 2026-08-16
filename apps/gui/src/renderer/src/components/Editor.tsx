@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { UI_STAGES as STAGES } from "../../../shared/stages.js";
 import type {
   BoardColumn,
   BoardConfig,
@@ -35,7 +36,6 @@ interface Snapshot {
   title: string;
   status: string;
   area: string;
-  priority: string;
   assignee: string;
   labels: string;
   links: string;
@@ -50,7 +50,6 @@ const FIELD_KEYS = [
   "title",
   "status",
   "area",
-  "priority",
   "assignee",
   "labels",
   "links",
@@ -65,7 +64,6 @@ function snapOf(item: Item): Snapshot {
     title: item.title,
     status: item.status,
     area: item.area,
-    priority: item.priority,
     assignee: item.assignee,
     labels: (item.labels ?? []).join(", "),
     links: (item.links ?? []).join(", "),
@@ -181,8 +179,7 @@ export function Editor(props: EditorProps): JSX.Element {
     }
   }, [item]);
 
-  const statusOpts = withCurrent(board.statuses, item.status);
-  const priorityOpts = withCurrent(board.priorities, item.priority);
+  const statusOpts = withCurrent(STAGES.map((s) => ({ id: s.id, name: s.name, color: s.color })), item.status);
   const areaOpts = withCurrent(board.areas, item.area);
   const labelSuggestions = useMemo(
     () =>
@@ -469,16 +466,6 @@ export function Editor(props: EditorProps): JSX.Element {
                 {areaOpts.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>Priority</span>
-              <select value={form.priority} onChange={(e) => set("priority", e.target.value)}>
-                {priorityOpts.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
                   </option>
                 ))}
               </select>

@@ -1,4 +1,5 @@
 import { memo, useCallback, useRef, useState } from "react";
+import { UI_STAGES as STAGES, uiStageName as stageName } from "../../../shared/stages.js";
 import type { BoardColumn, BoardConfig, CreateItemInput, Item, MovePosition } from "@kanmer/core";
 import { columnColor, columnCards, positionForDrop } from "../lib/board.js";
 import { useClient } from "../lib/client.js";
@@ -108,7 +109,10 @@ export function Board(props: BoardProps): JSX.Element {
     [onMove],
   );
 
-  const statuses = mergeColumns(board.statuses, items.map((i) => i.status));
+  const statuses = mergeColumns(
+    STAGES.map((s) => ({ id: s.id, name: s.name, color: s.color })),
+    items.map((i) => i.status),
+  );
   const usingAreas = board.areas.length > 0 || items.some((i) => i.area);
 
   function groupByArea(cards: Item[]): AreaGroup[] {
@@ -275,12 +279,10 @@ const Card = memo(function CardInner({
   onDragFinish: () => void;
 }): JSX.Element {
   const areaColor = columnColor(board.areas, item.area);
-  const priColor = columnColor(board.priorities, item.priority);
-  const priName = board.priorities.find((p) => p.id === item.priority)?.name ?? item.priority;
   const areaName = item.area
     ? board.areas.find((a) => a.id === item.area)?.name ?? item.area
     : "";
-  const stageName = board.statuses.find((s) => s.id === item.status)?.name ?? item.status;
+  const stageLabel = stageName(item.status);
   const cls = ["card", selected ? "selected" : "", dropEdge ? `drop-${dropEdge}` : ""]
     .filter(Boolean)
     .join(" ");
@@ -291,7 +293,7 @@ const Card = memo(function CardInner({
       draggable
       tabIndex={0}
       role="button"
-      aria-label={`${item.id} ${item.title || "Untitled"}, stage ${stageName}${
+      aria-label={`${item.id} ${item.title || "Untitled"}, stage ${stageLabel}${
         areaName ? `, area ${areaName}` : ""
       }${blocked ? ", blocked" : ""}${
         item.deployment && item.deployment !== "n/a" ? `, deployment ${item.deployment}` : ""
@@ -365,11 +367,6 @@ const Card = memo(function CardInner({
         {(item.prs?.length ?? 0) > 0 && (
           <span className="chip pr" title={`${item.prs!.length} PR(s)`}>
             ⇅ {item.prs!.length}
-          </span>
-        )}
-        {item.priority && (
-          <span className="pri" style={priColor ? { color: priColor } : undefined}>
-            {priName}
           </span>
         )}
       </div>

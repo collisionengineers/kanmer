@@ -7,14 +7,21 @@ import {
 import path from "node:path";
 import { z } from "zod";
 import {
+  BOUNDARIES,
+  DOC_TYPES,
+  GATE_EXEMPT_DIRS,
   KanmerStore,
+  STAGES,
+  STAGE_IDS,
   computeBlockedIds,
   getLinkGraph,
+  lastStageId,
   linkItems,
   migrateBoard,
   repoDocsMap,
-  resolveDocTypes,
-  resolveGates,
+  resolveGroupKinds,
+  resolveProfiles,
+  resolveProofTypes,
   serialiseItem,
   takeTicketPromptText,
   watchKanmer,
@@ -128,7 +135,8 @@ async function summarise(item: Item, blockedIds: Set<string>) {
     title: item.title,
     status: item.status,
     area: item.area,
-    priority: item.priority,
+    profile: item.profile ?? null,
+    groups: item.groups ?? null,
     assignee: item.assignee,
     labels: item.labels,
     order: item.order ?? null,
@@ -149,23 +157,36 @@ async function summarise(item: Item, blockedIds: Set<string>) {
 /** Which item ids are currently blocked (live blocker, per the whole board). */
 async function blockedSet(): Promise<Set<string>> {
   const all = await store.listItems({ includeArchived: true });
-  const board = await store.getBoard();
-  return computeBlockedIds(all, board.statuses[board.statuses.length - 1]?.id);
+  return computeBlockedIds(all, lastStageId());
 }
 
 const itemTypeEnum = z.enum(["ticket", "plan", "research"]);
 // Doc names are per-area configurable data now (board.docs); core validates a
 // write against the ticket area's set, so the wire type is a plain string.
 const ticketDocEnum = z.string();
-const columnKindEnum = z.enum(["status", "area", "priority"]);
+// Areas are the only configurable column: stages are constants (ADR-0002)
+// and priority is gone (ADR-0006).
+const columnKindEnum = z.literal("area");
 
 const createFields = {
   type: itemTypeEnum.default("ticket").describe("ticket | plan | research (v2 boards: ticket only)"),
   title: z.string().describe("Short title"),
   status: z.string().optional().describe("Status id / workflow stage (defaults to the first stage)"),
   area: z.string().optional().describe("Area id (see list_board → areas)"),
-  priority: z.string().optional().describe("Priority id (see list_board → priorities)"),
   assignee: z.string().optional(),
+  profile: z
+    .string()
+    .optional()
+    .describe(
+      "Requirement profile — which documents each stage boundary needs of this ticket. feature | fix | chore | spike | custom (see list_board → profiles). Omit to inherit the area default, then the board default.",
+    ),
+  requires: z
+    .record(z.array(z.string()))
+    .optional()
+    .describe(
+      "Inline requirements, honoured only when profile is \"custom\": { \"leave-preparing\": [\"plan\"], \"enter-done\": [\"proof:visual\"] }. An empty map means no requirements.",
+    ),
+  groups: z.array(z.string()).optional().describe("Group ids this ticket belongs to (must exist)"),
   labels: z.array(z.string()).optional(),
   links: z.array(z.string()).optional().describe("Ids of related items (must exist)"),
   blocks: z.array(z.string()).optional().describe("Ids this item blocks (must exist)"),
@@ -208,7 +229,7 @@ server.registerTool(
     const { items, warnings } = await store.listItemsWithWarnings({ includeArchived: true });
     const active = items.filter((i) => !i.archived);
     const byStage: Record<string, number> = {};
-    for (const s of board.statuses) byStage[s.id] = 0;
+    for (const s of STAGE_IDS) byStage[s] = 0;
     let offBoardStage = 0;
     const byType: Record<string, number> = {};
     for (const item of active) {
@@ -246,17 +267,21 @@ server.registerTool(
   },
   guard(async () => {
     const { board, source } = await store.getBoardWithSource();
-    // Surface the resolved document model so a skill learns the doc types +
-    // gates without a bespoke call. `docModel` reflects the fallbacks too, so it
-    // is populated even when board.docs is absent.
+    // Everything a skill needs to orient, resolved (fallbacks included), so no
+    // bespoke follow-up call is required — FRD-022 R5.
     return ok({
       ...board,
       source,
-      docModel: {
-        repoDocs: repoDocsMap(board),
-        default: { types: resolveDocTypes(board, ""), gates: resolveGates(board, "") },
-        deploymentTracking: board.deployment !== undefined,
-      },
+      stages: STAGES,
+      profiles: resolveProfiles(board),
+      defaultProfile: board.defaultProfile ?? "fix",
+      groupKinds: resolveGroupKinds(board),
+      proofTypes: resolveProofTypes(board),
+      docTypes: DOC_TYPES,
+      gateExemptFolders: GATE_EXEMPT_DIRS,
+      boundaries: BOUNDARIES,
+      repoDocs: repoDocsMap(board),
+      deploymentTracking: board.deployment !== undefined,
     });
   }),
 );
@@ -426,27 +451,32 @@ server.registerTool(
     if (id !== undefined) {
       const item = await store.getItem(id);
       if (!item) return fail(`No item with id "${id}"`);
+      const report = await store.getDocGates(id);
+      if (!report) return fail(`"${id}" has no ticket folder to inspect.`);
       const info = await store.getTicketDocsInfo(id);
+      // The core resolver verbatim: every surface reads this same answer, so
+      // none of them restates a rule (ADR-0009).
       return ok({
         id,
         area: item.area,
         status: item.status,
-        statuses: board.statuses.map((s) => s.id),
-        docTypes: resolveDocTypes(board, item.area),
-        docsPresent: info?.docs ?? null,
-        gates: resolveGates(board, item.area),
+        stages: STAGE_IDS,
+        ...report,
+        docCounts: info?.counts ?? {},
+        references: info?.references ?? [],
         refs: item.refs ?? [],
         docs_todo: item.docs_todo === true,
       });
     }
-    const areas: Record<string, unknown> = {};
-    for (const areaId of Object.keys(board.docs?.areas ?? {})) {
-      areas[areaId] = { types: resolveDocTypes(board, areaId), gates: resolveGates(board, areaId) };
-    }
     return ok({
+      stages: STAGES,
+      boundaries: BOUNDARIES,
+      profiles: resolveProfiles(board),
+      defaultProfile: board.defaultProfile ?? "fix",
+      docTypes: DOC_TYPES,
+      gateExemptFolders: GATE_EXEMPT_DIRS,
+      proofTypes: resolveProofTypes(board),
       repoDocs: repoDocsMap(board),
-      default: { types: resolveDocTypes(board, ""), gates: resolveGates(board, "") },
-      areas,
       deploymentTracking: board.deployment ?? null,
     });
   }),
@@ -507,8 +537,18 @@ server.registerTool(
       title: z.string().optional(),
       status: z.string().optional(),
       area: z.string().optional(),
-      priority: z.string().optional(),
       assignee: z.string().optional(),
+      profile: z
+        .string()
+        .optional()
+        .describe(
+          "Requirement profile: feature | fix | chore | spike | custom. Gates re-evaluate immediately — changing it can unblock a move that was blocked a moment ago.",
+        ),
+      requires: z
+        .record(z.array(z.string()))
+        .optional()
+        .describe("Inline requirements, honoured only when profile is \"custom\""),
+      groups: z.array(z.string()).optional().describe("Group ids this ticket belongs to"),
       order: z.number().optional().describe("Manual sort key (move_item's position computes this)"),
       labels: z.array(z.string()).optional(),
       links: z.array(z.string()).optional(),

@@ -1,10 +1,23 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { pathExists, readText, writeFileAtomic } from "./io.js";
-import { areaFolderName, NO_AREA_DIR, ticketDirIn, type KanmerPaths } from "./paths.js";
+import { ensureDir, pathExists, readText, writeFileAtomic } from "./io.js";
+import {
+  areaFolderName,
+  NO_AREA_DIR,
+  SCRATCH_PREFIX,
+  ticketDirIn,
+  type KanmerPaths,
+} from "./paths.js";
 import { parseItem, serialiseItem } from "./frontmatter.js";
 import { parseWikiLinks } from "./links.js";
-import { areaPrefix } from "./board.js";
+import { areaPrefix, DEFAULT_GROUP_KINDS, writeBoard } from "./board.js";
+import { isStageId, type StageId } from "./stages.js";
+import {
+  DEFAULT_PROFILES,
+  DEFAULT_PROFILE_ID,
+  DEFAULT_PROOF_TYPES,
+  type ProfileMap,
+} from "./profiles.js";
 import { writeVersion } from "./version.js";
 import type { KanmerStore } from "./store.js";
 import type { Item, UpdateItemPatch } from "./types.js";
@@ -412,6 +425,63 @@ export interface BackfillReport {
 }
 
 /**
+ * v→3 status aliases (FRD-007 M2a). Case-insensitive and trimmed; the v2 seven
+ * collapse into the six, with Researching and Planning both landing in
+ * Preparing. Anything unmatched goes to Backlog with a `needs-restage` label
+ * rather than being guessed at — a wrong stage is worse than an obvious one.
+ */
+const STAGE_ALIASES: Record<string, StageId> = {
+  backlog: "backlog", todo: "backlog", "to do": "backlog", "to-do": "backlog",
+  "to_do": "backlog", "not started": "backlog", inbox: "backlog", new: "backlog",
+  preparing: "preparing", researching: "preparing", research: "preparing",
+  planning: "preparing", plan: "preparing", discovery: "preparing", design: "preparing",
+  designing: "preparing", groom: "preparing", grooming: "preparing",
+  implementing: "implementing", "in progress": "implementing", "in-progress": "implementing",
+  "in_progress": "implementing", inprogress: "implementing", doing: "implementing",
+  wip: "implementing", development: "implementing", dev: "implementing", building: "implementing",
+  review: "review", reviewing: "review", "in review": "review", "in-review": "review",
+  "code review": "review", "code-review": "review", pr: "review",
+  verifying: "verifying", verify: "verifying", qa: "verifying", testing: "verifying",
+  test: "verifying", validating: "verifying",
+  done: "done", complete: "done", completed: "done", shipped: "done", closed: "done",
+  released: "done", finished: "done",
+};
+
+/** Label stamped on a ticket whose old stage had no mapping. */
+export const NEEDS_RESTAGE = "needs-restage";
+
+/** Where each loose v2 document moves under format 3 (FRD-007 M2c). */
+const DOC_MOVES: Record<string, string> = {
+  "research.md": "research/research.md",
+  // The one rename: v2's `impact` becomes `files`, because the doc maps where
+  // the change lands, and "impact" kept being read as "consequences".
+  "impact.md": "files/impact.md",
+  "plan.md": "plan/plan.md",
+  "checklist.md": "checklist/checklist.md",
+  "open-questions.md": "open-questions/open-questions.md",
+  "post-implementation-report.md": "post-implementation-report/post-implementation-report.md",
+  "proof.md": "proof/proof.md",
+};
+
+export interface V3Report {
+  alreadyV3: boolean;
+  dryRun: boolean;
+  /** Old status → new stage, with how many tickets took that path. */
+  stageMapping: { from: string; to: string; count: number }[];
+  /** Tickets whose status had no alias: sent to Backlog + labelled. */
+  needsRestage: { id: string; from: string }[];
+  /** Loose documents relocated into their type folder. */
+  docMoves: { id: string; from: string; to: string }[];
+  /** Tickets that had `priority:` stripped. */
+  prioritiesStripped: number;
+  /** Profile assigned per ticket, counted (FRD-002 implementation note). */
+  profileAssignments: { profile: string; count: number }[];
+  /** Things that must be resolved by hand before applying. */
+  blockers: string[];
+  notes: string[];
+}
+
+/**
  * Backfill the 7-stage default onto an existing board: for every canonical stage
  * the board lacks (alias-aware presence test), insert it after the nearest
  * preceding present stage. Additive only — existing stages are never renamed,
@@ -427,7 +497,8 @@ export async function backfillStages(
   opts: { dryRun?: boolean } = {},
 ): Promise<BackfillReport> {
   const board = await store.getBoard();
-  const statuses = [...board.statuses];
+  const statuses = [...(board.statuses ?? [])];
+  if (statuses.length === 0) return { addedStages: [] }; // format 3: no statuses to backfill
   const findIdx = (canon: (typeof CANONICAL_STAGES)[number]): number =>
     statuses.findIndex((s) => s.id === canon.id || canon.aliases.includes(s.id));
   const added: string[] = [];
@@ -450,20 +521,186 @@ export async function backfillStages(
   return { addedStages: added };
 }
 
+/** Map a legacy status onto one of the six, or null when nothing fits. */
+export function mapStage(status: string): StageId | null {
+  const key = status.trim().toLowerCase();
+  if (isStageId(key)) return key;
+  return STAGE_ALIASES[key] ?? null;
+}
+
 /**
- * The umbrella upgrade: bring a board fully current. Runs the v1→v2 migration
- * when needed, then backfills the 7-stage default. `dryRun` reports what each
- * step would do without writing. Callers must surface the preview before
- * applying (the GUI prompt in Phase 4, the agent's `migrate_board` in Phase 2).
+ * v→3: the single migration that batches fixed stages, folder documents and
+ * priority removal (ADR-0008).
+ *
+ * One migration rather than three because all three rewrite the same ticket
+ * files — three passes would mean three prompts and three chances to
+ * half-migrate. Carries forward every v1→v2 behaviour that earned its place:
+ * dry-run parity, blockers surfaced before any write, per-file check-before-act
+ * so an interrupted run resumes, and idempotence so a second run is a no-op.
+ */
+export async function migrateToV3(
+  store: KanmerStore,
+  opts: { dryRun?: boolean } = {},
+): Promise<V3Report> {
+  const dryRun = opts.dryRun ?? false;
+  const report: V3Report = {
+    alreadyV3: false,
+    dryRun,
+    stageMapping: [],
+    needsRestage: [],
+    docMoves: [],
+    prioritiesStripped: 0,
+    profileAssignments: [],
+    blockers: [],
+    notes: [],
+  };
+
+  if ((await store.detectFormat()) === 3) {
+    report.alreadyV3 = true;
+    return report;
+  }
+
+  const items = await store.listItems({ includeArchived: true });
+  const mapping = new Map<string, { to: string; count: number }>();
+  const profiles = new Map<string, number>();
+
+  for (const summary of items) {
+    const item = await store.getItem(summary.id);
+    if (!item) continue;
+    const loc = await (store as unknown as {
+      locateItem(id: string): Promise<{ kind: string; dir?: string; file: string } | null>;
+    }).locateItem(item.id);
+    if (!loc || loc.kind !== "v2" || !loc.dir) {
+      report.blockers.push(`${item.id} is still in the legacy format-1 layout — migrate to format 2 first.`);
+      continue;
+    }
+
+    // (a)(b) stage mapping
+    const mapped = mapStage(item.status);
+    const to = mapped ?? "backlog";
+    const key = item.status || "(empty)";
+    const entry = mapping.get(key) ?? { to, count: 0 };
+    entry.count++;
+    mapping.set(key, entry);
+    if (!mapped) report.needsRestage.push({ id: item.id, from: item.status });
+
+    // (c) loose documents into their type folders
+    for (const [from, dest] of Object.entries(DOC_MOVES)) {
+      if (await pathExists(path.join(loc.dir, from))) {
+        report.docMoves.push({ id: item.id, from, to: dest });
+      }
+    }
+    for (const name of await listDirSafe(loc.dir)) {
+      if (name.startsWith(SCRATCH_PREFIX) && name.endsWith(".md")) {
+        report.docMoves.push({
+          id: item.id,
+          from: name,
+          to: `scratch/${name.slice(SCRATCH_PREFIX.length)}`,
+        });
+      }
+    }
+
+    // (d) priority
+    if ((item as Record<string, unknown>).priority !== undefined) report.prioritiesStripped++;
+
+    // (f) profiles — active work owes the full pipeline; finished work owes
+    // nothing retroactively, which is what makes historical backfill painless.
+    const profile = item.archived || to === "done" ? "custom" : "feature";
+    profiles.set(profile, (profiles.get(profile) ?? 0) + 1);
+  }
+
+  report.stageMapping = [...mapping].map(([from, v]) => ({ from, to: v.to, count: v.count }));
+  report.profileAssignments = [...profiles].map(([profile, count]) => ({ profile, count }));
+  if (report.needsRestage.length) {
+    report.notes.push(
+      `${report.needsRestage.length} ticket(s) had a status with no mapping; they move to Backlog and are labelled "${NEEDS_RESTAGE}".`,
+    );
+  }
+
+  if (dryRun || report.blockers.length) return report;
+
+  // ---- apply -------------------------------------------------------------
+  for (const summary of items) {
+    const item = await store.getItem(summary.id);
+    if (!item) continue;
+    const loc = await (store as unknown as {
+      locateItem(id: string): Promise<{ kind: string; dir?: string; file: string } | null>;
+    }).locateItem(item.id);
+    if (!loc || loc.kind !== "v2" || !loc.dir) continue;
+
+    // Documents first: a half-applied run that already moved them must not
+    // move them twice, so every step checks before acting.
+    for (const [from, dest] of Object.entries(DOC_MOVES)) {
+      const src = path.join(loc.dir, from);
+      if (!(await pathExists(src))) continue;
+      const target = path.join(loc.dir, ...dest.split("/"));
+      await ensureDir(path.dirname(target));
+      if (!(await pathExists(target))) await fs.rename(src, target);
+    }
+    for (const name of await listDirSafe(loc.dir)) {
+      if (!name.startsWith(SCRATCH_PREFIX) || !name.endsWith(".md")) continue;
+      const src = path.join(loc.dir, name);
+      const target = path.join(loc.dir, "scratch", name.slice(SCRATCH_PREFIX.length));
+      await ensureDir(path.dirname(target));
+      if (!(await pathExists(target))) await fs.rename(src, target);
+    }
+
+    const mapped = mapStage(item.status);
+    const to = mapped ?? "backlog";
+    const next: Record<string, unknown> = { ...item, status: to };
+    delete next.priority;
+    if (!mapped && !(item.labels ?? []).includes(NEEDS_RESTAGE)) {
+      next.labels = [...(item.labels ?? []), NEEDS_RESTAGE];
+    }
+    if (next.profile === undefined) {
+      next.profile = item.archived || to === "done" ? "custom" : "feature";
+      if (next.profile === "custom") next.requires = {};
+    }
+    await writeFileAtomic(loc.file, serialiseItem(next as unknown as Item));
+  }
+
+  // (e) board.yml: the legacy dimensions out, the v3 vocabulary in.
+  const board = await store.getBoard();
+  const next = { ...board };
+  delete next.statuses;
+  delete next.priorities;
+  delete next.docs;
+  next.profiles ??= structuredClone(DEFAULT_PROFILES) as Record<string, ProfileMap>;
+  next.defaultProfile ??= DEFAULT_PROFILE_ID;
+  next.groupKinds ??= structuredClone(DEFAULT_GROUP_KINDS);
+  next.proofTypes ??= [...DEFAULT_PROOF_TYPES];
+  await writeBoard(store.paths, next);
+
+  await writeVersion(store.paths, {
+    format: 3,
+    migratedFrom: 2,
+    migratedAt: new Date().toISOString(),
+  });
+  store.resetFormatCache();
+  return report;
+}
+
+/** Directory listing that treats "missing" as "empty". */
+async function listDirSafe(dir: string): Promise<string[]> {
+  try {
+    return await fs.readdir(dir);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The umbrella upgrade: bring a board fully current. v1→v2 when needed, then
+ * v→3. `dryRun` reports what each step would do without writing; callers must
+ * surface that preview before applying (the GUI prompt, or `migrate_board`).
  */
 export async function migrateBoard(
   store: KanmerStore,
   opts: { dryRun?: boolean } = {},
-): Promise<{ v2: MigrationReport; backfill: BackfillReport }> {
+): Promise<{ v2: MigrationReport; backfill: BackfillReport; v3: V3Report }> {
   const dryRun = opts.dryRun ?? false;
   const v2 = await migrateToV2(store, { dryRun });
-  // A real v1→v2 run already backfilled; run it again (idempotent) so an
-  // already-v2 board still gets the stage backfill through this entry point.
   const backfill = await backfillStages(store, { dryRun });
-  return { v2, backfill };
+  const v3 = await migrateToV3(store, { dryRun });
+  return { v2, backfill, v3 };
 }

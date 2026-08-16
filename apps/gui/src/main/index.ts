@@ -16,17 +16,20 @@ import { readFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import { classifyKanmerPath } from "../shared/kanmerPath.js";
 import {
+  BOUNDARIES,
+  DOC_TYPES,
+  GATE_EXEMPT_DIRS,
   KanmerStore,
+  STAGE_IDS,
   assertSafeRepoPath,
-  evaluateGates,
   getLinkGraph,
   linkItems,
   migrateBoard,
   migrateToV2,
-  repoDocKindOf,
   repoDocsMap,
-  resolveDocTypes,
-  resolveGates,
+  resolveProfiles,
+  resolveProofTypes,
+  stageName,
   watchKanmer,
   type BoardColumn,
   type BoardConfig,
@@ -379,9 +382,7 @@ async function flushToasts(): Promise<void> {
       try {
         const item = await store?.getItem(key);
         if (item) {
-          const stage =
-            (await store?.getBoard())?.statuses.find((s) => s.id === item.status)?.name ??
-            item.status;
+          const stage = stageName(item.status);
           title = `${key} — ${stage}`;
           body = item.title;
         }
@@ -666,17 +667,20 @@ function registerIpc(): void {
   ipcMain.handle(CH.getDocsInfo, (_e, p: string, id: string) =>
     requireStore(p).getTicketDocsInfo(id),
   );
-  ipcMain.handle(CH.getDocTypes, async (_e, p: string, id: string) => {
-    const store = requireStore(p);
-    const [item, board] = await Promise.all([store.getItem(id), store.getBoard()]);
-    return resolveDocTypes(board, item?.area ?? "");
-  });
+  // The doc-type vocabulary is fixed in format 3 (containment defines type),
+  // so this no longer varies by area — the shape is kept so the renderer's
+  // callers are unchanged.
+  ipcMain.handle(CH.getDocTypes, async () => DOC_TYPES.map((id) => ({ id, name: id })));
   ipcMain.handle(CH.getDocModel, async (_e, p: string) => {
     const board = await requireStore(p).getBoard();
     return {
       repoDocs: repoDocsMap(board),
-      defaultTypes: resolveDocTypes(board, ""),
-      defaultGates: resolveGates(board, ""),
+      docTypes: DOC_TYPES,
+      gateExemptFolders: GATE_EXEMPT_DIRS,
+      boundaries: BOUNDARIES,
+      profiles: resolveProfiles(board),
+      defaultProfile: board.defaultProfile ?? "fix",
+      proofTypes: resolveProofTypes(board),
     };
   });
   ipcMain.handle(CH.openRepoDoc, async (_e, p: string, rel: string) => {
@@ -704,35 +708,23 @@ function registerIpc(): void {
   });
   ipcMain.handle(CH.getGateStatus, async (_e, p: string, id: string) => {
     const store = requireStore(p);
-    const [item, board, info] = await Promise.all([
+    const [item] = await Promise.all([
       store.getItem(id),
       store.getBoard(),
       store.getTicketDocsInfo(id),
     ]);
     const out: Record<string, string[]> = {};
     if (!item) return out;
-    const gates = resolveGates(board, item.area);
-    const statuses = board.statuses.map((s) => s.id);
-    const present = info?.docs ?? {};
-    const repoDocSatisfied = (kinds: string[]) =>
-      item.docs_todo === true ||
-      (item.refs ?? []).some((rel) => {
-        const kind = repoDocKindOf(board, rel);
-        return kind !== null && kinds.includes(kind);
-      });
-    for (const stage of statuses) {
+    const report = await store.getDocGates(id);
+    if (!report) return out;
+    // blockedBy is already "per stage, why not" — exactly what the drag
+    // lock-tint needs, computed once by core.
+    for (const stage of STAGE_IDS) {
       if (stage === item.status) {
         out[stage] = [];
         continue;
       }
-      const violations = evaluateGates(gates, {
-        statuses,
-        from: item.status,
-        to: stage,
-        hasDoc: (d) => present[d] === true,
-        repoDocSatisfied,
-      });
-      out[stage] = violations.map((v) => v.reason);
+      out[stage] = report.blockedBy[stage] ?? [];
     }
     return out;
   });

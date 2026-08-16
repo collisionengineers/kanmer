@@ -6,7 +6,6 @@ import type {
   CreateItemInput,
   DeleteItemResult,
   DocType,
-  GateRule,
   Item,
   ItemFilter,
   ItemWarning,
@@ -195,7 +194,7 @@ export interface OpenProjectResult {
   board: BoardConfig;
   items: Item[];
   /** Storage format: 1 = legacy layout (offer migration), 2 = current. */
-  format: 1 | 2;
+  format: 1 | 2 | 3;
 }
 
 export interface ChangePayload {
@@ -213,8 +212,16 @@ export interface RevealPayload {
 /** The board's resolved document model — the defaults a board inherits when it has no `docs` block. */
 export interface DocModel {
   repoDocs: Record<string, string>;
-  defaultTypes: DocType[];
-  defaultGates: GateRule[];
+  /** The fixed document-type vocabulary (containment defines type). */
+  docTypes: readonly string[];
+  /** Folders that exist but can never satisfy a gate. */
+  gateExemptFolders: readonly string[];
+  /** The stage boundaries a profile can gate. */
+  boundaries: readonly string[];
+  /** Requirement profiles in force: profile → boundary → requirements. */
+  profiles: Record<string, Record<string, string[]>>;
+  defaultProfile: string;
+  proofTypes: readonly string[];
 }
 
 /** A change on disk that this GUI didn't make (agent or manual edit). */
@@ -341,7 +348,7 @@ export interface KanmerApi {
   /** Backfill the 7-stage default onto an already-v2 board (dryRun previews). */
   backfillBoard(projectId: string, dryRun: boolean): Promise<{ addedStages: string[] }>;
   /** A project's current on-disk format — re-read after an external migration. */
-  getFormat(projectId: string): Promise<1 | 2>;
+  getFormat(projectId: string): Promise<1 | 2 | 3>;
   /**
    * Read a ticket pipeline document with its version token (both null when
    * not written yet, or for a legacy item). Pass `version` back as

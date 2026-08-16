@@ -3,9 +3,10 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { KanmerStore } from "./store.js";
-import { backfillStages, migrateBoard } from "./migrate.js";
-import { DEFAULT_GATES, evaluateGates, repoDocKindOf, resolveDocTypes } from "./docs.js";
-import { BoardConfigSchema, type DocType } from "./types.js";
+import { migrateBoard } from "./migrate.js";
+import { repoDocKindOf } from "./docs.js";
+import { boundaryThreshold, stageIndex, STAGE_IDS } from "./stages.js";
+import { parseRequirement, validateProfileMap } from "./profiles.js";
 
 let root: string;
 let store: KanmerStore;
@@ -20,191 +21,293 @@ afterEach(async () => {
   await fs.rm(root, { recursive: true, force: true });
 });
 
-const STAGES = ["backlog", "researching", "planning", "implementing", "review", "verifying", "done"];
-
-/** Satisfy the backlog gate so a ticket may leave backlog. */
-async function withDocsTodo(title: string, status = "backlog"): Promise<string> {
-  const t = await store.createItem({ type: "ticket", title, status, docs_todo: true });
+/** A ticket with a given profile, in Backlog. */
+async function ticket(profile: string, extra: Record<string, unknown> = {}): Promise<string> {
+  const t = await store.createItem({ type: "ticket", title: profile, profile, ...extra });
   return t.id;
 }
 
-describe("gate engine (pure)", () => {
-  const ctx = (from: string, to: string, docs: string[] = [], repo = false) => ({
-    statuses: STAGES,
-    from,
-    to,
-    hasDoc: (d: string) => docs.includes(d),
-    repoDocSatisfied: () => repo,
-  });
-
-  it("fires a leave gate as the stage is left, an enter gate as it is entered", () => {
-    // proof before entering done
-    expect(evaluateGates(DEFAULT_GATES, ctx("verifying", "done", [], true))).not.toEqual([]);
-    expect(evaluateGates(DEFAULT_GATES, ctx("verifying", "done", ["proof"], true))).toEqual([]);
-    // research+impact before leaving researching
-    const leaveResearching = evaluateGates(DEFAULT_GATES, ctx("researching", "planning", [], true));
-    expect(leaveResearching.map((v) => v.gate.needs).sort()).toEqual(["impact", "research"]);
-  });
-
-  it("a multi-stage jump cannot skip a gate", () => {
-    const violations = evaluateGates(DEFAULT_GATES, ctx("backlog", "done", [], true));
-    // Every needs-gate between backlog and done fires at once.
-    const needed = violations.map((v) => v.gate.needs).filter(Boolean).sort();
-    expect(needed).toEqual([
-      "checklist",
-      "impact",
-      "plan",
-      "post-implementation-report",
-      "proof",
-      "research",
+describe("stage constants", () => {
+  it("are the fixed six, in order", () => {
+    expect([...STAGE_IDS]).toEqual([
+      "backlog",
+      "preparing",
+      "implementing",
+      "review",
+      "verifying",
+      "done",
     ]);
   });
 
-  it("a gate whose boundary stage is absent on the board is inert", () => {
-    const custom = ["todo", "doing", "done"]; // no researching/review
-    const v = evaluateGates(DEFAULT_GATES, {
-      statuses: custom,
-      from: "todo",
-      to: "done",
-      hasDoc: () => false,
-      repoDocSatisfied: () => true,
-    });
-    // Only the done-enter (proof) gate has a boundary present here.
-    expect(v.map((x) => x.gate.needs)).toEqual(["proof"]);
+  it("boundary thresholds put leave-X one past X and enter-Y at Y", () => {
+    expect(boundaryThreshold("leave-backlog")).toBe(stageIndex("backlog") + 1);
+    expect(boundaryThreshold("enter-done")).toBe(stageIndex("done"));
   });
 
-  it("backlog leave is satisfied by docs_todo (repoDocSatisfied)", () => {
-    expect(evaluateGates(DEFAULT_GATES, ctx("backlog", "researching", [], false)).length).toBe(1);
-    expect(evaluateGates(DEFAULT_GATES, ctx("backlog", "researching", [], true))).toEqual([]);
+  it("rejects a status that is not one of the six", async () => {
+    await expect(
+      store.createItem({ type: "ticket", title: "A", status: "researching" }),
+    ).rejects.toThrow(/Unknown stage "researching"/);
   });
 });
 
-describe("store-level document gates", () => {
-  it("cannot leave backlog without a governing doc — unless docs_todo", async () => {
-    const t = await store.createItem({ type: "ticket", title: "A" });
-    await expect(store.moveItem(t.id, { status: "researching" })).rejects.toThrow(/governing/i);
-    await store.updateItem(t.id, { docs_todo: true });
-    const moved = await store.moveItem(t.id, { status: "researching" });
-    expect(moved.status).toBe("researching");
+describe("requirement grammar", () => {
+  it("parses type, proof flavour, environment and named document", () => {
+    expect(parseRequirement("plan")).toMatchObject({ type: "plan" });
+    expect(parseRequirement("proof:visual")).toMatchObject({ type: "proof", proofType: "visual" });
+    expect(parseRequirement("proof:visual@staging")).toMatchObject({
+      type: "proof",
+      proofType: "visual",
+      env: "staging",
+    });
+    expect(parseRequirement("research/auth")).toMatchObject({ type: "research", named: "auth" });
   });
 
-  it("cannot leave researching without research + impact", async () => {
-    const id = await withDocsTodo("A", "researching");
-    await expect(store.moveItem(id, { status: "planning" })).rejects.toThrow(/research\.md is missing/);
-    await store.setDoc(id, "research", "r");
-    await store.setDoc(id, "impact", "i");
-    expect((await store.moveItem(id, { status: "planning" })).status).toBe("planning");
+  it("rejects unknown boundaries, types, proof flavours and environments", () => {
+    const opts = { proofTypes: ["visual"], environments: ["staging"] };
+    expect(validateProfileMap({ "leave-mars": ["plan"] } as never, opts)[0]).toMatch(
+      /unknown boundary/,
+    );
+    expect(validateProfileMap({ "enter-done": ["reserch"] }, opts)[0]).toMatch(
+      /unknown document type/,
+    );
+    expect(validateProfileMap({ "enter-done": ["proof:movie"] }, opts)[0]).toMatch(
+      /unknown proof type/,
+    );
+    expect(validateProfileMap({ "enter-done": ["proof:visual@moon"] }, opts)[0]).toMatch(
+      /unknown environment/,
+    );
+    expect(validateProfileMap({ "enter-done": ["proof"] }, opts)).toEqual([]);
+  });
+});
+
+describe("the shipped profile gate matrix", () => {
+  // FRD-002 acceptance 1: a chore jumps Backlog -> Implementing in one call
+  // with only plan/ populated, then is held at Done until proof exists.
+  it("chore: one jump to Implementing on plan alone, then blocked entering Done", async () => {
+    const id = await ticket("chore");
+    await expect(store.moveItem(id, { status: "implementing" })).rejects.toThrow(
+      /leaving Preparing requires plan/,
+    );
+    await store.setDoc(id, "plan", "# Plan");
+    expect((await store.moveItem(id, { status: "implementing" })).status).toBe("implementing");
+
+    await expect(store.moveItem(id, { status: "done" })).rejects.toThrow(
+      /entering Done requires proof/,
+    );
+    await store.setDoc(id, "proof", "# Proof");
+    expect((await store.moveItem(id, { status: "done" })).status).toBe("done");
   });
 
-  it("cannot leave planning without plan + checklist", async () => {
-    const id = await withDocsTodo("A", "planning");
+  // FRD-002 acceptance 2: research IS the deliverable for a spike.
+  it("spike: Backlog straight to Done on research alone", async () => {
+    const id = await ticket("spike");
+    await expect(store.moveItem(id, { status: "done" })).rejects.toThrow(
+      /entering Done requires research/,
+    );
+    await store.setDoc(id, "research", "# Findings");
+    expect((await store.moveItem(id, { status: "done" })).status).toBe("done");
+  });
+
+  // FRD-002 acceptance 3.
+  it("feature: cannot leave Backlog without a governing doc", async () => {
+    const id = await ticket("feature");
+    await expect(store.moveItem(id, { status: "preparing" })).rejects.toThrow(
+      /leaving Backlog requires governing-doc/,
+    );
+    await store.updateItem(id, { docs_todo: true });
+    expect((await store.moveItem(id, { status: "preparing" })).status).toBe("preparing");
+  });
+
+  it("feature: leaving Preparing needs all four documents", async () => {
+    const id = await ticket("feature", { docs_todo: true });
+    await store.moveItem(id, { status: "preparing" });
     await store.setDoc(id, "research", "r");
-    await store.setDoc(id, "impact", "i");
-    await expect(store.moveItem(id, { status: "implementing" })).rejects.toThrow(/plan\.md is missing/);
+    await store.setDoc(id, "files", "f");
     await store.setDoc(id, "plan", "p");
+    await expect(store.moveItem(id, { status: "implementing" })).rejects.toThrow(/checklist/);
     await store.setDoc(id, "checklist", "- [ ] a");
     expect((await store.moveItem(id, { status: "implementing" })).status).toBe("implementing");
   });
 
-  it("cannot enter review without post-implementation-report; cannot enter done without proof", async () => {
-    const id = await withDocsTodo("A", "implementing");
-    await expect(store.moveItem(id, { status: "review" })).rejects.toThrow(
-      /post-implementation-report\.md is missing/,
-    );
-    await store.setDoc(id, "post-implementation-report", "pir");
-    expect((await store.moveItem(id, { status: "review" })).status).toBe("review");
-    await store.moveItem(id, { status: "verifying" });
-    await expect(store.moveItem(id, { status: "done" })).rejects.toThrow(/proof\.md is missing/);
-    await store.setDoc(id, "proof", "evidence");
+  // FRD-002 G2: a multi-stage jump is checked against every boundary it
+  // crosses and stopped by the first unmet one — not just the next step.
+  it("a multi-stage jump is blocked by the FIRST unmet boundary", async () => {
+    const id = await ticket("feature");
+    await expect(store.moveItem(id, { status: "done" })).rejects.toThrow(/leaving Backlog/);
+  });
+
+  // FRD-002 acceptance 5.
+  it("changing profile re-gates instantly", async () => {
+    const id = await ticket("feature");
+    await expect(store.moveItem(id, { status: "preparing" })).rejects.toThrow(/governing-doc/);
+    await store.updateItem(id, { profile: "chore" });
+    expect((await store.moveItem(id, { status: "preparing" })).status).toBe("preparing");
+  });
+
+  // FRD-002 acceptance 4.
+  it("custom: a named document is not satisfied by a different one", async () => {
+    const id = await ticket("custom", { requires: { "enter-done": ["research/auth"] } });
+    await store.setDoc(id, "research/db.md", "# DB");
+    await expect(store.moveItem(id, { status: "done" })).rejects.toThrow(/research\/auth/);
+    await store.setDoc(id, "research/auth.md", "# Auth");
     expect((await store.moveItem(id, { status: "done" })).status).toBe("done");
   });
 
-  it("re-resolves gates and doc set against the new area after an area change", async () => {
-    // A 'bugs' area with a single-doc set and no gates: moving there frees the pipeline.
+  it("custom with an empty map crosses everything freely (historical backfill)", async () => {
+    const id = await ticket("custom", { requires: {} });
+    expect((await store.moveItem(id, { status: "done" })).status).toBe("done");
+  });
+
+  it("rejects an unknown profile", async () => {
+    await expect(
+      store.createItem({ type: "ticket", title: "A", profile: "wishful" }),
+    ).rejects.toThrow(/Unknown profile "wishful"/);
+  });
+
+  // FRD-002 P6: ticket > area default > board default.
+  it("resolves the profile from the area default, and an explicit ticket profile wins", async () => {
     const board = await store.getBoard();
     await store.setBoard({
       ...board,
-      areas: [...board.areas, { id: "bugs", name: "Bugs", prefix: "BUG" }],
-      docs: {
-        areas: {
-          bugs: { types: [{ id: "repro", name: "Repro" }], gates: [] },
-        },
-      },
+      areas: [{ id: "ui", name: "UI", prefix: "UI", defaultProfile: "spike" } as never],
     });
-    const t = await store.createItem({ type: "ticket", title: "A", area: "bugs" });
-    // No gates in the bugs area — a full jump is allowed, and only repro is a valid doc.
-    expect((await store.moveItem(t.id, { status: "done" })).status).toBe("done");
-    await expect(store.setDoc(t.id, "research", "r")).rejects.toThrow(/Unknown document "research"/);
-    await expect(store.setDoc(t.id, "repro", "steps")).resolves.toBeDefined();
-    const info = await store.getTicketDocsInfo(t.id);
-    expect(Object.keys(info!.docs)).toEqual(["repro"]);
+    const inherited = await store.createItem({ type: "ticket", title: "A", area: "ui" });
+    expect((await store.getDocGates(inherited.id))!.profile).toBe("spike");
+
+    const explicit = await store.createItem({
+      type: "ticket",
+      title: "B",
+      area: "ui",
+      profile: "chore",
+    });
+    expect((await store.getDocGates(explicit.id))!.profile).toBe("chore");
   });
 });
 
-describe("dynamic doc names + requires hierarchy", () => {
-  it("setDoc rejects an unknown doc id, listing the valid ones", async () => {
-    const t = await store.createItem({ type: "ticket", title: "A" });
-    await expect(store.setDoc(t.id, "nope", "x")).rejects.toThrow(
-      /Unknown document "nope".*research/s,
+describe("creation is ungated (FRD-002 G3)", () => {
+  it("a ticket may be created directly in any stage, including Done", async () => {
+    for (const status of STAGE_IDS) {
+      const t = await store.createItem({ type: "ticket", title: status, status, profile: "feature" });
+      expect(t.status).toBe(status);
+    }
+  });
+});
+
+describe("folder documents (FRD-003)", () => {
+  it("round-trips a nested path and satisfies the type's requirement alone", async () => {
+    const id = await ticket("spike");
+    await store.setDoc(id, "research/azure/tokens.md", "# Tokens");
+    expect(await store.getDoc(id, "research/azure/tokens.md")).toBe("# Tokens\n");
+    expect((await store.moveItem(id, { status: "done" })).status).toBe("done");
+  });
+
+  it("creating a ticket writes exactly one file — folders are lazy", async () => {
+    const t = await store.createItem({ type: "ticket", title: "chore", profile: "chore" });
+    const dir = path.join(root, ".kanmer", "areas", "_none", t.id);
+    expect(await fs.readdir(dir)).toEqual([`${t.id}.md`]);
+  });
+
+  it("reference, scratch and assets never satisfy a gate", async () => {
+    const id = await ticket("spike");
+    await store.setDoc(id, "reference/mockup.md", "x");
+    await store.setDoc(id, "scratch/notes.md", "x");
+    await store.setDoc(id, "assets/thing.md", "x");
+    await expect(store.moveItem(id, { status: "done" })).rejects.toThrow(/requires research/);
+  });
+
+  it("rejects an unknown top-level folder, naming the valid ones", async () => {
+    const id = await ticket("chore");
+    await expect(store.setDoc(id, "reserch/x.md", "x")).rejects.toThrow(
+      /Unknown document folder "reserch"/,
     );
   });
 
-  it("setDoc enforces requires: plan needs research + impact first", async () => {
-    const t = await store.createItem({ type: "ticket", title: "A" });
-    await expect(store.setDoc(t.id, "plan", "p")).rejects.toThrow(/requires research/);
-    await store.setDoc(t.id, "research", "r");
-    await expect(store.setDoc(t.id, "plan", "p")).rejects.toThrow(/requires impact/);
-    await store.setDoc(t.id, "impact", "i");
-    await expect(store.setDoc(t.id, "plan", "p")).resolves.toBeDefined();
+  it("rejects traversal out of the ticket folder", async () => {
+    const id = await ticket("chore");
+    await expect(store.setDoc(id, "../../escape.md", "x")).rejects.toThrow(/Invalid segment/);
   });
 
-  it("rejects a requires cycle and an unknown-id reference at config parse", async () => {
-    const cyclic = BoardConfigSchema.safeParse({
-      statuses: [{ id: "a", name: "A" }],
-      areas: [],
-      priorities: [{ id: "medium", name: "Medium" }],
-      idPrefixes: { ticket: "TICK", plan: "PLAN", research: "RES" },
-      docs: {
-        default: {
-          types: [
-            { id: "a", name: "A", requires: ["b"] },
-            { id: "b", name: "B", requires: ["a"] },
-          ],
-        },
-      },
-    });
-    expect(cyclic.success).toBe(false);
-
-    const unknown = BoardConfigSchema.safeParse({
-      statuses: [{ id: "a", name: "A" }],
-      areas: [],
-      priorities: [{ id: "medium", name: "Medium" }],
-      idPrefixes: { ticket: "TICK", plan: "PLAN", research: "RES" },
-      docs: { default: { types: [{ id: "a", name: "A", requires: ["ghost"] }] } },
-    });
-    expect(unknown.success).toBe(false);
+  it("counts documents per type and enumerates reference files", async () => {
+    const id = await ticket("feature", { docs_todo: true });
+    await store.setDoc(id, "research/a.md", "a");
+    await store.setDoc(id, "research/deep/b.md", "b");
+    await store.setDoc(id, "reference/spec.md", "s");
+    const info = (await store.getTicketDocsInfo(id))!;
+    expect(info.counts.research).toBe(2);
+    expect(info.references.map((r) => r.name)).toEqual(["spec.md"]);
   });
 
-  it("rejects a doc-type id that starts with the reserved scratch- prefix", async () => {
-    const parsed = BoardConfigSchema.safeParse({
-      statuses: [{ id: "a", name: "A" }],
-      areas: [],
-      priorities: [{ id: "medium", name: "Medium" }],
-      idPrefixes: { ticket: "TICK", plan: "PLAN", research: "RES" },
-      docs: { default: { types: [{ id: "scratch-notes", name: "Notes" }] } },
-    });
-    expect(parsed.success).toBe(false);
+  it("checklist progress sums across every checklist document", async () => {
+    const id = await ticket("chore");
+    await store.setDoc(id, "checklist/one.md", "- [x] a\n- [ ] b");
+    await store.setDoc(id, "checklist/two.md", "- [x] c");
+    expect((await store.getTicketDocsInfo(id))!.checklist).toEqual({ checked: 2, total: 3 });
   });
+});
 
-  it("resolveDocTypes falls back to the default set when the board omits docs", async () => {
+describe("typed proof (FRD-006)", () => {
+  it("visual proof without an image warns but does not block", async () => {
     const board = await store.getBoard();
-    const types: DocType[] = resolveDocTypes(board, "");
-    expect(types.map((t) => t.id)).toContain("post-implementation-report");
+    await store.setBoard({
+      ...board,
+      profiles: { ...board.profiles, chore: { "enter-done": ["proof:visual"] } },
+    });
+    const id = await ticket("chore");
+    await store.setDoc(id, "proof/after.md", "no picture here");
+
+    const gates = (await store.getDocGates(id))!;
+    expect(gates.warnings.join(" ")).toMatch(/expects a screenshot/);
+    // Soft, not hard: the move still succeeds.
+    expect((await store.moveItem(id, { status: "done" })).status).toBe("done");
+  });
+
+  it("an image under proof/ clears the warning", async () => {
+    const board = await store.getBoard();
+    await store.setBoard({
+      ...board,
+      profiles: { ...board.profiles, chore: { "enter-done": ["proof:visual"] } },
+    });
+    const id = await ticket("chore");
+    await store.setDoc(id, "proof/after.md", "![shot](assets/a.png)");
+    await fs.mkdir(path.join(root, ".kanmer", "areas", "_none", id, "proof", "assets"), {
+      recursive: true,
+    });
+    await fs.writeFile(
+      path.join(root, ".kanmer", "areas", "_none", id, "proof", "assets", "a.png"),
+      "png",
+    );
+    expect((await store.getDocGates(id))!.warnings).toEqual([]);
+  });
+
+  it("rejects a proof environment the board does not declare", async () => {
+    await expect(
+      store.createItem({
+        type: "ticket",
+        title: "A",
+        profile: "custom",
+        requires: { "enter-done": ["proof:visual@staging"] },
+      }),
+    ).rejects.toThrow(/environment/);
+  });
+});
+
+describe("priority removal (FRD-008)", () => {
+  it("is neither written nor accepted, and a legacy value rides along untouched", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A" });
+    const file = path.join(root, ".kanmer", "areas", "_none", t.id, `${t.id}.md`);
+    expect(await fs.readFile(file, "utf8")).not.toContain("priority:");
+
+    // Passthrough: a hand-added key survives an agent edit (the `due` precedent).
+    const raw = await fs.readFile(file, "utf8");
+    await fs.writeFile(file, raw.replace("status:", "priority: high\nstatus:"));
+    const after = await store.updateItem(t.id, { title: "B" });
+    expect((after as unknown as Record<string, unknown>).priority).toBe("high");
   });
 });
 
 describe("repo-doc refs", () => {
-  it("rejects a nonexistent or traversing ref; accepts a valid one; omits an empty refs key", async () => {
+  it("rejects a nonexistent or traversing ref; accepts a valid one", async () => {
     await expect(
       store.createItem({ type: "ticket", title: "A", refs: ["docs/prd/ghost.md"] }),
     ).rejects.toThrow(/does not exist/);
@@ -220,20 +323,18 @@ describe("repo-doc refs", () => {
       refs: ["docs/prd/checkout.md"],
     });
     expect(t.refs).toEqual(["docs/prd/checkout.md"]);
-
-    const plain = await store.createItem({ type: "ticket", title: "B" });
-    const raw = await fs.readFile(
-      path.join(root, ".kanmer", "areas", "_none", plain.id, `${plain.id}.md`),
-      "utf8",
-    );
-    expect(raw).not.toContain("refs:");
   });
 
   it("a linked governing doc satisfies the backlog gate without docs_todo", async () => {
     await fs.mkdir(path.join(root, "docs", "adr"), { recursive: true });
     await fs.writeFile(path.join(root, "docs", "adr", "0001.md"), "# ADR", "utf8");
-    const t = await store.createItem({ type: "ticket", title: "A", refs: ["docs/adr/0001.md"] });
-    expect((await store.moveItem(t.id, { status: "researching" })).status).toBe("researching");
+    const t = await store.createItem({
+      type: "ticket",
+      title: "A",
+      profile: "feature",
+      refs: ["docs/adr/0001.md"],
+    });
+    expect((await store.moveItem(t.id, { status: "preparing" })).status).toBe("preparing");
   });
 
   it("repoDocKindOf classifies by the configured globs", async () => {
@@ -256,19 +357,16 @@ describe("repo-doc refs", () => {
 
       const boardStore = new KanmerStore(boardRoot);
       await boardStore.init();
-
-      // Derived from the .worktrees/<name> shape, so an already-registered
-      // server keeps working without being reconnected.
       expect(boardStore.paths.repoRoot).toBe(path.resolve(root));
 
       const t = await boardStore.createItem({
         type: "ticket",
         title: "A",
+        profile: "feature",
         refs: ["docs/frd/FRD-001.md"],
       });
       expect(t.refs).toEqual(["docs/frd/FRD-001.md"]);
-      // ...and the governing-doc gate it exists to satisfy actually opens.
-      expect((await boardStore.moveItem(t.id, { status: "researching" })).status).toBe("researching");
+      expect((await boardStore.moveItem(t.id, { status: "preparing" })).status).toBe("preparing");
     });
 
     it("honours an explicit repoRoot and still rejects a ghost ref", async () => {
@@ -276,7 +374,6 @@ describe("repo-doc refs", () => {
       await fs.mkdir(boardRoot, { recursive: true });
       const boardStore = new KanmerStore(boardRoot, { repoRoot: root });
       await boardStore.init();
-
       expect(boardStore.paths.repoRoot).toBe(path.resolve(root));
       await expect(
         boardStore.createItem({ type: "ticket", title: "A", refs: ["docs/frd/ghost.md"] }),
@@ -284,25 +381,20 @@ describe("repo-doc refs", () => {
     });
 
     it("falls back to the project root when the board is colocated", () => {
-      const colocated = new KanmerStore(root);
-      expect(colocated.paths.repoRoot).toBe(path.resolve(root));
+      expect(new KanmerStore(root).paths.repoRoot).toBe(path.resolve(root));
     });
   });
 });
 
 describe("per-ticket scratch", () => {
-  it("appends scratch below a blank line, keeps it out of the pipeline docs, reads it back", async () => {
-    const t = await store.createItem({ type: "ticket", title: "A" });
-    await store.appendScratch(t.id, "research", "first note");
-    await store.appendScratch(t.id, "research", "second note");
-    const back = await store.getScratch(t.id, "research");
-    expect(back).toBe("first note\n\nsecond note\n");
-    // Not reported as a pipeline doc, and listable as scratch.
-    const info = await store.getTicketDocsInfo(t.id);
-    expect(Object.keys(info!.docs)).not.toContain("scratch-research");
-    expect(await store.listScratch(t.id)).toEqual(["research"]);
-    // Readable through getDoc with the scratch- prefix too.
-    expect(await store.getDoc(t.id, "scratch-research")).toBe("first note\n\nsecond note\n");
+  it("appends below a blank line, never satisfies a gate, and reads back", async () => {
+    const id = await ticket("spike");
+    await store.appendScratch(id, "research", "first note");
+    await store.appendScratch(id, "research", "second note");
+    expect(await store.getScratch(id, "research")).toBe("first note\n\nsecond note\n");
+    expect(await store.listScratch(id)).toEqual(["research"]);
+    // Scratch under a research slug must not be mistaken for research evidence.
+    await expect(store.moveItem(id, { status: "done" })).rejects.toThrow(/requires research/);
   });
 });
 
@@ -342,57 +434,9 @@ describe("traceability: commits / prs / deployment", () => {
   });
 });
 
-describe("stage backfill", () => {
-  /** Build a store on a hand-written board with the given stage ids. */
-  async function boardWith(ids: string[]): Promise<KanmerStore> {
-    const r = await fs.mkdtemp(path.join(os.tmpdir(), "kanmer-bf-"));
-    const s = new KanmerStore(r);
-    await s.init();
-    const board = await s.getBoard();
-    await s.setBoard({ ...board, statuses: ids.map((id) => ({ id, name: id })) });
-    return s;
-  }
-
-  it("inserts missing canonical stages, keeps aliases, never duplicates, is idempotent", async () => {
-    const s = await boardWith(["todo", "implementing", "done"]);
-    const report = await backfillStages(s);
-    expect(report.addedStages.sort()).toEqual(["planning", "researching", "review", "verifying"]);
-    const ids = (await s.getBoard()).statuses.map((x) => x.id);
-    // todo kept (backlog alias — no second start column); canonical order preserved.
-    expect(ids).toEqual([
-      "todo",
-      "researching",
-      "planning",
-      "implementing",
-      "review",
-      "verifying",
-      "done",
-    ]);
-    // Idempotent: a second run adds nothing.
-    expect((await backfillStages(s)).addedStages).toEqual([]);
-  });
-
-  it("treats doing/shipped as implementing/done aliases — no duplicate final stage", async () => {
-    const s = await boardWith(["todo", "doing", "shipped"]);
-    await backfillStages(s);
-    const ids = (await s.getBoard()).statuses.map((x) => x.id);
-    expect(ids.filter((id) => id === "done" || id === "shipped")).toEqual(["shipped"]);
-    expect(ids).toContain("researching");
-    expect(ids).toContain("review");
-  });
-
-  it("a fresh 7-stage board is a no-op; dryRun reports without writing", async () => {
-    expect((await backfillStages(store)).addedStages).toEqual([]);
-    const s = await boardWith(["todo", "done"]);
-    const before = (await s.getBoard()).statuses.map((x) => x.id);
-    const dry = await backfillStages(s, { dryRun: true });
-    expect(dry.addedStages.length).toBeGreaterThan(0);
-    expect((await s.getBoard()).statuses.map((x) => x.id)).toEqual(before);
-  });
-
-  it("migrateBoard backfills stages through the umbrella entry point", async () => {
-    const s = await boardWith(["todo", "done"]);
-    const { backfill } = await migrateBoard(s);
-    expect(backfill.addedStages.length).toBeGreaterThan(0);
+describe("migrateBoard on a current board", () => {
+  it("is a no-op", async () => {
+    const { v3 } = await migrateBoard(store, { dryRun: true });
+    expect(v3.alreadyV3).toBe(true);
   });
 });

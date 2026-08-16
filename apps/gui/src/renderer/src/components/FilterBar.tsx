@@ -65,18 +65,6 @@ export function FilterBar({
         </select>
       )}
 
-      <select
-        value={filters.priority ?? ""}
-        onChange={(e) => set({ priority: e.target.value || undefined })}
-      >
-        <option value="">All priorities</option>
-        {board.priorities.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
-
       {assignees.length > 0 && (
         <select
           value={filters.assignee ?? ""}

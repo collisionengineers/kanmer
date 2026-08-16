@@ -10,7 +10,7 @@ export type ItemType = z.infer<typeof ItemTypeSchema>;
  */
 export type Priority = string;
 
-/** A status, area or priority entry in board.yml. */
+/** An area entry in board.yml (the only column kind in format 3). */
 export const BoardColumnSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -25,6 +25,11 @@ export const BoardColumnSchema = z.object({
     .string()
     .regex(/^[A-Z0-9]{2,6}$/, "prefix must be 2-6 uppercase alphanumerics")
     .optional(),
+  /**
+   * The requirement profile tickets in this area get when they do not name one
+   * — the middle link of FRD-002 P6's resolution chain (ticket → area → board).
+   */
+  defaultProfile: z.string().optional(),
 });
 export type BoardColumn = z.infer<typeof BoardColumnSchema>;
 
@@ -50,7 +55,14 @@ export interface SetDocOptions {
 }
 
 /** Which pipeline docs exist for a ticket, plus checklist progress if present. */
-export interface TicketDocsInfo {
+export interface TicketDocsInfoV3Extras {
+  /** Documents per type folder, counted recursively (FRD-003 T7). */
+  counts: Record<string, number>;
+  /** Human-supplied inputs: name plus absolute path (FRD-004 R3). */
+  references: { name: string; path: string }[];
+}
+
+export interface TicketDocsInfo extends TicketDocsInfoV3Extras {
   /** Keyed by the ticket area's resolved doc-type ids. */
   docs: Record<string, boolean>;
   /** Parsed from `- [ ]` / `- [x]` lines in the progress doc; null when absent. */
@@ -194,20 +206,54 @@ export type DeploymentConfig = z.infer<typeof DeploymentConfigSchema>;
  * written before that consolidation also carried a `phases` array; zod strips
  * that unknown key on read, so old boards load cleanly and drop it on save.
  */
+/** One requirement profile: stage boundary → required document types. */
+export const ProfileMapSchema = z.record(z.array(z.string()));
+
+/** A group kind (`epic`, `horizon`, …) with the id prefix its groups get. */
+export const GroupKindSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  prefix: z.string().regex(/^[A-Z0-9]{2,6}$/, "prefix must be 2-6 uppercase alphanumerics"),
+  color: z.string().optional(),
+});
+export type GroupKind = z.infer<typeof GroupKindSchema>;
+
+/**
+ * board.yml.
+ *
+ * Format 3 removes `statuses` (stages are constants — ADR-0002) and
+ * `priorities` (ADR-0006). Both are still *accepted* on read so an unmigrated
+ * board loads without throwing; they are dropped on write. `areas` remains the
+ * only editable column kind.
+ */
 export const BoardConfigSchema = z.object({
-  statuses: z.array(BoardColumnSchema).min(1),
   areas: z.array(BoardColumnSchema).default([]),
-  priorities: z.array(BoardColumnSchema).min(1).default(DEFAULT_PRIORITIES),
   idPrefixes: IdPrefixesSchema,
-  /** The configurable document model. Absent ⇒ the shipped defaults (docs.ts). */
-  docs: DocsConfigSchema.optional(),
+  /** Requirement profiles (FRD-002). Absent ⇒ the shipped defaults. */
+  profiles: z.record(ProfileMapSchema).optional(),
+  /** The board-wide default profile when ticket and area say nothing. */
+  defaultProfile: z.string().optional(),
+  /** Group kinds (FRD-001 G1). Absent ⇒ shipped epic + horizon. */
+  groupKinds: z.array(GroupKindSchema).optional(),
+  /** Proof flavours (FRD-006 R1). Absent ⇒ visual, test-output, command-log. */
+  proofTypes: z.array(z.string().min(1)).optional(),
   /** Deployment tracking. Absent ⇒ no per-ticket deployment field at all. */
   deployment: DeploymentConfigSchema.optional(),
+  /** Legacy, read-only: present on format ≤2 boards, dropped on migration. */
+  statuses: z.array(BoardColumnSchema).optional(),
+  priorities: z.array(BoardColumnSchema).optional(),
+  /** Legacy v2 document model, superseded by `profiles`. */
+  docs: DocsConfigSchema.optional(),
 });
 export type BoardConfig = z.infer<typeof BoardConfigSchema>;
 
-/** The kinds of configurable column in board.yml. */
-export type ColumnKind = "status" | "area" | "priority";
+/**
+ * The kinds of configurable column in board.yml.
+ *
+ * Format 3 narrows this to `area`: stages are constants (FRD-007 B3) and
+ * priority is gone (FRD-008), so neither is a column anyone can add.
+ */
+export type ColumnKind = "area";
 
 /**
  * The frontmatter of an item file. Unknown keys are preserved on write so a
@@ -222,8 +268,14 @@ export const ItemFrontmatterSchema = z
     title: z.string().default(""),
     status: z.string().default(""),
     area: z.string().default(""),
-    priority: z.string().default("medium"),
     assignee: z.string().default(""),
+    /** Requirement profile (FRD-002). Absent ⇒ area default, then board default. */
+    profile: z.string().optional(),
+    /** Inline requirements, honoured only when `profile` is `custom`. */
+    requires: ProfileMapSchema.optional(),
+    /** Group ids this ticket belongs to (FRD-001 G3). Membership lives here;
+     *  member lists and progress are always derived, never stored. */
+    groups: z.array(z.string()).optional(),
     /** Set while a ticket is taken (being actively worked); absent otherwise. */
     taken_at: TimestampSchema.optional(),
     /** The branch the taken work happens on. */
@@ -275,8 +327,13 @@ export interface CreateItemInput {
   title: string;
   status?: string;
   area?: string;
-  priority?: Priority;
   assignee?: string;
+  /** Requirement profile (FRD-002); `custom` reads `requires`. */
+  profile?: string;
+  /** Inline requirements, honoured only when `profile` is `custom`. */
+  requires?: Record<string, string[]>;
+  /** Group ids this ticket belongs to (FRD-001 G3). */
+  groups?: string[];
   labels?: string[];
   links?: string[];
   blocks?: string[];
@@ -296,8 +353,13 @@ export interface UpdateItemPatch {
   title?: string;
   status?: string;
   area?: string;
-  priority?: Priority;
   assignee?: string;
+  /** Requirement profile (FRD-002); `custom` reads `requires`. */
+  profile?: string;
+  /** Inline requirements, honoured only when `profile` is `custom`. */
+  requires?: Record<string, string[]>;
+  /** Group ids this ticket belongs to (FRD-001 G3). */
+  groups?: string[];
   labels?: string[];
   links?: string[];
   blocks?: string[];

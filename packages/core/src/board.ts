@@ -7,43 +7,75 @@ import {
 } from "./types.js";
 import { pathExists, readText, writeFileAtomic } from "./io.js";
 import type { KanmerPaths } from "./paths.js";
+import { LAST_STAGE, STAGES, type Stage } from "./stages.js";
+import {
+  DEFAULT_PROFILES,
+  DEFAULT_PROFILE_ID,
+  DEFAULT_PROOF_TYPES,
+  type ProfileMap,
+} from "./profiles.js";
+
+/** Group kinds every board starts with (FRD-001 G1). */
+export const DEFAULT_GROUP_KINDS = [
+  { id: "epic", name: "Epic", prefix: "EPIC", color: "#b48cff" },
+  { id: "horizon", name: "Horizon", prefix: "HZN", color: "#5bd1c9" },
+];
 
 /**
- * The board config written into a fresh project. `statuses` is the single
- * workflow dimension — the stages a ticket moves through, left to right.
+ * The board config written into a fresh project.
+ *
+ * No `statuses` and no `priorities` — stages are constants (ADR-0002) and
+ * priority is gone (ADR-0006). What remains configurable is areas, profiles,
+ * group kinds, proof types and deployment environments.
  */
 export function defaultBoardConfig(): BoardConfig {
   return {
-    statuses: [
-      { id: "backlog", name: "Backlog" },
-      { id: "researching", name: "Researching" },
-      { id: "planning", name: "Planning" },
-      { id: "implementing", name: "Implementing" },
-      { id: "review", name: "Review" },
-      { id: "verifying", name: "Verifying" },
-      { id: "done", name: "Done" },
-    ],
     // PR Review is a default area on every new board: agents file PR feedback
     // tickets there without having to invent a home for them first.
     areas: [{ id: "pr-review", name: "PR Review", prefix: "PR", color: "#b48cff" }],
-    priorities: [
-      { id: "low", name: "Low", color: "#6b7280" },
-      { id: "medium", name: "Medium", color: "#5b8cff" },
-      { id: "high", name: "High", color: "#ffcf7a" },
-      { id: "urgent", name: "Urgent", color: "#ff6b6b" },
-    ],
     idPrefixes: { ticket: "TICK", plan: "PLAN", research: "RES" },
+    profiles: structuredClone(DEFAULT_PROFILES) as Record<string, ProfileMap>,
+    defaultProfile: DEFAULT_PROFILE_ID,
+    groupKinds: structuredClone(DEFAULT_GROUP_KINDS),
+    proofTypes: [...DEFAULT_PROOF_TYPES],
   };
 }
 
+/** Profiles in force: the board's table, or the shipped defaults. */
+export function resolveProfiles(board: BoardConfig): Record<string, ProfileMap> {
+  return (board.profiles ?? DEFAULT_PROFILES) as Record<string, ProfileMap>;
+}
+
+/** Proof flavours in force. */
+export function resolveProofTypes(board: BoardConfig): readonly string[] {
+  return board.proofTypes ?? DEFAULT_PROOF_TYPES;
+}
+
+/** Group kinds in force. */
+export function resolveGroupKinds(board: BoardConfig) {
+  return board.groupKinds ?? DEFAULT_GROUP_KINDS;
+}
+
+/** Declared deployment environments, or none. */
+export function resolveEnvironments(board: BoardConfig): readonly string[] {
+  return board.deployment?.environments ?? [];
+}
+
 /**
- * The board's final stage — the proof-gated one. Undefined only on a board
- * with no stages. "Last stage" is re-derived in several places (the proof
- * gate, the overdue filter, the create gate); this is the single definition
- * they share.
+ * The board's final stage.
+ *
+ * A constant in format 3 — stages no longer come from the board (ADR-0002), so
+ * this no longer depends on its argument. Kept as a function because callers
+ * pass a board and the signature is load-bearing across core, the server and
+ * the renderer's mirror of the blocked rule.
  */
-export function lastStageId(board: BoardConfig): string | undefined {
-  return board.statuses[board.statuses.length - 1]?.id;
+export function lastStageId(_board?: BoardConfig): string {
+  return LAST_STAGE;
+}
+
+/** The stages, in order. Constant; a board cannot change them. */
+export function boardStages(): readonly Stage[] {
+  return STAGES;
 }
 
 /**

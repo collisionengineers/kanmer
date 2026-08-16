@@ -79,3 +79,13 @@ cases 4.2–13.1s against a 5s default. Pre-existing, unrelated file
 **Drove the built app over CDP** against a copy of the live board (152
 non-archived tickets, 2 archived), then reaped all four `electron.exe` PIDs so
 closeout is not blocked. Observations in `proof`.
+
+## Closeout
+
+- [ ] PR merged (gate)
+- [ ] proof.md final
+- [ ] commits / prs / deployment recorded
+- [ ] Outcome recorded on the ticket body
+- [ ] worktree removed
+- [ ] branch deleted (local + remote)
+- [ ] ticket released

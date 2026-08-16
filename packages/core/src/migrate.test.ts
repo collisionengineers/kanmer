@@ -417,6 +417,77 @@ describe("migration: v2 → v3", () => {
     // moved.
     expect(await fs.readFile(versionFile, "utf8")).toBe(stamped);
   });
+
+  it("resuming does not rewrite tickets an earlier run already migrated", async () => {
+    const store = await seedV2Board();
+    await migrateToV3(store);
+    const ids = (await store.listItems({ includeArchived: true })).map((i) => i.id);
+    expect(ids.length).toBeGreaterThan(1);
+
+    // The state an EPERM mid-loop leaves: tickets migrated, version.json not
+    // yet stamped, because writeVersion is deliberately last.
+    await fs.writeFile(path.join(k, "version.json"), JSON.stringify({ format: 2 }), "utf8");
+    store.resetFormatCache();
+
+    const files = ids.map((id) => path.join(k, "areas", "api", id, `${id}.md`));
+    const before = await Promise.all(files.map((f) => fs.stat(f).then((s) => s.mtimeMs)));
+
+    const again = await migrateToV3(store);
+
+    // Zero ticket files touched. Without the per-ticket skip every one is
+    // rewritten, which is what made each retry on a real board die earlier
+    // than the last.
+    const after = await Promise.all(files.map((f) => fs.stat(f).then((s) => s.mtimeMs)));
+    expect(after).toEqual(before);
+    expect(again.resumed).toBe(true);
+    expect(again.notes.some((n) => n.includes("resumed a previously interrupted"))).toBe(true);
+  });
+
+  it("resuming still finishes the tickets the interrupted run never reached", async () => {
+    const store = await seedV2Board();
+    await migrateToV3(store);
+
+    // Roll ONE ticket back to its format-2 shape, and the board with it.
+    const id = (await store.listItems({ includeArchived: true }))[0].id;
+    const file = path.join(k, "areas", "api", id, `${id}.md`);
+    const raw = await fs.readFile(file, "utf8");
+    await fs.writeFile(
+      file,
+      raw.replace(/^profile: .*$/m, "priority: medium").replace(/^status: .*$/m, "status: todo"),
+      "utf8",
+    );
+    await fs.writeFile(path.join(k, "version.json"), JSON.stringify({ format: 2 }), "utf8");
+    store.resetFormatCache();
+
+    const report = await migrateToV3(store);
+
+    const fixed = await store.getItem(id);
+    expect(fixed?.status).toBe("backlog");
+    expect(fixed?.profile).toBeDefined();
+    expect((fixed as unknown as { priority?: string }).priority).toBeUndefined();
+    expect(report.resumed).toBe(true);
+    expect(await store.detectFormat()).toBe(3);
+  });
+
+  it("sweeps stale atomic-write temps and leaves fresh ones alone", async () => {
+    const store = await seedV2Board();
+    const dir = path.join(k, "areas", "api");
+    const stale = path.join(dir, ".TICK-999.md.tmp-18292-182");
+    const fresh = path.join(dir, ".TICK-998.md.tmp-4242-7");
+    await fs.writeFile(stale, "residue", "utf8");
+    await fs.writeFile(fresh, "in flight", "utf8");
+    const old = new Date(Date.now() - 5 * 60_000);
+    await fs.utimes(stale, old, old);
+
+    const report = await migrateToV3(store);
+
+    expect(report.sweptTempFiles).toBe(1);
+    await expect(fs.access(stale)).rejects.toThrow();
+    // A temp younger than the threshold may belong to a write happening right
+    // now in another process; removing it would break that write.
+    expect(await fs.readFile(fresh, "utf8")).toBe("in flight");
+  });
+
 });
 
 describe("migration: repoDocs survives", () => {

@@ -143,7 +143,12 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
       await git(repoRoot, ["worktree", "add", "--orphan", "-b", branch, boardRoot]);
       const sourceBoard = join(repoRoot, ".kanmer");
       if (existsSync(sourceBoard)) await cp(sourceBoard, join(boardRoot, ".kanmer"), { recursive: true });
-      await ensureIgnore(join(boardRoot, ".gitignore"), [".kanmer/data/activity.jsonl"]);
+      await ensureIgnore(join(boardRoot, ".gitignore"), [
+          ".kanmer/data/activity.jsonl",
+          // Atomic-write residue. An interrupted write leaves one behind, and
+          // `git add -- .kanmer` on the sync timer would otherwise commit it.
+          ".kanmer/**/.*.tmp-*",
+        ]);
       if (existsSync(join(boardRoot, ".kanmer"))) {
         await git(boardRoot, ["add", "--", ".kanmer", ".gitignore"]);
         await git(boardRoot, ["commit", "-m", "chore(kanmer): create shared board"]);

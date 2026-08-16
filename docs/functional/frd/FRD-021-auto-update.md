@@ -42,3 +42,28 @@ All in `apps/gui/src/` unless noted.
 Two limits worth carrying forward, both already recorded in AGENTS.md §11: an update force-kills
 live agent MCP servers because the server *is* a process under `$INSTDIR` (gotcha 10), and the
 end-to-end two-version install cycle has not yet been run on a real build.
+
+## Amended — GUI-064
+
+The second limit above was load-bearing. The first time the two-version cycle ran on a real build
+(0.3.0 → 0.3.1) it **failed**: `Failed to uninstall old application files. Please try running the
+installer again.: 2`, and the update never applied.
+
+`: 2` is the old uninstaller aborting. Under `--updated` it takes `un.atomicRMDir`, which renames
+every file out of `$INSTDIR` and gives up on the first rename that fails. A live agent MCP server
+is enough — it holds `icudtl.dat` and `v8_context_snapshot.bin`, which V8 and ICU memory-map
+without `FILE_SHARE_DELETE`. (`Kanmer.exe` and the DLLs are *not* the problem: Windows permits
+renaming a mapped image. Measured, not assumed.) The installer's own kill exists but races that
+rename and can lose, and it already retries 5×1 s, so no amount of waiting fixes it.
+
+**This did not change any requirement — it restored R4.** "Updates preserve that path's validity"
+was simply not true while the update could not apply at all. What changed is a claim in the prose
+above and in `shared/mcp-sessions.ts`: *"We cannot prevent it."* We cannot prevent NSIS killing
+processes under `$INSTDIR`; we **can** prevent the install failing because of one. `installUpdateNow`
+now clears agent MCP servers itself and verifies before `quitAndInstall`, and refuses with a named
+reason rather than starting an install that will abort — R2's gate is unchanged and still runs in
+the renderer, before the IPC call.
+
+That refusal path fails **closed** (a probe that cannot confirm is not a clearance), which is the
+opposite direction from the warning path's deliberate fail-open. Both are correct; they answer
+different questions.

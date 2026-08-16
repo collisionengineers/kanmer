@@ -1,0 +1,78 @@
+Your board is files, so sharing it is a matter of getting those files onto
+someone else's machine. In a Git repository Kanmer does that for you, and it
+does it without putting ticket edits in front of your code reviewers.
+
+## The board lives on its own branch
+
+Open a Git project and Kanmer checks out a second working copy beside your
+code, in `.worktrees/kanmer`, on a branch of its own. The default name for that
+branch is `kanmer-board`.
+
+Your project tab still shows your source checkout — you are not working in the
+board copy and you will rarely look at it. What the separate branch buys you is
+that moving eight tickets and writing four documents produces commits on
+`kanmer-board`, not on your feature branch. A pull request stays a diff of the
+work. The board is versioned, shared and reviewable, and it is never noise.
+
+The worktree path does not change when you rename the branch, so nothing you
+have open moves under you.
+
+## Turning sync on
+
+Sync is **off** until you ask for it. Open **Settings → Git** and tick
+**Automatic sync**; a **Minutes** box appears, and Kanmer syncs on that interval
+from then on. Ticking the box starts you at one minute, and any whole number
+from one upwards is allowed — there is no fixed list to pick from.
+
+There is a **Sync now** button for when you would rather not wait, and the hint
+under it shows where the board worktree is and when it last synced.
+
+## What a sync actually does
+
+In order: stage the board files, commit them if anything changed, fetch, and
+rebase onto the remote branch. Kanmer never force-pushes and never touches any
+branch but the board's.
+
+Rebasing rather than merging is what keeps the board's history readable — a
+board that merged every two minutes would be nothing but merge commits.
+
+## When a sync conflicts
+
+Two people edited the same ticket and Git cannot reconcile it. Kanmer stops:
+it aborts the rebase, keeps your local commits exactly as they were, and pauses
+automatic sync rather than quietly retrying into the same wall.
+
+You will see the error Git itself reported, and the **Sync now** button becomes
+**Retry**. Nothing is lost while it is paused — your work is committed locally
+on the board branch. Resolve the conflict the way you would resolve any other
+one, in `.worktrees/kanmer`, then press **Retry**.
+
+Sync stays paused until a sync succeeds, which is deliberate: a paused sync is
+visible, and a silently failing one is not.
+
+## Renaming the board branch
+
+Do it from **Settings → Git**, not from the command line. Type the new name and
+press **Rename branch**.
+
+Kanmer renames the branch in place, so the board keeps its whole history and the
+worktree path stays the same. It pushes the new name first and only then deletes
+the old one from the remote, so there is no window where the board exists
+nowhere. Projects that were closed when you renamed are migrated the next time
+you open them.
+
+## Picking the board up elsewhere
+
+There is nothing to export. Clone the repository on the second machine, open it
+in Kanmer, and the board branch is fetched into its own worktree the same way.
+Turn sync on there too and the two stay level.
+
+One thing does not travel: the activity log is local to each machine, because
+it is a record of what happened in front of *you*. Tickets, documents,
+reference files and board settings all sync.
+
+## Projects that are not Git repositories
+
+Everything still works — the board is just files in a folder. Kanmer says
+so in **Settings → Git** rather than offering controls that cannot do anything,
+and sharing that board is up to you.

@@ -1,43 +1,65 @@
-Kanmer is a kanban board that lives in your repository as markdown files, so
-you and the coding agents you work with are looking at the same thing. There is
-no server and no account: the board is `.kanmer/` on disk.
+Kanmer is a kanban board that lives inside your repository as ordinary markdown
+files. There is no server, no account, and nothing to sign into. The board is a
+folder called `.kanmer` in your project, and it works offline because there is
+nothing for it to be online with.
+
+That one decision is what the rest of this manual is downstream of.
+
+## Why files
+
+Because it means your coding agents and you are looking at the same board.
+
+Not a summary of it, not an export, not an integration that syncs every few
+minutes and disagrees in between — the same files. When an agent researches a
+ticket, it writes the research into the ticket. When it moves a card, the card
+moves on your screen. When you drop a mockup onto a ticket, the agent can open
+it.
+
+Most tools put an API between the human's view and the machine's. Kanmer puts a
+folder there, which turns out to be enough, and has the useful property that
+your work is diffable, greppable, reviewable and yours.
 
 ## The shape of it
 
-A **ticket** is a folder. Beside it live its documents — research, plan,
-checklist, proof — each in a folder of its own, and any reference files you drop
-in.
+A **ticket** is a folder with an id like `API-001`. It holds a few fields and up
+to seven **documents** — research, files, plan, checklist, open questions,
+post-implementation report, proof — each of which is a real piece of writing
+rather than a text field.
 
-A ticket moves through six stages: **Backlog → Preparing → Implementing →
-Review → Verifying → Done**. All six are columns on one board, Backlog first —
-there is no second place to look. Kanmer did once give Backlog a dedicated list
-view, on the argument that a long queue is something you scan rather than
-something you look at all at once; keeping the same tickets in two places cost
-more than the list was worth, so the list was withdrawn and Backlog came back to
-the board.
+Tickets sit in one of six **stages**, and those six are the same on every Kanmer
+board:
 
-## What a ticket owes
+**Backlog → Preparing → Implementing → Review → Verifying → Done**
 
-Not the same thing for every ticket. Each has a **profile** that decides which
-documents each stage boundary asks for. A `feature` owes research, a plan and
-proof; a `chore` owes a plan and proof; a `spike` may owe only research. Pick
-the profile when you create the ticket — filing a two-line fix as a `feature`
-means owing six documents nobody needs.
+All six are columns on one board, Backlog first — there is no second place to
+look.
 
-A move crosses **one** gated boundary at a time. If a jump is refused even
-though every document exists, that is why, and the message names the next stage.
+Alongside the stages, **areas** say what part of the product a ticket belongs to
+and colour it accordingly, and **groups** collect tickets that ship together
+(an epic) or that matter right now (a horizon).
 
-## Working with agents
+## The one idea worth having up front
 
-Connect an agent host in **Settings → Connect**. It registers Kanmer's MCP
-server for that project, so the agent can read and move tickets itself.
+Boards usually let you move anything anywhere, which means the column a ticket
+is in records what somebody clicked rather than what happened.
 
-**Dispatch** hands a ticket to a background agent for **one deliverable** — map
-the files, write the plan, run the verification — and it stops when that
-deliverable exists. The menu shows what each task will produce.
+Kanmer attaches requirements to the **boundaries between stages**. How many
+requirements depends on the ticket's **profile** — a two-line fix owes almost
+nothing, a feature owes research and a plan and proof — so the board can be
+strict without being bureaucratic about small work.
 
-## Sharing a board
+The result is that a ticket in Verifying really has merged, and a ticket in Done
+really does have evidence behind it. Not because anyone was disciplined, but
+because the board asked at the moment it mattered.
 
-In a Git repository the board lives on its own branch in `.worktrees/kanmer`, so
-board changes never mix with code changes and a pull request is never noisy with
-ticket edits. Turn on automatic sync in **Settings → Git**.
+If a move is ever refused, **Why can't I move this?** explains both reasons it
+can happen and what to do about each.
+
+## Where to go next
+
+- **Install and open a project** — if you have not yet.
+- **Connect an agent** — the step that makes the rest of this worth doing.
+- **Your first ticket, end to end** — one worked example, which is the fastest
+  way to understand everything above.
+- **The six stages** and **Profiles: what a ticket owes** — the two concepts the
+  rest of the manual builds on.

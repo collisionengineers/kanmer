@@ -64,3 +64,23 @@ Connect hazard did not bite.
 - [ ] `git branch -D mcp-007-worktree-guard` (squash-merged)
 - [ ] `git fetch --prune` + `git worktree prune`
 - [ ] `take_ticket action: "release"`
+
+### Closeout done — 2026-08-16
+
+- [x] PR merge verified — `#48` MERGED 2026-08-16T23:24:28Z, squash `bc8cde1`
+- [x] proof.md finalised — PR URL and merge date appended
+- [x] Moved to final stage — Done at 23:29:20Z
+- [x] Outcome recorded in ticket body — PR link, the three ways the shipped work
+      differs from the ticket as written, and the unfiled follow-up
+- [x] `git worktree remove .worktrees/mcp-007` (tree was clean)
+- [x] `git branch -d mcp-007-worktree-guard` — succeeded; git warned it was
+      merged to the remote-tracking ref but not to HEAD, which is the expected
+      shape after a squash-merge. `-D` was not needed.
+- [x] `git push origin --delete mcp-007-worktree-guard` — the host does not
+      auto-delete; remote branch removed
+- [x] `git fetch --prune` + `git worktree prune` — no `mcp-007` worktree or
+      branch remains, local or remote
+- [x] `take_ticket action: "release"` — ⛏ badge cleared
+
+The temporary `.worktrees/mcp-007-verify` worktree cut during verification was
+also removed.

@@ -1650,10 +1650,6 @@ export function App(): JSX.Element {
             defaultArea: settings?.defaultArea ?? "",
           }}
           onSaveBoard={saveBoard}
-          onOpenManual={(chapter) => {
-            setSettingsOpen(false);
-            setManual({ chapter });
-          }}
           onSetTheme={setTheme}
           onSetNotifications={setNotifications}
           onSetPreferences={setPreferences}

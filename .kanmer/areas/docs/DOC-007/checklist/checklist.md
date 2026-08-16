@@ -70,3 +70,36 @@ Derived from plan.md. One box per step.
 - [ ] Post-implementation report written; PR opened
 
 ## Progress notes
+
+### Progress — core seven authored
+
+All seven core chapters written: `stages`, `profiles`, `gates`, `documents`,
+`references`, `proof`, `board-sync`. Pipeline rewritten, `check:manual` wired.
+
+**Facts were gathered against shipped code, and it mattered — four FRD claims
+are stale in the shipped tree and would have put bugs in the manual:**
+
+1. **Board branch rename IS built.** FRD-020 R5 says "Not built"; the control
+   exists (Settings → Git → **Rename branch**), it renames in place, pushes the
+   new name before deleting the old, and closed projects are reconciled on next
+   open. Verified in `kanmerGit.ts:76-102` and `:123-133`. The shipped
+   troubleshooting chapter was right and the FRD was wrong.
+2. **Backlog is BOTH a column and a view.** GUI-069 merged `488797d`, which
+   renders all six stages always, Backlog first. The separate Backlog table view
+   still exists as a top tab. FRD-007 B4 and FRD-011 R5 both say the board drops
+   the Backlog column — false today. **The shipped `getting-started` chapter says
+   "Backlog is a list rather than a column", which is now wrong** and is being
+   fixed as part of this ticket.
+3. **Desktop notifications are on by default and live in Settings → Appearance**,
+   not Git or Connect.
+4. **Dispatch never creates a worktree.** It spawns at the repo root; only the
+   execute task's prompt tells the agent to make one. Research had implied
+   "each ticket gets its own worktree" as a dispatch property.
+
+**New defect found, not fixed here (see open-questions / closeout):**
+`friendlyGateError` (`App.tsx:1704-1712`) is dead code — it early-returns unless
+the message contains `"document gate(s) unmet"`, a phrase that exists nowhere in
+the repo. So the raw agent-facing refusal, including the literal words
+`set_ticket_doc` and `get_doc_gates`, reaches the human error banner. The `gates`
+chapter is written to be **honest about this** rather than describing copy the
+user will not see; the code fix is its own ticket.

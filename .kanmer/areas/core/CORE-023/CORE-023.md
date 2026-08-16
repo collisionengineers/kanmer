@@ -2,13 +2,14 @@
 id: CORE-023
 type: ticket
 title: 'Detect when a repo''s Kanmer is older than the agent''s, and say what is stale'
-status: review
+status: verifying
 area: core
 assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-08-16T21:51:29.664Z'
   review: '2026-08-16T23:44:41.961Z'
+  verifying: '2026-08-16T23:54:38.413Z'
 taken_at: '2026-08-16T23:25:23.323Z'
 branch: core-023-detect-stale-repo
 worktree: .worktrees/core-023
@@ -25,7 +26,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/54'
 archived: false
 created: '2026-08-16T18:25:18.669Z'
-updated: '2026-08-16T23:44:41.961Z'
+updated: '2026-08-16T23:54:38.413Z'
 ---
 
 ## What

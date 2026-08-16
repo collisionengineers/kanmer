@@ -1,5 +1,7 @@
 # Plan — <ticket id>: <title>
 
+*The plan. Not the checklist — this is the **reasoning**; the checklist is the executable distillation of it.*
+
 Written FROM research.md and impact.md — if either is missing or stale, fix
 that first.
 

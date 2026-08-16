@@ -43,8 +43,18 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
-  check("tools/list returns 24 tools", tools.tools.length === 24, `got ${tools.tools.length}`);
-  for (const name of ["append_scratch", "link_doc", "get_doc_gates", "migrate_board"]) {
+  check("tools/list returns 29 tools", tools.tools.length === 29, `got ${tools.tools.length}`);
+  for (const name of [
+    "append_scratch",
+    "link_doc",
+    "get_doc_gates",
+    "migrate_board",
+    "create_group",
+    "get_group",
+    "list_groups",
+    "get_group_doc",
+    "set_group_doc",
+  ]) {
     check(`${name} tool exists`, tools.tools.some((t) => t.name === name));
   }
   check(
@@ -67,21 +77,24 @@ try {
   const boardRes = await client.callTool({ name: "list_board", arguments: {} });
   const board = JSON.parse(textOf(boardRes));
   check(
-    "list_board returns the seven workflow stages",
-    JSON.stringify(board.statuses.map((s) => s.id)) ===
-      JSON.stringify([
-        "backlog",
-        "researching",
-        "planning",
-        "implementing",
-        "review",
-        "verifying",
-        "done",
-      ]),
-    board.statuses.map((s) => s.id).join(">"),
+    "list_board returns the fixed six stages",
+    JSON.stringify(board.stages.map((s) => s.id)) ===
+      JSON.stringify(["backlog", "preparing", "implementing", "review", "verifying", "done"]),
+    board.stages.map((s) => s.id).join(">"),
   );
   check("board has no phases dimension", board.phases === undefined);
-  check("board carries priorities", board.priorities.some((p) => p.id === "urgent"));
+  check("board has no priorities dimension", board.priorities === undefined);
+  check(
+    "list_board surfaces the shipped profiles",
+    ["feature", "fix", "chore", "spike", "custom"].every((p) => board.profiles[p] !== undefined),
+    Object.keys(board.profiles ?? {}).join(","),
+  );
+  check("list_board surfaces proof types", (board.proofTypes ?? []).includes("visual"));
+  check("list_board surfaces group kinds", (board.groupKinds ?? []).some((k) => k.id === "epic"));
+  check(
+    "list_board surfaces the doc vocabulary and gate-exempt folders",
+    (board.docTypes ?? []).includes("files") && (board.gateExemptFolders ?? []).includes("reference"),
+  );
   check("board carries areas array", Array.isArray(board.areas));
   check("list_board reports source: default before any write", board.source === "default", board.source);
 
@@ -91,9 +104,9 @@ try {
     textOf(await client.callTool({ name: "get_status", arguments: {} })),
   );
   check(
-    "get_status reports exists=false, format 2, default board on a fresh root",
+    "get_status reports exists=false, format 3, default board on a fresh root",
     statusBefore.exists === false &&
-      statusBefore.format === 2 &&
+      statusBefore.format === 3 &&
       statusBefore.boardSource === "default",
   );
   check(
@@ -134,18 +147,21 @@ try {
       type: "ticket",
       title: "Second ticket",
       status: "implementing",
+      // feature is the profile that gates enter-review and enter-done, which
+      // is what the next few checks are about.
+      profile: "feature",
       body: "See [[TICK-001]]",
     },
   });
   check("create_item allocates TICK-002 into implementing", JSON.parse(textOf(second)).id === "TICK-002");
 
-  // Document gate: entering review needs post-implementation-report.md.
+  // Document gate: entering review needs post-implementation-report.
   const gatedReview = await client.callTool({
     name: "move_item",
     arguments: { id: "TICK-002", status: "review" },
   });
   check(
-    "move_item into review is gated on post-implementation-report.md",
+    "move_item into review is gated on post-implementation-report",
     gatedReview.isError === true && textOf(gatedReview).includes("post-implementation-report"),
   );
 
@@ -240,7 +256,7 @@ try {
   );
   check(
     "get_item reports doc presence",
-    enrichedItem.docs.research === true && enrichedItem.docs.proof === false,
+    enrichedItem.docs.research === true && enrichedItem.docs.proof === undefined,
   );
 
   // set_ticket_doc validates the doc name against the area's configured set.
@@ -318,7 +334,7 @@ try {
     arguments: { id: "TICK-002", status: "review" },
   });
   check(
-    "move_item into review succeeds once post-implementation-report.md exists",
+    "move_item into review succeeds once post-implementation-report exists",
     JSON.parse(textOf(intoReview)).status === "review",
   );
   await client.callTool({
@@ -331,7 +347,8 @@ try {
   });
   check(
     "move_item to the final stage is proof-gated",
-    gated.isError === true && textOf(gated).includes("proof.md"),
+    gated.isError === true && textOf(gated).includes("entering Done requires proof"),
+    textOf(gated).slice(0, 90),
   );
   await client.callTool({
     name: "set_ticket_doc",
@@ -341,39 +358,13 @@ try {
     name: "move_item",
     arguments: { id: "TICK-002", status: "done" },
   });
-  check("move_item succeeds once proof.md exists", JSON.parse(textOf(nowDone)).status === "done");
+  check("move_item succeeds once proof exists", JSON.parse(textOf(nowDone)).status === "done");
   const released = await client.callTool({
     name: "take_ticket",
     arguments: { id: "TICK-002", action: "release" },
   });
   check("take_ticket release clears the taken fields", !JSON.parse(textOf(released)).taken_at);
 
-  // A status reorder that would make a stage final is gated the same way a move
-  // is: a ticket created directly into "review" without the configured
-  // post-implementation report needed to cross its new final boundary.
-  await client.callTool({
-    name: "create_item",
-    arguments: { type: "ticket", title: "Reorder victim", status: "review" },
-  });
-  const gatedReorder = await client.callTool({
-    name: "reorder_columns",
-    arguments: {
-      kind: "status",
-      order: ["backlog", "researching", "planning", "implementing", "verifying", "done", "review"],
-    },
-  });
-  check(
-    "reorder_columns status applies the configured final-stage gate",
-    gatedReorder.isError === true && textOf(gatedReorder).includes("post-implementation-report.md"),
-    textOf(gatedReorder).slice(0, 80),
-  );
-  const boardStillDone = JSON.parse(
-    textOf(await client.callTool({ name: "list_board", arguments: {} })),
-  );
-  check(
-    "the refused status reorder left the board untouched",
-    boardStillDone.statuses[boardStillDone.statuses.length - 1].id === "done",
-  );
 
   // Bulk create with partial failure.
   const bulk = JSON.parse(
@@ -411,49 +402,6 @@ try {
   );
   check("list_items sort+limit returns the single newest item", newestOne.length === 1);
 
-  // Board management verbs.
-  const renamed = JSON.parse(
-    textOf(
-      await client.callTool({
-        name: "update_column",
-        arguments: { kind: "priority", id: "low", name: "Someday" },
-      }),
-    ),
-  );
-  check(
-    "update_column renames in place",
-    renamed.priorities.find((p) => p.id === "low")?.name === "Someday",
-  );
-  const badOrder = await client.callTool({
-    name: "reorder_columns",
-    arguments: { kind: "priority", order: ["low", "medium"] },
-  });
-  check("reorder_columns rejects a non-permutation", badOrder.isError === true);
-  const reordered = JSON.parse(
-    textOf(
-      await client.callTool({
-        name: "reorder_columns",
-        arguments: { kind: "priority", order: ["urgent", "high", "medium", "low"] },
-      }),
-    ),
-  );
-  check(
-    "reorder_columns applies the permutation",
-    reordered.priorities[0].id === "urgent",
-  );
-  await client.callTool({
-    name: "add_column",
-    arguments: { kind: "status", id: "qa", name: "QA" },
-  });
-  const removedEmpty = JSON.parse(
-    textOf(
-      await client.callTool({ name: "remove_column", arguments: { kind: "status", id: "qa" } }),
-    ),
-  );
-  check(
-    "remove_column drops an empty column",
-    removedEmpty.board.statuses.every((s) => s.id !== "qa"),
-  );
 
   const links = await client.callTool({ name: "get_links", arguments: { id: "TICK-001" } });
   check("get_links resolves wiki backlink", textOf(links).includes("TICK-002"));
@@ -466,8 +414,8 @@ try {
   );
   check("ticket lives in its own folder under areas/_none", onDisk);
   check(
-    "version.json stamped with format 2",
-    JSON.parse(fs.readFileSync(path.join(sandbox, ".kanmer", "version.json"), "utf8")).format === 2,
+    "version.json stamped with format 3",
+    JSON.parse(fs.readFileSync(path.join(sandbox, ".kanmer", "version.json"), "utf8")).format === 3,
   );
 
   const summaryKeys = Object.keys(JSON.parse(textOf(search))[0]).sort();
@@ -480,10 +428,11 @@ try {
     "created",
     "deployment",
     "docs",
+    "groups",
     "id",
     "labels",
     "order",
-    "priority",
+    "profile",
     "refs",
     "status",
     "taken",
@@ -599,7 +548,7 @@ try {
     textOf(
       await client.callTool({
         name: "create_item",
-        arguments: { type: "ticket", title: "Gate probe" },
+        arguments: { type: "ticket", title: "Gate probe", profile: "feature" },
       }),
     ),
   );
@@ -608,12 +557,15 @@ try {
     textOf(await client.callTool({ name: "get_doc_gates", arguments: { id: gpId } })),
   );
   check(
-    "get_doc_gates reports the ticket's doc types and gates",
-    Array.isArray(gatesForProbe.docTypes) && Array.isArray(gatesForProbe.gates),
+    "get_doc_gates reports the resolved profile, boundaries and reachability",
+    typeof gatesForProbe.profile === "string" &&
+      Array.isArray(gatesForProbe.boundaries) &&
+      Array.isArray(gatesForProbe.reachable) &&
+      typeof gatesForProbe.blockedBy === "object",
   );
   const blockedLeave = await client.callTool({
     name: "move_item",
-    arguments: { id: gpId, status: "researching" },
+    arguments: { id: gpId, status: "preparing" },
   });
   check(
     "leaving backlog is gated on a governing doc",
@@ -630,11 +582,11 @@ try {
   check("link_doc adds a governing-doc ref", (linked.refs ?? []).includes("docs/prd/smoke.md"));
   const nowLeaves = await client.callTool({
     name: "move_item",
-    arguments: { id: gpId, status: "researching" },
+    arguments: { id: gpId, status: "preparing" },
   });
   check(
     "a linked governing doc satisfies the leave-backlog gate",
-    JSON.parse(textOf(nowLeaves)).status === "researching",
+    JSON.parse(textOf(nowLeaves)).status === "preparing",
   );
   const unlinked = JSON.parse(
     textOf(
@@ -661,7 +613,7 @@ try {
     bogusDoc.isError === true && textOf(bogusDoc).includes("Unknown document"),
   );
 
-  // Scratch: append, read back through get_ticket_doc(scratch-<slug>).
+  // Scratch: append, read back through get_ticket_doc(scratch/<slug>).
   await client.callTool({
     name: "append_scratch",
     arguments: { id: gpId, slug: "research", content: "scratch line one" },
@@ -674,12 +626,12 @@ try {
     textOf(
       await client.callTool({
         name: "get_ticket_doc",
-        arguments: { id: gpId, doc: "scratch-research" },
+        arguments: { id: gpId, doc: "scratch/research" },
       }),
     ),
   );
   check(
-    "append_scratch is read back through get_ticket_doc(scratch-<slug>)",
+    "append_scratch is read back through get_ticket_doc(scratch/<slug>)",
     scratchBack.content?.includes("scratch line one") &&
       scratchBack.content?.includes("scratch line two"),
   );
@@ -696,8 +648,11 @@ try {
     textOf(await client.callTool({ name: "get_doc_gates", arguments: {} })),
   );
   check(
-    "get_doc_gates without id returns the board's doc model",
-    Array.isArray(boardGates.default?.types) && typeof boardGates.repoDocs === "object",
+    "get_doc_gates without id returns the board's profile model",
+    typeof boardGates.profiles === "object" &&
+      Array.isArray(boardGates.boundaries) &&
+      Array.isArray(boardGates.docTypes) &&
+      typeof boardGates.repoDocs === "object",
   );
   const migratePreview = JSON.parse(
     textOf(await client.callTool({ name: "migrate_board", arguments: { dry_run: true } })),
@@ -706,6 +661,237 @@ try {
     "migrate_board dry_run reports on an already-current board",
     migratePreview.backfill && Array.isArray(migratePreview.backfill.addedStages),
   );
+  check("migrate_board dry_run reports the v3 step as already current", migratePreview.v3?.alreadyV3 === true);
+
+  // ---- The profile gate matrix over real stdio (FRD-002 acceptance 1-5) ----
+  // The same behaviour core unit-tests, asserted through the tool surface an
+  // agent actually calls — a gate that works in core but not over MCP is a gate
+  // agents do not have.
+  const mk = async (title, profile, extra = {}) =>
+    JSON.parse(
+      textOf(
+        await client.callTool({
+          name: "create_item",
+          arguments: { type: "ticket", title, profile, ...extra },
+        }),
+      ),
+    ).id;
+  const moveTo = (id, status) => client.callTool({ name: "move_item", arguments: { id, status } });
+  const writeDoc = (id, doc, content) =>
+    client.callTool({ name: "set_ticket_doc", arguments: { id, doc, content } });
+
+  const chore = await mk("Chore", "chore");
+  check(
+    "chore is held at Preparing until a plan exists",
+    (await moveTo(chore, "implementing")).isError === true,
+  );
+  await writeDoc(chore, "plan", "# Plan");
+  check(
+    "chore then jumps Backlog -> Implementing in one call",
+    JSON.parse(textOf(await moveTo(chore, "implementing"))).status === "implementing",
+  );
+  check("chore is held at Done without proof", (await moveTo(chore, "done")).isError === true);
+
+  const spike = await mk("Spike", "spike");
+  await writeDoc(spike, "research/findings.md", "# Findings");
+  check(
+    "spike goes Backlog -> Done on research alone",
+    JSON.parse(textOf(await moveTo(spike, "done"))).status === "done",
+  );
+
+  const feature = await mk("Feature", "feature");
+  const featBlocked = await moveTo(feature, "done");
+  check(
+    "a feature cannot collapse Backlog -> Done in one call",
+    featBlocked.isError === true && textOf(featBlocked).includes("crosses 4 document gates"),
+    textOf(featBlocked).slice(0, 90),
+  );
+  check(
+    "and the refusal names the next single stage to move to",
+    textOf(featBlocked).includes('the next is "preparing"'),
+  );
+
+  // The collapse refusal must not masquerade as a missing document: this
+  // ticket has every document the jump would need, and is still refused.
+  const stocked = await mk("Stocked", "fix");
+  for (const d of ["files", "plan", "proof"]) await writeDoc(stocked, d, "# " + d);
+  const stockedBlocked = await moveTo(stocked, "done");
+  check(
+    "a fully documented ticket is still refused the multi-gate jump",
+    stockedBlocked.isError === true &&
+      textOf(stockedBlocked).includes("crosses 2 document gates") &&
+      !textOf(stockedBlocked).includes("requires"),
+    textOf(stockedBlocked).slice(0, 90),
+  );
+  check(
+    "and stepping one stage at a time gets it there",
+    ["preparing", "implementing", "review", "verifying", "done"].reduce(
+      async (okp, stage) => {
+        const ok = await okp;
+        const res = await moveTo(stocked, stage);
+        return ok && !res.isError && JSON.parse(textOf(res)).status === stage;
+      },
+      Promise.resolve(true),
+    ),
+  );
+  await client.callTool({
+    name: "update_item",
+    arguments: { id: feature, profile: "chore" },
+  });
+  check(
+    "changing the profile re-gates the ticket immediately",
+    JSON.parse(textOf(await client.callTool({ name: "get_doc_gates", arguments: { id: feature } })))
+      .profile === "chore",
+  );
+
+  const named = await mk("Custom", "custom", {
+    requires: { "enter-done": ["research/auth"] },
+  });
+  await writeDoc(named, "research/db.md", "# DB");
+  check(
+    "a custom named requirement is not satisfied by a different document",
+    (await moveTo(named, "done")).isError === true,
+  );
+  await writeDoc(named, "research/auth.md", "# Auth");
+  check(
+    "the named document satisfies it",
+    JSON.parse(textOf(await moveTo(named, "done"))).status === "done",
+  );
+
+  // Nested paths and gate-exempt folders, over the wire.
+  const nested = await mk("Nested", "spike");
+  await writeDoc(nested, "reference/mockup.md", "input, not evidence");
+  check(
+    "reference/ never satisfies a gate",
+    (await moveTo(nested, "done")).isError === true,
+  );
+  await writeDoc(nested, "research/deep/topic.md", "# Deep");
+  const nestedBack = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "get_ticket_doc",
+        arguments: { id: nested, doc: "research/deep/topic.md" },
+      }),
+    ),
+  );
+  check("a nested document round-trips", nestedBack.content?.includes("# Deep"));
+  check(
+    "it satisfies the type's requirement on its own",
+    JSON.parse(textOf(await moveTo(nested, "done"))).status === "done",
+  );
+  const unknownFolder = await writeDoc(nested, "reserch/typo.md", "x");
+  check(
+    "an unknown top-level folder is rejected with the valid list",
+    unknownFolder.isError === true && textOf(unknownFolder).includes("Unknown document folder"),
+  );
+
+  // Typed proof: a declared flavour with no matching evidence warns, never blocks.
+  const visual = await mk("Visual", "custom", {
+    requires: { "enter-done": ["proof:visual"] },
+  });
+  await writeDoc(visual, "proof/after.md", "no picture here");
+  const visualGates = JSON.parse(
+    textOf(await client.callTool({ name: "get_doc_gates", arguments: { id: visual } })),
+  );
+  check(
+    "proof:visual without an image surfaces a warning",
+    (visualGates.warnings ?? []).some((w) => /screenshot/i.test(w)),
+  );
+  check(
+    "the warning does not block the move",
+    JSON.parse(textOf(await moveTo(visual, "done"))).status === "done",
+  );
+
+  // ---- Groups (FRD-001), over real stdio -----------------------------------
+  const epic = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "create_group",
+        arguments: { kind: "epic", title: "Checkout rework", body: "Ship these together." },
+      }),
+    ),
+  );
+  check("create_group allocates an EPIC id", epic.id === "EPIC-001", epic.id);
+  const horizon = JSON.parse(
+    textOf(await client.callTool({ name: "create_group", arguments: { kind: "horizon", title: "NOW" } })),
+  );
+  check("a second kind gets its own prefix", horizon.id === "HZN-001", horizon.id);
+  check(
+    "create_group rejects an undeclared kind, listing the valid ones",
+    (await client.callTool({ name: "create_group", arguments: { kind: "sprint", title: "S1" } }))
+      .isError === true,
+  );
+
+  // Membership rides on update_item — there is deliberately no add/remove tool.
+  const m1 = await mk("Member one", "chore");
+  const m2 = await mk("Member two", "chore");
+  for (const id of [m1, m2]) {
+    await client.callTool({ name: "update_item", arguments: { id, groups: [epic.id] } });
+  }
+  check(
+    "membership is rejected when the group does not exist",
+    (await client.callTool({ name: "update_item", arguments: { id: m1, groups: ["EPIC-404"] } }))
+      .isError === true,
+  );
+
+  let group = JSON.parse(textOf(await client.callTool({ name: "get_group", arguments: { id: epic.id } })));
+  check(
+    "get_group derives its members from the tickets",
+    group.members.map((m) => m.id).join(",") === [m1, m2].sort().join(","),
+    group.members.map((m) => m.id).join(","),
+  );
+  check("derived progress counts them in Backlog", group.progress.backlog === 2 && group.total === 2);
+
+  // Move one member and re-read: progress must follow, with no write to the group.
+  const groupFile = path.join(sandbox, ".kanmer", "groups", epic.id, `${epic.id}.md`);
+  const beforeBytes = fs.readFileSync(groupFile, "utf8");
+  await writeDoc(m1, "plan", "# Plan");
+  await moveTo(m1, "implementing");
+  group = JSON.parse(textOf(await client.callTool({ name: "get_group", arguments: { id: epic.id } })));
+  check(
+    "progress follows a member move",
+    group.progress.implementing === 1 && group.progress.backlog === 1,
+    JSON.stringify(group.progress),
+  );
+  check(
+    "and the group file was never written — membership is derived, not stored",
+    fs.readFileSync(groupFile, "utf8") === beforeBytes,
+  );
+  check(
+    "no file anywhere stores the member list",
+    !beforeBytes.includes(m1) && !beforeBytes.includes("members"),
+  );
+
+  // Shared context: what every member's agent is expected to read.
+  await client.callTool({
+    name: "set_group_doc",
+    arguments: { id: epic.id, path: "context.md", content: "The constraint they all sit under." },
+  });
+  const ctx = JSON.parse(
+    textOf(await client.callTool({ name: "get_group_doc", arguments: { id: epic.id, path: "context.md" } })),
+  );
+  check("group docs round-trip", ctx.content?.includes("constraint"));
+  const nestedCtx = await client.callTool({
+    name: "set_group_doc",
+    arguments: { id: epic.id, path: "decisions/api.md", content: "# API" },
+  });
+  check("nested group doc paths work", nestedCtx.isError !== true);
+  check(
+    "the group's own file cannot be overwritten as a context doc",
+    (
+      await client.callTool({
+        name: "set_group_doc",
+        arguments: { id: epic.id, path: `${epic.id}.md`, content: "x" },
+      })
+    ).isError === true,
+  );
+
+  const groups = JSON.parse(textOf(await client.callTool({ name: "list_groups", arguments: {} })));
+  check("list_groups returns both", groups.length === 2, groups.map((g) => g.id).join(","));
+  const epicsOnly = JSON.parse(
+    textOf(await client.callTool({ name: "list_groups", arguments: { kind: "epic" } })),
+  );
+  check("list_groups filters by kind", epicsOnly.length === 1 && epicsOnly[0].id === epic.id);
 
   const del1 = await client.callTool({ name: "delete_item", arguments: { id: "TICK-001" } });
   check(

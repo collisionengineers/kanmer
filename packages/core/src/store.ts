@@ -14,12 +14,8 @@ import {
   areaDir,
   areaFolderName,
   assertSafeRepoPath,
-  docFileIn,
-  isScratchFile,
   itemFile,
   resolvePaths,
-  scratchFileIn,
-  SCRATCH_PREFIX,
   ticketDirIn,
   ticketFileIn,
   typeDir,
@@ -37,14 +33,52 @@ import {
   areaPrefix,
   defaultBoardConfig,
   lastStageId,
+  resolveGroupKinds,
   readBoard,
   readBoardWithSource,
+  resolveEnvironments,
+  resolveProfiles,
+  resolveProofTypes,
   writeBoard,
 } from "./board.js";
+import { FIRST_STAGE, STAGE_IDS, isStageId, stageIndex } from "./stages.js";
+import {
+  GOVERNING_DOC,
+  resolveProfileId,
+  validateProfileMap,
+  type ProfileMap,
+} from "./profiles.js";
+import {
+  collapsesPipeline,
+  evaluateGateReport as evaluateProfileGates,
+  firstBlocking,
+  type GateReport,
+} from "./gates.js";
+import {
+  docCounts,
+  docDirIn,
+  docPathIn,
+  listDocs,
+  listFilesRecursive,
+  listReferences,
+  namedSatisfied,
+  typeSatisfied,
+} from "./docpaths.js";
+import {
+  deriveMembers,
+  groupDocPath,
+  listGroups,
+  maxGroupNumberForPrefix,
+  readGroup,
+  serialiseGroup,
+  writeGroup,
+  type Group,
+  type GroupWithMembers,
+} from "./groups.js";
 import { parseWikiLinks } from "./links.js";
 import { appendActivity, readActivity, type ActivityEntry } from "./activity.js";
 import { CURRENT_FORMAT, readVersion, writeVersion } from "./version.js";
-import { evaluateGates, repoDocKindOf, resolveDocTypes, resolveGates } from "./docs.js";
+import { repoDocKindOf } from "./docs.js";
 import {
   ItemTypeSchema,
   type BoardColumn,
@@ -88,11 +122,17 @@ type ItemLocation =
  */
 export class KanmerStore {
   readonly paths: KanmerPaths;
-  private formatCache: { format: 1 | 2; stamp: string } | null = null;
+  private formatCache: { format: 1 | 2 | 3; stamp: string } | null = null;
   private actor = "gui";
 
-  constructor(projectRoot: string, opts: { actor?: string } = {}) {
-    this.paths = resolvePaths(projectRoot);
+  /**
+   * `repoRoot` is the source checkout governing-doc `refs` resolve against.
+   * Pass it whenever the caller knows both roots (the GUI does); omitted, it
+   * is derived from a `.worktrees/<name>` board path and otherwise equals
+   * `projectRoot`.
+   */
+  constructor(projectRoot: string, opts: { actor?: string; repoRoot?: string } = {}) {
+    this.paths = resolvePaths(projectRoot, opts.repoRoot);
     if (opts.actor) this.actor = opts.actor;
   }
 
@@ -121,7 +161,7 @@ export class KanmerStore {
    * without it, a legacy `tickets/` folder means format 1, and a fresh
    * project starts at the current format.
    */
-  async detectFormat(): Promise<1 | 2> {
+  async detectFormat(): Promise<1 | 2 | 3> {
     // version.json is authoritative. Cache it, but re-stat first: a second
     // process (the GUI) can migrate the board underneath a long-lived MCP
     // server, and the GUI's resetFormatCache() cannot reach that server's
@@ -132,12 +172,14 @@ export class KanmerStore {
       // us, and the derivation is two cheap syscalls anyway.
       this.formatCache = null;
       if (await pathExists(this.paths.tickets)) return 1;
-      return 2;
+      // No version file and no legacy folders: a fresh board, written current.
+      return (await pathExists(this.paths.areasRoot)) ? 2 : CURRENT_FORMAT;
     }
     const stamp = `${st.mtimeMs}:${st.size}`;
     if (this.formatCache && this.formatCache.stamp === stamp) return this.formatCache.format;
     const version = await readVersion(this.paths);
-    const format: 1 | 2 = version && version.format >= 2 ? 2 : 1;
+    const n = version?.format ?? 1;
+    const format: 1 | 2 | 3 = n >= 3 ? 3 : n === 2 ? 2 : 1;
     this.formatCache = { format, stamp };
     return format;
   }
@@ -194,11 +236,6 @@ export class KanmerStore {
    */
   async setBoard(board: BoardConfig): Promise<void> {
     const previous = await this.getBoard(); // re-reads disk = the true prior state
-    const prevLast = lastStageId(previous);
-    const nextLast = lastStageId(board);
-    if (nextLast !== undefined && nextLast !== prevLast) {
-      await this.assertFinalStageGates(board, nextLast);
-    }
     // A whole-board write must not strand items on a removed column — the same
     // protection removeColumn has, so no GUI/agent setBoard path can silently
     // drop a stage/area/priority that items still reference (audit A3).
@@ -213,10 +250,10 @@ export class KanmerStore {
   ): Promise<void> {
     const removed = (prev: BoardColumn[], cur: BoardColumn[]) =>
       prev.filter((c) => !cur.some((n) => n.id === c.id)).map((c) => c.id);
+    // Areas are the only column kind left: stages are constants (ADR-0002) and
+    // priority is gone (ADR-0006), so neither can be stranded by a board edit.
     const dims: [ColumnKind, keyof Item, BoardColumn[], BoardColumn[]][] = [
-      ["status", "status", previous.statuses, next.statuses],
       ["area", "area", previous.areas, next.areas],
-      ["priority", "priority", previous.priorities, next.priorities],
     ];
     const gone = dims.flatMap(([kind, field, prev, cur]) =>
       removed(prev, cur).map((id) => ({ kind, field, id })),
@@ -297,7 +334,7 @@ export class KanmerStore {
         );
       }
     }
-    const field = kind === "status" ? "status" : kind === "area" ? "area" : "priority";
+    const field = "area";
     const affected = (await this.listItems({ includeArchived: true })).filter(
       (i) => (i as Record<string, unknown>)[field] === id,
     );
@@ -483,9 +520,10 @@ export class KanmerStore {
   async createItem(input: CreateItemInput): Promise<Item> {
     const type = ItemTypeSchema.parse(input.type);
     const board = await this.getBoard();
-    if (input.status !== undefined) assertFieldAgainstBoard(board, "status", input.status);
+    if (input.status !== undefined) assertStage(input.status);
     if (input.area !== undefined) assertFieldAgainstBoard(board, "area", input.area);
-    if (input.priority !== undefined) assertFieldAgainstBoard(board, "priority", input.priority);
+    if (input.profile !== undefined) assertProfileAgainstBoard(board, input.profile, input.requires);
+    if (input.groups !== undefined) await this.assertGroups(input.groups);
     if (input.refs !== undefined) await this.assertRefs(input.refs);
     if (input.deployment !== undefined) assertDeploymentAgainstBoard(board, input.deployment);
     for (const target of [...(input.links ?? []), ...(input.blocks ?? [])]) {
@@ -494,7 +532,7 @@ export class KanmerStore {
       }
     }
     const format = await this.detectFormat();
-    if (format === 2 && type !== "ticket") {
+    if (format >= 2 && type !== "ticket") {
       throw new Error(
         `This board stores ${type === "plan" ? "plans" : "research"} inside ticket folders, ` +
           `not as standalone items. Create a ticket, then write the document with ` +
@@ -510,7 +548,7 @@ export class KanmerStore {
     const area = input.area ?? "";
     const areaEntry = board.areas.find((a) => a.id === area);
     const prefix =
-      format === 2
+      format >= 2
         ? areaEntry
           ? areaPrefix(areaEntry)
           : board.idPrefixes.ticket
@@ -522,7 +560,7 @@ export class KanmerStore {
     let lastTried = 0;
     for (let attempt = 0; attempt < CREATE_ATTEMPTS; attempt++) {
       const n =
-        format === 2
+        format >= 2
           ? await nextPrefixNumber(this.paths, prefix, lastTried)
           : await nextIdNumber(this.paths, type, prefix, lastTried);
       const id = formatId(prefix, n);
@@ -540,9 +578,8 @@ export class KanmerStore {
         id,
         type,
         title: input.title,
-        status: input.status ?? board.statuses[0]?.id ?? "",
+        status: input.status ?? FIRST_STAGE,
         area,
-        priority: input.priority ?? defaultPriority(board),
         assignee: input.assignee ?? "",
         labels: input.labels ?? [],
         links: input.links ?? [],
@@ -551,6 +588,9 @@ export class KanmerStore {
         updated: now,
         body: input.body ?? "",
       };
+      if (input.profile !== undefined) item.profile = input.profile;
+      if (input.requires !== undefined) item.requires = input.requires;
+      if (input.groups !== undefined && input.groups.length > 0) item.groups = input.groups;
       if (input.blocks !== undefined && input.blocks.length > 0) item.blocks = input.blocks;
       if (input.refs !== undefined && input.refs.length > 0) item.refs = input.refs;
       if (input.docs_todo === true) item.docs_todo = true;
@@ -558,7 +598,7 @@ export class KanmerStore {
       if (input.prs !== undefined && input.prs.length > 0) item.prs = input.prs;
       if (input.deployment !== undefined && input.deployment !== "") item.deployment = input.deployment;
       const file =
-        format === 2
+        format >= 2
           ? ticketFileIn(this.paths, area, id)
           : itemFile(this.paths, type, id);
       try {
@@ -570,7 +610,7 @@ export class KanmerStore {
         }
         throw err;
       }
-      if (format === 2) await recordAllocatedPrefix(this.paths, prefix, n);
+      if (format >= 2) await recordAllocatedPrefix(this.paths, prefix, n);
       else await recordAllocatedId(this.paths, type, n);
       await appendActivity(this.paths, [this.activity(id, "create", { to: item.status })]);
       return item;
@@ -584,14 +624,16 @@ export class KanmerStore {
     if (
       fields.status !== undefined ||
       fields.area !== undefined ||
-      fields.priority !== undefined ||
+      fields.profile !== undefined ||
+      fields.groups !== undefined ||
       fields.deployment !== undefined
     ) {
       board = await this.getBoard();
-      if (fields.status !== undefined) assertFieldAgainstBoard(board, "status", fields.status);
+      if (fields.status !== undefined) assertStage(fields.status);
       if (fields.area !== undefined) assertFieldAgainstBoard(board, "area", fields.area);
-      if (fields.priority !== undefined)
-        assertFieldAgainstBoard(board, "priority", fields.priority);
+      if (fields.profile !== undefined)
+        assertProfileAgainstBoard(board, fields.profile, fields.requires);
+      if (fields.groups !== undefined) await this.assertGroups(fields.groups);
       if (fields.deployment !== undefined && fields.deployment !== "")
         assertDeploymentAgainstBoard(board, fields.deployment);
     }
@@ -622,6 +664,16 @@ export class KanmerStore {
     if (next.status !== current.status && current.type === "ticket" && loc.kind === "v2") {
       board ??= await this.getBoard();
       await this.assertDocGate(loc.dir, board, next, current.status, next.status);
+    }
+    if (next.status !== current.status) {
+      // Stamped after the gate, so a refused move records nothing. First entry
+      // only: a ticket sent back to Review and returning keeps the original,
+      // which is what "when did this reach Review" should mean.
+      const entered = { ...(current.stageEntered ?? {}) };
+      if (!entered[next.status]) {
+        entered[next.status] = next.updated;
+        next.stageEntered = entered;
+      }
     }
     let file = loc.file;
     if (loc.kind === "v2") {
@@ -695,7 +747,7 @@ export class KanmerStore {
       throw this.conflictError(id, current, expectedUpdated);
     }
     const board = await this.getBoard();
-    assertFieldAgainstBoard(board, "status", status);
+    assertStage(status);
     if (status !== current.status && current.type === "ticket" && loc.kind === "v2") {
       await this.assertDocGate(loc.dir, board, current, current.status, status);
     }
@@ -780,11 +832,9 @@ export class KanmerStore {
     const board = await this.getBoard();
     let stage = input.stage;
     if (stage !== undefined) {
-      assertFieldAgainstBoard(board, "status", stage);
+      assertStage(stage);
     } else {
-      stage = board.statuses.some((s) => s.id === "implementing")
-        ? "implementing"
-        : current.status;
+      stage = "implementing";
     }
     if (stage !== current.status && loc.kind === "v2") {
       await this.assertDocGate(loc.dir, board, current, current.status, stage);
@@ -826,12 +876,18 @@ export class KanmerStore {
     return next;
   }
 
-  /** Read one of a ticket's pipeline documents; null when it doesn't exist yet. */
+  /**
+   * Read a ticket document by type-relative path; null when it doesn't exist.
+   *
+   * `doc` is a path now, not a fixed name: `research`, `research/azure.md`,
+   * `research/azure/tokens.md` are all valid. A bare type resolves to the
+   * folder's index (`research/research.md`), so v2-shaped calls keep working.
+   */
   async getDoc(id: string, doc: TicketDoc): Promise<string | null> {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     if (loc.kind !== "v2") return null;
-    const file = docFileIn(loc.dir, doc);
+    const file = docPathIn(loc.dir, doc);
     if (!(await pathExists(file))) return null;
     return readText(file);
   }
@@ -849,7 +905,7 @@ export class KanmerStore {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     if (loc.kind !== "v2") return { content: null, version: null };
-    const file = docFileIn(loc.dir, doc);
+    const file = docPathIn(loc.dir, doc);
     if (!(await pathExists(file))) return { content: null, version: null };
     const content = await readText(file);
     return { content, version: contentVersion(content) };
@@ -879,26 +935,12 @@ export class KanmerStore {
           `migrate this board to format 2 first.`,
       );
     }
-    // Validate the doc name against the ticket area's configured doc set, and
-    // enforce the requires hierarchy: a prerequisite doc must exist first.
-    const owner = parseItem(await readText(loc.file));
-    const board = await this.getBoard();
-    const types = resolveDocTypes(board, owner.area);
-    const type = types.find((t) => t.id === doc);
-    if (!type) {
-      throw new Error(
-        `Unknown document "${doc}" for area "${owner.area || "(none)"}". ` +
-          `Valid documents: ${types.map((t) => t.id).join(", ")}.`,
-      );
-    }
-    for (const req of type.requires ?? []) {
-      if (!(await pathExists(docFileIn(loc.dir, req)))) {
-        throw new Error(
-          `Cannot write ${doc}.md on "${id}" before ${req}.md exists (${doc} requires ${req}).`,
-        );
-      }
-    }
-    const file = docFileIn(loc.dir, doc);
+    // Containment defines type, so validation is just "is this a known folder"
+    // — docPathIn rejects an unknown top-level name and any traversal. The v2
+    // `requires` chain between doc types is gone: profiles express ordering as
+    // boundary requirements, so a doc can be written whenever it is useful.
+    const file = docPathIn(loc.dir, doc);
+    await ensureDir(path.dirname(file)); // folders are created on first write
     // One read serves both the version check and the append.
     const existing = (await pathExists(file)) ? await readText(file) : null;
     if (opts.expectedVersion !== undefined) {
@@ -921,32 +963,103 @@ export class KanmerStore {
     return { version: contentVersion(text) };
   }
 
-  /** Which pipeline docs exist for a ticket + checklist progress; null for legacy items. */
+  /**
+   * Per-type document counts, checklist progress and reference files for a
+   * ticket; null for legacy items.
+   *
+   * v2 reported a boolean per type because a type *was* one file. Types are
+   * folders now, so the useful answer is how many documents each holds
+   * (FRD-003 T7) — and reference files are enumerated separately because
+   * agents must be able to find human-supplied inputs (FRD-004 R3).
+   */
+  /**
+   * Copy a file into a ticket's `reference/` folder (FRD-004 R2).
+   *
+   * The copy lives here rather than in the GUI's main process because
+   * **containment is core's rule**. Every other path in this system is
+   * validated in core — `parseDocPath`, `groupDocPath`, `assertSafeRepoPath` —
+   * and doing it in main would either duplicate that check or skip it. Skipping
+   * it lets a crafted name escape the ticket folder.
+   *
+   * `reference/` is gate-exempt (FRD-003 T5), so nothing here touches gates: a
+   * reference is an input to the work, never evidence of it.
+   *
+   * A name already taken is suffixed `-2`, `-3`. Overwriting would discard a
+   * file the user may have no other copy of, and refusing would make the
+   * ordinary case — two files both called `screenshot.png` — an error.
+   */
+  async addReference(id: string, sourcePath: string, name?: string): Promise<{ name: string }> {
+    const loc = await this.locateItem(id);
+    if (!loc || loc.kind !== "v2") throw new Error(`No item with id "${id}"`);
+    const dir = docDirIn(loc.dir, "reference");
+    const base = (name ?? path.basename(sourcePath)).trim();
+    if (!base || base === "." || base === "..") throw new Error(`Invalid reference name "${base}"`);
+
+    const resolved = path.resolve(dir, base);
+    const root = path.resolve(dir);
+    if (resolved !== path.join(root, path.basename(resolved)) || !resolved.startsWith(root + path.sep)) {
+      throw new Error(`Reference name "${base}" must be a plain filename inside reference/`);
+    }
+
+    await ensureDir(dir);
+    const ext = path.extname(base);
+    const stem = base.slice(0, base.length - ext.length);
+    let final = base;
+    for (let n = 2; await pathExists(path.join(dir, final)); n++) final = `${stem}-${n}${ext}`;
+
+    await fs.copyFile(sourcePath, path.join(dir, final));
+    await this.appendActivityFor(id, "reference", final);
+    return { name: final };
+  }
+
+  /**
+   * Delete a reference file. There is no archive for one — it is an input, not
+   * a record — so callers must confirm before reaching this.
+   */
+  async removeReference(id: string, name: string): Promise<void> {
+    const loc = await this.locateItem(id);
+    if (!loc || loc.kind !== "v2") throw new Error(`No item with id "${id}"`);
+    const dir = docDirIn(loc.dir, "reference");
+    const resolved = path.resolve(dir, name);
+    const root = path.resolve(dir);
+    if (!resolved.startsWith(root + path.sep)) {
+      throw new Error(`Reference "${name}" is outside reference/`);
+    }
+    await removeFile(resolved);
+    await this.appendActivityFor(id, "reference", name);
+  }
+
+  /** One activity line for a reference change; kept private to this pair. */
+  private async appendActivityFor(id: string, field: string, to: string): Promise<void> {
+    await appendActivity(this.paths, [this.activity(id, "update", { field, to })]);
+  }
+
   async getTicketDocsInfo(id: string): Promise<TicketDocsInfo | null> {
     const loc = await this.locateItem(id);
     if (!loc || loc.kind !== "v2") return null;
-    const item = parseItem(await readText(loc.file));
-    const board = await this.getBoard();
-    const types = resolveDocTypes(board, item.area);
+
+    const counts = await docCounts(loc.dir);
     const docs: Record<string, boolean> = {};
-    for (const t of types) {
-      docs[t.id] = await pathExists(docFileIn(loc.dir, t.id));
-    }
+    for (const [type, n] of Object.entries(counts)) docs[type] = n > 0;
+
     let checklist: TicketDocsInfo["checklist"] = null;
-    const progressType = types.find((t) => t.progress);
-    if (progressType && docs[progressType.id]) {
-      const text = await readText(docFileIn(loc.dir, progressType.id));
+    const checklists = await listDocs(loc.dir, "checklist");
+    if (checklists.length) {
       let checked = 0;
       let total = 0;
-      for (const line of text.split("\n")) {
-        const m = /^\s*[-*]\s+\[( |x|X)\]/.exec(line);
-        if (!m) continue;
-        total++;
-        if (m[1] !== " ") checked++;
+      for (const rel of checklists) {
+        const text = await readText(docPathIn(loc.dir, `checklist/${rel}`));
+        for (const line of text.split("\n")) {
+          const m = /^\s*[-*]\s+\[( |x|X)\]/.exec(line);
+          if (!m) continue;
+          total++;
+          if (m[1] !== " ") checked++;
+        }
       }
       checklist = { checked, total };
     }
-    return { docs, checklist };
+
+    return { docs, counts, checklist, references: await listReferences(loc.dir) };
   }
 
   /**
@@ -1005,12 +1118,35 @@ export class KanmerStore {
     });
   }
 
-  /** Validate governing-doc refs: each must resolve under the project root and exist. */
+  /**
+   * Membership must name groups that exist (FRD-001 G3). Validated on write
+   * because a dangling id would otherwise render as a chip pointing at nothing
+   * — and there is no second place to check it, since membership is only ever
+   * stored here.
+   */
+  private async assertGroups(ids: string[]): Promise<void> {
+    for (const gid of ids) {
+      if (!(await readGroup(this.paths, gid))) {
+        const known = (await listGroups(this.paths, { includeArchived: true })).map((g) => g.id);
+        throw new Error(
+          known.length
+            ? `No group with id "${gid}". Existing groups: ${known.join(", ")}`
+            : `No group with id "${gid}" — this board has no groups yet (create one with create_group).`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Validate governing-doc refs: each must resolve under the **repo** root and
+   * exist. Not the project root — on a board-worktree project the store reads
+   * `<repo>/.worktrees/<name>`, while `/docs/` stays in the source checkout.
+   */
   private async assertRefs(refs: string[]): Promise<void> {
     for (const rel of refs) {
-      const abs = assertSafeRepoPath(this.paths.projectRoot, rel);
+      const abs = assertSafeRepoPath(this.paths.repoRoot, rel);
       if (!(await pathExists(abs))) {
-        throw new Error(`Referenced document "${rel}" does not exist under the project root.`);
+        throw new Error(`Referenced document "${rel}" does not exist under the repo root (${this.paths.repoRoot}).`);
       }
     }
   }
@@ -1030,53 +1166,173 @@ export class KanmerStore {
     fromStatus: string,
     toStatus: string,
   ): Promise<void> {
-    const gates = resolveGates(board, item.area);
-    if (gates.length === 0) return;
-    const context = await this.gateContext(ticketDir, board, item, gates);
-    const violations = evaluateGates(gates, {
-      statuses: board.statuses.map((s) => s.id),
-      from: fromStatus,
-      to: toStatus,
-      ...context,
-    });
-    if (violations.length === 0) return;
-    const lines = violations.map((v) => `  - ${v.reason}`).join("\n");
+    const report = await this.gateReport(ticketDir, board, item);
+
+    // Checked before the missing-document gate, because the two failures are
+    // opposite: this one fires when every document is present. Reporting it as
+    // "needs X" would name documents that are already written.
+    const collapsed = collapsesPipeline(
+      report.boundaries,
+      stageIndex(fromStatus),
+      stageIndex(toStatus),
+    );
+    if (collapsed) {
+      const next = STAGE_IDS[stageIndex(fromStatus) + 1];
+      throw new Error(
+        `${item.id} cannot move from "${fromStatus}" to "${toStatus}" in one step: ` +
+          `that crosses ${collapsed.length} document gates ` +
+          `(${collapsed.map((b) => b.label).join(", ")}). ` +
+          `A single move may cross one. Move one stage at a time` +
+          (next ? ` — the next is "${next}"` : "") +
+          `. Call get_doc_gates for the full picture.`,
+      );
+    }
+
+    const blocking = firstBlocking(report, fromStatus, toStatus);
+    if (!blocking) return;
+
+    const missing = blocking.requirements.filter((r) => !r.satisfied).map((r) => r.requirement);
     throw new Error(
-      `${item.id} cannot move from "${fromStatus}" to "${toStatus}" — ` +
-        `${violations.length} document gate(s) unmet:\n${lines}\n` +
-        `Write the missing document(s) with set_ticket_doc (or link a governing doc via refs / set docs_todo), then move.`,
+      `${item.id} cannot move from "${fromStatus}" to "${toStatus}": ` +
+        `${blocking.label} requires ${missing.join(", ")} ` +
+        `(profile "${report.profile}"). ` +
+        `Write the missing document(s) with set_ticket_doc` +
+        (missing.includes(GOVERNING_DOC)
+          ? `, or link a governing doc via refs / set docs_todo`
+          : "") +
+        `, then move. Call get_doc_gates for the full picture.`,
     );
   }
 
-  /** Collect the ticket-specific inputs shared by every configured gate check. */
-  private async gateContext(
-    ticketDir: string,
-    board: BoardConfig,
-    item: Item,
-    gates: ReturnType<typeof resolveGates>,
-  ): Promise<{
-    hasDoc: (doc: string) => boolean;
-    repoDocSatisfied: (kinds: string[]) => boolean;
-  }> {
-    const needed = new Set<string>();
-    for (const g of gates) if (g.needs !== undefined) needed.add(g.needs);
-    const present = new Set<string>();
-    for (const doc of needed) {
-      if (await pathExists(docFileIn(ticketDir, doc))) present.add(doc);
+  /**
+   * The ticket's full gate state — the single answer MCP, the GUI and skills
+   * all consume (FRD-002 G4). Profile resolution is P6: the ticket's explicit
+   * profile, else its area's default, else the board's.
+   */
+  async gateReport(ticketDir: string, board: BoardConfig, item: Item): Promise<GateReport> {
+    const area = board.areas.find((a) => a.id === item.area);
+    const profileId = resolveProfileId(
+      item.profile,
+      (area as { defaultProfile?: string } | undefined)?.defaultProfile,
+      board.defaultProfile,
+    );
+
+    return evaluateProfileGates({
+      profiles: resolveProfiles(board),
+      profileId,
+      inlineRequires: item.requires,
+      stage: item.status,
+      evidence: {
+        hasType: (type) => typeSatisfied(ticketDir, type),
+        hasNamed: (type, named) => namedSatisfied(ticketDir, type, named),
+        hasGoverningDoc: () => {
+          if (item.docs_todo === true) return true;
+          return (item.refs ?? []).some((rel) => repoDocKindOf(board, rel) !== null);
+        },
+        hasProofImages: async () => {
+          const files = await listFilesRecursive(docDirIn(ticketDir, "proof"));
+          return files.some((f) => /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(f));
+        },
+      },
+    });
+  }
+
+  /** Gate state for a ticket by id — what `get_doc_gates` returns. */
+  // ---- Groups (FRD-001) ---------------------------------------------------
+  // Membership lives on tickets; everything about the group's contents is
+  // derived here on read, so the two can never disagree.
+
+  /** Create a group of a board-declared kind, allocating its id from the kind's prefix. */
+  async createGroup(kind: string, title: string, body = ""): Promise<Group> {
+    await this.init();
+    const board = await this.getBoard();
+    const kinds = resolveGroupKinds(board);
+    const spec = kinds.find((k) => k.id === kind);
+    if (!spec) {
+      throw new Error(`Unknown group kind "${kind}". Valid kinds: ${kinds.map((k) => k.id).join(", ")}`);
     }
-    const repoDocSatisfied = (kinds: string[]): boolean => {
-      if (item.docs_todo === true) return true;
-      for (const rel of item.refs ?? []) {
-        const kind = repoDocKindOf(board, rel);
-        if (kind !== null && kinds.includes(kind)) return true;
-      }
-      return false;
-    };
-    return { hasDoc: (doc) => present.has(doc), repoDocSatisfied };
+    // Reuse the per-prefix id machinery tickets use, so group ids and ticket
+    // ids can never collide and both survive a counters.json rebuild.
+    // `nextPrefixNumber` scans ticket folders for the prefix; groups live
+    // elsewhere, so their own on-disk maximum is passed as the floor. Counters
+    // stay derived state — a deleted counters.json still cannot re-issue a live id.
+    const n = await nextPrefixNumber(
+      this.paths,
+      spec.prefix,
+      await maxGroupNumberForPrefix(this.paths, spec.prefix),
+    );
+    const id = formatId(spec.prefix, n);
+    const now = nowIso();
+    const group: Group = { id, kind, title, archived: false, created: now, updated: now, body };
+    await writeGroup(this.paths, group);
+    await recordAllocatedPrefix(this.paths, spec.prefix, n);
+    await appendActivity(this.paths, [this.activity(id, "create", { field: "group", to: kind })]);
+    return group;
+  }
+
+  async getGroup(id: string): Promise<GroupWithMembers | null> {
+    const group = await readGroup(this.paths, id);
+    if (!group) return null;
+    const items = await this.listItems({ includeArchived: true });
+    return deriveMembers(group, items, lastStageId());
+  }
+
+  async listGroups(opts: { kind?: string; includeArchived?: boolean } = {}): Promise<Group[]> {
+    return listGroups(this.paths, opts);
+  }
+
+  /** Patch a group's own fields. Members are not among them — they are derived. */
+  async updateGroup(
+    id: string,
+    patch: { title?: string; body?: string; archived?: boolean },
+  ): Promise<Group> {
+    const current = await readGroup(this.paths, id);
+    if (!current) throw new Error(`No group with id "${id}"`);
+    const next: Group = { ...current, ...patch };
+    if (serialiseGroup(next) === serialiseGroup(current)) return current; // no-op, no write
+    next.updated = nowIso();
+    await writeGroup(this.paths, next);
+    await appendActivity(this.paths, [this.activity(id, "update", { field: "group" })]);
+    return next;
+  }
+
+  /** Shared context documents live free-form in the group's folder. */
+  async getGroupDoc(id: string, rel: string): Promise<string | null> {
+    const file = groupDocPath(this.paths, id, rel);
+    if (!(await pathExists(file))) return null;
+    return readText(file);
+  }
+
+  async setGroupDoc(id: string, rel: string, content: string): Promise<{ file: string }> {
+    if (!(await readGroup(this.paths, id))) throw new Error(`No group with id "${id}"`);
+    const file = groupDocPath(this.paths, id, rel);
+    await ensureDir(path.dirname(file));
+    await writeFileAtomic(file, `${content.trim()}\n`);
+    await appendActivity(this.paths, [this.activity(id, "doc", { field: `group:${rel}` })]);
+    return { file };
+  }
+
+  /** Every group a ticket belongs to, for the read-everything duty (FRD-003 T9). */
+  async groupsForItem(id: string): Promise<Group[]> {
+    const item = await this.getItem(id);
+    if (!item?.groups?.length) return [];
+    const out: Group[] = [];
+    for (const gid of item.groups) {
+      const g = await readGroup(this.paths, gid);
+      if (g) out.push(g);
+    }
+    return out;
+  }
+
+  async getDocGates(id: string): Promise<GateReport | null> {
+    const loc = await this.locateItem(id);
+    if (!loc || loc.kind !== "v2") return null;
+    const item = parseItem(await readText(loc.file));
+    return this.gateReport(loc.dir, await this.getBoard(), item);
   }
 
   /**
-   * Append a note to a per-ticket scratch file (`scratch-<slug>.md`). Uses
+   * Append a note to a per-ticket scratch note (`scratch/<slug>.md`). Uses
    * `fs.appendFile` (the true append primitive, cf. activity.ts) rather than the
    * atomic temp+rename of setDoc: scratch is a running note, not a versioned doc.
    * A blank line separates successive appends. Emits one activity line per call —
@@ -1091,63 +1347,37 @@ export class KanmerStore {
           `migrate this board to format 2 first.`,
       );
     }
-    const file = scratchFileIn(loc.dir, slug);
+    // Format 3: scratch is a folder like every other type (FRD-003 T1), so a
+    // note lands at scratch/<slug>.md rather than the old scratch-<slug>.md.
+    const file = docPathIn(loc.dir, `scratch/${slug}`);
     const had = await pathExists(file);
-    await fs.mkdir(loc.dir, { recursive: true });
+    await ensureDir(path.dirname(file));
     const block = `${content.trim()}\n`;
     await fs.appendFile(file, had ? `\n${block}` : block, "utf8");
     await appendActivity(this.paths, [
-      this.activity(id, "doc", { field: `${SCRATCH_PREFIX}${slug}`, to: "append" }),
+      this.activity(id, "doc", { field: `scratch/${slug}`, to: "append" }),
     ]);
     return { file };
   }
 
-  /** Read a per-ticket scratch file back; null when it doesn't exist. */
+  /** Read a per-ticket scratch note back; null when it doesn't exist. */
   async getScratch(id: string, slug: string): Promise<string | null> {
-    return this.getDoc(id, `${SCRATCH_PREFIX}${slug}`);
+    return this.getDoc(id, `scratch/${slug}`);
   }
 
-  /** The slugs of a ticket's scratch files (`scratch-<slug>.md` → `<slug>`), sorted. */
+  /** The slugs of a ticket's scratch notes (`scratch/<slug>.md` → `<slug>`), sorted. */
   async listScratch(id: string): Promise<string[]> {
     const loc = await this.locateItem(id);
     if (!loc || loc.kind !== "v2") return [];
-    const names = await fs.readdir(loc.dir).catch(() => [] as string[]);
-    return names
-      .filter(isScratchFile)
-      .map((n) => n.slice(SCRATCH_PREFIX.length, -3))
-      .sort();
+    const files = await listDocs(loc.dir, "scratch");
+    return files.map((f) => f.replace(/\.md$/, "")).sort();
   }
 
-  /**
-   * Refuse a board write that would make a stage final while its occupants do
-   * not meet the configured gate boundary. Archived and legacy tickets are
-   * outside the v2 document-gate model and are not gated here.
-   */
-  private async assertFinalStageGates(board: BoardConfig, stageId: string): Promise<void> {
-    const prior = board.statuses.at(-2)?.id;
-    if (prior === undefined) return;
-    const occupants = await this.listItems({ status: stageId }); // non-archived only
-    const failures: string[] = [];
-    for (const item of occupants) {
-      if (item.type !== "ticket") continue;
-      const loc = await this.locateItem(item.id);
-      if (!loc || loc.kind !== "v2") continue; // legacy layout has no doc folder to gate on
-      const gates = resolveGates(board, item.area);
-      const context = await this.gateContext(loc.dir, board, item, gates);
-      const violations = evaluateGates(gates, {
-        statuses: board.statuses.map((s) => s.id),
-        from: prior,
-        to: stageId,
-        ...context,
-      });
-      for (const violation of violations) failures.push(`${item.id}: ${violation.reason}`);
-    }
-    if (failures.length === 0) return;
-    throw new Error(
-      `Cannot make "${stageId}" the final stage — configured document gates are unmet:\n` +
-        failures.map((failure) => `  - ${failure}`).join("\n"),
-    );
-  }
+  // No format-3 equivalent of v2's assertFinalStageGates. That guard existed
+  // only because `statuses` was editable: a board write could promote a
+  // different stage into the final slot and strand proofless tickets there.
+  // The final stage is now a constant (ADR-0002), so the situation it defended
+  // against cannot arise.
 }
 
 /** areaFolderName, but null instead of throwing (for read-side comparisons). */
@@ -1171,21 +1401,52 @@ function assertFieldAgainstBoard(
   kind: ColumnKind,
   value: string,
 ): void {
-  if (kind === "area" && (value === "" || board.areas.length === 0)) return;
+  if (value === "" || board.areas.length === 0) return;
   const list = columnList(board, kind);
   if (!list.some((c) => c.id === value)) {
-    const label = kind === "status" ? "stages" : `${kind === "area" ? "areas" : "priorities"}`;
     throw new Error(
-      `Unknown ${kind} "${value}". Valid ${label}: ${list.map((c) => c.id).join(", ")}`,
+      `Unknown ${kind} "${value}". Valid areas: ${list.map((c) => c.id).join(", ")}`,
     );
   }
 }
 
-/** Board-derived priority default: `medium` if defined, else the middle entry. */
-function defaultPriority(board: BoardConfig): string {
-  if (board.priorities.some((p) => p.id === "medium")) return "medium";
-  const middle = board.priorities[Math.floor((board.priorities.length - 1) / 2)];
-  return middle?.id ?? "medium";
+/**
+ * Reject a status that is not one of the six (FRD-007 B1).
+ *
+ * Stages are constants, so this needs no board — which is the point: a gate can
+ * no longer reference a stage that does not exist.
+ */
+function assertStage(status: string): void {
+  if (!isStageId(status)) {
+    throw new Error(`Unknown stage "${status}". Valid stages: ${STAGE_IDS.join(", ")}`);
+  }
+}
+
+/**
+ * Reject an unknown profile, or a `custom` ticket whose inline `requires`
+ * names a boundary, document type, proof flavour or environment that does not
+ * exist. Validating on write is what keeps `get_doc_gates` honest — an
+ * unresolvable requirement would otherwise read as a permanently unmet gate.
+ */
+function assertProfileAgainstBoard(
+  board: BoardConfig,
+  profile: string,
+  requires?: ProfileMap,
+): void {
+  const profiles = resolveProfiles(board);
+  if (profile !== "custom" && !profiles[profile]) {
+    throw new Error(
+      `Unknown profile "${profile}". Valid: ${Object.keys(profiles).join(", ")}, custom`,
+    );
+  }
+  const map = profile === "custom" ? (requires ?? {}) : profiles[profile];
+  const errors = validateProfileMap(map, {
+    proofTypes: resolveProofTypes(board),
+    environments: resolveEnvironments(board),
+  });
+  if (errors.length) {
+    throw new Error(`Invalid requirements for profile "${profile}": ${errors.join("; ")}`);
+  }
 }
 
 /**
@@ -1239,12 +1500,8 @@ function matchesFilter(item: Item, filter: ItemFilter): boolean {
 /** The mutable column array on a board for a given kind. */
 function columnList(board: BoardConfig, kind: ColumnKind): BoardColumn[] {
   switch (kind) {
-    case "status":
-      return board.statuses;
     case "area":
       return board.areas;
-    case "priority":
-      return board.priorities;
   }
 }
 

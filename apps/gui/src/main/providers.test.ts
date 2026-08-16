@@ -4,8 +4,11 @@ import {
   codexServerName,
   isNewerVersion,
   providerById,
+  codexTrustFromConfig,
+  codexTrustNote,
   type Invocation,
 } from "./providers.js";
+import * as TOML from "smol-toml";
 import { applyManagedBlock, removeManagedBlock, START, END } from "./agentsBlock.js";
 
 const inv: Invocation = {
@@ -26,15 +29,9 @@ describe("provider registry", () => {
     ]);
   });
 
-  it("codex registers per-project by name and carries ELECTRON_RUN_AS_NODE", () => {
-    const reg = providerById("codex")!.register;
-    if (reg.kind !== "cli") throw new Error("expected cli");
-    const cmd = reg.addCommand(inv, ROOT);
-    expect(cmd).toContain(`codex mcp add ${codexServerName(ROOT)}`);
-    expect(cmd).toContain("--env ELECTRON_RUN_AS_NODE=1");
-    expect(cmd).toContain("--root");
-    expect(reg.removeCommands(ROOT)).toEqual([`codex mcp remove ${codexServerName(ROOT)}`]);
-  });
+  // codex's CLI registration is superseded by the project config file — see
+  // "codex project-scoped TOML registration" below. `codexServerName` survives
+  // only to name the legacy global entries that cleanup drains.
 
   it("claude registers at project scope as kanmer", () => {
     const reg = providerById("claude")!.register;
@@ -154,5 +151,145 @@ describe("isNewerVersion (skills update marker)", () => {
   it("treats a short version as zero-padded", () => {
     expect(isNewerVersion("0.1.1", "0.1")).toBe(true);
     expect(isNewerVersion("0.1", "0.1.0")).toBe(false);
+  });
+});
+
+describe("codex project-scoped TOML registration (FRD-012 R1)", () => {
+  const codex = providerById("codex")!;
+  const reg = codex.register as Extract<typeof codex.register, { kind: "configFile" }>;
+
+  it("registers in the project file, not via the CLI", () => {
+    expect(reg.kind).toBe("configFile");
+    expect(reg.configPath).toBe(".codex/config.toml");
+  });
+
+  it("writes [mcp_servers.kanmer] with command, args and env", () => {
+    const out = reg.merge(null, inv);
+    expect(out).toContain("[mcp_servers.kanmer]");
+    expect(out).toContain("/opt/electron");
+    expect(out).toContain("--root");
+    // env is not optional: the registered command is the Electron binary,
+    // which only runs the server as Node with this set.
+    expect(out).toContain("ELECTRON_RUN_AS_NODE");
+    expect(TOML.parse(out)).toMatchObject({
+      mcp_servers: { kanmer: { command: "/opt/electron", env: { ELECTRON_RUN_AS_NODE: "1" } } },
+    });
+  });
+
+  it("preserves unknown tables, unknown keys and other MCP servers", () => {
+    const existing = [
+      'model = "o3"',
+      "",
+      "[projects.'/home/me/proj']",
+      'trust_level = "trusted"',
+      "",
+      "[mcp_servers.context7]",
+      'command = "npx"',
+      'args = ["-y", "@upstash/context7-mcp"]',
+      "",
+    ].join("\n");
+    const parsed = TOML.parse(reg.merge(existing, inv)) as Record<string, never>;
+    expect(parsed.model).toBe("o3");
+    expect(parsed.projects).toMatchObject({ "/home/me/proj": { trust_level: "trusted" } });
+    expect(parsed.mcp_servers).toMatchObject({
+      context7: { command: "npx" },
+      kanmer: { command: "/opt/electron" },
+    });
+  });
+
+  it("is idempotent and byte-stable on re-merge", () => {
+    const once = reg.merge(null, inv);
+    const twice = reg.merge(once, inv);
+    expect(twice).toBe(once);
+    expect(reg.merge(twice, inv)).toBe(once);
+  });
+
+  it("unmerge removes only kanmer, leaving the rest untouched", () => {
+    const withBoth = reg.merge(
+      ['[mcp_servers.context7]', 'command = "npx"', ""].join("\n"),
+      inv,
+    );
+    const after = TOML.parse(reg.unmerge(withBoth)) as Record<string, never>;
+    expect(after.mcp_servers).toMatchObject({ context7: { command: "npx" } });
+    expect((after.mcp_servers as Record<string, unknown>).kanmer).toBeUndefined();
+  });
+
+  it("unmerge drops an mcp_servers table left empty", () => {
+    const only = reg.merge(null, inv);
+    expect(TOML.parse(reg.unmerge(only))).toEqual({});
+  });
+
+  it("leaves an unparseable file exactly as found rather than mangling it", () => {
+    const broken = "this is [not valid toml";
+    expect(reg.unmerge(broken)).toBe(broken);
+  });
+
+  it("keeps the legacy global cleanup so old kanmer-<project> entries drain", () => {
+    // `codex mcp add` only ever wrote the global config, so every project that
+    // connected under an older Kanmer left an entry behind.
+    expect(reg.removeCommands?.(ROOT)).toEqual([`codex mcp remove ${codexServerName(ROOT)}`]);
+  });
+});
+
+describe("project skill installs (FRD-012 R2)", () => {
+  it("opencode and Antigravity share one .agents/skills tree", () => {
+    for (const id of ["opencode", "antigravity"] as const) {
+      const install = providerById(id)!.install;
+      expect(install.kind).toBe("copySkills");
+      if (install.kind !== "copySkills") throw new Error("unreachable");
+      expect(install.skillsScope).toBe("project");
+      expect(install.skillsDir).toBe(".agents/skills");
+    }
+  });
+
+  it("Grok keeps its own directory — it does not read .agents/skills", () => {
+    const install = providerById("grok")!.install;
+    if (install.kind !== "copySkills") throw new Error("unreachable");
+    expect(install.skillsDir).toBe(".grok/skills");
+  });
+});
+
+describe("codex trust detection", () => {
+  const cfg = [
+    "[projects.'c:\\users\\me\\documents\\github']",
+    'trust_level = "trusted"',
+    // A *basic* (double-quoted) TOML string, so backslashes must be escaped —
+    // real configs mix this with the single-quoted literal form above.
+    '[projects."c:\\\\users\\\\me\\\\exact"]',
+    'trust_level = "trusted"',
+    "[projects.'c:\\users\\me\\revoked']",
+    'trust_level = "untrusted"',
+    "",
+  ].join("\n");
+
+  it("matches an exact path case-insensitively, across quote styles and separators", () => {
+    // Real configs lowercase Windows paths and mix ' and " quoting.
+    expect(codexTrustFromConfig(cfg, "C:\\Users\\Me\\Exact")).toBe("trusted");
+    expect(codexTrustFromConfig(cfg, "C:/Users/Me/Exact/")).toBe("trusted");
+  });
+
+  it("reports a trusted parent as a maybe, never as trusted", () => {
+    // Whether codex matches the nearest ancestor is undocumented; claiming
+    // "trusted" on a guess would be worse than saying we are unsure.
+    expect(codexTrustFromConfig(cfg, "C:/Users/Me/Documents/GitHub/kanmer")).toBe(
+      "maybe-via-ancestor",
+    );
+  });
+
+  it("treats an unlisted or explicitly untrusted folder as untrusted", () => {
+    expect(codexTrustFromConfig(cfg, "C:/Users/Me/Revoked")).toBe("untrusted");
+    expect(codexTrustFromConfig(cfg, "C:/somewhere/else")).toBe("untrusted");
+  });
+
+  it("does not guess when the config is missing or unparseable", () => {
+    expect(codexTrustFromConfig(null, "/x")).toBe("unknown");
+    expect(codexTrustFromConfig("[not valid", "/x")).toBe("unknown");
+  });
+
+  it("only warns when there is something to warn about", () => {
+    expect(codexTrustNote("trusted")).toBeNull();
+    expect(codexTrustNote("untrusted")).toMatch(/trust the folder/);
+    expect(codexTrustNote("maybe-via-ancestor")).toMatch(/parent folder/);
+    expect(codexTrustNote("unknown")).toMatch(/Could not read/);
   });
 });

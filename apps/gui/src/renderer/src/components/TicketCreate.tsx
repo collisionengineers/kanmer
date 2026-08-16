@@ -1,4 +1,8 @@
 import { useMemo, useState } from "react";
+import { UI_FIRST_STAGE as FIRST_STAGE, UI_STAGES as STAGES } from "../../../shared/stages.js";
+
+/** The shipped profiles plus custom — the picker's options (FRD-002 P2/P3). */
+const PROFILE_IDS = ["feature", "fix", "chore", "spike", "custom"] as const;
 import type { BoardConfig, CreateItemInput, Item } from "@kanmer/core";
 import { ChipInput } from "./ChipInput.js";
 import { useClient } from "../lib/client.js";
@@ -8,7 +12,6 @@ interface TicketCreateProps {
   items: Item[];
   /** Preferred initial area/priority (Phase 4.4); used only when on this board. */
   defaultArea?: string;
-  defaultPriority?: string;
   onClose: () => void;
   /** Create the ticket; resolves with the created item, or null on failure. */
   onCreate: (input: CreateItemInput) => Promise<Item | null>;
@@ -24,23 +27,18 @@ export function TicketCreate({
   board,
   items,
   defaultArea = "",
-  defaultPriority = "",
   onClose,
   onCreate,
 }: TicketCreateProps): JSX.Element {
   const client = useClient();
   const [title, setTitle] = useState("");
-  const [status, setStatus] = useState(board.statuses[0]?.id ?? "");
+  const [status, setStatus] = useState<string>(FIRST_STAGE);
   const [area, setArea] = useState(
     board.areas.some((a) => a.id === defaultArea) ? defaultArea : "",
   );
-  const [priority, setPriority] = useState(
-    board.priorities.some((p) => p.id === defaultPriority)
-      ? defaultPriority
-      : board.priorities.some((p) => p.id === "medium")
-        ? "medium"
-        : board.priorities[0]?.id ?? "",
-  );
+  // Profile decides what this ticket will owe at each stage boundary; empty
+  // means inherit (area default, then board default).
+  const [profile, setProfile] = useState("");
   const [assignee, setAssignee] = useState("");
   const [labels, setLabels] = useState<string[]>([]);
   const [links, setLinks] = useState<string[]>([]);
@@ -63,7 +61,8 @@ export function TicketCreate({
     if (!title.trim() || busy) return;
     setBusy(true);
     setFailed(false);
-    const input: CreateItemInput = { type: "ticket", title: title.trim(), status, priority };
+    const input: CreateItemInput = { type: "ticket", title: title.trim(), status };
+    if (profile) input.profile = profile;
     if (area) input.area = area;
     if (assignee.trim()) input.assignee = assignee.trim();
     if (labels.length) input.labels = labels;
@@ -111,7 +110,7 @@ export function TicketCreate({
           <label className="field">
             <span>Stage</span>
             <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              {board.statuses.map((s) => (
+              {STAGES.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
@@ -133,11 +132,12 @@ export function TicketCreate({
 
         <div className="field-row">
           <label className="field">
-            <span>Priority</span>
-            <select value={priority} onChange={(e) => setPriority(e.target.value)}>
-              {board.priorities.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
+            <span>Profile</span>
+            <select value={profile} onChange={(e) => setProfile(e.target.value)}>
+              <option value="">— inherit —</option>
+              {PROFILE_IDS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
                 </option>
               ))}
             </select>

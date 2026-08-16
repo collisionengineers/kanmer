@@ -11,7 +11,7 @@ export interface KanmerVersion {
 }
 
 /** The storage format this build of core writes. */
-export const CURRENT_FORMAT = 2;
+export const CURRENT_FORMAT = 3;
 
 /** Read version.json, or null when the board predates format versioning. */
 export async function readVersion(paths: KanmerPaths): Promise<KanmerVersion | null> {

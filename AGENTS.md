@@ -1,20 +1,21 @@
 <!-- kanmer:instructions:start — managed by kanmer-setup; edits inside will be overwritten -->
 # Kanmer operating instructions
 
-This repo's work is tracked on Kanmer's canonical board worktree. For Git
-projects the GUI roots MCP at `.worktrees/kanmer/.kanmer`; code worktrees still
-record their own branch and path in `take_ticket`, but agents must not manage
-the board branch themselves.
+This repo's work is tracked on a Kanmer board in `.kanmer/`. In a Git repo set up
+through the GUI the board lives in its own worktree, `.worktrees/kanmer`, on the
+board branch, and MCP is already rooted there — never create, switch or push that
+branch yourself. Your own ticket worktree is a separate thing, recorded by
+`take_ticket`.
 
-- Start every session with `get_status`, then `list_board` / `list_items` to find your ticket. `get_doc_gates` shows which documents each stage transition needs.
+- Start every session with `get_status`, then `list_board` / `list_items` to find your ticket.
+- **Which documents a ticket needs depends on its profile, not on a fixed pipeline.** A `feature` owes research, files, plan, checklist, a report and proof; a `chore` owes a plan and proof; a `spike` may owe only research. Call `get_doc_gates <id>` before every move — never assume.
+- Stages: backlog → preparing → implementing → review → verifying → done. **A move crosses at most one gated boundary**, so walk the stages one at a time; a jump is refused even when every document exists.
+- Read the whole ticket folder before starting — documents are folders (`research/`, `plan/`, …), so there may be several files per type. If the ticket is in a group, read the group's `context.md` too: the constraint binding the batch is written once, there.
 - Work each ticket on its own branch and worktree: worktree `.worktrees/<id>`, branch `<id>-<slug>`; `take_ticket` records both and moves the stage.
-- Stages: backlog → researching → planning → implementing → review → verifying → done — hard document gates guard the transitions.
-- Before a ticket leaves Backlog, link a governing doc (`link_doc` → a PRD/FRD/ADR in `/docs/`) or set `docs_todo`.
-- Doc pipeline: research.md + impact.md → plan.md → checklist.md → post-implementation-report.md; write proof.md on merged main before Done.
-- Add running notes with `append_scratch` (not `set_ticket_doc`) — scratch is the notepad and is never gated.
-- Review passes → the PR is merged → the ticket enters Verifying; write proof.md on merged main, move to Done, then close out (record commits/PRs/deployment).
+- Write pipeline documents with `set_ticket_doc`. Running notes go to `append_scratch` — scratch is the notepad and is never gated, and neither is anything under `reference/` or `assets/`.
+- Proof is written on merged `main`, after review and the merge, not before.
 - Archive, don't delete. Reference other items with [[ID]] wiki-links.
-- Skills, one per phase: kanmer-tickets (manage), -docs, -research, -plan, -execute, -review, -verify, -closeout, -auto, -report, -groom, -import, -setup.
+- Skills, one per phase: kanmer-tickets (manage), -docs, -research, -plan, -execute, -review, -verify, -closeout, -auto, -report, -groom, -setup.
 <!-- kanmer:instructions:end -->
 
 # AGENTS.md — Contributor & AI-agent guide to Kanmer
@@ -22,6 +23,46 @@ the board branch themselves.
 This file is the single source of truth for **how to work on Kanmer**. It's written for an AI coding agent (codex, Claude Code, etc.) or a new human contributor who needs to be productive without reading every file first. `CLAUDE.md` points here.
 
 For end-user install/usage, see [README.md](README.md). This file is about *building the thing*.
+
+---
+
+## 0. The operating rule
+
+**Kanmer's own work goes through Kanmer.** Not as a demonstration — as the way
+this repository is worked. Four rules, in order:
+
+1. **The ticket comes before the branch.** File it, give it a `profile` that
+   matches the size of the work, and let `get_doc_gates` tell you what that
+   profile asks for. Work that appears as a branch with no ticket has no record
+   of why it happened.
+2. **One worktree and one branch per ticket**, recorded by `take_ticket` —
+   worktree `.worktrees/<id>`, branch `<id>-<slug>`. The board shows what is
+   live and where.
+3. **The PR names the ticket id**, and the ticket records the PR. Either half
+   alone leaves a trail that stops.
+4. **The gates are not optional here.** A move crosses **one** gated boundary at
+   a time, and every intervening boundary's documents must already exist. If
+   that feels slow for a two-line fix, the profile is wrong — change the
+   profile, not the process.
+
+### What this repo's board actually shows
+
+Stated plainly, because a rule contradicted by its own evidence gets ignored.
+
+- **60 tickets are backfilled history**, created directly in Done with `custom`
+  and an empty requirements map. They record work finished before the board
+  existed and were never worked through it.
+- **26 tickets from 15–16 August 2026 were closed by one `backlog → done`
+  move** with every document written first. That was legal until CORE-011 and
+  it is exactly the shortcut the rule above exists to prevent. Their documents
+  describe what was built accurately; they are **not** evidence that the
+  pipeline was followed.
+- **Tickets closed after CORE-011 carry per-stage timestamps** in
+  `stageEntered`, a PR reference, and proof written after the merge. Those are
+  the ones to imitate.
+
+`stageEntered` only began recording when CORE-011 landed, so an older ticket
+with no stage history is missing data rather than failing the rule.
 
 ---
 
@@ -49,6 +90,11 @@ Everything else in the codebase follows from that model.
 
 ## 2. Repository layout
 
+> **Governance lives in [`/docs/`](docs/README.md)** — vision, PRDs, FRDs and ADRs. FRDs are the
+> durable end-state specs this codebase is measured against; when this guide and an FRD disagree
+> about intended behaviour, the FRD wins and this guide is the thing to fix. Roadmaps under
+> `docs/plans/` are working documents, not governance.
+
 npm-workspaces monorepo. Build order is core → mcp-server → gui (each depends on the previous).
 
 ```
@@ -57,6 +103,12 @@ kanmer/
   tsconfig.base.json      # shared strict TS config all packages extend
   README.md               # end-user install/usage
   AGENTS.md               # THIS FILE
+  docs/                   # GOVERNANCE — see docs/README.md
+    product/              #   vision + PRDs (why)
+    functional/frd/       #   FRDs (what each feature does) — the spec phases implement
+    architecture/adr/     #   ADRs (why it is built this way)
+    contributing/         #   doc-structure.md — generated mirror of the board's doc model
+    plans/                #   implementation roadmaps (working docs, not governance)
   examples/
     codex-config.toml     # manual codex MCP registration example
 
@@ -218,11 +270,14 @@ Area `prefix` is 2–6 uppercase alphanumerics, derived from the id when unset
 (`areaPrefix()` in board.ts), and uniqueness — including *among* the
 `idPrefixes` values and against them — is enforced on every board write. The
 final stage's configured document-gate boundary is re-checked whenever a board
-write changes which stage is last, and a ticket cannot be *created* directly in the final stage
-either. `status` is the only workflow axis, with six default stages:
+write changes which stage is last (`assertFinalStageGates`, store.ts). Creation,
+by contrast, is **deliberately ungated** — a ticket may be created directly in
+any stage, including the last, which is what makes historical backfill possible
+(store.ts `createItem`; asserted in store.test.ts). `status` is the only workflow
+axis, with seven default stages:
 
 ```
-todo → planning → implementing → review → verifying → done
+backlog → researching → planning → implementing → review → verifying → done
 ```
 
 The FIRST stage is where new items land; the LAST stage is governed by the
@@ -241,7 +296,6 @@ title: …
 status: implementing   # the workflow stage = board column
 area: api              # optional; clusters + colours the card, owns the folder
 priority: high         # a string id into board.priorities
-due: 2026-09-01        # optional date-only deadline
 order: 20              # optional fractional sort key (manual ordering)
 assignee: claude
 taken_at: 2026-08-13T…Z  # ┐ set while an agent works the ticket
@@ -250,6 +304,11 @@ worktree: wt/x           # ┘
 labels: [mcp]
 links: [API-002]       # structured relations (tool-queryable)
 blocks: [API-003]      # this item blocks API-003; blocked-by is derived
+refs: [docs/frd/FRD-002.md]  # governing repo docs; satisfies the repo-doc gate
+docs_todo: false       # "a governing doc is still to be written" — also satisfies it
+commits: [a1b2c3d]     # ┐ traceability, emitted only when non-empty
+prs: ["42"]            # ┘
+deployment: staging    # only when board.deployment declares environments
 archived: false        # hidden from the board unless the Archived view
 created: 2026-08-12T…Z
 updated: 2026-08-12T…Z
@@ -272,14 +331,18 @@ mutation appends a `{ts, id, op, field, from, to, actor}` line to
 The only place that touches `.kanmer` files. Public API via `index.ts`. Key entry point: **`KanmerStore`** (`store.ts`) — construct with a project root, then `listItems(WithWarnings)/getItem/createItem/updateItem/moveItem/deleteItem/searchItems`, `takeTicket/releaseTicket`, `getDoc/getDocWithVersion/setDoc/getTicketDocsInfo`, `getBoard(WithSource)/setBoard/addColumn/updateColumn/removeColumn/reorderColumns`, `detectFormat`, `getActivity`. `init()` maintains whichever format exists (it never stamps v2 onto a v1 board — that's `migrateToV2`'s job). Links live in `links.ts` (`getLinkGraph`, `linkItems`, `computeBlockedIds`, `parseWikiLinks`). Everything is covered by `*.test.ts` (vitest), including a v1 fixture suite and the migration round-trip.
 
 ### `@kanmer/mcp-server` (packages/mcp-server)
-`index.ts` builds an `McpServer` and registers **20 tools**, plus MCP resources (`kanmer://board`, `kanmer://items/{id}` with `subscribe` support) and two prompts (`standup`, `take-ticket`), then connects a `StdioServerTransport`. Root resolution in `root.ts`. **Init is lazy**: boot never calls `store.init()` — a read-only session (or a host that spawns the server in a workspace nobody opted into Kanmer for) must not create `.kanmer/` just by connecting. The GUI passes the canonical board-worktree root to MCP while keeping all source-repository operations at the selected source root. Write tools call `ensureInit()` first, which creates the skeleton once on the first actual write; read tools degrade to empty/default results when `.kanmer/` doesn't exist yet. Write tools also stamp the activity-log actor from the client's identity, and destructive ops (`delete_item`, `remove_column` with `migrate_to`) confirm via elicitation when the host supports it. Two builds:
+`index.ts` builds an `McpServer` and registers **24 tools**, plus MCP resources (`kanmer://board`, `kanmer://items/{id}` with `subscribe` support) and two prompts (`standup`, `take-ticket`), then connects a `StdioServerTransport`. Root resolution in `root.ts`. **Init is lazy**: boot never calls `store.init()` — a read-only session (or a host that spawns the server in a workspace nobody opted into Kanmer for) must not create `.kanmer/` just by connecting. The GUI passes the canonical board-worktree root to MCP while keeping all source-repository operations at the selected source root. Write tools call `ensureInit()` first, which creates the skeleton once on the first actual write; read tools degrade to empty/default results when `.kanmer/` doesn't exist yet. Write tools also stamp the activity-log actor from the client's identity, and destructive ops (`delete_item`, `remove_column` with `migrate_to`) confirm via elicitation when the host supports it. Two builds:
 - `dist/index.js` — ESM, deps external (for dev / `node …`).
 - `dist/standalone/kanmer-mcp.cjs` — self-contained CJS, everything bundled (shipped inside the GUI, run via Electron-as-Node).
 
 **Tools** (all carry annotations so codex approval modes / Claude read-write split behave):
-- Read (`readOnlyHint`): `get_status`, `list_board`, `list_items`, `get_item`, `get_ticket_doc`, `search_items`, `get_links`, `get_activity`
-- Write: `create_item`, `create_items`, `update_item`, `move_item`, `take_ticket`, `set_ticket_doc`, `link_items`, `add_column`, `update_column`, `reorder_columns`
+- Read (`readOnlyHint`): `get_status`, `list_board`, `list_items`, `get_item`, `get_ticket_doc`, `search_items`, `get_links`, `get_activity`, `get_doc_gates`
+- Write: `create_item`, `create_items`, `update_item`, `move_item`, `take_ticket`, `set_ticket_doc`, `append_scratch`, `link_items`, `link_doc`, `add_column`, `update_column`, `reorder_columns`, `migrate_board`
 - Destructive (`destructiveHint`): `delete_item`, `remove_column`
+
+That is the whole surface; `npm run plugin:check` fails if this list and the
+registered names drift apart (it reads the *skill's* tool reference, not this
+file — so correct both).
 
 The plugin's `kanmer-tickets` skill documents this surface for agents — see the
 sync rule in §7.
@@ -364,7 +427,10 @@ way, so it could not fail.
   `npm run plugin:check` — it fails on tool-name drift.
 - **Document writes carry an optional version token.** `getDocWithVersion`/`get_ticket_doc` return a content hash; passing it back as `setDoc`'s `expectedVersion` / `set_ticket_doc`'s `expected_version` turns a concurrent overwrite into a conflict, exactly like `expectedUpdated` on `updateItem`. Omitting it is last-write-wins. Documents have no frontmatter to hold `updated`, which is why this is a hash and not a timestamp.
 - **Renderer logic that could be pure, is.** `renderer/src/lib/` holds the DOM-free modules — `markdown.ts`, `board.ts` (column lookups, the blocked/overdue rules, drop-position and optimistic-order arithmetic) and `standup.ts` (the whole standup report plus its markdown). They are the **only** renderer code with vitest coverage, so put new logic there rather than in JSX, export it, and take `now`/`today` as an argument instead of calling `Date.now()` inside.
-- **`board.ts`'s `blockedIds` is the renderer's only copy of core's live-blocker rule** (`links.ts computeBlockedIds`), consumed by both the card badges and the Standup view. Likewise `Settings.tsx validateDraft()` mirrors `board.ts assertUniquePrefixes()`. The renderer may only `import type` from core, so these cannot share code — change one, change the other.
+- **Three deliberate core↔renderer duplications.** The renderer may only `import type` from core, so these cannot share code — change one, change the other:
+  1. `lib/board.ts` `blockedIds` mirrors `links.ts computeBlockedIds` (card badges + Standup view).
+  2. `Settings.tsx validateDraft()` mirrors `board.ts assertUniquePrefixes()`.
+  3. `lib/profileDraft.ts` mirrors `profiles.ts` `parseRequirement` + `validateProfileMap` (the Profiles editor). Its split order — `@`, then `:`, then `/` — must match `parseRequirement` exactly: any other order accepts requirement strings core rejects, and the board is saved with a requirement no gate can satisfy. Its tests state the vocabulary literally rather than importing it, so a change in core's list surfaces as a failing test instead of silent agreement.
 - **`plugin:check` sees tool names and bundle bytes only.** Everything below `## Field semantics` in `references/tool-reference.md` is deliberately invisible to it (`check-plugin-sync.mjs:41-45` splits the document there so field names aren't mistaken for tools) — re-read that prose by hand whenever the data model changes.
 - **`quitAndInstall()` is not cancellable.** `BaseUpdater` spawns the installer **before** `app.quit()` (`BaseUpdater.js:13-23`), and the installer force-kills every process under the install dir — so a guard placed after the IPC call is a guard that never runs. `CH.installUpdate` has exactly **two** renderer call sites, both downstream of `restartWarning()`; main refuses the call unless an update is actually downloaded. Do not add a third call site, and do not call `quitAndInstall()` from anywhere but `installUpdateNow()`.
 - **`electron-updater` is the one externalized production dependency**, via `external: ["electron-updater"]` in the **main build only**. Do **not** replace it with `externalizeDepsPlugin()` — that externalizes every future `dependencies` entry, and gotcha 1 requires gray-matter to stay bundled in the CJS main output.

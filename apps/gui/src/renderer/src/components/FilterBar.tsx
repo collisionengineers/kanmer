@@ -2,6 +2,8 @@ import type { BoardConfig, Item } from "@kanmer/core";
 import { distinct } from "../lib/board.js";
 
 export interface Filters {
+  /** A group id — the cross-cutting lens (FRD-001 G8, FRD-011 R4). */
+  group?: string;
   area?: string; // undefined = all, "" = no area, else area id
   priority?: string;
   assignee?: string;
@@ -16,6 +18,8 @@ interface FilterBarProps {
   filters: Filters;
   onFilters: (f: Filters) => void;
   searchRef?: React.RefObject<HTMLInputElement>;
+  /** Open the filtered group's detail view. */
+  onOpenGroup?: (id: string) => void;
 }
 
 export function FilterBar({
@@ -26,7 +30,11 @@ export function FilterBar({
   filters,
   onFilters,
   searchRef,
+  onOpenGroup,
 }: FilterBarProps): JSX.Element {
+  // Groups come from the tickets themselves, so the dropdown only ever offers
+  // groups something is actually in — an empty group is not a useful lens.
+  const groups = distinct(items.flatMap((i) => i.groups ?? [])).map((id) => ({ id, title: "" }));
   const assignees = distinct(items.map((i) => i.assignee));
   const labels = distinct(items.flatMap((i) => i.labels ?? []));
   const set = (patch: Partial<Filters>) => onFilters({ ...filters, ...patch });
@@ -65,17 +73,28 @@ export function FilterBar({
         </select>
       )}
 
-      <select
-        value={filters.priority ?? ""}
-        onChange={(e) => set({ priority: e.target.value || undefined })}
-      >
-        <option value="">All priorities</option>
-        {board.priorities.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
+      {groups.length > 0 && (
+        <select
+          value={filters.group ?? ""}
+          onChange={(e) => set({ group: e.target.value || undefined })}
+        >
+          <option value="">All groups</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.title ? `${g.id} — ${g.title}` : g.id}
+            </option>
+          ))}
+        </select>
+      )}
+      {filters.group && onOpenGroup && (
+        <button
+          className="ghost sm"
+          title="Open this group"
+          onClick={() => onOpenGroup(filters.group!)}
+        >
+          Open {filters.group}
+        </button>
+      )}
 
       {assignees.length > 0 && (
         <select

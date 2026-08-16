@@ -1,26 +1,38 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  UI_STAGES as STAGES,
+  UI_STAGE_IDS as STAGE_IDS,
+  UI_LAST_STAGE,
+  uiStageName as stageName,
+} from "../../shared/stages.js";
 import type {
   BoardConfig,
   CreateItemInput,
   Item,
-  MigrationReport,
   MovePosition,
 } from "@kanmer/core";
 import { blockedIds, columnCards, optimisticOrder } from "./lib/board.js";
 import { classifyKanmerPath } from "../../shared/kanmerPath.js";
+import { ContextMenu, useDismissOnOutside, type MenuItem } from "./components/ContextMenu.js";
 import { ClientContext, makeClient, type ProjectClient } from "./lib/client.js";
+import { readOnlyClient } from "./lib/readOnly.js";
 import { restoreTabs, restoredActiveTab } from "./lib/session.js";
 import { tabCloseDecision } from "./lib/tabClose.js";
 import { restartWarning, updateSurface } from "./lib/update.js";
 import type {
   AppSettings,
+  BoardMigrationReport,
   ChangePayload,
+  ConnectTarget,
+  DispatchOption,
   DispatchStatus,
   Theme,
   UiPreferences,
   UpdateStatusEvent,
 } from "../../shared/ipc.js";
 import { Board } from "./components/Board.js";
+import { Manual } from "./components/Manual.js";
+import { BacklogTable } from "./components/BacklogTable.js";
 import { TabStrip, type Tab } from "./components/TabStrip.js";
 import { ArchivedList } from "./components/ArchivedList.js";
 import { Editor } from "./components/Editor.js";
@@ -31,17 +43,26 @@ import { ActivityPanel } from "./components/ActivityPanel.js";
 import { CommandPalette, type PaletteCommand } from "./components/CommandPalette.js";
 import { ConfirmModal } from "./components/ConfirmModal.js";
 import { TicketCreate } from "./components/TicketCreate.js";
+import { GroupView } from "./components/GroupView.js";
 import { Welcome } from "./components/Welcome.js";
 
-type View = "ticket" | "standup" | "archived";
+type View = "ticket" | "backlog" | "standup" | "archived";
 
 const VIEW_LABELS: Record<View, string> = {
   ticket: "Board",
+  backlog: "Backlog",
   standup: "Standup",
   archived: "Archived",
 };
 
 const EMPTY_FILTERS: Filters = {};
+
+/**
+ * Why an unmigrated board refuses writes (FRD-007 M3). Shown by whichever
+ * control the user reached for, so it has to say what to do about it.
+ */
+const READ_ONLY_REASON =
+  "This board is read-only until it is migrated to format 3 — use Migrate in the banner above.";
 
 /** A project the user asked to open: pick one, or a known path. */
 type OpenTarget = { kind: "pick" } | { kind: "path"; path: string };
@@ -71,18 +92,27 @@ export function App(): JSX.Element {
   const [root, setRoot] = useState<string | null>(null);
   const [tabs, setTabs] = useState<Tab[]>([]);
   const savedStates = useRef<Map<string, SavedTabState>>(new Map());
-  const client = useMemo(() => (root ? makeClient(root) : null), [root]);
-  // A ref to the active client so stable useCallbacks bind to the current
-  // project without re-creating on every switch.
-  const clientRef = useRef<ProjectClient | null>(null);
-  clientRef.current = client;
+  const baseClient = useMemo(() => (root ? makeClient(root) : null), [root]);
   const rootRef = useRef<string | null>(null);
   rootRef.current = root;
   const tabsRef = useRef<Tab[]>([]);
   tabsRef.current = tabs;
   const [board, setBoard] = useState<BoardConfig | null>(null);
   const [items, setItems] = useState<Item[]>([]);
-  const [format, setFormat] = useState<1 | 2>(2);
+  const [format, setFormat] = useState<1 | 2 | 3>(2);
+  // An unmigrated board is a compat rendering: the fixed six stages drawn over
+  // a stage set that may not be them. Reading it is useful; writing to it saves
+  // format-3 shapes into a format-2 board (FRD-007 M3). Wrapping the client is
+  // what makes that hold for components written later — it is the only path
+  // they have to IPC.
+  const client = useMemo(
+    () => (baseClient && format < 3 ? readOnlyClient(baseClient, READ_ONLY_REASON) : baseClient),
+    [baseClient, format],
+  );
+  // A ref to the active client so stable useCallbacks bind to the current
+  // project without re-creating on every switch.
+  const clientRef = useRef<ProjectClient | null>(null);
+  clientRef.current = client;
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [view, setView] = useState<View>("ticket");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -99,10 +129,20 @@ export function App(): JSX.Element {
   const [createOpen, setCreateOpen] = useState(false);
   const [dispatching, setDispatching] = useState<Set<string>>(() => new Set());
   const [dispatches, setDispatches] = useState<DispatchStatus[]>([]);
+  /**
+   * The dispatch task menu for the ticket whose context menu is open.
+   * Fetched per ticket because feasibility depends on that ticket's stage and
+   * documents; resolved in main so core stays the authority on it.
+   */
+  const [dispatchOptions, setDispatchOptions] = useState<DispatchOption[]>([]);
   const [dispatchesOpen, setDispatchesOpen] = useState(false);
   const [changeSignal, setChangeSignal] = useState(0);
-  const [migrateReport, setMigrateReport] = useState<MigrationReport | null>(null);
+  const [migrateReport, setMigrateReport] = useState<BoardMigrationReport | null>(null);
   const [migrating, setMigrating] = useState(false);
+  /** An open group detail view, or null. Opened from a group chip or filter. */
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  /** The manual, and the chapter a `?` deep-linked to. */
+  const [manual, setManual] = useState<{ chapter?: string } | null>(null);
 
   // Auto-update. `updateDismissed` is per-session only (no "skip this version"
   // persistence): "Later" costs nothing, since the update installs on the next
@@ -419,6 +459,20 @@ export function App(): JSX.Element {
 
   const updateView = updateSurface(update, updateDismissed);
 
+  // Migration is one action across three steps, so its blockers and notes read
+  // as one list. A v2 blocker stops the whole thing just as surely as a v3 one —
+  // showing them in separate places would let the user fix one and be surprised.
+  const allBlockers = migrateReport
+    ? [...migrateReport.v2.blockers, ...migrateReport.v3.blockers]
+    : [];
+  const allNotes = migrateReport
+    ? [
+        ...migrateReport.v2.notes,
+        ...migrateReport.backfill.addedStages.map((s) => `Stage "${s}" added by backfill.`),
+        ...migrateReport.v3.notes,
+      ]
+    : [];
+
   // Push update toasts into the existing toast stack, deduped by version so a
   // download's many `downloading` emits produce one toast, not a hundred.
   useEffect(() => {
@@ -484,6 +538,7 @@ export function App(): JSX.Element {
   useEffect(() => {
     return window.kanmer.onMenu((cmd) => {
       if (cmd.type === "pick-project") requestOpen({ kind: "pick" });
+      else if (cmd.type === "manual") setManual({ chapter: cmd.chapter });
       else requestOpen({ kind: "path", path: cmd.path });
     });
   }, [requestOpen]);
@@ -586,12 +641,12 @@ export function App(): JSX.Element {
       if (!board) return;
       const item = items.find((i) => i.id === id);
       if (!item) return;
-      const order = board.statuses.map((s) => s.id);
+      const order: string[] = [...STAGE_IDS];
       const idx = order.indexOf(item.status);
       const target = order[idx + dir];
       if (idx === -1 || !target) return;
       await onMove(id, { status: target });
-      announce(`${id} moved to ${board.statuses.find((s) => s.id === target)?.name ?? target}`);
+      announce(`${id} moved to ${stageName(target)}`);
     },
     [board, items, onMove, announce],
   );
@@ -641,40 +696,166 @@ export function App(): JSX.Element {
     [refresh],
   );
 
-  const onContext = useCallback(
-    async (item: Item) => {
-      if (!board) return;
-      const action = await window.kanmer.showItemMenu({
-        id: item.id,
-        archived: item.archived,
-        taken: Boolean(item.taken_at),
-        currentStatus: item.status,
-        statuses: board.statuses.map((s) => ({ id: s.id, name: s.name })),
-      });
-      if (!action) return;
+  // The card context menu is rendered, not native (FRD-019 R6): a native menu
+  // cannot use the app's theme variables, so it is always subtly wrong in one
+  // theme. Opening it is now local state rather than an IPC round-trip.
+  const [cardMenu, setCardMenu] = useState<{ item: Item; x: number; y: number } | null>(null);
+  /** Per-stage "why not" for the open menu's ticket, from get_doc_gates. */
+  const [cardMenuGates, setCardMenuGates] = useState<Record<string, string[]> | null>(null);
+  const [dispatchTargets, setDispatchTargets] = useState<{ id: ConnectTarget; label: string }[]>([]);
+  const closeCardMenu = useCallback(() => {
+    setCardMenu(null);
+    setCardMenuGates(null);
+  }, []);
+  useDismissOnOutside(closeCardMenu, cardMenu !== null);
+
+  // Gates are fetched when the menu opens rather than held for every card:
+  // it is one call for the one ticket the user is actually acting on, and it is
+  // always current at the moment the choices are shown.
+  useEffect(() => {
+    if (!cardMenu) return;
+    let cancelled = false;
+    void clientRef.current
+      ?.getGateStatus(cardMenu.item.id)
+      .then((g) => {
+        if (!cancelled) setCardMenuGates(g);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [cardMenu]);
+
+  useEffect(() => {
+    void window.kanmer
+      .listProviders()
+      .then((ps) =>
+        setDispatchTargets(
+          ps.filter((p) => p.dispatch).map((p) => ({ id: p.id as ConnectTarget, label: p.label })),
+        ),
+      )
+      .catch(() => undefined);
+  }, []);
+
+  const runCardAction = useCallback(
+    async (fn: () => Promise<unknown> | unknown) => {
       try {
-        if (action.type === "open") trySelect(item.id);
-        else if (action.type === "move") await onMove(item.id, { status: action.status });
-        else if (action.type === "release") await clientRef.current!.releaseTicket(item.id);
-        else if (action.type === "archive")
-          await clientRef.current!.updateItem(item.id, { archived: true });
-        else if (action.type === "unarchive")
-          await clientRef.current!.updateItem(item.id, { archived: false });
-        else if (action.type === "delete") {
-          requestDelete(item.id);
-        } else if (action.type === "dispatch") {
-          await clientRef.current!.dispatchAgent(item.id, action.target);
-        }
+        await fn();
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
       await refresh();
     },
-    [board, trySelect, onMove, refresh, requestDelete],
+    [refresh],
   );
 
-  const onCardContext = useCallback((item: Item) => void onContext(item), [onContext]);
+  const cardMenuItems = useCallback(
+    (item: Item): MenuItem[] => {
+      const client = clientRef.current!;
+      const gated = cardMenuGates;
+      return [
+        { id: "open", label: "Open", onSelect: () => trySelect(item.id) },
+        {
+          id: "move",
+          label: "Move to",
+          items: STAGES.filter((s) => s.id !== item.status).map((s) => {
+            // Gate reasons come from get_doc_gates, so a disabled entry can say
+            // exactly which document is missing rather than just greying out.
+            const reasons = gated?.[s.id] ?? [];
+            return {
+              id: `move-${s.id}`,
+              label: s.name,
+              disabled: reasons.length > 0,
+              disabledReason: reasons.join("; "),
+              onSelect: () => void runCardAction(() => onMove(item.id, { status: s.id })),
+            };
+          }),
+        },
+        ...(item.taken_at
+          ? [
+              {
+                id: "release",
+                label: "Release",
+                onSelect: () => void runCardAction(() => client.releaseTicket(item.id)),
+              },
+            ]
+          : []),
+        {
+          id: "dispatch",
+          label: "Dispatch to agent",
+          // Provider first, then task: you pick the agent you have, then decide
+          // what to hand it. Each task names its deliverable, so the menu says
+          // what will exist afterwards rather than what will be attempted.
+          items: dispatchTargets.map((p) => ({
+            id: `dispatch-${p.id}`,
+            label: p.label,
+            items: [
+              {
+                id: `dispatch-${p.id}-whole`,
+                label: "Whole ticket",
+                onSelect: () => void runCardAction(() => client.dispatchAgent(item.id, p.id)),
+              },
+              ...dispatchOptions.map((t) => ({
+                id: `dispatch-${p.id}-${t.id}`,
+                label: t.warning ? `${t.label} — ${t.deliverable} (${t.warning})` : `${t.label} — ${t.deliverable}`,
+                disabled: !t.enabled,
+                ...(t.reason ? { disabledReason: t.reason } : {}),
+                separatorBefore: t.id === "research-quick",
+                onSelect: () =>
+                  void runCardAction(() => client.dispatchAgent(item.id, p.id, t.id)),
+              })),
+            ],
+          })),
+        },
+        {
+          id: "copy-id",
+          label: "Copy ID",
+          separatorBefore: true,
+          onSelect: () => void navigator.clipboard.writeText(item.id),
+        },
+        {
+          id: "copy-link",
+          label: "Copy [[wiki-link]]",
+          onSelect: () => void navigator.clipboard.writeText(`[[${item.id}]]`),
+        },
+        {
+          id: "archive",
+          label: item.archived ? "Unarchive" : "Archive",
+          separatorBefore: true,
+          onSelect: () =>
+            void runCardAction(() => client.updateItem(item.id, { archived: !item.archived })),
+        },
+        {
+          id: "delete",
+          label: "Delete…",
+          danger: true,
+          onSelect: () => requestDelete(item.id),
+        },
+      ];
+    },
+    [trySelect, onMove, runCardAction, requestDelete, cardMenuGates, dispatchTargets],
+  );
+
+  // Fetch the task menu as the card menu opens: the submenu is built from it,
+  // and it is cheap enough to re-read rather than cache and go stale.
+  const loadDispatchOptions = useCallback(
+    (ticketId: string) => {
+      void clientRef.current
+        ?.dispatchOptions(ticketId)
+        .then(setDispatchOptions)
+        .catch(() => setDispatchOptions([]));
+    },
+    [],
+  );
+
+  const onCardContext = useCallback(
+    (item: Item, x: number, y: number) => {
+      setCardMenu({ item, x, y });
+      loadDispatchOptions(item.id);
+    },
+    [loadDispatchOptions],
+  );
 
   // Global keyboard shortcuts.
   useEffect(() => {
@@ -683,7 +864,8 @@ export function App(): JSX.Element {
       const inField = /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName);
       const ctrl = e.ctrlKey || e.metaKey;
       if (e.key === "Escape") {
-        if (paletteOpen) setPaletteOpen(false);
+        if (manual) setManual(null);
+        else if (paletteOpen) setPaletteOpen(false);
         else if (activityOpen) setActivityOpen(false);
         else if (dispatchesOpen) setDispatchesOpen(false);
         else if (settingsOpen) setSettingsOpen(false);
@@ -712,6 +894,11 @@ export function App(): JSX.Element {
         setSettingsOpen(true);
         return;
       }
+      if (e.key === "F1") {
+        e.preventDefault();
+        setManual((m) => (m ? null : {}));
+        return;
+      }
       if (inField && !ctrl) return;
       if (ctrl && e.key.toLowerCase() === "n") {
         e.preventDefault();
@@ -720,10 +907,17 @@ export function App(): JSX.Element {
       } else if ((ctrl && e.key.toLowerCase() === "f") || (!inField && e.key === "/")) {
         e.preventDefault();
         searchRef.current?.focus();
-      } else if (ctrl && e.key >= "1" && e.key <= "3") {
-        e.preventDefault();
-        const views: View[] = ["ticket", "standup", "archived"];
-        setView(views[Number(e.key) - 1]);
+      } else if (ctrl && e.key >= "1" && e.key <= "9") {
+        // Derived from the view list, not a parallel array. The old
+        // ["ticket","standup","archived"] went stale the moment the Backlog
+        // view was added — Ctrl+2 opened Standup while the second tab was
+        // Backlog. Deriving removes the class of bug, not just this instance.
+        const views = Object.keys(VIEW_LABELS) as View[];
+        const target = views[Number(e.key) - 1];
+        if (target) {
+          e.preventDefault();
+          setView(target);
+        }
       }
     };
     window.addEventListener("keydown", handler);
@@ -731,7 +925,7 @@ export function App(): JSX.Element {
   }, [settingsOpen, paletteOpen, activityOpen, dispatchesOpen, trySelect, requestOpen]);
 
   const knownIds = useMemo(() => new Set(items.map((i) => i.id)), [items]);
-  const lastStage = board?.statuses[board.statuses.length - 1]?.id;
+  const lastStage = UI_LAST_STAGE;
   // Card badge inputs: computed once here, read per card as booleans so
   // Card's memoization survives (a Set prop would re-render every card).
   const blocked = useMemo(() => blockedIds(items, lastStage), [items, lastStage]);
@@ -769,7 +963,7 @@ export function App(): JSX.Element {
       // selected they do not appear, which is honest for a verb that needs a
       // subject. Substring scoring in the palette filters them.
       ...(selected && board
-        ? board.statuses
+        ? STAGES
             .filter((s) => s.id !== selected.status)
             .map((s) => ({
               id: `move-${s.id}`,
@@ -887,11 +1081,14 @@ export function App(): JSX.Element {
         </button>
       </header>
 
-      {format === 1 && (
+      {format < 3 && (
         <div className="banner warn">
           <span>
-            This board uses the old layout — migrate to v2 to get ticket folders, documents and
-            area-based ids.
+            {format === 1
+              ? "This board uses the original layout. Migrating gives it ticket folders, area-based ids, and format 3's six fixed stages."
+              : "This board is format 2. Migrating maps its stages onto the fixed six, sorts documents into type folders, and assigns each ticket a profile."}{" "}
+            Until then it is <strong>read-only</strong> — you can read the board, but saving
+            format-3 shapes into it would leave a board neither version reads correctly.
           </span>
           <div className="conflict-actions">
             <button
@@ -906,7 +1103,7 @@ export function App(): JSX.Element {
                   .catch((err) => setError(err instanceof Error ? err.message : String(err)))
               }
             >
-              Migrate to v2…
+              Migrate to format 3…
             </button>
           </div>
         </div>
@@ -939,6 +1136,7 @@ export function App(): JSX.Element {
           filters={filters}
           onFilters={setFilters}
           searchRef={searchRef}
+          onOpenGroup={setOpenGroup}
         />
       )}
 
@@ -959,9 +1157,39 @@ export function App(): JSX.Element {
               onMoveRelative={onMoveRelative}
               onQuickAdd={onQuickAdd}
               onContext={onCardContext}
+            onFilterGroup={(g) => setFilters((f) => ({ ...f, group: g }))}
               blocked={blocked}
               dispatching={dispatching}
               density={settings?.cardDensity ?? "comfortable"}
+            />
+          ) : view === "backlog" ? (
+            <BacklogTable
+              items={viewItems.filter((i) => i.status === "backlog" && !i.archived)}
+              selectedId={selectedId}
+              onSelect={trySelect}
+              // Rejects per ticket so a mixed bulk selection partly succeeds;
+              // the table collects the failures and reports them with reasons.
+              onMove={async (id) => {
+                await clientRef.current!.moveItem(id, { status: "preparing" });
+                await refresh();
+              }}
+              onArchive={async (ids) => {
+                for (const id of ids) await clientRef.current!.updateItem(id, { archived: true });
+                await refresh();
+              }}
+              onAddToGroup={async (ids, groupId) => {
+                for (const id of ids) {
+                  // Re-read: the list was captured before this loop began, and
+                  // a patch built from it would drop a group added a moment ago.
+                  const cur = await clientRef.current!.getItem(id);
+                  const groups = cur?.groups ?? [];
+                  if (!groups.includes(groupId)) {
+                    await clientRef.current!.updateItem(id, { groups: [...groups, groupId] });
+                  }
+                }
+                await refresh();
+              }}
+              groups={[...new Set(items.flatMap((i) => i.groups ?? []))].sort()}
             />
           ) : view === "standup" ? (
             <Standup
@@ -1066,6 +1294,11 @@ export function App(): JSX.Element {
                   </button>
                   <span className={`chip dispatch-state ${d.state}`}>{d.state}</span>
                   <span className="dispatch-provider">{d.provider}</span>
+                  {d.taskLabel && (
+                    <span className="chip subtle" title={d.deliverable ? `Deliverable: ${d.deliverable}` : undefined}>
+                      {d.taskLabel}
+                    </span>
+                  )}
                   <div className="spacer" />
                   {d.state === "running" && (
                     <button
@@ -1202,42 +1435,130 @@ export function App(): JSX.Element {
         <div className="modal-backdrop" onClick={() => !migrating && setMigrateReport(null)}>
           <div className="modal migrate" role="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h2>Migrate to format 2</h2>
+              <h2>Migrate to format 3</h2>
             </div>
             <div className="modal-body">
-              {migrateReport.alreadyV2 ? (
-                <p>This board is already format 2 — nothing to do.</p>
+              {migrateReport.v3.alreadyV3 ? (
+                <p>This board is already format 3 — nothing to do.</p>
               ) : (
                 <>
-                  {migrateReport.blockers.length > 0 && (
+                  {allBlockers.length > 0 && (
                     <div className="banner error">
                       <div>
                         <strong>Migration is blocked.</strong>
                         <ul className="migrate-list">
-                          {migrateReport.blockers.map((b, i) => (
+                          {allBlockers.map((b, i) => (
                             <li key={i}>{b}</li>
                           ))}
                         </ul>
                       </div>
                     </div>
                   )}
-                  <p>
-                    {migrateReport.ticketMoves.length} ticket(s) move into area folders,{" "}
-                    {migrateReport.foldedDocs.length} plan/research document(s) fold into their
-                    tickets, {migrateReport.convertedToTickets.length} orphan(s) become tickets.
-                  </p>
-                  {migrateReport.foldedDocs.length > 0 && (
-                    <ul className="migrate-list">
-                      {migrateReport.foldedDocs.map((f) => (
-                        <li key={f.source}>
-                          {f.source} → {f.intoTicket}/{f.doc}.md
-                        </li>
-                      ))}
-                    </ul>
+
+                  {/* The v1→v2 half, shown only to a board that still needs it. */}
+                  {!migrateReport.v2.alreadyV2 && (
+                    <section>
+                      <h3>Layout</h3>
+                      <p>
+                        {migrateReport.v2.ticketMoves.length} ticket(s) move into area folders,{" "}
+                        {migrateReport.v2.foldedDocs.length} plan/research document(s) fold into
+                        their tickets, {migrateReport.v2.convertedToTickets.length} orphan(s) become
+                        tickets.
+                      </p>
+                      {migrateReport.v2.foldedDocs.length > 0 && (
+                        <ul className="migrate-list">
+                          {migrateReport.v2.foldedDocs.map((f) => (
+                            <li key={f.source}>
+                              {f.source} → {f.intoTicket}/{f.doc}.md
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
                   )}
-                  {migrateReport.notes.length > 0 && (
+
+                  <section>
+                    <h3>Stages</h3>
+                    {migrateReport.v3.stageMapping.length === 0 ? (
+                      <p className="hint">No stage changes.</p>
+                    ) : (
+                      <table className="stage-map">
+                        <tbody>
+                          {migrateReport.v3.stageMapping.map((m) => (
+                            <tr key={`${m.from}->${m.to}`}>
+                              <td>{m.from}</td>
+                              <td aria-hidden="true">→</td>
+                              <td>{m.to}</td>
+                              <td className="muted">
+                                {m.count} ticket{m.count === 1 ? "" : "s"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                    {/*
+                      Listed, never just counted. These are the tickets that end
+                      up somewhere the user did not put them — a number alone is
+                      too easy to click past.
+                    */}
+                    {migrateReport.v3.needsRestage.length > 0 && (
+                      <div className="banner warn">
+                        <div>
+                          <strong>
+                            {migrateReport.v3.needsRestage.length} ticket(s) have no matching stage.
+                          </strong>{" "}
+                          They move to Backlog and are labelled <code>needs-restage</code> so you
+                          can find them afterwards.
+                          <ul className="migrate-list">
+                            {migrateReport.v3.needsRestage.map((t) => (
+                              <li key={t.id}>
+                                {t.id} — was <code>{t.from}</code>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                  <section>
+                    <h3>Documents</h3>
+                    <p>
+                      {migrateReport.v3.docMoves.length} document(s) move into their type folder.
+                    </p>
+                    {migrateReport.v3.docMoves.length > 0 && (
+                      <ul className="migrate-list">
+                        {migrateReport.v3.docMoves.map((d) => (
+                          <li key={`${d.id}/${d.from}`}>
+                            {d.id}: {d.from} → {d.to}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+
+                  <section>
+                    <h3>Profiles</h3>
+                    <p>
+                      {migrateReport.v3.profileAssignments
+                        .map((pa) => `${pa.count} ${pa.profile}`)
+                        .join(", ") || "No tickets to assign."}
+                    </p>
+                  </section>
+
+                  {/* Data being removed gets its own line, never a footnote. */}
+                  {migrateReport.v3.prioritiesStripped > 0 && (
+                    <p>
+                      <strong>{migrateReport.v3.prioritiesStripped}</strong> ticket(s) lose their{" "}
+                      <code>priority</code> field — format 3 removes it, and the value is not
+                      kept anywhere else.
+                    </p>
+                  )}
+
+                  {allNotes.length > 0 && (
                     <ul className="migrate-list notes">
-                      {migrateReport.notes.map((n, i) => (
+                      {allNotes.map((n, i) => (
                         <li key={i}>{n}</li>
                       ))}
                     </ul>
@@ -1247,17 +1568,17 @@ export function App(): JSX.Element {
             </div>
             <div className="confirm-actions" style={{ padding: "0 16px 16px" }}>
               <button className="ghost sm" disabled={migrating} onClick={() => setMigrateReport(null)}>
-                {migrateReport.alreadyV2 ? "Close" : "Not now"}
+                {migrateReport.v3.alreadyV3 ? "Close" : "Not now"}
               </button>
-              {!migrateReport.alreadyV2 && (
+              {!migrateReport.v3.alreadyV3 && (
                 <button
                   className="primary sm"
-                  disabled={migrating || migrateReport.blockers.length > 0}
+                  disabled={migrating || allBlockers.length > 0}
                   onClick={async () => {
                     setMigrating(true);
                     try {
                       await clientRef.current!.migrate(false);
-                      setFormat(2);
+                      setFormat(3);
                       setMigrateReport(null);
                       await refresh();
                     } catch (err) {
@@ -1280,6 +1601,10 @@ export function App(): JSX.Element {
             </div>
           </div>
         </div>
+      )}
+
+      {manual && (
+        <Manual initialChapter={manual.chapter} onClose={() => setManual(null)} />
       )}
 
       {paletteOpen && (
@@ -1307,10 +1632,35 @@ export function App(): JSX.Element {
             defaultArea: settings?.defaultArea ?? "",
           }}
           onSaveBoard={saveBoard}
+          onOpenManual={(chapter) => {
+            setSettingsOpen(false);
+            setManual({ chapter });
+          }}
           onSetTheme={setTheme}
           onSetNotifications={setNotifications}
           onSetPreferences={setPreferences}
           onClose={() => setSettingsOpen(false)}
+        />
+      )}
+
+      {openGroup && (
+        <GroupView
+          id={openGroup}
+          onClose={() => setOpenGroup(null)}
+          onOpenTicket={(tid) => {
+            setOpenGroup(null);
+            trySelect(tid);
+          }}
+        />
+      )}
+
+      {cardMenu && (
+        <ContextMenu
+          x={cardMenu.x}
+          y={cardMenu.y}
+          items={cardMenuItems(cardMenu.item)}
+          onClose={closeCardMenu}
+          label={`Actions for ${cardMenu.item.id}`}
         />
       )}
 
@@ -1319,7 +1669,6 @@ export function App(): JSX.Element {
           board={board}
           items={items}
           defaultArea={settings?.defaultArea ?? ""}
-          defaultPriority={settings?.defaultPriority ?? ""}
           onClose={() => setCreateOpen(false)}
           onCreate={async (input) => {
             const created = await createItem(input, { select: true });
@@ -1352,9 +1701,12 @@ function applyFilters(list: Item[], search: string, filters: Filters): Item[] {
   const q = search.trim().toLowerCase();
   return list.filter((item) => {
     if (filters.area !== undefined && item.area !== filters.area) return false;
-    if (filters.priority && item.priority !== filters.priority) return false;
+
     if (filters.assignee && item.assignee !== filters.assignee) return false;
     if (filters.label && !(item.labels ?? []).includes(filters.label)) return false;
+    // The group lens narrows every view, which is what makes a horizon group
+    // ("what matters now") useful rather than decorative (FRD-001 G8 / FRD-011 R4).
+    if (filters.group && !(item.groups ?? []).includes(filters.group)) return false;
     if (q) {
       const hay = [item.id, item.title, item.body, item.assignee, ...(item.labels ?? [])]
         .join("\n")

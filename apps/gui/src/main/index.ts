@@ -1,7 +1,6 @@
 import {
   app,
   BrowserWindow,
-  clipboard,
   dialog,
   ipcMain,
   Menu,
@@ -16,17 +15,21 @@ import { readFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import { classifyKanmerPath } from "../shared/kanmerPath.js";
 import {
+  BOUNDARIES,
+  DISPATCH_TASKS,
+  DOC_TYPES,
+  GATE_EXEMPT_DIRS,
   KanmerStore,
+  STAGE_IDS,
   assertSafeRepoPath,
-  evaluateGates,
   getLinkGraph,
   linkItems,
   migrateBoard,
-  migrateToV2,
-  repoDocKindOf,
   repoDocsMap,
-  resolveDocTypes,
-  resolveGates,
+  resolveProfiles,
+  resolveProofTypes,
+  stageName,
+  taskFeasibility,
   watchKanmer,
   type BoardColumn,
   type BoardConfig,
@@ -41,8 +44,6 @@ import {
 } from "@kanmer/core";
 import {
   CH,
-  type ItemMenuAction,
-  type ItemMenuPayload,
   type OpenProjectResult,
 } from "../shared/ipc.js";
 import {
@@ -54,11 +55,12 @@ import {
   setTheme,
   setKanmerGitPreferences,
   setWindowBounds,
+  type AppSettings,
   type Theme,
   type UiPreferences,
   type WindowBounds,
 } from "./settings.js";
-import { ensureBoardWorktree, syncBoard, type KanmerGitStatus } from "./kanmerGit.js";
+import { ensureBoardWorktree, renameBoardBranch, syncBoard, type KanmerGitStatus } from "./kanmerGit.js";
 import {
   connectAgent,
   disconnectAgent,
@@ -66,7 +68,7 @@ import {
   updateSkills,
   type ConnectTarget,
 } from "./connect.js";
-import { dispatchableProviders, listProviders } from "./providers.js";
+import { listProviders } from "./providers.js";
 import {
   cancelDispatch,
   dispatchTicket,
@@ -317,6 +319,12 @@ function buildMenu(): void {
         // buildMenu() re-runs on every openProject (the recents submenu), so
         // this item has to stay cheap and stateless. It is.
         {
+          label: "Manual",
+          accelerator: "F1",
+          click: () => mainWindow?.webContents.send(CH.menu, { type: "manual" }),
+        },
+        { type: "separator" },
+        {
           label: "Check for Updates…",
           enabled: isUpdaterEnabled(),
           click: () => checkForUpdatesNow("manual"),
@@ -379,9 +387,7 @@ async function flushToasts(): Promise<void> {
       try {
         const item = await store?.getItem(key);
         if (item) {
-          const stage =
-            (await store?.getBoard())?.statuses.find((s) => s.id === item.status)?.name ??
-            item.status;
+          const stage = stageName(item.status);
           title = `${key} — ${stage}`;
           body = item.title;
         }
@@ -410,12 +416,20 @@ async function openProject(root: string): Promise<OpenProjectResult> {
 
   const syncStatus = await ensureBoardWorktree(projectId, readSettings().kanmerBranch);
   const boardRoot = syncStatus.boardRoot ?? projectId;
-  const store = new KanmerStore(boardRoot);
+  // repoRoot is the source checkout: `refs` point at the repo's own /docs/,
+  // which does not move into the board worktree. Passed explicitly because we
+  // know both roots here — core would otherwise have to infer it.
+  const store = new KanmerStore(boardRoot, { repoRoot: projectId });
 
   await store.init();
   recordRecentProject(projectId);
   const ownWrites = new Map<string, number>();
-  const watch = watchKanmer(projectId, (event, file) => {
+  // Watch where the store actually reads. On a git project `ensureBoardWorktree`
+  // moves the board to `.worktrees/kanmer` and `git rm`s + gitignores the source
+  // `.kanmer/` — watching `projectId` there is watching a directory that no longer
+  // exists, so no agent write ever reaches the renderer. Without git, `boardRoot`
+  // falls back to `projectId` and this is the old behaviour.
+  const watch = watchKanmer(boardRoot, (event, file) => {
     mainWindow?.webContents.send(CH.changed, { projectId, event, file });
     const key = toastKey(file);
     if (!key) return;
@@ -456,6 +470,42 @@ async function closeProject(projectId: string): Promise<void> {
   contexts.delete(projectId);
 }
 
+/**
+ * Persist the Git board preferences, then apply them to projects already open.
+ *
+ * Persisting alone was not enough for either field, and both gaps were silent.
+ *
+ * A new branch name has to be carried onto each open worktree (FRD-020 R5).
+ * Storing it and doing nothing else left every open board on its old branch
+ * while the app reported the new one, and the next sync pushed to a branch that
+ * had none of the board's history behind it.
+ *
+ * A changed interval has to re-arm the timers, because they are only ever
+ * created in `openProject` — so switching automatic sync on did nothing at all
+ * until the project was closed and reopened.
+ */
+async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number): Promise<AppSettings> {
+  const settings = setKanmerGitPreferences(kanmerBranch, gitSyncMinutes);
+  for (const [projectId, ctx] of contexts) {
+    const { boardRoot, branch } = ctx.syncStatus;
+    if (ctx.syncStatus.available && boardRoot && branch !== settings.kanmerBranch) {
+      const renamed = await renameBoardBranch(boardRoot, settings.kanmerBranch);
+      // A failed rename leaves the worktree on its old branch, so keep
+      // reporting that one — the board still works, it just did not move.
+      ctx.syncStatus = renamed.ok
+        ? { ...ctx.syncStatus, branch: settings.kanmerBranch, error: renamed.error, paused: false }
+        : { ...ctx.syncStatus, error: renamed.error, paused: true };
+      mainWindow?.webContents.send(CH.gitStatus, { projectId, ...ctx.syncStatus });
+    }
+    if (ctx.syncTimer) clearInterval(ctx.syncTimer);
+    ctx.syncTimer = undefined;
+    if (ctx.syncStatus.available && settings.gitSyncMinutes > 0) {
+      ctx.syncTimer = setInterval(() => void syncProject(projectId), settings.gitSyncMinutes * 60_000);
+    }
+  }
+  return settings;
+}
+
 async function syncProject(projectId: string): Promise<KanmerGitStatus> {
   const ctx = requireCtx(projectId);
   ctx.syncStatus = await syncBoard(ctx.syncStatus);
@@ -463,69 +513,9 @@ async function syncProject(projectId: string): Promise<KanmerGitStatus> {
   return ctx.syncStatus;
 }
 
-/** Native right-click menu for a card; resolves with what the user picked. */
-function showItemMenu(
-  sender: Electron.WebContents,
-  payload: ItemMenuPayload,
-): Promise<ItemMenuAction | null> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const done = (action: ItemMenuAction | null) => {
-      if (!settled) {
-        settled = true;
-        resolve(action);
-      }
-    };
-    const template: MenuItemConstructorOptions[] = [
-      { label: "Open", click: () => done({ type: "open" }) },
-      {
-        label: "Move to",
-        submenu: payload.statuses.map((s) => ({
-          label: s.name,
-          enabled: s.id !== payload.currentStatus,
-          click: () => done({ type: "move", status: s.id }),
-        })),
-      },
-      ...(payload.taken
-        ? [{ label: "Release ticket", click: () => done({ type: "release" }) }]
-        : []),
-      {
-        label: "Dispatch to agent",
-        enabled: !payload.taken,
-        submenu: dispatchableProviders().map((p) => ({
-          label: p.label,
-          click: () => done({ type: "dispatch", target: p.id }),
-        })),
-      },
-      { type: "separator" as const },
-      {
-        label: "Copy ID",
-        click: () => {
-          clipboard.writeText(payload.id);
-          done(null);
-        },
-      },
-      {
-        label: "Copy [[wiki-link]]",
-        click: () => {
-          clipboard.writeText(`[[${payload.id}]]`);
-          done(null);
-        },
-      },
-      { type: "separator" as const },
-      payload.archived
-        ? { label: "Unarchive", click: () => done({ type: "unarchive" }) }
-        : { label: "Archive", click: () => done({ type: "archive" }) },
-      ...(payload.archived
-        ? [{ label: "Delete permanently", click: () => done({ type: "delete" }) }]
-        : []),
-    ];
-    const menu = Menu.buildFromTemplate(template);
-    menu.popup({ window: BrowserWindow.fromWebContents(sender) ?? undefined });
-    // If the menu closes without a pick, resolve null (after click had its chance).
-    menu.on("menu-will-close", () => setTimeout(() => done(null), 120));
-  });
-}
+// The card context menu is drawn by the renderer now (FRD-019 R6). A native
+// Menu cannot read the app's CSS variables, so it was always slightly wrong in
+// one theme; the replacement lives in renderer/src/components/ContextMenu.tsx.
 
 function registerIpc(): void {
   ipcMain.handle(CH.pickProject, async () => {
@@ -600,7 +590,7 @@ function registerIpc(): void {
   ipcMain.handle(CH.setNotifications, (_e, on: boolean) => setNotifications(on));
   ipcMain.handle(CH.setPreferences, (_e, patch: Partial<UiPreferences>) => setPreferences(patch));
   ipcMain.handle(CH.setKanmerGitPreferences, (_e, prefs: { kanmerBranch: string; gitSyncMinutes: number }) =>
-    setKanmerGitPreferences(prefs.kanmerBranch, prefs.gitSyncMinutes),
+    applyGitPreferences(prefs.kanmerBranch, prefs.gitSyncMinutes),
   );
   ipcMain.handle(CH.getKanmerGitStatus, (_e, p: string) => requireCtx(p).syncStatus);
   ipcMain.handle(CH.syncKanmerNow, (_e, p: string) => syncProject(p));
@@ -620,17 +610,34 @@ function registerIpc(): void {
   ipcMain.handle(CH.updateSkills, (_e, p: string, target: ConnectTarget) =>
     updateSkills(target, requireCtx(p).sourceRoot),
   );
-  ipcMain.handle(CH.dispatchAgent, (_e, p: string, ticketId: string, target: ConnectTarget) =>
-    dispatchTicket(requireStore(p), target, p, ticketId, {}, requireCtx(p).sourceRoot),
+  ipcMain.handle(
+    CH.dispatchAgent,
+    (_e, p: string, ticketId: string, target: ConnectTarget, taskId?: string) =>
+      dispatchTicket(requireStore(p), target, p, ticketId, { taskId }, requireCtx(p).sourceRoot),
   );
+  ipcMain.handle(CH.dispatchOptions, async (_e, p: string, ticketId: string) => {
+    const store = requireStore(p);
+    const item = await store.getItem(ticketId);
+    const info = await store.getTicketDocsInfo(ticketId);
+    const ctx = { stage: item?.status ?? "backlog", docCounts: info?.counts ?? {} };
+    // Feasibility is core's call, not the renderer's — see DispatchOption.
+    return DISPATCH_TASKS.map((t) => {
+      const f = taskFeasibility(t.id, ctx);
+      return {
+        id: t.id,
+        label: t.label,
+        deliverable: t.deliverable,
+        enabled: f.ok,
+        ...(f.reason ? { reason: f.reason } : {}),
+        ...(f.warning ? { warning: f.warning } : {}),
+      };
+    });
+  });
   ipcMain.handle(CH.cancelDispatch, (_e, dispatchId: string) => cancelDispatch(dispatchId));
   ipcMain.handle(CH.listDispatches, (_e, p: string) => listDispatches(p));
   onDispatchStatus((s) => mainWindow?.webContents.send(CH.dispatchStatus, s));
-  ipcMain.handle(CH.showItemMenu, (e, payload: ItemMenuPayload) =>
-    showItemMenu(e.sender, payload),
-  );
   ipcMain.handle(CH.migrate, (_e, p: string, dryRun: boolean) =>
-    migrateToV2(requireStore(p), { dryRun }),
+    migrateBoard(requireStore(p), { dryRun }),
   );
   ipcMain.handle(CH.backfillBoard, async (_e, p: string, dryRun: boolean) => {
     if (!dryRun) markOwnWrite(p, "board");
@@ -658,17 +665,20 @@ function registerIpc(): void {
   ipcMain.handle(CH.getDocsInfo, (_e, p: string, id: string) =>
     requireStore(p).getTicketDocsInfo(id),
   );
-  ipcMain.handle(CH.getDocTypes, async (_e, p: string, id: string) => {
-    const store = requireStore(p);
-    const [item, board] = await Promise.all([store.getItem(id), store.getBoard()]);
-    return resolveDocTypes(board, item?.area ?? "");
-  });
+  // The doc-type vocabulary is fixed in format 3 (containment defines type),
+  // so this no longer varies by area — the shape is kept so the renderer's
+  // callers are unchanged.
+  ipcMain.handle(CH.getDocTypes, async () => DOC_TYPES.map((id) => ({ id, name: id })));
   ipcMain.handle(CH.getDocModel, async (_e, p: string) => {
     const board = await requireStore(p).getBoard();
     return {
       repoDocs: repoDocsMap(board),
-      defaultTypes: resolveDocTypes(board, ""),
-      defaultGates: resolveGates(board, ""),
+      docTypes: DOC_TYPES,
+      gateExemptFolders: GATE_EXEMPT_DIRS,
+      boundaries: BOUNDARIES,
+      profiles: resolveProfiles(board),
+      defaultProfile: board.defaultProfile ?? "fix",
+      proofTypes: resolveProofTypes(board),
     };
   });
   ipcMain.handle(CH.openRepoDoc, async (_e, p: string, rel: string) => {
@@ -694,39 +704,73 @@ function registerIpc(): void {
     if (abs !== root && !abs.startsWith(root + sep)) return null;
     return relative(root, abs).split(sep).join("/");
   });
+  // The whole report, for the editor readiness panel. getGateStatus stays as
+  // the drag lock-tint's cheaper per-stage view of the same underlying answer.
+  ipcMain.handle(CH.listGroups, (_e, p: string, opts?: { kind?: string; includeArchived?: boolean }) =>
+    requireStore(p).listGroups(opts ?? {}),
+  );
+  ipcMain.handle(CH.getGroup, (_e, p: string, id: string) => requireStore(p).getGroup(id));
+  ipcMain.handle(CH.createGroup, (_e, p: string, kind: string, title: string, body?: string) =>
+    requireStore(p).createGroup(kind, title, body ?? ""),
+  );
+  ipcMain.handle(
+    CH.updateGroup,
+    (_e, p: string, id: string, patch: { title?: string; body?: string; archived?: boolean }) =>
+      requireStore(p).updateGroup(id, patch),
+  );
+  ipcMain.handle(CH.getGroupDoc, (_e, p: string, id: string, rel: string) =>
+    requireStore(p).getGroupDoc(id, rel),
+  );
+  ipcMain.handle(CH.setGroupDoc, (_e, p: string, id: string, rel: string, content: string) =>
+    requireStore(p).setGroupDoc(id, rel, content),
+  );
+  ipcMain.handle(CH.getGates, (_e, p: string, id: string) => requireStore(p).getDocGates(id));
   ipcMain.handle(CH.getGateStatus, async (_e, p: string, id: string) => {
     const store = requireStore(p);
-    const [item, board, info] = await Promise.all([
+    const [item] = await Promise.all([
       store.getItem(id),
       store.getBoard(),
       store.getTicketDocsInfo(id),
     ]);
     const out: Record<string, string[]> = {};
     if (!item) return out;
-    const gates = resolveGates(board, item.area);
-    const statuses = board.statuses.map((s) => s.id);
-    const present = info?.docs ?? {};
-    const repoDocSatisfied = (kinds: string[]) =>
-      item.docs_todo === true ||
-      (item.refs ?? []).some((rel) => {
-        const kind = repoDocKindOf(board, rel);
-        return kind !== null && kinds.includes(kind);
-      });
-    for (const stage of statuses) {
+    const report = await store.getDocGates(id);
+    if (!report) return out;
+    // blockedBy is already "per stage, why not" — exactly what the drag
+    // lock-tint needs, computed once by core.
+    for (const stage of STAGE_IDS) {
       if (stage === item.status) {
         out[stage] = [];
         continue;
       }
-      const violations = evaluateGates(gates, {
-        statuses,
-        from: item.status,
-        to: stage,
-        hasDoc: (d) => present[d] === true,
-        repoDocSatisfied,
-      });
-      out[stage] = violations.map((v) => v.reason);
+      out[stage] = report.blockedBy[stage] ?? [];
     }
     return out;
+  });
+  ipcMain.handle(CH.pickReferences, async () => {
+    const res = await dialog.showOpenDialog({
+      title: "Add reference files",
+      properties: ["openFile", "multiSelections"],
+    });
+    return res.canceled ? [] : res.filePaths;
+  });
+  // Core owns the copy and the containment check. Every other path rule in this
+  // system lives there, and a second copy here is how one of them drifts.
+  ipcMain.handle(CH.addReference, (_e, p: string, id: string, src: string) => {
+    markOwnWrite(p, id);
+    return requireStore(p).addReference(id, src);
+  });
+  ipcMain.handle(CH.openReference, async (_e, p: string, id: string, name: string) => {
+    // Resolve through core's own listing rather than joining a path here: the
+    // name arrives from the renderer, and core is what decides where it lives.
+    const info = await requireStore(p).getTicketDocsInfo(id);
+    const ref = info?.references.find((r) => r.name === name);
+    if (!ref) throw new Error(`No reference "${name}" on ${id}`);
+    await shell.openPath(ref.path);
+  });
+  ipcMain.handle(CH.removeReference, (_e, p: string, id: string, name: string) => {
+    markOwnWrite(p, id);
+    return requireStore(p).removeReference(id, name);
   });
   ipcMain.handle(
     CH.getActivity,

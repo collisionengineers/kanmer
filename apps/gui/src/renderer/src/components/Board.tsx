@@ -1,4 +1,5 @@
 import { memo, useCallback, useRef, useState } from "react";
+import { UI_STAGES as STAGES, uiStageName as stageName } from "../../../shared/stages.js";
 import type { BoardColumn, BoardConfig, CreateItemInput, Item, MovePosition } from "@kanmer/core";
 import { columnColor, columnCards, positionForDrop } from "../lib/board.js";
 import { useClient } from "../lib/client.js";
@@ -14,9 +15,11 @@ interface BoardProps {
   onMoveRelative: (id: string, dir: -1 | 1) => void;
   onQuickAdd: (input: CreateItemInput) => void;
   /** Native right-click menu for a card. */
-  onContext: (item: Item) => void;
+  onContext: (item: Item, x: number, y: number) => void;
   /** Ids with a live blocker — computed once in App, read per card as a boolean. */
   blocked: Set<string>;
+  /** Click a group chip to filter every view to it. */
+  onFilterGroup: (groupId: string) => void;
   /** Ids with a background agent dispatch in flight. */
   dispatching?: Set<string>;
   /** Card density preference (Phase 4.4): "compact" tightens padding/gaps. */
@@ -58,6 +61,7 @@ export function Board(props: BoardProps): JSX.Element {
     onMoveRelative,
     onQuickAdd,
     onContext,
+    onFilterGroup,
     blocked,
     dispatching,
     density,
@@ -108,7 +112,13 @@ export function Board(props: BoardProps): JSX.Element {
     [onMove],
   );
 
-  const statuses = mergeColumns(board.statuses, items.map((i) => i.status));
+  const statuses = mergeColumns(
+    // Backlog is a list, not a column (FRD-011). A kanban column is for work
+    // in flight; a backlog is a queue you scan, sort and triage, which a column
+    // cannot do. It lives in the Backlog view instead.
+    STAGES.filter((s) => s.id !== "backlog").map((s) => ({ id: s.id, name: s.name, color: s.color })),
+    items.map((i) => i.status),
+  );
   const usingAreas = board.areas.length > 0 || items.some((i) => i.area);
 
   function groupByArea(cards: Item[]): AreaGroup[] {
@@ -209,6 +219,7 @@ export function Board(props: BoardProps): JSX.Element {
                     onSelect={onSelect}
                     onMoveRelative={onMoveRelative}
                     onContext={onContext}
+                    onFilterGroup={onFilterGroup}
                     onCardDragOver={onCardDragOver}
                     onCardDragLeave={onCardDragLeave}
                     onCardDrop={onCardDrop}
@@ -247,6 +258,7 @@ const Card = memo(function CardInner({
   onSelect,
   onMoveRelative,
   onContext,
+  onFilterGroup,
   onCardDragOver,
   onCardDragLeave,
   onCardDrop,
@@ -262,7 +274,8 @@ const Card = memo(function CardInner({
   statusId: string;
   onSelect: (id: string) => void;
   onMoveRelative: (id: string, dir: -1 | 1) => void;
-  onContext: (item: Item) => void;
+  onContext: (item: Item, x: number, y: number) => void;
+  onFilterGroup: (groupId: string) => void;
   onCardDragOver: (statusId: string, id: string, edge: "before" | "after") => void;
   onCardDragLeave: (id: string) => void;
   onCardDrop: (
@@ -275,12 +288,10 @@ const Card = memo(function CardInner({
   onDragFinish: () => void;
 }): JSX.Element {
   const areaColor = columnColor(board.areas, item.area);
-  const priColor = columnColor(board.priorities, item.priority);
-  const priName = board.priorities.find((p) => p.id === item.priority)?.name ?? item.priority;
   const areaName = item.area
     ? board.areas.find((a) => a.id === item.area)?.name ?? item.area
     : "";
-  const stageName = board.statuses.find((s) => s.id === item.status)?.name ?? item.status;
+  const stageLabel = stageName(item.status);
   const cls = ["card", selected ? "selected" : "", dropEdge ? `drop-${dropEdge}` : ""]
     .filter(Boolean)
     .join(" ");
@@ -291,7 +302,7 @@ const Card = memo(function CardInner({
       draggable
       tabIndex={0}
       role="button"
-      aria-label={`${item.id} ${item.title || "Untitled"}, stage ${stageName}${
+      aria-label={`${item.id} ${item.title || "Untitled"}, stage ${stageLabel}${
         areaName ? `, area ${areaName}` : ""
       }${blocked ? ", blocked" : ""}${
         item.deployment && item.deployment !== "n/a" ? `, deployment ${item.deployment}` : ""
@@ -322,7 +333,7 @@ const Card = memo(function CardInner({
       onClick={() => onSelect(item.id)}
       onContextMenu={(e) => {
         e.preventDefault();
-        onContext(item);
+        onContext(item, e.clientX, e.clientY);
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -354,6 +365,22 @@ const Card = memo(function CardInner({
             ⏳ agent
           </span>
         )}
+        {/* Group chips are the cross-cutting lens the labels used to fake.
+            Clicking one filters every view to that group. */}
+        {(item.groups ?? []).map((g) => (
+          <button
+            key={g}
+            type="button"
+            className="chip group"
+            title={`Filter to ${g}`}
+            onClick={(e) => {
+              e.stopPropagation(); // the card's own onClick would also select it
+              onFilterGroup(g);
+            }}
+          >
+            {g}
+          </button>
+        ))}
         {item.deployment && item.deployment !== "n/a" && (
           <span
             className={item.deployment === "not-deployed" ? "chip deploy off" : "chip deploy"}
@@ -365,11 +392,6 @@ const Card = memo(function CardInner({
         {(item.prs?.length ?? 0) > 0 && (
           <span className="chip pr" title={`${item.prs!.length} PR(s)`}>
             ⇅ {item.prs!.length}
-          </span>
-        )}
-        {item.priority && (
-          <span className="pri" style={priColor ? { color: priColor } : undefined}>
-            {priName}
           </span>
         )}
       </div>

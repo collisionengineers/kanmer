@@ -1,0 +1,79 @@
+{
+  "projectId": "49415c1e-a3bb-462c-9939-0834ea10c460",
+  "pkg": "@kanmer/ui",
+  "globalName": "KanmerUi",
+  "shape": "package",
+  "buildCmd": "npm run build:ui",
+  "srcDir": "../../apps/gui/src/renderer/src",
+  "cssEntry": "dist/index.css",
+  "docsDir": "docs/components",
+  "provider": {
+    "component": "KanmerProvider"
+  },
+  "componentSrcMap": {
+    "ClientContext": null,
+    "KanmerProvider": "src/demo.tsx"
+  },
+  "overrides": {
+    "Board": {
+      "cardMode": "column",
+      "viewport": "1500x820"
+    },
+    "FilterBar": {
+      "cardMode": "column",
+      "viewport": "1100x360"
+    },
+    "ArchivedList": {
+      "cardMode": "column",
+      "viewport": "1000x420"
+    },
+    "Standup": {
+      "cardMode": "column"
+    },
+    "Editor": {
+      "cardMode": "single",
+      "viewport": "1000x760"
+    },
+    "Settings": {
+      "cardMode": "single",
+      "viewport": "1000x720"
+    },
+    "TicketCreate": {
+      "cardMode": "single",
+      "viewport": "800x760"
+    },
+    "ConfirmModal": {
+      "cardMode": "single",
+      "viewport": "640x360"
+    },
+    "CommandPalette": {
+      "cardMode": "single",
+      "viewport": "800x420"
+    },
+    "ActivityPanel": {
+      "cardMode": "single",
+      "viewport": "420x560",
+      "primaryStory": "Recent"
+    },
+    "KanmerProvider": {
+      "cardMode": "column",
+      "viewport": "1100x640"
+    },
+    "TabStrip": {
+      "cardMode": "column"
+    },
+    "Welcome": {
+      "cardMode": "column"
+    }
+  },
+  "dtsPropsFor": {
+    "Board": "  /** The board config (statuses/areas/priorities/idPrefixes, optional docs + deployment) — see README \"Data shapes\". */\n  board: BoardConfig;\n  items: Item[];\n  selectedId: string | null;\n  onSelect: (id: string) => void;\n  onMove: (id: string, to: { status: string; position?: MovePosition }) => void;\n  /** Keyboard drag equivalent: move one stage left (-1) or right (+1). */\n  onMoveRelative: (id: string, dir: -1 | 1) => void;\n  onQuickAdd: (input: CreateItemInput) => void;\n  /** Native right-click menu for a card. */\n  onContext: (item: Item) => void;\n  /** Ids with a live blocker — compute with blockedIds(items, lastStageId), read per card as a boolean. */\n  blocked: Set<string>;\n  /** Ids with a background agent dispatch in flight. */\n  dispatching?: Set<string>;\n  /** Card density: \"compact\" tightens padding/gaps. */\n  density?: \"comfortable\" | \"compact\";",
+    "FilterBar": "  /** The board config (statuses/areas/priorities/idPrefixes, optional docs + deployment) — see README \"Data shapes\". */\n  board: BoardConfig;\n  /** Current view items (unfiltered) — assignee/label option lists are derived from them. */\n  items: Item[];\n  search: string;\n  onSearch: (q: string) => void;\n  /** { area?: string (undefined = all, \"\" = no area); priority?: string; assignee?: string; label?: string } */\n  filters: Filters;\n  onFilters: (f: Filters) => void;\n  searchRef?: React.RefObject<HTMLInputElement>;",
+    "ArchivedList": "  /** Archived items only (item.archived === true). */\n  items: Item[];\n  /** The board config (statuses/areas/priorities/idPrefixes, optional docs + deployment) — see README \"Data shapes\". */\n  board: BoardConfig;\n  selectedId: string | null;\n  onSelect: (id: string) => void;\n  onRestore: (id: string) => Promise<void>;\n  onDelete: (id: string) => Promise<void>;",
+    "Editor": "  item: Item;\n  /** The board config (statuses/areas/priorities/idPrefixes, optional docs + deployment) — see README \"Data shapes\". */\n  board: BoardConfig;\n  /** All items — feeds label/link suggestions and [[wiki]] autocomplete. */\n  items: Item[];\n  /** Every known item id — resolves [[TICK-001]] links in the markdown preview. */\n  knownIds: Set<string>;\n  /** Bumped on every on-disk change so open documents can re-sync. */\n  changeSignal: number;\n  onClose: () => void;\n  onNavigate: (id: string) => void;\n  /** Saves a diff patch; resolves with the item as written to disk. */\n  onSave: (patch: UpdateItemPatch) => Promise<Item>;\n  /** Reports dirty-state changes so the host can guard against losing edits. */\n  onDirtyChange?: (dirty: boolean) => void;",
+    "Settings": "  /** The board config (statuses/areas/priorities/idPrefixes, optional docs + deployment) — see README \"Data shapes\". */\n  board: BoardConfig;\n  items: Item[];\n  theme: \"dark\" | \"light\" | \"system\";\n  notifications: boolean;\n  preferences: { cardDensity: \"comfortable\" | \"compact\"; confirmOnDelete: boolean; defaultPriority: string; defaultArea: string };\n  onSaveBoard: (next: BoardConfig) => Promise<void>;\n  onSetTheme: (theme: \"dark\" | \"light\" | \"system\") => void;\n  onSetNotifications: (on: boolean) => void;\n  onSetPreferences: (patch: Partial<{ cardDensity: \"comfortable\" | \"compact\"; confirmOnDelete: boolean; defaultPriority: string; defaultArea: string }>) => void;\n  onClose: () => void;",
+    "TicketCreate": "  /** The board config (statuses/areas/priorities/idPrefixes, optional docs + deployment) — see README \"Data shapes\". */\n  board: BoardConfig;\n  items: Item[];\n  /** Preferred initial area/priority; used only when on this board. */\n  defaultArea?: string;\n  defaultPriority?: string;\n  onClose: () => void;\n  /** Create the ticket; resolves with the created item, or null on failure (dialog stays open). */\n  onCreate: (input: CreateItemInput) => Promise<Item | null>;",
+    "Standup": "  /** The board config (statuses/areas/priorities/idPrefixes, optional docs + deployment) — see README \"Data shapes\". */\n  board: BoardConfig;\n  items: Item[];\n  /** The open project's folder name — the report's \"### Board: <name>\". */\n  projectName: string;\n  /** Bumped on every on-disk change; keys the activity/warnings fetch. */\n  changeSignal: number;\n  onSelect: (id: string) => void;"
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

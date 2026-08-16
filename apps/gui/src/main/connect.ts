@@ -12,6 +12,8 @@ import {
   type AgentProvider,
   type Invocation,
   type ProviderId,
+  codexTrustFromConfig,
+  codexTrustNote,
 } from "./providers.js";
 import { applyManagedBlock, removeManagedBlock } from "./agentsBlock.js";
 
@@ -31,18 +33,22 @@ export interface ConnectResult {
  * How to launch the MCP server: via the Electron binary as Node
  * (ELECTRON_RUN_AS_NODE=1), so the target machine needs no separate Node.
  */
-function serverInvocation(projectRoot: string): Invocation {
+function serverInvocation(boardRoot: string, sourceRoot: string): Invocation {
   const env = { ELECTRON_RUN_AS_NODE: "1" };
   let script: string;
   if (app.isPackaged) {
     script = join(process.resourcesPath, "mcp", "kanmer-mcp.cjs");
   } else {
-    const repoRoot = resolve(app.getAppPath(), "..", "..");
-    const standalone = join(repoRoot, "packages", "mcp-server", "dist", "standalone", "kanmer-mcp.cjs");
-    const esm = join(repoRoot, "packages", "mcp-server", "dist", "index.js");
+    const installRoot = resolve(app.getAppPath(), "..", "..");
+    const standalone = join(installRoot, "packages", "mcp-server", "dist", "standalone", "kanmer-mcp.cjs");
+    const esm = join(installRoot, "packages", "mcp-server", "dist", "index.js");
     script = existsSync(standalone) ? standalone : esm;
   }
-  return { command: process.execPath, args: [script, "--root", projectRoot], env };
+  const args = [script, "--root", boardRoot];
+  // Only when the board is elsewhere: `refs` resolve against the source
+  // checkout, and the server cannot see it from --root alone.
+  if (resolve(sourceRoot) !== resolve(boardRoot)) args.push("--repo-root", sourceRoot);
+  return { command: process.execPath, args, env };
 }
 
 /** Where the bundled plugin (skills + marketplace source) lives — dev vs packaged. */
@@ -224,10 +230,10 @@ export async function updateSkills(id: ProviderId, projectRoot: string): Promise
  * config-file merge) and install the skills (a marketplace CLI, or the AGENTS.md
  * block + a project skills copy). Idempotent — re-running just refreshes.
  */
-export async function connectAgent(id: ProviderId, projectRoot: string, boardRoot = projectRoot): Promise<ConnectResult> {
+export async function connectAgent(id: ProviderId, projectRoot: string, boardRoot: string): Promise<ConnectResult> {
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
-  const inv = serverInvocation(boardRoot);
+  const inv = serverInvocation(boardRoot, projectRoot);
   try {
     let command: string;
     let output: string;
@@ -242,8 +248,27 @@ export async function connectAgent(id: ProviderId, projectRoot: string, boardRoo
       const path = resolveConfigPath(provider.register.configPath, projectRoot);
       const existing = existsSync(path) ? await readFile(path, "utf8") : null;
       await writeAtomic(path, provider.register.merge(existing, inv));
+      // Legacy cleanup alongside the merge: codex drains the global
+      // `kanmer-<project>` entries older versions wrote. Best-effort — the
+      // registration already succeeded, so a stale CLI must not fail it.
+      for (const cmd of provider.register.removeCommands?.(projectRoot) ?? []) {
+        await execAsync(cmd, { cwd: projectRoot }).catch(() => undefined);
+      }
       command = `wrote ${provider.register.configPath}`;
       output = `Registered Kanmer in ${provider.register.configPath}.`;
+      // codex only reads project config for trusted folders, and trust is
+      // recorded globally — so say whether THIS folder is trusted rather than
+      // showing an unconditional caveat.
+      if (id === "codex") {
+        const globalCfg = join(homedir(), ".codex", "config.toml");
+        const note = codexTrustNote(
+          codexTrustFromConfig(
+            existsSync(globalCfg) ? await readFile(globalCfg, "utf8") : null,
+            projectRoot,
+          ),
+        );
+        if (note) output += ` ${note}`;
+      }
     }
     const skills = await installSkills(provider, projectRoot).catch(
       (e) => `skills failed: ${e instanceof Error ? e.message : e}`,
@@ -272,6 +297,11 @@ export async function disconnectAgent(id: ProviderId, projectRoot: string): Prom
       const path = resolveConfigPath(provider.register.configPath, projectRoot);
       if (existsSync(path)) {
         await writeAtomic(path, provider.register.unmerge(await readFile(path, "utf8")));
+      }
+      // Disconnect should leave nothing behind, including the legacy global
+      // entry a previous version of Kanmer wrote.
+      for (const cmd of provider.register.removeCommands?.(projectRoot) ?? []) {
+        await execAsync(cmd, { cwd: projectRoot }).catch(() => undefined);
       }
     }
     if (provider.install.kind === "copySkills") {

@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { UI_STAGES as STAGES } from "../../../shared/stages.js";
+
 import type {
   BoardColumn,
   BoardConfig,
   DocType,
+  GateReport,
   Item,
   LinkGraph,
   TicketDoc,
@@ -10,6 +13,9 @@ import type {
   UpdateItemPatch,
 } from "@kanmer/core";
 import { useClient } from "../lib/client.js";
+
+/** The shipped profiles plus custom — the picker's options (FRD-002 P2/P3). */
+const PROFILE_IDS = ["feature", "fix", "chore", "spike", "custom"] as const;
 import { progressDocId } from "../lib/docProgress.js";
 import { renderMarkdown } from "../lib/markdown.js";
 import { ChipInput } from "./ChipInput.js";
@@ -35,7 +41,7 @@ interface Snapshot {
   title: string;
   status: string;
   area: string;
-  priority: string;
+  profile: string;
   assignee: string;
   labels: string;
   links: string;
@@ -50,7 +56,7 @@ const FIELD_KEYS = [
   "title",
   "status",
   "area",
-  "priority",
+  "profile",
   "assignee",
   "labels",
   "links",
@@ -65,7 +71,7 @@ function snapOf(item: Item): Snapshot {
     title: item.title,
     status: item.status,
     area: item.area,
-    priority: item.priority,
+    profile: item.profile ?? "",
     assignee: item.assignee,
     labels: (item.labels ?? []).join(", "),
     links: (item.links ?? []).join(", "),
@@ -105,7 +111,14 @@ export function Editor(props: EditorProps): JSX.Element {
   const [tab, setTab] = useState<"ticket" | TicketDoc>("ticket");
   const [pendingTab, setPendingTab] = useState<"ticket" | TicketDoc | null>(null);
   const [docsInfo, setDocsInfo] = useState<TicketDocsInfo | null>(null);
+  /** Reference upload: drag-over highlight, in-flight flag, remove confirmation. */
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [pendingRemove, setPendingRemove] = useState<string | null>(null);
+  const [refError, setRefError] = useState<string | null>(null);
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
+  /** The core gate report — what this ticket owes, and what it already has. */
+  const [gates, setGates] = useState<GateReport | null>(null);
   const [docDirty, setDocDirty] = useState(false);
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -126,10 +139,37 @@ export function Editor(props: EditorProps): JSX.Element {
     void client.getLinks(item.id).then(setGraph);
   }, [item.id, item.updated]);
 
+  const refreshDocsInfo = useCallback(async () => {
+    setDocsInfo(await client.getDocsInfo(item.id));
+  }, [client, item.id]);
+
   useEffect(() => {
     if (item.type !== "ticket") return;
     void client.getDocsInfo(item.id).then(setDocsInfo);
   }, [item.id, item.updated, changeSignal, item.type]);
+
+  /**
+   * Copy files into the ticket's `reference/` folder, one at a time.
+   *
+   * Sequential rather than parallel: core suffixes a colliding name, and two
+   * concurrent copies of the same filename would race on the collision check
+   * and both resolve to the same suffix.
+   */
+  const addReferences = useCallback(
+    async (paths: string[]) => {
+      setUploading(true);
+      setRefError(null);
+      try {
+        for (const p of paths) await client.addReference(item.id, p);
+        await refreshDocsInfo();
+      } catch (err) {
+        setRefError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setUploading(false);
+      }
+    },
+    [client, item.id, refreshDocsInfo],
+  );
 
   // Doc tabs come from the ticket area's configured doc set (Phase 1), resolved
   // in the main process (core is node-only, so the renderer can't import it).
@@ -181,8 +221,7 @@ export function Editor(props: EditorProps): JSX.Element {
     }
   }, [item]);
 
-  const statusOpts = withCurrent(board.statuses, item.status);
-  const priorityOpts = withCurrent(board.priorities, item.priority);
+  const statusOpts = withCurrent(STAGES.map((s) => ({ id: s.id, name: s.name, color: s.color })), item.status);
   const areaOpts = withCurrent(board.areas, item.area);
   const labelSuggestions = useMemo(
     () =>
@@ -339,6 +378,22 @@ export function Editor(props: EditorProps): JSX.Element {
     }
   };
 
+  // Re-read on every disk change and after a save: a document written in
+  // another tab, or by an agent, must move the readiness rows without a reload.
+  useEffect(() => {
+    if (item.type !== "ticket") return;
+    let cancelled = false;
+    void client
+      .getGates(item.id)
+      .then((g) => {
+        if (!cancelled) setGates(g);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [client, item.id, item.status, item.profile, changeSignal, docsInfo]);
+
   const progressDoc = progressDocId(docTypes);
   const showDeployment = board.deployment !== undefined;
   const deploymentOptions = ["n/a", "not-deployed", ...(board.deployment?.environments ?? [])];
@@ -393,6 +448,91 @@ export function Editor(props: EditorProps): JSX.Element {
         </nav>
       )}
 
+      {item.type === "ticket" && docsInfo && (
+        <section
+          className={dragging ? "references dropping" : "references"}
+          aria-label="Reference files"
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            // Electron exposes the real filesystem path on dropped files;
+            // a browser would not, which is why this works here and only here.
+            const paths = [...e.dataTransfer.files]
+              .map((f) => (f as File & { path?: string }).path)
+              .filter((v): v is string => Boolean(v));
+            if (paths.length) void addReferences(paths);
+          }}
+        >
+          <div className="editor-actions">
+            <strong>Attachments</strong>
+            <span className="hint">
+              inputs to the work — never satisfy a document gate
+            </span>
+            <span className="spacer" />
+            <button
+              className="ghost sm"
+              disabled={uploading}
+              onClick={() => {
+                void client
+                  .pickReferences()
+                  .then((paths) => (paths.length ? addReferences(paths) : undefined))
+                  .catch((e) => setRefError(String(e)));
+              }}
+            >
+              {uploading ? "Adding…" : "Add files…"}
+            </button>
+          </div>
+
+          {refError && <p className="error">{refError}</p>}
+
+          {docsInfo.references.length === 0 ? (
+            <p className="hint">
+              Drop a mockup, spec or log here, or use Add files. They live in the
+              ticket&rsquo;s <code>reference/</code> folder and agents can read them.
+            </p>
+          ) : (
+            <ul className="reference-list">
+              {docsInfo.references.map((r) => (
+                <li key={r.name}>
+                  <button className="linkish" onClick={() => void client.openReference(item.id, r.name)}>
+                    {r.name}
+                  </button>
+                  {pendingRemove === r.name ? (
+                    <>
+                      <span className="hint">Delete {r.name}? This cannot be undone.</span>
+                      <button
+                        className="danger xs"
+                        onClick={() => {
+                          setPendingRemove(null);
+                          void client
+                            .removeReference(item.id, r.name)
+                            .then(refreshDocsInfo)
+                            .catch((e) => setRefError(String(e)));
+                        }}
+                      >
+                        Delete
+                      </button>
+                      <button className="ghost xs" onClick={() => setPendingRemove(null)}>
+                        Keep
+                      </button>
+                    </>
+                  ) : (
+                    <button className="ghost xs" onClick={() => setPendingRemove(r.name)}>
+                      Remove
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
       {conflict && (
         <div className="banner warn conflict-banner">
           <span>
@@ -445,6 +585,7 @@ export function Editor(props: EditorProps): JSX.Element {
         />
       ) : (
         <>
+          {gates && <ReadinessPanel gates={gates} onOpenDoc={(t) => tryTab(t)} />}
           <label className="field">
             <span>Title</span>
             <input value={form.title} onChange={(e) => set("title", e.target.value)} />
@@ -463,22 +604,25 @@ export function Editor(props: EditorProps): JSX.Element {
 
           <div className="field-row">
             <label className="field">
+              <span>Profile</span>
+              {/* What this ticket owes at each boundary. Changing it re-gates
+                  immediately — the readiness panel below updates with it. */}
+              <select value={form.profile} onChange={(e) => set("profile", e.target.value)}>
+                <option value="">— inherit —</option>
+                {PROFILE_IDS.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
               <span>Area</span>
               <select value={form.area} onChange={(e) => set("area", e.target.value)}>
                 <option value="">— none —</option>
                 {areaOpts.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>Priority</span>
-              <select value={form.priority} onChange={(e) => set("priority", e.target.value)}>
-                {priorityOpts.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
                   </option>
                 ))}
               </select>
@@ -931,4 +1075,66 @@ function splitList(raw: string): string[] {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+
+/**
+ * What this ticket owes, per boundary (FRD-002 S2).
+ *
+ * Every row comes from the core resolver — the renderer computes none of it,
+ * because it cannot import core at runtime and, more importantly, a second
+ * implementation of the rules is exactly what ADR-0009 exists to prevent.
+ * Clicking an unmet requirement opens that document's tab, so the panel is a
+ * to-do list rather than a report.
+ */
+function ReadinessPanel({
+  gates,
+  onOpenDoc,
+}: {
+  gates: GateReport;
+  onOpenDoc: (docType: string) => void;
+}): JSX.Element | null {
+  if (!gates.boundaries.length) {
+    return (
+      <p className="hint readiness-none">
+        Profile <code>{gates.profile}</code> asks nothing of this ticket — it can move freely.
+      </p>
+    );
+  }
+  return (
+    <section className="readiness" aria-label="Requirements">
+      <header>
+        <span>
+          Profile <code>{gates.profile}</code>
+        </span>
+      </header>
+      {gates.boundaries.map((b) => (
+        <div key={b.boundary} className={b.passable ? "gate ok" : "gate unmet"}>
+          <span className="gate-label">{b.label}</span>
+          <span className="gate-reqs">
+            {b.requirements.map((r) => (
+              <button
+                key={r.requirement}
+                type="button"
+                className={r.satisfied ? "req met" : "req missing"}
+                title={
+                  r.satisfied
+                    ? `${r.requirement} — satisfied`
+                    : `${r.requirement} — open the tab to write it`
+                }
+                onClick={() => onOpenDoc(r.type)}
+              >
+                {r.satisfied ? "✓" : "○"} {r.requirement}
+              </button>
+            ))}
+          </span>
+        </div>
+      ))}
+      {gates.warnings.map((w) => (
+        <p key={w} className="hint warn-note">
+          {w}
+        </p>
+      ))}
+    </section>
+  );
 }

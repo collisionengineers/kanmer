@@ -6,16 +6,10 @@ const NOW = Date.parse("2026-08-13T12:00:00.000Z");
 const ago = (ms: number): string => new Date(NOW - ms).toISOString();
 const DAY = 24 * 60 * 60 * 1000;
 
+// Stages are constants in format 3, so the fixture board carries only what a
+// board still configures.
 const BOARD: BoardConfig = {
-  statuses: [
-    { id: "todo", name: "Todo" },
-    { id: "planning", name: "Planning" },
-    { id: "implementing", name: "Implementing" },
-    { id: "review", name: "Review" },
-    { id: "done", name: "Done" },
-  ],
   areas: [{ id: "api", name: "API" }],
-  priorities: [{ id: "medium", name: "Medium" }],
   idPrefixes: { ticket: "TICK", plan: "PLAN", research: "RES" },
 };
 
@@ -23,9 +17,8 @@ function item(partial: Partial<Item> & { id: string }): Item {
   return {
     type: "ticket",
     title: partial.id,
-    status: "todo",
+    status: "backlog",
     area: "api",
-    priority: "medium",
     assignee: "",
     labels: [],
     links: [],
@@ -61,15 +54,15 @@ function fullInput(): Partial<StandupInput> {
     item({ id: "TICK-001", status: "implementing", assignee: "alex", taken_at: ago(DAY), branch: "feat/x" }),
     item({ id: "TICK-002", status: "implementing", assignee: "sam" }),
     item({ id: "TICK-003", status: "review", assignee: "alex" }),
-    item({ id: "TICK-004", status: "todo" }),
+    item({ id: "TICK-004", status: "backlog" }),
     item({ id: "TICK-005", status: "done", updated: ago(3 * DAY) }),
-    item({ id: "TICK-006", status: "todo", blocks: ["TICK-007"] }),
-    item({ id: "TICK-007", status: "todo" }),
-    item({ id: "TICK-008", status: "todo" }),
+    item({ id: "TICK-006", status: "backlog", blocks: ["TICK-007"] }),
+    item({ id: "TICK-007", status: "backlog" }),
+    item({ id: "TICK-008", status: "backlog" }),
     item({ id: "TICK-009", status: "nowhere" }),
   ];
   const activity: ActivityEntry[] = [
-    { ts: ago(2 * 60 * 60 * 1000), id: "TICK-001", op: "create", to: "todo", actor: "claude" },
+    { ts: ago(2 * 60 * 60 * 1000), id: "TICK-001", op: "create", to: "backlog", actor: "claude" },
     {
       ts: ago(60 * 60 * 1000),
       id: "TICK-003",
@@ -102,7 +95,7 @@ describe("buildStandup", () => {
   });
 
   it("omits empty sections", () => {
-    const r = build({ items: [item({ id: "TICK-001", status: "todo" })] });
+    const r = build({ items: [item({ id: "TICK-001", status: "backlog" })] });
     expect(titles(r)).toEqual(["Up next"]);
   });
 
@@ -158,12 +151,12 @@ describe("buildStandup", () => {
     const r = build({
       items: [item({ id: "A" })],
       activity: [
-        { ts: ago(5 * 3600_000), id: "A", op: "update", field: "status", from: "todo", to: "planning", actor: "claude" },
-        { ts: ago(3600_000), id: "A", op: "update", field: "status", from: "planning", to: "review", actor: "claude" },
+        { ts: ago(5 * 3600_000), id: "A", op: "update", field: "status", from: "backlog", to: "preparing", actor: "claude" },
+        { ts: ago(3600_000), id: "A", op: "update", field: "status", from: "preparing", to: "review", actor: "claude" },
       ] as ActivityEntry[],
     });
     expect(allLines(r, "What happened since yesterday")).toEqual([
-      "A moved Planning → Review",
+      "A moved Preparing → Review",
     ]);
   });
 
@@ -237,7 +230,7 @@ describe("buildStandup", () => {
       ],
     });
     expect(allLines(r, "In flight")[0]).toBe(
-      "A A (Implementing, api, medium) — ⛏ feat/a (C:/wt/a) — *stale*",
+      "A A (Implementing, api) — ⛏ feat/a (C:/wt/a) — *stale*",
     );
   });
 

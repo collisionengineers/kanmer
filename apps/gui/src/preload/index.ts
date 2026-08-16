@@ -48,7 +48,8 @@ const api: KanmerApi = {
   listProviders: () => ipcRenderer.invoke(CH.listProviders),
   getSkillsStatus: (p, target) => ipcRenderer.invoke(CH.getSkillsStatus, p, target),
   updateSkills: (p, target) => ipcRenderer.invoke(CH.updateSkills, p, target),
-  dispatchAgent: (p, ticketId, target) => ipcRenderer.invoke(CH.dispatchAgent, p, ticketId, target),
+  dispatchAgent: (p, ticketId, target, taskId) => ipcRenderer.invoke(CH.dispatchAgent, p, ticketId, target, taskId),
+  dispatchOptions: (p, ticketId) => ipcRenderer.invoke(CH.dispatchOptions, p, ticketId),
   cancelDispatch: (dispatchId) => ipcRenderer.invoke(CH.cancelDispatch, dispatchId),
   listDispatches: (p) => ipcRenderer.invoke(CH.listDispatches, p),
   onDispatchStatus: (cb) => {
@@ -56,7 +57,6 @@ const api: KanmerApi = {
     ipcRenderer.on(CH.dispatchStatus, listener);
     return () => ipcRenderer.removeListener(CH.dispatchStatus, listener);
   },
-  showItemMenu: (payload) => ipcRenderer.invoke(CH.showItemMenu, payload),
   migrate: (p, dryRun) => ipcRenderer.invoke(CH.migrate, p, dryRun),
   backfillBoard: (p, dryRun) => ipcRenderer.invoke(CH.backfillBoard, p, dryRun),
   getFormat: (p) => ipcRenderer.invoke(CH.getFormat, p),
@@ -69,6 +69,17 @@ const api: KanmerApi = {
   getRepoDoc: (p, rel) => ipcRenderer.invoke(CH.getRepoDoc, p, rel),
   pickRepoDoc: (p) => ipcRenderer.invoke(CH.pickRepoDoc, p),
   getGateStatus: (p, id) => ipcRenderer.invoke(CH.getGateStatus, p, id),
+  getGates: (p, id) => ipcRenderer.invoke(CH.getGates, p, id),
+  listGroups: (p, opts) => ipcRenderer.invoke(CH.listGroups, p, opts),
+  getGroup: (p, id) => ipcRenderer.invoke(CH.getGroup, p, id),
+  createGroup: (p, kind, title, body) => ipcRenderer.invoke(CH.createGroup, p, kind, title, body),
+  updateGroup: (p, id, patch) => ipcRenderer.invoke(CH.updateGroup, p, id, patch),
+  getGroupDoc: (p, id, rel) => ipcRenderer.invoke(CH.getGroupDoc, p, id, rel),
+  setGroupDoc: (p, id, rel, c) => ipcRenderer.invoke(CH.setGroupDoc, p, id, rel, c),
+  pickReferences: (p) => ipcRenderer.invoke(CH.pickReferences, p),
+  addReference: (p, id, src) => ipcRenderer.invoke(CH.addReference, p, id, src),
+  openReference: (p, id, name) => ipcRenderer.invoke(CH.openReference, p, id, name),
+  removeReference: (p, id, name) => ipcRenderer.invoke(CH.removeReference, p, id, name),
   getActivity: (p, opts) => ipcRenderer.invoke(CH.getActivity, p, opts),
   onChange: (cb) => {
     const listener = (_e: unknown, payload: ChangePayload) => cb(payload);

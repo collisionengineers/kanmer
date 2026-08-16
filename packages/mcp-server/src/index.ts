@@ -7,24 +7,32 @@ import {
 import path from "node:path";
 import { z } from "zod";
 import {
+  BOUNDARIES,
+  DOC_TYPES,
+  GATE_EXEMPT_DIRS,
   KanmerStore,
+  STAGES,
+  STAGE_IDS,
   computeBlockedIds,
   getLinkGraph,
+  lastStageId,
   linkItems,
   migrateBoard,
   repoDocsMap,
-  resolveDocTypes,
-  resolveGates,
+  resolveGroupKinds,
+  resolveProfiles,
+  resolveProofTypes,
   serialiseItem,
   takeTicketPromptText,
   watchKanmer,
   type Item,
   type WatchHandle,
 } from "@kanmer/core";
-import { resolveProjectRoot } from "./root.js";
+import { resolveProjectRoot, resolveRepoRoot } from "./root.js";
 
 const projectRoot = resolveProjectRoot(process.argv.slice(2), process.env);
-const store = new KanmerStore(projectRoot);
+const repoRoot = resolveRepoRoot(process.argv.slice(2), process.env);
+const store = new KanmerStore(projectRoot, { repoRoot });
 
 /** JSON tool result. */
 function ok(data: unknown) {
@@ -127,7 +135,8 @@ async function summarise(item: Item, blockedIds: Set<string>) {
     title: item.title,
     status: item.status,
     area: item.area,
-    priority: item.priority,
+    profile: item.profile ?? null,
+    groups: item.groups ?? null,
     assignee: item.assignee,
     labels: item.labels,
     order: item.order ?? null,
@@ -148,23 +157,36 @@ async function summarise(item: Item, blockedIds: Set<string>) {
 /** Which item ids are currently blocked (live blocker, per the whole board). */
 async function blockedSet(): Promise<Set<string>> {
   const all = await store.listItems({ includeArchived: true });
-  const board = await store.getBoard();
-  return computeBlockedIds(all, board.statuses[board.statuses.length - 1]?.id);
+  return computeBlockedIds(all, lastStageId());
 }
 
 const itemTypeEnum = z.enum(["ticket", "plan", "research"]);
 // Doc names are per-area configurable data now (board.docs); core validates a
 // write against the ticket area's set, so the wire type is a plain string.
 const ticketDocEnum = z.string();
-const columnKindEnum = z.enum(["status", "area", "priority"]);
+// Areas are the only configurable column: stages are constants (ADR-0002)
+// and priority is gone (ADR-0006).
+const columnKindEnum = z.literal("area");
 
 const createFields = {
   type: itemTypeEnum.default("ticket").describe("ticket | plan | research (v2 boards: ticket only)"),
   title: z.string().describe("Short title"),
   status: z.string().optional().describe("Status id / workflow stage (defaults to the first stage)"),
   area: z.string().optional().describe("Area id (see list_board → areas)"),
-  priority: z.string().optional().describe("Priority id (see list_board → priorities)"),
   assignee: z.string().optional(),
+  profile: z
+    .string()
+    .optional()
+    .describe(
+      "Requirement profile — which documents each stage boundary needs of this ticket. feature | fix | chore | spike | custom (see list_board → profiles). Omit to inherit the area default, then the board default.",
+    ),
+  requires: z
+    .record(z.array(z.string()))
+    .optional()
+    .describe(
+      "Inline requirements, honoured only when profile is \"custom\": { \"leave-preparing\": [\"plan\"], \"enter-done\": [\"proof:visual\"] }. An empty map means no requirements.",
+    ),
+  groups: z.array(z.string()).optional().describe("Group ids this ticket belongs to (must exist)"),
   labels: z.array(z.string()).optional(),
   links: z.array(z.string()).optional().describe("Ids of related items (must exist)"),
   blocks: z.array(z.string()).optional().describe("Ids this item blocks (must exist)"),
@@ -207,7 +229,7 @@ server.registerTool(
     const { items, warnings } = await store.listItemsWithWarnings({ includeArchived: true });
     const active = items.filter((i) => !i.archived);
     const byStage: Record<string, number> = {};
-    for (const s of board.statuses) byStage[s.id] = 0;
+    for (const s of STAGE_IDS) byStage[s] = 0;
     let offBoardStage = 0;
     const byType: Record<string, number> = {};
     for (const item of active) {
@@ -245,17 +267,21 @@ server.registerTool(
   },
   guard(async () => {
     const { board, source } = await store.getBoardWithSource();
-    // Surface the resolved document model so a skill learns the doc types +
-    // gates without a bespoke call. `docModel` reflects the fallbacks too, so it
-    // is populated even when board.docs is absent.
+    // Everything a skill needs to orient, resolved (fallbacks included), so no
+    // bespoke follow-up call is required — FRD-022 R5.
     return ok({
       ...board,
       source,
-      docModel: {
-        repoDocs: repoDocsMap(board),
-        default: { types: resolveDocTypes(board, ""), gates: resolveGates(board, "") },
-        deploymentTracking: board.deployment !== undefined,
-      },
+      stages: STAGES,
+      profiles: resolveProfiles(board),
+      defaultProfile: board.defaultProfile ?? "fix",
+      groupKinds: resolveGroupKinds(board),
+      proofTypes: resolveProofTypes(board),
+      docTypes: DOC_TYPES,
+      gateExemptFolders: GATE_EXEMPT_DIRS,
+      boundaries: BOUNDARIES,
+      repoDocs: repoDocsMap(board),
+      deploymentTracking: board.deployment !== undefined,
     });
   }),
 );
@@ -365,6 +391,90 @@ server.registerTool(
   }),
 );
 
+// ---------------------------------------------------------------------------
+// Groups (FRD-001). Membership rides on `update_item(groups: [...])` — there is
+// deliberately no add/remove tool, matching how labels and blocks already work.
+// ---------------------------------------------------------------------------
+
+server.registerTool(
+  "create_group",
+  {
+    title: "Create a group",
+    description:
+      "Create a cross-cutting group of tickets: an `epic` (these ship together) or a `horizon` (this is what matters now). Returns the group including its allocated id (EPIC-001, HZN-001). The body is the group's goal; add shared context agents should read with set_group_doc. Add members by calling update_item(groups: [...]) on each ticket — membership lives on tickets, and the member list is always derived, never stored.",
+    inputSchema: {
+      kind: z.string().describe("Group kind (see list_board → groupKinds): epic | horizon"),
+      title: z.string().describe("Short title"),
+      body: z.string().optional().describe("Markdown body — the group's goal"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  },
+  write(async ({ kind, title, body }) => ok(await store.createGroup(kind, title, body ?? ""))),
+);
+
+server.registerTool(
+  "get_group",
+  {
+    title: "Get a group",
+    description:
+      "A group with its derived membership: every ticket that names it, each with title and stage, plus per-stage progress counts. Members and progress are computed from the tickets on every read, so they cannot go stale. Archived members are listed but excluded from the counts. Read this before working any member ticket — the group's shared context is part of the ticket's context.",
+    inputSchema: { id: z.string().describe("Group id, e.g. EPIC-001") },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  guard(async ({ id }) => {
+    const group = await store.getGroup(id);
+    return group ? ok(group) : fail(`No group with id "${id}"`);
+  }),
+);
+
+server.registerTool(
+  "list_groups",
+  {
+    title: "List groups",
+    description:
+      "Every group, optionally filtered by kind. Archived groups are excluded unless include_archived is true — archiving is how a group is retired, since deleting one would orphan the membership recorded on its tickets.",
+    inputSchema: {
+      kind: z.string().optional().describe("Only this kind (epic | horizon)"),
+      include_archived: z.boolean().optional(),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  guard(async ({ kind, include_archived }) =>
+    ok(await store.listGroups({ kind, includeArchived: include_archived })),
+  ),
+);
+
+server.registerTool(
+  "get_group_doc",
+  {
+    title: "Read a group's shared document",
+    description:
+      "Read a shared context document from a group's folder by relative path (`context.md`, `decisions/api.md`). These are free-form — a group's context is whatever its work needs — and every member ticket's agent is expected to have read them.",
+    inputSchema: {
+      id: z.string().describe("Group id"),
+      path: z.string().describe("Path within the group folder, e.g. context.md"),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  guard(async ({ id, path: rel }) => ok({ id, path: rel, content: await store.getGroupDoc(id, rel) })),
+);
+
+server.registerTool(
+  "set_group_doc",
+  {
+    title: "Write a group's shared document",
+    description:
+      "Write a shared context document into a group's folder. Use this for the context every member ticket needs — the decision that binds them, the constraint they all sit under — rather than repeating it in each ticket. Cannot write the group's own `<ID>.md`; edit that through create_group's body.",
+    inputSchema: {
+      id: z.string().describe("Group id"),
+      path: z.string().describe("Path within the group folder, e.g. context.md"),
+      content: z.string().describe("Markdown content"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  },
+  write(async ({ id, path: rel, content }) => ok(await store.setGroupDoc(id, rel, content))),
+);
+
 server.registerTool(
   "get_links",
   {
@@ -425,27 +535,32 @@ server.registerTool(
     if (id !== undefined) {
       const item = await store.getItem(id);
       if (!item) return fail(`No item with id "${id}"`);
+      const report = await store.getDocGates(id);
+      if (!report) return fail(`"${id}" has no ticket folder to inspect.`);
       const info = await store.getTicketDocsInfo(id);
+      // The core resolver verbatim: every surface reads this same answer, so
+      // none of them restates a rule (ADR-0009).
       return ok({
         id,
         area: item.area,
         status: item.status,
-        statuses: board.statuses.map((s) => s.id),
-        docTypes: resolveDocTypes(board, item.area),
-        docsPresent: info?.docs ?? null,
-        gates: resolveGates(board, item.area),
+        stages: STAGE_IDS,
+        ...report,
+        docCounts: info?.counts ?? {},
+        references: info?.references ?? [],
         refs: item.refs ?? [],
         docs_todo: item.docs_todo === true,
       });
     }
-    const areas: Record<string, unknown> = {};
-    for (const areaId of Object.keys(board.docs?.areas ?? {})) {
-      areas[areaId] = { types: resolveDocTypes(board, areaId), gates: resolveGates(board, areaId) };
-    }
     return ok({
+      stages: STAGES,
+      boundaries: BOUNDARIES,
+      profiles: resolveProfiles(board),
+      defaultProfile: board.defaultProfile ?? "fix",
+      docTypes: DOC_TYPES,
+      gateExemptFolders: GATE_EXEMPT_DIRS,
+      proofTypes: resolveProofTypes(board),
       repoDocs: repoDocsMap(board),
-      default: { types: resolveDocTypes(board, ""), gates: resolveGates(board, "") },
-      areas,
       deploymentTracking: board.deployment ?? null,
     });
   }),
@@ -472,7 +587,7 @@ server.registerTool(
   {
     title: "Create several items",
     description:
-      "Bulk create up to 50 items in one call (sequential, so ids stay ordered). Each entry takes the same fields as create_item, including the rule that a ticket cannot be created directly in the board's final stage — that stage requires proof.md; create it earlier and move it. Partial success is possible: the result carries one { ok, item | error } per entry, in order.",
+      "Bulk create up to 50 items in one call (sequential, so ids stay ordered). Each entry takes the same fields as create_item, including that creation is ungated — an entry may be created directly in any stage, which is what makes importing or backfilling finished work possible. Document gates apply on move_item, not creation. Partial success is possible: the result carries one { ok, item | error } per entry, in order.",
     inputSchema: {
       items: z.array(z.object(createFields)).min(1).max(50).describe("Entries to create, in order"),
     },
@@ -506,8 +621,18 @@ server.registerTool(
       title: z.string().optional(),
       status: z.string().optional(),
       area: z.string().optional(),
-      priority: z.string().optional(),
       assignee: z.string().optional(),
+      profile: z
+        .string()
+        .optional()
+        .describe(
+          "Requirement profile: feature | fix | chore | spike | custom. Gates re-evaluate immediately — changing it can unblock a move that was blocked a moment ago.",
+        ),
+      requires: z
+        .record(z.array(z.string()))
+        .optional()
+        .describe("Inline requirements, honoured only when profile is \"custom\""),
+      groups: z.array(z.string()).optional().describe("Group ids this ticket belongs to"),
       order: z.number().optional().describe("Manual sort key (move_item's position computes this)"),
       labels: z.array(z.string()).optional(),
       links: z.array(z.string()).optional(),
@@ -544,7 +669,7 @@ server.registerTool(
   {
     title: "Move an item to a workflow stage",
     description:
-      "Kanban move: set an item's status, i.e. move it to a workflow stage (see list_board → statuses). Rejects a status that is not on the board. Enforces the ticket area's document gates — e.g. proof.md before the final stage, post-implementation-report before review — and on failure names every missing document/governing-doc and the boundary. Call get_doc_gates to self-check first. Optional position places the item within the column: \"top\", \"bottom\", or { after: \"API-003\" } — this maintains the manual order humans see.",
+      "Kanban move: set an item's status, i.e. move it to one of the six fixed stages (backlog, preparing, implementing, review, verifying, done). Enforces the ticket's profile gates and names the unmet requirement and boundary on failure. IMPORTANT: a single move may cross at most ONE gated boundary — writing every document and jumping straight to done is refused even though nothing is missing, because the pipeline is meant to be walked, not satisfied at the end. Move one stage at a time; the refusal names the next one. Which boundaries your ticket has depends on its profile, so call get_doc_gates to self-check first. Optional position places the item within the column: \"top\", \"bottom\", or { after: \"API-003\" } — this maintains the manual order humans see.",
     inputSchema: {
       id: z.string().describe("Item id to move"),
       status: z.string().describe("Target status id (workflow stage)"),

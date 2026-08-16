@@ -3,7 +3,8 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { KanmerStore } from "./store.js";
-import { migrateToV2 } from "./migrate.js";
+import { migrateBoard, migrateToV2, migrateToV3 } from "./migrate.js";
+import { repoDocKindOf } from "./docs.js";
 
 let root: string;
 let k: string;
@@ -230,7 +231,9 @@ describe("migration: resumability", () => {
 
     await migrateToV2(store);
 
-    const planDoc = await store.getDoc("TICK-001", "plan");
+    // v1→v2 leaves documents flat (`plan.md` beside the ticket); the move into
+    // `plan/` happens in the v3 step, so read the v2 shape this step produces.
+    const planDoc = await fs.readFile(path.join(k, "areas", "api", "TICK-001", "plan.md"), "utf8");
     expect(planDoc).toContain("# Legacy plan");
     expect(planDoc!.split("# Legacy plan").length).toBe(2); // exactly once
     expect(
@@ -239,5 +242,224 @@ describe("migration: resumability", () => {
         () => false,
       ),
     ).toBe(false);
+  });
+});
+
+describe("migration: v2 → v3", () => {
+  /**
+   * A realistic v2 board: the seven stages, priorities, loose pipeline
+   * documents and a scratch note — plus one stage no alias covers, which is the
+   * case the report has to be honest about.
+   */
+  async function seedV2Board(extraStatus?: string): Promise<KanmerStore> {
+    await fs.writeFile(path.join(k, "version.json"), JSON.stringify({ format: 2 }), "utf8");
+    await writeBoardYml([
+      "statuses:",
+      "  - { id: backlog, name: Backlog }",
+      "  - { id: researching, name: Researching }",
+      "  - { id: planning, name: Planning }",
+      "  - { id: implementing, name: Implementing }",
+      "  - { id: review, name: Review }",
+      "  - { id: verifying, name: Verifying }",
+      "  - { id: done, name: Done }",
+      ...(extraStatus ? [`  - { id: ${extraStatus}, name: Extra }`] : []),
+      "areas:",
+      "  - { id: api, name: API, prefix: API }",
+      "priorities:",
+      "  - { id: low, name: Low }",
+      "  - { id: medium, name: Medium }",
+      "idPrefixes: { ticket: TICK, plan: PLAN, research: RES }",
+      "",
+    ]);
+
+    const mk = async (id: string, status: string, priority: string) => {
+      const dir = path.join(k, "areas", "api", id);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(
+        path.join(dir, `${id}.md`),
+        itemFile(
+          [`id: ${id}`, "type: ticket", `title: ${id}`, `status: ${status}`, "area: api", `priority: ${priority}`],
+          "Body.",
+        ),
+        "utf8",
+      );
+      return dir;
+    };
+
+    const a = await mk("API-001", "researching", "high");
+    await fs.writeFile(path.join(a, "research.md"), "# Research\n", "utf8");
+    await fs.writeFile(path.join(a, "impact.md"), "# Impact\n", "utf8");
+    await fs.writeFile(path.join(a, "scratch-notes.md"), "jotting\n", "utf8");
+
+    const b = await mk("API-002", "done", "low");
+    await fs.writeFile(path.join(b, "proof.md"), "# Proof\n", "utf8");
+
+    await mk("API-003", "planning", "medium");
+    if (extraStatus) await mk("API-004", extraStatus, "low");
+
+    return new KanmerStore(root);
+  }
+
+  it("collapses seven stages to six with zero restages, moves docs, strips priority", async () => {
+    const store = await seedV2Board();
+    expect(await store.detectFormat()).toBe(2);
+
+    const dry = await migrateToV3(store, { dryRun: true });
+    expect(dry.needsRestage).toEqual([]);
+    expect(dry.prioritiesStripped).toBe(3);
+    // Researching and Planning both collapse into Preparing.
+    const preparing = dry.stageMapping.filter((m) => m.to === "preparing").map((m) => m.from);
+    expect(preparing.sort()).toEqual(["planning", "researching"]);
+    // Dry run wrote nothing.
+    expect(await store.detectFormat()).toBe(2);
+
+    const real = await migrateToV3(store);
+    expect(real.needsRestage).toEqual([]);
+    expect(real.stageMapping).toEqual(dry.stageMapping); // dry-run parity
+    expect(await store.detectFormat()).toBe(3);
+
+    // Stages mapped.
+    expect((await store.getItem("API-001"))?.status).toBe("preparing");
+    expect((await store.getItem("API-003"))?.status).toBe("preparing");
+    expect((await store.getItem("API-002"))?.status).toBe("done");
+
+    // Documents moved into their folders, impact renamed to files.
+    const dir = path.join(k, "areas", "api", "API-001");
+    expect(await fs.readFile(path.join(dir, "research", "research.md"), "utf8")).toBe("# Research\n");
+    expect(await fs.readFile(path.join(dir, "files", "impact.md"), "utf8")).toBe("# Impact\n");
+    expect(await fs.readFile(path.join(dir, "scratch", "notes.md"), "utf8")).toBe("jotting\n");
+    expect(await fs.access(path.join(dir, "research.md")).then(() => true, () => false)).toBe(false);
+
+    // Priority stripped; profiles assigned per FRD-002's note (as amended).
+    const active = await store.getItem("API-001");
+    expect((active as Record<string, unknown>).priority).toBeUndefined();
+    expect(active?.profile).toBe("feature");
+    expect((await store.getItem("API-002"))?.profile).toBe("custom");
+
+    // board.yml lost the legacy dimensions and gained the v3 vocabulary.
+    const board = await store.getBoard();
+    expect(board.statuses).toBeUndefined();
+    expect(board.priorities).toBeUndefined();
+    expect(Object.keys(board.profiles ?? {})).toContain("spike");
+    expect(board.proofTypes).toContain("visual");
+  });
+
+  it("sends an unmappable stage to Backlog with a needs-restage label, listed in the report", async () => {
+    const store = await seedV2Board("triage");
+    const report = await migrateToV3(store);
+    expect(report.needsRestage).toEqual([{ id: "API-004", from: "triage" }]);
+    const t = await store.getItem("API-004");
+    expect(t?.status).toBe("backlog");
+    expect(t?.labels).toContain("needs-restage");
+  });
+
+  it("is idempotent: a second run is a no-op and rewrites nothing", async () => {
+    const store = await seedV2Board();
+    await migrateToV3(store);
+    const file = path.join(k, "areas", "api", "API-001", "API-001.md");
+    const before = await fs.readFile(file, "utf8");
+
+    const again = await migrateToV3(store);
+    expect(again.alreadyV3).toBe(true);
+    expect(again.stageMapping).toEqual([]);
+    expect(await fs.readFile(file, "utf8")).toBe(before); // byte-identical
+  });
+
+  it("resumes when a previous run already moved some documents", async () => {
+    const store = await seedV2Board();
+    // Simulate a run that died after relocating research but before the rest.
+    const dir = path.join(k, "areas", "api", "API-001");
+    await fs.mkdir(path.join(dir, "research"), { recursive: true });
+    await fs.rename(path.join(dir, "research.md"), path.join(dir, "research", "research.md"));
+
+    await migrateToV3(store);
+    expect(await fs.readFile(path.join(dir, "research", "research.md"), "utf8")).toBe("# Research\n");
+    expect(await fs.readFile(path.join(dir, "files", "impact.md"), "utf8")).toBe("# Impact\n");
+  });
+
+  it("the migrated board is immediately workable: a gate opens on the moved documents", async () => {
+    const store = await seedV2Board();
+    await migrateToV3(store);
+    // API-001 came out as `feature` in Preparing with research + files already
+    // present, so it needs only plan + checklist to move on.
+    await expect(store.moveItem("API-001", { status: "implementing" })).rejects.toThrow(
+      /leaving Preparing requires plan, checklist/,
+    );
+    await store.setDoc("API-001", "plan", "# Plan");
+    await store.setDoc("API-001", "checklist", "- [ ] go");
+    expect((await store.moveItem("API-001", { status: "implementing" })).status).toBe("implementing");
+  });
+
+  /**
+   * Re-running the umbrella must be a no-op. A single run cannot show this:
+   * the v3 step restamps version.json immediately, so a v1→v2 step that
+   * wrongly fired on a v3 board leaves no trace until the *second* run.
+   */
+  it("migrateBoard on an already-migrated board changes nothing", async () => {
+    const store = await seedV2Board();
+    await migrateBoard(store);
+    const versionFile = path.join(k, "version.json");
+    const stamped = await fs.readFile(versionFile, "utf8");
+    expect(JSON.parse(stamped).format).toBe(3);
+
+    store.resetFormatCache();
+    const again = await migrateBoard(store);
+
+    // Both steps must recognise there is nothing to do. Before the fix
+    // `alreadyV2` was false here, because the guard tested `=== 2` and this
+    // board is 3 — so the v1→v2 migration ran and stamped it back down.
+    expect(again.v2.alreadyV2).toBe(true);
+    expect(again.v3.alreadyV3).toBe(true);
+    expect(again.backfill.addedStages).toEqual([]);
+
+    // The flags can be right while the file churns, so assert the bytes. A
+    // re-stamp shows up here as a fresh `migratedAt` even when nothing else
+    // moved.
+    expect(await fs.readFile(versionFile, "utf8")).toBe(stamped);
+  });
+});
+
+describe("migration: repoDocs survives", () => {
+  it("carries a customised repoDocs across, instead of reverting to the shipped globs", async () => {
+    await fs.writeFile(path.join(k, "version.json"), JSON.stringify({ format: 2 }), "utf8");
+    await writeBoardYml([
+      "statuses:",
+      "  - { id: backlog, name: Backlog }",
+      "  - { id: done, name: Done }",
+      "areas: []",
+      "priorities:",
+      "  - { id: medium, name: Medium }",
+      "idPrefixes: { ticket: TICK, plan: PLAN, research: RES }",
+      "docs:",
+      "  repoDocs:",
+      "    frd: docs/functional/frd/**",
+      "",
+    ]);
+    const store = new KanmerStore(root);
+    await migrateToV3(store);
+
+    // repoDocs is how a ref is classified as a governing doc (FRD-002 P4).
+    // Dropping it with the rest of the v2 `docs` block silently reverted the
+    // board to the shipped globs, which classify nothing on a docs-template
+    // tree — so the leave-Backlog gate became unsatisfiable by refs again.
+    const board = await store.getBoard();
+    expect(board.repoDocs).toEqual({ frd: "docs/functional/frd/**" });
+    expect(board.docs).toBeUndefined();
+    expect(repoDocKindOf(board, "docs/functional/frd/FRD-001.md")).toBe("frd");
+  });
+
+  it("leaves repoDocs absent when the board never configured it", async () => {
+    await fs.writeFile(path.join(k, "version.json"), JSON.stringify({ format: 2 }), "utf8");
+    await writeBoardYml([
+      "statuses:",
+      "  - { id: backlog, name: Backlog }",
+      "areas: []",
+      "priorities: []",
+      "idPrefixes: { ticket: TICK, plan: PLAN, research: RES }",
+      "",
+    ]);
+    const store = new KanmerStore(root);
+    await migrateToV3(store);
+    expect((await store.getBoard()).repoDocs).toBeUndefined();
   });
 });

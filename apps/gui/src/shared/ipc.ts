@@ -1,12 +1,13 @@
+import type { GateReport, Group, GroupWithMembers } from "@kanmer/core";
 import type {
   ActivityEntry,
+  BackfillReport,
   BoardColumn,
   BoardConfig,
   ColumnKind,
   CreateItemInput,
   DeleteItemResult,
   DocType,
-  GateRule,
   Item,
   ItemFilter,
   ItemWarning,
@@ -17,7 +18,15 @@ import type {
   TicketDoc,
   TicketDocsInfo,
   UpdateItemPatch,
+  V3Report,
 } from "@kanmer/core";
+
+/** What `migrateBoard` reports: the three upgrade steps, in order. */
+export interface BoardMigrationReport {
+  v2: MigrationReport;
+  backfill: BackfillReport;
+  v3: V3Report;
+}
 
 /** IPC channel names (main ↔ renderer). */
 export const CH = {
@@ -54,11 +63,11 @@ export const CH = {
   getSkillsStatus: "kanmer:getSkillsStatus",
   updateSkills: "kanmer:updateSkills",
   dispatchAgent: "kanmer:dispatchAgent",
+  dispatchOptions: "kanmer:dispatchOptions",
   cancelDispatch: "kanmer:cancelDispatch",
   listDispatches: "kanmer:listDispatches",
   /** Main → renderer: a background dispatch's status changed. */
   dispatchStatus: "kanmer:dispatchStatus",
-  showItemMenu: "kanmer:showItemMenu",
   migrate: "kanmer:migrate",
   backfillBoard: "kanmer:backfillBoard",
   getFormat: "kanmer:getFormat",
@@ -71,6 +80,17 @@ export const CH = {
   getRepoDoc: "kanmer:getRepoDoc",
   pickRepoDoc: "kanmer:pickRepoDoc",
   getGateStatus: "kanmer:getGateStatus",
+  getGates: "kanmer:getGates",
+  listGroups: "kanmer:listGroups",
+  getGroup: "kanmer:getGroup",
+  createGroup: "kanmer:createGroup",
+  updateGroup: "kanmer:updateGroup",
+  getGroupDoc: "kanmer:getGroupDoc",
+  setGroupDoc: "kanmer:setGroupDoc",
+  pickReferences: "kanmer:pickReferences",
+  addReference: "kanmer:addReference",
+  openReference: "kanmer:openReference",
+  removeReference: "kanmer:removeReference",
   getActivity: "kanmer:getActivity",
   changed: "kanmer:changed",
   /** Main → renderer: reveal an item (toast click, etc.). */
@@ -158,6 +178,26 @@ export interface SkillsStatus {
 }
 
 /** A background agent dispatch's live status. */
+/**
+ * One row of the Dispatch task menu, with core's feasibility already applied.
+ *
+ * Resolved in main rather than the renderer: `DISPATCH_TASKS` and
+ * `taskFeasibility` are runtime values in core, and the renderer may only
+ * `import type` from it. Sending the decided rows avoids a fourth
+ * core↔renderer duplication (AGENTS.md §7).
+ */
+export interface DispatchOption {
+  id: string;
+  label: string;
+  /** What must exist for the task to be finished. */
+  deliverable: string;
+  enabled: boolean;
+  /** Why it is disabled. */
+  reason?: string;
+  /** Enabled, but an input it builds on is thin. */
+  warning?: string;
+}
+
 export interface DispatchStatus {
   dispatchId: string;
   /** Canonical project root that owns this dispatch. */
@@ -166,6 +206,11 @@ export interface DispatchStatus {
   provider: ConnectTarget;
   state: "running" | "done" | "failed" | "cancelled" | "timed-out";
   startedAt: number;
+  /** The scoped task, when the dispatch was given one (FRD-010). */
+  task?: string;
+  taskLabel?: string;
+  /** What must exist for the task to be finished. */
+  deliverable?: string;
   exitCode?: number | null;
   tail?: string[];
 }
@@ -195,7 +240,7 @@ export interface OpenProjectResult {
   board: BoardConfig;
   items: Item[];
   /** Storage format: 1 = legacy layout (offer migration), 2 = current. */
-  format: 1 | 2;
+  format: 1 | 2 | 3;
 }
 
 export interface ChangePayload {
@@ -213,8 +258,16 @@ export interface RevealPayload {
 /** The board's resolved document model — the defaults a board inherits when it has no `docs` block. */
 export interface DocModel {
   repoDocs: Record<string, string>;
-  defaultTypes: DocType[];
-  defaultGates: GateRule[];
+  /** The fixed document-type vocabulary (containment defines type). */
+  docTypes: readonly string[];
+  /** Folders that exist but can never satisfy a gate. */
+  gateExemptFolders: readonly string[];
+  /** The stage boundaries a profile can gate. */
+  boundaries: readonly string[];
+  /** Requirement profiles in force: profile → boundary → requirements. */
+  profiles: Record<string, Record<string, string[]>>;
+  defaultProfile: string;
+  proofTypes: readonly string[];
 }
 
 /** A change on disk that this GUI didn't make (agent or manual edit). */
@@ -257,7 +310,10 @@ export type ItemMenuAction =
   | { type: "dispatch"; target: ConnectTarget };
 
 /** Application-menu commands forwarded to the renderer. */
-export type MenuCommand = { type: "pick-project" } | { type: "open-project"; path: string };
+export type MenuCommand =
+  | { type: "pick-project" }
+  | { type: "open-project"; path: string }
+  | { type: "manual"; chapter?: string };
 
 /**
  * The API exposed to the renderer on `window.kanmer`. Project-scoped methods
@@ -327,7 +383,9 @@ export interface KanmerApi {
   /** Re-copy the bundled skills for a host ("Update skills"). */
   updateSkills(projectId: string, target: ConnectTarget): Promise<ConnectResult>;
   /** Spawn a background agent to work a ticket end-to-end (request #10). */
-  dispatchAgent(projectId: string, ticketId: string, target: ConnectTarget): Promise<DispatchStatus>;
+  dispatchAgent(projectId: string, ticketId: string, target: ConnectTarget, taskId?: string): Promise<DispatchStatus>;
+  /** The task menu for one ticket, feasibility resolved by core. */
+  dispatchOptions(projectId: string, ticketId: string): Promise<DispatchOption[]>;
   /** Cancel a dispatch by its globally unique dispatch id (tree-kills the child). */
   cancelDispatch(dispatchId: string): Promise<boolean>;
   /** Current in-flight dispatches for a project. */
@@ -335,13 +393,20 @@ export interface KanmerApi {
   /** Subscribe to background-dispatch status updates. Returns an unsubscribe fn. */
   onDispatchStatus(cb: (status: DispatchStatus) => void): () => void;
   /** Show the native right-click menu for a card; resolves with the chosen action. */
-  showItemMenu(payload: ItemMenuPayload): Promise<ItemMenuAction | null>;
-  /** Migrate a v1 project to format 2 (dryRun for the report only). */
-  migrate(projectId: string, dryRun: boolean): Promise<MigrationReport>;
+  /** Bring a board fully current: v1→v2, stage backfill, v→3 (dryRun previews). */
+  migrate(projectId: string, dryRun: boolean): Promise<BoardMigrationReport>;
   /** Backfill the 7-stage default onto an already-v2 board (dryRun previews). */
   backfillBoard(projectId: string, dryRun: boolean): Promise<{ addedStages: string[] }>;
+  /** Native multi-select picker for reference files; [] when cancelled. */
+  pickReferences(projectId: string): Promise<string[]>;
+  /** Copy a file into the ticket's gate-exempt `reference/` folder. */
+  addReference(projectId: string, id: string, sourcePath: string): Promise<{ name: string }>;
+  /** Open a reference in the OS default application. */
+  openReference(projectId: string, id: string, name: string): Promise<void>;
+  /** Delete a reference. Irreversible — confirm before calling. */
+  removeReference(projectId: string, id: string, name: string): Promise<void>;
   /** A project's current on-disk format — re-read after an external migration. */
-  getFormat(projectId: string): Promise<1 | 2>;
+  getFormat(projectId: string): Promise<1 | 2 | 3>;
   /**
    * Read a ticket pipeline document with its version token (both null when
    * not written yet, or for a legacy item). Pass `version` back as
@@ -383,6 +448,18 @@ export interface KanmerApi {
    * its current stage (empty array = the move is allowed). Backs the drag lock-tint.
    */
   getGateStatus(projectId: string, id: string): Promise<Record<string, string[]>>;
+  /** The full gate report for one ticket — the core resolver, verbatim. */
+  getGates(projectId: string, id: string): Promise<GateReport | null>;
+  listGroups(projectId: string, opts?: { kind?: string; includeArchived?: boolean }): Promise<Group[]>;
+  getGroup(projectId: string, id: string): Promise<GroupWithMembers | null>;
+  createGroup(projectId: string, kind: string, title: string, body?: string): Promise<Group>;
+  updateGroup(
+    projectId: string,
+    id: string,
+    patch: { title?: string; body?: string; archived?: boolean },
+  ): Promise<Group>;
+  getGroupDoc(projectId: string, id: string, path: string): Promise<string | null>;
+  setGroupDoc(projectId: string, id: string, path: string, content: string): Promise<{ file: string }>;
   /** Read the activity log. */
   getActivity(
     projectId: string,

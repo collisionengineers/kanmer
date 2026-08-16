@@ -6,7 +6,7 @@ description: Manage tickets on Kanmer, the file-based kanban shared live with a 
 # Managing Kanmer tickets
 
 Kanmer stores tickets as folders in the project's `.kanmer/` tree — each
-ticket owns its markdown file plus a pipeline of documents (research, impact,
+ticket owns its markdown file plus a pipeline of documents (research, files,
 plan, checklist, proof) that live beside it. The human sees the same data on a
 live kanban board (the Kanmer desktop app), so every item you create or move
 is instantly visible to them — treat the board as your shared workspace, not
@@ -22,7 +22,7 @@ driven by the phase skills — see the router at the end.
 
 It tells you whether `.kanmer/` exists, the format version, whether the board
 is real or the synthesized default, per-stage counts and any file warnings —
-before you write anything. Then `list_board` for the stage/area/priority ids
+before you write anything. Then `list_board` for the stage/area ids
 (they vary per project; writes with unknown ids are rejected, and the error
 lists the valid ones) and `list_items` for current state. `search_items`
 before creating: if something close already exists, update or link it rather
@@ -89,7 +89,7 @@ A ticket's life is driven phase by phase; hand off rather than improvising:
 
 | You are about to… | Use |
 |---|---|
-| Investigate a ticket, write research.md / impact.md | `kanmer-research` |
+| Investigate a ticket, write its research / files documents | `kanmer-research` |
 | Write plan.md / checklist.md | `kanmer-plan` |
 | Implement — worktree, branch, checklist, proof, PR | `kanmer-execute` |
 | Review finished work or handle PR feedback | `kanmer-review` |
@@ -99,7 +99,6 @@ A ticket's life is driven phase by phase; hand off rather than improvising:
 | Link/create a governing PRD/FRD/ADR | `kanmer-docs` |
 | Verify a merged ticket → proof.md | `kanmer-verify` |
 | Tidy the backlog itself | `kanmer-groom` |
-| Pull GitHub issues or PR comments onto the board | `kanmer-import` |
 
 For exact tool parameters and what each field means, read
 `references/tool-reference.md`.

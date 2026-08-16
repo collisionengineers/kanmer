@@ -33,6 +33,74 @@ async function validBranch(root: string, branch: string): Promise<void> {
   await git(root, ["check-ref-format", "--branch", branch]);
 }
 
+async function currentBranch(root: string): Promise<string | null> {
+  try { return await git(root, ["symbolic-ref", "--short", "HEAD"]); } catch { return null; }
+}
+
+async function hasOrigin(root: string): Promise<boolean> {
+  try { return (await git(root, ["remote"])).split("\n").includes("origin"); } catch { return false; }
+}
+
+async function onRemote(root: string, branch: string): Promise<boolean> {
+  return git(root, ["ls-remote", "--exit-code", "--heads", "origin", `refs/heads/${branch}`]).then(() => true).catch(() => false);
+}
+
+const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+export interface BranchRenameResult {
+  /** Whether the worktree is now on `to`. */
+  ok: boolean;
+  /** The branch it was on, or null if it was not on one. */
+  from: string | null;
+  /** A warning when ok, the reason when not. */
+  error: string | null;
+}
+
+/**
+ * Move the board worktree onto a new branch name, in place (FRD-020 R5).
+ *
+ * `git branch -m` is the whole trick. The new branch *is* the old one, so no
+ * commit is orphaned — which is the bug this fixes: creating a fresh branch
+ * under the new name left the board's entire history stranded on the old one.
+ * The worktree path never changes either, so MCP servers already registered
+ * against `.worktrees/kanmer` keep resolving.
+ *
+ * Order matters on the remote: the new branch is pushed *before* the old one is
+ * deleted, so a failure at any point still leaves the history published under
+ * at least one name.
+ *
+ * Only the local rename is fatal. Once the worktree is on `to` the board works;
+ * a remote that could not be updated is a warning to show, not a reason to
+ * refuse the rename and leave the user with neither name applied.
+ */
+export async function renameBoardBranch(boardRoot: string, to: string): Promise<BranchRenameResult> {
+  const from = await currentBranch(boardRoot);
+  if (!from) {
+    return { ok: false, from: null, error: `${boardRoot} is not on a branch; rename the board branch by hand.` };
+  }
+  if (from === to) return { ok: true, from, error: null };
+  try {
+    await validBranch(boardRoot, to);
+    await git(boardRoot, ["branch", "-m", to]);
+  } catch (error) {
+    return { ok: false, from, error: msg(error) };
+  }
+  if (!(await hasOrigin(boardRoot))) return { ok: true, from, error: null };
+  try {
+    await git(boardRoot, ["push", "-u", "origin", `HEAD:refs/heads/${to}`]);
+  } catch (error) {
+    return { ok: true, from, error: `Renamed to ${to} locally, but pushing it failed: ${msg(error)}` };
+  }
+  if (await onRemote(boardRoot, from)) {
+    try {
+      await git(boardRoot, ["push", "origin", "--delete", from]);
+    } catch (error) {
+      return { ok: true, from, error: `Renamed and pushed ${to}, but the old remote branch ${from} could not be deleted: ${msg(error)}` };
+    }
+  }
+  return { ok: true, from, error: null };
+}
+
 async function ensureIgnore(file: string, entries: string[]): Promise<void> {
   const before = existsSync(file) ? await readFile(file, "utf8") : "";
   const lines = before.replace(/\r\n/g, "\n").split("\n").filter(Boolean);
@@ -52,28 +120,37 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
     const records = porcelain.split("\n\n").map((r) => Object.fromEntries(r.split("\n").map((l) => { const [k, ...v] = l.split(" "); return [k, v.join(" ")]; })));
     const attached = records.find((r) => r.branch === `refs/heads/${branch}`)?.worktree;
     if (attached) return { available: true, boardRoot: resolve(attached), branch, lastSync: null, error: null, paused: false };
-    if (!existsSync(boardRoot)) {
-      const remoteExists = await git(repoRoot, ["ls-remote", "--exit-code", "--heads", "origin", `refs/heads/${branch}`]).then(() => true).catch(() => false);
-      const localExists = await git(repoRoot, ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`]).then(() => true).catch(() => false);
-      await mkdir(join(repoRoot, ".worktrees"), { recursive: true });
-      if (localExists) {
-        await git(repoRoot, ["worktree", "add", boardRoot, branch]);
-      } else if (remoteExists) {
-        await git(repoRoot, ["fetch", "origin", `+refs/heads/${branch}:refs/remotes/origin/${branch}`]);
-        await git(repoRoot, ["worktree", "add", "--track", "-b", branch, boardRoot, `origin/${branch}`]);
-      } else {
-        await git(repoRoot, ["worktree", "add", "--orphan", "-b", branch, boardRoot]);
-        const sourceBoard = join(repoRoot, ".kanmer");
-        if (existsSync(sourceBoard)) await cp(sourceBoard, join(boardRoot, ".kanmer"), { recursive: true });
-        await ensureIgnore(join(boardRoot, ".gitignore"), [".kanmer/data/activity.jsonl"]);
-        if (existsSync(join(boardRoot, ".kanmer"))) {
-          await git(boardRoot, ["add", "--", ".kanmer", ".gitignore"]);
-          await git(boardRoot, ["commit", "-m", "chore(kanmer): create shared board"]);
-          await git(boardRoot, ["push", "-u", "origin", `HEAD:refs/heads/${branch}`]);
-          // The source cleanup is intentionally staged but never committed here:
-          // its owner reviews it as part of their normal code-branch workflow.
-          if (existsSync(sourceBoard)) await git(repoRoot, ["rm", "-r", "--ignore-unmatch", "--", ".kanmer"]);
-        }
+    if (existsSync(boardRoot)) {
+      // The worktree is here but not on `branch`. Almost always: the board
+      // branch was renamed in Settings while this project was closed, so the
+      // rename never reached it. Reconcile now rather than reporting a branch
+      // this worktree is not actually on — that lie is what made the next sync
+      // push the board somewhere nobody was looking.
+      const renamed = await renameBoardBranch(boardRoot, branch);
+      if (!renamed.ok) return { ...empty(branch, renamed.error), boardRoot: resolve(boardRoot) };
+      await ensureIgnore(join(repoRoot, ".gitignore"), [".kanmer/", ".worktrees/"]);
+      return { available: true, boardRoot: resolve(boardRoot), branch, lastSync: null, error: renamed.error, paused: false };
+    }
+    const remoteExists = await git(repoRoot, ["ls-remote", "--exit-code", "--heads", "origin", `refs/heads/${branch}`]).then(() => true).catch(() => false);
+    const localExists = await git(repoRoot, ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`]).then(() => true).catch(() => false);
+    await mkdir(join(repoRoot, ".worktrees"), { recursive: true });
+    if (localExists) {
+      await git(repoRoot, ["worktree", "add", boardRoot, branch]);
+    } else if (remoteExists) {
+      await git(repoRoot, ["fetch", "origin", `+refs/heads/${branch}:refs/remotes/origin/${branch}`]);
+      await git(repoRoot, ["worktree", "add", "--track", "-b", branch, boardRoot, `origin/${branch}`]);
+    } else {
+      await git(repoRoot, ["worktree", "add", "--orphan", "-b", branch, boardRoot]);
+      const sourceBoard = join(repoRoot, ".kanmer");
+      if (existsSync(sourceBoard)) await cp(sourceBoard, join(boardRoot, ".kanmer"), { recursive: true });
+      await ensureIgnore(join(boardRoot, ".gitignore"), [".kanmer/data/activity.jsonl"]);
+      if (existsSync(join(boardRoot, ".kanmer"))) {
+        await git(boardRoot, ["add", "--", ".kanmer", ".gitignore"]);
+        await git(boardRoot, ["commit", "-m", "chore(kanmer): create shared board"]);
+        await git(boardRoot, ["push", "-u", "origin", `HEAD:refs/heads/${branch}`]);
+        // The source cleanup is intentionally staged but never committed here:
+        // its owner reviews it as part of their normal code-branch workflow.
+        if (existsSync(sourceBoard)) await git(repoRoot, ["rm", "-r", "--ignore-unmatch", "--", ".kanmer"]);
       }
     }
     await ensureIgnore(join(repoRoot, ".gitignore"), [".kanmer/", ".worktrees/"]);

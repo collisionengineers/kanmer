@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   BoardColumn,
   BoardConfig,
   ColumnKind,
-  DocType,
-  GateRule,
   Item,
 } from "@kanmer/core";
 import type {
@@ -17,12 +15,20 @@ import type {
   UiPreferences,
 } from "../../../shared/ipc.js";
 import { useClient } from "../lib/client.js";
-import { boardDraftModified, reconcileBoardDraft } from "../lib/settingsDraft.js";
+import { boardDraftModified } from "../lib/settingsDraft.js";
+import {
+  applyProfileEdit,
+  changedProfiles,
+  splitRequirements,
+  ticketsAffected,
+  validateProfiles,
+  type Vocabulary,
+} from "../lib/profileDraft.js";
 
-type SettingsTab = "board" | "documents" | "appearance" | "git" | "connect";
+type SettingsTab = "board" | "profiles" | "appearance" | "git" | "connect";
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: "board", label: "Board" },
-  { id: "documents", label: "Documents" },
+  { id: "profiles", label: "Profiles" },
   { id: "appearance", label: "Appearance" },
   { id: "git", label: "Git" },
   { id: "connect", label: "Connect" },
@@ -39,7 +45,18 @@ interface SettingsProps {
   onSetNotifications: (on: boolean) => void;
   onSetPreferences: (patch: Partial<UiPreferences>) => void;
   onClose: () => void;
+  /** Open the manual at a chapter (the  beside the tabs). */
+  onOpenManual?: (chapter: string) => void;
 }
+
+/** Which manual chapter each Settings tab explains. Asserted in manual.test.ts. */
+const SETTINGS_HELP: Record<SettingsTab, string> = {
+  board: "stages",
+  profiles: "profiles",
+  appearance: "getting-started",
+  git: "board-sync",
+  connect: "dispatch",
+};
 
 const DEFAULT_COLOR = "#5b8cff";
 
@@ -54,16 +71,15 @@ export function Settings({
   onSetNotifications,
   onSetPreferences,
   onClose,
+  onOpenManual,
 }: SettingsProps): JSX.Element {
-  const client = useClient();
   const [draft, setDraft] = useState<BoardConfig>(() => structuredClone(board));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [tab, setTab] = useState<SettingsTab>("board");
-  const [backfilling, setBackfilling] = useState(false);
-  const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
-  const [reloadRequired, setReloadRequired] = useState(false);
+  // Set when a refresh fails and the pane can no longer trust its draft.
+  const [reloadRequired] = useState(false);
 
   // Usage counts so deleting an in-use column shows a soft warning.
   const usage = useMemo(() => countUsage(items), [items]);
@@ -102,30 +118,6 @@ export function Settings({
     else onClose();
   };
 
-  const backfill = async () => {
-    if (modified || backfilling) return;
-    setBackfilling(true);
-    setError(null);
-    let result;
-    try {
-      result = await client.backfillBoard(false);
-    } catch (err) {
-      setError(`Backfill failed: ${err instanceof Error ? err.message : String(err)}`);
-      setBackfilling(false);
-      return;
-    }
-    try {
-      const refreshed = await client.getBoard();
-      setDraft(reconcileBoardDraft(refreshed));
-      setReloadRequired(false);
-      setBackfillMsg(result.addedStages.length ? `Added: ${result.addedStages.join(", ")}` : "Already current.");
-    } catch (err) {
-      setReloadRequired(true);
-      setError(`Backfill applied but Settings could not refresh: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setBackfilling(false);
-    }
-  };
 
   // Focus trap: focus the dialog on open, cycle Tab inside it, restore after.
   const modalRef = useRef<HTMLDivElement>(null);
@@ -206,32 +198,36 @@ export function Settings({
                 {t.label}
               </button>
             ))}
+            {/*
+              Deep-links into the manual at the chapter for the open tab. The
+              target ids are asserted to exist by manual.test.ts — a dead link
+              opens the manual at nothing and reads as the manual being broken.
+            */}
+            <button
+              className="tab help-link"
+              title="Open the manual for this tab"
+              aria-label="Open the manual for this tab"
+              onClick={() => onOpenManual?.(SETTINGS_HELP[tab])}
+            >
+              ?
+            </button>
           </nav>
 
           <div className="settings-pane">
             {tab === "board" && (
               <>
+                <p className="hint">
+                  Stages are fixed: Backlog → Preparing → Implementing → Review →
+                  Verifying → Done. Every board has the same six, so a document gate
+                  can never point at a stage that does not exist.
+                </p>
                 <div className="settings-cols">
-                  <ColumnEditor
-                    title="Stages (board columns)"
-                    kind="status"
-                    columns={draft.statuses}
-                    usage={usage.status}
-                    onChange={(c) => setColumns("status", c)}
-                  />
                   <ColumnEditor
                     title="Areas (colour-grouped)"
                     kind="area"
                     columns={draft.areas}
                     usage={usage.area}
                     onChange={(c) => setColumns("area", c)}
-                  />
-                  <ColumnEditor
-                    title="Priorities"
-                    kind="priority"
-                    columns={draft.priorities}
-                    usage={usage.priority}
-                    onChange={(c) => setColumns("priority", c)}
                   />
                 </div>
 
@@ -260,16 +256,7 @@ export function Settings({
               </>
             )}
 
-            {tab === "documents" && (
-              <DocumentsTab
-                draft={draft}
-                setDraft={setDraft}
-                onBackfill={backfill}
-                backfilling={backfilling}
-                backfillMsg={backfillMsg}
-                backfillDisabled={modified}
-              />
-            )}
+            {tab === "profiles" && <ProfilesTab />}
 
             {tab === "git" && <GitTab />}
 
@@ -346,24 +333,6 @@ export function Settings({
                         {board.areas.map((a) => (
                           <option key={a.id} value={a.id}>
                             {a.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>Default priority</span>
-                      <select
-                        value={
-                          board.priorities.some((p) => p.id === preferences.defaultPriority)
-                            ? preferences.defaultPriority
-                            : ""
-                        }
-                        onChange={(e) => onSetPreferences({ defaultPriority: e.target.value })}
-                      >
-                        <option value="">— board default —</option>
-                        {board.priorities.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
                           </option>
                         ))}
                       </select>
@@ -508,17 +477,40 @@ function GitTab(): JSX.Element {
   const [branch, setBranch] = useState("kanmer-board");
   const [minutes, setMinutes] = useState(0);
   const [status, setStatus] = useState<KanmerGitStatus | null>(null);
+  const [saved, setSaved] = useState("kanmer-board");
+  const [renaming, setRenaming] = useState(false);
   useEffect(() => {
     void Promise.all([window.kanmer.getSettings(), window.kanmer.getKanmerGitStatus(client.projectId)]).then(([s, st]) => {
-      setBranch(s.kanmerBranch); setMinutes(s.gitSyncMinutes); setStatus(st);
+      setBranch(s.kanmerBranch); setSaved(s.kanmerBranch); setMinutes(s.gitSyncMinutes); setStatus(st);
     });
   }, [client.projectId]);
-  const save = async () => window.kanmer.setKanmerGitPreferences({ kanmerBranch: branch, gitSyncMinutes: minutes });
+  const save = async (next?: { branch?: string; minutes?: number }) => {
+    const s = await window.kanmer.setKanmerGitPreferences({
+      kanmerBranch: next?.branch ?? saved,
+      gitSyncMinutes: next?.minutes ?? minutes,
+    });
+    setSaved(s.kanmerBranch);
+    setStatus(await window.kanmer.getKanmerGitStatus(client.projectId));
+  };
+  const pending = branch.trim() && branch.trim() !== saved ? branch.trim() : null;
   return <div className="settings-section">
     <h3>Shared board Git branch</h3>
     <p className="hint">Kanmer stores the board in <code>.worktrees/kanmer</code>; your source checkout remains the project tab.</p>
-    <label className="field"><span>Kanmer branch</span><input value={branch} onChange={(e) => setBranch(e.target.value)} onBlur={() => void save()} /></label>
-    <label className="check"><input type="checkbox" checked={minutes > 0} onChange={(e) => { const next = e.target.checked ? 1 : 0; setMinutes(next); void window.kanmer.setKanmerGitPreferences({ kanmerBranch: branch, gitSyncMinutes: next }); }} /> Automatic sync</label>
+    {/*
+      Renaming is deliberately a button, not an on-blur save. It rewrites the
+      branch on every open board and deletes the old one from the remote, and
+      tabbing out of a half-typed name should not do that.
+    */}
+    <label className="field"><span>Kanmer branch</span><input value={branch} onChange={(e) => setBranch(e.target.value)} /></label>
+    {pending && <p className="hint">
+      Renames <code>{saved}</code> to <code>{pending}</code> in place, keeping the board&rsquo;s history and worktree path. The new branch is pushed first, then <code>{saved}</code> is deleted from <code>origin</code>.
+    </p>}
+    <button className="ghost sm" disabled={!pending || renaming} onClick={() => {
+      if (!pending) return;
+      setRenaming(true);
+      void save({ branch: pending }).finally(() => setRenaming(false));
+    }}>{renaming ? "Renaming…" : "Rename branch"}</button>
+    <label className="check"><input type="checkbox" checked={minutes > 0} onChange={(e) => { const next = e.target.checked ? 1 : 0; setMinutes(next); void save({ minutes: next }); }} /> Automatic sync</label>
     {minutes > 0 && <label className="field"><span>Minutes</span><input type="number" min={1} step={1} value={minutes} onChange={(e) => setMinutes(Math.max(1, Math.trunc(Number(e.target.value) || 1)))} onBlur={() => void save()} /></label>}
     {!status?.available ? <p className="hint">Git sync is unavailable for this non-Git project.</p> : <>
       <p className="hint">Board worktree: <code>{status.boardRoot}</code>{status.lastSync ? ` · last sync ${status.lastSync}` : ""}</p>
@@ -529,321 +521,198 @@ function GitTab(): JSX.Element {
 }
 
 /**
- * The Documents tab: where D5's "fully customizable" promise lives. Edits the
- * board's default doc types (order = hierarchy, `requires` prerequisites), the
- * gate rules (as friendly sentences), and the deployment toggle. A board with no
- * `docs` block inherits the shipped defaults (fetched via getDocModel); the
- * "Customize" action materialises them into the draft so they can be edited.
+ * The Profiles pane: which documents each stage boundary asks of a ticket, per
+ * profile (FRD-002 S2), plus area defaults and the proof-type vocabulary
+ * (FRD-006 R1).
+ *
+ * Editing a profile re-gates every ticket resolving to it, immediately. Core
+ * rejects an invalid board; nothing warns about a *valid* one that re-blocks
+ * half the board, so the save button carries the affected count.
+ *
+ * Validation is `lib/profileDraft.ts` — the renderer may only `import type`
+ * from core, so core's rules are mirrored there (AGENTS.md §7, third pairing).
  */
-function DocumentsTab({
-  draft,
-  setDraft,
-  onBackfill,
-  backfilling,
-  backfillMsg,
-  backfillDisabled,
-}: {
-  draft: BoardConfig;
-  setDraft: React.Dispatch<React.SetStateAction<BoardConfig>>;
-  onBackfill: () => void;
-  backfilling: boolean;
-  backfillMsg: string | null;
-  backfillDisabled: boolean;
-}): JSX.Element {
+function ProfilesTab(): JSX.Element {
   const client = useClient();
   const [model, setModel] = useState<DocModel | null>(null);
-  useEffect(() => {
-    void client.getDocModel().then(setModel);
+  const [board, setBoard] = useState<BoardConfig | null>(null);
+  const [draft, setDraft] = useState<BoardConfig | null>(null);
+  const [items, setItems] = useState<Item[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const load = useCallback(async () => {
+    const [m, b, list] = await Promise.all([
+      client.getDocModel(),
+      client.getBoard(),
+      client.listItems({ includeArchived: true }),
+    ]);
+    setModel(m);
+    setBoard(b);
+    setDraft(structuredClone(b));
+    setItems(list);
   }, [client]);
-  const missingStages = [
-    "backlog",
-    "researching",
-    "planning",
-    "implementing",
-    "review",
-    "verifying",
-    "done",
-  ].filter((c) => !draft.statuses.some((s) => s.id === c));
 
-  // Scope: "" = the board default, else a per-area override (D5). The editor
-  // below operates on whichever scope is selected.
-  const [activeArea, setActiveArea] = useState("");
-  const scopeTypes = activeArea ? draft.docs?.areas?.[activeArea]?.types : draft.docs?.default?.types;
-  const scopeGates = activeArea ? draft.docs?.areas?.[activeArea]?.gates : draft.docs?.default?.gates;
-  const customized = scopeTypes !== undefined;
-  const types = scopeTypes ?? model?.defaultTypes ?? [];
-  const gates = scopeGates ?? model?.defaultGates ?? [];
-  const stageName = (id: string) => draft.statuses.find((s) => s.id === id)?.name ?? id;
+  useEffect(() => {
+    void load().catch((e) => setError(String(e)));
+  }, [load]);
 
-  const patchDefault = (patch: { types?: DocType[]; gates?: GateRule[] }) =>
-    setDraft((d) => {
-      const docs = { ...(d.docs ?? {}) };
-      docs.repoDocs = docs.repoDocs ?? model?.repoDocs;
-      const scope = {
-        types:
-          patch.types ??
-          (activeArea ? docs.areas?.[activeArea]?.types : docs.default?.types) ??
-          model?.defaultTypes ??
-          [],
-        gates:
-          patch.gates ??
-          (activeArea ? docs.areas?.[activeArea]?.gates : docs.default?.gates) ??
-          model?.defaultGates ??
-          [],
-      };
-      if (activeArea) docs.areas = { ...(docs.areas ?? {}), [activeArea]: scope };
-      else docs.default = scope;
-      return { ...d, docs };
-    });
+  if (!model || !board || !draft) return <p className="hint">{error ?? "Loading…"}</p>;
 
-  const resetDefaults = () =>
-    setDraft((d) => {
-      const docs = { ...(d.docs ?? {}) };
-      if (activeArea) {
-        const areas = { ...(docs.areas ?? {}) };
-        delete areas[activeArea];
-        docs.areas = Object.keys(areas).length ? areas : undefined;
-      } else {
-        delete (docs as { default?: unknown }).default;
-      }
-      const empty =
-        !docs.repoDocs &&
-        !docs.default &&
-        (!docs.areas || Object.keys(docs.areas).length === 0);
-      return { ...d, docs: empty ? undefined : docs };
-    });
-
-  const setTypeName = (i: number, name: string) =>
-    patchDefault({ types: types.map((t, idx) => (idx === i ? { ...t, name } : t)) });
-  const setTypeRequires = (i: number, requires: string[]) =>
-    patchDefault({
-      types: types.map((t, idx) => (idx === i ? { ...t, requires: requires.length ? requires : undefined } : t)),
-    });
-  const moveType = (i: number, dir: -1 | 1) => {
-    const j = i + dir;
-    if (j < 0 || j >= types.length) return;
-    const next = [...types];
-    [next[i], next[j]] = [next[j], next[i]];
-    patchDefault({ types: next });
-  };
-  const removeType = (i: number) => patchDefault({ types: types.filter((_, idx) => idx !== i) });
-
-  const [newType, setNewType] = useState("");
-  const addType = () => {
-    const name = newType.trim();
-    if (!name) return;
-    const id = slug(name);
-    if (!id || types.some((t) => t.id === id)) return;
-    patchDefault({ types: [...types, { id, name }] });
-    setNewType("");
+  const vocab: Vocabulary = {
+    docTypes: model.docTypes,
+    proofTypes: (draft as { proofTypes?: string[] }).proofTypes ?? model.proofTypes,
+    environments: ((draft as { deployment?: { environments?: { id: string }[] } }).deployment?.environments ?? []).map((e) => e.id),
+    boundaries: model.boundaries,
   };
 
-  const removeGate = (i: number) => patchDefault({ gates: gates.filter((_, idx) => idx !== i) });
+  const draftProfiles =
+    (draft as { profiles?: Record<string, Record<string, string[]>> }).profiles ?? model.profiles;
+  const errors = validateProfiles(draftProfiles, vocab);
+  const changed = changedProfiles(board, draft);
+  const dirty = JSON.stringify(board) !== JSON.stringify(draft);
+  const affected = ticketsAffected(items, draft, changed);
+
+  const edit = (profile: string, boundary: string, field: string): void => {
+    setSaved(false);
+    setDraft(applyProfileEdit(draft, profile, boundary, splitRequirements(field)));
+  };
 
   return (
     <>
+      <p className="hint">
+        A ticket&rsquo;s <strong>profile</strong> decides what each stage boundary requires of
+        it, so requirements scale with the nature of the work rather than with where it
+        lives. A ticket inherits its area&rsquo;s default, then the board&rsquo;s
+        (<code>{model.defaultProfile}</code>). <code>custom</code> carries its
+        requirements inline on the ticket itself.
+      </p>
+
       <div className="settings-section">
-        <label className="field">
-          <span>Editing document model for</span>
-          <select value={activeArea} onChange={(e) => setActiveArea(e.target.value)}>
-            <option value="">Default (all areas)</option>
-            {draft.areas.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} {draft.docs?.areas?.[a.id]?.types ? "(customized)" : "(inherits default)"}
-              </option>
+        <table className="profiles-table">
+          <thead>
+            <tr>
+              <th>Profile</th>
+              {model.boundaries.map((b) => (
+                <th key={b}>{b.replace("-", " ")}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Object.keys(draftProfiles).map((name) => (
+              <tr key={name}>
+                <td>
+                  <code>{name}</code>
+                </td>
+                {model.boundaries.map((b) => {
+                  const key = `${name}.${b}`;
+                  const errs = errors[key];
+                  return (
+                    <td key={b}>
+                      <input
+                        className={errs ? "invalid" : ""}
+                        value={(draftProfiles[name]?.[b] ?? []).join(", ")}
+                        placeholder="—"
+                        aria-label={`${name}, ${b}`}
+                        onChange={(e) => edit(name, b, e.target.value)}
+                      />
+                      {errs && <p className="field-error">{errs.join("; ")}</p>}
+                    </td>
+                  );
+                })}
+              </tr>
             ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="settings-section">
-        <div className="section-head">
-          <h3>Document types</h3>
-          {customized ? (
-            <button className="ghost xs" onClick={resetDefaults}>
-              {activeArea ? "Reset to default" : "Reset to defaults"}
-            </button>
-          ) : (
-            <button className="ghost xs" onClick={() => patchDefault({})} disabled={!model}>
-              Customize…
-            </button>
-          )}
-        </div>
+          </tbody>
+        </table>
         <p className="hint">
-          Order is the hierarchy; each doc&apos;s <em>requires</em> must exist before it can be
-          written.{" "}
-          {customized
-            ? ""
-            : activeArea
-              ? "This area inherits the default set — Customize to override it."
-              : "This board uses the defaults — Customize to edit."}
+          Comma-separated. A requirement is a document type, optionally
+          <code>/named</code>, and for proof <code>:type</code> and <code>@environment</code> —
+          e.g. <code>proof:visual@staging</code>.
         </p>
-        {types.map((t, i) => (
-          <div key={t.id} className="doc-type-row">
-            <input
-              className="col-name"
-              value={t.name}
-              disabled={!customized}
-              onChange={(e) => setTypeName(i, e.target.value)}
-              aria-label={`Name of doc ${t.id}`}
-            />
-            <span className="col-id" title="doc id (stable)">
-              {t.id}
-              {t.progress ? <span className="usage"> ·progress</span> : null}
-            </span>
-            <input
-              className="doc-requires"
-              value={(t.requires ?? []).join(", ")}
-              disabled={!customized}
-              placeholder="requires…"
-              onChange={(e) =>
-                setTypeRequires(
-                  i,
-                  e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
-                )
-              }
-              aria-label={`Requires for ${t.id}`}
-            />
-            <button className="ghost xs" disabled={!customized || i === 0} onClick={() => moveType(i, -1)}>
-              ↑
-            </button>
-            <button
-              className="ghost xs"
-              disabled={!customized || i === types.length - 1}
-              onClick={() => moveType(i, 1)}
+      </div>
+
+      <div className="settings-section">
+        <h3>Area defaults</h3>
+        <p className="hint">Applied to tickets in that area with no profile of their own.</p>
+        {(draft.areas ?? []).map((a, idx) => (
+          <label className="field" key={a.id}>
+            <span>{a.name}</span>
+            <select
+              value={(a as { defaultProfile?: string }).defaultProfile ?? ""}
+              onChange={(e) => {
+                const next = structuredClone(draft);
+                const area = next.areas![idx] as { defaultProfile?: string };
+                if (e.target.value) area.defaultProfile = e.target.value;
+                else delete area.defaultProfile;
+                setSaved(false);
+                setDraft(next);
+              }}
             >
-              ↓
-            </button>
-            <button className="ghost xs" disabled={!customized} onClick={() => removeType(i)}>
-              ✕
-            </button>
-          </div>
+              <option value="">— board default ({model.defaultProfile}) —</option>
+              {Object.keys(draftProfiles).map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </label>
         ))}
-        {customized && (
-          <div className="col-add">
-            <input
-              placeholder="Add document type…"
-              value={newType}
-              onChange={(e) => setNewType(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && addType()}
-            />
-            <button className="ghost xs" onClick={addType}>
-              + Add
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="settings-section">
-        <h3>Gate rules</h3>
-        <p className="hint">Documents required to cross a stage boundary.</p>
-        {gates.length === 0 && <p className="empty">No gates.</p>}
-        {gates.map((g, i) => {
-          const boundary = g.before.leave
-            ? `leave ${stageName(g.before.leave)}`
-            : `enter ${stageName(g.before.enter ?? "")}`;
-          const need = g.needs
-            ? `the ${g.needs} document must exist`
-            : `a governing doc (${(g.needsRepoDoc ?? []).join("/")}) must be linked`;
-          return (
-            <div key={i} className="gate-row">
-              <span>
-                To <strong>{boundary}</strong>, {need}.
-              </span>
-              <button className="ghost xs" disabled={!customized} onClick={() => removeGate(i)}>
-                ✕
-              </button>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="settings-section">
-        <h3>Deployment tracking</h3>
-        <label className="check">
+        <h3>Proof types</h3>
+        <p className="hint">
+          The vocabulary <code>proof:&lt;type&gt;</code> validates against. Removing one
+          invalidates any requirement naming it.
+        </p>
+        <label className="field">
+          <span>Types</span>
           <input
-            type="checkbox"
-            checked={draft.deployment !== undefined}
-            onChange={(e) =>
-              setDraft((d) => ({
-                ...d,
-                deployment: e.target.checked
-                  ? { environments: d.deployment?.environments?.length ? d.deployment.environments : ["production"] }
-                  : undefined,
-              }))
-            }
+            value={vocab.proofTypes.join(", ")}
+            onChange={(e) => {
+              const next = structuredClone(draft) as BoardConfig & { proofTypes?: string[] };
+              const list = splitRequirements(e.target.value);
+              if (list.length) next.proofTypes = list;
+              else delete next.proofTypes;
+              setSaved(false);
+              setDraft(next);
+            }}
           />
-          Track a deployment status on tickets (adds the n/a · not-deployed · &lt;env&gt; field)
         </label>
-        {draft.deployment && (
-          <EnvEditor
-            environments={draft.deployment.environments}
-            onChange={(envs) => setDraft((d) => ({ ...d, deployment: { environments: envs } }))}
-          />
-        )}
       </div>
 
-      {missingStages.length > 0 && (
-        <div className="settings-section">
-          <h3>Upgrade board</h3>
-          <p className="hint">
-            This board is missing canonical stages ({missingStages.join(", ")}). Backfill inserts
-            them in order — additive, never renaming/reordering existing stages, never touching item
-            files. Backfill refreshes this draft before it can be saved.
+      <div className="settings-section">
+        {error && <p className="error">{error}</p>}
+        {dirty && changed.length > 0 && (
+          <p className="banner warn">
+            {changed.length} profile{changed.length === 1 ? "" : "s"} changed —{" "}
+            <strong>{affected}</strong> ticket{affected === 1 ? "" : "s"} will be re-gated
+            the moment this saves.
           </p>
-          <button
-            className="ghost sm"
-            disabled={backfillDisabled || backfilling}
-            title={backfillDisabled ? "Save or discard Settings changes before backfilling." : undefined}
-            onClick={onBackfill}
-          >
-            {backfilling ? "Backfilling…" : "Backfill missing stages"}
-          </button>
-          {backfillMsg && <p className="hint">{backfillMsg}</p>}
-        </div>
-      )}
-    </>
-  );
-}
+        )}
+        <button
+          className="primary sm"
+          disabled={!dirty || saving || Object.keys(errors).length > 0}
+          onClick={() => {
+            setSaving(true);
+            setError(null);
+            void client
+              .setBoard(draft)
+              .then(() => load())
+              .then(() => setSaved(true))
+              .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+              .finally(() => setSaving(false));
+          }}
+        >
+          {saving ? "Saving…" : "Save profiles"}
+        </button>
+        {saved && !dirty && <span className="hint"> Saved.</span>}
+      </div>
 
-/** Edit the ordered deployment environments (the last is "live"). */
-function EnvEditor({
-  environments,
-  onChange,
-}: {
-  environments: string[];
-  onChange: (envs: string[]) => void;
-}): JSX.Element {
-  const [name, setName] = useState("");
-  return (
-    <div className="env-editor">
-      {environments.map((env, i) => (
-        <span key={env} className="chip">
-          {env}
-          {i === environments.length - 1 ? " (live)" : ""}
-          <button
-            className="chip-x"
-            aria-label={`Remove ${env}`}
-            onClick={() => onChange(environments.filter((_, idx) => idx !== i))}
-          >
-            ×
-          </button>
-        </span>
-      ))}
-      <input
-        className="env-add"
-        placeholder="Add environment…"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            const v = slug(name);
-            if (v && !environments.includes(v)) onChange([...environments, v]);
-            setName("");
-          }
-        }}
-      />
-    </div>
+      <p className="hint">
+        Gate-exempt folders — <code>{(model.gateExemptFolders ?? []).join("</code>, <code>")}</code> —
+        hold inputs and provisional notes, so they never satisfy a requirement.
+      </p>
+    </>
   );
 }
 
@@ -943,22 +812,16 @@ function ColumnEditor({
   );
 }
 
-function pluralKey(kind: ColumnKind): keyof BoardConfig {
-  return kind === "status" ? "statuses" : kind === "area" ? "areas" : "priorities";
+function pluralKey(_kind: ColumnKind): keyof BoardConfig {
+  return "areas"; // the only editable column kind in format 3
 }
 
 /** Mirror of core's write-side checks, so problems surface inline pre-save. */
 function validateDraft(draft: BoardConfig, board: BoardConfig, items: Item[]): string[] {
   const problems: string[] = [];
-  if (draft.statuses.length === 0) problems.push("The board needs at least one stage.");
-  for (const [label, cols] of [
-    ["stage", draft.statuses],
-    ["area", draft.areas],
-    ["priority", draft.priorities],
-  ] as const) {
-    if (cols.some((c) => !c.name.trim())) problems.push(`Every ${label} needs a name.`);
-  }
-  if (draft.priorities.length === 0) problems.push("The board needs at least one priority.");
+  // Stages and priorities are no longer board data, so areas are all there is
+  // to validate here.
+  if (draft.areas.some((c) => !c.name.trim())) problems.push("Every area needs a name.");
   for (const [t, p] of Object.entries(draft.idPrefixes)) {
     if (!p.trim()) problems.push(`The ${t} id prefix can't be empty.`);
   }
@@ -990,9 +853,7 @@ function validateDraft(draft: BoardConfig, board: BoardConfig, items: Item[]): s
   // Column-stranding (mirrors core's setBoard check): don't remove a stage/area/
   // priority that items still reference.
   for (const [kind, field, prev, cur] of [
-    ["stage", "status", board.statuses, draft.statuses],
     ["area", "area", board.areas, draft.areas],
-    ["priority", "priority", board.priorities, draft.priorities],
   ] as const) {
     for (const c of prev) {
       if (cur.some((n) => n.id === c.id)) continue;
@@ -1028,37 +889,16 @@ function validateDraft(draft: BoardConfig, board: BoardConfig, items: Item[]): s
     };
     if (docTypes.some((t) => cyclic(t.id))) problems.push("Document `requires` form a cycle.");
   }
-  const gates = draft.docs?.default?.gates;
-  if (gates) {
-    const docIds = new Set((docTypes ?? []).map((t) => t.id));
-    const stageIds = new Set(draft.statuses.map((s) => s.id));
-    const kinds = new Set(Object.keys(draft.docs?.repoDocs ?? { prd: "", frd: "", adr: "" }));
-    for (const g of gates) {
-      const bstage = g.before.leave ?? g.before.enter;
-      if (bstage && !stageIds.has(bstage)) {
-        problems.push(`A gate names stage "${bstage}", which isn't on the board.`);
-      }
-      if (g.needs && docTypes && !docIds.has(g.needs)) {
-        problems.push(`A gate needs document "${g.needs}", which isn't a doc type.`);
-      }
-      for (const k of g.needsRepoDoc ?? []) {
-        if (!kinds.has(k)) problems.push(`A gate names governing-doc kind "${k}", which isn't configured.`);
-      }
-    }
-  }
+  // Profile/requirement validation lives in core (validateProfileMap) and is
+  // surfaced through the save path; there is no board-side gate shape to check
+  // here any more.
   return problems;
 }
 
 function countUsage(items: Item[]) {
-  const acc = {
-    status: {} as Record<string, number>,
-    area: {} as Record<string, number>,
-    priority: {} as Record<string, number>,
-  };
+  const acc = { area: {} as Record<string, number> };
   for (const i of items) {
-    if (i.status) acc.status[i.status] = (acc.status[i.status] ?? 0) + 1;
     if (i.area) acc.area[i.area] = (acc.area[i.area] ?? 0) + 1;
-    if (i.priority) acc.priority[i.priority] = (acc.priority[i.priority] ?? 0) + 1;
   }
   return acc;
 }

@@ -1147,6 +1147,24 @@ button.danger {
   max-height: 160px;
   overflow: auto;
 }
+.modal.migrate h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 14px 0 6px;
+}
+.stage-map {
+  font-size: 12px;
+  border-collapse: collapse;
+}
+.stage-map td {
+  padding: 2px 8px 2px 0;
+  white-space: nowrap;
+}
+.stage-map td:nth-child(2) {
+  color: var(--muted);
+}
 .area-add .quickadd-btn {
   padding: 0 6px;
   font-size: 12px;
@@ -1572,4 +1590,295 @@ button.danger {
   overflow: auto;
   white-space: pre-wrap;
   color: var(--muted, #9aa0a6);
+}
+
+/* ---------------------------------------------------------------------------
+   Context menu (FRD-019 R6). Renderer-drawn so it uses the same tokens as the
+   rest of the app — which is the whole reason it replaced the native Menu.
+   Every colour here is a variable; nothing is hardcoded, so light, dark and
+   system all follow automatically.
+   --------------------------------------------------------------------------- */
+.ctx-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  /* Transparent, but it must catch the click that dismisses the menu. */
+}
+.ctx-menu {
+  position: fixed;
+  z-index: 61;
+  min-width: 180px;
+  max-width: 320px;
+  padding: 4px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  outline: none;
+}
+.ctx-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ctx-item.active:not(.disabled) {
+  background: var(--accent-dim);
+}
+.ctx-item.disabled {
+  color: var(--muted);
+  cursor: default;
+}
+.ctx-item.danger:not(.disabled) {
+  color: var(--danger);
+}
+.ctx-arrow {
+  color: var(--muted);
+}
+.ctx-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--line);
+}
+
+/* Requirements panel (FRD-002 S2). Rows come from the core resolver, so this
+   is presentation only — the renderer never decides what a ticket owes. */
+.readiness {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.9em;
+}
+.readiness > header {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.readiness .gate {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 2px 0;
+}
+.readiness .gate-label {
+  min-width: 11em;
+  color: var(--muted);
+}
+.readiness .gate-reqs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.readiness .req {
+  border: 0;
+  background: transparent;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+  color: var(--text);
+}
+.readiness .req.met {
+  color: var(--muted);
+}
+.readiness .req.missing {
+  color: var(--warn);
+}
+.readiness .req:hover {
+  background: var(--accent-dim);
+}
+.readiness .warn-note {
+  margin: 6px 0 0;
+  color: var(--warn);
+}
+.readiness-none {
+  margin: 0 0 12px;
+}
+
+/* Group chips and the group detail view (FRD-001 G8). */
+.chip.group {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  background: var(--accent-dim);
+  color: var(--text);
+}
+.chip.group:hover {
+  background: var(--accent);
+}
+.group-view .progress-bar {
+  height: 6px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.group-view .progress-fill {
+  height: 100%;
+  background: var(--accent);
+}
+.group-view .stage-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.group-view .member-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.group-view .member-table td {
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--line);
+}
+.group-view .member-table tr.archived {
+  opacity: 0.55;
+}
+.group-view .group-context {
+  width: 100%;
+  min-height: 8em;
+}
+.linkish {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Reference files (GUI-010) */
+.references {
+  border-top: 1px solid var(--border);
+  padding: 8px 12px;
+}
+.references.dropping {
+  outline: 2px dashed var(--accent, #5b8cff);
+  outline-offset: -4px;
+}
+.reference-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 12px;
+}
+.reference-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+/* Backlog list view (GUI-015) */
+.backlog {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.backlog-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.backlog-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.backlog-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.backlog-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel, #1b1d22);
+  text-align: left;
+  padding: 6px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.backlog-table tbody tr {
+  height: 32px; /* must match ROW_HEIGHT in BacklogTable.tsx */
+}
+.backlog-table tbody tr.selected {
+  background: var(--selected, rgba(91, 140, 255, 0.14));
+}
+.backlog-table td {
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.backlog-title {
+  max-width: 46vw;
+}
+
+/* In-app manual (GUI-017) */
+.modal.manual {
+  width: min(980px, 92vw);
+  height: min(720px, 86vh);
+  display: flex;
+  flex-direction: column;
+}
+.manual-search {
+  margin-left: 12px;
+  min-width: 220px;
+}
+.manual-shell {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.manual-rail {
+  width: 220px;
+  flex-shrink: 0;
+  overflow: auto;
+  border-right: 1px solid var(--border);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.manual-rail .tab {
+  text-align: left;
+  display: block;
+  width: 100%;
+}
+.manual-hit {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.manual-body {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 12px 18px;
+}
+.help-link {
+  margin-left: auto;
+  opacity: 0.7;
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { uiStageName as stageName } from "../../../shared/stages.js";
 import type { BoardConfig, Item } from "@kanmer/core";
-import { columnName } from "../lib/board.js";
 
 interface ArchivedListProps {
   items: Item[];
@@ -18,7 +18,6 @@ interface ArchivedListProps {
  */
 export function ArchivedList({
   items,
-  board,
   selectedId,
   onSelect,
   onRestore,
@@ -38,7 +37,7 @@ export function ArchivedList({
             <span className="list-title">{item.title || "Untitled"}</span>
             <span className="chip subtle">{item.type}</span>
             {item.status && (
-              <span className="chip subtle">{columnName(board.statuses, item.status)}</span>
+              <span className="chip subtle">{stageName(item.status)}</span>
             )}
           </button>
           <div className="list-actions">

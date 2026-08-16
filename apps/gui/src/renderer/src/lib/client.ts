@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import type { GateReport, Group, GroupWithMembers } from "@kanmer/core";
 import type {
   ActivityEntry,
   BoardColumn,
@@ -11,7 +12,6 @@ import type {
   ItemFilter,
   ItemWarning,
   LinkGraph,
-  MigrationReport,
   MovePosition,
   TakeTicketInput,
   TicketDoc,
@@ -19,8 +19,10 @@ import type {
   UpdateItemPatch,
 } from "@kanmer/core";
 import type {
+  BoardMigrationReport,
   ConnectResult,
   ConnectTarget,
+  DispatchOption,
   DispatchStatus,
   DocModel,
   SkillsStatus,
@@ -52,10 +54,11 @@ export interface ProjectClient {
   disconnectAgent(target: ConnectTarget): Promise<ConnectResult>;
   getSkillsStatus(target: ConnectTarget): Promise<SkillsStatus>;
   updateSkills(target: ConnectTarget): Promise<ConnectResult>;
-  dispatchAgent(ticketId: string, target: ConnectTarget): Promise<DispatchStatus>;
-  migrate(dryRun: boolean): Promise<MigrationReport>;
+  dispatchAgent(ticketId: string, target: ConnectTarget, taskId?: string): Promise<DispatchStatus>;
+  dispatchOptions(ticketId: string): Promise<DispatchOption[]>;
+  migrate(dryRun: boolean): Promise<BoardMigrationReport>;
   backfillBoard(dryRun: boolean): Promise<{ addedStages: string[] }>;
-  getFormat(): Promise<1 | 2>;
+  getFormat(): Promise<1 | 2 | 3>;
   getDoc(id: string, doc: TicketDoc): Promise<{ content: string | null; version: string | null }>;
   setDoc(
     id: string,
@@ -70,6 +73,17 @@ export interface ProjectClient {
   getRepoDoc(relPath: string): Promise<string | null>;
   pickRepoDoc(): Promise<string | null>;
   getGateStatus(id: string): Promise<Record<string, string[]>>;
+  getGates(id: string): Promise<GateReport | null>;
+  listGroups(opts?: { kind?: string; includeArchived?: boolean }): Promise<Group[]>;
+  getGroup(id: string): Promise<GroupWithMembers | null>;
+  createGroup(kind: string, title: string, body?: string): Promise<Group>;
+  updateGroup(id: string, patch: { title?: string; body?: string; archived?: boolean }): Promise<Group>;
+  getGroupDoc(id: string, path: string): Promise<string | null>;
+  setGroupDoc(id: string, path: string, content: string): Promise<{ file: string }>;
+  pickReferences(): Promise<string[]>;
+  addReference(id: string, sourcePath: string): Promise<{ name: string }>;
+  openReference(id: string, name: string): Promise<void>;
+  removeReference(id: string, name: string): Promise<void>;
   getActivity(opts?: { id?: string; since?: string; limit?: number }): Promise<ActivityEntry[]>;
 }
 
@@ -96,7 +110,8 @@ export function makeClient(projectId: string): ProjectClient {
     disconnectAgent: (t) => k.disconnectAgent(projectId, t),
     getSkillsStatus: (t) => k.getSkillsStatus(projectId, t),
     updateSkills: (t) => k.updateSkills(projectId, t),
-    dispatchAgent: (ticketId, t) => k.dispatchAgent(projectId, ticketId, t),
+    dispatchAgent: (ticketId, t, taskId) => k.dispatchAgent(projectId, ticketId, t, taskId),
+    dispatchOptions: (ticketId) => k.dispatchOptions(projectId, ticketId),
     migrate: (d) => k.migrate(projectId, d),
     backfillBoard: (d) => k.backfillBoard(projectId, d),
     getFormat: () => k.getFormat(projectId),
@@ -109,6 +124,17 @@ export function makeClient(projectId: string): ProjectClient {
     getRepoDoc: (rel) => k.getRepoDoc(projectId, rel),
     pickRepoDoc: () => k.pickRepoDoc(projectId),
     getGateStatus: (id) => k.getGateStatus(projectId, id),
+    getGates: (id) => k.getGates(projectId, id),
+    listGroups: (opts) => k.listGroups(projectId, opts),
+    getGroup: (id) => k.getGroup(projectId, id),
+    createGroup: (kind, title, body) => k.createGroup(projectId, kind, title, body),
+    updateGroup: (id, patch) => k.updateGroup(projectId, id, patch),
+    getGroupDoc: (id, rel) => k.getGroupDoc(projectId, id, rel),
+    setGroupDoc: (id, rel, content) => k.setGroupDoc(projectId, id, rel, content),
+    pickReferences: () => k.pickReferences(projectId),
+    addReference: (id, src) => k.addReference(projectId, id, src),
+    openReference: (id, name) => k.openReference(projectId, id, name),
+    removeReference: (id, name) => k.removeReference(projectId, id, name),
     getActivity: (opts) => k.getActivity(projectId, opts),
   };
 }

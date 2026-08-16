@@ -11,6 +11,7 @@
     "build": "npm run build -w @kanmer/core && npm run build -w @kanmer/mcp-server",
     "build:core": "npm run build -w @kanmer/core",
     "build:server": "npm run build -w @kanmer/mcp-server",
+    "build:ui": "npm run build -w @kanmer/core && npm run build -w @kanmer/ui",
     "test": "npm run test -w @kanmer/core && npm run test -w @kanmer/gui",
     "smoke:protocol": "node packages/mcp-server/src/smoke-protocol.mjs",
     "verify:agents-block": "node scripts/verify-agents-block.mjs",
@@ -22,7 +23,10 @@
     "release": "node scripts/release.mjs",
     "plugin:build": "npm run build && node scripts/build-plugin.mjs",
     "plugin:check": "node scripts/check-plugin-sync.mjs",
-    "inspect": "npm run build && npx @modelcontextprotocol/inspector node packages/mcp-server/dist/index.js --root ./sandbox"
+    "inspect": "npm run build && npx @modelcontextprotocol/inspector node packages/mcp-server/dist/index.js --root ./sandbox",
+    "build:manual": "node scripts/build-manual.mjs",
+    "check:manual": "node scripts/build-manual.mjs --check",
+    "release:notes": "node scripts/release-notes.mjs"
   },
   "engines": {
     "node": ">=20"

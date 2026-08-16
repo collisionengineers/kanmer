@@ -1,0 +1,16 @@
+/* Preview-card ground for @kanmer/ui: Kanmer is dark-first and every screen
+   sits on the app shell (body { background: var(--bg); color: var(--text) }
+   in styles.css). The card harness paints body white, which makes light-on-
+   dark text unreadable — restore the app's ground at higher specificity.
+   Preview-only; designs built with the DS get body styling from styles.css. */
+html body {
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+:global(.ds-cell) {
+  border-color: var(--line);
+}
+:global(.ds-cell) > h4 {
+  color: var(--muted);
+}

@@ -177,3 +177,8 @@ put it. The operator specified a hand-run log for this ticket, both branches of
 the guard are exercised above including the fallback, and a test asserting "we
 are not in a worktree" is awkward to write from inside one. Left as a follow-up
 in the post-implementation report, not filed as a ticket.
+
+---
+
+**PR:** https://github.com/collisionengineers/kanmer/pull/48 — merged
+2026-08-16T23:24:28Z as squash commit `bc8cde1`.

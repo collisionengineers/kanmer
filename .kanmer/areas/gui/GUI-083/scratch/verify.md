@@ -1,0 +1,1 @@
+Verified on merged main in the main checkout (fast-forward 19244f6..6c3ae77). git status --porcelain clean of Connect artifacts, check-ignore matches every destination, marketplace.json still tracked, full rail green (typecheck clean, core 193/193, gui 240/240 incl. new suite, scripts 41/41). No kanmerGit.test.ts flake this run. proof.md written; moving to Done.

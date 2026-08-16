@@ -38,3 +38,11 @@
 - Full worktree diff after all changes: `.gitignore`,
   `apps/gui/src/main/providers.test.ts`, `docs/functional/frd/FRD-012-connect.md`
   only — no `providers.ts` edit (GUI-079 territory, read-only per the mission).
+
+## Closeout
+
+- [x] Confirmed PR #50 merged (`state: MERGED`)
+- [x] proof.md final, records merge commit and PR
+- [x] commits/prs recorded on the ticket
+- [x] Outcome recorded in the ticket body
+- [ ] worktree removed, branch deleted, ticket released

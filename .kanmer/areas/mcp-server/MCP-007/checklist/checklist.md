@@ -51,3 +51,16 @@ would be a clean follow-up.
 required. `git diff AGENTS.md` contains only the §6, §8 and §10 hunks; the
 managed `kanmer:instructions` block (lines 1-20) is untouched, so the stale-v2
 Connect hazard did not bite.
+
+---
+
+## Closeout — MCP-007
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/mcp-007`
+- [ ] `git branch -D mcp-007-worktree-guard` (squash-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

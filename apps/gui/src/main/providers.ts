@@ -239,7 +239,7 @@ function opencodeRegistrationState(existing: string): RegistrationState {
  * rather than one global entry per project forever (ADR-0007).
  *
  * grok: this file is grok's *native* project scope and the highest-priority
- * source it reads (ADR-0012). It replaced `.mcp.json`, which grok only ever read
+ * source it reads (ADR-0013). It replaced `.mcp.json`, which grok only ever read
  * as a low-priority compat source and which Claude owns.
  *
  * The merge must preserve everything it does not own: a project file can carry
@@ -582,7 +582,7 @@ function jsonRegistrationState(existing: string, key: "mcp" | "mcpServers"): Reg
  * grok used to share this pair into the project `.mcp.json`, which is the file
  * `claude mcp add -s project` writes: same file, same `kanmer` key, so
  * disconnecting grok deleted Claude's registration and `isRegistered` read
- * Claude's entry as grok's. grok now owns `.grok/config.toml` (ADR-0012) and no
+ * Claude's entry as grok's. grok now owns `.grok/config.toml` (ADR-0013) and no
  * Kanmer provider merges or unmerges `.mcp.json` at all.
  */
 function mcpServersMerge(existing: string | null, inv: Invocation): string {
@@ -686,7 +686,7 @@ export const PROVIDERS: AgentProvider[] = [
     label: "Grok CLI",
     register: {
       kind: "configFile",
-      // grok's own project scope, and nobody else's (ADR-0012). Re-verified
+      // grok's own project scope, and nobody else's (ADR-0013). Re-verified
       // 2026-08-16 against the installed CLI: `grok mcp add --scope project`
       // writes `./.grok/config.toml`, and grok's shipped docs give the merge
       // order as `config.toml` > Claude > Cursor > `.mcp.json` — so this file

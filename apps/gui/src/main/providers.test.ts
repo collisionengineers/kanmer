@@ -89,7 +89,7 @@ describe("provider registry", () => {
 
   it("grok registers in its own project config.toml", () => {
     // Established 2026-08-16 against the installed binary (ADR-0009's method
-    // clause, FRD-012 R5), commands recorded in ADR-0012:
+    // clause, FRD-012 R5), commands recorded in ADR-0013:
     // `grok mcp add --scope project` writes ./.grok/config.toml, and grok's
     // shipped docs give the merge order config.toml > Claude > Cursor >
     // .mcp.json — so this is the highest-priority source, not a fallback.

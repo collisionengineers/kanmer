@@ -129,3 +129,28 @@ sentence will mean mechanically rather than by assertion.
 
       Not guessing: this changes what every existing board demands, and B and C
       lead to materially different products.
+
+→ **Answered by the operator, 2026-08-16: (A), inject at resolve time.**
+      Implemented in `resolveProfiles` (`packages/core/src/board.ts`), which now
+      adds the requirement to the profiles in force. Existing boards inherit
+      without their `board.yml` being rewritten, and it still appears in
+      `get_doc_gates` so skills derive rather than restate. The trade-off is
+      stated in the code: `board.yml` no longer lists every effective
+      requirement.
+
+      The demonstration then found **two limits the design had not stated**,
+      both now covered by tests:
+
+      - **Never `leave-backlog`.** The first run blocked it, which is backwards
+        — questions are raised *during* research, so gating entry to the stage
+        where they get worked traps the ticket outside it.
+      - **Only boundaries a profile already declares.** `collapsesPipeline`
+        counts *gated* boundaries, so giving `spike` a gated `leave-preparing`
+        and `enter-review` would turn its Backlog → Done jump from one gated
+        boundary into three and refuse it, breaking the acceptance case FRD-002
+        exists to protect. The cost, stated rather than hidden: `fix` and
+        `chore` declare no `enter-review`, so for those profiles a question
+        raised during implementation is caught at `enter-done` rather than at
+        review.
+
+Marking the box: the answer is recorded above and the code matches it.

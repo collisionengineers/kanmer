@@ -1,5 +1,19 @@
 # Open question — how do research-only tickets close under v2 gates?
 
+> **Resolved 2026-08-16 — option (a), by events.** The recommendation was
+> followed: the ticket was parked mid-pipeline, format 3 shipped the `spike`
+> profile, and this ticket now carries `profile: spike` and is Done. The policy
+> it set — research-only work closes as a `spike` on its research alone — holds
+> for every such ticket on the board.
+>
+> The decision was correct and nobody recorded it, so this document read as a
+> live policy question for months after it had been settled in practice. That
+> failure mode is the subject of [[SKILL-012]].
+>
+> Everything below is the original text, unchanged.
+
+---
+
 **Status: the work of this ticket is complete.** `research.md` holds the verified provider
 findings, `impact.md` maps them onto 1.1/1.2, and the plan footer is written. GUI-002 and
 GUI-003 are unblocked — they were waiting on the *findings*, not on this ticket's stage.

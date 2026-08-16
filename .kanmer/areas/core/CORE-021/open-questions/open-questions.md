@@ -1,5 +1,35 @@
 # Open questions
 
+> **Closed by abandonment, 2026-08-16, on the operator's decision.**
+>
+> This ticket is archived and **nothing was implemented** — verified: there is no
+> `child_process` anywhere in `packages/core/src`, so the git-backed precondition
+> does not exist in any form. The four questions below were never answered; they
+> are recorded as closed so this document stops reading as live work.
+>
+> | # | Question | Disposition |
+> |---|---|---|
+> | 1 | Review → rework with the PR still open: blocked or allowed? | Moot — the rule it exempts was never built. |
+> | 2 | May `@kanmer/core` shell out to git? | **Unanswered and will recur.** Wanted its own ADR; no ADR was written. The next feature needing process state inherits this question cold. |
+> | 3 | Two git spawns per drag — acceptable, or does the check move? | Moot. Also the only question on this board that was posed with *no* recommended answer, because it depended on timing nobody measured. |
+> | 4 | Should the precondition appear in `get_doc_gates`? | Moot. |
+>
+> **Why it stays dead.** The concern behind this ticket — gates cannot tell that
+> the thinking preceded the work — is real, but it is addressed more cheaply
+> elsewhere. `collapsesPipeline` (`gates.ts:186`) already refuses a move that
+> crosses more than one gated boundary, structurally and without touching git,
+> and [[SKILL-012]] takes the same concern further by requiring open questions to
+> be resolved before a boundary is crossed. Neither needs a subprocess in a
+> package that is bundled into the shipped MCP server.
+>
+> **What reopens it.** A demonstrated case that survives both of those — work
+> whose documents were written after the code despite one-boundary-per-move and
+> resolved questions. None has been observed.
+>
+> Everything below is the original text, unchanged.
+
+---
+
 Four for you. Everything else is decided and recorded below so it is not
 re-litigated at planning time.
 

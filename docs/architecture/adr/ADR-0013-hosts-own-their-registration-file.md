@@ -2,7 +2,9 @@
 status: draft
 ---
 
-# ADR-0012 — A host is registered in a file that host alone owns
+# ADR-0013 — A host is registered in a file that host alone owns
+
+> Originally filed as ADR-0012; renumbered to ADR-0013 to resolve a collision with another ADR that was accepted under the same number while both were in flight concurrently.
 
 ## Context
 

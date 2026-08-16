@@ -15,24 +15,34 @@ for every board, not just this one.
       inherently unambiguous, and none is. So: every profile, at every boundary
       it has. `spike` gets it at `enter-done`, its only boundary.
 
-- [ ] **Does an existing board inherit the requirement, or only new ones?** —
-      Gates re-evaluate immediately (`update_item`'s own contract), so shipping
-      this can strand a ticket sitting in Preparing with an unticked box. On our
-      board nothing is stranded — only SKILL-011/012 are in flight — but a user
-      upgrading mid-pipeline could be.
-      **Recommendation: inherit.** A rule that applies only to new boards is not
-      a rule, and the escape is one line in a document the agent already wrote:
-      tick it, or move it under `## Parked` with a reason. Wants a release note.
+- [x] **Does an existing board inherit the requirement, or only new ones?**
+      **Answered by the operator, 2026-08-16: inherit.** Existing boards get the
+      requirement on upgrade. Gates re-evaluate immediately (`update_item`'s own
+      contract), so a ticket sitting in Preparing with an unticked box becomes
+      unmovable the moment this ships — intended. Nothing is stranded on this
+      board (only SKILL-011/012 are in flight), but a user upgrading
+      mid-pipeline could be, so **the release notes must say so** and name the
+      escape: tick it, or move it under `## Parked` with a reason.
 
-- [ ] **Must a resolved question record *who* answered it?** — A ticked box says
-      resolved; it does not say the operator resolved it rather than the agent
-      deciding it had thought about it enough. That gap is how the current soft
-      rule fails, so the mechanism could inherit the same weakness.
-      **Recommendation: require provenance in the template's prose** — the
-      answer and who gave it, on the same bullet — but **do not parse it.** A
-      regex asserting "a human answered" would be a machine judging something it
-      judges badly, which `gates.ts:88-97` already treats as warning-not-block
-      territory. Enforce the box; let review catch a box ticked dishonestly.
+- [x] **Must a resolved question record *who* answered it?**
+      **Answered by the operator, 2026-08-16: no. Rejected.** My recommendation
+      (require provenance in the template's prose, unparsed) was turned down on
+      two grounds, both good:
+
+      - Kanmer is **for solo developers**, where "who answered" has exactly one
+        answer and the field is ceremony.
+      - Even on a team it is **already recorded** — the commit that ticks the box
+        carries the author's name. Asking the document to restate it duplicates
+        git for no gain.
+
+      So the mechanism is the box alone, and nothing in the template asks for
+      provenance. The residual risk stands and is accepted: a ticked box does not
+      distinguish "the operator decided" from "the agent decided it had thought
+      about this enough". That is what review is for.
+
+      *(Where an answer's origin is genuinely load-bearing — as with these very
+      questions, which change the contract for every board — writing it down is
+      still the right call. It is a judgement, not a requirement.)*
 
 - [ ] **Write the ADR, and does it block implementation?** — This is the first
       gate that reads *inside* a document. `gates.ts:174-177` is explicit that

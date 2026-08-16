@@ -278,6 +278,15 @@ export const ItemFrontmatterSchema = z
     /** Group ids this ticket belongs to (FRD-001 G3). Membership lives here;
      *  member lists and progress are always derived, never stored. */
     groups: z.array(z.string()).optional(),
+    /**
+     * When the ticket first entered each stage, keyed by stage id. Written on
+     * the way in and never overwritten, so a ticket bounced back to Review
+     * keeps when it first got there.
+     *
+     * Committed history: the activity log carries the same moves but is
+     * gitignored, so it does not survive a clone (FRD-002 G2 amendment).
+     */
+    stageEntered: z.record(TimestampSchema).optional(),
     /** Set while a ticket is taken (being actively worked); absent otherwise. */
     taken_at: TimestampSchema.optional(),
     /** The branch the taken work happens on. */

@@ -710,17 +710,56 @@ describe("blocks / order", () => {
       await store.moveItem(p.id, { status: "done" });
     }
     expect((await store.getItem(a.id))?.order).toBeUndefined();
-    const proofless = await store.createItem({ type: "ticket", title: "P", status: "backlog" });
+    const proofless = await store.createItem({ type: "ticket", title: "P", status: "verifying" });
 
-    // Blocked by the FIRST boundary the jump crosses, not the last one — a
-    // Backlog→Done jump under `fix` stops at leaving Preparing.
+    // A single gated boundary (entering Done) with its document missing, so
+    // this is the missing-document rejection — the collapse rule does not
+    // apply to a one-gate move.
     await expect(
       store.moveItem(proofless.id, { status: "done", position: "top" }),
-    ).rejects.toThrow(/leaving Preparing requires files, plan/);
+    ).rejects.toThrow(/entering Done requires proof/);
 
     for (const p of [a, b]) {
       expect((await store.getItem(p.id))?.order).toBeUndefined();
     }
+  });
+
+  it("refuses a move that collapses several gates into one step", async () => {
+    const t = await store.createItem({ type: "ticket", title: "Collapse", status: "backlog" });
+    // Every document present: the refusal is about the shape of the move, and
+    // must not be reported as a missing document.
+    for (const doc of ["files", "plan", "proof"]) await store.setDoc(t.id, doc, "x");
+
+    await expect(store.moveItem(t.id, { status: "done" })).rejects.toThrow(
+      /in one step: that crosses 2 document gates \(leaving Preparing, entering Done\)/,
+    );
+    // Still where it started, and the next step is named in the message.
+    expect((await store.getItem(t.id))?.status).toBe("backlog");
+    await expect(store.moveItem(t.id, { status: "done" })).rejects.toThrow(/the next is "preparing"/);
+  });
+
+  it("stamps stageEntered on the way in, and never overwrites it", async () => {
+    const t = await store.createItem({ type: "ticket", title: "Stamped", status: "backlog" });
+    for (const doc of ["files", "plan"]) await store.setDoc(t.id, doc, "x");
+
+    const preparing = await store.moveItem(t.id, { status: "preparing" });
+    expect(preparing.stageEntered?.preparing).toBe(preparing.updated);
+
+    const impl = await store.moveItem(t.id, { status: "implementing" });
+    const firstEntry = impl.stageEntered!.implementing;
+    expect(firstEntry).toBe(impl.updated);
+    // Back and forth: the original entry survives, because "when did this
+    // reach Implementing" should not be reset by a bounce.
+    await store.moveItem(t.id, { status: "preparing" });
+    const again = await store.moveItem(t.id, { status: "implementing" });
+    expect(again.stageEntered!.implementing).toBe(firstEntry);
+    expect(again.stageEntered!.preparing).toBe(preparing.stageEntered!.preparing);
+  });
+
+  it("does not stamp stageEntered when the move is refused", async () => {
+    const t = await store.createItem({ type: "ticket", title: "Refused", status: "backlog" });
+    await expect(store.moveItem(t.id, { status: "implementing" })).rejects.toThrow();
+    expect((await store.getItem(t.id))?.stageEntered).toBeUndefined();
   });
 
   it("items without new keys serialise without new-key noise", async () => {

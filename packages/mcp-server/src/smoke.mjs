@@ -702,9 +702,37 @@ try {
   const feature = await mk("Feature", "feature");
   const featBlocked = await moveTo(feature, "done");
   check(
-    "a multi-stage jump is refused by the FIRST unmet boundary",
-    featBlocked.isError === true && textOf(featBlocked).includes("leaving Backlog"),
-    textOf(featBlocked).slice(0, 70),
+    "a feature cannot collapse Backlog -> Done in one call",
+    featBlocked.isError === true && textOf(featBlocked).includes("crosses 4 document gates"),
+    textOf(featBlocked).slice(0, 90),
+  );
+  check(
+    "and the refusal names the next single stage to move to",
+    textOf(featBlocked).includes('the next is "preparing"'),
+  );
+
+  // The collapse refusal must not masquerade as a missing document: this
+  // ticket has every document the jump would need, and is still refused.
+  const stocked = await mk("Stocked", "fix");
+  for (const d of ["files", "plan", "proof"]) await writeDoc(stocked, d, "# " + d);
+  const stockedBlocked = await moveTo(stocked, "done");
+  check(
+    "a fully documented ticket is still refused the multi-gate jump",
+    stockedBlocked.isError === true &&
+      textOf(stockedBlocked).includes("crosses 2 document gates") &&
+      !textOf(stockedBlocked).includes("requires"),
+    textOf(stockedBlocked).slice(0, 90),
+  );
+  check(
+    "and stepping one stage at a time gets it there",
+    ["preparing", "implementing", "review", "verifying", "done"].reduce(
+      async (okp, stage) => {
+        const ok = await okp;
+        const res = await moveTo(stocked, stage);
+        return ok && !res.isError && JSON.parse(textOf(res)).status === stage;
+      },
+      Promise.resolve(true),
+    ),
   );
   await client.callTool({
     name: "update_item",

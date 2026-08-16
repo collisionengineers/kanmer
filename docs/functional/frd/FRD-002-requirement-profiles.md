@@ -13,6 +13,21 @@ Every ticket carries a **profile** that determines which documents each stage bo
 
 - G1. `move_item` validates every stage transition against the ticket's resolved requirements; a blocked move returns an error naming the unmet boundary and the missing document type(s).
 - G2. A multi-stage jump is checked against **every** boundary it crosses and blocked by the first unmet one. A ticket whose profile leaves a boundary empty crosses it freely.
+- G2a. **A single move may cross at most one _gated_ boundary** — one the resolved profile declares with at least one requirement. A declared boundary with an empty requirement list is vacuous and does not count, so `custom: {}` and `custom: { "leave-backlog": [] }` behave identically. Backwards moves cross nothing and are unaffected.
+
+  G2 alone let a ticket satisfy the entire pipeline at once: write all six documents, then move Backlog → Done in a single call. Every gate passes, because gates test that a document *exists*, never that it existed before the work it gates. The result is a ticket that looks fully worked with no pipeline behind it — PRD-001 problem 1 in a form the gate engine cannot see. Observed on Kanmer's own board, where 26 v3 roadmap tickets were closed exactly that way.
+
+  The rule counts **gated boundaries, not stages**, and that distinction is load-bearing: `chore`'s one-jump from Backlog to Implementing crosses two stages but only one gated boundary, and `spike` reaches Done across five stages and one gated boundary. Counting stages would break both shipped acceptance cases.
+
+  The refusal is distinct from the missing-document error and must not borrow its wording, because it fires when every document is present.
+
+  **Rejected alternatives**, recorded so they are not re-proposed:
+
+  - *"`done` is entered only from `verifying`."* Contradicts the `spike`-straight-to-Done acceptance case.
+  - *"A gating document must predate the transition it gates."* Unimplementable as stated. The activity log is gitignored (`ensureBoardWorktree` writes it into the board worktree's `.gitignore`), so stage-entry history does not survive a clone; and git does not carry mtimes, so on a fresh checkout every document looks written after everything else. Both timestamps would have to become committed data. Even then it would not catch the case it was invented for: write the code, then the plan, then move — every timestamp is correctly ordered, because nothing in the board records when the *code* was written.
+
+  **Open design question.** The only signal that distinguishes code-then-plan from plan-then-code is a document's first-write time against the **first commit on the ticket's branch**. Git commit timestamps are committed data, survive cloning, and `take_ticket` already records the branch. It requires the gate engine to read git, which core does nowhere today, so it is deliberately left unresolved rather than half-built.
+- G2b. An item records `stageEntered` — when it first entered each stage, keyed by stage id, stamped on the way in and never overwritten. This is committed history the gitignored activity log cannot provide. It does not enable G2a's rejected timestamp rule and is not intended to; it exists for time-in-stage reporting and so a future timing rule needs no migration.
 - G3. **Creation is ungated** — a ticket may be created directly in any stage (this is what makes historical backfill possible; ADR-0010).
 - G4. `get_doc_gates(id)` reports, per boundary, the required types, which are satisfied, and what the next move needs. It is the single source agents consult (ADR-0009: skills derive, never restate).
 - G5. A requirement is satisfied by ≥1 markdown document of the required type (storage semantics in FRD-003); a custom profile may instead require **named** documents (`research/auth`).

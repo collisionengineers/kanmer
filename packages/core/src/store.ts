@@ -41,7 +41,7 @@ import {
   resolveProofTypes,
   writeBoard,
 } from "./board.js";
-import { FIRST_STAGE, STAGE_IDS, isStageId } from "./stages.js";
+import { FIRST_STAGE, STAGE_IDS, isStageId, stageIndex } from "./stages.js";
 import {
   GOVERNING_DOC,
   resolveProfileId,
@@ -49,6 +49,7 @@ import {
   type ProfileMap,
 } from "./profiles.js";
 import {
+  collapsesPipeline,
   evaluateGateReport as evaluateProfileGates,
   firstBlocking,
   type GateReport,
@@ -664,6 +665,16 @@ export class KanmerStore {
       board ??= await this.getBoard();
       await this.assertDocGate(loc.dir, board, next, current.status, next.status);
     }
+    if (next.status !== current.status) {
+      // Stamped after the gate, so a refused move records nothing. First entry
+      // only: a ticket sent back to Review and returning keeps the original,
+      // which is what "when did this reach Review" should mean.
+      const entered = { ...(current.stageEntered ?? {}) };
+      if (!entered[next.status]) {
+        entered[next.status] = next.updated;
+        next.stageEntered = entered;
+      }
+    }
     let file = loc.file;
     if (loc.kind === "v2") {
       // Frontmatter `area` is authoritative over folder location: an area
@@ -1094,6 +1105,27 @@ export class KanmerStore {
     toStatus: string,
   ): Promise<void> {
     const report = await this.gateReport(ticketDir, board, item);
+
+    // Checked before the missing-document gate, because the two failures are
+    // opposite: this one fires when every document is present. Reporting it as
+    // "needs X" would name documents that are already written.
+    const collapsed = collapsesPipeline(
+      report.boundaries,
+      stageIndex(fromStatus),
+      stageIndex(toStatus),
+    );
+    if (collapsed) {
+      const next = STAGE_IDS[stageIndex(fromStatus) + 1];
+      throw new Error(
+        `${item.id} cannot move from "${fromStatus}" to "${toStatus}" in one step: ` +
+          `that crosses ${collapsed.length} document gates ` +
+          `(${collapsed.map((b) => b.label).join(", ")}). ` +
+          `A single move may cross one. Move one stage at a time` +
+          (next ? ` — the next is "${next}"` : "") +
+          `. Call get_doc_gates for the full picture.`,
+      );
+    }
+
     const blocking = firstBlocking(report, fromStatus, toStatus);
     if (!blocking) return;
 

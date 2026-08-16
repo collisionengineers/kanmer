@@ -2,12 +2,15 @@
 id: SKILL-011
 type: ticket
 title: 'Scope kanmer-auto by group, not only by area'
-status: preparing
+status: implementing
 area: skills
-assignee: ''
+assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-08-16T16:18:15.993Z'
+taken_at: '2026-08-16T16:56:27.691Z'
+branch: skill-011-group-scoping
+worktree: .worktrees/skill-011
 labels: []
 groups:
   - HZN-003
@@ -17,7 +20,7 @@ refs:
   - docs/functional/frd/FRD-001-groups.md
 archived: false
 created: '2026-08-16T16:11:01.414Z'
-updated: '2026-08-16T16:25:50.343Z'
+updated: '2026-08-16T16:56:27.691Z'
 ---
 
 ## What

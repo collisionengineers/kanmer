@@ -20,17 +20,21 @@ export const END = "<!-- kanmer:instructions:end -->";
 /** The managed block's body — everything between the two markers. */
 export const BLOCK_BODY = `# Kanmer operating instructions
 
-This repo's work is tracked on a Kanmer board in \`.kanmer/\`.
+This repo's work is tracked on a Kanmer board in \`.kanmer/\`. In a Git repo set up
+through the GUI the board lives in its own worktree, \`.worktrees/kanmer\`, on the
+board branch, and MCP is already rooted there — never create, switch or push that
+branch yourself. Your own ticket worktree is a separate thing, recorded by
+\`take_ticket\`.
 
-- Start every session with \`get_status\`, then \`list_board\` / \`list_items\` to find your ticket. \`get_doc_gates\` shows which documents each stage transition needs.
+- Start every session with \`get_status\`, then \`list_board\` / \`list_items\` to find your ticket.
+- **Which documents a ticket needs depends on its profile, not on a fixed pipeline.** A \`feature\` owes research, files, plan, checklist, a report and proof; a \`chore\` owes a plan and proof; a \`spike\` may owe only research. Call \`get_doc_gates <id>\` before every move — never assume.
+- Stages: backlog → preparing → implementing → review → verifying → done. **A move crosses at most one gated boundary**, so walk the stages one at a time; a jump is refused even when every document exists.
+- Read the whole ticket folder before starting — documents are folders (\`research/\`, \`plan/\`, …), so there may be several files per type. If the ticket is in a group, read the group's \`context.md\` too: the constraint binding the batch is written once, there.
 - Work each ticket on its own branch and worktree: worktree \`.worktrees/<id>\`, branch \`<id>-<slug>\`; \`take_ticket\` records both and moves the stage.
-- Stages: backlog → researching → planning → implementing → review → verifying → done — hard document gates guard the transitions.
-- Before a ticket leaves Backlog, link a governing doc (\`link_doc\` → a PRD/FRD/ADR in \`/docs/\`) or set \`docs_todo\`.
-- Doc pipeline: research.md + impact.md → plan.md → checklist.md → post-implementation-report.md; write proof.md on merged main before Done.
-- Add running notes with \`append_scratch\` (not \`set_ticket_doc\`) — scratch is the notepad and is never gated.
-- Review passes → the PR is merged → the ticket enters Verifying; write proof.md on merged main, move to Done, then close out (record commits/PRs/deployment).
+- Write pipeline documents with \`set_ticket_doc\`. Running notes go to \`append_scratch\` — scratch is the notepad and is never gated, and neither is anything under \`reference/\` or \`assets/\`.
+- Proof is written on merged \`main\`, after review and the merge, not before.
 - Archive, don't delete. Reference other items with [[ID]] wiki-links.
-- Skills, one per phase: kanmer-tickets (manage), -docs, -research, -plan, -execute, -review, -verify, -closeout, -auto, -report, -groom, -import, -setup.`;
+- Skills, one per phase: kanmer-tickets (manage), -docs, -research, -plan, -execute, -review, -verify, -closeout, -auto, -report, -groom, -setup.`;
 
 /** The one-line CLAUDE.md pointer, added when CLAUDE.md exists without one. */
 export const CLAUDE_POINTER = "See [AGENTS.md](AGENTS.md) for how to work on this repo.";

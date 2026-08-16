@@ -16,6 +16,9 @@ export interface Invocation {
   env: Record<string, string>;
 }
 
+/** Whether a config registers Kanmer — with "unreadable" kept distinct from "no". */
+export type RegistrationState = "registered" | "absent" | "indeterminate";
+
 export type RegisterSpec =
   | {
       kind: "cli";
@@ -30,6 +33,24 @@ export type RegisterSpec =
       merge: (existing: string | null, inv: Invocation) => string;
       /** Remove only the kanmer entry, preserving everything else. Pure. */
       unmerge: (existing: string) => string;
+      /**
+       * Does this file's contents still register Kanmer with **this** host?
+       *
+       * The third pure function, and the one whose absence was a bug: the
+       * caller used to answer it itself with a hardcoded JSON shape, so it
+       * could only ever be right for the hosts it happened to know about. It
+       * read `mcpServers.kanmer` for grok out of `.mcp.json` — a file Claude
+       * also writes — and so reported grok connected in Claude-only projects.
+       * Ownership belongs with the provider that owns the file.
+       *
+       * Tri-state on purpose. "I cannot read this file" is not "no", and the
+       * two callers want opposite defaults for it: disconnect keeps the shared
+       * AGENTS.md block (better a stale block than one pulled from under a
+       * connected host), while the legacy sweep treats it as no proven
+       * replacement and refuses to drain. Collapsing it to a boolean here would
+       * force one of them to be wrong.
+       */
+      registrationState: (existing: string) => RegistrationState;
       /**
        * Optional best-effort CLI cleanup run alongside the merge — codex uses it
        * to drain the global `kanmer-<project>` entries older versions wrote.
@@ -203,21 +224,32 @@ function opencodeUnmerge(existing: string): string {
     }
   });
 }
+function opencodeRegistrationState(existing: string): RegistrationState {
+  return jsonRegistrationState(existing, "mcp");
+}
 
 /**
- * `<root>/.codex/config.toml` — the project-scoped codex registration.
+ * The project-scoped `[mcp_servers.kanmer]` TOML registration — **codex's
+ * `<root>/.codex/config.toml` and grok's `<root>/.grok/config.toml`**, which
+ * take the identical shape (`command` / `args` / `env`).
  *
- * `codex mcp add` has no scope flag and always writes the global
+ * codex: `codex mcp add` has no scope flag and always writes the global
  * `~/.codex/config.toml` (verified against the installed CLI, 2026-08-16), so
  * merging the project file by hand is the only route to one entry per project
  * rather than one global entry per project forever (ADR-0007).
  *
+ * grok: this file is grok's *native* project scope and the highest-priority
+ * source it reads (ADR-0012). It replaced `.mcp.json`, which grok only ever read
+ * as a low-priority compat source and which Claude owns.
+ *
  * The merge must preserve everything it does not own: a project file can carry
  * unrelated tables, other MCP servers, and comments-adjacent formatting. Parsing
- * to a value and re-serialising loses comments — accepted, and the reason the
- * unmerge is surgical about touching only `mcp_servers.kanmer`.
+ * to a value and re-serialising loses comments — accepted for a small *project*
+ * file, and the reason the unmerge is surgical about touching only
+ * `mcp_servers.kanmer`. It is **not** acceptable for the global config, which is
+ * why the legacy sweep parses that file for listing and never writes it.
  */
-function codexTomlMerge(existing: string | null, inv: Invocation): string {
+function tomlMcpServersMerge(existing: string | null, inv: Invocation): string {
   let doc: Record<string, unknown> = {};
   if (existing && existing.trim()) {
     try {
@@ -248,7 +280,7 @@ function codexTomlMerge(existing: string | null, inv: Invocation): string {
   return `${TOML.stringify(doc)}\n`;
 }
 
-function codexTomlUnmerge(existing: string): string {
+function tomlMcpServersUnmerge(existing: string): string {
   let doc: Record<string, unknown> = {};
   try {
     const parsed = TOML.parse(existing);
@@ -266,6 +298,25 @@ function codexTomlUnmerge(existing: string): string {
     }
   }
   return `${TOML.stringify(doc)}\n`;
+}
+
+/** Does a TOML config still carry `[mcp_servers.kanmer]`? Pure. */
+export function tomlRegistrationState(existing: string): RegistrationState {
+  let doc: unknown;
+  try {
+    doc = TOML.parse(existing);
+  } catch {
+    return "indeterminate";
+  }
+  return hasKanmerUnder(doc, "mcp_servers") ? "registered" : "absent";
+}
+
+/** Is there a `kanmer` key in `<doc>.<key>`, treating a non-object as absent? */
+function hasKanmerUnder(doc: unknown, key: string): boolean {
+  if (typeof doc !== "object" || doc === null || Array.isArray(doc)) return false;
+  const entries = (doc as Record<string, unknown>)[key];
+  return typeof entries === "object" && entries !== null && !Array.isArray(entries) &&
+    Object.hasOwn(entries, "kanmer");
 }
 
 /**
@@ -328,7 +379,205 @@ export function codexTrustNote(trust: CodexTrust): string | null {
   }
 }
 
-/** The Claude-compatible `mcpServers` shape (antigravity project config, grok .mcp.json). */
+// ---------------------------------------------------------------------------
+// The legacy global codex registrations, and the sweep that drains them.
+//
+// Before ADR-0007, Connect registered codex with `codex mcp add kanmer-<project>`
+// — a command with no scope, so every project ever connected left an entry in
+// the *global* `~/.codex/config.toml` that loads in every codex session started
+// anywhere on the machine. Reconnecting one project drains only that project's
+// entry, so ADR-0007's "the pile drains as projects reconnect" holds only for
+// projects actually reconnected. This is the reconciliation that drains the
+// rest (ADR-0010): list, classify, confirm once, remove — a no-op on run two.
+//
+// Everything here is a **pure function over the config text**. The global file
+// is parsed for *listing only* and never re-serialised: feeding the real
+// `~/.codex/config.toml` through TOML.parse → TOML.stringify was measured to
+// change it (`startup_timeout_sec = 120.0` collapsing to `120` on a field codex
+// reads as f64, and 65 literal-quoted `[projects.'c:\…']` trust headers
+// rewritten double-quoted, comments dropped). Removal is delegated to
+// `codex mcp remove`, which was verified surgical against a fixture.
+// ---------------------------------------------------------------------------
+
+/** One `[mcp_servers.kanmer-*]` entry found in the global codex config. */
+export interface LegacyCodexEntry {
+  /** The `mcp_servers.<name>` key — what `codex mcp remove` takes. */
+  name: string;
+  /**
+   * The project the entry was written for, recovered from the entry's own
+   * `args` as `--repo-root ?? --root`, or null when it carries neither.
+   *
+   * Never recovered from the name: `codexServerName` lowercases, slugifies and
+   * truncates a basename to 32 chars, and basenames are not unique on a machine.
+   */
+  projectRoot: string | null;
+}
+
+/**
+ * Every legacy global entry in a codex config, for listing. Pure.
+ *
+ * An unparseable file yields `[]` — reporting nothing beats guessing at a file
+ * we cannot read, and the sweep's whole contract is that it never removes
+ * something it has not positively identified.
+ *
+ * Scoped to `kanmer-*`. A bare global `[mcp_servers.kanmer]` is deliberately out
+ * of scope: Kanmer never wrote one there, so it is the user's own and not ours
+ * to delete.
+ */
+export function legacyCodexEntries(globalConfigToml: string | null): LegacyCodexEntry[] {
+  if (!globalConfigToml?.trim()) return [];
+  let doc: unknown;
+  try {
+    doc = TOML.parse(globalConfigToml);
+  } catch {
+    return [];
+  }
+  const servers = (doc as Record<string, unknown> | null)?.["mcp_servers"];
+  if (typeof servers !== "object" || servers === null || Array.isArray(servers)) return [];
+  const found: LegacyCodexEntry[] = [];
+  for (const [name, value] of Object.entries(servers as Record<string, unknown>)) {
+    if (!name.startsWith("kanmer-")) continue;
+    found.push({ name, projectRoot: rootFromArgs((value as { args?: unknown } | null)?.args) });
+  }
+  return found;
+}
+
+/** `--repo-root` if present, else `--root`, else null. Tolerates url-only entries. */
+function rootFromArgs(args: unknown): string | null {
+  if (!Array.isArray(args)) return null;
+  const flagValue = (flag: string): string | null => {
+    const at = args.indexOf(flag);
+    if (at === -1) return null;
+    const next: unknown = args[at + 1];
+    return typeof next === "string" && next.trim() !== "" ? next : null;
+  };
+  return flagValue("--repo-root") ?? flagValue("--root");
+}
+
+/**
+ * Why an entry may or may not be drained.
+ *
+ * - `drainable` — the project has a project-scoped registration codex will
+ *   actually load. Safe to remove, and pre-selected.
+ * - `no-replacement` — the project exists but has no `[mcp_servers.kanmer]`, so
+ *   this global entry is its *only* working registration. **Reported, never
+ *   removable**: removing it silently cuts board access to a project the user is
+ *   not currently looking at. Kanmer does not write another project's config to
+ *   fix that either — the user opens it and clicks Connect.
+ * - `untrusted` — a replacement exists, but codex loads project config for
+ *   trusted folders only, so the global entry is still the one in effect.
+ *   Reported, not removable.
+ * - `orphaned` — the recorded project folder is not there at all. Removable, but
+ *   never pre-selected: the probe can be wrong about an unmounted drive.
+ * - `unknown-root` — the entry carries no recoverable project root, so nothing
+ *   can be checked about it. Not removable.
+ */
+export type LegacyCodexStatus =
+  | "drainable"
+  | "no-replacement"
+  | "untrusted"
+  | "orphaned"
+  | "unknown-root";
+
+/** What the caller must find out about an entry's project before it can be classified. */
+export interface LegacyCodexProbe {
+  /** Does the recorded project folder exist? */
+  exists: boolean;
+  /** Does `<root>/.codex/config.toml` carry `[mcp_servers.kanmer]`? */
+  hasProjectRegistration: boolean;
+  /** Will codex load that project file? (`codexTrustFromConfig` over the global config.) */
+  trust: CodexTrust;
+}
+
+export interface LegacyCodexFinding extends LegacyCodexEntry {
+  status: LegacyCodexStatus;
+  /** May the sweep remove this entry at all? The UI must not offer a checkbox when false. */
+  removable: boolean;
+  /** Should it be selected by default? Only ever true for `drainable`. */
+  recommended: boolean;
+  /** One sentence for the user, naming the project and what to do. */
+  detail: string;
+}
+
+/**
+ * Classify one entry. Pure — the filesystem work is the caller's, which is what
+ * makes the whole sweep testable without a real `~/.codex` (the machine that
+ * reported this bug no longer reproduces it).
+ */
+export function classifyLegacyCodexEntry(
+  entry: LegacyCodexEntry,
+  probe: LegacyCodexProbe | null,
+): LegacyCodexFinding {
+  const base = { ...entry, removable: false, recommended: false };
+  if (entry.projectRoot === null || probe === null) {
+    return {
+      ...base,
+      status: "unknown-root",
+      detail:
+        "This entry records no project path, so Kanmer cannot tell whether removing it would " +
+        "cut a project's only registration. Remove it by hand if you know what it was for.",
+    };
+  }
+  if (!probe.exists) {
+    return {
+      ...base,
+      status: "orphaned",
+      removable: true,
+      detail:
+        `${entry.projectRoot} no longer exists, so this entry registers a board that is not ` +
+        "there. If that drive is simply not mounted right now, leave it.",
+    };
+  }
+  if (!probe.hasProjectRegistration) {
+    return {
+      ...base,
+      status: "no-replacement",
+      detail:
+        `${entry.projectRoot} has no project-scoped registration, so this global entry is its ` +
+        "only working one. Open that project in Kanmer and click Connect first — then this " +
+        "entry can be removed.",
+    };
+  }
+  if (probe.trust !== "trusted") {
+    return {
+      ...base,
+      status: "untrusted",
+      detail:
+        `${entry.projectRoot} has a project-scoped registration, but codex loads project config ` +
+        "for trusted folders only and does not report this one as trusted — so the global entry " +
+        "is still the one in effect. Trust that folder in codex first.",
+    };
+  }
+  return {
+    ...base,
+    status: "drainable",
+    removable: true,
+    recommended: true,
+    detail: `${entry.projectRoot} is registered in its own .codex/config.toml — this global entry is redundant.`,
+  };
+}
+
+/** Does a JSON config carry a `kanmer` server under the given top-level key? Pure. */
+function jsonRegistrationState(existing: string, key: "mcp" | "mcpServers"): RegistrationState {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(existing);
+  } catch {
+    return "indeterminate";
+  }
+  return hasKanmerUnder(parsed, key) ? "registered" : "absent";
+}
+
+/**
+ * The Claude-compatible `mcpServers` shape — **antigravity's
+ * `.agents/mcp_config.json` only**.
+ *
+ * grok used to share this pair into the project `.mcp.json`, which is the file
+ * `claude mcp add -s project` writes: same file, same `kanmer` key, so
+ * disconnecting grok deleted Claude's registration and `isRegistered` read
+ * Claude's entry as grok's. grok now owns `.grok/config.toml` (ADR-0012) and no
+ * Kanmer provider merges or unmerges `.mcp.json` at all.
+ */
 function mcpServersMerge(existing: string | null, inv: Invocation): string {
   return editJson(existing, (o) => {
     const servers = (typeof o.mcpServers === "object" && o.mcpServers !== null
@@ -344,6 +593,9 @@ function mcpServersUnmerge(existing: string): string {
       delete (o.mcpServers as Record<string, unknown>).kanmer;
     }
   });
+}
+function mcpServersRegistrationState(existing: string): RegistrationState {
+  return jsonRegistrationState(existing, "mcpServers");
 }
 
 /** codex/claude `mcp add` command line (shared by both CLI providers). */
@@ -365,8 +617,9 @@ export const PROVIDERS: AgentProvider[] = [
       // One entry per project, in the project (ADR-0007). The folder must be
       // trusted for codex to load it — Connect says so, and can check.
       configPath: ".codex/config.toml",
-      merge: codexTomlMerge,
-      unmerge: codexTomlUnmerge,
+      merge: tomlMcpServersMerge,
+      unmerge: tomlMcpServersUnmerge,
+      registrationState: tomlRegistrationState,
       // Legacy cleanup: drain the per-project global entries older versions
       // wrote. Best-effort — a failure here must never fail the connect.
       removeCommands: (root) => [`codex mcp remove ${codexServerName(root)}`],
@@ -409,6 +662,7 @@ export const PROVIDERS: AgentProvider[] = [
       configPath: "opencode.json",
       merge: opencodeMerge,
       unmerge: opencodeUnmerge,
+      registrationState: opencodeRegistrationState,
     },
     // Verified 2026-08-16 against opencode's current docs: it searches
     // `.agents/skills/<name>/SKILL.md` (position 5 of 6), so one project-scoped
@@ -425,10 +679,21 @@ export const PROVIDERS: AgentProvider[] = [
     label: "Grok CLI",
     register: {
       kind: "configFile",
-      // Prefer the project .mcp.json (JSON, carries env, no TOML dep) over ~/.grok/config.toml.
-      configPath: ".mcp.json",
-      merge: mcpServersMerge,
-      unmerge: mcpServersUnmerge,
+      // grok's own project scope, and nobody else's (ADR-0012). Re-verified
+      // 2026-08-16 against the installed CLI: `grok mcp add --scope project`
+      // writes `./.grok/config.toml`, and grok's shipped docs give the merge
+      // order as `config.toml` > Claude > Cursor > `.mcp.json` — so this file
+      // is the *highest*-priority source, while `.mcp.json` is a compat source
+      // grok reads only until the Claude import marker is set. Kanmer used to
+      // write `.mcp.json`, which `claude mcp add -s project` also owns: the
+      // same key in the same file, so grok's disconnect deleted Claude's
+      // registration. Existing grok users reconnect once; Kanmer does not
+      // rewrite `.mcp.json` to migrate them, because reaching into another
+      // host's file is the defect, not the fix.
+      configPath: ".grok/config.toml",
+      merge: tomlMcpServersMerge,
+      unmerge: tomlMcpServersUnmerge,
+      registrationState: tomlRegistrationState,
     },
     install: { kind: "copySkills", skillsScope: "project", skillsDir: ".grok/skills" },
     dispatch: true,
@@ -443,6 +708,7 @@ export const PROVIDERS: AgentProvider[] = [
       configPath: ".agents/mcp_config.json",
       merge: mcpServersMerge,
       unmerge: mcpServersUnmerge,
+      registrationState: mcpServersRegistrationState,
     },
     // Verified 2026-08-16: `.agents/skills` is Antigravity's *primary* project
     // location (`.agent/` singular is kept only for backward compatibility), so

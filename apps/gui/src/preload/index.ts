@@ -46,6 +46,9 @@ const api: KanmerApi = {
   connectAgent: (p, target) => ipcRenderer.invoke(CH.connectAgent, p, target),
   disconnectAgent: (p, target) => ipcRenderer.invoke(CH.disconnectAgent, p, target),
   listProviders: () => ipcRenderer.invoke(CH.listProviders),
+  scanLegacyCodexRegistrations: () => ipcRenderer.invoke(CH.scanLegacyCodexRegistrations),
+  drainLegacyCodexRegistrations: (names) =>
+    ipcRenderer.invoke(CH.drainLegacyCodexRegistrations, names),
   getSkillsStatus: (p, target) => ipcRenderer.invoke(CH.getSkillsStatus, p, target),
   updateSkills: (p, target) => ipcRenderer.invoke(CH.updateSkills, p, target),
   dispatchAgent: (p, ticketId, target, taskId) => ipcRenderer.invoke(CH.dispatchAgent, p, ticketId, target, taskId),

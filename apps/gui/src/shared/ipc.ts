@@ -60,6 +60,8 @@ export const CH = {
   connectAgent: "kanmer:connectAgent",
   disconnectAgent: "kanmer:disconnectAgent",
   listProviders: "kanmer:listProviders",
+  scanLegacyCodexRegistrations: "kanmer:scanLegacyCodexRegistrations",
+  drainLegacyCodexRegistrations: "kanmer:drainLegacyCodexRegistrations",
   getSkillsStatus: "kanmer:getSkillsStatus",
   updateSkills: "kanmer:updateSkills",
   dispatchAgent: "kanmer:dispatchAgent",
@@ -167,6 +169,50 @@ export interface ProviderInfo {
   id: ConnectTarget;
   label: string;
   dispatch: boolean;
+}
+
+/**
+ * Why a legacy global codex entry may or may not be drained (GUI-079).
+ *
+ * Only `drainable` and `orphaned` are removable at all; the rest are reported
+ * so the user knows the pile is not empty and what to do about each one.
+ */
+export type LegacyCodexStatus =
+  | "drainable"
+  | "no-replacement"
+  | "untrusted"
+  | "orphaned"
+  | "unknown-root";
+
+/** One legacy `[mcp_servers.kanmer-*]` entry in the global `~/.codex/config.toml`. */
+export interface LegacyCodexFinding {
+  name: string;
+  projectRoot: string | null;
+  status: LegacyCodexStatus;
+  /** False means the UI must not offer to remove it — not even behind a confirmation. */
+  removable: boolean;
+  /** Pre-select this row? Only ever true for `drainable`. */
+  recommended: boolean;
+  detail: string;
+}
+
+export interface LegacyCodexScan {
+  configPath: string;
+  findings: LegacyCodexFinding[];
+}
+
+export interface LegacyCodexRemoval {
+  name: string;
+  ok: boolean;
+  command: string;
+  output: string;
+}
+
+export interface LegacyCodexDrainResult {
+  removals: LegacyCodexRemoval[];
+  /** Asked for but not currently removable — the main process refuses rather than trusting the list. */
+  refused: string[];
+  scan: LegacyCodexScan;
 }
 
 /** Whether a host's copied skill set is present and outdated (Phase 6.2). */
@@ -395,6 +441,15 @@ export interface KanmerApi {
   disconnectAgent(projectId: string, target: ConnectTarget): Promise<ConnectResult>;
   /** The agent hosts Connect can register (drives the Connect tab). */
   listProviders(): Promise<ProviderInfo[]>;
+  /**
+   * List the legacy global `kanmer-*` codex registrations older Kanmers left in
+   * `~/.codex/config.toml`. Machine-scoped, not project-scoped — the entries are
+   * about *other* projects, which is the whole reason reconnecting one project
+   * never drained them (GUI-079). Read-only.
+   */
+  scanLegacyCodexRegistrations(): Promise<LegacyCodexScan>;
+  /** Remove the named legacy entries. Main re-checks removability; it never trusts this list. */
+  drainLegacyCodexRegistrations(names: string[]): Promise<LegacyCodexDrainResult>;
   /** Whether the host's copied skill set is present and outdated (Phase 6.2). */
   getSkillsStatus(projectId: string, target: ConnectTarget): Promise<SkillsStatus>;
   /** Re-copy the bundled skills for a host ("Update skills"). */

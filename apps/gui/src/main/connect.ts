@@ -17,6 +17,12 @@ import {
   type ProviderId,
   codexTrustFromConfig,
   codexTrustNote,
+  classifyLegacyCodexEntry,
+  legacyCodexEntries,
+  q,
+  tomlRegistrationState,
+  type LegacyCodexFinding,
+  type LegacyCodexProbe,
 } from "./providers.js";
 import { applyManagedBlock, removeManagedBlock } from "./agentsBlock.js";
 
@@ -228,20 +234,26 @@ export async function removeBundledSkillsOnly(
   if ((await readdir(destination)).length === 0) await rmdir(destination);
 }
 
-/** True only when the provider's project config still names Kanmer. */
+/**
+ * True only when the provider's project config still names Kanmer.
+ *
+ * The *shape* question belongs to the provider that owns the file
+ * (`register.isRegistered`), not to this function. It used to be answered here
+ * with one hardcoded JSON shape, which had two consequences: a TOML-configured
+ * host could never be answered for at all, and grok was answered out of
+ * `.mcp.json` — Claude's file — so a Claude-only project reported grok
+ * registered and kept the AGENTS.md block alive for a host never connected.
+ */
 async function isRegistered(provider: AgentProvider, root: string): Promise<boolean> {
   if (provider.register.kind !== "configFile") return false;
   const file = resolveConfigPath(provider.register.configPath, root);
   if (!existsSync(file)) return false;
   try {
-    const parsed: unknown = JSON.parse(await readFile(file, "utf8"));
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return false;
-    const obj = parsed as Record<string, unknown>;
-    const entries = provider.id === "opencode" ? obj.mcp : obj.mcpServers;
-    return typeof entries === "object" && entries !== null && !Array.isArray(entries) &&
-      Object.hasOwn(entries as object, "kanmer");
+    // Indeterminate counts as registered here: a malformed configuration must
+    // retain the shared instructions rather than have them pulled out from
+    // under a host that may well still be connected.
+    return provider.register.registrationState(await readFile(file, "utf8")) !== "absent";
   } catch {
-    // A malformed/indeterminate configuration must retain shared instructions.
     return true;
   }
 }
@@ -436,6 +448,118 @@ export async function connectAgent(id: ProviderId, projectRoot: string, boardRoo
         : `edit ${provider.register.configPath}`;
     return { ok: false, command, output: err instanceof Error ? err.message : String(err) };
   }
+}
+
+/** Where the legacy global codex entries live. */
+function globalCodexConfigPath(): string {
+  return join(homedir(), ".codex", "config.toml");
+}
+
+export interface LegacyCodexScan {
+  /** The file that was read, so the UI can name it. */
+  configPath: string;
+  findings: LegacyCodexFinding[];
+}
+
+export interface LegacyCodexRemoval {
+  name: string;
+  ok: boolean;
+  /** The exact command, for the copy-paste fallback when the CLI is missing (FRD-012 AC-4). */
+  command: string;
+  output: string;
+}
+
+export interface LegacyCodexDrainResult {
+  removals: LegacyCodexRemoval[];
+  /** Names that were asked for but are not currently removable — refused, not attempted. */
+  refused: string[];
+  /** The state after the attempt; a successful pass leaves nothing behind to find. */
+  scan: LegacyCodexScan;
+}
+
+/**
+ * List the legacy global `kanmer-*` codex registrations and classify each one.
+ *
+ * Read-only. The global config is parsed for listing and never rewritten — see
+ * the comment over `legacyCodexEntries` for the measurement that settled that.
+ */
+export async function scanLegacyCodexRegistrations(): Promise<LegacyCodexScan> {
+  const configPath = globalCodexConfigPath();
+  const globalToml = existsSync(configPath) ? await readFile(configPath, "utf8") : null;
+  const findings: LegacyCodexFinding[] = [];
+  for (const entry of legacyCodexEntries(globalToml)) {
+    findings.push(classifyLegacyCodexEntry(entry, await probeLegacyProject(entry.projectRoot, globalToml)));
+  }
+  return { configPath, findings };
+}
+
+/** Everything the classifier needs to know about one entry's project, from disk. */
+async function probeLegacyProject(
+  projectRoot: string | null,
+  globalToml: string | null,
+): Promise<LegacyCodexProbe | null> {
+  if (projectRoot === null) return null;
+  if (!existsSync(projectRoot)) {
+    return { exists: false, hasProjectRegistration: false, trust: "unknown" };
+  }
+  const projectConfig = join(projectRoot, ".codex", "config.toml");
+  let hasProjectRegistration = false;
+  if (existsSync(projectConfig)) {
+    try {
+      // Only a positive answer counts. An unreadable project config is not a
+      // proven replacement, and the entry stays.
+      hasProjectRegistration =
+        tomlRegistrationState(await readFile(projectConfig, "utf8")) === "registered";
+    } catch {
+      hasProjectRegistration = false;
+    }
+  }
+  return {
+    exists: true,
+    hasProjectRegistration,
+    trust: codexTrustFromConfig(globalToml, projectRoot),
+  };
+}
+
+/**
+ * Remove the named legacy entries — the confirmed half of the sweep.
+ *
+ * Two disciplines this must not lose:
+ *
+ * 1. **It re-scans and intersects with what is currently removable.** The names
+ *    arrive from the renderer, and the one thing the sweep must never do is
+ *    remove a project's only registration. A stale list or a UI bug cannot
+ *    cause that if the main process re-derives the permission itself.
+ * 2. **Failures are reported, never swallowed.** `connectAgent` uses
+ *    `.catch(() => undefined)` for its best-effort cleanup, which is right there
+ *    and wrong here: a drain that claims success it did not achieve is worse
+ *    than no sweep. A machine without `codex` on PATH surfaces as every entry
+ *    failing, each with the command to run by hand.
+ */
+export async function drainLegacyCodexRegistrations(names: string[]): Promise<LegacyCodexDrainResult> {
+  const before = await scanLegacyCodexRegistrations();
+  const allowed = new Set(before.findings.filter((f) => f.removable).map((f) => f.name));
+  const wanted = [...new Set(names)];
+  const removals: LegacyCodexRemoval[] = [];
+  for (const name of wanted.filter((n) => allowed.has(n))) {
+    const command = `codex mcp remove ${q(name)}`;
+    try {
+      const { stdout, stderr } = await execAsync(command);
+      removals.push({ name, ok: true, command, output: (stdout || stderr || "Removed.").trim() });
+    } catch (err) {
+      removals.push({
+        name,
+        ok: false,
+        command,
+        output: err instanceof Error ? err.message.split("\n")[0]! : String(err),
+      });
+    }
+  }
+  return {
+    removals,
+    refused: wanted.filter((n) => !allowed.has(n)),
+    scan: await scanLegacyCodexRegistrations(),
+  };
 }
 
 /** Disconnect a provider: unregister the server and remove copied skills + the block. */

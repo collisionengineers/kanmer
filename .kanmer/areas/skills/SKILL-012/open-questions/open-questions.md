@@ -92,3 +92,40 @@ sentence will mean mechanically rather than by assertion.
   editable in the app today, and building a prompt surface before the gate has
   ever run in anger would be designing for an unobserved workflow. Reopens once
   the gate has stopped a few real tickets.
+
+---
+
+## Re-opened during implementation, 2026-08-16
+
+- [ ] **"Existing boards inherit" is not true as implemented. How should it be
+      made true?** — Found while demonstrating the gate on a copy of this board:
+      it did not fire. `resolveProfiles` is
+      `board.profiles ?? DEFAULT_PROFILES` (`packages/core/src/board.ts:45-47`),
+      and this board's `.kanmer/data/board.yml` carries an explicit `profiles:`
+      block — as does every board that setup or migration has ever written. So
+      editing `DEFAULT_PROFILES` reaches **new boards only**, and the decision
+      recorded above ("inherit") is not delivered by the code that claims it.
+
+      **Recommendation: (A) inject at resolve time.** `resolveProfiles` adds
+      `questions-resolved` to each profile's already-declared boundaries. Three
+      lines; every board inherits; the requirement still appears in
+      `get_doc_gates`, which ADR-0011 wants and FRD-023 R1 requires so skills can
+      derive rather than restate. The cost: `board.yml` no longer lists every
+      effective requirement, a small dent in "board.yml is the source of truth"
+      — though `resolveProfiles` is already where board config meets shipped
+      defaults.
+
+      **(B) A precondition beside `collapsesPipeline`,** outside
+      `requirementsFor` and the `EvidenceProbe`. Every board gets it and
+      `board.yml` stays literally true. But it is invisible to `get_doc_gates`,
+      so skills cannot self-check and the GUI cannot grey the drop target.
+      [[CORE-021]] proposed exactly this shape for its own rule and leaned
+      toward accepting the invisibility; that rule was never built, so the
+      precedent is untested.
+
+      **(C) Migrate `board.yml`.** Most honest to "the file is the truth", and
+      the only option that leaves the board self-describing — but it rewrites
+      user configuration, needs a migration step and a way to decline.
+
+      Not guessing: this changes what every existing board demands, and B and C
+      lead to materially different products.

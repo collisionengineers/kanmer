@@ -20,9 +20,96 @@ import type {
   MovePosition,
   UpdateItemPatch,
 } from "@kanmer/core";
+import type { Group, GroupWithMembers } from "@kanmer/core";
 import type { KanmerApi } from "../../../apps/gui/src/shared/ipc.js";
 import { ClientContext, type ProjectClient } from "../../../apps/gui/src/renderer/src/lib/client.js";
 import { columnCards } from "../../../apps/gui/src/renderer/src/lib/board.js";
+
+/**
+ * Core's constants, mirrored — and the reason the import above is **types only**.
+ *
+ * `@kanmer/core`'s single entry point (`exports` has only `"."`) re-exports
+ * `store`, `io`, `migrate` and `groups`, which import `node:fs`, `node:path` and
+ * `node:crypto`. This package builds for the **browser** (`tsup.config.ts`
+ * `platform: "browser"`), so importing any *value* from core drags those in and
+ * the build fails with "Could not resolve fs/path/crypto". Types are erased at
+ * compile time; values are not.
+ *
+ * So these are copies, and copies drift — which is the class of bug this file
+ * was repaired for. Two things keep it honest until core exposes a browser-safe
+ * subpath (see the ticket linked from GUI-078): they are collected **here**
+ * rather than scattered through the file, and each names its source so a diff
+ * against core is one grep rather than a hunt.
+ *
+ * Source: `packages/core/src/stages.ts` and `packages/core/src/profiles.ts`.
+ */
+const STAGE_IDS = ["backlog", "preparing", "implementing", "review", "verifying", "done"] as const;
+const FIRST_STAGE = STAGE_IDS[0];
+const LAST_STAGE = STAGE_IDS[STAGE_IDS.length - 1];
+const DOC_TYPES = [
+  "research",
+  "files",
+  "plan",
+  "checklist",
+  "open-questions",
+  "post-implementation-report",
+  "proof",
+] as const;
+const GATE_EXEMPT_DIRS = ["reference", "scratch", "assets"] as const;
+const BOUNDARIES = [
+  "leave-backlog",
+  "leave-preparing",
+  "enter-review",
+  "enter-verifying",
+  "enter-done",
+] as const;
+const DEFAULT_PROOF_TYPES = ["visual", "test-output", "command-log"] as const;
+const DEFAULT_PROFILE_ID = "fix";
+const DEFAULT_PROFILES: Record<string, Record<string, string[]>> = {
+  feature: {
+    "leave-backlog": ["governing-doc"],
+    "leave-preparing": ["research", "files", "plan", "checklist", "questions-resolved"],
+    "enter-review": ["post-implementation-report", "questions-resolved"],
+    "enter-done": ["proof", "questions-resolved"],
+  },
+  fix: {
+    "leave-preparing": ["files", "plan", "questions-resolved"],
+    "enter-done": ["proof", "questions-resolved"],
+  },
+  chore: {
+    "leave-preparing": ["plan", "questions-resolved"],
+    "enter-done": ["proof", "questions-resolved"],
+  },
+  spike: {
+    "enter-done": ["research", "questions-resolved"],
+  },
+  custom: {},
+};
+
+/**
+ * `deriveMembers`, inlined for the same reason — the real one lives in
+ * `packages/core/src/groups.ts`, which imports `node:fs`.
+ *
+ * The rule it encodes is the load-bearing part and is copied faithfully:
+ * archived members are **listed** so nothing silently disappears, but excluded
+ * from every count, because progress means "of the work still live".
+ */
+function deriveDemoMembers(group: Group, list: Item[]): GroupWithMembers {
+  const members = list
+    .filter((i) => (i.groups ?? []).includes(group.id))
+    .map((i) => ({ id: i.id, title: i.title, status: i.status, archived: i.archived }))
+    .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+  const live = members.filter((m) => !m.archived);
+  const progress: Record<string, number> = Object.fromEntries(STAGE_IDS.map((s) => [s, 0]));
+  for (const m of live) progress[m.status] = (progress[m.status] ?? 0) + 1;
+  return {
+    ...group,
+    members,
+    progress,
+    total: live.length,
+    complete: live.filter((m) => m.status === LAST_STAGE).length,
+  };
+}
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -30,29 +117,24 @@ const DAY = 24 * HOUR;
 const NOW = Date.now();
 const ago = (ms: number): string => new Date(NOW - ms).toISOString();
 
-/** The 7-stage default board with three areas, priorities and two deploy environments. */
+/**
+ * A format-3 board: three areas, the four shipped profiles, two deploy
+ * environments.
+ *
+ * No `statuses` and no `priorities`. Stages are constants (ADR-0002) and
+ * priority is gone (ADR-0006) — `BoardConfigSchema` still accepts both as
+ * optional so a v1/v2 file on disk parses, which is not licence for new data to
+ * carry them.
+ */
 export const demoBoard: BoardConfig = {
-  statuses: [
-    { id: "backlog", name: "Backlog" },
-    { id: "researching", name: "Researching" },
-    { id: "planning", name: "Planning" },
-    { id: "implementing", name: "Implementing" },
-    { id: "review", name: "Review" },
-    { id: "verifying", name: "Verifying" },
-    { id: "done", name: "Done" },
-  ],
   areas: [
     { id: "api", name: "API", prefix: "API", color: "#5b8cff" },
     { id: "gui", name: "GUI", prefix: "GUI", color: "#3ecf8e" },
     { id: "pr-review", name: "PR Review", prefix: "PR", color: "#b48cff" },
   ],
-  priorities: [
-    { id: "low", name: "Low", color: "#6b7280" },
-    { id: "medium", name: "Medium", color: "#5b8cff" },
-    { id: "high", name: "High", color: "#ffcf7a" },
-    { id: "urgent", name: "Urgent", color: "#ff6b6b" },
-  ],
   idPrefixes: { ticket: "TICK", plan: "PLAN", research: "RES" },
+  profiles: structuredClone(DEFAULT_PROFILES) as BoardConfig["profiles"],
+  defaultProfile: DEFAULT_PROFILE_ID,
   deployment: { environments: ["staging", "production"] },
 };
 
@@ -73,7 +155,6 @@ export const demoItems: Item[] = [
     title: "Rate-limit the MCP list_items call",
     status: "backlog",
     area: "api",
-    priority: "medium",
     labels: ["perf", "mcp"],
     order: 1,
     created: ago(3 * DAY),
@@ -86,7 +167,6 @@ export const demoItems: Item[] = [
     title: "Card density: remember per project",
     status: "backlog",
     area: "gui",
-    priority: "low",
     labels: ["settings"],
     order: 2,
     created: ago(6 * DAY),
@@ -98,7 +178,6 @@ export const demoItems: Item[] = [
     title: "Write the v0.3 release notes",
     status: "backlog",
     area: "",
-    priority: "low",
     assignee: "mercer",
     labels: ["docs"],
     order: 3,
@@ -108,10 +187,10 @@ export const demoItems: Item[] = [
   {
     ...base,
     id: "API-012",
+    groups: ["EPIC-001", "HZN-001"],
     title: "Optimistic concurrency for set_doc",
-    status: "researching",
+    status: "preparing",
     area: "api",
-    priority: "high",
     assignee: "mercer",
     labels: ["concurrency"],
     refs: ["docs/prd/doc-versions.md"],
@@ -122,10 +201,10 @@ export const demoItems: Item[] = [
   {
     ...base,
     id: "GUI-028",
+    groups: ["HZN-001"],
     title: "Keyboard drag: Ctrl+←/→ moves a card one stage",
-    status: "planning",
+    status: "preparing",
     area: "gui",
-    priority: "medium",
     assignee: "alex",
     labels: ["a11y", "board"],
     links: ["GUI-027"],
@@ -136,10 +215,10 @@ export const demoItems: Item[] = [
   {
     ...base,
     id: "API-009",
+    groups: ["EPIC-001", "HZN-001"],
     title: "Item-level expectedUpdated conflict check",
     status: "implementing",
     area: "api",
-    priority: "urgent",
     assignee: "mercer",
     labels: ["concurrency", "core"],
     taken_at: ago(5 * HOUR),
@@ -154,10 +233,10 @@ export const demoItems: Item[] = [
   {
     ...base,
     id: "GUI-027",
+    groups: ["HZN-001"],
     title: "Board: area sub-headers inside each column",
     status: "implementing",
     area: "gui",
-    priority: "high",
     assignee: "alex",
     labels: ["board"],
     taken_at: ago(2 * DAY),
@@ -173,7 +252,6 @@ export const demoItems: Item[] = [
     title: "PR #41 feedback: split dispatch.ts",
     status: "review",
     area: "pr-review",
-    priority: "medium",
     assignee: "codex",
     labels: ["refactor"],
     prs: ["41"],
@@ -186,7 +264,6 @@ export const demoItems: Item[] = [
     title: "Command palette (Ctrl+K)",
     status: "verifying",
     area: "gui",
-    priority: "medium",
     assignee: "alex",
     labels: ["shortcuts"],
     prs: ["38"],
@@ -200,7 +277,6 @@ export const demoItems: Item[] = [
     title: "Activity log rotation",
     status: "done",
     area: "api",
-    priority: "low",
     assignee: "mercer",
     labels: ["core"],
     commits: ["c0ffee1234"],
@@ -214,7 +290,6 @@ export const demoItems: Item[] = [
     title: "Welcome screen: recent projects list",
     status: "done",
     area: "",
-    priority: "medium",
     assignee: "alex",
     labels: ["gui"],
     deployment: "production",
@@ -227,11 +302,39 @@ export const demoItems: Item[] = [
     title: "Legacy phases[] migration",
     status: "done",
     area: "",
-    priority: "low",
     labels: ["migration"],
     archived: true,
     created: ago(40 * DAY),
     updated: ago(30 * DAY),
+  },
+];
+
+/**
+ * Two groups — one of each shipped kind (FRD-001 G1).
+ *
+ * Membership is stored on the **ticket**, never here: `demoItems` above name
+ * these ids in their `groups`, and everything a group knows about its members is
+ * derived on read by `deriveMembers`. That is the real model, so the demo shows
+ * it rather than keeping a member list that could drift.
+ */
+export const demoGroups: Group[] = [
+  {
+    id: "EPIC-001",
+    kind: "epic",
+    title: "Concurrency safety",
+    archived: false,
+    created: ago(9 * DAY),
+    updated: ago(2 * HOUR),
+    body: "Two writers, one file. Version tokens on documents, `expectedUpdated` on items.",
+  },
+  {
+    id: "HZN-001",
+    kind: "horizon",
+    title: "0.3",
+    archived: false,
+    created: ago(20 * DAY),
+    updated: ago(6 * HOUR),
+    body: "What ships next: the board polish plus the concurrency work.",
   },
 ];
 
@@ -251,9 +354,9 @@ export const demoActivity: ActivityEntry[] = [
 
 const DEMO_DOC_TYPES: DocType[] = [
   { id: "research", name: "Research" },
-  { id: "impact", name: "Impact" },
+  { id: "files", name: "Files" },
   { id: "open-questions", name: "Open questions" },
-  { id: "plan", name: "Plan", requires: ["research", "impact"] },
+  { id: "plan", name: "Plan", requires: ["research", "files"] },
   { id: "checklist", name: "Checklist", requires: ["plan"], progress: true },
   { id: "post-implementation-report", name: "Post-implementation report" },
   { id: "proof", name: "Proof" },
@@ -263,7 +366,8 @@ const DEMO_DOCS: Record<string, Record<string, string>> = {
   "API-009": {
     research:
       "# API-009 research\n\nThe store already reads `updated` on every patch; the check is one comparison before the write.\n",
-    impact: "# API-009 impact\n\nMCP callers passing `expectedUpdated` may now see a conflict error. GUI unaffected.\n",
+    files:
+      "# API-009 files\n\n| Path | Why |\n|---|---|\n| `packages/core/src/store.ts` | the comparison, before the write |\n| `packages/core/src/types.ts` | `expectedUpdated` on `UpdateItemPatch` |\n\nMCP callers passing `expectedUpdated` may now see a conflict error. GUI unaffected.\n",
     plan: "# API-009 plan\n\n1. Add `expectedUpdated` to `UpdateItemPatch`\n2. Compare in `updateItem`\n3. Surface a `ConflictError`\n",
     checklist:
       "# API-009 checklist\n\n- [x] Patch type extended\n- [x] Store compares timestamps\n- [ ] MCP tool passes the token\n- [ ] Editor shows the conflict banner\n",
@@ -304,6 +408,7 @@ export function createDemoClient(seed?: {
   projectId?: string;
   board?: BoardConfig;
   items?: Item[];
+  groups?: Group[];
   activity?: ActivityEntry[];
 }): ProjectClient {
   const projectId = seed?.projectId ?? "C:/work/kanmer-demo";
@@ -315,7 +420,9 @@ export function createDemoClient(seed?: {
   const log = (e: Omit<ActivityEntry, "ts" | "actor"> & Partial<ActivityEntry>) =>
     activity.push({ ts: new Date().toISOString(), actor: "you", ...e });
   const find = (id: string) => items.find((i) => i.id === id);
-  const lastStage = () => board.statuses[board.statuses.length - 1]?.id;
+  const groups: Group[] = structuredClone(seed?.groups ?? demoGroups);
+  const groupDocs: Record<string, Record<string, string>> = {};
+  const references: Record<string, { name: string; path: string }[]> = {};
 
   const client: ProjectClient = {
     projectId,
@@ -344,9 +451,10 @@ export function createDemoClient(seed?: {
         id: nextId(items, input.area, board),
         type: input.type,
         title: input.title,
-        status: input.status ?? board.statuses[0]?.id ?? "",
+        status: input.status ?? FIRST_STAGE,
         area: input.area ?? "",
-        priority: input.priority ?? "medium",
+        profile: input.profile ?? board.defaultProfile ?? DEFAULT_PROFILE_ID,
+        groups: input.groups,
         assignee: input.assignee ?? "",
         labels: input.labels ?? [],
         links: input.links ?? [],
@@ -411,7 +519,7 @@ export function createDemoClient(seed?: {
       it.branch = input.branch;
       it.worktree = input.worktree;
       if (input.assignee) it.assignee = input.assignee;
-      const stage = input.stage ?? board.statuses.find((s) => s.id === "implementing")?.id;
+      const stage = input.stage ?? "implementing";
       if (stage) it.status = stage;
       log({ id, op: "take", to: input.branch });
       return structuredClone(it);
@@ -426,8 +534,10 @@ export function createDemoClient(seed?: {
       return structuredClone(it);
     },
     addColumn: async (kind, column) => {
-      const key = kind === "status" ? "statuses" : kind === "area" ? "areas" : "priorities";
-      board = { ...board, [key]: [...board[key], column] };
+      // Areas are the only configurable column in format 3 — `kind` has one
+      // legal value, so there is nothing left to branch on.
+      void kind;
+      board = { ...board, areas: [...board.areas, column] };
       return structuredClone(board);
     },
     linkItems: async (source, target, action) => {
@@ -460,18 +570,38 @@ export function createDemoClient(seed?: {
       startedAt: Date.now(),
       tail: ["(demo) agent started"],
     }),
+    // Three nested reports since format 3 (v1→v2, the stage backfill, v2→v3).
+    // The demo board is already current, so every step reports nothing to do.
     migrate: async (dryRun) => ({
-      alreadyV2: true,
-      dryRun,
-      ticketMoves: [],
-      foldedDocs: [],
-      convertedToTickets: [],
-      areaPrefixes: Object.fromEntries(board.areas.map((a) => [a.id, a.prefix ?? a.id.toUpperCase()])),
-      notes: ["Board is already format 2 — nothing to do."],
-      blockers: [],
+      v2: {
+        alreadyV2: true,
+        dryRun,
+        ticketMoves: [],
+        foldedDocs: [],
+        convertedToTickets: [],
+        areaPrefixes: Object.fromEntries(
+          board.areas.map((a) => [a.id, a.prefix ?? a.id.toUpperCase()]),
+        ),
+        notes: [],
+        blockers: [],
+      },
+      backfill: { addedStages: [] },
+      v3: {
+        alreadyV3: true,
+        dryRun,
+        resumed: false,
+        sweptTempFiles: 0,
+        stageMapping: [],
+        needsRestage: [],
+        docMoves: [],
+        prioritiesStripped: 0,
+        profileAssignments: [],
+        blockers: [],
+        notes: ["Demo board is already format 3 — nothing to do."],
+      },
     }),
     backfillBoard: async () => ({ addedStages: [] }),
-    getFormat: async () => 2,
+    getFormat: async () => 3,
     getDoc: async (id, doc) => {
       const c = docs[id]?.[doc] ?? null;
       return { content: c, version: c === null ? null : versionOf(c) };
@@ -501,33 +631,113 @@ export function createDemoClient(seed?: {
             total: (progress.match(/^\s*[-*]\s+\[( |x|X)\]/gm) ?? []).length,
           }
         : null;
-      return { docs: present, checklist };
+      // `counts` is documents *per type folder* — a type can hold several files
+      // in format 3. Derived from the demo's own doc map so the numbers are real
+      // rather than a plausible-looking stub.
+      const counts = Object.fromEntries(
+        Object.keys(present).map((t) => [t, t in have ? 1 : 0]),
+      );
+      return { docs: present, checklist, counts, references: [] };
     },
     getDocTypes: async () => structuredClone(DEMO_DOC_TYPES),
     getDocModel: async () => ({
       repoDocs: { prd: "docs/prd/**", frd: "docs/frd/**", adr: "docs/adr/**" },
-      defaultTypes: structuredClone(DEMO_DOC_TYPES),
-      defaultGates: [
-        { needs: "plan", before: { leave: "planning" } },
-        { needs: "proof", before: { enter: lastStage() ?? "done" } },
-      ],
+      docTypes: [...DOC_TYPES],
+      gateExemptFolders: [...GATE_EXEMPT_DIRS],
+      boundaries: [...BOUNDARIES],
+      profiles: structuredClone(DEFAULT_PROFILES),
+      defaultProfile: DEFAULT_PROFILE_ID,
+      proofTypes: [...DEFAULT_PROOF_TYPES],
     }),
     openRepoDoc: async () => {},
     getRepoDoc: async (rel) => `# ${rel}\n\n(Demo) governing document text.\n`,
     pickRepoDoc: async () => null,
+    /**
+     * The demo evaluates no gates: every stage is reachable.
+     *
+     * Deliberate. Which requirements a boundary carries depends on the ticket's
+     * **profile**, and the real answer comes from the gate engine — so a fake
+     * that reimplemented it would be a second engine to keep in step, and one
+     * that guessed would teach a design-system consumer the wrong rules. The
+     * previous version did guess: it hardcoded "plan.md required before leaving
+     * Planning" against a stage format 3 does not have, and indexed
+     * `board.statuses.slice(3)` into a list that no longer exists.
+     */
     getGateStatus: async (id) => {
-      const it = find(id);
-      const out: Record<string, string[]> = {};
-      for (const s of board.statuses) out[s.id] = [];
-      if (it && !(docs[id]?.plan) && it.status === "planning") {
-        for (const s of board.statuses.slice(3)) out[s.id] = ["plan.md required before leaving Planning"];
-      }
-      if (it && !(docs[id]?.proof)) {
-        const last = lastStage();
-        if (last && it.status !== last) out[last] = [...(out[last] ?? []), "proof.md required before Done"];
-      }
-      return out;
+      void id;
+      return Object.fromEntries(STAGE_IDS.map((s) => [s, [] as string[]]));
     },
+    /**
+     * The demo evaluates no gates, for the reason given on `getGateStatus`.
+     * `null` is the interface's own "no report available" value, so callers
+     * already handle it — better than a fabricated report claiming requirements
+     * that were never checked.
+     */
+    getGates: async (id) => {
+      void id;
+      return null;
+    },
+    /** No provider CLIs outside Electron, so nothing to dispatch to. */
+    dispatchOptions: async (ticketId) => {
+      void ticketId;
+      return [];
+    },
+
+    // Groups. Membership lives on the ticket and is derived on read, so these
+    // never store a member list of their own.
+    listGroups: async (opts) =>
+      groups
+        .filter((g) => (opts?.includeArchived ? true : !g.archived))
+        .filter((g) => (opts?.kind ? g.kind === opts.kind : true))
+        .map((g) => structuredClone(g)),
+    getGroup: async (id) => {
+      const g = groups.find((x) => x.id === id);
+      return g ? deriveDemoMembers(structuredClone(g), items) : null;
+    },
+    createGroup: async (kind, title, body) => {
+      const now = new Date().toISOString();
+      const prefix = kind === "epic" ? "EPIC" : "HZN";
+      const n = groups.filter((g) => g.id.startsWith(prefix)).length + 1;
+      const group: Group = {
+        id: `${prefix}-${String(n).padStart(3, "0")}`,
+        kind,
+        title,
+        archived: false,
+        created: now,
+        updated: now,
+        body: body ?? "",
+      };
+      groups.push(group);
+      return structuredClone(group);
+    },
+    updateGroup: async (id, patch) => {
+      const g = groups.find((x) => x.id === id);
+      if (!g) throw new Error(`No group ${id}`);
+      if (patch.title !== undefined) g.title = patch.title;
+      if (patch.body !== undefined) g.body = patch.body;
+      if (patch.archived !== undefined) g.archived = patch.archived;
+      g.updated = new Date().toISOString();
+      return structuredClone(g);
+    },
+    getGroupDoc: async (id, path) => groupDocs[id]?.[path] ?? null,
+    setGroupDoc: async (id, path, content) => {
+      (groupDocs[id] ??= {})[path] = content;
+      return { file: `groups/${id}/${path}` };
+    },
+
+    // References are user-picked files on disk (FRD-004 R3). There is no disk
+    // and no file picker here, so the demo keeps names only and opens nothing.
+    pickReferences: async () => [],
+    addReference: async (id, sourcePath) => {
+      const name = sourcePath.split(/[\\/]/).pop() || sourcePath;
+      (references[id] ??= []).push({ name, path: sourcePath });
+      return { name };
+    },
+    openReference: async () => {},
+    removeReference: async (id, name) => {
+      references[id] = (references[id] ?? []).filter((r) => r.name !== name);
+    },
+
     getActivity: async (opts) => {
       let list = activity.slice();
       if (opts?.id) list = list.filter((e) => e.id === opts.id);

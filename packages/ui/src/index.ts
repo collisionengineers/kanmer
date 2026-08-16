@@ -74,6 +74,7 @@ export {
   createDemoClient,
   demoBoard,
   demoItems,
+  demoGroups,
   demoActivity,
 } from "./demo.js";
 export type { KanmerProviderProps } from "./demo.js";

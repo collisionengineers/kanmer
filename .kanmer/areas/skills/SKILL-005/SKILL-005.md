@@ -2,7 +2,7 @@
 id: SKILL-005
 type: ticket
 title: 6.5 AGENTS block rewrite
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: feature
@@ -14,7 +14,7 @@ refs:
   - docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md
 archived: false
 created: '2026-08-16T00:31:38.813Z'
-updated: '2026-08-16T02:24:35.767Z'
+updated: '2026-08-16T05:10:25.989Z'
 ---
 
 Orientation essentials only: profiles exist; call `get_doc_gates` before any move; read the whole ticket folder and group context; six stages; where the docs live.

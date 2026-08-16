@@ -32,7 +32,7 @@ prs:
   - '#30'
 archived: false
 created: '2026-08-16T16:11:20.804Z'
-updated: '2026-08-16T17:38:28.952Z'
+updated: '2026-08-16T17:46:31.535Z'
 ---
 
 ## What
@@ -106,11 +106,32 @@ which is the case for demonstrating against real data rather than fixtures:
    never declared, or `spike`'s Backlog → Done jump would have gone from one
    gated boundary to three and been refused.
 
-**Shipped narrower than the title suggests.** `fix` and `chore` declare no
-`enter-review` boundary, so for those profiles a question raised during
-implementation is caught at `enter-done` rather than at review. Deliberate —
-adding the boundary would break `spike` — but it is a narrower guarantee than
-"all three boundaries, every profile".
+**Coverage, corrected.** An earlier version of this Outcome said the work
+"shipped narrower than the title suggests" because `fix` and `chore` declare no
+`enter-review` boundary. That was misleading and the operator challenged it.
+Measured across all four profiles with an unticked question and every other
+document present:
+
+```
+fix      implementing -> review   ALLOWED
+fix      review       -> done     REFUSED: entering Done requires questions-resolved
+chore    implementing -> review   ALLOWED
+chore    review       -> done     REFUSED: entering Done requires questions-resolved
+feature  implementing -> review   REFUSED: entering Review requires questions-resolved
+spike    implementing -> review   ALLOWED
+spike    review       -> done     REFUSED: entering Done requires questions-resolved
+```
+
+`enter-done` carries the requirement on **every** profile, so **no ticket reaches
+Done with an open question** — the headline guarantee holds without exception.
+The only difference is *when* the stop lands: `fix`, `chore` and `spike` may sit
+in Review with a question open; `feature` cannot enter Review at all.
+
+The residue is real but narrow, and belongs at review rather than at Done:
+Review owns the merge point, so on those three profiles a **PR can merge** while
+a question is unanswered. The ticket still cannot close, but the code ships
+first. Only the `kanmer-review` prose convention covers that window, and prose is
+unenforceable — that is the honest statement of the exposure.
 
 **Follow-up not filed as a ticket:** ADR-0011 should gain the two limits above.
 The merged ADR was left stable rather than amended mid-flight; it is a

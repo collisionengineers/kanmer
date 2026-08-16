@@ -102,10 +102,31 @@ argument for demonstrating against real data at all.
   well as the skill is followed, and nothing will report when it is not.
 - **ADR-0011 does not yet record the two limits above.** They belong in it; the
   merged ADR was left stable rather than amended mid-flight.
-- **`fix` and `chore` have no `enter-review` boundary**, so for those profiles a
-  question raised during implementation is caught at `enter-done` rather than at
-  review. Deliberate — adding the boundary would break `spike` — but it is a
-  narrower guarantee than "all three boundaries, every profile" suggests.
+- **The one real gap is at *review*, not at Done.** An earlier draft of this
+  document called the `fix`/`chore` coverage "a narrower guarantee"; that was
+  wrong, and the operator caught it. Measured on all four profiles, with an
+  unticked question and every other document present:
+
+  ```
+  fix      implementing -> review   ALLOWED
+  fix      review       -> done     REFUSED: entering Done requires questions-resolved
+  chore    implementing -> review   ALLOWED
+  chore    review       -> done     REFUSED: entering Done requires questions-resolved
+  feature  implementing -> review   REFUSED: entering Review requires questions-resolved
+  spike    implementing -> review   ALLOWED
+  spike    review       -> done     REFUSED: entering Done requires questions-resolved
+  ```
+
+  `enter-done` carries the requirement on **every** profile, so **nothing reaches
+  Done with an open question** — the headline guarantee holds without exception.
+  What differs is only *when* the stop lands: `fix`, `chore` and `spike` may sit
+  **in Review** with a question open, where `feature` cannot enter Review at all.
+
+  That residue is genuine but small, and worth naming precisely: Review owns the
+  merge point, so on those three profiles a **PR can be merged** while a question
+  is unanswered. The ticket still cannot close — but the code ships first. Only
+  the `kanmer-review` prose convention covers that window, and prose is
+  unenforceable, which is the honest description of the exposure.
 
 ---
 

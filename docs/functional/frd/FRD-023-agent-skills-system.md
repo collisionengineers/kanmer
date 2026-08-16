@@ -42,23 +42,43 @@ Related: ADR-0009 · D36–D45 · FRD-005/009/010/012/013/014.
 
 ## Verified against code — Phase 0.2
 
-- The roster today is **13** skills under `plugins/kanmer/skills/` — the twelve in the table above
-  plus `kanmer-import`, whose removal (FRD-013) is what makes the end state twelve. The table's
-  twelve names all exist as directories.
-- R1 is **not yet true**, which is the work Phase 6 does. Gate rules are currently restated in
-  skill prose — `kanmer-auto/SKILL.md` carries them, and `kanmer-plan/SKILL.md` refuses to plan on
-  missing research from its own text rather than from `get_doc_gates`. Nine of the thirteen
-  already call `get_doc_gates` (auto, execute, groom, plan, report, research, review, setup,
-  verify), so the mechanism is in place; the prose deletion is not.
+> **Re-verified 2026-08-17 (SKILL-013).** The two statements below that said R1
+> and its acceptance grep were unmet are **no longer true**; they are kept, struck
+> through, with what replaced them. This section is dated evidence, so correcting
+> it in place without saying what changed would destroy the record it exists to be.
+
+- ~~The roster today is **13** skills~~ — it is **12**, measured by `ls`:
+  `kanmer-import` is gone (FRD-013), and `scripts/verify-skill-prose.mjs` check 6
+  asserts the count rather than leaving it to be re-counted by hand.
+- ~~R1 is **not yet true**~~ — **R1 holds as of SKILL-013/SKILL-014**, and is now
+  mechanized rather than asserted: `verify-skill-prose.mjs` check 7 reports zero
+  profile-to-document mappings across the tree, and it is on the release rail.
+  Two things were learned in making that true, both worth keeping:
+  - **What R1 forbids needed stating as a rule, not a grep.** *A rule may be
+    stated in prose iff its truth-value is independent of board configuration.*
+    Structural invariants are legitimate; per-profile requirement lists are not.
+    SKILL-014's first check approximated this by looking only at lines naming a
+    boundary, which made the worst offender in the tree — the AGENTS block's own
+    per-profile table — invisible to it.
+  - **R1 has a second half a deletion check cannot see.** An invariant that *no
+    tool reports* has prose as its only possible home, so its absence is a defect
+    too. Check 8 asserts those are present where they can be acted on; before
+    SKILL-013 "the board worktree is not yours" appeared in 1 of 12 skills and in
+    none of the four that run git.
 - R2 — `kanmer-auto/SKILL.md` partitions by file overlap into conflict-free waves today; the
   **profile**-aware partitioning is a v3 addition (profiles do not exist yet).
 - R4 — the cross-skill dependency is real and load-bearing: every skill points at
   `kanmer-tickets/references/tool-reference.md`, valid only because Connect installs the roster as
   sibling directories. Install specs live in `apps/gui/src/main/providers.ts:163-248`.
-- R5 — the rail is mechanized in `scripts/release.mjs:149-160`, which runs build, `plugin:check`,
-  tests, both smokes, `verify:agents-block` and the GUI typecheck in that order. Note
-  `scripts/agents-block.mjs` holds `BLOCK_BODY` as a literal that is duplicated by hand into
-  `kanmer-setup/SKILL.md`, and `scripts/verify-agents-block.mjs:146-154` asserts the two stay
-  byte-identical — so any AGENTS-block rewrite must change both.
-- Acceptance — the "zero hardcoded gate rules" grep **fails today** and is the Phase 6 exit
-  criterion, not a current property.
+- R5 — the rail is mechanized in `scripts/release.mjs`, which runs build, `plugin:check`,
+  tests, both smokes, `verify:agents-block`, `verify:skills` and the typecheck across every
+  workspace, in that order. The AGENTS block body is defined **once**, in
+  `scripts/agents-block-body.mjs`; `scripts/agents-block.mjs` and the GUI's
+  `apps/gui/src/main/agentsBlock.ts` both import it. Only the fenced copy in
+  `kanmer-setup/SKILL.md` is still kept in step by hand — it is prose and cannot import —
+  and `verify-agents-block.mjs` asserts the fenced region equals the canonical body exactly.
+  (It was three independent copies until SKILL-013, and the GUI's had drifted to a v2 body
+  that Connect wrote into real repositories.)
+- ~~Acceptance — the "zero hardcoded gate rules" grep **fails today**~~ — it **passes**, and
+  is a rail step rather than a grep run by hand. Validated against the pre-change tree
+  before being trusted: 8 violations there, 0 after.

@@ -47,4 +47,40 @@ A ticked box is the whole mechanism. Nothing records **who** answered: Kanmer is
 - **One requested stop cannot be delivered.** Refusing to apply *review fixes* while questions are open is not a stage transition — review fixes happen inside the review stage with no `move_item` — so it stays prose in `kanmer-review`, labelled as a convention rather than enforcement. Promising otherwise would be the "gate that claims more than it delivers" CORE-021 warned about.
 - **Dispatch needs no exception.** FRD-009 R3 tells a headless run to record the question and "stop at the deliverable — never guess *forward* across a decision boundary". Under this gate it writes its questions, cannot tick them, and stops. The boundary becomes literal instead of honour-system. What remains is a reporting obligation: kanmer-auto must report a lane that stopped on a question as such, not as a generic failure.
 
-Related: ADR-0003 (requirement profiles) · ADR-0009 (skills are not the contract) · FRD-002 · FRD-009 · FRD-023 · CORE-011 · SKILL-012.
+## Two limits on the injection
+
+Added by amendment (SKILL-013). Both were **found by implementing this ADR**, not
+by reasoning about it, and both lived only in a doc comment on `resolveProfiles`
+in `packages/core/src/board.ts` — the wrong home for a rule that constrains future
+work, and the reason a closed ticket was the only other place they were written
+down. Neither contradicts anything above; they are limits this ADR should have
+stated.
+
+1. **Never gate `leave-backlog`.** Questions are raised *during* research, which
+   happens after Backlog. Gating entry to the stage where questions get worked
+   would trap the ticket outside it, unable to reach the place where it could be
+   fixed. The first implementation did exactly this and was wrong.
+
+2. **Only boundaries the profile already declares.** Adding a *new* gated boundary
+   changes which multi-stage moves are legal, because `collapsesPipeline` counts
+   gated boundaries. Giving `spike` a gated `leave-preparing` and `enter-review`
+   would turn its Backlog → Done jump from one gated boundary into three and
+   refuse it — breaking the acceptance case FRD-002 exists to protect. So a
+   `spike` gains the requirement at `enter-done` and nowhere else, and `chore`'s
+   one-jump to Implementing survives untouched.
+
+   The cost of limit 2 is a narrow gap, stated because it is real: a profile that
+   declares no `enter-review` catches a question raised during implementation at
+   `enter-done` rather than at review.
+
+**ADR-0013 crosses limit 2, once, deliberately.** It gives `fix` a gated
+`enter-review` it did not declare — and thereby closes the gap above for `fix`,
+leaving it open for `chore`. That is not a repeal. Limit 2 exists so that adding
+a gated boundary is a decision with an ADR and a measured before/after table
+behind it rather than a side effect; ADR-0013 is what satisfying it looks like.
+The two injections are kept as **separate functions with separate rules** in
+`board.ts` for the same reason: a single generalised "inject a requirement"
+helper would erase the difference between a pass that may not change the boundary
+count and one that exists to.
+
+Related: ADR-0003 (requirement profiles) · ADR-0009 (skills are not the contract) · ADR-0013 (`fix` gains a gated `enter-review`) · FRD-002 · FRD-009 · FRD-023 · CORE-011 · SKILL-012 · SKILL-013.

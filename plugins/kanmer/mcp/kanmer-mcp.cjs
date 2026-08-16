@@ -38209,6 +38209,7 @@ var DEFAULT_PROFILES = Object.freeze({
   },
   fix: {
     "leave-preparing": ["files", "plan", QUESTIONS_RESOLVED],
+    "enter-review": ["post-implementation-report", QUESTIONS_RESOLVED],
     "enter-done": ["proof", QUESTIONS_RESOLVED]
   },
   chore: {
@@ -38276,9 +38277,23 @@ function defaultBoardConfig() {
     proofTypes: [...DEFAULT_PROOF_TYPES]
   };
 }
+var FIX_REVIEW_PROFILE = "fix";
+var FIX_REVIEW_BOUNDARY = "enter-review";
+var FIX_REVIEW_REQUIREMENTS = ["post-implementation-report"];
+function injectFixEnterReview(base) {
+  const profile = base[FIX_REVIEW_PROFILE];
+  if (!profile) return base;
+  if (FIX_REVIEW_BOUNDARY in profile) return base;
+  return {
+    ...base,
+    [FIX_REVIEW_PROFILE]: { ...profile, [FIX_REVIEW_BOUNDARY]: [...FIX_REVIEW_REQUIREMENTS] }
+  };
+}
 var QUESTIONS_BOUNDARIES = ["leave-preparing", "enter-review", "enter-done"];
 function resolveProfiles(board) {
-  const base = board.profiles ?? DEFAULT_PROFILES;
+  const base = injectFixEnterReview(
+    board.profiles ?? DEFAULT_PROFILES
+  );
   const out = {};
   for (const [id, profile] of Object.entries(base)) {
     const next = {};

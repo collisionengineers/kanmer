@@ -8,6 +8,30 @@ there) and uses it as the GitHub release body.
 
 ## 0.3.3 (unreleased — notes accumulating)
 
+### A `fix` now goes through Review
+
+A `fix` used to be able to go straight from Implementing to Done in one move,
+skipping Review and Verifying entirely — as could `chore` and `spike`. That was
+never a decision; it fell out of how the anti-collapse rule counts gated
+boundaries, and `fix` is the **default** profile, so it is what most tickets
+quietly got.
+
+A fix big enough to open a PR is big enough to be looked at. `fix` now asks for
+a **post-implementation report** on the way into Review, exactly as `feature`
+does. `chore` and `spike` are unchanged and still reach Done in one jump — a
+rename does not need a review, and a spike's research *is* the deliverable.
+
+**If you are upgrading a board with a `fix` in flight, read this.** The rule
+applies to existing boards, not only new ones. A `fix` sitting in Implementing
+cannot move to Review or beyond until it has a post-implementation report. The
+fix is to write one — one document, and the refusal names it. If its PR has
+already merged, it still needs the report before Done: the report is the record
+of what shipped, and a merged change with no such record is the thing this
+change exists to prevent.
+
+A `fix` walked one stage at a time is otherwise unaffected — every single-stage
+move it could make before, it can still make.
+
 ### Open questions now block a ticket, instead of being advice
 
 A ticket's `open-questions` document has always said its questions "block the

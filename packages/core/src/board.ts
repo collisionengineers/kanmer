@@ -114,8 +114,10 @@ function injectFixEnterReview(
  * effective requirement. `resolveProfiles` is already the seam where board
  * config meets shipped defaults, which is why it belongs here and not deeper.
  *
- * Two limits on the `questions-resolved` pass, both load-bearing, and both now
- * stated in **ADR-0011** rather than only here:
+ * Two limits on the `questions-resolved` pass, both load-bearing. **They are
+ * stated in ADR-0011 — read it there.** They are repeated here only because this
+ * is the function they constrain; the ADR is the authority, and it used to be
+ * this comment, which is the wrong home for a rule that binds future work.
  *
  * **Never `leave-backlog`.** Questions are raised *during* research, which
  * happens after Backlog — gating entry to the stage where questions get worked

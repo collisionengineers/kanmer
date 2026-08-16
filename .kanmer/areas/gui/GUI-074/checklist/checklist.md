@@ -14,3 +14,14 @@
 ## Progress notes
 
 (append with `set_ticket_doc(doc: "checklist", append: true)`)
+
+## Closeout — GUI-074
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/gui-074`
+- [ ] `git branch -d gui-074-remove-manual-link` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

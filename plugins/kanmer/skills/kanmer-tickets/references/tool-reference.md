@@ -121,13 +121,18 @@ type is a **folder inside it** — so one type can hold several files:
                                    open-questions/open-questions.md
                                    plan/plan.md
                                    checklist/checklist.md
-                                   post-implementation-report/…
+                                   post-implementation-report/post-implementation-report.md
                                    proof/proof.md
-                                   scratch-notes.md        ← never gated
+                                   scratch/<slug>.md       ← never gated
                                    reference/ assets/      ← never gated
 
 Read the **whole folder** before starting: a document type with three files in it
 looks identical from `get_item`, which reports only that the type exists.
+
+Scratch is a folder like the rest, but its files are addressed by **slug**:
+`append_scratch <id> review "…"` writes `scratch/review.md`, and you read it back
+as `get_ticket_doc(doc: "scratch-review")`. The doc id and the path differ — that
+is the one place in the layout where they do.
 
 | Type | Where it lives | Id prefix | Use for |
 |---|---|---|---|

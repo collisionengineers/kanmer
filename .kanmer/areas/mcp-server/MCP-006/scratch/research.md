@@ -1,0 +1,1 @@
+Read-only sweep done: index.ts group block 402-483, store.ts 1249-1317, groups.ts whole, update_item 620-672 / store.updateItem 623-700 / conflictError 762-769, GUI ipc+preload+client+GroupView, FRD-001/022/023, tool-reference.md, smoke.mjs, smoke-protocol.mjs, check-plugin-sync.mjs, build-manual.mjs. 29 tools registered today.

@@ -25,7 +25,8 @@
     "plugin:check": "node scripts/check-plugin-sync.mjs",
     "inspect": "npm run build && npx @modelcontextprotocol/inspector node packages/mcp-server/dist/index.js --root ./sandbox",
     "build:manual": "node scripts/build-manual.mjs",
-    "check:manual": "node scripts/build-manual.mjs --check"
+    "check:manual": "node scripts/build-manual.mjs --check",
+    "release:notes": "node scripts/release-notes.mjs"
   },
   "engines": {
     "node": ">=20"

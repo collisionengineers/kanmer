@@ -26,6 +26,46 @@ For end-user install/usage, see [README.md](README.md). This file is about *buil
 
 ---
 
+## 0. The operating rule
+
+**Kanmer's own work goes through Kanmer.** Not as a demonstration — as the way
+this repository is worked. Four rules, in order:
+
+1. **The ticket comes before the branch.** File it, give it a `profile` that
+   matches the size of the work, and let `get_doc_gates` tell you what that
+   profile asks for. Work that appears as a branch with no ticket has no record
+   of why it happened.
+2. **One worktree and one branch per ticket**, recorded by `take_ticket` —
+   worktree `.worktrees/<id>`, branch `<id>-<slug>`. The board shows what is
+   live and where.
+3. **The PR names the ticket id**, and the ticket records the PR. Either half
+   alone leaves a trail that stops.
+4. **The gates are not optional here.** A move crosses **one** gated boundary at
+   a time, and every intervening boundary's documents must already exist. If
+   that feels slow for a two-line fix, the profile is wrong — change the
+   profile, not the process.
+
+### What this repo's board actually shows
+
+Stated plainly, because a rule contradicted by its own evidence gets ignored.
+
+- **60 tickets are backfilled history**, created directly in Done with `custom`
+  and an empty requirements map. They record work finished before the board
+  existed and were never worked through it.
+- **26 tickets from 15–16 August 2026 were closed by one `backlog → done`
+  move** with every document written first. That was legal until CORE-011 and
+  it is exactly the shortcut the rule above exists to prevent. Their documents
+  describe what was built accurately; they are **not** evidence that the
+  pipeline was followed.
+- **Tickets closed after CORE-011 carry per-stage timestamps** in
+  `stageEntered`, a PR reference, and proof written after the merge. Those are
+  the ones to imitate.
+
+`stageEntered` only began recording when CORE-011 landed, so an older ticket
+with no stage history is missing data rather than failing the rule.
+
+---
+
 ## 1. What Kanmer is (the one idea)
 
 A Kanban / ticket / plan / research manager where **AI agents and a human drive one shared dataset**.

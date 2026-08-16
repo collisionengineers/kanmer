@@ -45,4 +45,4 @@
 - [x] proof.md final, records merge commit and PR
 - [x] commits/prs recorded on the ticket
 - [x] Outcome recorded in the ticket body
-- [ ] worktree removed, branch deleted, ticket released
+- [x] Worktree removed (`.worktrees/gui-083`), local + remote branch deleted, `git worktree prune` run, ticket released

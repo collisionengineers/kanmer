@@ -115,3 +115,21 @@ guard mechanical.
 | `npm run check:manual` | `manual: up to date (12 chapters)` |
 | `node packages/mcp-server/src/smoke.mjs` | 120/120 |
 | `npm run smoke:discovery` | 13/13 |
+
+---
+
+## Closeout — MCP-010
+
+- [x] PR merge verified — #40 `MERGED` at 2026-08-16T22:23:58Z, squash merge
+      `741ef81`
+- [x] proof.md finalised (written on merged `main` at `741ef81`; PR URL and
+      merge commit recorded in it)
+- [x] Moved to Done
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/mcp-010` from the main
+      checkout — plus the temporary verification checkout of `741ef81` used to
+      certify the bundle bytes independently
+- [x] `git branch -D mcp-010-resolve-board-root` (`-D`: squash-merged, so the
+      branch commits are not ancestors of main — merge state was verified first)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

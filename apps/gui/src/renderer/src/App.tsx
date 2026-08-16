@@ -31,6 +31,7 @@ import type {
   UpdateStatusEvent,
 } from "../../shared/ipc.js";
 import { Board } from "./components/Board.js";
+import { Manual } from "./components/Manual.js";
 import { BacklogTable } from "./components/BacklogTable.js";
 import { TabStrip, type Tab } from "./components/TabStrip.js";
 import { ArchivedList } from "./components/ArchivedList.js";
@@ -140,6 +141,8 @@ export function App(): JSX.Element {
   const [migrating, setMigrating] = useState(false);
   /** An open group detail view, or null. Opened from a group chip or filter. */
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+  /** The manual, and the chapter a `?` deep-linked to. */
+  const [manual, setManual] = useState<{ chapter?: string } | null>(null);
 
   // Auto-update. `updateDismissed` is per-session only (no "skip this version"
   // persistence): "Later" costs nothing, since the update installs on the next
@@ -535,6 +538,7 @@ export function App(): JSX.Element {
   useEffect(() => {
     return window.kanmer.onMenu((cmd) => {
       if (cmd.type === "pick-project") requestOpen({ kind: "pick" });
+      else if (cmd.type === "manual") setManual({ chapter: cmd.chapter });
       else requestOpen({ kind: "path", path: cmd.path });
     });
   }, [requestOpen]);
@@ -860,7 +864,8 @@ export function App(): JSX.Element {
       const inField = /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName);
       const ctrl = e.ctrlKey || e.metaKey;
       if (e.key === "Escape") {
-        if (paletteOpen) setPaletteOpen(false);
+        if (manual) setManual(null);
+        else if (paletteOpen) setPaletteOpen(false);
         else if (activityOpen) setActivityOpen(false);
         else if (dispatchesOpen) setDispatchesOpen(false);
         else if (settingsOpen) setSettingsOpen(false);
@@ -889,6 +894,11 @@ export function App(): JSX.Element {
         setSettingsOpen(true);
         return;
       }
+      if (e.key === "F1") {
+        e.preventDefault();
+        setManual((m) => (m ? null : {}));
+        return;
+      }
       if (inField && !ctrl) return;
       if (ctrl && e.key.toLowerCase() === "n") {
         e.preventDefault();
@@ -897,10 +907,17 @@ export function App(): JSX.Element {
       } else if ((ctrl && e.key.toLowerCase() === "f") || (!inField && e.key === "/")) {
         e.preventDefault();
         searchRef.current?.focus();
-      } else if (ctrl && e.key >= "1" && e.key <= "3") {
-        e.preventDefault();
-        const views: View[] = ["ticket", "standup", "archived"];
-        setView(views[Number(e.key) - 1]);
+      } else if (ctrl && e.key >= "1" && e.key <= "9") {
+        // Derived from the view list, not a parallel array. The old
+        // ["ticket","standup","archived"] went stale the moment the Backlog
+        // view was added — Ctrl+2 opened Standup while the second tab was
+        // Backlog. Deriving removes the class of bug, not just this instance.
+        const views = Object.keys(VIEW_LABELS) as View[];
+        const target = views[Number(e.key) - 1];
+        if (target) {
+          e.preventDefault();
+          setView(target);
+        }
       }
     };
     window.addEventListener("keydown", handler);
@@ -1586,6 +1603,10 @@ export function App(): JSX.Element {
         </div>
       )}
 
+      {manual && (
+        <Manual initialChapter={manual.chapter} onClose={() => setManual(null)} />
+      )}
+
       {paletteOpen && (
         <CommandPalette
           items={items}
@@ -1611,6 +1632,10 @@ export function App(): JSX.Element {
             defaultArea: settings?.defaultArea ?? "",
           }}
           onSaveBoard={saveBoard}
+          onOpenManual={(chapter) => {
+            setSettingsOpen(false);
+            setManual({ chapter });
+          }}
           onSetTheme={setTheme}
           onSetNotifications={setNotifications}
           onSetPreferences={setPreferences}

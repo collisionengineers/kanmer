@@ -319,6 +319,12 @@ function buildMenu(): void {
         // buildMenu() re-runs on every openProject (the recents submenu), so
         // this item has to stay cheap and stateless. It is.
         {
+          label: "Manual",
+          accelerator: "F1",
+          click: () => mainWindow?.webContents.send(CH.menu, { type: "manual" }),
+        },
+        { type: "separator" },
+        {
           label: "Check for Updates…",
           enabled: isUpdaterEnabled(),
           click: () => checkForUpdatesNow("manual"),

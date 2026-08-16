@@ -32,10 +32,27 @@ ds-bundle/
 .design-sync/learnings/
 .design-sync/node_modules
 
-# Machine-local agent config. `.mcp.json` hardcodes absolute paths to this
-# machine's Kanmer install and board worktree; `.claude/skills/` is a local
-# copy of the plugin skills (the canonical ones are plugins/kanmer/skills/).
-# Both are untracked deliberately — and `scripts/release.mjs` counts untracked
-# files as a dirty tree, so leaving them here blocks every release.
+# Machine-local agent config, written by Connect (apps/gui/src/main/providers.ts).
+# `.mcp.json` (Claude Code's own project-scope file, written by `claude mcp add
+# -s project`), `.codex/config.toml` (codex), `.grok/config.toml` (grok) and
+# `opencode.json` (opencode) each hardcode absolute paths to this machine's
+# Kanmer install and board worktree via the shared Invocation shape —
+# committing one would be as inert to anyone else as a checked-in `.mcp.json`
+# pointing at someone else's machine. `.claude/skills/`, `.agents/skills/` and
+# `.grok/skills/` are local copies of the plugin skills for their respective
+# hosts (the canonical ones are plugins/kanmer/skills/); `.agents/mcp_config.json`
+# is Antigravity's registration file, the same kind of machine-local artifact.
+# Note `.agents/plugins/marketplace.json` is NOT here — it's a real repo file,
+# not a Connect-written artifact, so `.agents/` itself is never blanket-ignored.
+# All of the below are untracked deliberately — and `scripts/release.mjs`
+# counts untracked files as a dirty tree, so leaving them here blocks every
+# release. Every `copySkills` destination in providers.ts is checked against
+# this file by a test in apps/gui/src/main/providers.test.ts.
 .mcp.json
+.codex/config.toml
+.grok/config.toml
+opencode.json
 .claude/skills/
+.agents/skills/
+.agents/mcp_config.json
+.grok/skills/

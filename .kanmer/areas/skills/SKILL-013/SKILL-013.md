@@ -2,10 +2,12 @@
 id: SKILL-013
 type: ticket
 title: Carry the hard rules into AGENTS.md and skill prose on reconciliation
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: feature
+stageEntered:
+  preparing: '2026-08-16T21:50:56.796Z'
 labels: []
 groups:
   - HZN-003
@@ -18,7 +20,7 @@ refs:
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 archived: false
 created: '2026-08-16T18:25:18.638Z'
-updated: '2026-08-16T18:51:50.768Z'
+updated: '2026-08-16T21:50:56.796Z'
 ---
 
 ## What

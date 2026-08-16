@@ -2,10 +2,12 @@
 id: SKILL-003
 type: ticket
 title: 6.3 kanmer-docs decision table
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: feature
+stageEntered:
+  preparing: '2026-08-16T05:27:15.097Z'
 labels:
   - v3-phase-6
 links: []
@@ -13,7 +15,7 @@ refs:
   - docs/functional/frd/FRD-014-doc-type-guidance.md
 archived: false
 created: '2026-08-16T00:31:38.792Z'
-updated: '2026-08-16T02:24:35.755Z'
+updated: '2026-08-16T05:27:15.097Z'
 ---
 
 Add the PRD/FRD/ADR decision table and the granularity test to the kanmer-docs skill; retain doc-structure mirror regeneration.

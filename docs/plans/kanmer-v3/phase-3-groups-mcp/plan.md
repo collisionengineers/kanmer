@@ -6,14 +6,14 @@
 
 ## Items
 
-### 3.1 Group entity — M (FRD-001 G1–G4)
+### 3.1 Group entity — M (FRD-001 G1–G4) · [[CORE-008]]
 - **Where:** `types.ts` (board `groupKinds` with prefixes — defaults epic/EPIC, horizon/HZN; item `groups: []`), `paths.ts` (`groups/<ID>/`), `ids.ts` (per-kind prefixes via existing machinery), `store.ts` (group CRUD, archive, shared-doc IO reusing 2.3's path engine, derived members/progress), membership validation (ids must exist; archived groups still render on chips as archived).
 
-### 3.2 Tool surface — L (FRD-022 R1–R5)
+### 3.2 Tool surface — L (FRD-022 R1–R5) · [[MCP-001]]
 - **Where:** `packages/mcp-server/src/index.ts`.
 - Add `create_group`/`get_group`/`list_groups`/`get_group_doc`/`set_group_doc`; `update_item` gains `groups`, `profile`, `requires`; drop priority params; column kind → area-only; `get_doc_gates` exposes the core resolver incl. warnings; `list_board`/`get_status` surface stages/kinds/profiles/proofTypes/doc vocabulary; every description rewritten to teach profiles + read-everything in-line; annotations audited (all group reads `readOnlyHint`).
 
-### 3.3 Prompt/dispatch SSOT — S
+### 3.3 Prompt/dispatch SSOT — S · [[CORE-009]]
 - Task prompt texts (FRD-010 R2) into core, imported by the MCP prompt and Phase 5's dispatch picker.
 
 ## Release rail (hard obligations, AGENTS.md §7)

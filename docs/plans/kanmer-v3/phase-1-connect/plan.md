@@ -6,14 +6,14 @@
 
 ## Items
 
-### 1.1 codex → configFile provider — M
+### 1.1 codex → configFile provider — M · [[GUI-002]]
 - **Where:** `apps/gui/src/main/providers.ts` (the codex entry + `cliAddCommand`), `providers.test.ts`.
 - Register kind `configFile`: path `<root>/.codex/config.toml`; pure TOML `merge`/`unmerge` for `[mcp_servers.kanmer]` preserving unknown tables/keys (small dep: `smol-toml`). `removeCommands` retains `codex mcp remove kanmer-<project>` as the **legacy cleanup**, run best-effort on connect and disconnect. Connect UI surfaces the trust caveat ("codex loads project config only for trusted folders").
 
-### 1.2 opencode + Antigravity → project skills — M
+### 1.2 opencode + Antigravity → project skills — M · [[GUI-003]]
 - Install kind `copySkills` scope project, dir `.agents/skills/` (one tree serves both hosts); stamp `.kanmer-skills-version`; the existing update-offer flow covers refresh. opencode's `opencode.json` MCP registration unchanged; Antigravity registration unchanged. AGENTS block still written for all (orientation layer).
 
-### 1.3 Provider re-verification checkpoint — S
+### 1.3 Provider re-verification checkpoint — S · [[GUI-004]]
 - Before coding 1.1/1.2: re-check each host's current docs (registration paths, skill dirs, trust rules) and record findings in the plan footer — ADR-0009's standing rule, born from this roadmap's own stale-fact incident.
 
 ## Release rail

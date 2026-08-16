@@ -328,6 +328,11 @@ export interface ItemFilter {
   status?: string;
   area?: string;
   label?: string;
+  /**
+   * Group id (FRD-001 G3). Membership lives on tickets and is always derived,
+   * so this is a predicate over `item.groups` — nothing is read from the group.
+   */
+  group?: string;
   /** Include archived items (default false). */
   includeArchived?: boolean;
 }

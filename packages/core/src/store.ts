@@ -1494,6 +1494,7 @@ function matchesFilter(item: Item, filter: ItemFilter): boolean {
   if (filter.status && item.status !== filter.status) return false;
   if (filter.area && item.area !== filter.area) return false;
   if (filter.label && !(item.labels ?? []).includes(filter.label)) return false;
+  if (filter.group && !(item.groups ?? []).includes(filter.group)) return false;
   return true;
 }
 

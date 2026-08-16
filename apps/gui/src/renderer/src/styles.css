@@ -96,6 +96,22 @@ textarea:focus {
   outline: none;
   border-color: var(--accent);
 }
+/* Checkbox row: `<label class="check"><input type="checkbox"> text</label>`.
+   The rule above gives every input `width: 100%`, which stretches a checkbox
+   into a full-width bar and pushes the label text onto the next line, so a
+   checkbox row must both lay itself out as a flex line and hand the box its
+   intrinsic width back. Layout only — no colour or font-size, so a `.check`
+   row keeps whatever typography its surrounding section already sets.
+   `.check-row` (ticket-create modal) is the same idiom with its own type. */
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.check input {
+  width: auto;
+}
 
 /* Welcome */
 .welcome {
@@ -598,17 +614,6 @@ textarea.body {
 .filterbar select {
   width: auto;
   padding: 5px 8px;
-}
-.filterbar .check {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--muted);
-  font-size: 12px;
-  width: auto;
-}
-.filterbar .check input {
-  width: auto;
 }
 
 /* Area groups on the board */

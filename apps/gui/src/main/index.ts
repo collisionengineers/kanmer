@@ -825,14 +825,16 @@ function registerIpc(): void {
 
   ipcMain.handle(CH.getUpdateState, () => updateState());
   ipcMain.handle(CH.mcpSessions, () => mcpSessions());
-  ipcMain.handle(CH.installUpdate, () => {
+  ipcMain.handle(CH.installUpdate, async () => {
     // Defensive: the renderer owns the guards (quitAndInstall cannot be undone
     // once called, so a guard placed after it never runs), but nothing else may
     // ever spawn an installer either.
     if (updateState().status.phase !== "downloaded") {
       throw new Error("No downloaded update to install");
     }
-    installUpdateNow();
+    // Returns the refusal reason when the install could not safely be started
+    // (GUI-064) — null means the app is on its way down.
+    return await installUpdateNow();
   });
 }
 

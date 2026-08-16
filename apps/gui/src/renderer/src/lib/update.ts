@@ -58,6 +58,10 @@ export function updateSurface(ev: UpdateStatusEvent | null, dismissed: boolean):
 export function restartWarning(dirtyId: string | null, sessions: McpSessions): string | null {
   const clauses: string[] = [];
   if (dirtyId) clauses.push(`discard unsaved changes to ${dirtyId}`);
+  // GUI-064: Kanmer now stops these itself, before starting the installer —
+  // they hold files the update has to replace, and leaving them to the
+  // installer's own kill is what made updates fail. The sentence says "close",
+  // not "the installer will close", because we are the one doing it.
   if (sessions.unknown) {
     clauses.push("close any agent MCP sessions running from this install");
   } else if (sessions.count > 0) {

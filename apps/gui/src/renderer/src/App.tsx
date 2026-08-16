@@ -486,25 +486,44 @@ export function App(): JSX.Element {
   }, [updateView.kind, updateView.kind === "toast" ? updateView.text : null]);
 
   /**
+   * INVARIANT: window.kanmer.installUpdate() has exactly ONE call site, here.
+   * (It had two; GUI-064 gave the call a return value that must be handled, and
+   * two places handling it identically is two places to forget.) Everything
+   * that starts an install goes through this function, downstream of the probe
+   * and confirm in onRestartToUpdate.
+   *
+   * The install can be REFUSED — when agent MCP servers still hold the install
+   * folder, starting it would fail inside the NSIS uninstaller with an
+   * unhelpful "uninstallFailed: 2". A refusal leaves the app running and the
+   * update still downloaded, so the user can close the agents and retry.
+   */
+  const startInstall = useCallback(async () => {
+    const refusal = await window.kanmer
+      .installUpdate()
+      .catch((err: unknown) => (err instanceof Error ? err.message : String(err)));
+    if (!refusal) return; // installing; the app is on its way down
+    const seq = ++toastSeq.current;
+    setToasts((t) => [...t.slice(-2), { seq, id: null, text: refusal }]);
+    // Longer than the usual 4.5s: this one is a paragraph the user must act on.
+    setTimeout(() => setToasts((t) => t.filter((x) => x.seq !== seq)), 12_000);
+  }, []);
+
+  /**
    * The "Restart now" gate. The probe and the confirm BOTH happen here, before
    * any IPC call: quitAndInstall() spawns the installer before app.quit(), so a
-   * guard placed after window.kanmer.installUpdate() is a guard that never runs.
-   *
-   * INVARIANT: window.kanmer.installUpdate() has exactly TWO call sites — the
-   * `warning === null` early return below and the pendingRestart modal's
-   * onConfirm. Both are downstream of this probe. Nothing else may call it.
+   * guard placed after the install call is a guard that never runs.
    */
   const onRestartToUpdate = useCallback(async () => {
     const sessions = await window.kanmer
       .mcpSessions()
-      .catch(() => ({ count: 0, projects: [], unknown: true }));
+      .catch(() => ({ count: 0, projects: [], pids: [], unknown: true }));
     const warning = restartWarning(editorDirty.current ? selectedId : null, sessions);
     if (warning === null) {
-      void window.kanmer.installUpdate();
+      void startInstall();
       return;
     }
     setPendingRestart(warning);
-  }, [selectedId]);
+  }, [selectedId, startInstall]);
 
   const runOpen = useCallback(
     async (target: OpenTarget) => {
@@ -1373,8 +1392,7 @@ export function App(): JSX.Element {
           onConfirm={() => {
             editorDirty.current = false;
             setPendingRestart(null);
-            // Second and last call site — see onRestartToUpdate's invariant.
-            void window.kanmer.installUpdate();
+            void startInstall();
           }}
         />
       )}

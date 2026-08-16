@@ -12,10 +12,12 @@ links: []
 blocks:
   - CORE-007
   - GUI-011
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-008-priority-removal.md
+  - docs/architecture/adr/ADR-0006-priority-removed.md
 archived: false
 created: '2026-08-16T00:30:18.684Z'
-updated: '2026-08-16T00:32:14.382Z'
+updated: '2026-08-16T02:24:35.570Z'
 ---
 
 Drop `priority` from the schema and `KEY_ORDER`; leave passthrough so existing files keep the key harmlessly until migration strips it. Filter params dropped.

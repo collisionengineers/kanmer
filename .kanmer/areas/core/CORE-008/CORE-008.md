@@ -12,10 +12,12 @@ links: []
 blocks:
   - MCP-001
   - CORE-009
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-001-groups.md
+  - docs/architecture/adr/ADR-0001-group-membership-on-ticket.md
 archived: false
 created: '2026-08-16T00:30:18.723Z'
-updated: '2026-08-16T00:32:16.759Z'
+updated: '2026-08-16T02:24:35.583Z'
 ---
 
 Board `groupKinds` with prefixes (defaults epic/EPIC, horizon/HZN); item `groups: []`; `groups/<ID>/` folders; group CRUD, archive, shared-doc IO reusing 2.3's path engine. Members and progress are **derived, never stored**. Membership validated against existing group ids; archived groups still render on chips as archived.

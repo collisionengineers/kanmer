@@ -17,10 +17,14 @@ blocks:
   - SKILL-006
   - SKILL-007
   - DOC-005
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-023-agent-skills-system.md
+  - docs/functional/frd/FRD-005-deep-research.md
+  - docs/functional/frd/FRD-009-interrogative-workflow.md
+  - docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md
 archived: false
 created: '2026-08-16T00:31:38.765Z'
-updated: '2026-08-16T00:32:25.564Z'
+updated: '2026-08-16T02:24:35.742Z'
 ---
 
 All twelve remaining skills: gate prose deleted in favour of `get_doc_gates`; six-stage and folder-path references; read-everything openings including group context; questioning prose per skill; kanmer-research rewritten for quick/deep with source classes; kanmer-auto profile-partitioned waves and files/-overlap lanes; kanmer-verify typed proof; kanmer-execute and kanmer-plan living-docs duties; auto<->dispatch cross-references. **kanmer-import deleted** (13 -> 12).

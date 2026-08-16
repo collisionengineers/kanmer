@@ -13,10 +13,13 @@ blocks:
   - CORE-005
   - CORE-007
   - GUI-010
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-003-ticket-documents.md
+  - docs/functional/frd/FRD-004-reference-files.md
+  - docs/architecture/adr/ADR-0004-folder-containment-doc-type.md
 archived: false
 created: '2026-08-16T00:30:18.660Z'
-updated: '2026-08-16T00:32:07.761Z'
+updated: '2026-08-16T02:24:35.556Z'
 ---
 
 Type directories with recursive containment, including `reference/` and `open-questions/`. Doc APIs go path-based (`setDoc(id, "research/azure/x.md")`), lazy mkdir, gate satisfaction = recursive >=1 md excluding `reference/`, `scratch/`, `assets/`. Reference enumeration (names + absolute paths for binaries) in item summaries. Unknown top-level folders rejected.

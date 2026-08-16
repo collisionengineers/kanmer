@@ -14,10 +14,12 @@ blocks:
   - CORE-007
   - GUI-007
   - GUI-009
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-002-requirement-profiles.md
+  - docs/architecture/adr/ADR-0003-requirement-profiles.md
 archived: false
 created: '2026-08-16T00:30:18.648Z'
-updated: '2026-08-16T00:32:06.386Z'
+updated: '2026-08-16T02:24:35.548Z'
 ---
 
 Board `profiles` + area `defaultProfile`; item `profile` + `requires`. Shipped defaults table (feature/fix/chore/spike). Resolution chain P6: explicit ticket profile → area default → board default. Multi-jump blocked by the first unmet boundary. Named-file requirements for custom. One core `getDocGates(id)` returning requirements/satisfied/warnings — the single function MCP, GUI and skills all consume.

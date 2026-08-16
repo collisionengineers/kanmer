@@ -12,10 +12,13 @@ links: []
 blocks:
   - CORE-008
   - GUI-005
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-007-fixed-six-stage-board.md
+  - docs/architecture/adr/ADR-0008-single-format-3-migration.md
+  - docs/functional/frd/FRD-002-requirement-profiles.md
 archived: false
 created: '2026-08-16T00:30:18.696Z'
-updated: '2026-08-16T00:32:15.605Z'
+updated: '2026-08-16T02:24:35.577Z'
 ---
 
 v->3 in one pass: status alias table (case-insensitive, 7 stages collapse to 6), `needs-restage` fallback with a report list, doc folder moves byte-preserved, priority strip with count, profile assignment (**active -> `feature`**, done/archived -> `custom` empty) with report, board.yml rewrite. Dry-run parity, idempotent, resumable, blockers surfaced. Shared core fn used by both MCP and GUI.

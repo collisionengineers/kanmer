@@ -9,10 +9,11 @@ assignee: ''
 labels:
   - v3-phase-7
 links: []
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-001-groups.md
 archived: false
 created: '2026-08-16T00:31:38.845Z'
-updated: '2026-08-16T00:31:38.845Z'
+updated: '2026-08-16T02:24:35.783Z'
 ---
 
 kanmer-groom's conversion turns the `v3-phase-N` labels seeded in 0.3 into `epic`-kind groups, one per phase, each with a `context.md` pointing at its plan and FRDs. Seed `NOW`/`NEXT` horizon groups from what is actually in flight. Preview-first, idempotent.

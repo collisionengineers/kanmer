@@ -9,10 +9,12 @@ assignee: ''
 labels:
   - v3-phase-6
 links: []
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-013-setup-as-reconciliation.md
+  - docs/architecture/adr/ADR-0010-setup-is-reconciliation.md
 archived: false
 created: '2026-08-16T00:31:38.802Z'
-updated: '2026-08-16T00:31:38.802Z'
+updated: '2026-08-16T02:24:35.761Z'
 ---
 
 The reconcile loop — AGENTS block, version steps, ingest. GitHub issue ingestion with a list-then-confirm close flow and idempotent source links; per-item plan mining with the preview (N docs -> M items -> K tickets), area seeding and custom-empty profiles; commit-history fallback; greenfield interview retained; stage-proposal prose removed.

@@ -9,10 +9,11 @@ assignee: ''
 labels:
   - v3-phase-6
 links: []
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-014-doc-type-guidance.md
 archived: false
 created: '2026-08-16T00:31:38.792Z'
-updated: '2026-08-16T00:31:38.792Z'
+updated: '2026-08-16T02:24:35.755Z'
 ---
 
 Add the PRD/FRD/ADR decision table and the granularity test to the kanmer-docs skill; retain doc-structure mirror regeneration.

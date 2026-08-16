@@ -9,10 +9,12 @@ assignee: ''
 labels:
   - v3-phase-6
 links: []
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-012-connect.md
+  - docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md
 archived: false
 created: '2026-08-16T00:31:38.813Z'
-updated: '2026-08-16T00:31:38.813Z'
+updated: '2026-08-16T02:24:35.767Z'
 ---
 
 Orientation essentials only: profiles exist; call `get_doc_gates` before any move; read the whole ticket folder and group context; six stages; where the docs live.

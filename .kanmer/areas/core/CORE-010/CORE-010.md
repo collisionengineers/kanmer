@@ -9,10 +9,12 @@ assignee: ''
 labels:
   - v3-phase-7
 links: []
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-007-fixed-six-stage-board.md
+  - docs/architecture/adr/ADR-0008-single-format-3-migration.md
 archived: false
 created: '2026-08-16T00:31:38.823Z'
-updated: '2026-08-16T00:31:38.823Z'
+updated: '2026-08-16T02:24:35.595Z'
 ---
 
 **Runs early — at the Phase-4 release, ahead of the rest of Phase 7.** The moment a release carries the format-3 migration and prompt, Kanmer's own board becomes the first real-world migration: review the dry-run, apply, keep working.

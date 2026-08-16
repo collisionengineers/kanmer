@@ -108,3 +108,28 @@ Stated plainly, because the checklist has boxes it does not close:
   bring the server back, so no respawn occurred in this instance. The bounded
   retry loop is correct either way and both outcomes are unit-tested; the timing
   number remains unmeasured.
+
+---
+
+**Merged:** PR [#29](https://github.com/collisionengineers/kanmer/pull/29) —
+`MERGED` 2026-08-16T15:04:51Z, merge commit `e293df0`; follow-up `c8b94a4`
+(GUI typecheck). Shipped in **v0.3.2**.
+
+**Post-closeout confirmation.** After the install, with the app relaunched and
+an agent MCP session reconnected against the *new* build:
+
+```
+installed version: 0.3.2.0
+processes from INSTDIR: 5
+  12644  Kanmer.exe                       (main)
+  39468  Kanmer.exe --type=gpu-process
+  39552  Kanmer.exe --type=utility
+  22716  Kanmer.exe --type=renderer
+  20912  Kanmer.exe …\plugins\kanmer\mcp\kanmer-mcp.cjs   (agent MCP server)
+```
+
+The MCP server is once again a process under `$INSTDIR` — pid 20912 replacing
+the pid 34524 that blocked the update. That is expected and unchanged: the root
+cause is the registration itself, and this ticket manages the symptom. The
+difference is that 0.3.2 will now stop that process itself before an update
+rather than losing a race to it.

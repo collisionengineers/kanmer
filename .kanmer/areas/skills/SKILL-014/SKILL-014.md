@@ -2,12 +2,13 @@
 id: SKILL-014
 type: ticket
 title: Give every skill an explicit numbered workflow and correct hand-offs
-status: implementing
+status: review
 area: skills
 assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-08-16T19:13:06.795Z'
+  review: '2026-08-16T19:28:07.637Z'
 taken_at: '2026-08-16T19:18:34.989Z'
 branch: skill-014-workflows
 worktree: .worktrees/skill-014
@@ -19,9 +20,13 @@ links:
 refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
   - docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md
+commits:
+  - bc3b201
+prs:
+  - '#34'
 archived: false
 created: '2026-08-16T18:25:18.654Z'
-updated: '2026-08-16T19:18:47.348Z'
+updated: '2026-08-16T19:28:07.637Z'
 ---
 
 ## What

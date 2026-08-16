@@ -2,12 +2,13 @@
 id: SKILL-004
 type: ticket
 title: 6.4 Setup reconciliation
-status: preparing
+status: implementing
 area: skills
-assignee: ''
+assignee: claude-code
 profile: feature
-stageEntered:
-  preparing: '2026-08-16T05:16:33.812Z'
+taken_at: '2026-08-16T05:17:41.968Z'
+branch: skill-004-setup-reconciliation
+worktree: .worktrees/skill-004
 labels:
   - v3-phase-6
 links: []
@@ -16,7 +17,9 @@ refs:
   - docs/architecture/adr/ADR-0010-setup-is-reconciliation.md
 archived: false
 created: '2026-08-16T00:31:38.802Z'
-updated: '2026-08-16T05:16:33.812Z'
+updated: '2026-08-16T05:17:41.968Z'
+stageEntered:
+  preparing: '2026-08-16T05:16:33.812Z'
 ---
 
 The reconcile loop — AGENTS block, version steps, ingest. GitHub issue ingestion with a list-then-confirm close flow and idempotent source links; per-item plan mining with the preview (N docs -> M items -> K tickets), area seeding and custom-empty profiles; commit-history fallback; greenfield interview retained; stage-proposal prose removed.

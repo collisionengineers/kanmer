@@ -21,14 +21,14 @@ refs:
   - docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md
 archived: false
 created: '2026-08-16T18:25:18.654Z'
-updated: '2026-08-16T19:18:34.989Z'
+updated: '2026-08-16T19:18:47.348Z'
 ---
 
 ## What
 
 Every `SKILL.md` should carry an explicit ordered workflow — step 1, 2, 3 — that
 names the stage it operates in and the skill it hands off to. The same routing
-summary belongs in the AGENTS.md managed block.
+information belongs in the AGENTS.md managed block.
 
 **Also in scope: sweep the format-2 vocabulary out of the skill assets.** The
 `SKILL.md` prose was migrated to format 3; the assets and references beneath it
@@ -59,28 +59,30 @@ repo, 2026-08-16.
 - **Do not restate gate rules** (FRD-023 R1). A workflow says "then `kanmer-plan`
   writes plan and checklist"; it does not say which boundary needs what. That
   stays `get_doc_gates`.
-- Put the routing table in the AGENTS block so it is in context without loading
-  any skill — remembering that both copies of `BLOCK_BODY` must change together.
+- Put the pipeline **order** in the AGENTS block so it is in context without
+  loading any skill — remembering that both copies of `BLOCK_BODY` must change
+  together.
 - **Sweep `impact` → `files`** (format 3 renamed the type; `profiles.ts` has no
-  `impact`). Known sites, all under `plugins/kanmer/skills/`:
-  - `kanmer-plan/assets/plan-template.md:5` — "Written FROM research.md and impact.md"
-  - `kanmer-review/assets/pr-review.md:7` — "impact.md ripple effects"
-  - `kanmer-docs/assets/doc-structure.md:26`
-  - `kanmer-tickets/references/tool-reference.md:110`
-
-  Treat that list as a starting point, not the answer — grep the whole tree for
-  every format-2 term (`impact`, the old seven stages `researching`/`planning`,
-  and `kanmer-import`, a skill that no longer exists but is still routed to).
+  `impact`), and the rest of the format-2 vocabulary the audit found with it.
 
 ## Verification
 
-- [ ] Every SKILL.md has a numbered workflow and names its successor.
-- [ ] The AGENTS block carries the routing summary; `verify:agents-block` passes.
+- [ ] Every SKILL.md has an ordered workflow and a closing hand-off — successor
+      for pipeline skills, caller-and-return for service skills.
+- [ ] The AGENTS block carries the pipeline order; `verify:agents-block` passes.
 - [ ] `grep` still finds zero hardcoded gate rules in any skill (FRD-023
       acceptance) — the workflow must not smuggle them back in.
-- [ ] `grep -rn "impact" plugins/kanmer/skills/` returns nothing that names a
-      document type, and every doc type a skill or asset names is one
-      `profiles.ts` actually declares.
+- [ ] Every doc type named anywhere under `plugins/kanmer/skills/` appears in
+      `packages/core/src/profiles.ts`.
 - [ ] No skill routes to a skill that does not exist.
+
+---
+
+**Correction, from the audit (`research`).** When filed, this ticket claimed
+`kanmer-import` was "still routed to". That is **false** — it came from reading
+the stale install at `.claude/skills/`, not the tracked source.
+`grep -rn "kanmer-import" plugins/kanmer/skills/` returns nothing; FRD-013's
+removal is complete. The claim is withdrawn, and the "no skill routes to a skill
+that does not exist" box stays as a check rather than a fix.
 
 ## Outcome

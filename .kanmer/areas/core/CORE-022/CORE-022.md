@@ -2,12 +2,15 @@
 id: CORE-022
 type: ticket
 title: Migration survives EPERM and resumes per ticket
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-08-16T13:17:30.131Z'
+taken_at: '2026-08-16T13:19:07.934Z'
+branch: core-022-migration-eperm
+worktree: .worktrees/core-022
 labels:
   - bug
   - migration
@@ -20,7 +23,7 @@ refs:
   - docs/functional/frd/FRD-015-ticket-and-board-core.md
 archived: false
 created: '2026-08-16T13:17:25.100Z'
-updated: '2026-08-16T13:17:30.131Z'
+updated: '2026-08-16T13:19:07.934Z'
 ---
 
 A user's format-2 → format-3 migration failed three times on Windows and left

@@ -58,11 +58,37 @@ const argv = process.argv.slice(2);
 const dryRun = argv.includes("--dry-run");
 const version = argv.find((a) => !a.startsWith("--"));
 
+/**
+ * Stop the script from a refusal without calling process.exit().
+ *
+ * process.exit() straight after a fetch() trips libuv on Windows —
+ * "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), src\win\async.c:76"
+ * — because undici's connection pool still holds a handle. The process then
+ * dies with **127** instead of the code we chose, and prints a crash banner
+ * directly under a refusal that was supposed to be the clearest line in the log.
+ * An operator cannot tell "the script refused" from "the script crashed", which
+ * defeats the whole point of refusing.
+ *
+ * So refuse() sets the exit code and throws a sentinel nothing catches: the
+ * script stops just as dead, the loop drains normally, and the exit code
+ * survives. Measured on Node 24 / Windows — 3/3 crash with exit(), 3/3 clean
+ * this way. Do not "simplify" this back to process.exit().
+ */
+class Refusal extends Error {}
+const onFatal = (err) => {
+  if (err instanceof Refusal) return; // already reported by refuse()
+  console.error(err);
+  process.exitCode = 1;
+};
+process.on("uncaughtException", onFatal);
+process.on("unhandledRejection", onFatal);
+
 /** Refuse, loudly and with the fix. */
 function refuse(why, fix) {
   console.error(`release refused: ${why}`);
   if (fix) console.error(`  fix: ${fix}`);
-  process.exit(1);
+  process.exitCode = 1;
+  throw new Refusal(why);
 }
 
 function run(command, cwd = root) {

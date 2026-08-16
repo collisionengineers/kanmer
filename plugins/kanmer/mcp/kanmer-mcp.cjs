@@ -38118,6 +38118,7 @@ function isTicketDir(v) {
   return TICKET_DIR_SET.has(v);
 }
 var GOVERNING_DOC = "governing-doc";
+var QUESTIONS_RESOLVED = "questions-resolved";
 var DEFAULT_PROOF_TYPES = ["visual", "test-output", "command-log"];
 function parseRequirement(raw) {
   const trimmed = raw.trim();
@@ -38145,20 +38146,24 @@ function parseRequirement(raw) {
 var DEFAULT_PROFILES = Object.freeze({
   feature: {
     "leave-backlog": [GOVERNING_DOC],
-    "leave-preparing": ["research", "files", "plan", "checklist"],
-    "enter-review": ["post-implementation-report"],
-    "enter-done": ["proof"]
+    "leave-preparing": ["research", "files", "plan", "checklist", QUESTIONS_RESOLVED],
+    "enter-review": ["post-implementation-report", QUESTIONS_RESOLVED],
+    "enter-done": ["proof", QUESTIONS_RESOLVED]
   },
   fix: {
-    "leave-preparing": ["files", "plan"],
-    "enter-done": ["proof"]
+    "leave-preparing": ["files", "plan", QUESTIONS_RESOLVED],
+    "enter-done": ["proof", QUESTIONS_RESOLVED]
   },
   chore: {
-    "leave-preparing": ["plan"],
-    "enter-done": ["proof"]
+    "leave-preparing": ["plan", QUESTIONS_RESOLVED],
+    "enter-done": ["proof", QUESTIONS_RESOLVED]
   },
+  // A spike's deliverable *is* research, and surfacing questions can be the
+  // whole point of one — so its single boundary carries the requirement rather
+  // than being exempt. GUI-004 was exactly this shape: its question was answered
+  // in practice and simply never recorded. Parking remains the honest exit.
   spike: {
-    "enter-done": ["research"]
+    "enter-done": ["research", QUESTIONS_RESOLVED]
   },
   /** Empty by design: historical backfill must nag about nothing. */
   custom: {}
@@ -38180,8 +38185,8 @@ function validateProfileMap(map, opts) {
     }
     for (const raw of reqs ?? []) {
       const req = parseRequirement(raw);
-      if (req.type !== GOVERNING_DOC && !isDocType(req.type)) {
-        errors.push(`unknown document type "${req.type}" in "${raw}" \u2014 valid: ${DOC_TYPES.join(", ")}, ${GOVERNING_DOC}`);
+      if (req.type !== GOVERNING_DOC && req.type !== QUESTIONS_RESOLVED && !isDocType(req.type)) {
+        errors.push(`unknown document type "${req.type}" in "${raw}" \u2014 valid: ${DOC_TYPES.join(", ")}, ${GOVERNING_DOC}, ${QUESTIONS_RESOLVED}`);
       }
       if (req.proofType && req.type !== "proof") {
         errors.push(`"${raw}" \u2014 only \`proof\` takes a type suffix`);
@@ -38214,8 +38219,19 @@ function defaultBoardConfig() {
     proofTypes: [...DEFAULT_PROOF_TYPES]
   };
 }
+var QUESTIONS_BOUNDARIES = ["leave-preparing", "enter-review", "enter-done"];
 function resolveProfiles(board) {
-  return board.profiles ?? DEFAULT_PROFILES;
+  const base = board.profiles ?? DEFAULT_PROFILES;
+  const out = {};
+  for (const [id, profile] of Object.entries(base)) {
+    const next = {};
+    for (const [boundary, reqs] of Object.entries(profile)) {
+      const eligible = QUESTIONS_BOUNDARIES.includes(boundary) && reqs && reqs.length && !reqs.some((r) => parseRequirement(r).type === QUESTIONS_RESOLVED);
+      next[boundary] = eligible ? [...reqs, QUESTIONS_RESOLVED] : reqs;
+    }
+    out[id] = next;
+  }
+  return out;
 }
 function resolveProofTypes(board) {
   return board.proofTypes ?? DEFAULT_PROOF_TYPES;
@@ -38337,6 +38353,28 @@ async function namedSatisfied(ticketDir, type, named) {
   const docs = await listDocs(ticketDir, type);
   return docs.some((d) => d.toLowerCase().replace(/\.md$/, "") === want);
 }
+var CHECKBOX_RE = /^\s*[-*]\s+\[( |x|X)\]/;
+var PARKED_HEADING_RE = /^\s{0,3}#{1,6}\s+parked\b/i;
+async function countCheckboxes(ticketDir, type, opts = {}) {
+  let checked = 0;
+  let total = 0;
+  for (const rel of await listDocs(ticketDir, type)) {
+    let text;
+    try {
+      text = await import_promises3.default.readFile(docPathIn(ticketDir, `${type}/${rel}`), "utf8");
+    } catch {
+      continue;
+    }
+    for (const line of text.split("\n")) {
+      if (opts.stopAtParked && PARKED_HEADING_RE.test(line)) break;
+      const m = CHECKBOX_RE.exec(line);
+      if (!m) continue;
+      total++;
+      if (m[1] !== " ") checked++;
+    }
+  }
+  return { checked, total };
+}
 async function docCounts(ticketDir) {
   const counts = {};
   for (const type of TICKET_DIRS) {
@@ -38354,6 +38392,13 @@ async function listReferences(ticketDir) {
 async function statusOf(req, ev) {
   if (req.type === GOVERNING_DOC) {
     return { requirement: req.raw, type: req.type, satisfied: ev.hasGoverningDoc() };
+  }
+  if (req.type === QUESTIONS_RESOLVED) {
+    return {
+      requirement: req.raw,
+      type: req.type,
+      satisfied: await ev.unresolvedQuestions() === 0
+    };
   }
   const satisfied = req.named ? await ev.hasNamed(req.type, req.named) : await ev.hasType(req.type);
   const out = { requirement: req.raw, type: req.type, satisfied };
@@ -39482,20 +39527,8 @@ ${content.trim()}
     const docs = {};
     for (const [type, n] of Object.entries(counts)) docs[type] = n > 0;
     let checklist = null;
-    const checklists = await listDocs(loc.dir, "checklist");
-    if (checklists.length) {
-      let checked = 0;
-      let total = 0;
-      for (const rel of checklists) {
-        const text = await readText(docPathIn(loc.dir, `checklist/${rel}`));
-        for (const line of text.split("\n")) {
-          const m = /^\s*[-*]\s+\[( |x|X)\]/.exec(line);
-          if (!m) continue;
-          total++;
-          if (m[1] !== " ") checked++;
-        }
-      }
-      checklist = { checked, total };
+    if ((await listDocs(loc.dir, "checklist")).length) {
+      checklist = await countCheckboxes(loc.dir, "checklist");
     }
     return { docs, counts, checklist, references: await listReferences(loc.dir) };
   }
@@ -39605,7 +39638,7 @@ ${content.trim()}
     if (!blocking) return;
     const missing = blocking.requirements.filter((r) => !r.satisfied).map((r) => r.requirement);
     throw new Error(
-      `${item.id} cannot move from "${fromStatus}" to "${toStatus}": ${blocking.label} requires ${missing.join(", ")} (profile "${report.profile}"). Write the missing document(s) with set_ticket_doc` + (missing.includes(GOVERNING_DOC) ? `, or link a governing doc via refs / set docs_todo` : "") + `, then move. Call get_doc_gates for the full picture.`
+      `${item.id} cannot move from "${fromStatus}" to "${toStatus}": ${blocking.label} requires ${missing.join(", ")} (profile "${report.profile}"). Write the missing document(s) with set_ticket_doc` + (missing.includes(GOVERNING_DOC) ? `, or link a governing doc via refs / set docs_todo` : "") + (missing.includes(QUESTIONS_RESOLVED) ? `. "${QUESTIONS_RESOLVED}" is not a document: open-questions/ still has unticked "- [ ]" lines. Answer them and tick the box, or move them under "## Parked (explicitly deferred)" with a reason for deferring` : "") + `, then move. Call get_doc_gates for the full picture.`
     );
   }
   /**
@@ -39635,6 +39668,12 @@ ${content.trim()}
         hasProofImages: async () => {
           const files = await listFilesRecursive(docDirIn(ticketDir, "proof"));
           return files.some((f) => /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(f));
+        },
+        unresolvedQuestions: async () => {
+          const { checked, total } = await countCheckboxes(ticketDir, "open-questions", {
+            stopAtParked: true
+          });
+          return total - checked;
         }
       }
     });

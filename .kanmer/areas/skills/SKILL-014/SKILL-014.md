@@ -2,10 +2,12 @@
 id: SKILL-014
 type: ticket
 title: Give every skill an explicit numbered workflow and correct hand-offs
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: feature
+stageEntered:
+  preparing: '2026-08-16T19:13:06.795Z'
 labels: []
 groups:
   - HZN-003
@@ -16,7 +18,7 @@ refs:
   - docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md
 archived: false
 created: '2026-08-16T18:25:18.654Z'
-updated: '2026-08-16T18:26:23.130Z'
+updated: '2026-08-16T19:13:06.795Z'
 ---
 
 ## What
@@ -24,6 +26,10 @@ updated: '2026-08-16T18:26:23.130Z'
 Every `SKILL.md` should carry an explicit ordered workflow — step 1, 2, 3 — that
 names the stage it operates in and the skill it hands off to. The same routing
 summary belongs in the AGENTS.md managed block.
+
+**Also in scope: sweep the format-2 vocabulary out of the skill assets.** The
+`SKILL.md` prose was migrated to format 3; the assets and references beneath it
+were not.
 
 ## Why
 
@@ -36,6 +42,11 @@ case rather than the exception (ADR-0009).
 The risk this addresses is concrete: a phase run out of order, or a stage moved
 without the skill that owns it ever running.
 
+The stale vocabulary is the same failure in a different place. A workflow that
+routes correctly is worth nothing if the template it routes to names a document
+that cannot exist. Found by running `kanmer-setup` as reconciliation on this
+repo, 2026-08-16.
+
 ## Approach
 
 - Audit all twelve skills for: a numbered workflow, the stage each step operates
@@ -47,6 +58,16 @@ without the skill that owns it ever running.
   stays `get_doc_gates`.
 - Put the routing table in the AGENTS block so it is in context without loading
   any skill — remembering that both copies of `BLOCK_BODY` must change together.
+- **Sweep `impact` → `files`** (format 3 renamed the type; `profiles.ts` has no
+  `impact`). Known sites, all under `plugins/kanmer/skills/`:
+  - `kanmer-plan/assets/plan-template.md:5` — "Written FROM research.md and impact.md"
+  - `kanmer-review/assets/pr-review.md:7` — "impact.md ripple effects"
+  - `kanmer-docs/assets/doc-structure.md:26`
+  - `kanmer-tickets/references/tool-reference.md:110`
+
+  Treat that list as a starting point, not the answer — grep the whole tree for
+  every format-2 term (`impact`, the old seven stages `researching`/`planning`,
+  and `kanmer-import`, a skill that no longer exists but is still routed to).
 
 ## Verification
 
@@ -54,5 +75,9 @@ without the skill that owns it ever running.
 - [ ] The AGENTS block carries the routing summary; `verify:agents-block` passes.
 - [ ] `grep` still finds zero hardcoded gate rules in any skill (FRD-023
       acceptance) — the workflow must not smuggle them back in.
+- [ ] `grep -rn "impact" plugins/kanmer/skills/` returns nothing that names a
+      document type, and every doc type a skill or asset names is one
+      `profiles.ts` actually declares.
+- [ ] No skill routes to a skill that does not exist.
 
 ## Outcome

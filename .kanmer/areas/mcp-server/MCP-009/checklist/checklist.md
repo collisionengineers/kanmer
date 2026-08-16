@@ -56,3 +56,17 @@ docs-only scope.
 in a new worktree with `TS2305` on `@kanmer/core` exports — `packages/core/dist`
 does not exist until `npm run build` runs. Not a regression; `npm run setup`
 chains them for this reason. Build first, then typecheck.
+
+---
+
+## Closeout — MCP-009
+
+- [x] PR merge verified — `gh pr view 44 --json state,mergedAt,mergeCommit` → `MERGED`, `2026-08-16T22:55:52Z`, merge commit `c81063e`
+- [x] proof.md finalised (PR URL + merge commit + merge date recorded in its header)
+- [x] Moved to final stage (Done, 2026-08-16)
+- [x] Outcome recorded in ticket body (PR link, what shipped, what was handed on)
+- [x] cd out of worktree; `git worktree remove .worktrees/mcp-009`
+- [x] `git branch -D mcp-009-provider-parity-docs` (squash-merged, so `-d` refuses by design; merge state verified at step 0)
+- [x] `git push origin --delete mcp-009-provider-parity-docs`
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

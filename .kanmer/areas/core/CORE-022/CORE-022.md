@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-16T13:27:55.328Z'
   verifying: '2026-08-16T13:29:09.769Z'
   done: '2026-08-16T13:29:35.016Z'
-taken_at: '2026-08-16T13:19:07.934Z'
-branch: core-022-migration-eperm
-worktree: .worktrees/core-022
 labels:
   - bug
   - migration
@@ -24,9 +21,13 @@ links:
 refs:
   - docs/functional/frd/FRD-007-fixed-six-stage-board.md
   - docs/functional/frd/FRD-015-ticket-and-board-core.md
+commits:
+  - d0f927a
+prs:
+  - 'https://github.com/collisionengineers/kanmer/pull/28'
 archived: false
 created: '2026-08-16T13:17:25.100Z'
-updated: '2026-08-16T13:29:35.016Z'
+updated: '2026-08-16T13:30:21.351Z'
 ---
 
 A user's format-2 → format-3 migration failed three times on Windows and left

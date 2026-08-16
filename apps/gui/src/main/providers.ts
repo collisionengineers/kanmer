@@ -420,10 +420,17 @@ export interface LegacyCodexEntry {
  * we cannot read, and the sweep's whole contract is that it never removes
  * something it has not positively identified.
  *
- * Scoped to `kanmer-*`. A bare global `[mcp_servers.kanmer]` is deliberately out
- * of scope: Kanmer never wrote one there, so it is the user's own and not ours
- * to delete.
+ * Scoped to `kanmer-*` **in exactly the shape `codexServerName` produces**. A
+ * bare global `[mcp_servers.kanmer]` is deliberately out of scope: Kanmer never
+ * wrote one there, so it is the user's own and not ours to delete. Anything with
+ * a character that slug could not have produced is likewise not ours — and,
+ * since the name is interpolated into a `codex mcp remove` command line, a TOML
+ * *quoted* key (which may legally hold anything at all, including shell
+ * metacharacters) must never reach a shell on our say-so.
  */
+/** The exact shape `codexServerName` emits: `kanmer-` plus its slug alphabet. */
+const LEGACY_NAME = /^kanmer-[A-Za-z0-9_-]+$/;
+
 export function legacyCodexEntries(globalConfigToml: string | null): LegacyCodexEntry[] {
   if (!globalConfigToml?.trim()) return [];
   let doc: unknown;
@@ -436,7 +443,7 @@ export function legacyCodexEntries(globalConfigToml: string | null): LegacyCodex
   if (typeof servers !== "object" || servers === null || Array.isArray(servers)) return [];
   const found: LegacyCodexEntry[] = [];
   for (const [name, value] of Object.entries(servers as Record<string, unknown>)) {
-    if (!name.startsWith("kanmer-")) continue;
+    if (!LEGACY_NAME.test(name)) continue;
     found.push({ name, projectRoot: rootFromArgs((value as { args?: unknown } | null)?.args) });
   }
   return found;

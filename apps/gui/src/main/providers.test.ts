@@ -351,6 +351,21 @@ describe("legacy global codex sweep (GUI-079)", () => {
     expect(legacyCodexEntries("[mcp_servers.kanmer]\ncommand = 'x'\n")).toEqual([]);
   });
 
+  it("ignores a name outside the slug alphabet rather than shelling out with it", () => {
+    // TOML *quoted* keys may legally hold anything, and the name is
+    // interpolated into a `codex mcp remove` command line. `codexServerName`
+    // can only ever have produced [A-Za-z0-9_-], so anything else is both not
+    // ours and not something to hand a shell.
+    const hostile = [
+      `[mcp_servers."kanmer-x; rm -rf ~"]`,
+      "args = ['s.cjs', '--repo-root', '/tmp/x']",
+      "[mcp_servers.'kanmer-$(whoami)']",
+      "args = ['s.cjs', '--repo-root', '/tmp/y']",
+      "",
+    ].join("\n");
+    expect(legacyCodexEntries(hostile)).toEqual([]);
+  });
+
   it("reports an entry with no recoverable root instead of acting on it", () => {
     const urlOnly = '[mcp_servers.kanmer-remote]\nurl = "https://example.test/mcp"\n';
     const entry = byName(urlOnly, "kanmer-remote");

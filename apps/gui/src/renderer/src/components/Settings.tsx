@@ -556,6 +556,14 @@ function LegacyCodexSweep(): JSX.Element | null {
       {drained && (
         <div className="legacy-results">
           {drained.removals.length === 0 && <div className="connect-status">Nothing was removed.</div>}
+          {drained.refused.length > 0 && (
+            <div className="connect-result err">
+              <div className="connect-status">
+                Kept {drained.refused.join(", ")} — re-checked at removal time and still not safe to
+                remove.
+              </div>
+            </div>
+          )}
           {drained.removals.map((r) => (
             <div key={r.name} className={r.ok ? "connect-result ok" : "connect-result err"}>
               <div className="connect-status">

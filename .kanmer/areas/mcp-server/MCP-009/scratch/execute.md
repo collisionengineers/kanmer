@@ -1,0 +1,1 @@
+opened PR https://github.com/collisionengineers/kanmer/pull/44 — branch `mcp-009-provider-parity-docs`, worktree `.worktrees/mcp-009`, docs-only diff (ADR-0009 + FRD-012), rebased onto origin/main @ 2f06713.

@@ -15,15 +15,19 @@ sandbox/
 apps/gui/out/
 apps/gui/dist/
 apps/gui/release/
-<<<<<<< Updated upstream
-# any alternate electron-builder output dir (--config.directories.output)
+# any alternate electron-builder output dir (--config.directories.output),
+# e.g. the release-check/ workaround in AGENTS.md §10 step 9
 apps/gui/release-*/
-=======
-apps/gui/release-build/
-apps/gui/release-check/
->>>>>>> Stashed changes
 sandbox-harness/
 # per-ticket git worktrees (see kanmer-execute / kanmer-closeout skills)
 .worktrees/
 # local updater test feed config — never committed, never packaged
 apps/gui/dev-app-update.yml
+.kanmer/
+
+# design-sync (claude.ai/design) — staged scripts, build output, machine state
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

@@ -415,7 +415,12 @@ async function openProject(root: string): Promise<OpenProjectResult> {
   await store.init();
   recordRecentProject(projectId);
   const ownWrites = new Map<string, number>();
-  const watch = watchKanmer(projectId, (event, file) => {
+  // Watch where the store actually reads. On a git project `ensureBoardWorktree`
+  // moves the board to `.worktrees/kanmer` and `git rm`s + gitignores the source
+  // `.kanmer/` — watching `projectId` there is watching a directory that no longer
+  // exists, so no agent write ever reaches the renderer. Without git, `boardRoot`
+  // falls back to `projectId` and this is the old behaviour.
+  const watch = watchKanmer(boardRoot, (event, file) => {
     mainWindow?.webContents.send(CH.changed, { projectId, event, file });
     const key = toastKey(file);
     if (!key) return;

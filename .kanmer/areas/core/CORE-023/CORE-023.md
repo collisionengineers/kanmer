@@ -20,13 +20,14 @@ links: []
 refs:
   - docs/functional/frd/FRD-013-setup-as-reconciliation.md
   - docs/architecture/adr/ADR-0008-single-format-3-migration.md
+  - docs/architecture/adr/ADR-0013-staleness-by-content-not-version.md
 commits:
   - 61d058c
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/54'
 archived: false
 created: '2026-08-16T18:25:18.669Z'
-updated: '2026-08-16T23:54:38.413Z'
+updated: '2026-08-16T23:58:27.832Z'
 ---
 
 ## What

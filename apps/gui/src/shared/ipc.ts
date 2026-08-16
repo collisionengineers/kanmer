@@ -63,6 +63,7 @@ export const CH = {
   getSkillsStatus: "kanmer:getSkillsStatus",
   updateSkills: "kanmer:updateSkills",
   dispatchAgent: "kanmer:dispatchAgent",
+  dispatchOptions: "kanmer:dispatchOptions",
   cancelDispatch: "kanmer:cancelDispatch",
   listDispatches: "kanmer:listDispatches",
   /** Main → renderer: a background dispatch's status changed. */
@@ -177,6 +178,26 @@ export interface SkillsStatus {
 }
 
 /** A background agent dispatch's live status. */
+/**
+ * One row of the Dispatch task menu, with core's feasibility already applied.
+ *
+ * Resolved in main rather than the renderer: `DISPATCH_TASKS` and
+ * `taskFeasibility` are runtime values in core, and the renderer may only
+ * `import type` from it. Sending the decided rows avoids a fourth
+ * core↔renderer duplication (AGENTS.md §7).
+ */
+export interface DispatchOption {
+  id: string;
+  label: string;
+  /** What must exist for the task to be finished. */
+  deliverable: string;
+  enabled: boolean;
+  /** Why it is disabled. */
+  reason?: string;
+  /** Enabled, but an input it builds on is thin. */
+  warning?: string;
+}
+
 export interface DispatchStatus {
   dispatchId: string;
   /** Canonical project root that owns this dispatch. */
@@ -185,6 +206,11 @@ export interface DispatchStatus {
   provider: ConnectTarget;
   state: "running" | "done" | "failed" | "cancelled" | "timed-out";
   startedAt: number;
+  /** The scoped task, when the dispatch was given one (FRD-010). */
+  task?: string;
+  taskLabel?: string;
+  /** What must exist for the task to be finished. */
+  deliverable?: string;
   exitCode?: number | null;
   tail?: string[];
 }
@@ -354,7 +380,9 @@ export interface KanmerApi {
   /** Re-copy the bundled skills for a host ("Update skills"). */
   updateSkills(projectId: string, target: ConnectTarget): Promise<ConnectResult>;
   /** Spawn a background agent to work a ticket end-to-end (request #10). */
-  dispatchAgent(projectId: string, ticketId: string, target: ConnectTarget): Promise<DispatchStatus>;
+  dispatchAgent(projectId: string, ticketId: string, target: ConnectTarget, taskId?: string): Promise<DispatchStatus>;
+  /** The task menu for one ticket, feasibility resolved by core. */
+  dispatchOptions(projectId: string, ticketId: string): Promise<DispatchOption[]>;
   /** Cancel a dispatch by its globally unique dispatch id (tree-kills the child). */
   cancelDispatch(dispatchId: string): Promise<boolean>;
   /** Current in-flight dispatches for a project. */

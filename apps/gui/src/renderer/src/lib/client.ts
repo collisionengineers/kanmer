@@ -22,6 +22,7 @@ import type {
   BoardMigrationReport,
   ConnectResult,
   ConnectTarget,
+  DispatchOption,
   DispatchStatus,
   DocModel,
   SkillsStatus,
@@ -53,7 +54,8 @@ export interface ProjectClient {
   disconnectAgent(target: ConnectTarget): Promise<ConnectResult>;
   getSkillsStatus(target: ConnectTarget): Promise<SkillsStatus>;
   updateSkills(target: ConnectTarget): Promise<ConnectResult>;
-  dispatchAgent(ticketId: string, target: ConnectTarget): Promise<DispatchStatus>;
+  dispatchAgent(ticketId: string, target: ConnectTarget, taskId?: string): Promise<DispatchStatus>;
+  dispatchOptions(ticketId: string): Promise<DispatchOption[]>;
   migrate(dryRun: boolean): Promise<BoardMigrationReport>;
   backfillBoard(dryRun: boolean): Promise<{ addedStages: string[] }>;
   getFormat(): Promise<1 | 2 | 3>;
@@ -108,7 +110,8 @@ export function makeClient(projectId: string): ProjectClient {
     disconnectAgent: (t) => k.disconnectAgent(projectId, t),
     getSkillsStatus: (t) => k.getSkillsStatus(projectId, t),
     updateSkills: (t) => k.updateSkills(projectId, t),
-    dispatchAgent: (ticketId, t) => k.dispatchAgent(projectId, ticketId, t),
+    dispatchAgent: (ticketId, t, taskId) => k.dispatchAgent(projectId, ticketId, t, taskId),
+    dispatchOptions: (ticketId) => k.dispatchOptions(projectId, ticketId),
     migrate: (d) => k.migrate(projectId, d),
     backfillBoard: (d) => k.backfillBoard(projectId, d),
     getFormat: () => k.getFormat(projectId),

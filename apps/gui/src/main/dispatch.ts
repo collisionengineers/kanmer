@@ -8,7 +8,7 @@ import crossSpawn from "cross-spawn";
 import { createWriteStream } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { takeTicketPromptText, type KanmerStore } from "@kanmer/core";
+import { dispatchTaskById, takeTicketPromptText, type KanmerStore } from "@kanmer/core";
 import { providerById, type ProviderId } from "./providers.js";
 import type { DispatchStatus } from "../shared/ipc.js";
 
@@ -76,7 +76,7 @@ export async function dispatchTicket(
   providerId: ProviderId,
   projectId: string,
   ticketId: string,
-  opts: { timeoutMs?: number } = {},
+  opts: { timeoutMs?: number; taskId?: string } = {},
   // Required, deliberately: `store.paths.projectRoot` is the *board* root, so a
   // default here would silently spawn agents inside `.worktrees/kanmer`.
   sourceRoot: string,
@@ -97,7 +97,13 @@ export async function dispatchTicket(
   }
 
   const root = sourceRoot;
-  const prompt = takeTicketPromptText(ticketId);
+  // A task scopes the dispatch to ONE deliverable, which is the point of
+  // FRD-010 — a background agent finishes one thing and stops. Without a task
+  // this falls back to the whole-ticket brief, so existing callers are
+  // unchanged; the picker always sends one.
+  const task = opts.taskId ? dispatchTaskById(opts.taskId) : undefined;
+  if (opts.taskId && !task) throw new Error(`Unknown dispatch task "${opts.taskId}".`);
+  const prompt = task ? task.prompt(ticketId) : takeTicketPromptText(ticketId);
   const args = provider.dispatchArgs(prompt, root);
   const dispatchId = `${ticketId}-${++counter}`;
   const logDir = join(app.getPath("userData"), "dispatch");
@@ -127,6 +133,9 @@ export async function dispatchTicket(
     provider: providerId,
     state: "running",
     startedAt: Date.now(),
+    // Carried so the drawer can say what is running: two rows for the same
+    // ticket are otherwise indistinguishable.
+    ...(task ? { task: task.id, taskLabel: task.label, deliverable: task.deliverable } : {}),
   };
   const tail: string[] = [];
   const handle: Handle = { proc, status, tail };

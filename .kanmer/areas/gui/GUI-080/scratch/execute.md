@@ -1,0 +1,1 @@
+opened PR https://github.com/collisionengineers/kanmer/pull/41 — branch `gui-080-prune-retired-skills`, worktree `.worktrees/gui-080`, commit `dd10dfd`. Rail green: npm test (core 182 + gui 218), npm run typecheck (4 workspaces), npm run verify:agents-block (26/26). Took the disconnect peer-guard fix inline (~10 lines in `disconnectAgent`) rather than filing it.

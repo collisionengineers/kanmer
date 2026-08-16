@@ -2,10 +2,12 @@
 id: SKILL-011
 type: ticket
 title: 'Scope kanmer-auto by group, not only by area'
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: feature
+stageEntered:
+  preparing: '2026-08-16T16:18:15.993Z'
 labels: []
 groups:
   - HZN-003
@@ -15,7 +17,7 @@ refs:
   - docs/functional/frd/FRD-001-groups.md
 archived: false
 created: '2026-08-16T16:11:01.414Z'
-updated: '2026-08-16T16:11:01.414Z'
+updated: '2026-08-16T16:18:15.993Z'
 ---
 
 ## What

@@ -4,10 +4,12 @@ type: ticket
 title: >-
   Raise open questions to the operator before execution, review fixes, and
   closeout
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: feature
+stageEntered:
+  preparing: '2026-08-16T16:18:17.167Z'
 labels: []
 groups:
   - HZN-003
@@ -18,7 +20,7 @@ refs:
   - docs/functional/frd/FRD-009-interrogative-workflow.md
 archived: false
 created: '2026-08-16T16:11:20.804Z'
-updated: '2026-08-16T16:11:20.804Z'
+updated: '2026-08-16T16:18:17.167Z'
 ---
 
 ## What

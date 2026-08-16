@@ -1,6 +1,7 @@
 import type { GateReport, Group, GroupWithMembers } from "@kanmer/core";
 import type {
   ActivityEntry,
+  BackfillReport,
   BoardColumn,
   BoardConfig,
   ColumnKind,
@@ -17,7 +18,15 @@ import type {
   TicketDoc,
   TicketDocsInfo,
   UpdateItemPatch,
+  V3Report,
 } from "@kanmer/core";
+
+/** What `migrateBoard` reports: the three upgrade steps, in order. */
+export interface BoardMigrationReport {
+  v2: MigrationReport;
+  backfill: BackfillReport;
+  v3: V3Report;
+}
 
 /** IPC channel names (main ↔ renderer). */
 export const CH = {
@@ -349,8 +358,8 @@ export interface KanmerApi {
   /** Subscribe to background-dispatch status updates. Returns an unsubscribe fn. */
   onDispatchStatus(cb: (status: DispatchStatus) => void): () => void;
   /** Show the native right-click menu for a card; resolves with the chosen action. */
-  /** Migrate a v1 project to format 2 (dryRun for the report only). */
-  migrate(projectId: string, dryRun: boolean): Promise<MigrationReport>;
+  /** Bring a board fully current: v1→v2, stage backfill, v→3 (dryRun previews). */
+  migrate(projectId: string, dryRun: boolean): Promise<BoardMigrationReport>;
   /** Backfill the 7-stage default onto an already-v2 board (dryRun previews). */
   backfillBoard(projectId: string, dryRun: boolean): Promise<{ addedStages: string[] }>;
   /** A project's current on-disk format — re-read after an external migration. */

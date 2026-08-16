@@ -12,7 +12,6 @@ import type {
   ItemFilter,
   ItemWarning,
   LinkGraph,
-  MigrationReport,
   MovePosition,
   TakeTicketInput,
   TicketDoc,
@@ -20,6 +19,7 @@ import type {
   UpdateItemPatch,
 } from "@kanmer/core";
 import type {
+  BoardMigrationReport,
   ConnectResult,
   ConnectTarget,
   DispatchStatus,
@@ -54,7 +54,7 @@ export interface ProjectClient {
   getSkillsStatus(target: ConnectTarget): Promise<SkillsStatus>;
   updateSkills(target: ConnectTarget): Promise<ConnectResult>;
   dispatchAgent(ticketId: string, target: ConnectTarget): Promise<DispatchStatus>;
-  migrate(dryRun: boolean): Promise<MigrationReport>;
+  migrate(dryRun: boolean): Promise<BoardMigrationReport>;
   backfillBoard(dryRun: boolean): Promise<{ addedStages: string[] }>;
   getFormat(): Promise<1 | 2 | 3>;
   getDoc(id: string, doc: TicketDoc): Promise<{ content: string | null; version: string | null }>;

@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-16T17:02:28.954Z'
   verifying: '2026-08-16T17:08:05.502Z'
   done: '2026-08-16T17:08:09.468Z'
-taken_at: '2026-08-16T16:56:27.691Z'
-branch: skill-011-group-scoping
-worktree: .worktrees/skill-011
 labels: []
 groups:
   - HZN-003
@@ -21,9 +18,15 @@ links: []
 refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
   - docs/functional/frd/FRD-001-groups.md
+commits:
+  - ba16d2e
+  - 9658d08
+prs:
+  - '#31'
+  - '#32'
 archived: false
 created: '2026-08-16T16:11:01.414Z'
-updated: '2026-08-16T17:08:09.468Z'
+updated: '2026-08-16T17:38:27.544Z'
 ---
 
 ## What
@@ -58,12 +61,40 @@ most natural input.
 
 ## Verification
 
-- [ ] `kanmer-auto` invoked with a group id produces the correct roster without
+- [x] `kanmer-auto` invoked with a group id produces the correct roster without
       the operator supplying ticket ids.
-- [ ] Tickets in the group that are archived / blocked / taken are dropped and
+- [x] Tickets in the group that are archived / blocked / taken are dropped and
       named in the skipped list.
-- [ ] Area targeting still works unchanged.
-- [ ] If `list_items` gained a `group` filter: covered by tests and reflected in
+- [x] Area targeting still works unchanged.
+- [x] If `list_items` gained a `group` filter: covered by tests and reflected in
       `references/tool-reference.md` and the MCP surface FRD.
 
 ## Outcome
+
+Shipped as the `group` filter on `list_items` plus `kanmer-auto` §1 consuming
+it. PR [#31](https://github.com/collisionengineers/kanmer/pull/31) (`ba16d2e`),
+merged 2026-08-16.
+
+**It shipped broken and was fixed the same day.** PR #31's committed plugin
+bundle did **not** contain the feature: it was built inside `.worktrees/skill-011`,
+which has no `node_modules`, so `@kanmer/core` resolved up to the main
+checkout's workspace symlink and tsup bundled main's core instead. Tests passed
+(vitest runs from `src`) and `plugin:check` passed inside the worktree because
+both sides were built the same wrong way. It failed the first time
+`plugin:check` ran at the repo root — after merge. Corrected by PR
+[#32](https://github.com/collisionengineers/kanmer/pull/32) (`9658d08`), which
+also added the trap to AGENTS.md §8 gotcha 8.
+
+**Follow-ups filed:** [[MCP-006]] (`update_group` — hit while renaming HZN-003,
+with no tool path), [[MCP-007]] (make `plugin:check` refuse inside a worktree
+rather than pass meaninglessly — prose in AGENTS.md is the weakest available fix
+for something that silently ships the wrong artifact).
+
+**Shipped differently than planned:** the plan's verification listed
+`npm run typecheck` at the repo root. No such script exists — the root defines
+build/test/smoke/plugin/release and no typecheck at all. Only the GUI workspace
+was typechecked. [[GUI-067]] reads "make the root typecheck cover every
+workspace", which understates it: there is nothing to extend, only something to
+create. Worth correcting on that ticket before it is worked.
+
+Not deployed — shipped to `main`, awaiting the 0.3.3 release.

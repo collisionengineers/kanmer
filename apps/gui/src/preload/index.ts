@@ -69,6 +69,12 @@ const api: KanmerApi = {
   pickRepoDoc: (p) => ipcRenderer.invoke(CH.pickRepoDoc, p),
   getGateStatus: (p, id) => ipcRenderer.invoke(CH.getGateStatus, p, id),
   getGates: (p, id) => ipcRenderer.invoke(CH.getGates, p, id),
+  listGroups: (p, opts) => ipcRenderer.invoke(CH.listGroups, p, opts),
+  getGroup: (p, id) => ipcRenderer.invoke(CH.getGroup, p, id),
+  createGroup: (p, kind, title, body) => ipcRenderer.invoke(CH.createGroup, p, kind, title, body),
+  updateGroup: (p, id, patch) => ipcRenderer.invoke(CH.updateGroup, p, id, patch),
+  getGroupDoc: (p, id, rel) => ipcRenderer.invoke(CH.getGroupDoc, p, id, rel),
+  setGroupDoc: (p, id, rel, c) => ipcRenderer.invoke(CH.setGroupDoc, p, id, rel, c),
   getActivity: (p, opts) => ipcRenderer.invoke(CH.getActivity, p, opts),
   onChange: (cb) => {
     const listener = (_e: unknown, payload: ChangePayload) => cb(payload);

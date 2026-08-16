@@ -2,6 +2,8 @@ import type { BoardConfig, Item } from "@kanmer/core";
 import { distinct } from "../lib/board.js";
 
 export interface Filters {
+  /** A group id — the cross-cutting lens (FRD-001 G8, FRD-011 R4). */
+  group?: string;
   area?: string; // undefined = all, "" = no area, else area id
   priority?: string;
   assignee?: string;
@@ -27,6 +29,9 @@ export function FilterBar({
   onFilters,
   searchRef,
 }: FilterBarProps): JSX.Element {
+  // Groups come from the tickets themselves, so the dropdown only ever offers
+  // groups something is actually in — an empty group is not a useful lens.
+  const groups = distinct(items.flatMap((i) => i.groups ?? [])).map((id) => ({ id, title: "" }));
   const assignees = distinct(items.map((i) => i.assignee));
   const labels = distinct(items.flatMap((i) => i.labels ?? []));
   const set = (patch: Partial<Filters>) => onFilters({ ...filters, ...patch });
@@ -60,6 +65,20 @@ export function FilterBar({
           {board.areas.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {groups.length > 0 && (
+        <select
+          value={filters.group ?? ""}
+          onChange={(e) => set({ group: e.target.value || undefined })}
+        >
+          <option value="">All groups</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.title ? `${g.id} — ${g.title}` : g.id}
             </option>
           ))}
         </select>

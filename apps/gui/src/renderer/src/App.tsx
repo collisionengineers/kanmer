@@ -1464,6 +1464,9 @@ function applyFilters(list: Item[], search: string, filters: Filters): Item[] {
 
     if (filters.assignee && item.assignee !== filters.assignee) return false;
     if (filters.label && !(item.labels ?? []).includes(filters.label)) return false;
+    // The group lens narrows every view, which is what makes a horizon group
+    // ("what matters now") useful rather than decorative (FRD-001 G8 / FRD-011 R4).
+    if (filters.group && !(item.groups ?? []).includes(filters.group)) return false;
     if (q) {
       const hay = [item.id, item.title, item.body, item.assignee, ...(item.labels ?? [])]
         .join("\n")

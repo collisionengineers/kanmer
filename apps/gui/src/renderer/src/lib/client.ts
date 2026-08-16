@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { GateReport } from "@kanmer/core";
+import type { GateReport, Group, GroupWithMembers } from "@kanmer/core";
 import type {
   ActivityEntry,
   BoardColumn,
@@ -72,6 +72,12 @@ export interface ProjectClient {
   pickRepoDoc(): Promise<string | null>;
   getGateStatus(id: string): Promise<Record<string, string[]>>;
   getGates(id: string): Promise<GateReport | null>;
+  listGroups(opts?: { kind?: string; includeArchived?: boolean }): Promise<Group[]>;
+  getGroup(id: string): Promise<GroupWithMembers | null>;
+  createGroup(kind: string, title: string, body?: string): Promise<Group>;
+  updateGroup(id: string, patch: { title?: string; body?: string; archived?: boolean }): Promise<Group>;
+  getGroupDoc(id: string, path: string): Promise<string | null>;
+  setGroupDoc(id: string, path: string, content: string): Promise<{ file: string }>;
   getActivity(opts?: { id?: string; since?: string; limit?: number }): Promise<ActivityEntry[]>;
 }
 
@@ -112,6 +118,12 @@ export function makeClient(projectId: string): ProjectClient {
     pickRepoDoc: () => k.pickRepoDoc(projectId),
     getGateStatus: (id) => k.getGateStatus(projectId, id),
     getGates: (id) => k.getGates(projectId, id),
+    listGroups: (opts) => k.listGroups(projectId, opts),
+    getGroup: (id) => k.getGroup(projectId, id),
+    createGroup: (kind, title, body) => k.createGroup(projectId, kind, title, body),
+    updateGroup: (id, patch) => k.updateGroup(projectId, id, patch),
+    getGroupDoc: (id, rel) => k.getGroupDoc(projectId, id, rel),
+    setGroupDoc: (id, rel, content) => k.setGroupDoc(projectId, id, rel, content),
     getActivity: (opts) => k.getActivity(projectId, opts),
   };
 }

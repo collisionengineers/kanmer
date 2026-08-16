@@ -1,4 +1,4 @@
-import type { GateReport } from "@kanmer/core";
+import type { GateReport, Group, GroupWithMembers } from "@kanmer/core";
 import type {
   ActivityEntry,
   BoardColumn,
@@ -71,6 +71,12 @@ export const CH = {
   pickRepoDoc: "kanmer:pickRepoDoc",
   getGateStatus: "kanmer:getGateStatus",
   getGates: "kanmer:getGates",
+  listGroups: "kanmer:listGroups",
+  getGroup: "kanmer:getGroup",
+  createGroup: "kanmer:createGroup",
+  updateGroup: "kanmer:updateGroup",
+  getGroupDoc: "kanmer:getGroupDoc",
+  setGroupDoc: "kanmer:setGroupDoc",
   getActivity: "kanmer:getActivity",
   changed: "kanmer:changed",
   /** Main → renderer: reveal an item (toast click, etc.). */
@@ -392,6 +398,16 @@ export interface KanmerApi {
   getGateStatus(projectId: string, id: string): Promise<Record<string, string[]>>;
   /** The full gate report for one ticket — the core resolver, verbatim. */
   getGates(projectId: string, id: string): Promise<GateReport | null>;
+  listGroups(projectId: string, opts?: { kind?: string; includeArchived?: boolean }): Promise<Group[]>;
+  getGroup(projectId: string, id: string): Promise<GroupWithMembers | null>;
+  createGroup(projectId: string, kind: string, title: string, body?: string): Promise<Group>;
+  updateGroup(
+    projectId: string,
+    id: string,
+    patch: { title?: string; body?: string; archived?: boolean },
+  ): Promise<Group>;
+  getGroupDoc(projectId: string, id: string, path: string): Promise<string | null>;
+  setGroupDoc(projectId: string, id: string, path: string, content: string): Promise<{ file: string }>;
   /** Read the activity log. */
   getActivity(
     projectId: string,

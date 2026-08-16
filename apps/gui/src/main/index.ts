@@ -642,6 +642,24 @@ function registerIpc(): void {
   });
   // The whole report, for the editor readiness panel. getGateStatus stays as
   // the drag lock-tint's cheaper per-stage view of the same underlying answer.
+  ipcMain.handle(CH.listGroups, (_e, p: string, opts?: { kind?: string; includeArchived?: boolean }) =>
+    requireStore(p).listGroups(opts ?? {}),
+  );
+  ipcMain.handle(CH.getGroup, (_e, p: string, id: string) => requireStore(p).getGroup(id));
+  ipcMain.handle(CH.createGroup, (_e, p: string, kind: string, title: string, body?: string) =>
+    requireStore(p).createGroup(kind, title, body ?? ""),
+  );
+  ipcMain.handle(
+    CH.updateGroup,
+    (_e, p: string, id: string, patch: { title?: string; body?: string; archived?: boolean }) =>
+      requireStore(p).updateGroup(id, patch),
+  );
+  ipcMain.handle(CH.getGroupDoc, (_e, p: string, id: string, rel: string) =>
+    requireStore(p).getGroupDoc(id, rel),
+  );
+  ipcMain.handle(CH.setGroupDoc, (_e, p: string, id: string, rel: string, content: string) =>
+    requireStore(p).setGroupDoc(id, rel, content),
+  );
   ipcMain.handle(CH.getGates, (_e, p: string, id: string) => requireStore(p).getDocGates(id));
   ipcMain.handle(CH.getGateStatus, async (_e, p: string, id: string) => {
     const store = requireStore(p);

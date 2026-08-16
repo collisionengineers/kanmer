@@ -15,6 +15,7 @@ import {
   type AgentProvider,
   type Invocation,
   type ProviderId,
+  antigravityBindingNote,
   codexTrustFromConfig,
   codexTrustNote,
   classifyLegacyCodexEntry,
@@ -436,6 +437,11 @@ export async function connectAgent(id: ProviderId, projectRoot: string, boardRoo
         );
         if (note) output += ` ${note}`;
       }
+      // Antigravity's registration is read only by a session bound to this
+      // folder, and Kanmer binds nothing (MCP-015). "Registered Kanmer in
+      // .agents/mcp_config.json" is true and, alone, misleading — so the
+      // condition is said here, at the moment the file is written.
+      if (id === "antigravity") output += ` ${antigravityBindingNote(projectRoot)}`;
     }
     const skills = await installSkills(provider, projectRoot).catch(
       (e) => `skills failed: ${e instanceof Error ? e.message : e}`,

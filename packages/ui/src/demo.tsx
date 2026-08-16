@@ -782,7 +782,11 @@ function installDemoBridge(): void {
     listProviders: async () => [
       { id: "claude", label: "Claude Code", dispatch: true },
       { id: "codex", label: "Codex", dispatch: true },
-      { id: "opencode", label: "OpenCode", dispatch: false },
+      { id: "opencode", label: "opencode", dispatch: true },
+      // The one host that really carries the "no background dispatch" badge, so
+      // the demo exercises it without asserting something false about opencode,
+      // which is dispatchable (GUI-073).
+      { id: "antigravity", label: "Antigravity", dispatch: false },
     ],
     listDispatches: async () => [],
     cancelDispatch: async () => true,

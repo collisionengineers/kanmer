@@ -13,7 +13,7 @@ Open **Settings → Connect**. You will see a row per supported host, each with 
 | Claude Code | |
 | opencode | |
 | Grok CLI | |
-| Antigravity | Register-only — see below |
+| Antigravity | No background dispatch, and `agy` needs the folder bound — see below |
 
 Press **Connect** on the one you use. Two things happen: Kanmer registers this
 project's board with that host's agent-tool client, and it installs Kanmer's
@@ -33,12 +33,43 @@ The same is true after Kanmer updates itself. An agent holding a connection is
 running the version it started with; restart it or it keeps reading your board
 with the old code.
 
-## "Register-only"
+## "No background dispatch"
 
-Antigravity is marked **· register-only** in the list. It can be connected and
-it can read and change the board perfectly well — but Kanmer cannot dispatch
-background work to it, so it will not appear when you dispatch a task. The other
-four hosts can be dispatched to.
+A host marked **· no background dispatch** connects and receives skills exactly
+like the others; the one thing Kanmer cannot do is start it for you in the
+background to work a ticket, so it does not appear when you dispatch a task.
+Today that is Antigravity alone; the other four hosts can be dispatched to.
+
+The badge used to read "register-only", which was wrong twice over: Antigravity
+does get the skills as well as the registration, and it does not appear in the
+dispatch menu for a different reason than the badge suggested — see below.
+
+## Antigravity: bind the folder
+
+Connecting Antigravity writes two things into your project —
+`.agents/mcp_config.json` (the board) and `.agents/skills/` (the skills, the same
+tree opencode reads). Both are the right files in the right places, and **`agy`
+reads them only in a session bound to this folder**:
+
+```sh
+agy --add-dir /path/to/your/project     # binds for this session, stores nothing
+agy --new-project                        # binds by creating a project for the folder
+```
+
+A plain `agy` started inside the project does **not** see them. It binds instead
+to its own default project, which has no folder attached at all, so your working
+directory makes no difference — and neither does trusting the workspace or the
+folder being a git repository. Kanmer does not yet establish that binding for
+you; until it does, add one of the flags above, or Antigravity will start with
+neither the board nor the skills and give no sign that anything is missing.
+
+Two ways to tell it worked, both worth knowing because the obvious check is
+misleading: ask the agent to use a Kanmer tool and see whether it comes back with
+real board data. Do not go looking for a tool named after Kanmer in a tool list —
+a connected workspace MCP server does not appear under its own name there.
+
+This was measured against the `agy` command-line tool, version 1.1.13. The
+Antigravity IDE has not been tested, so nothing here is a claim about it.
 
 ## When it does not work
 

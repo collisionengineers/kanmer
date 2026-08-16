@@ -58,8 +58,11 @@ This is not only a wave-0 concern: a question can surface at any point, and a
 lane that hits one **stops there and is reported as parked-on-a-question, named
 and quoted** — never rolled into the generic failure bucket. The operator can
 answer a question in seconds; they cannot answer one they were never shown. The
-gates enforce the stopping (`questions-resolved` at leave-preparing,
-enter-review and enter-done); reporting it usefully is this skill's job.
+gates enforce *some* of the stopping — `get_doc_gates` says which boundaries
+this ticket's profile actually has, and they are not the same for every profile —
+but the merge is outside the engine entirely, so a lane can land code on a
+question the operator never saw. Reporting it is therefore this skill's job, not
+the engine's.
 
 ## 3. Partition into conflict-free lanes
 
@@ -103,3 +106,14 @@ recommendation, so the operator can answer inline), **skipped**
 (blocked / taken / failed, with reasons). Every ticket in the roster
 appears in exactly one list — silent drops are how autonomous runs lose
 trust.
+
+---
+
+**No single successor — this skill *is* the hand-off.** It drives the phase
+skills in order for each ticket in its roster:
+
+    kanmer-research → -plan → -execute → -review → -verify → -closeout
+
+stopping each ticket at the requested target point, and stopping the whole run
+at any question only the operator can answer. When the roster is exhausted,
+control returns to the operator with the four-list report above.

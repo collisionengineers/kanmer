@@ -101,3 +101,11 @@ it.
 
 What changed, one line per item, plus what you deliberately left alone and
 why. Grooming that can't be audited is indistinguishable from damage.
+
+---
+
+**No successor — control returns to the user.** Grooming changes the board, not
+the work: nothing here moves a ticket forward through its pipeline. Tickets this
+run made ready go to `kanmer-research` when someone starts them, doc-gate debt
+goes to `kanmer-docs`, and a board that needs describing rather than fixing was
+`kanmer-report`'s job in the first place.

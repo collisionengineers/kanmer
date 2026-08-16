@@ -73,3 +73,12 @@ flight. Done: board shows the ticket finished, git shows nothing left.
 | **Pausing, not closing** (work will resume) | Append the resume point (branch + worktree path) to checklist progress notes, release the ticket, and **keep** the worktree and branch — see `kanmer-execute`'s pausing section. |
 | **Worktree recorded on the ticket but gone on disk** | `git worktree list`: registered but missing → `git worktree prune`; directory lingering but unregistered → plain `rm -rf` of the leftover dir. Either way continue normally — a missing worktree is just less to clean. |
 | **Several tickets share one branch** | Do the kanmer half per ticket as each finishes; do the git half only when the **last** of them closes — `list_items` and check no other ticket's `taken.branch` matches first. |
+
+---
+
+**No successor — this is the end of the pipeline.** The ticket is Done, the
+worktree and branch are gone, and the ticket is released. If closeout produced
+follow-up work, that is a **new ticket** via `kanmer-tickets`, starting again at
+Backlog; it is not a continuation of this one. Control returns to whoever was
+driving — often `kanmer-auto`, which counts this ticket as finished and moves to
+the next in its roster.

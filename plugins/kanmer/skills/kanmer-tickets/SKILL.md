@@ -18,6 +18,19 @@ directly; the tools keep ids, timestamps, folders and frontmatter consistent.
 This skill covers the tickets themselves. The work *inside* a ticket is
 driven by the phase skills — see the router at the end.
 
+## Workflow
+
+1. **Orient** — `get_status`, then `list_board`, then `list_items`.
+2. **Search before creating** — `search_items` for anything close.
+3. **Do the one thing asked**: create, update, link, order, or archive.
+4. **Pick the profile** deliberately when creating — it decides how much
+   evidence the ticket will owe, and it is the field most often got wrong.
+5. **Hand off, or stop.** Filing a ticket is not starting it: if that was the
+   whole request, say what you filed and stop there.
+
+The ticket enters at **Backlog**, and this skill leaves it there. Everything
+after Backlog belongs to a phase skill — the router at the end says which.
+
 ## Orient first: `get_status`, once per session
 
 It tells you whether `.kanmer/` exists, the format version, whether the board
@@ -87,18 +100,32 @@ permanently; reserve it for items the user explicitly wants gone.
 
 A ticket's life is driven phase by phase; hand off rather than improvising:
 
+    kanmer-tickets → -research → -plan → -execute → -review → -verify → -closeout
+
+That is the order. How far a given ticket actually walks it depends on its
+profile — a `spike` may finish at research — so ask `get_doc_gates` rather than
+assuming every ticket takes every step.
+
 | You are about to… | Use |
 |---|---|
 | Investigate a ticket, write its research / files documents | `kanmer-research` |
-| Write plan.md / checklist.md | `kanmer-plan` |
-| Implement — worktree, branch, checklist, proof, PR | `kanmer-execute` |
+| Write the plan and checklist | `kanmer-plan` |
+| Implement — worktree, branch, checklist, report, PR | `kanmer-execute` |
 | Review finished work or handle PR feedback | `kanmer-review` |
+| Verify a merged ticket on main → proof | `kanmer-verify` |
 | Clean up after the PR merged | `kanmer-closeout` |
-| Clear a whole area's tickets autonomously | `kanmer-auto` |
+| Drive a whole area or group autonomously | `kanmer-auto` |
 | Report current state / history | `kanmer-report` |
 | Link/create a governing PRD/FRD/ADR | `kanmer-docs` |
-| Verify a merged ticket → proof.md | `kanmer-verify` |
 | Tidy the backlog itself | `kanmer-groom` |
+| Set up or reconcile Kanmer in the repo | `kanmer-setup` |
 
 For exact tool parameters and what each field means, read
 `references/tool-reference.md`.
+
+---
+
+**Hand off to `kanmer-research`** when the ticket you just filed is one you were
+also asked to work — it is the first phase skill, and it takes the ticket out of
+Backlog. If the request was only to manage the board, control returns to the
+user here: filing is not starting.

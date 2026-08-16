@@ -12,7 +12,7 @@ research and files documents — never before them, never instead of them.
 asks for a plan and nothing else; a `spike` may ask for no plan at all. Ask
 rather than assuming.
 
-## Steps
+## Workflow
 
 1. **Check the inputs.** `get_item` for the ticket, then `get_ticket_doc` for
    `research` and `files`. If either is missing or visibly stale, do the
@@ -55,3 +55,10 @@ move them under `## Parked (explicitly deferred)` with a reason for deferring.
 A move may cross **one** gated boundary at a time, so do not try to jump a
 planned ticket further than Implementing — the move is refused, and the refusal
 names the next stage.
+
+---
+
+**Hand off to `kanmer-execute`**, which takes the ticket into a worktree and
+works the checklist you just wrote. If planning turned up a question only the
+user can answer, hand off to *them* first — an unanswered question is the one
+thing that should stop this ticket reaching Implementing.

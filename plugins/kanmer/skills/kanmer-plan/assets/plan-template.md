@@ -2,8 +2,8 @@
 
 *The plan. Not the checklist — this is the **reasoning**; the checklist is the executable distillation of it.*
 
-Written FROM research.md and impact.md — if either is missing or stale, fix
-that first.
+Written FROM the ticket's `research` and `files` documents — if either is
+missing or stale, fix that first.
 
 ## Approach
 

@@ -4,6 +4,7 @@ type: ticket
 title: 2.2 Profiles engine
 status: done
 area: core
+order: 30
 assignee: ''
 profile: feature
 labels:
@@ -21,7 +22,7 @@ refs:
   - docs/architecture/adr/ADR-0003-requirement-profiles.md
 archived: false
 created: '2026-08-16T00:30:18.648Z'
-updated: '2026-08-16T05:34:44.109Z'
+updated: '2026-08-16T23:19:35.577Z'
 ---
 
 Board `profiles` + area `defaultProfile`; item `profile` + `requires`. Shipped defaults table (feature/fix/chore/spike). Resolution chain P6: explicit ticket profile → area default → board default. Multi-jump blocked by the first unmet boundary. Named-file requirements for custom. One core `getDocGates(id)` returning requirements/satisfied/warnings — the single function MCP, GUI and skills all consume.

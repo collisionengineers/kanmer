@@ -4,6 +4,7 @@ type: ticket
 title: Fix kanmer-report's frontmatter so Antigravity loads all 12 skills
 status: done
 area: skills
+order: 1200
 assignee: claude-code
 profile: fix
 stageEntered:
@@ -25,7 +26,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/42'
 archived: false
 created: '2026-08-16T22:08:48.761Z'
-updated: '2026-08-16T23:01:00.596Z'
+updated: '2026-08-16T23:19:36.384Z'
 ---
 
 ## What

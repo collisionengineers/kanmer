@@ -4,6 +4,7 @@ type: ticket
 title: 6.2 Templates
 status: done
 area: skills
+order: 1080
 assignee: claude-code
 profile: feature
 stageEntered:
@@ -24,7 +25,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/18'
 archived: false
 created: '2026-08-16T00:31:38.780Z'
-updated: '2026-08-16T05:34:44.376Z'
+updated: '2026-08-16T23:19:36.306Z'
 ---
 
 Identity first-lines on every template; the files template with two sections and the contrast rule; per-proof-type templates; group and ticket template updates for the `groups`/`profile` fields; a research summary template for deep mode.

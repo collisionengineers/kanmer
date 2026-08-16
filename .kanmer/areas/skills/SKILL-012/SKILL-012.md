@@ -6,6 +6,7 @@ title: >-
   closeout
 status: done
 area: skills
+order: 1180
 assignee: claude-code
 profile: feature
 stageEntered:
@@ -32,7 +33,7 @@ prs:
   - '#30'
 archived: false
 created: '2026-08-16T16:11:20.804Z'
-updated: '2026-08-16T17:49:04.048Z'
+updated: '2026-08-16T23:19:36.371Z'
 ---
 
 ## What

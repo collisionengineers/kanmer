@@ -4,6 +4,7 @@ type: ticket
 title: 6.5 AGENTS block rewrite
 status: done
 area: skills
+order: 1110
 assignee: claude-code
 profile: feature
 stageEntered:
@@ -23,7 +24,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/16'
 archived: false
 created: '2026-08-16T00:31:38.813Z'
-updated: '2026-08-16T05:34:44.403Z'
+updated: '2026-08-16T23:19:36.326Z'
 ---
 
 Orientation essentials only: profiles exist; call `get_doc_gates` before any move; read the whole ticket folder and group context; six stages; where the docs live.

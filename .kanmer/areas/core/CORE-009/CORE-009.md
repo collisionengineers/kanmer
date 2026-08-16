@@ -4,6 +4,7 @@ type: ticket
 title: 3.3 Prompt/dispatch SSOT
 status: done
 area: core
+order: 90
 assignee: ''
 profile: fix
 labels:
@@ -15,7 +16,7 @@ refs:
   - docs/functional/frd/FRD-010-task-scoped-dispatch.md
 archived: false
 created: '2026-08-16T00:30:18.744Z'
-updated: '2026-08-16T05:34:44.189Z'
+updated: '2026-08-16T23:19:35.616Z'
 ---
 
 Move the per-task prompt texts into core so the MCP prompt and Phase 5's dispatch picker share one source and cannot drift.

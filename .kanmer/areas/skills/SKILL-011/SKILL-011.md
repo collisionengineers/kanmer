@@ -4,6 +4,7 @@ type: ticket
 title: 'Scope kanmer-auto by group, not only by area'
 status: done
 area: skills
+order: 1170
 assignee: claude-code
 profile: feature
 stageEntered:
@@ -26,7 +27,7 @@ prs:
   - '#32'
 archived: false
 created: '2026-08-16T16:11:01.414Z'
-updated: '2026-08-16T17:38:27.544Z'
+updated: '2026-08-16T23:19:36.364Z'
 ---
 
 ## What

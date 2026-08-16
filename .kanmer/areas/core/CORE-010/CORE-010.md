@@ -4,6 +4,7 @@ type: ticket
 title: 7.1 Migrate this board to format 3
 status: done
 area: core
+order: 100
 assignee: ''
 profile: feature
 labels:
@@ -16,7 +17,7 @@ refs:
   - docs/architecture/adr/ADR-0008-single-format-3-migration.md
 archived: false
 created: '2026-08-16T00:31:38.823Z'
-updated: '2026-08-16T05:34:44.426Z'
+updated: '2026-08-16T23:19:35.627Z'
 ---
 
 **Runs early — at the Phase-4 release, ahead of the rest of Phase 7.** The moment a release carries the format-3 migration and prompt, Kanmer's own board becomes the first real-world migration: review the dry-run, apply, keep working.

@@ -53,3 +53,34 @@ operations. Confirmed environmental by stashing the entire change and running
 the same file on the unmodified base commit: it fails there too. The
 connect/providers suites are green (62 tests), as are typecheck,
 `verify:agents-block` (26/26) and `check:manual`.
+
+**Box 18 ticked on merged main** (`463ec04`, in `main` at `efdc9f3`): typecheck
+clean across all four workspaces, `connect`/`providers` 63/63, agents-block
+26/26, manual up to date, GUI builds, and the `codex mcp remove` fixture proof
+re-run with a single deletion hunk. Evidence in `proof`. `npm test` shows the
+same two pre-existing `kanmerGit.test.ts` timeout failures, a different pair from
+the branch run — a flaky Windows temp/`git worktree` interaction, not a
+regression.
+
+- [x] 18. Verification run on merged main (produced `proof`)
+
+## Closeout — GUI-079
+
+- [x] PR merge verified (`gh pr view 47` → `MERGED`, `463ec04`, 2026-08-16T23:13:18Z)
+- [x] proof finalised (written on merged main, PR URL and merge date in it)
+- [x] Moved to final stage (done, 2026-08-16T23:18:51Z)
+- [x] Outcome recorded in ticket body (grok reconnect-once + the sweep, in user-facing terms — this is what `release-notes.mjs` drafts from)
+- [ ] cd out of worktree; `git worktree remove .worktrees/gui-079`
+- [ ] `git branch -D gui-079-connect-ownership` (squash-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`
+
+Git cleanup done from the main checkout: worktree removed (clean, nothing
+stashed), local branch `-D`'d as expected after a squash-merge (`b72c0a1`),
+remote branch deleted, prune run. `git worktree list` no longer shows
+`.worktrees/gui-079` and no `gui-079*` branch remains.
+
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-079`
+- [x] `git branch -D gui-079-connect-ownership` (squash-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

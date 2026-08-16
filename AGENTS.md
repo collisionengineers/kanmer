@@ -363,7 +363,8 @@ Run from the repo root unless noted.
 | `npm run build` | build core + mcp-server (incl. standalone bundle) |
 | `npm run build:core` / `npm run build:server` | build just one package |
 | `npm test` | core **and GUI** vitest suites |
-| `npm run typecheck -w @kanmer/gui` | GUI type check (each package has a `typecheck` script) |
+| `npm run typecheck` | type-check **every** workspace — core, mcp-server, ui, gui. Use this, not the per-workspace form: vitest does not typecheck, so a green `npm test` says nothing about types, and a partial typecheck says nothing about the workspaces it skipped |
+| `npm run typecheck -w @kanmer/<pkg>` | one workspace, when you want a fast loop |
 | `npm run app` | build + launch the GUI |
 | `npm run dev:gui` | GUI with hot reload |
 | `npm run dist` | build everything **and** produce `apps/gui/release/Kanmer Setup <v>.exe` |
@@ -474,7 +475,7 @@ way, so it could not fail.
 
 1. `npm test` — core + GUI suites green.
 2. `node packages/mcp-server/src/smoke.mjs` **and** `node packages/mcp-server/src/smoke-protocol.mjs` — stdio checks green (add one for your change).
-3. `npm run typecheck -w @kanmer/gui` — GUI types clean.
+3. `npm run typecheck` — **every** workspace clean, and confirm all four are named in the output. Not the `-w @kanmer/gui` form: that is what let `c8b94a4` ship, and a workspace whose script is missing is skipped silently by `--if-present`.
 4. `npm run build -w @kanmer/gui` — GUI builds.
 5. If GUI-facing: `KANMER_SMOKE=1 KANMER_OPEN=<sandbox> npx electron . --user-data-dir=<fresh dir>` boots (exit 0). Non-zero means it did not render — see §6.
 6. If the server changed: `npm run build && npm run plugin:build && npm run plugin:check` (the check now verifies the committed bundle's bytes, not just tool names), plus both smoke scripts with `KANMER_SERVER=plugins/kanmer/mcp/kanmer-mcp.cjs`.

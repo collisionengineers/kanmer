@@ -155,7 +155,10 @@ const GATE = [
   "node packages/mcp-server/src/smoke.mjs",
   "node packages/mcp-server/src/smoke-protocol.mjs",
   "npm run verify:agents-block",
-  "npm run typecheck -w @kanmer/gui",
+  // Every workspace, not just the GUI. The -w form here is what let c8b94a4
+  // ship: the release rail was the only thing running a typecheck at all, and
+  // it ran one workspace's (GUI-067).
+  "npm run typecheck",
 ];
 for (const step of GATE) run(step);
 

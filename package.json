@@ -13,6 +13,7 @@
     "build:server": "npm run build -w @kanmer/mcp-server",
     "build:ui": "npm run build -w @kanmer/core && npm run build -w @kanmer/ui",
     "test": "npm run test -w @kanmer/core && npm run test -w @kanmer/gui",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "smoke:protocol": "node packages/mcp-server/src/smoke-protocol.mjs",
     "verify:agents-block": "node scripts/verify-agents-block.mjs",
     "dev:gui": "npm run dev -w @kanmer/gui",

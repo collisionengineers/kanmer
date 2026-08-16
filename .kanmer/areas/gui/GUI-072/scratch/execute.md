@@ -1,0 +1,1 @@
+opened PR https://github.com/collisionengineers/kanmer/pull/39 (branch `gui-072-checkbox-rows`, worktree `.worktrees/gui-072`, commit bdc2a1d). CSS-only: `styles.css` +16/−11 plus one new zero-dep test file. Rail green: npm test 205/22, typecheck clean, build:ui clean.

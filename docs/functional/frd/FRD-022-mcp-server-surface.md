@@ -5,7 +5,7 @@ covers: shipped server (backfill) + v3 tool delta (groups, profiles, removals)
 
 # FRD-022 — MCP server surface
 
-The agent-facing contract. Local stdio server; root resolved `--root` → `KANMER_ROOT` → cwd; **reads never create `.kanmer/`** — only an actual write does.
+The agent-facing contract. Local stdio server; root resolved `--root` → `KANMER_ROOT` → **board discovery from cwd upwards** → `--init`, and otherwise **fatal** (ADR-0012); **reads never create `.kanmer/`** — only an actual write does, and only where a root was asserted or `--init` was passed.
 
 - R1. **Tool inventory (end-state), by category.** Read: get_status, list_board, list_items, get_item, get_ticket_doc, search_items, get_links, get_activity, get_doc_gates, **get_group, list_groups, get_group_doc**. Write: create_item, create_items (cap 50), update_item, move_item, take_ticket, set_ticket_doc, append_scratch, link_items, link_doc, migrate_board, **create_group, set_group_doc**, column tools (kind: **area only** — status and priority kinds removed per FRD-007/008). Destructive: delete_item, remove_column.
 - R2. Annotations are honest: `readOnlyHint` on every read, `destructiveHint` only where true — this is what makes host approval modes work.
@@ -17,15 +17,22 @@ The agent-facing contract. Local stdio server; root resolved `--root` → `KANME
 
 **Acceptance:** smoke green across the full inventory incl. group tools, profile-gated moves, nested doc paths, proof warnings, and migrate_board dry-run; plugin:check passes at the final count.
 
-Related: FRD-001/002/003/006/007/008 · ADR-0009 · AGENTS.md §7.
+Related: FRD-001/002/003/006/007/008 · ADR-0009 · **ADR-0012 (root resolution / board discovery)** · AGENTS.md §7.
 
 ## Verified against code — Phase 0.2
 
 `packages/mcp-server/src/index.ts` is the only file in the repo calling `registerTool`.
 
-- Root resolution is exactly `--root` → `KANMER_ROOT` → `cwd` `root.ts:12-19`, applied once
-  `index.ts:26-27` and echoed to stderr `index.ts:969`. Reads never create `.kanmer/`: `init` is
-  lazy and only the `write()` wrapper calls `ensureInit()` `index.ts:51-66`.
+- Root resolution *was* exactly `--root` → `KANMER_ROOT` → `cwd`. **Superseded by ADR-0012**
+  (MCP-010): the bare cwd fallback found no board on the layout Kanmer's own desktop app
+  creates (`<repo>/.worktrees/kanmer`), and reported an empty board instead of saying so.
+  The order is now `--root` → `KANMER_ROOT` → **discovery** → `--init`, else a fatal error
+  naming every path tried; the resolver returns `{ root, how, tried }` and `get_status`
+  surfaces `how` as `rootSource`. Resolution is applied once, **inside `main()`** so a
+  not-found throw reaches the fatal handler, and echoed to stderr with its provenance.
+  Reads still never create `.kanmer/`: `init` is lazy and only the `write()` wrapper calls
+  `ensureInit()` — `--init` governs whether that write is permitted to create a board, it
+  does not make a read create one.
 - R1 — **24 tools registered today**, against 29 at the v3 end state (+5 group tools). Present:
   the 12 reads listed minus `get_group`/`list_groups`/`get_group_doc`, and the writes minus
   `create_group`/`set_group_doc`. Column tools still accept `kind: status|area|priority`
@@ -45,5 +52,8 @@ Related: FRD-001/002/003/006/007/008 · ADR-0009 · AGENTS.md §7.
 - R6 — the rail is real: `plugin:check` passes at 24 tools with matching bundle bytes, and
   `smoke.mjs` covers the surface at 85 checks, `smoke-protocol.mjs` at 26.
 
-Note `packages/mcp-server` has **no unit tests** — the two `.mjs` smoke scripts are its entire
-automated coverage, which is why Phase 3 extends them rather than adding vitest.
+Note `packages/mcp-server` has **no unit tests** — the `.mjs` smoke scripts are its entire
+automated coverage, which is why Phase 3 extends them rather than adding vitest. Still true
+after MCP-010: board discovery is covered by a third smoke script (`smoke-discovery.mjs`,
+`npm run smoke:discovery`), and the resolver's unit tests live in `@kanmer/core`
+(`discover.test.ts`) precisely so this decision did not have to be overturned.

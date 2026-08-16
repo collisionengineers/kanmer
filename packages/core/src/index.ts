@@ -1,5 +1,6 @@
 export * from "./types.js";
 export * from "./paths.js";
+export * from "./discover.js";
 export * from "./io.js";
 export * from "./frontmatter.js";
 export * from "./ids.js";

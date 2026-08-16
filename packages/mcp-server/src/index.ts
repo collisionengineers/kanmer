@@ -26,13 +26,35 @@ import {
   takeTicketPromptText,
   watchKanmer,
   type Item,
+  type RootSource,
   type WatchHandle,
 } from "@kanmer/core";
 import { resolveProjectRoot, resolveRepoRoot } from "./root.js";
 
-const projectRoot = resolveProjectRoot(process.argv.slice(2), process.env);
-const repoRoot = resolveRepoRoot(process.argv.slice(2), process.env);
-const store = new KanmerStore(projectRoot, { repoRoot });
+/**
+ * Root resolution happens inside `main()`, not here — see `resolveRoot()`
+ * below. These bindings are assigned before the transport connects, and every
+ * handler closure below reads them by name, so none of them needs to know.
+ *
+ * Why not `const` at module scope, as it was: `resolveProjectRoot` can now
+ * throw (no board found anywhere), and a throw at module-evaluation time never
+ * reaches `main().catch` at the foot of this file — the host reports only
+ * "server failed to start" and the diagnostic naming every path tried is lost.
+ * A diagnostic nobody sees is the same invisibility this change exists to end.
+ * ADR-0012 §Decision 11.
+ */
+let projectRoot!: string;
+let rootSource!: RootSource;
+let store!: KanmerStore;
+
+/** Resolve the board root and build the store. Called once, at the top of main(). */
+function resolveRoot(): void {
+  const resolved = resolveProjectRoot(process.argv.slice(2), process.env);
+  const repoRoot = resolveRepoRoot(process.argv.slice(2), process.env);
+  projectRoot = resolved.root;
+  rootSource = resolved.how;
+  store = new KanmerStore(projectRoot, { repoRoot });
+}
 
 /** JSON tool result. */
 function ok(data: unknown) {
@@ -239,6 +261,8 @@ server.registerTool(
     }
     return ok({
       projectRoot,
+      /** Which resolution step produced projectRoot — see ADR-0012. */
+      rootSource,
       kanmerDir: store.paths.kanmer,
       exists,
       format,
@@ -1086,6 +1110,10 @@ server.registerPrompt(
 // ---------------------------------------------------------------------------
 
 async function main() {
+  // Resolve the board root first, and inside main(): not finding one throws,
+  // and only a throw from here reaches the fatal handler below, which is the
+  // only thing that prints the diagnostic to stderr. ADR-0012 §Decision 11.
+  resolveRoot();
   // No store.init() here: a read-only session in a workspace that never
   // opted into Kanmer must not create .kanmer/ just by being opened.
   // Write handlers call ensureInit() lazily instead.
@@ -1098,10 +1126,15 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // Never write logs to stdout — that stream is the MCP transport.
-  process.stderr.write(`kanmer-mcp ready — root: ${projectRoot}\n`);
+  process.stderr.write(`kanmer-mcp ready — root: ${projectRoot} (${rootSource})\n`);
 }
 
 main().catch((err) => {
-  process.stderr.write(`kanmer-mcp fatal: ${err instanceof Error ? err.stack : String(err)}\n`);
+  // A resolution failure is a plain, already-worded diagnostic: print it as
+  // written, without a stack, so the paths tried are the first thing read.
+  const message = err instanceof Error ? err.message : String(err);
+  const detail =
+    message.startsWith("no Kanmer board found") || !(err instanceof Error) ? message : err.stack;
+  process.stderr.write(`kanmer-mcp fatal: ${detail}\n`);
   process.exit(1);
 });

@@ -43,8 +43,18 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
-  check("tools/list returns 24 tools", tools.tools.length === 24, `got ${tools.tools.length}`);
-  for (const name of ["append_scratch", "link_doc", "get_doc_gates", "migrate_board"]) {
+  check("tools/list returns 29 tools", tools.tools.length === 29, `got ${tools.tools.length}`);
+  for (const name of [
+    "append_scratch",
+    "link_doc",
+    "get_doc_gates",
+    "migrate_board",
+    "create_group",
+    "get_group",
+    "list_groups",
+    "get_group_doc",
+    "set_group_doc",
+  ]) {
     check(`${name} tool exists`, tools.tools.some((t) => t.name === name));
   }
   check(
@@ -763,6 +773,97 @@ try {
     "the warning does not block the move",
     JSON.parse(textOf(await moveTo(visual, "done"))).status === "done",
   );
+
+  // ---- Groups (FRD-001), over real stdio -----------------------------------
+  const epic = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "create_group",
+        arguments: { kind: "epic", title: "Checkout rework", body: "Ship these together." },
+      }),
+    ),
+  );
+  check("create_group allocates an EPIC id", epic.id === "EPIC-001", epic.id);
+  const horizon = JSON.parse(
+    textOf(await client.callTool({ name: "create_group", arguments: { kind: "horizon", title: "NOW" } })),
+  );
+  check("a second kind gets its own prefix", horizon.id === "HZN-001", horizon.id);
+  check(
+    "create_group rejects an undeclared kind, listing the valid ones",
+    (await client.callTool({ name: "create_group", arguments: { kind: "sprint", title: "S1" } }))
+      .isError === true,
+  );
+
+  // Membership rides on update_item — there is deliberately no add/remove tool.
+  const m1 = await mk("Member one", "chore");
+  const m2 = await mk("Member two", "chore");
+  for (const id of [m1, m2]) {
+    await client.callTool({ name: "update_item", arguments: { id, groups: [epic.id] } });
+  }
+  check(
+    "membership is rejected when the group does not exist",
+    (await client.callTool({ name: "update_item", arguments: { id: m1, groups: ["EPIC-404"] } }))
+      .isError === true,
+  );
+
+  let group = JSON.parse(textOf(await client.callTool({ name: "get_group", arguments: { id: epic.id } })));
+  check(
+    "get_group derives its members from the tickets",
+    group.members.map((m) => m.id).join(",") === [m1, m2].sort().join(","),
+    group.members.map((m) => m.id).join(","),
+  );
+  check("derived progress counts them in Backlog", group.progress.backlog === 2 && group.total === 2);
+
+  // Move one member and re-read: progress must follow, with no write to the group.
+  const groupFile = path.join(sandbox, ".kanmer", "groups", epic.id, `${epic.id}.md`);
+  const beforeBytes = fs.readFileSync(groupFile, "utf8");
+  await writeDoc(m1, "plan", "# Plan");
+  await moveTo(m1, "implementing");
+  group = JSON.parse(textOf(await client.callTool({ name: "get_group", arguments: { id: epic.id } })));
+  check(
+    "progress follows a member move",
+    group.progress.implementing === 1 && group.progress.backlog === 1,
+    JSON.stringify(group.progress),
+  );
+  check(
+    "and the group file was never written — membership is derived, not stored",
+    fs.readFileSync(groupFile, "utf8") === beforeBytes,
+  );
+  check(
+    "no file anywhere stores the member list",
+    !beforeBytes.includes(m1) && !beforeBytes.includes("members"),
+  );
+
+  // Shared context: what every member's agent is expected to read.
+  await client.callTool({
+    name: "set_group_doc",
+    arguments: { id: epic.id, path: "context.md", content: "The constraint they all sit under." },
+  });
+  const ctx = JSON.parse(
+    textOf(await client.callTool({ name: "get_group_doc", arguments: { id: epic.id, path: "context.md" } })),
+  );
+  check("group docs round-trip", ctx.content?.includes("constraint"));
+  const nestedCtx = await client.callTool({
+    name: "set_group_doc",
+    arguments: { id: epic.id, path: "decisions/api.md", content: "# API" },
+  });
+  check("nested group doc paths work", nestedCtx.isError !== true);
+  check(
+    "the group's own file cannot be overwritten as a context doc",
+    (
+      await client.callTool({
+        name: "set_group_doc",
+        arguments: { id: epic.id, path: `${epic.id}.md`, content: "x" },
+      })
+    ).isError === true,
+  );
+
+  const groups = JSON.parse(textOf(await client.callTool({ name: "list_groups", arguments: {} })));
+  check("list_groups returns both", groups.length === 2, groups.map((g) => g.id).join(","));
+  const epicsOnly = JSON.parse(
+    textOf(await client.callTool({ name: "list_groups", arguments: { kind: "epic" } })),
+  );
+  check("list_groups filters by kind", epicsOnly.length === 1 && epicsOnly[0].id === epic.id);
 
   const del1 = await client.callTool({ name: "delete_item", arguments: { id: "TICK-001" } });
   check(

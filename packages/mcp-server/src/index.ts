@@ -391,6 +391,90 @@ server.registerTool(
   }),
 );
 
+// ---------------------------------------------------------------------------
+// Groups (FRD-001). Membership rides on `update_item(groups: [...])` — there is
+// deliberately no add/remove tool, matching how labels and blocks already work.
+// ---------------------------------------------------------------------------
+
+server.registerTool(
+  "create_group",
+  {
+    title: "Create a group",
+    description:
+      "Create a cross-cutting group of tickets: an `epic` (these ship together) or a `horizon` (this is what matters now). Returns the group including its allocated id (EPIC-001, HZN-001). The body is the group's goal; add shared context agents should read with set_group_doc. Add members by calling update_item(groups: [...]) on each ticket — membership lives on tickets, and the member list is always derived, never stored.",
+    inputSchema: {
+      kind: z.string().describe("Group kind (see list_board → groupKinds): epic | horizon"),
+      title: z.string().describe("Short title"),
+      body: z.string().optional().describe("Markdown body — the group's goal"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  },
+  write(async ({ kind, title, body }) => ok(await store.createGroup(kind, title, body ?? ""))),
+);
+
+server.registerTool(
+  "get_group",
+  {
+    title: "Get a group",
+    description:
+      "A group with its derived membership: every ticket that names it, each with title and stage, plus per-stage progress counts. Members and progress are computed from the tickets on every read, so they cannot go stale. Archived members are listed but excluded from the counts. Read this before working any member ticket — the group's shared context is part of the ticket's context.",
+    inputSchema: { id: z.string().describe("Group id, e.g. EPIC-001") },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  guard(async ({ id }) => {
+    const group = await store.getGroup(id);
+    return group ? ok(group) : fail(`No group with id "${id}"`);
+  }),
+);
+
+server.registerTool(
+  "list_groups",
+  {
+    title: "List groups",
+    description:
+      "Every group, optionally filtered by kind. Archived groups are excluded unless include_archived is true — archiving is how a group is retired, since deleting one would orphan the membership recorded on its tickets.",
+    inputSchema: {
+      kind: z.string().optional().describe("Only this kind (epic | horizon)"),
+      include_archived: z.boolean().optional(),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  guard(async ({ kind, include_archived }) =>
+    ok(await store.listGroups({ kind, includeArchived: include_archived })),
+  ),
+);
+
+server.registerTool(
+  "get_group_doc",
+  {
+    title: "Read a group's shared document",
+    description:
+      "Read a shared context document from a group's folder by relative path (`context.md`, `decisions/api.md`). These are free-form — a group's context is whatever its work needs — and every member ticket's agent is expected to have read them.",
+    inputSchema: {
+      id: z.string().describe("Group id"),
+      path: z.string().describe("Path within the group folder, e.g. context.md"),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  guard(async ({ id, path: rel }) => ok({ id, path: rel, content: await store.getGroupDoc(id, rel) })),
+);
+
+server.registerTool(
+  "set_group_doc",
+  {
+    title: "Write a group's shared document",
+    description:
+      "Write a shared context document into a group's folder. Use this for the context every member ticket needs — the decision that binds them, the constraint they all sit under — rather than repeating it in each ticket. Cannot write the group's own `<ID>.md`; edit that through create_group's body.",
+    inputSchema: {
+      id: z.string().describe("Group id"),
+      path: z.string().describe("Path within the group folder, e.g. context.md"),
+      content: z.string().describe("Markdown content"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  },
+  write(async ({ id, path: rel, content }) => ok(await store.setGroupDoc(id, rel, content))),
+);
+
 server.registerTool(
   "get_links",
   {

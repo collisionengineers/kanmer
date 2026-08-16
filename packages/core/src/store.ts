@@ -32,6 +32,8 @@ import {
 import {
   areaPrefix,
   defaultBoardConfig,
+  lastStageId,
+  resolveGroupKinds,
   readBoard,
   readBoardWithSource,
   resolveEnvironments,
@@ -61,6 +63,17 @@ import {
   namedSatisfied,
   typeSatisfied,
 } from "./docpaths.js";
+import {
+  deriveMembers,
+  groupDocPath,
+  listGroups,
+  maxGroupNumberForPrefix,
+  readGroup,
+  serialiseGroup,
+  writeGroup,
+  type Group,
+  type GroupWithMembers,
+} from "./groups.js";
 import { parseWikiLinks } from "./links.js";
 import { appendActivity, readActivity, type ActivityEntry } from "./activity.js";
 import { CURRENT_FORMAT, readVersion, writeVersion } from "./version.js";
@@ -509,6 +522,7 @@ export class KanmerStore {
     if (input.status !== undefined) assertStage(input.status);
     if (input.area !== undefined) assertFieldAgainstBoard(board, "area", input.area);
     if (input.profile !== undefined) assertProfileAgainstBoard(board, input.profile, input.requires);
+    if (input.groups !== undefined) await this.assertGroups(input.groups);
     if (input.refs !== undefined) await this.assertRefs(input.refs);
     if (input.deployment !== undefined) assertDeploymentAgainstBoard(board, input.deployment);
     for (const target of [...(input.links ?? []), ...(input.blocks ?? [])]) {
@@ -610,6 +624,7 @@ export class KanmerStore {
       fields.status !== undefined ||
       fields.area !== undefined ||
       fields.profile !== undefined ||
+      fields.groups !== undefined ||
       fields.deployment !== undefined
     ) {
       board = await this.getBoard();
@@ -617,6 +632,7 @@ export class KanmerStore {
       if (fields.area !== undefined) assertFieldAgainstBoard(board, "area", fields.area);
       if (fields.profile !== undefined)
         assertProfileAgainstBoard(board, fields.profile, fields.requires);
+      if (fields.groups !== undefined) await this.assertGroups(fields.groups);
       if (fields.deployment !== undefined && fields.deployment !== "")
         assertDeploymentAgainstBoard(board, fields.deployment);
     }
@@ -1030,6 +1046,25 @@ export class KanmerStore {
   }
 
   /**
+   * Membership must name groups that exist (FRD-001 G3). Validated on write
+   * because a dangling id would otherwise render as a chip pointing at nothing
+   * — and there is no second place to check it, since membership is only ever
+   * stored here.
+   */
+  private async assertGroups(ids: string[]): Promise<void> {
+    for (const gid of ids) {
+      if (!(await readGroup(this.paths, gid))) {
+        const known = (await listGroups(this.paths, { includeArchived: true })).map((g) => g.id);
+        throw new Error(
+          known.length
+            ? `No group with id "${gid}". Existing groups: ${known.join(", ")}`
+            : `No group with id "${gid}" — this board has no groups yet (create one with create_group).`,
+        );
+      }
+    }
+  }
+
+  /**
    * Validate governing-doc refs: each must resolve under the **repo** root and
    * exist. Not the project root — on a board-worktree project the store reads
    * `<repo>/.worktrees/<name>`, while `/docs/` stays in the source checkout.
@@ -1109,6 +1144,92 @@ export class KanmerStore {
   }
 
   /** Gate state for a ticket by id — what `get_doc_gates` returns. */
+  // ---- Groups (FRD-001) ---------------------------------------------------
+  // Membership lives on tickets; everything about the group's contents is
+  // derived here on read, so the two can never disagree.
+
+  /** Create a group of a board-declared kind, allocating its id from the kind's prefix. */
+  async createGroup(kind: string, title: string, body = ""): Promise<Group> {
+    await this.init();
+    const board = await this.getBoard();
+    const kinds = resolveGroupKinds(board);
+    const spec = kinds.find((k) => k.id === kind);
+    if (!spec) {
+      throw new Error(`Unknown group kind "${kind}". Valid kinds: ${kinds.map((k) => k.id).join(", ")}`);
+    }
+    // Reuse the per-prefix id machinery tickets use, so group ids and ticket
+    // ids can never collide and both survive a counters.json rebuild.
+    // `nextPrefixNumber` scans ticket folders for the prefix; groups live
+    // elsewhere, so their own on-disk maximum is passed as the floor. Counters
+    // stay derived state — a deleted counters.json still cannot re-issue a live id.
+    const n = await nextPrefixNumber(
+      this.paths,
+      spec.prefix,
+      await maxGroupNumberForPrefix(this.paths, spec.prefix),
+    );
+    const id = formatId(spec.prefix, n);
+    const now = nowIso();
+    const group: Group = { id, kind, title, archived: false, created: now, updated: now, body };
+    await writeGroup(this.paths, group);
+    await recordAllocatedPrefix(this.paths, spec.prefix, n);
+    await appendActivity(this.paths, [this.activity(id, "create", { field: "group", to: kind })]);
+    return group;
+  }
+
+  async getGroup(id: string): Promise<GroupWithMembers | null> {
+    const group = await readGroup(this.paths, id);
+    if (!group) return null;
+    const items = await this.listItems({ includeArchived: true });
+    return deriveMembers(group, items, lastStageId());
+  }
+
+  async listGroups(opts: { kind?: string; includeArchived?: boolean } = {}): Promise<Group[]> {
+    return listGroups(this.paths, opts);
+  }
+
+  /** Patch a group's own fields. Members are not among them — they are derived. */
+  async updateGroup(
+    id: string,
+    patch: { title?: string; body?: string; archived?: boolean },
+  ): Promise<Group> {
+    const current = await readGroup(this.paths, id);
+    if (!current) throw new Error(`No group with id "${id}"`);
+    const next: Group = { ...current, ...patch };
+    if (serialiseGroup(next) === serialiseGroup(current)) return current; // no-op, no write
+    next.updated = nowIso();
+    await writeGroup(this.paths, next);
+    await appendActivity(this.paths, [this.activity(id, "update", { field: "group" })]);
+    return next;
+  }
+
+  /** Shared context documents live free-form in the group's folder. */
+  async getGroupDoc(id: string, rel: string): Promise<string | null> {
+    const file = groupDocPath(this.paths, id, rel);
+    if (!(await pathExists(file))) return null;
+    return readText(file);
+  }
+
+  async setGroupDoc(id: string, rel: string, content: string): Promise<{ file: string }> {
+    if (!(await readGroup(this.paths, id))) throw new Error(`No group with id "${id}"`);
+    const file = groupDocPath(this.paths, id, rel);
+    await ensureDir(path.dirname(file));
+    await writeFileAtomic(file, `${content.trim()}\n`);
+    await appendActivity(this.paths, [this.activity(id, "doc", { field: `group:${rel}` })]);
+    return { file };
+  }
+
+  /** Every group a ticket belongs to, for the read-everything duty (FRD-003 T9). */
+  async groupsForItem(id: string): Promise<Group[]> {
+    const item = await this.getItem(id);
+    if (!item?.groups?.length) return [];
+    const out: Group[] = [];
+    for (const gid of item.groups) {
+      const g = await readGroup(this.paths, gid);
+      if (g) out.push(g);
+    }
+    return out;
+  }
+
   async getDocGates(id: string): Promise<GateReport | null> {
     const loc = await this.locateItem(id);
     if (!loc || loc.kind !== "v2") return null;

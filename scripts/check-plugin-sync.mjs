@@ -59,15 +59,13 @@ function refuse(why, fix) {
  * that names its own fix.
  */
 function isLinkedWorktree(dir) {
+  // stdio silences git's own stderr: execFileSync inherits it by default, so a
+  // non-repo directory would print `fatal: not a git repository` before the
+  // fallback quietly handles it — noise that reads like the failure it isn't.
+  const opts = { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] };
   try {
-    const gitDir = execFileSync("git", ["rev-parse", "--git-dir"], {
-      cwd: dir,
-      encoding: "utf8",
-    }).trim();
-    const commonDir = execFileSync("git", ["rev-parse", "--git-common-dir"], {
-      cwd: dir,
-      encoding: "utf8",
-    }).trim();
+    const gitDir = execFileSync("git", ["rev-parse", "--git-dir"], opts).trim();
+    const commonDir = execFileSync("git", ["rev-parse", "--git-common-dir"], opts).trim();
     return resolve(dir, gitDir) !== resolve(dir, commonDir);
   } catch {
     try {

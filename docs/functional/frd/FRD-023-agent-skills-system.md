@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 covers: shipped roster (backfill) + v3 roster changes & rewrite scope
 ---
 
@@ -39,3 +39,26 @@ One skill per **task type** — an agent picks by "what am I about to do", and s
 **Acceptance:** grep finds zero hardcoded gate rules in any skill; an auto run over mixed-profile tickets produces the right per-profile paths; smoke-verified tool names match the reference.
 
 Related: ADR-0009 · D36–D45 · FRD-005/009/010/012/013/014.
+
+## Verified against code — Phase 0.2
+
+- The roster today is **13** skills under `plugins/kanmer/skills/` — the twelve in the table above
+  plus `kanmer-import`, whose removal (FRD-013) is what makes the end state twelve. The table's
+  twelve names all exist as directories.
+- R1 is **not yet true**, which is the work Phase 6 does. Gate rules are currently restated in
+  skill prose — `kanmer-auto/SKILL.md` carries them, and `kanmer-plan/SKILL.md` refuses to plan on
+  missing research from its own text rather than from `get_doc_gates`. Nine of the thirteen
+  already call `get_doc_gates` (auto, execute, groom, plan, report, research, review, setup,
+  verify), so the mechanism is in place; the prose deletion is not.
+- R2 — `kanmer-auto/SKILL.md` partitions by file overlap into conflict-free waves today; the
+  **profile**-aware partitioning is a v3 addition (profiles do not exist yet).
+- R4 — the cross-skill dependency is real and load-bearing: every skill points at
+  `kanmer-tickets/references/tool-reference.md`, valid only because Connect installs the roster as
+  sibling directories. Install specs live in `apps/gui/src/main/providers.ts:163-248`.
+- R5 — the rail is mechanized in `scripts/release.mjs:149-160`, which runs build, `plugin:check`,
+  tests, both smokes, `verify:agents-block` and the GUI typecheck in that order. Note
+  `scripts/agents-block.mjs` holds `BLOCK_BODY` as a literal that is duplicated by hand into
+  `kanmer-setup/SKILL.md`, and `scripts/verify-agents-block.mjs:146-154` asserts the two stay
+  byte-identical — so any AGENTS-block rewrite must change both.
+- Acceptance — the "zero hardcoded gate rules" grep **fails today** and is the Phase 6 exit
+  criterion, not a current property.

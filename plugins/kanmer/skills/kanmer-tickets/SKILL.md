@@ -90,8 +90,12 @@ permanently; reserve it for items the user explicitly wants gone.
   user asks for ordering — "top of the todo column" is meaningful now.
 - Move tickets through stages by what the stages *mean* (designing,
   implementing, awaiting eyes, verifying, finished), resolved against
-  `list_board` — never hardcoded ids. Moving to the **final** stage requires
-  the ticket's proof.md to exist.
+  `list_board` — never hardcoded ids. A move crosses **at most one gated
+  boundary**, so walk the stages one at a time; a jump is refused even when
+  every document exists, and `update_item status` runs the same check. Gates
+  constrain those two calls and nothing else — *creating* a ticket in any stage,
+  including the last, is ungated, which is what makes historical backfill
+  possible.
 - Board changes are shared state: `add_column`/`update_column`/
   `reorder_columns` change what everyone sees, and `remove_column` needs
   `migrate_to` when items still use the column. Ask before restructuring.
@@ -103,8 +107,9 @@ A ticket's life is driven phase by phase; hand off rather than improvising:
     kanmer-tickets → -research → -plan → -execute → -review → -verify → -closeout
 
 That is the order. How far a given ticket actually walks it depends on its
-profile — a `spike` may finish at research — so ask `get_doc_gates` rather than
-assuming every ticket takes every step.
+profile, and some profiles stop well short of the end — so ask `get_doc_gates`
+rather than assuming every ticket takes every step. Its `reachable` list is the
+per-ticket answer.
 
 | You are about to… | Use |
 |---|---|

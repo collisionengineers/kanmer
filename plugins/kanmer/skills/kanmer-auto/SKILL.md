@@ -32,9 +32,10 @@ which tickets, in what order, and how many at once.
   `list_board`.
 - **Gates are hard, and per-ticket.** Call `get_doc_gates <id>` for every ticket
   in the roster and drive *that* ticket's boundaries — do not assume a common
-  pipeline. A `spike` may reach Done on research alone; a `chore` skips
-  Backlog→Preparing entirely. Driving every ticket through the `feature` pipeline
-  is the mistake this warning exists to prevent.
+  pipeline. Profiles differ in how many stages they walk and which documents
+  they owe, so `reachable` on that call is the roster's routing table. Driving
+  every ticket through one pipeline is the mistake this warning exists to
+  prevent.
 - **One gated boundary per move.** A lane advances a ticket one stage at a time;
   a move crossing two gated boundaries is refused. Partition the roster by
   profile so lanes with genuinely different pipeline lengths do not block each
@@ -77,6 +78,12 @@ Cap concurrency at ~3 lanes — enough to matter, few enough that rebases and
 reviews stay manageable.
 
 ## 4. Execute the waves
+
+Every lane works in its **own** worktree, and none of them touches
+`.worktrees/kanmer` — in a repo set up through the GUI that is the board's own
+worktree, on the board branch, with MCP rooted in it. It is never a lane's
+worktree, never a rebase target, and never cleaned up. With ~3 lanes running git
+surgery in parallel this is the invariant with the most chances to be broken.
 
 Each lane's current ticket runs in its own subagent: `kanmer-plan` →
 `kanmer-execute` (own worktree `.worktrees/<id>`, own branch) →

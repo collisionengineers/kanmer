@@ -142,15 +142,66 @@ try {
     check("a lone end marker throws", threw);
   }
 
-  // 7. The block body matches the skill's fenced copy — they are kept in step
-  //    by hand, so drift is exactly what this check is for.
+  // 7. The block body matches the skill's fenced copy — it is prose and cannot
+  //    import, so it is kept in step by hand and drift is what this is for.
   {
     const skill = fs.readFileSync(
       path.join(repoRoot, "plugins/kanmer/skills/kanmer-setup/SKILL.md"),
       "utf8",
     );
     check("SKILL.md still carries the same markers", skill.includes(START) && skill.includes(END));
-    check("SKILL.md's fenced block body matches this script's", skill.includes(BLOCK_BODY));
+
+    // Equality of the fenced region, not `skill.includes(BLOCK_BODY)`. A
+    // substring test passes on a fence that carries the whole body *plus* extra
+    // text — which is the drift direction nobody would notice by eye, since the
+    // part you look for is all still there.
+    const at = skill.indexOf(START);
+    const to = skill.indexOf(END);
+    const fenced = at >= 0 && to > at ? skill.slice(at + START.length, to).replace(/^\n|\n$/g, "") : null;
+    check(
+      "SKILL.md's fenced block body is exactly this script's",
+      fenced === BLOCK_BODY,
+      fenced === null
+        ? "markers not found"
+        : fenced === BLOCK_BODY
+          ? ""
+          : `fenced ${fenced.length} bytes vs canonical ${BLOCK_BODY.length}`,
+    );
+  }
+
+  // 8. This repo's own AGENTS.md carries the current body.
+  //
+  //    Nothing asserted this before, and the gap was not theoretical: the GUI's
+  //    Connect flow held a third, stale copy of the body and wrote it over this
+  //    file. It was caught by reading a diff. A repo that ships the block should
+  //    be running the block (SKILL-013).
+  {
+    const own = fs.readFileSync(path.join(repoRoot, "AGENTS.md"), "utf8");
+    check(
+      "this repo's AGENTS.md carries the current body",
+      own.includes(BLOCK_BODY),
+      own.includes(BLOCK_BODY) ? "" : "run `node scripts/agents-block.mjs .`",
+    );
+  }
+
+  // 9. The GUI's copy is the canonical one, not a copy of it.
+  //
+  //    apps/gui/src/main/agentsBlock.ts re-exports from agents-block-body.mjs.
+  //    Asserted structurally rather than by comparing strings, because a string
+  //    comparison would still pass on a duplicated literal that happened to be
+  //    current today — which is exactly the state that shipped the regression.
+  {
+    const gui = fs.readFileSync(
+      path.join(repoRoot, "apps/gui/src/main/agentsBlock.ts"),
+      "utf8",
+    );
+    const imports = /from "\.\.\/\.\.\/\.\.\/\.\.\/scripts\/agents-block-body\.mjs"/.test(gui);
+    const declaresOwn = /^export const BLOCK_BODY\s*=/m.test(gui);
+    check(
+      "the GUI imports the canonical body instead of declaring one",
+      imports && !declaresOwn,
+      !imports ? "no import of agents-block-body.mjs" : declaresOwn ? "declares its own BLOCK_BODY" : "",
+    );
   }
 } finally {
   fs.rmSync(sandbox, { recursive: true, force: true });

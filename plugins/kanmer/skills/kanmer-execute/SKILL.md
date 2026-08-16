@@ -44,6 +44,11 @@ git worktree add .worktrees/<id> -b <id>-<slug> origin/main
 cd .worktrees/<id>
 ```
 
+**One directory in there is not yours.** In a repo set up through the GUI the
+board lives in `.worktrees/kanmer`, on the board branch, with MCP rooted in it —
+never create, switch, push or remove that one. Yours is `.worktrees/<id>`, and
+`take_ticket` records it on the ticket so board and git agree on which is which.
+
 (If the default branch isn't `main`, `git symbolic-ref --short
 refs/remotes/origin/HEAD` names it.) Make sure `.worktrees/` is listed in
 `.gitignore` — add the line if it isn't, once, committed.
@@ -91,7 +96,9 @@ take_ticket id: <ID>, branch: "<id>-<slug>", worktree: ".worktrees/<id>"
    ```
 
 4. **Move the ticket to the review stage** (`move_item`, resolve the id against
-   `list_board`) — the post-implementation-report gate must pass first. Record
+   `list_board`) — the post-implementation-report gate must pass first. One
+   stage: a move crosses at most one gated boundary, so aiming past review is
+   refused even when every document exists. Record
    the PR URL with `append_scratch <id> execute "opened PR <url>"`. The ticket
    stays taken until the PR is merged, verified (`kanmer-verify`), and closed
    out (`kanmer-closeout`).

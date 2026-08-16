@@ -10,9 +10,10 @@ worktree. Its output is the documents in the ticket's folder, written with
 `set_ticket_doc` — they are what the plan is later built FROM, so their job is
 to make planning boring.
 
-**`get_doc_gates <id>` is the authority on what this ticket needs.** Profiles
-mean the answer differs per ticket: a `spike` may need only research, a `chore`
-only a plan. Ask it rather than assuming a pipeline.
+**`get_doc_gates <id>` is the authority on what this ticket needs**, and the
+only one. Profiles mean the answer differs per ticket, and it is resolved from
+the board at call time — not from `board.yml`, whose `profiles:` block is not
+the effective set. Ask it rather than assuming a pipeline.
 
 ## Workflow
 
@@ -26,7 +27,9 @@ only a plan. Ask it rather than assuming a pipeline.
    FRD/PRD this ticket implements (`link_doc <id> docs/functional/frd/<slug>.md`),
    or — if it is genuinely still to be written — set `docs_todo` and hand off to
    `kanmer-docs`. `get_doc_gates` says whether your ticket's profile asks for it
-   at all. Then `move_item <id> preparing`.
+   at all. Then `move_item <id> preparing` — one stage, because a move crosses
+   at most one gated boundary and a jump is refused even when every document
+   already exists.
 3. **Investigate.** Read the code, run read-only commands, check docs and
    history. Chase the question the ticket actually asks. Keep provisional
    working notes with `append_scratch <id> research "<note>"` — scratch is the

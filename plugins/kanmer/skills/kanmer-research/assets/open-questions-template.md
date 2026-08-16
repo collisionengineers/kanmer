@@ -1,5 +1,7 @@
 # Open questions — <ID>
 
+*The open questions. Not scratch — these **block** the plan; scratch is a notepad and is never gated.*
+
 Unresolved questions that shape or block this work. Resolve or escalate — never
 guess silently. Questions only the user can answer go to them now, not at
 planning time.

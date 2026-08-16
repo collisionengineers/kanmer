@@ -154,3 +154,60 @@ Stated explicitly because all three touch the same machinery:
   final view list into FRD-019 once.
   If GUI-071 must go first, the plan must include a `backlog` case in the
   view predicate and accept that GUI-070 will delete it.
+
+---
+
+## Binding operator decision (from `scratch/notes.md`, 2026-08-16) — quoted verbatim
+
+> **Operator decision, 2026-08-16 — the Board count keeps its current meaning.**
+>
+> > **All non-archived tickets**, not "not-done". Board 131, Backlog 24.
+>
+> So the defect is narrower than the ticket's second question implied: the shared
+> expression at `App.tsx:1067-1072` is the whole bug, and Board's number was
+> already correct. Only Backlog's was wrong, by a factor of ~5.
+>
+> Two consequences for the plan:
+>
+> - The fix is to derive each view's count from **the same predicate the view
+>   filters by**, so they cannot drift again — not to change what Board counts.
+> - Sequence this **after** [[GUI-070]], which deletes the Backlog tab entirely.
+>   Doing it first would mean writing a per-view count for a view about to be
+>   removed. The shared-expression defect still needs fixing for Board / Standup /
+>   Archived, which is why the ticket survives GUI-070 rather than being absorbed
+>   by it.
+>
+> The verification box "Board tab count matches the documented meaning, asserted in
+> a test" stands — the meaning is now documented here, and the test is what stops
+> the next filter change from silently redefining it.
+
+### What this settles, and what it does not
+
+**Settles Q1 (Board count meaning):** all non-archived tickets, Done included.
+Option (a) in `open-questions`. No change to what Board counts, and no
+licence to hide the Done column. `research` finding F7's numbers (15/18/110)
+differ from the decision's 131/24 only because the board keeps moving; the
+shape and the decision are unaffected.
+
+**Settles Q3 (sequencing):** GUI-071 lands **after** GUI-070, which is also
+what the file-overlap analysis independently recommended. So the plan writes
+**no `backlog` case** into the view predicate — by the time it runs, the
+Backlog view is gone and `View` is `"ticket" | "standup" | "archived"`.
+
+**Does not settle Q2 (do the counts respect the active search/filters).** The
+decision fixes *which items* the Board tab counts; it is silent on whether a
+filter narrows that number. Still open, still operator-only.
+
+**Does not change the structural finding.** F2/F3/F4 stand: the count cannot be
+made per-view without extracting a `(view, items)` predicate, `allViewItems` is
+still wrong for any view with a status restriction, and the empty states still
+read the wrong set. The decision narrows the *visible* defect to one tab; it
+does not narrow the fix, and the decision itself says so ("derive each view's
+count from the same predicate the view filters by, so they cannot drift again").
+
+**Supersedes the "assumes neither has landed" framing above.** The code
+findings were taken at `14f2715` with the Backlog view present, and remain
+accurate as a description of *that* tree — but the implementer will be working
+on a tree where GUI-070 has already removed the `backlog` view. Re-read
+`App.tsx:49-56` and `:1184-1212` before planning; those line numbers will have
+moved.

@@ -25,3 +25,5 @@
 - [ ] `git branch -d gui-074-remove-manual-link` (`-D` if squash/rebase-merged)
 - [ ] `git fetch --prune` + `git worktree prune`
 - [ ] `take_ticket action: "release"`
+
+Closeout complete: PR merge verified (MERGED, 2026-08-16T22:09:00Z); proof.md finalised with PR URL + merge date; ticket moved to Done; Outcome recorded in body; worktree `.worktrees/gui-074` removed; local branch force-deleted (`-D`, squash-merged); remote branch `gui-074-remove-manual-link` deleted explicitly (host does not auto-delete); `git fetch --prune` + `git worktree prune` run; releasing ticket now.

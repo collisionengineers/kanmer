@@ -4,12 +4,13 @@ type: ticket
 title: >-
   Raise open questions to the operator before execution, review fixes, and
   closeout
-status: implementing
+status: review
 area: skills
 assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-08-16T16:18:17.167Z'
+  review: '2026-08-16T17:31:22.394Z'
 taken_at: '2026-08-16T17:08:22.621Z'
 branch: skill-012-questions-gate
 worktree: .worktrees/skill-012
@@ -24,7 +25,7 @@ refs:
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 archived: false
 created: '2026-08-16T16:11:20.804Z'
-updated: '2026-08-16T17:08:22.621Z'
+updated: '2026-08-16T17:31:22.394Z'
 ---
 
 ## What

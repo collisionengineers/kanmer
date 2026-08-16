@@ -67,3 +67,80 @@ the renderer, before the IPC call.
 That refusal path fails **closed** (a probe that cannot confirm is not a clearance), which is the
 opposite direction from the warning path's deliberate fail-open. Both are correct; they answer
 different questions.
+
+## Amended — GUI-066
+
+**R3's as-built claim was too weak to be true in practice.** `release.mjs` did end
+by proving something, but only that `/releases/latest` carried the right tag and
+that `latest.yml` returned 200 to a `HEAD`. Three consecutive releases published
+incompletely anyway:
+
+| Release | What never uploaded |
+|---|---|
+| 0.3.0 | `Kanmer-Setup-0.3.0.exe.blockmap` |
+| 0.3.1 | `Kanmer-Setup-0.3.1.exe` **and** `latest.yml` |
+| 0.3.2 | `latest.yml` |
+
+Each needed a manual re-publish, and the old gate caught only two of the three:
+**0.3.0 passed while missing its blockmap**, which is the quiet failure —
+`Provider.getBlockMapFiles` derives the *previous* release's blockmap URL by
+string-substituting the version, so a missing old blockmap costs every client on
+that version a full ~78 MB download instead of a differential one. Nobody
+notices; everyone pays.
+
+The mechanism is not a fluke and is now recorded in AGENTS.md §8 gotcha 12:
+`getOrCreateRelease()` returns `null` rather than throwing, and `doUpload()` logs
+`"skipped publishing"` and returns — **no throw, exit 0**. The publisher's exit
+code was never evidence of upload.
+
+**No requirement changed.** R3 still reads "release discipline enforced by
+`release.mjs`"; what changed is that the enforcement now covers the whole
+published artifact set rather than one asset of three:
+
+- Post-publish, the script reads `GET /repos/:owner/:repo/releases/tags/v<v>` and
+  asserts, for **every** expected asset, that it is present, that `state` is
+  `uploaded`, that `size` matches the local build, and that GitHub's
+  `digest: "sha256:…"` matches a locally computed sha256. The script is holding
+  the files it just built, so this is a full integrity check that downloads zero
+  bytes. `latest.yml`'s `files[0].{size,sha512}` are cross-checked against the
+  local installer as well — the manifest records sha512-base64 while the API
+  reports sha256-hex, so the local file is the bridge between them.
+- The expected set is **derived**, not hardcoded: the local pack directory
+  filtered to the version (it accumulates every past version's artifacts) and
+  mapped through the space→dash rename, so a target added to
+  `electron-builder.yml` later widens the check instead of silently narrowing it.
+  A sanity floor refuses a derived set with no installer or a missing blockmap,
+  because a check that cannot fail is worse than no check.
+- A missing `.exe.blockmap` is a **hard failure**, identical in severity to a
+  missing installer or manifest. Treating it as a warning is how 0.3.0 shipped.
+- On a detected gap the script re-publishes **exactly once** and re-verifies —
+  bounded, because a retry loop turns a visible failure into a hang. It sets
+  `EP_GH_IGNORE_TIME=true` itself, which is load-bearing rather than cosmetic:
+  without it the repair pass would hit the same "skipped publishing" no-op.
+- If the second verification still finds a gap the script **refuses loudly and
+  does not demote the release**. `14f2715` moved `git push --tags` ahead of the
+  publish, so by then the tag is public; rewriting a public artifact unattended is
+  a judgement call, so the refusal names `gh release edit v<v> --prerelease` as a
+  suggestion rather than running it.
+- Failures that mean *the check could not run* (rate limit, bad token, absent
+  `digest`, API shape drift) are reported and exited distinctly from *the release
+  is broken*, so the verifier does not become the thing that blocks releases.
+
+The logic lives in `scripts/verify-release-assets.mjs`, split so the deciding
+part is pure — `verifyAssets({expected, assets})` takes a plain GitHub-shaped
+`assets[]` and touches no network, no filesystem and no exit code. It is covered
+by `scripts/verify-release-assets.test.mjs` (`node:test`) against golden fixtures
+captured from the three real releases above, and it runs standalone against any
+published tag, which is how R3 is now demonstrable **without cutting a release**:
+`node scripts/verify-release-assets.mjs 0.3.2` passes and `… 0.3.0` fails on the
+absent blockmap. Since `npm test` is step 1 of the release gate, those fixtures
+gate every future release.
+
+**One limit, stated rather than papered over:** the re-publish path itself is
+unproven until a real release exercises it. Its trigger is unit-tested and its
+bound is one pass, but no pre-release run actually invokes
+`electron-builder --publish always` a second time.
+
+**Accepted gap:** v0.3.0's blockmap is not backfilled — it needs a rebuild from
+that tag, and the cost falls only on clients still on 0.3.0, who pay one full
+download on their next update and are then current.

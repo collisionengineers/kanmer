@@ -87,3 +87,15 @@ parked in `open-questions` as its own ticket.
 - [ ] `git branch -d gui-070-remove-backlog-view` (`-D` if squash/rebase-merged)
 - [ ] `git fetch --prune` + `git worktree prune`
 - [ ] `take_ticket action: "release"`
+
+### Closeout progress
+
+- [x] PR merge verified — `state: MERGED`, `mergedAt: 2026-08-16T22:48:28Z`, merge commit `2f06713`
+- [x] proof.md finalised on merged main (`2f06713`), with the PR URL and merge date, the four ticket criteria, and a screenshot at `assets/board-no-backlog-tab.png`
+- [x] Moved to Done (proof gate passed; `questions-resolved` already satisfied)
+- [x] Outcome recorded in the ticket body — PR link, what was deleted, the four governing-doc amendments, the bulk-triage loss, and the GUI-071 strike
+- [x] `git worktree remove .worktrees/gui-070` — **needed a second pass.** First attempt: `Permission denied`; git deregistered the worktree but could not delete the directory, and `rm -rf` then reported `Device or resource busy` on `node_modules/electron/dist/icudtl.dat`. Cause: a stray `electron.exe` (PID 19664) still running out of that worktree, left over from the CDP runtime check — `child.kill()` does not reap Electron's helper processes. Killed it, then the directory removed cleanly. Worth knowing for any GUI ticket that boots the app from its worktree.
+- [x] `git branch -d gui-070-remove-backlog-view` — deleted (`was 77c9bc5`). Git warned it was not merged to HEAD, which is expected after a **squash** merge: the branch commit is not an ancestor of main, only its squashed equivalent `2f06713` is. Merge state was verified first, so this was safe.
+- [x] `git push origin --delete gui-070-remove-backlog-view` — the host does not auto-delete merged branches; the remote ref was still there after the local delete.
+- [x] `git fetch --prune` + `git worktree prune` — `git branch -a --list "*gui-070*"` now returns nothing, local or remote, and no `gui-070` entry remains in `git worktree list`.
+- [x] `take_ticket action: "release"`

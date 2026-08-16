@@ -792,10 +792,15 @@ describe("blocks / order", () => {
     const t = await store.createItem({ type: "ticket", title: "Collapse", status: "backlog" });
     // Every document present: the refusal is about the shape of the move, and
     // must not be reported as a missing document.
-    for (const doc of ["files", "plan", "proof"]) await store.setDoc(t.id, doc, "x");
+    // `post-implementation-report` is in the list because the default profile is
+    // `fix`, and ADR-0013 gave `fix` a gated `enter-review` — so this move now
+    // crosses three gates rather than two. That is the change, seen from here.
+    for (const doc of ["files", "plan", "post-implementation-report", "proof"]) {
+      await store.setDoc(t.id, doc, "x");
+    }
 
     await expect(store.moveItem(t.id, { status: "done" })).rejects.toThrow(
-      /in one step: that crosses 2 document gates \(leaving Preparing, entering Done\)/,
+      /in one step: that crosses 3 document gates \(leaving Preparing, entering Review, entering Done\)/,
     );
     // Still where it started, and the next step is named in the message.
     expect((await store.getItem(t.id))?.status).toBe("backlog");

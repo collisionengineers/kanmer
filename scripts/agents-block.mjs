@@ -5,37 +5,18 @@
 // call this script; the four rules it used to state in prose are implemented
 // below and verified end-to-end by scripts/verify-agents-block.mjs.
 //
-// KEEP IN STEP: BLOCK_BODY below is the literal text of the fenced block in
-// kanmer-setup/SKILL.md ("The AGENTS.md operating instructions"). Change one,
-// change the other — the skill is the fallback for plugin users who do not
-// have this repo checked out.
+// KEEP IN STEP: the block body is defined once, in ./agents-block-body.mjs, and
+// re-exported here. The GUI's Connect flow imports the same module, so those two
+// cannot drift. The one copy that still must be kept in step by hand is the
+// fenced block in kanmer-setup/SKILL.md — prose, which cannot import — and
+// scripts/verify-agents-block.mjs asserts it matches byte for byte. The skill is
+// the fallback for plugin users who do not have this repo checked out.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-export const START =
-  "<!-- kanmer:instructions:start — managed by kanmer-setup; edits inside will be overwritten -->";
-export const END = "<!-- kanmer:instructions:end -->";
-
-/** The managed block's body — everything between the two markers. */
-export const BLOCK_BODY = `# Kanmer operating instructions
-
-This repo's work is tracked on a Kanmer board in \`.kanmer/\`. In a Git repo set up
-through the GUI the board lives in its own worktree, \`.worktrees/kanmer\`, on the
-board branch, and MCP is already rooted there — never create, switch or push that
-branch yourself. Your own ticket worktree is a separate thing, recorded by
-\`take_ticket\`.
-
-- Start every session with \`get_status\`, then \`list_board\` / \`list_items\` to find your ticket.
-- **Which documents a ticket needs depends on its profile, not on a fixed pipeline.** A \`feature\` owes research, files, plan, checklist, a report and proof; a \`chore\` owes a plan and proof; a \`spike\` may owe only research. Call \`get_doc_gates <id>\` before every move — never assume.
-- Stages: backlog → preparing → implementing → review → verifying → done. **A move crosses at most one gated boundary**, so walk the stages one at a time; a jump is refused even when every document exists.
-- Read the whole ticket folder before starting — documents are folders (\`research/\`, \`plan/\`, …), so there may be several files per type. If the ticket is in a group, read the group's \`context.md\` too: the constraint binding the batch is written once, there.
-- Work each ticket on its own branch and worktree: worktree \`.worktrees/<id>\`, branch \`<id>-<slug>\`; \`take_ticket\` records both and moves the stage.
-- Write pipeline documents with \`set_ticket_doc\`. Running notes go to \`append_scratch\` — scratch is the notepad and is never gated, and neither is anything under \`reference/\` or \`assets/\`.
-- Proof is written on merged \`main\`, after review and the merge, not before.
-- Archive, don't delete. Reference other items with [[ID]] wiki-links.
-- Skills run in this order: kanmer-tickets → -research → -plan → -execute → -review → -verify → -closeout. How far a ticket walks it depends on its profile, so ask \`get_doc_gates\` rather than assuming every step. Off to the side: -auto (drives that order over many tickets), -docs (governing docs), -groom (fix the board), -report (read-only), -setup (reconcile after a Kanmer update).
-- Each skill ends by naming what comes next — read that line before improvising a hand-off.`;
+export { START, END, BLOCK_BODY } from "./agents-block-body.mjs";
+import { BLOCK_BODY, START, END } from "./agents-block-body.mjs";
 
 /** The one-line CLAUDE.md pointer, added when CLAUDE.md exists without one. */
 export const CLAUDE_POINTER = "See [AGENTS.md](AGENTS.md) for how to work on this repo.";

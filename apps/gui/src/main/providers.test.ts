@@ -19,7 +19,8 @@ import {
   type Invocation,
 } from "./providers.js";
 import * as TOML from "smol-toml";
-import { applyManagedBlock, removeManagedBlock, START, END } from "./agentsBlock.js";
+import { applyManagedBlock, removeManagedBlock, START, END, BLOCK_BODY } from "./agentsBlock.js";
+import { BLOCK_BODY as CANONICAL_BODY } from "../../../../scripts/agents-block-body.mjs";
 
 const inv: Invocation = {
   command: "/opt/electron",
@@ -219,6 +220,23 @@ describe("AGENTS.md managed block", () => {
 
   it("throws on a malformed half-marked file", () => {
     expect(() => applyManagedBlock(`${END}\nx\n${START}\n`, "BODY")).toThrow();
+  });
+
+  it("writes the canonical body, not a local copy of one", () => {
+    // The regression this guards is not hypothetical. This module used to carry
+    // its own BLOCK_BODY literal, it drifted to a v2 body, and Connect — which
+    // calls applyManagedBlock with the default — wrote that stale body over the
+    // current one in real repositories (SKILL-013).
+    //
+    // Asserted against the *canonical* module rather than against a copied
+    // string, because a hardcoded expectation here would be a fourth copy.
+    expect(BLOCK_BODY).toBe(CANONICAL_BODY);
+    // And against the two v2 markers specifically, so the failure names itself.
+    expect(BLOCK_BODY).not.toContain("researching → planning");
+    expect(BLOCK_BODY).not.toContain("impact.md");
+
+    const written = applyManagedBlock(null, undefined, { stubHeading: "# Guide" });
+    expect(written).toContain(CANONICAL_BODY);
   });
 });
 

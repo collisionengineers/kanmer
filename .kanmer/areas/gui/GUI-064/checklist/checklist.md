@@ -72,3 +72,30 @@ answered.
   bytes match, manual up to date, boot smoke exit 0.
 - **Boxes 12, 13, 15 remain** — they need a real packaged two-version cycle and
   cannot be done from source alone.
+
+## Closeout — GUI-064
+
+- [x] PR merge verified — #29 `MERGED`, `e293df0`, 2026-08-16T15:04:51Z
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body
+- [x] `git worktree remove .worktrees/gui-064` (done during the release run)
+- [x] branch `gui-064-installer-lock` deleted, local and on origin
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`
+
+### Boxes 12/13/15 from the implementation checklist, settled
+
+- **12 — real two-version cycle: done, manually driven.** 0.3.0 → 0.3.2
+  completed with installer exit code 0, after three prior failures. The lock
+  probe read `blocked: 2` before the stop and `blocked: 0` after it, which is
+  the causal link. Driven by hand rather than by the app, because the fix runs
+  in the version *doing* the updating and this machine was on 0.3.0.
+- **13 — refusal case: NOT observed on screen.** Its logic is unit-tested and
+  both message strings are verified present in the shipped asar, but no human
+  has seen the dialog. Left explicitly unproven in proof.md.
+- **15 — proof.md written**, and committed to `kanmer-board` (`5fca4d1`).
+- **1 — respawn timing: still unmeasured.** The instrumentation line in the run
+  script had a PowerShell syntax error. What is known: after the kill the lock
+  count was 0 and no replacement server appeared, so no respawn happened in this
+  instance.

@@ -50,3 +50,16 @@ out, and the `afterEach` `rmSync` then throws `EPERM`/`ENOTEMPTY` on the Windows
 temp dir. **Reproduced with this branch's changes stashed and from the main
 checkout**, so it is origin/main's, not GUI-066's — this change touches nothing
 under `apps/gui/` or `packages/core/`. Filed separately rather than fixed here.
+
+---
+
+## Closeout — GUI-066
+
+- [x] PR merge verified (`gh pr view 45 --json state,mergedAt` → `MERGED`, 2026-08-16T23:07:38Z, merge commit `0c4ffda`)
+- [x] proof.md finalised (written on merged main `0c4ffda`; carries the PR URL and merge date)
+- [x] Moved to final stage (Done, 2026-08-16T23:11:02Z)
+- [x] Outcome recorded in ticket body (PR link, follow-up [[GUI-085]])
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-066`
+- [x] `git branch -D gui-066-verify-release-assets` (`-D` required: squash-merged, so the branch commits are not ancestors of main — merge state was verified in step 0)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

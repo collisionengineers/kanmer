@@ -28,7 +28,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/42'
 archived: false
 created: '2026-08-16T22:08:48.761Z'
-updated: '2026-08-16T22:57:48.374Z'
+updated: '2026-08-16T22:58:56.881Z'
 ---
 
 ## What
@@ -71,11 +71,31 @@ under a strict YAML parser would have caught this before it shipped.
 
 ## Verification
 
-- [ ] `agy` loads 12 of 12 `kanmer-*` skills, evidenced by the skill list from a
+- [x] `agy` loads 12 of 12 `kanmer-*` skills, evidenced by the skill list from a
       project-bound session — not by reading the file and assuming.
-- [ ] Every `SKILL.md`'s frontmatter parses under a strict YAML parser, asserted
+- [x] Every `SKILL.md`'s frontmatter parses under a strict YAML parser, asserted
       by a rail check that fails on a deliberately broken fixture.
-- [ ] No skill's description was shortened in a way that loses its routing value —
+- [x] No skill's description was shortened in a way that loses its routing value —
       the description is what a host matches on.
 
 ## Outcome
+
+Shipped as PR [#42](https://github.com/collisionengineers/kanmer/pull/42) (squash-merged
+`fc2045b`). `kanmer-report/SKILL.md`'s description restructured (colon → em dash, no
+quoting) to drop the two colon-space sequences a plain YAML scalar can't legally
+contain. The other 11 skills were swept and found clean — no other content change.
+`scripts/check-plugin-sync.mjs` gained a third, self-contained check
+(`checkSkillFrontmatter()`) that strict-parses every skill's frontmatter with the
+`yaml` package (already a workspace dependency, no new dependency added); demonstrated
+failing on a reintroduced broken fixture and passing clean on the fix. Real `agy` 1.1.13
+verified 11/12 before → 12/12 after on merged main, with a positive control (breaking a
+different skill, `kanmer-auto`, and confirming only it drops out) proving the detection
+method is sound. No follow-up tickets filed by this ticket. Two things noted for
+awareness but explicitly out of scope: (1) `.agents/skills/` and `.agents/mcp_config.json`
+(Antigravity's install artifacts) are untracked in the main checkout but not listed in
+`.gitignore`, unlike their `.claude/skills/` / `.mcp.json` counterparts — worth its own
+ticket if confirmed to bite `scripts/release.mjs`'s dirty-tree check; (2) a stale local
+`packages/core/dist` (gitignored build output, unrelated to this ticket) briefly caused
+spurious `typecheck` failures both in the ticket's worktree and, after pulling unrelated
+upstream changes, in the main checkout — resolved locally each time per AGENTS.md §8's
+documented worktree/rebuild trap, no code change needed.

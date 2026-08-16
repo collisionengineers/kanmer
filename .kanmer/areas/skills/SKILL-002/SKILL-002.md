@@ -2,10 +2,13 @@
 id: SKILL-002
 type: ticket
 title: 6.2 Templates
-status: implementing
+status: review
 area: skills
 assignee: claude-code
 profile: feature
+stageEntered:
+  preparing: '2026-08-16T05:22:40.072Z'
+  review: '2026-08-16T05:25:46.730Z'
 taken_at: '2026-08-16T05:22:49.993Z'
 branch: skill-002-templates
 worktree: .worktrees/skill-002
@@ -16,9 +19,7 @@ refs:
   - docs/functional/frd/FRD-014-doc-type-guidance.md
 archived: false
 created: '2026-08-16T00:31:38.780Z'
-updated: '2026-08-16T05:22:49.993Z'
-stageEntered:
-  preparing: '2026-08-16T05:22:40.072Z'
+updated: '2026-08-16T05:25:46.730Z'
 ---
 
 Identity first-lines on every template; the files template with two sections and the contrast rule; per-proof-type templates; group and ticket template updates for the `groups`/`profile` fields; a research summary template for deep mode.

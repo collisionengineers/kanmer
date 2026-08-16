@@ -2,7 +2,7 @@
 id: SKILL-014
 type: ticket
 title: Give every skill an explicit numbered workflow and correct hand-offs
-status: verifying
+status: done
 area: skills
 assignee: claude-code
 profile: feature
@@ -10,6 +10,7 @@ stageEntered:
   preparing: '2026-08-16T19:13:06.795Z'
   review: '2026-08-16T19:28:07.637Z'
   verifying: '2026-08-16T19:29:38.262Z'
+  done: '2026-08-16T19:31:21.184Z'
 taken_at: '2026-08-16T19:18:34.989Z'
 branch: skill-014-workflows
 worktree: .worktrees/skill-014
@@ -27,7 +28,7 @@ prs:
   - '#34'
 archived: false
 created: '2026-08-16T18:25:18.654Z'
-updated: '2026-08-16T19:29:38.262Z'
+updated: '2026-08-16T19:31:21.184Z'
 ---
 
 ## What

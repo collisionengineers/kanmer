@@ -16,6 +16,7 @@ import { join, relative, sep } from "node:path";
 import { classifyKanmerPath } from "../shared/kanmerPath.js";
 import {
   BOUNDARIES,
+  DISPATCH_TASKS,
   DOC_TYPES,
   GATE_EXEMPT_DIRS,
   KanmerStore,
@@ -28,6 +29,7 @@ import {
   resolveProfiles,
   resolveProofTypes,
   stageName,
+  taskFeasibility,
   watchKanmer,
   type BoardColumn,
   type BoardConfig,
@@ -602,9 +604,29 @@ function registerIpc(): void {
   ipcMain.handle(CH.updateSkills, (_e, p: string, target: ConnectTarget) =>
     updateSkills(target, requireCtx(p).sourceRoot),
   );
-  ipcMain.handle(CH.dispatchAgent, (_e, p: string, ticketId: string, target: ConnectTarget) =>
-    dispatchTicket(requireStore(p), target, p, ticketId, {}, requireCtx(p).sourceRoot),
+  ipcMain.handle(
+    CH.dispatchAgent,
+    (_e, p: string, ticketId: string, target: ConnectTarget, taskId?: string) =>
+      dispatchTicket(requireStore(p), target, p, ticketId, { taskId }, requireCtx(p).sourceRoot),
   );
+  ipcMain.handle(CH.dispatchOptions, async (_e, p: string, ticketId: string) => {
+    const store = requireStore(p);
+    const item = await store.getItem(ticketId);
+    const info = await store.getTicketDocsInfo(ticketId);
+    const ctx = { stage: item?.status ?? "backlog", docCounts: info?.counts ?? {} };
+    // Feasibility is core's call, not the renderer's — see DispatchOption.
+    return DISPATCH_TASKS.map((t) => {
+      const f = taskFeasibility(t.id, ctx);
+      return {
+        id: t.id,
+        label: t.label,
+        deliverable: t.deliverable,
+        enabled: f.ok,
+        ...(f.reason ? { reason: f.reason } : {}),
+        ...(f.warning ? { warning: f.warning } : {}),
+      };
+    });
+  });
   ipcMain.handle(CH.cancelDispatch, (_e, dispatchId: string) => cancelDispatch(dispatchId));
   ipcMain.handle(CH.listDispatches, (_e, p: string) => listDispatches(p));
   onDispatchStatus((s) => mainWindow?.webContents.send(CH.dispatchStatus, s));

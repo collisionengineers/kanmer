@@ -24,6 +24,7 @@ import type {
   BoardMigrationReport,
   ChangePayload,
   ConnectTarget,
+  DispatchOption,
   DispatchStatus,
   Theme,
   UiPreferences,
@@ -127,6 +128,12 @@ export function App(): JSX.Element {
   const [createOpen, setCreateOpen] = useState(false);
   const [dispatching, setDispatching] = useState<Set<string>>(() => new Set());
   const [dispatches, setDispatches] = useState<DispatchStatus[]>([]);
+  /**
+   * The dispatch task menu for the ticket whose context menu is open.
+   * Fetched per ticket because feasibility depends on that ticket's stage and
+   * documents; resolved in main so core stays the authority on it.
+   */
+  const [dispatchOptions, setDispatchOptions] = useState<DispatchOption[]>([]);
   const [dispatchesOpen, setDispatchesOpen] = useState(false);
   const [changeSignal, setChangeSignal] = useState(0);
   const [migrateReport, setMigrateReport] = useState<BoardMigrationReport | null>(null);
@@ -773,10 +780,28 @@ export function App(): JSX.Element {
         {
           id: "dispatch",
           label: "Dispatch to agent",
+          // Provider first, then task: you pick the agent you have, then decide
+          // what to hand it. Each task names its deliverable, so the menu says
+          // what will exist afterwards rather than what will be attempted.
           items: dispatchTargets.map((p) => ({
             id: `dispatch-${p.id}`,
             label: p.label,
-            onSelect: () => void runCardAction(() => client.dispatchAgent(item.id, p.id)),
+            items: [
+              {
+                id: `dispatch-${p.id}-whole`,
+                label: "Whole ticket",
+                onSelect: () => void runCardAction(() => client.dispatchAgent(item.id, p.id)),
+              },
+              ...dispatchOptions.map((t) => ({
+                id: `dispatch-${p.id}-${t.id}`,
+                label: t.warning ? `${t.label} — ${t.deliverable} (${t.warning})` : `${t.label} — ${t.deliverable}`,
+                disabled: !t.enabled,
+                ...(t.reason ? { disabledReason: t.reason } : {}),
+                separatorBefore: t.id === "research-quick",
+                onSelect: () =>
+                  void runCardAction(() => client.dispatchAgent(item.id, p.id, t.id)),
+              })),
+            ],
           })),
         },
         {
@@ -808,9 +833,25 @@ export function App(): JSX.Element {
     [trySelect, onMove, runCardAction, requestDelete, cardMenuGates, dispatchTargets],
   );
 
-  const onCardContext = useCallback((item: Item, x: number, y: number) => {
-    setCardMenu({ item, x, y });
-  }, []);
+  // Fetch the task menu as the card menu opens: the submenu is built from it,
+  // and it is cheap enough to re-read rather than cache and go stale.
+  const loadDispatchOptions = useCallback(
+    (ticketId: string) => {
+      void clientRef.current
+        ?.dispatchOptions(ticketId)
+        .then(setDispatchOptions)
+        .catch(() => setDispatchOptions([]));
+    },
+    [],
+  );
+
+  const onCardContext = useCallback(
+    (item: Item, x: number, y: number) => {
+      setCardMenu({ item, x, y });
+      loadDispatchOptions(item.id);
+    },
+    [loadDispatchOptions],
+  );
 
   // Global keyboard shortcuts.
   useEffect(() => {
@@ -1236,6 +1277,11 @@ export function App(): JSX.Element {
                   </button>
                   <span className={`chip dispatch-state ${d.state}`}>{d.state}</span>
                   <span className="dispatch-provider">{d.provider}</span>
+                  {d.taskLabel && (
+                    <span className="chip subtle" title={d.deliverable ? `Deliverable: ${d.deliverable}` : undefined}>
+                      {d.taskLabel}
+                    </span>
+                  )}
                   <div className="spacer" />
                   {d.state === "running" && (
                     <button

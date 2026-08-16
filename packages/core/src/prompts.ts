@@ -125,3 +125,62 @@ export const DISPATCH_TASKS: readonly DispatchTask[] = Object.freeze([
 export function dispatchTaskById(id: string): DispatchTask | undefined {
   return DISPATCH_TASKS.find((t) => t.id === id);
 }
+
+/** Whether a task is a coherent next step, and why not when it is not. */
+export interface TaskFeasibility {
+  ok: boolean;
+  /** Set when `ok` is false — shown on the disabled menu row. */
+  reason?: string;
+  /** Set when `ok` is true but an input the task builds on is missing. */
+  warning?: string;
+}
+
+/**
+ * Whether dispatching `taskId` at this ticket makes sense right now.
+ *
+ * **Deliberately permissive.** It blocks only the two cases where the task's own
+ * prompt cannot be followed at all; everything else is enabled with a warning.
+ * Disabling on judgement teaches people the menu is wrong and to stop reading
+ * it, and a task that produces a document the ticket's profile does not require
+ * is still legitimate — profiles decide what is *owed*, not what is allowed.
+ *
+ * Pure, and here rather than in the renderer because it is a statement about
+ * the task menu, which lives here.
+ */
+export function taskFeasibility(
+  taskId: string,
+  ctx: { stage: string; docCounts: Readonly<Record<string, number>> },
+): TaskFeasibility {
+  const has = (type: string): boolean => (ctx.docCounts[type] ?? 0) > 0;
+
+  switch (taskId) {
+    case "execute":
+      // Its prompt says "work the checklist". There is not one.
+      if (!has("plan")) {
+        return { ok: false, reason: "no plan yet — dispatch “Write plan + checklist” first" };
+      }
+      return has("checklist")
+        ? { ok: true }
+        : { ok: true, warning: "no checklist — the agent will work from the plan alone" };
+
+    case "verify":
+      // Its prompt says "on merged main". Before review, nothing is merged.
+      if (ctx.stage === "backlog" || ctx.stage === "preparing" || ctx.stage === "implementing") {
+        return { ok: false, reason: "nothing is merged yet — verify runs on merged main" };
+      }
+      return { ok: true };
+
+    case "plan":
+      return has("research") || has("files")
+        ? { ok: true }
+        : { ok: true, warning: "no research or files yet — the plan will be less grounded" };
+
+    case "research-deep":
+      return has("research")
+        ? { ok: true, warning: "research already exists — deep mode will add to it" }
+        : { ok: true };
+
+    default:
+      return { ok: true };
+  }
+}

@@ -54,11 +54,12 @@ import {
   setTheme,
   setKanmerGitPreferences,
   setWindowBounds,
+  type AppSettings,
   type Theme,
   type UiPreferences,
   type WindowBounds,
 } from "./settings.js";
-import { ensureBoardWorktree, syncBoard, type KanmerGitStatus } from "./kanmerGit.js";
+import { ensureBoardWorktree, renameBoardBranch, syncBoard, type KanmerGitStatus } from "./kanmerGit.js";
 import {
   connectAgent,
   disconnectAgent,
@@ -462,6 +463,42 @@ async function closeProject(projectId: string): Promise<void> {
   contexts.delete(projectId);
 }
 
+/**
+ * Persist the Git board preferences, then apply them to projects already open.
+ *
+ * Persisting alone was not enough for either field, and both gaps were silent.
+ *
+ * A new branch name has to be carried onto each open worktree (FRD-020 R5).
+ * Storing it and doing nothing else left every open board on its old branch
+ * while the app reported the new one, and the next sync pushed to a branch that
+ * had none of the board's history behind it.
+ *
+ * A changed interval has to re-arm the timers, because they are only ever
+ * created in `openProject` — so switching automatic sync on did nothing at all
+ * until the project was closed and reopened.
+ */
+async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number): Promise<AppSettings> {
+  const settings = setKanmerGitPreferences(kanmerBranch, gitSyncMinutes);
+  for (const [projectId, ctx] of contexts) {
+    const { boardRoot, branch } = ctx.syncStatus;
+    if (ctx.syncStatus.available && boardRoot && branch !== settings.kanmerBranch) {
+      const renamed = await renameBoardBranch(boardRoot, settings.kanmerBranch);
+      // A failed rename leaves the worktree on its old branch, so keep
+      // reporting that one — the board still works, it just did not move.
+      ctx.syncStatus = renamed.ok
+        ? { ...ctx.syncStatus, branch: settings.kanmerBranch, error: renamed.error, paused: false }
+        : { ...ctx.syncStatus, error: renamed.error, paused: true };
+      mainWindow?.webContents.send(CH.gitStatus, { projectId, ...ctx.syncStatus });
+    }
+    if (ctx.syncTimer) clearInterval(ctx.syncTimer);
+    ctx.syncTimer = undefined;
+    if (ctx.syncStatus.available && settings.gitSyncMinutes > 0) {
+      ctx.syncTimer = setInterval(() => void syncProject(projectId), settings.gitSyncMinutes * 60_000);
+    }
+  }
+  return settings;
+}
+
 async function syncProject(projectId: string): Promise<KanmerGitStatus> {
   const ctx = requireCtx(projectId);
   ctx.syncStatus = await syncBoard(ctx.syncStatus);
@@ -546,7 +583,7 @@ function registerIpc(): void {
   ipcMain.handle(CH.setNotifications, (_e, on: boolean) => setNotifications(on));
   ipcMain.handle(CH.setPreferences, (_e, patch: Partial<UiPreferences>) => setPreferences(patch));
   ipcMain.handle(CH.setKanmerGitPreferences, (_e, prefs: { kanmerBranch: string; gitSyncMinutes: number }) =>
-    setKanmerGitPreferences(prefs.kanmerBranch, prefs.gitSyncMinutes),
+    applyGitPreferences(prefs.kanmerBranch, prefs.gitSyncMinutes),
   );
   ipcMain.handle(CH.getKanmerGitStatus, (_e, p: string) => requireCtx(p).syncStatus);
   ipcMain.handle(CH.syncKanmerNow, (_e, p: string) => syncProject(p));

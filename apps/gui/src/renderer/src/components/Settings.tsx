@@ -444,17 +444,40 @@ function GitTab(): JSX.Element {
   const [branch, setBranch] = useState("kanmer-board");
   const [minutes, setMinutes] = useState(0);
   const [status, setStatus] = useState<KanmerGitStatus | null>(null);
+  const [saved, setSaved] = useState("kanmer-board");
+  const [renaming, setRenaming] = useState(false);
   useEffect(() => {
     void Promise.all([window.kanmer.getSettings(), window.kanmer.getKanmerGitStatus(client.projectId)]).then(([s, st]) => {
-      setBranch(s.kanmerBranch); setMinutes(s.gitSyncMinutes); setStatus(st);
+      setBranch(s.kanmerBranch); setSaved(s.kanmerBranch); setMinutes(s.gitSyncMinutes); setStatus(st);
     });
   }, [client.projectId]);
-  const save = async () => window.kanmer.setKanmerGitPreferences({ kanmerBranch: branch, gitSyncMinutes: minutes });
+  const save = async (next?: { branch?: string; minutes?: number }) => {
+    const s = await window.kanmer.setKanmerGitPreferences({
+      kanmerBranch: next?.branch ?? saved,
+      gitSyncMinutes: next?.minutes ?? minutes,
+    });
+    setSaved(s.kanmerBranch);
+    setStatus(await window.kanmer.getKanmerGitStatus(client.projectId));
+  };
+  const pending = branch.trim() && branch.trim() !== saved ? branch.trim() : null;
   return <div className="settings-section">
     <h3>Shared board Git branch</h3>
     <p className="hint">Kanmer stores the board in <code>.worktrees/kanmer</code>; your source checkout remains the project tab.</p>
-    <label className="field"><span>Kanmer branch</span><input value={branch} onChange={(e) => setBranch(e.target.value)} onBlur={() => void save()} /></label>
-    <label className="check"><input type="checkbox" checked={minutes > 0} onChange={(e) => { const next = e.target.checked ? 1 : 0; setMinutes(next); void window.kanmer.setKanmerGitPreferences({ kanmerBranch: branch, gitSyncMinutes: next }); }} /> Automatic sync</label>
+    {/*
+      Renaming is deliberately a button, not an on-blur save. It rewrites the
+      branch on every open board and deletes the old one from the remote, and
+      tabbing out of a half-typed name should not do that.
+    */}
+    <label className="field"><span>Kanmer branch</span><input value={branch} onChange={(e) => setBranch(e.target.value)} /></label>
+    {pending && <p className="hint">
+      Renames <code>{saved}</code> to <code>{pending}</code> in place, keeping the board&rsquo;s history and worktree path. The new branch is pushed first, then <code>{saved}</code> is deleted from <code>origin</code>.
+    </p>}
+    <button className="ghost sm" disabled={!pending || renaming} onClick={() => {
+      if (!pending) return;
+      setRenaming(true);
+      void save({ branch: pending }).finally(() => setRenaming(false));
+    }}>{renaming ? "Renaming…" : "Rename branch"}</button>
+    <label className="check"><input type="checkbox" checked={minutes > 0} onChange={(e) => { const next = e.target.checked ? 1 : 0; setMinutes(next); void save({ minutes: next }); }} /> Automatic sync</label>
     {minutes > 0 && <label className="field"><span>Minutes</span><input type="number" min={1} step={1} value={minutes} onChange={(e) => setMinutes(Math.max(1, Math.trunc(Number(e.target.value) || 1)))} onBlur={() => void save()} /></label>}
     {!status?.available ? <p className="hint">Git sync is unavailable for this non-Git project.</p> : <>
       <p className="hint">Board worktree: <code>{status.boardRoot}</code>{status.lastSync ? ` · last sync ${status.lastSync}` : ""}</p>

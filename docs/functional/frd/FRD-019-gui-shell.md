@@ -12,10 +12,41 @@ The desktop application around the board.
 - R3. **Editor**: diff-based saves, live re-sync with a conflict banner (doc versions), doc tabs per type (per-type document lists, FRD-003 T7), chip inputs, resizable, wiki-links rendered as tokens, external links open in the browser.
 - R4. **Navigation**: FilterBar (search Ctrl+F, area/assignee/label/group), Ctrl+K palette (jump + contextual verbs: Move/Take/Release/New), keyboard card-move, focus/ARIA discipline.
 - R5. **Views**: Board (all six stages Backlog→Done, area-grouped columns, badges: taken/blocked/deployment/PR), Standup, Archived — **three**, switched with Ctrl+1…3. There was a fourth, Backlog (FRD-011); it was withdrawn by GUI-070 and the board's Backlog column (GUI-069) is now the only place backlog tickets appear. Settings tabs: Board (areas), Profiles (FRD-002 S2), Appearance (theme dark/light/system, density, notifications, delete-confirm, new-ticket defaults), Git (FRD-020), Connect (FRD-012).
+  - R5a. **Tab badges — what the number next to a view's name means.** A tab
+    badge counts **everything that lives in that view**, and it **ignores the
+    active search and filters**. A badge describes the tab; a filter is a
+    temporary lens on what is already behind it. Per view: **Board** — every
+    non-archived ticket, *Done included* (a board count is the size of the
+    board, not of what is in flight), excluding `plan`/`research` items, for
+    which the board renders no card; **Archived** — every archived item
+    whatever its type, because the Archived view renders them all; **Standup** —
+    no badge, the report is a narrative rather than a quantity. The
+    Board/Archived asymmetry over non-ticket items is each view counting what
+    it renders, and is deliberate.
+  - R5b. **Badges and column counts answer different questions, on purpose.**
+    The Board's **per-column** counts *do* respond to the active search and
+    filters — they count what is visible in that column. So with a filter on,
+    the Board tab may read 131 while the columns beneath it sum to 6. Both
+    numbers are correct: the badge is how much the view holds, the column count
+    is how much matches the filter. This is written down because two numbers in
+    the same header area answering different questions otherwise read as a
+    defect (GUI-071; before it, R5 was silent on badges and the silence was the
+    ambiguity).
+  - R5c. **One source.** Each view's label, the item set it renders and whether
+    it has a badge are keyed together in `renderer/src/lib/views.ts`
+    (`VIEWS`, `viewItemsFor`, `viewCount`), which the tab strip, the Ctrl+1…3
+    shortcuts, the filtered render set and the empty states all derive from.
+    `viewItemsFor` takes `(view, items)` and no filter argument, so a badge is
+    structurally incapable of seeing a filter. `lib/views.test.ts` asserts
+    badge == rows-the-view-shows-unfiltered across *every* view, so a view
+    added later is covered without editing the test. Before GUI-071 the rule
+    was inlined three times and the badge expression branched only on
+    "archived", which is how the withdrawn Backlog tab came to print the whole
+    board.
 - R6. **Themed context menus (v3):** all right-click menus are **renderer-drawn components using the app's theme variables** — the native OS menu is replaced. Scope: card menu (Open · Move to ▸ · Add to group ▸ · Dispatch to agent ▸ · Copy ID · Copy [[wiki-link]] · Archive), plus any future menus. Behaviour: positioned at cursor with viewport clamping, Escape/click-away closes, full keyboard navigation (arrows/Enter), `role=menu` semantics, submenus flip when near edges, identical rendering in dark/light/system.
 - R7. Single-instance lock, window-bounds persistence, real app menu (DevTools gated to dev), Welcome screen for the empty state.
 
-**Acceptance:** R6 — open the card menu in dark and light themes: colors, borders, hover states match the theme in both; no native menu appears anywhere; menu fully operable by keyboard. R1–R5: the shipped behaviours hold (guard matrix: dirty editor × {select, tab-switch, tab-close, project-open, quit} all prompt).
+**Acceptance:** R6 — open the card menu in dark and light themes: colors, borders, hover states match the theme in both; no native menu appears anywhere; menu fully operable by keyboard. R5a/R5b — type into the search box: the Board tab's badge holds still while the board's column counts narrow; archive a ticket and the Board badge drops by one while Archived's rises by one. R1–R5: the shipped behaviours hold (guard matrix: dirty editor × {select, tab-switch, tab-close, project-open, quit} all prompt).
 
 Related: kanmer-upgrades Phases 4/5/7 · kanmer-v2 Phases 3/4/5 · FRD-011 (**withdrawn**, GUI-070) · user request R9.
 
@@ -33,6 +64,10 @@ Renderer paths relative to `apps/gui/src/`.
 - R3 — `Editor.tsx` (934 lines): doc version hashes give the conflict banner (core
   `getDocWithVersion`), `ChipInput.tsx` for chip fields, wiki-link tokens via `lib/markdown.ts`.
 - R4 — `FilterBar.tsx:4-9,30-31`; `CommandPalette.tsx`; keyboard card-move `Board.tsx:331-337`.
+- R5a/R5b/R5c — `renderer/src/lib/views.ts` holds the view table (`VIEWS`, `VIEW_IDS`,
+  `viewItemsFor`, `viewCount`, `viewCounts`) and `lib/views.test.ts` asserts the
+  badge/rows equality across every view; `App.tsx` derives the tab strip, Ctrl+1…3,
+  `allViewItems` and the FilterBar's facet set from it (GUI-071).
 - R5 — views listed match `App.tsx`; Settings' five tabs are in `Settings.tsx:22-23`. **Board
   currently renders Backlog→Done (seven stages) and the Settings tabs are Board/Documents/
   Appearance/Git/Connect** — the Preparing→Done range, the Profiles tab and the Backlog view are

@@ -1,4 +1,19 @@
 {
+  "_comment": [
+    "SKILLS ONLY, deliberately: there is no mcpServers key and no sibling",
+    ".mcp.json, and neither may come back without re-deciding MCP-016.",
+    "codex 0.147.0 and antigravity/agy 1.1.13 expand no ${…} token in a plugin's",
+    "MCP config and pass the child no PLUGIN_ROOT, so a plugin-supplied server",
+    "cannot locate its own script; a relative cwd fixes that for codex only by",
+    "moving discovery into the plugin cache, where there is no board. agy is",
+    "worse — it reads .mcp.json at the plugin root whatever a manifest says, and",
+    "joins the relative path to the SESSION cwd. Locating the script and finding",
+    "the board need different working directories and neither host expresses",
+    "both. It is also redundant: Connect writes the working codex registration",
+    "at <repo>/.codex/config.toml with absolute paths. See FRD-012 R6.",
+    "plugin:check asserts this absence; Claude Code and grok are unaffected and",
+    "keep their server via .claude-plugin/plugin.json → mcp/claude.mcp.json."
+  ],
   "name": "kanmer",
   "version": "0.3.2",
   "description": "File-based kanban for AI agents: track tickets, plans and research in a .kanmer folder shared live with the Kanmer desktop GUI.",
@@ -11,7 +26,6 @@
   "license": "MIT",
   "keywords": ["kanban", "tickets", "mcp", "project-management"],
   "skills": "./skills/",
-  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Kanmer",
     "shortDescription": "Kanban board shared between AI agents and humans",

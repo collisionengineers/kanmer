@@ -758,14 +758,27 @@ describe("marketplace references match the manifests that define them (MCP-013)"
   );
 
   it("a reference naming the wrong marketplace is caught, not silently passed", () => {
-    // The check on the check: `kanmer@kanmer` is Claude's and is a plausible
-    // copy into codex's slot, where the marketplace is `kanmer-plugins`. The
-    // assertion above must reject it.
-    const codexManifest = JSON.parse(
-      fs.readFileSync(path.join(repoRoot, MANIFESTS.codex.file), "utf8"),
-    );
-    const { marketplace, plugin } = MANIFESTS.codex.read(codexManifest);
-    expect(`${plugin}@${marketplace}`).not.toBe("kanmer@kanmer");
-    expect("codex plugin add kanmer@kanmer").not.toContain(`${plugin}@${marketplace}`);
+    // The check on the check, run through the SAME predicate the assertions
+    // above use — otherwise this only proves two strings differ, which they
+    // would even if the predicate were `expect(true).toBe(true)`.
+    const matches = (commands: string, plugin: string, marketplace: string) =>
+      commands.includes(`${plugin}@${marketplace}`);
+
+    const readRef = (id: "claude" | "codex") => {
+      const spec = MANIFESTS[id];
+      return spec.read(JSON.parse(fs.readFileSync(path.join(repoRoot, spec.file), "utf8")));
+    };
+    const claude = readRef("claude");
+    const codex = readRef("codex");
+
+    // The names really do differ, so a cross-host copy is a real hazard.
+    expect(codex.marketplace).not.toBe(claude.marketplace);
+
+    // Claude's real commands satisfy the predicate for Claude's manifest…
+    expect(matches(commandsFor("claude").join("\n"), claude.plugin, claude.marketplace)).toBe(true);
+    // …and fail it for codex's, which is the mistake being guarded against:
+    // `codex plugin add kanmer@kanmer` looks right and installs nothing.
+    expect(matches(commandsFor("claude").join("\n"), codex.plugin, codex.marketplace)).toBe(false);
+    expect(matches("codex plugin add kanmer@kanmer", codex.plugin, codex.marketplace)).toBe(false);
   });
 });

@@ -1,114 +1,97 @@
-# Auto run — HZN-003
+# Auto run — HZN-003 — COMPLETE
 
-target: **closeout** (every ticket to `done`)
-started: 2026-08-16
-operator rule: complete every ticket; the only stop is an operator-only question.
+target: closeout. **28 of 29 done. One parked, for a reason no agent can remove.**
+started 2026-08-16, finished 2026-08-17.
 
-## Resume procedure
+## Cleared — 23 this run
 
-Read this file before scoping anything. If any row is not `done`, adopt this table
-rather than re-deriving a roster — re-scoping loses the lane partition and every
-operator answer recorded on the tickets.
+| ticket | PR | ticket | PR |
+|---|---|---|---|
+| GUI-074 | #37 | MCP-012 | #46 |
+| GUI-069 | #38 | GUI-079 | #47 |
+| GUI-072 | #39 | MCP-007 | #48 |
+| MCP-010 | #40 | DOC-007 | #49 |
+| GUI-080 | #41 | GUI-083 | #50 |
+| SKILL-018 | #42 | MCP-011 | #52 |
+| GUI-070 | #43 | GUI-071 | #53 |
+| MCP-009 | #44 | CORE-023 | #54 |
+| GUI-066 | #45 | GUI-073 | #55 |
+| SKILL-013 | #56 | MCP-006 | #58 |
+| MCP-013 | #60 | GUI-065 | #61 |
+| MCP-016 | #62 | | |
 
-**Every ticket's settled decisions live in its own folder**, not here:
-`scratch/scheduling.md` = orchestrator calls, `scratch/operator-answers.md` = the
-operator's. A ticket agent reads those and does not re-open them.
+Plus three chores no ticket owned: #51, #57, #59 (ADR renumbering and the
+`check-doc-numbering` rail).
 
-## Board-wide policy set during this run
+Already done before this run: GUI-067, GUI-078, SKILL-011, SKILL-012, SKILL-014.
 
-**`proof:visual` — agent-rendered evidence counts, on one condition.** Operator's
-words: *"as long as the image is actually reviewed using vision."* Literally: open
-the PNG with `Read`, see it, and describe in `proof.md` what it shows in words that
-could not have come from the numbers. Numeric assertions stay as the regression
-guard; the viewing is the proof. GUI-072 did this correctly — use it as the model.
+## Parked — GUI-068, and it cannot be unparked by an agent
 
-**The main checkout is contended.** Several agents work in parallel worktrees and
-the shared checkout moves underneath a long build. MCP-010's root build failed this
-way. Recipe that worked: `npm install` inside the worktree so `@kanmer/core`
-resolves to the branch's own core, then settle `plugin:check` in a dedicated clean
-detached checkout of the merge commit with fresh `node_modules`.
+"Verify the automatic update path on the next release" needs **three** things this
+run cannot produce:
 
-## Done — 6
+1. an update **from 0.3.2 to a release that does not exist yet**;
+2. a human to force and observe the refusal dialog;
+3. a screenshot of that dialog — and **[[GUI-091]]**, filed this run, records that
+   no agent on this host can photograph a running Electron window at all. Three
+   capture routes were tried and all three failed while the renderer was provably
+   alive.
 
-| ticket | PR | commit |
-|---|---|---|
-| GUI-074 | #37 | `43dcedb` |
-| GUI-069 | #38 | `488797d` |
-| GUI-072 | #39 | `ed52e39` |
-| MCP-010 | #40 | `741ef81` |
-| GUI-080 | #41 | `9ac20af` |
-| *(GUI-067, GUI-078, SKILL-011, SKILL-012, SKILL-014 were done before this run)* | | |
+Point 3 was not known when this ticket was first parked. It makes the park firmer,
+not softer. GUI-091 proposes `webContents.capturePage()` from the main process —
+untried, and the most likely fix; solving it would remove half of GUI-068's
+dependence on a person.
 
-## In flight — 7
+## Scope changes the operator made mid-run
 
-GUI-070, SKILL-018, MCP-012, MCP-011, GUI-079, MCP-009, GUI-066.
+- **MCP-005 and MCP-008 left the horizon.** MCP-005's premise did not survive
+  measurement: the lock comes from `command` (the Electron binary), not the `.cjs`,
+  so relocating the script fixes nothing — the real fix relocates a 191.98 MB
+  runtime. `stopMcpSessions()` holds the line meanwhile.
+- **MCP-009 split.** It kept the docs; MCP-013 (in this release), MCP-014 and
+  MCP-015 (outside) took the code.
+- **CORE-023 shipped MCP-only**; its GUI surface is GUI-090, outside the horizon.
 
-## Queued, decisions recorded, waiting on a lane
+## Filed during the run
 
-| ticket | waiting on |
-|---|---|
-| GUI-071 | GUI-070 (same `App.tsx` tab `.map()`) |
-| GUI-065 | GUI-070/GUI-071 (same `App.tsx`). Operator chose **jsdom + testing-library**, AGENTS.md §7 amended in the same PR |
-| MCP-007 | SKILL-018 (same `check-plugin-sync.mjs`) |
-| MCP-006 | MCP-012 (same `index.ts`) |
-| SKILL-013 | SKILL-018 + MCP-012. Ships prose AND the `fix`-gains-`enter-review` gate in ONE PR (operator). Also owns pointing `connect.ts` at the canonical AGENTS block |
-| MCP-013 | MCP-011 (same manifests) |
-| GUI-083 | new this turn — see below |
+**In 0.3.3, and completed:** SKILL-018, MCP-013, GUI-083, MCP-016.
 
-## Still awaiting operator
+**Outside 0.3.3:** GUI-081 (FRD-024 R4's gate-block "?" never implemented),
+GUI-082 (mis-scoped selector audit), GUI-085 (the flaky `kanmerGit.test.ts` —
+GUI-086 and GUI-089 archived as duplicates of it), GUI-087 (`friendlyGateError` is
+dead code, so users see raw tool names in gate banners), GUI-088 (FRD-012 R3 says
+the AGENTS block is written for every provider; `installSkills` returns before
+`ensureAgentsBlock` for marketplace hosts), GUI-090, GUI-091, MCP-014, MCP-015,
+MCP-017, MCP-018, CORE-028, CORE-029, DOC-008, DOC-009.
 
-- **CORE-023** — Q3: does the GUI surface ship in this ticket or a follow-up? (The
-  GUI has no MCP client, so a `get_status` field does not reach it; adding IPC +
-  renderer roughly doubles the ticket.) Q1/Q2/Q4 are answered.
-- **DOC-007** — split into pipeline vs content? and is the proposed 20-chapter
-  table of contents right? GUI-074 has merged, so its FRD-024 conflict is settled.
-- **GUI-068** — cannot reach `done`: needs a real release cut, a human, screenshots.
+## What this run should teach the next one
 
-## Left HZN-003 by operator decision
+**1. One proxy error, three times.** Every wrong conclusion this run came from
+checking a *proxy* instead of the mechanism:
+- `codex mcp list` showed `enabled` for a server that never launched — this is
+  what hid the broken plugin registration for MCP-009.
+- A tool-list grep read as a false negative because a workspace MCP server never
+  appears under its own name — it surfaces as `call_mcp_tool` / `list_resources` /
+  `read_resource`. This produced MCP-009's wrong Antigravity conclusion.
+- On `agy`, the plugin's entry and Connect's entry are **both named `kanmer`**, so
+  a probe run inside a Connected repo answers healthily from the wrong server.
+  MCP-016 caught this only by re-running from a Connect-free folder.
 
-**MCP-005 and MCP-008 were dropped from the horizon.** MCP-005's premise did not
-survive measurement — the lock comes from `command` (the Electron binary), not the
-`.cjs`, so relocating the script fixes nothing; the real fix is relocating a
-191.98 MB runtime. `stopMcpSessions()` holds the line meanwhile. Research stays on
-both tickets.
+ADR-0009 now carries the rule: **a positive control is necessary but not
+sufficient — verify the mechanism you are testing, not a proxy for it.**
 
-## Filed during this run
+**2. Parallel lanes collide on shared counters.** ADR numbering collided **three
+times in one day**, and each agent was individually correct — "read the directory,
+take the next free number" is right until two agents do it at once. The third
+collision happened live against the PR that introduced the guard. Fixed
+structurally by `scripts/check-doc-numbering.mjs`, which covers ADR, FRD and PRD.
 
-In HZN-003: **SKILL-018** (`kanmer-report` YAML breaks Antigravity's parser, 11/12
-skills load), **MCP-013** (marketplace root — `claude plugin marketplace add` fails
-outright and `connect.ts:152` swallows it), **GUI-083** (`.agents/skills/` and
-`.agents/mcp_config.json` are neither tracked nor ignored, so a full skills tree
-sits untracked in this repo now).
+**3. `git add -A` after a rebase is dangerous here.** DOC-007 nearly shipped a
+silent revert of three merged PRs that way — deleting `identity.ts`, dropping
+`test:scripts`, reverting `release.mjs` by 148 lines. It caught it by diffing every
+file against `origin/main` rather than trusting the rebase.
 
-Outside HZN-003: **GUI-081** (FRD-024 R4's gate-block "?" never implemented),
-**GUI-082** (mis-scoped selector audit), **MCP-014** (grok to plugin),
-**MCP-015** (Antigravity to plugin + dispatch).
-
-## Two findings that outlived their tickets
-
-**1. Connect writes a stale v2 AGENTS.md block — caught in the act.** During this
-run an agent ran Connect against this repo and `git status` showed `M AGENTS.md`,
-replacing the format-3 block with v2 text: seven stages, `impact.md`, and the
-deleted `-import` skill. Source is `apps/gui/src/main/agentsBlock.ts:11-24`, which
-`connect.ts:18` imports. Reverted; diff saved to the scratchpad as
-`agents-md-v2-regression.patch`. **SKILL-013 owns the fix**, because it owns the
-canonical block body. CORE-023 keeps detection and may cite this as its motivating
-case. Three copies of the block exist: `scripts/agents-block.mjs`,
-`kanmer-setup/SKILL.md`, and the stale `agentsBlock.ts`.
-
-**2. Antigravity: Connect writes the right files and nothing ever reads them.**
-Settled by adjudication after GUI-073 and MCP-009 contradicted each other — 10
-runs, positive controls, corroborated by the probe server's own process log.
-`.agents/skills/` and `.agents/mcp_config.json` ARE read, but only in a session
-with a **bound workspace folder**. Bare `agy` binds to `default-cli-project`, whose
-record is `"projectResources": {}` — no folder. `--new-project`, `--project <id>`,
-and `--add-dir <path>` all bind; the last persists nothing. **Kanmer establishes no
-binding today**, so the correct files are inert.
-
-Three traps recorded for anyone probing a host CLI: workspace **trust is not the
-gate**; a **git root does not auto-bind**; and **a workspace MCP server never
-appears as a named tool** — it surfaces as `call_mcp_tool` / `list_resources` /
-`read_resource`, so grepping a tool list for the server's own tool name is a false
-negative even when it is connected. That last one produced MCP-009's wrong
-conclusion and is going into ADR-0009 as a worked example: **verify the mechanism,
-not a proxy for it.**
+**4. The same flaky test cost six diagnoses.** Six agents hit
+`kanmerGit.test.ts`, each proved it pre-existing independently, and three filed
+tickets because none could see the others'. The duplication is the visible cost;
+the six diagnoses are the real one.

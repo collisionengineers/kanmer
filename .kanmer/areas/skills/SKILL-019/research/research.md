@@ -79,3 +79,22 @@ The previous objection conflated two different scopes. Kanmer’s MCP registrati
 ## Revised implication
 
 Keep Codex on its plugin. Move Antigravity skill installation from project .agents/skills to agy plugin install of the Kanmer plugin, while retaining project .agents/mcp_config.json for MCP. Move OpenCode to .opencode/skills. This removes Kanmer’s project .agents/skills tree entirely for the supported Connect matrix, so Codex has no local duplicate to discover and no per-project suppression is needed. Existing stamped .agents/skills installs require safe reconciliation after the AGY plugin is proven active.
+
+---
+
+# Final scope decision — OpenCode only
+
+The user explicitly deferred Antigravity because no acceptable workaround is currently established. This ticket now changes only OpenCode’s copied-skill destination from .agents/skills to its first-party .opencode/skills path.
+
+## Findings
+
+- OpenCode officially searches .opencode/skills/<name>/SKILL.md and walks upward from CWD to the git worktree. This is a primary supported project location, not a fallback.
+- apps/gui/src/main/providers.ts currently assigns both OpenCode and Antigravity to .agents/skills. Changing only OpenCode’s registry entry naturally makes the existing peer-by-equal-destination cleanup stop treating them as shared peers.
+- connect.ts peer retention is data-driven by skillsDir equality; no new cleanup algorithm is required. Tests that explicitly assert the old shared directory must change.
+- packages/core/src/staleness.ts mirrors provider copy destinations. It must add .opencode/skills while retaining .agents/skills for Antigravity and .grok/skills for Grok.
+- Existing OpenCode installations may leave Kanmer-owned stamped skills under .agents/skills. Because Antigravity may still use the same tree, this narrow change must not automatically delete or migrate that legacy shared content. Reconnect installs the current roster into .opencode/skills; legacy cleanup is deferred with the broader Antigravity duplicate problem.
+- FRD-012 and ADR-0009 currently make the shared-tree choice explicit. This implementation corrects only the OpenCode bullet and shared-directory ownership language. FRD-023 delegates the matrix to FRD-012 and requires no semantic change beyond any evidence note needed for consistency.
+
+## Implication
+
+Implement a registry/docs/tests/staleness/gitignore change only. Codex and Antigravity behavior is intentionally unchanged; the duplicate remains possible through Antigravity and is recorded as deferred rather than falsely claimed fixed.

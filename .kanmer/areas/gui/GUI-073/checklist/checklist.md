@@ -56,3 +56,14 @@ single failure `kanmerGit.test.ts > renameBoardBranch > keeps the history…`
 timing out at 5000ms under parallel load — the known [[GUI-085]] flake. Rerun
 alone with `--testTimeout=30000`: **7/7 passed**. `check:manual` up to date
 (19 chapters). `providers.test.ts` + `connect.test.ts` together: 68 passed.
+
+## Closeout — GUI-073
+
+- [x] PR merge verified — #55 `MERGED` 2026-08-16T23:58:07Z, merge commit `d1ef063`
+- [x] proof.md finalised on merged main (PR + merge commit recorded in its header)
+- [x] Moved to Done (proof + questions-resolved both satisfied)
+- [x] Outcome recorded in ticket body
+- [ ] cd out of worktree; `git worktree remove .worktrees/gui-073`
+- [ ] `git branch -D gui-073-antigravity-capabilities` (squash-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

@@ -68,3 +68,22 @@ untouched by this change.
 `@kanmer/core` would resolve up to the main checkout and make the comparison
 vacuous. Settled in a clean detached clone per MCP-010's recipe:
 `plugin-sync OK — 29 tools match, bundle bytes match, 12 skill frontmatters parse`.
+
+- [x] Verification run on merged main → `proof` written at `3e9ee2c`
+- [x] GUI-surface follow-up ticket filed: [[GUI-090]]
+
+## Closeout
+
+- PR #54 **MERGED** as `3e9ee2c`; commits recorded (`61d058c`, `0838c74`, `3e9ee2c`).
+- ADR-0013 `link_doc`'d into `refs` (deferred from execute — the file only
+  existed on the branch, and `link_doc` validates against the main checkout).
+- Worktree `.worktrees/core-023` removed; the leftover directory needed a manual
+  `rm -rf` after `git worktree remove` refused on `node_modules` and then
+  unregistered it anyway. Local branch deleted (`-d`, cleanly). Remote branch
+  deleted — the host does not auto-delete.
+- Ticket released. Outcome recorded in the ticket body.
+- Merge announced to the session so [[MCP-006]], queued behind this on
+  `packages/mcp-server/src/index.ts`, can rebase: my edit is confined to the
+  `get_status` handler and its description string, and whoever lands next must
+  rebuild the 1.4 MB bundle by hand (`npm run plugin:build`) and settle
+  `plugin:check` in a clean clone.

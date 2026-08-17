@@ -515,14 +515,14 @@ describe("legacy global codex sweep (GUI-079)", () => {
 });
 
 describe("project skill installs (FRD-012 R2)", () => {
-  it("opencode and Antigravity share one .agents/skills tree", () => {
-    for (const id of ["opencode", "antigravity"] as const) {
-      const install = providerById(id)!.install;
-      expect(install.kind).toBe("copySkills");
-      if (install.kind !== "copySkills") throw new Error("unreachable");
-      expect(install.skillsScope).toBe("project");
-      expect(install.skillsDir).toBe(".agents/skills");
+  it("keeps OpenCode and Antigravity in distinct project skill trees", () => {
+    const opencode = providerById("opencode")!.install;
+    const antigravity = providerById("antigravity")!.install;
+    if (opencode.kind !== "copySkills" || antigravity.kind !== "copySkills") {
+      throw new Error("unreachable");
     }
+    expect(opencode).toMatchObject({ skillsScope: "project", skillsDir: ".opencode/skills" });
+    expect(antigravity).toMatchObject({ skillsScope: "project", skillsDir: ".agents/skills" });
   });
 
   it("Grok keeps its own directory — it does not read .agents/skills", () => {

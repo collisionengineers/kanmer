@@ -222,11 +222,11 @@ describe("detectStaleness — installed skills", () => {
   it("checks every destination independently", () => {
     writeAgents();
     installSkills(".claude/skills");
-    installSkills(".agents/skills");
-    put(path.join(root, ".agents/skills/kanmer-plan/SKILL.md"), "# stale\n");
+    installSkills(".opencode/skills");
+    put(path.join(root, ".opencode/skills/kanmer-plan/SKILL.md"), "# stale\n");
     const rows = rowsFor(detect(), "skills");
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.detail).toContain(".agents/skills");
+    expect(rows[0]?.detail).toContain(".opencode/skills");
   });
 
   it("reports unknown, not behind, when there is no reference tree", () => {

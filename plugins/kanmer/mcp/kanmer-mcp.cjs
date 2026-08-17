@@ -39705,6 +39705,9 @@ var KanmerStore = class {
   /**
    * The shared stale-read rejection. The wording is matched on by tests and
    * by smoke.mjs (/Conflict/) — do not change it.
+   *
+   * Typed structurally rather than to `Item` so groups share it too: everything
+   * it needs is `updated`, plus `body` to drop from the reported frontmatter.
    */
   conflictError(id, current, expectedUpdated) {
     const { body: _body, ...frontmatter } = current;
@@ -40140,11 +40143,28 @@ ${content.trim()}
   async listGroups(opts = {}) {
     return listGroups(this.paths, opts);
   }
-  /** Patch a group's own fields. Members are not among them — they are derived. */
+  /**
+   * Patch a group's own fields. Members are not among them — they are derived.
+   * `kind` is not among them either: `createGroup` allocates the id from the
+   * kind's prefix, so `EPIC-`/`HZN-` encodes it permanently.
+   *
+   * Ordering mirrors `updateItem` and is load-bearing. `expectedUpdated` is
+   * stripped first — the group frontmatter schema is `.passthrough()` and
+   * `serialiseGroup` writes any hand-added key, so a token left on the patch
+   * would be persisted into the file. The conflict check runs **before** the
+   * no-op comparison, or a stale token would silently succeed whenever the
+   * patch happened to change nothing. And the rest is pruned of `undefined`,
+   * because `serialiseGroup` skips undefined values — an explicit
+   * `title: undefined` would otherwise erase `title:` from the frontmatter.
+   */
   async updateGroup(id, patch) {
+    const { expectedUpdated, ...fields } = patch;
     const current = await readGroup(this.paths, id);
     if (!current) throw new Error(`No group with id "${id}"`);
-    const next = { ...current, ...patch };
+    if (expectedUpdated !== void 0 && current.updated !== expectedUpdated) {
+      throw this.conflictError(id, current, expectedUpdated);
+    }
+    const next = { ...current, ...pruneUndefined(fields) };
     if (serialiseGroup(next) === serialiseGroup(current)) return current;
     next.updated = nowIso();
     await writeGroup(this.paths, next);
@@ -41380,6 +41400,26 @@ server.registerTool(
   write(async ({ kind, title, body }) => ok(await store.createGroup(kind, title, body ?? "")))
 );
 server.registerTool(
+  "update_group",
+  {
+    title: "Update a group",
+    description: "Patch a group's own fields: title, body and archived. Only provided fields change; a supplied body REPLACES the whole body rather than merging, and a patch that changes nothing does NOT bump `updated`. Set archived to true to retire a group \u2014 it drops out of list_groups unless include_archived, stays readable, and its member tickets are untouched; archiving is the retirement path and there is no delete, since deleting would orphan the membership recorded on the tickets. `kind` cannot be changed here \u2014 the id prefix (EPIC-, HZN-) is allocated from it, so create a new group and archive the old one instead. Membership is not patchable here either: it lives on the tickets, via update_item(groups: [...]), and the member list is always derived. Pass expected_updated (the `updated` you last read) to be rejected with a conflict instead of overwriting a concurrent edit.",
+    inputSchema: {
+      id: external_exports.string().describe("Group id, e.g. EPIC-001"),
+      title: external_exports.string().optional().describe("New title"),
+      body: external_exports.string().optional().describe("Markdown body \u2014 replaces the whole body"),
+      archived: external_exports.boolean().optional().describe("true retires the group (reversible); members are untouched"),
+      expected_updated: external_exports.string().optional().describe(
+        "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the group changed since."
+      )
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
+  },
+  write(
+    async ({ id, expected_updated, ...patch }) => ok(await store.updateGroup(id, { ...patch, expectedUpdated: expected_updated }))
+  )
+);
+server.registerTool(
   "get_group",
   {
     title: "Get a group",
@@ -41396,7 +41436,7 @@ server.registerTool(
   "list_groups",
   {
     title: "List groups",
-    description: "Every group, optionally filtered by kind. Archived groups are excluded unless include_archived is true \u2014 archiving is how a group is retired, since deleting one would orphan the membership recorded on its tickets.",
+    description: "Every group, optionally filtered by kind. Archived groups are excluded unless include_archived is true \u2014 archiving is how a group is retired, since deleting one would orphan the membership recorded on its tickets. Retire one with update_group(id, archived: true); it is reversible.",
     inputSchema: {
       kind: external_exports.string().optional().describe("Only this kind (epic | horizon)"),
       include_archived: external_exports.boolean().optional()
@@ -41424,7 +41464,7 @@ server.registerTool(
   "set_group_doc",
   {
     title: "Write a group's shared document",
-    description: "Write a shared context document into a group's folder. Use this for the context every member ticket needs \u2014 the decision that binds them, the constraint they all sit under \u2014 rather than repeating it in each ticket. Cannot write the group's own `<ID>.md`; edit that through create_group's body.",
+    description: "Write a shared context document into a group's folder. Use this for the context every member ticket needs \u2014 the decision that binds them, the constraint they all sit under \u2014 rather than repeating it in each ticket. Cannot write the group's own `<ID>.md` \u2014 edit that with update_group instead.",
     inputSchema: {
       id: external_exports.string().describe("Group id"),
       path: external_exports.string().describe("Path within the group folder, e.g. context.md"),

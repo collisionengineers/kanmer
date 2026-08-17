@@ -793,7 +793,7 @@ describe("blocks / order", () => {
     // Every document present: the refusal is about the shape of the move, and
     // must not be reported as a missing document.
     // `post-implementation-report` is in the list because the default profile is
-    // `fix`, and ADR-0013 gave `fix` a gated `enter-review` — so this move now
+    // `fix`, and ADR-0014 gave `fix` a gated `enter-review` — so this move now
     // crosses three gates rather than two. That is the change, seen from here.
     for (const doc of ["files", "plan", "post-implementation-report", "proof"]) {
       await store.setDoc(t.id, doc, "x");

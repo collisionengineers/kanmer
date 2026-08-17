@@ -91,8 +91,13 @@ check("no skill names an undeclared doc type", unknown.length === 0, unknown.joi
 console.log("\n=== 5. every kanmer-* reference resolves to a real skill ===");
 const roster = new Set(readdirSync(skillsDir));
 const refs = new Map();
+// A *skill* reference, not any `kanmer-`-prefixed token. Excluded by the
+// lookarounds: a leading `.` or `-` (`.kanmer-skills-version` is a stamp file)
+// and a trailing `-` (the same). Without them the check reports a dangling
+// skill named `kanmer-skills`, which is a filename fragment — a false positive
+// that teaches you to ignore the check, which is worse than not having it.
 for (const p of files) {
-  for (const m of read(p).matchAll(/kanmer-[a-z]+/g)) {
+  for (const m of read(p).matchAll(/(?<![.\-])kanmer-[a-z]+(?!-)/g)) {
     const name = m[0];
     if (!refs.has(name)) refs.set(name, []);
     refs.get(name).push(rel(p));

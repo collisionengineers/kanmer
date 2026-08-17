@@ -134,10 +134,10 @@ describe("resolveProfiles never gates leaving Backlog on questions", () => {
   });
 });
 
-describe("resolveProfiles gives fix an enter-review (ADR-0013)", () => {
+describe("resolveProfiles gives fix an enter-review (ADR-0014)", () => {
   it("adds it to a board whose profiles table predates the decision", () => {
     // The SKILL-012 lesson applied a second time: editing DEFAULT_PROFILES
-    // alone reaches new boards only. This is a board written before ADR-0013.
+    // alone reaches new boards only. This is a board written before ADR-0014.
     const board = {
       profiles: { fix: { "leave-preparing": ["files", "plan"], "enter-done": ["proof"] } },
     } as never;

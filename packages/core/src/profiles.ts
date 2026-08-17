@@ -127,7 +127,7 @@ export type ProfileMap = Partial<Record<Boundary, string[]>>;
  *   chore   — a plan and a proof; no research ceremony for a rename
  *   spike   — research *is* the deliverable; nothing else is owed
  *
- * `fix` carries an `enter-review` (ADR-0013): a fix that opened a PR should not
+ * `fix` carries an `enter-review` (ADR-0014): a fix that opened a PR should not
  * merge unreviewed. `chore` and `spike` deliberately do not — a rename going
  * straight to Done is the point of having profiles at all. Editing this table
  * reaches **new boards only**; `resolveProfiles` in board.ts is what reaches

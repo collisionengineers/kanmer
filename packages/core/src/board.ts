@@ -45,7 +45,7 @@ export function defaultBoardConfig(): BoardConfig {
 
 /**
  * Give `fix` a gated `enter-review` on boards whose `profiles:` block predates
- * ADR-0013.
+ * ADR-0014.
  *
  * The decision: *a fix that opened a PR should not merge unreviewed.* Editing
  * `DEFAULT_PROFILES` alone reaches **new boards only** — a board written by
@@ -63,7 +63,7 @@ export function defaultBoardConfig(): BoardConfig {
  * - This one **adds a boundary `fix` does not declare**, which changes that
  *   count from 2 to 3 — the intended effect on `implementing → done`, and the
  *   exact operation ADR-0011's limit exists to stop anyone doing by accident.
- *   ADR-0013 is the authorisation, and it carries the measured four-profile
+ *   ADR-0014 is the authorisation, and it carries the measured four-profile
  *   before/after table that makes it more than an assertion.
  *
  * Scope is therefore as narrow as it can be: `fix` only, `enter-review` only,
@@ -97,7 +97,7 @@ function injectFixEnterReview(
 
 /**
  * Profiles in force: the board's table, or the shipped defaults — with
- * `fix`'s `enter-review` added (ADR-0013, above) and then `questions-resolved`
+ * `fix`'s `enter-review` added (ADR-0014, above) and then `questions-resolved`
  * injected into every boundary each profile already declares.
  *
  * The injection is what makes "existing boards inherit the requirement"
@@ -131,7 +131,7 @@ function injectFixEnterReview(
  * FRD-002 exists to protect. So a `spike` gains it at `enter-done` and nowhere
  * else, and `chore`'s one-jump to Implementing survives untouched. `chore` still
  * declares no `enter-review`, so a question raised during a chore's
- * implementation is caught at `enter-done` rather than at review; ADR-0013
+ * implementation is caught at `enter-done` rather than at review; ADR-0014
  * closed that gap for `fix` and deliberately left it open for `chore`.
  *
  * A profile with no boundaries at all — `custom: {}`, used by historical

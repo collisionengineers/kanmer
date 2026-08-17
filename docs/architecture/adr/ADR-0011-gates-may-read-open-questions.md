@@ -73,14 +73,14 @@ stated.
    declares no `enter-review` catches a question raised during implementation at
    `enter-done` rather than at review.
 
-**ADR-0013 crosses limit 2, once, deliberately.** It gives `fix` a gated
+**ADR-0014 crosses limit 2, once, deliberately.** It gives `fix` a gated
 `enter-review` it did not declare — and thereby closes the gap above for `fix`,
 leaving it open for `chore`. That is not a repeal. Limit 2 exists so that adding
 a gated boundary is a decision with an ADR and a measured before/after table
-behind it rather than a side effect; ADR-0013 is what satisfying it looks like.
+behind it rather than a side effect; ADR-0014 is what satisfying it looks like.
 The two injections are kept as **separate functions with separate rules** in
 `board.ts` for the same reason: a single generalised "inject a requirement"
 helper would erase the difference between a pass that may not change the boundary
 count and one that exists to.
 
-Related: ADR-0003 (requirement profiles) · ADR-0009 (skills are not the contract) · ADR-0013 (`fix` gains a gated `enter-review`) · FRD-002 · FRD-009 · FRD-023 · CORE-011 · SKILL-012 · SKILL-013.
+Related: ADR-0003 (requirement profiles) · ADR-0009 (skills are not the contract) · ADR-0014 (`fix` gains a gated `enter-review`) · FRD-002 · FRD-009 · FRD-023 · CORE-011 · SKILL-012 · SKILL-013.

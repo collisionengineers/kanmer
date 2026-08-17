@@ -8,7 +8,7 @@
  * by asking the engine rather than by restating a table someone wrote once.
  *
  * It exists because SKILL-013 changed the answer: `fix` gained a gated
- * `enter-review` (ADR-0013), taking it from 2 gated boundaries to 3. The
+ * `enter-review` (ADR-0014), taking it from 2 gated boundaries to 3. The
  * operator's instruction was that every other multi-stage `fix` move be
  * **re-measured, not assumed** — two earlier claims about this same machinery
  * were wrong before measurement caught them (SKILL-012).
@@ -88,7 +88,7 @@ describe("the four-profile move matrix", () => {
     // The single row this ticket exists to change. Stated on its own so a
     // regression names itself rather than hiding in a large object diff.
     expect(result["fix implementing->done"]).toBe("REFUSED");
-    // Unchanged by ADR-0013, and the operator said keep them that way.
+    // Unchanged by ADR-0014, and the operator said keep them that way.
     expect(result["chore implementing->done"]).toBe("ALLOWED");
     expect(result["spike implementing->done"]).toBe("ALLOWED");
     expect(result["feature implementing->done"]).toBe("REFUSED");
@@ -102,7 +102,7 @@ describe("the four-profile move matrix", () => {
     expect(result).toMatchSnapshot();
   });
 
-  it("reaches a board whose profiles: block predates ADR-0013", async () => {
+  it("reaches a board whose profiles: block predates ADR-0014", async () => {
     // The SKILL-012 lesson: editing DEFAULT_PROFILES alone reaches new boards
     // only. A board written by setup or migration carries its own frozen
     // profiles: block, and `board.profiles ?? …` means the defaults are never

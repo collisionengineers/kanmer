@@ -2,7 +2,7 @@
 status: accepted
 ---
 
-# ADR-0013 — `fix` gains a gated `enter-review`
+# ADR-0014 — `fix` gains a gated `enter-review`
 
 ## Context
 

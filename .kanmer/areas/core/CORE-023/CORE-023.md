@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-16T23:44:41.961Z'
   verifying: '2026-08-16T23:54:38.413Z'
   done: '2026-08-16T23:59:21.729Z'
-taken_at: '2026-08-16T23:25:23.323Z'
-branch: core-023-detect-stale-repo
-worktree: .worktrees/core-023
 labels: []
 groups:
   - HZN-003
@@ -31,7 +28,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/54'
 archived: false
 created: '2026-08-16T18:25:18.669Z'
-updated: '2026-08-17T00:00:31.298Z'
+updated: '2026-08-17T00:01:23.563Z'
 ---
 
 ## What

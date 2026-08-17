@@ -2,9 +2,9 @@
 status: draft
 ---
 
-# ADR-0014 — Repo staleness is judged by content, not by version
+# ADR-0015 — Repo staleness is judged by content, not by version
 
-> Originally filed as ADR-0013; renumbered to ADR-0014 to resolve a collision with another ADR that was accepted under the same number while both were in flight concurrently.
+> Originally filed as ADR-0013; renumbered to ADR-0014 to resolve a collision with another ADR accepted under the same number while both were in flight concurrently, then renumbered again to ADR-0015 for the identical reason: the ADR-0014 renumbering PR and SKILL-013's `ADR-0014-fix-gains-enter-review.md` were both in flight against `origin/main` at once and merged two minutes apart, so the number the first PR read as free was already taken by the time it landed.
 
 ## Context
 

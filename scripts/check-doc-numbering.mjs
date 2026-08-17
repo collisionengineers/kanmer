@@ -3,11 +3,18 @@
 // Numbers are allocated by "read the directory, take the next free one" —
 // correct for any single agent working alone, and wrong the moment two agents
 // do it in parallel: both read the same directory, both see the same highest
-// number, both take "next". This happened twice in one day on this repo
+// number, both take "next". This happened THREE times in one day on this repo
 // (`26c8960` renumbered a duplicate ADR-0012; CORE-023 then collided on the
-// ADR-0013 that renumbering produced — see ADR-0014's own history). Patching
-// the second collision without a check that catches the third would repeat
-// the mistake with better prose.
+// ADR-0013 that renumbering produced; the PR renumbering THAT to ADR-0014 then
+// collided with SKILL-013's own new ADR-0014, merged two minutes apart — see
+// ADR-0015's own history). The third collision happened *while this very
+// check was being written*, which is the honest reason it exists as a test
+// run by hand/`test:scripts` rather than a promise that no duplicate can ever
+// merge: this repo has no CI, so nothing runs the check between a PR's own
+// green run and the merge that lands it. The check still earns its keep — it
+// catches a collision the moment anyone runs `npm test` afterward, instead of
+// leaving it to be found by accident (as SKILL-013's own checklist found the
+// second one, in passing, and filed rather than fixed).
 //
 // This is deliberately NOT a number allocator (no locking, no reservation,
 // no coordination between agents) — that is a much bigger mechanism for a
@@ -25,7 +32,7 @@
 // specific to that (node_modules resolution) — reasons a docs-filename check
 // has no need to inherit. Keeping this standalone also means it runs
 // (correctly) inside a worktree, which is where a governing-doc rename like
-// ADR-0014's actually happens.
+// ADR-0015's actually happens.
 import { readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

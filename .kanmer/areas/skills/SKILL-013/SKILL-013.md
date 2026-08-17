@@ -23,11 +23,12 @@ refs:
   - docs/functional/frd/FRD-013-setup-as-reconciliation.md
   - docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
+  - docs/architecture/adr/ADR-0014-fix-gains-enter-review.md
 prs:
   - '56'
 archived: false
 created: '2026-08-16T18:25:18.638Z'
-updated: '2026-08-17T00:09:52.970Z'
+updated: '2026-08-17T00:14:01.682Z'
 ---
 
 ## What

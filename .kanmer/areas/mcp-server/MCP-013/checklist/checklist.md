@@ -41,3 +41,26 @@
 - [ ] Negative control retained: the **old** argument still exits 1, so the fix is shown to be what changed
 - [ ] Machine state restored and the restore verified (real `claude`/`codex` profiles show no `kanmer` marketplace)
 - [ ] PR opened; post-implementation report written
+
+---
+
+## Progress
+
+**Worktree created off `origin/main` = `8d9d8f9`** — not `3e9ee2c` (the research
+baseline). SKILL-013 (#56) and an MCP-015 slice landed in between. Checked the
+diff over `apps/gui/src/main/{connect,providers}.ts`,
+`apps/gui/electron-builder.yml` and `scripts/check-plugin-sync.mjs`: the regions
+this ticket touches are byte-identical to what the research measured, so every
+finding still holds. New sibling rail `npm run verify:skills`
+(`scripts/verify-skill-prose.mjs`) arrived with SKILL-013 — added to the rail run
+even though the brief predates it.
+
+Code steps 1-5 done: `marketplaceRoot()`, the structured
+`SkillsInstallOutcome`, `connectAgent`/`updateSkills` surfacing the failure,
+`providers.ts` rename + codex's second command, and the packaging entries.
+
+One extension beyond the plan, deliberate: **the copySkills path was swallowing
+too.** `connectAgent`'s `.catch()` turned any throw from `installSkills` into the
+note `skills failed: …` on an `ok: true` result — the same defect as the
+marketplace branch, one branch over. Both now report through the same
+`failure` channel. Called out in the report rather than absorbed.

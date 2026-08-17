@@ -1,0 +1,28 @@
+# Checklist — GUI-065
+
+- [ ] Worktree `.worktrees/gui-065` on `gui-065-welcome-update-status` off `origin/main`; `take_ticket` records both
+- [ ] `components/UpdateBanner.tsx` — extract the `.banner.info` markup as a component taking `{ view, onRestart, onDismiss }`, no logic moved into it
+- [ ] `App.tsx` — bind `updateBanner`, `toastStack`, `restartConfirm` as JSX values above the `if (!root || !board)` early return
+- [ ] `App.tsx` — project branch renders those three variables in their existing positions; the three inline blocks are gone; the other four modals stay put
+- [ ] `App.tsx` — welcome branch wraps `<Welcome/>` in `<div className="app">` and renders the same three variables
+- [ ] `App.tsx` — the single `installUpdate()` call site is still exactly one (`startInstall`)
+- [ ] `styles.css` — `.welcome` `height: 100%` → `flex: 1; min-height: 0`, with a comment saying why
+- [ ] `apps/gui/package.json` — add `jsdom` + `@testing-library/react` devDeps; `npm install` and confirm the lockfile change is only those two trees
+- [ ] `components/UpdateBanner.test.tsx` — jsdom env, renders a real `downloaded` event through `updateSurface`, asserts banner text + both buttons + callbacks; asserts nothing renders for `null` and for `dismissed`; file comment states what it does not prove
+- [ ] `docs/functional/frd/FRD-021-auto-update.md` — R1 gains "…on every screen, including with no project open"; the R1 verified-against-code line references GUI-065
+- [ ] `AGENTS.md` §7 — amend "only renderer code with vitest coverage" to name the component-test exception and restate the rule that holds
+- [ ] `AGENTS.md` §7 — correct "exactly **two** renderer call sites" → one (stale since GUI-064)
+- [ ] `git diff AGENTS.md` shows **only** those two edits
+- [ ] `npm test` green (rerun `kanmerGit.test.ts` alone with `--testTimeout=30000` if it flakes — pre-existing GUI-085)
+- [ ] `npm run typecheck` green, all four workspaces named in the output
+- [ ] `npm run build:ui` green
+- [ ] `npm run check:manual` green (19 chapters) — verifies the FRD-021 edit causes no manual ripple
+- [ ] `npm run build -w @kanmer/gui` green
+- [ ] Screenshot: gitignored `dev-app-update.yml` + local feed with a **dummy** artefact, `KANMER_DEV_UPDATE=1`, no project open, capture the unpatched renderer over CDP once `downloaded` fires
+- [ ] Every spawned `electron.exe` PID reaped; none survive
+- [ ] Screenshot opened with `Read`, actually looked at, described in words the numbers could not produce
+- [ ] `post-implementation-report` written — including the `.toast-stack` widening and the centred-content shift as intended consequences
+- [ ] PR opened naming GUI-065; ticket records the PR
+- [ ] Review written to scratch (author and reviewer, said in the first line), merged
+- [ ] `move_item verifying`; rail re-run on merged `main`; `proof.md` written stating plainly what the component test does and does not establish
+- [ ] `move_item done`; closeout from the MAIN checkout — worktree removed, branch deleted, ticket released

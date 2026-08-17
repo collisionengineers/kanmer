@@ -17,18 +17,21 @@ worktree: .worktrees/core-023
 labels: []
 groups:
   - HZN-003
-links: []
+links:
+  - GUI-090
 refs:
   - docs/functional/frd/FRD-013-setup-as-reconciliation.md
   - docs/architecture/adr/ADR-0008-single-format-3-migration.md
   - docs/architecture/adr/ADR-0013-staleness-by-content-not-version.md
 commits:
   - 61d058c
+  - 0838c74
+  - 3e9ee2c
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/54'
 archived: false
 created: '2026-08-16T18:25:18.669Z'
-updated: '2026-08-16T23:59:21.729Z'
+updated: '2026-08-17T00:00:31.298Z'
 ---
 
 ## What
@@ -70,11 +73,55 @@ and `kanmer-import` — and reading it caused a wrong analysis earlier today.
 
 ## Verification
 
-- [ ] `get_status` (or equivalent) reports staleness against a repo set up on an
+- [x] `get_status` (or equivalent) reports staleness against a repo set up on an
       older Kanmer, naming which artefacts are behind.
-- [ ] A repo that is current reports clean — no false positives from a user's
+- [x] A repo that is current reports clean — no false positives from a user's
       own edits.
-- [ ] The list of not-covered-by-migration artefacts is written down, not
+- [x] The list of not-covered-by-migration artefacts is written down, not
       implied.
 
 ## Outcome
+
+**Shipped** in PR #54, squash-merged as `3e9ee2c`. `get_status` gains a `repo`
+block beside [[MCP-012]]'s `server` block:
+`{ upToDate, stale: [{ artefact, state, detail, fix }] }` — itemised, never a
+bare boolean, over the AGENTS.md managed block, the installed skills trees and
+their `.kanmer-skills-version` stamps, `board.yml`, and the provider MCP
+registrations. Compared by **content hash**, never version string. Detection
+only: `readOnlyHint` holds, every `fix` points at `kanmer-setup` (FRD-013).
+Decision recorded as **ADR-0013**, which carries the enumeration table the third
+acceptance criterion asked for.
+
+**Shipped differently than planned, deliberately.** The plan inherited research's
+proposal — and the operator's Q2 authorisation — to bake a content manifest into
+the standalone bundle at build time. It was not used. MCP-012's `classifyBuild()`
+had landed by then, which makes the bundled skills tree a *determined* sibling of
+the running script in all four shapes, so the reference is discovered at runtime
+instead. A baked skills manifest would have made the bundle's bytes a function of
+every skill prose file, so `check-plugin-sync`'s byte comparison would from then
+on have demanded an MCP rebuild after **every skill-prose edit** — including
+[[SKILL-013]]'s, in flight. Net build-time inputs added: **zero**. Recorded as
+alternative (b) in ADR-0013.
+
+**Three false positives found in self-review and fixed before merge** (`0838c74`),
+all narrowings with tests: a skill the user chose not to install was counted as
+missing; the registration check could read another server's `--root` as Kanmer's
+in any repo that merely lives in a folder called kanmer; and the skills `fix`
+pointed at an "Update skills" button that has never been able to fire.
+
+**Measured on this repo**, end-to-end through the real tool over stdio:
+`.claude/skills` 3 files behind, `.agents/skills` 17 behind and unstamped,
+`board.yml` `compensated` — and no row for the user's own `run-kanmer` skill or
+the correctly-rooted `.mcp.json`. 36–52 ms. The motivating regression was
+reproduced from the saved patch in a throwaway repo root and correctly reported
+`agents-block: behind`.
+
+**Follow-up:** [[GUI-090]] — surface the report in the GUI (operator declined the
+GUI surface here as roughly doubling the ticket), and invert the two small lists
+`staleness.ts` currently mirrors from `providers.ts`.
+
+**Left to others, by design:** the stale-block *cause* is [[SKILL-013]]'s
+(`agentsBlock.ts` untouched here); removing retired skills is [[GUI-080]]'s
+(reported only); the binary is [[MCP-012]]'s. No `reconciledWith` field was added
+to `version.json` — a field with no writer would report `unknown` forever; it
+belongs with its writer under FRD-013.

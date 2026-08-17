@@ -2,7 +2,7 @@
 id: SKILL-013
 type: ticket
 title: Carry the hard rules into AGENTS.md and skill prose on reconciliation
-status: verifying
+status: done
 area: skills
 assignee: claude-code
 profile: feature
@@ -10,6 +10,7 @@ stageEntered:
   preparing: '2026-08-16T21:50:56.796Z'
   review: '2026-08-17T00:07:51.597Z'
   verifying: '2026-08-17T00:09:52.970Z'
+  done: '2026-08-17T00:15:11.723Z'
 taken_at: '2026-08-16T23:20:18.788Z'
 branch: skill-013-hard-rules-and-fix-gate
 worktree: .worktrees/skill-013
@@ -28,7 +29,7 @@ prs:
   - '56'
 archived: false
 created: '2026-08-16T18:25:18.638Z'
-updated: '2026-08-17T00:14:01.682Z'
+updated: '2026-08-17T00:15:11.723Z'
 ---
 
 ## What

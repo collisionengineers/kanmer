@@ -2,12 +2,15 @@
 id: SKILL-019
 type: ticket
 title: Move OpenCode Kanmer skills to .opencode/skills
-status: preparing
+status: implementing
 area: skills
-assignee: ''
+assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-17T02:16:05.204Z'
+taken_at: '2026-08-17T04:42:22.215Z'
+branch: skill-019-opencode-skills-dir
+worktree: .worktrees/skill-019
 labels:
   - opencode
   - skills
@@ -19,7 +22,7 @@ refs:
   - docs/functional/frd/FRD-012-connect.md
 archived: false
 created: '2026-08-17T02:15:59.805Z'
-updated: '2026-08-17T04:41:15.274Z'
+updated: '2026-08-17T04:42:22.215Z'
 ---
 
 ## Problem

@@ -60,7 +60,23 @@ export type RegisterSpec =
     };
 
 export type InstallSpec =
-  | { kind: "marketplace"; marketplaceCommands: (localDir: string) => string[] }
+  /**
+   * `marketplaceRoot` is the directory holding this host's **marketplace
+   * manifest** — the repo root in dev, `resources/` in the packaged app — never
+   * the plugin directory inside it. The parameter used to be named `localDir`,
+   * connect.ts passed `pluginRoot()`, and every `plugin marketplace add` since
+   * has exited 1 with "Marketplace file not found" (MCP-013). The name is part
+   * of the fix: `localDir` was true of the wrong directory too.
+   *
+   * Each host reads its own manifest, and the two declare different marketplace
+   * names — Claude's `.claude-plugin/marketplace.json` is `kanmer`, codex's
+   * `.agents/plugins/marketplace.json` is `kanmer-plugins`. They legitimately
+   * differ (different schemas, different hosts, and renaming codex's would move
+   * every existing user's plugin cache), so the `<plugin>@<marketplace>` strings
+   * below are pinned to their manifests by a test in providers.test.ts rather
+   * than reconciled into one name.
+   */
+  | { kind: "marketplace"; marketplaceCommands: (marketplaceRoot: string) => string[] }
   | { kind: "copySkills"; skillsScope: "project" | "global" | "agentsOnly"; skillsDir?: string };
 
 export interface AgentProvider {
@@ -669,7 +685,16 @@ export const PROVIDERS: AgentProvider[] = [
     },
     install: {
       kind: "marketplace",
-      marketplaceCommands: (dir) => [`codex plugin marketplace add ${q(dir)}`],
+      // Two commands, because `marketplace add` alone leaves the plugin
+      // uninstalled — `codex plugin list` says so in as many words
+      // ("kanmer@kanmer-plugins  not installed"). codex's verb is `add`; there
+      // is no `codex plugin install`. Skills only: codex cannot run a
+      // plugin-supplied MCP server (FRD-012 R6), so its board still comes from
+      // Connect's `.codex/config.toml` entry — MCP-016 owns that question.
+      marketplaceCommands: (marketplaceRoot) => [
+        `codex plugin marketplace add ${q(marketplaceRoot)}`,
+        "codex plugin add kanmer@kanmer-plugins",
+      ],
     },
     dispatch: true,
     dispatchCli: "codex",
@@ -688,8 +713,10 @@ export const PROVIDERS: AgentProvider[] = [
     },
     install: {
       kind: "marketplace",
-      marketplaceCommands: (dir) => [
-        `claude plugin marketplace add ${q(dir)}`,
+      // `kanmer@kanmer` reads oddly but is right: plugin `kanmer` from the
+      // marketplace `.claude-plugin/marketplace.json` names `kanmer`.
+      marketplaceCommands: (marketplaceRoot) => [
+        `claude plugin marketplace add ${q(marketplaceRoot)}`,
         "claude plugin install kanmer@kanmer",
       ],
     },

@@ -17,10 +17,29 @@ files:
 extraResources:
   - from: ../../packages/mcp-server/dist/standalone/kanmer-mcp.cjs
     to: mcp/kanmer-mcp.cjs
-  # The plugin (skills + marketplace source) so Connect can install skills and
-  # register a local marketplace for the packaged app.
+  # The plugin itself: skills, and the tree each marketplace manifest below
+  # points at as `./plugins/kanmer`.
   - from: ../../plugins/kanmer
     to: plugins/kanmer
+  # The two marketplace MANIFESTS, without which the line above is not a
+  # marketplace source at all — only a directory of files no host can be told
+  # about. `plugin marketplace add <dir>` looks for one of these inside <dir>
+  # and exits 1 when it is absent, so shipping the plugin alone meant the
+  # packaged app had no local marketplace, for every release, while the comment
+  # here said it did (MCP-013). The v2 plan asked for both
+  # (docs/plans/kanmer-v2/phase-6-agents-connect/plan.md:30); only the plugin
+  # directory landed.
+  #
+  # They keep their repo-relative paths so `resources/` reproduces the repo-root
+  # layout exactly: each manifest's `./plugins/kanmer` then resolves to the entry
+  # above, and connect.ts's marketplaceRoot() — pluginRoot() minus two segments —
+  # is correct in the packaged app for the same reason it is correct in dev.
+  # Two different files because two different schemas: Claude reads the first
+  # (marketplace `kanmer`), codex the second (marketplace `kanmer-plugins`).
+  - from: ../../.claude-plugin/marketplace.json
+    to: .claude-plugin/marketplace.json
+  - from: ../../.agents/plugins/marketplace.json
+    to: .agents/plugins/marketplace.json
 
 # Auto-update feed. owner/repo are explicit because neither package.json has a
 # `repository` field, so electron-builder's auto-detection has nothing to read.

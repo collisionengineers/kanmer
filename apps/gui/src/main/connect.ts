@@ -61,10 +61,41 @@ function serverInvocation(boardRoot: string, sourceRoot: string): Invocation {
   return { command: process.execPath, args, env };
 }
 
-/** Where the bundled plugin (skills + marketplace source) lives — dev vs packaged. */
-function pluginRoot(): string {
+/**
+ * Where the bundled plugin (skills, and the plugin a marketplace points at)
+ * lives — dev vs packaged.
+ *
+ * Exported only so a test can pin its relationship to `marketplaceRoot()`; the
+ * defect these two encode was a mismatch between them, and a mismatch is not
+ * observable from either one alone.
+ */
+export function pluginRoot(): string {
   if (app.isPackaged) return join(process.resourcesPath, "plugins", "kanmer");
   return join(resolve(app.getAppPath(), "..", ".."), "plugins", "kanmer");
+}
+
+/**
+ * The directory a host's `plugin marketplace add` must be pointed at.
+ *
+ * It is **not** the plugin directory. The two marketplace manifests —
+ * `.claude-plugin/marketplace.json` (Claude Code) and
+ * `.agents/plugins/marketplace.json` (codex) — sit at the repo root and each
+ * declares its plugin as `./plugins/kanmer`, so the marketplace root is the
+ * plugin root minus those two segments, in the dev layout and the packaged one
+ * alike (`extraResources` reproduces both under `resources/`).
+ *
+ * Derived from `pluginRoot()` rather than resolved independently on purpose:
+ * this is the invariant that broke. Connect passed `pluginRoot()`, and
+ * `claude plugin marketplace add …\plugins\kanmer` exited 1 with "Marketplace
+ * file not found" on every release to date (MCP-013). Two path functions each
+ * independently correct about a layout are free to drift apart; one derived from
+ * the other cannot. The invariant, stated so a future edit has to break it
+ * deliberately:
+ *
+ *     marketplaceRoot() + "/plugins/kanmer"  ===  pluginRoot()
+ */
+export function marketplaceRoot(): string {
+  return resolve(pluginRoot(), "..", "..");
 }
 
 /** The version of the bundled skill set, read from the plugin manifest. */
@@ -291,19 +322,61 @@ async function hasRegisteredCopySkillsPeer(
   return false;
 }
 
-/** Install skills for a provider; returns a short human note. */
-async function installSkills(provider: AgentProvider, root: string): Promise<string> {
+/**
+ * What a failed command actually said.
+ *
+ * `execAsync` rejects with an Error whose `message` is `Command failed: <cmd>`
+ * followed by stderr — but these CLIs print their real diagnosis on **stdout**
+ * as readily as stderr (`claude plugin marketplace add` prints
+ * `✘ Failed to add marketplace: Marketplace file not found at …` and exits 1),
+ * so both streams are read and `message` is only the fallback. The user is being
+ * shown this text as the reason their install did not happen; truncating it to
+ * the first line of `message` — which is what the swallow did — reduces it to
+ * "Command failed", which names nothing.
+ */
+function commandFailureText(err: unknown): string {
+  const e = err as { stderr?: unknown; stdout?: unknown; message?: unknown };
+  const streams = [e?.stderr, e?.stdout]
+    .filter((s): s is string => typeof s === "string" && s.trim() !== "")
+    .map((s) => s.trim());
+  if (streams.length > 0) return streams.join("\n");
+  return typeof e?.message === "string" ? e.message : String(err);
+}
+
+/**
+ * The outcome of installing skills for a provider.
+ *
+ * `failure` exists because a string could not say "this did not happen". The
+ * marketplace branch used to fold a non-zero exit into the note
+ * `plugin cmd skipped (…)` on a result still flagged `ok`, so Connect rendered
+ * `✓ Connected claude` for an install that had failed outright — and did so for
+ * every release, because `claude plugin marketplace add` was being handed the
+ * plugin directory rather than the marketplace root (MCP-013).
+ */
+interface SkillsInstallOutcome {
+  /** Human note for the part that did run. */
+  note: string;
+  /** The command that failed and what it said — null when everything ran. */
+  failure: { command: string; output: string } | null;
+}
+
+/** Install skills for a provider; reports what ran and what, if anything, failed. */
+async function installSkills(provider: AgentProvider, root: string): Promise<SkillsInstallOutcome> {
   if (provider.install.kind === "marketplace") {
     const notes: string[] = [];
-    for (const cmd of provider.install.marketplaceCommands(pluginRoot())) {
+    for (const cmd of provider.install.marketplaceCommands(marketplaceRoot())) {
       try {
         await execAsync(cmd, { cwd: root });
         notes.push("plugin installed");
       } catch (e) {
-        notes.push(`plugin cmd skipped (${e instanceof Error ? e.message.split("\n")[0] : e})`);
+        // Stop at the first failure rather than running the rest. These
+        // commands are ordered — `plugin install <name>@<marketplace>` cannot
+        // succeed when the `marketplace add` before it did not — so continuing
+        // only buys a second error that misdescribes the first one's cause.
+        return { note: notes.join("; "), failure: { command: cmd, output: commandFailureText(e) } };
       }
     }
-    return notes.join("; ");
+    return { note: notes.join("; "), failure: null };
   }
   // copySkills: always ensure the AGENTS.md block; copy skills for a project dir.
   await ensureAgentsBlock(root);
@@ -321,9 +394,9 @@ async function installSkills(provider: AgentProvider, root: string): Promise<str
     if (replaced.length > 0) notes.push(`replaced, local edits discarded: ${replaced.join(", ")}`);
     if (removed.length > 0) notes.push(`retired, removed: ${removed.join(", ")}`);
     notes.push("AGENTS.md block ensured");
-    return notes.join("; ");
+    return { note: notes.join("; "), failure: null };
   }
-  return "AGENTS.md block ensured (host reads AGENTS.md for skills)";
+  return { note: "AGENTS.md block ensured (host reads AGENTS.md for skills)", failure: null };
 }
 
 export interface SkillsStatus {
@@ -382,7 +455,10 @@ export async function updateSkills(id: ProviderId, projectRoot: string): Promise
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
   try {
-    const note = await installSkills(provider, projectRoot);
+    const { note, failure } = await installSkills(provider, projectRoot);
+    // Same rule as connectAgent: a failed install command is reported as a
+    // failure carrying the command, not as a note on a successful result.
+    if (failure) return { ok: false, command: failure.command, output: failure.output };
     return { ok: true, command: `update-skills ${id}`, output: note };
   } catch (err) {
     return {
@@ -444,9 +520,31 @@ export async function connectAgent(id: ProviderId, projectRoot: string, boardRoo
       if (id === "antigravity") output += ` ${antigravityBindingNote(projectRoot)}`;
     }
     const skills = await installSkills(provider, projectRoot).catch(
-      (e) => `skills failed: ${e instanceof Error ? e.message : e}`,
+      (e): SkillsInstallOutcome => ({
+        note: "",
+        failure: {
+          command: `install skills for ${id}`,
+          output: e instanceof Error ? e.message : String(e),
+        },
+      }),
     );
-    return { ok: true, command, output: `${output} ${skills}`.trim() };
+    // Registration and skill install are two operations, and a half-success is
+    // reported as one rather than rounded to either end. `ok: false` is what
+    // makes Settings.tsx render the failing command with a copy button — the
+    // copy-paste fallback FRD-012 AC-4 has always specified and which the
+    // marketplace hosts never got, because their failures arrived as a note on
+    // an `ok: true` result and the panel showed "✓ Connected".
+    if (skills.failure) {
+      const ran = skills.note ? ` ${skills.note}` : "";
+      return {
+        ok: false,
+        command: skills.failure.command,
+        output:
+          `${output}${ran}\n\nBut installing the skills failed, so this host has ` +
+          `the board and not the skills. Run the command above by hand:\n${skills.failure.output}`,
+      };
+    }
+    return { ok: true, command, output: `${output} ${skills.note}`.trim() };
   } catch (err) {
     const command =
       provider.register.kind === "cli"

@@ -296,6 +296,130 @@ function checkPluginManifests() {
 }
 const manifestVersion = checkPluginManifests();
 
+// ---------------------------------------------------------------------------
+// The two MARKETPLACE manifests, and whether the packaged app carries them.
+//
+// Distinct from the plugin manifests above: those describe the plugin, these
+// are what a host's `plugin marketplace add <dir>` looks for inside <dir>. Both
+// live at the REPO ROOT, one level above `plugins/`, which is the whole of
+// MCP-013 — Connect passed `plugins/kanmer` and every install exited 1 with
+// "Marketplace file not found", silently, on every release.
+//
+// Two failures this catches:
+//
+//   - a manifest whose `source` stops naming `./plugins/kanmer`. connect.ts's
+//     marketplaceRoot() is defined as pluginRoot() minus exactly those two
+//     segments; if a manifest points somewhere else that derivation is wrong in
+//     the packaged app, where nothing else would notice.
+//   - `extraResources` dropping a manifest. That is not hypothetical: `0f3bb03`
+//     shipped `plugins/kanmer` plus a comment claiming a local marketplace
+//     source, while the v2 plan asked for the plugin AND both JSONs
+//     (docs/plans/kanmer-v2/phase-6-agents-connect/plan.md:30). The half that
+//     was dropped is the half that makes it a marketplace.
+//
+// This reads the electron-builder CONFIG. `check-updater-package.mjs` asserts
+// the same thing about the packed OUTPUT — config-level here because it is free
+// and runs on every `plugin:check`, artifact-level there because a config that
+// looks right is not an artifact that is.
+// ---------------------------------------------------------------------------
+function checkMarketplaces() {
+  const problems = [];
+  /** `[file, how to read its single plugin entry]`, one per host schema. */
+  const manifests = [
+    [
+      ".claude-plugin/marketplace.json", // Claude Code: source is a string
+      (p) => (typeof p?.source === "string" ? p.source : null),
+    ],
+    [
+      ".agents/plugins/marketplace.json", // the agents schema (codex): source is an object
+      (p) => (typeof p?.source?.path === "string" ? p.source.path : null),
+    ],
+  ];
+
+  const names = [];
+  for (const [rel, readSource] of manifests) {
+    const file = join(root, rel);
+    if (!existsSync(file)) {
+      problems.push(`missing ${rel} — without it \`plugin marketplace add <repo root>\` exits 1`);
+      continue;
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(readFileSync(file, "utf8"));
+    } catch (err) {
+      problems.push(`${rel}: not valid JSON (${err.message})`);
+      continue;
+    }
+    if (typeof parsed.name !== "string" || parsed.name === "") {
+      problems.push(`${rel}: no marketplace name`);
+    } else {
+      names.push(parsed.name);
+    }
+    const entry = Array.isArray(parsed.plugins) ? parsed.plugins[0] : undefined;
+    if (!entry) {
+      problems.push(`${rel}: declares no plugins`);
+      continue;
+    }
+    if (entry.name !== "kanmer") {
+      problems.push(`${rel}: plugins[0].name is "${entry.name}", expected "kanmer"`);
+    }
+    const source = readSource(entry);
+    if (source !== "./plugins/kanmer") {
+      problems.push(
+        `${rel}: plugins[0].source is "${source}", expected "./plugins/kanmer" — ` +
+          "connect.ts's marketplaceRoot() is pluginRoot() minus those two segments",
+      );
+    } else if (!existsSync(join(root, "plugins", "kanmer"))) {
+      problems.push(`${rel}: points at plugins/kanmer, which does not exist`);
+    }
+  }
+
+  // The names differ on purpose (`kanmer` vs `kanmer-plugins`) — different
+  // schemas, different hosts, and renaming codex's would relocate every
+  // existing user's plugin cache. Asserted so the divergence stays a decision
+  // rather than becoming a surprise; providers.test.ts pins each hard-coded
+  // `<plugin>@<marketplace>` string to the manifest that declares it.
+  if (names.length === 2 && names[0] === names[1]) {
+    problems.push(
+      `both marketplaces are now named "${names[0]}" — if that is intended, update ` +
+        "providers.ts's install commands, FRD-012 R2 and this check together",
+    );
+  }
+
+  // extraResources must pack the plugin AND both manifests, at paths that
+  // reproduce the repo-root layout under `resources/`.
+  const builderFile = join(root, "apps/gui/electron-builder.yml");
+  if (!existsSync(builderFile)) {
+    problems.push("missing apps/gui/electron-builder.yml");
+  } else {
+    const extra = parseYaml(readFileSync(builderFile, "utf8"))?.extraResources ?? [];
+    const packedTo = new Set(
+      extra.map((e) => (typeof e === "string" ? e : e?.to)).filter((t) => typeof t === "string"),
+    );
+    for (const required of [
+      "plugins/kanmer",
+      ".claude-plugin/marketplace.json",
+      ".agents/plugins/marketplace.json",
+    ]) {
+      if (!packedTo.has(required)) {
+        problems.push(
+          `electron-builder.yml extraResources does not pack "${required}" — ` +
+            "the packaged app then has no local marketplace source (MCP-013)",
+        );
+      }
+    }
+  }
+
+  if (problems.length) {
+    console.error("Marketplace manifests are wrong:");
+    for (const p of problems) console.error(`  ${p}`);
+    process.exit(1);
+  }
+  return names;
+}
+const marketplaceNames = checkMarketplaces();
+
+console.log(`  marketplaces: ${marketplaceNames.join(", ")} — both packed into the app`);
 console.log(
   `plugin-sync OK — ${registered.length} tools match, bundle bytes match, ` +
     `${skillCount} skill frontmatters parse, manifests at v${manifestVersion}`,

@@ -668,3 +668,117 @@ describe("copySkills destinations stay gitignored (GUI-083)", () => {
     expect(isDirIgnored(".totally-fake-provider/skills")).toBe(false);
   });
 });
+
+describe("marketplace references match the manifests that define them (MCP-013)", () => {
+  // apps/gui/src/main -> repo root is four levels up.
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
+
+  /**
+   * The two marketplace manifests, in the two schemas their hosts read.
+   *
+   * They declare **different** marketplace names — `kanmer` and
+   * `kanmer-plugins` — and that is correct rather than drift: they are separate
+   * files in separate schemas, no caller ever sees both, and renaming codex's
+   * would relocate every existing user's plugin cache
+   * (`~/.codex/plugins/cache/kanmer-plugins/kanmer/<version>`). FRD-012 R2
+   * records the divergence as legitimate.
+   *
+   * So this suite does not reconcile the names. It pins each hard-coded
+   * `<plugin>@<marketplace>` string in PROVIDERS to the manifest that defines
+   * it — which is the failure the divergence actually invites: an "install the
+   * plugin" command copied from one host to the other, correct-looking and
+   * wrong. Nothing checked either string against either file before.
+   */
+  const MANIFESTS = {
+    claude: {
+      /** Claude Code's schema: `plugins[].source` is a string. */
+      file: ".claude-plugin/marketplace.json",
+      read: (json: Record<string, unknown>) => ({
+        marketplace: json.name as string,
+        plugin: (json.plugins as { name: string; source: string }[])[0]!.name,
+        source: (json.plugins as { name: string; source: string }[])[0]!.source,
+      }),
+    },
+    codex: {
+      /** The agents schema: `plugins[].source` is an object with a `path`. */
+      file: ".agents/plugins/marketplace.json",
+      read: (json: Record<string, unknown>) => ({
+        marketplace: json.name as string,
+        plugin: (json.plugins as { name: string; source: { path: string } }[])[0]!.name,
+        source: (json.plugins as { name: string; source: { path: string } }[])[0]!.source.path,
+      }),
+    },
+  } as const;
+
+  /** Every command the provider would run, for an arbitrary marketplace root. */
+  function commandsFor(id: "claude" | "codex"): string[] {
+    const provider = providerById(id)!;
+    expect(provider.install.kind).toBe("marketplace");
+    return (
+      provider.install as { marketplaceCommands: (root: string) => string[] }
+    ).marketplaceCommands("/MARKETPLACE_ROOT");
+  }
+
+  it.each(["claude", "codex"] as const)(
+    "%s references the marketplace and plugin names its own manifest declares",
+    (id) => {
+      const spec = MANIFESTS[id];
+      const json = JSON.parse(fs.readFileSync(path.join(repoRoot, spec.file), "utf8"));
+      const { marketplace, plugin } = spec.read(json);
+      const commands = commandsFor(id).join("\n");
+
+      expect(commands).toContain(`${plugin}@${marketplace}`);
+    },
+  );
+
+  it.each(["claude", "codex"] as const)("%s's manifest points at a plugin that exists", (id) => {
+    const spec = MANIFESTS[id];
+    const json = JSON.parse(fs.readFileSync(path.join(repoRoot, spec.file), "utf8"));
+    const { source } = spec.read(json);
+    // Relative to the marketplace root, which is the repo root here and
+    // `resources/` in the packaged app — connect.ts's marketplaceRoot() is
+    // correct in both because the packed layout keeps these two segments.
+    expect(source).toBe("./plugins/kanmer");
+    expect(fs.existsSync(path.join(repoRoot, source))).toBe(true);
+  });
+
+  it.each(["claude", "codex"] as const)(
+    "%s is pointed at the marketplace root, not the plugin directory",
+    (id) => {
+      // The defect itself (MCP-013): connect.ts passed pluginRoot(), so
+      // `plugin marketplace add …/plugins/kanmer` exited 1 with "Marketplace
+      // file not found". The commands must carry the root they are given, whole
+      // — nothing may append `plugins/kanmer` back on.
+      const commands = commandsFor(id);
+      const add = commands.find((c) => c.includes("marketplace add"));
+      expect(add).toBeDefined();
+      expect(add).toContain("/MARKETPLACE_ROOT");
+      expect(add).not.toContain("plugins/kanmer");
+    },
+  );
+
+  it("a reference naming the wrong marketplace is caught, not silently passed", () => {
+    // The check on the check, run through the SAME predicate the assertions
+    // above use — otherwise this only proves two strings differ, which they
+    // would even if the predicate were `expect(true).toBe(true)`.
+    const matches = (commands: string, plugin: string, marketplace: string) =>
+      commands.includes(`${plugin}@${marketplace}`);
+
+    const readRef = (id: "claude" | "codex") => {
+      const spec = MANIFESTS[id];
+      return spec.read(JSON.parse(fs.readFileSync(path.join(repoRoot, spec.file), "utf8")));
+    };
+    const claude = readRef("claude");
+    const codex = readRef("codex");
+
+    // The names really do differ, so a cross-host copy is a real hazard.
+    expect(codex.marketplace).not.toBe(claude.marketplace);
+
+    // Claude's real commands satisfy the predicate for Claude's manifest…
+    expect(matches(commandsFor("claude").join("\n"), claude.plugin, claude.marketplace)).toBe(true);
+    // …and fail it for codex's, which is the mistake being guarded against:
+    // `codex plugin add kanmer@kanmer` looks right and installs nothing.
+    expect(matches(commandsFor("claude").join("\n"), codex.plugin, codex.marketplace)).toBe(false);
+    expect(matches("codex plugin add kanmer@kanmer", codex.plugin, codex.marketplace)).toBe(false);
+  });
+});

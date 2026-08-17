@@ -758,8 +758,15 @@ export class KanmerStore {
   /**
    * The shared stale-read rejection. The wording is matched on by tests and
    * by smoke.mjs (/Conflict/) — do not change it.
+   *
+   * Typed structurally rather than to `Item` so groups share it too: everything
+   * it needs is `updated`, plus `body` to drop from the reported frontmatter.
    */
-  private conflictError(id: string, current: Item, expectedUpdated: string): Error {
+  private conflictError(
+    id: string,
+    current: { updated: string; body?: string },
+    expectedUpdated: string,
+  ): Error {
     const { body: _body, ...frontmatter } = current;
     return new Error(
       `Conflict: "${id}" changed since you read it (updated is now ${current.updated}, ` +
@@ -1285,14 +1292,31 @@ export class KanmerStore {
     return listGroups(this.paths, opts);
   }
 
-  /** Patch a group's own fields. Members are not among them — they are derived. */
+  /**
+   * Patch a group's own fields. Members are not among them — they are derived.
+   * `kind` is not among them either: `createGroup` allocates the id from the
+   * kind's prefix, so `EPIC-`/`HZN-` encodes it permanently.
+   *
+   * Ordering mirrors `updateItem` and is load-bearing. `expectedUpdated` is
+   * stripped first — the group frontmatter schema is `.passthrough()` and
+   * `serialiseGroup` writes any hand-added key, so a token left on the patch
+   * would be persisted into the file. The conflict check runs **before** the
+   * no-op comparison, or a stale token would silently succeed whenever the
+   * patch happened to change nothing. And the rest is pruned of `undefined`,
+   * because `serialiseGroup` skips undefined values — an explicit
+   * `title: undefined` would otherwise erase `title:` from the frontmatter.
+   */
   async updateGroup(
     id: string,
-    patch: { title?: string; body?: string; archived?: boolean },
+    patch: { title?: string; body?: string; archived?: boolean; expectedUpdated?: string },
   ): Promise<Group> {
+    const { expectedUpdated, ...fields } = patch;
     const current = await readGroup(this.paths, id);
     if (!current) throw new Error(`No group with id "${id}"`);
-    const next: Group = { ...current, ...patch };
+    if (expectedUpdated !== undefined && current.updated !== expectedUpdated) {
+      throw this.conflictError(id, current, expectedUpdated);
+    }
+    const next: Group = { ...current, ...pruneUndefined(fields) };
     if (serialiseGroup(next) === serialiseGroup(current)) return current; // no-op, no write
     next.updated = nowIso();
     await writeGroup(this.paths, next);

@@ -157,8 +157,12 @@ branch automatically.
 
 ## Install as a plugin (Claude Code & codex) — recommended for agents
 
-The plugin bundles the MCP server **plus workflow skills and templates**, so the
-agent knows *how* to use the board, not just that it can. Requires Node ≥20.
+The plugin bundles workflow skills and templates, so the agent knows *how* to use
+the board, not just that it can — and on Claude Code and Grok CLI it bundles the
+MCP server too (those need Node ≥20, or `KANMER_NODE`; see below). On codex and
+Antigravity it is **skills only**, deliberately, and needs no Node at all: those
+hosts cannot run a server that lives inside a plugin, and their board comes from
+**Connect** instead.
 
 **Claude Code:**
 
@@ -191,13 +195,19 @@ codex plugin marketplace add collisionengineers/kanmer
 
 Then install **kanmer** from `/plugins`.
 
-For codex the plugin delivers the **skills only**. codex cannot start an MCP
-server that lives inside a plugin directory — it expands no path variable in a
-plugin's MCP config, and the relative working directory that lets it find the
-server is the one that stops the server finding your board. Register the board
-the ordinary way instead (the Kanmer desktop app's **Connect** button does it
-for you, or `codex mcp add`). `KANMER_NODE` does not apply to codex either, so a
-codex install does need Node ≥20 on `PATH`.
+For codex the plugin delivers the **skills only**, and says so — it ships no MCP
+server entry for codex at all. codex cannot start a server that lives inside a
+plugin directory: it expands no path variable in a plugin's MCP config, and the
+relative working directory that lets it find the server is the one that stops the
+server finding your board. So **codex gets skills from the plugin and the board
+from Connect** — press **Connect** in the Kanmer desktop app (it writes
+`<your project>/.codex/config.toml` for you), or run `codex mcp add`. Nothing
+else is needed, and nothing is missing: that is the whole codex setup.
+
+**Antigravity** is the same story. `agy plugin install ./plugins/kanmer` gives
+you the twelve skills; the board comes from **Connect**, which writes
+`.agents/mcp_config.json` — and `agy` reads it only in a session bound to the
+folder, so start it with `agy --add-dir /path/to/your/project`.
 
 The plugin ships twelve skills — ticket management, one skill per phase of a
 ticket's life, an autonomous orchestrator, and board reporting/hygiene:
@@ -217,9 +227,11 @@ ticket's life, an autonomous orchestrator, and board reporting/hygiene:
 | `kanmer-groom` | Board-editing triage (propose, then apply): dedupe near-duplicates, fill missing areas/profiles, split oversized tickets, archive dead ones, chase stale takes, and clear **doc-gate debt**. |
 | `kanmer-setup` | Setup in three modes — **greenfield** (propose areas + seed a backlog), **brownfield** (mine the codebase for a starter backlog), **upgrade** (drive the migration to format 3) — and it installs Kanmer operating instructions at the **top of the repo's `AGENTS.md`** (a marker-delimited managed block, refreshed idempotently), so any agent that opens the repo knows the board exists. |
 
-> Use **either** the plugin **or** a manual registration (the GUI's Connect
-> button / `mcp add`) — with both, the agent lists all the tools twice. Harmless,
-> but confusing to reason about.
+> On **Claude Code** and **Grok CLI**, use **either** the plugin **or** a manual
+> registration (the GUI's Connect button / `mcp add`) — with both, the agent
+> lists all the tools twice. Harmless, but confusing to reason about. On **codex**
+> and **Antigravity** the question does not arise: the plugin supplies no server,
+> so plugin + Connect is the intended combination, not a duplicate.
 
 ## Connect an agent manually (MCP)
 

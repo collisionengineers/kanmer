@@ -23,9 +23,9 @@
 - [x] Screenshots opened with `Read`, actually looked at, described in words the numbers could not produce
 - [x] `post-implementation-report` written — including the `.toast-stack` widening and the ~18px downward content shift as intended consequences
 - [x] PR opened naming GUI-065; ticket records the PR
-- [ ] Review written to scratch (author and reviewer, said in the first line), merged
-- [ ] `move_item verifying`; rail re-run on merged `main`; `proof.md` written stating plainly what the component test does and does not establish
-- [ ] `move_item done`; closeout from the MAIN checkout — worktree removed, branch deleted, ticket released
+- [x] Review written to scratch (author and reviewer, said in the first line), merged as `6dbb284` (PR #61)
+- [x] `move_item verifying`; rail re-run on merged `main` (19 chapters, core 249, gui 276, scripts fail 0, typecheck all four); `proof.md` written stating plainly what the component test does and does not establish
+- [x] `move_item done`; closeout from the MAIN checkout — worktree removed, branch deleted local and remote, ticket released
 
 ## Progress notes
 

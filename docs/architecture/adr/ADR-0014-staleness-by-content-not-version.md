@@ -2,7 +2,9 @@
 status: draft
 ---
 
-# ADR-0013 — Repo staleness is judged by content, not by version
+# ADR-0014 — Repo staleness is judged by content, not by version
+
+> Originally filed as ADR-0013; renumbered to ADR-0014 to resolve a collision with another ADR that was accepted under the same number while both were in flight concurrently.
 
 ## Context
 

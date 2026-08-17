@@ -44,13 +44,14 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
-  check("tools/list returns 29 tools", tools.tools.length === 29, `got ${tools.tools.length}`);
+  check("tools/list returns 30 tools", tools.tools.length === 30, `got ${tools.tools.length}`);
   for (const name of [
     "append_scratch",
     "link_doc",
     "get_doc_gates",
     "migrate_board",
     "create_group",
+    "update_group",
     "get_group",
     "list_groups",
     "get_group_doc",
@@ -1041,6 +1042,105 @@ try {
     textOf(await client.callTool({ name: "list_groups", arguments: { kind: "epic" } })),
   );
   check("list_groups filters by kind", epicsOnly.length === 1 && epicsOnly[0].id === epic.id);
+
+  // update_group (MCP-006): rename, archive as the retirement path, no-op and
+  // conflict semantics. The group is unarchived again at the end so later
+  // checks still see both groups.
+  const renamed = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "update_group",
+        arguments: { id: epic.id, title: "Checkout rework v2" },
+      }),
+    ),
+  );
+  check("update_group renames a group", renamed.title === "Checkout rework v2", renamed.title);
+  const afterRename = JSON.parse(
+    textOf(await client.callTool({ name: "get_group", arguments: { id: epic.id } })),
+  );
+  check("the rename is visible through get_group", afterRename.title === "Checkout rework v2");
+  check(
+    "and its derived members survive the rename",
+    afterRename.members.map((m) => m.id).join(",") === [m1, m2].sort().join(","),
+  );
+  // `kind` is not in the schema — the id prefix is allocated from it — so it
+  // cannot reach the store however it is passed.
+  await client.callTool({ name: "update_group", arguments: { id: epic.id, kind: "horizon" } });
+  check(
+    "kind is not patchable — the id prefix encodes it",
+    JSON.parse(textOf(await client.callTool({ name: "get_group", arguments: { id: epic.id } })))
+      .kind === "epic",
+  );
+  const noop = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "update_group",
+        arguments: { id: epic.id, title: "Checkout rework v2" },
+      }),
+    ),
+  );
+  check("a no-op patch does not bump updated", noop.updated === renamed.updated);
+  check(
+    "a stale expected_updated is a conflict",
+    textOf(
+      await client.callTool({
+        name: "update_group",
+        arguments: { id: epic.id, title: "Nope", expected_updated: epic.updated },
+      }),
+    ).match(/Conflict/) !== null,
+  );
+  check(
+    "a fresh expected_updated is accepted",
+    (
+      await client.callTool({
+        name: "update_group",
+        arguments: { id: epic.id, body: "Ship these together, still.", expected_updated: renamed.updated },
+      })
+    ).isError !== true,
+  );
+  check(
+    "the concurrency token is never written into the group's frontmatter",
+    !fs.readFileSync(groupFile, "utf8").includes("expectedUpdated"),
+  );
+
+  const memberBefore = JSON.parse(
+    textOf(await client.callTool({ name: "get_item", arguments: { id: m1 } })),
+  );
+  await client.callTool({ name: "update_group", arguments: { id: epic.id, archived: true } });
+  check(
+    "archiving drops the group from list_groups",
+    !JSON.parse(textOf(await client.callTool({ name: "list_groups", arguments: {} })))
+      .map((g) => g.id)
+      .includes(epic.id),
+  );
+  check(
+    "but include_archived still returns it",
+    JSON.parse(
+      textOf(await client.callTool({ name: "list_groups", arguments: { include_archived: true } })),
+    )
+      .map((g) => g.id)
+      .includes(epic.id),
+  );
+  const memberAfter = JSON.parse(
+    textOf(await client.callTool({ name: "get_item", arguments: { id: m1 } })),
+  );
+  check(
+    "member tickets are untouched by archiving the group (FRD-001 G4)",
+    memberAfter.updated === memberBefore.updated &&
+      JSON.stringify(memberAfter.groups) === JSON.stringify(memberBefore.groups),
+  );
+  await client.callTool({ name: "update_group", arguments: { id: epic.id, archived: false } });
+  check(
+    "unarchiving restores it — archiving is reversible",
+    JSON.parse(textOf(await client.callTool({ name: "list_groups", arguments: {} })))
+      .map((g) => g.id)
+      .includes(epic.id),
+  );
+  check(
+    "update_group refuses an unknown id",
+    (await client.callTool({ name: "update_group", arguments: { id: "EPIC-404", title: "x" } }))
+      .isError === true,
+  );
 
   const del1 = await client.callTool({ name: "delete_item", arguments: { id: "TICK-001" } });
   check(

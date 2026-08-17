@@ -43,6 +43,7 @@ import { CommandPalette, type PaletteCommand } from "./components/CommandPalette
 import { ConfirmModal } from "./components/ConfirmModal.js";
 import { TicketCreate } from "./components/TicketCreate.js";
 import { GroupView } from "./components/GroupView.js";
+import { UpdateBanner } from "./components/UpdateBanner.js";
 import { Welcome } from "./components/Welcome.js";
 import { VIEWS, VIEW_IDS, type View, viewCounts, viewItemsFor } from "./lib/views.js";
 
@@ -1032,15 +1033,81 @@ export function App(): JSX.Element {
     [setTheme, pickAndOpen, selected, board, onMove, releaseTicket],
   );
 
+  /**
+   * The three update surfaces, bound ONCE here — above the `!root` early
+   * return — and rendered from both branches below (GUI-065).
+   *
+   * They have to live above the return because the updater is app-global:
+   * the subscription, `updateView`, the toast effect, `startInstall` and
+   * `onRestartToUpdate` all already run with no project open, so the check
+   * ran, the download finished, and the result rendered into a subtree the
+   * welcome screen never mounted. All three move, not just the banner —
+   * without the toast stack Help ▸ Check for Updates… is silent, and without
+   * the confirm "Restart now" opens a modal that never renders.
+   *
+   * They are values, not duplicated markup: one banner instance, one toast
+   * stack, one restart confirm, so the single-`installUpdate()`-call-site
+   * invariant above survives.
+   */
+  const updateBanner = (
+    <UpdateBanner
+      view={updateView}
+      onRestart={() => void onRestartToUpdate()}
+      onDismiss={() => setUpdateDismissed(true)}
+    />
+  );
+
+  const toastStack = (
+    <div className="toast-stack">
+      {toasts.map((t) => (
+        <button
+          key={t.seq}
+          className="toast"
+          onClick={() => {
+            if (t.id) {
+              setView("ticket");
+              trySelect(t.id);
+            }
+            setToasts((list) => list.filter((x) => x.seq !== t.seq));
+          }}
+        >
+          {t.text}
+        </button>
+      ))}
+    </div>
+  );
+
+  const restartConfirm = pendingRestart ? (
+    <ConfirmModal
+      message={pendingRestart}
+      actionLabel="Restart and update"
+      onCancel={() => setPendingRestart(null)}
+      onConfirm={() => {
+        editorDirty.current = false;
+        setPendingRestart(null);
+        void startInstall();
+      }}
+    />
+  ) : null;
+
   if (!root || !board) {
+    // The `.app` shell is what makes the banner render as a banner here: it is
+    // the flex column `.banner` was designed as a child of. `.welcome` is
+    // `flex: 1; min-height: 0` under it (styles.css) so the pair fills `#root`
+    // exactly rather than overflowing it.
     return (
-      <Welcome
-        recentProjects={settings?.recentProjects ?? []}
-        onPick={pickAndOpen}
-        onOpen={openProject}
-        error={error}
-        opening={opening}
-      />
+      <div className="app">
+        {updateBanner}
+        <Welcome
+          recentProjects={settings?.recentProjects ?? []}
+          onPick={pickAndOpen}
+          onOpen={openProject}
+          error={error}
+          opening={opening}
+        />
+        {toastStack}
+        {restartConfirm}
+      </div>
     );
   }
 
@@ -1123,23 +1190,7 @@ export function App(): JSX.Element {
         </div>
       )}
 
-      {updateView.kind === "banner" && (
-        <div className="banner info">
-          <span>Kanmer {updateView.version} is ready to install.</span>
-          <div className="conflict-actions">
-            <button className="primary xs" onClick={() => void onRestartToUpdate()}>
-              Restart now
-            </button>
-            <button
-              className="ghost xs"
-              title="Installs the next time you quit Kanmer."
-              onClick={() => setUpdateDismissed(true)}
-            >
-              Later
-            </button>
-          </div>
-        </div>
-      )}
+      {updateBanner}
 
       {/* `items` is the view's own unfiltered set — the last inline copy of
           the view rule, removed by GUI-071. FilterBar renders only in the
@@ -1307,23 +1358,7 @@ export function App(): JSX.Element {
         )}
       </div>
 
-      <div className="toast-stack">
-        {toasts.map((t) => (
-          <button
-            key={t.seq}
-            className="toast"
-            onClick={() => {
-              if (t.id) {
-                setView("ticket");
-                trySelect(t.id);
-              }
-              setToasts((list) => list.filter((x) => x.seq !== t.seq));
-            }}
-          >
-            {t.text}
-          </button>
-        ))}
-      </div>
+      {toastStack}
 
       {pendingNav && (
         <ConfirmModal
@@ -1354,18 +1389,7 @@ export function App(): JSX.Element {
         />
       )}
 
-      {pendingRestart && (
-        <ConfirmModal
-          message={pendingRestart}
-          actionLabel="Restart and update"
-          onCancel={() => setPendingRestart(null)}
-          onConfirm={() => {
-            editorDirty.current = false;
-            setPendingRestart(null);
-            void startInstall();
-          }}
-        />
-      )}
+      {restartConfirm}
 
       {pendingTake && (
         <div className="modal-backdrop" onClick={() => setPendingTake(null)}>

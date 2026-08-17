@@ -63,3 +63,16 @@ re-centres inside the shorter box, so everything in it — including the recents
 list — moves down. Half the banner height, not the full 37px the ticket feared,
 but in the direction the ticket feared. Measured from the before/after pair, not
 estimated.
+
+---
+
+## Closeout — GUI-065
+
+- [x] PR merge verified — #61 `state: MERGED`, `mergedAt: 2026-08-17T00:31:46Z`, merge commit `6dbb284`
+- [x] proof.md finalised — written on merged `main` at `6dbb284`, carries the PR URL and merge date
+- [x] Moved to final stage (Done, 2026-08-17T00:38Z)
+- [x] Outcome recorded in ticket body
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-065`
+- [x] `git branch -D gui-065-welcome-update-status` (squash-merged, so `-d` refuses by design)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

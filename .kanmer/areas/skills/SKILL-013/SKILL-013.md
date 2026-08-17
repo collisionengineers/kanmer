@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-17T00:07:51.597Z'
   verifying: '2026-08-17T00:09:52.970Z'
   done: '2026-08-17T00:15:11.723Z'
-taken_at: '2026-08-16T23:20:18.788Z'
-branch: skill-013-hard-rules-and-fix-gate
-worktree: .worktrees/skill-013
 labels: []
 groups:
   - HZN-003
@@ -31,7 +28,7 @@ prs:
   - '56'
 archived: false
 created: '2026-08-16T18:25:18.638Z'
-updated: '2026-08-17T00:15:53.569Z'
+updated: '2026-08-17T00:17:47.473Z'
 ---
 
 ## What

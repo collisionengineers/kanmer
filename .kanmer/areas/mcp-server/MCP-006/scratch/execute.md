@@ -1,0 +1,1 @@
+opened PR https://github.com/collisionengineers/kanmer/pull/58 — branch `mcp-006-update-group`, worktree `.worktrees/mcp-006`, off `d1ef063` (GUI-073 #55, newer than the CORE-023 hand-off named). Four commits: d237970 core, 08c9c84 mcp surface, abd4181 docs, 6b4e154 bundle.

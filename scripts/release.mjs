@@ -232,6 +232,11 @@ const GATE = [
   // list is the ship decision and should say what shipping requires (DOC-007;
   // until then nothing in the repo invoked check:manual at all).
   "npm run check:manual",
+  // FRD-023 R5. Pure file reads, no build, sub-second — a rail step everyone
+  // pays for on every release has to be cheap. It is the only thing that
+  // asserts anything about skill prose, so its absence was why the AGENTS
+  // block could describe a profile set that no longer existed (SKILL-013).
+  "npm run verify:skills",
   // Every workspace, not just the GUI. The -w form here is what let c8b94a4
   // ship: the release rail was the only thing running a typecheck at all, and
   // it ran one workspace's (GUI-067).

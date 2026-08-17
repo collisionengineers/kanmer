@@ -31,7 +31,12 @@ true`, and `get_activity` for recent movement. Look for:
 - **Stale takes** — `taken` with no activity since (>3 days), branch/
   worktree pointing at work nobody is doing.
 - **Off-board statuses** and file warnings from `list_items` — data
-  problems the tools can repair via `move_item` / `update_item`.
+  problems the tools can repair via `move_item` / `update_item`. A move crosses
+  **at most one gated boundary**, so a ticket parked several stages from where it
+  belongs is walked there one stage at a time; a single corrective jump is
+  refused even when every document exists. That refusal is the rule working, not
+  a broken ticket, and there is no way around it: `update_item status` runs the
+  same gate check as `move_item`.
 
 ## 2. Propose
 

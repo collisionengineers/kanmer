@@ -44,8 +44,61 @@ export function defaultBoardConfig(): BoardConfig {
 }
 
 /**
+ * Give `fix` a gated `enter-review` on boards whose `profiles:` block predates
+ * ADR-0014.
+ *
+ * The decision: *a fix that opened a PR should not merge unreviewed.* Editing
+ * `DEFAULT_PROFILES` alone reaches **new boards only** — a board written by
+ * setup or migration carries its own `profiles:` block, and `board.profiles ?? …`
+ * means the defaults are never consulted again. That is the SKILL-012 gap,
+ * found by demonstrating a gate on a real board and watching it not fire.
+ *
+ * **This is deliberately kept separate from the `questions-resolved` injection
+ * below, and it must stay separate.** They obey opposite rules and merging them
+ * into one "inject a requirement" helper is how the difference gets lost:
+ *
+ * - `questions-resolved` may only touch boundaries a profile **already
+ *   declares** (ADR-0011's second limit), precisely so no profile's gated-
+ *   boundary count changes.
+ * - This one **adds a boundary `fix` does not declare**, which changes that
+ *   count from 2 to 3 — the intended effect on `implementing → done`, and the
+ *   exact operation ADR-0011's limit exists to stop anyone doing by accident.
+ *   ADR-0014 is the authorisation, and it carries the measured four-profile
+ *   before/after table that makes it more than an assertion.
+ *
+ * Scope is therefore as narrow as it can be: `fix` only, `enter-review` only,
+ * and a no-op when the board already says something about that boundary —
+ * including an explicit empty list, which is vacuous **by design** and stays
+ * vacuous, the same rule the loop below follows. An operator who has customised
+ * `fix` keeps their version.
+ *
+ * Ordering matters: this runs **before** the `questions-resolved` pass, so the
+ * new boundary inherits `questions-resolved` too. Without that ordering `fix`
+ * would gain a review gate that does not check open questions, which is the
+ * narrow gap ADR-0011 records and this change is partly here to close.
+ */
+const FIX_REVIEW_PROFILE = "fix";
+const FIX_REVIEW_BOUNDARY = "enter-review";
+const FIX_REVIEW_REQUIREMENTS: readonly string[] = ["post-implementation-report"];
+
+function injectFixEnterReview(
+  base: Record<string, ProfileMap>,
+): Record<string, ProfileMap> {
+  const profile = base[FIX_REVIEW_PROFILE];
+  // A board that removed or renamed `fix` is left alone: inventing the profile
+  // back would be a bigger change than the one this function is authorised for.
+  if (!profile) return base;
+  if (FIX_REVIEW_BOUNDARY in profile) return base;
+  return {
+    ...base,
+    [FIX_REVIEW_PROFILE]: { ...profile, [FIX_REVIEW_BOUNDARY]: [...FIX_REVIEW_REQUIREMENTS] },
+  };
+}
+
+/**
  * Profiles in force: the board's table, or the shipped defaults — with
- * `questions-resolved` injected into every boundary either already declares.
+ * `fix`'s `enter-review` added (ADR-0014, above) and then `questions-resolved`
+ * injected into every boundary each profile already declares.
  *
  * The injection is what makes "existing boards inherit the requirement"
  * (ADR-0011, FRD-009 R5) actually true. Editing `DEFAULT_PROFILES` alone would
@@ -61,7 +114,10 @@ export function defaultBoardConfig(): BoardConfig {
  * effective requirement. `resolveProfiles` is already the seam where board
  * config meets shipped defaults, which is why it belongs here and not deeper.
  *
- * Two limits, both load-bearing:
+ * Two limits on the `questions-resolved` pass, both load-bearing. **They are
+ * stated in ADR-0011 — read it there.** They are repeated here only because this
+ * is the function they constrain; the ADR is the authority, and it used to be
+ * this comment, which is the wrong home for a rule that binds future work.
  *
  * **Never `leave-backlog`.** Questions are raised *during* research, which
  * happens after Backlog — gating entry to the stage where questions get worked
@@ -73,9 +129,10 @@ export function defaultBoardConfig(): BoardConfig {
  * `leave-preparing` and `enter-review` would turn its Backlog → Done jump from
  * one gated boundary into three and refuse it, breaking the acceptance case
  * FRD-002 exists to protect. So a `spike` gains it at `enter-done` and nowhere
- * else, and `chore`'s one-jump to Implementing survives untouched. The cost is
- * a narrow gap — `fix` and `chore` declare no `enter-review`, so a question
- * raised during implementation is caught at `enter-done` rather than at review.
+ * else, and `chore`'s one-jump to Implementing survives untouched. `chore` still
+ * declares no `enter-review`, so a question raised during a chore's
+ * implementation is caught at `enter-done` rather than at review; ADR-0014
+ * closed that gap for `fix` and deliberately left it open for `chore`.
  *
  * A profile with no boundaries at all — `custom: {}`, used by historical
  * backfill — is untouched, so a backfilled ticket is still nagged about nothing.
@@ -83,7 +140,9 @@ export function defaultBoardConfig(): BoardConfig {
 const QUESTIONS_BOUNDARIES: readonly string[] = ["leave-preparing", "enter-review", "enter-done"];
 
 export function resolveProfiles(board: BoardConfig): Record<string, ProfileMap> {
-  const base = (board.profiles ?? DEFAULT_PROFILES) as Record<string, ProfileMap>;
+  const base = injectFixEnterReview(
+    (board.profiles ?? DEFAULT_PROFILES) as Record<string, ProfileMap>,
+  );
   const out: Record<string, ProfileMap> = {};
   for (const [id, profile] of Object.entries(base)) {
     const next: ProfileMap = {};

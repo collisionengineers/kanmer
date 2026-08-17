@@ -14,7 +14,10 @@ sole owner of turning PR feedback into tickets.
 ## Workflow
 
 1. **Gather** — the ticket, its documents and the PR (below). Review runs in the
-   **review** stage; the ticket is already there and already taken.
+   **review** stage; the ticket is already there and already taken. Read the diff
+   with `gh`, or from the ticket's own worktree — never by checking the branch
+   out over `.worktrees/kanmer`, which in a GUI-set-up repo is the board's own
+   worktree on the board branch, with MCP rooted in it.
 2. **Write the review to scratch** — changes, comments, disposition, verdict.
 3. **Check the open questions** before applying any fix.
 4. **Check** — report against diff, governing docs, then the code.
@@ -92,8 +95,10 @@ independent review and should not read as one.
 
 - **Passes** — record the verdict in scratch, then (with the user's go-ahead, or their
   standing delegation) **merge the PR** (`gh pr merge`), and `move_item <id>
-  verifying`. Hand off to `kanmer-verify` to validate on merged main and write
-  `proof.md`.
+  verifying`. That is **one stage**, deliberately: a move crosses at most one
+  gated boundary, so reaching for `done` here is refused even with every
+  document written. Hand off to `kanmer-verify` to validate on merged main and
+  write `proof.md`.
 - **Needs changes** — file each substantive point as a ticket in the **PR Review**
   area (`kanmer-tickets`; `PR-` prefix), linked with `rel: "blocks"` so the
   original visibly can't close. Trivial nits go straight into the PR as review

@@ -18,6 +18,7 @@
     "smoke:protocol": "node packages/mcp-server/src/smoke-protocol.mjs",
     "smoke:discovery": "node packages/mcp-server/src/smoke-discovery.mjs",
     "verify:agents-block": "node scripts/verify-agents-block.mjs",
+    "verify:skills": "node scripts/verify-skill-prose.mjs",
     "dev:gui": "npm run dev -w @kanmer/gui",
     "setup": "npm install && npm run build && npm run build -w @kanmer/gui",
     "app": "npm run build -w @kanmer/gui && npm run start -w @kanmer/gui",

@@ -133,3 +133,58 @@ describe("resolveProfiles never gates leaving Backlog on questions", () => {
     expect(Object.keys(resolveProfiles(board).spike)).toEqual(["enter-done"]);
   });
 });
+
+describe("resolveProfiles gives fix an enter-review (ADR-0014)", () => {
+  it("adds it to a board whose profiles table predates the decision", () => {
+    // The SKILL-012 lesson applied a second time: editing DEFAULT_PROFILES
+    // alone reaches new boards only. This is a board written before ADR-0014.
+    const board = {
+      profiles: { fix: { "leave-preparing": ["files", "plan"], "enter-done": ["proof"] } },
+    } as never;
+    expect(resolveProfiles(board).fix["enter-review"]).toEqual([
+      "post-implementation-report",
+      QUESTIONS_RESOLVED,
+    ]);
+  });
+
+  it("orders the two injections so the new boundary also checks questions", () => {
+    // If the fix injection ran *after* the questions pass, `fix` would gain a
+    // review gate that does not check open questions — the exact gap ADR-0011
+    // records and this change is partly here to close.
+    const board = { profiles: { fix: { "enter-done": ["proof"] } } } as never;
+    expect(resolveProfiles(board).fix["enter-review"]).toContain(QUESTIONS_RESOLVED);
+  });
+
+  it("leaves an operator's own enter-review alone", () => {
+    const board = {
+      profiles: { fix: { "enter-review": ["plan"], "enter-done": ["proof"] } },
+    } as never;
+    expect(resolveProfiles(board).fix["enter-review"]).toEqual(["plan", QUESTIONS_RESOLVED]);
+  });
+
+  it("keeps an explicitly vacuous enter-review vacuous", () => {
+    // Same rule the questions pass follows: an empty list is a deliberate
+    // "this boundary is free", not an absent one.
+    const board = { profiles: { fix: { "enter-review": [], "enter-done": ["proof"] } } } as never;
+    expect(resolveProfiles(board).fix["enter-review"]).toEqual([]);
+  });
+
+  it("touches no other profile", () => {
+    // The operator's decision was `fix` only: chore and spike keep their
+    // one-jump to Done, and feature already had the boundary.
+    const board = {
+      profiles: {
+        chore: { "enter-done": ["proof"] },
+        spike: { "enter-done": ["research"] },
+      },
+    } as never;
+    const resolved = resolveProfiles(board);
+    expect(Object.keys(resolved.chore)).toEqual(["enter-done"]);
+    expect(Object.keys(resolved.spike)).toEqual(["enter-done"]);
+  });
+
+  it("does not invent the profile back on a board that removed fix", () => {
+    const board = { profiles: { chore: { "enter-done": ["proof"] } } } as never;
+    expect(resolveProfiles(board).fix).toBeUndefined();
+  });
+});

@@ -1,26 +1,21 @@
 // The kanmer AGENTS.md managed block, as pure functions the Connect flow can
 // add, refresh and remove — and unit-test (audit B6, previously enforced by
-// skill prose only). Mirrors scripts/agents-block.mjs (kanmer-setup's copy);
-// Phase 8 reconciles the two on one canonical body.
+// skill prose only).
+//
+// The **body** is not defined here. It is imported from
+// `scripts/agents-block-body.mjs` — the single canonical copy, which
+// `scripts/agents-block.mjs` (the writer kanmer-setup calls) also re-exports.
+//
+// This file used to declare its own literal, and it had gone stale: a v2 body
+// naming seven stages, `impact.md` and a skill that no longer exists. Connect
+// imports these functions, so it wrote that stale body over the current one in
+// every repo it touched — observed live on this repository (SKILL-013). Two
+// copies of a literal kept in step by a comment is exactly what failed here.
+// Do not reintroduce a local BLOCK_BODY.
 
-export const START =
-  "<!-- kanmer:instructions:start — managed by kanmer-setup; edits inside will be overwritten -->";
-export const END = "<!-- kanmer:instructions:end -->";
+export { START, END, BLOCK_BODY } from "../../../../scripts/agents-block-body.mjs";
+import { START, END, BLOCK_BODY } from "../../../../scripts/agents-block-body.mjs";
 
-/** The managed block's body — kept in step with scripts/agents-block.mjs. */
-export const BLOCK_BODY = `# Kanmer operating instructions
-
-This repo's work is tracked on a Kanmer board in \`.kanmer/\`.
-
-- Start every session with \`get_status\`, then \`list_board\` / \`list_items\` to find your ticket. \`get_doc_gates\` shows which documents each stage transition needs.
-- Work each ticket on its own branch and worktree: worktree \`.worktrees/<id>\`, branch \`<id>-<slug>\`; \`take_ticket\` records both and moves the stage.
-- Stages: backlog → researching → planning → implementing → review → verifying → done — hard document gates guard the transitions.
-- Before a ticket leaves Backlog, link a governing doc (\`link_doc\` → a PRD/FRD/ADR in \`/docs/\`) or set \`docs_todo\`.
-- Doc pipeline: research.md + impact.md → plan.md → checklist.md → post-implementation-report.md; write proof.md on merged main before Done.
-- Add running notes with \`append_scratch\` (not \`set_ticket_doc\`) — scratch is the notepad and is never gated.
-- Review passes → the PR is merged → the ticket enters Verifying; write proof.md on merged main, move to Done, then close out (record commits/PRs/deployment).
-- Archive, don't delete. Reference other items with [[ID]] wiki-links.
-- Skills, one per phase: kanmer-tickets (manage), -docs, -research, -plan, -execute, -review, -verify, -closeout, -auto, -report, -groom, -import, -setup.`;
 
 /**
  * Insert or refresh the managed block. Pure: takes the file's current text

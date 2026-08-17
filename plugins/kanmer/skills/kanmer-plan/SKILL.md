@@ -8,9 +8,11 @@ description: Plan a Kanmer ticket — turn its research and files documents into
 A plan is only as good as what it is built from. The plan is written FROM the
 research and files documents — never before them, never instead of them.
 
-**`get_doc_gates <id>` is the authority on what this ticket needs.** A `chore`
-asks for a plan and nothing else; a `spike` may ask for no plan at all. Ask
-rather than assuming.
+**`get_doc_gates <id>` is the authority on what this ticket needs**, and it is
+the only one — a profile's requirements are resolved per board and change
+without this file changing. Some profiles ask for no plan at all. Ask rather
+than assuming, and do not reason from `board.yml`: requirements are injected at
+resolve time, so its `profiles:` block is not the effective set.
 
 ## Workflow
 

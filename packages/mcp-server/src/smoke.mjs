@@ -863,12 +863,16 @@ try {
   // The collapse refusal must not masquerade as a missing document: this
   // ticket has every document the jump would need, and is still refused.
   const stocked = await mk("Stocked", "fix");
-  for (const d of ["files", "plan", "proof"]) await writeDoc(stocked, d, "# " + d);
+  // `post-implementation-report` is in this list because ADR-0014 gave `fix` a
+  // gated `enter-review`, so the jump now crosses three gates rather than two.
+  for (const d of ["files", "plan", "post-implementation-report", "proof"]) {
+    await writeDoc(stocked, d, "# " + d);
+  }
   const stockedBlocked = await moveTo(stocked, "done");
   check(
     "a fully documented ticket is still refused the multi-gate jump",
     stockedBlocked.isError === true &&
-      textOf(stockedBlocked).includes("crosses 2 document gates") &&
+      textOf(stockedBlocked).includes("crosses 3 document gates") &&
       !textOf(stockedBlocked).includes("requires"),
     textOf(stockedBlocked).slice(0, 90),
   );

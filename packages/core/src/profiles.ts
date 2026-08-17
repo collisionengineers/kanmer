@@ -123,9 +123,15 @@ export type ProfileMap = Partial<Record<Boundary, string[]>>;
  *
  * Read the table as "what evidence does this kind of work owe?":
  *   feature — the full pipeline, because a feature changes what the product is
- *   fix     — where it lands and what the change is, then proof
+ *   fix     — where it lands and what the change is, a report, then proof
  *   chore   — a plan and a proof; no research ceremony for a rename
  *   spike   — research *is* the deliverable; nothing else is owed
+ *
+ * `fix` carries an `enter-review` (ADR-0014): a fix that opened a PR should not
+ * merge unreviewed. `chore` and `spike` deliberately do not — a rename going
+ * straight to Done is the point of having profiles at all. Editing this table
+ * reaches **new boards only**; `resolveProfiles` in board.ts is what reaches
+ * boards that already carry their own `profiles:` block.
  */
 export const DEFAULT_PROFILES: Readonly<Record<string, ProfileMap>> = Object.freeze({
   feature: {
@@ -136,6 +142,7 @@ export const DEFAULT_PROFILES: Readonly<Record<string, ProfileMap>> = Object.fre
   },
   fix: {
     "leave-preparing": ["files", "plan", QUESTIONS_RESOLVED],
+    "enter-review": ["post-implementation-report", QUESTIONS_RESOLVED],
     "enter-done": ["proof", QUESTIONS_RESOLVED],
   },
   chore: {

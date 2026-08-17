@@ -25,11 +25,13 @@ refs:
   - docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
   - docs/architecture/adr/ADR-0014-fix-gains-enter-review.md
+commits:
+  - 8d9d8f904e2f4c77870ce60bb3d39f2a0127c0c2
 prs:
   - '56'
 archived: false
 created: '2026-08-16T18:25:18.638Z'
-updated: '2026-08-17T00:15:11.723Z'
+updated: '2026-08-17T00:15:53.569Z'
 ---
 
 ## What
@@ -110,12 +112,55 @@ decided there should be reflected in the ADR in one pass.
 
 ## Verification
 
-- [ ] Running setup against a repo on an older Kanmer refreshes its AGENTS block
-      to include rules added since.
-- [ ] `verify:agents-block` still passes (both copies byte-identical).
-- [ ] ADR-0011 states both limits, and `board.ts` cites the ADR rather than
+- [x] Running setup against a repo on an older Kanmer refreshes its AGENTS block
+      to include rules added since. *Partially — see `proof` §"What this run does
+      NOT prove". The block is correct, all three writers emit the same bytes, and
+      `verify-agents-block` exercises insert/refresh/idempotence in a sandbox. A
+      real third-party upgrade was not run.*
+- [x] `verify:agents-block` still passes (both copies byte-identical). *28/28,
+      up from 26 — and `includes()` is now equality of the fenced region.*
+- [x] ADR-0011 states both limits, and `board.ts` cites the ADR rather than
       being the only place they exist.
-- [ ] The Review-skipping behaviour is either documented as intended or changed
-      deliberately, with the decision recorded.
+- [x] The Review-skipping behaviour is either documented as intended or changed
+      deliberately, with the decision recorded. *Changed for `fix` (ADR-0014),
+      kept for `chore` and `spike`, all four measured.*
 
 ## Outcome
+
+Shipped in **PR #56**, squash-merged as `8d9d8f9`. Both halves in one PR, at the
+operator's decision.
+
+**The gate change.** `fix` gained a gated `enter-review`
+(`post-implementation-report`) — *a fix that opened a PR should not merge
+unreviewed*. Applied in `DEFAULT_PROFILES` (new boards) **and** as a resolve-time
+injection in `resolveProfiles` (every existing board), kept as a function separate
+from the `questions-resolved` pass because the two obey opposite rules. Measured
+on all four profiles before and after: **exactly five cells changed, all `fix`**;
+`chore` and `spike` keep their one-jump to Done; both FRD-002 acceptance cases
+survive. **ADR-0014** records it, and it is the first change authorised to cross
+ADR-0011's second limit.
+
+**The prose.** The AGENTS block lost its per-profile requirement table — an R1
+violation that omitted `fix`, the default profile — and gained four invariants no
+tool reports. Nine skills gained "the board worktree is not yours" (was in 1 of
+12, absent from all four that run git) and "a move crosses at most one gated
+boundary" (was in 3 of 12). Six profile-to-document claims were removed, two of
+them measurably false.
+
+**The three-copy problem, which was a live bug.** The GUI's copy of the block had
+drifted to a v2 body and Connect wrote it over real repositories, including this
+one during this run. The body now lives once, in `scripts/agents-block-body.mjs`.
+
+**The check.** `scripts/verify-skill-prose.mjs` — SKILL-014's script, committed at
+last, widened at both its measured holes, plus a check for the half of R1 a
+deletion check cannot see. On the release rail. Validated against the pre-change
+tree: 8 violations there, 0 after.
+
+**Honest costs**, in `proof`: the block got **longer** (+273 bytes), against my
+plan's prediction, and I declined the pre-registered fallback with a reason. And
+check 7 was revised twice after seeing its output — guarded by validating every
+revision against the failing tree, not the passing one.
+
+**Follow-ups filed:** [[CORE-028]] (two ADR-0013s on main, + a duplicate-number
+rail check), [[CORE-029]] (AGENTS.md §4 still documents v2's seven stages),
+[[MCP-018]] (`plugin:check`'s worktree guard tests path, not resolution).

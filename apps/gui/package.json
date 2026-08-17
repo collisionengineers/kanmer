@@ -1,6 +1,6 @@
 {
   "name": "@kanmer/gui",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Kanmer desktop GUI — an Electron + React kanban board over the .kanmer file store.",
   "author": "Kanmer",
   "main": "./out/main/index.js",

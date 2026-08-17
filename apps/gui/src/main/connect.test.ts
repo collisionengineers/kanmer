@@ -309,32 +309,16 @@ describe("disconnect removes what Kanmer wrote, not what it currently ships", ()
   });
 });
 
-describe("disconnect and the shared .agents/skills directory", () => {
+describe("disconnect and provider-specific project skill directories", () => {
   const roster = "0.1.0\nskills:\nkanmer-plan\n";
 
-  it("keeps the copied skills while a host writing the same directory is still connected", async () => {
+  it("removes OpenCode's copy without touching Antigravity's .agents copy", async () => {
     const root = await tempRoot();
     await writeTree(root, {
       "opencode.json": JSON.stringify({ mcp: { kanmer: {} } }),
       ".agents/mcp_config.json": JSON.stringify({ mcpServers: { kanmer: {} } }),
-      ".agents/skills/kanmer-plan/SKILL.md": "plan\n",
-      ".agents/skills/.kanmer-skills-version": roster,
-    });
-
-    const result = await disconnectAgent("opencode", root);
-
-    expect(result.ok).toBe(true);
-    expect(result.output).toContain("copied skills retained in .agents/skills");
-    await expect(
-      readFile(join(root, ".agents", "skills", "kanmer-plan", "SKILL.md"), "utf8"),
-    ).resolves.toBe("plan\n");
-  });
-
-  it("removes them when the only other connected host writes a different directory", async () => {
-    const root = await tempRoot();
-    await writeTree(root, {
-      "opencode.json": JSON.stringify({ mcp: { kanmer: {} } }),
-      ".mcp.json": JSON.stringify({ mcpServers: { kanmer: {} } }), // grok → .grok/skills
+      ".opencode/skills/kanmer-plan/SKILL.md": "opencode plan\n",
+      ".opencode/skills/.kanmer-skills-version": roster,
       ".agents/skills/kanmer-plan/SKILL.md": "plan\n",
       ".agents/skills/.kanmer-skills-version": roster,
     });
@@ -343,7 +327,31 @@ describe("disconnect and the shared .agents/skills directory", () => {
 
     expect(result.ok).toBe(true);
     expect(result.output).toContain("bundled copied skills removed");
+    await missing(root, ".opencode", "skills", "kanmer-plan", "SKILL.md");
+    await expect(
+      readFile(join(root, ".agents", "skills", "kanmer-plan", "SKILL.md"), "utf8"),
+    ).resolves.toBe("plan\n");
+  });
+
+  it("removes Antigravity's copy without touching OpenCode's copy", async () => {
+    const root = await tempRoot();
+    await writeTree(root, {
+      "opencode.json": JSON.stringify({ mcp: { kanmer: {} } }),
+      ".agents/mcp_config.json": JSON.stringify({ mcpServers: { kanmer: {} } }),
+      ".opencode/skills/kanmer-plan/SKILL.md": "opencode plan\n",
+      ".opencode/skills/.kanmer-skills-version": roster,
+      ".agents/skills/kanmer-plan/SKILL.md": "plan\n",
+      ".agents/skills/.kanmer-skills-version": roster,
+    });
+
+    const result = await disconnectAgent("antigravity", root);
+
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain("bundled copied skills removed");
     await missing(root, ".agents", "skills", "kanmer-plan", "SKILL.md");
+    await expect(
+      readFile(join(root, ".opencode", "skills", "kanmer-plan", "SKILL.md"), "utf8"),
+    ).resolves.toBe("opencode plan\n");
   });
 });
 

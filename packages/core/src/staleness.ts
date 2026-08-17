@@ -117,7 +117,8 @@ const BLOCK_END = "<!-- kanmer:instructions:end -->";
  * Where a host reads project-scoped skills from, relative to the repo root.
  *
  * Mirrors the `copySkills` destinations in `apps/gui/src/main/providers.ts`
- * (`.agents/skills` for opencode + antigravity, `.grok/skills` for grok) plus
+ * (`.opencode/skills` for OpenCode, `.agents/skills` for Antigravity, and
+ * `.grok/skills` for grok) plus
  * `.claude/skills`, which Kanmer never writes — Claude Code installs by
  * marketplace — but which repos demonstrably accumulate copies in, and which is
  * where this repo's own drift was found.
@@ -128,6 +129,7 @@ const BLOCK_END = "<!-- kanmer:instructions:end -->";
  */
 export const SKILL_DESTINATIONS: readonly string[] = [
   ".claude/skills",
+  ".opencode/skills",
   ".agents/skills",
   ".grok/skills",
 ];

@@ -734,12 +734,10 @@ export const PROVIDERS: AgentProvider[] = [
       unmerge: opencodeUnmerge,
       registrationState: opencodeRegistrationState,
     },
-    // Verified 2026-08-16 against opencode's current docs: it searches
-    // `.agents/skills/<name>/SKILL.md` (position 5 of 6), so one project-scoped
-    // tree serves it properly. The old note here said the only fallback was
-    // Claude's *global* dir, which would have leaked skills across every
-    // project — that was the stale fact ADR-0009 exists to catch.
-    install: { kind: "copySkills", skillsScope: "project", skillsDir: ".agents/skills" },
+    // OpenCode has a native project-scoped skills directory. Keep its Kanmer
+    // roster there instead of the cross-agent `.agents/skills` tree, which
+    // Antigravity still owns and Codex also discovers.
+    install: { kind: "copySkills", skillsScope: "project", skillsDir: ".opencode/skills" },
     dispatch: true,
     dispatchCli: "opencode",
     dispatchArgs: (prompt) => ["run", prompt],
@@ -782,9 +780,9 @@ export const PROVIDERS: AgentProvider[] = [
     },
     // `.agents/skills` is Antigravity's *primary* project location (`.agent/`
     // singular is kept only for backward compatibility), so it is the very same
-    // tree opencode reads — one write, two hosts. (grok reads it too, per
-    // FRD-012 R2, which is why grok's separate `.grok/skills` write is redundant
-    // — MCP-014's to retire, not this entry's to claim.)
+    // tree grok also reads, per FRD-012 R2, which is why grok's separate
+    // `.grok/skills` write is redundant — MCP-014's to retire, not this entry's
+    // to claim. OpenCode deliberately uses its own `.opencode/skills` tree.
     //
     // **With one condition, measured 2026-08-16 against agy 1.1.13.** `agy` reads
     // a workspace's `.agents/skills/` and `.agents/mcp_config.json` only in a

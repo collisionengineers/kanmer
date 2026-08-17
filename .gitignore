@@ -38,9 +38,9 @@ ds-bundle/
 # `opencode.json` (opencode) each hardcode absolute paths to this machine's
 # Kanmer install and board worktree via the shared Invocation shape —
 # committing one would be as inert to anyone else as a checked-in `.mcp.json`
-# pointing at someone else's machine. `.claude/skills/`, `.agents/skills/` and
-# `.grok/skills/` are local copies of the plugin skills for their respective
-# hosts (the canonical ones are plugins/kanmer/skills/); `.agents/mcp_config.json`
+# pointing at someone else's machine. `.claude/skills/`, `.opencode/skills/`,
+# `.agents/skills/` and `.grok/skills/` are local copies of the plugin skills
+# for their respective hosts (the canonical ones are plugins/kanmer/skills/); `.agents/mcp_config.json`
 # is Antigravity's registration file, the same kind of machine-local artifact.
 # Note `.agents/plugins/marketplace.json` is NOT here — it's a real repo file,
 # not a Connect-written artifact, so `.agents/` itself is never blanket-ignored.
@@ -53,6 +53,7 @@ ds-bundle/
 .grok/config.toml
 opencode.json
 .claude/skills/
+.opencode/skills/
 .agents/skills/
 .agents/mcp_config.json
 .grok/skills/

@@ -294,9 +294,9 @@ async function isRegistered(provider: AgentProvider, root: string): Promise<bool
  * Is another copy-skills host still registered?
  *
  * With `skillsDir`, only peers writing that same directory count. That
- * narrower question is the one the skills removal must ask: `.agents/skills`
- * serves opencode **and** antigravity, so disconnecting one while the other is
- * connected would strip a connected host's roster — and ADR-0009 makes the
+ * narrower question is the one the skills removal must ask: if two providers
+ * share a destination, disconnecting one while the other is connected would
+ * strip a connected host's roster — and ADR-0009 makes the
  * roster's atomicity (every skill cross-references
  * `kanmer-tickets/references/tool-reference.md`) a stated constraint, so a
  * half-removed roster is a real breakage. Without `skillsDir` the question stays
@@ -690,10 +690,9 @@ export async function disconnectAgent(id: ProviderId, projectRoot: string): Prom
     if (provider.install.kind === "copySkills") {
       if (provider.install.skillsScope === "project" && provider.install.skillsDir) {
         const dir = provider.install.skillsDir;
-        // One directory can serve two hosts (.agents/skills is opencode's and
-        // antigravity's), so removal asks whether a peer writing *this*
-        // directory is still connected — not merely whether any copy-skills
-        // host is, which would keep grok's directory alive for opencode's sake.
+        // A directory may serve multiple hosts, so removal asks whether a peer
+        // writing *this* directory is still connected — not merely whether any
+        // copy-skills host is, which would retain unrelated provider state.
         if (await hasRegisteredCopySkillsPeer(id, projectRoot, dir)) {
           cleanupNotes.push(`copied skills retained in ${dir} for another connected host`);
         } else {

@@ -507,6 +507,34 @@ server.registerTool(
 );
 
 server.registerTool(
+  "update_group",
+  {
+    title: "Update a group",
+    description:
+      "Patch a group's own fields: title, body and archived. Only provided fields change; a supplied body REPLACES the whole body rather than merging, and a patch that changes nothing does NOT bump `updated`. Set archived to true to retire a group — it drops out of list_groups unless include_archived, stays readable, and its member tickets are untouched; archiving is the retirement path and there is no delete, since deleting would orphan the membership recorded on the tickets. `kind` cannot be changed here — the id prefix (EPIC-, HZN-) is allocated from it, so create a new group and archive the old one instead. Membership is not patchable here either: it lives on the tickets, via update_item(groups: [...]), and the member list is always derived. Pass expected_updated (the `updated` you last read) to be rejected with a conflict instead of overwriting a concurrent edit.",
+    inputSchema: {
+      id: z.string().describe("Group id, e.g. EPIC-001"),
+      title: z.string().optional().describe("New title"),
+      body: z.string().optional().describe("Markdown body — replaces the whole body"),
+      archived: z
+        .boolean()
+        .optional()
+        .describe("true retires the group (reversible); members are untouched"),
+      expected_updated: z
+        .string()
+        .optional()
+        .describe(
+          "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the group changed since.",
+        ),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  },
+  write(async ({ id, expected_updated, ...patch }) =>
+    ok(await store.updateGroup(id, { ...patch, expectedUpdated: expected_updated })),
+  ),
+);
+
+server.registerTool(
   "get_group",
   {
     title: "Get a group",
@@ -526,7 +554,7 @@ server.registerTool(
   {
     title: "List groups",
     description:
-      "Every group, optionally filtered by kind. Archived groups are excluded unless include_archived is true — archiving is how a group is retired, since deleting one would orphan the membership recorded on its tickets.",
+      "Every group, optionally filtered by kind. Archived groups are excluded unless include_archived is true — archiving is how a group is retired, since deleting one would orphan the membership recorded on its tickets. Retire one with update_group(id, archived: true); it is reversible.",
     inputSchema: {
       kind: z.string().optional().describe("Only this kind (epic | horizon)"),
       include_archived: z.boolean().optional(),
@@ -558,7 +586,7 @@ server.registerTool(
   {
     title: "Write a group's shared document",
     description:
-      "Write a shared context document into a group's folder. Use this for the context every member ticket needs — the decision that binds them, the constraint they all sit under — rather than repeating it in each ticket. Cannot write the group's own `<ID>.md`; edit that through create_group's body.",
+      "Write a shared context document into a group's folder. Use this for the context every member ticket needs — the decision that binds them, the constraint they all sit under — rather than repeating it in each ticket. Cannot write the group's own `<ID>.md` — edit that with update_group instead.",
     inputSchema: {
       id: z.string().describe("Group id"),
       path: z.string().describe("Path within the group folder, e.g. context.md"),

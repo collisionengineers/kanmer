@@ -38,7 +38,8 @@ Kept in sync with `packages/mcp-server/src/index.ts` — run
 | `update_column` | Rename/recolour a column, or pin an area's `prefix`. The column id itself is immutable. | `kind`, `id`, `name?`, `color?`, `prefix?` |
 | `reorder_columns` | Reorder areas; `order` must be a permutation of the existing ids. Stages cannot be reordered — they are constants. | `kind` (`area`), `order` |
 | `create_group` | Create an `epic` (these ship together) or a `horizon` (this is what matters now). Returns the allocated id. Add members with `update_item(groups: [...])`. | `kind`, `title`, `body?` |
-| `set_group_doc` | Write shared context into a group's folder — the decision or constraint every member sits under, rather than repeating it per ticket. | `id`, `path`, `content` |
+| `update_group` | Patch a group's own fields: `title`, `body`, `archived`. Omitted fields are left alone; a supplied `body` **replaces** the whole body. A patch that changes nothing does **not** bump `updated`. `archived: true` retires the group — it drops out of `list_groups` unless `include_archived`, stays readable, and its **members are untouched**; this is the retirement path, there is no delete. `kind` **cannot** be changed — the id prefix is allocated from it — and membership is not patchable here either: it lives on tickets via `update_item(groups: [...])`. Pass `expected_updated` (the `updated` you last read) to be rejected with a conflict instead of overwriting a concurrent edit. | `id`, `title?`, `body?`, `archived?`, `expected_updated?` |
+| `set_group_doc` | Write shared context into a group's folder — the decision or constraint every member sits under, rather than repeating it per ticket. Cannot write the group's own `<ID>.md`; use `update_group` for that. | `id`, `path`, `content` |
 
 ## Destructive
 

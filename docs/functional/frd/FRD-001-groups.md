@@ -18,7 +18,7 @@ A **group** is a cross-cutting, kind-typed collection of tickets with its own fo
 
 ## Tools
 
-- G5. `create_group(kind, title, body?)` · `get_group(id)` (frontmatter + body + derived members with stages + progress) · `list_groups(kind?, include_archived?)` · `get_group_doc(id, path)` / `set_group_doc(id, path, content)`. Membership rides `update_item(groups: [...])`; no dedicated add/remove tool (matches labels/blocks).
+- G5. `create_group(kind, title, body?)` · `update_group(id, {title?, body?, archived?, expected_updated?})` · `get_group(id)` (frontmatter + body + derived members with stages + progress) · `list_groups(kind?, include_archived?)` · `get_group_doc(id, path)` / `set_group_doc(id, path, content)`. Membership rides `update_item(groups: [...])`; no dedicated add/remove tool (matches labels/blocks). **`update_group` is how G4's retirement is performed** — `archived: true`, reversible, members untouched — and it is also the only way to edit the group's own `<ID>.md`, which `set_group_doc` refuses. `kind` is deliberately **not** patchable: G1/G2 allocate the id from the kind's prefix, so `EPIC-`/`HZN-` encodes it permanently, and patching it would leave the id and the frontmatter asserting different kinds.
 
 ## Behaviour
 

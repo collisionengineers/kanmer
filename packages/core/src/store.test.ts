@@ -326,6 +326,113 @@ describe("KanmerStore", () => {
     });
   });
 
+  describe("updateGroup", () => {
+    const groupFile = (id: string) => path.join(root, ".kanmer", "groups", id, `${id}.md`);
+
+    it("renames a group and the rename is visible through getGroup", async () => {
+      const epic = await store.createGroup("epic", "Old name", "The goal.");
+      const renamed = await store.updateGroup(epic.id, { title: "New name" });
+      expect(renamed.title).toBe("New name");
+      expect(renamed.body.trim()).toBe("The goal.");
+      expect((await store.getGroup(epic.id))?.title).toBe("New name");
+    });
+
+    it("archives and unarchives, leaving member tickets untouched (FRD-001 G4)", async () => {
+      const epic = await store.createGroup("epic", "Retire me");
+      const member = await store.createItem({
+        type: "ticket",
+        title: "Member",
+        groups: [epic.id],
+      });
+      await store.updateGroup(epic.id, { archived: true });
+      expect((await store.listGroups()).map((g) => g.id)).not.toContain(epic.id);
+      expect((await store.listGroups({ includeArchived: true })).map((g) => g.id)).toContain(
+        epic.id,
+      );
+      // The member is untouched: still present, still claiming membership.
+      const after = await store.getItem(member.id);
+      expect(after?.updated).toBe(member.updated);
+      expect(after?.groups).toEqual([epic.id]);
+      await store.updateGroup(epic.id, { archived: false });
+      expect((await store.listGroups()).map((g) => g.id)).toContain(epic.id);
+    });
+
+    it("does not bump updated, or rewrite the file, for a no-op patch", async () => {
+      const epic = await store.createGroup("epic", "Same", "Body.");
+      const mtimeBefore = (await fs.stat(groupFile(epic.id))).mtimeMs;
+      await new Promise((r) => setTimeout(r, 5));
+      expect((await store.updateGroup(epic.id, {})).updated).toBe(epic.updated);
+      expect((await store.updateGroup(epic.id, { title: "Same" })).updated).toBe(epic.updated);
+      expect((await fs.stat(groupFile(epic.id))).mtimeMs).toBe(mtimeBefore);
+      const changed = await store.updateGroup(epic.id, { title: "Different" });
+      expect(changed.updated >= epic.updated).toBe(true);
+    });
+
+    it("rejects a stale expectedUpdated with a conflict error; accepts a fresh one", async () => {
+      const epic = await store.createGroup("epic", "A");
+      await new Promise((r) => setTimeout(r, 5));
+      const moved = await store.updateGroup(epic.id, { title: "B" });
+      await expect(
+        store.updateGroup(epic.id, { title: "C", expectedUpdated: epic.updated }),
+      ).rejects.toThrow(/Conflict/);
+      const okUpdate = await store.updateGroup(epic.id, {
+        title: "C",
+        expectedUpdated: moved.updated,
+      });
+      expect(okUpdate.title).toBe("C");
+    });
+
+    it("rejects a stale expectedUpdated even when the patch is a no-op", async () => {
+      // The conflict check must run *before* the no-op short-circuit, or a
+      // stale token silently succeeds whenever the patch changes nothing.
+      const epic = await store.createGroup("epic", "A");
+      await new Promise((r) => setTimeout(r, 5));
+      const moved = await store.updateGroup(epic.id, { title: "B" });
+      await expect(
+        store.updateGroup(epic.id, { title: "B", expectedUpdated: epic.updated }),
+      ).rejects.toThrow(/Conflict/);
+      expect((await store.getGroup(epic.id))?.updated).toBe(moved.updated);
+    });
+
+    it("never writes expectedUpdated into the group's frontmatter", async () => {
+      // GroupFrontmatterSchema is .passthrough() and serialiseGroup emits any
+      // hand-added key, so a token left on the patch would be persisted.
+      const epic = await store.createGroup("epic", "A");
+      await store.updateGroup(epic.id, { title: "B", expectedUpdated: epic.updated });
+      const raw = await fs.readFile(groupFile(epic.id), "utf8");
+      expect(raw).not.toContain("expectedUpdated");
+      expect(await store.getGroup(epic.id)).not.toHaveProperty("expectedUpdated");
+    });
+
+    it("treats an explicit undefined as absent rather than erasing the field", async () => {
+      // serialiseGroup skips undefined values, so an unpruned `title: undefined`
+      // would drop `title:` out of the frontmatter entirely.
+      const epic = await store.createGroup("epic", "Keep me", "Body.");
+      const patched = await store.updateGroup(epic.id, {
+        title: undefined,
+        body: undefined,
+        archived: true,
+      });
+      expect(patched.title).toBe("Keep me");
+      expect(patched.body.trim()).toBe("Body.");
+      const raw = await fs.readFile(groupFile(epic.id), "utf8");
+      expect(raw).toContain("title: Keep me");
+      expect((await store.getGroup(epic.id))?.title).toBe("Keep me");
+    });
+
+    it("refuses an unknown group id", async () => {
+      await expect(store.updateGroup("EPIC-404", { title: "x" })).rejects.toThrow(/EPIC-404/);
+    });
+
+    it("logs one update activity entry for the group", async () => {
+      const epic = await store.createGroup("epic", "A");
+      await store.updateGroup(epic.id, { title: "B" });
+      const entries = (await store.getActivity({ id: epic.id })).filter((e) => e.op === "update");
+      expect(entries.length).toBe(1);
+      expect(entries[0].field).toBe("group");
+    });
+  });
+
   it("searches across title and body", async () => {
     await store.createItem({ type: "ticket", title: "Fix the parser", body: "needle here" });
     await store.createItem({ type: "ticket", title: "Unrelated" });

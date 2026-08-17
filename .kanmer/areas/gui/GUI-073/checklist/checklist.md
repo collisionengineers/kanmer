@@ -15,7 +15,7 @@
 - [x] `grep -rn "register-only"` over `apps/`, `docs/`, `plugins/` returns only historical plan documents
 - [x] Live `agy` 1.1.13 re-verification of the two newly-asserted claims, machine state restored and the restore verified
 - [x] `git diff AGENTS.md` empty before committing
-- [ ] Post-implementation report written, PR opened
+- [x] Post-implementation report written, PR opened (#55)
 
 ## Progress notes
 
@@ -63,7 +63,13 @@ alone with `--testTimeout=30000`: **7/7 passed**. `check:manual` up to date
 - [x] proof.md finalised on merged main (PR + merge commit recorded in its header)
 - [x] Moved to Done (proof + questions-resolved both satisfied)
 - [x] Outcome recorded in ticket body
-- [ ] cd out of worktree; `git worktree remove .worktrees/gui-073`
-- [ ] `git branch -D gui-073-antigravity-capabilities` (squash-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-073`
+- [x] `git branch -D gui-073-antigravity-capabilities` (squash-merged; remote branch deleted too)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`
+
+**Closeout complete.** `git worktree remove .worktrees/gui-073` clean;
+`git branch -D gui-073-antigravity-capabilities` (squash-merged, so `-d` would
+have refused — merge state was verified as `MERGED` first); remote branch deleted;
+`fetch --prune` + `worktree prune` run. Remaining worktrees are other tickets'
+(gui-065, kanmer board, skill-013). Ticket released.

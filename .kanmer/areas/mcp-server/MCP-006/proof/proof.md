@@ -181,3 +181,9 @@ always thrown at `groups.ts:173` refer to something real.
   true` on exactly two tools — is still true and is confirmed by this change
   leaving both alone. Raised as non-blocking in review and deliberately left out
   of scope; worth a sweep of that whole audit note.
+
+---
+
+**Merged:** PR [#58](https://github.com/collisionengineers/kanmer/pull/58),
+squash-merged 2026-08-17T00:19:41Z as `ac01b8b`. Branch commits: `d237970`
+(core), `08c9c84` (mcp surface), `abd4181` (docs), `6b4e154` (bundle).

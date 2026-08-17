@@ -60,3 +60,16 @@ byte-identical.
 `npm run smoke:protocol` 26/26 (30 tools on all three protocol versions);
 `node packages/mcp-server/src/smoke.mjs` against the built plugin bundle
 **156/156**, including all 13 new `update_group` checks.
+
+---
+
+## Closeout — MCP-006
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/mcp-006`
+- [ ] `git branch -d mcp-006-update-group` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

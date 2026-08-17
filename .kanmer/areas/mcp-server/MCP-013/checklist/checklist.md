@@ -84,3 +84,18 @@ the PR:** `providers.test.ts`'s check-on-the-check asserted that a shorter strin
 does not contain a longer one — true regardless, and it would have passed with
 the assertion it guards deleted. Rewritten to run the same predicate the real
 assertions use (`09c0b91`).
+
+---
+
+## Closeout
+
+- [x] Gate: `gh pr view` → `state: MERGED`, `mergedAt: 2026-08-17T00:31:33Z`, PR #60
+- [x] `proof` final on merged main, with the PR URL and merge commit `f5c370e`
+- [x] Traceability recorded: `commits: [f5c370e…]`, `prs: [#60]`, `links: [MCP-009, MCP-011, MCP-016]`
+- [x] Outcome written into the ticket body
+- [x] Ticket worktree clean (`git status --porcelain` empty), `git worktree remove .worktrees/mcp-013`
+- [x] `git branch -d mcp-013-marketplace-root` — succeeded with the expected squash-merge warning, no `-D` needed
+- [x] Remote branch deleted; `git fetch --prune`; `git worktree prune`
+- [x] **`.worktrees/kanmer` (the board's own worktree, branch `kanmer-board`) untouched** — confirmed still listed afterwards
+- [x] Ticket released
+- [x] No leftovers: `git worktree list` shows only the main checkout and the board; no `mcp-013*` branch local or remote

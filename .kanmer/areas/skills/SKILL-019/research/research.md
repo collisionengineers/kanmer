@@ -53,3 +53,15 @@ The collision cannot be removed by relocating Antigravity without abandoning its
 ## Open questions
 
 No user product choice is required for planning. The exact Codex skills.config.path representation is an implementation validation gate because the official examples disagree about file-versus-folder and do not state relative-path resolution.
+
+---
+
+# User decision follow-up — 2026-08-17
+
+The user rejected a design that writes per-skill Codex disable entries into every Kanmer project. That operational cost is disproportionate and makes each project carry configuration whose only purpose is undoing Kanmer’s own duplicate installation.
+
+## Revised implication
+
+Use .agents/skills as the project-local canonical roster for Codex and Antigravity. Codex Connect must copy/reconcile that roster instead of installing the Codex marketplace plugin. OpenCode moves to .opencode/skills and Grok stays at .grok/skills. Plugin installation remains a separate, user-chosen distribution route, not something Connect combines with project-local installation.
+
+Existing Codex plugin users need a one-time migration path, not per-project suppression. Implementation research must establish the supported Codex CLI/browser disable or uninstall mechanism and present it explicitly; Kanmer must not silently remove a global plugin that may serve other projects. New Connects must never create both surfaces.

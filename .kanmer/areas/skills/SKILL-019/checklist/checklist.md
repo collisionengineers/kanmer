@@ -1,13 +1,13 @@
 # Checklist — SKILL-019
 
-- [ ] Prove the supported installed-Codex plugin list/disable/uninstall mechanism.
-- [ ] Prove Codex and workspace-bound Antigravity load one shared .agents/skills roster and OpenCode loads .opencode/skills.
+- [ ] Prove installed AGY installs and invokes the shipped Kanmer skills-only plugin without plugin MCP.
+- [ ] Prove AGY plugin lifecycle/idempotence and independent project MCP operation.
+- [ ] Prove OpenCode .opencode skills and Codex plugin-only discovery.
 - [ ] Obtain authorization and update or supersede the linked governing documents.
-- [ ] Make Codex and Antigravity shared copySkills peers and move OpenCode to .opencode/skills.
-- [ ] Remove automatic Codex plugin installation from Connect while retaining independent plugin distribution.
-- [ ] Add explicit, confirmation-gated migration for an existing enabled global Codex plugin.
-- [ ] Make every connection/disconnection order and legacy OpenCode migration ownership-safe.
-- [ ] Update staleness, gitignore, packaging expectations, prose, and regression tests.
+- [ ] Switch Antigravity skills to plugin install and OpenCode copying to .opencode/skills.
+- [ ] Make AGY plugin install failures/idempotence explicit while keeping project disconnect scoped to MCP.
+- [ ] Reconcile legacy stamped .agents skills only after replacement activation, preserving user content.
+- [ ] Update staleness, packaging/plugin rails, gitignore, prose, and regression tests.
 - [ ] Run focused/full rails and fresh-session cross-host behavioral verification.
 
 ## Progress notes

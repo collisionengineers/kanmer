@@ -1,0 +1,6 @@
+URL         file:///C:/Users/PC/Documents/GitHub/kanmer/.worktrees/gui-065/apps/gui/out/renderer/index.html
+UPDATE      {"status":{"phase":"downloaded","version":"9.9.9"},"source":"auto"}
+SHELL       app
+LAYOUT      {"banner":[0,0,1264,37],"welcome":[0,37,1264,718],"toastStack":[1043,698,205,42],"viewport":[1264,755],"scrollHeight":755,"overflows":false}
+BANNER CSS  {"background":"rgb(20, 32, 42)","color":"rgb(91, 140, 255)","borderBottom":"rgb(31, 53, 67)","visibility":"visible","opacity":"1"}
+HTML        <div class="app"><div class="banner info"><span>Kanmer 9.9.9 is ready to install.</span><div class="conflict-actions"><button class="primary xs">Restart now</button><button class="ghost xs" title="Installs the next time you quit Kanmer.">Later</button></div></div><div class="welcome"><h1>Kanmer</h1><p>Open a project folder to load (or create) its <code>.kanmer</code> board.</p><button class="primary">Open project folder…</button></div><div class="toast-stack"><button class="toast">Kanmer 9.9.9 is downloading…</button></div></div>

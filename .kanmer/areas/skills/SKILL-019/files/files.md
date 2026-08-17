@@ -4,35 +4,39 @@
 
 | Path | Why |
 |---|---|
-| `apps/gui/src/main/providers.ts` | Change opencode and Antigravity from the Codex-visible shared `.agents/skills` destination to provider-private supported locations; keep Codex on the plugin path. |
-| `apps/gui/src/main/connect.ts` | Reconcile and disconnect legacy Kanmer-owned `.agents/skills` content safely when destinations change; preserve user-authored neighboring skills. |
-| `apps/gui/src/main/providers.test.ts` | Replace the shared-tree assertion with provider-private destination and no-Codex-collision assertions. |
-| `apps/gui/src/main/connect.test.ts` | Prove migration/reconciliation removes only Kanmer-owned legacy folders and that disconnect behavior remains safe. |
-| `packages/core/src/staleness.ts` | Update copied-skill destinations and stale-path reporting to the new canonical layout while recognizing legacy owned installs. |
-| `packages/core/src/staleness.test.ts` | Pin healthy, behind, legacy, and user-authored-skill behavior for the new destinations. |
-| `.gitignore` | Ignore each provider-private generated skill directory and revise the rationale. |
-| `docs/functional/frd/FRD-012-connect.md` | Modify R2 and acceptance criteria: the shared `.agents/skills` convergence is incompatible with Codex plugin installation. This governing-doc modification requires explicit authorization before implementation. |
-| `docs/functional/frd/FRD-023-agent-skills-system.md` | Align the install-matrix reference and acceptance language with one skill surface per host. |
-| `docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md` | Amend the convergence consequence and record the discovery evidence/decision, or supersede that narrow placement decision with a new ADR if review prefers an immutable decision trail. |
-| `AGENTS.md` | Update repo-map or provider-install prose if it still claims the shared `.agents/skills` layout after the governing docs change. |
+| apps/gui/src/main/providers.ts | Move OpenCode’s copied roster from .agents/skills to its native .opencode/skills; keep Antigravity at its primary .agents/skills path and Codex on the marketplace plugin. |
+| apps/gui/src/main/connect.ts | Reconcile provider destinations and manage exact Kanmer-owned Codex skills.config disables alongside the existing MCP config merge/unmerge without disturbing unrelated config entries. |
+| apps/gui/src/main/providers.test.ts | Pin the corrected provider matrix and project-config ownership rules. |
+| apps/gui/src/main/connect.test.ts | Prove provider connection order, idempotent skills.config merging, selective unmerge, OpenCode destination migration, shared Antigravity ownership, and preservation of user-authored skills/config. |
+| packages/core/src/staleness.ts | Treat .opencode/skills, .agents/skills, and .grok/skills as canonical provider destinations and recognize legacy OpenCode ownership without falsely reporting user content. |
+| packages/core/src/staleness.test.ts | Cover the revised destination matrix and Codex suppression/config drift. |
+| .gitignore | Add .opencode/skills and keep .agents/skills because Antigravity still owns it. |
+| docs/functional/frd/FRD-012-connect.md | Correct R2: Antigravity remains .agents; OpenCode uses .opencode; Codex project config suppresses only the Kanmer-owned Antigravity copies while its plugin remains canonical. Requires explicit authorization before implementation. |
+| docs/functional/frd/FRD-023-agent-skills-system.md | State the per-host uniqueness invariant through the revised FRD-012 matrix. Requires explicit authorization. |
+| docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md | Correct the convergence consequence: the shared standard path is visible to Codex too, so cross-host convergence needs Codex suppression rather than relocation of Antigravity. Requires explicit authorization or a superseding ADR. |
+| AGENTS.md | Update provider-install and repo-map prose after governance changes. |
 
 ## Context files
 
 | Path | What it tells the implementer |
 |---|---|
-| `plugins/kanmer/.codex-plugin/plugin.json` | Codex’s intended Kanmer distribution is plugin skills, not copied project skills. |
-| `.agents/plugins/marketplace.json` | Defines the Codex marketplace and explains why the repository itself contains an `.agents` subtree unrelated to project skill discovery. |
-| `plugins/kanmer/skills/kanmer-setup/SKILL.md` | Reconciliation ownership and managed-block rules that cleanup must preserve. |
-| `docs/functional/frd/FRD-013-setup-as-reconciliation.md` | Reconciliation, rather than overlay or manual cleanup, is the product model. |
-| `scripts/verify-skill-prose.mjs` | Release rail for skill prose; destination changes must not accidentally alter the canonical plugin roster. |
-| `scripts/check-plugin-sync.mjs` | Pins plugin packaging and marketplace assumptions; confirms this ticket should not remove Codex’s plugin install. |
-| OpenAI Build skills docs | Establishes `.agents/skills` scanning and duplicate-name behavior: https://learn.chatgpt.com/docs/build-skills. |
-| OpenAI configuration reference | Establishes path-specific `skills.config` overrides and why they are not the portable fix: https://learn.chatgpt.com/docs/config-file/config-reference. |
+| plugins/kanmer/.codex-plugin/plugin.json | Codex’s canonical Kanmer skill distribution remains the plugin. |
+| .agents/plugins/marketplace.json | Defines the Codex marketplace; its .agents location is a marketplace schema path, distinct from project skill discovery. |
+| apps/gui/src/main/providers.ts | Existing TOML merge/unmerge, trust handling, and provider registry are the implementation seam. |
+| docs/functional/frd/FRD-013-setup-as-reconciliation.md | Destination changes and config cleanup must be reconciliation, not blind overlay. |
+| docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md | Provider claims require installed-binary evidence and mechanism-level positive controls. |
+| Google Antigravity skills docs | Primary workspace skills path is .agents/skills; .agent is backward compatibility: https://antigravity.google/docs/skills/. |
+| Google Antigravity MCP docs | Workspace MCP path is .agents/mcp_config.json: https://antigravity.google/docs/mcp/. |
+| Google Antigravity CLI plugins/skills docs | CLI also directs workspace skills to .agents/skills: https://antigravity.google/docs/cli/plugins/. |
+| Google Antigravity CLI projects docs | Workspace/project binding behavior: https://antigravity.google/docs/cli/projects/. |
+| OpenCode skills docs | Native .opencode/skills path, discovery walk, and uniqueness requirement: https://opencode.ai/docs/skills/. |
+| OpenCode MCP docs | Existing opencode.json MCP model remains correct: https://opencode.ai/docs/mcp-servers. |
+| OpenAI Build Skills and config docs | Codex scans .agents, duplicates names, supports project config layers, and exposes per-path skills.config disables: https://learn.chatgpt.com/docs/build-skills, https://learn.chatgpt.com/docs/config-file/config-basic, https://learn.chatgpt.com/docs/config-file/config-reference. |
 
 ## Ripple effects
 
-Connect status text, update-skills prompts, disconnect peer detection, staleness reporting, generated-directory cleanup, packaged Connect behavior, and provider installation documentation all depend on the destination registry. Verification must exercise both fresh installs and upgrades from an existing stamped `.agents/skills` tree. The provider capability claims must be checked against installed binaries, not inferred solely from docs.
+Connect/disconnect ordering, provider status, legacy copied-skill stamps, update offers, project TOML serialization, trust warnings, staleness reporting, gitignore rules, and packaged Connect behavior are affected. A Codex-only project must still work; an Antigravity-only project must retain .agents; a mixed project must show only plugin-qualified Kanmer skills to Codex while Antigravity loads the copied roster. OpenCode migration must preserve unrelated .agents content owned by Antigravity or the user.
 
 ## Out of scope
 
-The Kanmer MCP registration paths, plugin MCP limitations, plugin marketplace names, the skill roster/content, unrelated user-authored skills, and global Codex plugin management are unchanged. This ticket does not implement a general Codex duplicate-name resolver.
+Antigravity’s MCP path and workspace-binding ticket, OpenCode’s MCP registration, Grok’s destination, Claude’s plugin install, the Kanmer roster/content, plugin marketplace names, and a general-purpose duplicate-skill resolver remain unchanged.

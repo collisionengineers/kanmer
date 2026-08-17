@@ -185,10 +185,45 @@ if (!existsSync(join(resources, "mcp", "kanmer-mcp.cjs"))) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// 7. The packaged app is a working local plugin marketplace.
+//
+//    Three files, and the marketplace exists only if all three are packed: the
+//    plugin tree, and the two marketplace manifests that are the only way to
+//    tell a host about it. `plugin marketplace add <dir>` searches <dir> for one
+//    of these and exits 1 when it is absent.
+//
+//    Shipped wrong until MCP-013: only `plugins/kanmer` was packed, beside a
+//    comment saying Connect could "register a local marketplace for the
+//    packaged app". `check-plugin-sync.mjs` asserts the same three in the
+//    electron-builder CONFIG; this asserts them in the ARTIFACT, because a
+//    correct `from:` path that silently packs nothing is exactly the failure a
+//    config-level check cannot see.
+//
+//    Paths are relative to `resources/`, reproducing the repo-root layout, so
+//    each manifest's `./plugins/kanmer` resolves and connect.ts's
+//    marketplaceRoot() (pluginRoot() minus two segments) lands on `resources/`.
+// ---------------------------------------------------------------------------
+for (const rel of [
+  ["plugins", "kanmer", ".claude-plugin", "plugin.json"],
+  [".claude-plugin", "marketplace.json"],
+  [".agents", "plugins", "marketplace.json"],
+]) {
+  const target = join(resources, ...rel);
+  if (!existsSync(target)) {
+    fail(
+      `missing ${target}`,
+      "the `extraResources:` block in apps/gui/electron-builder.yml must pack " +
+        "plugins/kanmer AND both marketplace manifests — without the manifests the " +
+        "packaged app has no local marketplace source and Connect's install exits 1",
+    );
+  }
+}
+
 if (failures.length > 0) {
-  console.error(`updater package FAILED (${failures.length} of 6 checks):`);
+  console.error(`updater package FAILED (${failures.length} of 7 checks):`);
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
 
-console.log("updater package OK (6 checks)");
+console.log("updater package OK (7 checks)");

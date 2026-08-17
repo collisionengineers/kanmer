@@ -5,7 +5,34 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("electron", () => ({ app: { isPackaged: false, getAppPath: () => "/unused" } }));
 
-const { disconnectAgent, reconcileSkills, removeBundledSkillsOnly } = await import("./connect.js");
+/**
+ * A synthetic marketplace provider, resolvable by id, so the install path can be
+ * driven with commands this test owns.
+ *
+ * Only `providerById` is overridden, and only for ids the real registry does not
+ * know — every other test in this file keeps the real providers.
+ */
+vi.mock("./providers.js", async (importActual) => {
+  const actual = await importActual<typeof import("./providers.js")>();
+  return {
+    ...actual,
+    providerById: (id: string) => testProviders.get(id) ?? actual.providerById(id),
+  };
+});
+
+const testProviders = new Map<string, AgentProvider>();
+
+const {
+  connectAgent,
+  disconnectAgent,
+  marketplaceRoot,
+  pluginRoot,
+  reconcileSkills,
+  removeBundledSkillsOnly,
+  updateSkills,
+} = await import("./connect.js");
+type AgentProvider = import("./providers.js").AgentProvider;
+type ProviderId = import("./providers.js").ProviderId;
 const roots: string[] = [];
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
@@ -317,5 +344,179 @@ describe("disconnect and the shared .agents/skills directory", () => {
     expect(result.ok).toBe(true);
     expect(result.output).toContain("bundled copied skills removed");
     await missing(root, ".agents", "skills", "kanmer-plan", "SKILL.md");
+  });
+});
+
+describe("a failed plugin-install command is reported, not swallowed (MCP-013)", () => {
+  // The defect: installSkills caught every non-zero exit into the note
+  // "plugin cmd skipped (…)", connectAgent folded that string into a result
+  // still flagged ok, and Settings.tsx rendered "✓ Connected". Because
+  // `claude plugin marketplace add` was being handed the plugin directory
+  // rather than the marketplace root, that tick was shown for an install that
+  // failed on every single release — which is the whole reason this class of
+  // bug survives: a command that fails loudly gets fixed in a day.
+  //
+  // Driven through the REAL exec, with real subprocesses that really exit
+  // non-zero. A stubbed runner would be a proxy: code that swallows a genuine
+  // child-process rejection can satisfy a mock that merely rejects a promise.
+
+  /** Register a synthetic marketplace provider whose commands this test owns. */
+  function useProvider(id: string, commands: string[], onRoot?: (root: string) => void): ProviderId {
+    testProviders.set(id, {
+      id: id as ProviderId,
+      label: id,
+      register: {
+        kind: "configFile",
+        configPath: "test-host.json",
+        merge: () => JSON.stringify({ mcpServers: { kanmer: {} } }),
+        unmerge: () => "{}",
+        registrationState: () => "registered",
+      },
+      install: {
+        kind: "marketplace",
+        marketplaceCommands: (root: string) => {
+          onRoot?.(root);
+          return commands;
+        },
+      },
+      dispatch: false,
+    } as AgentProvider);
+    return id as ProviderId;
+  }
+  afterEach(() => testProviders.clear());
+
+  /** A real command that exits non-zero after saying why, as these CLIs do. */
+  async function failingCommand(root: string, message: string): Promise<string> {
+    const script = join(root, "fail.cjs");
+    await writeFile(
+      script,
+      `process.stderr.write(${JSON.stringify(`${message}\n`)});\nprocess.exit(1);\n`,
+    );
+    return `node "${script}"`;
+  }
+
+  /** A real command that succeeds. */
+  async function succeedingCommand(root: string): Promise<string> {
+    const script = join(root, "ok.cjs");
+    await writeFile(script, `process.stdout.write(${JSON.stringify("added\n")});\n`);
+    return `node "${script}"`;
+  }
+
+  it("surfaces the failure as ok:false carrying the exact command to run by hand", async () => {
+    const root = await tempRoot();
+    // The real message, from the real CLI, measured for this ticket:
+    //   $ claude plugin marketplace add …\kanmer\plugins\kanmer
+    //   ✘ Failed to add marketplace: Marketplace file not found at …   EXIT=1
+    const cmd = await failingCommand(root, "Failed to add marketplace: Marketplace file not found");
+    const id = useProvider("mp-broken", [cmd]);
+
+    const result = await connectAgent(id, root, root);
+
+    expect(result.ok).toBe(false);
+    // Settings.tsx renders `command` under "Run this yourself:" with a copy
+    // button — FRD-012 AC-4's fallback, which marketplace hosts never got.
+    expect(result.command).toBe(cmd);
+    // What the command SAID, not "Command failed": the reason is the point.
+    expect(result.output).toContain("Marketplace file not found");
+    // And the half that did work is still reported, so the user is not told
+    // that nothing happened when the board was in fact registered.
+    expect(result.output).toContain("Registered Kanmer in test-host.json");
+  });
+
+  it("does not run the commands after the one that failed", async () => {
+    const root = await tempRoot();
+    const cmd = await failingCommand(root, "Failed to add marketplace");
+    const marker = join(root, "second-ran.txt");
+    const second = join(root, "second.cjs");
+    await writeFile(second, `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "ran");\n`);
+    const id = useProvider("mp-ordered", [cmd, `node "${second}"`]);
+
+    const result = await connectAgent(id, root, root);
+
+    expect(result.ok).toBe(false);
+    // `plugin install <name>@<marketplace>` cannot succeed when the
+    // `marketplace add` before it did not; running it only yields a second
+    // error that misdescribes the first one's cause.
+    await missing(marker);
+  });
+
+  it("still reports success when every command succeeds", async () => {
+    const root = await tempRoot();
+    const id = useProvider("mp-ok", [await succeedingCommand(root)]);
+
+    const result = await connectAgent(id, root, root);
+
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain("plugin installed");
+  });
+
+  it("updateSkills surfaces the same failure rather than reporting an update", async () => {
+    const root = await tempRoot();
+    const cmd = await failingCommand(root, "Failed to add marketplace");
+    const id = useProvider("mp-update", [cmd]);
+
+    const result = await updateSkills(id, root);
+
+    expect(result.ok).toBe(false);
+    expect(result.command).toBe(cmd);
+    expect(result.output).toContain("Failed to add marketplace");
+  });
+});
+
+describe("the marketplace command is given the marketplace root (MCP-013)", () => {
+  // THE defect. `installSkills` passed `pluginRoot()`, so every release ran
+  //   claude plugin marketplace add …\kanmer\plugins\kanmer
+  // and got, measured against claude 2.1.233:
+  //   ✘ Failed to add marketplace: Marketplace file not found at
+  //     …\kanmer\plugins\kanmer\.claude-plugin\marketplace.json     EXIT=1
+  // Pointed one level of nesting higher it exits 0 and the plugin installs.
+  //
+  // The mismatch is between two directories, so it cannot be seen from either
+  // one alone — which is why both are exported and the relationship, not the
+  // value, is what is asserted. Neither is a fixed string here: `app.isPackaged`
+  // is stubbed false in this file, and the packaged branch resolves against
+  // `process.resourcesPath`. Pinning literals would test the stub.
+
+  it("the marketplace root is the plugin root minus plugins/kanmer", () => {
+    expect(join(marketplaceRoot(), "plugins", "kanmer")).toBe(pluginRoot());
+  });
+
+  it("the marketplace root is NOT the plugin root", () => {
+    // The check on the check: if these two ever became the same directory the
+    // assertion above would hold vacuously and the defect would be back.
+    expect(marketplaceRoot()).not.toBe(pluginRoot());
+  });
+
+  it("connect hands the provider the marketplace root, not the plugin root", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-connect-"));
+    roots.push(root);
+    const seen: string[] = [];
+    const script = join(root, "noop.cjs");
+    await writeFile(script, "");
+    testProviders.set("mp-root", {
+      id: "mp-root" as ProviderId,
+      label: "mp-root",
+      register: {
+        kind: "configFile",
+        configPath: "test-host.json",
+        merge: () => "{}",
+        unmerge: () => "{}",
+        registrationState: () => "registered",
+      },
+      install: {
+        kind: "marketplace",
+        marketplaceCommands: (dir: string) => {
+          seen.push(dir);
+          return [`node "${script}"`];
+        },
+      },
+      dispatch: false,
+    } as AgentProvider);
+
+    await connectAgent("mp-root" as ProviderId, root, root);
+    testProviders.clear();
+
+    expect(seen).toEqual([marketplaceRoot()]);
+    expect(seen[0]).not.toBe(pluginRoot());
   });
 });

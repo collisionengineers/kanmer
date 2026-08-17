@@ -7,7 +7,7 @@ covers: shipped server (backfill) + v3 tool delta (groups, profiles, removals)
 
 The agent-facing contract. Local stdio server; root resolved `--root` → `KANMER_ROOT` → **board discovery from cwd upwards** → `--init`, and otherwise **fatal** (ADR-0012); **reads never create `.kanmer/`** — only an actual write does, and only where a root was asserted or `--init` was passed.
 
-- R1. **Tool inventory (end-state), by category.** Read: get_status, list_board, list_items, get_item, get_ticket_doc, search_items, get_links, get_activity, get_doc_gates, **get_group, list_groups, get_group_doc**. Write: create_item, create_items (cap 50), update_item, move_item, take_ticket, set_ticket_doc, append_scratch, link_items, link_doc, migrate_board, **create_group, set_group_doc**, column tools (kind: **area only** — status and priority kinds removed per FRD-007/008). Destructive: delete_item, remove_column.
+- R1. **Tool inventory (end-state), by category.** Read: get_status, list_board, list_items, get_item, get_ticket_doc, search_items, get_links, get_activity, get_doc_gates, **get_group, list_groups, get_group_doc**. Write: create_item, create_items (cap 50), update_item, move_item, take_ticket, set_ticket_doc, append_scratch, link_items, link_doc, migrate_board, **create_group, update_group, set_group_doc**, column tools (kind: **area only** — status and priority kinds removed per FRD-007/008). Destructive: delete_item, remove_column.
 - R2. Annotations are honest: `readOnlyHint` on every read, `destructiveHint` only where true — this is what makes host approval modes work.
 - R3. Descriptions are a contract layer (ADR-0009): they teach profiles, gates, the read-everything duty, and group context in-line; `get_doc_gates` is named as the orientation call before any move; parameter docs never contradict the core.
 - R4. Actor attribution via `_meta` client identity feeds the activity log; MRTR elicitation guards destructive ops where the host supports it; resources/subscriptions and prompts remain; the take-ticket prompt text is core-SSOT shared with dispatch (FRD-010 R2).
@@ -35,11 +35,13 @@ Related: FRD-001/002/003/006/007/008 · ADR-0009 · **ADR-0012 (root resolution 
   Reads still never create `.kanmer/`: `init` is lazy and only the `write()` wrapper calls
   `ensureInit()` — `--init` governs whether that write is permitted to create a board, it
   does not make a read create one.
-- R1 — **24 tools registered today**, against 29 at the v3 end state (+5 group tools). Present:
-  the 12 reads listed minus `get_group`/`list_groups`/`get_group_doc`, and the writes minus
-  `create_group`/`set_group_doc`. Column tools still accept `kind: status|area|priority`
-  `index.ts:694` — narrowing to area-only is the Phase 3 delta. `create_items` caps at 50
-  `index.ts:477`.
+- R1 — **30 tools registered** (recounted from `registerTool` call sites, MCP-006): the 12 reads
+  listed, 16 writes, and 2 destructive. The count reached the end state via the six group tools —
+  the five above plus **`update_group`** (MCP-006), which is what makes FRD-001 G4's
+  archive-as-retirement performable and closes the gap where `list_groups` and `set_group_doc`
+  described operations no tool offered. The Phase 3 column-tool delta is **done**: `kind` is
+  `z.literal("area")` (`index.ts:215`), so the status and priority kinds are gone.
+  `create_items` caps at 50.
 - R2 — every read carries `readOnlyHint: true`; `destructiveHint: true` appears on exactly two,
   `remove_column` `index.ts:744` and `delete_item` `index.ts:800`.
 - R3 — descriptions are hand-authored prose in each `registerTool` call, with per-field

@@ -69,3 +69,20 @@ demonstrated failing.
 inside this repo it returned a healthy board from *Connect's* identically-named
 `kanmer` server, making the broken plugin entry look fine. Every `agy` probe was
 re-run from a Connect-free folder, and FRD-012 R6.3 now records the trap.
+
+---
+
+## Closeout (from the main checkout)
+
+- [x] PR `state: MERGED`, `mergedAt: 2026-08-17T00:55:56Z`, merge commit `8f4bdc1`
+- [x] `proof` final — written and verified on merged main
+- [x] `commits: [8f4bdc16efa0eca243c1353955babdb8cc3b4f4f]`, `prs: [#62]` recorded
+- [x] Outcome written into the ticket body
+- [x] Review written (author and reviewer both me, stated in its first line); merged under standing delegation
+- [x] `proof` on merged main; MCP-016 → done
+- [x] `git worktree remove .worktrees/mcp-016`
+- [x] `git branch -d mcp-016-plugin-mcp-scope` (refused as unmerged after the squash — expected; deleted after `state: MERGED` was confirmed)
+- [x] `git push origin --delete mcp-016-plugin-mcp-scope`, `git fetch --prune`, `git worktree prune`
+- [x] `git worktree list` shows only the main checkout and `.worktrees/kanmer` (the board's — never touched)
+- [x] Ticket released
+- [x] Scratch `CODEX_HOME` directories and the detached rail clone removed; `~/.gemini` and `~/.codex` verified unchanged

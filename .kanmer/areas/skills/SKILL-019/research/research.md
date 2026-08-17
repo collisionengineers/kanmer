@@ -65,3 +65,17 @@ The user rejected a design that writes per-skill Codex disable entries into ever
 Use .agents/skills as the project-local canonical roster for Codex and Antigravity. Codex Connect must copy/reconcile that roster instead of installing the Codex marketplace plugin. OpenCode moves to .opencode/skills and Grok stays at .grok/skills. Plugin installation remains a separate, user-chosen distribution route, not something Connect combines with project-local installation.
 
 Existing Codex plugin users need a one-time migration path, not per-project suppression. Implementation research must establish the supported Codex CLI/browser disable or uninstall mechanism and present it explicitly; Kanmer must not silently remove a global plugin that may serve other projects. New Connects must never create both surfaces.
+
+---
+
+# Antigravity plugin correction — 2026-08-17
+
+The user challenged the assumption that Antigravity must consume project-copied skills. The challenge is correct.
+
+Google’s Antigravity CLI documentation defines plugins as namespaced bundles staged globally under ~/.gemini/antigravity-cli/plugins/<plugin_name>/, with an optional skills/ directory, and documents agy plugin install /path/to/local/plugin. Kanmer’s own FRD-012 records a measured successful Kanmer plugin install in AGY that processed all 12 skills; MCP delivery was the broken component, and MCP-016 intentionally removed it from the plugin. Therefore the plugin is already a proven skills-only route for AGY.
+
+The previous objection conflated two different scopes. Kanmer’s MCP registration must remain project-scoped because it selects one board and source root. Kanmer’s workflow skills are reusable product instructions, already installed globally through plugins for Codex and Claude. Global AGY plugin skills are consistent with that model. AGY can use plugin skills globally while .agents/mcp_config.json continues to hold only the project-specific Kanmer MCP server.
+
+## Revised implication
+
+Keep Codex on its plugin. Move Antigravity skill installation from project .agents/skills to agy plugin install of the Kanmer plugin, while retaining project .agents/mcp_config.json for MCP. Move OpenCode to .opencode/skills. This removes Kanmer’s project .agents/skills tree entirely for the supported Connect matrix, so Codex has no local duplicate to discover and no per-project suppression is needed. Existing stamped .agents/skills installs require safe reconciliation after the AGY plugin is proven active.

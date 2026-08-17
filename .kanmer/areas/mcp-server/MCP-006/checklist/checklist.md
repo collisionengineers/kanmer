@@ -53,23 +53,33 @@ attempt — rather than an error that never comes.
 bypass. Deferred to verify, on merged main, from the main checkout. The committed
 bundle was checked for embedded absolute paths first (none — the three
 `.worktrees` hits are source string literals), so a rebuild elsewhere should be
-byte-identical.
+byte-identical. **It passed there**: "plugin-sync OK — 30 tools match, bundle
+bytes match", so the worktree-built bundle was byte-identical to a fresh build
+from the main checkout.
 
 **Rail (worktree, pre-merge):** `npm test` 10/10 + 23/23 + 41/41 files green,
 241 core tests; `npm run typecheck` clean across all four workspaces;
-`npm run smoke:protocol` 26/26 (30 tools on all three protocol versions);
+`npm run smoke:protocol` 26/26 (30 tools on all four protocol versions);
 `node packages/mcp-server/src/smoke.mjs` against the built plugin bundle
 **156/156**, including all 13 new `update_group` checks.
+
+**Rail (main checkout, merged main at `ac01b8b`):** `plugin:check` OK;
+`npm test` 11/11 core files / 249 tests, 23/23 gui, 46/46 scripts,
+manual up to date; `typecheck` clean; `smoke:protocol` 26/26; `smoke.mjs`
+**156/156**. Three other PRs landed mid-flight — SKILL-013 (#56, which also
+edits AGENTS.md and added new prose gates) and the ADR renumbers #57/#59 — so
+`verify:agents-block` (28/28), `check-doc-numbering` and `verify-skill-prose`
+were run here too, all green.
 
 ---
 
 ## Closeout — MCP-006
 
-- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
-- [ ] proof.md finalised (PR URL + merge date appended)
-- [ ] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/mcp-006`
-- [ ] `git branch -d mcp-006-update-group` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] PR merge verified (`gh pr view --json state,mergedAt`) — MERGED 2026-08-17T00:19:41Z
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage (Done, 2026-08-17T00:24:20Z)
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/mcp-006` — it deregistered the worktree but refused to delete the directory ("Directory not empty": `node_modules`/`dist` from the `npm install` this worktree needed). Nothing tracked was dirty, so the leftover directory was removed directly, per the skill's "lingering but unregistered" case.
+- [x] `git branch -d mcp-006-update-group` — succeeded with the expected squash-merge warning
+- [x] `git fetch --prune` + `git worktree prune`; the remote branch does not auto-delete here, so `git push origin --delete mcp-006-update-group` as well
+- [x] `take_ticket action: "release"`

@@ -114,8 +114,13 @@ textarea:focus {
 }
 
 /* Welcome */
+/* `flex: 1; min-height: 0` and NOT `height: 100%`: since GUI-065 the welcome
+   screen is always a child of the `.app` flex column, which may also hold the
+   update banner above it. `height: 100%` would resolve against the whole
+   container and push the banner's height off the bottom of `#root`. */
 .welcome {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;

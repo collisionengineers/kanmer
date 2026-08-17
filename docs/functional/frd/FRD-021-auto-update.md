@@ -5,7 +5,7 @@ covers: shipped updater (backfill)
 
 # FRD-021 — Auto-update
 
-- R1. The packaged app checks GitHub Releases; an available update surfaces as a non-blocking banner/toast reusing the in-app toast stack; "Later" is free (the update installs on the next normal quit anyway); dismissal is per-session.
+- R1. The packaged app checks GitHub Releases; an available update surfaces as a non-blocking banner/toast reusing the in-app toast stack — **on every screen, including with no project open**; "Later" is free (the update installs on the next normal quit anyway); dismissal is per-session.
 - R2. **Restart is gated** on unsaved editor work and live agent MCP sessions — the app never yanks the floor out from under a working agent or an unsaved edit.
 - R3. Release discipline: `release.mjs` refuses to publish unless `release-notes.md` names the version (the guard against shipping stale notes); `dist:check` verifies the packaged app can actually self-update.
 - R4. MCP registrations point at the installed executable path; updates preserve that path's validity.
@@ -144,3 +144,37 @@ bound is one pass, but no pre-release run actually invokes
 **Accepted gap:** v0.3.0's blockmap is not backfilled — it needs a rebuild from
 that tag, and the cost falls only on clients still on 0.3.0, who pay one full
 download on their next update and are then current.
+
+## Amended — GUI-065
+
+**R1 said "a non-blocking banner/toast". It never said *where*, and the gap that
+left was real.** With no project open, `App.tsx` returned the welcome screen
+from an early return, and all three update surfaces — the banner, the
+`.toast-stack`, and the "Restart and update" confirm — sat *below* it. The
+updater itself was already app-global (one module-level state in
+`main/updater.ts`, one unconditional `send` in `main/index.ts`, a preload
+surface with no project argument), and Help ▸ Check for Updates… was already
+ungated, so on the welcome screen the check ran, the download completed, and
+every result rendered into a subtree that was never mounted. The sharpest form:
+a user clicked a menu item and got absolute silence.
+
+Nothing here was a deliberate decision — the FRD, the updater research, and
+GUI-017's documents all have zero mentions of the welcome screen. That is why
+R1 now says **"on every screen, including with no project open"**: so the next
+reader cannot mistake the silence for intent.
+
+**No requirement changed and no mechanism changed.** This ticket added zero IPC,
+zero preload and zero main-process code. The three surfaces are now bound once
+above the early return and rendered from both branches, which keeps exactly one
+banner instance and therefore keeps R2's single-`installUpdate()`-call-site
+property intact — duplicating the markup into the welcome branch would have
+broken it. The whole toast stack moved, not only the update toasts: without it
+the manual check stays silent, and "Restart now" would open a confirm that never
+renders. A consequence worth recording is that GUI-064's install-refusal toast
+is now visible on the welcome screen too, which is where a user with no project
+open most needs to see it.
+
+The R1 line above still cites `App.tsx:915-931` for the banner; since GUI-065 the
+banner is `renderer/src/components/UpdateBanner.tsx`, rendered from a JSX value
+bound above `App.tsx`'s `if (!root || !board)`. The R2 line's "exactly two
+`installUpdate()` call sites" has been **one** since GUI-064.

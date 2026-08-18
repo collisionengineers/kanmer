@@ -246,6 +246,12 @@ ticket's life, an autonomous orchestrator, and board reporting/hygiene:
 
 The server speaks MCP over **stdio**. It resolves the project root from `--root`, then `KANMER_ROOT`, then by **discovering** a board: at the working directory and each ancestor it looks for `.kanmer/`, then for a board parked in `.worktrees/*/.kanmer` (the layout the desktop app creates). The walk stops at a real `.git` directory, so it never latches onto an unrelated parent project — but it passes straight through the `.git` *file* of a git worktree, so an agent working in `.worktrees/<ticket>` still finds the board.
 
+To let a ChatGPT developer-mode app reach a private local board without a
+public endpoint, use OpenAI Secure MCP Tunnel with this same stdio server. The
+exact Windows setup, remote-agent instructions, security boundary and
+Cloudflare/provider-portability details are in
+[Connect a private board to ChatGPT](docs/manual/connect.md#connect-a-private-board-to-chatgpt).
+
 If no board is found the server **exits with an error naming every path it tried**, rather than starting up against an empty one. To create a board where none exists, pass `--init` (or set `KANMER_INIT=1`).
 
 **codex** — add to your project's `.codex/config.toml`, replacing `<kanmer-repo>` with wherever you cloned this repo (see [examples/codex-config.toml](examples/codex-config.toml)):

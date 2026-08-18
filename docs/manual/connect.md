@@ -36,8 +36,8 @@ with the old code.
 ## Connect a private board to ChatGPT
 
 OpenAI Secure MCP Tunnel can let a ChatGPT developer-mode app reach Kanmer
-without a public MCP endpoint
-or an inbound firewall rule. The separate `tunnel-client` process connects
+without a public MCP endpoint or an inbound firewall rule. The separate
+`tunnel-client` process connects
 outbound to OpenAI and starts Kanmer's existing stdio server as its private MCP
 target. Kanmer does not store the tunnel id or API key and does not supervise
 the tunnel process.
@@ -47,6 +47,14 @@ and ChatGPT workspace, a runtime API key whose principal has **Tunnels Read +
 Use**, ChatGPT developer-mode access, and outbound HTTPS access to
 `api.openai.com:443`. Download `tunnel-client` from the link in Platform tunnel
 settings or OpenAI's current release; keep the API key out of project files.
+
+Create the runtime key at **OpenAI Platform → Organization settings → API
+keys**, in the same organization as the tunnel. This is a normal organization
+API key whose principal has **Tunnels Read + Use**, not an Admin API key. Admin
+keys are needed only for programmatic tunnel creation, editing and deletion.
+The Platform shows a new key once: put it in the process environment, never in
+the profile, a command committed to source control, or a chat message. Revoke
+and replace a key immediately if it is exposed.
 
 The installed app already contains everything needed for the MCP command. In
 PowerShell, substitute your paths and tunnel id:
@@ -79,6 +87,40 @@ app uses Kanmer. In ChatGPT's developer-mode app settings, choose **Tunnel** and
 select the tunnel associated with that workspace. Keep the local operator UI
 on its default loopback address. Restart the tunnel after a Kanmer update,
 because the installed MCP process is replaced during the update.
+
+This path was exercised successfully on Windows with `tunnel-client` 0.0.11:
+the profile connected through tunnel
+`tunnel_6a84483eb6a8819180f63c29ee0c94cb`, and ChatGPT could use the resulting
+developer-mode app. That confirms the end-to-end ChatGPT connection; the
+packaged MCP smoke separately verifies all 30 tools and their file mutations.
+
+### More than one project
+
+Use one OpenAI tunnel, one local profile, and one ChatGPT app per Kanmer
+project. Reuse the installed Kanmer runtime, MCP bundle and runtime API key;
+change the tunnel id, profile name, `--root`, and `--repo-root`:
+
+```powershell
+$projectRoot = "C:/Users/<you>/Documents/GitHub/another-project"
+$boardRoot = "$projectRoot/.worktrees/kanmer"
+$profile = "another-project"
+$mcpCommand = '"C:/Users/<you>/AppData/Local/Programs/Kanmer/Kanmer.exe" "C:/Users/<you>/AppData/Local/Programs/Kanmer/resources/mcp/kanmer-mcp.cjs" --root "' + $boardRoot + '" --repo-root "' + $projectRoot + '"'
+
+& $tunnelClient init `
+  --sample sample_mcp_stdio_local `
+  --profile $profile `
+  --tunnel-id <another-project-tunnel-id> `
+  --mcp-command $mcpCommand
+```
+
+If `.kanmer` is directly inside the project rather than the GUI-managed board
+worktree, set `$boardRoot = $projectRoot`. List configured profiles with
+`tunnel-client profiles list`, and select one with `run --profile <name>`.
+Profiles default their local health/admin surface to `127.0.0.1:8080`, so run
+one at a time or assign each profile a distinct `health.listen_addr` before
+running them concurrently. Combining boards behind one tunnel is discouraged:
+each exposes the same Kanmer tool names, leaving the remote agent without a
+clear board-selection boundary.
 
 ### Instructions for the remote agent
 

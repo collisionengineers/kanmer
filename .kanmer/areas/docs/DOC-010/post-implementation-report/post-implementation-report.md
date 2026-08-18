@@ -41,3 +41,7 @@ Added the user-facing procedure for connecting a private local Kanmer board to a
 - `npm run test -w @kanmer/gui -- manual.test.ts`: expect 11 passing tests.
 - `npm run typecheck -w @kanmer/gui` and `git diff --check`: expect success.
 - With `CONTROL_PLANE_API_KEY` set, run `tunnel-client doctor --profile kanmer-local --explain`, then `run`; confirm `/readyz`, connect ChatGPT, and perform create/update/archive calls against a disposable ticket.
+
+## Follow-up findings after initial implementation
+
+The operator confirmed that the configured tunnel works from ChatGPT. The manual now records that end-to-end connection separately from the packaged smoke suite, which is the evidence for all 30 tool schemas and file mutations. It also documents normal organization API-key creation and safe handling, distinguishes runtime from Admin API keys, and gives the supported multi-project pattern: one tunnel/profile/ChatGPT app per board, with unique local health ports when profiles run concurrently.

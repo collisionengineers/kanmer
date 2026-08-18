@@ -16,3 +16,10 @@
 - Windows backslash paths failed tunnel-client 0.0.11 preflight because its command parser consumed the backslashes; forward-slash absolute paths passed.
 - `doctor --explain` loaded the profile and stopped only at the absent runtime API key (exit 2). Live polling and ChatGPT connector invocation therefore remain unexecuted, explicitly reported rather than inferred.
 - Installed packaged MCP bundle passed 156/156 real-stdio smoke checks. Manual generator/check, 11 manual tests, GUI typecheck and `git diff --check` passed.
+
+## Follow-up findings
+
+- [x] Record the operator-confirmed ChatGPT developer-mode connection.
+- [x] Document runtime-key creation, handling and runtime/admin-key distinction.
+- [x] Document the one-tunnel/profile/app-per-project pattern and concurrent health-port constraint.
+- [x] Regenerate and revalidate the in-app manual after the follow-up.

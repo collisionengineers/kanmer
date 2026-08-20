@@ -444,6 +444,104 @@ try {
     "get_item reports doc presence",
     enrichedItem.docs.research === true && enrichedItem.docs.proof === undefined,
   );
+  const batchDocs = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "get_ticket_doc",
+        arguments: { id: "TICK-002", docs: ["research", "files", "research"] },
+      }),
+    ),
+  );
+  check(
+    "get_ticket_doc batches in first-request order and de-duplicates",
+    batchDocs.id === "TICK-002" &&
+      batchDocs.documents?.length === 2 &&
+      batchDocs.documents[0].doc === "research" &&
+      batchDocs.documents[0].content === researchDoc.content &&
+      batchDocs.documents[0].version === researchDoc.version &&
+      batchDocs.documents[1].doc === "files" &&
+      batchDocs.documents[1].exists === false &&
+      batchDocs.documents[1].content === null &&
+      batchDocs.documents[1].version === null,
+  );
+  const invalidDocForm = await client.callTool({
+    name: "get_ticket_doc",
+    arguments: { id: "TICK-002", doc: "research", docs: ["files"] },
+  });
+  check(
+    "get_ticket_doc rejects conflicting single and batch forms",
+    invalidDocForm.isError === true && textOf(invalidDocForm).includes("exactly one"),
+  );
+  const neitherDocForm = await client.callTool({
+    name: "get_ticket_doc",
+    arguments: { id: "TICK-002" },
+  });
+  check(
+    "get_ticket_doc rejects a missing single and batch form",
+    neitherDocForm.isError === true && textOf(neitherDocForm).includes("exactly one"),
+  );
+  const absentSingle = JSON.parse(
+    textOf(
+      await client.callTool({ name: "get_ticket_doc", arguments: { id: "TICK-002", doc: "files" } }),
+    ),
+  );
+  check(
+    "get_ticket_doc keeps the legacy absent response shape",
+    absentSingle.id === "TICK-002" &&
+      absentSingle.doc === "files" &&
+      absentSingle.exists === false &&
+      absentSingle.content === null &&
+      absentSingle.version === null,
+  );
+  await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: "TICK-002", doc: "files", content: "# Files" },
+  });
+  const presentBatch = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "get_ticket_doc",
+        arguments: { id: "TICK-002", docs: ["research", "files"] },
+      }),
+    ),
+  );
+  check(
+    "get_ticket_doc returns ordered multiple present documents",
+    presentBatch.documents?.map((entry) => entry.doc).join(",") === "research,files" &&
+      presentBatch.documents.every((entry) => entry.exists && typeof entry.version === "string"),
+  );
+  const oneDocBatch = JSON.parse(
+    textOf(
+      await client.callTool({ name: "get_ticket_doc", arguments: { id: "TICK-002", docs: ["files"] } }),
+    ),
+  );
+  check("get_ticket_doc accepts a one-document batch", oneDocBatch.documents?.length === 1);
+  const maxDocs = Array.from({ length: 25 }, (_, index) => `research/batch-${index + 1}.md`);
+  const maxBatch = JSON.parse(
+    textOf(await client.callTool({ name: "get_ticket_doc", arguments: { id: "TICK-002", docs: maxDocs } })),
+  );
+  check("get_ticket_doc accepts the 25-document boundary", maxBatch.documents?.length === 25);
+  const tooManyDocs = await client.callTool({
+    name: "get_ticket_doc",
+    arguments: { id: "TICK-002", docs: [...maxDocs, "research/batch-26.md"] },
+  });
+  check("get_ticket_doc rejects 26 requested documents", tooManyDocs.isError === true);
+  const blankBatchDoc = await client.callTool({
+    name: "get_ticket_doc",
+    arguments: { id: "TICK-002", docs: [" "] },
+  });
+  check(
+    "get_ticket_doc rejects blank document ids",
+    blankBatchDoc.isError === true && textOf(blankBatchDoc).includes("non-empty"),
+  );
+  const unsafeBatchDoc = await client.callTool({
+    name: "get_ticket_doc",
+    arguments: { id: "TICK-002", docs: ["research", "../../escape"] },
+  });
+  check(
+    "get_ticket_doc rejects unknown and traversal document ids atomically",
+    unsafeBatchDoc.isError === true && textOf(unsafeBatchDoc).includes("Invalid segment"),
+  );
 
   // set_ticket_doc validates the doc name against the area's configured set.
   const unknownDoc = await client.callTool({
@@ -822,6 +920,19 @@ try {
     scratchBack.content?.includes("scratch line one") &&
       scratchBack.content?.includes("scratch line two"),
   );
+  const scratchBatch = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "get_ticket_doc",
+        arguments: { id: gpId, docs: ["scratch/research", "files"] },
+      }),
+    ),
+  );
+  check(
+    "get_ticket_doc batch reads scratch alongside an absent document",
+    scratchBatch.documents?.[0]?.content?.includes("scratch line two") &&
+      scratchBatch.documents?.[1]?.exists === false,
+  );
   const probeDocs = JSON.parse(
     textOf(await client.callTool({ name: "get_item", arguments: { id: gpId } })),
   );
@@ -988,6 +1099,19 @@ try {
   check(
     "a bare type remains absent when only a named document exists",
     bareNested.exists === false && bareNested.content === null,
+  );
+  const nestedBatch = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "get_ticket_doc",
+        arguments: { id: nested, docs: ["research/deep/topic.md", "research"] },
+      }),
+    ),
+  );
+  check(
+    "get_ticket_doc batch reads a nested document in request order",
+    nestedBatch.documents?.[0]?.content?.includes("# Deep") &&
+      nestedBatch.documents?.[1]?.exists === false,
   );
   check(
     "it satisfies the type's requirement on its own",

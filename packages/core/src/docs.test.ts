@@ -232,6 +232,17 @@ describe("folder documents (FRD-003)", () => {
     await expect(store.setDoc(id, "../../escape.md", "x")).rejects.toThrow(/Invalid segment/);
   });
 
+  it("batch reads validate paths before reading and retain requested order", async () => {
+    const id = await ticket("chore");
+    await store.setDoc(id, "plan", "# Plan");
+    const [plan, missing, repeated] = await store.getDocsWithVersions(id, ["plan", "files", "plan"]);
+    expect(plan).toMatchObject({ doc: "plan", exists: true, content: "# Plan\n" });
+    expect(typeof plan.version).toBe("string");
+    expect(missing).toEqual({ doc: "files", exists: false, content: null, version: null });
+    expect(repeated).toMatchObject({ doc: "plan", exists: true, content: "# Plan\n" });
+    await expect(store.getDocsWithVersions(id, ["plan", "../../escape"])).rejects.toThrow(/Invalid segment/);
+  });
+
   it("counts documents per type, lists readable document paths, and enumerates reference files", async () => {
     const id = await ticket("feature", { docs_todo: true });
     await store.setDoc(id, "research/a.md", "a");

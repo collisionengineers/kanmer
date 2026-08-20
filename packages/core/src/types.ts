@@ -41,6 +41,14 @@ export type BoardColumn = z.infer<typeof BoardColumnSchema>;
  */
 export type TicketDoc = string;
 
+/** One requested ticket document together with its exact-content version. */
+export interface TicketDocumentWithVersion {
+  doc: string;
+  exists: boolean;
+  content: string | null;
+  version: string | null;
+}
+
 /** Options for writing a ticket's pipeline document. */
 export interface SetDocOptions {
   /** Append below the existing content instead of replacing it. */

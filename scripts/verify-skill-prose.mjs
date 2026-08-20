@@ -311,7 +311,31 @@ check(
   "Backlog/Preparing + main/PR evidence + no automatic mutation",
 );
 
-console.log("\n=== 11. audience-specific template contracts are present and advisory ===");
+console.log("\n=== 11. gates-first routing regressions stay removed ===");
+// These are deliberately narrow guardrails for two measured contradictions.
+// They protect dynamic gate routing, not a profile-to-document table or prose
+// style: both skills must continue to derive the next action at runtime.
+const autoSkill = read(join(skillsDir, "kanmer-auto", "SKILL.md"));
+const planUniversalClaims = [
+  /research and files documents\s*[—-]\s*never before them/i,
+  /whether or not this ticket'?s profile happens to gate on them/i,
+];
+const planClaimsPresent = planUniversalClaims.filter((re) => re.test(planSkill));
+check(
+  "kanmer-plan has no universal research/files prerequisite",
+  planClaimsPresent.length === 0,
+  planClaimsPresent.length ? "legacy universal claim found" : "live gates decide inputs",
+);
+check(
+  "kanmer-auto has no universal research Wave 0",
+  !/wave 0\s*[—-]\s*research everything in parallel/i.test(autoSkill),
+  "route from live gates instead",
+);
+for (const [name, body] of [["kanmer-plan", planSkill], ["kanmer-auto", autoSkill]]) {
+  check(`${name} still routes through get_doc_gates`, /get_doc_gates/.test(body), "live gate report");
+}
+
+console.log("\n=== 12. audience-specific template contracts are present and advisory ===");
 const requiredHeadings = (file, headings) => {
   const body = read(file);
   const missing = headings.filter((h) => !new RegExp(`^## ${h}$`, "m").test(body));

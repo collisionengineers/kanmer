@@ -5,11 +5,29 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureBoardWorktree, renameBoardBranch } from "./kanmerGit.js";
+import { ensureBoardWorktree, inspectBoardWorktree, renameBoardBranch } from "./kanmerGit.js";
+
+// These are deliberately real-Git integration tests: every case initialises a
+// local repository and several create worktrees/remotes. Windows process and
+// filesystem latency routinely exceeds Vitest's five-second unit-test budget;
+// keep that larger, bounded budget scoped to this file rather than weakening
+// the GUI suite's global default for pure tests.
+const REAL_GIT_TEST_TIMEOUT_MS = 30_000;
 
 const execFile = promisify(execFileCallback);
 const git = async (cwd: string, ...args: string[]): Promise<string> =>
-  (await execFile("git", args, { cwd, windowsHide: true })).stdout.trim();
+  (await execFile("git", args, {
+    cwd,
+    windowsHide: true,
+    // Fixtures are entirely local; Git must never wait for interactive
+    // credentials or prompts if a regression accidentally reaches one.
+    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+  })).stdout.trim();
+
+/** One serial, bounded integration-test wrapper for the real Git fixture. */
+const realGitTest = (name: string, fn: () => Promise<void>): void => {
+  it(name, fn, REAL_GIT_TEST_TIMEOUT_MS);
+};
 
 /**
  * These tests drive real Git. The bug they cover (FRD-020 R5) is entirely about
@@ -55,7 +73,7 @@ const remoteHeads = async (): Promise<string[]> =>
     .filter(Boolean);
 
 describe("renameBoardBranch", () => {
-  it("keeps the history, the path and the remote consistent", async () => {
+  realGitTest("keeps the history, the path and the remote consistent", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     expect(created.available).toBe(true);
     const boardRoot = created.boardRoot!;
@@ -79,14 +97,14 @@ describe("renameBoardBranch", () => {
     expect(await remoteHeads()).not.toContain("kanmer-board");
   });
 
-  it("is a no-op when the name already matches", async () => {
+  realGitTest("is a no-op when the name already matches", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     const result = await renameBoardBranch(created.boardRoot!, "kanmer-board");
     expect(result).toEqual({ ok: true, from: "kanmer-board", error: null });
     expect(await remoteHeads()).toContain("kanmer-board");
   });
 
-  it("refuses a name that is already taken instead of clobbering it", async () => {
+  realGitTest("refuses a name that is already taken instead of clobbering it", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     const boardRoot = created.boardRoot!;
     await git(repo, "branch", "taken");
@@ -98,7 +116,7 @@ describe("renameBoardBranch", () => {
     expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("kanmer-board");
   });
 
-  it("renames locally even with no remote to push to", async () => {
+  realGitTest("renames locally even with no remote to push to", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     const boardRoot = created.boardRoot!;
     await git(repo, "remote", "remove", "origin");
@@ -109,8 +127,59 @@ describe("renameBoardBranch", () => {
   });
 });
 
+describe("inspectBoardWorktree", () => {
+  realGitTest("reports a board on its expected branch", async () => {
+    await expect(inspectBoardWorktree(repo, "main")).resolves.toEqual({
+      path: resolve(repo), expectedBranch: "main", actualBranch: "main", onBoardBranch: true,
+    });
+  });
+
+  realGitTest("reports a wrong branch without repairing it", async () => {
+    await expect(inspectBoardWorktree(repo, "kanmer-board")).resolves.toEqual({
+      path: resolve(repo), expectedBranch: "kanmer-board", actualBranch: "main", onBoardBranch: false,
+    });
+    expect(await git(repo, "symbolic-ref", "--short", "HEAD")).toBe("main");
+  });
+
+  realGitTest("reports an unavailable or detached board as unhealthy", async () => {
+    const missing = join(dir, "missing-board");
+    await expect(inspectBoardWorktree(missing, "kanmer-board")).resolves.toEqual({
+      path: resolve(missing), expectedBranch: "kanmer-board", actualBranch: null, onBoardBranch: false,
+    });
+  });
+
+  realGitTest("reports a detached board without changing its HEAD, refs, or worktrees", async () => {
+    await git(repo, "checkout", "--detach", await git(repo, "rev-parse", "HEAD"));
+    // Capture after the fixture deliberately detaches HEAD: these are the
+    // facts inspection must leave exactly as it finds them.
+    const beforeHead = await git(repo, "rev-parse", "HEAD");
+    const beforeRefs = await git(repo, "show-ref");
+    const beforeWorktrees = await git(repo, "worktree", "list", "--porcelain");
+
+    await expect(inspectBoardWorktree(repo, "kanmer-board")).resolves.toEqual({
+      path: resolve(repo), expectedBranch: "kanmer-board", actualBranch: null, onBoardBranch: false,
+    });
+
+    expect(await git(repo, "rev-parse", "HEAD")).toBe(beforeHead);
+    expect(await git(repo, "show-ref")).toBe(beforeRefs);
+    expect(await git(repo, "worktree", "list", "--porcelain")).toBe(beforeWorktrees);
+  });
+
+  realGitTest("uses the environment default and permits an explicit override", async () => {
+    const before = process.env.KANMER_BOARD_BRANCH;
+    process.env.KANMER_BOARD_BRANCH = " main ";
+    try {
+      expect((await inspectBoardWorktree(repo)).expectedBranch).toBe("main");
+      expect((await inspectBoardWorktree(repo, "kanmer-board")).expectedBranch).toBe("kanmer-board");
+    } finally {
+      if (before === undefined) delete process.env.KANMER_BOARD_BRANCH;
+      else process.env.KANMER_BOARD_BRANCH = before;
+    }
+  });
+});
+
 describe("ensureBoardWorktree reconciliation", () => {
-  it("moves a worktree left on the old branch onto the configured one", async () => {
+  realGitTest("moves a worktree left on the old branch onto the configured one", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     const boardRoot = created.boardRoot!;
     const before = await git(boardRoot, "rev-parse", "HEAD");
@@ -127,7 +196,7 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(await git(boardRoot, "rev-parse", "HEAD")).toBe(before);
   });
 
-  it("reports the branch the worktree is really on when reconciling fails", async () => {
+  realGitTest("reports the branch the worktree is really on when reconciling fails", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     await git(repo, "branch", "taken");
 
@@ -138,7 +207,7 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(await git(created.boardRoot!, "symbolic-ref", "--short", "HEAD")).toBe("kanmer-board");
   });
 
-  it("is idempotent once the worktree is on the branch", async () => {
+  realGitTest("is idempotent once the worktree is on the branch", async () => {
     const first = await ensureBoardWorktree(repo, "kanmer-board");
     const second = await ensureBoardWorktree(repo, "kanmer-board");
     expect(resolve(second.boardRoot!)).toBe(resolve(first.boardRoot!));

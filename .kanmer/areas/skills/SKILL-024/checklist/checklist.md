@@ -15,3 +15,14 @@
 - Planned from DOC-014’s canonical user-owned skeleton, the existing marker-only writer, and EPIC-012’s approval contract.
 - Implemented only the setup skill and its focused contract test; the template, marker writer/body, core staleness, GUI, and MCP bundle remain unchanged.
 - Verification passed: focused Node tests 3/3; managed-block lifecycle 31/31; skill-prose verifier passed; `git diff --check` clean. The focused test statically protects the documented missing/partial/complete reconciliation contract, while the existing lifecycle suite provides the disposable-directory writer/idempotence evidence.
+
+## Closeout — SKILL-024
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/skill-024`
+- [x] `git branch -d skill-024-reconcile-agents-skeleton` (`-D` if squash/rebase-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

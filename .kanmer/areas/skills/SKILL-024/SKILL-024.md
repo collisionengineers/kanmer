@@ -2,12 +2,15 @@
 id: SKILL-024
 type: ticket
 title: kanmer-setup reconciles an AGENTS.md skeleton
-status: preparing
+status: implementing
 area: skills
-assignee: ''
+assignee: codex-mcp-client
 profile: feature
 stageEntered:
   preparing: '2026-08-20T22:14:21.141Z'
+taken_at: '2026-08-20T22:18:18.673Z'
+branch: skill-024-reconcile-agents-skeleton
+worktree: .worktrees/skill-024
 labels: []
 groups:
   - EPIC-012
@@ -18,7 +21,7 @@ blocks:
 docs_todo: true
 archived: false
 created: '2026-08-20T10:14:57.049Z'
-updated: '2026-08-20T22:14:21.141Z'
+updated: '2026-08-20T22:18:18.673Z'
 ---
 
 ## What

@@ -275,5 +275,24 @@ for (const rule of RULES) {
   check(`  stated wherever it can be acted on`, missing.length === 0, missing.join(", ") || "none");
 }
 
+console.log("\n=== 9. work-type brief overlays are present and remain manual ===");
+const planAssets = join(skillsDir, "kanmer-plan", "assets");
+const overlays = [
+  "brief-fix.md",
+  "brief-ui-ux.md",
+  "brief-docs.md",
+  "brief-cloud-infra.md",
+  "brief-data-migration.md",
+];
+const missingOverlays = overlays.filter((name) => !existsSync(join(planAssets, name)));
+console.log(`      overlays: ${overlays.join(", ")}`);
+check("all five work-type brief overlays exist", missingOverlays.length === 0, missingOverlays.join(", ") || "all present");
+
+const planSkill = read(join(skillsDir, "kanmer-plan", "SKILL.md"));
+const manualSelection =
+  /manually copy zero or more matching prompt sets/i.test(planSkill) &&
+  /templates, never\s+an automatic classifier, ticket field, profile mapping, or gate/i.test(planSkill);
+check("kanmer-plan names optional manual overlay selection", manualSelection, "manual selection, no engine");
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

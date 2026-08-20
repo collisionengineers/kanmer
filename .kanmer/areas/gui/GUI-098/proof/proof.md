@@ -25,3 +25,9 @@ No unlocked GUI session was available during verification, so no banner screensh
 ## Result
 
 GUI-098’s merged banner behavior and non-blocking/read-only constraints are verified on main.
+
+## Closeout metadata
+
+- PR: https://github.com/collisionengineers/kanmer/pull/85
+- Merged: 2026-08-20T22:45:28Z
+- Merge commit: `71e3a0560a19a99796ce844927255aa5ff319aa5`

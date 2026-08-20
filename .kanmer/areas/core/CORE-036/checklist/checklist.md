@@ -70,3 +70,11 @@
 ## Progress notes
 
 Append implementation notes here; do not rewrite the plan during execution.
+
+## Paused / resume point — 2026-08-20
+
+- No source files were changed.
+- Blocker: current `origin/main` at `71e3a05` has no root `npm run verify` script and no `VERIFY_STEPS`; direct `npm run verify` reports `Missing script: "verify"`.
+- This ticket's plan/checklist require CORE-031's canonical verify rail and explicitly prohibit substituting an inlined list.
+- Resume after CORE-031 lands on main: update this worktree from `origin/main`, confirm `npm run verify` exists, then implement the workflow from the approved plan.
+- Retained resume point: branch `core-036-tag-push-release-verification`, worktree `.worktrees/core-036`.

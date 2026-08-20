@@ -28,3 +28,16 @@
 - A Windows-locked session prevented a usable banner screenshot: the capture showed the lock screen. This remains deliberately unticked and is documented in the post-implementation report.
 - `npm test --workspace @kanmer/gui -- --maxWorkers=1 --minWorkers=1`: 29 files / 296 tests passed.
 - GUI typecheck and GUI production build passed. `npm run verify` is not defined; root typecheck has an unrelated pre-existing `TicketDocsInfo.documentPaths` demo-fixture failure.
+
+---
+
+## Closeout — GUI-098
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-098`
+- [x] `git branch -d gui-098-board-worktree-banner` (`-D` if squash/rebase-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

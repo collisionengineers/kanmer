@@ -8,9 +8,6 @@ assignee: codex-mcp-client
 profile: chore
 stageEntered:
   preparing: '2026-08-20T16:03:18.784Z'
-taken_at: '2026-08-20T22:48:14.966Z'
-branch: core-036-tag-push-release-verification
-worktree: .worktrees/core-036
 labels: []
 groups:
   - HZN-005
@@ -19,7 +16,7 @@ links:
   - GUI-093
 archived: false
 created: '2026-08-20T10:14:42.545Z'
-updated: '2026-08-20T22:48:14.966Z'
+updated: '2026-08-20T22:49:01.717Z'
 ---
 
 ## What

@@ -51,3 +51,7 @@ No permanent Kanmer source file is expected. The integration ticket is complete 
 - Required check configuration through an override or bypass.
 - Any secret/token file, global Git config, unrelated remote, or persistent package publication.
 - Add a reusable integration framework, GitHub App, lease system, or golden-board harness.
+
+## Binding fixture correction
+
+The disposable source repository is a private copy seeded from the exact merged Kanmer source SHA under test, including its real workflows and `check-pr` implementation. Replace the earlier generic `package.json`/`src/value.mjs` fixture description with a tiny isolated diff inside that Kanmer copy, preferably `scripts/spine-fixture.mjs` plus `scripts/spine-fixture.test.mjs`, because root `npm run test:scripts` already executes `scripts/*.test.mjs`. These fixture-only files exist solely in the disposable repository and are deleted with it; they are not committed to the production Kanmer repository.

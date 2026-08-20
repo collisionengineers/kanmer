@@ -81,3 +81,7 @@ Implement no reusable product script by default. Execute a scripted command chec
 ## Remaining unknowns
 
 None. Lack of authenticated permission to create/protect/delete a private GitHub repository is an execution blocker to report, not a reason to substitute a local mock or use the production repository.
+
+## Binding fixture correction
+
+The disposable GitHub repository must be seeded from the **exact merged Kanmer source SHA under test**, not from an unrelated minimal repository. This is required so its real `verify` and `kanmer-gate` workflow jobs, `check-pr` CLI, core gate implementation, MCP server, and skills are the production callers being exercised. The INT-004 implementation remains a deliberately tiny dependency-free source/test diff inside that disposable Kanmer copy (for example `scripts/spine-fixture.mjs` plus `scripts/spine-fixture.test.mjs`, already reached by `npm run test:scripts`). Any earlier statement suggesting a standalone minimal repository is superseded by this correction.

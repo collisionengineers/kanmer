@@ -19,6 +19,7 @@ import { readOnlyClient } from "./lib/readOnly.js";
 import { restoreTabs, restoredActiveTab } from "./lib/session.js";
 import { tabCloseDecision } from "./lib/tabClose.js";
 import { restartWarning, updateSurface } from "./lib/update.js";
+import { friendlyGateError } from "./lib/gateError.js";
 import type {
   AppSettings,
   BoardMigrationReport,
@@ -1690,20 +1691,6 @@ export function App(): JSX.Element {
   );
 }
 
-/**
- * Rewrite a core document-gate rejection into copy for a human: the raw error
- * tells an agent to call set_ticket_doc (an MCP tool the human can't invoke),
- * so point them at the ticket instead. Non-gate errors pass through untouched.
- */
-function friendlyGateError(message: string): string {
-  if (!message.includes("document gate(s) unmet")) return message;
-  return message
-    .replace(
-      /Write the missing document\(s\)[\s\S]*$/,
-      "Open the ticket to add the missing document(s) (or link a governing doc), then move it.",
-    )
-    .replace(/\.md is missing/g, " is missing");
-}
 
 function applyFilters(list: Item[], search: string, filters: Filters): Item[] {
   const q = search.trim().toLowerCase();

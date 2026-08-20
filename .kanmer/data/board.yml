@@ -1,8 +1,4 @@
 areas:
-  - id: pr-review
-    name: PR Review
-    color: "#b48cff"
-    prefix: PR
   - id: core
     name: Core
     color: "#5b8cff"

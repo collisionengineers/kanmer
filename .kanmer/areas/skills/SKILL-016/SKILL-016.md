@@ -9,6 +9,7 @@ profile: feature
 labels:
   - auto
 groups:
+  - EPIC-009
   - HZN-004
 links: []
 blocks:
@@ -17,7 +18,7 @@ refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
 archived: false
 created: '2026-08-16T21:22:59.692Z'
-updated: '2026-08-16T21:23:09.058Z'
+updated: '2026-08-20T10:26:30.928Z'
 ---
 
 ## What

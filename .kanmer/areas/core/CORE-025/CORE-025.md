@@ -1,61 +1,41 @@
 ---
 id: CORE-025
 type: ticket
-title: Investigate what else CI should check about a Kanmer ticket
+title: >-
+  Expand kanmer/gate — stage, dependency, review-SHA and commit-reachability
+  checks (phase 2)
 status: backlog
 area: core
 assignee: ''
-profile: spike
+profile: fix
 labels: []
+groups:
+  - EPIC-009
+  - HZN-004
 links: []
+blocks:
+  - CORE-035
 docs_todo: true
 archived: false
 created: '2026-08-16T18:26:15.191Z'
-updated: '2026-08-16T18:26:15.191Z'
+updated: '2026-08-20T10:22:45.142Z'
 ---
 
 ## What
-
-With [[CORE-024]] establishing the mechanism, survey what **else** a CI check
-could usefully assert about the ticket behind a PR.
+Expand `kanmer/gate` to phase 2: `WRONG_STAGE` and `DEPENDENCY_BLOCKED` fail the PR; `STALE_REVIEW`, `NO_REVIEW_RECORD` and `COMMITS_UNREACHABLE` warn now and flip to fail once records are routine.
 
 ## Why
-
-The open-questions check is one instance of a general shape: *facts the board
-knows that the merge decision currently cannot see*. Gates guard stage moves;
-CI guards merges; nothing has ever connected them. Worth asking once what the
-full set is, rather than adding checks one at a time as each gap bites.
-
-Candidates, none yet reasoned through:
-
-- **The PR names a real ticket** — a missing or unknown `Kanmer:` footer is
-  untraceable work, and this is the cheapest possible check.
-- **The ticket is at a stage consistent with having an open PR** — a PR for a
-  ticket still in Backlog means the pipeline was skipped.
-- **The ticket is not `blocked`** by an unmerged `blocks` edge.
-- **The governing-doc ref resolves** — `refs` can point at a path that has since
-  moved or been deleted.
-- **The checklist is complete**, or its unticked boxes are surfaced. [[GUI-064]]
-  reached Done at 21/23 and nobody noticed.
-- **The post-implementation report exists and mentions every changed file** —
-  much weaker, and possibly the wrong kind of check.
+Phase 1 only proves linkage. Pegasus merged work whose ticket never reached review, whose dependencies were still open, and whose recorded commits were unreachable from any ref — seven tickets walked the full pipeline producing zero repository diff.
 
 ## Approach
-
-- Judge each against a single test: does it catch a failure that has **actually
-  happened** on a real board, or is it a rule invented for symmetry? Several
-  above have real precedents on this board; some do not.
-- Prefer few, loud, unambiguous checks. A wall of advisory warnings trains people
-  to ignore CI, which costs more than the checks buy.
-- Say explicitly which are advisory and which could ever be required.
-- Depends on [[CORE-024]] settling ticket resolution and board access from CI —
-  every check here inherits both.
+- `WRONG_STAGE`: fail unless the ticket is in `review`.
+- `DEPENDENCY_BLOCKED`: fail on live blockers via the link graph’s derived `blockedBy` filtered to non-done, non-archived — never `computeBlockedIds`, which returns blocked targets (the opposite direction).
+- `STALE_REVIEW`: warn when `scratch/review.md` frontmatter `head_sha` differs from the PR head (frontmatter via gray-matter, never a regex).
+- `NO_REVIEW_RECORD`: warn when no review attestation exists.
+- `COMMITS_UNREACHABLE`: warn when any SHA in the ticket’s `commits[]` is not reachable from the PR base — kills the zero-diff / unreachable-SHA class; warn now, fail later.
 
 ## Verification
-
-- [ ] Each candidate is kept or rejected with a stated reason, and each keeper
-      cites a failure that really occurred.
-- [ ] A recommended minimal set, ordered by value.
-- [ ] Anything worth building becomes its own ticket.
+- [ ] Each check fires in a fixture: wrong stage, open blocker, stale review SHA, absent review record, unreachable commit
+- [ ] Warnings are annotations; failures exit 1; the JSON verdict lists every check with its status
 
 ## Outcome

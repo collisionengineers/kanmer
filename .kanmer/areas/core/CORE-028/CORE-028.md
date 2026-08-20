@@ -8,12 +8,13 @@ assignee: ''
 profile: chore
 labels:
   - docs
+  - shipped-ownerless
 links:
   - SKILL-013
 docs_todo: true
-archived: false
+archived: true
 created: '2026-08-17T00:09:22.013Z'
-updated: '2026-08-17T00:09:22.013Z'
+updated: '2026-08-20T10:23:56.496Z'
 ---
 
 ## What
@@ -63,3 +64,6 @@ just-merged ADR — `refs` on closed tickets point at those paths.
 - [ ] Every reference to the renumbered ADR updated — including `refs` on closed
       tickets and the `AGENTS.md` §5 citation.
 - [ ] The rail check fails on a deliberately duplicated file and passes after.
+
+## Outcome
+Shipped ownerless via PRs #57/#59 while this ticket sat in backlog — the rail is scripts/check-doc-numbering.mjs, on main with tests. Archived 2026-08-20 as a board-vs-reality correction; the groom sweep that should have caught this is [[SKILL-027]].

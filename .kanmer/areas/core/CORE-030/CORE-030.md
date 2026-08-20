@@ -9,12 +9,14 @@ profile: fix
 labels:
   - install
   - false-positive
+groups:
+  - HZN-006
 links: []
 refs:
   - docs/functional/frd/FRD-013-setup-as-reconciliation.md
 archived: false
 created: '2026-08-17T02:05:05.887Z'
-updated: '2026-08-17T02:05:05.887Z'
+updated: '2026-08-20T10:26:53.394Z'
 ---
 
 ## What

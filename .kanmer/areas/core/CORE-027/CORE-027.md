@@ -9,12 +9,14 @@ profile: feature
 labels:
   - design-system
   - packaging
+groups:
+  - HZN-006
 links:
   - GUI-078
 docs_todo: true
 archived: false
 created: '2026-08-16T20:18:36.563Z'
-updated: '2026-08-16T20:18:36.563Z'
+updated: '2026-08-20T10:26:51.454Z'
 ---
 
 ## What

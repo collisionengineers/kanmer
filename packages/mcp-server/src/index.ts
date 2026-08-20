@@ -5,6 +5,7 @@ import {
   UnsubscribeRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { execFile as execFileCallback } from "node:child_process";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
@@ -88,6 +89,7 @@ let projectRoot!: string;
 let rootSource!: RootSource;
 let repoRootSource!: RepoRootSource;
 let store!: KanmerStore;
+let rootResolved = false;
 
 /**
  * How the *repo* root was arrived at — the sibling of `rootSource` for the
@@ -116,6 +118,7 @@ function resolveRoot(): void {
   const repoRootFlag = argv.some((a) => a === "--repo-root" || a.startsWith("--repo-root="));
   repoRootSource = repoRoot === undefined ? "derived" : repoRootFlag ? "flag" : "env";
   store = new KanmerStore(projectRoot, { repoRoot });
+  rootResolved = true;
 }
 
 /** JSON tool result. */
@@ -295,7 +298,39 @@ const createFields = {
 // The version is the build-time-injected release, not a hardcoded literal: the
 // old "0.1.0" here was two minor versions stale and never bumped by anything.
 // `get_status.server.version` reports the same value — one fact, one source.
-const server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
+export type ExposurePolicy = "local-stdio" | "remote-http-v1";
+
+/**
+ * Tool ids that are intentionally unavailable over remote HTTP. The set is
+ * empty until MCP-020 lands its background-dispatch tool; keeping the policy
+ * named and central now makes that future exclusion a one-place change.
+ */
+export const REMOTE_HTTP_EXCLUDED_TOOLS = new Set<string>();
+
+let server!: McpServer;
+
+/**
+ * Construct the one canonical Kanmer registry for a transport. The factory is
+ * deliberately transport-agnostic: stdio and HTTP attach their SDK transports
+ * after this function returns, while the store/root/tool definitions remain
+ * single-sourced here.
+ */
+export function createKanmerMcpServer(policy: ExposurePolicy = "local-stdio"): McpServer {
+  if (policy !== "local-stdio" && policy !== "remote-http-v1") {
+    throw new Error(`Unknown MCP exposure policy: ${policy}`);
+  }
+  if (!rootResolved) resolveRoot();
+  server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
+  if (policy === "remote-http-v1") {
+    const registerTool = server.registerTool.bind(server);
+    // Tool registrations below stay canonical. The remote policy filters once
+    // at registration/discovery time, so an excluded capability cannot reach a
+    // handler through a transport-specific branch.
+    server.registerTool = ((name: string, ...args: unknown[]) => {
+      if (REMOTE_HTTP_EXCLUDED_TOOLS.has(name)) return { remove: () => undefined } as never;
+      return Reflect.apply(registerTool, server, [name, ...args]) as never;
+    }) as typeof server.registerTool;
+  }
 
 // ---------------------------------------------------------------------------
 // Read tools
@@ -1261,6 +1296,15 @@ server.registerPrompt(
   }),
 );
 
+  return server;
+}
+
+/** A stable, non-secret identifier for status/readiness without exposing a path. */
+export function projectFingerprint(): string {
+  if (!rootResolved) resolveRoot();
+  return createHash("sha256").update(projectRoot).digest("hex").slice(0, 16);
+}
+
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
@@ -1269,7 +1313,7 @@ async function main() {
   // Resolve the board root first, and inside main(): not finding one throws,
   // and only a throw from here reaches the fatal handler below, which is the
   // only thing that prints the diagnostic to stderr. ADR-0012 §Decision 11.
-  resolveRoot();
+  const stdioServer = createKanmerMcpServer("local-stdio");
   // No store.init() here: a read-only session in a workspace that never
   // opted into Kanmer must not create .kanmer/ just by being opened.
   // Write handlers call ensureInit() lazily instead.
@@ -1280,7 +1324,7 @@ async function main() {
   // 2026-07-28 entry, so nothing in this repo can negotiate it. Adopt when
   // the SDK grows support; smoke-protocol.mjs covers what is reachable today.
   const transport = new StdioServerTransport();
-  await server.connect(transport);
+  await stdioServer.connect(transport);
   // Never write logs to stdout — that stream is the MCP transport.
   // The identity goes here too, not only in get_status: a host that never calls
   // the tool still leaves the answer in its own log, which is where anyone
@@ -1293,7 +1337,8 @@ async function main() {
   );
 }
 
-main().catch((err) => {
+const invokedName = path.basename(process.argv[1] ?? "");
+if (invokedName === "index.js" || invokedName === "kanmer-mcp.cjs") main().catch((err) => {
   // A resolution failure is a plain, already-worded diagnostic: print it as
   // written, without a stack, so the paths tried are the first thing read.
   const message = err instanceof Error ? err.message : String(err);

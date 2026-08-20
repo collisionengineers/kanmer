@@ -2,7 +2,7 @@ import { defineConfig } from "tsup";
 import { versionDefine } from "./version-define.mjs";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: ["src/index.ts", "src/http.ts", "src/http-cli.ts"],
   format: ["esm"],
   clean: true,
   sourcemap: true,

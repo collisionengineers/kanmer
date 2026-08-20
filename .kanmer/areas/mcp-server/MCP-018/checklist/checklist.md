@@ -81,4 +81,4 @@
 - [x] cd out of worktree; `git worktree remove .worktrees/mcp-018`
 - [x] `git branch -d mcp-018-isolated-plugin-check` (`-D` if squash/rebase-merged)
 - [x] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] `take_ticket action: "release"`

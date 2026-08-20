@@ -103,3 +103,14 @@
 - `link_doc` cannot resolve this branch's new docs from the MCP server's main-checkout repo root before merge. Per DOC-012-only scope, dependent tickets are not mutated; their owners must link the merged paths when they begin implementation.
 
 - 2026-08-20: Opened PR #84 (https://github.com/collisionengineers/kanmer/pull/84), recorded commit `43160fc4dbbcd85554ee7c2bc877c66f40af9333` and PR traceability, and stopped before merge. The one remaining checkbox is intentionally post-merge: the MCP board validates `refs` against its main checkout and cannot link branch-only files; dependent ticket owners will link the merged docs.
+
+## Closeout — 2026-08-20
+
+- [x] Confirmed PR #84 merged at `e2bef96dd4422e37988e0297273eda422c5ec990`.
+- [x] Confirmed final `proof/proof.md` on merged main.
+- [x] Recorded commit and PR traceability.
+- [ ] Remove recorded ticket worktree and local branch.
+- [ ] Prune remote/worktree metadata and release the ticket.
+
+- [x] Removed `.worktrees/doc-012` after confirming it was clean.
+- [x] Deleted local and remote `doc-012-remote-access-governance`, fetched/pruned, and confirmed the board worktree remains intact.

@@ -271,20 +271,19 @@ idPrefixes: { ticket: TICK, plan: PLAN, research: RES }  # _none fallback + lega
 
 Area `prefix` is 2–6 uppercase alphanumerics, derived from the id when unset
 (`areaPrefix()` in board.ts), and uniqueness — including *among* the
-`idPrefixes` values and against them — is enforced on every board write. The
-final stage's configured document-gate boundary is re-checked whenever a board
-write changes which stage is last (`assertFinalStageGates`, store.ts). Creation,
-by contrast, is **deliberately ungated** — a ticket may be created directly in
-any stage, including the last, which is what makes historical backfill possible
-(store.ts `createItem`; asserted in store.test.ts). `status` is the only workflow
-axis, with seven default stages:
+`idPrefixes` values and against them — is enforced on every board write. Creation
+is **deliberately ungated** — a ticket may be created directly in any fixed
+stage, including Done, which is what makes historical backfill possible
+(`store.ts` `createItem`; asserted in `store.test.ts`). `status` is the only
+workflow axis, with six fixed stages (ADR-0002):
 
 ```
-backlog → researching → planning → implementing → review → verifying → done
+backlog → preparing → implementing → review → verifying → done
 ```
 
-The FIRST stage is where new items land; the LAST stage is governed by the
-resolved configured document gates. A
+Backlog is where new items land. Document requirements are resolved from the
+ticket's profile and gates constrain moves across their declared boundaries; they
+do not configure the stages themselves. A
 `phases:` array in a pre-consolidation `board.yml` is stripped by zod on read;
 unknown status values on items still render via the Board's `mergeColumns`
 fallback (read-side only — writes reject unknown ids).

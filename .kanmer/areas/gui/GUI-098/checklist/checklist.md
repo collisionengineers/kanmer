@@ -40,4 +40,4 @@
 - [x] cd out of worktree; `git worktree remove .worktrees/gui-098`
 - [x] `git branch -d gui-098-board-worktree-banner` (`-D` if squash/rebase-merged)
 - [x] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] `take_ticket action: "release"`

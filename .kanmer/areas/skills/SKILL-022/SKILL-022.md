@@ -4,13 +4,16 @@ type: ticket
 title: >-
   Templates: approval contract, execution brief with stop condition, group
   context
-status: preparing
+status: implementing
 area: skills
 order: 180
-assignee: ''
+assignee: codex-mcp-client
 profile: chore
 stageEntered:
   preparing: '2026-08-20T12:49:11.464Z'
+taken_at: '2026-08-20T22:50:37.086Z'
+branch: skill-022-template-contracts
+worktree: .worktrees/skill-022
 labels: []
 groups:
   - EPIC-009
@@ -18,7 +21,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-20T10:14:57.026Z'
-updated: '2026-08-20T13:46:18.989Z'
+updated: '2026-08-20T22:50:37.086Z'
 ---
 
 ## What

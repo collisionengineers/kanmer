@@ -35,6 +35,7 @@ import {
 import { resolveProjectRoot, resolveRepoRoot } from "./root.js";
 import { SERVER_VERSION, serverIdentity } from "./identity.js";
 import { bundledSkillsDir } from "./bundled.js";
+import { readTicketDocuments } from "./ticket-docs.js";
 
 const execFile = promisify(execFileCallback);
 
@@ -508,16 +509,21 @@ server.registerTool(
   {
     title: "Read a ticket document",
     description:
-      "Read one of a ticket's pipeline documents from its folder. `doc` is a document id from the ticket area's configured doc types (see get_doc_gates / list_board → docModel), or a scratch file as `scratch-<slug>`. Returns content: null when the document hasn't been written yet. `version` is a token for the document's current bytes — pass it back as `expected_version` on set_ticket_doc to be rejected instead of overwriting a concurrent edit.",
+      "Read one ticket document (`doc`) or 1–25 selected documents (`docs`). Supply exactly one form. The legacy single response is unchanged; batch returns ordered per-document content/version records. Missing known documents are normal entries; versions bind to returned bytes and are not an atomic snapshot.",
     inputSchema: {
       id: z.string().describe("Ticket id"),
-      doc: ticketDocEnum.describe("Which document"),
+      doc: ticketDocEnum.optional().describe("One document (legacy form)"),
+      docs: z.array(ticketDocEnum).min(1).max(25).optional().describe("1–25 documents (batch form; mutually exclusive with doc)"),
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  guard(async ({ id, doc }) => {
-    const { content, version } = await store.getDocWithVersion(id, doc);
-    return ok({ id, doc, exists: content !== null, content, version });
+  guard(async ({ id, doc, docs }) => {
+    if ((doc === undefined) === (docs === undefined)) throw new Error("Supply exactly one of doc or docs.");
+    if (doc !== undefined) {
+      const [result] = await readTicketDocuments(store, id, [doc]);
+      return ok({ id, ...result });
+    }
+    return ok({ id, documents: await readTicketDocuments(store, id, docs!) });
   }),
 );
 

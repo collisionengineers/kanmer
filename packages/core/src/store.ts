@@ -98,6 +98,7 @@ import {
   type SetDocOptions,
   type TakeTicketInput,
   type TicketDoc,
+  type TicketDocumentWithVersion,
   type TicketDocsInfo,
   type UpdateItemPatch,
 } from "./types.js";
@@ -925,6 +926,32 @@ export class KanmerStore {
     if (!(await pathExists(file))) return { content: null, version: null };
     const content = await readText(file);
     return { content, version: contentVersion(content) };
+  }
+
+  /**
+   * Read several ticket documents after resolving the ticket and validating
+   * every requested path once. Request order is retained; callers that want
+   * deduplication can do that at their own protocol boundary.
+   */
+  async getDocsWithVersions(id: string, docs: TicketDoc[]): Promise<TicketDocumentWithVersion[]> {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    if (loc.kind !== "v2") {
+      return docs.map((doc) => ({ doc, exists: false, content: null, version: null }));
+    }
+
+    // Calculate every path before probing any file. A malformed later entry
+    // therefore cannot yield a partial batch result.
+    const files = docs.map((doc) => ({ doc, file: docPathIn(loc.dir, doc) }));
+    return Promise.all(
+      files.map(async ({ doc, file }) => {
+        if (!(await pathExists(file))) {
+          return { doc, exists: false, content: null, version: null };
+        }
+        const content = await readText(file);
+        return { doc, exists: true, content, version: contentVersion(content) };
+      }),
+    );
   }
 
   /**

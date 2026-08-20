@@ -169,6 +169,25 @@ for (const proto of PROTOCOLS) {
     const createdOk = created.error === undefined && created.result?.isError !== true;
     check(`create_item works on ${proto}`, createdOk, createdOk ? "" : textOf(created.result));
 
+    const createdItem = createdOk ? JSON.parse(textOf(created.result)) : null;
+    const batch = await server.send("tools/call", {
+      name: "get_ticket_doc",
+      arguments: { id: createdItem?.id, docs: ["research", "files", "research"] },
+    });
+    const batchPayload = batch.error === undefined && batch.result?.isError !== true
+      ? JSON.parse(textOf(batch.result))
+      : null;
+    check(
+      `get_ticket_doc batch form works on ${proto}`,
+      batchPayload?.id === createdItem?.id &&
+        batchPayload.documents?.length === 2 &&
+        batchPayload.documents[0]?.doc === "research" &&
+        batchPayload.documents[0]?.exists === false &&
+        batchPayload.documents[1]?.doc === "files" &&
+        batchPayload.documents[1]?.version === null,
+      batchPayload ? "" : textOf(batch.result),
+    );
+
     const activity = await server.send("tools/call", {
       name: "get_activity",
       arguments: {},

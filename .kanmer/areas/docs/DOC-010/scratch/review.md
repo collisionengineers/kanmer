@@ -22,3 +22,40 @@ Return to the stated documentation-only scope: remove .infisical.json, the launc
 - git diff --check main...doc-010-secure-mcp-tunnel passed, but formatting does not address the above scope/security issues.
 
 **Verdict: needs changes.** Do not merge.
+
+# Re-review — PR #64 (revised) — PASS
+
+## Verdict
+
+**PASS — no blocking findings.** The revised PR returns to the approved documentation-only scope and is safe to merge from an independent review perspective. I did not merge or move the ticket.
+
+## Scope and safety
+
+- main...767394e29d438371b64c3191bf936a4ab5792ecd changes exactly the planned files: README.md, docs/manual/connect.md, and regenerated apps/gui/src/renderer/src/manual/chapters.generated.ts.
+- The earlier private launcher, Infisical/workspace configuration, tunnel identifier, personal absolute paths, and secret-management files are absent from the final PR diff.
+- The manual uses only generic placeholders (<you>, <tunnel-id>, C:/path/to/project) and explicitly keeps the runtime key in the process environment, out of the profile and source control.
+- It retains the intended boundary: Kanmer neither stores credentials nor supervises the tunnel; it does not create a public endpoint; Cloudflare is not represented as a provider-neutral MCP endpoint.
+
+## Plan, report, and governing-doc alignment
+
+- The plan calls for one focused Connect-manual section, a README pointer, static validation, a direct-Markdown explanation, and clear portability/security limits. The final diff implements those items only.
+- FRD-022 remains unchanged: the text documents the existing stdio surface rather than changing tool/server behavior. FRD-024 is met by updating the authored Connect chapter and regenerating the in-app chapter.
+- The report's limitations are accurately preserved: live validation was conditional on the operator runtime key, while the revised docs record the subsequently confirmed connection without claiming a checked-in credential or new product integration.
+- Ticket open questions are explicitly parked; the EPIC-010 context's no-plaintext-secret, localhost/default isolation, and no-new-transport constraints are respected.
+
+## Official OpenAI guidance check — 2026-08-20
+
+Current official Secure MCP Tunnel guidance at https://developers.openai.com/api/docs/guides/secure-mcp-tunnels confirms the document's material claims: outbound HTTPS only; no public listener; a runtime API key and a reachable stdio/HTTP MCP target; Tunnels Read + Use to run/select a tunnel; separate ChatGPT developer-mode access; platform/workspace association; init → doctor → run; and selecting Tunnel when creating the ChatGPT developer-mode app. The documented private-boundary and provider-portability conclusions agree with that guidance.
+
+## Independent checks
+
+- git diff --check main...767394e29d438371b64c3191bf936a4ab5792ecd — pass.
+- Exact final changed-file inventory — only the three planned documentation/generated-manual paths above.
+- npm run check:manual — pass, manual current (19 chapters).
+- npm test -w @kanmer/gui -- manual.test.ts — pass, 11/11.
+- npm run typecheck -w @kanmer/gui — pass.
+- DOC-010 worktree clean after checks.
+
+## Non-blocking note
+
+For a time-sensitive external workflow, a direct link to the official Secure MCP Tunnel guide would improve future maintainability; the current generic wording is accurate and the absence of that link is not a merge blocker.

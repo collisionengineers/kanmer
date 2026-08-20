@@ -1,3 +1,5 @@
+import logo from "../assets/logo.png";
+
 interface WelcomeProps {
   recentProjects: string[];
   onPick: () => void;
@@ -15,6 +17,7 @@ export function Welcome({
 }: WelcomeProps): JSX.Element {
   return (
     <div className="welcome">
+      <img className="welcome-logo" src={logo} alt="Kanmer logo" />
       <h1>Kanmer</h1>
       <p>
         Open a project folder to load (or create) its <code>.kanmer</code> board.

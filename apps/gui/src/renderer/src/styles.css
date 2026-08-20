@@ -133,6 +133,11 @@ textarea:focus {
   margin: 0;
   letter-spacing: -1px;
 }
+.welcome-logo {
+  width: min(420px, calc(100% - 48px));
+  max-height: 236px;
+  object-fit: contain;
+}
 .welcome p {
   color: var(--muted);
   max-width: 420px;

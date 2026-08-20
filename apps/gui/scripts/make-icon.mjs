@@ -1,128 +1,156 @@
-// Generate build/icon.ico — the multi-size Windows app icon — with no
-// dependencies: raw RGBA pixels → minimal PNG encoder → ICO container
-// (Vista+ ICO entries can hold PNG data directly). Re-run after changing
-// the mark: node scripts/make-icon.mjs
-import { deflateSync } from "node:zlib";
-import { mkdirSync, writeFileSync } from "node:fs";
+// Generate build/icon.ico from the committed square source artwork. The ICO
+// contains the sizes Windows uses for taskbar, shortcuts, and Explorer.
+import { deflateSync, inflateSync } from "node:zlib";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const SIZES = [16, 24, 32, 48, 64, 128, 256];
+const here = dirname(fileURLToPath(import.meta.url));
+const source = join(here, "..", "build", "icon.png");
+const out = join(here, "..", "build", "icon.ico");
 
-// The mark: rounded blue square, three white kanban columns of falling fill.
-const BG = [0x5b, 0x8c, 0xff, 0xff];
-const BAR = [0xff, 0xff, 0xff, 0xee];
-
-function drawIcon(size) {
-  const px = Buffer.alloc(size * size * 4);
-  const radius = size * 0.2;
-  const bars = [
-    { x0: 0.2, x1: 0.32, y0: 0.22, y1: 0.78 },
-    { x0: 0.44, x1: 0.56, y0: 0.22, y1: 0.62 },
-    { x0: 0.68, x1: 0.8, y0: 0.22, y1: 0.46 },
-  ];
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const i = (y * size + x) * 4;
-      if (!insideRoundedRect(x + 0.5, y + 0.5, size, radius)) continue; // transparent
-      let color = BG;
-      for (const b of bars) {
-        if (
-          x + 0.5 >= b.x0 * size &&
-          x + 0.5 <= b.x1 * size &&
-          y + 0.5 >= b.y0 * size &&
-          y + 0.5 <= b.y1 * size
-        ) {
-          color = BAR;
-          break;
-        }
-      }
-      px[i] = color[0];
-      px[i + 1] = color[1];
-      px[i + 2] = color[2];
-      px[i + 3] = color[3];
+/** Decode the checked-in non-interlaced, 8-bit RGBA PNG without a build dependency. */
+function decodePng(file) {
+  const png = readFileSync(file);
+  if (png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") throw new Error(`${file} is not a PNG`);
+  let offset = 8;
+  let width = 0;
+  let height = 0;
+  const idat = [];
+  while (offset < png.length) {
+    const length = png.readUInt32BE(offset);
+    const type = png.subarray(offset + 4, offset + 8).toString("ascii");
+    const data = png.subarray(offset + 8, offset + 8 + length);
+    offset += length + 12;
+    if (type === "IHDR") {
+      width = data.readUInt32BE(0);
+      height = data.readUInt32BE(4);
+      if (data[8] !== 8 || data[9] !== 6 || data[12] !== 0) throw new Error("icon.png must be an 8-bit, RGBA, non-interlaced PNG");
+    } else if (type === "IDAT") idat.push(data);
+    else if (type === "IEND") break;
+  }
+  if (!width || !height || idat.length === 0) throw new Error("icon.png is missing image data");
+  const stride = width * 4;
+  const raw = inflateSync(Buffer.concat(idat));
+  if (raw.length !== height * (stride + 1)) throw new Error("icon.png has unexpected scanline data");
+  const pixels = Buffer.alloc(width * height * 4);
+  let read = 0;
+  for (let y = 0; y < height; y++) {
+    const filter = raw[read++];
+    const row = pixels.subarray(y * stride, (y + 1) * stride);
+    const prev = y === 0 ? null : pixels.subarray((y - 1) * stride, y * stride);
+    for (let x = 0; x < stride; x++) {
+      const value = raw[read++];
+      const left = x >= 4 ? row[x - 4] : 0;
+      const up = prev ? prev[x] : 0;
+      const upLeft = prev && x >= 4 ? prev[x - 4] : 0;
+      if (filter === 0) row[x] = value;
+      else if (filter === 1) row[x] = (value + left) & 0xff;
+      else if (filter === 2) row[x] = (value + up) & 0xff;
+      else if (filter === 3) row[x] = (value + Math.floor((left + up) / 2)) & 0xff;
+      else if (filter === 4) row[x] = (value + paeth(left, up, upLeft)) & 0xff;
+      else throw new Error(`icon.png uses unsupported PNG filter ${filter}`);
     }
   }
-  return px;
+  return { width, height, pixels };
 }
 
-function insideRoundedRect(x, y, size, r) {
-  if (x < 0 || y < 0 || x > size || y > size) return false;
-  const cx = x < r ? r : x > size - r ? size - r : x;
-  const cy = y < r ? r : y > size - r ? size - r : y;
-  const dx = x - cx;
-  const dy = y - cy;
-  return dx * dx + dy * dy <= r * r;
+function paeth(left, up, upLeft) {
+  const p = left + up - upLeft;
+  const dl = Math.abs(p - left);
+  const du = Math.abs(p - up);
+  const dul = Math.abs(p - upLeft);
+  return dl <= du && dl <= dul ? left : du <= dul ? up : upLeft;
 }
 
-// --- minimal PNG encoder ----------------------------------------------------
+/** Bilinear resize in premultiplied alpha, so transparent icon edges stay clean. */
+function resize({ width, height, pixels }, size) {
+  const output = Buffer.alloc(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    const sy = Math.min(height - 1, Math.max(0, (y + 0.5) * height / size - 0.5));
+    const y0 = Math.floor(sy);
+    const y1 = Math.min(height - 1, y0 + 1);
+    const fy = sy - y0;
+    for (let x = 0; x < size; x++) {
+      const sx = Math.min(width - 1, Math.max(0, (x + 0.5) * width / size - 0.5));
+      const x0 = Math.floor(sx);
+      const x1 = Math.min(width - 1, x0 + 1);
+      const fx = sx - x0;
+      const samples = [[x0, y0, (1 - fx) * (1 - fy)], [x1, y0, fx * (1 - fy)], [x0, y1, (1 - fx) * fy], [x1, y1, fx * fy]];
+      let alpha = 0, red = 0, green = 0, blue = 0;
+      for (const [px, py, weight] of samples) {
+        const at = (py * width + px) * 4;
+        const a = pixels[at + 3] / 255 * weight;
+        alpha += a;
+        red += pixels[at] * a;
+        green += pixels[at + 1] * a;
+        blue += pixels[at + 2] * a;
+      }
+      const at = (y * size + x) * 4;
+      output[at + 3] = Math.round(alpha * 255);
+      output[at] = alpha === 0 ? 0 : Math.round(red / alpha);
+      output[at + 1] = alpha === 0 ? 0 : Math.round(green / alpha);
+      output[at + 2] = alpha === 0 ? 0 : Math.round(blue / alpha);
+    }
+  }
+  return output;
+}
+
 const CRC_TABLE = (() => {
-  const t = new Uint32Array(256);
+  const table = new Uint32Array(256);
   for (let n = 0; n < 256; n++) {
     let c = n;
     for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    t[n] = c >>> 0;
+    table[n] = c >>> 0;
   }
-  return t;
+  return table;
 })();
 
 function crc32(buf) {
   let c = 0xffffffff;
-  for (const b of buf) c = CRC_TABLE[(c ^ b) & 0xff] ^ (c >>> 8);
+  for (const value of buf) c = CRC_TABLE[(c ^ value) & 0xff] ^ (c >>> 8);
   return (c ^ 0xffffffff) >>> 0;
 }
 
 function chunk(type, data) {
-  const len = Buffer.alloc(4);
-  len.writeUInt32BE(data.length);
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length);
   const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
-  const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(body));
-  return Buffer.concat([len, body, crc]);
+  const checksum = Buffer.alloc(4);
+  checksum.writeUInt32BE(crc32(body));
+  return Buffer.concat([length, body, checksum]);
 }
 
 function encodePng(pixels, size) {
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0);
-  ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8; // bit depth
-  ihdr[9] = 6; // RGBA
-  // filter type 0 prefixes every scanline
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(size, 0);
+  header.writeUInt32BE(size, 4);
+  header[8] = 8;
+  header[9] = 6;
   const raw = Buffer.alloc(size * (size * 4 + 1));
-  for (let y = 0; y < size; y++) {
-    raw[y * (size * 4 + 1)] = 0;
-    pixels.copy(raw, y * (size * 4 + 1) + 1, y * size * 4, (y + 1) * size * 4);
-  }
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk("IHDR", ihdr),
-    chunk("IDAT", deflateSync(raw, { level: 9 })),
-    chunk("IEND", Buffer.alloc(0)),
-  ]);
+  for (let y = 0; y < size; y++) pixels.copy(raw, y * (size * 4 + 1) + 1, y * size * 4, (y + 1) * size * 4);
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", header), chunk("IDAT", deflateSync(raw, { level: 9 })), chunk("IEND", Buffer.alloc(0))]);
 }
 
-// --- ICO container ----------------------------------------------------------
-const pngs = SIZES.map((s) => ({ size: s, data: encodePng(drawIcon(s), s) }));
+const image = decodePng(source);
+const pngs = SIZES.map((size) => ({ size, data: encodePng(resize(image, size), size) }));
 const header = Buffer.alloc(6);
-header.writeUInt16LE(0, 0); // reserved
-header.writeUInt16LE(1, 2); // type: icon
+header.writeUInt16LE(0, 0);
+header.writeUInt16LE(1, 2);
 header.writeUInt16LE(pngs.length, 4);
-
 let offset = 6 + pngs.length * 16;
-const entries = [];
-for (const { size, data } of pngs) {
-  const e = Buffer.alloc(16);
-  e[0] = size >= 256 ? 0 : size;
-  e[1] = size >= 256 ? 0 : size;
-  e.writeUInt16LE(1, 4); // planes
-  e.writeUInt16LE(32, 6); // bpp
-  e.writeUInt32LE(data.length, 8);
-  e.writeUInt32LE(offset, 12);
-  entries.push(e);
+const entries = pngs.map(({ size, data }) => {
+  const entry = Buffer.alloc(16);
+  entry[0] = size === 256 ? 0 : size;
+  entry[1] = size === 256 ? 0 : size;
+  entry.writeUInt16LE(1, 4);
+  entry.writeUInt16LE(32, 6);
+  entry.writeUInt32LE(data.length, 8);
+  entry.writeUInt32LE(offset, 12);
   offset += data.length;
-}
-
-const out = join(dirname(fileURLToPath(import.meta.url)), "..", "build", "icon.ico");
+  return entry;
+});
 mkdirSync(dirname(out), { recursive: true });
-writeFileSync(out, Buffer.concat([header, ...entries, ...pngs.map((p) => p.data)]));
-console.log(`icon: wrote ${out} (${SIZES.join(", ")} px)`);
+writeFileSync(out, Buffer.concat([header, ...entries, ...pngs.map(({ data }) => data)]));
+console.log(`icon: wrote ${out} from ${source} (${SIZES.join(", ")} px)`);

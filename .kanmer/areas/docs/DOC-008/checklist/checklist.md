@@ -23,4 +23,4 @@
 - [x] cd out of worktree; `git worktree remove .worktrees/doc-008`
 - [x] `git branch -d doc-008-readme-format3` (`-D` if squash/rebase-merged)
 - [x] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] `take_ticket action: "release"`

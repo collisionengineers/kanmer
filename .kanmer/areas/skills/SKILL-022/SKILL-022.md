@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Templates: approval contract, execution brief with stop condition, group
   context
-status: review
+status: verifying
 area: skills
 order: 180
 assignee: codex-mcp-client
@@ -12,6 +12,7 @@ profile: chore
 stageEntered:
   preparing: '2026-08-20T12:49:11.464Z'
   review: '2026-08-20T22:55:04.804Z'
+  verifying: '2026-08-20T22:56:03.612Z'
 taken_at: '2026-08-20T22:50:37.086Z'
 branch: skill-022-template-contracts
 worktree: .worktrees/skill-022
@@ -26,7 +27,7 @@ prs:
   - '86'
 archived: false
 created: '2026-08-20T10:14:57.026Z'
-updated: '2026-08-20T22:55:13.756Z'
+updated: '2026-08-20T22:56:03.612Z'
 ---
 
 ## What

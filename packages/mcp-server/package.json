@@ -4,7 +4,8 @@
   "description": "Local stdio MCP server exposing the .kanmer store to AI agents (codex, Claude, any MCP client).",
   "type": "module",
   "bin": {
-    "kanmer-mcp": "./dist/index.js"
+    "kanmer-mcp": "./dist/index.js",
+    "kanmer-mcp-http": "./dist/http-cli.js"
   },
   "main": "./dist/index.js",
   "files": ["dist"],

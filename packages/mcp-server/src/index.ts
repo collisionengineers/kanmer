@@ -5,6 +5,7 @@ import {
   UnsubscribeRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { execFile as execFileCallback } from "node:child_process";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
@@ -88,6 +89,7 @@ let projectRoot!: string;
 let rootSource!: RootSource;
 let repoRootSource!: RepoRootSource;
 let store!: KanmerStore;
+let rootResolved = false;
 
 /**
  * How the *repo* root was arrived at — the sibling of `rootSource` for the
@@ -116,6 +118,7 @@ function resolveRoot(): void {
   const repoRootFlag = argv.some((a) => a === "--repo-root" || a.startsWith("--repo-root="));
   repoRootSource = repoRoot === undefined ? "derived" : repoRootFlag ? "flag" : "env";
   store = new KanmerStore(projectRoot, { repoRoot });
+  rootResolved = true;
 }
 
 /** JSON tool result. */
@@ -147,16 +150,6 @@ async function ensureInit() {
   initialised = true;
 }
 
-/** Wrap a write handler: lazily create the .kanmer skeleton, then run it under guard(). */
-function write<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeof ok>>) {
-  return guard(async (...args: A) => {
-    // Attribute this mutation in the activity log to the calling client.
-    store.setActor(actorName(args[1]));
-    await ensureInit();
-    return fn(...args);
-  });
-}
-
 /**
  * Who is calling: the per-request `_meta` client identity, else the
  * clientInfo negotiated at initialize, else "agent". Used to default
@@ -169,14 +162,14 @@ function write<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeo
  * path, and the SDK does deliver params._meta to handlers on every protocol
  * — and it is exercised for real by smoke-protocol.mjs.
  */
-function actorName(extra?: unknown): string {
+function actorName(requestServer: McpServer, extra?: unknown): string {
   const meta = (extra as { _meta?: Record<string, unknown> } | undefined)?._meta;
   const candidates = [
     (meta?.["io.modelcontextprotocol/client"] as { name?: string } | undefined)?.name,
     (meta?.["clientInfo"] as { name?: string } | undefined)?.name,
   ];
   for (const c of candidates) if (typeof c === "string" && c) return c;
-  return server.server.getClientVersion()?.name ?? "agent";
+  return requestServer.server.getClientVersion()?.name ?? "agent";
 }
 
 /**
@@ -185,10 +178,10 @@ function actorName(extra?: unknown): string {
  * approval flow is the gate there). Returns false only on an explicit
  * decline/cancel.
  */
-async function confirmDestructive(message: string): Promise<boolean> {
-  if (!server.server.getClientCapabilities()?.elicitation) return true;
+async function confirmDestructive(requestServer: McpServer, message: string): Promise<boolean> {
+  if (!requestServer.server.getClientCapabilities()?.elicitation) return true;
   try {
-    const res = await server.server.elicitInput({
+    const res = await requestServer.server.elicitInput({
       message,
       requestedSchema: {
         type: "object",
@@ -295,7 +288,49 @@ const createFields = {
 // The version is the build-time-injected release, not a hardcoded literal: the
 // old "0.1.0" here was two minor versions stale and never bumped by anything.
 // `get_status.server.version` reports the same value — one fact, one source.
-const server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
+export type ExposurePolicy = "local-stdio" | "remote-http-v1";
+
+/**
+ * Tool ids that are intentionally unavailable over remote HTTP. The set is
+ * empty until MCP-020 lands its background-dispatch tool; keeping the policy
+ * named and central now makes that future exclusion a one-place change.
+ */
+export const REMOTE_HTTP_EXCLUDED_TOOLS = new Set<string>();
+
+/**
+ * Construct the one canonical Kanmer registry for a transport. The factory is
+ * deliberately transport-agnostic: stdio and HTTP attach their SDK transports
+ * after this function returns, while the store/root/tool definitions remain
+ * single-sourced here.
+ */
+export function createKanmerMcpServer(policy: ExposurePolicy = "local-stdio"): McpServer {
+  if (policy !== "local-stdio" && policy !== "remote-http-v1") {
+    throw new Error(`Unknown MCP exposure policy: ${policy}`);
+  }
+  if (!rootResolved) resolveRoot();
+  // Each factory result owns its negotiated client identity and capabilities.
+  // HTTP creates one result per session, so this must never be module-global.
+  const server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
+  if (policy === "remote-http-v1") {
+    const registerTool = server.registerTool.bind(server);
+    // Tool registrations below stay canonical. The remote policy filters once
+    // at registration/discovery time, so an excluded capability cannot reach a
+    // handler through a transport-specific branch.
+    server.registerTool = ((name: string, ...args: unknown[]) => {
+      if (REMOTE_HTTP_EXCLUDED_TOOLS.has(name)) return { remove: () => undefined } as never;
+      return Reflect.apply(registerTool, server, [name, ...args]) as never;
+    }) as typeof server.registerTool;
+  }
+
+  /** Wrap a write handler using this server's calling-client context. */
+  function write<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeof ok>>) {
+    return guard(async (...args: A) => {
+      // Attribute this mutation in the activity log to the calling client.
+      store.setActor(actorName(server, args[1]));
+      await ensureInit();
+      return fn(...args);
+    });
+  }
 
 // ---------------------------------------------------------------------------
 // Read tools
@@ -903,7 +938,7 @@ server.registerTool(
         branch,
         worktree,
         stage,
-        assignee: assignee ?? actorName(extra),
+        assignee: assignee ?? actorName(server, extra),
         force,
       }),
     );
@@ -1071,6 +1106,7 @@ server.registerTool(
   write(async ({ kind, id, migrate_to }) => {
     if (migrate_to !== undefined) {
       const proceed = await confirmDestructive(
+        server,
         `Remove ${kind} "${id}" and move every item using it to "${migrate_to}"?`,
       );
       if (!proceed) return fail("cancelled by user");
@@ -1119,6 +1155,7 @@ server.registerTool(
   },
   write(async ({ id }) => {
     const proceed = await confirmDestructive(
+      server,
       `Permanently delete "${id}" (its whole folder, documents and attachments included)?`,
     );
     if (!proceed) return fail("cancelled by user");
@@ -1261,6 +1298,15 @@ server.registerPrompt(
   }),
 );
 
+  return server;
+}
+
+/** A stable, non-secret identifier for status/readiness without exposing a path. */
+export function projectFingerprint(): string {
+  if (!rootResolved) resolveRoot();
+  return createHash("sha256").update(projectRoot).digest("hex").slice(0, 16);
+}
+
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
@@ -1269,7 +1315,7 @@ async function main() {
   // Resolve the board root first, and inside main(): not finding one throws,
   // and only a throw from here reaches the fatal handler below, which is the
   // only thing that prints the diagnostic to stderr. ADR-0012 §Decision 11.
-  resolveRoot();
+  const stdioServer = createKanmerMcpServer("local-stdio");
   // No store.init() here: a read-only session in a workspace that never
   // opted into Kanmer must not create .kanmer/ just by being opened.
   // Write handlers call ensureInit() lazily instead.
@@ -1280,7 +1326,7 @@ async function main() {
   // 2026-07-28 entry, so nothing in this repo can negotiate it. Adopt when
   // the SDK grows support; smoke-protocol.mjs covers what is reachable today.
   const transport = new StdioServerTransport();
-  await server.connect(transport);
+  await stdioServer.connect(transport);
   // Never write logs to stdout — that stream is the MCP transport.
   // The identity goes here too, not only in get_status: a host that never calls
   // the tool still leaves the answer in its own log, which is where anyone
@@ -1293,7 +1339,8 @@ async function main() {
   );
 }
 
-main().catch((err) => {
+const invokedName = path.basename(process.argv[1] ?? "");
+if (invokedName === "index.js" || invokedName === "kanmer-mcp.cjs") main().catch((err) => {
   // A resolution failure is a plain, already-worded diagnostic: print it as
   // written, without a stack, so the paths tried are the first thing read.
   const message = err instanceof Error ? err.message : String(err);

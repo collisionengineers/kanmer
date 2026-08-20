@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 
 const root = process.argv[2] ?? join(dirname(fileURLToPath(import.meta.url)), "..");
 const skillsDir = join(root, "plugins/kanmer/skills");
+const agentsPath = join(root, "AGENTS.md");
 
 const files = [];
 (function walk(d) {
@@ -36,8 +37,8 @@ const check = (n, ok, detail) => {
   if (!ok) failures++;
 };
 /** Every line in the skills tree matching `re`, with its file and line number. */
-const hits = (re) =>
-  files.flatMap((p) =>
+const hits = (re, searched = files) =>
+  searched.flatMap((p) =>
     read(p)
       .split("\n")
       .map((l, i) => ({ file: rel(p), line: i + 1, text: l }))
@@ -55,7 +56,7 @@ console.log("\n=== 2. `researching` / `planning` never name a stage ===");
 // "research and planning share that stage" is correct English about the
 // Preparing stage and must not be flagged — an over-broad check that fails on
 // correct text teaches you to ignore it.
-const stageish = hits(/\b(researching|planning)\b/i).filter(
+const stageish = hits(/\b(researching|planning)\b/i, [...files, agentsPath]).filter(
   (h) =>
     /(→|->)\s*(researching|planning)|(researching|planning)\s*(→|->)/i.test(h.text) ||
     /["'`](researching|planning)["'`]/i.test(h.text),

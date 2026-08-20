@@ -6,3 +6,10 @@
 - [x] Run skills/plugin verification and whitespace checks.
 - [x] Commit and open a reviewable PR.
 - [x] Record the post-implementation report.
+
+## Closeout
+
+- [x] Confirm PR #70 merged to `main` and proof captures merged-main verification.
+- [x] Confirm the ticket worktree is clean before cleanup.
+- [x] Remove the ticket worktree and delete the merged branch.
+- [x] Release the ticket assignment and record closeout.

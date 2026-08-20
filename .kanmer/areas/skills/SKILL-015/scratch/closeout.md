@@ -1,0 +1,1 @@
+Closed out 2026-08-20: PR #70 is merged at `8a8acae15c3930497a32d265a811162876bbce1f`; proof is final, the clean ticket worktree was removed, local branch `skill-015-remove-review-assets` deleted, and worktree metadata pruned.

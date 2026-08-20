@@ -93,3 +93,14 @@
 - [ ] `git branch -d mcp-019-batch-ticket-doc-reads` (`-D` if squash/rebase-merged)
 - [ ] `git fetch --prune` + `git worktree prune`
 - [ ] `take_ticket action: "release"`
+
+## Closeout result — MCP-019
+
+- [x] PR merge verified ([#87](https://github.com/collisionengineers/kanmer/pull/87), merged 2026-08-20T23:01:50Z)
+- [x] proof.md finalised (PR URL + merge commit `23c42e0` recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body; [[MCP-023]] and the two unimplemented test fixtures remain explicit deferrals
+- [x] Removed recorded worktree `.worktrees/mcp-019`
+- [x] Deleted local branch `mcp-019-batch-ticket-doc-reads`
+- [x] Deleted the merged remote branch; fetched/pruned worktrees
+- [ ] Ticket release pending final MCP action

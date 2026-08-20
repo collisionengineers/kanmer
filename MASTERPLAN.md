@@ -347,7 +347,15 @@ Expiring leases/heartbeats and a `ticket_workspace` tool · automatic risk-overl
 
 ## 9. Learnings
 
-*(Appended by the execution protocol. Empty at adoption.)*
+*(Appended by the execution protocol.)*
+
+**2026-08-20 — seed-transcription run** (13 Sonnet agents: groups → 5 per-area authors → 5 per-area auditors → reconciler → board audit; 327 tool calls). Result: 6 groups, 34 tickets (33 seeds + DOC-016 backfill), 31 edges, groom GA-01…GA-18 — **zero Sonnet execution defects**; every correction was planner-side. Seed→id map: S-01…S-04,S-15,S-20 → CORE-031…036; S-05…S-07,S-17…S-19,S-22 → MCP-022…028; S-11…S-13,S-23…S-26 → GUI-096…102; S-08…S-10,S-27,S-28,S-30,S-31,S-33 → SKILL-020…027; S-14,S-16,S-21,S-29,S-32 → DOC-011…015.
+
+| # | Class | What happened | Fix |
+|---|---|---|---|
+| L-01 | seed-ambiguity (planner) | Six seed bodies cross-referenced other seeds by catalog key (`S-xx`) with no resolution rule; authors correctly transcribed verbatim, landing planner-namespace keys on the board (DOC-011/012/014, MCP-024/025, GUI-098). | Fable resolved them to allocated ids post-hoc. Catalog rule going forward: ticket-visible text names real ids only, or the catalog gives the reconciler an explicit key-resolution step. |
+| L-02 | seed-ambiguity (planner) | GA-14 said "body pointer" without placement; the compiled work order chose PREPEND, leaving GUI-094 inconsistent with MCP-005/CORE-028 (notes under `## Outcome`). The board audit flagged it. | Note moved under `## Outcome`, with the four split-ticket ids added. Rule: closeout-type notes on archived tickets go under Outcome. |
+| L-03 | convention-miss (planner compilation; zero board impact) | The compiled reconciler order rendered GUI-081's title with a typographic apostrophe where MASTERPLAN uses a straight one; the reconciler and audit anchored to the file, so the board matched the source and the audit surfaced the prompt drift. | No board fix needed. Protocol rule confirmed: audits anchor to the source document, never to the compiled prompt — that anchoring is what caught the drift. |
 
 ---
 

@@ -2,12 +2,13 @@
 id: SKILL-024
 type: ticket
 title: kanmer-setup reconciles an AGENTS.md skeleton
-status: implementing
+status: review
 area: skills
 assignee: codex-mcp-client
 profile: feature
 stageEntered:
   preparing: '2026-08-20T22:14:21.141Z'
+  review: '2026-08-20T22:20:22.397Z'
 taken_at: '2026-08-20T22:18:18.673Z'
 branch: skill-024-reconcile-agents-skeleton
 worktree: .worktrees/skill-024
@@ -19,9 +20,13 @@ links: []
 blocks:
   - SKILL-026
 docs_todo: true
+commits:
+  - a725808
+prs:
+  - 'https://github.com/collisionengineers/kanmer/pull/79'
 archived: false
 created: '2026-08-20T10:14:57.049Z'
-updated: '2026-08-20T22:18:18.673Z'
+updated: '2026-08-20T22:20:22.397Z'
 ---
 
 ## What

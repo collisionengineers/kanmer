@@ -57,10 +57,9 @@ import {
 } from "./gates.js";
 import {
   countCheckboxes,
-  docCounts,
+  documentInventory,
   docDirIn,
   docPathIn,
-  listDocumentPaths,
   listDocs,
   listFilesRecursive,
   listReferences,
@@ -1048,7 +1047,7 @@ export class KanmerStore {
     const loc = await this.locateItem(id);
     if (!loc || loc.kind !== "v2") return null;
 
-    const counts = await docCounts(loc.dir);
+    const { counts, documentPaths } = await documentInventory(loc.dir);
     const docs: Record<string, boolean> = {};
     for (const [type, n] of Object.entries(counts)) docs[type] = n > 0;
 
@@ -1063,7 +1062,7 @@ export class KanmerStore {
     return {
       docs,
       counts,
-      documentPaths: await listDocumentPaths(loc.dir),
+      documentPaths,
       checklist,
       references: await listReferences(loc.dir),
     };

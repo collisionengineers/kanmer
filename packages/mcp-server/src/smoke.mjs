@@ -944,6 +944,15 @@ try {
     "get_doc_gates exposes the exact nested document path",
     nestedGates.documentPaths?.includes("research/deep/topic.md"),
   );
+  const bareNested = JSON.parse(
+    textOf(
+      await client.callTool({ name: "get_ticket_doc", arguments: { id: nested, doc: "research" } }),
+    ),
+  );
+  check(
+    "a bare type remains absent when only a named document exists",
+    bareNested.exists === false && bareNested.content === null,
+  );
   check(
     "it satisfies the type's requirement on its own",
     JSON.parse(textOf(await moveTo(nested, "done"))).status === "done",

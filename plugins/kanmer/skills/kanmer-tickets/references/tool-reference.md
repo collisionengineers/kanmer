@@ -57,7 +57,7 @@ Exactly these fields, always all present: `id`, `type`, `title`, `status`,
 `deployment` (deployment status or `null`), `created`, `updated`, `archived`,
 `taken` (`{ taken_at, branch, worktree }` or `null` when not taken), `docs`
  (which pipeline document types exist — `null` for legacy-layout items), `documentPaths`
- (the exact type-relative Markdown paths readable through `get_ticket_doc`, or `null` for legacy-layout items), `checklist`
+ (the exact type-relative Markdown paths readable through `get_ticket_doc`, including Markdown in gate-exempt folders; readable does not mean gate-satisfying, and `null` means legacy-layout), `checklist`
 (`{ checked, total }` or `null`). `links`, `commits`, `prs` and the Markdown
 body are **not** included and require `get_item` — a `null`/absent relation in a
 summary means "not reported here", not "no links".

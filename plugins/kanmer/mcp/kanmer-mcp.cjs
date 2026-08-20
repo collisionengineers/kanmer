@@ -38415,11 +38415,19 @@ async function listDocs(ticketDir, type) {
   const files = await listFilesRecursive(docDirIn(ticketDir, type));
   return files.filter((f) => f.toLowerCase().endsWith(".md"));
 }
-async function listDocumentPaths(ticketDir) {
+async function documentInventory(ticketDir) {
   const byType = await Promise.all(
-    TICKET_DIRS.map(async (type) => (await listDocs(ticketDir, type)).map((rel) => `${type}/${rel}`))
+    TICKET_DIRS.map(async (type) => ({ type, files: await listFilesRecursive(docDirIn(ticketDir, type)) }))
   );
-  return byType.flat().sort();
+  const counts = {};
+  const documentPaths = [];
+  for (const { type, files } of byType) {
+    const markdown = files.filter((f) => f.toLowerCase().endsWith(".md"));
+    const count = isGateExempt(type) && type !== "scratch" ? files.length : markdown.length;
+    if (count) counts[type] = count;
+    documentPaths.push(...markdown.map((rel) => `${type}/${rel}`));
+  }
+  return { counts, documentPaths: documentPaths.sort() };
 }
 async function typeSatisfied(ticketDir, type) {
   if (isGateExempt(type)) return false;
@@ -38452,15 +38460,6 @@ async function countCheckboxes(ticketDir, type, opts = {}) {
     }
   }
   return { checked, total };
-}
-async function docCounts(ticketDir) {
-  const counts = {};
-  for (const type of TICKET_DIRS) {
-    const files = await listFilesRecursive(docDirIn(ticketDir, type));
-    const n = isGateExempt(type) && type !== "scratch" ? files.length : files.filter((f) => f.toLowerCase().endsWith(".md")).length;
-    if (n) counts[type] = n;
-  }
-  return counts;
 }
 async function listReferences(ticketDir) {
   const dir = docDirIn(ticketDir, "reference");
@@ -39975,7 +39974,7 @@ ${content.trim()}
   async getTicketDocsInfo(id) {
     const loc = await this.locateItem(id);
     if (!loc || loc.kind !== "v2") return null;
-    const counts = await docCounts(loc.dir);
+    const { counts, documentPaths } = await documentInventory(loc.dir);
     const docs = {};
     for (const [type, n] of Object.entries(counts)) docs[type] = n > 0;
     let checklist = null;
@@ -39985,7 +39984,7 @@ ${content.trim()}
     return {
       docs,
       counts,
-      documentPaths: await listDocumentPaths(loc.dir),
+      documentPaths,
       checklist,
       references: await listReferences(loc.dir)
     };

@@ -104,3 +104,7 @@
 - [x] Deleted local branch `mcp-019-batch-ticket-doc-reads`
 - [x] Deleted the merged remote branch; fetched/pruned worktrees
 - [ ] Ticket release pending final MCP action
+
+## Release confirmation — MCP-019
+
+- [x] Ticket released after the recorded worktree and both branches were removed; no cleanup work remains.

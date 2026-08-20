@@ -11,3 +11,16 @@
 
 - Updated README.md in `.worktrees/doc-008`: format-3 folder model, fixed stages, current editor/filter/Settings surface, and format-3 migration wording. The residual audit found only excluded contributor/MCP-reference priority and tool-count prose plus the intentional statement that Kanmer has no priority field.
 - `npm test` passed: manual freshness check, 249 core tests, GUI Vitest suites, and script tests. `git diff --check` passed; a scoped residual audit found no obsolete format-2, Impact, priority-filter, or old-stage claims.
+
+---
+
+## Closeout — DOC-008
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] Proof finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/doc-008`
+- [x] `git branch -d doc-008-readme-format3` (`-D` if squash/rebase-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

@@ -23,3 +23,7 @@
 | `git diff --check` | Passed — no whitespace errors. |
 
 The GUI suite was rerun independently after a concurrent test run caused a transient Windows temporary-directory lock; the isolated merged-main run passed all 277 tests, including `kanmerGit.test.ts`.
+
+## Closeout metadata
+
+PR #66 merged at `2026-08-20T20:48:35Z`: https://github.com/collisionengineers/kanmer/pull/66.

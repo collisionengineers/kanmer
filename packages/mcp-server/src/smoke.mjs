@@ -34,6 +34,7 @@ const transport = new StdioClientTransport({
   env: runnerEnv,
 });
 const client = new Client({ name: "smoke", version: "0.0.0" });
+const expectedBoardBranch = process.env.KANMER_BOARD_BRANCH?.trim() || "kanmer-board";
 
 const results = [];
 function check(name, cond, detail = "") {
@@ -125,8 +126,8 @@ try {
   );
   check(
     "board worktree reports the synthesized sandbox without Git as unhealthy data",
-    healthBefore?.path === path.resolve(sandbox) &&
-      healthBefore?.expectedBranch === "kanmer-board" &&
+      healthBefore?.path === path.resolve(sandbox) &&
+      healthBefore?.expectedBranch === expectedBoardBranch &&
       healthBefore?.actualBranch === null &&
       healthBefore?.onBoardBranch === false &&
       healthBefore?.boardSource === "default" &&
@@ -135,13 +136,13 @@ try {
     JSON.stringify(healthBefore),
   );
   execFileSync("git", ["init"], { cwd: sandbox, windowsHide: true, stdio: "ignore" });
-  execFileSync("git", ["symbolic-ref", "HEAD", "refs/heads/kanmer-board"], {
+  execFileSync("git", ["symbolic-ref", "HEAD", `refs/heads/${expectedBoardBranch}`], {
     cwd: sandbox, windowsHide: true, stdio: "ignore",
   });
   const healthyBranch = JSON.parse(textOf(await client.callTool({ name: "get_status", arguments: {} })));
   check(
     "board worktree observes the expected branch without repairing it",
-    healthyBranch.boardWorktree?.actualBranch === "kanmer-board" &&
+    healthyBranch.boardWorktree?.actualBranch === expectedBoardBranch &&
       healthyBranch.boardWorktree?.onBoardBranch === true,
     JSON.stringify(healthyBranch.boardWorktree),
   );

@@ -136,3 +136,7 @@
 - [ ] Run `git diff --check` and inspect status for fixture/session debris.
 - [ ] Record SDK choice, endpoint, tool-set diff, lifecycle/limit/shutdown proof, and stdio compatibility in the post-implementation report.
 - [ ] Stop before tunnel exposure or merge.
+
+## Progress — 2026-08-21
+
+Implemented the shared registry factory and `remote-http-v1` policy hook, a loopback-only fail-closed Streamable HTTP host using the SDK's stateful `StreamableHTTPServerTransport`, bounded body/session/in-flight controls, principal-bound sessions, TTL sweep, DELETE/shutdown cleanup, and redacted ready metadata. The built HTTP smoke proves injected authorization, loopback binding, 401/404/405 handling, SDK initialize, 30-tool discovery, cross-principal rejection, and DELETE. Remaining unticked checks require the MCP-026 bearer authorizer integration, fuller lifecycle/limit coverage, plugin regeneration from the normal main checkout, and Windows PR CI.

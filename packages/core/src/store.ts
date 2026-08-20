@@ -60,6 +60,7 @@ import {
   docCounts,
   docDirIn,
   docPathIn,
+  listDocumentPaths,
   listDocs,
   listFilesRecursive,
   listReferences,
@@ -1059,7 +1060,13 @@ export class KanmerStore {
       checklist = await countCheckboxes(loc.dir, "checklist");
     }
 
-    return { docs, counts, checklist, references: await listReferences(loc.dir) };
+    return {
+      docs,
+      counts,
+      documentPaths: await listDocumentPaths(loc.dir),
+      checklist,
+      references: await listReferences(loc.dir),
+    };
   }
 
   /**

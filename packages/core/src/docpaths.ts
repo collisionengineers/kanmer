@@ -103,6 +103,20 @@ export async function listDocs(ticketDir: string, type: string): Promise<string[
 }
 
 /**
+ * Every readable Markdown document in a ticket, as a type-relative path.
+ *
+ * These are the exact paths callers pass to `get_ticket_doc`: for example,
+ * `research/azure/tokens.md`. A bare type still means that folder's index
+ * document, so callers need this inventory to discover named documents.
+ */
+export async function listDocumentPaths(ticketDir: string): Promise<string[]> {
+  const byType = await Promise.all(
+    TICKET_DIRS.map(async (type) => (await listDocs(ticketDir, type)).map((rel) => `${type}/${rel}`)),
+  );
+  return byType.flat().sort();
+}
+
+/**
  * Whether a type's requirement is satisfied: at least one markdown document
  * anywhere beneath its folder, and the folder is not gate-exempt.
  */

@@ -196,6 +196,7 @@ async function summarise(item: Item, blockedIds: Set<string>) {
       ? { taken_at: item.taken_at, branch: item.branch ?? null, worktree: item.worktree ?? null }
       : null,
     docs: info?.docs ?? null,
+    documentPaths: info?.documentPaths ?? null,
     checklist: info?.checklist ?? null,
   };
 }
@@ -430,7 +431,7 @@ server.registerTool(
   {
     title: "Get an item",
     description:
-      "Return the full frontmatter and markdown body of one item by id (e.g. API-001). For tickets this also reports which pipeline documents exist (docs) and checklist progress — read the documents themselves with get_ticket_doc.",
+      "Return the full frontmatter and markdown body of one item by id (e.g. API-001). For tickets this also reports which pipeline document types exist (docs), their exact readable documentPaths, and checklist progress — read a selected path with get_ticket_doc.",
     inputSchema: { id: z.string().describe("Item id, e.g. API-001") },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
@@ -440,7 +441,15 @@ server.registerTool(
     const info = await store.getTicketDocsInfo(id);
     const blocked = (await blockedSet()).has(id);
     return ok(
-      info ? { ...item, blocked, docs: info.docs, checklist: info.checklist } : { ...item, blocked },
+      info
+        ? {
+            ...item,
+            blocked,
+            docs: info.docs,
+            documentPaths: info.documentPaths,
+            checklist: info.checklist,
+          }
+        : { ...item, blocked },
     );
   }),
 );
@@ -669,6 +678,7 @@ server.registerTool(
         stages: STAGE_IDS,
         ...report,
         docCounts: info?.counts ?? {},
+        documentPaths: info?.documentPaths ?? [],
         references: info?.references ?? [],
         refs: item.refs ?? [],
         docs_todo: item.docs_todo === true,

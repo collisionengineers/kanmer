@@ -578,6 +578,7 @@ try {
     "created",
     "deployment",
     "docs",
+    "documentPaths",
     "groups",
     "id",
     "labels",
@@ -929,6 +930,20 @@ try {
     ),
   );
   check("a nested document round-trips", nestedBack.content?.includes("# Deep"));
+  const nestedItem = JSON.parse(
+    textOf(await client.callTool({ name: "get_item", arguments: { id: nested } })),
+  );
+  check(
+    "get_item exposes the exact nested document path",
+    nestedItem.documentPaths?.includes("research/deep/topic.md"),
+  );
+  const nestedGates = JSON.parse(
+    textOf(await client.callTool({ name: "get_doc_gates", arguments: { id: nested } })),
+  );
+  check(
+    "get_doc_gates exposes the exact nested document path",
+    nestedGates.documentPaths?.includes("research/deep/topic.md"),
+  );
   check(
     "it satisfies the type's requirement on its own",
     JSON.parse(textOf(await moveTo(nested, "done"))).status === "done",

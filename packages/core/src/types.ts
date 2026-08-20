@@ -58,6 +58,8 @@ export interface SetDocOptions {
 export interface TicketDocsInfoV3Extras {
   /** Documents per type folder, counted recursively (FRD-003 T7). */
   counts: Record<string, number>;
+  /** Readable Markdown document paths, relative to the ticket folder (FRD-003 T6). */
+  documentPaths: string[];
   /** Human-supplied inputs: name plus absolute path (FRD-004 R3). */
   references: { name: string; path: string }[];
 }

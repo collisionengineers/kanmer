@@ -16,6 +16,7 @@ docs/
   architecture/adr/ADR-0001…     one decision each: context / decision / alternatives / consequences
   functional/frd/FRD-001…        one feature each, with acceptance criteria
   contributing/doc-structure.md  generated mirror of the board's doc config — never authoritative
+  contributing/chatgpt-tunnel.md operator runbook for the private ChatGPT MCP tunnel
   plans/                         implementation roadmaps (working documents, not governance)
 ```
 
@@ -30,6 +31,8 @@ docs/
 **The granularity test:** one crisp acceptance list and one "done" — if a document needs two,
 split it. (This test exists because it caught the FRD authoring in this very project; see
 FRD-014 R2 and the R8b correction in the shaping record.)
+
+Repository operations: [Kanmer ChatGPT tunnel](contributing/chatgpt-tunnel.md).
 
 FRDs are **durable end-state specs of the whole product**, absorbing shipped behaviour — not
 change requests. Cross-cutting rules that span every feature (living documents, the

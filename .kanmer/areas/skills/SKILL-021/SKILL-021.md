@@ -4,10 +4,12 @@ type: ticket
 title: >-
   kanmer-execute/review/verify bind to the packet, SHA records, and exact-SHA
   verification
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-20T12:43:43.531Z'
 labels: []
 groups:
   - EPIC-009
@@ -17,7 +19,7 @@ blocks:
   - CORE-035
 archived: false
 created: '2026-08-20T10:14:57.015Z'
-updated: '2026-08-20T10:19:47.552Z'
+updated: '2026-08-20T12:43:43.531Z'
 ---
 
 ## What

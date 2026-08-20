@@ -1,0 +1,1 @@
+Opened PR https://github.com/collisionengineers/kanmer/pull/83 at `e3c1b85a8ee21ca787db9896cfa08ab58a5b2861`. The isolated copied payload initialized and listed 30 tools; regression tests passed. `npm run typecheck` is externally blocked by the existing UI fixture error, and `npm run verify` is absent pending [[CORE-031]].

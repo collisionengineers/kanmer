@@ -82,3 +82,14 @@
 
 - [ ] MCP-023 must consume `getDocsWithVersions` / `readTicketDocuments` when its execution-packet implementation begins; MCP-023 is currently Preparing and has no source implementation to modify.
 - [ ] Add legacy-layout and injected-I/O test fixtures if a later core test harness introduces those seams; this change preserves the prior legacy response semantics and validates all paths before any file probe.
+
+## Closeout — MCP-019
+
+- [x] PR merge verified ([#87](https://github.com/collisionengineers/kanmer/pull/87), merged 2026-08-20T23:01:50Z)
+- [x] proof.md finalised (PR URL + merge commit `23c42e0` recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (MCP-023 and fixture deferrals retained as follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/mcp-019`
+- [ ] `git branch -d mcp-019-batch-ticket-doc-reads` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

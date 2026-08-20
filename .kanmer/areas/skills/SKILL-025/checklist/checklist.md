@@ -10,10 +10,11 @@
 - [x] Add scoped skill-prose verification for the five assets and optional/manual selector wording.
 - [x] Run `npm run verify:skills` and inspect its reported overlay check.
 - [x] Run `git diff --check` and confirm no plugin bundle, workflow, MCP, core, or AGENTS.md change.
-- [ ] Record implementation and verification results in the post-implementation report.
+- [x] Record implementation and verification results in the post-implementation report.
 
 ## Progress notes
 
 - Added the five planned `brief-*.md` assets and a manual-selection step in `kanmer-plan`; the shared plan/checklist and gates-first workflow are unchanged.
 - Added verifier check 9 for the canonical assets and wording. The first verifier run failed because the cloud asset used retired document-type word `impact`; it was rephrased to “cost effect” and the rerun passed every check.
 - `npm run verify:skills` passed after the correction; `git diff --check` is clean and scope is limited to the planned skill assets, plan skill, and verifier.
+- Wrote the post-implementation report with the implementation scope, the corrected verifier result, and review hand-off checks.

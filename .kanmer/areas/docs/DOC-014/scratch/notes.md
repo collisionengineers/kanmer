@@ -1,0 +1,1 @@
+Closeout 2026-08-20: PR #72 merged as aa7e0c04e07d4e4e6ec5ceb8e8e6e34efdda8f38; merged-main proof passed (focused skill-prose test, verify:skills, diff check); ticket worktree was clean, removed, and local branch deleted.

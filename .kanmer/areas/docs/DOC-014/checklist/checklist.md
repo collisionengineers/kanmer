@@ -9,3 +9,11 @@
 ## Progress notes
 
 Completed on `doc-014-agents-template`: the template deliberately complements the setup-owned managed block; no writer or setup implementation was changed.
+
+## Closeout
+
+- [x] Confirm PR #72 is merged and capture its merge commit.
+- [x] Verify proof on merged `main` with the focused checks.
+- [x] Re-inventory and read every ticket document, including review and proof.
+- [x] Confirm the ticket worktree is clean before cleanup.
+- [x] Release the ticket and remove the merged ticket worktree and local branch.

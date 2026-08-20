@@ -294,5 +294,22 @@ const manualSelection =
   /templates, never\s+an automatic classifier, ticket field, profile mapping, or gate/i.test(planSkill);
 check("kanmer-plan names optional manual overlay selection", manualSelection, "manual selection, no engine");
 
+console.log("\n=== 10. kanmer-groom keeps its board-vs-reality sweep advisory ===");
+const groomSkill = read(join(skillsDir, "kanmer-groom", "SKILL.md"));
+const boardRealitySweep =
+  /board-vs-reality sweep/i.test(groomSkill) &&
+  /non-archived Backlog or Preparing tickets/i.test(groomSkill) &&
+  /exact ticket id and a distinctive title phrase/i.test(groomSkill) &&
+  /`main`\s+history/i.test(groomSkill) &&
+  /search merged PRs/i.test(groomSkill) &&
+  /open the matched commit, diff, or PR/i.test(groomSkill) &&
+  /proposed disposition: no action, an Outcome note plus archive/i.test(groomSkill) &&
+  /never archives or rescopes automatically/i.test(groomSkill);
+check(
+  "kanmer-groom keeps the bounded, evidence-first, proposal-only sweep",
+  boardRealitySweep,
+  "Backlog/Preparing + main/PR evidence + no automatic mutation",
+);
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

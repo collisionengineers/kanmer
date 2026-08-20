@@ -4,10 +4,12 @@ type: ticket
 title: >-
   `takeTicket` refuses to record the board worktree; `get_status` reports
   board-worktree health
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-20T12:18:19.217Z'
 labels: []
 groups:
   - EPIC-009
@@ -15,7 +17,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-20T10:14:42.524Z'
-updated: '2026-08-20T10:14:42.524Z'
+updated: '2026-08-20T12:18:19.217Z'
 ---
 
 ## What

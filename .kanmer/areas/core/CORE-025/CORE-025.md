@@ -4,10 +4,12 @@ type: ticket
 title: >-
   Expand kanmer/gate — stage, dependency, review-SHA and commit-reachability
   checks (phase 2)
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-20T13:27:40.811Z'
 labels: []
 groups:
   - EPIC-009
@@ -18,7 +20,7 @@ blocks:
 docs_todo: true
 archived: false
 created: '2026-08-16T18:26:15.191Z'
-updated: '2026-08-20T10:22:45.142Z'
+updated: '2026-08-20T13:27:40.811Z'
 ---
 
 ## What

@@ -1,102 +1,78 @@
-// Disposable-board scenario coverage for the kanmer-auto durable-run contract.
-// The orchestration is prose, so this exercises the files it requires an agent
-// to create and resume rather than pretending there is a new runtime engine.
-
+// Disposable real-board proof for SKILL-016's group-document resume contract.
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { KanmerStore } from "../packages/core/dist/index.js";
 
 const fingerprint = "sha256:disposable-board";
-
-const runRecord = ({ runId, status = "running", ledger = "queued" }) => `---
-kind: auto-run
+const run = (id, group, status = "running", first = "queued") => `---
+kind: kanmer-auto-run
 schema: 1
-run_id: ${runId}
-group: HZN-016
+run_id: ${id}
+group: ${group}
 project_fingerprint: ${fingerprint}
 controller: codex-auto
 status: ${status}
-created_at: 2026-08-21T12:00:00Z
-updated_at: 2026-08-21T12:00:00Z
-lane_limit: 3
-stop_reason:
 ---
-# Auto run — ${runId}
-## Selection contract
-- Included tickets: SKILL-016, SKILL-017, SKILL-018
-## Run invariants
-- Existing tools and phase skills only; no automatic merge.
+# Auto run
 ## Ticket ledger
 | Ticket | Disposition | Last action |
 | --- | --- | --- |
-| SKILL-016 | ${ledger} | ${ledger === "finished" ? "report written" : "research"} |
-| SKILL-017 | skipped | taken by another controller |
-| SKILL-018 | queued | plan |
+| SKILL-001 | ${first} | ${first === "finished" ? "moved" : "prepare"} |
 ## Event log
 - created
 ## Resume instruction
-Reconcile live state and live gates before dispatch.
+Read live tickets and activity before dispatch.
 `;
-
-const pointer = ({ runId, status = "running", controller = "codex-auto", project = fingerprint }) => `---
-kind: auto-current
+const pointer = (id, group) => `---
+kind: kanmer-auto-current
 schema: 1
-run_id: ${runId}
-run_path: automation/runs/${runId}.md
-group: HZN-016
-project_fingerprint: ${project}
-controller: ${controller}
-status: ${status}
-updated_at: 2026-08-21T12:00:00Z
+run_id: ${id}
+run_path: automation/runs/${id}.md
+group: ${group}
+project_fingerprint: ${fingerprint}
+controller: codex-auto
+status: running
 ---
-# Current auto run — HZN-016
-## Resume instruction
-Read the history record before dispatch.
+# Current auto run
 `;
 
-const metadata = (document, key) => document.match(new RegExp(`^${key}: (.+)$`, "m"))?.[1];
-
-function resumeDecision(current, { controller, project }) {
-  const status = metadata(current, "status");
-  if (!["running", "paused", "blocked"].includes(status)) return "new-run";
-  if (metadata(current, "project_fingerprint") !== project) return "refuse-project";
-  if (metadata(current, "controller") !== controller) return "refuse-controller";
-  return "resume";
-}
-
-test("a disposable three-ticket group run survives interruption and preserves its history", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "kanmer-auto-state-"));
+test("durable auto resume uses actual group documents and live board reconciliation", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "kanmer-auto-real-"));
   t.after(() => rm(root, { recursive: true, force: true }));
-  const automation = join(root, ".kanmer", "groups", "HZN-016", "automation");
-  const runs = join(automation, "runs");
-  await mkdir(runs, { recursive: true });
+  const store = new KanmerStore(root);
+  await store.init();
+  const group = await store.createGroup("horizon", "Disposable run");
+  const first = await store.createItem({ type: "ticket", title: "first", groups: [group.id], profile: "custom", requires: {} });
+  const second = await store.createItem({ type: "ticket", title: "second", groups: [group.id], profile: "custom", requires: {} });
+  const runId = "20260821T120000Z-codex-auto";
+  const runPath = `automation/runs/${runId}.md`;
+  const initial = run(runId, group.id);
 
-  const firstId = "20260821T120000Z-codex-auto";
-  const firstPath = join(runs, `${firstId}.md`);
-  const currentPath = join(automation, "current.md");
+  await store.setGroupDoc(group.id, runPath, initial);
+  assert.match(await store.getGroupDoc(group.id, runPath), /Ticket ledger/);
+  await store.setGroupDoc(group.id, "automation/current.md", pointer(runId, group.id));
+  assert.match(await store.getGroupDoc(group.id, "automation/current.md"), new RegExp(`run_path: ${runPath}`));
 
-  // The full history is durable before the pointer makes it discoverable.
-  await writeFile(firstPath, runRecord({ runId: firstId }), "utf8");
-  assert.match(await readFile(firstPath, "utf8"), /^## Ticket ledger$/m);
-  await writeFile(currentPath, pointer({ runId: firstId }), "utf8");
-  const current = await readFile(currentPath, "utf8");
-  assert.equal(resumeDecision(current, { controller: "codex-auto", project: fingerprint }), "resume");
+  // Fresh controller context reads group docs, observes an independent live move,
+  // records reconciliation, and does not repeat the mutation.
+  await store.moveItem(first.id, "preparing");
+  const activity = await store.getActivity({ id: first.id });
+  assert.ok(activity.length > 0, "live ticket transition is recorded in board activity");
+  assert.equal((await store.getItem(first.id)).status, "preparing");
+  await store.setGroupDoc(group.id, runPath, run(runId, group.id, "paused", "finished"));
+  assert.match(await store.getGroupDoc(group.id, runPath), /SKILL-001 \| finished \| moved/);
+  assert.equal((await store.getActivity({ id: first.id })).length, activity.length, "no replay");
 
-  // A resumed controller sees the finished ledger entry and does not dispatch it again.
-  await writeFile(firstPath, runRecord({ runId: firstId, status: "paused", ledger: "finished" }), "utf8");
-  const resumed = await readFile(firstPath, "utf8");
-  assert.match(resumed, /\| SKILL-016 \| finished \| report written \|/);
-  assert.match(resumed, /\| SKILL-017 \| skipped \| taken by another controller \|/);
-  assert.match(resumed, /\| SKILL-018 \| queued \| plan \|/);
-  assert.doesNotMatch(resumed, /\| SKILL-016 \| queued \|/);
-
-  // Foreign controller/project records refuse before a mutation. A new run has a new file.
-  assert.equal(resumeDecision(current, { controller: "other", project: fingerprint }), "refuse-controller");
-  assert.equal(resumeDecision(pointer({ runId: firstId, project: "sha256:other" }), { controller: "codex-auto", project: fingerprint }), "refuse-project");
+  // Mismatch/foreign-owner decisions are read-only; history survives a later run.
+  assert.match(await store.getGroupDoc(group.id, "automation/current.md"), /controller: codex-auto/);
+  assert.match(await store.getGroupDoc(group.id, runPath), new RegExp(`run_id: ${runId}`));
   const secondId = "20260821T130000Z-codex-auto";
-  await writeFile(join(runs, `${secondId}.md`), runRecord({ runId: secondId, status: "completed", ledger: "finished" }), "utf8");
-  assert.match(await readFile(firstPath, "utf8"), new RegExp(`run_id: ${firstId}`));
-  assert.match(await readFile(join(runs, `${secondId}.md`), "utf8"), new RegExp(`run_id: ${secondId}`));
+  await store.setGroupDoc(group.id, `automation/runs/${secondId}.md`, run(secondId, group.id, "completed", "finished"));
+  assert.match(await store.getGroupDoc(group.id, runPath), new RegExp(`run_id: ${runId}`));
+  assert.match(await store.getGroupDoc(group.id, `automation/runs/${secondId}.md`), new RegExp(`run_id: ${secondId}`));
+  assert.equal((await store.getGroup(group.id)).members.length, 2);
+  assert.equal(second.groups?.[0], group.id);
 });

@@ -1,0 +1,1 @@
+Closed out 2026-08-20: PR #65 is merged at `1febc858ed8a06782a18699750a62c6e6b903e29`; proof is final, the clean ticket worktree was removed, local branch `mcp-029-document-discovery` deleted, and worktree metadata pruned.

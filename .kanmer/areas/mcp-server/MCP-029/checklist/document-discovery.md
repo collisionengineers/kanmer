@@ -21,5 +21,5 @@
 
 - [x] Confirm PR #65 merged to `main` and proof captures merged-main verification.
 - [x] Confirm the ticket worktree is clean before cleanup.
-- [ ] Remove the ticket worktree and delete the merged branch.
-- [ ] Release the ticket assignment and record closeout.
+- [x] Remove the ticket worktree and delete the merged branch.
+- [x] Release the ticket assignment and record closeout.

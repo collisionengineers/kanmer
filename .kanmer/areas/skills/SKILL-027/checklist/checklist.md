@@ -21,3 +21,16 @@
 - Focused verification passed: `npm run verify:skills` (all 10 checks), `node --test scripts/verify-skill-prose.test.mjs` (3/3), and `git diff --check`.
 - Read-only calibration: the current board has 10 Backlog and 43 Preparing tickets; CORE-028 is archived and GUI-076 is Done, so neither is a candidate. Main history and merged PR metadata confirm the whole-delivery archive evidence (PRs #57/#59) and the partial-delivery rescope evidence (`9ec7741`). No live ticket was changed.
 - Committed implementation as `1e5e761a4106d2e5e58f51d39ccdc098c9e2319d` and wrote the post-implementation report for review.
+
+# Closeout checklist
+
+## Closeout — SKILL-027
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/skill-027`
+- [ ] `git branch -d skill-027-board-reality-sweep` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

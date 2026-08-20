@@ -2,7 +2,7 @@
 id: SKILL-027
 type: ticket
 title: kanmer-groom gains a board-vs-reality sweep
-status: verifying
+status: done
 area: skills
 assignee: codex-mcp-client
 profile: fix
@@ -10,6 +10,7 @@ stageEntered:
   preparing: '2026-08-20T22:14:34.430Z'
   review: '2026-08-20T22:21:56.847Z'
   verifying: '2026-08-20T22:24:16.352Z'
+  done: '2026-08-20T22:26:06.141Z'
 taken_at: '2026-08-20T22:18:48.519Z'
 branch: skill-027-board-reality-sweep
 worktree: .worktrees/skill-027
@@ -23,7 +24,7 @@ prs:
   - '80'
 archived: false
 created: '2026-08-20T10:14:57.080Z'
-updated: '2026-08-20T22:24:16.352Z'
+updated: '2026-08-20T22:26:06.141Z'
 ---
 
 ## What

@@ -1,0 +1,1 @@
+Verified merged main at `b5013fbfb7b45f21d0ac865ea7bec7d2bb12d12f`. `npm run verify:skills` passed all 10 checks; `node --test scripts/verify-skill-prose.test.mjs` passed 4/4; diff check and clean main status passed. CORE-028 and GUI-076 were inspected read-only only. Proof written; ready for Done.

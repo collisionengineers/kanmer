@@ -59,3 +59,5 @@
 - MCP smoke passed 163/163 with both the default `kanmer-board` and `KANMER_BOARD_BRANCH=team-board` expected branches.
 - Changed-package typechecks for core, MCP server, and GUI passed. The repository-wide `npm run typecheck` remains blocked by an existing `@kanmer/ui/src/demo.tsx` mismatch: its `getTicketDocsInfo` return omits required `documentPaths`; this ticket does not touch that package.
 - A fresh non-linked checkout of this branch ran `npm ci`, `npm run plugin:build`, and `npm run plugin:check`; it passed with 30 tools, matching bundle bytes, and 12 skill frontmatters. The generated bundle SHA-256 was copied byte-for-byte before committing; it was not hand-edited.
+
+- Opened PR #82: https://github.com/collisionengineers/kanmer/pull/82. The PR names `KanmerStore.takeTicket` and MCP `get_status` as production callers; implementation stops at Review.

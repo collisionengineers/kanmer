@@ -1099,6 +1099,7 @@ export class KanmerStore {
       documentPaths,
       checklist,
       references: await listReferences(loc.dir),
+      scratch: await this.listScratch(id),
     };
   }
 

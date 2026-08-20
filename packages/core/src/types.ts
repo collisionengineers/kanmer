@@ -70,6 +70,8 @@ export interface TicketDocsInfoV3Extras {
   documentPaths: string[];
   /** Human-supplied inputs: name plus absolute path (FRD-004 R3). */
   references: { name: string; path: string }[];
+  /** Sorted gate-exempt scratch-note slugs, without the `scratch/` prefix. */
+  scratch: string[];
 }
 
 export interface TicketDocsInfo extends TicketDocsInfoV3Extras {

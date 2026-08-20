@@ -258,6 +258,17 @@ describe("folder documents (FRD-003)", () => {
     expect(info.references.map((r) => r.name)).toEqual(["spec.md"]);
   });
 
+  it("reports sorted scratch slugs without treating them as gate documents", async () => {
+    const id = await ticket("spike");
+    await store.setDoc(id, "scratch/zebra.md", "z");
+    await store.setDoc(id, "scratch/alpha.md", "a");
+    const before = await fs.readFile(path.join(root, ".kanmer", "data", "activity.jsonl"), "utf8");
+
+    expect((await store.getTicketDocsInfo(id))?.scratch).toEqual(["alpha", "zebra"]);
+    await expect(store.moveItem(id, { status: "done" })).rejects.toThrow(/requires research/);
+    expect(await fs.readFile(path.join(root, ".kanmer", "data", "activity.jsonl"), "utf8")).toBe(before);
+  });
+
   it("checklist progress sums across every checklist document", async () => {
     const id = await ticket("chore");
     await store.setDoc(id, "checklist/one.md", "- [x] a\n- [ ] b");

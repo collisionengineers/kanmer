@@ -146,8 +146,7 @@ kanmer/
   plugins/
     kanmer/               # Cross-agent plugin (Claude Code + codex)
       .claude-plugin/plugin.json   # Claude manifest → mcp/claude.mcp.json
-      .codex-plugin/plugin.json    # codex manifest  → ../.mcp.json
-      .mcp.json           # codex companion ({"mcpServers":…} + ${PLUGIN_ROOT}) — must live at plugin root
+      .codex-plugin/plugin.json    # Codex manifest — skills only; no mcpServers
       mcp/
         claude.mcp.json   # {"mcpServers":…} + ${CLAUDE_PLUGIN_ROOT}
         kanmer-mcp.cjs    # committed build artifact (npm run plugin:build)

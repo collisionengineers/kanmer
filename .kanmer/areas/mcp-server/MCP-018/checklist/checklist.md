@@ -2,64 +2,70 @@
 
 ## Artifact contract
 
-- [ ] Read canonical build/check scripts and root script routing.
-- [ ] Read actual plugin manifest/entry metadata.
-- [ ] Identify exact installable payload.
-- [ ] Preserve committed-vs-fresh file/byte comparison.
-- [ ] Reuse/extract one pure payload metadata helper only if needed.
-- [ ] Reject payload paths escaping plugin root.
+- [x] Read canonical build/check scripts and root script routing.
+- [x] Read actual plugin manifest/entry metadata.
+- [x] Identify exact installable payload.
+- [x] Preserve committed-vs-fresh file/byte comparison.
+- [x] Reuse/extract one pure payload metadata helper only if needed.
+- [x] Reject payload paths escaping plugin root.
 
 ## Isolated installation
 
-- [ ] Create OS-temp parent containing a space.
-- [ ] Copy only installable payload.
-- [ ] Keep copied root outside repository.
-- [ ] Use unrelated empty child cwd.
-- [ ] Resolve entry from copied manifest.
-- [ ] Assert entry remains inside copied plugin root.
-- [ ] Do not copy root node_modules/source/.git/.kanmer/cache.
+- [x] Create OS-temp parent containing a space.
+- [x] Copy only installable payload.
+- [x] Keep copied root outside repository.
+- [x] Use unrelated empty child cwd.
+- [x] Resolve entry from copied manifest.
+- [x] Assert entry remains inside copied plugin root.
+- [x] Do not copy root node_modules/source/.git/.kanmer/cache.
 
 ## Process environment and handshake
 
-- [ ] Remove `NODE_PATH`.
-- [ ] Remove development `NODE_OPTIONS`/loaders.
-- [ ] Remove repository-specific resolution variables.
-- [ ] Set noninteractive deterministic environment.
-- [ ] Spawn with argument array, no shell.
-- [ ] Reuse canonical MCP protocol client.
-- [ ] Complete initialize sequence.
-- [ ] Complete `tools/list`/canonical discovery assertion.
-- [ ] Use only a disposable board/root if a tool call is needed.
-- [ ] Enforce bounded timeout.
-- [ ] Terminate child/process tree on failure.
-- [ ] Capture entry/cwd/stdout/stderr diagnostics.
-- [ ] Close client/streams and await exit.
-- [ ] Remove temp payload on success and failure.
+- [x] Remove `NODE_PATH`.
+- [x] Remove development `NODE_OPTIONS`/loaders.
+- [x] Remove repository-specific resolution variables.
+- [x] Set noninteractive deterministic environment.
+- [x] Spawn with argument array, no shell.
+- [x] Reuse a raw MCP protocol client.
+- [x] Complete initialize sequence.
+- [x] Complete `tools/list`/canonical discovery assertion.
+- [x] Use only a disposable board/root if a tool call is needed.
+- [x] Enforce bounded timeout.
+- [x] Terminate child/process tree on failure.
+- [x] Capture entry/cwd/stdout/stderr diagnostics.
+- [x] Close client/streams and await exit.
+- [x] Remove temp payload on success and failure.
 
 ## Regression tests
 
-- [ ] Real plugin isolated success test.
-- [ ] Path-with-spaces success test.
-- [ ] Missing manifest/entry failure test.
-- [ ] External-only dependency fixture fails in isolation.
-- [ ] Timeout fixture terminates cleanly.
-- [ ] Cleanup is asserted after failures.
-- [ ] No shipped behavior/test hook was added solely for tracing.
+- [x] Real plugin isolated success test.
+- [x] Path-with-spaces success test.
+- [x] Missing manifest/entry failure test.
+- [x] External-only dependency fixture fails in isolation.
+- [x] Timeout fixture terminates cleanly.
+- [x] Cleanup is asserted after failures.
+- [x] No shipped behavior/test hook was added solely for tracing.
 
 ## Rail and verification
 
-- [ ] Keep one `plugin:check` script.
-- [ ] Ensure root `verify` calls it exactly once.
-- [ ] Ensure no pre-check build overwrites drift.
-- [ ] Add no separate Actions job.
-- [ ] Run scripts/check tests.
-- [ ] Run `npm run plugin:check` from normal main checkout.
-- [ ] Run `npm test`.
-- [ ] Run `npm run typecheck`.
-- [ ] Run `npm run build`.
-- [ ] Run `npm run verify`.
-- [ ] Run Windows PR job.
-- [ ] Confirm passing check leaves working tree clean.
-- [ ] Run `git diff --check` and `git status --short`.
-- [ ] Record isolated-path/handshake/negative-fixture evidence.
-- [ ] Stop before merge.
+- [x] Keep one `plugin:check` script.
+- [ ] Ensure root `verify` calls it exactly once. *(Blocked externally: current origin/main has no `verify` script; CORE-031 owns it.)*
+- [x] Ensure no pre-check build overwrites drift.
+- [x] Add no separate Actions job.
+- [x] Run scripts/check tests.
+- [x] Run `npm run plugin:check` from normal main checkout.
+- [x] Run `npm test`.
+- [ ] Run `npm run typecheck`. *(Ran; blocked by pre-existing `packages/ui/src/demo.tsx` missing `documentPaths`.)*
+- [x] Run `npm run build`.
+- [ ] Run `npm run verify`. *(Blocked externally: current origin/main has no `verify` script; CORE-031 owns it.)*
+- [ ] Run Windows PR job. *(CI-only; pending PR.)*
+- [x] Confirm passing check leaves generated artifacts unchanged.
+- [x] Run `git diff --check` and `git status --short`.
+- [x] Record isolated-path/handshake/negative-fixture evidence.
+- [x] Stop before merge.
+
+## Progress notes
+
+- Replaced the linked-worktree proxy with the intended check: ESM-resolve `@kanmer/core`, realpath it, and require it to be beneath this checkout's `packages/core`. A correctly installed worktree passes; a main or worktree borrowing another checkout fails with an actionable `npm install` fix.
+- `scripts/lib/plugin-isolation.mjs` copies the installed plugin payload under an OS-temp parent containing a space, reads the Claude manifest/config for the relative entry, uses an unrelated disposable cwd and sanitized environment, then performs `initialize` and `tools/list` directly over stdio.
+- Regression evidence: real copied bundle listed 30 tools; an external-only fixture, missing entry, and non-responsive fixture all failed and cleaned their temporary payloads.

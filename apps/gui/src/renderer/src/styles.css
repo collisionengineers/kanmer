@@ -113,6 +113,30 @@ textarea:focus {
   width: auto;
 }
 
+.board-worktree-banner {
+  align-items: flex-start;
+}
+.board-worktree-banner dl {
+  margin: 8px 0;
+}
+.board-worktree-banner dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.board-worktree-banner dt {
+  font-weight: 600;
+}
+.board-worktree-banner dt::after {
+  content: ":";
+}
+.board-worktree-banner dd {
+  margin: 0;
+}
+.board-worktree-banner p {
+  margin: 8px 0 0;
+}
+
 /* Welcome */
 /* `flex: 1; min-height: 0` and NOT `height: 100%`: since GUI-065 the welcome
    screen is always a child of the `.app` flex column, which may also hold the

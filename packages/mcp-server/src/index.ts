@@ -150,16 +150,6 @@ async function ensureInit() {
   initialised = true;
 }
 
-/** Wrap a write handler: lazily create the .kanmer skeleton, then run it under guard(). */
-function write<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeof ok>>) {
-  return guard(async (...args: A) => {
-    // Attribute this mutation in the activity log to the calling client.
-    store.setActor(actorName(args[1]));
-    await ensureInit();
-    return fn(...args);
-  });
-}
-
 /**
  * Who is calling: the per-request `_meta` client identity, else the
  * clientInfo negotiated at initialize, else "agent". Used to default
@@ -172,14 +162,14 @@ function write<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeo
  * path, and the SDK does deliver params._meta to handlers on every protocol
  * — and it is exercised for real by smoke-protocol.mjs.
  */
-function actorName(extra?: unknown): string {
+function actorName(requestServer: McpServer, extra?: unknown): string {
   const meta = (extra as { _meta?: Record<string, unknown> } | undefined)?._meta;
   const candidates = [
     (meta?.["io.modelcontextprotocol/client"] as { name?: string } | undefined)?.name,
     (meta?.["clientInfo"] as { name?: string } | undefined)?.name,
   ];
   for (const c of candidates) if (typeof c === "string" && c) return c;
-  return server.server.getClientVersion()?.name ?? "agent";
+  return requestServer.server.getClientVersion()?.name ?? "agent";
 }
 
 /**
@@ -188,10 +178,10 @@ function actorName(extra?: unknown): string {
  * approval flow is the gate there). Returns false only on an explicit
  * decline/cancel.
  */
-async function confirmDestructive(message: string): Promise<boolean> {
-  if (!server.server.getClientCapabilities()?.elicitation) return true;
+async function confirmDestructive(requestServer: McpServer, message: string): Promise<boolean> {
+  if (!requestServer.server.getClientCapabilities()?.elicitation) return true;
   try {
-    const res = await server.server.elicitInput({
+    const res = await requestServer.server.elicitInput({
       message,
       requestedSchema: {
         type: "object",
@@ -307,8 +297,6 @@ export type ExposurePolicy = "local-stdio" | "remote-http-v1";
  */
 export const REMOTE_HTTP_EXCLUDED_TOOLS = new Set<string>();
 
-let server!: McpServer;
-
 /**
  * Construct the one canonical Kanmer registry for a transport. The factory is
  * deliberately transport-agnostic: stdio and HTTP attach their SDK transports
@@ -320,7 +308,9 @@ export function createKanmerMcpServer(policy: ExposurePolicy = "local-stdio"): M
     throw new Error(`Unknown MCP exposure policy: ${policy}`);
   }
   if (!rootResolved) resolveRoot();
-  server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
+  // Each factory result owns its negotiated client identity and capabilities.
+  // HTTP creates one result per session, so this must never be module-global.
+  const server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
   if (policy === "remote-http-v1") {
     const registerTool = server.registerTool.bind(server);
     // Tool registrations below stay canonical. The remote policy filters once
@@ -330,6 +320,16 @@ export function createKanmerMcpServer(policy: ExposurePolicy = "local-stdio"): M
       if (REMOTE_HTTP_EXCLUDED_TOOLS.has(name)) return { remove: () => undefined } as never;
       return Reflect.apply(registerTool, server, [name, ...args]) as never;
     }) as typeof server.registerTool;
+  }
+
+  /** Wrap a write handler using this server's calling-client context. */
+  function write<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeof ok>>) {
+    return guard(async (...args: A) => {
+      // Attribute this mutation in the activity log to the calling client.
+      store.setActor(actorName(server, args[1]));
+      await ensureInit();
+      return fn(...args);
+    });
   }
 
 // ---------------------------------------------------------------------------
@@ -938,7 +938,7 @@ server.registerTool(
         branch,
         worktree,
         stage,
-        assignee: assignee ?? actorName(extra),
+        assignee: assignee ?? actorName(server, extra),
         force,
       }),
     );
@@ -1106,6 +1106,7 @@ server.registerTool(
   write(async ({ kind, id, migrate_to }) => {
     if (migrate_to !== undefined) {
       const proceed = await confirmDestructive(
+        server,
         `Remove ${kind} "${id}" and move every item using it to "${migrate_to}"?`,
       );
       if (!proceed) return fail("cancelled by user");
@@ -1154,6 +1155,7 @@ server.registerTool(
   },
   write(async ({ id }) => {
     const proceed = await confirmDestructive(
+      server,
       `Permanently delete "${id}" (its whole folder, documents and attachments included)?`,
     );
     if (!proceed) return fail("cancelled by user");

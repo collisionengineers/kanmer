@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -65,6 +65,39 @@ try {
   assert.equal(tools.status, 200);
   const toolsPayload = await mcpPayload(tools);
   assert.equal(toolsPayload.result.tools.length, 30);
+  // Keep two independently-negotiated sessions live. Session B advertises
+  // elicitation, while A does not: a mutable registry-level server reference
+  // used to make this A mutation inherit B's identity/capabilities.
+  const initializeSecond = await fetch(endpoint, {
+    method: "POST",
+    headers: { authorization: "Bearer smoke", "content-type": "application/json", accept: "application/json, text/event-stream" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 3, method: "initialize", params: { protocolVersion: "2025-11-25", capabilities: { elicitation: {} }, clientInfo: { name: "http-smoke-second", version: "1" } } }),
+  });
+  assert.equal(initializeSecond.status, 200);
+  const secondSession = initializeSecond.headers.get("mcp-session-id");
+  assert.ok(secondSession, "second initialize returned a session id");
+  assert.notEqual(secondSession, session);
+  const created = await fetch(endpoint, {
+    method: "POST",
+    headers: { authorization: "Bearer smoke", "content-type": "application/json", accept: "application/json, text/event-stream", "mcp-session-id": session, "mcp-protocol-version": "2025-11-25" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "create_item", arguments: { title: "HTTP session isolation smoke" } } }),
+  });
+  assert.equal(created.status, 200);
+  const createdPayload = await mcpPayload(created);
+  assert.notEqual(createdPayload.result.isError, true);
+  const createdItem = JSON.parse(createdPayload.result.content[0].text);
+  const activity = (await readFile(path.join(root, ".kanmer", "data", "activity.jsonl"), "utf8"))
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
+  assert.equal(activity.at(-1).actor, "http-smoke", "Session A write keeps Session A identity after Session B initializes");
+  const deletedItem = await fetch(endpoint, {
+    method: "POST",
+    headers: { authorization: "Bearer smoke", "content-type": "application/json", accept: "application/json, text/event-stream", "mcp-session-id": session, "mcp-protocol-version": "2025-11-25" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 5, method: "tools/call", params: { name: "delete_item", arguments: { id: createdItem.id } } }),
+  });
+  assert.equal(deletedItem.status, 200, "Session A destructive operation keeps Session A's no-elicitation capability");
+  assert.notEqual((await mcpPayload(deletedItem)).result.isError, true);
   const foreign = await fetch(endpoint, { method: "GET", headers: { authorization: "Bearer other", "mcp-session-id": session } });
   assert.equal(foreign.status, 404);
   const deleted = await fetch(endpoint, { method: "DELETE", headers: { authorization: "Bearer smoke", "mcp-session-id": session, "mcp-protocol-version": "2025-11-25" } });

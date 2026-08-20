@@ -26,12 +26,12 @@
 // deliberately no env-var bypass: a guard you can switch off at 2am is the
 // failure mode this replaces. `plugin:build` stays unguarded — the artifact can
 // still be produced wrong, it just can no longer be validated wrong.
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, realpathSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
+import { checkIsolatedPlugin } from "./lib/plugin-isolation.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -42,48 +42,23 @@ function refuse(why, fix) {
   process.exit(1);
 }
 
-/**
- * Is `dir` a linked git worktree rather than the main checkout?
- *
- * The canonical test is git's own: in a linked worktree --git-dir points at
- * .git/worktrees/<name> while --git-common-dir points at the shared .git.
- * Resolve both against `dir` before comparing — git answers one relatively and
- * one absolutely depending on which case you are in, so comparing the raw
- * strings is accidentally right at the root and wrong elsewhere. Query with
- * `cwd: dir` so the answer describes the tree this script belongs to, not
- * whatever directory the shell happened to be in.
- *
- * Fallback when git is off PATH: in a linked worktree `.git` is a file
- * ("gitdir: …"), not a directory. A superset — it also fires for submodules and
- * `git clone --separate-git-dir` — which is the safe direction for a refusal
- * that names its own fix.
- */
-function isLinkedWorktree(dir) {
-  // stdio silences git's own stderr: execFileSync inherits it by default, so a
-  // non-repo directory would print `fatal: not a git repository` before the
-  // fallback quietly handles it — noise that reads like the failure it isn't.
-  const opts = { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] };
-  try {
-    const gitDir = execFileSync("git", ["rev-parse", "--git-dir"], opts).trim();
-    const commonDir = execFileSync("git", ["rev-parse", "--git-common-dir"], opts).trim();
-    return resolve(dir, gitDir) !== resolve(dir, commonDir);
-  } catch {
-    try {
-      return statSync(join(dir, ".git")).isFile();
-    } catch {
-      return false;
-    }
-  }
-}
-
-if (isLinkedWorktree(root)) {
+// A worktree is valid when it owns the workspace dependency used for the
+// fresh bundle. Conversely, a broken main checkout is invalid too. Asking git
+// whether this is a linked worktree was only a proxy for this property.
+const ownCore = realpathSync(join(root, "packages", "core"));
+let resolvedCore;
+try {
+  resolvedCore = realpathSync(fileURLToPath(await import.meta.resolve("@kanmer/core")));
+} catch (err) {
   refuse(
-    `this is a linked git worktree (${root}), where the bundle check cannot mean anything — ` +
-      "a worktree has no node_modules of its own, so @kanmer/core resolves up to the main " +
-      "checkout and the committed bundle and the fresh build are produced the same wrong way, " +
-      "agree, and pass",
-    "run `npm run plugin:check` from the main checkout instead (the repo root that owns " +
-      "node_modules); if the committed bundle needs refreshing, `npm run plugin:build` there too",
+    `@kanmer/core cannot resolve from this checkout (${root})`,
+    "run `npm install` in this checkout, then rerun `npm run plugin:check`",
+  );
+}
+if (!resolvedCore.startsWith(`${ownCore}${process.platform === "win32" ? "\\" : "/"}`)) {
+  refuse(
+    `@kanmer/core resolves to ${resolvedCore}, not this checkout's ${ownCore}`,
+    "run `npm install` in this checkout so its workspace dependency is local, then rerun `npm run plugin:check`",
   );
 }
 
@@ -141,6 +116,11 @@ if (sha(bundlePath) !== sha(distPath)) {
   console.error("Committed plugin bundle differs from a fresh build — run `npm run plugin:build`.");
   process.exit(1);
 }
+
+// The byte comparison proves source and committed bundle agree. This separate
+// protocol run proves those bytes actually work when installed away from the
+// monorepo, with no workspace resolution escape hatch.
+const isolated = await checkIsolatedPlugin({ sourcePluginRoot: join(root, "plugins", "kanmer") });
 
 // Every SKILL.md's frontmatter, parsed under a strict YAML parser. Five
 // different hosts parse this frontmatter with five different parsers; a file
@@ -450,5 +430,6 @@ const marketplaceNames = checkMarketplaces();
 console.log(`  marketplaces: ${marketplaceNames.join(", ")} — both packed into the app`);
 console.log(
   `plugin-sync OK — ${registered.length} tools match, bundle bytes match, ` +
-    `${skillCount} skill frontmatters parse, manifests at v${manifestVersion}`,
+    `${skillCount} skill frontmatters parse, manifests at v${manifestVersion}, ` +
+    `isolated MCP handshake lists ${isolated.toolCount} tools`,
 );

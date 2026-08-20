@@ -27,3 +27,7 @@ Proof is evidence the shipped result works, gathered on merged `main`. v3 types 
 
 ## Related
 ADR-0005 · D31/D32/D34 · FRD-002 · FRD-014 · kanmer-verify.
+
+## Compiled-workflow end state (ADR-0016)
+
+`proof/proof.md` is a whole-file, expected-version record with top-level ticket, merged SHA, outcome, and typed chronological attempts. An attempt records its type, command or procedure, result, timestamps, and retained output/evidence. Verification occurs in a detached worktree at the exact merged SHA, never against a moving `main`. `PASS`, `FAIL`, and other typed outcomes remain retained; a FAIL document satisfies the structural proof-exists gate, while skill/check choreography prevents completion from treating it as success. Review attestations may reference this evidence but are canonical in `scratch/review.md`.

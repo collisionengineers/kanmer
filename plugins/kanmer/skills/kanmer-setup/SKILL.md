@@ -71,6 +71,40 @@ Run the script that owns the managed block (see below). It only ever rewrites
 between the markers, so this is idempotent and safe on a repo with its own
 `AGENTS.md` content.
 
+### Reconcile the user-owned guide skeleton
+
+The managed block is necessary but not the repository's whole contributor
+guide. Assess the **user-owned** portion of `AGENTS.md` as a separate,
+non-destructive reconciliation:
+
+- **No `AGENTS.md`:** copy the canonical
+  `plugins/kanmer/skills/kanmer-docs/assets/agents-template.md` into the target
+  repository first. It is deliberately incomplete: preserve its TODO markers
+  and then run the existing managed-block writer, which prepends the Kanmer
+  block and handles any `CLAUDE.md` pointer as usual. Do not copy the managed
+  block into the template or create another writer.
+- **Existing `AGENTS.md`:** do not replace, complete, reformat, or otherwise
+  edit its human-authored prose. Ignore the marker-delimited Kanmer block, then
+  look case-insensitively at Markdown headings of any depth for **Commands**,
+  **Architecture map**, **Conventions**, **Gotchas**, and **Verification**.
+  Report the exact labels that are absent; when none are absent, report that no
+  user-owned skeleton action was needed. Heading style and the quality of
+  present prose are the repository owner's decision.
+- **Malformed markers:** stop when the existing writer refuses them. Never
+  work around that stop condition by copying, moving, or guessing at the
+  managed span.
+
+When the missing-file path was used, make the documentation debt visible **after
+a board exists** (so normal setup ingestion/greenfield work has completed):
+search for `Source: AGENTS.md skeleton created by kanmer-setup`. If no matching
+ticket exists, create one backlog ticket titled `Complete the AGENTS.md
+contributor guide`, with that exact source marker in its body, an explanation
+that the template TODOs need repository facts, and `docs_todo: true`. Use the
+configured `docs` area when it exists; otherwise omit the area rather than
+assuming a board layout. If the marker is already present, report that existing
+ticket instead of creating a duplicate. A present partial guide gets only its
+missing-section report — it does not create or mutate a documentation ticket.
+
 ## 5. Ingest what the repo already records
 
 Something in the repo is already the record of intended work. Find it and put

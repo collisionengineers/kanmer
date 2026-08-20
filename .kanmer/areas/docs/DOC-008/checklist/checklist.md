@@ -5,8 +5,9 @@
 - [x] Update the sample item, workflow stage order, Preparing explanation, and obsolete migration wording.
 - [x] Correct the Editor, filter, and Settings bullets while preserving verified current behaviour.
 - [x] Audit the changed user-facing README sections for legacy stage, Impact, priority, and format-2 wording; compare all claims with the manual and source.
-- [ ] Render-review the Markdown and run the planned documentation-relevant verification; record results for report and proof.
+- [x] Render-review the Markdown and run the planned documentation-relevant verification; record results for report and proof.
 
 ## Progress notes
 
 - Updated README.md in `.worktrees/doc-008`: format-3 folder model, fixed stages, current editor/filter/Settings surface, and format-3 migration wording. The residual audit found only excluded contributor/MCP-reference priority and tool-count prose plus the intentional statement that Kanmer has no priority field.
+- `npm test` passed: manual freshness check, 249 core tests, GUI Vitest suites, and script tests. `git diff --check` passed; a scoped residual audit found no obsolete format-2, Impact, priority-filter, or old-stage claims.

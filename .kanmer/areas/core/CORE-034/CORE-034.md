@@ -14,9 +14,6 @@ stageEntered:
   review: '2026-08-20T22:27:08.886Z'
   verifying: '2026-08-20T22:29:13.663Z'
   done: '2026-08-20T22:33:32.294Z'
-taken_at: '2026-08-20T22:14:37.366Z'
-branch: core-034-board-worktree-health
-worktree: .worktrees/core-034
 labels: []
 groups:
   - EPIC-009
@@ -32,7 +29,7 @@ prs:
   - '82'
 archived: false
 created: '2026-08-20T10:14:42.524Z'
-updated: '2026-08-20T22:34:04.936Z'
+updated: '2026-08-20T22:35:32.212Z'
 ---
 
 ## What

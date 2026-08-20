@@ -2,13 +2,16 @@
 id: SKILL-016
 type: ticket
 title: Give a kanmer-auto run durable state on the board
-status: preparing
+status: implementing
 area: skills
 order: 230
-assignee: ''
+assignee: codex-mcp-client
 profile: feature
 stageEntered:
   preparing: '2026-08-20T14:02:41.693Z'
+taken_at: '2026-08-20T23:33:32.664Z'
+branch: skill-016-durable-auto-run
+worktree: .worktrees/skill-016
 labels:
   - auto
 groups:
@@ -21,7 +24,7 @@ refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
 archived: false
 created: '2026-08-16T21:22:59.692Z'
-updated: '2026-08-20T14:02:41.693Z'
+updated: '2026-08-20T23:33:32.664Z'
 ---
 
 ## What

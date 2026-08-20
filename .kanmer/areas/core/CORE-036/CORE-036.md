@@ -2,10 +2,12 @@
 id: CORE-036
 type: ticket
 title: Tag-push release verification workflow
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: chore
+stageEntered:
+  preparing: '2026-08-20T16:03:18.784Z'
 labels: []
 groups:
   - HZN-005
@@ -14,7 +16,7 @@ links:
   - GUI-093
 archived: false
 created: '2026-08-20T10:14:42.545Z'
-updated: '2026-08-20T10:20:05.722Z'
+updated: '2026-08-20T16:03:18.784Z'
 ---
 
 ## What

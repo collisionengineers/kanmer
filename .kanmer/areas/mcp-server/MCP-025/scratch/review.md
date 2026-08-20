@@ -66,3 +66,26 @@ Disposition: MCP-031 fixed in this PR; its blocker link was removed and the dupl
 Disposition: filed and linked blocker [[MCP-032]]. Repair the entry/identity/bundled-skill resolution and re-run the complete normal stdio smoke before merge.
 
 No merge or stage move was performed.
+
+# Re-review — MCP-025 PR #90 after 987fe05
+
+## Verdict
+
+**PASS — merge approved.**
+
+## Remediation verified
+
+Commit 987fe05 disables ESM splitting for the MCP server's multiple entries. The rebuilt dist/index.js is again self-contained, so runtime self-identity and bundled-skill discovery resolve from the actual spawned entry rather than a generated chunk.
+
+- PASS: fresh MCP workspace typecheck.
+- PASS: fresh built standard stdio smoke, **175/175**. It verifies server path/hash/size/build shape and managed-block staleness discovery from the linked worktree.
+- PASS: fresh HTTP smoke, including two independently negotiated sessions: session A keeps its own client identity and no-elicitation destructive capability after session B initializes.
+- PASS: protocol smoke, 30/30.
+- PASS: discovery smoke, 13/13.
+- PASS: diff check.
+
+The fail-closed CLI remains non-listening without an injected production authorizer. The PR remains transport-only: no MCP-026 bearer parsing, storage/reference, constant-time comparison, generation, rotation, or lifecycle code was added.
+
+## Disposition
+
+MCP-032 is fixed in this PR; its blocker link was removed and the remediation ticket archived. MCP-025 now satisfies the review evidence against FRD-025/ADR-0017's transport seam, preserving stdio compatibility and the no-bearer/no-tunnel boundaries.

@@ -2,10 +2,12 @@
 id: SKILL-025
 type: ticket
 title: 'Work-type brief templates: fix, UI/UX, docs, cloud/infra, data/migration'
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: chore
+stageEntered:
+  preparing: '2026-08-20T21:56:24.499Z'
 labels: []
 groups:
   - EPIC-012
@@ -13,7 +15,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-20T10:14:57.059Z'
-updated: '2026-08-20T10:14:57.059Z'
+updated: '2026-08-20T21:56:24.499Z'
 ---
 
 ## What

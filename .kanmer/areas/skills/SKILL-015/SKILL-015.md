@@ -2,13 +2,14 @@
 id: SKILL-015
 type: ticket
 title: Delete the four pr-* review assets
-status: implementing
+status: review
 area: skills
 assignee: codex-mcp-client
 profile: chore
 stageEntered:
   preparing: '2026-08-20T21:25:25.179Z'
   implementing: '2026-08-20T21:26:15.756Z'
+  review: '2026-08-20T21:27:15.086Z'
 taken_at: '2026-08-20T21:26:15.772Z'
 branch: skill-015-remove-review-assets
 worktree: .worktrees/skill-015
@@ -19,9 +20,13 @@ links:
   - SKILL-014
 refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
+commits:
+  - b341a4cd9861765ecb7771b1db2665a8482b0dc6
+prs:
+  - '70'
 archived: false
 created: '2026-08-16T19:17:13.249Z'
-updated: '2026-08-20T21:26:15.772Z'
+updated: '2026-08-20T21:27:15.086Z'
 ---
 
 _Owner decision 2026-08-20: delete per FRD-023 R1 — review lives in scratch/review.md, not standalone pr-* assets._

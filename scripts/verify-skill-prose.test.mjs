@@ -31,6 +31,27 @@ test("rejects a v2 stage sequence in AGENTS.md", () => {
   }
 });
 
+test("rejects a groom skill without the board-vs-reality sweep contract", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-groom-sweep-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Clean fixture.\n");
+
+    const groom = join(fixture, "plugins", "kanmer", "skills", "kanmer-groom", "SKILL.md");
+    writeFileSync(groom, readFileSync(groom, "utf8").replace(/`main`\s+history/, "repository history"));
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /kanmer-groom keeps the bounded, evidence-first, proposal-only sweep/);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
 test("agents template keeps the required user-owned guide contract", () => {
   const template = readFileSync(
     join(root, "plugins", "kanmer", "skills", "kanmer-docs", "assets", "agents-template.md"),

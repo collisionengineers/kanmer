@@ -2,13 +2,16 @@
 id: SKILL-020
 type: ticket
 title: kanmer-plan and kanmer-auto become gates-first
-status: preparing
+status: implementing
 area: skills
 order: 160
-assignee: ''
+assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-20T12:39:41.253Z'
+taken_at: '2026-08-20T23:10:13.846Z'
+branch: skill-020-gates-first-routing
+worktree: .worktrees/skill-020
 labels: []
 groups:
   - EPIC-009
@@ -16,7 +19,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-20T10:14:56.999Z'
-updated: '2026-08-20T13:46:18.977Z'
+updated: '2026-08-20T23:10:13.846Z'
 ---
 
 ## What

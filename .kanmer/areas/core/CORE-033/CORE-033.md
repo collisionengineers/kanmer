@@ -2,10 +2,12 @@
 id: CORE-033
 type: ticket
 title: Protect `main` and `kanmer-board`; write the ops playbook
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: chore
+stageEntered:
+  preparing: '2026-08-20T12:12:12.995Z'
 labels: []
 groups:
   - EPIC-009
@@ -15,7 +17,7 @@ blocks:
   - CORE-035
 archived: false
 created: '2026-08-20T10:14:42.512Z'
-updated: '2026-08-20T10:19:46.615Z'
+updated: '2026-08-20T12:12:12.995Z'
 ---
 
 ## What

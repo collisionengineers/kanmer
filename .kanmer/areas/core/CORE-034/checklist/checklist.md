@@ -61,3 +61,16 @@
 - A fresh non-linked checkout of this branch ran `npm ci`, `npm run plugin:build`, and `npm run plugin:check`; it passed with 30 tools, matching bundle bytes, and 12 skill frontmatters. The generated bundle SHA-256 was copied byte-for-byte before committing; it was not hand-edited.
 
 - Opened PR #82: https://github.com/collisionengineers/kanmer/pull/82. The PR names `KanmerStore.takeTicket` and MCP `get_status` as production callers; implementation stops at Review.
+
+---
+
+## Closeout — CORE-034
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/core-034`
+- [ ] `git branch -d core-034-board-worktree-health` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

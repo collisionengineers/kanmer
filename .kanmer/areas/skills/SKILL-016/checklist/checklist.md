@@ -100,7 +100,12 @@
 - [x] proof.md finalised (PR URL + merge date appended)
 - [x] Moved to final stage
 - [x] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/skill-016`
+- [x] cd out of worktree; `git worktree remove .worktrees/skill-016`
 - [ ] `git branch -d skill-016-durable-auto-run` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`
+
+- [x] cd out of worktree; `git worktree remove .worktrees/skill-016`
+- [x] `git branch -D skill-016-durable-auto-run` after merged-PR verification
+- [x] `git push origin --delete skill-016-durable-auto-run`; `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

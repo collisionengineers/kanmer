@@ -55,3 +55,13 @@ FRD-025 **RA-AUTH-1** requires a real `Authorization: Bearer <token>` verificati
 MCP-025 is review-ready as the first, fail-closed transport seam. The built production CLI now exits non-zero **before binding** when no production authorizer is configured; it no longer advertises a loopback endpoint backed by an always-denying placeholder. MCP-026 will later supply the bearer implementation through `HttpAuthorizer`; no bearer parsing/storage/token lifecycle exists here.
 
 Rebased onto `origin/main` (current base `6dec9c5`), with commits `245656a`, `5ed4eda`, `878c99f`, and `24fed9c`. Focused verification after rebase: MCP typecheck; `npm run smoke:http`; discovery 13/13; protocol 30/30; `git diff --check`.
+
+## MCP-031 remediation — 2026-08-21
+
+Commit `0a484ce` removes the mutable module-global `McpServer` reference. `createKanmerMcpServer()` now creates a function-local server and its write wrapper closes over that exact instance; identity fallback, `take_ticket` assignee fallback, and destructive elicitation use the same request-server context. This prevents an HTTP session initialized later from changing another session's activity attribution or elicitation eligibility.
+
+`smoke-http.mjs` now keeps two sessions live with different negotiated capabilities (Session B advertises elicitation). After B initializes, Session A successfully creates an item, its activity entry remains `http-smoke`, and its destructive `delete_item` call proceeds under A's no-elicitation context. This regression fails on the earlier shared-server implementation because A's write is attributed to B.
+
+Verification after the remediation: `npm run typecheck -w @kanmer/mcp-server`, `npm run build:server`, `node packages/mcp-server/src/smoke-http.mjs`, and `npm run smoke:protocol` (30/30) pass; `git diff --check` passes. `node packages/mcp-server/src/smoke.mjs` reports 167/175: its eight failures are existing linked-worktree/build-artifact identity and bundled-skill-staleness assumptions (the tsup ESM entry delegates to a chunk and no bundled skill is discoverable from this worktree), not transport behavior. No MCP-026 bearer parsing, storage, comparison, generation, rotation, or lifecycle code was added.
+
+MCP-025 remains in Review on PR #90; this change does not merge or move the ticket.

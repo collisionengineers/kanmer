@@ -140,3 +140,11 @@
 ## Progress — 2026-08-21
 
 Implemented the shared registry factory and `remote-http-v1` policy hook, a loopback-only fail-closed Streamable HTTP host using the SDK's stateful `StreamableHTTPServerTransport`, bounded body/session/in-flight controls, principal-bound sessions, TTL sweep, DELETE/shutdown cleanup, and redacted ready metadata. The built HTTP smoke proves injected authorization, loopback binding, 401/404/405 handling, SDK initialize, 30-tool discovery, cross-principal rejection, and DELETE. Remaining unticked checks require the MCP-026 bearer authorizer integration, fuller lifecycle/limit coverage, plugin regeneration from the normal main checkout, and Windows PR CI.
+
+## MCP-031 review-blocker remediation — 2026-08-21
+
+- [x] Remove the module-global `McpServer` reference so each factory result owns its negotiated client identity and capabilities.
+- [x] Bind write attribution, `take_ticket` assignee fallback, and destructive elicitation checks to the requesting server instance.
+- [x] Add a two-session HTTP regression: Session B advertises elicitation, then Session A completes a write and destructive call while retaining Session A identity/capability context.
+- [x] Re-run MCP workspace typecheck, built HTTP smoke, and protocol smoke after the isolation change.
+- [x] Record the unrelated normal stdio-smoke artifact/linked-worktree failures rather than treating them as a pass.

@@ -4,7 +4,9 @@ import {
   SubscribeRequestSchema,
   UnsubscribeRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { execFile as execFileCallback } from "node:child_process";
 import path from "node:path";
+import { promisify } from "node:util";
 import { z } from "zod";
 import {
   BOUNDARIES,
@@ -33,6 +35,41 @@ import {
 import { resolveProjectRoot, resolveRepoRoot } from "./root.js";
 import { SERVER_VERSION, serverIdentity } from "./identity.js";
 import { bundledSkillsDir } from "./bundled.js";
+
+const execFile = promisify(execFileCallback);
+
+/**
+ * Observational twin of apps/gui/src/main/kanmerGit.ts's board branch probe.
+ * Keep these small copies local: core must not spawn Git and must not depend on
+ * Electron, while the GUI must not depend on the MCP server package.
+ */
+async function inspectBoardBranch(root: string): Promise<string | null> {
+  try {
+    const { stdout } = await execFile("git", ["symbolic-ref", "--short", "HEAD"], {
+      cwd: root,
+      windowsHide: true,
+    });
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function boardWorktreeRepair(
+  boardSource: "file" | "default",
+  actualBranch: string | null,
+  expectedBranch: string,
+  path: string,
+): string {
+  if (boardSource === "default") {
+    return `This path is serving a synthesized default board; check ${path} when tickets are expected.`;
+  }
+  if (actualBranch === expectedBranch) return "No repair is required.";
+  if (actualBranch) {
+    return `Board worktree is on "${actualBranch}", expected "${expectedBranch}". Restore the board worktree through Kanmer setup or board Git repair.`;
+  }
+  return `Board branch inspection failed or HEAD is detached. Restore ${path} to "${expectedBranch}" through Kanmer setup or board Git repair.`;
+}
 
 /**
  * Root resolution happens inside `main()`, not here — see `resolveRoot()`
@@ -274,6 +311,7 @@ server.registerTool(
       "Two hosts pointed at the same board can be running different server builds that enforce different gates; comparing `server.sha256` is how you see that instead of guessing. " +
       "Repo: a `repo` block answering WHICH KANMER THIS REPO WAS SET UP BY — `{ upToDate, stale: [{ artefact, state, detail, fix }] }`. Itemised, never a bare boolean. Artefacts checked are the ones migration does not touch: the AGENTS.md managed block, the installed skills trees and their `.kanmer-skills-version` stamps, `board.yml`, and the provider MCP registrations — compared by CONTENT HASH against what this build ships, not by version string (no artefact records a product version). " +
       "`state` is `behind` (act on it), `compensated` (the file is old and the runtime already papers over it — informational, no action), `unstamped` (no evidence either way) or `unknown` (could not be read). `upToDate` is true iff nothing is `behind`. Repair is never automatic: run `kanmer-setup`, which is the reconciliation path (FRD-013). Board format is not listed here — it is the `format` field above. " +
+      "Board worktree: an informational, non-blocking `boardWorktree` block reports the board path, expected and actual branch, branch match, board source, active ticket count, and operator repair guidance. It never checks out, repairs, initializes, or refuses another tool. " +
       "IMPORTANT: the `server` block is absent on servers older than 0.3.3, and the `repo` block on servers older than 0.3.4 — that ABSENCE is itself the signal 'this build predates the check', not an error. Individual fields are null if they could not be read; the call never fails over it.",
     inputSchema: {},
     annotations: { readOnlyHint: true, openWorldHint: false },
@@ -284,6 +322,8 @@ server.registerTool(
     const { board, source } = await store.getBoardWithSource();
     const { items, warnings } = await store.listItemsWithWarnings({ includeArchived: true });
     const active = items.filter((i) => !i.archived);
+    const expectedBranch = process.env.KANMER_BOARD_BRANCH?.trim() || "kanmer-board";
+    const actualBranch = await inspectBoardBranch(projectRoot);
     const byStage: Record<string, number> = {};
     for (const s of STAGE_IDS) byStage[s] = 0;
     let offBoardStage = 0;
@@ -332,6 +372,15 @@ server.registerTool(
       format,
       boardSource: source,
       deploymentTracking: board.deployment !== undefined,
+      boardWorktree: {
+        path: projectRoot,
+        expectedBranch,
+        actualBranch,
+        onBoardBranch: actualBranch === expectedBranch,
+        boardSource: source,
+        ticketCount: active.filter((item) => item.type === "ticket").length,
+        repair: boardWorktreeRepair(source, actualBranch, expectedBranch, projectRoot),
+      },
       counts: {
         byStage,
         byType,

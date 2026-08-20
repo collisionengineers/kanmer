@@ -19,3 +19,4 @@ export * from "./store.js";
 export * from "./links.js";
 export * from "./migrate.js";
 export * from "./watch.js";
+export * from "./worktree-guard.js";

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureBoardWorktree, renameBoardBranch } from "./kanmerGit.js";
+import { ensureBoardWorktree, inspectBoardWorktree, renameBoardBranch } from "./kanmerGit.js";
 
 const execFile = promisify(execFileCallback);
 const git = async (cwd: string, ...args: string[]): Promise<string> =>
@@ -106,6 +106,40 @@ describe("renameBoardBranch", () => {
     const result = await renameBoardBranch(boardRoot, "solo-board");
     expect(result).toEqual({ ok: true, from: "kanmer-board", error: null });
     expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("solo-board");
+  });
+});
+
+describe("inspectBoardWorktree", () => {
+  it("reports a board on its expected branch", async () => {
+    await expect(inspectBoardWorktree(repo, "main")).resolves.toEqual({
+      path: resolve(repo), expectedBranch: "main", actualBranch: "main", onBoardBranch: true,
+    });
+  });
+
+  it("reports a wrong branch without repairing it", async () => {
+    await expect(inspectBoardWorktree(repo, "kanmer-board")).resolves.toEqual({
+      path: resolve(repo), expectedBranch: "kanmer-board", actualBranch: "main", onBoardBranch: false,
+    });
+    expect(await git(repo, "symbolic-ref", "--short", "HEAD")).toBe("main");
+  });
+
+  it("reports an unavailable or detached board as unhealthy", async () => {
+    const missing = join(dir, "missing-board");
+    await expect(inspectBoardWorktree(missing, "kanmer-board")).resolves.toEqual({
+      path: resolve(missing), expectedBranch: "kanmer-board", actualBranch: null, onBoardBranch: false,
+    });
+  });
+
+  it("uses the environment default and permits an explicit override", async () => {
+    const before = process.env.KANMER_BOARD_BRANCH;
+    process.env.KANMER_BOARD_BRANCH = " main ";
+    try {
+      expect((await inspectBoardWorktree(repo)).expectedBranch).toBe("main");
+      expect((await inspectBoardWorktree(repo, "kanmer-board")).expectedBranch).toBe("kanmer-board");
+    } finally {
+      if (before === undefined) delete process.env.KANMER_BOARD_BRANCH;
+      else process.env.KANMER_BOARD_BRANCH = before;
+    }
   });
 });
 

@@ -21,6 +21,7 @@ import {
   typeDir,
   type KanmerPaths,
 } from "./paths.js";
+import { assertNotBoardWorktree } from "./worktree-guard.js";
 import { parseItem, serialiseItem } from "./frontmatter.js";
 import {
   formatId,
@@ -830,6 +831,12 @@ export class KanmerStore {
     const current = parseItem(await readText(loc.file));
     if (current.type !== "ticket") {
       throw new Error(`Only tickets can be taken; "${id}" is a ${current.type}`);
+    }
+    if (input.worktree !== undefined) {
+      assertNotBoardWorktree(input.worktree, {
+        boardRoot: this.paths.projectRoot,
+        repoRoot: this.paths.repoRoot,
+      });
     }
     if (current.taken_at && !input.force) {
       throw new Error(

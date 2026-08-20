@@ -75,7 +75,7 @@
 - [ ] Run root verify (attempted; unrelated UI typecheck mismatch and Windows GUI cleanup failures recorded in report).
 - [x] Confirm old-client single calls still pass unchanged.
 - [x] Run `git diff --check` and inspect status.
-- [ ] Record evidence in post-implementation report.
+- [x] Record evidence in post-implementation report.
 - [x] Stop before merge.
 
 ## Deferred (explicitly outside MCP-019)

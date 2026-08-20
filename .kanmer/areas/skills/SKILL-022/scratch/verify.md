@@ -1,0 +1,1 @@
+2026-08-21 merged-main verification: PR #86 is MERGED at 2026-08-20T22:55:55Z (merge 97a9935405c6778970e0e61943e0bf6328aea1c7). Main fast-forwarded to 97a9935. `npm run verify:skills` passed all 11 rails; `npm run test:scripts` passed 54/54; syntax, exact contract searches, diff check, scope check, and clean status passed. Proof written; Done gate passed.

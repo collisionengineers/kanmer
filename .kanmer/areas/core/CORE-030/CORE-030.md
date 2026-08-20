@@ -2,12 +2,15 @@
 id: CORE-030
 type: ticket
 title: Staleness reports .claude/skills as behind with a fix that cannot work
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-20T21:36:05.228Z'
+taken_at: '2026-08-20T21:40:48.295Z'
+branch: core-030-owned-skill-destinations
+worktree: .worktrees/CORE-030
 labels:
   - install
   - false-positive
@@ -18,7 +21,7 @@ refs:
   - docs/functional/frd/FRD-013-setup-as-reconciliation.md
 archived: false
 created: '2026-08-17T02:05:05.887Z'
-updated: '2026-08-20T21:36:05.228Z'
+updated: '2026-08-20T21:40:48.295Z'
 ---
 
 ## What

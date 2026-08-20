@@ -97,3 +97,61 @@ Two headline facts from `research/` shape this table and should be read first:
   `platforms` field must be set honestly rather than aspirationally.
 - **Signing the bundle** (`mcpb sign`). Noted as available; not required for
   direct install.
+
+## Rescope correction — 2026-08-20
+
+This section supersedes stale assumptions elsewhere in this file while preserving the earlier code evidence.
+
+### Decisions now fixed
+
+- `MCP-005` is archived and **not** a dependency. Source the payload from the existing fresh standalone CJS build (`packages/mcp-server/dist/standalone/kanmer-mcp.cjs`).
+- `MCP-010` is Done, but MCPB still passes an explicit `--root`; therefore `user_config.board_root` must be the directory that directly contains `.kanmer`, normally `<repo>/.worktrees/kanmer`.
+- v1 platform claim is `win32` only; Node runtime minimum is 20.
+- One MCPB configuration serves one board. Multi-board is deferred.
+- `@anthropic-ai/mcpb` is a pinned root devDependency and invoked through the local package binary/script, not a global prerequisite.
+- MCPB is an automated GitHub release asset built/published by the existing release script after GUI-092/093’s single-pack/resilient-publish changes; CORE-036’s tag workflow validates it read-only.
+- MCPB ships MCP tools/prompts only, not Kanmer skills.
+- Headless mode has no GUI Git auto-sync or worktree creation; document operator responsibility rather than adding a daemon.
+
+### Exact files to add
+
+| Path | Required change |
+|---|---|
+| `mcpb/manifest.json` | Committed source/template manifest with stable metadata and `${user_config.board_root}` in `server.mcp_config.args` as `--root`; required directory config; Node 20; `win32`; icon; generated/current tool metadata rules. Do not hand-maintain a stale version/tool list. |
+| `scripts/build-mcpb.mjs` | Build fresh standalone server, derive root version, query the fresh server’s actual tools through the existing protocol/discovery mechanism, create `dist/mcpb/staging`, copy server and root `icon.png`, generate final manifest, invoke pinned local MCPB packer, and emit `dist/mcpb/kanmer-<version>.mcpb`. Fail with exact remediation on any missing/mismatched input. |
+| `scripts/check-mcpb-sync.mjs` | Rebuild into a temp directory, unpack/inspect generated/current MCPB, compare normalized manifest, server payload and icon bytes, assert version/platform/runtime/root argument/tool roster, and fail on generated drift. Compare contents, not necessarily archive bytes. |
+| `scripts/mcpb.test.mjs` | Dependency-free fixture tests for manifest generation/path interpolation/version/tool roster/platform, missing payload/icon, normalized comparison and release asset naming. |
+| `packages/mcp-server/src/smoke-headless.mjs` | Durable isolated-Node smoke: temp payload with no reachable workspace modules, disposable board, protocol initialize/tools/list/get_status and controlled round trip. Reuse existing smoke helpers where possible. |
+| `docs/manual/claude-desktop-mcpb.md` or the existing Connect manual chapter | Supported local install, board-root picker, GUI-closed behavior, one-board limit, no auto-sync/skills, troubleshooting and uninstall. Use the existing manual structure; do not create a duplicate chapter if one already owns Claude Desktop. |
+
+### Exact files to modify
+
+| Path | Required change |
+|---|---|
+| `package.json` | Add pinned `@anthropic-ai/mcpb` devDependency; scripts `mcpb:build`, `mcpb:check` and headless smoke/verification integration. Update `verify` only through CORE-031’s shared step list, never inline another pyramid. |
+| `package-lock.json` | Lock the MCPB build tool/runtime transitive graph. |
+| `.gitignore` | Ignore only generated `dist/mcpb/` staging/archive outputs if not already covered; keep `mcpb/manifest.json` committed. |
+| `scripts/check-plugin-sync.mjs` or a narrowly renamed shared distributed-bundle checker | Refactor shared standalone-payload comparison once so plugin and MCPB consumers are both checked against the same fresh build. Avoid two independent hash implementations. |
+| `scripts/release.mjs` | After GUI-092/093, build MCPB once from the same verified source/version and include its archive in publish/one-time repair without deleting existing assets. Update printed checklist. Do not duplicate pack/publish. |
+| `scripts/verify-release-assets.mjs` | Add the versioned MCPB from `dist/mcpb/` to the derived expected release set and sanity floor; compare size/SHA-256 like other assets. Keep installer `latest.yml` semantics separate. |
+| `scripts/verify-release-assets.test.mjs` | Golden cases for present/missing/mismatched MCPB and expected-set sanity. |
+| `.github/workflows/release.yml` after CORE-036 | Normally no bespoke step: `verify`/`dist:check` plus release verifier should cover MCPB. Modify only if the shared verify/release-asset command contract needs the archive built before validation. |
+| `docs/functional/frd/FRD-022-mcp-server-surface.md` | Supported headless/MCPB mode, explicit board-root requirement, GUI-closed limits, same tool surface and isolated runtime proof. |
+| `docs/functional/frd/FRD-012-connect.md` | Install matrix row for Claude Desktop MCPB: local stdio Node runtime, one explicit board root, tools/prompts but no skill install, manual real-host verification. Coordinate current matrix rather than duplicate. |
+| `AGENTS.md` | Packaging/release commands and headless/MCPB limits after implementation. No stale MCP-005/no-CI language. |
+| `docs/architecture/adr/ADR-0012-board-discovery-order.md` | Correct the stale MCPB consequence: explicit MCPB `--root` intentionally selects the board folder and therefore does not use cwd discovery. Do not change the accepted discovery ladder. |
+| manual index/generated manual | Include the chosen MCPB chapter and regenerate through `build-manual.mjs`. |
+
+### Existing asset to reuse
+
+- Root `icon.png` is 1254×1254 RGBA and is the canonical square source. Copy it into staging; do not create `apps/gui/build/icon.png` or another competing design asset in this ticket.
+
+### Release ordering
+
+- Implement deterministic MCPB build/check/headless docs independently of GUI-092/093.
+- Integrate the archive into `release.mjs` only after/rebased on their single-pack and resilient-publish contract.
+- CORE-036 then validates the released MCPB through the shared asset verifier.
+
+### Updated out of scope
+
+- `packages/mcp-server/src/index.ts` tool behavior, MCP-025 HTTP transport/auth/tunnels, server relocation, GUI worktree creation/autosync, multiple roots, macOS/Linux claim, signing/directory submission, skill installation, or another release publisher.

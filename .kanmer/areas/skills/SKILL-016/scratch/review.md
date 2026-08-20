@@ -36,3 +36,11 @@ The new disposable KanmerStore scenario is a material improvement: it writes/rea
 However, its “Mismatch/foreign-owner decisions” block only re-reads the same valid current pointer. It never supplies a mismatched project fingerprint or a running record owned by another controller, invokes a refusal decision, or proves those cases leave group documents/ticket/activity unchanged. The ticket plan/checklist explicitly require both refusals without mutation.
 
 **Verdict: NEEDS CHANGES.** Keep [[SKILL-028]] blocking SKILL-016; add explicit real-board wrong-project and foreign-controller records plus refusal assertions and no-mutation snapshots, then request re-review.
+
+Second SKILL-028 remediation pushed: 4d963c5 proves wrong-project and foreign-running-controller decisions read real stored group documents and reject without group-doc/ticket/activity mutation. Targeted test + verify:skills pass; remains Review.
+
+## Re-review — PASS
+
+SKILL-028 is now satisfied. The disposable real KanmerStore scenario writes/reads the actual group run and pointer paths, observes a live ticket move/activity, proves no replay, retains history, and explicitly tests wrong-project plus foreign-running-controller refusal with unchanged group docs, ticket, and activity snapshots. Targeted scenario 1/1, `npm run verify:skills`, and `git diff --check` pass.
+
+**Verdict: PASS.** Merge PR #92 and move SKILL-016 to Verifying; do not write proof until merged main.

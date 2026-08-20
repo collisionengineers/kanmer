@@ -38,3 +38,7 @@ Replaced the raw temporary-file scenario with scripts/auto-run-state.test.mjs us
 Validation after remediation: npm run build:core; node --test scripts/auto-run-state.test.mjs (1/1); npm run verify:skills; git diff --check.
 
 Commits: 9b2d574, f6adae2.
+
+## Second review remediation — SKILL-028
+
+The disposable real-board scenario now parses and reads the stored current pointer and referenced run record through KanmerStore before deciding resume/refusal. It writes a wrong-project run/pointer and a running foreign-controller pointer, snapshots current/history, the live ticket, and its activity, then proves each decision refuses with byte-for-byte unchanged snapshots. It restores the valid pointer and proves normal resume, still without replaying the live transition. Commit 4d963c5; targeted scenario and verify:skills pass.

@@ -2,7 +2,7 @@
 id: SKILL-016
 type: ticket
 title: Give a kanmer-auto run durable state on the board
-status: review
+status: verifying
 area: skills
 order: 230
 assignee: codex-mcp-client
@@ -10,6 +10,7 @@ profile: feature
 stageEntered:
   preparing: '2026-08-20T14:02:41.693Z'
   review: '2026-08-20T23:40:53.658Z'
+  verifying: '2026-08-20T23:48:40.343Z'
 taken_at: '2026-08-20T23:33:32.664Z'
 branch: skill-016-durable-auto-run
 worktree: .worktrees/skill-016
@@ -27,11 +28,12 @@ commits:
   - 752ef7d3db5a1315aad14acba2a21f28121e7575
   - 9b2d574
   - f6adae2
+  - 4d963c5
 prs:
   - '92'
 archived: false
 created: '2026-08-16T21:22:59.692Z'
-updated: '2026-08-20T23:46:29.223Z'
+updated: '2026-08-20T23:48:40.343Z'
 ---
 
 ## What

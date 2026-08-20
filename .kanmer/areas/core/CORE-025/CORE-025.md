@@ -6,6 +6,7 @@ title: >-
   checks (phase 2)
 status: preparing
 area: core
+order: 20
 assignee: ''
 profile: fix
 stageEntered:
@@ -20,7 +21,7 @@ blocks:
 docs_todo: true
 archived: false
 created: '2026-08-16T18:26:15.191Z'
-updated: '2026-08-20T13:27:40.811Z'
+updated: '2026-08-20T13:46:18.895Z'
 ---
 
 ## What

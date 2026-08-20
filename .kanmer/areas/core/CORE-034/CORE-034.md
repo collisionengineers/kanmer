@@ -6,6 +6,7 @@ title: >-
   board-worktree health
 status: preparing
 area: core
+order: 60
 assignee: ''
 profile: fix
 stageEntered:
@@ -17,7 +18,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-20T10:14:42.524Z'
-updated: '2026-08-20T12:18:19.217Z'
+updated: '2026-08-20T13:46:18.921Z'
 ---
 
 ## What

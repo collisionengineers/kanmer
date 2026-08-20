@@ -6,6 +6,7 @@ title: >-
   verification
 status: preparing
 area: skills
+order: 170
 assignee: ''
 profile: fix
 stageEntered:
@@ -19,7 +20,7 @@ blocks:
   - CORE-035
 archived: false
 created: '2026-08-20T10:14:57.015Z'
-updated: '2026-08-20T12:43:43.531Z'
+updated: '2026-08-20T13:46:18.983Z'
 ---
 
 ## What

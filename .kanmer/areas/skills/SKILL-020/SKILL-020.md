@@ -4,6 +4,7 @@ type: ticket
 title: kanmer-plan and kanmer-auto become gates-first
 status: preparing
 area: skills
+order: 160
 assignee: ''
 profile: fix
 stageEntered:
@@ -15,7 +16,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-20T10:14:56.999Z'
-updated: '2026-08-20T12:39:41.253Z'
+updated: '2026-08-20T13:46:18.977Z'
 ---
 
 ## What

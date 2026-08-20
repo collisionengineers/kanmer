@@ -4,6 +4,7 @@ type: ticket
 title: GitHub Actions PR workflow — `verify` job only
 status: preparing
 area: core
+order: 40
 assignee: ''
 profile: chore
 stageEntered:
@@ -18,7 +19,7 @@ blocks:
   - CORE-024
 archived: false
 created: '2026-08-20T10:14:42.500Z'
-updated: '2026-08-20T12:07:12.757Z'
+updated: '2026-08-20T13:46:18.908Z'
 ---
 
 ## What

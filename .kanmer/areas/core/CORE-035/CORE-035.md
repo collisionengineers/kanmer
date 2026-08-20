@@ -4,6 +4,7 @@ type: ticket
 title: Spine integration verification
 status: preparing
 area: core
+order: 70
 assignee: ''
 profile: chore
 stageEntered:
@@ -16,7 +17,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-20T10:14:42.535Z'
-updated: '2026-08-20T13:13:26.932Z'
+updated: '2026-08-20T13:46:18.926Z'
 ---
 
 ## What

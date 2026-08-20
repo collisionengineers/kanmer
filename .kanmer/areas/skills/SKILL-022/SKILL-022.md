@@ -6,6 +6,7 @@ title: >-
   context
 status: preparing
 area: skills
+order: 180
 assignee: ''
 profile: chore
 stageEntered:
@@ -17,7 +18,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-20T10:14:57.026Z'
-updated: '2026-08-20T12:49:11.464Z'
+updated: '2026-08-20T13:46:18.989Z'
 ---
 
 ## What

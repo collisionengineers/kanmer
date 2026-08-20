@@ -6,6 +6,7 @@ title: >-
   (phase 1)
 status: preparing
 area: core
+order: 10
 assignee: ''
 profile: fix
 stageEntered:
@@ -22,7 +23,7 @@ refs:
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 archived: false
 created: '2026-08-16T18:26:15.167Z'
-updated: '2026-08-20T13:20:46.901Z'
+updated: '2026-08-20T13:46:18.889Z'
 ---
 
 ## What

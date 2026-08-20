@@ -4,6 +4,7 @@ type: ticket
 title: Protect `main` and `kanmer-board`; write the ops playbook
 status: preparing
 area: core
+order: 50
 assignee: ''
 profile: chore
 stageEntered:
@@ -17,7 +18,7 @@ blocks:
   - CORE-035
 archived: false
 created: '2026-08-20T10:14:42.512Z'
-updated: '2026-08-20T12:12:12.995Z'
+updated: '2026-08-20T13:46:18.914Z'
 ---
 
 ## What

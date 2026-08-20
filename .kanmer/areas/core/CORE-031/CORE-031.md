@@ -4,6 +4,7 @@ type: ticket
 title: Create `npm run verify` wrapping one shared VERIFY_STEPS
 status: preparing
 area: core
+order: 30
 assignee: ''
 profile: chore
 stageEntered:
@@ -17,7 +18,7 @@ blocks:
   - CORE-032
 archived: false
 created: '2026-08-20T10:14:42.483Z'
-updated: '2026-08-20T12:02:11.660Z'
+updated: '2026-08-20T13:46:18.902Z'
 ---
 
 ## What

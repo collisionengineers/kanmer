@@ -59,7 +59,7 @@ describe("Editor scratch and group context", () => {
     await waitFor(() => expect(client.getDoc).toHaveBeenCalledWith("GUI-096", "scratch/review"));
   });
 
-  it("refuses an unsafe scratch slug before reading or writing", async () => {
+  it("refuses unsafe or whitespace-padded scratch slugs before reading or writing", async () => {
     const client = clientFor();
     renderEditor(client);
     fireEvent.click(await screen.findByRole("button", { name: /Scratch/ }));
@@ -67,6 +67,10 @@ describe("Editor scratch and group context", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "New scratch note name" }), { target: { value: "../escape" } });
     fireEvent.click(screen.getByRole("button", { name: "New note" }));
     expect(screen.getByText("Use a lowercase kebab-case note name.")).toBeTruthy();
+    fireEvent.change(screen.getByRole("textbox", { name: "New scratch note name" }), { target: { value: " note " } });
+    fireEvent.click(screen.getByRole("button", { name: "New note" }));
+    expect(screen.getByText("Use a lowercase kebab-case note name.")).toBeTruthy();
+    expect(client.getDoc).not.toHaveBeenCalledWith("GUI-096", "scratch/note");
     expect(client.setDoc).not.toHaveBeenCalled();
   });
 

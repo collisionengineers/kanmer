@@ -358,7 +358,7 @@ export function Editor(props: EditorProps): JSX.Element {
   };
 
   const createScratch = () => {
-    const slug = newScratchSlug.trim();
+    const slug = newScratchSlug;
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
       setScratchError("Use a lowercase kebab-case note name.");
       return;

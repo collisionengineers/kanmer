@@ -1,0 +1,1 @@
+Verified merged main commit e2bef96dd4422e37988e0297273eda422c5ec990: doc numbering, manual check, script tests (54), skills verification, and merge diff check all passed. FRD-025 and ADR-0017 now exist and are indexed. Dependent ticket refs deliberately remain unchanged; their owners can now link the merged paths.

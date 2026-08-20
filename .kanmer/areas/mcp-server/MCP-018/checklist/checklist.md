@@ -69,3 +69,16 @@
 - Replaced the linked-worktree proxy with the intended check: ESM-resolve `@kanmer/core`, realpath it, and require it to be beneath this checkout's `packages/core`. A correctly installed worktree passes; a main or worktree borrowing another checkout fails with an actionable `npm install` fix.
 - `scripts/lib/plugin-isolation.mjs` copies the installed plugin payload under an OS-temp parent containing a space, reads the Claude manifest/config for the relative entry, uses an unrelated disposable cwd and sanitized environment, then performs `initialize` and `tools/list` directly over stdio.
 - Regression evidence: real copied bundle listed 30 tools; an external-only fixture, missing entry, and non-responsive fixture all failed and cleaned their temporary payloads.
+
+---
+
+## Closeout — MCP-018
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/mcp-018`
+- [x] `git branch -d mcp-018-isolated-plugin-check` (`-D` if squash/rebase-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

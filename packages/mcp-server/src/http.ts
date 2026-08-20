@@ -225,9 +225,16 @@ export class KanmerHttpHost {
     if (this.stopping) return;
     this.stopping = true;
     clearInterval(this.sweepTimer);
-    await new Promise<void>((resolve) => this.httpServer.close(() => resolve()));
+    // close() first stops new accepts; sessions are then closed before waiting
+    // for keep-alive/SSE sockets, with a bounded forced cleanup fallback.
+    const listenerClosed = new Promise<void>((resolve) => this.httpServer.close(() => resolve()));
     await Promise.all([...this.sessions.keys()].map((id) => this.closeSession(id)));
-    for (const socket of this.sockets) socket.destroy();
+    const force = setTimeout(() => {
+      for (const socket of this.sockets) socket.destroy();
+    }, this.options.shutdownGraceMs);
+    force.unref();
+    await listenerClosed;
+    clearTimeout(force);
   }
 }
 

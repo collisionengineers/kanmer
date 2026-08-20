@@ -16,6 +16,7 @@ const { createKanmerHttpHost } = await import("../dist/http.js");
 
 assert.throws(() => createKanmerHttpHost({}), /authorizer/);
 assert.throws(() => createKanmerHttpHost({ authorizer: { authorize: async () => ({ principal: "x" }) }, host: "0.0.0.0" }), /bind only/i);
+assert.throws(() => createKanmerHttpHost({ authorizer: { authorize: async () => ({ principal: "x" }) }, port: 65_536 }), /65535/);
 
 const host = createKanmerHttpHost({
   authorizer: {
@@ -36,6 +37,8 @@ try {
   const endpoint = ready.endpoint;
   const missing = await fetch(endpoint, { method: "POST" });
   assert.equal(missing.status, 401);
+  const deniedOrigin = await fetch(endpoint, { method: "POST", headers: { authorization: "Bearer smoke", origin: "https://not-allowed.example" } });
+  assert.equal(deniedOrigin.status, 403);
   const notFound = await fetch(endpoint.replace("/mcp", "/other"), { headers: { authorization: "Bearer smoke" } });
   assert.equal(notFound.status, 404);
   const method = await fetch(endpoint, { method: "PUT", headers: { authorization: "Bearer smoke" } });
@@ -60,6 +63,11 @@ try {
   assert.equal(foreign.status, 404);
   const deleted = await fetch(endpoint, { method: "DELETE", headers: { authorization: "Bearer smoke", "mcp-session-id": session, "mcp-protocol-version": "2025-11-25" } });
   assert.equal(deleted.status, 200);
+  const malformed = await fetch(endpoint, { method: "POST", headers: { authorization: "Bearer smoke", "content-type": "application/json" }, body: "{" });
+  assert.equal(malformed.status, 400);
+  await host.invalidatePrincipal("smoke-principal");
+  await host.close();
+  await host.close();
   process.stdout.write("PASS  HTTP initialize/tools/list/session/delete smoke\n");
 } finally {
   await host.close();

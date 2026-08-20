@@ -49,3 +49,16 @@
 - Corrected planner input routing to live gates with an explicitly bounded material-hole exception.
 - Replaced universal research Wave 0 with ticket-by-ticket gate routing; `verify-skill-prose` now guards both regressions.
 - Opened PR #89; ticket is ready for independent review without a merge.
+
+---
+
+## Closeout — SKILL-020
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`): PR #89 is MERGED at 2026-08-20T23:16:28Z.
+- [x] proof.md finalised (PR URL + merge date recorded).
+- [x] Moved to final stage (Done).
+- [x] Outcome recorded in ticket body (PR link, no follow-up tickets).
+- [ ] cd out of worktree; `git worktree remove .worktrees/skill-020`
+- [ ] `git branch -d skill-020-gates-first-routing` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

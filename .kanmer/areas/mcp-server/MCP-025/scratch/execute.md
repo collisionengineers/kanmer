@@ -1,0 +1,1 @@
+Committed 3cd793d and opened draft PR https://github.com/collisionengineers/kanmer/pull/90. Kept in Implementing: MCP-026's concrete bearer authorizer and additional lifecycle/limit coverage remain required; see post-implementation report.

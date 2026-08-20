@@ -22,11 +22,12 @@ groups:
 links: []
 commits:
   - 96067ad3636d1f181fa0897a36610e19499f4f86
+  - 3503c07eedf6a08b7621fcc2ba44f617aa3bba2a
 prs:
   - '89'
 archived: false
 created: '2026-08-20T10:14:56.999Z'
-updated: '2026-08-20T23:18:36.058Z'
+updated: '2026-08-20T23:18:55.638Z'
 ---
 
 ## What
@@ -42,3 +43,5 @@ keep lane cap ~3, keep the board-worktree invariant. Add a `verify-skill-prose.m
 - [ ] `npm run verify:skills` green including the new rail.
 
 ## Outcome
+
+Shipped in [PR #89](https://github.com/collisionengineers/kanmer/pull/89), merged to `main` as `3503c07eedf6a08b7621fcc2ba44f617aa3bba2a` on 2026-08-20. No follow-up tickets or deployment are required; this is a skill/verifier-only change.

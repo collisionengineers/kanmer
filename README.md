@@ -28,28 +28,36 @@ never creates it):
 
 ```
 .kanmer/
-  version.json          { "format": 2 } — storage format marker
-  data/board.yml        Stages (kanban columns), areas (+ id prefixes), priorities
+  version.json          { "format": 3 } — storage format marker
+  data/board.yml        Areas (+ id prefixes), profiles, group kinds and proof types
   data/counters.json    Per-prefix id counters
   data/activity.jsonl   Append-only change log (derived — safe to delete)
   areas/
     api/                One folder per area (folder name = area id)
       API-001/          One folder per ticket (folder name = ticket id)
         API-001.md      THE TICKET — governs everything in this folder
-        research.md     What was learned for it
-        impact.md       The files/modules the change touches
-        plan.md         Written from research + impact
-        checklist.md    The plan as tickable steps
-        proof.md        Evidence it works — REQUIRED to reach the final stage
+        research/       What was learned for it
+          findings.md
+        files/          The files/modules the change touches
+          surface.md
+        plan/           The chosen approach
+          plan.md
+        checklist/      The plan as tickable steps
+          checklist.md
+        open-questions/ Decisions that still need an answer
+        post-implementation-report/  What changed, for review
+        proof/          Evidence it works after merge
     pr-review/          Default area on new boards (prefix PR)
     _none/              Tickets with no area (prefix TICK)
 ```
 
 **The ticket is the governing unit.** Its id comes from the area it was born in
 (`API-001`) and never changes — moving a ticket to another area moves its
-folder, not its id, so `[[API-001]]` references stay valid forever. The five
-pipeline documents live beside the ticket file, and `proof.md` is enforced: the
-board rejects moving a ticket to the final stage without it.
+folder, not its id, so `[[API-001]]` references stay valid forever. A ticket can
+carry seven document types: research, files, plan, checklist, open questions,
+post-implementation report and proof. Each type is a folder, so a ticket can
+hold several documents of the same type. A ticket's profile decides which ones
+it owes at each stage; proof is gathered after merge, before it reaches Done.
 
 Each item is Markdown with frontmatter; the body may reference other items with `[[ID]]` wiki-links, `links:` holds structured relations, and `blocks:` holds dependency edges (blocked-by is derived, never stored).
 
@@ -60,8 +68,6 @@ type: ticket
 title: Wire up create_item tool
 status: implementing
 area: api
-priority: high
-due: 2026-09-01
 assignee: claude
 taken_at: 2026-08-13T09:12:00.000Z
 branch: feat/create-item
@@ -75,18 +81,19 @@ Implements the tool. See [[API-002]].
 The default stages are the board's columns, left to right:
 
 ```
-Todo → Planning → Implementing → Review → Verifying → Done
+Backlog → Preparing → Implementing → Review → Verifying → Done
 ```
 
 `area` is an orthogonal, colour-coded grouping (UI, API, Infra…) that clusters
-cards *within* each column. Stages, areas and priorities are all editable in the
-app's Settings — or by agents through the board-management tools.
+cards *within* each column and gives newly created tickets their id prefix.
+Stages are fixed so they mean the same thing on every board. Preparing is the
+shared stage for research, file mapping and planning; a ticket's profile decides
+what evidence it needs to move on.
 
-**Upgrading an old board:** projects created before format 2 (flat `tickets/`,
-`plans/`, `research/` folders) keep working unmigrated. The GUI shows a
-"Migrate to v2" banner when it opens one: the migration moves tickets into
-their folders, folds legacy plans/research into the tickets they relate to,
-and converts orphans to labelled tickets so nothing is lost. Ids never change.
+**Upgrading an older board:** the GUI keeps an earlier-format board read-only
+until you choose **Migrate to format 3**. The migration maps old stages onto the
+six fixed stages, sorts documents into their type folders, and assigns each
+ticket a profile. It preserves ticket ids.
 
 ## Install — the easy way (Windows installer)
 
@@ -147,12 +154,12 @@ source checkout: opening it in Kanmer fetches and attaches the configured board
 branch automatically.
 
 - **Board** — one row of workflow-stage columns. Drag cards between stages **and to a position within a stage** — an insertion line shows where the card will land, and it lands instantly (optimistically). Manual order is shared with agents (`move_item position`). Within each column cards **cluster by area** under colour-coded sub-labels, carry an area stripe, and show a ⛏ badge while an agent has them taken, plus ⛔ / ⏰ badges when a ticket is blocked or overdue.
-- **Editor** — click a card for the frontmatter fields plus **document tabs** (Ticket | Research | Impact | Plan | Checklist | Proof) — the checklist renders as live checkboxes. Ticket-field saves are **diff-based** (only the fields you changed); concurrent agent edits re-sync live and a same-field conflict offers Keep mine / Take theirs. **Document saves are whole-document and version-checked** — if an agent changed the document while you were editing, the save is refused with a conflict banner offering Reload from disk or Overwrite anyway. Switching document tabs, closing, navigating or opening another project with unsaved text all prompt first. `[[ID]]` gets **autocomplete**; labels and links are chip editors with suggestions.
+- **Editor** — click a card for its fields plus **document tabs** (Ticket | Research | Files | Plan | Checklist | Open questions | Post-implementation report | Proof) — the checklist renders as live checkboxes. Ticket-field saves are **diff-based** (only the fields you changed); concurrent agent edits re-sync live and a same-field conflict offers Keep mine / Take theirs. **Document saves are whole-document and version-checked** — if an agent changed the document while you were editing, the save is refused with a conflict banner offering Reload from disk or Overwrite anyway. Switching document tabs, closing, navigating or opening another project with unsaved text all prompt first. `[[ID]]` gets **autocomplete**; labels and links are chip editors with suggestions.
 - **Standup view** — in flight, in review, up next, recently done (7 days), blocked, overdue, what happened since yesterday, and flags — grouped by assignee/actor where it helps, with **Copy as Markdown** emitting exactly the `kanmer-standup` skill's shape.
 - **Activity** — a bell with the change feed (who did what, when); native Windows toasts when an agent changes the board while you're away, in-app toasts while you're looking.
 - **Archived view** — restore, or permanently delete behind a two-click confirm. Everywhere else, delete means archive.
-- **Search + filter bar** — filter by area, priority, assignee, label; `Ctrl+K` opens a command palette (jump to an item, or move / take / release the selected one); full keyboard support (`Ctrl+N` new card, `Ctrl+←/→` moves a focused card between stages).
-- **Settings** (gear) — add/rename/recolour/reorder/delete **stages, areas, priorities**, edit **id prefixes**, switch **theme** (dark / light / system) and toggle notifications — validated before saving, reflected instantly.
+- **Search + filter bar** — filter by area, group, assignee or label; `Ctrl+K` opens a command palette (jump to an item, or move / take / release the selected one); full keyboard support (`Ctrl+N` new card, `Ctrl+←/→` moves a focused card between stages).
+- **Settings** (gear) — manage **areas** and their order, choose the evidence profiles tickets owe, switch **theme** (dark / light / system), manage Git sharing, connect agents and toggle notifications — validated before saving, reflected instantly. Stages are fixed, and Kanmer has no priority field; use card order and horizon groups to express what matters now.
 - **Inline quick-add** — type a title into any column's "+ card" (or an area header's "+") and press Enter; it gets an auto id in that area's prefix.
 
 ## Install as a plugin (Claude Code & codex) — recommended for agents

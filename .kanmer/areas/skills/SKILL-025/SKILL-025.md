@@ -2,12 +2,15 @@
 id: SKILL-025
 type: ticket
 title: 'Work-type brief templates: fix, UI/UX, docs, cloud/infra, data/migration'
-status: preparing
+status: implementing
 area: skills
-assignee: ''
+assignee: codex-mcp-client
 profile: chore
 stageEntered:
   preparing: '2026-08-20T21:56:24.499Z'
+taken_at: '2026-08-20T21:58:35.496Z'
+branch: skill-025-work-type-brief-templates
+worktree: .worktrees/skill-025
 labels: []
 groups:
   - EPIC-012
@@ -15,7 +18,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-20T10:14:57.059Z'
-updated: '2026-08-20T21:56:24.499Z'
+updated: '2026-08-20T21:58:35.496Z'
 ---
 
 ## What

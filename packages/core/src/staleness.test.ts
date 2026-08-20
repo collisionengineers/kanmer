@@ -78,7 +78,7 @@ function writeAgents(body = CANONICAL): void {
 describe("detectStaleness — a current repo", () => {
   it("reports clean when the block and skills match what is bundled", () => {
     writeAgents();
-    installSkills(".claude/skills");
+    installSkills(".opencode/skills");
     const r = detect();
     expect(r.stale).toEqual([]);
     expect(r.upToDate).toBe(true);
@@ -156,25 +156,25 @@ describe("detectStaleness — the AGENTS.md managed block", () => {
 describe("detectStaleness — installed skills", () => {
   it("reports a drifted skill file as behind, naming the skill", () => {
     writeAgents();
-    installSkills(".claude/skills");
-    put(path.join(root, ".claude/skills/kanmer-plan/SKILL.md"), "# Plan\n\nan older version\n");
+    installSkills(".opencode/skills");
+    put(path.join(root, ".opencode/skills/kanmer-plan/SKILL.md"), "# Plan\n\nan older version\n");
     const row = rowsFor(detect(), "skills")[0];
     expect(row?.state).toBe("behind");
     expect(row?.detail).toContain("kanmer-plan");
-    expect(row?.detail).toContain(".claude/skills");
+    expect(row?.detail).toContain(".opencode/skills");
   });
 
   it("catches drift below the top level, not just in SKILL.md", () => {
     writeAgents();
-    installSkills(".claude/skills");
-    put(path.join(root, ".claude/skills/kanmer-plan/assets/plan-template.md"), "# Old template\n");
+    installSkills(".opencode/skills");
+    put(path.join(root, ".opencode/skills/kanmer-plan/assets/plan-template.md"), "# Old template\n");
     expect(rowsFor(detect(), "skills")[0]?.state).toBe("behind");
   });
 
   it("reports a file missing from INSIDE an installed skill as behind", () => {
     writeAgents();
-    installSkills(".claude/skills");
-    fs.rmSync(path.join(root, ".claude/skills/kanmer-plan/assets/plan-template.md"));
+    installSkills(".opencode/skills");
+    fs.rmSync(path.join(root, ".opencode/skills/kanmer-plan/assets/plan-template.md"));
     const row = rowsFor(detect(), "skills")[0];
     expect(row?.state).toBe("behind");
     expect(row?.detail).toMatch(/1 are missing|missing/);
@@ -182,24 +182,24 @@ describe("detectStaleness — installed skills", () => {
   });
 
   it("DOES NOT report a skill the user chose not to install as missing", () => {
-    // A Claude Code user who keeps three of the twelve chose three. Reporting
+    // A user who keeps three of the twelve chose three. Reporting
     // the other nine "missing" is the same false positive as counting their own
     // skill as drift — only an installed folder is judged.
     writeAgents();
-    installSkills(".claude/skills");
-    fs.rmSync(path.join(root, ".claude/skills/kanmer-plan"), { recursive: true });
+    installSkills(".opencode/skills");
+    fs.rmSync(path.join(root, ".opencode/skills/kanmer-plan"), { recursive: true });
     expect(rowsFor(detect(), "skills")).toEqual([]);
     expect(detect().upToDate).toBe(true);
   });
 
   it("DOES NOT count a skill the user wrote as drift", () => {
-    // The operator's explicit rule, and not hypothetical: this repo's real
-    // .claude/skills holds a `run-kanmer` skill with 115 files of node_modules
+    // The detector only compares bundled skill folders, so foreign skills in an
+    // owned destination remain invisible even when they contain node_modules.
     // under it. The bundled-tree-first walk never even reads them.
     writeAgents();
-    installSkills(".claude/skills");
-    put(path.join(root, ".claude/skills/my-own-skill/SKILL.md"), "# Mine\n");
-    put(path.join(root, ".claude/skills/my-own-skill/node_modules/x/index.js"), "junk");
+    installSkills(".opencode/skills");
+    put(path.join(root, ".opencode/skills/my-own-skill/SKILL.md"), "# Mine\n");
+    put(path.join(root, ".opencode/skills/my-own-skill/node_modules/x/index.js"), "junk");
     expect(rowsFor(detect(), "skills")).toEqual([]);
     expect(detect().upToDate).toBe(true);
   });
@@ -210,10 +210,21 @@ describe("detectStaleness — installed skills", () => {
     expect(detect().stale).toEqual([]);
   });
 
+  it("does not inspect a handmade Claude skills mirror", () => {
+    writeAgents();
+    put(path.join(root, ".claude/skills/kanmer-plan/SKILL.md"), "# Stale historical mirror\n");
+    put(path.join(root, ".claude/skills/run-kanmer/SKILL.md"), "# User skill\n");
+    put(path.join(root, ".claude/skills/run-kanmer/node_modules/x/index.js"), "junk");
+
+    expect(rowsFor(detect(), "skills")).toEqual([]);
+    expect(rowsFor(detect(), "skills-stamp")).toEqual([]);
+    expect(detect().upToDate).toBe(true);
+  });
+
   it("reports a retired skill that is still installed", () => {
     writeAgents();
-    installSkills(".claude/skills");
-    put(path.join(root, ".claude/skills/kanmer-import/SKILL.md"), "# Import\n");
+    installSkills(".opencode/skills");
+    put(path.join(root, ".opencode/skills/kanmer-import/SKILL.md"), "# Import\n");
     const retired = rowsFor(detect(), "skills").find((e) => e.detail.includes("retired"));
     expect(retired?.state).toBe("behind");
     expect(retired?.detail).toContain("kanmer-import");
@@ -221,7 +232,6 @@ describe("detectStaleness — installed skills", () => {
 
   it("checks every destination independently", () => {
     writeAgents();
-    installSkills(".claude/skills");
     installSkills(".opencode/skills");
     put(path.join(root, ".opencode/skills/kanmer-plan/SKILL.md"), "# stale\n");
     const rows = rowsFor(detect(), "skills");
@@ -231,7 +241,7 @@ describe("detectStaleness — installed skills", () => {
 
   it("reports unknown, not behind, when there is no reference tree", () => {
     writeAgents();
-    installSkills(".claude/skills");
+    installSkills(".opencode/skills");
     const r = detectStaleness({
       paths: resolvePaths(root),
       board: defaultBoardConfig(),
@@ -247,7 +257,7 @@ describe("detectStaleness — installed skills", () => {
 describe("detectStaleness — the skills stamp", () => {
   it("reports an unstamped destination as unstamped, and keeps upToDate true", () => {
     writeAgents();
-    installSkills(".claude/skills", false);
+    installSkills(".opencode/skills", false);
     const r = detect();
     expect(rowsFor(r, "skills-stamp")[0]?.state).toBe("unstamped");
     expect(r.upToDate).toBe(true);
@@ -255,7 +265,7 @@ describe("detectStaleness — the skills stamp", () => {
 
   it("says nothing when the stamp is present", () => {
     writeAgents();
-    installSkills(".claude/skills");
+    installSkills(".opencode/skills");
     expect(rowsFor(detect(), "skills-stamp")).toEqual([]);
   });
 });
@@ -458,8 +468,8 @@ describe("detectStaleness — robustness", () => {
 
   it("never reports a state outside the four-value vocabulary", () => {
     writeAgents("drifted");
-    installSkills(".claude/skills", false);
-    put(path.join(root, ".claude/skills/kanmer-plan/SKILL.md"), "# old\n");
+    installSkills(".opencode/skills", false);
+    put(path.join(root, ".opencode/skills/kanmer-plan/SKILL.md"), "# old\n");
     put(path.join(root, ".mcp.json"), '{"mcpServers":{"kanmer":{"args":["--root","/elsewhere"]}}}');
     const board = { ...defaultBoardConfig(), profiles: { feature: { "leave-preparing": ["plan"] } } };
     const r = detect({ board, source: "file" });

@@ -1,0 +1,1 @@
+Closed out 2026-08-20: PR #64 is merged at `6e52344c537768f5062746a1a3eed41683bd9908`; proof is final, the clean ticket worktree was removed, local branch `doc-010-secure-mcp-tunnel` deleted, and worktree metadata pruned.

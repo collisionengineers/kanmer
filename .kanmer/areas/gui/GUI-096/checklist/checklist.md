@@ -61,7 +61,7 @@
 - [x] proof.md finalised with merged-main evidence and limitations.
 - [x] Moved to final stage (Done).
 - [x] Outcome recorded in ticket body (PR link, GUI-103 remediation, documented evidence limitations).
-- [ ] cd out of worktree; `git worktree remove .worktrees/gui-096`
-- [ ] `git branch -d gui-096-editor-scratch-context` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-096`
+- [x] `git branch -d gui-096-editor-scratch-context` (safe after verified MERGED PR; local branch deleted)
+- [x] `git fetch --prune` + `git worktree prune` (remote feature branch also deleted)
+- [x] `take_ticket action: "release"`

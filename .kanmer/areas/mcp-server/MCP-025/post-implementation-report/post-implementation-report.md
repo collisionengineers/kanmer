@@ -41,3 +41,11 @@ Foundation implemented; **not review-ready**. The branch remains in Implementing
 - `packages/mcp-server/src/http.ts` — host and lifecycle.
 - `packages/mcp-server/src/http-cli.ts` — fail-closed internal process entry.
 - `packages/mcp-server/src/smoke-http.mjs` and package build scripts.
+
+## 2026-08-21 follow-up
+
+Commit `e59f37e` tightens transport-owned behavior: listener shutdown stops accepts before closing sessions, uses the configured bounded force-cleanup timer, and the built smoke now covers invalid port configuration, rejected Origin-before-auth behavior, malformed JSON, principal invalidation API, and idempotent repeated shutdown. MCP workspace typecheck, the built HTTP smoke, and stdio protocol smoke (30/30) pass again.
+
+### Exact MCP-026 dependency
+
+FRD-025 **RA-AUTH-1** requires a real `Authorization: Bearer <token>` verification for POST/GET/DELETE before parsing or session lookup. MCP-025 deliberately exposes only the injected `HttpAuthorizer -> { principal }` seam and must not parse, store, compare, generate, rotate, or log bearer material. Until MCP-026 provides that authorizer, the fail-closed CLI cannot serve a real authenticated client. This is the remaining cross-ticket blocker; no tunnel/GUI/public exposure has been added.

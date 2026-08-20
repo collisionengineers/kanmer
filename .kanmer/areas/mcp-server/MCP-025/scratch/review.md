@@ -33,3 +33,36 @@
 ## Governing-doc and report alignment
 
 The report honestly describes this as a fail-closed foundation and maps it to FRD-025/ADR-0017 without claiming MCP-026's bearer lifecycle. The implementation follows the no-new-bearer/no-tunnel boundaries. The missing per-session isolation violates the accepted stateful-session/principal-bound lifecycle intent and must be corrected before merge.
+
+# Re-review — MCP-025 PR #90 after 0a484ce
+
+## Verdict
+
+**NEEDS CHANGES — do not merge or move.**
+
+## MCP-031 remediation
+
+**Pass.** Commit 0a484ce removes the module-global mutable MCP server. The factory now creates a function-local server and its write wrapper, actor fallback, take-ticket assignee fallback, and destructive confirmation capture that exact instance. The new HTTP smoke keeps sessions A and B live with different negotiated elicitation capabilities; after B initializes, A creates an item with activity actor http-smoke and successfully completes a destructive delete under A's no-elicitation context. This validates identity and destructive-capability isolation without module-global leakage.
+
+Disposition: MCP-031 fixed in this PR; its blocker link was removed and the duplicate remediation ticket archived.
+
+## Security and scope
+
+**Pass.** The CLI exits non-zero before listener bind without a production authorizer. The host stays loopback-only and requires injected authorization. The diff contains no MCP-026 production bearer parsing, token storage/reference, constant-time comparison, generation, rotation, or bearer lifecycle behavior; test-only Bearer strings remain only in the smoke authorizer.
+
+## Checks
+
+- PASS: MCP server workspace typecheck.
+- PASS: fresh built HTTP smoke, including the new two-session isolation regression.
+- PASS: protocol smoke 30/30.
+- PASS: discovery smoke 13/13.
+- PASS: diff check.
+- FAIL: fresh normal stdio smoke: 167/175, with 8 failures.
+
+## Blocking comment
+
+1. **Blocking — stdio identity/staleness regression caused by this PR.** The new multi-entry tsup config makes dist/index.js a loader which imports a generated chunk. Runtime identity is then derived from the chunk: server.path, hash, short hash, size, and build classification no longer describe the spawned index.js. Bundled-skill discovery also fails, so a stale AGENTS managed block becomes unknown and repo.upToDate remains true. These are not harmless linked-worktree assumptions: before this PR the one-entry build emitted the executable server directly, while this PR introduces the splitting change. The regression changes normal stdio get_status identity/staleness behavior and violates the report's stdio-compatibility claim.
+
+Disposition: filed and linked blocker [[MCP-032]]. Repair the entry/identity/bundled-skill resolution and re-run the complete normal stdio smoke before merge.
+
+No merge or stage move was performed.

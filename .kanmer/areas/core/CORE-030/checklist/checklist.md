@@ -10,3 +10,9 @@
 ## Progress notes
 
 Kept GUI provider registration untouched. [[GUI-090]] remains responsible for replacing the temporary duplicated destination roster with a shared source of truth.
+
+## Closeout
+
+- [x] Confirm PR #73 merged and record merged-main proof.
+- [x] Re-inventory and read every ticket document, including nested scratch files.
+- [x] Confirm the ticket worktree is clean, release it, and remove its merged worktree and local branch.

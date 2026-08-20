@@ -8,3 +8,9 @@
 - [x] Update `docs/manual/gates.md` to describe the new human-facing banner wording.
 - [x] Regenerate `apps/gui/src/renderer/src/manual/chapters.generated.ts` with `npm run build:manual`.
 - [x] Run the focused GUI/manual tests, manual freshness check, and GUI typecheck; record results in the implementation report.
+
+## Closeout
+
+- [x] Confirm PR #75 merged and proof passed on merged main.
+- [x] Re-inventory and read every ticket document.
+- [x] Confirm a clean worktree, release the ticket, and remove the merged worktree and branch.

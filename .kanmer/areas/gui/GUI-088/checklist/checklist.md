@@ -15,3 +15,9 @@
 - Regression coverage verifies creation, byte-identical reconnect, and non-destructive marketplace disconnect.
 - Passed `npm test -w @kanmer/gui -- connect.test.ts` (22 tests), `npm run typecheck -w @kanmer/gui`, and `npm run verify:agents-block` (28/28 checks).
 - Wrote the post-implementation report with reviewer and merged-main verification hand-off.
+
+## Closeout
+
+- [x] Confirm PR #74 merged and proof passed on merged main.
+- [x] Re-inventory and read every ticket document, including nested scratch and questions.
+- [x] Confirm a clean worktree, release the ticket, and remove the merged worktree and branch.

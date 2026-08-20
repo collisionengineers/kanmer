@@ -27,3 +27,5 @@
 ## Verdict
 
 **PASS (independent review).** The false ownership/fix claim is removed, owned-destination detection remains covered, and the change stays within CORE-030's plan and governing contract. Per assignment, this review did not merge PR #73 or move CORE-030.
+
+Closeout: PR #73 merged as 894092891956fe798eaa45b36d8c609000b75f33; merged-main tests/typecheck passed; all ticket docs including nested scratch were reread; clean ticket worktree and local branch removed.

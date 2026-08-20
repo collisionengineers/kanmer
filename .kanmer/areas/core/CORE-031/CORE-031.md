@@ -2,13 +2,16 @@
 id: CORE-031
 type: ticket
 title: Create `npm run verify` wrapping one shared VERIFY_STEPS
-status: preparing
+status: implementing
 area: core
 order: 30
-assignee: ''
+assignee: codex-mcp-client
 profile: chore
 stageEntered:
   preparing: '2026-08-20T12:02:11.660Z'
+taken_at: '2026-08-20T21:51:18.907Z'
+branch: core-031-shared-verify-steps
+worktree: .worktrees/core-031
 labels: []
 groups:
   - EPIC-009
@@ -18,7 +21,7 @@ blocks:
   - CORE-032
 archived: false
 created: '2026-08-20T10:14:42.483Z'
-updated: '2026-08-20T13:46:18.902Z'
+updated: '2026-08-20T21:51:18.907Z'
 ---
 
 ## What

@@ -2,12 +2,15 @@
 id: SKILL-023
 type: ticket
 title: Conduct canon enters the AGENTS.md managed block
-status: preparing
+status: implementing
 area: skills
-assignee: ''
+assignee: codex-mcp-client
 profile: feature
 stageEntered:
   preparing: '2026-08-20T21:36:13.171Z'
+taken_at: '2026-08-20T21:51:21.313Z'
+branch: skill-023-conduct-canon
+worktree: .worktrees/skill-023
 labels: []
 groups:
   - EPIC-012
@@ -18,7 +21,7 @@ blocks:
 docs_todo: true
 archived: false
 created: '2026-08-20T10:14:57.038Z'
-updated: '2026-08-20T21:36:13.171Z'
+updated: '2026-08-20T21:51:21.313Z'
 ---
 
 ## What

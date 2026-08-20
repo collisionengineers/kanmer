@@ -39,3 +39,16 @@ Confirm that the additive `documentPaths` wire field has the intended compatibil
 ## Verify on merged main
 
 Run the same core tests, typechecks, MCP smoke and protocol smoke from merged main, then run `npm run plugin:check` from the main checkout. Exercise a ticket with only `research/named.md`: metadata must name it, `get_ticket_doc(..., "research/named.md")` must succeed, and bare `research` must remain absent without an index.
+
+## Review remediation
+
+Independent review found the first version derived counts and paths with two separate recursive scans. Commit `56e5682915b3ea274a63e8884e7d6b97b6924920` replaces that with one `documentInventory` traversal per type folder. `getTicketDocsInfo` derives both counts/booleans and exact readable paths from the same inventory, eliminating redundant walks and mixed-snapshot metadata.
+
+The update also pins bare-index compatibility in the MCP smoke and clarifies that readable Markdown in gate-exempt folders remains non-gating.
+
+Re-run after remediation:
+- `npm test -w @kanmer/core` — 249 passed.
+- `npm run typecheck -w @kanmer/core` and `npm run typecheck -w @kanmer/mcp-server` — passed.
+- `node packages/mcp-server/src/smoke.mjs` — 159 checks passed.
+- `npm run smoke:protocol` — 26 checks passed.
+- `npm run plugin:build` and `git diff --check` — passed.

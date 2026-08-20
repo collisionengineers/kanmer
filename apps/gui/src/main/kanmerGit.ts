@@ -37,6 +37,32 @@ async function currentBranch(root: string): Promise<string | null> {
   try { return await git(root, ["symbolic-ref", "--short", "HEAD"]); } catch { return null; }
 }
 
+export interface BoardWorktreeInspection {
+  path: string;
+  expectedBranch: string;
+  actualBranch: string | null;
+  onBoardBranch: boolean;
+}
+
+/**
+ * Observational twin of packages/mcp-server/src/index.ts's board branch probe.
+ * Keep the small helpers paired but local: this Electron process and MCP need
+ * Git independently, while core must remain free of Git subprocesses.
+ */
+export async function inspectBoardWorktree(
+  boardRoot: string,
+  expectedBranch = process.env.KANMER_BOARD_BRANCH?.trim() || "kanmer-board",
+): Promise<BoardWorktreeInspection> {
+  const expected = expectedBranch.trim() || "kanmer-board";
+  const actualBranch = await currentBranch(boardRoot);
+  return {
+    path: resolve(boardRoot),
+    expectedBranch: expected,
+    actualBranch,
+    onBoardBranch: actualBranch === expected,
+  };
+}
+
 async function hasOrigin(root: string): Promise<boolean> {
   try { return (await git(root, ["remote"])).split("\n").includes("origin"); } catch { return false; }
 }

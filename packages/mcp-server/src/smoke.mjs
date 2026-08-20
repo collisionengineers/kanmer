@@ -1,6 +1,7 @@
 // Standalone smoke test: spawn the built server over stdio and exercise tools.
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -114,6 +115,35 @@ try {
   check(
     "reads alone do not create .kanmer/ (lazy init)",
     !fs.existsSync(path.join(sandbox, ".kanmer")),
+  );
+  const healthBefore = statusBefore.boardWorktree;
+  check(
+    "get_status reports the complete informational board worktree block",
+    JSON.stringify(Object.keys(healthBefore ?? {}).sort()) ===
+      JSON.stringify(["actualBranch", "boardSource", "expectedBranch", "onBoardBranch", "path", "repair", "ticketCount"]),
+    JSON.stringify(healthBefore),
+  );
+  check(
+    "board worktree reports the synthesized sandbox without Git as unhealthy data",
+    healthBefore?.path === path.resolve(sandbox) &&
+      healthBefore?.expectedBranch === "kanmer-board" &&
+      healthBefore?.actualBranch === null &&
+      healthBefore?.onBoardBranch === false &&
+      healthBefore?.boardSource === "default" &&
+      healthBefore?.ticketCount === 0 &&
+      /synthesized default/.test(healthBefore?.repair ?? ""),
+    JSON.stringify(healthBefore),
+  );
+  execFileSync("git", ["init"], { cwd: sandbox, windowsHide: true, stdio: "ignore" });
+  execFileSync("git", ["symbolic-ref", "HEAD", "refs/heads/kanmer-board"], {
+    cwd: sandbox, windowsHide: true, stdio: "ignore",
+  });
+  const healthyBranch = JSON.parse(textOf(await client.callTool({ name: "get_status", arguments: {} })));
+  check(
+    "board worktree observes the expected branch without repairing it",
+    healthyBranch.boardWorktree?.actualBranch === "kanmer-board" &&
+      healthyBranch.boardWorktree?.onBoardBranch === true,
+    JSON.stringify(healthyBranch.boardWorktree),
   );
 
   // --- Server identity (MCP-012) -------------------------------------------
@@ -347,6 +377,11 @@ try {
       statusAfter.boardSource === "file" &&
       statusAfter.counts.byStage.implementing === 1,
     JSON.stringify(statusAfter.counts.byStage),
+  );
+  check(
+    "board worktree counts active tickets only",
+    statusAfter.boardWorktree?.ticketCount === 2,
+    JSON.stringify(statusAfter.boardWorktree),
   );
 
   // Take / release lifecycle. TICK-002 is already in implementing, so take's

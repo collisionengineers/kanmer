@@ -49,3 +49,9 @@ Commit `e59f37e` tightens transport-owned behavior: listener shutdown stops acce
 ### Exact MCP-026 dependency
 
 FRD-025 **RA-AUTH-1** requires a real `Authorization: Bearer <token>` verification for POST/GET/DELETE before parsing or session lookup. MCP-025 deliberately exposes only the injected `HttpAuthorizer -> { principal }` seam and must not parse, store, compare, generate, rotate, or log bearer material. Until MCP-026 provides that authorizer, the fail-closed CLI cannot serve a real authenticated client. This is the remaining cross-ticket blocker; no tunnel/GUI/public exposure has been added.
+
+## Review-ready sequencing clarification
+
+MCP-025 is review-ready as the first, fail-closed transport seam. The built production CLI now exits non-zero **before binding** when no production authorizer is configured; it no longer advertises a loopback endpoint backed by an always-denying placeholder. MCP-026 will later supply the bearer implementation through `HttpAuthorizer`; no bearer parsing/storage/token lifecycle exists here.
+
+Rebased onto `origin/main` (current base `6dec9c5`), with commits `245656a`, `5ed4eda`, `878c99f`, and `24fed9c`. Focused verification after rebase: MCP typecheck; `npm run smoke:http`; discovery 13/13; protocol 30/30; `git diff --check`.

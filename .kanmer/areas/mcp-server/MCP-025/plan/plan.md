@@ -206,3 +206,7 @@ git status --short
 ## Stop condition
 
 Stop when a built local HTTP process can securely initialize and list the approved remote-safe Kanmer tools through the official Streamable HTTP SDK on loopback with injected test authorization, bounded session/lifecycle behavior, immutable project fingerprint, redacted machine-readable status, unchanged stdio/provider behavior, complete tests, and a review-ready PR. Do not expose a tunnel or merge.
+
+## Sequencing clarification — 2026-08-21
+
+MCP-025 is intentionally the first landable, fail-closed transport seam. It must not wait for MCP-026: the exported host requires an injected authorizer, while the production CLI now refuses startup before it binds because no production authorizer exists yet. MCP-026 will implement and inject bearer validation later; this ticket must not parse, store, compare, generate, or rotate tokens.

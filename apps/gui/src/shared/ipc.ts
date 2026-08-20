@@ -19,6 +19,7 @@ import type {
   TicketDocsInfo,
   UpdateItemPatch,
   V3Report,
+  RepoStaleness,
 } from "@kanmer/core";
 
 /** What `migrateBoard` reports: the three upgrade steps, in order. */
@@ -60,6 +61,7 @@ export const CH = {
   connectAgent: "kanmer:connectAgent",
   disconnectAgent: "kanmer:disconnectAgent",
   listProviders: "kanmer:listProviders",
+  getRepoStaleness: "kanmer:getRepoStaleness",
   scanLegacyCodexRegistrations: "kanmer:scanLegacyCodexRegistrations",
   drainLegacyCodexRegistrations: "kanmer:drainLegacyCodexRegistrations",
   getSkillsStatus: "kanmer:getSkillsStatus",
@@ -441,6 +443,8 @@ export interface KanmerApi {
   disconnectAgent(projectId: string, target: ConnectTarget): Promise<ConnectResult>;
   /** The agent hosts Connect can register (drives the Connect tab). */
   listProviders(): Promise<ProviderInfo[]>;
+  /** Itemised, read-only repository staleness report from core. */
+  getRepoStaleness(projectId: string): Promise<RepoStaleness>;
   /**
    * List the legacy global `kanmer-*` codex registrations older Kanmers left in
    * `~/.codex/config.toml`. Machine-scoped, not project-scoped — the entries are

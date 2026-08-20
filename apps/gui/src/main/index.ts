@@ -68,9 +68,11 @@ import {
   scanLegacyCodexRegistrations,
   skillsStatus,
   updateSkills,
+  bundledSkillsRoot,
   type ConnectTarget,
 } from "./connect.js";
 import { listProviders } from "./providers.js";
+import { repoStalenessFor } from "./repoStaleness.js";
 import {
   cancelDispatch,
   dispatchTicket,
@@ -621,6 +623,12 @@ function registerIpc(): void {
     disconnectAgent(target, requireCtx(p).sourceRoot),
   );
   ipcMain.handle(CH.listProviders, () => listProviders());
+  // Staleness walks artefacts in the source checkout, so it is deliberately a
+  // cold read instead of part of snapshotOf() or watcher-driven board refresh.
+  ipcMain.handle(CH.getRepoStaleness, async (_e, p: string) => {
+    const ctx = requireCtx(p);
+    return repoStalenessFor(ctx.store, bundledSkillsRoot());
+  });
   // Machine-scoped, so no `requireCtx`: these entries belong to *other*
   // projects, which is exactly why reconnecting this one never drained them.
   ipcMain.handle(CH.scanLegacyCodexRegistrations, () => scanLegacyCodexRegistrations());

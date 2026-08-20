@@ -10,6 +10,7 @@ import type {
   CreateItemInput,
   Item,
   MovePosition,
+  RepoStaleness,
 } from "@kanmer/core";
 import { blockedIds, columnCards, optimisticOrder } from "./lib/board.js";
 import { classifyKanmerPath } from "../../shared/kanmerPath.js";
@@ -20,6 +21,7 @@ import { restoreTabs, restoredActiveTab } from "./lib/session.js";
 import { tabCloseDecision } from "./lib/tabClose.js";
 import { restartWarning, updateSurface } from "./lib/update.js";
 import { friendlyGateError } from "./lib/gateError.js";
+import { needsStalenessAttention } from "./lib/repoStaleness.js";
 import type {
   AppSettings,
   BoardMigrationReport,
@@ -79,6 +81,29 @@ interface SavedTabState {
   selectedId: string | null;
 }
 
+function RepoStalenessBanner({ report }: { report: RepoStaleness | null }): JSX.Element | null {
+  if (report === null || !needsStalenessAttention(report)) return null;
+  return (
+    <div className="banner warn" role="status">
+      <div>
+        <strong>Some Kanmer project files need attention.</strong>
+        <details>
+          <summary>Show the repository report</summary>
+          <ul className="migrate-list">
+            {report.stale.map((entry, index) => (
+              <li key={`${entry.artefact}-${entry.state}-${index}`}>
+                <strong>{entry.artefact}</strong> ({entry.state}): {entry.detail}
+                <br />
+                <span className="muted">{entry.fix}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      </div>
+    </div>
+  );
+}
+
 export function App(): JSX.Element {
   // `root` is the active project's id (its canonical root). `tabs` is every open
   // project; switching a tab swaps `root` and restores that tab's saved UI state.
@@ -93,6 +118,9 @@ export function App(): JSX.Element {
   const [board, setBoard] = useState<BoardConfig | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [format, setFormat] = useState<1 | 2 | 3>(2);
+  // This is intentionally independent of `refresh()`: staleness walks project
+  // artefacts and must not run every time a watcher reports a board edit.
+  const [repoStaleness, setRepoStaleness] = useState<RepoStaleness | null>(null);
   // An unmigrated board is a compat rendering: the fixed six stages drawn over
   // a stage set that may not be them. Reading it is useful; writing to it saves
   // format-3 shapes into a format-2 board (FRD-007 M3). Wrapping the client is
@@ -185,6 +213,28 @@ export function App(): JSX.Element {
       setError(err instanceof Error ? err.message : String(err));
     }
   }, []);
+
+  useEffect(() => {
+    if (!root) {
+      setRepoStaleness(null);
+      return;
+    }
+    let cancelled = false;
+    void window.kanmer
+      .getRepoStaleness(root)
+      .then((report) => {
+        if (!cancelled) setRepoStaleness(report);
+      })
+      // A staleness read is advisory. Do not replace a usable board with a
+      // global error when an unreadable optional artefact already has an
+      // itemised `unknown` representation in core.
+      .catch(() => {
+        if (!cancelled) setRepoStaleness(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [root]);
 
   const openProject = useCallback(async (path: string) => {
     setOpening(true);
@@ -1190,6 +1240,8 @@ export function App(): JSX.Element {
           </div>
         </div>
       )}
+
+      <RepoStalenessBanner report={repoStaleness} />
 
       {updateBanner}
 

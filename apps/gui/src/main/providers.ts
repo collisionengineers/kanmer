@@ -5,6 +5,7 @@
 // surface is unit-testable without spawning anything.
 import { basename } from "node:path";
 import * as TOML from "smol-toml";
+import { STALENESS_PROVIDER_PATHS } from "@kanmer/core";
 
 export type ProviderId = "codex" | "claude" | "opencode" | "grok" | "antigravity";
 
@@ -675,7 +676,7 @@ export const PROVIDERS: AgentProvider[] = [
       kind: "configFile",
       // One entry per project, in the project (ADR-0007). The folder must be
       // trusted for codex to load it — Connect says so, and can check.
-      configPath: ".codex/config.toml",
+      configPath: STALENESS_PROVIDER_PATHS.codex.registrationFile,
       merge: tomlMcpServersMerge,
       unmerge: tomlMcpServersUnmerge,
       registrationState: tomlRegistrationState,
@@ -729,7 +730,7 @@ export const PROVIDERS: AgentProvider[] = [
     label: "opencode",
     register: {
       kind: "configFile",
-      configPath: "opencode.json",
+      configPath: STALENESS_PROVIDER_PATHS.opencode.registrationFile,
       merge: opencodeMerge,
       unmerge: opencodeUnmerge,
       registrationState: opencodeRegistrationState,
@@ -737,7 +738,11 @@ export const PROVIDERS: AgentProvider[] = [
     // OpenCode has a native project-scoped skills directory. Keep its Kanmer
     // roster there instead of the cross-agent `.agents/skills` tree, which
     // Antigravity still owns and Codex also discovers.
-    install: { kind: "copySkills", skillsScope: "project", skillsDir: ".opencode/skills" },
+    install: {
+      kind: "copySkills",
+      skillsScope: "project",
+      skillsDir: STALENESS_PROVIDER_PATHS.opencode.skillsDir,
+    },
     dispatch: true,
     dispatchCli: "opencode",
     dispatchArgs: (prompt) => ["run", prompt],
@@ -758,12 +763,12 @@ export const PROVIDERS: AgentProvider[] = [
       // registration. Existing grok users reconnect once; Kanmer does not
       // rewrite `.mcp.json` to migrate them, because reaching into another
       // host's file is the defect, not the fix.
-      configPath: ".grok/config.toml",
+      configPath: STALENESS_PROVIDER_PATHS.grok.registrationFile,
       merge: tomlMcpServersMerge,
       unmerge: tomlMcpServersUnmerge,
       registrationState: tomlRegistrationState,
     },
-    install: { kind: "copySkills", skillsScope: "project", skillsDir: ".grok/skills" },
+    install: { kind: "copySkills", skillsScope: "project", skillsDir: STALENESS_PROVIDER_PATHS.grok.skillsDir },
     dispatch: true,
     dispatchCli: "grok",
     dispatchArgs: (prompt, root) => ["-p", prompt, "--cwd", root],
@@ -773,7 +778,7 @@ export const PROVIDERS: AgentProvider[] = [
     label: "Antigravity",
     register: {
       kind: "configFile",
-      configPath: ".agents/mcp_config.json",
+      configPath: STALENESS_PROVIDER_PATHS.antigravity.registrationFile,
       merge: mcpServersMerge,
       unmerge: mcpServersUnmerge,
       registrationState: mcpServersRegistrationState,
@@ -800,7 +805,11 @@ export const PROVIDERS: AgentProvider[] = [
     // MCP-015 owns making it live; `antigravityBindingNote` says so at connect
     // time so the user is not left to discover it. (ADR-0009's method clause,
     // FRD-012 R2.)
-    install: { kind: "copySkills", skillsScope: "project", skillsDir: ".agents/skills" },
+    install: {
+      kind: "copySkills",
+      skillsScope: "project",
+      skillsDir: STALENESS_PROVIDER_PATHS.antigravity.skillsDir,
+    },
     // NOT because `agy -p` is broken. That claim — "known-broken piped, GH
     // #318/#76" — is **refuted**: `echo hi | agy -p "Reply with exactly: PONG"`
     // prints `PONG` and exits 0 on 1.1.13 with stdout piped exactly as `spawn`

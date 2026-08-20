@@ -74,6 +74,11 @@ export function pluginRoot(): string {
   return join(resolve(app.getAppPath(), "..", ".."), "plugins", "kanmer");
 }
 
+/** The bundled skills reference for the GUI's core staleness read. */
+export function bundledSkillsRoot(): string {
+  return join(pluginRoot(), "skills");
+}
+
 /**
  * The directory a host's `plugin marketplace add` must be pointed at.
  *
@@ -387,7 +392,7 @@ async function installSkills(provider: AgentProvider, root: string): Promise<Ski
     const version = await bundledSkillsVersion();
     // Reconcile, don't overlay: the stamp records the roster so retired skills
     // can be pruned, and it is what lets getSkillsStatus offer "Update skills".
-    const { installed, replaced, removed } = await reconcileSkills(dest, join(pluginRoot(), "skills"), version);
+    const { installed, replaced, removed } = await reconcileSkills(dest, bundledSkillsRoot(), version);
     const notes = [`skills v${version} → ${provider.install.skillsDir}`];
     if (installed.length > 0) notes.push(`${installed.length} installed`);
     // Naming the replaced folders is the accountability for replacing them

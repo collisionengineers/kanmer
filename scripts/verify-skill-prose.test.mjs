@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -29,4 +29,23 @@ test("rejects a v2 stage sequence in AGENTS.md", () => {
   } finally {
     rmSync(fixture, { recursive: true, force: true });
   }
+});
+
+test("agents template keeps the required user-owned guide contract", () => {
+  const template = readFileSync(
+    join(root, "plugins", "kanmer", "skills", "kanmer-docs", "assets", "agents-template.md"),
+    "utf8",
+  );
+  const skill = readFileSync(join(root, "plugins", "kanmer", "skills", "kanmer-docs", "SKILL.md"), "utf8");
+
+  assert.deepEqual(
+    [...template.matchAll(/^## (Commands|Architecture map|Conventions|Gotchas|Verification)$/gm)].map((m) => m[1]),
+    ["Commands", "Architecture map", "Conventions", "Gotchas", "Verification"],
+  );
+  assert.match(template, /^\| Command \| Purpose \|$/m);
+  assert.ok(template.indexOf("### Deterministic checks") < template.indexOf("### Manual or environment-dependent checks"));
+  assert.match(template, /outside Kanmer's managed[\s\S]*marker block/i);
+  assert.match(skill, /assets\/agents-template\.md/);
+  assert.match(skill, /only when the file is absent/i);
+  assert.match(skill, /preserve its human-authored prose/i);
 });

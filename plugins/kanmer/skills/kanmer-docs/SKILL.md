@@ -90,6 +90,18 @@ design decision. `kanmer-plan` writes that "Governing docs" section; `kanmer-rev
 checks it holds. Gates only check a doc's existence; this content rule is human-
 and skill-enforced.
 
+## Project guide outside the managed block
+
+For a repository's user-owned `AGENTS.md` content, start from
+`assets/agents-template.md` **only when the file is absent**. Its five sections
+(Commands, Architecture map, Conventions, Gotchas, Verification) are a
+deliberately incomplete skeleton: replace the TODOs with repository facts.
+
+When `AGENTS.md` already exists, preserve its human-authored prose. Assess and
+report any missing required sections instead of rewriting the guide. The
+marker-delimited Kanmer operating block belongs to `kanmer-setup` and its
+writer; this asset must never copy, replace, or redefine that managed block.
+
 ## Bulk (greenfield)
 `kanmer-setup` calls this skill to split a product brief into PRDs → FRDs → ADRs
 and materialise the `/docs/` tree + `doc-structure.md` before seeding the backlog.

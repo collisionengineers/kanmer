@@ -12,3 +12,9 @@
   agy --new-project -p "<prompt>" --model <model> --output-format text --print-timeout 5m
   ```
 - **Configuration & Overrides**: User global defaults reside in `~/.gemini/antigravity-cli/settings.json`, and command line flags take precedence.
+
+## Execution prerequisite — 2026-08-21
+
+GUI-075 was assessed for execution against current `origin/main` (7f1e150). [[MCP-020]] remains **Preparing**, and the source tree has no shared dispatch-provider registry, typed `buildDispatchArgs`, or `modelOption` capability contract. GUI-075’s approved plan explicitly requires rebasing on MCP-020’s shared provider/supervisor SSOT and forbids creating a parallel GUI-only provider table.
+
+No branch, worktree, ticket take, source edit, or provider-flag implementation was performed. Resume only after MCP-020 lands its shared contract, or after explicit authorization to expand this ticket’s scope.

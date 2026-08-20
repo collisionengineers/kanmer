@@ -10,4 +10,6 @@ Verified on merged `main` at `7bbe88385e2249e2ad8dc71b57440dd3996d8dda` (PR #92)
 
 No deployment applies: this is a skill/template and verification-script change.
 
-\n\nMerged via [PR #92](https://github.com/collisionengineers/kanmer/pull/92) at 2026-08-20T23:48:33Z.
+
+
+Merged via [PR #92](https://github.com/collisionengineers/kanmer/pull/92) at 2026-08-20T23:48:33Z.

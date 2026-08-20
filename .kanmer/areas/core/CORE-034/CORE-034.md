@@ -27,11 +27,12 @@ commits:
   - b770563ae018bf143b00e6ec0ec12461a7b333e1
   - 8f975a487a1a53d1af4f6edb4a5baa95930a36c3
   - b44565c776b0db6ab84e8362b5487196752f722b
+  - e87117cda3947ed2a28871f8f77e8090f84e1d4d
 prs:
   - '82'
 archived: false
 created: '2026-08-20T10:14:42.524Z'
-updated: '2026-08-20T22:33:32.294Z'
+updated: '2026-08-20T22:34:04.936Z'
 ---
 
 ## What
@@ -49,3 +50,4 @@ no git subprocess in core (FRD-002 G2a) — path comparison only. The git inspec
 - [ ] smoke asserts the health block
 
 ## Outcome
+Shipped in merged [PR #82](https://github.com/collisionengineers/kanmer/pull/82) on 2026-08-20 (`e87117cda3947ed2a28871f8f77e8090f84e1d4d`). The guard and read-only health observation verified cleanly on merged main; no follow-up ticket is required.

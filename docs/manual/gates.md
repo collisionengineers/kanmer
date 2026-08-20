@@ -68,12 +68,10 @@ The message names the next legal stage. Move there, then move again.
 
 ## A note on the wording
 
-These messages are written for the agents that most often trip them, so they
-mention `set_ticket_doc` and `get_doc_gates` — the tools an agent would use to
-write a document or inspect the gates. You will see those names in the banner.
-
-For you, they mean: *write the document in the ticket's tab*, and *the readiness
-panel at the top of the Ticket tab shows the whole picture*.
+The GUI banner translates agent-only recovery instructions into the controls you
+can use: open the ticket's document tabs to add what is missing, then use the
+readiness panel at the top of the Ticket tab for the complete picture. A
+multi-stage jump also points you to that panel for the next legal stage.
 
 ## When the gate is wrong
 

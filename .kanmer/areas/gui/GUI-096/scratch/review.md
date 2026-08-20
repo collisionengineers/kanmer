@@ -29,3 +29,27 @@
 ## Verdict
 
 NEEDS CHANGES — do not merge PR #91. Resolve [[GUI-103]], update the PR, and request an independent re-review.
+
+# Re-review — GUI-096 / PR #91
+
+## Remediation
+
+- PASS — commit `b6ad3da` removes the pre-validation `.trim()`. Validation now receives the exact user-entered scratch slug.
+- PASS — the renderer regression supplies `" note "`, asserts the local validation error, and confirms no `getDoc("scratch/note")` or `setDoc` call. The original traversal rejection is retained.
+- PASS — GUI-103 records this remediation and is archived, so it no longer blocks GUI-096.
+
+## Rechecked evidence
+
+- `npm test --workspace @kanmer/gui -- Editor.test.tsx` — 4/4 passed.
+- `npm run typecheck --workspace @kanmer/gui` — passed.
+- Fresh `npm test --workspace @kanmer/gui` — 30 files / 300 tests passed.
+- `git diff --check origin/main...HEAD` — passed; source scope remains the six planned core/editor/style/test files.
+
+## Remaining limitations
+
+- Root `npm run verify` is still absent pending CORE-031, and screenshots remain unavailable in this session; neither is claimed as evidence.
+- The ticket continues to document expanded new-note, dirty/conflict, and context-state coverage as unchecked. Code review plus existing versioned `DocEditor` behavior and the focused regression make those non-blocking for this targeted remediation; they remain appropriate follow-up evidence rather than invisible passes.
+
+## Verdict
+
+PASS — the blocking whitespace-normalization defect is fixed. Merge PR #91 and move GUI-096 to Verifying.

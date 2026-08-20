@@ -14,9 +14,6 @@ stageEntered:
   review: '2026-08-20T22:55:04.804Z'
   verifying: '2026-08-20T22:56:03.612Z'
   done: '2026-08-20T23:00:39.470Z'
-taken_at: '2026-08-20T22:50:37.086Z'
-branch: skill-022-template-contracts
-worktree: .worktrees/skill-022
 labels: []
 groups:
   - EPIC-009
@@ -24,11 +21,12 @@ groups:
 links: []
 commits:
   - d7633b0dbb93845bc09f784b88f36595e2d9fe96
+  - 97a9935405c6778970e0e61943e0bf6328aea1c7
 prs:
   - '86'
 archived: false
 created: '2026-08-20T10:14:57.026Z'
-updated: '2026-08-20T23:00:39.470Z'
+updated: '2026-08-20T23:01:49.168Z'
 ---
 
 ## What
@@ -40,3 +38,5 @@ updated: '2026-08-20T23:00:39.470Z'
 - [x] `[pre-review]`/`[post-merge]` tags documented as labels the gates ignore.
 
 ## Outcome
+
+Shipped in [PR #86](https://github.com/collisionengineers/kanmer/pull/86) (merged 2026-08-20): approval-contract, bounded execution-brief/checklist, and group-context templates plus deterministic advisory-contract verification. No follow-up ticket is required.

@@ -52,3 +52,16 @@
 ## Progress notes
 
 Completed 2026-08-20: rendered/read the assets; npm run verify:skills and npm run test:scripts passed; heading/label/prove-rule searches, node --check scripts/verify-skill-prose.mjs, and git diff --check passed. The seven changed paths match the plan. Corrected the approval asset's wording from “impact” to “change” because the global document-type verifier reserves “impact” as a pipeline document word. PR #86 is open; stop at Review.
+
+---
+
+## Closeout — SKILL-022
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/skill-022`
+- [x] `git branch -d skill-022-template-contracts` (`-D` if squash/rebase-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

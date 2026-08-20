@@ -93,11 +93,13 @@
 - [x] Run root verify where applicable.
 - [x] Confirm no token/real hostname/implementation code is present.
 - [x] Run `git diff --check`.
-- [ ] Record traceability counts/results in post-implementation report.
-- [ ] Stop before merge.
+- [x] Record traceability counts/results in post-implementation report.
+- [x] Stop before merge.
 
 ## Progress notes
 
 - 2026-08-20: FRD-025 and ADR-0017 were allocated after confirming FRD-024 and ADR-0016 are the highest existing numbers. Sources recorded from the MCP Streamable HTTP specification/TypeScript SDK and Cloudflare Tunnel documentation, each rechecked on this date.
 - Validated document numbering, local Markdown links, secret-literal scan, manual artifact, script tests, skill prose, and `git diff --check`. Root typecheck still stops only at pre-existing `packages/ui/src/demo.tsx` missing `TicketDocsInfo.documentPaths`; core, MCP server, and GUI complete their checks.
 - `link_doc` cannot resolve this branch's new docs from the MCP server's main-checkout repo root before merge. Per DOC-012-only scope, dependent tickets are not mutated; their owners must link the merged paths when they begin implementation.
+
+- 2026-08-20: Opened PR #84 (https://github.com/collisionengineers/kanmer/pull/84), recorded commit `43160fc4dbbcd85554ee7c2bc877c66f40af9333` and PR traceability, and stopped before merge. The one remaining checkbox is intentionally post-merge: the MCP board validates `refs` against its main checkout and cannot link branch-only files; dependent ticket owners will link the merged docs.

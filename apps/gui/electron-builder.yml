@@ -53,6 +53,7 @@ publish:
     releaseType: release
 
 win:
+  icon: build/icon.ico
   target:
     - nsis
 

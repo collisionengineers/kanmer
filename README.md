@@ -1,5 +1,7 @@
 # Kanmer
 
+![Kanmer logo](apps/gui/src/renderer/src/assets/logo.png)
+
 A Kanban / ticket manager where **AI agents and a human share one dataset**.
 
 Agents (codex, Claude Code, Claude Desktop — any MCP client) create and update work through a local **MCP server**; you review, re-arrange and edit the same work through a **Windows desktop GUI**. Both sides operate on one source of truth: a `.kanmer/` folder of Markdown-with-frontmatter files inside each project. Neither talks to the other — they sync through the files, and the GUI live-reloads when anything changes on disk.

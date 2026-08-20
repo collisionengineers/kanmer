@@ -44,6 +44,8 @@ import {
 } from "@kanmer/core";
 import {
   CH,
+  type BoardWorktreeHealth,
+  type KanmerGitStatus as KanmerGitIpcStatus,
   type OpenProjectResult,
 } from "../shared/ipc.js";
 import {
@@ -60,7 +62,13 @@ import {
   type UiPreferences,
   type WindowBounds,
 } from "./settings.js";
-import { ensureBoardWorktree, renameBoardBranch, syncBoard, type KanmerGitStatus } from "./kanmerGit.js";
+import {
+  ensureBoardWorktree,
+  inspectBoardWorktree,
+  renameBoardBranch,
+  syncBoard,
+  type KanmerGitStatus,
+} from "./kanmerGit.js";
 import {
   connectAgent,
   disconnectAgent,
@@ -514,7 +522,7 @@ async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number)
       ctx.syncStatus = renamed.ok
         ? { ...ctx.syncStatus, branch: settings.kanmerBranch, error: renamed.error, paused: false }
         : { ...ctx.syncStatus, error: renamed.error, paused: true };
-      mainWindow?.webContents.send(CH.gitStatus, { projectId, ...ctx.syncStatus });
+      mainWindow?.webContents.send(CH.gitStatus, { projectId, ...(await gitStatusForRenderer(ctx)) });
     }
     if (ctx.syncTimer) clearInterval(ctx.syncTimer);
     ctx.syncTimer = undefined;
@@ -525,11 +533,56 @@ async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number)
   return settings;
 }
 
-async function syncProject(projectId: string): Promise<KanmerGitStatus> {
+/**
+ * Add board-worktree health to the existing sync status without changing any
+ * Git state. This is deliberately recomputed, rather than cached, after
+ * status requests and every Git operation that may have changed HEAD.
+ */
+async function gitStatusForRenderer(ctx: ProjectContext): Promise<KanmerGitIpcStatus> {
+  const base = ctx.syncStatus;
+  // A non-Git project has no board worktree. A failed Git setup that did find
+  // one still retains boardRoot and is inspectable, so do not use `available`
+  // as the deciding condition here.
+  if (!base.boardRoot) return { ...base, boardWorktree: null };
+
+  const [{ source }, items, inspection] = await Promise.all([
+    ctx.store.getBoardWithSource(),
+    ctx.store.listItems({ includeArchived: true }),
+    inspectBoardWorktree(base.boardRoot, base.branch),
+  ]);
+  const ticketCount = items.filter((item) => item.type === "ticket" && !item.archived).length;
+  const boardWorktree: BoardWorktreeHealth = {
+    ...inspection,
+    boardSource: source,
+    ticketCount,
+    repair: boardWorktreeRepair(inspection, source, ticketCount),
+  };
+  return { ...base, boardWorktree };
+}
+
+function boardWorktreeRepair(
+  inspection: Awaited<ReturnType<typeof inspectBoardWorktree>>,
+  boardSource: "file" | "default",
+  ticketCount: number,
+): string {
+  if (!inspection.actualBranch) {
+    return `Board worktree inspection is unavailable or detached at ${inspection.path}; expected branch ${inspection.expectedBranch}. Repair it in Git settings or project setup.`;
+  }
+  if (!inspection.onBoardBranch) {
+    return `Board worktree at ${inspection.path} is on ${inspection.actualBranch}; expected ${inspection.expectedBranch}. Repair it in Git settings or project setup.`;
+  }
+  if (boardSource === "default" && ticketCount > 0) {
+    return `Board configuration is synthesized while ${ticketCount} active ticket${ticketCount === 1 ? "" : "s"} exist. Restore or repair the board configuration before relying on its defaults.`;
+  }
+  return "No repair required.";
+}
+
+async function syncProject(projectId: string): Promise<KanmerGitIpcStatus> {
   const ctx = requireCtx(projectId);
   ctx.syncStatus = await syncBoard(ctx.syncStatus);
-  mainWindow?.webContents.send(CH.gitStatus, { projectId, ...ctx.syncStatus });
-  return ctx.syncStatus;
+  const status = await gitStatusForRenderer(ctx);
+  mainWindow?.webContents.send(CH.gitStatus, { projectId, ...status });
+  return status;
 }
 
 // The card context menu is drawn by the renderer now (FRD-019 R6). A native
@@ -611,7 +664,7 @@ function registerIpc(): void {
   ipcMain.handle(CH.setKanmerGitPreferences, (_e, prefs: { kanmerBranch: string; gitSyncMinutes: number }) =>
     applyGitPreferences(prefs.kanmerBranch, prefs.gitSyncMinutes),
   );
-  ipcMain.handle(CH.getKanmerGitStatus, (_e, p: string) => requireCtx(p).syncStatus);
+  ipcMain.handle(CH.getKanmerGitStatus, (_e, p: string) => gitStatusForRenderer(requireCtx(p)));
   ipcMain.handle(CH.syncKanmerNow, (_e, p: string) => syncProject(p));
   ipcMain.handle(CH.setOpenTabs, (_e, openTabs: string[], activeTab: string) =>
     setOpenTabs(openTabs, activeTab),

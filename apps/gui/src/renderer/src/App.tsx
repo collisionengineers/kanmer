@@ -29,6 +29,7 @@ import type {
   ConnectTarget,
   DispatchOption,
   DispatchStatus,
+  KanmerGitStatus,
   Theme,
   UiPreferences,
   UpdateStatusEvent,
@@ -47,6 +48,7 @@ import { ConfirmModal } from "./components/ConfirmModal.js";
 import { TicketCreate } from "./components/TicketCreate.js";
 import { GroupView } from "./components/GroupView.js";
 import { UpdateBanner } from "./components/UpdateBanner.js";
+import { BoardWorktreeBanner } from "./components/BoardWorktreeBanner.js";
 import { Welcome } from "./components/Welcome.js";
 import { VIEWS, VIEW_IDS, type View, viewCounts, viewItemsFor } from "./lib/views.js";
 
@@ -121,6 +123,7 @@ export function App(): JSX.Element {
   // This is intentionally independent of `refresh()`: staleness walks project
   // artefacts and must not run every time a watcher reports a board edit.
   const [repoStaleness, setRepoStaleness] = useState<RepoStaleness | null>(null);
+  const [gitStatus, setGitStatus] = useState<KanmerGitStatus | null>(null);
   // An unmigrated board is a compat rendering: the fixed six stages drawn over
   // a stage set that may not be them. Reading it is useful; writing to it saves
   // format-3 shapes into a format-2 board (FRD-007 M3). Wrapping the client is
@@ -235,6 +238,36 @@ export function App(): JSX.Element {
       cancelled = true;
     };
   }, [root]);
+
+  // Board health is an advisory snapshot. Refresh it at the same boundaries a
+  // user could alter Git state (tab readiness, board refresh and window focus)
+  // and accept main-process status events from sync/rename operations. No
+  // interval is needed, and a failed inspection never replaces the board.
+  useEffect(() => {
+    if (!root) {
+      setGitStatus(null);
+      return;
+    }
+    let cancelled = false;
+    const load = () => void window.kanmer.getKanmerGitStatus(root)
+      .then((status) => { if (!cancelled) setGitStatus(status); })
+      .catch((err) => {
+        if (!cancelled) {
+          setGitStatus(null);
+          setError(err instanceof Error ? err.message : String(err));
+        }
+      });
+    load();
+    const removeStatus = window.kanmer.onGitStatus((status) => {
+      if (!cancelled && status.projectId === root) setGitStatus(status);
+    });
+    window.addEventListener("focus", load);
+    return () => {
+      cancelled = true;
+      removeStatus();
+      window.removeEventListener("focus", load);
+    };
+  }, [root, changeSignal]);
 
   const openProject = useCallback(async (path: string) => {
     setOpening(true);
@@ -1242,6 +1275,8 @@ export function App(): JSX.Element {
       )}
 
       <RepoStalenessBanner report={repoStaleness} />
+
+      <BoardWorktreeBanner health={gitStatus?.boardWorktree ?? null} onOpenSettings={() => setSettingsOpen(true)} />
 
       {updateBanner}
 

@@ -278,7 +278,31 @@ export interface AppSettings extends UiPreferences {
 }
 
 export interface KanmerGitPreferences { kanmerBranch: string; gitSyncMinutes: number; }
-export interface KanmerGitStatus { available: boolean; boardRoot: string | null; branch: string; lastSync: string | null; error: string | null; paused: boolean; }
+/** Read-only health observation for the board worktree (GUI-098). */
+export interface BoardWorktreeHealth {
+  path: string;
+  expectedBranch: string;
+  actualBranch: string | null;
+  onBoardBranch: boolean;
+  boardSource: "file" | "default";
+  ticketCount: number;
+  repair: string;
+}
+
+/**
+ * Existing Git-sync status plus the independently observed board health.
+ * `null` means there is no Git board worktree to inspect (for example, a
+ * non-Git project), not that the board itself is unusable.
+ */
+export interface KanmerGitStatus {
+  available: boolean;
+  boardRoot: string | null;
+  branch: string;
+  lastSync: string | null;
+  error: string | null;
+  paused: boolean;
+  boardWorktree: BoardWorktreeHealth | null;
+}
 
 export interface OpenProjectResult {
   /** Canonical project root — the projectId every scoped call carries. */

@@ -130,6 +130,23 @@ describe("inspectBoardWorktree", () => {
     });
   });
 
+  it("reports a detached board without changing its HEAD, refs, or worktrees", async () => {
+    await git(repo, "checkout", "--detach", await git(repo, "rev-parse", "HEAD"));
+    // Capture after the fixture deliberately detaches HEAD: these are the
+    // facts inspection must leave exactly as it finds them.
+    const beforeHead = await git(repo, "rev-parse", "HEAD");
+    const beforeRefs = await git(repo, "show-ref");
+    const beforeWorktrees = await git(repo, "worktree", "list", "--porcelain");
+
+    await expect(inspectBoardWorktree(repo, "kanmer-board")).resolves.toEqual({
+      path: resolve(repo), expectedBranch: "kanmer-board", actualBranch: null, onBoardBranch: false,
+    });
+
+    expect(await git(repo, "rev-parse", "HEAD")).toBe(beforeHead);
+    expect(await git(repo, "show-ref")).toBe(beforeRefs);
+    expect(await git(repo, "worktree", "list", "--porcelain")).toBe(beforeWorktrees);
+  });
+
   it("uses the environment default and permits an explicit override", async () => {
     const before = process.env.KANMER_BOARD_BRANCH;
     process.env.KANMER_BOARD_BRANCH = " main ";

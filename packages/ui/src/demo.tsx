@@ -769,7 +769,16 @@ function installDemoBridge(): void {
     defaultPriority: "medium",
     defaultArea: "",
   };
-  const gitStatus = { available: true, boardRoot: "C:/work/kanmer-demo/.kanmer", branch: "kanmer", lastSync: null, error: null, paused: false };
+  const gitStatus = {
+    available: true,
+    boardRoot: "C:/work/kanmer-demo/.kanmer",
+    branch: "kanmer",
+    lastSync: null,
+    error: null,
+    paused: false,
+    // The standalone UI demo has no real Git worktree to inspect.
+    boardWorktree: null,
+  };
   const noop = () => () => {};
   const bridge: Partial<KanmerApi> = {
     getSettings: async () => settings,

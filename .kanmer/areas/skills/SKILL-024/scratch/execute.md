@@ -1,0 +1,1 @@
+Implemented the planned setup-skill contract in `.worktrees/skill-024` on `skill-024-reconcile-agents-skeleton`. Scope is exactly `kanmer-setup/SKILL.md` plus focused static coverage; no marker writer/body, template, core, GUI, or MCP bundle edit. Checks passed: Node tests 3/3, agents-block 31/31, `verify:skills`, and diff check.

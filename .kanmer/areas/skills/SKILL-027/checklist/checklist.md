@@ -26,11 +26,15 @@
 
 ## Closeout — SKILL-027
 
-- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
-- [ ] proof.md finalised (PR URL + merge date appended)
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
 - [x] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/skill-027`
-- [ ] `git branch -d skill-027-board-reality-sweep` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/skill-027`
+- [x] `git branch -d skill-027-board-reality-sweep` (`-D` if squash/rebase-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`
+
+- Closeout confirmed PR #80 merged at `b5013fb`, proof final, Outcome recorded, and the recorded worktree plus both local and remote branch removed. Main checkout is clean; the board worktree was not touched.
+
+- Ticket released after cleanup; no worktree or branch remains for SKILL-027.

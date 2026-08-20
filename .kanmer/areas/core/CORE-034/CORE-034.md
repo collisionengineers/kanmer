@@ -4,13 +4,14 @@ type: ticket
 title: >-
   `takeTicket` refuses to record the board worktree; `get_status` reports
   board-worktree health
-status: implementing
+status: review
 area: core
 order: 60
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-20T12:18:19.217Z'
+  review: '2026-08-20T22:27:08.886Z'
 taken_at: '2026-08-20T22:14:37.366Z'
 branch: core-034-board-worktree-health
 worktree: .worktrees/core-034
@@ -19,9 +20,16 @@ groups:
   - EPIC-009
   - HZN-004
 links: []
+commits:
+  - 3aea9975a8c6fadac819533bce9aa3f4290bf115
+  - b770563ae018bf143b00e6ec0ec12461a7b333e1
+  - 8f975a487a1a53d1af4f6edb4a5baa95930a36c3
+  - b44565c776b0db6ab84e8362b5487196752f722b
+prs:
+  - '82'
 archived: false
 created: '2026-08-20T10:14:42.524Z'
-updated: '2026-08-20T22:14:37.366Z'
+updated: '2026-08-20T22:27:08.886Z'
 ---
 
 ## What

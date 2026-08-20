@@ -148,3 +148,10 @@ Implemented the shared registry factory and `remote-http-v1` policy hook, a loop
 - [x] Add a two-session HTTP regression: Session B advertises elicitation, then Session A completes a write and destructive call while retaining Session A identity/capability context.
 - [x] Re-run MCP workspace typecheck, built HTTP smoke, and protocol smoke after the isolation change.
 - [x] Record the unrelated normal stdio-smoke artifact/linked-worktree failures rather than treating them as a pass.
+
+## MCP-032 review-blocker remediation — 2026-08-21
+
+- [x] Keep every multi-entry ESM build output self-contained so `dist/index.js` remains its own runtime identity target.
+- [x] Restore bundled-skill discovery from the self-identifying `dev-esm` entry path.
+- [x] Build from the linked ticket worktree and verify the normal stdio smoke reports `dist/index.js`, its real hash/size, `dev-esm`, and live AGENTS staleness.
+- [x] Re-run HTTP and protocol smokes to confirm the fail-closed HTTP transport and per-session isolation remain intact.

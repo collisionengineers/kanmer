@@ -65,3 +65,11 @@ Commit `0a484ce` removes the mutable module-global `McpServer` reference. `creat
 Verification after the remediation: `npm run typecheck -w @kanmer/mcp-server`, `npm run build:server`, `node packages/mcp-server/src/smoke-http.mjs`, and `npm run smoke:protocol` (30/30) pass; `git diff --check` passes. `node packages/mcp-server/src/smoke.mjs` reports 167/175: its eight failures are existing linked-worktree/build-artifact identity and bundled-skill-staleness assumptions (the tsup ESM entry delegates to a chunk and no bundled skill is discoverable from this worktree), not transport behavior. No MCP-026 bearer parsing, storage, comparison, generation, rotation, or lifecycle code was added.
 
 MCP-025 remains in Review on PR #90; this change does not merge or move the ticket.
+
+## MCP-032 remediation — 2026-08-21
+
+Commit `987fe05` sets `splitting: false` in the MCP ESM tsup configuration. Adding HTTP entries had made tsup emit `dist/index.js` as a loader plus a shared generated chunk; tsup's ESM `__filename` shim then identified the chunk rather than the spawned stdio command. That changed `get_status.server` identity and prevented the `dev-esm` bundled-skills path from resolving.
+
+Each ESM entry is now self-contained. A fresh linked-worktree build emits `dist/index.js` directly (no shared ESM chunk), restoring its own path/hash/size/build classification and repo-staleness skill discovery. Verification passes: MCP workspace typecheck, `npm run build:server`, normal stdio smoke **175/175**, HTTP smoke, protocol smoke **30/30**, discovery smoke **13/13**, and `git diff --check`.
+
+The HTTP per-session server isolation/fail-closed CLI remains unchanged, and this fix adds no MCP-026 bearer parsing, token storage/comparison/generation/rotation, or lifecycle implementation. MCP-025 remains in Review on PR #90; no merge or stage move was performed.

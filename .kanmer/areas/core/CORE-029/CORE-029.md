@@ -2,13 +2,14 @@
 id: CORE-029
 type: ticket
 title: AGENTS.md §4 still documents v2's seven stages and configurable gates
-status: implementing
+status: review
 area: core
 assignee: codex-mcp-client
 profile: chore
 stageEntered:
   preparing: '2026-08-20T21:30:14.232Z'
   implementing: '2026-08-20T21:31:13.334Z'
+  review: '2026-08-20T21:32:39.025Z'
 taken_at: '2026-08-20T21:31:13.350Z'
 branch: core-029-agents-stage-contract
 worktree: .worktrees/core-029
@@ -19,9 +20,13 @@ groups:
 links:
   - SKILL-013
 docs_todo: true
+commits:
+  - a5f56b37f6034e57cafeb13eee686eed6231732b
+prs:
+  - '71'
 archived: false
 created: '2026-08-17T00:13:55.000Z'
-updated: '2026-08-20T21:31:13.350Z'
+updated: '2026-08-20T21:32:39.025Z'
 ---
 
 ## What

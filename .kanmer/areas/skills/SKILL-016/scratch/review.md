@@ -28,3 +28,11 @@
 **NEEDS CHANGES** — PR #92 remains in Review pending [[SKILL-028]].
 
 SKILL-028 remediation: replaced raw temp-file proof with a disposable real KanmerStore board/group-document/ticket/activity scenario. Commits 9b2d574 and f6adae2 pushed to PR #92; targeted test and verify:skills pass. Ticket remains Review.
+
+## Re-review — remediation still incomplete
+
+The new disposable KanmerStore scenario is a material improvement: it writes/reads the real group-document paths, moves a live ticket, observes activity, avoids a second move, and retains a second run.
+
+However, its “Mismatch/foreign-owner decisions” block only re-reads the same valid current pointer. It never supplies a mismatched project fingerprint or a running record owned by another controller, invokes a refusal decision, or proves those cases leave group documents/ticket/activity unchanged. The ticket plan/checklist explicitly require both refusals without mutation.
+
+**Verdict: NEEDS CHANGES.** Keep [[SKILL-028]] blocking SKILL-016; add explicit real-board wrong-project and foreign-controller records plus refusal assertions and no-mutation snapshots, then request re-review.

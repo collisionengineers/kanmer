@@ -41,10 +41,11 @@
 - [x] Run `git diff --check`.
 - [x] Confirm the diff contains only the two SKILL.md files and `verify-skill-prose.mjs`.
 - [x] Confirm no template, profile/gate code, MCP/tool reference, generated plugin bundle, package manifest, or lockfile changed.
-- [ ] Open the PR with `Kanmer: SKILL-020` and describe both corrected contradictions.
-- [ ] Stop at review readiness; do not merge or start another ticket.
+- [x] Opened PR [#89](https://github.com/collisionengineers/kanmer/pull/89) with `Kanmer: SKILL-020` and both corrected contradictions.
+- [x] Stop at review readiness; do not merge or start another ticket.
 
 ## Progress notes
 
 - Corrected planner input routing to live gates with an explicitly bounded material-hole exception.
 - Replaced universal research Wave 0 with ticket-by-ticket gate routing; `verify-skill-prose` now guards both regressions.
+- Opened PR #89; ticket is ready for independent review without a merge.

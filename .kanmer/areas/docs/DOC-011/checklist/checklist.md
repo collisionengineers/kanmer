@@ -58,13 +58,22 @@
 
 ## Scope and hand-off
 
-- [ ] Confirm the source diff is one new ADR plus only FRD-002/003/006/007/010/016/019/020/022/023.
-- [ ] Confirm the board metadata diff affects only refs/docs_todo on MCP-022, MCP-023, GUI-096, GUI-097, and GUI-098, plus DOC-011’s own workflow docs.
-- [ ] Confirm no product code, profile/gate configuration, board.yml, root manifesto, package, lockfile, plugin bundle, or manually generated document changed.
-- [ ] Open the PR with `Kanmer: DOC-011` and list every governing file and ticket metadata mutation.
-- [ ] Request independent architecture/document review.
-- [ ] Stop at review readiness; do not merge or begin CORE-035.
+- [x] Confirm the source diff is one new ADR plus only FRD-002/003/006/007/010/016/019/020/022/023.
+- [x] Confirm the board metadata diff affects only refs/docs_todo on MCP-022, MCP-023, GUI-096, GUI-097, and GUI-098, plus DOC-011’s own workflow docs.
+- [x] Confirm no product code, profile/gate configuration, board.yml, root manifesto, package, lockfile, plugin bundle, or manually generated document changed.
+- [x] Open the PR with `Kanmer: DOC-011` and list every governing file and ticket metadata mutation.
+- [x] Request independent architecture/document review.
+- [x] Stop at review readiness; do not merge or begin CORE-035.
 
 ## Progress notes
 
 Append the allocated ADR number, numbering output, amended requirement identifiers, exact linked paths/ticket revisions, search results, verification exits, and any dependency-contract reconciliation here.
+
+
+## Progress notes
+
+- [x] ADR-0016 allocated; numbering command passed before and after the source change.
+- [x] Source scope is the new ADR and the ten listed FRDs; generated doc-structure and product code were untouched.
+- [x] Core tests 250/250, GUI tests 288/288, script tests 48/48, numbering and diff checks passed.
+- [ ] Pending post-merge: apply the five refs/docs_todo metadata mappings after MCP can validate ADR-0016/FRD paths on main; then re-read the tickets and gates.
+- [ ] Pending dependency: run npm run verify after CORE-031 makes that shared rail available on main.

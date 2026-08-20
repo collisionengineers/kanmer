@@ -2,10 +2,12 @@
 id: SKILL-024
 type: ticket
 title: kanmer-setup reconciles an AGENTS.md skeleton
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: feature
+stageEntered:
+  preparing: '2026-08-20T22:14:21.141Z'
 labels: []
 groups:
   - EPIC-012
@@ -16,7 +18,7 @@ blocks:
 docs_todo: true
 archived: false
 created: '2026-08-20T10:14:57.049Z'
-updated: '2026-08-20T10:20:03.727Z'
+updated: '2026-08-20T22:14:21.141Z'
 ---
 
 ## What

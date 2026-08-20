@@ -2,17 +2,19 @@
 id: SKILL-027
 type: ticket
 title: kanmer-groom gains a board-vs-reality sweep
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-20T22:14:34.430Z'
 labels: []
 groups:
   - HZN-006
 links: []
 archived: false
 created: '2026-08-20T10:14:57.080Z'
-updated: '2026-08-20T10:14:57.080Z'
+updated: '2026-08-20T22:14:34.430Z'
 ---
 
 ## What

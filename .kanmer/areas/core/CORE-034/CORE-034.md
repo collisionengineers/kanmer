@@ -4,13 +4,16 @@ type: ticket
 title: >-
   `takeTicket` refuses to record the board worktree; `get_status` reports
   board-worktree health
-status: preparing
+status: implementing
 area: core
 order: 60
-assignee: ''
+assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-20T12:18:19.217Z'
+taken_at: '2026-08-20T22:14:37.366Z'
+branch: core-034-board-worktree-health
+worktree: .worktrees/core-034
 labels: []
 groups:
   - EPIC-009
@@ -18,7 +21,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-20T10:14:42.524Z'
-updated: '2026-08-20T13:46:18.921Z'
+updated: '2026-08-20T22:14:37.366Z'
 ---
 
 ## What

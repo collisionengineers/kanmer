@@ -114,21 +114,27 @@ const BLOCK_START =
 const BLOCK_END = "<!-- kanmer:instructions:end -->";
 
 /**
- * Where a host reads project-scoped skills from, relative to the repo root.
+ * The repo-relative locations Connect owns and the staleness detector checks.
  *
- * Mirrors the `copySkills` destinations in `apps/gui/src/main/providers.ts`:
- * `.opencode/skills` for OpenCode, `.agents/skills` for Antigravity, and
- * `.grok/skills` for Grok. Only paths Kanmer itself copies into belong here;
- * marketplace providers such as Claude Code do not own a project skills tree.
- *
- * Mirrored rather than imported because `providers.ts` lives in the Electron
- * main process and core cannot depend on the GUI. The GUI follow-up ticket
- * inverts that: `providers.ts` reads these from here instead.
+ * Core must own this small catalog: it is the surface that judges whether a
+ * registration or copied-skill destination has drifted, while Electron's
+ * provider registry supplies the commands and file-format handlers. Keeping
+ * the paths here lets the GUI consume them without core importing Electron.
+ * Claude's `.mcp.json` is legacy registration coverage, not a skills location.
  */
+export const STALENESS_PROVIDER_PATHS = {
+  claude: { registrationFile: ".mcp.json" },
+  codex: { registrationFile: ".codex/config.toml" },
+  opencode: { registrationFile: "opencode.json", skillsDir: ".opencode/skills" },
+  grok: { registrationFile: ".grok/config.toml", skillsDir: ".grok/skills" },
+  antigravity: { registrationFile: ".agents/mcp_config.json", skillsDir: ".agents/skills" },
+} as const;
+
+/** Where Kanmer itself copies project-scoped skills, relative to the repo root. */
 export const SKILL_DESTINATIONS: readonly string[] = [
-  ".opencode/skills",
-  ".agents/skills",
-  ".grok/skills",
+  STALENESS_PROVIDER_PATHS.opencode.skillsDir,
+  STALENESS_PROVIDER_PATHS.antigravity.skillsDir,
+  STALENESS_PROVIDER_PATHS.grok.skillsDir,
 ];
 
 /** The stamp `installSkills` writes into a destination it copied into. */
@@ -145,18 +151,13 @@ const RETIRED_SKILL_PATHS: readonly string[] = [
   "kanmer-research/assets/impact-template.md",
 ];
 
-/**
- * Config files that may carry a Kanmer MCP registration, relative to the repo
- * root. The four `configPath`s in `providers.ts`, plus `.mcp.json` — which no
- * Kanmer provider writes any more (ADR-0012 moved grok to `.grok/config.toml`)
- * but which `claude mcp add -s project` owns and which older Kanmers wrote.
- */
-const REGISTRATION_FILES: readonly string[] = [
-  ".mcp.json",
-  ".codex/config.toml",
-  ".grok/config.toml",
-  "opencode.json",
-  ".agents/mcp_config.json",
+/** Config files that may carry a Kanmer MCP registration, including Claude's legacy path. */
+export const REGISTRATION_FILES: readonly string[] = [
+  STALENESS_PROVIDER_PATHS.claude.registrationFile,
+  STALENESS_PROVIDER_PATHS.codex.registrationFile,
+  STALENESS_PROVIDER_PATHS.grok.registrationFile,
+  STALENESS_PROVIDER_PATHS.opencode.registrationFile,
+  STALENESS_PROVIDER_PATHS.antigravity.registrationFile,
 ];
 
 // ---------------------------------------------------------------------------

@@ -1,0 +1,1 @@
+2026-08-21 closeout complete: verified PR #86 merged at 97a9935405c6778970e0e61943e0bf6328aea1c7; wrote proof; moved to Done. Removed `.worktrees/skill-022`, deleted local and remote `skill-022-template-contracts`, fetched/pruned worktrees, and released the ticket. The board worktree was not touched.

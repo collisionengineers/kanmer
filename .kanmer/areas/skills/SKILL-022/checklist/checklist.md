@@ -64,4 +64,4 @@ Completed 2026-08-20: rendered/read the assets; npm run verify:skills and npm ru
 - [x] cd out of worktree; `git worktree remove .worktrees/skill-022`
 - [x] `git branch -d skill-022-template-contracts` (`-D` if squash/rebase-merged)
 - [x] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] `take_ticket action: "release"`

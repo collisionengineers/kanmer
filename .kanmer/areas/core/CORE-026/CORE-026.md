@@ -2,10 +2,12 @@
 id: CORE-026
 type: ticket
 title: 'Sources: let a project declare which MCPs, plugins and llms.txt to prefer'
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: feature
+stageEntered:
+  preparing: '2026-08-20T20:30:12.790Z'
 labels: []
 groups:
   - HZN-006
@@ -13,7 +15,7 @@ links: []
 docs_todo: true
 archived: false
 created: '2026-08-16T18:26:15.208Z'
-updated: '2026-08-20T10:26:50.469Z'
+updated: '2026-08-20T20:30:12.790Z'
 ---
 
 ## What

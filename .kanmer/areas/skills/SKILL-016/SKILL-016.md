@@ -22,9 +22,13 @@ blocks:
   - SKILL-017
 refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
+commits:
+  - 752ef7d3db5a1315aad14acba2a21f28121e7575
+prs:
+  - '92'
 archived: false
 created: '2026-08-16T21:22:59.692Z'
-updated: '2026-08-20T23:33:32.664Z'
+updated: '2026-08-20T23:40:48.686Z'
 ---
 
 ## What

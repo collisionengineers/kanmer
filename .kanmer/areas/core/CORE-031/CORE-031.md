@@ -2,10 +2,12 @@
 id: CORE-031
 type: ticket
 title: Create `npm run verify` wrapping one shared VERIFY_STEPS
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: chore
+stageEntered:
+  preparing: '2026-08-20T12:02:11.660Z'
 labels: []
 groups:
   - EPIC-009
@@ -15,7 +17,7 @@ blocks:
   - CORE-032
 archived: false
 created: '2026-08-20T10:14:42.483Z'
-updated: '2026-08-20T10:19:38.078Z'
+updated: '2026-08-20T12:02:11.660Z'
 ---
 
 ## What

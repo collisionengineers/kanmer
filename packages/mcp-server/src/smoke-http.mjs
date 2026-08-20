@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -13,6 +14,10 @@ async function mcpPayload(response) {
 const root = await mkdtemp(path.join(os.tmpdir(), "kanmer-http-smoke-"));
 process.env.KANMER_ROOT = root;
 const { createKanmerHttpHost } = await import("../dist/http.js");
+
+const cli = spawnSync(process.execPath, [new URL("../dist/http-cli.js", import.meta.url)], { encoding: "utf8" });
+assert.equal(cli.status, 1);
+assert.match(cli.stderr, /no production HTTP authorizer/i);
 
 assert.throws(() => createKanmerHttpHost({}), /authorizer/);
 assert.throws(() => createKanmerHttpHost({ authorizer: { authorize: async () => ({ principal: "x" }) }, host: "0.0.0.0" }), /bind only/i);

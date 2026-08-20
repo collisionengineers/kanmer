@@ -2,12 +2,13 @@
 id: CORE-030
 type: ticket
 title: Staleness reports .claude/skills as behind with a fix that cannot work
-status: implementing
+status: review
 area: core
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-20T21:36:05.228Z'
+  review: '2026-08-20T21:43:24.929Z'
 taken_at: '2026-08-20T21:40:48.295Z'
 branch: core-030-owned-skill-destinations
 worktree: .worktrees/CORE-030
@@ -19,9 +20,13 @@ groups:
 links: []
 refs:
   - docs/functional/frd/FRD-013-setup-as-reconciliation.md
+commits:
+  - 50f72d3
+prs:
+  - '73'
 archived: false
 created: '2026-08-17T02:05:05.887Z'
-updated: '2026-08-20T21:40:48.295Z'
+updated: '2026-08-20T21:43:24.929Z'
 ---
 
 ## What

@@ -352,5 +352,40 @@ check("checklist labels are plainly advisory and gates ignore them", /\[pre-revi
 const groupContext = requiredHeadings(join(skillsDir, "kanmer-tickets", "assets", "group-context.md"), ["Feature outcome", "Users affected", "Acceptance criteria", "Non-goals", "Shared decisions", "Constraints", "Risks", "Dependency map", "Rollout & rollback", "Breakdown", "Definition of done"]);
 check("group context says horizons are optional", /horizons do not require context by default/i.test(groupContext), "epic context only");
 
+console.log("\n=== 13. kanmer-auto durable group run-state contract is present ===");
+const autoAssets = join(skillsDir, "kanmer-auto", "assets");
+const runState = join(autoAssets, "run-state-template.md");
+const currentRun = join(autoAssets, "current-run-template.md");
+const autoRequiredTerms = [
+  "one explicit existing group",
+  "automation/current.md",
+  "automation/runs/<run-id>.md",
+  "project_fingerprint",
+  "controller",
+  "stop_reason",
+  "running",
+  "paused",
+  "blocked",
+  "completed",
+  "aborted",
+  "read it back",
+  "never runs `gh pr merge`",
+];
+check(
+  "kanmer-auto states the durable run ownership and safety contract",
+  autoRequiredTerms.every((term) => autoSkill.includes(term)),
+  autoRequiredTerms.filter((term) => !autoSkill.includes(term)).join(", ") || "all terms present",
+);
+const runStateBody = requiredHeadings(runState, ["Selection contract", "Run invariants", "Ticket ledger", "Event log", "Resume instruction"]);
+for (const field of ["kind:", "schema:", "run_id:", "group:", "project_fingerprint:", "controller:", "status:", "created_at:", "updated_at:", "lane_limit:", "stop_reason:"]) {
+  check(`run-state template retains ${field}`, runStateBody.includes(field), field);
+}
+const currentRunBody = read(currentRun);
+check(
+  "current-run pointer names its history path and resume rule",
+  /run_path: automation\/runs\/<run-id>\.md/.test(currentRunBody) && /^## Resume instruction$/m.test(currentRunBody),
+  "path + heading",
+);
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

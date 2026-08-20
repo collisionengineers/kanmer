@@ -20,10 +20,17 @@ resolve time, so its `profiles:` block is not the effective set.
    `research` and `files`. If either is missing or visibly stale, do the
    `kanmer-research` job first — you should not plan around the gap, whether or
    not this ticket's profile happens to gate on them.
-2. **The ticket is in Preparing.** Research and planning share that stage in the
+2. **Select optional work-type overlays.** After the ticket evidence is clear,
+   manually copy zero or more matching prompt sets into the brief:
+   `assets/brief-fix.md`, `assets/brief-ui-ux.md`, `assets/brief-docs.md`,
+   `assets/brief-cloud-infra.md`, and `assets/brief-data-migration.md`. They
+   supplement the shared plan and checklist; choose none when they add no
+   value, and combine them when work crosses domains. They are templates, never
+   an automatic classifier, ticket field, profile mapping, or gate.
+3. **The ticket is in Preparing.** Research and planning share that stage in the
    six-stage board, so there is no move between them — the move you are working
    towards is Preparing → Implementing.
-3. **Write `plan.md`** from `assets/plan-template.md`: the chosen approach and
+4. **Write `plan.md`** from `assets/plan-template.md`: the chosen approach and
    why it beat the alternatives, concrete ordered steps, how proof will be
    produced, and risks with mitigations. It **must** carry a **Governing docs**
    section — how the plan meets each linked PRD/FRD/ADR (`refs`), or, *only with
@@ -31,16 +38,16 @@ resolve time, so its `profiles:` block is not the effective set.
    written. Design decisions become **ADRs** via `kanmer-docs`, linked into
    `refs`. (Gates check a doc exists; this content rule is enforced here and
    checked by `kanmer-review`.)
-4. **Distill `checklist.md`** from `assets/checklist-template.md`: one `- [ ]`
+5. **Distill `checklist.md`** from `assets/checklist-template.md`: one `- [ ]`
    box per plan step, ending with the verification the post-implementation
    report will summarise. Each box must be independently checkable — "wire the
    retry call", not "do the backend".
-5. **Sanity-check scope.** If the plan grew beyond one unit of work, split it:
+6. **Sanity-check scope.** If the plan grew beyond one unit of work, split it:
    file the extra tickets (`kanmer-tickets`), link with `rel: "blocks"` where
    order matters, and shrink this plan back to its ticket.
-6. **If the plan changes anything user-visible or contested, show it to the user
+7. **If the plan changes anything user-visible or contested, show it to the user
    before implementation starts** — a paragraph summary, not the whole document.
-7. **Put the open questions to the user, then revise the plan around the
+8. **Put the open questions to the user, then revise the plan around the
    answers.** This is the moment for it: research surfaced them, the plan is
    what would otherwise silently assume one. Ask them together, each with a
    recommendation, and record the answer in `open-questions` — a question

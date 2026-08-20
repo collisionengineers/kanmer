@@ -1,0 +1,1 @@
+Verified on merged main `71e3a0560a19a99796ce844927255aa5ff319aa5`: focused banner tests 3/3; full GUI suite 29 files / 296 tests; GUI typecheck and production build pass; diff/status clean. No unlocked GUI session was available, so no screenshot is claimed; proof records the automated predicate/render/immutability evidence and the limitation.

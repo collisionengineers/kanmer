@@ -2,10 +2,12 @@
 id: CORE-029
 type: ticket
 title: AGENTS.md §4 still documents v2's seven stages and configurable gates
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: chore
+stageEntered:
+  preparing: '2026-08-20T21:30:14.232Z'
 labels:
   - docs
 groups:
@@ -15,7 +17,7 @@ links:
 docs_todo: true
 archived: false
 created: '2026-08-17T00:13:55.000Z'
-updated: '2026-08-20T10:26:52.449Z'
+updated: '2026-08-20T21:30:14.232Z'
 ---
 
 ## What

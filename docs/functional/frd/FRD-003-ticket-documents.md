@@ -38,3 +38,7 @@ Every ticket owns a folder; every document type is a **subfolder** of it. Contai
 
 ## Related
 ADR-0004 · FRD-002 (gates) · FRD-004 (reference) · FRD-005 (deep research) · FRD-014 (templates) · FRD-007 (migration).
+
+## Compiled-workflow end state (ADR-0016)
+
+The audience contracts use existing storage: ticket body plus first-group context for approval; plan, checklist, and files for execution; `scratch/review.md` for review; and `proof/proof.md` for evidence. Scratch remains gate-exempt even when the Editor exposes it as a read/write top-level tab. The first group context is read-only context above the ticket body. Review and proof are whole-file versioned replacements; their detailed record schemas belong to FRD-006 and FRD-022 rather than duplicated here.

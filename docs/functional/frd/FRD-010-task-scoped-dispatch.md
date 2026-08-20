@@ -25,3 +25,7 @@ Dispatch fires a background agent at **one granular deliverable** for one ticket
 3. A dispatched run hitting a user-only question completes the deliverable with the question recorded (FRD-009 acceptance 2).
 
 Related: D5/D11 · FRD-009 · FRD-002 · FRD-016 (worktrees).
+
+## Compiled-workflow end state (ADR-0016)
+
+`get_execution_packet` is the bounded, read-only weak-agent entry point. A ready response derives profile readiness and returns project, ticket, first-group context, required documents, gates, extras, stop condition, and commands. Refusal is ordered and has no write side effect. It never takes a ticket, moves a stage, dispatches, or creates a worktree; those remain separate operations. A ready packet is the dispatch-enablement signal, including for a chore with a plan, while a spike remains outside execution.

@@ -83,3 +83,7 @@ Renderer paths relative to `apps/gui/src/`.
 Styling is one global stylesheet (`renderer/src/styles.css`, ~1575 lines) over CSS custom-property
 tokens on `:root` with a `[data-theme="light"]` override `styles.css:1-29` — relevant to R6, whose
 whole point is that a renderer-drawn menu can use those tokens and a native one cannot.
+
+## Compiled-workflow end state (ADR-0016)
+
+The Editor exposes Scratch as a top-level tab and renders the first group context as read-only material above the ticket body. Local modes select, but never hide, the starting tab: Approval → Ticket, Execution → Plan, Review → Scratch, Evidence → Proof. Non-selected tabs may be dimmed only. A non-blocking board-worktree health banner reports unhealthy observations and directs repair to operations; it never prevents board use.

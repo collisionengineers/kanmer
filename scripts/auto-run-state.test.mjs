@@ -58,7 +58,7 @@ test("durable auto resume uses actual group documents and live board reconciliat
 
   // Fresh controller context reads group docs, observes an independent live move,
   // records reconciliation, and does not repeat the mutation.
-  await store.moveItem(first.id, "preparing");
+  await store.moveItem(first.id, { status: "preparing" });
   const activity = await store.getActivity({ id: first.id });
   assert.ok(activity.length > 0, "live ticket transition is recorded in board activity");
   assert.equal((await store.getItem(first.id)).status, "preparing");

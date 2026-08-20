@@ -21,3 +21,5 @@ original `ADR-0013-staleness-by-content-not-version.md` path pending the merge
 of `chore-renumber-adr-0015-collision`; will be flipped to
 `docs/architecture/adr/ADR-0015-staleness-by-content-not-version.md` once that
 merges.
+
+Closeout: PR #76 merged as a2fb9684947d0d3105255b3d300da4dd2726c7d1; all discovered ticket docs reread; merged-main core/build/GUI proof passed; clean worktree and local branch removed.

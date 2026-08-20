@@ -19,3 +19,9 @@
 - Verification passed: core staleness 40/40; full core 250/250; focused GUI 68/68; full GUI 288/288; GUI build; core and GUI typechecks; and `git diff --check`.
 - The direct GUI-path core read returned the same compensated-only `board-config` row as the MCP `get_status.repo` read for this board.
 - Root `npm run typecheck` still fails in unrelated `@kanmer/ui` baseline code: `packages/ui/src/demo.tsx:622` omits required `TicketDocsInfo.documentPaths`. Core, MCP server, and GUI typechecks completed before that unrelated package failure.
+
+## Closeout
+
+- [x] Confirm PR #76 merged and re-run merged-main proof with core build before GUI artifact consumers.
+- [x] Re-inventory and read all ticket documents, including nested scratch files.
+- [x] Confirm the ticket worktree is clean, release it, and remove its merged worktree and local branch.

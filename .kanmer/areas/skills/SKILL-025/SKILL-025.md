@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-20T22:02:20.141Z'
   verifying: '2026-08-20T22:08:21.602Z'
   done: '2026-08-20T22:08:39.090Z'
-taken_at: '2026-08-20T21:58:35.496Z'
-branch: skill-025-work-type-brief-templates
-worktree: .worktrees/skill-025
 labels: []
 groups:
   - EPIC-012
@@ -25,7 +22,7 @@ prs:
   - '78'
 archived: false
 created: '2026-08-20T10:14:57.059Z'
-updated: '2026-08-20T22:08:39.090Z'
+updated: '2026-08-20T22:10:03.318Z'
 ---
 
 ## What

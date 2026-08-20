@@ -1,1 +1,3 @@
 Implemented on `skill-025-work-type-brief-templates`: five optional, manually selected brief overlays plus a scoped static verifier check. Commit `b6b03a3c76ba7d3851cfaa7259915daaf73e6404`; PR #78: https://github.com/collisionengineers/kanmer/pull/78. Verification: `npm run verify:skills` and `git diff --check` passed. The initial verifier failure on the word `impact` in the cloud overlay was corrected to `cost effect` and the full rerun passed.
+
+Closeout: PR #78 merged as 817041202896e5992e416a7daf4d238b526aa38d; all ticket docs reread; merged-main skill verification passed; clean worktree and local branch removed.

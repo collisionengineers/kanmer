@@ -29,6 +29,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { verifyRelease, formatProblems } from "./verify-release-assets.mjs";
+import { VERIFY_STEPS } from "./verify.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const guiDir = join(root, "apps", "gui");
@@ -208,41 +209,11 @@ console.log(`token: ${tokenVar} (set)`);
 console.log(`notes: ${notesPath}`);
 
 // ---------------------------------------------------------------------------
-// Verification gate. Each must exit 0, in this order.
+// Verification gate. This is the same shared PR rail as `npm run verify`;
+// release continues with version bumping, packaging and publication only after
+// every step exits 0. `npm test` already runs check:manual, so it appears once.
 // ---------------------------------------------------------------------------
-const GATE = [
-  "npm run build",
-  // NOT plugin:build *here*. The original reason still holds at this point in
-  // the script: this gate runs BEFORE the version bump, the tree is required to
-  // be clean, and rewriting the committed bundle now would dirty it for no
-  // gain — plugin:check verifies the same bytes without producing a diff.
-  //
-  // What changed (MCP-012): the bundle now has the version compiled into it, so
-  // it must be rebuilt AFTER the bump — see step 5b below, which is where
-  // plugin:build moved to, not where it was deleted from. Here the version is
-  // still the current one, so the committed bundle and a fresh build agree and
-  // this check is exactly as meaningful as it always was.
-  "npm run plugin:check",
-  "npm test",
-  "node packages/mcp-server/src/smoke.mjs",
-  "node packages/mcp-server/src/smoke-protocol.mjs",
-  "npm run verify:agents-block",
-  // The manual is a committed generated artifact, so a stale one ships
-  // silently. `npm test` above runs this too — named here as well because this
-  // list is the ship decision and should say what shipping requires (DOC-007;
-  // until then nothing in the repo invoked check:manual at all).
-  "npm run check:manual",
-  // FRD-023 R5. Pure file reads, no build, sub-second — a rail step everyone
-  // pays for on every release has to be cheap. It is the only thing that
-  // asserts anything about skill prose, so its absence was why the AGENTS
-  // block could describe a profile set that no longer existed (SKILL-013).
-  "npm run verify:skills",
-  // Every workspace, not just the GUI. The -w form here is what let c8b94a4
-  // ship: the release rail was the only thing running a typecheck at all, and
-  // it ran one workspace's (GUI-067).
-  "npm run typecheck",
-];
-for (const step of GATE) run(step);
+for (const step of VERIFY_STEPS) run(step);
 
 if (dryRun) {
   console.log("\n--- dry run: the verification gate passed ---");

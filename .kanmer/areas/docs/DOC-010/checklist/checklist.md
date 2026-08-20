@@ -23,3 +23,10 @@
 - [x] Document runtime-key creation, handling and runtime/admin-key distinction.
 - [x] Document the one-tunnel/profile/app-per-project pattern and concurrent health-port constraint.
 - [x] Regenerate and revalidate the in-app manual after the follow-up.
+
+## Closeout
+
+- [x] Confirm PR #64 merged to `main` and proof captures merged-main verification.
+- [x] Confirm the ticket worktree is clean before cleanup.
+- [ ] Remove the ticket worktree and delete the merged branch.
+- [ ] Release the ticket assignment and record closeout.

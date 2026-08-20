@@ -49,3 +49,7 @@
 - Hash board source, server identity, actor, branch, or current cwd.
 - Add error codes beyond the exact three.
 - Add new tools, dependencies, project UUID files, or portable repository IDs.
+
+## Binding path correction
+
+The canonical MCP tool reference is **`plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md`**. Any earlier occurrence of `plugins/kanmer/tool-reference.md` in this document is invalid and is superseded by this correction. Do not create or edit the invalid shorter path.

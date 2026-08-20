@@ -200,3 +200,7 @@ git status --short
 ## Stop condition
 
 Stop when all 18 write tools accept the optional call-level token, wrong-project requests demonstrably leave a fresh root byte-for-byte untouched, project identity is independently reproducible from `get_status`, the three coded failure paths retain compatibility text, plugin/reference artifacts are synchronized, and the PR is ready for independent review. Do not merge or start MCP-023.
+
+## Binding path correction
+
+For steps 39–43, the canonical file is **`plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md`**. Any earlier occurrence of `plugins/kanmer/tool-reference.md` in this plan is invalid and superseded. The implementation must not create or edit the invalid shorter path.

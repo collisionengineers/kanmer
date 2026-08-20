@@ -64,3 +64,16 @@
 - Ten serial target runs passed (120/120 tests). The slowest observed case was 4.43 s; under a complete serial GUI run it was 13.277 s, below the scoped 30 s bound.
 - Complete GUI suite passed: 29 files / 296 tests. GUI typecheck and `git diff --check` passed.
 - Remaining unchecked items are either intentionally unimplemented diagnostics/coverage claims or externally unavailable rails: root typecheck's known unrelated UI demo failure, absent `npm run verify`, and pending Windows PR runs. No source change was made during this checklist reconciliation.
+
+---
+
+## Closeout — GUI-085
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/gui-085`
+- [ ] `git branch -d gui-085-deterministic-real-git-tests` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

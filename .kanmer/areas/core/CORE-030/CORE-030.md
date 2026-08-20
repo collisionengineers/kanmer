@@ -2,10 +2,12 @@
 id: CORE-030
 type: ticket
 title: Staleness reports .claude/skills as behind with a fix that cannot work
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-20T21:36:05.228Z'
 labels:
   - install
   - false-positive
@@ -16,7 +18,7 @@ refs:
   - docs/functional/frd/FRD-013-setup-as-reconciliation.md
 archived: false
 created: '2026-08-17T02:05:05.887Z'
-updated: '2026-08-20T10:26:53.394Z'
+updated: '2026-08-20T21:36:05.228Z'
 ---
 
 ## What

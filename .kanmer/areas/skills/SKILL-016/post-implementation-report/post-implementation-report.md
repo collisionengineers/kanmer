@@ -30,3 +30,11 @@
 ## Review focus
 
 Confirm that the skill is intentionally group-owned, writes history before the current pointer, reconciles without replay, preserves immutable runs, and does not create MCP surface or automatic merge authority.
+
+## Review remediation — SKILL-028
+
+Replaced the raw temporary-file scenario with scripts/auto-run-state.test.mjs using a disposable KanmerStore board. It creates a real horizon and two grouped tickets, writes and reads automation/runs/<id>.md and automation/current.md through setGroupDoc/getGroupDoc, performs an independent live moveItem, checks derived activity, then writes a reconciled paused ledger and proves activity has not gained a second move (no replay). A later run is written at a distinct group-document path while the original history remains readable. This runs through Kanmer's actual paths, group-doc atomic-write/read behavior, ticket/group membership, move gates, and activity log—not raw local files.
+
+Validation after remediation: npm run build:core; node --test scripts/auto-run-state.test.mjs (1/1); npm run verify:skills; git diff --check.
+
+Commits: 9b2d574, f6adae2.

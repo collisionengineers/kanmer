@@ -25,11 +25,13 @@ refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
 commits:
   - 752ef7d3db5a1315aad14acba2a21f28121e7575
+  - 9b2d574
+  - f6adae2
 prs:
   - '92'
 archived: false
 created: '2026-08-16T21:22:59.692Z'
-updated: '2026-08-20T23:40:53.658Z'
+updated: '2026-08-20T23:46:29.223Z'
 ---
 
 ## What

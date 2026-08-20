@@ -26,3 +26,5 @@
 ## Verdict
 
 **NEEDS CHANGES** — PR #92 remains in Review pending [[SKILL-028]].
+
+SKILL-028 remediation: replaced raw temp-file proof with a disposable real KanmerStore board/group-document/ticket/activity scenario. Commits 9b2d574 and f6adae2 pushed to PR #92; targeted test and verify:skills pass. Ticket remains Review.

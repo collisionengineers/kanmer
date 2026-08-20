@@ -2,10 +2,13 @@
 id: SKILL-016
 type: ticket
 title: Give a kanmer-auto run durable state on the board
-status: backlog
+status: preparing
 area: skills
+order: 230
 assignee: ''
 profile: feature
+stageEntered:
+  preparing: '2026-08-20T14:02:41.693Z'
 labels:
   - auto
 groups:
@@ -18,7 +21,7 @@ refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
 archived: false
 created: '2026-08-16T21:22:59.692Z'
-updated: '2026-08-20T10:26:30.928Z'
+updated: '2026-08-20T14:02:41.693Z'
 ---
 
 ## What

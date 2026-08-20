@@ -4,10 +4,12 @@ type: ticket
 title: >-
   Templates: approval contract, execution brief with stop condition, group
   context
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: chore
+stageEntered:
+  preparing: '2026-08-20T12:49:11.464Z'
 labels: []
 groups:
   - EPIC-009
@@ -15,7 +17,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-20T10:14:57.026Z'
-updated: '2026-08-20T10:14:57.026Z'
+updated: '2026-08-20T12:49:11.464Z'
 ---
 
 ## What

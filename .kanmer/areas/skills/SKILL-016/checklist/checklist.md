@@ -93,3 +93,14 @@
 - [x] Run `git diff --check` and inspect status.
 - [x] Record evidence in post-implementation report.
 - [x] Stop before merge.
+
+## Closeout — SKILL-016
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/skill-016`
+- [ ] `git branch -d skill-016-durable-auto-run` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

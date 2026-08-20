@@ -38739,7 +38739,6 @@ async function writeVersion(paths, version2) {
 var BLOCK_START = "<!-- kanmer:instructions:start \u2014 managed by kanmer-setup; edits inside will be overwritten -->";
 var BLOCK_END = "<!-- kanmer:instructions:end -->";
 var SKILL_DESTINATIONS = [
-  ".claude/skills",
   ".opencode/skills",
   ".agents/skills",
   ".grok/skills"

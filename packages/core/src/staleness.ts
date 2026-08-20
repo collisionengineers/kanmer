@@ -116,19 +116,16 @@ const BLOCK_END = "<!-- kanmer:instructions:end -->";
 /**
  * Where a host reads project-scoped skills from, relative to the repo root.
  *
- * Mirrors the `copySkills` destinations in `apps/gui/src/main/providers.ts`
- * (`.opencode/skills` for OpenCode, `.agents/skills` for Antigravity, and
- * `.grok/skills` for grok) plus
- * `.claude/skills`, which Kanmer never writes — Claude Code installs by
- * marketplace — but which repos demonstrably accumulate copies in, and which is
- * where this repo's own drift was found.
+ * Mirrors the `copySkills` destinations in `apps/gui/src/main/providers.ts`:
+ * `.opencode/skills` for OpenCode, `.agents/skills` for Antigravity, and
+ * `.grok/skills` for Grok. Only paths Kanmer itself copies into belong here;
+ * marketplace providers such as Claude Code do not own a project skills tree.
  *
  * Mirrored rather than imported because `providers.ts` lives in the Electron
  * main process and core cannot depend on the GUI. The GUI follow-up ticket
  * inverts that: `providers.ts` reads these from here instead.
  */
 export const SKILL_DESTINATIONS: readonly string[] = [
-  ".claude/skills",
   ".opencode/skills",
   ".agents/skills",
   ".grok/skills",
@@ -379,10 +376,8 @@ function agentsBlockRow(repoRoot: string, reference: string | null): StaleEntry 
  * One rule, three properties, all of them required:
  *
  *  - A skill the *user* wrote can never count as drift, because it is not in
- *    the bundled tree and so is never looked at. The operator called this out
- *    explicitly, and it is not theoretical: this repo's `.claude/skills`
- *    already holds a `run-kanmer` skill with 115 files of `node_modules` under
- *    it.
+ *    the bundled tree and so is never looked at. This remains true even inside
+ *    an owned destination, including when a user skill contains `node_modules`.
  *  - That `node_modules` is therefore never walked, which is what keeps a call
  *    that runs at every session start cheap — ~33 stats per destination, fixed.
  *  - A destination holding none of Kanmer's skills produces no row at all,

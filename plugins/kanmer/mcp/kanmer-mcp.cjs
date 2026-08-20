@@ -38738,11 +38738,17 @@ async function writeVersion(paths, version2) {
 }
 var BLOCK_START = "<!-- kanmer:instructions:start \u2014 managed by kanmer-setup; edits inside will be overwritten -->";
 var BLOCK_END = "<!-- kanmer:instructions:end -->";
+var STALENESS_PROVIDER_PATHS = {
+  claude: { registrationFile: ".mcp.json" },
+  codex: { registrationFile: ".codex/config.toml" },
+  opencode: { registrationFile: "opencode.json", skillsDir: ".opencode/skills" },
+  grok: { registrationFile: ".grok/config.toml", skillsDir: ".grok/skills" },
+  antigravity: { registrationFile: ".agents/mcp_config.json", skillsDir: ".agents/skills" }
+};
 var SKILL_DESTINATIONS = [
-  ".claude/skills",
-  ".opencode/skills",
-  ".agents/skills",
-  ".grok/skills"
+  STALENESS_PROVIDER_PATHS.opencode.skillsDir,
+  STALENESS_PROVIDER_PATHS.antigravity.skillsDir,
+  STALENESS_PROVIDER_PATHS.grok.skillsDir
 ];
 var SKILLS_STAMP_FILE = ".kanmer-skills-version";
 var RETIRED_SKILL_PATHS = [
@@ -38750,11 +38756,11 @@ var RETIRED_SKILL_PATHS = [
   "kanmer-research/assets/impact-template.md"
 ];
 var REGISTRATION_FILES = [
-  ".mcp.json",
-  ".codex/config.toml",
-  ".grok/config.toml",
-  "opencode.json",
-  ".agents/mcp_config.json"
+  STALENESS_PROVIDER_PATHS.claude.registrationFile,
+  STALENESS_PROVIDER_PATHS.codex.registrationFile,
+  STALENESS_PROVIDER_PATHS.grok.registrationFile,
+  STALENESS_PROVIDER_PATHS.opencode.registrationFile,
+  STALENESS_PROVIDER_PATHS.antigravity.registrationFile
 ];
 function readOrNull(file) {
   try {

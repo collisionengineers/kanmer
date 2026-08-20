@@ -19,6 +19,44 @@ branch yourself. Your own ticket worktree is a separate thing, recorded by
 - Archive, don't delete. Reference other items with [[ID]] wiki-links.
 - Skills run in this order: kanmer-tickets → -research → -plan → -execute → -review → -verify → -closeout. How far a ticket walks it depends on its profile, so ask `get_doc_gates` rather than assuming every step. Off to the side: -auto (drives that order over many tickets), -docs (governing docs), -groom (fix the board), -report (read-only), -setup (reconcile after a Kanmer update).
 - Each skill ends by naming what comes next — read that line before improvising a hand-off.
+
+## Agent conduct
+
+**Scope**
+
+1. **Scope is the brief.** “While I’m here” changes are follow-up tickets, not commits.
+2. **Never absorb another ticket’s scope.** Link it and let it be worked on its own record.
+3. **Release and remediation work ships no new features.**
+4. **The ticket precedes the branch.** No board record, no PR.
+5. **Stop at the stop condition.** Never merge your own PR or start the next ticket; report deviations instead of redesigning.
+
+**Build**
+
+6. **Greenfield has no legacy.** Unless the brief names users or data, add no fallback, compatibility, or deprecation path; delete what you replace.
+7. **Reuse before build.** Name the helper, port, or route you extend; report a genuinely unfit one instead of silently building a parallel copy.
+8. **One list per concept.** A second copy in another layer is duplication, even when it is “just strings”.
+9. **Paths are relative.** Use repo-root-relative or injected configuration, never machine-specific paths.
+10. **Dependencies are approvals.** Add no package unless the brief lists it.
+11. **Concurrency results are never discarded.** Retry, defer, or surface them; a swallowed conflict is data loss.
+12. **Errors surface.** No catch-all suppression or empty catch.
+13. **No fabricated domain data.** Fixtures use the documented estate.
+
+**Prove**
+
+14. **Done means wired.** New code needs a named production caller; registered-but-unreachable or test-only code is not done.
+15. **Runtime dependencies ship in the artifact.** Prove the deployed image carries every required browser, font, or package.
+16. **A schema change and its permissions ride the same diff.** Include migration, grants, and bootstrap census together.
+17. **Recorded commits must be reachable.** Ticket SHAs must exist on the merge target.
+18. **Stubs are not done.** Do not present TODOs, placeholders, or mocks as implementation.
+19. **Tests prove the claim.** Never weaken or delete an assertion to pass; a failing test stops and is reported.
+20. **Verify with exit codes.** Run stated commands and record outputs; INCONCLUSIVE is not PASS, and a later pass does not erase a failure.
+21. **No speculative CI or tests.** Delete a gate that gates nothing.
+
+**Conduct**
+
+22. **Review findings get dispositions.** Fix, reject with reason, accept risk, or defer to a ticket; never silence them.
+23. **Secrets never appear in code, tickets, or proofs.**
+24. **A PR that changes commands or conventions updates AGENTS.md in the same PR.**
 <!-- kanmer:instructions:end -->
 
 # AGENTS.md — Contributor & AI-agent guide to Kanmer

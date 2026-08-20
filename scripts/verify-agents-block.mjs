@@ -39,6 +39,17 @@ try {
     check("created file starts with the start marker", text.startsWith(START));
     check("created file carries the block body", text.includes(BLOCK_BODY));
     check("created file gets the stub heading", text.includes("# Demo contributor guide"));
+    check("created file carries the Agent conduct section", text.includes("## Agent conduct"));
+    const conductRules = [...BLOCK_BODY.matchAll(/^(\d+)\. \*\*/gm)].map((match) => Number(match[1]));
+    check(
+      "Agent conduct keeps all 24 numbered rules in canonical order",
+      conductRules.length === 24 && conductRules.every((rule, index) => rule === index + 1),
+      conductRules.join(","),
+    );
+    check(
+      "Agent conduct keeps Scope, Build, Prove, and Conduct groups",
+      ["Scope", "Build", "Prove", "Conduct"].every((group) => BLOCK_BODY.includes(`**${group}**`)),
+    );
   }
 
   // 2. AGENTS.md present with content → block at byte 0, original a byte-exact suffix.

@@ -594,6 +594,43 @@ textarea.body {
 .editor-foot .primary {
   width: 100%;
 }
+.scratch-panel,
+.group-context-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.scratch-head,
+.scratch-create,
+.scratch-list {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.scratch-head {
+  justify-content: space-between;
+}
+.scratch-head p {
+  margin: 3px 0 0;
+}
+.scratch-create input {
+  min-width: 150px;
+}
+.scratch-list .active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.group-context-pane {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  background: var(--bg);
+}
+.group-context-markdown {
+  max-height: 220px;
+  overflow: auto;
+}
 
 /* --- v2 additions -------------------------------------------------------- */
 

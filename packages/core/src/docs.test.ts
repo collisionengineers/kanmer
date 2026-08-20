@@ -232,13 +232,18 @@ describe("folder documents (FRD-003)", () => {
     await expect(store.setDoc(id, "../../escape.md", "x")).rejects.toThrow(/Invalid segment/);
   });
 
-  it("counts documents per type and enumerates reference files", async () => {
+  it("counts documents per type, lists readable document paths, and enumerates reference files", async () => {
     const id = await ticket("feature", { docs_todo: true });
     await store.setDoc(id, "research/a.md", "a");
     await store.setDoc(id, "research/deep/b.md", "b");
     await store.setDoc(id, "reference/spec.md", "s");
     const info = (await store.getTicketDocsInfo(id))!;
     expect(info.counts.research).toBe(2);
+    expect(info.documentPaths).toEqual([
+      "reference/spec.md",
+      "research/a.md",
+      "research/deep/b.md",
+    ]);
     expect(info.references.map((r) => r.name)).toEqual(["spec.md"]);
   });
 

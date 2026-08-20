@@ -103,6 +103,45 @@ export async function listDocs(ticketDir: string, type: string): Promise<string[
 }
 
 /**
+ * Every readable Markdown document in a ticket, as a type-relative path.
+ *
+ * These are the exact paths callers pass to `get_ticket_doc`: for example,
+ * `research/azure/tokens.md`. A bare type still means that folder's index
+ * document, so callers need this inventory to discover named documents.
+ */
+export interface DocumentInventory {
+  counts: Record<string, number>;
+  documentPaths: string[];
+}
+
+/**
+ * Count and enumerate ticket documents from one recursive pass per type folder.
+ *
+ * A caller that needs both views must use this rather than calling the two
+ * projection helpers independently, so a concurrent write cannot leave one
+ * response reporting counts and paths from different filesystem snapshots.
+ */
+export async function documentInventory(ticketDir: string): Promise<DocumentInventory> {
+  const byType = await Promise.all(
+    TICKET_DIRS.map(async (type) => ({ type, files: await listFilesRecursive(docDirIn(ticketDir, type)) })),
+  );
+  const counts: Record<string, number> = {};
+  const documentPaths: string[] = [];
+  for (const { type, files } of byType) {
+    const markdown = files.filter((f) => f.toLowerCase().endsWith(".md"));
+    const count = isGateExempt(type) && type !== "scratch" ? files.length : markdown.length;
+    if (count) counts[type] = count;
+    documentPaths.push(...markdown.map((rel) => `${type}/${rel}`));
+  }
+  return { counts, documentPaths: documentPaths.sort() };
+}
+
+/** Every readable Markdown document in a ticket, as a type-relative path. */
+export async function listDocumentPaths(ticketDir: string): Promise<string[]> {
+  return (await documentInventory(ticketDir)).documentPaths;
+}
+
+/**
  * Whether a type's requirement is satisfied: at least one markdown document
  * anywhere beneath its folder, and the folder is not gate-exempt.
  */
@@ -179,16 +218,7 @@ export async function countCheckboxes(
 
 /** Per-type document counts for an item summary (FRD-003 T7). */
 export async function docCounts(ticketDir: string): Promise<Record<string, number>> {
-  const counts: Record<string, number> = {};
-  for (const type of TICKET_DIRS) {
-    const files = await listFilesRecursive(docDirIn(ticketDir, type));
-    // reference/ and assets/ hold arbitrary files; the doc types hold markdown.
-    const n = isGateExempt(type) && type !== "scratch"
-      ? files.length
-      : files.filter((f) => f.toLowerCase().endsWith(".md")).length;
-    if (n) counts[type] = n;
-  }
-  return counts;
+  return (await documentInventory(ticketDir)).counts;
 }
 
 /**

@@ -47,15 +47,21 @@ which tickets, in what order, and how many at once.
   why. A roster resolved from a group is worth showing back before anything
   starts — it is the one step the user cannot check by reading the request.
 
-## 2. Wave 0 — research everything in parallel
+## 2. Wave 0 — route every ticket from its live gates
 
-Research is read-only: no branches, no worktrees, no conflicts.
-Run one subagent per ticket concurrently (use your host's subagent/task
-mechanism), each following the `kanmer-research` skill for its ticket.
-Tickets whose research surfaces user-only questions get parked and reported
+For every retained ticket, call `get_doc_gates <id>` and inspect its current
+stage, reachable stages, and first unmet next-boundary requirement. Group the
+roster by the next applicable phase/action, not by an assumed profile pipeline,
+then dispatch only that phase through the existing phase skill. Do not create
+optional documents merely to normalize the batch. A ticket with no preparation
+phase currently required advances to its next applicable workflow action rather
+than receiving speculative research. After each completed phase, re-read that
+ticket's gates before routing its next phase.
+
+Tickets whose routed phase surfaces user-only questions get parked and reported
 — don't guess on the user's behalf.
 
-This is not only a wave-0 concern: a question can surface at any point, and a
+This is not only a routing concern: a question can surface at any point, and a
 lane that hits one **stops there and is reported as parked-on-a-question, named
 and quoted** — never rolled into the generic failure bucket. The operator can
 answer a question in seconds; they cannot answer one they were never shown. The

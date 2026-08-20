@@ -12,9 +12,6 @@ stageEntered:
   review: '2026-08-20T23:15:09.784Z'
   verifying: '2026-08-20T23:16:33.599Z'
   done: '2026-08-20T23:18:36.058Z'
-taken_at: '2026-08-20T23:10:13.846Z'
-branch: skill-020-gates-first-routing
-worktree: .worktrees/skill-020
 labels: []
 groups:
   - EPIC-009
@@ -27,7 +24,7 @@ prs:
   - '89'
 archived: false
 created: '2026-08-20T10:14:56.999Z'
-updated: '2026-08-20T23:18:55.638Z'
+updated: '2026-08-20T23:19:53.800Z'
 ---
 
 ## What

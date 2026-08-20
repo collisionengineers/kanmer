@@ -58,7 +58,7 @@
 - [x] proof.md finalised (PR URL + merge date recorded).
 - [x] Moved to final stage (Done).
 - [x] Outcome recorded in ticket body (PR link, no follow-up tickets).
-- [ ] cd out of worktree; `git worktree remove .worktrees/skill-020`
-- [ ] `git branch -d skill-020-gates-first-routing` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] cd out of worktree; `git worktree remove .worktrees/skill-020`
+- [x] `git branch -d skill-020-gates-first-routing` (safe after verified MERGED PR; local branch deleted)
+- [x] `git fetch --prune` + `git worktree prune` (remote feature branch also deleted)
+- [x] `take_ticket action: "release"`

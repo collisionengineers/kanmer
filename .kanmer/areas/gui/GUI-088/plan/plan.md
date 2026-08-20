@@ -18,13 +18,13 @@ Keep marketplace disconnect non-destructive for AGENTS.md. The current `disconne
 2. Make marketplace install notes include `AGENTS.md block ensured` alongside their plugin-install notes; retain stop-on-first-failure and exact command/output propagation.
 3. Extend the synthetic marketplace-provider tests in `apps/gui/src/main/connect.test.ts` to verify first Connect creates the block, second Connect is byte-identical, and the success output names the ensured block.
 4. Add a marketplace-disconnect assertion that the managed block remains present and document this as the R4 non-destructive policy; leave copy-skills peer cleanup tests unchanged.
-5. Run the focused GUI Connect test, GUI typecheck, and relevant managed-block script tests. Confirm the regression covers both the universal-install requirement and the visible failure contract.
+5. Run the focused GUI Connect test, GUI typecheck, and repository managed-block verification. Confirm the regression covers both the universal-install requirement and the visible failure contract.
 
 ## Verification
 
 - `npm test -w @kanmer/gui -- connect.test.ts`
 - `npm run typecheck -w @kanmer/gui`
-- `node --test scripts/verify-agents-block.mjs` (or the repository's existing managed-block test command if its file naming differs)
+- `npm run verify:agents-block`
 - Inspect that a marketplace test reads an AGENTS.md with managed markers after the first connect and exact same bytes after the second.
 - Inspect that marketplace command failure remains `ok: false`, while the successful marketplace result includes the block-ensured note.
 

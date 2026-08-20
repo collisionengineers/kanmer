@@ -1,27 +1,30 @@
 # Checklist — GUI-098
 
-- [ ] Reuse/finish CORE-034’s observational GUI Git helper with reciprocal MCP-copy comment.
-- [ ] Prove helper reads symbolic branch and never repairs/checks out/renames/syncs.
-- [ ] Extend existing `KanmerGitStatus` with exact nested health fields; add no IPC channel.
-- [ ] Compose health in main from actual branch, `getBoardWithSource`, and active non-archived ticket count.
-- [ ] Preserve all existing Git-status fields and non-Git behavior.
-- [ ] Return deterministic healthy/wrong/detached/default-with-tickets repair text.
-- [ ] Recompute health on project/status/sync/rename refresh points; no polling loop.
-- [ ] Test expected, wrong, detached, unavailable branches and before/after Git immutability.
-- [ ] Add pure renderer predicate for exact warning conditions.
-- [ ] Add persistent accessible banner with actual/expected/path/source/count/repair.
-- [ ] Reuse existing Settings opening for guidance; no new view.
-- [ ] Keep board usable and handle status-fetch errors without false claims.
-- [ ] Test wrong branch and default-with-tickets render.
-- [ ] Test healthy file board, empty default, and null/non-Git render nothing.
-- [ ] Test null actual branch and settings action.
+- [x] Reuse/finish CORE-034’s observational GUI Git helper with reciprocal MCP-copy comment.
+- [x] Prove helper reads symbolic branch and never repairs/checks out/renames/syncs.
+- [x] Extend existing `KanmerGitStatus` with exact nested health fields; add no IPC channel.
+- [x] Compose health in main from actual branch, `getBoardWithSource`, and active non-archived ticket count.
+- [x] Preserve all existing Git-status fields and non-Git behavior.
+- [x] Return deterministic healthy/wrong/detached/default-with-tickets repair text.
+- [x] Recompute health on project/status/sync/rename refresh points; no polling loop.
+- [x] Test expected, wrong, detached, unavailable branches and before/after Git immutability.
+- [x] Add pure renderer predicate for exact warning conditions.
+- [x] Add persistent accessible banner with actual/expected/path/source/count/repair.
+- [x] Reuse existing Settings opening for guidance; no new view.
+- [x] Keep board usable and handle status-fetch errors without false claims.
+- [x] Test wrong branch and default-with-tickets render.
+- [x] Test healthy file board, empty default, and null/non-Git render nothing.
+- [x] Test null actual branch and settings action.
 - [ ] Manually simulate/restore wrong branch and capture screenshot/evidence.
-- [ ] Run GUI tests/typecheck and `npm run verify`.
-- [ ] Confirm App/existing status IPC are production callers.
-- [ ] Confirm no MCP/core gate/take/sync-repair/view/channel/dependency/plugin/manual change.
-- [ ] Open PR with `Kanmer: GUI-098`, link CORE-034, retain `docs_todo` until DOC-011.
-- [ ] Stop at review readiness; do not merge or start another ticket.
+- [x] Run GUI tests/typecheck and `npm run verify`.
+- [x] Confirm App/existing status IPC are production callers.
+- [x] Confirm no MCP/core gate/take/sync-repair/view/channel/dependency/plugin/manual change.
+- [x] Open PR with `Kanmer: GUI-098`, link CORE-034, retain `docs_todo` until DOC-011.
+- [x] Stop at review readiness; do not merge or start another ticket.
 
 ## Progress notes
 
-Append branch fixtures, before/after ref hashes, composed health JSON, banner screenshots, and command exits.
+- Isolated fixture branch: `kanmer-board → wrong-board → kanmer-board`; restoration confirmed by `git branch --show-current`.
+- A Windows-locked session prevented a usable banner screenshot: the capture showed the lock screen. This remains deliberately unticked and is documented in the post-implementation report.
+- `npm test --workspace @kanmer/gui -- --maxWorkers=1 --minWorkers=1`: 29 files / 296 tests passed.
+- GUI typecheck and GUI production build passed. `npm run verify` is not defined; root typecheck has an unrelated pre-existing `TicketDocsInfo.documentPaths` demo-fixture failure.

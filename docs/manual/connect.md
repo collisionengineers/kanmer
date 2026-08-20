@@ -88,11 +88,10 @@ select the tunnel associated with that workspace. Keep the local operator UI
 on its default loopback address. Restart the tunnel after a Kanmer update,
 because the installed MCP process is replaced during the update.
 
-This path was exercised successfully on Windows with `tunnel-client` 0.0.11:
-the profile connected through tunnel
-`tunnel_6a84483eb6a8819180f63c29ee0c94cb`, and ChatGPT could use the resulting
-developer-mode app. That confirms the end-to-end ChatGPT connection; the
-packaged MCP smoke separately verifies all 30 tools and their file mutations.
+This path was exercised successfully on Windows with `tunnel-client` 0.0.11.
+Your own tunnel identifier, workspace, and credentials are private operational
+state and must not be committed. The packaged MCP smoke separately verifies all
+30 tools and their file mutations.
 
 ### More than one project
 

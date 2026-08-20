@@ -7,13 +7,13 @@ import test from "node:test";
 import { KanmerStore } from "../packages/core/dist/index.js";
 
 const fingerprint = "sha256:disposable-board";
-const run = (id, group, status = "running", first = "queued") => `---
+const run = (id, group, status = "running", first = "queued", project = fingerprint, controller = "codex-auto") => `---
 kind: kanmer-auto-run
 schema: 1
 run_id: ${id}
 group: ${group}
-project_fingerprint: ${fingerprint}
-controller: codex-auto
+project_fingerprint: ${project}
+controller: ${controller}
 status: ${status}
 ---
 # Auto run
@@ -26,18 +26,28 @@ status: ${status}
 ## Resume instruction
 Read live tickets and activity before dispatch.
 `;
-const pointer = (id, group) => `---
+const pointer = (id, group, project = fingerprint, controller = "codex-auto") => `---
 kind: kanmer-auto-current
 schema: 1
 run_id: ${id}
 run_path: automation/runs/${id}.md
 group: ${group}
-project_fingerprint: ${fingerprint}
-controller: codex-auto
+project_fingerprint: ${project}
+controller: ${controller}
 status: running
 ---
 # Current auto run
 `;
+
+const field = (document, name) => document.match(new RegExp(`^${name}: (.+)$`, "m"))?.[1];
+async function resumeDecision(store, group, controller, project) {
+  const current = await store.getGroupDoc(group, "automation/current.md");
+  const path = field(current, "run_path");
+  const record = await store.getGroupDoc(group, path);
+  if (field(current, "project_fingerprint") !== project || field(record, "project_fingerprint") !== project) return "refuse-project";
+  if (field(current, "status") === "running" && field(current, "controller") !== controller) return "refuse-controller";
+  return "resume";
+}
 
 test("durable auto resume uses actual group documents and live board reconciliation", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "kanmer-auto-real-"));
@@ -66,8 +76,29 @@ test("durable auto resume uses actual group documents and live board reconciliat
   assert.match(await store.getGroupDoc(group.id, runPath), /SKILL-001 \| finished \| moved/);
   assert.equal((await store.getActivity({ id: first.id })).length, activity.length, "no replay");
 
-  // Mismatch/foreign-owner decisions are read-only; history survives a later run.
-  assert.match(await store.getGroupDoc(group.id, "automation/current.md"), /controller: codex-auto/);
+  // Wrong-project and foreign-running-controller records are read from actual
+  // stored group docs and refuse without changing pointer/history/tickets/activity.
+  const snapshot = async () => JSON.stringify({
+    current: await store.getGroupDoc(group.id, "automation/current.md"),
+    run: await store.getGroupDoc(group.id, runPath),
+    first: await store.getItem(first.id),
+    activity: await store.getActivity({ id: first.id }),
+  });
+  const wrongId = "20260821T121000Z-other";
+  const wrongPath = `automation/runs/${wrongId}.md`;
+  await store.setGroupDoc(group.id, wrongPath, run(wrongId, group.id, "running", "queued", "sha256:other"));
+  await store.setGroupDoc(group.id, "automation/current.md", pointer(wrongId, group.id, "sha256:other"));
+  const beforeWrong = await snapshot();
+  assert.equal(await resumeDecision(store, group.id, "codex-auto", fingerprint), "refuse-project");
+  assert.equal(await snapshot(), beforeWrong, "wrong project refuses before mutation");
+
+  await store.setGroupDoc(group.id, "automation/current.md", pointer(runId, group.id, fingerprint, "other-controller"));
+  const beforeForeign = await snapshot();
+  assert.equal(await resumeDecision(store, group.id, "codex-auto", fingerprint), "refuse-controller");
+  assert.equal(await snapshot(), beforeForeign, "foreign running controller refuses before mutation");
+
+  await store.setGroupDoc(group.id, "automation/current.md", pointer(runId, group.id));
+  assert.equal(await resumeDecision(store, group.id, "codex-auto", fingerprint), "resume");
   assert.match(await store.getGroupDoc(group.id, runPath), new RegExp(`run_id: ${runId}`));
   const secondId = "20260821T130000Z-codex-auto";
   await store.setGroupDoc(group.id, `automation/runs/${secondId}.md`, run(secondId, group.id, "completed", "finished"));

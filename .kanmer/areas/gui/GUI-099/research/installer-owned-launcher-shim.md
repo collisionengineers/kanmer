@@ -144,3 +144,32 @@ Required tests use a disposable `%LOCALAPPDATA%` override/test root and fake pac
 ## Non-goals
 
 - No POSIX launcher in v1, PATH mutation, App Execution Alias, Windows service, shell extension, registry App Paths dependency, automatic app relocation, provider registration changes, Codex-specific serialization, or direct source checkout execution.
+
+## Correction — authoritative discovery contract
+
+The earlier “target file” proposal above is **superseded and must not be implemented**. The adopted ticket, MASTERPLAN S-23, ADR-0012 context, EPIC-011 approval contract, and archived GUI-094 source plan all fix the v1 design as:
+
+```text
+%LOCALAPPDATA%\Kanmer\bin\kanmer-mcp.cmd
+HKCU\Software\Kanmer\InstallDir = <selected per-user install directory>
+```
+
+The shim queries the exact HKCU value with `%SystemRoot%\System32\reg.exe`, validates `<InstallDir>\Kanmer.exe` and `<InstallDir>\resources\mcp\kanmer-mcp.cjs`, sets `ELECTRON_RUN_AS_NODE=1`, directly invokes the packaged bundle through the installed Electron executable, preserves the caller’s current working directory and stdio, and returns the child exit code. There is **no** `kanmer-mcp-target.txt` file, no alternate target-file parser, no target-file ownership marker, and no application-startup rewrite path.
+
+The installer lifecycle is the ownership boundary:
+
+- `customInstall` runs after app files exist, atomically copies the static shim to the fixed LOCALAPPDATA path and writes the HKCU `InstallDir` value.
+- Upgrade/reinstall repeats those idempotent operations after the new install payload is complete.
+- `customUnInstall` removes the shim/value only when the recorded `InstallDir` equals the uninstalling `$INSTDIR`; an obsolete installation must not remove a newer installation’s launcher.
+- Parent directories are removed only when empty; unrelated registry values/files are preserved.
+- Normal GUI startup may diagnose the launcher but does not silently rewrite installer-owned state.
+
+Security/quoting decisions retained from the earlier research still apply where compatible: explicit `cmd.exe /d /s /c`, no `start`, no cwd change, no PATH search, no arbitrary caller argument forwarding, no stdout wrapper chatter, quoted paths, and real tests for spaces/metacharacters. Any section above that refers to a target text file, transactionally replacing that file, parsing its contents, or using it as the source of truth is withdrawn.
+
+## Corrected implementation implications
+
+- Add `apps/gui/build/kanmer-mcp.cmd` and `apps/gui/build/installer.nsh`.
+- Package the source shim into the install payload through `apps/gui/electron-builder.yml`; the NSIS hook copies it to the fixed per-user launcher location.
+- Extend `scripts/check-updater-package.mjs` to prove the packaged inputs and NSIS include are present, but use a controlled real installer lifecycle for HKCU/install/uninstall behavior.
+- Do not modify provider registration serialization in this ticket; GUI-100 consumes the stable launcher contract.
+- Do not add a native launcher, target file, service, PATH mutation, App Execution Alias, PowerShell wrapper, registry command string, or cross-platform shim.

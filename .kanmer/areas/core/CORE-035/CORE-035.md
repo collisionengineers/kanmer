@@ -2,10 +2,12 @@
 id: CORE-035
 type: ticket
 title: Spine integration verification
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: chore
+stageEntered:
+  preparing: '2026-08-20T13:13:26.932Z'
 labels:
   - integration
 groups:
@@ -14,7 +16,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-20T10:14:42.535Z'
-updated: '2026-08-20T10:14:42.535Z'
+updated: '2026-08-20T13:13:26.932Z'
 ---
 
 ## What

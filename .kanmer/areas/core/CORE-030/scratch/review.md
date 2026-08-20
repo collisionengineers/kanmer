@@ -29,3 +29,7 @@ FRD-013 remains satisfied: staleness is detection-only, and this change prevents
 ## Verdict
 
 **PASS.** The ownership boundary is corrected, existing owned-destination detection is retained, the reported Claude-mirror regression is covered, and the PR remains within plan and FRD-013. Per review assignment, no merge or ticket move was performed.
+
+## Independent review addendum — PR #73
+
+**PASS.** Re-ran `npm test -w @kanmer/core -- staleness.test.ts` (40/40) and `npm run typecheck -w @kanmer/core` (pass); checked the two-file PR diff against CORE-030's plan and FRD-013. The ownership boundary, retained copy destinations, handmade Claude-mirror regression, and GUI-090 scope boundary all match. No blocking or non-blocking findings. No merge or ticket move performed.

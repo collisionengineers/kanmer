@@ -2,13 +2,14 @@
 id: CORE-030
 type: ticket
 title: Staleness reports .claude/skills as behind with a fix that cannot work
-status: review
+status: verifying
 area: core
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-20T21:36:05.228Z'
   review: '2026-08-20T21:43:24.929Z'
+  verifying: '2026-08-20T21:48:47.167Z'
 taken_at: '2026-08-20T21:40:48.295Z'
 branch: core-030-owned-skill-destinations
 worktree: .worktrees/CORE-030
@@ -26,7 +27,7 @@ prs:
   - '73'
 archived: false
 created: '2026-08-17T02:05:05.887Z'
-updated: '2026-08-20T21:43:24.929Z'
+updated: '2026-08-20T21:48:47.167Z'
 ---
 
 ## What

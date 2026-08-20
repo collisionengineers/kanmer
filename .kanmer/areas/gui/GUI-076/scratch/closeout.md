@@ -1,0 +1,1 @@
+Closed out 2026-08-20: PR #67 is merged at `e57046649c96ffa49a523d2361aa689884338ddc`; proof is final, the clean ticket worktree was removed, local branch `gui-076-wire-product-assets` deleted, and worktree metadata pruned.

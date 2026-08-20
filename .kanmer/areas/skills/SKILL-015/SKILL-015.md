@@ -2,10 +2,12 @@
 id: SKILL-015
 type: ticket
 title: Delete the four pr-* review assets
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: chore
+stageEntered:
+  preparing: '2026-08-20T21:25:25.179Z'
 labels: []
 groups:
   - HZN-006
@@ -15,7 +17,7 @@ refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
 archived: false
 created: '2026-08-16T19:17:13.249Z'
-updated: '2026-08-20T10:25:08.470Z'
+updated: '2026-08-20T21:25:25.179Z'
 ---
 
 _Owner decision 2026-08-20: delete per FRD-023 R1 — review lives in scratch/review.md, not standalone pr-* assets._

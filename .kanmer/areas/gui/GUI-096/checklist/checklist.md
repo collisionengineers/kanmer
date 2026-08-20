@@ -52,3 +52,16 @@
 
 - 2026-08-20: Added core `TicketDocsInfo.scratch` via `listScratch`, a non-gated Scratch editor tab, and first-group context pane. Focused core docs tests: 50/50; focused Editor tests: 4/4; full GUI suite: 30 files / 300 tests; core and GUI typechecks plus GUI production build and `git diff --check` passed.
 - `npm run verify` was attempted but this repository has no `verify` script (CORE-031 owns the shared rail). Visual screenshots remain review-visible work; Windows interactive capture is unavailable in this session.
+
+---
+
+## Closeout — GUI-096
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`): PR #91 is MERGED at 2026-08-20T23:32:44Z.
+- [x] proof.md finalised with merged-main evidence and limitations.
+- [x] Moved to final stage (Done).
+- [x] Outcome recorded in ticket body (PR link, GUI-103 remediation, documented evidence limitations).
+- [ ] cd out of worktree; `git worktree remove .worktrees/gui-096`
+- [ ] `git branch -d gui-096-editor-scratch-context` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

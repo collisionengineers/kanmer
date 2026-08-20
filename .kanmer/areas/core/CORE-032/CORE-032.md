@@ -2,10 +2,12 @@
 id: CORE-032
 type: ticket
 title: GitHub Actions PR workflow — `verify` job only
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: chore
+stageEntered:
+  preparing: '2026-08-20T12:07:12.757Z'
 labels: []
 groups:
   - EPIC-009
@@ -16,7 +18,7 @@ blocks:
   - CORE-024
 archived: false
 created: '2026-08-20T10:14:42.500Z'
-updated: '2026-08-20T10:19:39.973Z'
+updated: '2026-08-20T12:07:12.757Z'
 ---
 
 ## What

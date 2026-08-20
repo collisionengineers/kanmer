@@ -12,7 +12,7 @@
 - [x] Run `node --test scripts/verify-skill-prose.test.mjs`.
 - [x] Perform the read-only current-board dry run and record why the repaired known cases are excluded while their history demonstrates both dispositions.
 - [x] Run `git diff --check` and confirm only the planned skill/verifier/test paths changed.
-- [ ] Write the post-implementation report with commands, dry-run evidence, scope, and any unavailable history source.
+- [x] Write the post-implementation report with commands, dry-run evidence, scope, and any unavailable history source.
 
 ## Progress notes
 
@@ -20,3 +20,4 @@
 - Implemented the bounded advisory sweep and its focused static guard. The negative fixture first missed a wrapped `main`/history phrase; it was corrected to remove whitespace-separated text and now proves the verifier fails when the contract is weakened.
 - Focused verification passed: `npm run verify:skills` (all 10 checks), `node --test scripts/verify-skill-prose.test.mjs` (3/3), and `git diff --check`.
 - Read-only calibration: the current board has 10 Backlog and 43 Preparing tickets; CORE-028 is archived and GUI-076 is Done, so neither is a candidate. Main history and merged PR metadata confirm the whole-delivery archive evidence (PRs #57/#59) and the partial-delivery rescope evidence (`9ec7741`). No live ticket was changed.
+- Committed implementation as `1e5e761a4106d2e5e58f51d39ccdc098c9e2319d` and wrote the post-implementation report for review.

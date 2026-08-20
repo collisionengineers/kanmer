@@ -458,6 +458,29 @@ describe("a failed plugin-install command is reported, not swallowed (MCP-013)",
     expect(result.output).toContain("plugin installed");
   });
 
+  it("ensures the managed block for marketplace hosts idempotently and retains it on disconnect", async () => {
+    const root = await tempRoot();
+    const id = useProvider("mp-agents", [await succeedingCommand(root)]);
+
+    const first = await connectAgent(id, root, root);
+    const agentsPath = join(root, "AGENTS.md");
+    const firstAgents = await readFile(agentsPath, "utf8");
+
+    expect(first.ok).toBe(true);
+    expect(first.output).toContain("AGENTS.md block ensured");
+    expect(firstAgents).toContain("kanmer:instructions:start");
+
+    const second = await connectAgent(id, root, root);
+    expect(second.ok).toBe(true);
+    await expect(readFile(agentsPath, "utf8")).resolves.toBe(firstAgents);
+
+    // FRD-012 R4: marketplace disconnect does not remove AGENTS.md without
+    // an explicit user interaction. Copy-skills cleanup remains separate.
+    const disconnected = await disconnectAgent(id, root);
+    expect(disconnected.ok).toBe(true);
+    await expect(readFile(agentsPath, "utf8")).resolves.toBe(firstAgents);
+  });
+
   it("updateSkills surfaces the same failure rather than reporting an update", async () => {
     const root = await tempRoot();
     const cmd = await failingCommand(root, "Failed to add marketplace");

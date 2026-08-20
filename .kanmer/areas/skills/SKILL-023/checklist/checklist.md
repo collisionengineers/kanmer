@@ -20,3 +20,9 @@
 - `git diff --check` passed; the AGENTS refresh changes only the marker-delimited managed body.
 
 - Review-blocker remediation: merged current `origin/main` as `395e0e5`, regenerated the plugin MCP bundle from that merged source, and verified its SHA-256 (`4ab82b08…1e645d`) in a standalone non-linked checkout that owns its dependencies.\n- Remediation checks passed: `npm run plugin:check` (30 tools, bundle bytes match, 12 skill frontmatters), `npm run verify:agents-block` (31/31), targeted core staleness (40), MCP smoke (159/159), `npm run verify:skills`, and `git diff --check origin/main...HEAD`.\n
+
+## Closeout
+
+- [x] Confirm PR #77 merged after fresh byte-match review and record merged-main proof.
+- [x] Re-inventory and read every ticket document, including nested review and execute scratch files.
+- [x] Confirm clean worktree, release the ticket, and remove its merged worktree and local branch.

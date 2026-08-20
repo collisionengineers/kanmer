@@ -17,3 +17,10 @@
 - 2026-08-20: GUI typecheck passed; full GUI test suite passed (25 files, 278 tests); production build emitted the 767,621-byte hashed renderer logo asset.
 - 2026-08-20: regenerated `icon.ico` twice with stable SHA-256 `3A9C5B35A1ECCD88FD06593AB9E0AFE2A2621ADB1C5D2DDA924A316B1D0D8C18`; inspected all seven 32-bit entries.
 - 2026-08-20: `npm run dist` passed. The 79,296,648-byte NSIS installer and `win-unpacked/Kanmer.exe` were produced; Windows extracted a 32×32 executable icon, and the packaged GUI smoke passed. GUI-091 still prevents this agent from capturing a running-window screenshot, so final visual proof requires human confirmation rather than a fabricated image.
+
+## Closeout
+
+- [x] Confirm PR #67 merged to `main` and proof captures merged-main verification.
+- [x] Confirm the ticket worktree is clean before cleanup.
+- [ ] Remove the ticket worktree and delete the merged branch.
+- [ ] Release the ticket assignment and record closeout.

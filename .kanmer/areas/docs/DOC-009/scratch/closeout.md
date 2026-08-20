@@ -1,0 +1,1 @@
+Closed out 2026-08-20: PR #69 is merged at `6b5d5ce99ba371288231f4a53370ff79c23a6e1f`; proof is final, the clean ticket worktree was removed, local branch `doc-009-plugin-map` deleted, and worktree metadata pruned.

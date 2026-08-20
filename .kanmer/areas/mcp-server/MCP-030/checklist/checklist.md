@@ -6,3 +6,10 @@
 - [x] Run plugin consistency, MCP smoke, and whitespace checks.
 - [x] Commit the artifact update and open a PR.
 - [x] Write the post-implementation report with the canonical-build rationale.
+
+## Closeout
+
+- [x] Confirm PR #68 merged to `main` and proof captures merged-main verification.
+- [x] Confirm the ticket worktree is clean before cleanup.
+- [x] Remove the ticket worktree and delete the merged branch.
+- [x] Release the ticket assignment and record closeout.

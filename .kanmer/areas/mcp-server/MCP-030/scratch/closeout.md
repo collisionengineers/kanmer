@@ -1,0 +1,1 @@
+Closed out 2026-08-20: PR #68 is merged at `7a8d901ec3fec8d7943edf74269de199dea79185`; proof is final, the clean ticket worktree was removed, local branch `mcp-030-canonical-plugin-bundle` deleted, and worktree metadata pruned.

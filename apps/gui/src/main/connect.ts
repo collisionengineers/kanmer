@@ -362,8 +362,11 @@ interface SkillsInstallOutcome {
 
 /** Install skills for a provider; reports what ran and what, if anything, failed. */
 async function installSkills(provider: AgentProvider, root: string): Promise<SkillsInstallOutcome> {
+  // FRD-012 R3: this universal orientation layer is independent of how a host
+  // receives skills, so marketplace hosts must not bypass it on their early return.
+  await ensureAgentsBlock(root);
   if (provider.install.kind === "marketplace") {
-    const notes: string[] = [];
+    const notes = ["AGENTS.md block ensured"];
     for (const cmd of provider.install.marketplaceCommands(marketplaceRoot())) {
       try {
         await execAsync(cmd, { cwd: root });
@@ -378,8 +381,7 @@ async function installSkills(provider: AgentProvider, root: string): Promise<Ski
     }
     return { note: notes.join("; "), failure: null };
   }
-  // copySkills: always ensure the AGENTS.md block; copy skills for a project dir.
-  await ensureAgentsBlock(root);
+  // copySkills: copy skills for a project dir after the universal block is ensured.
   if (provider.install.skillsScope === "project" && provider.install.skillsDir) {
     const dest = join(root, provider.install.skillsDir);
     const version = await bundledSkillsVersion();

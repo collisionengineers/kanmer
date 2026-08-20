@@ -2,10 +2,12 @@
 id: SKILL-020
 type: ticket
 title: kanmer-plan and kanmer-auto become gates-first
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-20T12:39:41.253Z'
 labels: []
 groups:
   - EPIC-009
@@ -13,7 +15,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-20T10:14:56.999Z'
-updated: '2026-08-20T10:14:56.999Z'
+updated: '2026-08-20T12:39:41.253Z'
 ---
 
 ## What

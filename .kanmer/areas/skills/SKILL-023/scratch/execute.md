@@ -1,1 +1,3 @@
 Opened draft PR https://github.com/collisionengineers/kanmer/pull/77 for commit `27539dd` after the documented verification rails passed.
+
+Review-blocker remediation: merged `origin/main` into `skill-023-conduct-canon` (`395e0e5`), regenerated the plugin bundle from the merged source, and replaced the linked-worktree output with the byte-verified standalone-checkout artifact (`4ab82b08…1e645d`). Plugin integrity passed (30 tools, bundle bytes match, 12 skill frontmatters); agents-block 31/31, core staleness 40, MCP smoke 159/159, skills verifier, and diff check all passed. Ready for re-review; no ticket move or merge performed.

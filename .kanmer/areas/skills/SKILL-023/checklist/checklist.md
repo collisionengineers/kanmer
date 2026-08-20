@@ -18,3 +18,5 @@
 - `node packages/mcp-server/src/smoke.mjs` — 159/159 checks passed, including public `get_status.repo` behind detection.
 - `npm run verify:skills` passed; `npm run plugin:build` passed; the canonical main checkout’s `npm run plugin:check` passed with matching bundle bytes and 12 valid skill frontmatters.
 - `git diff --check` passed; the AGENTS refresh changes only the marker-delimited managed body.
+
+- Review-blocker remediation: merged current `origin/main` as `395e0e5`, regenerated the plugin MCP bundle from that merged source, and verified its SHA-256 (`4ab82b08…1e645d`) in a standalone non-linked checkout that owns its dependencies.\n- Remediation checks passed: `npm run plugin:check` (30 tools, bundle bytes match, 12 skill frontmatters), `npm run verify:agents-block` (31/31), targeted core staleness (40), MCP smoke (159/159), `npm run verify:skills`, and `git diff --check origin/main...HEAD`.\n

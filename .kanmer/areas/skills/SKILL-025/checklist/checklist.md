@@ -18,3 +18,9 @@
 - Added verifier check 9 for the canonical assets and wording. The first verifier run failed because the cloud asset used retired document-type word `impact`; it was rephrased to “cost effect” and the rerun passed every check.
 - `npm run verify:skills` passed after the correction; `git diff --check` is clean and scope is limited to the planned skill assets, plan skill, and verifier.
 - Wrote the post-implementation report with the implementation scope, the corrected verifier result, and review hand-off checks.
+
+## Closeout
+
+- [x] Confirm PR #78 merged and proof passed on merged main.
+- [x] Re-inventory and read every ticket document, including nested scratch files.
+- [x] Confirm clean worktree, release the ticket, and remove its merged worktree and local branch.

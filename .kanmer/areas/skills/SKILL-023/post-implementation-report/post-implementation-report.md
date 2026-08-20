@@ -13,6 +13,7 @@ The managed AGENTS.md block now ships MASTERPLAN §4’s 24-rule Agent conduct c
 | `AGENTS.md` | Refreshed only the managed marker span using `scripts/agents-block.mjs`. | Keeps this repository on the canonical block without editing human-owned prose. |
 | `scripts/verify-agents-block.mjs` | Added named lifecycle assertions for the heading, all 24 ordered rules, and four canon groups. | Makes the conduct delivery contract visible rather than relying only on whole-body inclusion. |
 | `packages/core/src/staleness.test.ts` | Changed the managed-block drift fixture to an otherwise valid former body without `## Agent conduct`. | Proves content-hash staleness reports the actual upgrade shape as `agents-block: behind` without changing detector logic. |
+| `plugins/kanmer/mcp/kanmer-mcp.cjs` | Regenerated after merging current `main`, then byte-verified against a fresh standalone build. | Keeps the committed plugin runtime synchronized with the merged core staleness source. |
 
 ## Governing docs
 
@@ -22,7 +23,7 @@ This feature remains intentionally `docs_todo: true`: MASTERPLAN §4 and §6.4 S
 
 - The setup skill is necessarily a literal offline copy; its existing full-body equality check remains the drift guard, strengthened by named conduct checks.
 - [[SKILL-024]] owns skeleton reconciliation and [[SKILL-026]] owns disposable-repo integration verification. This ticket does not modify human-owned prose outside markers.
-- The canonical main-checkout plugin integrity rail is directory-sensitive by design; it was run successfully from the main checkout after a canonical build, not from the linked ticket worktree.
+- After rebasing current `main`, the release artifact was rebuilt and verified in a standalone non-linked checkout that owns its dependencies; the ticket worktree’s deliberate linked-worktree guard remains in force.
 
 ## Verification hand-off
 

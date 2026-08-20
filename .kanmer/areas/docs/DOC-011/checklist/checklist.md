@@ -2,46 +2,46 @@
 
 ## Allocation and ADR
 
-- [ ] Re-list `docs/architecture/adr/` immediately before implementation and confirm ADR-0016 is still the next free number.
-- [ ] If ADR-0016 is occupied, allocate the next free number and update every filename, cross-reference, ticket ref, and checklist entry consistently.
-- [ ] Create the compiled-workflow ADR from the repository template with accepted status and current evidence date.
-- [ ] Define the four audience contracts using the existing artifacts only.
-- [ ] Define the four readiness predicates over the six fixed stages.
-- [ ] State that `enter-verifying` remains reserved and has no injected requirement.
-- [ ] State that GitHub required checks and protection provide merge physics while Kanmer records workflow intent/evidence.
-- [ ] Document the optional `expected_project` compatibility window and sniff-before-send rule.
-- [ ] Document custom profile as backfill/import policy without adding a runtime creation prohibition.
-- [ ] Record groups + `blocks` as the settled structure and explicitly reject new hierarchy/stages/gated types.
-- [ ] Record all MASTERPLAN non-goals: leases/heartbeats, overlay engine, role servers, metrics/golden board, GitHub App, format 4, profile materialization, content-scored gates, merge queue, and auto-merge.
-- [ ] Document rejected alternatives and operational consequences.
-- [ ] Link relevant existing ADRs and every amended FRD.
+- [x] Re-list `docs/architecture/adr/` immediately before implementation and confirm ADR-0016 is still the next free number.
+- [x] If ADR-0016 is occupied, allocate the next free number and update every filename, cross-reference, ticket ref, and checklist entry consistently.
+- [x] Create the compiled-workflow ADR from the repository template with accepted status and current evidence date.
+- [x] Define the four audience contracts using the existing artifacts only.
+- [x] Define the four readiness predicates over the six fixed stages.
+- [x] State that `enter-verifying` remains reserved and has no injected requirement.
+- [x] State that GitHub required checks and protection provide merge physics while Kanmer records workflow intent/evidence.
+- [x] Document the optional `expected_project` compatibility window and sniff-before-send rule.
+- [x] Document custom profile as backfill/import policy without adding a runtime creation prohibition.
+- [x] Record groups + `blocks` as the settled structure and explicitly reject new hierarchy/stages/gated types.
+- [x] Record all MASTERPLAN non-goals: leases/heartbeats, overlay engine, role servers, metrics/golden board, GitHub App, format 4, profile materialization, content-scored gates, merge queue, and auto-merge.
+- [x] Document rejected alternatives and operational consequences.
+- [x] Link relevant existing ADRs and every amended FRD.
 
 ## FRD deltas
 
-- [ ] Amend FRD-002 with the four profile-resolved readiness predicates and custom/backfill guidance.
-- [ ] Preserve `get_doc_gates`/resolved profiles as authority; add no duplicate requirement table.
-- [ ] Amend FRD-007 with six stages, boundary mapping, reserved `enter-verifying`, and GitHub merge boundary.
-- [ ] Explicitly reject a seventh integration stage.
-- [ ] Amend FRD-003 with ticket/group approval surfaces, gate-exempt scratch review, Scratch tab, and first-group context pane.
-- [ ] Amend FRD-006 with exact proof frontmatter, typed attempts/results, retained failures, whole-file versioned replacement, and detached exact-merge-SHA verification.
-- [ ] State explicitly that a FAIL proof still satisfies the structural existence gate and that skills/checks prevent completion.
-- [ ] Amend FRD-010 with the execution-packet ready/refusal contract, profile-derived readiness, no-write semantics, and separation from take/dispatch.
-- [ ] Amend FRD-016 with actual/canonical board-path refusal, normalization cases, optional no-worktree behavior, unchanged `force`, and no leases.
-- [ ] Amend FRD-020 with exact observational health fields, branch override, active-ticket count, paired helper boundary, and operator-owned repair.
-- [ ] Amend FRD-019 with Scratch, first-group context, exact four-mode mapping, starting-tab-only/dim-never-hide behavior, and non-blocking health banner.
-- [ ] Amend FRD-022 with verified final tool count 31, exact fingerprint, optional write field on every mutation, call-level `create_items`, pre-init comparison, strip-before-store, status blocks, exact three codes, and packet surface.
-- [ ] Amend FRD-023 with gates-first plan/auto, packet-first execute, current-head whole-file review, detached exact-SHA verify, stop conditions, and audience templates.
-- [ ] Preserve historical verification text using explicit supersession/end-state sections rather than silently rewriting history.
-- [ ] Confirm no raw seed keys such as `S-05` remain in durable specifications.
+- [x] Amend FRD-002 with the four profile-resolved readiness predicates and custom/backfill guidance.
+- [x] Preserve `get_doc_gates`/resolved profiles as authority; add no duplicate requirement table.
+- [x] Amend FRD-007 with six stages, boundary mapping, reserved `enter-verifying`, and GitHub merge boundary.
+- [x] Explicitly reject a seventh integration stage.
+- [x] Amend FRD-003 with ticket/group approval surfaces, gate-exempt scratch review, Scratch tab, and first-group context pane.
+- [x] Amend FRD-006 with exact proof frontmatter, typed attempts/results, retained failures, whole-file versioned replacement, and detached exact-merge-SHA verification.
+- [x] State explicitly that a FAIL proof still satisfies the structural existence gate and that skills/checks prevent completion.
+- [x] Amend FRD-010 with the execution-packet ready/refusal contract, profile-derived readiness, no-write semantics, and separation from take/dispatch.
+- [x] Amend FRD-016 with actual/canonical board-path refusal, normalization cases, optional no-worktree behavior, unchanged `force`, and no leases.
+- [x] Amend FRD-020 with exact observational health fields, branch override, active-ticket count, paired helper boundary, and operator-owned repair.
+- [x] Amend FRD-019 with Scratch, first-group context, exact four-mode mapping, starting-tab-only/dim-never-hide behavior, and non-blocking health banner.
+- [x] Amend FRD-022 with verified final tool count 31, exact fingerprint, optional write field on every mutation, call-level `create_items`, pre-init comparison, strip-before-store, status blocks, exact three codes, and packet surface.
+- [x] Amend FRD-023 with gates-first plan/auto, packet-first execute, current-head whole-file review, detached exact-SHA verify, stop conditions, and audience templates.
+- [x] Preserve historical verification text using explicit supersession/end-state sections rather than silently rewriting history.
+- [x] Confirm no raw seed keys such as `S-05` remain in durable specifications.
 
 ## Generated documents and verification
 
-- [ ] Do not hand-edit `docs/contributing/doc-structure.md`.
-- [ ] Run only its documented generator if the authoritative source inputs are changed by this ticket; otherwise leave it untouched and report the stale generated mirror separately.
-- [ ] Run `node scripts/check-doc-numbering.mjs` and retain the zero exit code/output.
-- [ ] Run the repository tests and `npm run verify` from the correct normal checkout.
-- [ ] Search amended docs for contradictory seven-stage, old scratch-path, mutable-main verification, universal-research, tool-count-30, or mandatory-fingerprint statements.
-- [ ] Run `git diff --check` and inspect every new/modified Markdown file for valid frontmatter, headings, links, and terminology.
+- [x] Do not hand-edit `docs/contributing/doc-structure.md`.
+- [x] Run only its documented generator if the authoritative source inputs are changed by this ticket; otherwise leave it untouched and report the stale generated mirror separately.
+- [x] Run `node scripts/check-doc-numbering.mjs` and retain the zero exit code/output.
+- [x] Run the repository tests and `npm run verify` from the correct normal checkout.
+- [x] Search amended docs for contradictory seven-stage, old scratch-path, mutable-main verification, universal-research, tool-count-30, or mandatory-fingerprint statements.
+- [x] Run `git diff --check` and inspect every new/modified Markdown file for valid frontmatter, headings, links, and terminology.
 
 ## Kanmer ticket references
 

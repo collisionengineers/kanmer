@@ -1,0 +1,133 @@
+# Checklist — MCP-021
+
+## Contract and official behavior
+
+- [ ] Read accepted FRD/ADR and actual requirement ids.
+- [ ] Read MCP-025/026 origin/auth/readiness/shutdown contracts.
+- [ ] Re-check current official named-tunnel, config, run, no-autoupdate, metrics/readiness, JSON logs, and signal docs.
+- [ ] Record exact tested `cloudflared --version` and `--help` syntax.
+- [ ] Confirm Quick Tunnel remains excluded from production.
+- [ ] Inspect canonical child-process/temp/app-data/log helpers.
+- [ ] Confirm no unapproved executable packaging promise.
+
+## Generic adapter contract
+
+- [ ] Add provider-neutral config/start/adapter/handle/status/event/diagnostic/error types.
+- [ ] Use exact lifecycle states.
+- [ ] Include attempt/generation/project/origin metadata without secrets.
+- [ ] Add validated restart policy/defaults.
+- [ ] Use opaque credential references.
+- [ ] Keep Cloudflare-only fields inside its discriminator.
+- [ ] Ensure safe serialization excludes arbitrary child/secret data.
+
+## Generic input validation
+
+- [ ] Require exact HTTP loopback origin and valid port.
+- [ ] Reject LAN/wildcard/hostname/user-info/query/fragment origin.
+- [ ] Require healthy auth-required local ready record and project/auth generation.
+- [ ] Require canonical HTTPS public hostname with no wildcard/user-info/query/fragment/unexpected path.
+- [ ] Normalize hostname safely.
+- [ ] Reject unknown provider modes/invalid restart bounds.
+- [ ] Return deterministic validation checks before spawn.
+- [ ] Test all accepted/rejected vectors.
+
+## Executable and credentials
+
+- [ ] Implement explicit/app-managed/PATH discovery precedence.
+- [ ] Resolve absolute regular executable.
+- [ ] Run bounded direct `--version`/required help checks.
+- [ ] Enforce supported syntax/version contract.
+- [ ] Perform no update/login/create/DNS/service operation.
+- [ ] Validate one named-tunnel id/mode.
+- [ ] Validate protected regular credentials reference and platform permissions.
+- [ ] Avoid reading/logging credential content except minimal approved consistency metadata.
+- [ ] Reject arbitrary provider fragments/options/secrets.
+- [ ] Keep any second credential mode separately discriminated and tested.
+
+## Runtime ingress/config
+
+- [ ] Create protected unique runtime directory outside repo/board.
+- [ ] Use safe serializer accepted by tested cloudflared.
+- [ ] Map one exact hostname to one exact loopback origin.
+- [ ] Add terminal `http_status:404` catch-all.
+- [ ] Include allowlisted fields only.
+- [ ] Include no provider credential content or Kanmer bearer/verifier.
+- [ ] Create config exclusively and read back/parse in tests.
+- [ ] Reject control/newline/metacharacter injection.
+- [ ] Remove runtime config/directory on every terminal path.
+
+## Metrics/readiness
+
+- [ ] Bind metrics/readiness to loopback only.
+- [ ] Use canonical/bounded port allocator with collision handling.
+- [ ] Poll documented readiness with timeout/abort/size limits.
+- [ ] Require readiness, not child existence/log prose, for connected.
+- [ ] Move degraded/recovered on readiness loss/return.
+- [ ] Release poller/port resources idempotently.
+- [ ] Test success, timeout, malformed, flap, exit, collision, abort, cleanup.
+
+## Process safety and logs
+
+- [ ] Build exact direct argument array and validate ordering against installed version.
+- [ ] Use `shell: false`, neutral cwd, owned process group/tree, no-autoupdate.
+- [ ] Use minimal environment and omit bearer/verifier/development/unrelated secret variables.
+- [ ] Capture PID/version/attempt before output processing.
+- [ ] Request structured logs where supported.
+- [ ] Bound line/ring-buffer size and rate.
+- [ ] Parse defensively and map allowlisted fields only.
+- [ ] Redact credential/bearer/path/id/URL canaries.
+- [ ] Never use log prose as primary readiness.
+- [ ] Test exact argv/env/cwd/options and malicious output.
+
+## Attempt lifecycle and supervisor
+
+- [ ] Implement every state transition and deterministic terminal result.
+- [ ] Attach child listeners before readiness polling.
+- [ ] Clean resources on validation/spawn/readiness/exit/stop failures.
+- [ ] Distinguish intentional, deterministic, transient, and origin-invalid failures.
+- [ ] Make stop/wait/dispose idempotent.
+- [ ] Guarantee one active attempt/child.
+- [ ] Implement bounded exponential backoff/jitter/attempt cap/stable reset.
+- [ ] Restart transient failures only.
+- [ ] Never restart intentional/config/security/origin failures.
+- [ ] Cancel timers on stop/config generation change.
+- [ ] Prevent stale attempt events changing current state.
+- [ ] Test all sequences with fake clock/randomness and no sleeps.
+
+## Remote-host composition
+
+- [ ] Start authenticated HTTP host first.
+- [ ] Verify local auth/project MCP handshake before provider spawn.
+- [ ] Pass only origin and non-secret generation metadata to adapter.
+- [ ] Keep local/auth/provider/public-verification health dimensions separate.
+- [ ] Stop tunnel on origin/project/auth generation change.
+- [ ] Keep healthy local host when provider alone fails.
+- [ ] Stop tunnel before HTTP on parent/operator shutdown.
+- [ ] Make combined shutdown bounded/idempotent.
+- [ ] Emit machine-readable redacted status.
+- [ ] Keep stdio/local HTTP defaults tunnel-free.
+
+## Tests and verification
+
+- [ ] Add deterministic fake cloudflared executable.
+- [ ] Test local origin/auth failure prevents spawn.
+- [ ] Test valid local host reaches provider-connected.
+- [ ] Test public state remains unverified until doctor.
+- [ ] Test origin/project/auth change stops forwarding.
+- [ ] Test crash/restart/backoff/reset/exhaustion.
+- [ ] Test intentional stop/no restart/no residue.
+- [ ] Test graceful/forced process-tree shutdown on Windows/POSIX.
+- [ ] Test spaces/metacharacters remain data.
+- [ ] Test metrics collision/readiness failure/flap.
+- [ ] Test exact ingress/catch-all and canary absence.
+- [ ] Test Quick Tunnel absent/rejected.
+- [ ] Test adapter performs no board/tool mutation.
+- [ ] Add built fake-provider remote smoke.
+- [ ] Run optional real-binary version/help/config smoke only with explicit path.
+- [ ] Leave real public proof to MCP-028.
+- [ ] Confirm no MCP tool/count/reference change.
+- [ ] Run tests, typecheck, build, HTTP/remote smokes, root verify, and Windows PR rail.
+- [ ] Rebuild plugin only if canonical stdio bytes intentionally change.
+- [ ] Run `git diff --check`; inspect process table/temp/runtime/board residue.
+- [ ] Record version/flags/config/argv/readiness/restart/shutdown/canary evidence.
+- [ ] Stop before public acceptance or merge.

@@ -2,13 +2,15 @@
 id: SKILL-025
 type: ticket
 title: 'Work-type brief templates: fix, UI/UX, docs, cloud/infra, data/migration'
-status: review
+status: done
 area: skills
 assignee: codex-mcp-client
 profile: chore
 stageEntered:
   preparing: '2026-08-20T21:56:24.499Z'
   review: '2026-08-20T22:02:20.141Z'
+  verifying: '2026-08-20T22:08:21.602Z'
+  done: '2026-08-20T22:08:39.090Z'
 taken_at: '2026-08-20T21:58:35.496Z'
 branch: skill-025-work-type-brief-templates
 worktree: .worktrees/skill-025
@@ -23,7 +25,7 @@ prs:
   - '78'
 archived: false
 created: '2026-08-20T10:14:57.059Z'
-updated: '2026-08-20T22:02:20.141Z'
+updated: '2026-08-20T22:08:39.090Z'
 ---
 
 ## What

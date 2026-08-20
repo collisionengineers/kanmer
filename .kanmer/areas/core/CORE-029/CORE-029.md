@@ -12,9 +12,6 @@ stageEntered:
   review: '2026-08-20T21:32:39.025Z'
   verifying: '2026-08-20T21:34:17.026Z'
   done: '2026-08-20T21:34:36.991Z'
-taken_at: '2026-08-20T21:31:13.350Z'
-branch: core-029-agents-stage-contract
-worktree: .worktrees/core-029
 labels:
   - docs
 groups:
@@ -29,7 +26,7 @@ prs:
   - '71'
 archived: false
 created: '2026-08-17T00:13:55.000Z'
-updated: '2026-08-20T21:34:36.991Z'
+updated: '2026-08-20T21:35:01.963Z'
 ---
 
 ## What

@@ -1,0 +1,1 @@
+Closed out 2026-08-20: PR #71 is merged at `4a63c7ce25bda4cae52b8935b0ae0f05747094c2`; proof is final, the clean ticket worktree was removed, local branch `core-029-agents-stage-contract` deleted, and worktree metadata pruned.

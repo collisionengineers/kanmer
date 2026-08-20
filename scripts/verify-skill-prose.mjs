@@ -311,5 +311,22 @@ check(
   "Backlog/Preparing + main/PR evidence + no automatic mutation",
 );
 
+console.log("\n=== 11. audience-specific template contracts are present and advisory ===");
+const requiredHeadings = (file, headings) => {
+  const body = read(file);
+  const missing = headings.filter((h) => !new RegExp(`^## ${h}$`, "m").test(body));
+  check(`${rel(file)} has required headings`, missing.length === 0, missing.join(", ") || "all present");
+  return body;
+};
+const approval = requiredHeadings(join(planAssets, "approval-contract.md"), ["Outcome", "Why", "User or operational effect", "In scope", "Out of scope", "Key decisions", "Main risks", "Breakdown", "Evidence", "Approval boundary"]);
+check("approval contract says its range is guidance, not a gate", /300–600 words; this is guidance only and is never a Kanmer gate/i.test(approval), "advisory only");
+const brief = requiredHeadings(join(planAssets, "plan-template.md"), ["Objective", "Starting state", "Governing docs", "Required changes", "Expected files", "Do not modify", "Constraints", "Ordered steps", "Acceptance checks", "Commands", "Failure and deviation rules", "Stop condition"]);
+check("execution brief keeps one extractable Stop condition and advisory decision verbs", (brief.match(/^## Stop condition$/gm) ?? []).length === 1 && /investigate.*decide.*choose.*determine[\s\S]*not a gate/i.test(brief), "heading + advisory warning");
+check("execution brief contains prove-rule boilerplate", /production caller[\s\S]*runtime dependencies[\s\S]*schema changes.*grants/i.test(brief), "caller + artifact + schema/grants");
+const checklist = read(join(planAssets, "checklist-template.md"));
+check("checklist labels are plainly advisory and gates ignore them", /\[pre-review\]/.test(checklist) && /\[post-merge\]/.test(checklist) && /gates ignore/i.test(checklist), "labels + gate disclaimer");
+const groupContext = requiredHeadings(join(skillsDir, "kanmer-tickets", "assets", "group-context.md"), ["Feature outcome", "Users affected", "Acceptance criteria", "Non-goals", "Shared decisions", "Constraints", "Risks", "Dependency map", "Rollout & rollback", "Breakdown", "Definition of done"]);
+check("group context says horizons are optional", /horizons do not require context by default/i.test(groupContext), "epic context only");
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

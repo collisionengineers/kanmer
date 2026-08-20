@@ -1,0 +1,1 @@
+Opened PR https://github.com/collisionengineers/kanmer/pull/67 from fbf7c28; moved to Review. Full GUI tests, typecheck, build, Windows packaging, executable-icon inspection, deterministic ICO inspection, and packaged GUI smoke passed.

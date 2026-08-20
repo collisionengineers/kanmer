@@ -19,9 +19,11 @@ links: []
 blocks:
   - SKILL-026
 docs_todo: true
+commits:
+  - 27539dd
 archived: false
 created: '2026-08-20T10:14:57.038Z'
-updated: '2026-08-20T21:51:21.313Z'
+updated: '2026-08-20T22:00:06.518Z'
 ---
 
 ## What

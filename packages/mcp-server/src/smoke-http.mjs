@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 async function mcpPayload(response) {
   const body = await response.text();
@@ -15,7 +16,7 @@ const root = await mkdtemp(path.join(os.tmpdir(), "kanmer-http-smoke-"));
 process.env.KANMER_ROOT = root;
 const { createKanmerHttpHost } = await import("../dist/http.js");
 
-const cli = spawnSync(process.execPath, [new URL("../dist/http-cli.js", import.meta.url)], { encoding: "utf8" });
+const cli = spawnSync(process.execPath, [fileURLToPath(new URL("../dist/http-cli.js", import.meta.url))], { encoding: "utf8" });
 assert.equal(cli.status, 1);
 assert.match(cli.stderr, /no production HTTP authorizer/i);
 

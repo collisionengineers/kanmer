@@ -12,7 +12,7 @@ test("adapter validates an owned credentials file before starting a direct child
   const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-test-"));
   try {
     const credentials = path.join(directory, "credentials.json");
-    await writeFile(credentials, "credential-canary-not-an-argument", { mode: 0o600 });
+    await writeFile(credentials, "{}", { mode: 0o600 });
     const options = {
       executable: process.execPath,
       tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403",
@@ -35,7 +35,7 @@ test("fake provider receives one direct no-autoupdate metrics invocation and mus
   let closed = false;
   try {
     const credentials = path.join(directory, "credentials.json");
-    await writeFile(credentials, "{}", { mode: 0o600 });
+    await writeFile(credentials, "credential-canary-not-an-argument", { mode: 0o600 });
     const calls = [];
     const fakeSpawn = (command, args, options) => {
       calls.push({ command, args, options });

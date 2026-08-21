@@ -19,6 +19,7 @@ import type {
   TicketDocsInfo,
   UpdateItemPatch,
   V3Report,
+  RepoStaleness,
 } from "@kanmer/core";
 
 /** What `migrateBoard` reports: the three upgrade steps, in order. */
@@ -60,6 +61,7 @@ export const CH = {
   connectAgent: "kanmer:connectAgent",
   disconnectAgent: "kanmer:disconnectAgent",
   listProviders: "kanmer:listProviders",
+  getRepoStaleness: "kanmer:getRepoStaleness",
   scanLegacyCodexRegistrations: "kanmer:scanLegacyCodexRegistrations",
   drainLegacyCodexRegistrations: "kanmer:drainLegacyCodexRegistrations",
   getSkillsStatus: "kanmer:getSkillsStatus",
@@ -276,7 +278,31 @@ export interface AppSettings extends UiPreferences {
 }
 
 export interface KanmerGitPreferences { kanmerBranch: string; gitSyncMinutes: number; }
-export interface KanmerGitStatus { available: boolean; boardRoot: string | null; branch: string; lastSync: string | null; error: string | null; paused: boolean; }
+/** Read-only health observation for the board worktree (GUI-098). */
+export interface BoardWorktreeHealth {
+  path: string;
+  expectedBranch: string;
+  actualBranch: string | null;
+  onBoardBranch: boolean;
+  boardSource: "file" | "default";
+  ticketCount: number;
+  repair: string;
+}
+
+/**
+ * Existing Git-sync status plus the independently observed board health.
+ * `null` means there is no Git board worktree to inspect (for example, a
+ * non-Git project), not that the board itself is unusable.
+ */
+export interface KanmerGitStatus {
+  available: boolean;
+  boardRoot: string | null;
+  branch: string;
+  lastSync: string | null;
+  error: string | null;
+  paused: boolean;
+  boardWorktree: BoardWorktreeHealth | null;
+}
 
 export interface OpenProjectResult {
   /** Canonical project root — the projectId every scoped call carries. */
@@ -441,6 +467,8 @@ export interface KanmerApi {
   disconnectAgent(projectId: string, target: ConnectTarget): Promise<ConnectResult>;
   /** The agent hosts Connect can register (drives the Connect tab). */
   listProviders(): Promise<ProviderInfo[]>;
+  /** Itemised, read-only repository staleness report from core. */
+  getRepoStaleness(projectId: string): Promise<RepoStaleness>;
   /**
    * List the legacy global `kanmer-*` codex registrations older Kanmers left in
    * `~/.codex/config.toml`. Machine-scoped, not project-scoped — the entries are

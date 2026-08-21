@@ -4,7 +4,11 @@
   "description": "Local stdio MCP server exposing the .kanmer store to AI agents (codex, Claude, any MCP client).",
   "type": "module",
   "bin": {
-    "kanmer-mcp": "./dist/index.js"
+    "kanmer-mcp": "./dist/index.js",
+    "kanmer-mcp-http": "./dist/http-cli.js",
+    "kanmer-mcp-token": "./dist/remote-token-cli.js",
+    "kanmer-mcp-remote": "./dist/remote-cli.js",
+    "kanmer-doctor": "./dist/doctor-cli.js"
   },
   "main": "./dist/index.js",
   "files": ["dist"],
@@ -13,7 +17,10 @@
     "build:standalone": "tsup --config tsup.standalone.config.ts",
     "dev": "tsup --watch",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "doctor": "node dist/doctor-cli.js",
+    "typecheck": "tsc --noEmit",
+    "test:http": "npm run build && node --test src/http-auth.test.mjs src/http-secret.test.mjs src/http.test.mjs src/remote-host.test.mjs src/remote-cli.test.mjs src/doctor.test.mjs src/tunnels/cloudflared-config.test.mjs src/tunnels/cloudflared-validate.test.mjs src/tunnels/cloudflared.test.mjs src/tunnels/fixtures/fake-cloudflared.test.mjs src/tunnels/logs.test.mjs src/tunnels/readiness.test.mjs src/tunnels/supervisor.test.mjs",
+    "smoke:doctor": "npm run build && node src/smoke-doctor.mjs"
   },
   "dependencies": {
     "@kanmer/core": "*",

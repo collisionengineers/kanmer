@@ -21,6 +21,7 @@ import {
 import * as TOML from "smol-toml";
 import { applyManagedBlock, removeManagedBlock, START, END, BLOCK_BODY } from "./agentsBlock.js";
 import { BLOCK_BODY as CANONICAL_BODY } from "../../../../scripts/agents-block-body.mjs";
+import { SKILL_DESTINATIONS, STALENESS_PROVIDER_PATHS } from "@kanmer/core";
 
 const inv: Invocation = {
   command: "/opt/electron",
@@ -38,6 +39,25 @@ describe("provider registry", () => {
       "grok",
       "opencode",
     ]);
+  });
+
+  it("uses core's staleness path catalog for every owned provider path", () => {
+    for (const id of ["codex", "opencode", "grok", "antigravity"] as const) {
+      const register = providerById(id)!.register;
+      if (register.kind !== "configFile") throw new Error(`expected ${id} config file`);
+      expect(register.configPath).toBe(STALENESS_PROVIDER_PATHS[id].registrationFile);
+    }
+
+    for (const id of ["opencode", "grok", "antigravity"] as const) {
+      const install = providerById(id)!.install;
+      if (install.kind !== "copySkills") throw new Error(`expected ${id} copied skills`);
+      expect(install.skillsDir).toBe(STALENESS_PROVIDER_PATHS[id].skillsDir);
+      expect(SKILL_DESTINATIONS).toContain(install.skillsDir);
+    }
+
+    // CORE-030: Claude is marketplace-managed, so a user-created mirror is
+    // never a staleness destination the GUI can accidentally resurrect.
+    expect(SKILL_DESTINATIONS).not.toContain(".claude/skills");
   });
 
   // codex's CLI registration is superseded by the project config file — see

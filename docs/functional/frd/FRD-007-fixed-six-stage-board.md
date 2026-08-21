@@ -55,3 +55,7 @@ GUI Board tab shrinks to areas only; palette/context-menu Move verbs use the con
 ## Related
 
 ADR-0002 (fixed stages) · ADR-0008 (single migration) · FRD-002 (boundaries) · FRD-008 (priority removal) · FRD-011 (backlog view — **withdrawn**, GUI-070) · PRD-001.
+
+## Compiled-workflow end state (ADR-0016)
+
+The six stages stay fixed. Approval, execution/dispatch, review, and completion are predicates on `leave-backlog`, `leave-preparing`, `enter-review`, and `enter-done` respectively; a move still crosses at most one gated boundary. `enter-verifying` is a reserved evaluator boundary without an injected requirement. There is no seventh integration stage: GitHub required checks and branch protection enforce physical merge while Kanmer stages record workflow intent and evidence.

@@ -40,3 +40,7 @@ Related: docs/plans/kanmer-v2/phase-9 · kanmerGit.ts · FRD-018 (watcher picks 
 branch, or removes the old one. The next `openProject` calls `ensureBoardWorktree` with the new
 name and simply creates or adopts a worktree for it, leaving the old branch behind. Relatedly,
 `removeBoardWorktree` (`kanmerGit.ts:108-110`) is dead code — never called from anywhere.
+
+## Compiled-workflow end state (ADR-0016)
+
+Board-worktree health is observational. `get_status` reports the board path, expected branch, actual branch, whether it is on the board branch, board source, active ticket count, and an operator-facing repair hint. An expected-branch override is supported. GUI and MCP maintain paired local inspectors across their package boundary; neither auto-repairs, blocks a ticket, or changes Git state merely by observing health.

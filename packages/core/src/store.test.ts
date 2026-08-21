@@ -7,6 +7,7 @@ import { STAGE_IDS } from "./stages.js";
 import { lastStageId } from "./board.js";
 import { getLinkGraph, linkItems } from "./links.js";
 import { migrateToV2 } from "./migrate.js";
+import { assertNotBoardWorktree } from "./worktree-guard.js";
 
 let root: string;
 let store: KanmerStore;
@@ -667,6 +668,35 @@ describe("format v2", () => {
     expect(raw).not.toContain("branch");
   });
 
+  it("refuses board worktree paths before changing a ticket", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "Guard", status: "implementing" });
+    const file = path.join(root, ".kanmer", "areas", "_none", ticket.id, `${ticket.id}.md`);
+    const before = await fs.readFile(file, "utf8");
+    const canonical = path.join(root, ".worktrees", "kanmer");
+    const mixed = canonical.split(path.sep).join(path.sep === "/" ? "\\" : "/");
+    for (const worktree of [".worktrees/kanmer", store.paths.projectRoot, canonical, mixed, `${canonical}${path.sep}`]) {
+      await expect(store.takeTicket(ticket.id, { branch: "feat/guard", worktree })).rejects.toThrow(
+        /board workspace/,
+      );
+      expect(await fs.readFile(file, "utf8")).toBe(before);
+    }
+  });
+
+  it("compares board worktrees case-insensitively under Windows semantics", () => {
+    expect(() => assertNotBoardWorktree("C:\\REPO\\.WORKTREES\\KANMER\\", {
+      boardRoot: "C:\\Board", repoRoot: "c:\\repo", platform: "win32",
+    })).toThrow(/board workspace/);
+  });
+
+  it("allows a sibling ticket worktree and a missing worktree", async () => {
+    const sibling = await store.createItem({ type: "ticket", title: "Sibling", status: "implementing" });
+    await expect(store.takeTicket(sibling.id, { branch: "feat/sibling", worktree: ".worktrees/doc-011" }))
+      .resolves.toMatchObject({ worktree: ".worktrees/doc-011" });
+    const noWorktree = await store.createItem({ type: "ticket", title: "No worktree", status: "implementing" });
+    await expect(store.takeTicket(noWorktree.id, { branch: "feat/no-worktree" }))
+      .resolves.toMatchObject({ branch: "feat/no-worktree" });
+  });
+
 
   it("allows creating a ticket directly in the final stage (creation is ungated)", async () => {
     // D6: gates fire on transitions only, so imports/backfills of finished work
@@ -1040,6 +1070,19 @@ describe("format v1 compatibility", () => {
         () => false,
       ),
     ).toBe(false);
+  });
+
+  it("validates document paths before the legacy missing-document response", async () => {
+    const missing = await v1store.getDocsWithVersions("TICK-001", ["files"]);
+    expect(missing).toEqual([{ doc: "files", exists: false, content: null, version: null }]);
+
+    for (const [unsafe, message] of [
+      ["../../escape", /Invalid segment/],
+      ["/absolute/escape", /Unknown document folder "absolute"/],
+      ["..\\escape", /Invalid segment/],
+    ] as const) {
+      await expect(v1store.getDocsWithVersions("TICK-001", ["plan", unsafe])).rejects.toThrow(message);
+    }
   });
 
   it("migrates v1 to v2: dry run, real run, idempotent re-run", async () => {

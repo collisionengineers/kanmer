@@ -232,6 +232,23 @@ describe("folder documents (FRD-003)", () => {
     await expect(store.setDoc(id, "../../escape.md", "x")).rejects.toThrow(/Invalid segment/);
   });
 
+  it("batch reads validate paths before reading and retain requested order", async () => {
+    const id = await ticket("chore");
+    await store.setDoc(id, "plan", "# Plan");
+    const [plan, missing, repeated] = await store.getDocsWithVersions(id, ["plan", "files", "plan"]);
+    expect(plan).toMatchObject({ doc: "plan", exists: true, content: "# Plan\n" });
+    expect(typeof plan.version).toBe("string");
+    expect(missing).toEqual({ doc: "files", exists: false, content: null, version: null });
+    expect(repeated).toMatchObject({ doc: "plan", exists: true, content: "# Plan\n" });
+    for (const [unsafe, message] of [
+      ["../../escape", /Invalid segment/],
+      ["/absolute/escape", /Unknown document folder "absolute"/],
+      ["..\\escape", /Invalid segment/],
+    ] as const) {
+      await expect(store.getDocsWithVersions(id, ["plan", unsafe])).rejects.toThrow(message);
+    }
+  });
+
   it("counts documents per type, lists readable document paths, and enumerates reference files", async () => {
     const id = await ticket("feature", { docs_todo: true });
     await store.setDoc(id, "research/a.md", "a");
@@ -245,6 +262,17 @@ describe("folder documents (FRD-003)", () => {
       "research/deep/b.md",
     ]);
     expect(info.references.map((r) => r.name)).toEqual(["spec.md"]);
+  });
+
+  it("reports sorted scratch slugs without treating them as gate documents", async () => {
+    const id = await ticket("spike");
+    await store.setDoc(id, "scratch/zebra.md", "z");
+    await store.setDoc(id, "scratch/alpha.md", "a");
+    const before = await fs.readFile(path.join(root, ".kanmer", "data", "activity.jsonl"), "utf8");
+
+    expect((await store.getTicketDocsInfo(id))?.scratch).toEqual(["alpha", "zebra"]);
+    await expect(store.moveItem(id, { status: "done" })).rejects.toThrow(/requires research/);
+    expect(await fs.readFile(path.join(root, ".kanmer", "data", "activity.jsonl"), "utf8")).toBe(before);
   });
 
   it("checklist progress sums across every checklist document", async () => {

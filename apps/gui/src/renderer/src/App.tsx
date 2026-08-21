@@ -10,6 +10,7 @@ import type {
   CreateItemInput,
   Item,
   MovePosition,
+  RepoStaleness,
 } from "@kanmer/core";
 import { blockedIds, columnCards, optimisticOrder } from "./lib/board.js";
 import { classifyKanmerPath } from "../../shared/kanmerPath.js";
@@ -20,6 +21,7 @@ import { restoreTabs, restoredActiveTab } from "./lib/session.js";
 import { tabCloseDecision } from "./lib/tabClose.js";
 import { restartWarning, updateSurface } from "./lib/update.js";
 import { friendlyGateError } from "./lib/gateError.js";
+import { needsStalenessAttention } from "./lib/repoStaleness.js";
 import type {
   AppSettings,
   BoardMigrationReport,
@@ -27,6 +29,7 @@ import type {
   ConnectTarget,
   DispatchOption,
   DispatchStatus,
+  KanmerGitStatus,
   Theme,
   UiPreferences,
   UpdateStatusEvent,
@@ -35,7 +38,7 @@ import { Board } from "./components/Board.js";
 import { Manual } from "./components/Manual.js";
 import { TabStrip, type Tab } from "./components/TabStrip.js";
 import { ArchivedList } from "./components/ArchivedList.js";
-import { Editor } from "./components/Editor.js";
+import { Editor, type EditorMode } from "./components/Editor.js";
 import { FilterBar, type Filters } from "./components/FilterBar.js";
 import { Settings } from "./components/Settings.js";
 import { Standup } from "./components/Standup.js";
@@ -45,6 +48,7 @@ import { ConfirmModal } from "./components/ConfirmModal.js";
 import { TicketCreate } from "./components/TicketCreate.js";
 import { GroupView } from "./components/GroupView.js";
 import { UpdateBanner } from "./components/UpdateBanner.js";
+import { BoardWorktreeBanner } from "./components/BoardWorktreeBanner.js";
 import { Welcome } from "./components/Welcome.js";
 import { VIEWS, VIEW_IDS, type View, viewCounts, viewItemsFor } from "./lib/views.js";
 
@@ -79,6 +83,29 @@ interface SavedTabState {
   selectedId: string | null;
 }
 
+function RepoStalenessBanner({ report }: { report: RepoStaleness | null }): JSX.Element | null {
+  if (report === null || !needsStalenessAttention(report)) return null;
+  return (
+    <div className="banner warn" role="status">
+      <div>
+        <strong>Some Kanmer project files need attention.</strong>
+        <details>
+          <summary>Show the repository report</summary>
+          <ul className="migrate-list">
+            {report.stale.map((entry, index) => (
+              <li key={`${entry.artefact}-${entry.state}-${index}`}>
+                <strong>{entry.artefact}</strong> ({entry.state}): {entry.detail}
+                <br />
+                <span className="muted">{entry.fix}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      </div>
+    </div>
+  );
+}
+
 export function App(): JSX.Element {
   // `root` is the active project's id (its canonical root). `tabs` is every open
   // project; switching a tab swaps `root` and restores that tab's saved UI state.
@@ -93,6 +120,10 @@ export function App(): JSX.Element {
   const [board, setBoard] = useState<BoardConfig | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [format, setFormat] = useState<1 | 2 | 3>(2);
+  // This is intentionally independent of `refresh()`: staleness walks project
+  // artefacts and must not run every time a watcher reports a board edit.
+  const [repoStaleness, setRepoStaleness] = useState<RepoStaleness | null>(null);
+  const [gitStatus, setGitStatus] = useState<KanmerGitStatus | null>(null);
   // An unmigrated board is a compat rendering: the fixed six stages drawn over
   // a stage set that may not be them. Reading it is useful; writing to it saves
   // format-3 shapes into a format-2 board (FRD-007 M3). Wrapping the client is
@@ -109,6 +140,7 @@ export function App(): JSX.Element {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [view, setView] = useState<View>("ticket");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editorMode, setEditorMode] = useState<EditorMode>("approval");
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -148,7 +180,7 @@ export function App(): JSX.Element {
   // Whether the editor holds unsaved edits — a ref so reporting dirtiness
   // doesn't re-render the app on every keystroke.
   const editorDirty = useRef(false);
-  const [pendingNav, setPendingNav] = useState<{ kind: "select"; id: string | null } | { kind: "close"; projectId: string } | null>(null);
+  const [pendingNav, setPendingNav] = useState<{ kind: "select"; id: string | null; mode: EditorMode } | { kind: "close"; projectId: string } | null>(null);
   const [pendingProject, setPendingProject] = useState<OpenTarget | null>(null);
   const [pendingTake, setPendingTake] = useState<{ id: string; branch: string } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: string } | null>(null);
@@ -186,6 +218,58 @@ export function App(): JSX.Element {
     }
   }, []);
 
+  useEffect(() => {
+    if (!root) {
+      setRepoStaleness(null);
+      return;
+    }
+    let cancelled = false;
+    void window.kanmer
+      .getRepoStaleness(root)
+      .then((report) => {
+        if (!cancelled) setRepoStaleness(report);
+      })
+      // A staleness read is advisory. Do not replace a usable board with a
+      // global error when an unreadable optional artefact already has an
+      // itemised `unknown` representation in core.
+      .catch(() => {
+        if (!cancelled) setRepoStaleness(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [root]);
+
+  // Board health is an advisory snapshot. Refresh it at the same boundaries a
+  // user could alter Git state (tab readiness, board refresh and window focus)
+  // and accept main-process status events from sync/rename operations. No
+  // interval is needed, and a failed inspection never replaces the board.
+  useEffect(() => {
+    if (!root) {
+      setGitStatus(null);
+      return;
+    }
+    let cancelled = false;
+    const load = () => void window.kanmer.getKanmerGitStatus(root)
+      .then((status) => { if (!cancelled) setGitStatus(status); })
+      .catch((err) => {
+        if (!cancelled) {
+          setGitStatus(null);
+          setError(err instanceof Error ? err.message : String(err));
+        }
+      });
+    load();
+    const removeStatus = window.kanmer.onGitStatus((status) => {
+      if (!cancelled && status.projectId === root) setGitStatus(status);
+    });
+    window.addEventListener("focus", load);
+    return () => {
+      cancelled = true;
+      removeStatus();
+      window.removeEventListener("focus", load);
+    };
+  }, [root, changeSignal]);
+
   const openProject = useCallback(async (path: string) => {
     setOpening(true);
     try {
@@ -216,6 +300,7 @@ export function App(): JSX.Element {
       setFilters(saved?.filters ?? EMPTY_FILTERS);
       setSearch(saved?.search ?? "");
       setSelectedId(saved?.selectedId ?? null);
+      setEditorMode("approval");
       setSettings(await window.kanmer.getSettings());
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -254,15 +339,17 @@ export function App(): JSX.Element {
   }, [performCloseTab]);
 
   /** Every deselection/navigation goes through here so edits can't be lost silently. */
-  const trySelect = useCallback((id: string | null) => {
+  const openEditor = useCallback((id: string | null, mode: EditorMode = "approval") => {
     setSelectedId((current) => {
       if (id !== current && editorDirty.current) {
-        setPendingNav({ kind: "select", id });
+        setPendingNav({ kind: "select", id, mode });
         return current;
       }
+      setEditorMode(mode);
       return id;
     });
   }, []);
+  const trySelect = useCallback((id: string | null) => openEditor(id), [openEditor]);
 
   // Window close with unsaved edits gets the native "leave?" prompt.
   useEffect(() => {
@@ -602,7 +689,7 @@ export function App(): JSX.Element {
       try {
         const created = await clientRef.current!.createItem(input);
         await refresh();
-        if (opts.select) setSelectedId(created.id);
+        if (opts.select) openEditor(created.id);
         return created;
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
@@ -806,7 +893,7 @@ export function App(): JSX.Element {
               {
                 id: `dispatch-${p.id}-whole`,
                 label: "Whole ticket",
-                onSelect: () => void runCardAction(() => client.dispatchAgent(item.id, p.id)),
+                onSelect: () => { openEditor(item.id, "execution"); void runCardAction(() => client.dispatchAgent(item.id, p.id)); },
               },
               ...dispatchOptions.map((t) => ({
                 id: `dispatch-${p.id}-${t.id}`,
@@ -814,8 +901,10 @@ export function App(): JSX.Element {
                 disabled: !t.enabled,
                 ...(t.reason ? { disabledReason: t.reason } : {}),
                 separatorBefore: t.id === "research-quick",
-                onSelect: () =>
-                  void runCardAction(() => client.dispatchAgent(item.id, p.id, t.id)),
+                onSelect: () => {
+                  openEditor(item.id, "execution");
+                  void runCardAction(() => client.dispatchAgent(item.id, p.id, t.id));
+                },
               })),
             ],
           })),
@@ -846,7 +935,7 @@ export function App(): JSX.Element {
         },
       ];
     },
-    [trySelect, onMove, runCardAction, requestDelete, cardMenuGates, dispatchTargets],
+    [trySelect, openEditor, onMove, runCardAction, requestDelete, cardMenuGates, dispatchTargets],
   );
 
   // Fetch the task menu as the card menu opens: the submenu is built from it,
@@ -1191,6 +1280,10 @@ export function App(): JSX.Element {
         </div>
       )}
 
+      <RepoStalenessBanner report={repoStaleness} />
+
+      <BoardWorktreeBanner health={gitStatus?.boardWorktree ?? null} onOpenSettings={() => setSettingsOpen(true)} />
+
       {updateBanner}
 
       {/* `items` is the view's own unfiltered set — the last inline copy of
@@ -1293,6 +1386,8 @@ export function App(): JSX.Element {
             items={items}
             knownIds={knownIds}
             changeSignal={changeSignal}
+            mode={editorMode}
+            onModeChange={setEditorMode}
             onClose={() => trySelect(null)}
             onNavigate={trySelect}
             onDirtyChange={(d) => {
@@ -1371,7 +1466,7 @@ export function App(): JSX.Element {
             const pending = pendingNav;
             setPendingNav(null);
             if (pending.kind === "close") performCloseTab(pending.projectId);
-            else setSelectedId(pending.id);
+            else { setEditorMode(pending.mode); setSelectedId(pending.id); }
           }}
         />
       )}

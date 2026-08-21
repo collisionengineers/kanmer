@@ -327,6 +327,47 @@ export function verifyAssets({ expected, assets }) {
   return { ok: !problems.some((p) => p.severity === "error"), problems };
 }
 
+/**
+ * Verify that one local pack is internally coherent before remote verification.
+ *
+ * `verifyAssets` normally compares the local files against GitHub metadata.
+ * Here the expected files stand in for a successful upload so its existing
+ * `latest.yml` → installer size/SHA-512 cross-check can run without GitHub
+ * metadata. This deliberately does not replace remote verification.
+ */
+export function verifyLocalArtifacts({ expected, version }) {
+  const derivation = sanityCheckExpected({ expected, version });
+  const problems = derivation.map((detail) => ({
+    asset: "(expected set)",
+    kind: "derivation",
+    severity: "error",
+    detail,
+  }));
+
+  const manifest = expected.find((entry) => entry.name === MANIFEST);
+  if (!manifest?.comparable || !manifest.manifest) {
+    problems.push({
+      asset: MANIFEST,
+      kind: "manifest",
+      severity: "error",
+      detail: `does not describe version ${version} as a comparable local artifact`,
+    });
+  }
+
+  const localAssets = expected
+    .filter((entry) => entry.comparable && entry.localPath)
+    .map((entry) => ({
+      name: entry.name,
+      size: entry.size,
+      state: "uploaded",
+      digest: `sha256:${entry.sha256}`,
+    }));
+  const comparison = verifyAssets({ expected, assets: localAssets });
+  problems.push(...comparison.problems);
+
+  return { ok: !problems.some((p) => p.severity === "error"), problems };
+}
+
 /** Human-readable problem list, worst first. */
 export function formatProblems(problems) {
   const rank = { error: 0, warn: 1, info: 2 };

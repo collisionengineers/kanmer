@@ -44,7 +44,8 @@ their own.
 0003 requirement profiles · 0004 folder containment defines doc type · 0005 proof, not deployment ·
 0006 priority removed · 0007 codex project config · 0008 single format-3 migration ·
 0009 skills are not the contract · 0010 setup is reconciliation.
-See [`architecture/adr/`](architecture/adr/).
+See [`architecture/adr/`](architecture/adr/). The accepted remote-access transport decision is
+[ADR-0017](architecture/adr/ADR-0017-streamable-http-remote-access.md).
 
 **Functional** — [`functional/frd/`](functional/frd/), in two groups:
 
@@ -54,7 +55,8 @@ See [`architecture/adr/`](architecture/adr/).
   011 backlog list view · 012 connect · 013 setup as reconciliation · 014 doc-type guidance.
 - *Backfill of shipped behaviour:* 015 ticket & board core · 016 take & worktree model ·
   017 activity log · 018 live sync & notifications · 019 GUI shell · 020 board git worktree sync ·
-  021 auto-update · 022 MCP server surface · 023 agent skills system. Plus 024 in-app manual.
+  021 auto-update · 022 MCP server surface · 023 agent skills system · 024 in-app manual ·
+  025 remote access.
 
 ## Reading order
 

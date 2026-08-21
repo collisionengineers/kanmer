@@ -20,7 +20,8 @@ const BLOCK_START =
 const BLOCK_END = "<!-- kanmer:instructions:end -->";
 
 /** The body the fixture bundle "ships". Arbitrary — nothing under test knows it. */
-const CANONICAL = "# Kanmer operating instructions\n\n- Start every session with `get_status`.";
+const LEGACY_CONDUCT_LESS = "# Kanmer operating instructions\n\n- Start every session with `get_status`.";
+const CANONICAL = `${LEGACY_CONDUCT_LESS}\n\n## Agent conduct\n\n**Scope**\n\n1. **Scope is the brief.**`;
 
 let root: string;
 let bundled: string;
@@ -91,11 +92,11 @@ describe("detectStaleness — a current repo", () => {
 });
 
 describe("detectStaleness — the AGENTS.md managed block", () => {
-  it("reports a drifted block as behind, and clears upToDate", () => {
-    // The live reproduction in miniature: a v2-era body where the current one
-    // should be. Connect really did write one of these over this repo's own
-    // AGENTS.md (CORE-023 scratch-live-reproduction).
-    writeAgents("# Kanmer operating instructions\n\nStages: backlog → researching → planning → …");
+  it("reports an otherwise valid former block without Agent conduct as behind", () => {
+    // This is the SKILL-023 upgrade shape: every existing instruction is still
+    // valid, but the new canonical conduct section is absent. The detector must
+    // catch the content change without hardcoding the body or adding a version.
+    writeAgents(LEGACY_CONDUCT_LESS);
     const r = detect();
     expect(rowsFor(r, "agents-block")[0]?.state).toBe("behind");
     expect(r.upToDate).toBe(false);

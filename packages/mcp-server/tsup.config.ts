@@ -2,8 +2,13 @@ import { defineConfig } from "tsup";
 import { versionDefine } from "./version-define.mjs";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: ["src/index.ts", "src/http.ts", "src/http-cli.ts", "src/remote-token-cli.ts", "src/project-identity.ts", "src/remote-cli.ts", "src/remote-host.ts", "src/doctor/index.ts", "src/doctor-cli.ts", "src/tunnels/cloudflared-config.ts", "src/tunnels/cloudflared-validate.ts", "src/tunnels/cloudflared.ts", "src/tunnels/logs.ts", "src/tunnels/readiness.ts", "src/tunnels/supervisor.ts"],
   format: ["esm"],
+  // The stdio entry self-reports its own path/hash and discovers bundled
+  // skills relative to that entry. Keep every ESM entry self-contained: a
+  // shared chunk would make `__filename` name that generated chunk instead of
+  // the spawned dist/index.js command.
+  splitting: false,
   clean: true,
   sourcemap: true,
   target: "node20",

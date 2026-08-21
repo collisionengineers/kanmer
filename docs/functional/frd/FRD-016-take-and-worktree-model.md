@@ -31,3 +31,7 @@ Related: FRD-010 · FRD-023 (execute/closeout skills) · baseline architecture d
   menu `main/index.ts:467-528`.
 - R5 — records before cleanup `plugins/kanmer/skills/kanmer-closeout/SKILL.md` and its
   `assets/closeout-checklist.md:15`.
+
+## Compiled-workflow end state (ADR-0016)
+
+Before recording a take, the core normalizes relative, absolute, mixed-separator, trailing-separator, and Windows-case path forms. It refuses both the actual board root and the canonical `.worktrees/kanmer` board path. Taking without a worktree remains valid; `force` retains its existing explicit semantics. This is a pure path guard, not a lease or heartbeat mechanism.

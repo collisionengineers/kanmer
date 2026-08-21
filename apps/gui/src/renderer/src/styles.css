@@ -113,6 +113,30 @@ textarea:focus {
   width: auto;
 }
 
+.board-worktree-banner {
+  align-items: flex-start;
+}
+.board-worktree-banner dl {
+  margin: 8px 0;
+}
+.board-worktree-banner dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.board-worktree-banner dt {
+  font-weight: 600;
+}
+.board-worktree-banner dt::after {
+  content: ":";
+}
+.board-worktree-banner dd {
+  margin: 0;
+}
+.board-worktree-banner p {
+  margin: 8px 0 0;
+}
+
 /* Welcome */
 /* `flex: 1; min-height: 0` and NOT `height: 100%`: since GUI-065 the welcome
    screen is always a child of the `.app` flex column, which may also hold the
@@ -569,6 +593,43 @@ textarea.body {
 }
 .editor-foot .primary {
   width: 100%;
+}
+.scratch-panel,
+.group-context-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.scratch-head,
+.scratch-create,
+.scratch-list {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.scratch-head {
+  justify-content: space-between;
+}
+.scratch-head p {
+  margin: 3px 0 0;
+}
+.scratch-create input {
+  min-width: 150px;
+}
+.scratch-list .active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.group-context-pane {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  background: var(--bg);
+}
+.group-context-markdown {
+  max-height: 220px;
+  overflow: auto;
 }
 
 /* --- v2 additions -------------------------------------------------------- */
@@ -1656,6 +1717,10 @@ button.danger {
   white-space: pre-wrap;
   color: var(--muted, #9aa0a6);
 }
+
+.editor-mode select { width: auto; min-width: 110px; }
+.doc-tabs .mode-secondary:not(.active) { opacity: .68; }
+.doc-tabs .mode-secondary:focus-visible { opacity: 1; }
 
 /* ---------------------------------------------------------------------------
    Context menu (FRD-019 R6). Renderer-drawn so it uses the same tokens as the

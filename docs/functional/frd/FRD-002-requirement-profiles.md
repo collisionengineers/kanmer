@@ -86,3 +86,9 @@ Every ticket carries a **profile** that determines which documents each stage bo
 ## Related
 
 ADR-0003 (profiles replace per-area sets) · ADR-0009 (contract layers) · FRD-003 (document storage) · FRD-006 (typed proof) · FRD-007 (the boundaries) · PRD-001.
+
+## Compiled-workflow end state (ADR-0016)
+
+The gate engine evaluates four named, profile-resolved readiness predicates: approval at `leave-backlog`, execution/dispatch at `leave-preparing`, review at `enter-review`, and completion at `enter-done`. These names describe boundary evaluations; they do not add a stage or a second requirement table. `get_doc_gates` and resolved profiles remain authoritative. `enter-verifying` is reserved but has no injected default requirement.
+
+`custom` remains valid for historical import and backfill. New ordinary work should select feature, fix, chore, or spike, but creation remains ungated and this policy is not a runtime prohibition.

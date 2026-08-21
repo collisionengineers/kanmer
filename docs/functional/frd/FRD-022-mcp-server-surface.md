@@ -61,3 +61,7 @@ automated coverage, which is why Phase 3 extends them rather than adding vitest.
 after MCP-010: board discovery is covered by a third smoke script (`smoke-discovery.mjs`,
 `npm run smoke:discovery`), and the resolver's unit tests live in `@kanmer/core`
 (`discover.test.ts`) precisely so this decision did not have to be overturned.
+
+## Compiled-workflow end state (ADR-0016)
+
+The end-state registry has 31 tools after `get_execution_packet`. Every write accepts optional `expected_project`; `create_items` applies it once to the call. The server compares a canonical machine-local fingerprint before initialization and strips it before storage. `get_status` exposes `project`, `boardWorktree`, and `compat.expectedProject`. Compatible structured errors are exactly `WRONG_PROJECT`, `REVISION_CONFLICT`, and `GATE_BLOCKED` while preserving useful text for older clients. The packet is read-only and reuses the shared multi-document inventory; it returns the bounded execution material and refusal order described by FRD-010.

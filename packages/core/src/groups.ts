@@ -20,7 +20,7 @@ import { z } from "zod";
 import { pathExists, readText, writeFileAtomic } from "./io.js";
 import type { KanmerPaths } from "./paths.js";
 import { assertSafeId } from "./paths.js";
-import { STAGE_IDS, type StageId } from "./stages.js";
+export { deriveMembers } from "./group-members.js";
 
 /** Folder holding every group, one directory each. */
 export const GROUPS_DIR = "groups";
@@ -122,33 +122,6 @@ export async function listGroups(
 export async function writeGroup(paths: KanmerPaths, group: Group): Promise<void> {
   await fs.mkdir(groupDir(paths, group.id), { recursive: true });
   await writeFileAtomic(groupFile(paths, group.id), serialiseGroup(group));
-}
-
-/**
- * Derive a group's membership from the tickets that claim it.
- *
- * Archived members are listed (so nothing silently disappears) but excluded
- * from the counts, because progress should mean "of the work still live".
- */
-export function deriveMembers(
-  group: Group,
-  items: { id: string; title: string; status: string; archived: boolean; groups?: string[] }[],
-  lastStage: string,
-): GroupWithMembers {
-  const members = items
-    .filter((i) => (i.groups ?? []).includes(group.id))
-    .map((i) => ({ id: i.id, title: i.title, status: i.status, archived: i.archived }))
-    .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
-
-  const progress: Record<string, number> = {};
-  for (const stage of STAGE_IDS) progress[stage] = 0;
-  let total = 0;
-  for (const m of members) {
-    if (m.archived) continue;
-    total++;
-    if (m.status in progress) progress[m.status]++;
-  }
-  return { ...group, members, progress, total, complete: progress[lastStage as StageId] ?? 0 };
 }
 
 /**

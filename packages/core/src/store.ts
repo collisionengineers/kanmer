@@ -21,6 +21,7 @@ import {
   typeDir,
   type KanmerPaths,
 } from "./paths.js";
+import { assertNotBoardWorktree } from "./worktree-guard.js";
 import { parseItem, serialiseItem } from "./frontmatter.js";
 import {
   formatId,
@@ -97,6 +98,7 @@ import {
   type SetDocOptions,
   type TakeTicketInput,
   type TicketDoc,
+  type TicketDocumentWithVersion,
   type TicketDocsInfo,
   type UpdateItemPatch,
 } from "./types.js";
@@ -831,6 +833,12 @@ export class KanmerStore {
     if (current.type !== "ticket") {
       throw new Error(`Only tickets can be taken; "${id}" is a ${current.type}`);
     }
+    if (input.worktree !== undefined) {
+      assertNotBoardWorktree(input.worktree, {
+        boardRoot: this.paths.projectRoot,
+        repoRoot: this.paths.repoRoot,
+      });
+    }
     if (current.taken_at && !input.force) {
       throw new Error(
         `"${id}" is already taken (taken_at ${current.taken_at}` +
@@ -918,6 +926,38 @@ export class KanmerStore {
     if (!(await pathExists(file))) return { content: null, version: null };
     const content = await readText(file);
     return { content, version: contentVersion(content) };
+  }
+
+  /**
+   * Read several ticket documents after resolving the ticket and validating
+   * every requested path once. Request order is retained; callers that want
+   * deduplication can do that at their own protocol boundary.
+   */
+  async getDocsWithVersions(id: string, docs: TicketDoc[]): Promise<TicketDocumentWithVersion[]> {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+
+    // Calculate every path before probing any file. A malformed later entry
+    // therefore cannot yield a partial batch result. Format-1 has no ticket
+    // folder to read, but it still validates against a placeholder root
+    // before returning its established all-missing response.
+    const files = docs.map((doc) => ({
+      doc,
+      file: docPathIn(loc.kind === "v2" ? loc.dir : "", doc),
+    }));
+    if (loc.kind !== "v2") {
+      return files.map(({ doc }) => ({ doc, exists: false, content: null, version: null }));
+    }
+
+    return Promise.all(
+      files.map(async ({ doc, file }) => {
+        if (!(await pathExists(file))) {
+          return { doc, exists: false, content: null, version: null };
+        }
+        const content = await readText(file);
+        return { doc, exists: true, content, version: contentVersion(content) };
+      }),
+    );
   }
 
   /**
@@ -1065,6 +1105,7 @@ export class KanmerStore {
       documentPaths,
       checklist,
       references: await listReferences(loc.dir),
+      scratch: await this.listScratch(id),
     };
   }
 

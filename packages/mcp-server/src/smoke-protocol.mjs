@@ -161,6 +161,15 @@ for (const proto of PROTOCOLS) {
       tools.result?.tools?.length === 30,
       `got ${tools.result?.tools?.length}`,
     );
+    const createItems = tools.result?.tools?.find((tool) => tool.name === "create_items");
+    check(
+      `write schemas expose top-level expected_project only on ${proto}`,
+      tools.result?.tools
+        ?.filter((tool) => tool.annotations?.readOnlyHint === false)
+        .every((tool) => tool.inputSchema?.properties?.expected_project?.type === "string" &&
+          !tool.inputSchema?.required?.includes("expected_project")) === true &&
+        createItems?.inputSchema?.properties?.items?.items?.properties?.expected_project === undefined,
+    );
 
     const created = await server.send("tools/call", {
       name: "create_item",
@@ -168,6 +177,45 @@ for (const proto of PROTOCOLS) {
     });
     const createdOk = created.error === undefined && created.result?.isError !== true;
     check(`create_item works on ${proto}`, createdOk, createdOk ? "" : textOf(created.result));
+
+    const createdItem = createdOk ? JSON.parse(textOf(created.result)) : null;
+    const status = await server.send("tools/call", { name: "get_status", arguments: {} });
+    const statusPayload = status.result?.isError !== true ? JSON.parse(textOf(status.result)) : null;
+    const fingerprint = statusPayload?.project?.fingerprint;
+    check(
+      `get_status exposes optional expected-project compatibility on ${proto}`,
+      typeof fingerprint === "string" &&
+        statusPayload?.compat?.expectedProject === "optional",
+      JSON.stringify(statusPayload?.project),
+    );
+    const wrongProject = await server.send("tools/call", {
+      name: "update_item",
+      arguments: { id: createdItem?.id, title: "must not write", expected_project: "kanmer-proj-v1:wrong" },
+    });
+    check(
+      `wrong expected_project is structured WRONG_PROJECT on ${proto}`,
+      wrongProject.result?.isError === true &&
+        textOf(wrongProject.result).startsWith("Error:") &&
+        wrongProject.result?.structuredContent?.error?.code === "WRONG_PROJECT",
+      JSON.stringify(wrongProject.result?.structuredContent),
+    );
+    const batch = await server.send("tools/call", {
+      name: "get_ticket_doc",
+      arguments: { id: createdItem?.id, docs: ["research", "files", "research"] },
+    });
+    const batchPayload = batch.error === undefined && batch.result?.isError !== true
+      ? JSON.parse(textOf(batch.result))
+      : null;
+    check(
+      `get_ticket_doc batch form works on ${proto}`,
+      batchPayload?.id === createdItem?.id &&
+        batchPayload.documents?.length === 2 &&
+        batchPayload.documents[0]?.doc === "research" &&
+        batchPayload.documents[0]?.exists === false &&
+        batchPayload.documents[1]?.doc === "files" &&
+        batchPayload.documents[1]?.version === null,
+      batchPayload ? "" : textOf(batch.result),
+    );
 
     const activity = await server.send("tools/call", {
       name: "get_activity",

@@ -2,8 +2,7 @@
 
 <!--
 This is the user-owned portion of AGENTS.md. Keep it outside Kanmer's managed
-marker block (`<!-- kanmer:instructions:start -->` …
-`<!-- kanmer:instructions:end -->`). Replace every TODO below with facts about
+marker-delimited instruction block. Replace every TODO below with facts about
 this repository; delete guidance that no longer applies.
 -->
 

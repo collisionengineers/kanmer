@@ -34,6 +34,9 @@ interface EditorProps {
   onSave: (patch: UpdateItemPatch) => Promise<Item>;
   /** Reports dirty-state changes so App can guard against losing edits. */
   onDirtyChange?: (dirty: boolean) => void;
+  /** Ephemeral presentation guidance; it never changes ticket workflow data. */
+  mode?: EditorMode;
+  onModeChange?: (mode: EditorMode) => void;
 }
 
 /** The editable fields, as flat strings (lists joined for the inputs). */
@@ -65,6 +68,24 @@ const FIELD_KEYS = [
   "body",
 ] as const;
 type FieldKey = (typeof FIELD_KEYS)[number];
+type EditorTab = "ticket" | "scratch" | TicketDoc;
+export type EditorMode = "approval" | "execution" | "review" | "evidence";
+
+export const EDITOR_MODES: ReadonlyArray<{ id: EditorMode; label: string; description: string }> = [
+  { id: "approval", label: "Approval", description: "Ticket and group context" },
+  { id: "execution", label: "Execution", description: "Plan" },
+  { id: "review", label: "Review", description: "Scratch" },
+  { id: "evidence", label: "Evidence", description: "Proof" },
+];
+
+export function startingTabForMode(mode: EditorMode): EditorTab {
+  return { approval: "ticket", execution: "plan", review: "scratch", evidence: "proof" }[mode];
+}
+type GroupContext =
+  | { state: "loading"; group: string }
+  | { state: "ready"; group: string; content: string }
+  | { state: "missing"; group: string }
+  | { state: "error"; group: string; error: string };
 
 function snapOf(item: Item): Snapshot {
   return {
@@ -100,6 +121,8 @@ export function Editor(props: EditorProps): JSX.Element {
     onNavigate,
     onSave,
     onDirtyChange,
+    mode = "approval",
+    onModeChange,
   } = props;
 
   const client = useClient();
@@ -108,9 +131,15 @@ export function Editor(props: EditorProps): JSX.Element {
   // the live prop — so a concurrent agent edit to a field the user never
   // touched is left alone instead of being clobbered.
   const baseline = useRef<Snapshot>(snapOf(item));
-  const [tab, setTab] = useState<"ticket" | TicketDoc>("ticket");
-  const [pendingTab, setPendingTab] = useState<"ticket" | TicketDoc | null>(null);
+  const [tab, setTab] = useState<EditorTab>(() => startingTabForMode(mode));
+  const [pendingTab, setPendingTab] = useState<{ tab: EditorTab; scratchSlug?: string; mode?: EditorMode } | null>(null);
+  const appliedMode = useRef<{ id: string; mode: EditorMode }>({ id: item.id, mode });
   const [docsInfo, setDocsInfo] = useState<TicketDocsInfo | null>(null);
+  const [scratchSlug, setScratchSlug] = useState<string | null>(null);
+  const [newScratchSlug, setNewScratchSlug] = useState("");
+  const [scratchError, setScratchError] = useState<string | null>(null);
+  const [groupContext, setGroupContext] = useState<GroupContext | null>(null);
+  const scratchNotes = docsInfo?.scratch ?? [];
   /** Reference upload: drag-over highlight, in-flight flag, remove confirmation. */
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -147,6 +176,34 @@ export function Editor(props: EditorProps): JSX.Element {
     if (item.type !== "ticket") return;
     void client.getDocsInfo(item.id).then(setDocsInfo);
   }, [item.id, item.updated, changeSignal, item.type]);
+
+  useEffect(() => {
+    const slugs = scratchNotes;
+    setScratchSlug((current) =>
+      current && slugs.includes(current) ? current : slugs.includes("review") ? "review" : slugs[0] ?? null,
+    );
+  }, [scratchNotes]);
+
+  useEffect(() => {
+    const group = item.groups?.[0];
+    if (!group) {
+      setGroupContext(null);
+      return;
+    }
+    let cancelled = false;
+    setGroupContext({ state: "loading", group });
+    void client
+      .getGroupDoc(group, "context.md")
+      .then((content) => {
+        if (!cancelled) setGroupContext(content === null ? { state: "missing", group } : { state: "ready", group, content });
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setGroupContext({ state: "error", group, error: err instanceof Error ? err.message : String(err) });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client, item.id, item.groups?.[0], item.updated, changeSignal]);
 
   /**
    * Copy files into the ticket's `reference/` folder, one at a time.
@@ -309,9 +366,46 @@ export function Editor(props: EditorProps): JSX.Element {
    * key change and the doc→Ticket unmount), so they are guarded where the
    * loss happens rather than by stretching App's item-level trySelect.
    */
-  const tryTab = (next: "ticket" | TicketDoc) => {
-    if (next !== tab && docDirty) setPendingTab(next);
-    else setTab(next);
+  const tryTab = (next: EditorTab, nextScratchSlug?: string, nextMode?: EditorMode) => {
+    const changesDocument = next !== tab || (next === "scratch" && nextScratchSlug !== scratchSlug);
+    if (changesDocument && docDirty) setPendingTab({ tab: next, scratchSlug: nextScratchSlug, mode: nextMode });
+    else {
+      setTab(next);
+      if (next === "scratch" && nextScratchSlug !== undefined) setScratchSlug(nextScratchSlug);
+      if (nextMode) onModeChange?.(nextMode);
+    }
+  };
+
+  const requestMode = (nextMode: EditorMode) => {
+    if (nextMode !== mode) tryTab(startingTabForMode(nextMode), undefined, nextMode);
+  };
+
+  useEffect(() => {
+    const previous = appliedMode.current;
+    if (previous.id !== item.id || previous.mode !== mode) {
+      appliedMode.current = { id: item.id, mode };
+      setTab(startingTabForMode(mode));
+    }
+  }, [item.id, mode]);
+
+  const tabClass = (id: EditorTab) => {
+    const emphasis = id === startingTabForMode(mode) ? "mode-primary" : "mode-secondary";
+    return tab === id ? `tab active ${emphasis}` : `tab ${emphasis}`;
+  };
+
+  const createScratch = () => {
+    const slug = newScratchSlug;
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+      setScratchError("Use a lowercase kebab-case note name.");
+      return;
+    }
+    if ((docsInfo?.scratch ?? []).includes(slug)) {
+      setScratchError("That scratch note already exists.");
+      return;
+    }
+    setScratchError(null);
+    setNewScratchSlug("");
+    tryTab("scratch", slug);
   };
 
   const onPreviewClick = (e: React.MouseEvent) => {
@@ -408,6 +502,12 @@ export function Editor(props: EditorProps): JSX.Element {
       >
       <div className="editor-head">
         <span className="editor-id">{item.id}</span>
+        <label className="editor-mode">
+          <span className="sr-only">Editor mode</span>
+          <select aria-label="Editor mode" value={mode} onChange={(e) => requestMode(e.target.value as EditorMode)}>
+            {EDITOR_MODES.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.label}</option>)}
+          </select>
+        </label>
         {item.archived && <span className="chip subtle archived-tag">archived</span>}
         <div className="spacer" />
         <button
@@ -425,15 +525,19 @@ export function Editor(props: EditorProps): JSX.Element {
       {item.type === "ticket" && docsInfo && (
         <nav className="doc-tabs">
           <button
-            className={tab === "ticket" ? "tab active" : "tab"}
+            className={tabClass("ticket")}
             onClick={() => tryTab("ticket")}
           >
             Ticket
           </button>
+          <button className={tabClass("scratch")} onClick={() => tryTab("scratch")}>
+            Scratch
+            {scratchNotes.length > 0 && <span className="count">{scratchNotes.length}</span>}
+          </button>
           {docTypes.map((d) => (
             <button
               key={d.id}
-              className={tab === d.id ? "tab active" : "tab"}
+              className={tabClass(d.id)}
               onClick={() => tryTab(d.id)}
             >
               {d.name}
@@ -566,13 +670,45 @@ export function Editor(props: EditorProps): JSX.Element {
             // Clear docDirty first: otherwise the outer `dirty` is still true
             // for the render in which the tab has already changed.
             setDocDirty(false);
-            setTab(pendingTab);
+            setTab(pendingTab.tab);
+            if (pendingTab.mode) onModeChange?.(pendingTab.mode);
+            if (pendingTab.tab === "scratch" && pendingTab.scratchSlug !== undefined) {
+              setScratchSlug(pendingTab.scratchSlug);
+            }
             setPendingTab(null);
           }}
         />
       )}
 
-      {tab !== "ticket" ? (
+      {tab === "scratch" ? (
+        <section className="scratch-panel" aria-label="Scratch notes">
+          <div className="scratch-head">
+            <div>
+              <strong>Scratch notes</strong>
+              <p className="hint">Working material only — scratch never satisfies a document gate.</p>
+            </div>
+            <div className="scratch-create">
+              <input aria-label="New scratch note name" value={newScratchSlug} onChange={(e) => { setNewScratchSlug(e.target.value); setScratchError(null); }} placeholder="new-note" />
+              <button className="ghost sm" onClick={createScratch}>New note</button>
+            </div>
+          </div>
+          {scratchError && <p className="error">{scratchError}</p>}
+          {scratchNotes.length > 0 && (
+            <div className="scratch-list" aria-label="Existing scratch notes">
+              {scratchNotes.map((slug) => (
+                <button key={slug} className={slug === scratchSlug ? "chip link active" : "chip link"} onClick={() => tryTab("scratch", slug)}>
+                  {slug}
+                </button>
+              ))}
+            </div>
+          )}
+          {scratchSlug ? (
+            <DocEditor key={`${item.id}:scratch/${scratchSlug}`} id={item.id} doc={`scratch/${scratchSlug}`} progressDoc={undefined} knownIds={knownIds} changeSignal={changeSignal} onDirty={setDocDirty} onNavigate={onNavigate} onSaved={refreshDocsInfo} />
+          ) : (
+            <p className="doc-empty">No scratch notes yet. Add a safe lowercase-kebab name to draft one.</p>
+          )}
+        </section>
+      ) : tab !== "ticket" ? (
         <DocEditor
           key={`${item.id}:${tab}`}
           id={item.id}
@@ -586,6 +722,15 @@ export function Editor(props: EditorProps): JSX.Element {
       ) : (
         <>
           {gates && <ReadinessPanel gates={gates} onOpenDoc={(t) => tryTab(t)} />}
+          {groupContext && (
+            <section className="group-context-pane" aria-label={`Shared context for ${groupContext.group}`}>
+              <strong>Shared context — {groupContext.group}</strong>
+              {groupContext.state === "loading" && <p className="hint">Loading context…</p>}
+              {groupContext.state === "missing" && <p className="hint">No context.md is available for {groupContext.group}. Open the group to add shared context.</p>}
+              {groupContext.state === "error" && <p className="error">Could not load context: {groupContext.error}</p>}
+              {groupContext.state === "ready" && <div className="markdown group-context-markdown" onClick={onPreviewClick} dangerouslySetInnerHTML={{ __html: renderMarkdown(groupContext.content, knownIds) }} />}
+            </section>
+          )}
           <label className="field">
             <span>Title</span>
             <input value={form.title} onChange={(e) => set("title", e.target.value)} />
@@ -855,6 +1000,7 @@ function DocEditor({
   changeSignal,
   onDirty,
   onNavigate,
+  onSaved,
 }: {
   id: string;
   doc: TicketDoc;
@@ -863,6 +1009,7 @@ function DocEditor({
   changeSignal: number;
   onDirty: (dirty: boolean) => void;
   onNavigate: (id: string) => void;
+  onSaved?: () => Promise<void> | void;
 }): JSX.Element {
   const client = useClient();
   const [content, setContent] = useState<string | null>(null);
@@ -919,6 +1066,7 @@ function DocEditor({
       setVersion(res.version);
       setConflict(null);
       setEditing(false);
+      await onSaved?.();
     } catch (err) {
       // Keep `editing` — the user's text must survive the rejection.
       setConflict(err instanceof Error ? err.message : String(err));

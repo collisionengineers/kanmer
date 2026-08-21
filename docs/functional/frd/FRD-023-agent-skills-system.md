@@ -82,3 +82,7 @@ Related: ADR-0009 · D36–D45 · FRD-005/009/010/012/013/014.
 - ~~Acceptance — the "zero hardcoded gate rules" grep **fails today**~~ — it **passes**, and
   is a rail step rather than a grep run by hand. Validated against the pre-change tree
   before being trusted: 8 violations there, 0 after.
+
+## Compiled-workflow end state (ADR-0016)
+
+Planning and automation are gates-first and treat a material document hole as work, not a reason to guess a profile. Execute reads the packet first, capability-sniffs `expected_project`, never merges, and stops at its bounded condition. Review records a current-head, whole-file SHA attestation with findings and dispositions. Verify uses a detached exact merged SHA and records a PASS-only completion proof. Approval, execution-brief, and group-context templates serve their corresponding audiences. Skills continue to derive requirements from gates and tools; skill-only changes do not require rebuilding the plugin MCP bundle.

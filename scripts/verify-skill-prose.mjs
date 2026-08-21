@@ -275,5 +275,117 @@ for (const rule of RULES) {
   check(`  stated wherever it can be acted on`, missing.length === 0, missing.join(", ") || "none");
 }
 
+console.log("\n=== 9. work-type brief overlays are present and remain manual ===");
+const planAssets = join(skillsDir, "kanmer-plan", "assets");
+const overlays = [
+  "brief-fix.md",
+  "brief-ui-ux.md",
+  "brief-docs.md",
+  "brief-cloud-infra.md",
+  "brief-data-migration.md",
+];
+const missingOverlays = overlays.filter((name) => !existsSync(join(planAssets, name)));
+console.log(`      overlays: ${overlays.join(", ")}`);
+check("all five work-type brief overlays exist", missingOverlays.length === 0, missingOverlays.join(", ") || "all present");
+
+const planSkill = read(join(skillsDir, "kanmer-plan", "SKILL.md"));
+const manualSelection =
+  /manually copy zero or more matching prompt sets/i.test(planSkill) &&
+  /templates, never\s+an automatic classifier, ticket field, profile mapping, or gate/i.test(planSkill);
+check("kanmer-plan names optional manual overlay selection", manualSelection, "manual selection, no engine");
+
+console.log("\n=== 10. kanmer-groom keeps its board-vs-reality sweep advisory ===");
+const groomSkill = read(join(skillsDir, "kanmer-groom", "SKILL.md"));
+const boardRealitySweep =
+  /board-vs-reality sweep/i.test(groomSkill) &&
+  /non-archived Backlog or Preparing tickets/i.test(groomSkill) &&
+  /exact ticket id and a distinctive title phrase/i.test(groomSkill) &&
+  /`main`\s+history/i.test(groomSkill) &&
+  /search merged PRs/i.test(groomSkill) &&
+  /open the matched commit, diff, or PR/i.test(groomSkill) &&
+  /proposed disposition: no action, an Outcome note plus archive/i.test(groomSkill) &&
+  /never archives or rescopes automatically/i.test(groomSkill);
+check(
+  "kanmer-groom keeps the bounded, evidence-first, proposal-only sweep",
+  boardRealitySweep,
+  "Backlog/Preparing + main/PR evidence + no automatic mutation",
+);
+
+console.log("\n=== 11. gates-first routing regressions stay removed ===");
+// These are deliberately narrow guardrails for two measured contradictions.
+// They protect dynamic gate routing, not a profile-to-document table or prose
+// style: both skills must continue to derive the next action at runtime.
+const autoSkill = read(join(skillsDir, "kanmer-auto", "SKILL.md"));
+const planUniversalClaims = [
+  /research and files documents\s*[—-]\s*never before them/i,
+  /whether or not this ticket'?s profile happens to gate on them/i,
+];
+const planClaimsPresent = planUniversalClaims.filter((re) => re.test(planSkill));
+check(
+  "kanmer-plan has no universal research/files prerequisite",
+  planClaimsPresent.length === 0,
+  planClaimsPresent.length ? "legacy universal claim found" : "live gates decide inputs",
+);
+check(
+  "kanmer-auto has no universal research Wave 0",
+  !/wave 0\s*[—-]\s*research everything in parallel/i.test(autoSkill),
+  "route from live gates instead",
+);
+for (const [name, body] of [["kanmer-plan", planSkill], ["kanmer-auto", autoSkill]]) {
+  check(`${name} still routes through get_doc_gates`, /get_doc_gates/.test(body), "live gate report");
+}
+
+console.log("\n=== 12. audience-specific template contracts are present and advisory ===");
+const requiredHeadings = (file, headings) => {
+  const body = read(file);
+  const missing = headings.filter((h) => !new RegExp(`^## ${h}$`, "m").test(body));
+  check(`${rel(file)} has required headings`, missing.length === 0, missing.join(", ") || "all present");
+  return body;
+};
+const approval = requiredHeadings(join(planAssets, "approval-contract.md"), ["Outcome", "Why", "User or operational effect", "In scope", "Out of scope", "Key decisions", "Main risks", "Breakdown", "Evidence", "Approval boundary"]);
+check("approval contract says its range is guidance, not a gate", /300–600 words; this is guidance only and is never a Kanmer gate/i.test(approval), "advisory only");
+const brief = requiredHeadings(join(planAssets, "plan-template.md"), ["Objective", "Starting state", "Governing docs", "Required changes", "Expected files", "Do not modify", "Constraints", "Ordered steps", "Acceptance checks", "Commands", "Failure and deviation rules", "Stop condition"]);
+check("execution brief keeps one extractable Stop condition and advisory decision verbs", (brief.match(/^## Stop condition$/gm) ?? []).length === 1 && /investigate.*decide.*choose.*determine[\s\S]*not a gate/i.test(brief), "heading + advisory warning");
+check("execution brief contains prove-rule boilerplate", /production caller[\s\S]*runtime dependencies[\s\S]*schema changes.*grants/i.test(brief), "caller + artifact + schema/grants");
+const checklist = read(join(planAssets, "checklist-template.md"));
+check("checklist labels are plainly advisory and gates ignore them", /\[pre-review\]/.test(checklist) && /\[post-merge\]/.test(checklist) && /gates ignore/i.test(checklist), "labels + gate disclaimer");
+const groupContext = requiredHeadings(join(skillsDir, "kanmer-tickets", "assets", "group-context.md"), ["Feature outcome", "Users affected", "Acceptance criteria", "Non-goals", "Shared decisions", "Constraints", "Risks", "Dependency map", "Rollout & rollback", "Breakdown", "Definition of done"]);
+check("group context says horizons are optional", /horizons do not require context by default/i.test(groupContext), "epic context only");
+
+console.log("\n=== 13. kanmer-auto durable group run-state contract is present ===");
+const autoAssets = join(skillsDir, "kanmer-auto", "assets");
+const runState = join(autoAssets, "run-state-template.md");
+const currentRun = join(autoAssets, "current-run-template.md");
+const autoRequiredTerms = [
+  "one explicit existing group",
+  "automation/current.md",
+  "automation/runs/<run-id>.md",
+  "project_fingerprint",
+  "controller",
+  "stop_reason",
+  "running",
+  "paused",
+  "blocked",
+  "completed",
+  "aborted",
+  "read it back",
+  "never runs `gh pr merge`",
+];
+check(
+  "kanmer-auto states the durable run ownership and safety contract",
+  autoRequiredTerms.every((term) => autoSkill.includes(term)),
+  autoRequiredTerms.filter((term) => !autoSkill.includes(term)).join(", ") || "all terms present",
+);
+const runStateBody = requiredHeadings(runState, ["Selection contract", "Run invariants", "Ticket ledger", "Event log", "Resume instruction"]);
+for (const field of ["kind:", "schema:", "run_id:", "group:", "project_fingerprint:", "controller:", "status:", "created_at:", "updated_at:", "lane_limit:", "stop_reason:"]) {
+  check(`run-state template retains ${field}`, runStateBody.includes(field), field);
+}
+const currentRunBody = read(currentRun);
+check(
+  "current-run pointer names its history path and resume rule",
+  /run_path: automation\/runs\/<run-id>\.md/.test(currentRunBody) && /^## Resume instruction$/m.test(currentRunBody),
+  "path + heading",
+);
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

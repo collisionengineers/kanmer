@@ -4,7 +4,9 @@ import {
   SubscribeRequestSchema,
   UnsubscribeRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { execFile as execFileCallback } from "node:child_process";
 import path from "node:path";
+import { promisify } from "node:util";
 import { z } from "zod";
 import {
   BOUNDARIES,
@@ -33,6 +35,44 @@ import {
 import { resolveProjectRoot, resolveRepoRoot } from "./root.js";
 import { SERVER_VERSION, serverIdentity } from "./identity.js";
 import { bundledSkillsDir } from "./bundled.js";
+import { readTicketDocuments } from "./ticket-docs.js";
+import { failCoded, KanmerError } from "./errors.js";
+import { projectIdentity } from "./project-identity.js";
+
+const execFile = promisify(execFileCallback);
+
+/**
+ * Observational twin of apps/gui/src/main/kanmerGit.ts's board branch probe.
+ * Keep these small copies local: core must not spawn Git and must not depend on
+ * Electron, while the GUI must not depend on the MCP server package.
+ */
+async function inspectBoardBranch(root: string): Promise<string | null> {
+  try {
+    const { stdout } = await execFile("git", ["symbolic-ref", "--short", "HEAD"], {
+      cwd: root,
+      windowsHide: true,
+    });
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function boardWorktreeRepair(
+  boardSource: "file" | "default",
+  actualBranch: string | null,
+  expectedBranch: string,
+  path: string,
+): string {
+  if (boardSource === "default") {
+    return `This path is serving a synthesized default board; check ${path} when tickets are expected.`;
+  }
+  if (actualBranch === expectedBranch) return "No repair is required.";
+  if (actualBranch) {
+    return `Board worktree is on "${actualBranch}", expected "${expectedBranch}". Restore the board worktree through Kanmer setup or board Git repair.`;
+  }
+  return `Board branch inspection failed or HEAD is detached. Restore ${path} to "${expectedBranch}" through Kanmer setup or board Git repair.`;
+}
 
 /**
  * Root resolution happens inside `main()`, not here — see `resolveRoot()`
@@ -50,6 +90,7 @@ let projectRoot!: string;
 let rootSource!: RootSource;
 let repoRootSource!: RepoRootSource;
 let store!: KanmerStore;
+let rootResolved = false;
 
 /**
  * How the *repo* root was arrived at — the sibling of `rootSource` for the
@@ -78,6 +119,7 @@ function resolveRoot(): void {
   const repoRootFlag = argv.some((a) => a === "--repo-root" || a.startsWith("--repo-root="));
   repoRootSource = repoRoot === undefined ? "derived" : repoRootFlag ? "flag" : "env";
   store = new KanmerStore(projectRoot, { repoRoot });
+  rootResolved = true;
 }
 
 /** JSON tool result. */
@@ -87,7 +129,7 @@ function ok(data: unknown) {
 
 /** Error tool result (surfaced to the model, not a protocol failure). */
 function fail(message: string) {
-  return { content: [{ type: "text" as const, text: `Error: ${message}` }], isError: true };
+  return failCoded(new Error(message));
 }
 
 /** Wrap a handler so thrown errors become clean isError results. */
@@ -96,7 +138,7 @@ function guard<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeo
     try {
       return await fn(...args);
     } catch (err) {
-      return fail(err instanceof Error ? err.message : String(err));
+      return failCoded(err);
     }
   };
 }
@@ -107,16 +149,6 @@ async function ensureInit() {
   if (initialised) return;
   await store.init();
   initialised = true;
-}
-
-/** Wrap a write handler: lazily create the .kanmer skeleton, then run it under guard(). */
-function write<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeof ok>>) {
-  return guard(async (...args: A) => {
-    // Attribute this mutation in the activity log to the calling client.
-    store.setActor(actorName(args[1]));
-    await ensureInit();
-    return fn(...args);
-  });
 }
 
 /**
@@ -131,14 +163,14 @@ function write<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeo
  * path, and the SDK does deliver params._meta to handlers on every protocol
  * — and it is exercised for real by smoke-protocol.mjs.
  */
-function actorName(extra?: unknown): string {
+function actorName(requestServer: McpServer, extra?: unknown): string {
   const meta = (extra as { _meta?: Record<string, unknown> } | undefined)?._meta;
   const candidates = [
     (meta?.["io.modelcontextprotocol/client"] as { name?: string } | undefined)?.name,
     (meta?.["clientInfo"] as { name?: string } | undefined)?.name,
   ];
   for (const c of candidates) if (typeof c === "string" && c) return c;
-  return server.server.getClientVersion()?.name ?? "agent";
+  return requestServer.server.getClientVersion()?.name ?? "agent";
 }
 
 /**
@@ -147,10 +179,10 @@ function actorName(extra?: unknown): string {
  * approval flow is the gate there). Returns false only on an explicit
  * decline/cancel.
  */
-async function confirmDestructive(message: string): Promise<boolean> {
-  if (!server.server.getClientCapabilities()?.elicitation) return true;
+async function confirmDestructive(requestServer: McpServer, message: string): Promise<boolean> {
+  if (!requestServer.server.getClientCapabilities()?.elicitation) return true;
   try {
-    const res = await server.server.elicitInput({
+    const res = await requestServer.server.elicitInput({
       message,
       requestedSchema: {
         type: "object",
@@ -254,10 +286,78 @@ const createFields = {
   body: z.string().optional().describe("Markdown body; may contain [[id]] wiki-links"),
 };
 
+const expectedProjectField = z
+  .string()
+  .optional()
+  .describe("Optional project fingerprint from get_status.project.fingerprint; send only when get_status.compat.expectedProject is optional");
+
+function withProject<T extends z.ZodRawShape>(shape: T): T & { expected_project: typeof expectedProjectField } {
+  return { ...shape, expected_project: expectedProjectField };
+}
+
 // The version is the build-time-injected release, not a hardcoded literal: the
 // old "0.1.0" here was two minor versions stale and never bumped by anything.
 // `get_status.server.version` reports the same value — one fact, one source.
-const server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
+export type ExposurePolicy = "local-stdio" | "remote-http-v1";
+
+/**
+ * Tool ids that are intentionally unavailable over remote HTTP. The set is
+ * empty until MCP-020 lands its background-dispatch tool; keeping the policy
+ * named and central now makes that future exclusion a one-place change.
+ */
+export const REMOTE_HTTP_EXCLUDED_TOOLS = new Set<string>();
+
+/** Canonical read-only tool policy used by the remote doctor and HTTP smoke. */
+export function remoteHttpToolNames(): readonly string[] {
+  const server = createKanmerMcpServer("remote-http-v1");
+  const registered = (server as unknown as { readonly _registeredTools?: Record<string, unknown> })._registeredTools ?? {};
+  return Object.keys(registered).filter((name) => !REMOTE_HTTP_EXCLUDED_TOOLS.has(name)).sort();
+}
+
+/**
+ * Construct the one canonical Kanmer registry for a transport. The factory is
+ * deliberately transport-agnostic: stdio and HTTP attach their SDK transports
+ * after this function returns, while the store/root/tool definitions remain
+ * single-sourced here.
+ */
+export function createKanmerMcpServer(policy: ExposurePolicy = "local-stdio"): McpServer {
+  if (policy !== "local-stdio" && policy !== "remote-http-v1") {
+    throw new Error(`Unknown MCP exposure policy: ${policy}`);
+  }
+  if (!rootResolved) resolveRoot();
+  // Each factory result owns its negotiated client identity and capabilities.
+  // HTTP creates one result per session, so this must never be module-global.
+  const server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
+  const registerTool = server.registerTool.bind(server);
+  // All mutating tool schemas carry transport metadata at their call boundary.
+  // This is intentionally central: a future write tool cannot silently lose
+  // the guard because its author forgot a local schema wrapper.
+  server.registerTool = ((name: string, config: { inputSchema?: z.ZodRawShape; annotations?: { readOnlyHint?: boolean } }, ...args: unknown[]) => {
+    if (policy === "remote-http-v1" && REMOTE_HTTP_EXCLUDED_TOOLS.has(name)) return { remove: () => undefined } as never;
+    const next = config.annotations?.readOnlyHint === false && config.inputSchema
+      ? { ...config, inputSchema: withProject(config.inputSchema) }
+      : config;
+    return Reflect.apply(registerTool, server, [name, next, ...args]) as never;
+  }) as typeof server.registerTool;
+
+  /** Wrap a write handler using this server's calling-client context. */
+  function write<T extends Record<string, unknown>, R extends unknown[]>(fn: (input: T, ...rest: R) => Promise<ReturnType<typeof ok>>) {
+    return guard(async (input: T, ...rest: R) => {
+      const { expected_project, ...cleanInput } = input as T & { expected_project?: string };
+      if (expected_project !== undefined) {
+        const format = await store.detectFormat();
+        const { source } = await store.getBoardWithSource();
+        const identity = projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
+        if (expected_project !== identity.fingerprint) {
+          throw new KanmerError("WRONG_PROJECT", `expected project ${expected_project} does not match current project ${identity.fingerprint}`);
+        }
+      }
+      // Attribute this mutation in the activity log to the calling client.
+      store.setActor(actorName(server, rest[0]));
+      await ensureInit();
+      return fn(cleanInput as T, ...rest);
+    });
+  }
 
 // ---------------------------------------------------------------------------
 // Read tools
@@ -274,6 +374,8 @@ server.registerTool(
       "Two hosts pointed at the same board can be running different server builds that enforce different gates; comparing `server.sha256` is how you see that instead of guessing. " +
       "Repo: a `repo` block answering WHICH KANMER THIS REPO WAS SET UP BY — `{ upToDate, stale: [{ artefact, state, detail, fix }] }`. Itemised, never a bare boolean. Artefacts checked are the ones migration does not touch: the AGENTS.md managed block, the installed skills trees and their `.kanmer-skills-version` stamps, `board.yml`, and the provider MCP registrations — compared by CONTENT HASH against what this build ships, not by version string (no artefact records a product version). " +
       "`state` is `behind` (act on it), `compensated` (the file is old and the runtime already papers over it — informational, no action), `unstamped` (no evidence either way) or `unknown` (could not be read). `upToDate` is true iff nothing is `behind`. Repair is never automatic: run `kanmer-setup`, which is the reconciliation path (FRD-013). Board format is not listed here — it is the `format` field above. " +
+      "Board worktree: an informational, non-blocking `boardWorktree` block reports the board path, expected and actual branch, branch match, board source, active ticket count, and operator repair guidance. It never checks out, repairs, initializes, or refuses another tool. " +
+      "Project safety: `project` gives a machine-local fingerprint over the canonical board root, format and repo root. When `compat.expectedProject` is `optional`, a client may send that fingerprint as `expected_project` on any write; omit it for older servers that do not advertise compatibility. " +
       "IMPORTANT: the `server` block is absent on servers older than 0.3.3, and the `repo` block on servers older than 0.3.4 — that ABSENCE is itself the signal 'this build predates the check', not an error. Individual fields are null if they could not be read; the call never fails over it.",
     inputSchema: {},
     annotations: { readOnlyHint: true, openWorldHint: false },
@@ -284,6 +386,8 @@ server.registerTool(
     const { board, source } = await store.getBoardWithSource();
     const { items, warnings } = await store.listItemsWithWarnings({ includeArchived: true });
     const active = items.filter((i) => !i.archived);
+    const expectedBranch = process.env.KANMER_BOARD_BRANCH?.trim() || "kanmer-board";
+    const actualBranch = await inspectBoardBranch(projectRoot);
     const byStage: Record<string, number> = {};
     for (const s of STAGE_IDS) byStage[s] = 0;
     let offBoardStage = 0;
@@ -331,7 +435,18 @@ server.registerTool(
       exists,
       format,
       boardSource: source,
+      project: projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source }),
+      compat: { expectedProject: "optional" },
       deploymentTracking: board.deployment !== undefined,
+      boardWorktree: {
+        path: projectRoot,
+        expectedBranch,
+        actualBranch,
+        onBoardBranch: actualBranch === expectedBranch,
+        boardSource: source,
+        ticketCount: active.filter((item) => item.type === "ticket").length,
+        repair: boardWorktreeRepair(source, actualBranch, expectedBranch, projectRoot),
+      },
       counts: {
         byStage,
         byType,
@@ -459,16 +574,21 @@ server.registerTool(
   {
     title: "Read a ticket document",
     description:
-      "Read one of a ticket's pipeline documents from its folder. `doc` is a document id from the ticket area's configured doc types (see get_doc_gates / list_board → docModel), or a scratch file as `scratch-<slug>`. Returns content: null when the document hasn't been written yet. `version` is a token for the document's current bytes — pass it back as `expected_version` on set_ticket_doc to be rejected instead of overwriting a concurrent edit.",
+      "Read one ticket document (`doc`) or 1–25 selected documents (`docs`). Supply exactly one form. The legacy single response is unchanged; batch returns ordered per-document content/version records. Missing known documents are normal entries; versions bind to returned bytes and are not an atomic snapshot.",
     inputSchema: {
       id: z.string().describe("Ticket id"),
-      doc: ticketDocEnum.describe("Which document"),
+      doc: ticketDocEnum.optional().describe("One document (legacy form)"),
+      docs: z.array(ticketDocEnum).min(1).max(25).optional().describe("1–25 documents (batch form; mutually exclusive with doc)"),
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  guard(async ({ id, doc }) => {
-    const { content, version } = await store.getDocWithVersion(id, doc);
-    return ok({ id, doc, exists: content !== null, content, version });
+  guard(async ({ id, doc, docs }) => {
+    if ((doc === undefined) === (docs === undefined)) throw new Error("Supply exactly one of doc or docs.");
+    if (doc !== undefined) {
+      const [result] = await readTicketDocuments(store, id, [doc]);
+      return ok({ id, ...result });
+    }
+    return ok({ id, documents: await readTicketDocuments(store, id, docs!) });
   }),
 );
 
@@ -848,7 +968,7 @@ server.registerTool(
         branch,
         worktree,
         stage,
-        assignee: assignee ?? actorName(extra),
+        assignee: assignee ?? actorName(server, extra),
         force,
       }),
     );
@@ -1016,6 +1136,7 @@ server.registerTool(
   write(async ({ kind, id, migrate_to }) => {
     if (migrate_to !== undefined) {
       const proceed = await confirmDestructive(
+        server,
         `Remove ${kind} "${id}" and move every item using it to "${migrate_to}"?`,
       );
       if (!proceed) return fail("cancelled by user");
@@ -1064,6 +1185,7 @@ server.registerTool(
   },
   write(async ({ id }) => {
     const proceed = await confirmDestructive(
+      server,
       `Permanently delete "${id}" (its whole folder, documents and attachments included)?`,
     );
     if (!proceed) return fail("cancelled by user");
@@ -1206,6 +1328,17 @@ server.registerPrompt(
   }),
 );
 
+  return server;
+}
+
+/** A stable, non-secret identifier for status/readiness without exposing a path. */
+export async function projectFingerprint(): Promise<string> {
+  if (!rootResolved) resolveRoot();
+  const format = await store.detectFormat();
+  const { source } = await store.getBoardWithSource();
+  return projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source }).fingerprint;
+}
+
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
@@ -1214,7 +1347,7 @@ async function main() {
   // Resolve the board root first, and inside main(): not finding one throws,
   // and only a throw from here reaches the fatal handler below, which is the
   // only thing that prints the diagnostic to stderr. ADR-0012 §Decision 11.
-  resolveRoot();
+  const stdioServer = createKanmerMcpServer("local-stdio");
   // No store.init() here: a read-only session in a workspace that never
   // opted into Kanmer must not create .kanmer/ just by being opened.
   // Write handlers call ensureInit() lazily instead.
@@ -1225,7 +1358,7 @@ async function main() {
   // 2026-07-28 entry, so nothing in this repo can negotiate it. Adopt when
   // the SDK grows support; smoke-protocol.mjs covers what is reachable today.
   const transport = new StdioServerTransport();
-  await server.connect(transport);
+  await stdioServer.connect(transport);
   // Never write logs to stdout — that stream is the MCP transport.
   // The identity goes here too, not only in get_status: a host that never calls
   // the tool still leaves the answer in its own log, which is where anyone
@@ -1238,7 +1371,8 @@ async function main() {
   );
 }
 
-main().catch((err) => {
+const invokedName = path.basename(process.argv[1] ?? "");
+if (invokedName === "index.js" || invokedName === "kanmer-mcp.cjs") main().catch((err) => {
   // A resolution failure is a plain, already-worded diagnostic: print it as
   // written, without a stack, so the paths tried are the first thing read.
   const message = err instanceof Error ? err.message : String(err);

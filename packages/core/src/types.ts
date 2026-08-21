@@ -41,6 +41,14 @@ export type BoardColumn = z.infer<typeof BoardColumnSchema>;
  */
 export type TicketDoc = string;
 
+/** One requested ticket document together with its exact-content version. */
+export interface TicketDocumentWithVersion {
+  doc: string;
+  exists: boolean;
+  content: string | null;
+  version: string | null;
+}
+
 /** Options for writing a ticket's pipeline document. */
 export interface SetDocOptions {
   /** Append below the existing content instead of replacing it. */
@@ -62,6 +70,8 @@ export interface TicketDocsInfoV3Extras {
   documentPaths: string[];
   /** Human-supplied inputs: name plus absolute path (FRD-004 R3). */
   references: { name: string; path: string }[];
+  /** Sorted gate-exempt scratch-note slugs, without the `scratch/` prefix. */
+  scratch: string[];
 }
 
 export interface TicketDocsInfo extends TicketDocsInfoV3Extras {

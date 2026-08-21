@@ -65,7 +65,8 @@ test("agents template keeps the required user-owned guide contract", () => {
   );
   assert.match(template, /^\| Command \| Purpose \|$/m);
   assert.ok(template.indexOf("### Deterministic checks") < template.indexOf("### Manual or environment-dependent checks"));
-  assert.match(template, /outside Kanmer's managed[\s\S]*marker block/i);
+  assert.match(template, /outside Kanmer's managed[\s\S]*marker-delimited instruction block/i);
+  assert.doesNotMatch(template, /<!-- kanmer:instructions:(?:start|end)/);
   assert.match(skill, /assets\/agents-template\.md/);
   assert.match(skill, /only when the file is absent/i);
   assert.match(skill, /preserve its human-authored prose/i);

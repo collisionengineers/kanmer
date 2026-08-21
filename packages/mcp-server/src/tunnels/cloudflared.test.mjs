@@ -91,3 +91,26 @@ test("standalone fake provider reaches local readiness and leaves no credential 
     assert.equal(JSON.stringify(diagnostics).includes(canary), false);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
+
+test("readiness failure waits for the owned child to exit before cleanup", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-cleanup-"));
+  try {
+    const credentials = path.join(directory, "credentials.json");
+    await writeFile(credentials, "{}", { mode: 0o600 });
+    let stopped = false;
+    const fakeSpawn = () => {
+      const child = new EventEmitter();
+      child.pid = 4321; child.killed = false;
+      child.stdout = new PassThrough(); child.stderr = new PassThrough();
+      child.kill = () => { stopped = true; child.killed = true; child.emit("exit", 0, null); return true; };
+      queueMicrotask(() => child.emit("spawn"));
+      return child;
+    };
+    const adapter = createCloudflaredAdapter({
+      executable: process.execPath, tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", credentialsFile: credentials,
+      hostname: "kanmer.example.test", metricsPort: 43125, validateExecutable: async () => {}, waitForReady: async () => { throw new Error("not ready"); },
+    }, fakeSpawn);
+    await assert.rejects(() => adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /not ready/);
+    assert.equal(stopped, true);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});

@@ -68,6 +68,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
     const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-"));
     const configPath = path.join(directory, "config.yml");
     let child: ChildProcess | undefined;
+    let childExited: Promise<{ code: number | null; signal: NodeJS.Signals | null }> | undefined;
     try {
       await writeFile(configPath, cloudflaredConfig(this.options, target), { encoding: "utf8", mode: 0o600 });
       await chmod(configPath, 0o600);
@@ -89,6 +90,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
         spawned.once("error", reject);
       });
       const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => spawned.once("exit", (code, signal) => resolve({ code, signal })));
+      childExited = exited;
       void exited.then(() => this.diagnostics.flush().forEach((event) => this.options.onLog?.(event)));
       await (this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`) ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${metricsPort}/ready` }));
       const cleanup = () => rm(directory, { recursive: true, force: true });
@@ -100,7 +102,8 @@ export class CloudflaredAdapter implements TunnelAdapter {
         async stop() { await stopOwnedChild(spawned, exited); },
       };
     } catch (error) {
-      if (child && !child.killed) child.kill("SIGTERM");
+      if (child && childExited) await stopOwnedChild(child, childExited);
+      else if (child && !child.killed) child.kill("SIGTERM");
       await rm(directory, { recursive: true, force: true });
       throw error;
     }

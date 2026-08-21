@@ -189,7 +189,7 @@ export function TicketCreate({
           >
             Browse…
           </button>
-          <label className="check-row">
+          <label className="check">
             <input type="checkbox" checked={docsTodo} onChange={(e) => setDocsTodo(e.target.checked)} />
             <span>New PRD/FRD/ADR still needed (docs_todo)</span>
           </label>

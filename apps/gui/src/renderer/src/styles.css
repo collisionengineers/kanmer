@@ -101,8 +101,7 @@ textarea:focus {
    into a full-width bar and pushes the label text onto the next line, so a
    checkbox row must both lay itself out as a flex line and hand the box its
    intrinsic width back. Layout only — no colour or font-size, so a `.check`
-   row keeps whatever typography its surrounding section already sets.
-   `.check-row` (ticket-create modal) is the same idiom with its own type. */
+   row keeps whatever typography its surrounding section already sets. */
 .check {
   display: flex;
   align-items: center;
@@ -382,10 +381,6 @@ textarea:focus {
   flex-wrap: wrap;
   margin-bottom: 4px;
 }
-/* Priority stays hard right whatever badges sit between it and the id. */
-.card-top .pri {
-  margin-left: auto;
-}
 .card-id {
   font-size: 11px;
   color: var(--muted);
@@ -404,22 +399,6 @@ textarea:focus {
   margin-top: 6px;
   font-size: 11px;
   color: var(--muted);
-}
-
-.pri {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--bg-3);
-  color: var(--muted);
-}
-.pri-high {
-  color: #ffcf7a;
-}
-.pri-urgent {
-  color: var(--danger);
 }
 
 .chip {
@@ -471,10 +450,6 @@ textarea:focus {
 .list-title {
   flex: 1;
   font-weight: 500;
-}
-.list-updated {
-  color: var(--muted);
-  font-size: 11px;
 }
 .empty {
   color: var(--muted);
@@ -728,10 +703,6 @@ textarea.body {
 .quickadd-input {
   border: 1px solid var(--accent);
 }
-.list-quickadd {
-  max-width: 820px;
-  margin-bottom: 8px;
-}
 .archived-tag {
   margin-left: 8px;
   opacity: 0.8;
@@ -870,11 +841,6 @@ button.danger {
   border-color: currentColor;
   white-space: nowrap;
 }
-.chip.overdue {
-  color: var(--warn);
-  border-color: currentColor;
-  white-space: nowrap;
-}
 .list-row {
   display: flex;
   align-items: center;
@@ -901,19 +867,6 @@ button.danger {
 /* Editor resize + sticky save (Phase 7) */
 .editor {
   position: relative;
-}
-.editor-resize {
-  position: absolute;
-  left: -3px;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  cursor: col-resize;
-  z-index: 5;
-}
-.editor-resize:hover {
-  background: var(--accent, #5b8cff);
-  opacity: 0.35;
 }
 .editor-foot {
   position: sticky;
@@ -1250,11 +1203,6 @@ button.danger {
   width: 140px;
   font-size: 11px;
 }
-.settings-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-}
 .settings-section {
   margin-top: 18px;
   border-top: 1px solid var(--line);
@@ -1445,16 +1393,9 @@ button.danger {
   min-height: 120px;
 }
 
-.check-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.modal.ticket-create .check {
   margin-top: 6px;
   font-size: 12px;
-  cursor: pointer;
-}
-.check-row input {
-  width: auto;
 }
 
 .refs-open {
@@ -1539,46 +1480,6 @@ button.danger {
   min-width: 0;
 }
 
-.section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.doc-type-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 4px 0;
-}
-.doc-type-row .col-name {
-  flex: 1 1 40%;
-  min-width: 0;
-}
-.doc-requires {
-  flex: 1 1 40%;
-  min-width: 0;
-  font-size: 12px;
-}
-.gate-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 3px 0;
-  font-size: 13px;
-}
-.env-editor {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-}
-.env-add {
-  width: 160px;
-}
 .chip-x {
   margin-left: 4px;
   border: none;

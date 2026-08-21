@@ -79,6 +79,7 @@ export interface TunnelStatus {
   readonly changedAt: string;
   readonly publicEndpoint?: string;
   readonly pid?: number;
+  readonly providerVersion?: string;
   readonly code?: string;
   readonly projectFingerprint?: string;
   readonly authGeneration?: string;

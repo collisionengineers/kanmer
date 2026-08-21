@@ -15,7 +15,7 @@ export interface CloudflaredAdapterOptions extends CloudflaredTunnelOptions {
   readonly metricsPort?: number;
   readonly waitForReady?: (endpoint: string) => Promise<void>;
   readonly onLog?: (event: TunnelLogEvent) => void;
-  readonly validateExecutable?: (executable: string) => Promise<void>;
+  readonly validateExecutable?: (executable: string) => Promise<void | { readonly version: string }>;
   /** Optional test seam; production validates the generated rules with cloudflared. */
   readonly validateIngress?: (configPath: string, hostname: string) => Promise<void>;
 }
@@ -113,7 +113,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
       });
       validateCloudflaredTunnel(this.options, target);
       await validateRegularFile(this.options.executable, "TUNNEL_EXECUTABLE_INVALID", false);
-      await (this.options.validateExecutable?.(this.options.executable) ?? validateCloudflaredExecutable({ executable: this.options.executable }));
+      const executableValidation = await (this.options.validateExecutable?.(this.options.executable) ?? validateCloudflaredExecutable({ executable: this.options.executable }));
       await validateRegularFile(this.options.credentialsFile, "TUNNEL_CREDENTIALS_FILE_UNSAFE", true);
     const metricsPort = this.options.metricsPort ?? await allocateLoopbackPort();
     if (!Number.isSafeInteger(metricsPort) || metricsPort < 1 || metricsPort > 65_535) throw new Error("TUNNEL_METRICS_PORT_INVALID");
@@ -185,7 +185,12 @@ export class CloudflaredAdapter implements TunnelAdapter {
         })(),
       };
       this.active = handle;
-      this.transition("connected", target, { attempt, pid: spawned.pid, publicEndpoint: `https://${target.hostname}/mcp` });
+      this.transition("connected", target, {
+        attempt,
+        pid: spawned.pid,
+        publicEndpoint: `https://${target.hostname}/mcp`,
+        ...(executableValidation && typeof executableValidation.version === "string" ? { providerVersion: executableValidation.version } : {}),
+      });
       void exited.then((result) => {
         if (this.active !== handle) return;
         this.active = undefined;

@@ -3,10 +3,12 @@ import { chmod, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path, { isAbsolute } from "node:path";
 import { cloudflaredConfig, type CloudflaredTunnelOptions, validateCloudflaredTunnel } from "./cloudflared-config.js";
-import type { TunnelAdapter, TunnelLogEvent, TunnelProcess, TunnelStatus, TunnelTarget } from "./types.js";
+import { validateTunnelStartInput, type TunnelAdapter, type TunnelLogEvent, type TunnelProcess, type TunnelStatus, type TunnelTarget } from "./types.js";
 import { allocateLoopbackPort, waitForTunnelReadiness } from "./readiness.js";
 import { validateCloudflaredExecutable } from "./cloudflared-validate.js";
 import { TunnelLogBuffer } from "./logs.js";
+
+export { validateTunnelStartInput } from "./types.js";
 
 export interface CloudflaredAdapterOptions extends CloudflaredTunnelOptions {
   readonly executable: string;
@@ -92,6 +94,13 @@ export class CloudflaredAdapter implements TunnelAdapter {
     const attempt = this.status.attempt + 1;
     this.transition("validating", target, { attempt });
     try {
+      validateTunnelStartInput({
+        config: {
+          provider: "cloudflared", mode: "named-credentials", executable: this.options.executable,
+          tunnelId: this.options.tunnelId, hostname: this.options.hostname, credentials: { path: this.options.credentialsFile },
+        },
+        target,
+      });
       validateCloudflaredTunnel(this.options, target);
       await validateRegularFile(this.options.executable, "TUNNEL_EXECUTABLE_INVALID", false);
       await (this.options.validateExecutable?.(this.options.executable) ?? validateCloudflaredExecutable({ executable: this.options.executable }));

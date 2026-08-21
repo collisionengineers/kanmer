@@ -43,6 +43,32 @@ export const DEFAULT_TUNNEL_RESTART_POLICY: Readonly<TunnelRestartPolicy> = Obje
   stableResetMs: 5 * 60_000,
 });
 
+/**
+ * Runtime validation at the provider-neutral boundary.  Provider adapters
+ * retain their stricter file/config checks, but no adapter may spawn for an
+ * unrecognised discriminator, unsafe local target, or nonsensical retry
+ * policy.
+ */
+export function validateTunnelStartInput(input: TunnelStartInput): void {
+  const config = input?.config as unknown as Record<string, unknown>;
+  if (!config || Array.isArray(config) || config.provider !== "cloudflared" || config.mode !== "named-credentials") throw new Error("TUNNEL_PROVIDER_CONFIG_INVALID");
+  const expected = new Set(["provider", "mode", "executable", "tunnelId", "hostname", "credentials"]);
+  if (Object.keys(config).some((key) => !expected.has(key))) throw new Error("TUNNEL_PROVIDER_CONFIG_INVALID");
+  if (![config.executable, config.tunnelId, config.hostname].every((value) => typeof value === "string" && value.length > 0)) throw new Error("TUNNEL_PROVIDER_CONFIG_INVALID");
+  const credentials = config.credentials as Record<string, unknown>;
+  if (!credentials || Array.isArray(credentials) || Object.keys(credentials).length !== 1 || typeof credentials.path !== "string" || !credentials.path) throw new Error("TUNNEL_PROVIDER_CONFIG_INVALID");
+
+  let endpoint: URL;
+  let hostname: URL;
+  try { endpoint = new URL(input.target.endpoint); hostname = new URL(`https://${input.target.hostname}`); }
+  catch { throw new Error("TUNNEL_TARGET_INVALID"); }
+  if (endpoint.protocol !== "http:" || !["127.0.0.1", "[::1]"].includes(endpoint.hostname) || !endpoint.port || endpoint.username || endpoint.password || endpoint.pathname !== "/mcp" || endpoint.search || endpoint.hash) throw new Error("TUNNEL_TARGET_INVALID");
+  if (hostname.protocol !== "https:" || hostname.hostname !== input.target.hostname.toLowerCase() || hostname.username || hostname.password || hostname.port || hostname.pathname !== "/" || hostname.search || hostname.hash || input.target.hostname.includes("*")) throw new Error("TUNNEL_TARGET_INVALID");
+
+  const policy = { ...DEFAULT_TUNNEL_RESTART_POLICY, ...input.restartPolicy };
+  if (!Object.values(policy).every((value) => Number.isSafeInteger(value) && value >= 0) || policy.maxRestarts > 10 || policy.baseDelayMs > policy.maxDelayMs || policy.stableResetMs < 1) throw new Error("TUNNEL_RESTART_POLICY_INVALID");
+}
+
 export interface TunnelStatus {
   readonly state: TunnelState;
   readonly provider: string;

@@ -8,7 +8,18 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { createCloudflaredAdapter } from "../../dist/tunnels/cloudflared.js";
+import { createCloudflaredAdapter, validateTunnelStartInput } from "../../dist/tunnels/cloudflared.js";
+
+test("provider-neutral start validation rejects unsafe targets, unknown modes, and invalid retry policies before spawn", () => {
+  const input = {
+    config: { provider: "cloudflared", mode: "named-credentials", executable: process.execPath, tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", hostname: "kanmer.example.test", credentials: { path: "C:/opaque.json" } },
+    target: { endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" },
+  };
+  assert.doesNotThrow(() => validateTunnelStartInput(input));
+  assert.throws(() => validateTunnelStartInput({ ...input, config: { ...input.config, mode: "quick" } }), /TUNNEL_PROVIDER_CONFIG_INVALID/);
+  assert.throws(() => validateTunnelStartInput({ ...input, target: { ...input.target, endpoint: "http://192.168.0.1:43123/mcp" } }), /TUNNEL_TARGET_INVALID/);
+  assert.throws(() => validateTunnelStartInput({ ...input, restartPolicy: { maxRestarts: 11 } }), /TUNNEL_RESTART_POLICY_INVALID/);
+});
 
 test("adapter validates an owned credentials file before starting a direct child", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-test-"));

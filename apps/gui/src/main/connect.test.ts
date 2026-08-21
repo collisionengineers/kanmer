@@ -27,8 +27,10 @@ const {
   disconnectAgent,
   marketplaceRoot,
   pluginRoot,
+  probeCodexLauncher,
   reconcileSkills,
   removeBundledSkillsOnly,
+  serverInvocation,
   updateSkills,
 } = await import("./connect.js");
 type AgentProvider = import("./providers.js").AgentProvider;
@@ -352,6 +354,54 @@ describe("disconnect and provider-specific project skill directories", () => {
     await expect(
       readFile(join(root, ".opencode", "skills", "kanmer-plan", "SKILL.md"), "utf8"),
     ).resolves.toBe("opencode plan\n");
+  });
+});
+
+describe("portable Codex launcher contract (GUI-100)", () => {
+  it("selects one fresh rootless invocation for Codex and preserves installed Electron for other providers", () => {
+    const codex = serverInvocation("codex", "C:/board-a", "C:/source-a");
+    expect(codex).toEqual({
+      command: "cmd.exe",
+      args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"'],
+      env: {},
+    });
+    const second = serverInvocation("codex", "D:/other-board", "D:/other-source");
+    expect(second).toEqual(codex);
+    expect(second.args).not.toBe(codex.args);
+
+    const grok = serverInvocation("grok", "C:/board-a", "C:/source-a");
+    expect(grok.command).toBe(process.execPath);
+    expect(grok.args).toContain("C:/board-a");
+    expect(grok.env).toEqual({ ELECTRON_RUN_AS_NODE: "1" });
+  });
+
+  it("runs the fixed probe with explicit argv and bounded Windows options", async () => {
+    const calls: unknown[] = [];
+    const result = await probeCodexLauncher("C:/workspace", async (file, args, options) => {
+      calls.push({ file, args, options });
+      return { stdout: "Kanmer MCP launcher: healthy\n", stderr: "" };
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.output).toBe("Kanmer MCP launcher: healthy");
+    expect(calls).toEqual([{
+      file: "cmd.exe",
+      args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe'],
+      options: { cwd: "C:/workspace", windowsHide: true, timeout: 10_000, maxBuffer: 32 * 1024 },
+    }]);
+  });
+
+  it("refuses a failed probe before creating or changing project config", async () => {
+    const root = await tempRoot();
+    const result = await connectAgent("codex", root, root, {
+      probeRunner: async () => { throw new Error("exit 67: launcher missing"); },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.command).toContain("cmd.exe");
+    expect(result.command).toContain("--probe");
+    expect(result.output).toContain("No absolute-path fallback was used");
+    await missing(root, ".codex", "config.toml");
   });
 });
 

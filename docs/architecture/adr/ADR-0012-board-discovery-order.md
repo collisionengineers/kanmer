@@ -211,7 +211,7 @@ the corrected premise above: it breaks the dominant case.
 Related: ADR-0007 (codex project config — the "cwd is the common case" reasoning
 this retires) · FRD-022 · MCP-010 · MCP-011 · MCP-012 · MCP-008 · MCP-007.
 
-## Consumer constraint — installer launcher (GUI-099)
+## Consumer constraint — installer launcher and Codex Connect (GUI-099/GUI-100)
 
 The Windows installer-owned launcher in ADR-0018 is a consumer of this decision:
 it must directly invoke the packaged MCP child while inheriting the provider's
@@ -219,3 +219,12 @@ current working directory and standard streams. It must not `cd`, use `start`,
 or forward arbitrary provider arguments. The resulting discovery order and
 tie-breaks above are unchanged; this simply prevents an install-directory wrapper
 from defeating discovery before it begins.
+
+GUI-100's Codex Connect consumer deliberately serializes no `--root`,
+`--repo-root`, `cwd`, install path or bundle path. Its project entry invokes
+`cmd.exe /d /s /c "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"`; the fixed
+launcher expands the destination machine's environment and passes the provider
+workspace cwd/std streams through to the MCP child. Connect probes that same
+command before writing project configuration and refuses without an absolute
+fallback when the installer-owned launcher is unhealthy. This names a consumer
+of the discovery order, not a change to the order itself.

@@ -1,5 +1,5 @@
 import { app } from "electron";
-import { exec } from "node:child_process";
+import { exec, execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, rename, rm, rmdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -16,6 +16,8 @@ import {
   type Invocation,
   type ProviderId,
   antigravityBindingNote,
+  codexPortableInvocation,
+  codexPortableProbeInvocation,
   codexTrustFromConfig,
   codexTrustNote,
   classifyLegacyCodexEntry,
@@ -29,6 +31,14 @@ import { applyManagedBlock, removeManagedBlock } from "./agentsBlock.js";
 
 const execAsync = promisify(exec);
 
+export type CodexProbeRunner = (
+  file: string,
+  args: string[],
+  options: { cwd: string; windowsHide: boolean; timeout: number; maxBuffer: number },
+) => Promise<{ stdout: string; stderr: string }>;
+
+const execFileAsync = promisify(execFile) as unknown as CodexProbeRunner;
+
 /** Back-compat alias — the IPC layer still refers to a "connect target". */
 export type ConnectTarget = ProviderId;
 
@@ -40,10 +50,46 @@ export interface ConnectResult {
 }
 
 /**
- * How to launch the MCP server: via the Electron binary as Node
- * (ELECTRON_RUN_AS_NODE=1), so the target machine needs no separate Node.
+ * Preflight the installer-owned launcher before Codex Connect touches any
+ * project config or legacy registration. The runner is injectable for unit
+ * tests; production uses explicit execFile argv with no shell concatenation.
  */
-function serverInvocation(boardRoot: string, sourceRoot: string): Invocation {
+export async function probeCodexLauncher(
+  projectRoot: string,
+  run: CodexProbeRunner = execFileAsync,
+): Promise<ConnectResult> {
+  const invocation = codexPortableProbeInvocation();
+  const command = [invocation.command, ...invocation.args].map(q).join(" ");
+  try {
+    const { stdout, stderr } = await run(invocation.command, invocation.args, {
+      cwd: projectRoot,
+      windowsHide: true,
+      timeout: 10_000,
+      maxBuffer: 32 * 1024,
+    });
+    return {
+      ok: true,
+      command,
+      output: (stdout || stderr || "Kanmer launcher probe passed.").trim(),
+    };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message.split("\n").slice(0, 2).join(" ") : String(err);
+    return {
+      ok: false,
+      command,
+      output:
+        `Kanmer launcher probe failed before changing Codex configuration: ${detail} ` +
+        "Repair or reinstall Kanmer, then retry Connect. No absolute-path fallback was used.",
+    };
+  }
+}
+
+/**
+ * How the installed Electron binary launches the MCP server for non-Codex
+ * providers: Electron-as-Node, with the selected board and optional source
+ * root pinned exactly as before GUI-100.
+ */
+function installedElectronInvocation(boardRoot: string, sourceRoot: string): Invocation {
   const env = { ELECTRON_RUN_AS_NODE: "1" };
   let script: string;
   if (app.isPackaged) {
@@ -59,6 +105,11 @@ function serverInvocation(boardRoot: string, sourceRoot: string): Invocation {
   // checkout, and the server cannot see it from --root alone.
   if (resolve(sourceRoot) !== resolve(boardRoot)) args.push("--repo-root", sourceRoot);
   return { command: process.execPath, args, env };
+}
+
+/** Select the portable Codex contract without changing any other provider. */
+export function serverInvocation(id: ProviderId, boardRoot: string, sourceRoot: string): Invocation {
+  return id === "codex" ? codexPortableInvocation() : installedElectronInvocation(boardRoot, sourceRoot);
 }
 
 /**
@@ -481,11 +532,25 @@ export async function updateSkills(id: ProviderId, projectRoot: string): Promise
  * config-file merge) and install the skills (a marketplace CLI, or the AGENTS.md
  * block + a project skills copy). Idempotent — re-running just refreshes.
  */
-export async function connectAgent(id: ProviderId, projectRoot: string, boardRoot: string): Promise<ConnectResult> {
+export interface ConnectOptions {
+  /** Test-only seam for the Codex launcher probe. */
+  probeRunner?: CodexProbeRunner;
+}
+
+export async function connectAgent(
+  id: ProviderId,
+  projectRoot: string,
+  boardRoot: string,
+  options: ConnectOptions = {},
+): Promise<ConnectResult> {
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
-  const inv = serverInvocation(boardRoot, projectRoot);
+  const inv = serverInvocation(id, boardRoot, projectRoot);
   try {
+    if (id === "codex") {
+      const probe = await probeCodexLauncher(projectRoot, options.probeRunner);
+      if (!probe.ok) return probe;
+    }
     let command: string;
     let output: string;
     if (provider.register.kind === "cli") {

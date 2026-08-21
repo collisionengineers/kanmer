@@ -1,42 +1,22 @@
-# Example codex MCP registration for Kanmer.
+# Example portable Codex MCP registration for Kanmer Connect.
 #
-# NOTE: the easier route is the Kanmer plugin, which bundles this server plus
-# workflow skills and templates:
+# The recommended route is the Kanmer plugin for workflow skills plus Connect
+# for the board MCP registration. Do not combine this project registration with
+# a second manual/plugin MCP registration for the same server.
 #
-#   codex plugin marketplace add collisionengineers/kanmer
-#   # then install "kanmer" from /plugins
+# Prerequisites:
+# - Windows Kanmer installed through the supported per-user NSIS installer.
+# - The installer-owned launcher exists at
+#   %LOCALAPPDATA%\Kanmer\bin\kanmer-mcp.cmd and `--probe` succeeds.
+# - The project is trusted by Codex so it loads project-scoped config.
+# - Run Connect again after repair/reinstall; it replaces only this entry.
 #
-# Use this manual config instead if you don't want the plugin — not both, or the
-# tools get listed twice.
-#
-# Add this block to your project-scoped .codex/config.toml (recommended) or to
-# ~/.codex/config.toml. codex launches the server over stdio.
-#
-# The server resolves the project root (where .kanmer lives) from, in order:
-#   1. a --root <path> argument
-#   2. the KANMER_ROOT environment variable
-#   3. discovery: from the working directory upwards, looking for .kanmer/ and
-#      then for a board parked in .worktrees/*/.kanmer, stopping at a real .git
-#      directory (a git worktree's .git *file* is passed through)
-#   4. --init / KANMER_INIT=1, which permits creating a board at the working
-#      directory when none was found
-# Finding no board is fatal: the server exits naming every path it tried.
-#
-# Using `cwd` (below) points discovery at THIS project.
-#
-# Replace `<kanmer-repo>` with wherever you cloned this repo.
+# The launcher expands LOCALAPPDATA on the destination machine and preserves
+# Codex's project working directory. No username, drive, install path, board
+# path, source checkout, Node path or root flag belongs in this registration.
+# GUI-101/GUI-102 own packaged update and real-host machine-move proof before
+# this ignored file becomes a shareable repository configuration.
 
 [mcp_servers.kanmer]
-command = "node"
-args = ["<kanmer-repo>/packages/mcp-server/dist/index.js"]
-cwd = "C:/path/to/your/project"
-
-# Alternatively, pin the root explicitly instead of relying on cwd:
-#
-# [mcp_servers.kanmer]
-# command = "node"
-# args = [
-#   "<kanmer-repo>/packages/mcp-server/dist/index.js",
-#   "--root",
-#   "C:/path/to/your/project",
-# ]
+command = "cmd.exe"
+args = ["/d", "/s", "/c", "\"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd\""]

@@ -68,3 +68,21 @@ test("stop cancels a scheduled production retry before another child starts", as
   await new Promise(setImmediate);
   assert.equal(exits.length, 1);
 });
+
+test("terminal exit classification fails without scheduling an unsafe retry", async () => {
+  const exits = [];
+  const states = [];
+  const supervisor = new TunnelSupervisor({
+    classifyExit: () => "terminal",
+    onState: (state) => states.push(state),
+    start: async () => {
+      const exit = deferred(); exits.push(exit);
+      return { exited: exit.promise, stop: async () => exit.resolve({ code: 0, signal: null }) };
+    },
+  });
+  await supervisor.start();
+  exits[0].resolve({ code: 78, signal: null });
+  await new Promise(setImmediate);
+  assert.deepEqual(states, ["starting", "running", "failed"]);
+  assert.equal(exits.length, 1);
+});

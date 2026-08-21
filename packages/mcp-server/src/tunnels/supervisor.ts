@@ -8,6 +8,8 @@ export interface TunnelSupervisorOptions {
   readonly wait?: (delayMs: number) => Promise<void>;
   /** Test seam; production supplies bounded ±20% jitter. */
   readonly random?: () => number;
+  /** Security/configuration exits are terminal; only transient exits retry. */
+  readonly classifyExit?: (result: Awaited<TunnelProcess["exited"]>) => "transient" | "terminal";
   readonly onState?: (state: "starting" | "running" | "restarting" | "stopped" | "failed") => void;
 }
 
@@ -42,13 +44,14 @@ export class TunnelSupervisor {
     this.process = process;
     this.startedAt.set(process, Date.now());
     this.emit("running");
-    void process.exited.then(() => this.onExit(process));
+    void process.exited.then((result) => this.onExit(process, result));
   }
 
-  private async onExit(process: TunnelProcess): Promise<void> {
+  private async onExit(process: TunnelProcess, result: Awaited<TunnelProcess["exited"]>): Promise<void> {
     if (this.process !== process) return;
     this.process = undefined;
     if (this.stopping) { this.emit("stopped"); return; }
+    if ((this.options.classifyExit?.(result) ?? "transient") === "terminal") { this.emit("failed"); return; }
     if ((Date.now() - (this.startedAt.get(process) ?? Date.now())) >= this.policy.stableResetMs) this.restarts = 0;
     if (this.restarts >= this.maxRestarts) { this.emit("failed"); return; }
     this.restarts++;

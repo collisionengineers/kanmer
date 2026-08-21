@@ -29,3 +29,7 @@ Quick Tunnels, remote-managed token mode, Access, account/DNS automation, Worker
 ## Traceability
 
 Implementation commits on this branch include the provider-neutral adapter, fake provider, readiness/metrics, diagnostics, lifecycle and shutdown hardening, merged MCP-026 auth lifecycle fixes, ingress validation, and process-tree ownership. The final merge commit and reachable implementation SHAs will be recorded after independent review and merge.
+
+## Review follow-up
+
+Commit 88911daa wires the headless remote CLI to perform an authenticated local MCP initialize/DELETE handshake before provider spawn. The protected token is used only for that local request and is never passed to the adapter or emitted in status/diagnostics. Build, typecheck, and 10 targeted auth/HTTP/remote tests passed after this follow-up.

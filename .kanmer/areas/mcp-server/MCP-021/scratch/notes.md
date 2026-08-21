@@ -25,3 +25,11 @@ Fixture checkpoint: commit e84f16e adds `tunnels/fixtures/fake-cloudflared.mjs`,
 Startup-state checkpoint: commit ecb3460 ensures a pre-provider validation/spawn failure emits provider `failed` while preserving the authenticated local HTTP listener; remote-host integration test covers it. Typecheck and focused suite 19/19 pass.
 
 Typed-contract checkpoint: commit da879de adds a provider-discriminated named-credentials config, opaque credential reference, generic start input, and non-secret project/auth status fields. MCP typecheck and focused 19-test suite pass.
+
+## Readiness health checkpoint — 2026-08-21
+
+Commit `1ba3b91` adds optional provider-owned local readiness checks to `TunnelProcess` and a low-frequency remote-host monitor. A running provider transitions to `degraded` when its local `/ready` check fails and back to `running` on recovery, without treating child output or a public request as proof and without restarting the same valid child.
+
+Evidence: `npm run typecheck -w @kanmer/mcp-server` passed; `npm run test:http -w @kanmer/mcp-server` passed 20/20 (including the new loss/recovery test); `git diff --check` passed. This remains Implementing: generic handle/events, bounded allocator/retry, structured redacted logs, origin/auth invalidation, complete lifecycle integration, and full fake-provider smoke remain.
+
+Amendment: the readiness-monitor commit was amended to `b32281b` to cancel any prior monitor on restart and ignore stale process probes. Focused remote-host tests passed 3/3 and MCP typecheck remained green.

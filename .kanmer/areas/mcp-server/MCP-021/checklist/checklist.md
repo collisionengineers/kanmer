@@ -62,7 +62,7 @@
 - [ ] Use canonical/bounded port allocator with collision handling.
 - [x] Poll documented readiness with timeout/abort/size limits.
 - [x] Require readiness, not child existence/log prose, for connected.
-- [ ] Move degraded/recovered on readiness loss/return.
+- [x] Move degraded/recovered on readiness loss/return.
 - [ ] Release poller/port resources idempotently.
 - [ ] Test success, timeout, malformed, flap, exit, collision, abort, cleanup.
 

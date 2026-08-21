@@ -344,6 +344,16 @@ test("rotation persists before activation, invalidates sessions, and aggregates 
     await host.revokeBearer();
     assert.equal((await fetch(ready.endpoint, { method: "GET", headers: authHeaders(second.token) })).status, 401);
 
+    const failingHost = createKanmerHttpHost({ authorizer: new BearerAuthorizer(first.verifier), sweepIntervalMs: 60_000 });
+    const failingReady = await failingHost.start();
+    try {
+      await initialize(failingReady.endpoint, first.token, "rotation-failure");
+      failingHost.invalidatePrincipal = async () => { throw new Error("session invalidation failed"); };
+      await assert.rejects(() => failingHost.rotateBearerVerifier(second.verifier, { persist: async () => undefined }), /session invalidation failed/);
+      assert.equal((await fetch(failingReady.endpoint, { method: "GET", headers: authHeaders(first.token) })).status, 401, "ambiguous invalidation fails closed for old token");
+      assert.equal((await fetch(failingReady.endpoint, { method: "GET", headers: authHeaders(second.token) })).status, 401, "ambiguous invalidation fails closed for new token");
+    } finally { await failingHost.close(); }
+
     const canary = "A".repeat(43);
     const originalWrite = process.stderr.write;
     const stderr = [];

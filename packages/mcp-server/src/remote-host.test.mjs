@@ -15,7 +15,7 @@ test("remote host starts bearer-protected HTTP before giving one loopback target
     assert.deepEqual(await remote.start(), { endpoint: "https://kanmer.example.test/mcp" });
     assert.match(target.endpoint, /^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
     assert.equal(target.hostname, "kanmer.example.test");
-    assert.match(target.projectFingerprint, /^[0-9a-f]{64}$/);
+    assert.match(target.projectFingerprint, /^[0-9a-f]{16}$/);
     assert.deepEqual(remote.getStatus(), { local: "ready", provider: "running", publicVerification: "unknown", endpoint: "https://kanmer.example.test/mcp" });
   } finally { await remote.close(); }
 });

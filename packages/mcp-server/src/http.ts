@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { Socket } from "node:net";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
+import { isInitializeRequest, SUPPORTED_PROTOCOL_VERSIONS } from "@modelcontextprotocol/sdk/types.js";
 import { createKanmerMcpServer, projectFingerprint } from "./index.js";
 import { BearerAuthorizer, type BearerVerifier, unauthorizedHeaders } from "./http-auth.js";
 
@@ -19,14 +19,20 @@ export interface HttpHostOptions {
   host?: string;
   port?: number;
   allowedOrigins?: readonly string[];
+  maxHeaderBytes?: number;
   maxBodyBytes?: number;
+  maxConnections?: number;
+  requestTimeoutMs?: number;
+  keepAliveTimeoutMs?: number;
   maxSessions?: number;
   maxSessionsPerPrincipal?: number;
   maxInFlight?: number;
+  maxInFlightPerSession?: number;
   idleTtlMs?: number;
   sweepIntervalMs?: number;
   shutdownGraceMs?: number;
-  onEvent?: (event: HttpSecurityEvent) => void;
+  clock?: () => number;
+  onEvent?: (event: HttpEvent) => void;
 }
 
 /** Intentionally allowlisted diagnostics: no headers, tokens, digests, bodies, or session ids. */
@@ -36,6 +42,15 @@ export interface HttpSecurityEvent {
   readonly tokenId?: string;
   readonly fingerprint?: string;
 }
+
+export interface HttpStoppedEvent {
+  readonly kind: "kanmer-mcp-http-stopped";
+  readonly at: string;
+  readonly reason: "requested" | "forced-timeout";
+}
+
+export type HttpEvent = HttpSecurityEvent | HttpStoppedEvent;
+type HttpEventInput = Omit<HttpSecurityEvent, "at"> | Omit<HttpStoppedEvent, "at">;
 
 export interface HttpReadyEvent {
   kind: "kanmer-mcp-http-ready";
@@ -47,6 +62,7 @@ export interface HttpReadyEvent {
   projectFingerprint: string;
   mode: "remote-http-v1";
   authRequired: true;
+  supportedProtocolVersions: readonly string[];
 }
 
 interface Session {
@@ -61,10 +77,15 @@ interface Session {
 const DEFAULTS = Object.freeze({
   host: "127.0.0.1",
   port: 0,
+  maxHeaderBytes: 16 * 1024,
   maxBodyBytes: 1_048_576,
+  maxConnections: 64,
+  requestTimeoutMs: 30_000,
+  keepAliveTimeoutMs: 5_000,
   maxSessions: 32,
   maxSessionsPerPrincipal: 8,
   maxInFlight: 32,
+  maxInFlightPerSession: 8,
   idleTtlMs: 15 * 60_000,
   sweepIntervalMs: 30_000,
   shutdownGraceMs: 5_000,
@@ -79,6 +100,27 @@ function positive(value: number, name: string, allowZero = false): number {
     throw new Error(`${name} must be a ${allowZero ? "non-negative" : "positive"} integer`);
   }
   return value;
+}
+
+function bounded(value: number, name: string, maximum: number): number {
+  const result = positive(value, name);
+  if (result > maximum) throw new Error(`${name} must be at most ${maximum}`);
+  return result;
+}
+
+function validateOrigins(origins: readonly string[] | undefined): readonly string[] | undefined {
+  if (origins === undefined) return undefined;
+  return origins.map((origin) => {
+    if (!origin || origin.includes("*") || origin.trim() !== origin) {
+      throw new Error("allowedOrigins must contain exact origins");
+    }
+    let parsed: URL;
+    try { parsed = new URL(origin); } catch { throw new Error("allowedOrigins must contain valid origins"); }
+    if (parsed.origin !== origin || (parsed.protocol !== "http:" && parsed.protocol !== "https:")) {
+      throw new Error("allowedOrigins must contain exact HTTP(S) origins");
+    }
+    return origin;
+  });
 }
 
 function writeText(res: ServerResponse, status: number, body: string, headers: Record<string, string> = {}): void {
@@ -104,17 +146,27 @@ async function readJson(req: IncomingMessage, maxBytes: number): Promise<unknown
 
 /** A loopback-only, fail-closed host around the SDK Streamable HTTP transport. */
 export class KanmerHttpHost {
-  private readonly options: Required<Omit<HttpHostOptions, "allowedOrigins" | "onEvent">> & Pick<HttpHostOptions, "allowedOrigins" | "onEvent">;
+  private readonly options: Required<Omit<HttpHostOptions, "allowedOrigins" | "onEvent" | "clock">> & Pick<HttpHostOptions, "allowedOrigins" | "onEvent" | "clock">;
   private readonly sessions = new Map<string, Session>();
   private readonly sockets = new Set<Socket>();
   private readonly httpServer: Server;
   private readonly sweepTimer: NodeJS.Timeout;
   private stopping = false;
+  private stoppedEmitted = false;
   private inFlight = 0;
 
-  private emit(event: Omit<HttpSecurityEvent, "at">): void {
-    try { this.options.onEvent?.({ ...event, at: new Date().toISOString() }); } catch { /* diagnostics never affect serving */ }
+  private emit(event: HttpEventInput): void {
+    try {
+      this.options.onEvent?.({ ...event, at: new Date().toISOString() } as HttpEvent);
+    } catch (error) {
+      // Observer failures must not affect protocol responses, but they must
+      // remain visible to the parent rather than disappearing silently.
+      const detail = error instanceof Error ? error.message : String(error);
+      process.stderr.write(`kanmer-mcp-http diagnostic observer failed: ${detail.slice(0, 256)}\n`);
+    }
   }
+
+  private now(): number { return this.options.clock?.() ?? Date.now(); }
 
   constructor(options: HttpHostOptions) {
     if (!options.authorizer) throw new Error("HTTP transport requires an authorizer");
@@ -123,21 +175,31 @@ export class KanmerHttpHost {
     const port = options.port ?? DEFAULTS.port;
     positive(port, "port", true);
     if (port > 65_535) throw new Error("port must be at most 65535");
+    const maxHeaderBytes = bounded(options.maxHeaderBytes ?? DEFAULTS.maxHeaderBytes, "maxHeaderBytes", 64 * 1024);
     this.options = {
       authorizer: options.authorizer,
       host,
       port,
-      allowedOrigins: options.allowedOrigins,
+      allowedOrigins: validateOrigins(options.allowedOrigins),
       onEvent: options.onEvent,
-      maxBodyBytes: positive(options.maxBodyBytes ?? DEFAULTS.maxBodyBytes, "maxBodyBytes"),
-      maxSessions: positive(options.maxSessions ?? DEFAULTS.maxSessions, "maxSessions"),
-      maxSessionsPerPrincipal: positive(options.maxSessionsPerPrincipal ?? DEFAULTS.maxSessionsPerPrincipal, "maxSessionsPerPrincipal"),
-      maxInFlight: positive(options.maxInFlight ?? DEFAULTS.maxInFlight, "maxInFlight"),
-      idleTtlMs: positive(options.idleTtlMs ?? DEFAULTS.idleTtlMs, "idleTtlMs"),
-      sweepIntervalMs: positive(options.sweepIntervalMs ?? DEFAULTS.sweepIntervalMs, "sweepIntervalMs"),
-      shutdownGraceMs: positive(options.shutdownGraceMs ?? DEFAULTS.shutdownGraceMs, "shutdownGraceMs"),
+      clock: options.clock,
+      maxHeaderBytes,
+      maxBodyBytes: bounded(options.maxBodyBytes ?? DEFAULTS.maxBodyBytes, "maxBodyBytes", 10 * 1024 * 1024),
+      maxConnections: bounded(options.maxConnections ?? DEFAULTS.maxConnections, "maxConnections", 4096),
+      requestTimeoutMs: bounded(options.requestTimeoutMs ?? DEFAULTS.requestTimeoutMs, "requestTimeoutMs", 10 * 60_000),
+      keepAliveTimeoutMs: bounded(options.keepAliveTimeoutMs ?? DEFAULTS.keepAliveTimeoutMs, "keepAliveTimeoutMs", 10 * 60_000),
+      maxSessions: bounded(options.maxSessions ?? DEFAULTS.maxSessions, "maxSessions", 4096),
+      maxSessionsPerPrincipal: bounded(options.maxSessionsPerPrincipal ?? DEFAULTS.maxSessionsPerPrincipal, "maxSessionsPerPrincipal", 4096),
+      maxInFlight: bounded(options.maxInFlight ?? DEFAULTS.maxInFlight, "maxInFlight", 4096),
+      maxInFlightPerSession: bounded(options.maxInFlightPerSession ?? DEFAULTS.maxInFlightPerSession, "maxInFlightPerSession", 1024),
+      idleTtlMs: bounded(options.idleTtlMs ?? DEFAULTS.idleTtlMs, "idleTtlMs", 24 * 60 * 60_000),
+      sweepIntervalMs: bounded(options.sweepIntervalMs ?? DEFAULTS.sweepIntervalMs, "sweepIntervalMs", 60 * 60_000),
+      shutdownGraceMs: bounded(options.shutdownGraceMs ?? DEFAULTS.shutdownGraceMs, "shutdownGraceMs", 10 * 60_000),
     };
-    this.httpServer = createServer({ maxHeaderSize: 16 * 1024 }, (req, res) => void this.handle(req, res));
+    this.httpServer = createServer({ maxHeaderSize: maxHeaderBytes }, (req, res) => void this.handle(req, res));
+    this.httpServer.maxConnections = this.options.maxConnections;
+    this.httpServer.requestTimeout = this.options.requestTimeoutMs;
+    this.httpServer.keepAliveTimeout = this.options.keepAliveTimeoutMs;
     this.httpServer.on("connection", (socket) => {
       this.sockets.add(socket);
       socket.on("close", () => this.sockets.delete(socket));
@@ -157,7 +219,18 @@ export class KanmerHttpHost {
     });
     const address = this.httpServer.address();
     if (!address || typeof address === "string") throw new Error("HTTP listener did not return a TCP address");
-    return { kind: "kanmer-mcp-http-ready", version: 1, pid: process.pid, host: this.options.host, port: address.port, endpoint: `http://${this.options.host}:${address.port}/mcp`, projectFingerprint: projectFingerprint(), mode: "remote-http-v1", authRequired: true };
+    return {
+      kind: "kanmer-mcp-http-ready",
+      version: 1,
+      pid: process.pid,
+      host: this.options.host,
+      port: address.port,
+      endpoint: `http://${this.options.host}:${address.port}/mcp`,
+      projectFingerprint: await projectFingerprint(),
+      mode: "remote-http-v1",
+      authRequired: true,
+      supportedProtocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS],
+    };
   }
 
   private originAllowed(origin: string | undefined): boolean {
@@ -180,19 +253,28 @@ export class KanmerHttpHost {
     }
     const origin = typeof req.headers.origin === "string" ? req.headers.origin : undefined;
     if (!this.originAllowed(origin)) return writeText(res, 403, "Forbidden");
-    let principal: string;
-    try {
-      const authorized = await this.options.authorizer.authorize({ headers: req.headers });
-      principal = authorized.principal;
-      if (!principal) throw new Error("empty principal");
-    } catch {
-      this.emit({ kind: "auth-rejected" });
-      return writeText(res, 401, "Unauthorized", unauthorizedHeaders());
-    }
     if (this.inFlight >= this.options.maxInFlight) return writeText(res, 429, "Too many requests");
     this.inFlight++;
+    let principal: string;
     try {
+      try {
+        const authorized = await this.options.authorizer.authorize({ headers: req.headers });
+        principal = authorized.principal;
+        if (!principal) throw new Error("empty principal");
+      } catch {
+        this.emit({ kind: "auth-rejected" });
+        return writeText(res, 401, "Unauthorized", unauthorizedHeaders());
+      }
       const sessionId = typeof req.headers["mcp-session-id"] === "string" ? req.headers["mcp-session-id"] : undefined;
+      if (sessionId && !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) {
+        return writeText(res, 400, "Bad request");
+      }
+      const contentLength = req.headers["content-length"];
+      if (req.method === "POST" && contentLength !== undefined) {
+        const length = Number(contentLength);
+        if (!Number.isSafeInteger(length) || length < 0) return writeText(res, 400, "Bad request");
+        if (length > this.options.maxBodyBytes) return writeText(res, 413, "Bad request");
+      }
       let body: unknown;
       if (req.method === "POST") {
         try { body = await readJson(req, this.options.maxBodyBytes); }
@@ -210,15 +292,16 @@ export class KanmerHttpHost {
           onsessioninitialized: (id) => { this.sessions.set(id, created); },
         });
         const mcpServer = createKanmerMcpServer("remote-http-v1");
-        created = { principal, transport, server: mcpServer, lastActive: Date.now(), inFlight: 0, closing: false };
+        created = { principal, transport, server: mcpServer, lastActive: this.now(), inFlight: 0, closing: false };
         transport.onclose = () => { const id = transport.sessionId; if (id) void this.closeSession(id); };
         await mcpServer.connect(transport);
         session = created;
       }
-      session.lastActive = Date.now();
+      if (session.inFlight >= this.options.maxInFlightPerSession) return writeText(res, 429, "Too many requests");
+      session.lastActive = this.now();
       session.inFlight++;
       try { await session.transport.handleRequest(req, res, body); }
-      finally { session.inFlight--; session.lastActive = Date.now(); }
+      finally { session.inFlight--; session.lastActive = this.now(); }
     } catch {
       if (!res.headersSent) writeText(res, 500, "Internal server error");
     } finally { this.inFlight--; }
@@ -229,7 +312,7 @@ export class KanmerHttpHost {
   }
 
   private async sweep(): Promise<void> {
-    const cutoff = Date.now() - this.options.idleTtlMs;
+    const cutoff = this.now() - this.options.idleTtlMs;
     await Promise.all([...this.sessions.entries()].filter(([, session]) => session.lastActive < cutoff && session.inFlight === 0).map(([id]) => this.closeSession(id)));
   }
 
@@ -270,16 +353,30 @@ export class KanmerHttpHost {
     if (this.stopping) return;
     this.stopping = true;
     clearInterval(this.sweepTimer);
-    // close() first stops new accepts; sessions are then closed before waiting
-    // for keep-alive/SSE sockets, with a bounded forced cleanup fallback.
+    // Stop accepts first, then close/abort protocol state. A forced socket
+    // cleanup is armed before awaiting either operation so a stuck transport
+    // cannot make shutdown unbounded.
     const listenerClosed = new Promise<void>((resolve) => this.httpServer.close(() => resolve()));
-    await Promise.all([...this.sessions.keys()].map((id) => this.closeSession(id)));
+    const sessionsClosed = Promise.all([...this.sessions.keys()].map((id) => this.closeSession(id)));
+    let forced = false;
     const force = setTimeout(() => {
+      forced = true;
       for (const socket of this.sockets) socket.destroy();
     }, this.options.shutdownGraceMs);
     force.unref();
-    await listenerClosed;
+    const completed = await Promise.race([
+      Promise.all([listenerClosed, sessionsClosed]).then(() => true),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), this.options.shutdownGraceMs)),
+    ]);
+    if (!completed) forced = true;
+    if (forced) {
+      for (const socket of this.sockets) socket.destroy();
+    }
     clearTimeout(force);
+    if (!this.stoppedEmitted) {
+      this.stoppedEmitted = true;
+      this.emit({ kind: "kanmer-mcp-http-stopped", reason: forced ? "forced-timeout" : "requested" });
+    }
   }
 }
 

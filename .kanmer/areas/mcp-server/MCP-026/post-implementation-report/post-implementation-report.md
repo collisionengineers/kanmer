@@ -36,3 +36,9 @@ This covers the MCP-owned bearer and headless secret boundary in FRD-025/ADR-001
 - [[MCP-021]] supplies tunnel lifecycle.
 - [[MCP-027]] adds diagnostics.
 - [[MCP-028]] owns live remote cross-component proof.
+
+## Independent review finding and remediation
+
+PR #112 independent review initially returned NEEDS CHANGES: `KanmerHttpHost.closeSession()` used `Promise.allSettled()` and discarded transport/server close failures, so rotation/revocation could not observe incomplete invalidation. The fix replaces that suppression with fail-visible `Promise.all()`, reports asynchronous sweep/onclose failures through the canonical redactor, makes shutdown surface session-close errors after forced cleanup, and adds a regression that makes the actual MCP session server close fail during rotation. The author did not review or merge the PR.
+
+After the fix: `npm run test:http -w @kanmer/mcp-server` 10/10, MCP typecheck, build, HTTP smoke, and diff-check pass. The reviewer also recorded a Windows root-suite timeout/ENOTEMPTY flake (254/256 core in that attempt); the exact root suite was independently rerun after the required build and passed core 256/256, GUI 318/318, HTTP 10/10, scripts 66/66.

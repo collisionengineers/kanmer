@@ -109,7 +109,7 @@
 
 ## Tests and verification
 
-- [ ] Add deterministic fake cloudflared executable.
+- [x] Add deterministic fake cloudflared executable.
 - [ ] Test local origin/auth failure prevents spawn.
 - [ ] Test valid local host reaches provider-connected.
 - [ ] Test public state remains unverified until doctor.

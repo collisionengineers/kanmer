@@ -1,0 +1,1 @@
+Merged-main verification on `a1a6175` passed: focused smoke-capture tests, GUI typecheck/build, diff check, and a fresh 1264×755/140480-byte live Electron PNG. Visual inspection confirmed marker `KANMER-SMOKE-1787274920329-17020` and the live board.

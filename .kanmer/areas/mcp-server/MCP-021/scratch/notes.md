@@ -35,3 +35,9 @@ Evidence: `npm run typecheck -w @kanmer/mcp-server` passed; `npm run test:http -
 Amendment: the readiness-monitor commit was amended to `b32281b` to cancel any prior monitor on restart and ignore stale process probes. Focused remote-host tests passed 3/3 and MCP typecheck remained green.
 
 Final amendment for this checkpoint: commit is `26a7253`; terminal supervisor states now stop and discard health monitoring too, preventing a failed/exhausted child from leaving a poller behind.
+
+## Spawned fake-provider checkpoint — 2026-08-21
+
+Commit `fea8b28` makes the existing fake-cloudflared fixture an actual adapter child in the integration test. The test validates local readiness through the real child, calls the handle’s repeated readiness check, terminates it, and proves the credentials canary is absent from surfaced diagnostics. It also fixes the Windows minimal allowlist to retain only `PATH` plus the platform-essential `SystemRoot`; bearer/provider secret environment values remain excluded.
+
+Evidence: MCP build passed; `cloudflared.test.mjs` passed 3/3; MCP typecheck and diff check passed. The fixture path is now anchored to `import.meta.url`, so it works from either root or workspace test cwd. Still Implementing; no real cloudflared binary was installed or invoked.

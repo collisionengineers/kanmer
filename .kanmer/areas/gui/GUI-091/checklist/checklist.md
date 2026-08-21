@@ -11,5 +11,19 @@
 - [x] Run a real Electron smoke capture, confirm non-empty PNG, inspect it for the current unique marker, and record dimensions.
 - [x] Confirm the regular smoke lifecycle remains unchanged when `KANMER_SMOKE_CAPTURE_PATH` is absent.
 - [x] Write the post-implementation report with commands, artifacts, limitation, and out-of-scope GUI-068 note.
-- [x] Open PR #98 with commit/PR traceability; independent review is next.
-- [ ] After merge, verify the capture workflow on `main`, write proof, move Done, and close out the worktree/branch.
+- [x] Open PR #98 with commit/PR traceability and record the review verdict.
+- [x] Verify the merged-main capture workflow and write proof.
+- [ ] Close out the merged worktree and branch.
+
+---
+
+## Closeout — GUI-091
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/gui-091`
+- [ ] `git branch -d gui-091-electron-capture-smoke` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

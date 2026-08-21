@@ -2,10 +2,12 @@
 id: SKILL-026
 type: ticket
 title: AGENTS.md ownership integration verification
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: chore
+stageEntered:
+  preparing: '2026-08-21T01:12:09.070Z'
 labels:
   - integration
 groups:
@@ -14,7 +16,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-20T10:14:57.069Z'
-updated: '2026-08-20T10:14:57.069Z'
+updated: '2026-08-21T01:12:09.070Z'
 ---
 
 ## What

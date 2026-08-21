@@ -1,4 +1,5 @@
 import { execFile as execFileCallback } from "node:child_process";
+import os from "node:os";
 import { promisify } from "node:util";
 
 const execFile = promisify(execFileCallback);
@@ -12,8 +13,10 @@ export interface CloudflaredValidationOptions {
 /** Direct, bounded validation only: no update, login, or account mutation. */
 export async function validateCloudflaredExecutable(options: CloudflaredValidationOptions): Promise<CloudflaredValidationResult> {
   const invoke = options.exec ?? (async (file: string, args: readonly string[]) => {
+    const env: NodeJS.ProcessEnv = { PATH: process.env.PATH ?? "" };
+    if (process.platform === "win32" && process.env.SystemRoot) env.SystemRoot = process.env.SystemRoot;
     const result = await execFile(file, [...args], {
-      cwd: process.cwd(), env: { PATH: process.env.PATH ?? "" }, timeout: 5_000,
+      cwd: os.tmpdir(), env, timeout: 5_000,
       maxBuffer: 16 * 1024, windowsHide: true, shell: false,
     });
     return { stdout: result.stdout, stderr: result.stderr };

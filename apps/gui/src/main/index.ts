@@ -153,6 +153,16 @@ function resolvedDark(): boolean {
   return theme === "system" ? nativeTheme.shouldUseDarkColors : theme === "dark";
 }
 
+/** Keep OS-rendered chrome (title/menu/dialogs) in the same mode as the app. */
+function applyNativeTheme(theme = readSettings().theme): void {
+  nativeTheme.themeSource = theme;
+  mainWindow?.setBackgroundColor(resolvedDark() ? "#0f1115" : "#f6f7f9");
+}
+
+nativeTheme.on("updated", () => {
+  if (readSettings().theme === "system") applyNativeTheme("system");
+});
+
 /** Restore saved window bounds only if they still intersect a display. */
 function restorableBounds(): WindowBounds | null {
   const saved = readSettings().windowBounds;
@@ -171,6 +181,7 @@ function restorableBounds(): WindowBounds | null {
 }
 
 function createWindow(): void {
+  applyNativeTheme();
   const saved = restorableBounds();
   mainWindow = new BrowserWindow({
     width: saved?.width ?? 1280,
@@ -658,7 +669,11 @@ function registerIpc(): void {
   );
   ipcMain.handle(CH.getLinks, (_e, p: string, id: string) => getLinkGraph(requireStore(p), id));
   ipcMain.handle(CH.getSettings, () => readSettings());
-  ipcMain.handle(CH.setTheme, (_e, theme: Theme) => setTheme(theme));
+  ipcMain.handle(CH.setTheme, (_e, theme: Theme) => {
+    const settings = setTheme(theme);
+    applyNativeTheme(settings.theme);
+    return settings;
+  });
   ipcMain.handle(CH.setNotifications, (_e, on: boolean) => setNotifications(on));
   ipcMain.handle(CH.setPreferences, (_e, patch: Partial<UiPreferences>) => setPreferences(patch));
   ipcMain.handle(CH.setKanmerGitPreferences, (_e, prefs: { kanmerBranch: string; gitSyncMinutes: number }) =>

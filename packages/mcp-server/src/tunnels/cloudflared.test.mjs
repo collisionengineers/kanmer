@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { spawn as nodeSpawn } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { PassThrough } from "node:stream";
 import os from "node:os";
@@ -62,6 +62,11 @@ test("fake provider receives one direct no-autoupdate metrics invocation and mus
     assert.equal(calls[0].options.shell, false);
     assert.deepEqual(Object.keys(calls[0].options.env), process.platform === "win32" && process.env.SystemRoot ? ["PATH", "SystemRoot"] : ["PATH"]);
     assert.equal(calls[0].args.join(" ").includes("credential-canary-not-an-argument"), false);
+    const configPath = calls[0].args[5];
+    const config = await readFile(configPath, "utf8");
+    assert.match(config, /^tunnel: 3f9620b4-423e-4f37-a30e-61ffcf91f403\ncredentials-file: /);
+    assert.match(config, /hostname: kanmer\.example\.test\n    service: http:\/\/127\.0\.0\.1:43123\/mcp\n  - service: http_status:404\n$/);
+    if (process.platform !== "win32") assert.equal((await stat(configPath)).mode & 0o077, 0);
     await handle.stop();
   } finally { if (server && !closed) await new Promise((resolve) => server.close(resolve)); await rm(directory, { recursive: true, force: true }); }
 });

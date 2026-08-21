@@ -66,11 +66,12 @@ export class CloudflaredAdapter implements TunnelAdapter {
     const metricsPort = this.options.metricsPort ?? await allocateLoopbackPort();
     if (!Number.isSafeInteger(metricsPort) || metricsPort < 1 || metricsPort > 65_535) throw new Error("TUNNEL_METRICS_PORT_INVALID");
     const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-"));
+    await chmod(directory, 0o700);
     const configPath = path.join(directory, "config.yml");
     let child: ChildProcess | undefined;
     let childExited: Promise<{ code: number | null; signal: NodeJS.Signals | null }> | undefined;
     try {
-      await writeFile(configPath, cloudflaredConfig(this.options, target), { encoding: "utf8", mode: 0o600 });
+      await writeFile(configPath, cloudflaredConfig(this.options, target), { encoding: "utf8", mode: 0o600, flag: "wx" });
       await chmod(configPath, 0o600);
       const spawned = this.spawnProcess(this.options.executable, ["tunnel", "--no-autoupdate", "--metrics", `127.0.0.1:${metricsPort}`, "--config", configPath, "run", this.options.tunnelId], {
         cwd: directory,

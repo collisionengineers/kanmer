@@ -1,0 +1,1 @@
+Opened PR #105: https://github.com/collisionengineers/kanmer/pull/105. Branch mcp-017-plugin-checkout-guard; commit dd9f736050dcf029db8c42bcebe258875500410d. Verification report records focused/scripts/full rails, first timeout/setup failures, and reruns.

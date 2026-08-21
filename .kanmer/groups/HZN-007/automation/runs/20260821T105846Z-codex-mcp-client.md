@@ -133,6 +133,8 @@ stop_reason:
 
 - 2026-08-21T18:25:46.389Z — Baseline packaged-app rail on clean main passed: `npm run dist:check` exit 0; Windows installer, blockmap, unpacked app and updater-package seven-check validation completed for 0.3.3. This is baseline evidence only; the final run must repeat after all merged changes and verify packaged MCP/documentPaths/runtime parity.
 
+- 2026-08-21T18:27:22.140Z — Archived-ticket audit reconciliation recorded: CORE-021 is explicitly parked/superseded by CORE-011’s boundary-collapse implementation and FRD-002’s documented rejection of commit-timestamp causation; CORE-028 is ownerlessly resolved by the numbering rail and current duplicate-number tests; GUI-086/GUI-089 are duplicate filings resolved by GUI-085; GUI-094 is split into EPIC-011 GUI-099→GUI-102 plus GUI-106 with source scope retained; GUI-103 is resolved by GUI-096 commit b6ad3da; MCP-005’s unique update/session-survival concern is represented by GUI-106 and the Portable Codex Connect epic; MCP-031/MCP-032 are covered by MCP-025’s session/stdio regression rails; SKILL-028 is resolved by SKILL-016’s durable-resume proof. No archived ticket currently hides an additional unique defect beyond queued GUI-106.
+
 ## Resume instruction
 
 Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's complete document inventory, links, taken state and get_doc_gates before dispatching. Reconcile the ledger against live state and do not replay a completed action solely because this run was interrupted. Before every assignment/result/stage transition, update and read this history record and automation/current.md.

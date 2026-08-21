@@ -42,3 +42,26 @@ git diff --check
 ```
 
 Confirm ADR-0016 plus the ten FRD end-state sections contain no contradictory current-state claims; apply and verify the documented refs/docs_todo mapping for [[MCP-022]], [[MCP-023]], [[GUI-096]], [[GUI-097]], and [[GUI-098]].
+
+## Post-merge verification reconciliation — 2026-08-21
+
+Merged main under verification was `12708f9d375f29b5787f04a1497225a76621f96b` (the DOC-011 PR #81 merge `920ecf957e51ccc299b21ff4ee88d9e0ee24e81d` is an ancestor).
+
+The five planned Kanmer metadata mappings were already present and were re-read without rewriting:
+- MCP-022 — `docs/architecture/adr/ADR-0016-compiled-workflow.md`, `docs/functional/frd/FRD-022-mcp-server-surface.md`, `docs_todo:false`; refs updates recorded at 2026-08-20T22:27:27.631Z–2026-08-20T22:27:27.650Z and docs_todo at 2026-08-20T22:27:36.515Z.
+- MCP-023 — `docs/architecture/adr/ADR-0016-compiled-workflow.md`, `docs/functional/frd/FRD-010-task-scoped-dispatch.md`, `docs/functional/frd/FRD-022-mcp-server-surface.md`, `docs_todo:false`; refs updates recorded at 2026-08-20T22:27:27.668Z–2026-08-20T22:27:27.706Z and docs_todo at 2026-08-20T22:27:36.529Z.
+- GUI-096 — `docs/architecture/adr/ADR-0016-compiled-workflow.md`, `docs/functional/frd/FRD-003-ticket-documents.md`, `docs/functional/frd/FRD-019-gui-shell.md`, `docs_todo:false`; refs updates recorded at 2026-08-20T22:27:27.726Z–2026-08-20T22:27:27.779Z and docs_todo at 2026-08-20T22:27:36.542Z.
+- GUI-097 — `docs/architecture/adr/ADR-0016-compiled-workflow.md`, `docs/functional/frd/FRD-019-gui-shell.md`, `docs_todo:false`; refs updates recorded at 2026-08-20T22:27:27.803Z–2026-08-20T22:27:27.829Z and docs_todo at 2026-08-20T22:27:36.556Z.
+- GUI-098 — `docs/architecture/adr/ADR-0016-compiled-workflow.md`, `docs/functional/frd/FRD-019-gui-shell.md`, `docs/functional/frd/FRD-020-board-git-worktree-sync.md`, `docs_todo:false`; refs updates recorded at 2026-08-20T22:27:27.887Z–2026-08-20T22:27:27.932Z and docs_todo at 2026-08-20T22:27:36.581Z.
+
+Fresh `get_doc_gates` reads for all five report the governing-doc requirement satisfied; no duplicate refs are present.
+
+Merged-main checks:
+- `node scripts/check-doc-numbering.mjs` — exit 0; `doc-numbering OK — ADR, FRD, PRD each have exactly one file per number`.
+- First `npm test` attempt — exit 1; core 256/256 and GUI 337/337 passed, while HTTP was 59/61 with `http.test.mjs` child `ETIMEDOUT` and one tunnel-readiness timeout. This failure is retained, not erased.
+- Focused HTTP rerun — exit 1; HTTP 60/61, with only the same child `ETIMEDOUT`; `node --test src/http.test.mjs` separately passed 5/5.
+- Second full `npm test` attempt — exit 0; core 256/256, GUI 337/337, HTTP 61/61, scripts 66/66.
+- `npm run verify` — exit 0; build, tests, typecheck, smoke 184/184, protocol 42/42, discovery 13/13, skills, AGENTS block 31/31, and plugin synchronization all passed.
+- `git diff --check` — exit 0; main remained clean except preserved untracked `skills-lock.json`.
+
+No generated `docs/contributing/doc-structure.md`, product code, board configuration, package, lockfile, or plugin artifact was changed by verification.

@@ -1,20 +1,17 @@
 # Checklist — SKILL-026
 
-- [ ] Add a disposable-repository GUI/main integration test using the canonical skeleton, real managed-block CLI writer, core staleness detector, and production GUI removal helper.
-- [ ] Assert setup output contains the canonical conduct block and all five required user-owned guide headings.
-- [ ] Assert a repeat writer invocation is byte-identical.
-- [ ] Tamper only inside the managed block and assert core reports `agents-block: behind` from the shipped setup-skill reference.
-- [ ] Remove the block through the GUI helper and assert the canonical template survives byte-for-byte while markers are gone.
-- [ ] Assert post-removal state is `unstamped`, preserving distinct drift semantics.
-- [ ] Run focused GUI test, targeted core staleness test, `npm run verify:agents-block`, `npm run verify:skills`, GUI typecheck, and `git diff --check`.
+- [x] Add a disposable-repository GUI/main integration test using the canonical skeleton, real managed-block CLI writer, core staleness detector, and production GUI removal helper.
+- [x] Reword the canonical skeleton's ownership comment so a missing-file setup input contains neither exact managed-marker sentinel; retain the writer's malformed-marker refusal.
+- [x] Assert setup output contains the canonical conduct block and all five required user-owned guide headings.
+- [x] Assert a repeat writer invocation is byte-identical.
+- [x] Tamper only inside the managed block and assert core reports `agents-block: behind` from the shipped setup-skill reference.
+- [x] Remove the block through the GUI helper and assert the canonical template survives byte-for-byte while markers are gone.
+- [x] Assert post-removal state is `unstamped`, preserving distinct drift semantics.
+- [x] Run focused GUI test, targeted core staleness test, `npm run verify:agents-block`, `npm run verify:skills`, GUI typecheck, and `git diff --check`.
 - [ ] Write the post-implementation report, push/open PR, record traceability, and move to Review.
 
 ## Progress notes
 
 - Planning inputs: current setup skill/writer/template, core staleness detector, GUI inverse helper, completed [[SKILL-023]] and [[SKILL-024]], and EPIC-012's disposable-repo approval contract.
-
-- [ ] Reword the canonical skeleton's ownership comment so a missing-file setup input contains neither exact managed-marker sentinel; retain the writer's malformed-marker refusal.
-
-## Progress notes
-
-- First focused integration run failed as expected evidence of a real defect: the template's explanatory comment contains the exact closing marker, so `scripts/agents-block.mjs` reports `start at -1, end at 158` and refuses the no-file setup path. Plan expanded narrowly to make the canonical template safe; no writer/detector behavior will be weakened.
+- Initial focused integration run exposed the defect: `agents-template.md` contained the literal closing sentinel in a comment, so the writer reported `start at -1, end at 158` and correctly refused the documented no-file path. The repair removes both exact sentinels from template prose; the writer and detector remain unchanged.
+- Passed after repair: focused GUI ownership test 2/2; full GUI suite 32 files / 312 tests; core staleness 40 tests; skill-prose Node tests 5/5; `verify:agents-block` 31/31; `verify:skills`; GUI typecheck; and `git diff --check`.

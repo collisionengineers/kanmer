@@ -41,3 +41,9 @@ Final amendment for this checkpoint: commit is `26a7253`; terminal supervisor st
 Commit `fea8b28` makes the existing fake-cloudflared fixture an actual adapter child in the integration test. The test validates local readiness through the real child, calls the handle’s repeated readiness check, terminates it, and proves the credentials canary is absent from surfaced diagnostics. It also fixes the Windows minimal allowlist to retain only `PATH` plus the platform-essential `SystemRoot`; bearer/provider secret environment values remain excluded.
 
 Evidence: MCP build passed; `cloudflared.test.mjs` passed 3/3; MCP typecheck and diff check passed. The fixture path is now anchored to `import.meta.url`, so it works from either root or workspace test cwd. Still Implementing; no real cloudflared binary was installed or invoked.
+
+Regression checkpoint after `fea8b28`: `npm run test:http -w @kanmer/mcp-server` passed 21/21; `npm run smoke:remote` passed (fake provider/no public route); `npm run smoke:http` passed; `npm run smoke:protocol` passed 30/30; `npm run smoke:discovery` passed 13/13; scoped `git diff --check` and worktree status are clean. This is pre-review evidence only, not merged-main proof.
+
+## Provider logging documentation re-check — 2026-08-21
+
+Current official Cloudflare run/monitoring docs enumerate `--loglevel`, `--logfile`, and loopback `--metrics`; they do not document a local `tunnel run --logformat json` flag. Therefore this implementation does **not** add an unverified JSON flag. Provider stdout/stderr remains untrusted and is collapsed to the fixed `provider output received` diagnostic; readiness remains the loopback `/ready` endpoint. The plan’s wording is interpreted as structured JSON only where the selected provider/version documents it.

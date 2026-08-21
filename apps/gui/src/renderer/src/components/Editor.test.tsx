@@ -112,4 +112,10 @@ describe("Editor modes", () => {
     expect((scratch as HTMLButtonElement).disabled).toBe(false);
     expect(scratch.className).toContain("mode-secondary");
   });
+
+  it("switches its starting surface when the user explicitly changes mode", async () => {
+    renderEditor(clientFor());
+    fireEvent.change(await screen.findByLabelText("Editor mode"), { target: { value: "execution" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: /Plan/ }).className).toContain("active"));
+  });
 });

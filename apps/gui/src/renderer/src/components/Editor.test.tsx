@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import type { BoardConfig, Item } from "@kanmer/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ClientContext, type ProjectClient } from "../lib/client.js";
-import { Editor } from "./Editor.js";
+import { Editor, startingTabForMode } from "./Editor.js";
 
 const board = { areas: [], priorities: [] } as unknown as BoardConfig;
 const item = {
@@ -92,5 +92,24 @@ describe("Editor scratch and group context", () => {
     const client = clientFor({ getGroupDoc: vi.fn().mockResolvedValue(null) });
     renderEditor(client);
     expect(await screen.findByText(/No context.md is available for EPIC-009/)).toBeTruthy();
+  });
+});
+
+describe("Editor modes", () => {
+  it.each([
+    ["approval", "ticket"],
+    ["execution", "plan"],
+    ["review", "scratch"],
+    ["evidence", "proof"],
+  ] as const)("maps %s to %s", (mode, tab) => {
+    expect(startingTabForMode(mode)).toBe(tab);
+  });
+
+  it("keeps secondary tabs enabled and uses a mode control", async () => {
+    renderEditor(clientFor());
+    expect((await screen.findByLabelText("Editor mode") as HTMLSelectElement).value).toBe("approval");
+    const scratch = screen.getByRole("button", { name: /Scratch/ });
+    expect((scratch as HTMLButtonElement).disabled).toBe(false);
+    expect(scratch.className).toContain("mode-secondary");
   });
 });

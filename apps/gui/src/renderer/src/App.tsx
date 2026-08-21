@@ -38,7 +38,7 @@ import { Board } from "./components/Board.js";
 import { Manual } from "./components/Manual.js";
 import { TabStrip, type Tab } from "./components/TabStrip.js";
 import { ArchivedList } from "./components/ArchivedList.js";
-import { Editor } from "./components/Editor.js";
+import { Editor, type EditorMode } from "./components/Editor.js";
 import { FilterBar, type Filters } from "./components/FilterBar.js";
 import { Settings } from "./components/Settings.js";
 import { Standup } from "./components/Standup.js";
@@ -140,6 +140,7 @@ export function App(): JSX.Element {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [view, setView] = useState<View>("ticket");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editorMode, setEditorMode] = useState<EditorMode>("approval");
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -179,7 +180,7 @@ export function App(): JSX.Element {
   // Whether the editor holds unsaved edits — a ref so reporting dirtiness
   // doesn't re-render the app on every keystroke.
   const editorDirty = useRef(false);
-  const [pendingNav, setPendingNav] = useState<{ kind: "select"; id: string | null } | { kind: "close"; projectId: string } | null>(null);
+  const [pendingNav, setPendingNav] = useState<{ kind: "select"; id: string | null; mode: EditorMode } | { kind: "close"; projectId: string } | null>(null);
   const [pendingProject, setPendingProject] = useState<OpenTarget | null>(null);
   const [pendingTake, setPendingTake] = useState<{ id: string; branch: string } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: string } | null>(null);
@@ -299,6 +300,7 @@ export function App(): JSX.Element {
       setFilters(saved?.filters ?? EMPTY_FILTERS);
       setSearch(saved?.search ?? "");
       setSelectedId(saved?.selectedId ?? null);
+      setEditorMode("approval");
       setSettings(await window.kanmer.getSettings());
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -337,15 +339,17 @@ export function App(): JSX.Element {
   }, [performCloseTab]);
 
   /** Every deselection/navigation goes through here so edits can't be lost silently. */
-  const trySelect = useCallback((id: string | null) => {
+  const openEditor = useCallback((id: string | null, mode: EditorMode = "approval") => {
     setSelectedId((current) => {
       if (id !== current && editorDirty.current) {
-        setPendingNav({ kind: "select", id });
+        setPendingNav({ kind: "select", id, mode });
         return current;
       }
+      setEditorMode(mode);
       return id;
     });
   }, []);
+  const trySelect = useCallback((id: string | null) => openEditor(id), [openEditor]);
 
   // Window close with unsaved edits gets the native "leave?" prompt.
   useEffect(() => {
@@ -685,7 +689,7 @@ export function App(): JSX.Element {
       try {
         const created = await clientRef.current!.createItem(input);
         await refresh();
-        if (opts.select) setSelectedId(created.id);
+        if (opts.select) openEditor(created.id);
         return created;
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
@@ -889,7 +893,7 @@ export function App(): JSX.Element {
               {
                 id: `dispatch-${p.id}-whole`,
                 label: "Whole ticket",
-                onSelect: () => void runCardAction(() => client.dispatchAgent(item.id, p.id)),
+                onSelect: () => { openEditor(item.id, "execution"); void runCardAction(() => client.dispatchAgent(item.id, p.id)); },
               },
               ...dispatchOptions.map((t) => ({
                 id: `dispatch-${p.id}-${t.id}`,
@@ -897,8 +901,10 @@ export function App(): JSX.Element {
                 disabled: !t.enabled,
                 ...(t.reason ? { disabledReason: t.reason } : {}),
                 separatorBefore: t.id === "research-quick",
-                onSelect: () =>
-                  void runCardAction(() => client.dispatchAgent(item.id, p.id, t.id)),
+                onSelect: () => {
+                  openEditor(item.id, "execution");
+                  void runCardAction(() => client.dispatchAgent(item.id, p.id, t.id));
+                },
               })),
             ],
           })),
@@ -929,7 +935,7 @@ export function App(): JSX.Element {
         },
       ];
     },
-    [trySelect, onMove, runCardAction, requestDelete, cardMenuGates, dispatchTargets],
+    [trySelect, openEditor, onMove, runCardAction, requestDelete, cardMenuGates, dispatchTargets],
   );
 
   // Fetch the task menu as the card menu opens: the submenu is built from it,
@@ -1380,6 +1386,8 @@ export function App(): JSX.Element {
             items={items}
             knownIds={knownIds}
             changeSignal={changeSignal}
+            mode={editorMode}
+            onModeChange={setEditorMode}
             onClose={() => trySelect(null)}
             onNavigate={trySelect}
             onDirtyChange={(d) => {
@@ -1458,7 +1466,7 @@ export function App(): JSX.Element {
             const pending = pendingNav;
             setPendingNav(null);
             if (pending.kind === "close") performCloseTab(pending.projectId);
-            else setSelectedId(pending.id);
+            else { setEditorMode(pending.mode); setSelectedId(pending.id); }
           }}
         />
       )}

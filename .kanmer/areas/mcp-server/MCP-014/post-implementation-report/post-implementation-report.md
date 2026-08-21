@@ -22,7 +22,8 @@ Grok Connect now uses Grok's native user-scoped kanmer plugin. The provider no l
 
 - PASS: npx vitest run apps/gui/src/main/providers.test.ts apps/gui/src/main/connect.test.ts apps/gui/src/main/skillsVersion.test.ts — 95 tests.
 - PASS: npm test -w @kanmer/gui — 37 files, 350 tests.
-- PASS: npm run typecheck -w @kanmer/gui.
+- PASS: npm run typecheck (all workspaces).
+- PASS: npm test — core 257 tests, GUI 350 tests, MCP HTTP/remote 61 tests, scripts 79 tests.
 - PASS: npm run build (core + MCP server standalone).
 - PASS: npm run check:manual, npm run verify:skills, and git diff --check.
 - INCONCLUSIVE: npm run plugin:check from this linked worktree refused because its local workspace dependency resolved to the main checkout; root-main should run the guard after integration.

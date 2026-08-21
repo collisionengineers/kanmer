@@ -18,6 +18,7 @@ export interface RemoteHostStatus {
   readonly provider: "stopped" | "starting" | "running" | "restarting" | "degraded" | "failed";
   readonly publicVerification: "unknown";
   readonly endpoint?: string;
+  readonly reason?: string;
 }
 
 /** Composes bearer-protected loopback HTTP with a provider-neutral tunnel. */
@@ -94,6 +95,19 @@ export class KanmerRemoteHost {
     return { endpoint: this.publicEndpoint };
   }
   getStatus(): RemoteHostStatus { return { ...this.status }; }
+
+  /**
+   * Local lifecycle owners call this when the origin, project fingerprint, or
+   * bearer generation changes.  It never attempts to retarget a live tunnel.
+   */
+  async invalidateOrigin(): Promise<void> {
+    if (this.stopped) return;
+    this.stopHealthMonitor();
+    await this.supervisor.stop();
+    this.status = { ...this.status, provider: "failed", reason: "TUNNEL_ORIGIN_INVALIDATED" };
+    this.emit();
+  }
+
   async close(): Promise<void> {
     if (this.stopped) return;
     this.stopped = true;

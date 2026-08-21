@@ -79,3 +79,25 @@ test("remote shutdown closes the authenticated listener before stopping its tunn
   await remote.close();
   assert.equal(stopped, true);
 });
+
+test("origin invalidation stops forwarding but keeps the authenticated local listener alive", async () => {
+  let target;
+  let stopped = false;
+  let resolveExit;
+  const exited = new Promise((resolve) => { resolveExit = resolve; });
+  const remote = createKanmerRemoteHost({
+    authorizer: { authorize: async () => ({ principal: "test" }) }, hostname: "kanmer.example.test",
+    tunnel: { start: async (received) => {
+      target = received;
+      return { exited, stop: async () => { stopped = true; resolveExit({ code: 0, signal: null }); } };
+    } },
+  });
+  try {
+    await remote.start();
+    await remote.invalidateOrigin();
+    assert.equal(stopped, true);
+    assert.deepEqual(remote.getStatus(), { local: "ready", provider: "failed", publicVerification: "unknown", endpoint: "https://kanmer.example.test/mcp", reason: "TUNNEL_ORIGIN_INVALIDATED" });
+    const response = await fetch(target.endpoint, { headers: { authorization: "Bearer anything" } });
+    assert.equal(response.status, 400);
+  } finally { await remote.close(); }
+});

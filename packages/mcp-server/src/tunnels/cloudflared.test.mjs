@@ -54,7 +54,7 @@ test("fake provider receives one direct no-autoupdate metrics invocation and mus
       hostname: "kanmer.example.test", metricsPort: 43125,
     }, fakeSpawn);
     const handle = await adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" });
-    assert.deepEqual(calls[0].args, ["--no-autoupdate", "--metrics", "127.0.0.1:43125", "tunnel", "--config", calls[0].args[5], "run", "3f9620b4-423e-4f37-a30e-61ffcf91f403"]);
+    assert.deepEqual(calls[0].args, ["tunnel", "--no-autoupdate", "--metrics", "127.0.0.1:43125", "--config", calls[0].args[5], "run", "3f9620b4-423e-4f37-a30e-61ffcf91f403"]);
     assert.equal(calls[0].options.shell, false);
     assert.deepEqual(Object.keys(calls[0].options.env), ["PATH"]);
     assert.equal(calls[0].args.join(" ").includes("credential-canary-not-an-argument"), false);

@@ -47,7 +47,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
     try {
       await writeFile(configPath, cloudflaredConfig(this.options, target), { encoding: "utf8", mode: 0o600 });
       await chmod(configPath, 0o600);
-      const spawned = this.spawnProcess(this.options.executable, ["--no-autoupdate", "--metrics", `127.0.0.1:${metricsPort}`, "tunnel", "--config", configPath, "run", this.options.tunnelId], {
+      const spawned = this.spawnProcess(this.options.executable, ["tunnel", "--no-autoupdate", "--metrics", `127.0.0.1:${metricsPort}`, "--config", configPath, "run", this.options.tunnelId], {
         cwd: directory,
         env: { PATH: process.env.PATH ?? "" },
         shell: false,

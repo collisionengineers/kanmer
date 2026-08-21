@@ -1,0 +1,1 @@
+Implemented live renderer smoke capture in `9ae09d4`. Focused tests, full GUI tests, GUI typecheck/build, and a real source Electron capture pass; visual inspection confirmed a 1264×755 board PNG with the generated `KANMER-SMOKE-…` marker.

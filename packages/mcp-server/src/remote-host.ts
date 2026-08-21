@@ -99,7 +99,11 @@ export class KanmerRemoteHost {
     this.stopped = true;
     this.stopHealthMonitor();
     this.status = { ...this.status, local: "stopping" }; this.emit();
-    await this.supervisor.stop(); await this.http.close();
+    // The public forwarding process must never retain a live origin after the
+    // authenticated listener has been retired.  The FRD orders listener and
+    // session shutdown ahead of tunnel-child shutdown.
+    try { await this.http.close(); }
+    finally { await this.supervisor.stop(); }
     this.status = { ...this.status, local: "stopped", provider: "stopped" }; this.emit();
   }
 }

@@ -55,3 +55,27 @@ test("provider readiness loss becomes degraded and a later local-ready poll reco
     assert.equal(remote.getStatus().provider, "running");
   } finally { await remote.close(); }
 });
+
+test("remote shutdown closes the authenticated listener before stopping its tunnel child", async () => {
+  let target;
+  let stopped = false;
+  let resolveExit;
+  const exited = new Promise((resolve) => { resolveExit = resolve; });
+  const remote = createKanmerRemoteHost({
+    authorizer: { authorize: async () => ({ principal: "test" }) }, hostname: "kanmer.example.test",
+    tunnel: { start: async (received) => {
+      target = received;
+      return {
+        exited,
+        stop: async () => {
+          await assert.rejects(() => fetch(target.endpoint), /fetch failed/);
+          stopped = true;
+          resolveExit({ code: 0, signal: null });
+        },
+      };
+    } },
+  });
+  await remote.start();
+  await remote.close();
+  assert.equal(stopped, true);
+});

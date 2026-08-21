@@ -33,3 +33,5 @@ Commit `1ba3b91` adds optional provider-owned local readiness checks to `TunnelP
 Evidence: `npm run typecheck -w @kanmer/mcp-server` passed; `npm run test:http -w @kanmer/mcp-server` passed 20/20 (including the new loss/recovery test); `git diff --check` passed. This remains Implementing: generic handle/events, bounded allocator/retry, structured redacted logs, origin/auth invalidation, complete lifecycle integration, and full fake-provider smoke remain.
 
 Amendment: the readiness-monitor commit was amended to `b32281b` to cancel any prior monitor on restart and ignore stale process probes. Focused remote-host tests passed 3/3 and MCP typecheck remained green.
+
+Final amendment for this checkpoint: commit is `26a7253`; terminal supervisor states now stop and discard health monitoring too, preventing a failed/exhausted child from leaving a poller behind.

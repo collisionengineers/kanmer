@@ -15,8 +15,8 @@
 
 ## Review
 
-- [ ] Independent reviewer records PASS or findings.
-- [ ] PR #111 is merged into main.
+- [x] Independent reviewer records PASS; the first candidate's byte mismatch was fixed by rebasing and regenerating.
+- [x] PR #111 corrected commit 0636eda is merged into main at ed8d390541a9564cdbdda609f493c953b27ed0c8.
 
 ## Verification and closeout
 

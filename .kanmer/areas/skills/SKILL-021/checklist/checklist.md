@@ -63,8 +63,8 @@
 - [x] Walk all listed source fixtures, including head change, red check, unresolved thread, unmerged PR, failed-then-passed proof, and unchanged main.
 - [x] Confirm diff contains only the three skill files and optional targeted verifier.
 - [x] Confirm no MCP/core/GUI/tool-reference/plugin/schema/profile/old-asset change.
-- [ ] Open PR with `Kanmer: SKILL-021` and link CORE-035 as the pending integration proof.
-- [ ] Stop at review readiness; do not merge or begin CORE-035.
+- [x] Open PR with `Kanmer: SKILL-021` and link CORE-035 as the pending integration proof.
+- [x] Stop at review readiness; do not merge or begin CORE-035.
 
 ## Progress notes
 
@@ -77,4 +77,4 @@ Append exact packet/refusal examples, status capability result, GitHub queries, 
 - 2026-08-22T00:25:15+01:00 — Implemented only the three scoped phase skills on skill-021-packet-sha-skills. Commit df56503baafe3ef5a2e3fa78e2d9d3376495af12. No MCP/core/GUI/tool-reference/schema/profile/old-review-asset changes.
 - 2026-08-22T00:25:15+01:00 — npm run verify:skills exit 0; git diff --check exit 0; positive packet/compat/head/whole-file/mergeCommit/detached/PASS checks passed; legacy unsafe-text negative searches returned zero matches. Static source fixture walkthrough for packet refusal/no writes, old-server token omission, execute PR stop, review head/check/thread staleness, unmerged verification, failed-then-passed attempt retention, and unchanged main passed.
 - 2026-08-22T00:25:15+01:00 — npm run test:scripts first exited 1 because packages/core/dist/index.js was absent in the fresh worktree (ERR_MODULE_NOT_FOUND in auto-run-state.test.mjs and release-notes.test.mjs). npm run build:core exited 0; the exact test:scripts rerun exited 0 with 80/80 passing. The first failure is retained in the implementation report.
-- 2026-08-22T00:25:15+01:00 — PR and Implementing→Review move remain pending; author will not self-review, merge, begin CORE-035, or clean up.
+- 2026-08-22T00:25:15+01:00 — PR #141 opened on skill-021-packet-sha-skills; report/checklist traceability is complete. Implementing→Review move is pending fresh gates; author will not self-review, merge, begin CORE-035, or clean up.

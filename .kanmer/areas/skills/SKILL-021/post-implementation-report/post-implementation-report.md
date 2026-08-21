@@ -14,7 +14,7 @@ Rewrote the three implementation-phase skills so execution consumes the read-onl
 | plugins/kanmer/skills/kanmer-review/SKILL.md | Replaced append-only review prose with current headRefOid/plan-version/ticket-timestamp gathering, GitHub check/comment/thread coverage, whole-file scratch/review replacement using the MCP-024 schema, dispositions, stale-evidence rejection, and authorized one-stage merge handoff. | Prevent review from describing an earlier moving branch or silently losing findings. |
 | plugins/kanmer/skills/kanmer-verify/SKILL.md | Replaced mutable-main verification with merged-state/mergeCommit refusal, exact full-SHA detached verification worktree, clean/detached assertions, retained typed attempts, whole-file proof replacement, PASS-only Done move, and disposable-worktree cleanup. | Bind proof to what GitHub actually merged without mutating main, the board worktree, or the implementation worktree. |
 
-Implementation commit: df56503baafe3ef5a2e3fa78e2d9d3376495af12.
+Implementation commit: df56503baafe3ef5a2e3fa78e2d9d3376495af12; PR #141: https://github.com/collisionengineers/kanmer/pull/141.
 
 ## Governing docs
 

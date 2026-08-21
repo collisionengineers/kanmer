@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T20:59:31.493Z
+updated_at: 2026-08-21T21:03:47.336Z
 lane_limit: 3
 stop_reason:
 ---
@@ -190,6 +190,8 @@ stop_reason:
 
 - 2026-08-21T20:59:31.493Z — 2026-08-21T20:59:23Z — GUI-010 independent review finding assigned: Review→Implementing via MCP (expected_updated 2026-08-21T20:55:29.322Z; resulting updated 2026-08-21T20:59:23.294Z); branch gui-010-reference-files/worktree .worktrees/gui-010; scope pre-normalization plain-filename rejection and regression for foo/../mockup.png; no GUI-105/015/016/017 or provider scope; manual visual proof remains INCONCLUSIVE; no merge or cleanup authorized.
 
+- 2026-08-21T21:03:47.336Z — 2026-08-21T21:03:41Z — GUI-010 review-fix result: committed 60705980 and pushed PR #133; basename-before-resolve guard rejects foo/../mockup.png for add/remove; focused core 6/6, full core 258/258, focused Editor 1/1, full GUI 351/351, typecheck/build/plugin/boot-smoke/diff-check PASS; initial missing-Electron boot failure retained; manual visual proof INCONCLUSIVE; moved Implementing→Review via MCP after fresh gates (resulting updated 2026-08-21T21:03:41.520Z); awaiting independent review, no merge or cleanup.
+
 ## Resume instruction
 
 Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's complete document inventory, links, taken state and get_doc_gates before dispatching. Reconcile the ledger against live state and do not replay a completed action solely because this run was interrupted. Before every assignment/result/stage transition, update and read this history record and automation/current.md.
@@ -315,3 +317,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-21T20:58:12.241Z — MCP-024 implementation completed on mcp-024-sha-bound-records at 0d2b7893c93b97b8417d894e1f090201badb5b1c; PR #134 opened and ticket moved Implementing→Review after fresh gates. Report/checklist written and read back (40/41, normal-main plugin:check box intentionally open). Standard 195/195 smoke, protocol 42/42, discovery 13/13, core 257/257, GUI 350/350, HTTP 61/61, scripts 79/79, typecheck/build/verify:skills/diff-check passed; linked-worktree plugin:check refused by checkout guard and remains INCONCLUSIVE. Author stops for independent review.
+
+
+- 2026-08-21T21:03:00.000Z — MCP-024 independently reviewed and closed: PR #134 merged to main at 5c08f1a3; authoritative stdio smoke 195/195 and merged-main plugin:build/plugin:check plus smoke passed. Review/proof schemas were whole-file versioned; the inapplicable npm test workspace command is retained as NOT_APPLICABLE. Checklist normalized to 41/41, proof written, ticket moved Review→Verifying→Done, released, and exact worktree/branch cleaned.

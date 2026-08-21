@@ -264,3 +264,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-21T20:00:08.683Z — MCP-008 follow-up fix committed and pushed: 5b4a95448c2f0f3902d37a72c2727c5cff999de0 bumps mcpb/manifest.json with release versions so release.mjs cannot leave the source manifest stale. PR #130 remains open; ticket traceability/report refreshed.
+
+
+- 2026-08-21T20:01:09.221Z — MCP-008 review handoff packet refreshed: checklist now records 48/93 evidence-backed boxes; unsupported real Claude Desktop acceptance remains unchecked/INCONCLUSIVE. Branch is clean, PR #130 open, no merge.

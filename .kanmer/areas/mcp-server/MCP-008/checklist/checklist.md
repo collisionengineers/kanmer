@@ -28,7 +28,7 @@
 - [x] Assert no live tool is missing and no stale tool is declared.
 - [x] Pack with the pinned local MCPB tool.
 - [x] Emit exactly `dist/mcpb/kanmer-<version>.mcpb`.
-- [ ] Print archive/server/manifest hashes and tool count.
+- [x] Print archive/server/manifest hashes and tool count.
 - [x] Do not modify the committed source manifest during build.
 
 ## MCPB sync/check rail
@@ -38,8 +38,8 @@
 - [x] Unpack/inspect current and fresh archives.
 - [ ] Normalize only known archive timestamps/order.
 - [x] Compare exact file set and content bytes.
-- [ ] Compare server bytes to fresh standalone and plugin distributed copy through one shared helper/rail.
-- [ ] Compare icon bytes to root `icon.png`.
+- [x] Compare server bytes to fresh standalone and plugin distributed copy through one shared helper/rail.
+- [x] Compare icon bytes to root `icon.png`.
 - [x] Validate manifest version, entry point, required root config, args, runtime, platform and one-board contract.
 - [x] Validate live tool/prompt metadata.
 - [ ] Reject source maps, tests, secrets, absolute paths and extra files.

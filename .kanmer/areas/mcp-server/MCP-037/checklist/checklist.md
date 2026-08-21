@@ -14,18 +14,18 @@
 - [x] Add a regression for no-board failure with no listener and destroyed timer.
 - [x] Run focused HTTP tests.
 - [x] Run build and protocol/discovery/stdio smoke checks.
-- [x] Run root typecheck and diff check.
+- [x] Run root typecheck, plugin check, npm test, and diff check on merged main.
 - [x] Write post-implementation report.
 
 ## Review
 
-- [x] Independent reviewer records PASS or findings.
-- [x] Any findings are fixed, rejected with reason, accepted as risk, or deferred to a linked ticket; MCP-037 had no residual findings.
-- [x] PR #109 is merged into the MCP-025 transport branch at d189cbc46bc440ee3d24b7045306bdfbe84997a7.
+- [x] Independent reviewer records PASS.
+- [x] No residual findings remain.
+- [x] PR #109 merged through PR #107 at main commit 4d65d91.
 
 ## Verification and closeout
 
-- [ ] Verify the merged commit on main.
-- [ ] Write proof on merged main.
-- [ ] Move through Done and release the ticket.
-- [ ] Remove the worktree and branch after the merged commit is reachable.
+- [x] Verify the merged commit on main.
+- [x] Write proof on merged main.
+- [x] Move through Done and release the ticket.
+- [x] Remove the worktree and branch after the merged commit is reachable.

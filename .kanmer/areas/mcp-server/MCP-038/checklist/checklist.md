@@ -15,12 +15,12 @@
 
 ## Review
 
-- [x] Independent reviewer records PASS; the first candidate's byte mismatch was fixed by rebasing and regenerating.
-- [x] PR #111 corrected commit 0636eda is merged into main at ed8d390541a9564cdbdda609f493c953b27ed0c8.
+- [x] Independent reviewer records PASS; first candidate mismatch fixed by rebasing and regenerating.
+- [x] PR #111 corrected commit 0636eda merged into main at ed8d390.
 
 ## Verification and closeout
 
-- [ ] Verify plugin:check and byte reproducibility on merged main.
-- [ ] Write proof on merged main.
-- [ ] Move through Done and release the ticket.
-- [ ] Remove the worktree and branch after the merged commit is reachable.
+- [x] Verify plugin:check and byte reproducibility on merged main; SHA-256 48583b7eb295dc599822dc65778a4adda9181755323824ef984f74aa4d309f6e.
+- [x] Write proof on merged main.
+- [x] Move through Done and release the ticket.
+- [x] Remove the worktree and branch after the merged commit is reachable.

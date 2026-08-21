@@ -18,11 +18,14 @@
 - [x] HTTP unit rail passes (7/7).
 - [x] Build and HTTP smoke pass.
 - [x] stdio/protocol/discovery smokes pass (184/184, 42/42, 13/13).
-- [x] Root typecheck exits 0; test/smoke results are recorded without hiding failures.
-- [x] git diff --check and temporary-resource cleanup pass.
+- [x] Root typecheck and npm test pass on merged main; no failures hidden.
+- [x] plugin:check and git diff --check pass on merged main.
+- [x] Independent review PASS recorded, including MCP-037 remediation disposition.
 
 ## Review and closeout
 
-- [x] Post-implementation report written; PR follows after commit.
-- [ ] Independent review/merge.
-- [ ] Merged-main proof, Done move, cleanup, and release.
+- [x] Post-implementation report written.
+- [x] PR #109 remediation merged through PR #107 at main commit 4d65d91.
+- [x] Merged-main proof written.
+- [x] Ticket moved through Done and released.
+- [x] Worktree and branch removed after merge reachability was confirmed.

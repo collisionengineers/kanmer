@@ -59,14 +59,14 @@ describe("the bundled skills version comes from the shipped plugin manifest", ()
     expect(status.bundledVersion).toBe(await repoVersion());
   });
 
-  it("offers an update when the installed copy is older", async () => {
+  it("reports Grok's native plugin rather than a project copy", async () => {
     const status = await skillsStatus("grok", await projectWithStamp("0.0.1"));
-    expect(status.scope).toBe("project");
-    expect(status.installedVersion).toBe("0.0.1");
-    expect(status.updateAvailable).toBe(true);
+    expect(status.scope).toBe("plugin");
+    expect(status.installedVersion).toBeNull();
+    expect(status.updateAvailable).toBe(false);
   });
 
-  it("offers nothing when the installed copy is already current", async () => {
+  it("offers nothing for the native plugin", async () => {
     const status = await skillsStatus("grok", await projectWithStamp(await repoVersion()));
     expect(status.updateAvailable).toBe(false);
   });

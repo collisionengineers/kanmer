@@ -358,6 +358,13 @@ function ConnectSection(): JSX.Element {
   }, []);
 
   const run = async (target: ConnectTarget, action: "connect" | "disconnect") => {
+    if (target === "grok") {
+      const verb = action === "connect" ? "install" : "uninstall";
+      const approved = window.confirm(
+        `Grok's Kanmer plugin is user-scoped. ${verb === "install" ? "Installing" : "Uninstalling"} it affects every Grok workspace for this user. Continue?`,
+      );
+      if (!approved) return;
+    }
     setBusy(`${action}:${target}`);
     try {
       const res =
@@ -387,10 +394,9 @@ function ConnectSection(): JSX.Element {
       <h3>Connect an AI agent</h3>
       <p className="hint">
         Registers this project's Kanmer board with the host's MCP client and installs the skills —
-        via its plugin marketplace (Claude Code, Codex), or a project skills directory —{" "}
-        <code>.grok/skills</code> for Grok, and one shared <code>.agents/skills</code> tree that
-        opencode and Antigravity both read, alongside the managed AGENTS.md block. Every
-        registration Kanmer writes lands inside this project, in a file the host owns.
+        via its plugin marketplace (Claude Code, Codex), Grok's user-scoped native plugin, or a
+        project skills directory with one shared <code>.agents/skills</code> tree that opencode
+        and Antigravity both read. Legacy project state is cleaned surgically after plugin proof.
       </p>
       <div className="provider-list">
         {providers.map((p) => (

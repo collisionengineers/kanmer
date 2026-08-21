@@ -29,8 +29,8 @@ Use these paths if `docs/manual/` is the repository's canonical installed-user m
 | `docs/functional/frd/FRD-025-remote-access.md` | Normative scope/security/acceptance/terminology and actual requirement ids. |
 | `docs/architecture/adr/ADR-0017-streamable-http-remote-access.md` | Architecture, alternatives, process boundaries, explicit non-goals. |
 | `packages/mcp-server/package.json` | Exact installed/headless command names and supported scripts/bins. |
-| `packages/mcp-server/src/remote-cli.mjs` | Exact headless configuration/start/stop/status behavior and safe arguments. |
-| `packages/mcp-server/src/remote-token-cli.mjs` | Exact protected token-file generation behavior/output/flags. |
+| `packages/mcp-server/src/remote-cli.ts` | Exact headless configuration/start/stop/status behavior and safe arguments. |
+| `packages/mcp-server/src/remote-token-cli.ts` | Exact protected token-file generation behavior/output/flags. |
 | `packages/mcp-server/src/doctor-cli.mjs` | Exact `config|local|public`, `--json`, configuration references, and exits. |
 | `packages/mcp-server/src/doctor/types.ts` | Exact report schema/check ids/status/severity and safe fields. |
 | `packages/mcp-server/src/tunnels/cloudflared.ts` and config validator | Supported mode/version/fields/readiness/errors; do not document proposed flags that implementation did not ship. |
@@ -74,3 +74,13 @@ The troubleshooting file must contain exact entries for:
 - Document raw-token arguments/settings, insecure TLS, wildcard/LAN bind, Quick Tunnel production, auto-fix/account/DNS creation, OAuth, remote dispatch, multi-board endpoint, persistent sessions, or system service as shipped behavior.
 - Duplicate the manual in root README or provider-specific main sections.
 - Guess commands/UI labels before reading and executing the actual built feature.
+
+## Research confirmation — 2026-08-21
+
+The initial surface was surveyed against the current checkout. These corrections apply before implementation:
+
+- `docs/manual/README.md` does not exist. The current in-app manual index is the `CHAPTERS` table in `scripts/build-manual.mjs`, with committed output at `apps/gui/src/renderer/src/manual/chapters.generated.ts`; add the remote chapters there and regenerate/check the artifact. `docs/manual/connect.md` is the separate OpenAI Secure MCP Tunnel chapter and must remain separate.
+- `scripts/verify-docs.mjs`, `scripts/verify.mjs`, `verify:docs`, and root `verify` do not exist in this checkout. If DOC-013 adds the structural/secret/link rail described above, the file is a new addition and `package.json` must wire it exactly once; otherwise revise this surface to the selected existing canonical rail rather than claiming an existing command.
+- Current remote source files are TypeScript: `packages/mcp-server/src/remote-cli.ts`, `remote-token-cli.ts`, `http-cli.ts`, `http.ts`, `http-auth.ts`, `http-secret.ts`, and `tunnels/*`. `doctor-cli.mjs` and `doctor/types.ts` are planned MCP-027 targets and are not available to quote yet.
+- Current GUI settings are implemented in `apps/gui/src/renderer/src/components/Settings.tsx`, `apps/gui/src/shared/ipc.ts`, and `apps/gui/src/preload/index.d.ts`; there is no `remoteAccess/` module or `RemoteAccess*.tsx` component yet. Treat the GUI paths in the main tables as future GUI-095 targets and re-read them after that ticket merges.
+- Exact doctor output/repair text and public evidence remain downstream of MCP-027/MCP-028. Keep the 26-id list as a planning constraint only until the doctor registry and proof are merged.

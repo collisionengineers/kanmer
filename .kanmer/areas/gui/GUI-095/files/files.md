@@ -95,3 +95,67 @@ Every mutator validates full fingerprint, expected config version, current gener
 - Force takeover/kill unrelated headless processes.
 - Keep GUI-owned tunnel alive after the application truly exits.
 - Hand-edit MCP plugin bundle.
+
+## Code-grounded survey — current checkout
+
+The original surface above is a target shape. The current canonical paths and their implementation risks are:
+
+### Where the change lands
+
+| Path | Why |
+|---|---|
+| apps/gui/src/main/remoteAccess/types.ts (new) | Main-owned persisted schema, full project identity, draft/result/status/event/action DTOs, config/runtime/auth generations, and one-time delivery types. Risk: accidentally making raw token, verifier digest, provider credential bytes, PID, port, or session id serializable. |
+| apps/gui/src/main/remoteAccess/secrets.ts (new) | Electron safeStorage availability/backend policy, ciphertext record I/O, atomic update/delete, opaque ids, fingerprint metadata, corruption handling, and short-lived delivery records. Risk: plaintext fallback, writes under repo/board, or token persistence in ordinary settings. |
+| apps/gui/src/main/remoteAccess/settings.ts (new or extension of apps/gui/src/main/settings.ts) | Per-project schema-versioned settings and registry reconciliation. The existing settings module is app-global direct JSON; choose one canonical owner and do not create two competing settings stores. Risk: path-only identity, non-atomic writes, or dropping missing projects. |
+| apps/gui/src/main/remoteAccess/manager.ts (new) | One serialized action queue/runtime record per project fingerprint; bounded auto-start; canonical remote-host and MCP-027 doctor integration; generation-safe events; duplicate-owner detection; true-quit cleanup. Risk: spawning cloudflared directly, overlapping rotate/start/stop, swallowing failures, or allowing stale events to overwrite a newer generation. |
+| apps/gui/src/main/remoteAccess/ipc.ts (new service bindings, not a second handler registry) | Narrow validated remote operations and event subscription. If main/index.ts remains the canonical ipcMain registry, this module should only bind services or expose handler factories. Risk: duplicate registration or generic invoke passthrough. |
+| apps/gui/src/main/index.ts | Initialize remote services after app ready, register the canonical IPC handlers, pass sourceRoot/boardRoot/repoRoot identity, auto-start in bounded order, and stop all owned hosts during will-quit/update cleanup. Risk: remote startup before app/safeStorage readiness, stopping on renderer close, or leaking contexts on project close. |
+| apps/gui/src/shared/ipc.ts | Add named CH values and safe request/result/status/event types; preserve existing projectId-first API convention while adding full fingerprint checks. Risk: one broad remote command or raw token in a routine DTO. |
+| apps/gui/src/preload/index.ts and apps/gui/src/preload/index.d.ts | Expose only frozen named remoteAccess methods and unsubscribable events. Risk: leaking ipcRenderer, secret store, process, arbitrary shell/fetch, or delivery token through get/list/status. |
+| apps/gui/src/renderer/src/App.tsx | Add entry/navigation and route the machine-level remote overview while preserving active board tab state and dirty-editor guards. Risk: tying remote manager lifetime to renderer route or active project only. |
+| apps/gui/src/renderer/src/components/Settings.tsx | Add a Cloudflare-only Remote Access section or navigation entry; keep existing AI Connect host registration separate and link GUI-104 for OpenAI profiles. Risk: mixing provider lifecycle with current agent Connect buttons and global Save/Cancel board modal semantics. |
+| apps/gui/src/renderer/src/components/RemoteAccessOverview.tsx, RemoteAccessProjectPanel.tsx, RemoteAccessStatus.tsx, RemoteAccessDiagnostics.tsx, RemoteAccessTokenModal.tsx (new) | Accessible project list/detail/status/doctor/token delivery UI. Risk: single boolean health, raw diagnostics, token retained after close, or actions that ignore config/runtime generations. |
+| apps/gui/src/renderer/src/remoteAccess/state.ts and focused tests (new) | Generation-aware renderer view state, subscription/unsubscribe, optimistic action state, draft validation, and token-memory cleanup. Risk: stale event acceptance or token in reducer/snapshot/localStorage. |
+| apps/gui/src/main/remoteAccess/*.test.ts and renderer tests (new) | Fake safeStorage/remote-host/doctor/provider/clock/clipboard tests and component/accessibility tests. Risk: only testing pure UI while missing process ownership and redaction. |
+| packages/mcp-server/src/remote-host.ts, tunnels/types.ts, tunnels/cloudflared.ts, http-auth.ts, http-secret.ts, doctor modules | Inspect/reuse canonical remote lifecycle/auth/doctor APIs; do not fork them into GUI. Any adapter API change belongs to MCP-021 follow-up scope and must be linked, not absorbed. |
+| apps/gui/src/main/updater.ts and existing quit/dispatch helpers | Coordinate owned remote-host shutdown with updater install and app quit; preserve agent-session/update gates. Risk: a downloaded update or app quit leaves GUI-owned children behind. |
+| package.json and existing workspace scripts | Add focused tests/build/typecheck to the real existing rail. scripts/verify.mjs and .github/workflows/pr.yml named in the old plan do not exist in this checkout. |
+
+### Context files
+
+| Path | What it tells the implementer |
+|---|---|
+| docs/functional/frd/FRD-025-remote-access.md | Normative one-project loopback HTTP, bearer-first, tunnel, doctor, redaction, status, GUI, and non-goal requirements. |
+| docs/architecture/adr/ADR-0017-streamable-http-remote-access.md | Architecture boundary: HTTP/stdio share one registry; tunnel is an adapter; one process owns one project; GUI does not frame MCP. |
+| docs/functional/frd/FRD-019-gui-shell.md | Existing multi-project tab, dirty-editor guard, renderer/main lifecycle, and projectId IPC conventions. |
+| docs/functional/frd/FRD-020-board-git-worktree-sync.md | sourceRoot versus boardRoot split, board-worktree behavior, non-Git fallback, and registration paths. |
+| docs/functional/frd/FRD-021-auto-update.md | Update restart is gated; install may terminate installed MCP sessions; true quit and updater paths must be coordinated with remote children. |
+| apps/gui/src/main/index.ts | Actual context map, open/close project lifecycle, IPC registry, BrowserWindow construction, app ready and will-quit behavior. |
+| apps/gui/src/main/settings.ts | Existing global settings schema, direct write behavior, recent/open project lists, and lack of project registry/remote namespace. |
+| apps/gui/src/shared/ipc.ts | Existing CH/KanmerApi naming and projectId threading; use it to define the narrow remote surface. |
+| apps/gui/src/preload/index.ts | Existing invoke/listener wrapping and unsubscribe pattern; no generic IPC may be added. |
+| apps/gui/src/renderer/src/App.tsx | Active tab state, open/close project flow, settings modal entry, dirty-editor navigation guard, and render lifecycle. |
+| apps/gui/src/renderer/src/components/Settings.tsx | Existing Settings modal/rail and Connect tab; keep AI host registration separate from remote tunnel configuration. |
+| packages/mcp-server/src/project-identity.ts | Canonical fingerprint payload and path normalization; GUI must bind to the same identity semantics or expose a main-process bridge. |
+| packages/mcp-server/src/tunnels/types.ts | Provider-neutral TunnelAdapter/TunnelProcess/status/doctor types; no provider credential material crosses this boundary. |
+| packages/mcp-server/src/tunnels/cloudflared.ts and cloudflared-config.ts | Cloudflared validation, generated ingress, process environment/args, readiness, status transitions, diagnostics, and bounded cleanup. |
+| packages/mcp-server/src/remote-host.ts | Canonical local HTTP + tunnel supervisor composition, protected local verification seam, health monitor, stop order, and status dimensions. |
+| packages/mcp-server/src/http-auth.ts and http-secret.ts | Bearer generation/verifier/rotation and protected token-file material; raw token must remain main-only and short-lived. |
+| packages/mcp-server/src/http-diagnostics.ts | Safe diagnostic message redaction; GUI should forward allowlisted structured results, not arbitrary errors. |
+| node_modules/electron/electron.d.ts (Electron 31.3.0) | Pinned safeStorage and BrowserWindow security API availability/defaults; reject basic_text and do not call setUsePlainTextEncryption. |
+| apps/gui/package.json and electron.vite.config.ts | Electron 31.3.0, current test/build/typecheck commands, and bundling/externalization constraints for any new runtime dependency. |
+
+## Ripple effects
+
+- Add main/preload/shared/renderer tests to the existing GUI Vitest suite and ensure root npm test/typecheck/build reach them.
+- Add a fake-provider/loopback Electron or main-process integration smoke with no real Cloudflare credentials; preserve MCP stdio/HTTP/protocol/discovery smokes and prove tool count/plugin bundle unchanged.
+- Revisit packaged artifact checks so safeStorage/remote manager modules and any runtime dependencies are in the Electron artifact; do not hand-edit the standalone MCP plugin bundle.
+- Update DOC-013/manual anchors when that ticket lands; GUI-095 should link to stable anchors rather than embedding provider setup recipes.
+- Record configuration schema, backend policy, IPC methods, concurrency/lifecycle, doctor/rotation/quit, accessibility, redaction/canary, and packaging evidence in post-implementation-report.
+- MCP-028 consumes this work for integrated disposable remote-client proof; GUI-104 remains a separate provider workflow.
+
+## Out of scope
+
+- OpenAI Secure MCP Tunnel profile lifecycle (GUI-104), OAuth/OIDC, Access policies, account/DNS provisioning, Quick Tunnels, Worker-hosted MCP, multi-board routing, browser API/CORS, remote dispatch, system service/tray redesign, headless ownership handoff, provider credential import/copy, executable download/update, and additional tunnel providers.
+- Changes to MCP tool registration/count, plugin manifests/bundle, board storage format, project file contents, or direct cloudflared spawning from renderer.
+- Inventing scripts/verify.mjs or .github/workflows/pr.yml during research; if shared verification rails are needed, plan them against the actual root scripts and a separate scoped ticket where appropriate.

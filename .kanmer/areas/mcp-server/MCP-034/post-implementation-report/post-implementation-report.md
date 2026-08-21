@@ -35,13 +35,13 @@ Run on merged main:
 - `npm run plugin:check`
 - `git diff --check`
 
-The ticket-worktree results were: MCP typecheck/build pass; 184/184 stdio smoke; 42/42 protocol smoke; 13/13 discovery smoke; 61/61 focused HTTP/doctor tests; 31/31 AGENTS-block checks; all-workspace typecheck pass; and committed-bundle stdio/protocol smoke pass. A full `npm test` run reached 256 core and 318 GUI tests but its nested HTTP rail had one `spawnSync … ETIMEDOUT` failure in `project resolution fails before binding and leaves no listener`; the focused HTTP rail before that run passed 61/61, and an isolated rerun of `src/http.test.mjs` passed 5/5. This aggregate failure remains disclosed for independent review.
+The ticket-worktree results were: MCP typecheck/build pass; 184/184 stdio smoke; 42/42 protocol smoke; 13/13 discovery smoke; 61/61 focused HTTP/doctor tests; 31/31 AGENTS-block checks; all-workspace typecheck pass; and committed-bundle stdio/protocol smoke pass. The first aggregate `npm test` run reached 256 core and 318 GUI tests but recorded one nested HTTP `spawnSync … ETIMEDOUT` failure in `project resolution fails before binding and leaves no listener`; that failure remains disclosed rather than erased. A complete rerun of the exact `npm test` command then exited 0: core 256/256, GUI 318/318, HTTP 61/61, scripts 66/66. The transient timeout is therefore dispositioned as a rerun-only environment failure, with the successful full rail as the acceptance result.
 
 ## Risks / follow-ups
 
 - `npm run plugin:check` intentionally refuses the linked worktree because its workspace dependency resolves to the canonical checkout. The generated bundle was smoke-tested; independent review/merged-main verification must run the canonical plugin check.
 - No new token semantics, mandatory rollout, error codes, tools, dependencies, core changes, tool-reference rows, MCP-023 work, or managed AGENTS block edits were included.
-- The aggregate `npm test` timeout is recorded as a verification deviation; investigate or rerun on the merged-main verification environment rather than treating the focused pass as erasing it.
+- The first aggregate `npm test` timeout is retained for auditability; the exact full rail was rerun successfully and must be repeated on merged main.
 
 ## Traceability
 

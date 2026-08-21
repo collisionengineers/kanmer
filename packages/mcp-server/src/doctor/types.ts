@@ -37,6 +37,7 @@ export interface DoctorReport {
   readonly exitCode: 0 | 1 | 2;
   readonly checks: readonly DoctorCheckResult[];
   readonly counts: { readonly pass: number; readonly warn: number; readonly fail: number; readonly skipped: number };
+  readonly cleanupErrors?: readonly string[];
 }
 
 export interface DoctorTunnelConfig {
@@ -69,6 +70,9 @@ export interface DoctorDependencies {
   /** Injected per-check seams keep normal runs local and deterministic in tests. */
   readonly checks?: Partial<Record<DoctorCheckId, (context: DoctorCheckContext) => Promise<DoctorCheckResult | DoctorSafeDetails | void>>>;
   readonly tunnelStatus?: () => Promise<TunnelStatus>;
+  readonly resolveProject?: () => Promise<{ readonly fingerprint: string; readonly boardRoot?: string; readonly format?: number }>;
+  readonly validateSecretReference?: () => Promise<{ readonly valid: boolean; readonly reason?: string }>;
+  readonly validateRemoteConfig?: () => Promise<{ readonly valid: boolean; readonly reason?: string }>;
   readonly localStatus?: () => Promise<{
     readonly state?: string;
     readonly host?: string;
@@ -77,13 +81,16 @@ export interface DoctorDependencies {
     readonly projectFingerprint?: string;
     readonly authRequired?: boolean;
     readonly authGeneration?: string;
+    readonly tools?: readonly string[];
+    readonly protocolVersion?: string;
   }>;
   readonly resolveDns?: (hostname: string) => Promise<readonly string[]>;
   readonly tls?: (request: { readonly hostname: string; readonly port: number; readonly signal?: AbortSignal }) => Promise<{ readonly protocol?: string; readonly issuer?: string; readonly sanMatch: boolean; readonly valid: boolean; readonly expiresAt?: string }>;
   readonly probe?: (request: { readonly endpoint: string; readonly authorization?: string; readonly followRedirects?: boolean }) => Promise<{ readonly status: number; readonly location?: string; readonly challenge?: string }>;
-  readonly mcp?: (request: { readonly endpoint: string; readonly token: string }) => Promise<{ readonly projectFingerprint?: string; readonly tools: readonly string[]; close(): Promise<void> }>;
-  readonly token?: () => Promise<string>;
+  readonly mcp?: (request: { readonly endpoint: string; readonly token: string; readonly signal?: AbortSignal }) => Promise<{ readonly projectFingerprint?: string; readonly tools: readonly string[]; readonly protocolVersion?: string; close(): Promise<void> }>;
+  readonly token?: (signal?: AbortSignal) => Promise<string>;
   readonly expectedTools?: () => Promise<readonly string[]>;
+  readonly canonicalTools?: () => Promise<readonly string[]>;
   readonly registerCleanup?: (cleanup: () => Promise<void> | void) => void;
 }
 
@@ -94,4 +101,5 @@ export interface DoctorOptions {
   readonly now?: () => number;
   readonly signal?: AbortSignal;
   readonly timeoutMs?: number;
+  readonly totalTimeoutMs?: number;
 }

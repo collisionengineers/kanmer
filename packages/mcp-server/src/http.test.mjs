@@ -348,8 +348,9 @@ test("rotation persists before activation, invalidates sessions, and aggregates 
     const failingReady = await failingHost.start();
     try {
       await initialize(failingReady.endpoint, first.token, "rotation-failure");
-      failingHost.invalidatePrincipal = async () => { throw new Error("session invalidation failed"); };
-      await assert.rejects(() => failingHost.rotateBearerVerifier(second.verifier, { persist: async () => undefined }), /session invalidation failed/);
+      const [failingSession] = [...failingHost.sessions.values()];
+      failingSession.server.close = async () => { throw new Error("session close failed"); };
+      await assert.rejects(() => failingHost.rotateBearerVerifier(second.verifier, { persist: async () => undefined }), /session close failed/);
       assert.equal((await fetch(failingReady.endpoint, { method: "GET", headers: authHeaders(first.token) })).status, 401, "ambiguous invalidation fails closed for old token");
       assert.equal((await fetch(failingReady.endpoint, { method: "GET", headers: authHeaders(second.token) })).status, 401, "ambiguous invalidation fails closed for new token");
     } finally { await failingHost.close(); }

@@ -328,7 +328,10 @@ export class KanmerHttpHost {
         });
         const mcpServer = createKanmerMcpServer("remote-http-v1");
         created = { principal, transport, server: mcpServer, lastActive: this.now(), inFlight: 0, closing: false };
-        transport.onclose = () => { const id = transport.sessionId; if (id) void this.closeSession(id); };
+        transport.onclose = () => {
+          const id = transport.sessionId;
+          if (id) void this.closeSession(id).catch((error) => this.reportCloseFailure(error));
+        };
         await mcpServer.connect(transport);
         session = created;
       }
@@ -348,7 +351,11 @@ export class KanmerHttpHost {
 
   private async sweep(): Promise<void> {
     const cutoff = this.now() - this.options.idleTtlMs;
-    await Promise.all([...this.sessions.entries()].filter(([, session]) => session.lastActive < cutoff && session.inFlight === 0).map(([id]) => this.closeSession(id)));
+    try {
+      await Promise.all([...this.sessions.entries()].filter(([, session]) => session.lastActive < cutoff && session.inFlight === 0).map(([id]) => this.closeSession(id)));
+    } catch (error) {
+      this.reportCloseFailure(error);
+    }
   }
 
   async invalidatePrincipal(principal: string): Promise<void> {
@@ -385,7 +392,14 @@ export class KanmerHttpHost {
     if (!session || session.closing) return;
     session.closing = true;
     this.sessions.delete(id);
-    await Promise.allSettled([session.transport.close(), session.server.close()]);
+    // Both close operations are started, but neither result is discarded.
+    // Rotation/revocation must observe a rejection and fail closed when a
+    // transport or MCP server cannot be invalidated.
+    await Promise.all([session.transport.close(), session.server.close()]);
+  }
+
+  private reportCloseFailure(error: unknown): void {
+    process.stderr.write(`kanmer-mcp-http session close failed: ${safeDiagnosticMessage(error, "REMOTE_AUTH_SESSION_CLOSE_FAILED")}\n`);
   }
 
   async close(): Promise<void> {
@@ -396,7 +410,10 @@ export class KanmerHttpHost {
     // cleanup is armed before awaiting either operation so a stuck transport
     // cannot make shutdown unbounded.
     const listenerClosed = new Promise<void>((resolve) => this.httpServer.close(() => resolve()));
-    const sessionsClosed = Promise.all([...this.sessions.keys()].map((id) => this.closeSession(id)));
+    let sessionCloseError: unknown;
+    const sessionsClosed = Promise.all([...this.sessions.keys()].map((id) => this.closeSession(id))).catch((error) => {
+      sessionCloseError = error;
+    });
     let forced = false;
     const force = setTimeout(() => {
       forced = true;
@@ -407,7 +424,7 @@ export class KanmerHttpHost {
       Promise.all([listenerClosed, sessionsClosed]).then(() => true),
       new Promise<boolean>((resolve) => setTimeout(() => resolve(false), this.options.shutdownGraceMs)),
     ]);
-    if (!completed) forced = true;
+    if (!completed || sessionCloseError) forced = true;
     if (forced) {
       for (const socket of this.sockets) socket.destroy();
     }
@@ -416,6 +433,7 @@ export class KanmerHttpHost {
       this.stoppedEmitted = true;
       this.emit({ kind: "kanmer-mcp-http-stopped", reason: forced ? "forced-timeout" : "requested" });
     }
+    if (sessionCloseError) throw sessionCloseError;
   }
 }
 

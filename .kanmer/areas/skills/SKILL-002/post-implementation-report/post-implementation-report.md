@@ -1,59 +1,39 @@
 # Post-implementation report
 
-PR [#18](https://github.com/collisionengineers/kanmer/pull/18). 14 templates
-touched, 2 new.
+## Reconciliation outcome
 
-## File changes
+SKILL-002's template implementation was already merged in PR #18. This lane audited the merged tree and made one bounded corrective change: a later `kanmer-plan` template rewrite had lost the required fixed identity/contrast line. Commit `78ee829b33a41503128e214f393053ae34b2ba22` remains the historical implementation; this lane adds `b609c383a203d3956f09a72a324ed09396b28227` on branch `skill-002-template-guidance`.
+
+## File change
 
 | Path | Change |
 |---|---|
-| 11 existing templates | Identity line inserted at line 3. |
-| `kanmer-research/assets/files-template.md` | Rewritten — Impact → Files, two tables. |
-| `kanmer-execute/assets/proof-visual-template.md` | **New** (FRD-006). |
-| `kanmer-execute/assets/proof-test-template.md` | **New** (FRD-006). |
-| `kanmer-execute/assets/proof-template.md` | Points at both variants. |
-| `kanmer-tickets/assets/ticket-template.md` | `profile` + `groups`; `priority` dropped. |
+| `plugins/kanmer/skills/kanmer-plan/assets/plan-template.md` | Restored the FRD-014 line-3 identity contrast: the plan is not the checklist; reasoning establishes bounded work and the checklist distils it. |
 
-## Against the governing docs
+The existing merged implementation still supplies the files-template rewrite, identity lines for the remaining document types, per-proof-type templates, and ticket `profile`/`groups` guidance. No SKILL-003/004/005/007 scope, provider work, deep-mode feature, or group-template invention entered this diff.
 
-**FRD-014 R1** — every shipped template names its type and its nearest
-confusion, in a fixed shape so the requirement is checkable rather than
-asserted. **R3** — the files template has the two sections and explains the
-contrast between them.
+## Governing-doc alignment
 
-**FRD-006** — proof flavours get their own templates. The visual one exists
-partly to stop the soft warning firing needlessly: core warns when a
-`proof:visual` requirement finds no images under `proof/`, so a template that
-never mentions the location manufactures warnings.
+FRD-014 R1/R3 are satisfied by the merged templates plus the corrective plan-template line: each of the 14 document templates has a grep-verifiable identity/nearest-confusion line, and proof visual/test variants remain explicit. The files template retains its two sections and contrast rule.
 
-## Closed a loose end I created
+## Verification
 
-SKILL-001 renamed `impact-template.md` to `files-template.md` so the rewritten
-skill's reference would resolve, and left the contents saying "Impact". Called
-out at the time as SKILL-002's; done here rather than quietly forgotten.
+- Targeted 14-template audit — PASS: identity line 14/14; `priority` hits 0; `files-template.md` `Impact` hits 0.
+- `npm run verify:skills` — PASS, all checks.
+- `npm run verify:agents-block` — PASS, 31/31.
+- `npm run build -w @kanmer/core` — PASS.
+- `npm run test:scripts` — initial run was INCONCLUSIVE/FAIL only because ignored `packages/core/dist/index.js` was absent in the fresh worktree; after the core build, rerun PASS, 80/80.
+- `npm run plugin:check` from the normal main checkout — PASS: 34 tools, bundle bytes match, 12 skill frontmatters/manifests valid.
+- `git diff --check` — PASS.
 
-## For review
+## Evidence limits and prior dispositions
 
-**The identity lines are one-line judgements read far more often than they were
-written.** If one draws the distinction in the wrong place it teaches the wrong
-thing at scale. `report ↔ proof` and `research ↔ files` are the two worth a
-second opinion — the others restate distinctions already in the FRDs, but those
-two are my phrasing of a subtler split.
+The grep proves presence and position, not that every one-line distinction is pedagogically correct; the existing report's research↔files and report↔proof wording risk remains for independent review. No live agent behavior is claimed. The existing merged report's deliberate non-goals remain: no deep-mode research-summary template without a shipped document concept, and no group template where groups have no asset template surface.
 
-**No "research summary template for deep mode."** The ticket lists one. FRD-005
-splits research into quick and deep modes, but the deep-mode *skill* prose is
-SKILL-001's territory and landed there without a summary concept, so a template
-for it would be a template for nothing. Deliberately skipped rather than
-invented; if deep mode grows a summary document it should arrive with the skill
-change that needs it.
+## Traceability and handoff
 
-**No group template.** The ticket mentions "group and ticket template updates".
-Groups have no template today — `create_group` takes a title and body directly,
-and there is no `assets/` file to update. The ticket's phrasing implies one
-exists. Not created, because a template for a two-field entity is ceremony.
-
-## What kanmer-verify should run
-
-The line-3 grep across all templates (no output); `priority` absent from every
-template; `files-template.md` free of "Impact"; `verify:agents-block`; full
-tests.
+- Ticket: SKILL-002
+- Branch/worktree: `skill-002-template-guidance` / `.worktrees/skill-002`
+- Historical PR: #18, merged; corrective commit: `b609c383a203d3956f09a72a324ed09396b28227`.
+- A new PR will be opened for the corrective one-line fix, then the ticket will move one boundary to Review for independent review/merge.
+- Verify on merged main: rerun the 14-template audit, `verify:skills`, `verify:agents-block`, `test:scripts`, and `plugin:check`.

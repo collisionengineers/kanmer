@@ -394,3 +394,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-21T23:05:24.982Z — DOC-005 closeout complete: PR #138 merged at af6edf7f782b12e2dac455276e6804ab491d0bd3; merged-main proof and Outcome were final/read back; checklist is 16/16. Removed .worktrees/doc-005, deleted local and remote doc-005-operating-rule, ran git fetch --prune and git worktree prune, and released the ticket through MCP. Live item is Done with no taken_at, branch, or worktree; no source changes remain in the lane.
+
+- 2026-08-21T23:06:18.993Z — SKILL-002 taken in .worktrees/skill-002 on skill-002-template-guidance for bounded template reconciliation. Existing PR #18 implementation is reachable; audit found only the plan-template identity line drift, so the lane is limited to that one-line fix and evidence. No SKILL-003/004/005/007 scope.

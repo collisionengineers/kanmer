@@ -1,18 +1,22 @@
 # Checklist
 
-- [ ] view shortcuts derived from `VIEW_LABELS` — Ctrl+N bug fixed
-- [ ] `shared/shortcuts.ts` is the single binding table
-- [ ] `build-manual.mjs` emits a bundled TS module
-- [ ] generated output committed (the packaged build has no `/docs/`)
-- [ ] hand-written getting-started + troubleshooting
-- [ ] curated FRD chapters, not all 24
-- [ ] shortcuts chapter generated from the table
-- [ ] `Manual.tsx`: sidebar, chapter body, in-page search
-- [ ] F1 opens it; Escape closes
-- [ ] Help ▸ Manual menu item
-- [ ] `?` deep links from Settings tabs
-- [ ] test: chapter matches the binding table
-- [ ] test: every deep-link target is a real chapter
-- [ ] regenerating produces no diff
-- [ ] no network, no runtime file reads
-- [ ] `@kanmer/ui` barrel
+- [x] view shortcuts are derived from the shared view list (VIEW_IDS in lib/views.ts, the current equivalent of the planned VIEW_LABELS) so the Ctrl+1…9 mapping cannot drift from the rendered tabs
+- [x] shared/shortcuts.ts is the manual's binding table; the handler's imperative chain is documented as a remaining limitation, not silently claimed table-driven
+- [x] build-manual.mjs emits a bundled TypeScript module
+- [x] generated output is committed; the packaged build does not need /docs/
+- [x] hand-written getting-started and troubleshooting chapters exist
+- [x] the original curated-FRD approach is reconciled: DOC-007 replaced FRD-derived prose with hand-written user chapters; only the shortcuts chapter remains generated
+- [x] the shortcuts chapter is generated from the binding table
+- [x] Manual.tsx provides the sidebar, chapter body, search filter and matching-line hint
+- [x] F1 opens the manual and Escape closes the topmost panel
+- [x] Help ▸ Manual is present and sends the renderer menu command
+- [x] Settings-tab ? links are withdrawn by GUI-074/GUI-081 and FRD-024 R4; no obsolete contextual affordance is being claimed
+- [x] the manual test compares the shortcuts chapter with the binding table in both directions (11 focused tests pass)
+- [x] chapter ids are unique and expected; contextual ? targets were withdrawn rather than left as dead links
+- [x] npm run check:manual regenerates no diff (manual: up to date, 22 chapters)
+- [x] the manual component and generated artifact contain no fetch(, XMLHttpRequest or http(s):// runtime-network tokens (0 matches each); content is bundled
+- [x] the @kanmer/ui barrel exports its public UI surface
+
+## Audit disposition
+
+This is a reconciliation of the already-merged implementation, not a new source change. The historical PR remains the implementation record; later DOC-007 rewrote the authored chapters and added the generation guards. No GUI-016, provider, or other ticket scope was changed.

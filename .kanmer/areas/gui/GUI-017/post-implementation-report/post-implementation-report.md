@@ -1,67 +1,37 @@
 # Post-implementation report
 
-PR [#25](https://github.com/collisionengineers/kanmer/pull/25).
+## Audit result
 
-## File changes
+GUI-017's implementation is already merged in PR [#25](https://github.com/collisionengineers/kanmer/pull/25), whose implementation commit is 6e21ac2ba1ec52292af47d99f2c9020ed7712817 and whose merge commit is 39080d7f2d4deed02671f85674c4ae2c2179d4a0. I took the live Implementing ticket without force in .worktrees/gui-017 on gui-017-in-app-manual, audited the merged implementation on current main, and made no source changes and no new PR.
 
-| Path | Change |
-|---|---|
-| `shared/shortcuts.ts` | **New** — the binding table. |
-| `scripts/build-manual.mjs` | **New** — markdown → a bundled module; `--check`. |
-| `docs/manual/getting-started.md`, `troubleshooting.md` | **New**, hand-written. |
-| `renderer/src/manual/chapters.generated.ts` | **New, generated, committed.** |
-| `renderer/src/manual/manual.test.ts` | **New** — 8 tests. |
-| `renderer/src/components/Manual.tsx` | **New** — the viewer. |
-| `renderer/src/App.tsx` | F1, Escape, menu command, `?` handler, **view-shortcut fix**. |
-| `renderer/src/components/Settings.tsx` | `?` per tab. |
-| `main/index.ts`, `shared/ipc.ts` | Help ▸ Manual; `MenuCommand` gains `manual`. |
-| `package.json`, `packages/ui/src/index.ts` | Scripts, barrel. |
+The audited branch was fast-forwarded to current origin/main at d473b6fa542d28439e69e9939d7721467cddd800; its only intervening commit after the first audit was an unrelated docs template change. The manual implementation and its later DOC-007 reconciliation are unchanged.
 
-## Against the governing docs
+## Reconciliation against FRD-024
 
-**FRD-024** — menu item and F1, sidebar chapters, in-page search, generated
-chapters, a shortcuts chapter from the binding table, `?` deep links. Offline by
-construction.
+PR #25 supplied the viewer, Help menu/F1 entry, bundled generated artifact, search, shortcuts table and tests. The later merged DOC-007 change (19244f62) reconciled the original FRD-derived/stub pipeline with the amended FRD-024: authored user chapters now live under docs/manual/, only shortcuts are generated, the artifact is committed, and the build rejects missing/stub/spec-shaped chapters. The current generated manual has 22 chapters because later merged remote-access chapters are also included; those pre-existing chapters were not changed in this GUI-017 audit.
 
-## The bug I introduced two tickets ago
+The original checklist's Settings-tab ? item is not a defect: GUI-074/GUI-081 withdrew that contextual affordance, and current FRD-024 R4 records the withdrawal. F1 and Help remain the supported entry points. The shortcut handler derives view ids from VIEW_IDS in apps/gui/src/renderer/src/lib/views.ts; the old VIEW_LABELS/parallel-array wording is historical.
 
-`Ctrl+1..3` against a four-view list, left stale by GUI-015. Fixed by deriving
-from `VIEW_LABELS`. Recording it plainly: I added the Backlog view, did not
-update the shortcut array, and only found it because this ticket had to read the
-bindings to generate documentation from them.
+## Deterministic evidence
 
-## Departures from the ticket's wording
+| Command | Exit | Result |
+|---|---:|---|
+| npm run check:manual | 0 | manual: up to date (22 chapters) |
+| npm run test -w @kanmer/gui -- --run src/renderer/src/manual/manual.test.ts | 0 | 1 file, 11 tests passed |
+| npm run test -w @kanmer/gui | 0 | 37 files, 352 tests passed |
+| npm run typecheck | 0 | core, mcp-server, ui and gui typechecks passed |
+| npm run build -w @kanmer/gui | 0 | electron-vite main, preload and renderer bundles built |
+| npm run verify:docs | 0 | generated manual and documentation checks passed |
+| npm run build:core | 0 | generated the missing core dist used by script tests |
+| node --test scripts/auto-run-state.test.mjs scripts/release-notes.test.mjs | 0 | 2 targeted tests passed after the required core build |
+| static token scan over Manual.tsx and chapters.generated.ts | 0 matches each | no runtime fetch/XHR/http(s) token |
 
-**"a build step generating chapters from the `/docs/` FRDs"** — from a *curated
-subset*, not all 24. A manual made of 24 implementer specs is one nobody reads.
-The list is explicit in the script, so adding one is a one-line change.
+The full root npm test was also run before the core build. Core, GUI and MCP HTTP rails passed, but the command exited 1 in scripts/auto-run-state.test.mjs and scripts/release-notes.test.mjs because packages/core/dist/index.js was absent in the fresh worktree. That exact failure is preserved; npm run build:core followed by both targeted tests exited 0. A later pass does not erase the earlier failed full-rail result.
 
-**"wiring 4.5's stub"** — there is no stub. The Help menu had Check for Updates
-and a GitHub link; nothing referenced a manual. The deep-link mechanism is new.
+## Manual/host evidence
 
-## For review
+The renderer component was not opened interactively. The requested boot smoke was attempted with KANMER_SMOKE=1 npx.cmd electron . --user-data-dir=.tmp-gui017-smoke after the GUI build, but exited 1 before launch with the exact environment error: Electron failed to install correctly, please delete node_modules/electron and try installing again. I did not delete or mutate the shared dependency tree. Therefore fresh-install F1/search/theme rendering and screenshot evidence are **INCONCLUSIVE**, not PASS. No provider or GUI-016 evidence is claimed.
 
-**The shortcuts test does not prove the handler matches the table.** It proves
-the chapter matches the table, both directions. The handler is still an
-`if/else` chain, so a binding added there and not to the table is undocumented
-and untested. Recorded in `shortcuts.ts`; closing it means making the handler
-table-driven, which is its own change.
+## Scope and handoff
 
-**Nobody has read the manual in the app.** Deep-link targets are asserted to be
-real chapter ids — the failure that would look worst — but no one has pressed
-F1.
-
-**Chapter prose is FRD prose.** It reads like a spec introduction because it is
-one. Honestly sourced and better than nothing; a real manual would be written
-for a user rather than harvested from specs.
-
-**`check:manual` is not wired into any gate.** Nothing runs it automatically, so
-a stale generated file only fails when someone thinks to check. The repo has no
-CI, so this is the same shape as `plugin:check` — a rail step that must be
-remembered.
-
-## What kanmer-verify should run
-
-`npm run check:manual`; the 8 manual tests; full suite, typecheck, build, boot;
-and with a running app: F1, search for a word, click a `?` in Settings and
-confirm it lands on the right chapter.
+No source diff, commit, or new PR was needed because PR #25 is already merged and its later DOC-007 reconciliation is present on main. Checklist and this report are the only ticket-document updates. GUI-017 is ready for independent review at the Review boundary.

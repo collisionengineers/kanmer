@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T10:58:46.923Z
+updated_at: 2026-08-21T11:21:10.000Z
 lane_limit: 3
 stop_reason:
 ---
@@ -140,3 +140,12 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T11:10:29.870Z — Archived audit found MCP-005 has a unique unresolved session-survival limitation. Created GUI-106, linked to MCP-005 and GUI-099–102, added it to HZN-007, and queued it as a remediation before final completion.
 
 - 2026-08-21T11:11:20.044Z — Historical audit completed 75/75 backfills. Created GUI-107 (GUI-008 custom requires), GUI-108 (consolidated GUI-009/GUI-023 gate UX), and GUI-109 (GUI-013 Add to group); linked each to source records and added to HZN-007.
+
+
+## Supplemental remediation ledger
+
+| Order | Ticket | Observed stage | Gates / next action | Disposition | Worker | Branch / worktree | Attempt | Last action | Last result | PR | Updated |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 77 | MCP-034 | backlog | fix; needs files + plan; closes independent MCP-022 findings | queued | — | — | 0 | added from post-hoc review | pending research/plan | — | 2026-08-21T11:20:20.495Z |
+
+- 2026-08-21T11:20:20.495Z — Independent post-hoc review of MCP-022 recorded three scoped findings; created MCP-034, linked it to MCP-022, attached to HZN-007, and queued it for the full-board completion run.

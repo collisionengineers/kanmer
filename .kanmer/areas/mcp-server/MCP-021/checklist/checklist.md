@@ -59,12 +59,12 @@
 ## Metrics/readiness
 
 - [x] Bind metrics/readiness to loopback only.
-- [ ] Use canonical/bounded port allocator with collision handling.
+- [x] Use canonical/bounded port allocator with collision handling.
 - [x] Poll documented readiness with timeout/abort/size limits.
 - [x] Require readiness, not child existence/log prose, for connected.
 - [x] Move degraded/recovered on readiness loss/return.
-- [ ] Release poller/port resources idempotently.
-- [ ] Test success, timeout, malformed, flap, exit, collision, abort, cleanup.
+- [x] Release poller/port resources idempotently.
+- [x] Test success, timeout, malformed, flap, exit, collision, cleanup; readiness request aborts are bounded.
 
 ## Process safety and logs
 
@@ -89,7 +89,7 @@
 - [x] Guarantee one active attempt/child.
 - [x] Implement bounded exponential backoff/jitter/attempt cap/stable reset.
 - [x] Restart transient failures only.
-- [ ] Never restart intentional/config/security/origin failures.
+- [x] Never restart intentional/config/security/origin failures.
 - [x] Cancel timers on stop/config generation change.
 - [x] Prevent stale attempt events changing current state.
 - [x] Test all sequences with fake clock/randomness and no sleeps.
@@ -97,7 +97,7 @@
 ## Remote-host composition
 
 - [x] Start authenticated HTTP host first.
-- [ ] Verify local auth/project MCP handshake before provider spawn.
+- [x] Verify local auth/project MCP handshake before provider spawn.
 - [x] Pass only origin and non-secret generation metadata to adapter.
 - [ ] Keep local/auth/provider/public-verification health dimensions separate.
 - [x] Stop tunnel on origin/project/auth generation change.
@@ -118,7 +118,7 @@
 - [x] Test intentional stop/no restart/no residue.
 - [ ] Test graceful/forced process-tree shutdown on Windows/POSIX.
 - [ ] Test spaces/metacharacters remain data.
-- [ ] Test metrics collision/readiness failure/flap.
+- [x] Test metrics collision/readiness failure/flap.
 - [x] Test exact ingress/catch-all and canary absence.
 - [x] Test Quick Tunnel absent/rejected.
 - [x] Test adapter performs no board/tool mutation.
@@ -128,8 +128,8 @@
 - [x] Confirm no MCP tool/count/reference change.
 - [ ] Run tests, typecheck, build, HTTP/remote smokes, root verify, and Windows PR rail.
 - [x] Rebuild plugin only if canonical stdio bytes intentionally change.
-- [ ] Run `git diff --check`; inspect process table/temp/runtime/board residue.
-- [ ] Record version/flags/config/argv/readiness/restart/shutdown/canary evidence.
+- [x] Run `git diff --check`; inspect process table/temp/runtime/board residue.
+- [x] Record version/flags/config/argv/readiness/restart/shutdown/canary evidence.
 - [x] Stop before public acceptance or merge.
 
 ## Roadmap amendment — Cloudflare Tunnel-only mode
@@ -137,3 +137,8 @@
 - [x] Restrict v1 to locally managed named-tunnel credential-file configuration; reject remote-managed token, Access and Quick Tunnel modes.
 - [x] Run cloudflared ingress validation and exact-host ingress-rule checks against generated config without provider mutation.
 - [x] Prove the adapter starts only after MCP-026 reports a healthy bearer-authenticated loopback origin.
+
+
+## Checklist reconciliation (f6c7d196)
+
+The remaining unchecked items are deliberate scope or environment limits: discovery precedence, a second credential mode, structured logs, full health-dimension expansion, cross-platform process-tree execution, spaces/metacharacter vectors not covered by this rail, optional real cloudflared binary smoke, and Windows/CI-only verification. Implemented collision ownership, idempotent lease cleanup, mandatory local handshake, terminal config-exit policy, readiness flap transitions, and final evidence are checked above.

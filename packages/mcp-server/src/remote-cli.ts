@@ -18,7 +18,6 @@ try {
     hostname: required("KANMER_TUNNEL_HOSTNAME"),
     tunnel: createCloudflaredAdapter({
       executable: required("KANMER_CLOUDFLARED_EXECUTABLE"),
-      metricsPort: Number.parseInt(required("KANMER_CLOUDFLARED_METRICS_PORT"), 10),
       tunnelId: required("KANMER_CLOUDFLARED_TUNNEL_ID"),
       credentialsFile: required("KANMER_CLOUDFLARED_CREDENTIALS_FILE"),
       hostname: required("KANMER_TUNNEL_HOSTNAME"),

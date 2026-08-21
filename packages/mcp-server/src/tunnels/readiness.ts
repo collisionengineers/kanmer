@@ -7,6 +7,22 @@ export interface ReadinessOptions {
   readonly fetchImpl?: typeof fetch;
 }
 
+/** Obtain a currently free loopback TCP port without ever binding publicly. */
+export async function allocateLoopbackPort(): Promise<number> {
+  const server = createServer();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", resolve);
+    });
+    const address = server.address();
+    if (!address || typeof address === "string" || address.address !== "127.0.0.1" || !address.port) throw new Error("TUNNEL_METRICS_PORT_ALLOCATION_FAILED");
+    return address.port;
+  } finally {
+    if (server.listening) await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+}
+
 function assertLoopbackReadyEndpoint(value: string): URL {
   let parsed: URL;
   try { parsed = new URL(value); } catch { throw new Error("TUNNEL_READINESS_ENDPOINT_INVALID"); }
@@ -40,3 +56,4 @@ export async function waitForTunnelReadiness(options: ReadinessOptions): Promise
   }
   throw new Error("TUNNEL_READINESS_TIMEOUT");
 }
+import { createServer } from "node:net";

@@ -4,11 +4,11 @@ import os from "node:os";
 import path, { isAbsolute } from "node:path";
 import { cloudflaredConfig, type CloudflaredTunnelOptions, validateCloudflaredTunnel } from "./cloudflared-config.js";
 import type { TunnelAdapter, TunnelLogEvent, TunnelProcess, TunnelTarget } from "./types.js";
-import { waitForTunnelReadiness } from "./readiness.js";
+import { allocateLoopbackPort, waitForTunnelReadiness } from "./readiness.js";
 
 export interface CloudflaredAdapterOptions extends CloudflaredTunnelOptions {
   readonly executable: string;
-  readonly metricsPort: number;
+  readonly metricsPort?: number;
   readonly waitForReady?: (endpoint: string) => Promise<void>;
   readonly onLog?: (event: TunnelLogEvent) => void;
 }
@@ -36,14 +36,15 @@ export class CloudflaredAdapter implements TunnelAdapter {
     validateCloudflaredTunnel(this.options, target);
     await validateRegularFile(this.options.executable, "TUNNEL_EXECUTABLE_INVALID", false);
     await validateRegularFile(this.options.credentialsFile, "TUNNEL_CREDENTIALS_FILE_UNSAFE", true);
-    if (!Number.isSafeInteger(this.options.metricsPort) || this.options.metricsPort < 1 || this.options.metricsPort > 65_535) throw new Error("TUNNEL_METRICS_PORT_INVALID");
+    const metricsPort = this.options.metricsPort ?? await allocateLoopbackPort();
+    if (!Number.isSafeInteger(metricsPort) || metricsPort < 1 || metricsPort > 65_535) throw new Error("TUNNEL_METRICS_PORT_INVALID");
     const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-"));
     const configPath = path.join(directory, "config.yml");
     let child: ChildProcess | undefined;
     try {
       await writeFile(configPath, cloudflaredConfig(this.options, target), { encoding: "utf8", mode: 0o600 });
       await chmod(configPath, 0o600);
-      const spawned = spawn(this.options.executable, ["--no-autoupdate", "--metrics", `127.0.0.1:${this.options.metricsPort}`, "tunnel", "--config", configPath, "run", this.options.tunnelId], {
+      const spawned = spawn(this.options.executable, ["--no-autoupdate", "--metrics", `127.0.0.1:${metricsPort}`, "tunnel", "--config", configPath, "run", this.options.tunnelId], {
         cwd: directory,
         env: { PATH: process.env.PATH ?? "" },
         shell: false,
@@ -60,7 +61,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
         spawned.once("error", reject);
       });
       const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => spawned.once("exit", (code, signal) => resolve({ code, signal })));
-      await (this.options.waitForReady?.(`http://127.0.0.1:${this.options.metricsPort}/ready`) ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${this.options.metricsPort}/ready` }));
+      await (this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`) ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${metricsPort}/ready` }));
       const cleanup = () => rm(directory, { recursive: true, force: true });
       void exited.then(cleanup, cleanup);
       return {

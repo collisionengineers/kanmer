@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { waitForTunnelReadiness } from "../../dist/tunnels/readiness.js";
+import { allocateLoopbackPort, waitForTunnelReadiness } from "../../dist/tunnels/readiness.js";
+
+test("allocator returns an unprivileged loopback port", async () => {
+  const port = await allocateLoopbackPort();
+  assert.ok(Number.isInteger(port) && port > 1024 && port <= 65_535);
+});
 
 test("readiness accepts only a bounded successful loopback /ready response", async () => {
   let attempts = 0;

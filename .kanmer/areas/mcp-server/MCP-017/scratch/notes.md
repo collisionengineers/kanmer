@@ -1,0 +1,1 @@
+2026-08-21: Live main no longer contains MCP-007's isLinkedWorktree Git probe. check-plugin-sync now enforces the stronger direct property that @kanmer/core resolves within the checkout's own packages/core. Revised plan/files/checklist to test that live contract without a board or Git-worktree fixture.

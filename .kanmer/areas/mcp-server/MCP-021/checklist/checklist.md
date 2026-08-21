@@ -12,7 +12,7 @@
 
 ## Generic adapter contract
 
-- [ ] Add provider-neutral config/start/adapter/handle/status/event/diagnostic/error types.
+- [x] Add provider-neutral config/start/adapter/handle/status/event/diagnostic/error types.
 - [x] Use exact lifecycle states.
 - [x] Include attempt/generation/project/origin metadata without secrets.
 - [x] Add validated restart policy/defaults.
@@ -27,7 +27,7 @@
 - [ ] Require healthy auth-required local ready record and project/auth generation.
 - [x] Require canonical HTTPS public hostname with no wildcard/user-info/query/fragment/unexpected path.
 - [x] Normalize hostname safely.
-- [ ] Reject unknown provider modes/invalid restart bounds.
+- [x] Reject unknown provider modes/invalid restart bounds.
 - [x] Return deterministic validation checks before spawn.
 - [x] Test all accepted/rejected vectors.
 

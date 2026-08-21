@@ -1,0 +1,22 @@
+# GUI-082 checklist — stylesheet selector audit
+
+- [ ] Re-run selector inventory and confirm live dynamic selector producers.
+- [ ] Confirm FRD-019 and [[GUI-072]] constraints before editing.
+- [ ] Remove dead priority badge selectors.
+- [ ] Remove dead list/chip selectors.
+- [ ] Remove retired editor/settings selector blocks.
+- [ ] Remove retired document/profile editor selector blocks.
+- [ ] Preserve drag/drop, dispatch-state, `.check`, and `.check-row` rules.
+- [ ] Add focused stylesheet audit regression coverage.
+- [ ] Run focused stylesheet test.
+- [ ] Run all GUI Vitest tests.
+- [ ] Run GUI typecheck.
+- [ ] Run GUI build.
+- [ ] Re-run source audit and inspect scoped diff.
+- [ ] Write post-implementation report with commands and results.
+- [ ] Commit implementation and tests.
+- [ ] Push branch and open a ticket-linked PR.
+- [ ] Record review verdict and remediate any findings.
+- [ ] Merge approved PR.
+- [ ] Verify merged main and write proof.
+- [ ] Record closeout, remove only GUI-082 worktree, and release ticket.

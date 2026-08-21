@@ -5,3 +5,5 @@ Commits `883da82` and `ade71f3`: register the owned child-exit listener before w
 Broader regression checkpoint after the current lifecycle changes: built fake-provider remote smoke passed (no public route), raw stdio protocol smoke passed 30/30 with unchanged 30-tool surface, and discovery smoke passed 13/13. The ticket remains Implementing because contract validation, complete restart wiring, and remaining integration coverage are still incomplete.
 
 Commit `fc68a60` passes the bearer verifier's non-secret `sha256:<12hex>` fingerprint as tunnel auth-generation metadata and rejects arbitrary values before the provider starts, so a caller cannot accidentally route a bearer string through the adapter boundary. Focused suite now 30/30; MCP typecheck and diff check pass.
+
+Commit `f99308d` makes the provider-neutral `TunnelStartInput` executable: unknown discriminator fields/modes, unsafe non-loopback target URLs, and invalid bounded restart policies fail before Cloudflared can spawn. Tests now cover accepted input plus mode/origin/policy rejection; focused suite 31/31 and MCP typecheck pass.

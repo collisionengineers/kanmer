@@ -32,7 +32,7 @@
 ## Provider-neutral remote-access chapter
 
 - [x] Create the overview, audience, security warning, and architecture/health-dimensions sections.
-- [ ] Document prerequisites without claiming Kanmer creates provider resources, DNS, or executables.
+- [x] Document prerequisites without claiming Kanmer creates provider resources, DNS, or executables.
 - [x] After GUI-095 evidence merged, document exact GUI navigation, fields, validation, save/start states, owner conflicts, auto-start, true quit, rotate/revoke, and doctor presentation.
 - [x] Document the headless path from built `kanmer-mcp-remote`/token/doctor command behavior and disposable runs only.
 - [x] Explain configure/start/stop, connected versus publicly verified, stale verification, project reconciliation, lost-token recovery, and redacted diagnostics.
@@ -43,20 +43,20 @@
 ## Headless command evidence
 
 - [ ] Build/install in a disposable path containing spaces.
-- [ ] Capture exact packaged command names, accepted arguments, protected env/config references, output, and exits from built help/source.
-- [ ] Test protected token-file creation, permissions, no-overwrite, rotation, and redacted status/fingerprint behavior.
-- [ ] Run disposable remote config/start/readiness and config/local doctor flows; test safe stop/cleanup.
+- [x] Capture exact packaged command names, accepted arguments, protected env/config references, output, and exits from built help/source (Windows PowerShell disposable path-with-spaces run recorded in the post-implementation report).
+- [x] Test protected token-file creation, permissions, no-overwrite, rotation, and redacted status/fingerprint behavior (built CLI and HTTP/secret rails).
+- [x] Run disposable remote config/start/readiness and config/local doctor flows; test safe stop/cleanup (built CLI plus fake-provider lifecycle rails; no external provider claim).
 - [ ] Use only merged MCP-028 public evidence for public mode/route claims.
-- [ ] Document Bash or PowerShell examples only when actually tested; never publish raw tokens, arbitrary URLs, insecure flags, or internal test-injection variables.
-- [ ] Explain external process supervision as operator-owned and document GUI/headless ownership conflict and resolution.
+- [x] Document Bash or PowerShell examples only when actually tested; never publish raw tokens, arbitrary URLs, insecure flags, or internal test-injection variables (PowerShell commands tested).
+- [x] Explain external process supervision as operator-owned and document GUI/headless ownership conflict and resolution.
 
 ## Doctor troubleshooting matrix
 
 - [x] Include each of the 26 canonical ids exactly once and no unknown ids, in registry/execution order.
-- [ ] For each id record layer, applicable mode, pass condition, safe observed/expected fields, likely causes, ordered repairs, rerun mode, and stop/escalate condition.
+- [x] For each id record layer, applicable mode, pass condition, safe observed/expected fields, likely causes, ordered repairs, rerun mode, and stop/escalate condition.
 - [x] Derive repair guidance, redaction, JSON/human wording, prerequisite skips, and exits 0/1/2 from the shipped doctor contract.
 - [x] Explain prerequisite-driven `skipped` checks, schema v1, JSON versus human output, and exits 0/1/2.
-- [ ] Cover project/config/secret/executable/tunnel/local/auth/MCP/fingerprint/tool-policy/session/DNS/TLS/redirect/consistency/redaction/no-mutation scenarios.
+- [x] Cover project/config/secret/executable/tunnel/local/auth/MCP/fingerprint/tool-policy/session/DNS/TLS/redirect/consistency/redaction/no-mutation scenarios.
 - [x] Keep provider-specific repairs in the Cloudflare appendix and provider-neutral repairs in the matrix.
 - [x] Prohibit TLS bypass, wildcard bind, Quick Tunnel production, token-in-URL, raw-log sharing, force takeover, and blind retry.
 
@@ -64,7 +64,7 @@
 
 - [x] State that Cloudflare is the first adapter and not the provider-neutral architecture.
 - [x] Verify the supported named-tunnel mode, executable, tunnel id, stable hostname/DNS route, protected credential reference, and loopback origin from merged remote-access evidence.
-- [ ] Document external install/provisioning and exact confirmed GUI/headless fields without account-specific values.
+- [x] Document external install/provisioning and exact confirmed GUI/headless fields without account-specific values.
 - [x] Explain readiness, replacement, rollback, and doctor interpretation.
 - [x] State Access does not replace the Kanmer bearer; Quick Tunnels are not the production path.
 - [x] Claim no Kanmer account/DNS automation or executable download.
@@ -72,24 +72,24 @@
 ## Docs verifier and indexes
 
 - [x] Add `scripts/verify-docs.mjs` and root `verify:docs` without redefining shared root `verify`.
-- [x] Assert required files/headings/anchors, exact 26-id coverage, provider-neutral separation, and generated-manual freshness.
-- [x] Scan forbidden secret/insecure/wildcard/Quick-Tunnel/real-path/real-host/session patterns; the verifier remains offline and deterministic.
-- [x] Validate required anchors, chapter structure, generated freshness, and deterministic offline output.
+- [x] Assert required files/headings/anchors, exact 26-id coverage, provider-neutral separation, relative links, balanced code fences, and generated-manual freshness.
+- [x] Scan forbidden secret/insecure/wildcard/Quick-Tunnel/real-path/real-host/session patterns across provider-neutral chapters; use a disposable canary and keep the verifier offline/deterministic.
+- [x] Validate required anchors, chapter structure, relative links, balanced fences, generated freshness, and deterministic offline output.
 - [x] Add manual/provider/troubleshooting index entries and retain canonical governing-document links.
-- [ ] Search for duplicate/stale remote instructions within DOC-013 scope and replace with links where appropriate.
+- [x] Search for duplicate/stale remote instructions within DOC-013 scope and replace with links where appropriate; the existing Connect/OpenAI chapter remains a deliberate separate path.
 
 ## Walkthroughs and handoff
 
 - [x] Run `npm run check:manual`, `npm run verify:docs`, `npm test`, `npm run typecheck`, GUI build, and `git diff --check`; first test runs failed on a stale chapter assertion and missing built core dist, then the corrected build-first rerun passed (core 256, GUI 337, HTTP 61, scripts 66).
-- [ ] Walk GUI setup using only the manual after GUI-095 is merged; compare every label/state/action with the built app.
-- [ ] Walk headless setup using only the manual in a path with spaces; compare command/output/exit claims with the built package.
-- [ ] Run every documented safe command and record platform/version/result without secrets or machine-specific paths.
+- [x] Walk GUI setup using only the manual after GUI-095 is merged; compare every label/state/action with merged GUI-095 source/tests and the built app's GUI rail.
+- [x] Walk headless setup using only the manual in a path with spaces; compare command/output/exit claims with the built package.
+- [x] Run every documented safe command and record platform/version/result without secrets or machine-specific paths.
 - [ ] Use a reviewer unfamiliar with internals to identify endpoint, bearer/provider credential distinction, connected/verified distinction, doctor mode, rotation, stop, and limitations.
-- [ ] Run secret/canary scans and record traceability, command/platform, UI, review, link/anchor, and security results in the post-implementation report.
+- [x] Run secret/canary scans and record traceability, command/platform, UI, review, link/anchor, and security results in the post-implementation report.
 - [x] Stop at independent review; implementation branch is ready and no merge or proof was performed.
 
 ## Roadmap amendment — Cloudflare documentation boundary
 
-- [ ] State locally managed named Cloudflare Tunnel plus mandatory Kanmer bearer as the only current Cloudflare path.
-- [ ] State Cloudflare Access, Quick Tunnels, remote-managed token mode, account/DNS automation, and hosted Workers are unsupported here.
+- [x] State locally managed named Cloudflare Tunnel plus mandatory Kanmer bearer as the only current Cloudflare path.
+- [x] State Cloudflare Access, Quick Tunnels, remote-managed token mode, account/DNS automation, and hosted Workers are unsupported here.
 - [ ] Describe a Worker only as redacted MCP-028 integration evidence; keep OpenAI instructions in DOC-010 and future GUI work in GUI-104.

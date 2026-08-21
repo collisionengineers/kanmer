@@ -13,6 +13,7 @@ Implemented the bounded dispatch-settings rail on branch `gui-075-dispatch-setti
 - `apps/gui/src/main/dispatch.ts`: resolves machine settings once, composes suffix, passes model/metadata, no fallback retry.
 - `apps/gui/src/shared/ipc.ts`, `main/index.ts`, `preload/index.ts`: settings/task IPC.
 - `apps/gui/src/renderer/src/components/Settings.tsx`: generated Dispatch tab, model/task/suffix/reset/preview controls.
+- `docs/functional/frd/FRD-010-task-scoped-dispatch.md`, `docs/manual/dispatch.md`, and `apps/gui/release-notes.md`: user-visible contract and release note.
 - Tests cover provider argv/default identity, prompt identity/delimiter, settings normalization/rejection, and effective dispatch metadata/argv.
 
 ## Provider evidence
@@ -38,7 +39,7 @@ No authenticated provider was started and no model-positive/negative live sessio
 
 ## Deviations / review requests
 
-The full packet's FRD-010/FRD-012/manual/release-note prose updates were not silently claimed: they remain a documentation follow-up and are explicitly unchecked in the checklist. No provider tunnel, GUI-017, or skills files were touched. Manual visual screenshot evidence is INCONCLUSIVE in this headless lane. Independent review should verify the exact model flag ordering against current provider releases and decide whether prose updates belong in this ticket or a documentation follow-up.
+No provider tunnel, GUI-017, or skills files were touched. Manual visual screenshot evidence is INCONCLUSIVE in this headless lane. Independent review should verify the exact model flag ordering against current provider releases and the product wording in the updated FRD/manual.
 
 ## Traceability
 

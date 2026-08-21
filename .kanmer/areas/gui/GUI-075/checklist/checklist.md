@@ -36,7 +36,7 @@
 ## Bounded deviations / follow-up
 
 - [ ] Positive authenticated dispatch controls were not run: no credential-safe agent session was started. The installed CLI help/version probes are PASS; live provider execution remains INCONCLUSIVE.
-- [ ] FRD/manual/release-note prose updates remain a documentation follow-up; implementation report records this explicit deviation rather than claiming those boxes.
+- [x] FRD/manual/release-note prose updates are synchronized with the implemented contract.
 - [ ] Independent visual screenshot/manual evidence remains INCONCLUSIVE in this headless lane.
 
 ## Stop condition

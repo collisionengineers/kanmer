@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-21T23:41:22.192Z
+updated_at: 2026-08-21T23:46:29.717Z
 ---
 
 # Current auto run — HZN-007
@@ -45,3 +45,9 @@ Last handoff: SKILL-021 Review-ready at 2026-08-21T23:28:16.705Z: PR #141, commi
 
 
 Last handoff: 2026-08-21T23:37:33.584Z — GUI-017 and SKILL-003 closeouts are finalized and cleaned; SKILL-021 is held in Review on PR #141 for the pre-existing GitHub Windows path-alias failure, linked to CORE-032; GUI-075 is implementing on its dedicated worktree; MCP-020 Verifying closeout is assigned to /root/mcp017_verifier; MCP-028 provider-neutral external proof is INCONCLUSIVE pending cloudflared/credentials. Resume by reading the run record, HZN-007/context.md, and live gates before any further dispatch.
+
+
+Last handoff: 2026-08-21T23:45:45.382Z — MCP-020 closeout completed by /root/mcp017_verifier; ticket is Done/released with 96/96 and merged-main deterministic rails PASS, while live authenticated provider dispatch remains INCONCLUSIVE. GUI-075 remains the active implementation lane; SKILL-021 remains held in Review on its red GitHub verify check.
+
+
+Last handoff: 2026-08-21T23:46:29.717Z — stale Done-state GUI-007 take metadata was released after confirming no matching branch/worktree; no source or proof changed.

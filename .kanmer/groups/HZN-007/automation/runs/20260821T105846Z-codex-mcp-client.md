@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T23:41:22.192Z
+updated_at: 2026-08-21T23:46:29.717Z
 lane_limit: 3
 stop_reason:
 ---
@@ -427,3 +427,7 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T23:37:33.584Z — lane assignment: MCP-020 Verifying closeout delegated to /root/mcp017_verifier. It must verify merged PR #137 on main, preserve disabled-default/live-provider INCONCLUSIVE evidence, walk Verifying→Done only if gates/proof pass, release and clean its exact recorded worktree/branch.
 
 - 2026-08-21T23:37:33.584Z — provider-neutral milestone remains externally INCONCLUSIVE at MCP-028: Wrangler 4.125.0 is available, but cloudflared and Cloudflare/bearer credentials are absent; scratch records the blocker via MCP and no endpoint/proof is fabricated.
+
+- 2026-08-21T23:45:45.382Z — MCP-020 closeout completed by /root/mcp017_verifier: Verifying→Done passed with 96/96 checklist including closeout; merged PR #137 is 1b5ae0d4546d1b57be393b38f4813f9ecfb6e7d5 (source fb4d63970952eb1cdb0c19f08dc7eff56ef49086), merged-main core 263/263, GUI 352/352, typecheck/build, stdio 224/224, protocol 46/46, discovery 13/13, manual, skills, plugin sync and diff checks passed. Initial typecheck, pre-existing Windows path-alias CI failure, and live authenticated provider dispatch remain preserved as FAIL/INCONCLUSIVE; no live provider success claimed. No MCP-020 worktree/branch existed.
+
+- 2026-08-21T23:46:29.717Z — stale taken-state cleanup: GUI-007 was Done with no matching worktree or branch (confirmed from the live worktree list), so take_ticket(action=release) cleared its old assignee/taken metadata without touching source or proof.

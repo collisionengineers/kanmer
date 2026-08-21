@@ -25,9 +25,9 @@ Add `scripts/verify.mjs` as the sole owner of an immutable ordered `VERIFY_STEPS
 
 1. Add `scripts/verify.mjs` with only Node built-ins.
 2. Export exactly one authoritative command array named `VERIFY_STEPS` with these entries in this order:
-   1. `npm test`
-   2. `npm run typecheck`
-   3. `npm run build`
+   1. `npm run build`
+   2. `npm test`
+   3. `npm run typecheck`
    4. `node packages/mcp-server/src/smoke.mjs`
    5. `npm run smoke:protocol`
    6. `npm run smoke:discovery`

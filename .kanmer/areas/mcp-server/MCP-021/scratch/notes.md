@@ -19,3 +19,5 @@ Executable-validation checkpoint: commit 97974da adds bounded direct `cloudflare
 Shutdown checkpoint: commit 5158976 adds exact-child graceful SIGTERM with a bounded 5-second force fallback (Windows `taskkill /pid <owned pid> /T /F`, POSIX SIGKILL). It never enumerates or targets unrelated processes. Focused typecheck/tests pass.
 
 Regression smoke evidence: `npm run smoke:http` passed HTTP initialize/tools/list/session/delete; `npm run smoke:protocol` passed 30/30 across four protocol versions. The existing MCP surface remains exactly 30 tools, so the tunnel modules did not alter stdio or tool registration.
+
+Fixture checkpoint: commit e84f16e adds `tunnels/fixtures/fake-cloudflared.mjs`, a standalone no-network fake with direct version/help, loopback-only readiness, and termination behavior, plus direct fixture coverage. Focused suite is now 18/18; no real Cloudflare process/account/DNS is involved.

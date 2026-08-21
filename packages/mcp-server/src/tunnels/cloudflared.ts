@@ -34,6 +34,22 @@ function logLine(onLog: CloudflaredAdapterOptions["onLog"], line: string): void 
   if (line.trim()) onLog?.({ provider: "cloudflared", level: "info", message: "provider output received" });
 }
 
+async function stopOwnedChild(child: ChildProcess, exited: Promise<unknown>): Promise<void> {
+  if (!child.killed) child.kill("SIGTERM");
+  const graceful = await Promise.race([
+    exited.then(() => true),
+    new Promise<boolean>((resolve) => { const timer = setTimeout(() => resolve(false), 5_000); timer.unref(); }),
+  ]);
+  if (graceful) return;
+  if (process.platform === "win32" && child.pid) {
+    await new Promise<void>((resolve) => {
+      const killer = spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { shell: false, windowsHide: true, stdio: "ignore" });
+      killer.once("error", resolve); killer.once("exit", resolve);
+    });
+  } else child.kill("SIGKILL");
+  await exited;
+}
+
 export class CloudflaredAdapter implements TunnelAdapter {
   constructor(private readonly options: CloudflaredAdapterOptions, private readonly spawnProcess: CloudflaredSpawner = spawn) {}
 
@@ -73,7 +89,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
       return {
         pid: spawned.pid,
         exited,
-        async stop() { if (!spawned.killed) spawned.kill("SIGTERM"); await exited; },
+        async stop() { await stopOwnedChild(spawned, exited); },
       };
     } catch (error) {
       if (child && !child.killed) child.kill("SIGTERM");

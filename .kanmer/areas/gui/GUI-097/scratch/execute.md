@@ -1,0 +1,1 @@
+Checkpoint `0fb8497`: implemented local Editor modes plus App opening state. Focused `Editor.test.tsx` (9 tests) and GUI typecheck pass. The enum/mapping, mode selector, dim-not-hide classes, Approval default path, and Execution dispatch entry are in place; broader dirty-navigation and App-flow rails remain in progress.

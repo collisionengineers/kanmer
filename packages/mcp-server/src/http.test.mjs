@@ -320,3 +320,51 @@ test("limits, principal-bound sessions, deterministic expiry, and restart invali
   assert.equal(forcedEvents.filter((event) => event.kind === "kanmer-mcp-http-stopped")[0]?.reason, "forced-timeout");
   socket.destroy();
 });
+
+test("rotation persists before activation, invalidates sessions, and aggregates redacted failures", async () => {
+  const first = generateBearerToken();
+  const second = generateBearerToken();
+  const events = [];
+  const host = createKanmerHttpHost({
+    authorizer: new BearerAuthorizer(first.verifier),
+    onEvent: (event) => events.push(event),
+    sweepIntervalMs: 60_000,
+  });
+  const ready = await host.start();
+  try {
+    const session = await initialize(ready.endpoint, first.token, "rotation");
+    await assert.rejects(() => host.rotateBearerVerifier(second.verifier, { persist: async () => { throw new Error(`persisted token ${second.token}`); } }), /REMOTE_AUTH_SECRET_PERSIST_FAILED/);
+    assert.equal((await fetch(ready.endpoint, { method: "GET", headers: authHeaders(first.token) })).status, 400, "old token remains active when persistence fails");
+    await host.rotateBearerVerifier(second.verifier, { persist: async () => undefined });
+    assert.equal((await fetch(ready.endpoint, { method: "GET", headers: { ...authHeaders(first.token), "mcp-session-id": session } })).status, 401);
+    assert.equal((await fetch(ready.endpoint, { method: "GET", headers: authHeaders(second.token) })).status, 400, "new token requires a new initialized session");
+    await host.rotateBearerVerifier(first.verifier, { persist: async () => undefined });
+    await host.rotateBearerVerifier(second.verifier, { persist: async () => undefined });
+    await host.revokeBearer();
+    await host.revokeBearer();
+    assert.equal((await fetch(ready.endpoint, { method: "GET", headers: authHeaders(second.token) })).status, 401);
+
+    const canary = "A".repeat(43);
+    const originalWrite = process.stderr.write;
+    const stderr = [];
+    process.stderr.write = (chunk) => { stderr.push(String(chunk)); return true; };
+    try {
+      const noisyEvents = [];
+      const noisy = createKanmerHttpHost({
+        authorizer: { authorize: async () => { throw new Error(`Authorization: Bearer ${canary}`); } },
+        onEvent: (event) => { noisyEvents.push(event); throw new Error(`secret=${canary}`); },
+        sweepIntervalMs: 60_000,
+      });
+      const noisyReady = await noisy.start();
+      try {
+        for (let i = 0; i < 33; i++) {
+          const response = await fetch(noisyReady.endpoint, { method: "GET", headers: { authorization: `Bearer ${canary}` } });
+          assert.equal(response.status, 401);
+        }
+      } finally { await noisy.close(); }
+      assert.deepEqual(noisyEvents.filter((event) => event.kind === "auth-rejected").map((event) => event.count), [1, 32]);
+    } finally { process.stderr.write = originalWrite; }
+    assert.equal(stderr.join("").includes(canary), false, "observer failures are redacted");
+    assert.deepEqual(events.filter((event) => event.kind === "auth-rejected").map((event) => event.count), [1], "auth failures are emitted through a bounded aggregate");
+  } finally { await host.close(); }
+});

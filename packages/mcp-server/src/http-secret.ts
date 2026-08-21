@@ -27,6 +27,10 @@ export async function createTokenFile(file: string, writer: TokenFileWriter = de
     handle = await open(file, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600);
     created = true;
     await writer.write(handle, generated.token);
+    const stat = await handle.stat();
+    if (!stat.isFile() || (process.platform !== "win32" && (stat.mode & 0o077) !== 0)) {
+      throw new Error("REMOTE_AUTH_SECRET_FILE_UNSAFE");
+    }
     return { verifier: generated.verifier, fingerprint: generated.verifier.fingerprint };
   } catch (error) {
     if (!created) throw error;

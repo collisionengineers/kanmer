@@ -1,0 +1,5 @@
+## Independent review — 2026-08-21
+
+Reviewed PR #132 (ff41f518b5805b1c308ab251ab8305e3b1ae1e9d) against MCP-014 and FRD-012. The provider registry now models Grok as a native user-scoped plugin with no project registration; Connect preflights the CLI/runtime and bundle, verifies grok inspect plus a functional get_status probe before cleaning only legacy Kanmer config/skill residue, and Disconnect verifies list/inspect absence before the same surgical cleanup. Settings warns about user scope; status/update paths report plugin scope. No MCP-015 dispatch/binding work was absorbed.
+
+Independent deterministic checks: providers/connect focused tests 92/92 PASS; GUI build PASS; typecheck PASS; check:manual and verify:skills PASS; git diff --check PASS. The full GUI and script rails were reported PASS by the execution lane. Real clean-host Grok functional proof is INCONCLUSIVE because no authenticated XAI_API_KEY was available and existing user plugin state makes post-uninstall inspect ambiguous; this is explicitly retained rather than claimed as PASS. Review disposition: approve deterministic PR; merge, then keep Verifying pending named-host acceptance.

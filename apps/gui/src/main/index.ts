@@ -63,6 +63,11 @@ import {
   type WindowBounds,
 } from "./settings.js";
 import {
+  nativeChromeBackground,
+  refreshesForSystemTheme,
+  synchronizeNativeTheme,
+} from "./nativeTheme.js";
+import {
   ensureBoardWorktree,
   inspectBoardWorktree,
   renameBoardBranch,
@@ -147,20 +152,13 @@ function requireStore(projectId: string): KanmerStore {
   return requireCtx(projectId).store;
 }
 
-/** The theme actually in effect ("system" resolved against the OS). */
-function resolvedDark(): boolean {
-  const theme = readSettings().theme;
-  return theme === "system" ? nativeTheme.shouldUseDarkColors : theme === "dark";
-}
-
 /** Keep OS-rendered chrome (title/menu/dialogs) in the same mode as the app. */
 function applyNativeTheme(theme = readSettings().theme): void {
-  nativeTheme.themeSource = theme;
-  mainWindow?.setBackgroundColor(resolvedDark() ? "#0f1115" : "#f6f7f9");
+  synchronizeNativeTheme(theme, nativeTheme, (color) => mainWindow?.setBackgroundColor(color));
 }
 
 nativeTheme.on("updated", () => {
-  if (readSettings().theme === "system") applyNativeTheme("system");
+  if (refreshesForSystemTheme(readSettings().theme)) applyNativeTheme("system");
 });
 
 /** Restore saved window bounds only if they still intersect a display. */
@@ -183,6 +181,7 @@ function restorableBounds(): WindowBounds | null {
 function createWindow(): void {
   applyNativeTheme();
   const saved = restorableBounds();
+  const theme = readSettings().theme;
   mainWindow = new BrowserWindow({
     width: saved?.width ?? 1280,
     height: saved?.height ?? 820,
@@ -191,7 +190,7 @@ function createWindow(): void {
     minHeight: 600,
     // Resolve the theme BEFORE the window exists so light-theme users don't
     // get a dark flash every launch (and vice versa).
-    backgroundColor: resolvedDark() ? "#0f1115" : "#f6f7f9",
+    backgroundColor: nativeChromeBackground(theme, nativeTheme.shouldUseDarkColors),
     show: false,
     title: "Kanmer",
     ...(iconPath() ? { icon: iconPath()! } : {}),

@@ -1,52 +1,27 @@
-# Proof
+# Proof — DOC-005
 
-PR [#26](https://github.com/collisionengineers/kanmer/pull/26), merged
-(`1df633e`). Verified on the merged base. **Last ticket of the v3 roadmap.**
+## Merged-main verification
 
-## The rule is where it must be
+Verified on the repository main checkout after PR #138 merged at 2026-08-21T23:01:40Z. Main HEAD is af6edf7f782b12e2dac455276e6804ab491d0bd3, and the scoped fix commit 75dc1ad955369db2cd0e85bd486441db94913c5e is reachable. The original operating-rule implementation from PR #26 (1df633e7dd4b424ac0a7107ac08d2289c61260dd) remains reachable.
 
-`verify:agents-block` → **26/26**. §0 sits after the `kanmer:instructions:end`
-marker, confirmed by reading the file in order rather than trusting the check —
-inside the markers it would be silently overwritten the next time setup runs.
+## Scope and behavior
 
-## The stretch works from both roots
+The release-notes generator remains read-only, derives Done-since-tag entries from board data, groups by area, and now normalizes shorthand PR references such as 96 and #96 through the origin remote into canonical /pull/96 Markdown links while preserving existing absolute URLs and safe fallback behavior. The regression test asserts the canonical link and rejects a bare shorthand link.
 
-The bug that mattered: the first version resolved the board from the script's
-own root, so it found nothing when run from a per-ticket worktree — the normal
-case.
+## Verification
 
-Run from the **ticket worktree** during development and from the **main
-checkout** after merge, both produce the same real output:
+- node --test scripts/release-notes.test.mjs — PASS, 1/1.
+- verify:agents-block — PASS, 31/31 in the ticket worktree and merged-main rail.
+- npm run test:scripts — PASS, 80/80 in the ticket lane.
+- npm run typecheck — PASS in the ticket lane.
+- npm run build:core — PASS; required generated core output for the release-notes runner.
+- git diff --check — PASS.
+- PR #138 GitHub verify — FAIL only at the pre-existing Windows GUI path assertion (runneradmin versus RUNNER~1); no DOC-005 files were implicated and the failure is retained rather than relabelled.
 
-```
-## Since v0.2.0
-### gui
-- GUI-007, GUI-010, GUI-015, GUI-016, GUI-017   (4 with PR links)
-### skills
-- SKILL-002 … SKILL-007                          (5 with PR links)
+## Review and limitations
 
-_11 tickets across 2 areas. Draft — edit before shipping._
-```
+Independent review found no blocking defect. The ticket is a documentation/rail fix; no interactive or provider-host proof is applicable.
 
-Drawn entirely from `stageEntered.done` and `prs` — committed board data, not
-git log. Tickets with no `done` stamp are excluded rather than inferred from
-`updated`, which changes on any edit.
+## Result
 
-## Rail
-
-core 139, gui 184, `verify:agents-block` 26/26.
-
-## Not proven
-
-**The counts in the rule are a snapshot.** "60 backfilled, 26 collapsed" is true
-today and nothing regenerates it. A dated statement of fact seemed better than a
-generated paragraph that becomes a third thing to keep in sync — arguable.
-
-**Nobody has followed the rule from a cold start.** It describes what the last
-sixteen tickets did, written by the agent that did them. Whether it reads
-clearly to someone arriving without that context is untested, and cannot be
-tested by the person who wrote it.
-
-**`release:notes` is not wired into `release.mjs`.** Deliberate — notes need a
-human edit — but it must be remembered, like `plugin:check` and `check:manual`.
-That is now three rail steps in a repo with no CI to enforce them.
+PASS for the scoped release-notes normalization and merged-main traceability.

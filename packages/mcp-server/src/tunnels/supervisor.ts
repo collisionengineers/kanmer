@@ -16,6 +16,7 @@ export class TunnelSupervisor {
   private process?: TunnelProcess;
   private stopping = false;
   private restarts = 0;
+  private cancelDelay?: () => void;
 
   constructor(private readonly options: TunnelSupervisorOptions) {
     this.maxRestarts = options.maxRestarts ?? options.restartPolicy?.maxRestarts ?? DEFAULT_TUNNEL_RESTART_POLICY.maxRestarts;
@@ -48,16 +49,23 @@ export class TunnelSupervisor {
     this.emit("restarting");
     const delay = Math.min(this.policy.maxDelayMs, this.policy.baseDelayMs * 2 ** (this.restarts - 1));
     try {
-      await (this.options.wait?.(delay) ?? new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, delay);
-        timer.unref();
-      }));
+      await this.delay(delay);
       if (!this.stopping) await this.launch();
     } catch { this.emit("failed"); }
   }
 
+  private async delay(delay: number): Promise<void> {
+    if (this.options.wait) return this.options.wait(delay);
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(() => { this.cancelDelay = undefined; resolve(); }, delay);
+      timer.unref();
+      this.cancelDelay = () => { clearTimeout(timer); this.cancelDelay = undefined; resolve(); };
+    });
+  }
+
   async stop(): Promise<void> {
     this.stopping = true;
+    this.cancelDelay?.();
     const process = this.process;
     if (process) await process.stop(); else this.emit("stopped");
   }

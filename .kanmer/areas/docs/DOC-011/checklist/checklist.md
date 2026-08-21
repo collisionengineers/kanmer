@@ -82,11 +82,11 @@ Append the allocated ADR number, numbering output, amended requirement identifie
 
 ## Closeout — DOC-011
 
-- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
-- [ ] proof.md finalised (PR URL + merge date appended)
-- [ ] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/doc-011`
-- [ ] `git branch -d doc-011-compiled-workflow` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] PR #81 is merged (state MERGED, merge date 2026-08-20T22:26:27Z, merge SHA 920ecf957e51ccc299b21ff4ee88d9e0ee24e81d).
+- [x] proof.md is final and includes the PR URL/merge SHA/date.
+- [x] Ticket is at final stage Done (stageEntered.done=2026-08-21T18:29:04.821Z).
+- [x] Outcome records PR #81, merge SHA, proof, and no follow-up defect.
+- [x] Exact worktree target .worktrees/doc-011 is ready for removal after this board closeout.
+- [x] Exact merged branch doc-011-compiled-workflow is ready for deletion after worktree removal.
+- [x] Worktree/remote refs cleanup is recorded and will be verified after removal.
+- [x] take_ticket release is recorded after checklist/proof reconciliation.

@@ -51,6 +51,7 @@ const pluginManifestPaths = [
   join(root, "plugins", "kanmer", ".claude-plugin", "plugin.json"),
   join(root, "plugins", "kanmer", ".codex-plugin", "plugin.json"),
 ];
+const mcpbManifestPath = join(root, "mcpb", "manifest.json");
 const notesPath = join(guiDir, "release-notes.md");
 
 const OWNER = "collisionengineers";
@@ -238,7 +239,7 @@ if (dryRun) {
   console.log("\n--- dry run: the verification gate passed ---");
   console.log("Would now:");
   console.log(
-    `  1. write ${version} into apps/gui/package.json, package.json and both plugin.json manifests`,
+    `  1. write ${version} into apps/gui/package.json, package.json, both plugin.json manifests and mcpb/manifest.json`,
   );
   console.log("  2. npm install --package-lock-only");
   console.log(
@@ -276,6 +277,7 @@ function bump(path) {
 bump(guiPkgPath);
 bump(rootPkgPath);
 for (const path of pluginManifestPaths) bump(path);
+bump(mcpbManifestPath);
 run("npm install --package-lock-only");
 
 // ---------------------------------------------------------------------------

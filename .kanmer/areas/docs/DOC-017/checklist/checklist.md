@@ -23,6 +23,8 @@
 - [x] cd out of worktree; `git worktree remove .worktrees/doc-017`
 - [x] `git branch -d doc-017-cloudflare-boundary` (`-D` if squash/rebase-merged)
 - [x] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] `take_ticket action: "release"`
 
 - 2026-08-21 closeout evidence: PR #106 was MERGED at 11:03:54Z; proof includes merge SHA/date; ticket body Outcome records the PR and follow-ups; `.worktrees/doc-017` was removed cleanly; branch `doc-017-cloudflare-boundary` was deleted after merged-state confirmation; `git fetch --prune origin` and `git worktree prune` completed.
+
+- 2026-08-21 closeout complete: take_ticket release cleared taken_at/branch/worktree; final checklist is complete.

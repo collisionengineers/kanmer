@@ -9,13 +9,13 @@
 
 ## Implementation
 
-- [ ] Move fingerprint resolution inside startup rollback handling.
-- [ ] Ensure failed pre-bind startup destroys the sweep timer and remains safely closeable.
-- [ ] Add a regression for no-board failure with no listener and destroyed timer.
-- [ ] Run focused HTTP tests.
-- [ ] Run build and protocol/discovery/stdio smoke checks.
-- [ ] Run root typecheck and diff check.
-- [ ] Write post-implementation report.
+- [x] Move fingerprint resolution inside startup rollback handling.
+- [x] Ensure failed pre-bind startup destroys the sweep timer and remains safely closeable.
+- [x] Add a regression for no-board failure with no listener and destroyed timer.
+- [x] Run focused HTTP tests.
+- [x] Run build and protocol/discovery/stdio smoke checks.
+- [x] Run root typecheck and diff check.
+- [x] Write post-implementation report.
 
 ## Review
 

@@ -7,6 +7,8 @@ import {
   RETIRED_SKILL_PATHS,
   antigravityBindingNote,
   classifyLegacyCodexEntry,
+  codexPortableInvocation,
+  codexPortableProbeInvocation,
   dispatchableProviders,
   codexServerName,
   formatSkillsStamp,
@@ -288,7 +290,7 @@ describe("codex project-scoped TOML registration (FRD-012 R1)", () => {
     expect(reg.configPath).toBe(".codex/config.toml");
   });
 
-  it("writes [mcp_servers.kanmer] with command, args and env", () => {
+  it("writes [mcp_servers.kanmer] with command, args and env for Electron", () => {
     const out = reg.merge(null, inv);
     expect(out).toContain("[mcp_servers.kanmer]");
     expect(out).toContain("/opt/electron");
@@ -299,6 +301,38 @@ describe("codex project-scoped TOML registration (FRD-012 R1)", () => {
     expect(TOML.parse(out)).toMatchObject({
       mcp_servers: { kanmer: { command: "/opt/electron", env: { ELECTRON_RUN_AS_NODE: "1" } } },
     });
+  });
+
+  it("defines one rootless, byte-identical portable Codex entry with no env", () => {
+    const portable = codexPortableInvocation();
+    expect(portable).toEqual({
+      command: "cmd.exe",
+      args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"'],
+      env: {},
+    });
+    const parsed = TOML.parse(reg.merge(null, portable)) as Record<string, any>;
+    expect(parsed).toEqual({
+      mcp_servers: {
+        kanmer: {
+          command: "cmd.exe",
+          args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"'],
+        },
+      },
+    });
+    const fromAnotherMachine = codexPortableInvocation();
+    expect(reg.merge(null, fromAnotherMachine)).toBe(reg.merge(null, portable));
+    expect(JSON.stringify(parsed)).not.toMatch(/Users|Users|Kanmer\.exe|--root|--repo-root|cwd|ELECTRON_RUN_AS_NODE/);
+  });
+
+  it("creates a fresh probe descriptor without changing the registration", () => {
+    const probe = codexPortableProbeInvocation();
+    expect(probe).toEqual({
+      command: "cmd.exe",
+      args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe'],
+      env: {},
+    });
+    const normal = codexPortableInvocation();
+    expect(normal.args).toEqual(["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"']);
   });
 
   it("preserves unknown tables, unknown keys and other MCP servers", () => {

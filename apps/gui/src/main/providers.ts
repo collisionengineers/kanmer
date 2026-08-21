@@ -10,11 +10,34 @@ import { STALENESS_PROVIDER_PATHS } from "@kanmer/core";
 export type ProviderId = "codex" | "claude" | "opencode" | "grok" | "antigravity";
 
 export interface Invocation {
-  /** The executable that runs the server (the Electron binary as node). */
+  /** The executable that runs the server. */
   command: string;
-  /** [serverScript, "--root", projectRoot]. */
+  /** Arguments passed to the executable. */
   args: string[];
   env: Record<string, string>;
+}
+
+/**
+ * The one machine-portable Codex launcher contract. The environment expands
+ * LOCALAPPDATA on the destination machine; Connect must never expand or
+ * replace this path with an install, board or source root.
+ */
+const CODEX_LAUNCHER_PATH = "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd";
+
+/** Return a fresh canonical Codex invocation so callers cannot mutate shared state. */
+export function codexPortableInvocation(): Invocation {
+  return {
+    command: "cmd.exe",
+    args: ["/d", "/s", "/c", `"${CODEX_LAUNCHER_PATH}"`],
+    env: {},
+  };
+}
+
+/** Add the installer-owned health-check mode to the canonical command string. */
+export function codexPortableProbeInvocation(): Invocation {
+  const invocation = codexPortableInvocation();
+  invocation.args[3] = `${invocation.args[3]} --probe`;
+  return invocation;
 }
 
 /** Whether a config registers Kanmer — with "unreadable" kept distinct from "no". */
@@ -296,13 +319,12 @@ function tomlMcpServersMerge(existing: string | null, inv: Invocation): string {
       ? doc["mcp_servers"]
       : {}
   ) as Record<string, unknown>;
-  servers["kanmer"] = {
+  const entry: Record<string, unknown> = {
     command: inv.command,
     args: inv.args,
-    // ELECTRON_RUN_AS_NODE is not optional: the registered command is the
-    // Electron binary, which runs the server as Node only with this set.
-    env: inv.env,
   };
+  if (Object.keys(inv.env).length > 0) entry.env = inv.env;
+  servers["kanmer"] = entry;
   doc["mcp_servers"] = servers;
   return `${TOML.stringify(doc)}\n`;
 }

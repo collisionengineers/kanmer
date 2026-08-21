@@ -376,6 +376,15 @@ describe("detectStaleness — provider MCP registrations", () => {
     expect(rowsFor(detect(), "mcp-registration")).toEqual([]);
   });
 
+  it("treats the portable Codex shim registration as current", () => {
+    writeAgents();
+    put(
+      path.join(root, ".codex/config.toml"),
+      '[mcp_servers.kanmer]\ncommand = "cmd.exe"\nargs = ["/d", "/s", "/c", \'"%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd"\']\n',
+    );
+    expect(rowsFor(detect(), "mcp-registration")).toEqual([]);
+  });
+
   it("does not read another server's --root as Kanmer's", () => {
     // The trap a whole-file text scan falls into: any repo that merely LIVES in
     // a folder called kanmer makes `text.includes("kanmer")` true, and the

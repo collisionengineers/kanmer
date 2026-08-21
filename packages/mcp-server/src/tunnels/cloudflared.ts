@@ -122,7 +122,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
       void exited.then(() => this.diagnostics.flush().forEach((event) => this.options.onLog?.(event)));
       await (this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`) ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${metricsPort}/ready` }));
       const cleanup = () => rm(directory, { recursive: true, force: true });
-      void exited.then(cleanup, cleanup);
+      const cleanupPromise = exited.then(cleanup, cleanup);
       let intentionalStop = false;
       const handle: TunnelProcess = {
         pid: spawned.pid,
@@ -132,6 +132,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
           intentionalStop = true;
           this.transition("stopping", target, { attempt, pid: spawned.pid });
           await stopOwnedChild(spawned, exited);
+          await cleanupPromise;
         },
       };
       this.active = handle;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { spawn as nodeSpawn } from "node:child_process";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { PassThrough } from "node:stream";
 import os from "node:os";
@@ -68,6 +68,7 @@ test("fake provider receives one direct no-autoupdate metrics invocation and mus
     assert.match(config, /hostname: kanmer\.example\.test\n    service: http:\/\/127\.0\.0\.1:43123\/mcp\n  - service: http_status:404\n$/);
     if (process.platform !== "win32") assert.equal((await stat(configPath)).mode & 0o077, 0);
     await handle.stop();
+    await assert.rejects(() => access(configPath));
   } finally { if (server && !closed) await new Promise((resolve) => server.close(resolve)); await rm(directory, { recursive: true, force: true }); }
 });
 

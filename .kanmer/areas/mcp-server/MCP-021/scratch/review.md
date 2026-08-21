@@ -94,3 +94,39 @@ The PR adds the provider-neutral tunnel types/supervisor, the named-credentials 
 ### Verdict
 
 **NEEDS CHANGES** — do not merge PR #113 until findings 1–4 are remediated and re-reviewed.
+
+## Independent re-review — PR #113 at f6c7d196c8a317f999850a4e0df40a5a5c32880a
+
+### Changes checked
+
+Reviewed the full MCP-021 packet and the cumulative PR diff through f6c7d196 against FRD-025, ADR-0017, MCP-025/026 contracts, and the provider-neutral Cloudflared scope. The latest commit closes the prior review gaps with bracket-aware public-IP validation, caller-selected loopback-port leases, production exit classification, and adapter readiness state transitions.
+
+### Prior findings and dispositions
+
+1. **Bracketed IPv6 public literals — FIXED IN PR.** `validateTunnelStartInput` and Cloudflared `exactHostname` strip URL brackets before `isIP`; the new provider-neutral and Cloudflared regressions reject `[2001:db8::1]`. A fresh built probe returns `TUNNEL_TARGET_INVALID`.
+
+2. **Explicit metrics-port ownership/collision — FIXED IN PR.** `reserveSpecificLoopbackPort` validates, binds and holds caller-selected loopback ports through config/ingress validation until the spawn boundary, releases idempotently, and reports `TUNNEL_METRICS_PORT_IN_USE`. New tests cover lease ownership and occupied/invalid ports. A fresh occupied-port probe reports `spawnReached false error TUNNEL_METRICS_PORT_IN_USE`.
+
+3. **Production terminal-exit retry — FIXED IN PR.** RemoteHost now classifies Cloudflared exit 78 as terminal before handing results to the bounded supervisor; the new integrated regression proves one code-78 exit yields one start and provider `failed`, with no retry. Transient exits retain bounded retry behavior.
+
+4. **Adapter readiness degradation/recovery — FIXED IN PR.** Cloudflared's handle readiness check now transitions the active adapter status `connected → degraded` on failure and back to `connected` on recovery; the new direct adapter regression covers both transitions. RemoteHost health status remains separately tracked.
+
+5. **Earlier local-first verifier, child settlement, and scope findings — FIXED/CONFIRMED.** `verifyLocal` is required at construction and runs before provider spawn; child error/forced shutdown paths remain bounded and clean runtime directories; the diff contains no core/domain/tool/stdio/plugin/provider-account/DNS/Quick-Tunnel/public-acceptance changes.
+
+6. **NON-BLOCKING report freshness — ACCEPTED FOR THIS REVIEW RECORD.** The author post-implementation report still predates the final 52-test count and does not enumerate every c383/f6 follow-up. This review records the authoritative current evidence; no implementation blocker remains.
+
+### Checks
+
+- `npm run test:http -w @kanmer/mcp-server` — PASS, 52/52 (clean rerun at f6c7d196).
+- `npm test` — first attempt failed because a shared-worktree build race removed five `dist` modules while the parallel MCP test rail loaded them; this was an environment/concurrency failure, not a test assertion. A clean immediate rerun passed: core 256/256, GUI 318/318, MCP HTTP/tunnel 52/52, scripts 66/66; manual check current.
+- `npm run build` — PASS.
+- `npm run typecheck` — PASS for core, mcp-server, ui and GUI.
+- `node packages/mcp-server/src/smoke-remote.mjs` — PASS (fake provider, no public route).
+- `npm run smoke:protocol` — PASS, 42/42.
+- `node packages/mcp-server/src/smoke-discovery.mjs` — PASS, 13/13.
+- `git diff --check origin/main...HEAD` — PASS; worktree clean.
+- PR #113 remains OPEN and MERGEABLE at f6c7d196; no merge or stage/proof changes were performed.
+
+### Verdict
+
+**PASS** — all prior blocking findings are fixed and independently covered; PR #113 is suitable for the authorized next merge step.

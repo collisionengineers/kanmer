@@ -29,7 +29,7 @@ Refactor the post-package release decision into a dependency-injected, dependenc
 
 ## Risks / open questions
 
-- **GUI-092 not yet merged:** GUI-093 edits the same release control flow. Rebase only after its merge so its one-package code is the source baseline; do not copy or overwrite its branch.
+- **Shared release control flow:** GUI-093 rebased on GUI-092 merge e5070de and retains its one-package code; future changes must preserve that invariant.
 - **Publisher error before local artifacts exist:** local/package or expected-asset derivation failure remains a loud refusal because exact-file recovery has nothing safe to upload.
 - **Remote API or gh failure:** distinguish a failed check/repair from a known incomplete release and refuse with the existing manual remediation guidance.
 - No user-only open question remains.

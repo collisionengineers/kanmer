@@ -11,7 +11,7 @@
 - [x] Add deterministic tests for success, 422-with-complete-assets, partial repair, failed repair, bounded attempts, and no second package.
 - [x] Update release diagnostics/dry-run prose and correct the stale FRD-021 as-built recovery record.
 - [x] Run script tests, typecheck, safe release diagnostics, relevant package/build rails, and diff check.
-- [ ] Write the implementation report, PR traceability, merged-main proof, and closeout.
+- [x] Write the implementation report, PR traceability, merged-main proof, and closeout.
 
 ## Progress notes
 
@@ -19,3 +19,14 @@
 - Added exact-file recovery from the single local package; the helper cannot run Electron Builder.
 - PASS: npm run test:scripts (66 tests), npm run typecheck, npm run build -w @kanmer/gui, node --check, and git diff --check.
 - Safe dry-run was intentionally run with release credentials removed; it refused before mutation with the expected missing-token guidance.
+
+## Closeout — GUI-093
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-093`
+- [x] `git branch -D gui-093-release-publish-recovery` (squash-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

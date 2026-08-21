@@ -6,6 +6,8 @@ export interface TunnelSupervisorOptions {
   readonly restartPolicy?: Partial<TunnelRestartPolicy>;
   /** Test seam; production uses a cancellable timer. */
   readonly wait?: (delayMs: number) => Promise<void>;
+  /** Test seam; production supplies bounded ±20% jitter. */
+  readonly random?: () => number;
   readonly onState?: (state: "starting" | "running" | "restarting" | "stopped" | "failed") => void;
 }
 
@@ -17,6 +19,7 @@ export class TunnelSupervisor {
   private stopping = false;
   private restarts = 0;
   private cancelDelay?: () => void;
+  private readonly startedAt = new WeakMap<TunnelProcess, number>();
 
   constructor(private readonly options: TunnelSupervisorOptions) {
     this.maxRestarts = options.maxRestarts ?? options.restartPolicy?.maxRestarts ?? DEFAULT_TUNNEL_RESTART_POLICY.maxRestarts;
@@ -36,6 +39,7 @@ export class TunnelSupervisor {
   private async launch(): Promise<void> {
     const process = await this.options.start();
     this.process = process;
+    this.startedAt.set(process, Date.now());
     this.emit("running");
     void process.exited.then(() => this.onExit(process));
   }
@@ -44,10 +48,14 @@ export class TunnelSupervisor {
     if (this.process !== process) return;
     this.process = undefined;
     if (this.stopping) { this.emit("stopped"); return; }
+    if ((Date.now() - (this.startedAt.get(process) ?? Date.now())) >= this.policy.stableResetMs) this.restarts = 0;
     if (this.restarts >= this.maxRestarts) { this.emit("failed"); return; }
     this.restarts++;
     this.emit("restarting");
-    const delay = Math.min(this.policy.maxDelayMs, this.policy.baseDelayMs * 2 ** (this.restarts - 1));
+    const unjittered = Math.min(this.policy.maxDelayMs, this.policy.baseDelayMs * 2 ** (this.restarts - 1));
+    const random = this.options.random?.() ?? Math.random();
+    if (!Number.isFinite(random) || random < 0 || random > 1) { this.emit("failed"); return; }
+    const delay = Math.round(unjittered * (0.8 + random * 0.4));
     try {
       await this.delay(delay);
       if (!this.stopping) await this.launch();

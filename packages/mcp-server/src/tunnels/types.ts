@@ -16,10 +16,10 @@ export interface TunnelRestartPolicy {
 }
 
 export const DEFAULT_TUNNEL_RESTART_POLICY: Readonly<TunnelRestartPolicy> = Object.freeze({
-  maxRestarts: 2,
+  maxRestarts: 5,
   baseDelayMs: 1_000,
   maxDelayMs: 30_000,
-  stableResetMs: 60_000,
+  stableResetMs: 5 * 60_000,
 });
 
 export interface TunnelStatus {

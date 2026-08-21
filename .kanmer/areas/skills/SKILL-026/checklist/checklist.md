@@ -16,3 +16,12 @@
 - Initial focused integration run exposed the defect: `agents-template.md` contained the literal closing sentinel in a comment, so the writer reported `start at -1, end at 158` and correctly refused the documented no-file path. The repair removes both exact sentinels from template prose; the writer and detector remain unchanged.
 - Passed after repair: focused GUI ownership test 2/2; full GUI suite 32 files / 312 tests; core staleness 40 tests; skill-prose Node tests 5/5; `verify:agents-block` 31/31; `verify:skills`; GUI typecheck; and `git diff --check`.
 - Commit `f9afee5d60069a21cdd7712f2a64d1b0b1e7ddcd` pushed on `skill-026-agents-ownership-integration`; opened PR #99.
+
+
+## Closeout — SKILL-026
+
+- [x] Confirmed PR #99 is merged at `a34f087d9d8d0d33a78fda1238cbf53f3f907d7d` (2026-08-21T01:19:13Z).
+- [x] Confirmed `proof.md` is final and records merged-main evidence.
+- [x] Recorded merged commit and PR traceability; deployment is not tracked by this board.
+- [x] Remove only `.worktrees/skill-026` and its merged feature branch; preserve `.worktrees/kanmer`.
+- [x] Prune worktrees and re-read final board state; release follows this recorded cleanup.

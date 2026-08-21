@@ -73,11 +73,11 @@
 - [x] Use minimal environment and omit bearer/verifier/development/unrelated secret variables.
 - [ ] Capture PID/version/attempt before output processing.
 - [ ] Request structured logs where supported.
-- [ ] Bound line/ring-buffer size and rate.
-- [ ] Parse defensively and map allowlisted fields only.
-- [ ] Redact credential/bearer/path/id/URL canaries.
+- [x] Bound line/ring-buffer size and rate.
+- [x] Parse defensively and map allowlisted fields only.
+- [x] Redact credential/bearer/path/id/URL canaries.
 - [x] Never use log prose as primary readiness.
-- [ ] Test exact argv/env/cwd/options and malicious output.
+- [x] Test exact argv/env/cwd/options and malicious output.
 
 ## Attempt lifecycle and supervisor
 

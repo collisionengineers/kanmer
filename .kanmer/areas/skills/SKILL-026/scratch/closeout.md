@@ -1,0 +1,1 @@
+Confirmed PR #99 MERGED at a34f087. Removed only `.worktrees/skill-026`; force-deleted its local branch because PR #99 was squash-merged, deleted the matching remote branch, then ran `git fetch --prune origin` and `git worktree prune`. The board worktree `.worktrees/kanmer` was preserved.

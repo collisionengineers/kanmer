@@ -140,6 +140,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
   const byId = new Map<DoctorCheckId, DoctorCheckResult>();
   type SessionPhase = "local" | "public";
   const clients = new Map<SessionPhase, Awaited<ReturnType<NonNullable<DoctorDependencies["mcp"]>>>>();
+  const clientClosers = new Map<SessionPhase, () => Promise<void>>();
   const snapshots = new Map<SessionPhase, { readonly projectFingerprint?: string; readonly tools: readonly string[] }>();
   let credentialToken: string | undefined;
   const cleanups: Array<() => Promise<void> | void> = [];
@@ -149,7 +150,8 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
   const cleanup = async () => {
     closed = true;
     for (const close of [...cleanups].reverse()) { try { await close(); } catch { cleanupErrors.push("diagnostic cleanup failed"); } }
-    for (const [phase, client] of clients) { try { await client.close(); clients.delete(phase); } catch { cleanupErrors.push("MCP diagnostic session cleanup failed"); } }
+    clients.clear();
+    clientClosers.clear();
   };
   const runOne = async (id: DoctorCheckId, definition: ReturnType<typeof doctorCheck>): Promise<DoctorCheckResult | DoctorSafeDetails | void> => {
     const injected = dependencies.checks?.[id];
@@ -160,7 +162,10 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
       const client = await dependencies.mcp({ endpoint, token: credentialToken, signal: controller.signal });
       if (closed || controller.signal.aborted) { try { await client.close(); } catch { cleanupErrors.push("late MCP session cleanup failed"); } throw new Error("doctor run cancelled"); }
       clients.set("local", client);
-      const closeClient = () => client.close();
+      let closedClient = false;
+      const closeClient = async () => { if (closedClient) return; closedClient = true; await client.close(); };
+      clientClosers.set("local", closeClient);
+      cleanups.push(closeClient);
       dependencies.registerCleanup?.(closeClient);
       return result(id, context.mode, "pass", definition.severity, detail("protected credential accepted by MCP transport"));
     }
@@ -170,11 +175,16 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
       const client = await dependencies.mcp({ endpoint: `https://${config.remoteHostname ?? config.tunnel?.hostname ?? ""}/mcp`, token: credentialToken, signal: controller.signal });
       if (closed || controller.signal.aborted) { try { await client.close(); } catch { cleanupErrors.push("late MCP session cleanup failed"); } throw new Error("doctor run cancelled"); }
       clients.set("public", client);
+      let closedClient = false;
+      const closeClient = async () => { if (closedClient) return; closedClient = true; await client.close(); };
+      clientClosers.set("public", closeClient);
+      cleanups.push(closeClient);
+      dependencies.registerCleanup?.(closeClient);
     }
     if (id === "MCP_INITIALIZE_LOCAL" || id === "MCP_INITIALIZE_PUBLIC") return clients.has(phase) ? result(id, context.mode, "pass", definition.severity, detail("official MCP client initialized")) : result(id, context.mode, "skipped", "info", detail("valid credential client was not established"));
     if (id === "PROJECT_FINGERPRINT_LOCAL" || id === "PROJECT_FINGERPRINT_PUBLIC") { const client = clients.get(phase); if (!client) return result(id, context.mode, "skipped", "info", detail("MCP client was not established")); return client.projectFingerprint && config.expectedProject && client.projectFingerprint === config.expectedProject ? result(id, context.mode, "pass", definition.severity, detail("project fingerprint matches expected project")) : result(id, context.mode, "fail", definition.severity, detail("project fingerprint does not match expected project")); }
     if (id === "REMOTE_TOOL_POLICY_LOCAL" || id === "REMOTE_TOOL_POLICY_PUBLIC") { const client = clients.get(phase); if (!client) return result(id, context.mode, "skipped", "info", detail("MCP client was not established")); const expected = config.expectedTools ?? await dependencies.canonicalTools?.() ?? await dependencies.expectedTools?.() ?? []; return expected.length && JSON.stringify([...client.tools].sort()) === JSON.stringify([...expected].sort()) ? result(id, context.mode, "pass", definition.severity, detail("remote tool policy matches canonical exposure", String(client.tools.length))) : result(id, context.mode, "fail", definition.severity, detail("remote tool policy differs from canonical exposure")); }
-    if (id === "SESSION_CLOSE_LOCAL" || id === "SESSION_CLOSE_PUBLIC") { const client = clients.get(phase); if (!client) return result(id, context.mode, "skipped", "info", detail("MCP client was not established")); snapshots.set(phase, { projectFingerprint: client.projectFingerprint, tools: [...client.tools] }); await client.close(); clients.delete(phase); return result(id, context.mode, "pass", definition.severity, detail("diagnostic MCP session closed")); }
+    if (id === "SESSION_CLOSE_LOCAL" || id === "SESSION_CLOSE_PUBLIC") { const client = clients.get(phase); const closeClient = clientClosers.get(phase); if (!client || !closeClient) return result(id, context.mode, "skipped", "info", detail("MCP client was not established")); snapshots.set(phase, { projectFingerprint: client.projectFingerprint, tools: [...client.tools] }); await closeClient(); clients.delete(phase); clientClosers.delete(phase); return result(id, context.mode, "pass", definition.severity, detail("diagnostic MCP session closed")); }
     if (id === "LOCAL_PUBLIC_CONSISTENT" && dependencies.localStatus) { const local = await dependencies.localStatus(); const remote = snapshots.get("public") ?? clients.get("public"); const same = Boolean(remote && local.projectFingerprint && remote.projectFingerprint === local.projectFingerprint && (!local.tools || JSON.stringify([...local.tools].sort()) === JSON.stringify([...remote.tools].sort()))); return same ? result(id, context.mode, "pass", definition.severity, detail("local and public project/tool policy agree")) : result(id, context.mode, "fail", definition.severity, detail("local and public project/tool policy differ")); }
     return defaultCheck(id, context, dependencies);
   };

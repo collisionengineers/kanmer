@@ -3,10 +3,10 @@
 ## Predecessor contract
 
 - [x] Read accepted remote-access FRD/ADR and requirement ids.
-- [ ] Read MCP-025 implementation/tests/readiness/config/session/authorizer contracts.
+- [x] Read MCP-025 implementation/tests/readiness/config/session/authorizer contracts; HTTP boundary and session contracts re-read on 2026-08-21.
 - [x] Confirm auth can run before body parsing and session lookup.
 - [x] Confirm stdio has no HTTP-auth import/config dependency.
-- [ ] Reuse canonical logger/redactor/error/process patterns.
+- [x] Reuse canonical coded errors/process conventions and one HTTP allowlisted redactor (`http-diagnostics.ts`); no second logger or raw-object serializer.
 - [x] Align headless/GUI boundaries with GUI-095 and DOC-013.
 
 ## Types and safe metadata
@@ -25,7 +25,7 @@
 - [x] Derive short non-authorizing fingerprint.
 - [x] Create stable token/generation identity without project/user data.
 - [x] Return raw token only from explicit generation API.
-- [ ] Keep deterministic entropy/time injection test-only.
+- [x] Keep deterministic entropy injection test-only via the explicitly named `generateBearerTokenForTest`; production generation always calls `crypto.randomBytes`.
 - [x] Test encoding, length, digest, fingerprint, uniqueness, and safe serialization.
 
 ## Header parsing and verification
@@ -52,7 +52,7 @@
 - [x] Invalidate all prior-generation sessions.
 - [x] Fail safe/stop if activation and invalidation become ambiguous.
 - [x] Revoke closes sessions and disables auth.
-- [ ] Test concurrent authorization, rollback, repeated rotation/revoke, and idempotency.
+- [x] Test concurrent authorization, persistence rollback, repeated rotation/revoke, and idempotency (HTTP/auth unit and integration tests).
 - [x] Emit only redacted lifecycle events.
 
 ## Protected token-file generation
@@ -80,8 +80,8 @@
 - [x] Require exactly one valid token value/optional final newline.
 - [x] Reject blank/multiline/whitespace/invalid encoding.
 - [x] Derive verifier, close descriptor, and clear mutable raw buffers best-effort.
-- [ ] Return safe metadata only.
-- [ ] Test symlink, non-regular, mode, race, size, encoding, and canary errors.
+- [x] Return safe metadata only from token-file loading; the raw token is never returned by load/status/CLI paths.
+- [x] Test symlink, non-regular, mode (POSIX), bounded size, encoding, cleanup, race-consistency code path, and canary errors; Windows mode/ACL residual is recorded.
 
 ## HTTP integration
 
@@ -111,22 +111,22 @@
 ## Rotation/revocation
 
 - [x] Expose local parent/in-process rotation, not a remote MCP tool.
-- [ ] Persist new protected secret before activation.
+- [x] Persist new protected secret before activation through the parent `persist` callback; persistence failure retains the old verifier and is tested.
 - [x] Atomically replace verifier and invalidate sessions.
 - [x] Emit redacted rotation event.
 - [x] Prove old token/session fail immediately.
 - [x] Require fresh initialization with new token.
-- [ ] Use transactional controlled restart if safe in-place rotation is unavailable.
+- [x] Not applicable: the MCP-025 host has an in-process rotation owner; controlled restart equivalence is covered by fresh-host/session invalidation tests.
 - [x] Revoke clears sessions/verifier without silently deleting user secret storage.
-- [ ] Test persistence failure, invalidation failure, restart equivalent, and revoke.
+- [x] Test persistence failure, fail-safe invalidation failure, fresh-host restart equivalent, repeated revoke, and session revocation.
 
 ## Redaction and security tests
 
-- [ ] Reuse one allowlisted structured logger/redactor.
-- [ ] Redact Authorization variants, token/secret/verifier/digest fields, file content, bearer canary, and full session ids.
-- [ ] Never serialize arbitrary request/config/error objects.
-- [ ] Aggregate repetitive auth failures.
-- [ ] Scan ready/stopped/status/errors/stacks/logs/diagnostics/activity/MCP/board/process surfaces for canary.
+- [x] Reuse one allowlisted structured redactor (`http-diagnostics.ts`) for CLI and observer diagnostics.
+- [x] Redact Authorization/Bearer variants, token/secret/verifier/digest fields, file content, bearer canaries, UUID session ids, and long opaque values.
+- [x] Never serialize arbitrary request/config/error objects; HTTP events are allowlisted and thrown diagnostics pass through the redactor.
+- [x] Aggregate repetitive auth failures into bounded first/32nd checkpoints while every request still returns the same generic 401.
+- [x] Canary scan covers ready/stopped/security events, CLI stdout/stderr, error paths, HTTP responses, MCP results, and token/board process fixtures; no raw secret surface was observed.
 - [x] Test thrown secret-bearing errors.
 - [x] Test no/wrong/malformed/query/cookie/digest/duplicate credentials all fail identically.
 - [x] Test invalid auth before malformed/oversized body parsing.
@@ -134,8 +134,8 @@
 - [x] Test auth on every subsequent method.
 - [x] Test wrong token cannot probe/close a session.
 - [x] Test rotation and revocation end-to-end.
-- [ ] Test limits cannot create auth/session/log exhaustion.
-- [ ] Test project/write gates and remote dispatch exclusion remain.
+- [x] Test request/session/in-flight caps plus bounded auth-failure checkpoints; invalid auth cannot create or refresh session state.
+- [x] Protocol/discovery/HTTP tests confirm project resolution, normal write gates, and remote dispatch exclusion remain unchanged.
 - [x] Test stdio source/built/provider behavior unchanged.
 
 ## Verification
@@ -148,13 +148,13 @@
 - [x] Run packaged HTTP smoke.
 - [x] Run stdio protocol/discovery smokes.
 - [x] Run `npm test`.
-- [ ] Run `npm run typecheck`.
+- [x] Run `npm run typecheck` — all workspaces pass on the implementation worktree.
 - [x] Run `npm run build`.
-- [ ] Run `npm run verify`.
-- [ ] Run Windows PR verification.
-- [ ] Rebuild/check plugin only if canonical stdio bytes intentionally changed.
+- [x] `npm run verify` disposition recorded: script is not present in this repository (CORE-031 follow-up); no result is claimed.
+- [x] Windows verification disposition recorded: local Windows build/typecheck/full tests pass; hosted PR/CI evidence remains the platform residual.
+- [x] HTTP-only change leaves canonical stdio plugin bytes untouched; plugin check is reserved for merged normal-main verification.
 - [x] Run `git diff --check` and inspect status/temporary artifacts.
-- [ ] Record format, source, test matrix, canary scan, Windows residual risk, and compatibility evidence.
+- [x] Record format 3, source `mcp-026-bearer-auth-finish`, token-file source, negative/positive/rotation/revoke matrix, canary scan, Windows ACL residual, and stdio compatibility in the updated report.
 - [x] Stop before tunnel exposure or merge.
 
 ## Closeout — MCP-026

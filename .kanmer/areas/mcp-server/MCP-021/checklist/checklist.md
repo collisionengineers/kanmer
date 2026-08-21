@@ -4,7 +4,7 @@
 
 - [x] Read accepted FRD/ADR and actual requirement ids.
 - [x] Read MCP-025/026 origin/auth/readiness/shutdown contracts.
-- [ ] Re-check current official named-tunnel, config, run, no-autoupdate, metrics/readiness, JSON logs, and signal docs.
+- [x] Re-check current official named-tunnel, config, run, no-autoupdate, metrics/readiness, JSON logs, and signal docs.
 - [ ] Record exact tested `cloudflared --version` and `--help` syntax.
 - [x] Confirm Quick Tunnel remains excluded from production.
 - [x] Inspect canonical child-process/temp/app-data/log helpers.

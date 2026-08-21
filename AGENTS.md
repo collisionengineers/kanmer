@@ -443,6 +443,13 @@ node packages/mcp-server/src/smoke.mjs
 ```bash
 KANMER_SMOKE=1 KANMER_OPEN=<projectDir> npx electron . --user-data-dir=<a fresh dir>
 ```
+To capture the live renderer for visual proof, add
+`KANMER_SMOKE_CAPTURE_PATH=<new absolute PNG path>` to that invocation. Smoke
+mode writes a current, visible `KANMER-SMOKE-…` marker into the renderer, reads
+it back, and captures it with Electron's `webContents.capturePage()` before
+exiting. The path must not already exist. This captures the Electron **page**,
+not title-bar/menu chrome or OS-owned dialogs; those still need another route or
+human review.
 **Updater dev loop** (no packaging). The updater is inert in dev unless you opt
 in, so a normal `npm run dev:gui` never touches the network. To exercise it,
 write `apps/gui/dev-app-update.yml` (gitignored) pointing at a local feed, serve

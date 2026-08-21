@@ -27,6 +27,24 @@ function git(args) {
   }
 }
 
+function repositoryUrl() {
+  const remote = git(["remote", "get-url", "origin"]);
+  if (!remote) return "";
+  return remote
+    .replace(/^git@([^:]+):/, "https://$1/")
+    .replace(/\.git$/, "")
+    .replace(/\/$/, "");
+}
+
+const originUrl = repositoryUrl();
+
+function pullRequestUrl(value) {
+  const reference = String(value).trim();
+  if (/^https?:\/\//i.test(reference)) return reference;
+  const number = reference.match(/^#?(\d+)$/)?.[1];
+  return number && originUrl ? `${originUrl}/pull/${number}` : reference;
+}
+
 /** The cut-off: an explicit `--since`, else the last tag's date, else all time. */
 function resolveSince() {
   const flag = process.argv.indexOf("--since");
@@ -92,7 +110,8 @@ if (shipped.length === 0) {
     lines.push(`### ${area}`, "");
     for (const i of byArea.get(area).sort((a, b) => a.id.localeCompare(b.id))) {
       const pr = (i.prs ?? [])[0];
-      const link = pr ? ` ([PR](${pr}))` : "";
+      const href = pr ? pullRequestUrl(pr) : "";
+      const link = href ? ` ([PR](${href}))` : "";
       lines.push(`- **${i.id}** ${i.title}${link}`);
     }
     lines.push("");

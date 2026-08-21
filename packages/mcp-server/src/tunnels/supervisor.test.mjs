@@ -126,3 +126,7 @@ test("stop during provider start disposes the late child and does not publish it
   await stopping;
   assert.equal(stopped, 1);
 });
+
+test("supervisor rejects an unbounded retry policy", () => {
+  assert.throws(() => new TunnelSupervisor({ maxRestarts: 11, start: async () => ({ exited: new Promise(() => {}), stop: async () => {} }) }), /TUNNEL_RESTART_POLICY_INVALID/);
+});

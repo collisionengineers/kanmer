@@ -35,7 +35,7 @@ export class TunnelSupervisor {
     this.maxRestarts = options.maxRestarts ?? options.restartPolicy?.maxRestarts ?? DEFAULT_TUNNEL_RESTART_POLICY.maxRestarts;
     this.policy = { ...DEFAULT_TUNNEL_RESTART_POLICY, ...options.restartPolicy, maxRestarts: this.maxRestarts };
     for (const value of Object.values(this.policy)) if (!Number.isSafeInteger(value) || value < 0) throw new Error("TUNNEL_RESTART_POLICY_INVALID");
-    if (this.policy.baseDelayMs > this.policy.maxDelayMs || this.policy.stableResetMs < 1) throw new Error("TUNNEL_RESTART_POLICY_INVALID");
+    if (this.maxRestarts > 10 || this.policy.baseDelayMs > this.policy.maxDelayMs || this.policy.stableResetMs < 1) throw new Error("TUNNEL_RESTART_POLICY_INVALID");
   }
 
   private emit(state: Parameters<NonNullable<TunnelSupervisorOptions["onState"]>>[0]): void { this.options.onState?.(state); }

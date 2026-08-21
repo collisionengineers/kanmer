@@ -210,3 +210,12 @@ the corrected premise above: it breaks the dominant case.
 
 Related: ADR-0007 (codex project config — the "cwd is the common case" reasoning
 this retires) · FRD-022 · MCP-010 · MCP-011 · MCP-012 · MCP-008 · MCP-007.
+
+## Consumer constraint — installer launcher (GUI-099)
+
+The Windows installer-owned launcher in ADR-0018 is a consumer of this decision:
+it must directly invoke the packaged MCP child while inheriting the provider's
+current working directory and standard streams. It must not `cd`, use `start`,
+or forward arbitrary provider arguments. The resulting discovery order and
+tie-breaks above are unchanged; this simply prevents an install-directory wrapper
+from defeating discovery before it begins.

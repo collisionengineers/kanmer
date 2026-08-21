@@ -12,6 +12,14 @@ files:
   - out/**/*
   - package.json
 
+# The NSIS hook copies this static source to the stable, installer-owned
+# per-user launcher path. It is deliberately an install-root file, not an
+# application resource: upgrades replace resources, while registrations keep
+# pointing at %LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd.
+extraFiles:
+  - from: build/kanmer-mcp.cmd
+    to: kanmer-mcp.cmd
+
 # The self-contained MCP server bundle, placed at resources/mcp/kanmer-mcp.cjs
 # inside the install. The app launches it via ELECTRON_RUN_AS_NODE.
 extraResources:
@@ -62,6 +70,7 @@ win:
     - nsis
 
 nsis:
+  include: build/installer.nsh
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true

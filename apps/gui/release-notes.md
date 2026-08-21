@@ -8,6 +8,14 @@ there) and uses it as the GitHub release body.
 
 ## 0.3.3 (unreleased — notes accumulating)
 
+### Windows repairs restore Kanmer's stable MCP launcher
+
+The Windows installer now owns a stable per-user MCP launcher. Repairing or
+reinstalling Kanmer refreshes that launcher even when Kanmer itself lives in a
+custom installation directory. This is the installer foundation only: portable
+Codex registration arrives separately, so existing provider registrations are
+unchanged in this release.
+
 ### A `fix` now goes through Review
 
 A `fix` used to be able to go straight from Implementing to Done in one move,

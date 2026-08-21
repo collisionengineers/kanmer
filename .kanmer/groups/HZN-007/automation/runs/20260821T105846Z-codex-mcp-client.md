@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T23:46:29.717Z
+updated_at: 2026-08-21T23:46:32.285Z
 lane_limit: 3
 stop_reason:
 ---
@@ -213,6 +213,8 @@ stop_reason:
 - 2026-08-21T23:30:25.767Z — GUI-075 assigned to /root/gui099_executor on gui-075-dispatch-settings/.worktrees/gui-075. Scope: machine-local per-provider dispatch model/prompt settings, shared dispatch SSOT integration, focused tests/docs only; no provider tunnel or skills work.
 
 - 2026-08-21T23:41:22.192Z — GUI-075 implementation result recorded: shared typed provider model argv, machine-local settings, append-only prompt suffix, IPC-generated Dispatch Settings UI. Verification: core 266/266 and GUI 354/354 passed; focused 5/5; typecheck/build/diff-check pass after preserving first renderer build failure. Live authenticated provider and visual proof INCONCLUSIVE; docs follow-up explicit.
+
+- 2026-08-21T23:46:32.285Z — GUI-075 review-fix pass complete: helper-level suffix validation, core-owned preview IPC, provider capability/evidence metadata, FRD-012 matrix note. Fresh checks all pass: core focused 3/3, GUI focused 5/5, typecheck/build/diff-check exit 0. Checklist/report readback updated; only credential/live and visual evidence remain INCONCLUSIVE.
 
 ## Resume instruction
 

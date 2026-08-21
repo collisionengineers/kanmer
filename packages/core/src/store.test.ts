@@ -1072,6 +1072,19 @@ describe("format v1 compatibility", () => {
     ).toBe(false);
   });
 
+  it("validates document paths before the legacy missing-document response", async () => {
+    const missing = await v1store.getDocsWithVersions("TICK-001", ["files"]);
+    expect(missing).toEqual([{ doc: "files", exists: false, content: null, version: null }]);
+
+    for (const [unsafe, message] of [
+      ["../../escape", /Invalid segment/],
+      ["/absolute/escape", /Unknown document folder "absolute"/],
+      ["..\\escape", /Invalid segment/],
+    ] as const) {
+      await expect(v1store.getDocsWithVersions("TICK-001", ["plan", unsafe])).rejects.toThrow(message);
+    }
+  });
+
   it("migrates v1 to v2: dry run, real run, idempotent re-run", async () => {
     const dry = await migrateToV2(v1store, { dryRun: true });
     expect(dry.alreadyV2).toBe(false);

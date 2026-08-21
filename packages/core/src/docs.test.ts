@@ -240,7 +240,13 @@ describe("folder documents (FRD-003)", () => {
     expect(typeof plan.version).toBe("string");
     expect(missing).toEqual({ doc: "files", exists: false, content: null, version: null });
     expect(repeated).toMatchObject({ doc: "plan", exists: true, content: "# Plan\n" });
-    await expect(store.getDocsWithVersions(id, ["plan", "../../escape"])).rejects.toThrow(/Invalid segment/);
+    for (const [unsafe, message] of [
+      ["../../escape", /Invalid segment/],
+      ["/absolute/escape", /Unknown document folder "absolute"/],
+      ["..\\escape", /Invalid segment/],
+    ] as const) {
+      await expect(store.getDocsWithVersions(id, ["plan", unsafe])).rejects.toThrow(message);
+    }
   });
 
   it("counts documents per type, lists readable document paths, and enumerates reference files", async () => {

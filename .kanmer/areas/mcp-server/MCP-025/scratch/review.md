@@ -89,3 +89,39 @@ The fail-closed CLI remains non-listening without an injected production authori
 ## Disposition
 
 MCP-032 is fixed in this PR; its blocker link was removed and the remediation ticket archived. MCP-025 now satisfies the review evidence against FRD-025/ADR-0017's transport seam, preserving stdio compatibility and the no-bearer/no-tunnel boundaries.
+
+# Independent review — MCP-025 PR #107 (2026-08-21)
+
+## Changes reviewed
+
+The PR adds the HTTP lifecycle test rail and hardening changes in `packages/mcp-server/src/http.ts`, wires it into `test:http`, bounds native Node HTTP header/body/connection/request/keep-alive/session/in-flight/TTL/shutdown settings, validates exact origins and UUID session ids, adds supported protocol metadata and one redacted stopped event, and adds official HTTP-client parity/concurrency/expiry/forced-shutdown tests. `http-cli.ts` now emits structured events and bounds fatal diagnostics. `index.ts` makes the ready fingerprint use the canonical project identity; the generated plugin bundle is refreshed from that legitimate shared-source change. No tunnel or bearer parsing/storage/comparison/generation/rotation implementation was added.
+
+## Checks
+
+- PASS — `npm run test:http -w @kanmer/mcp-server`: 6/6 tests.
+- PASS — `npm run build`: core and MCP ESM/standalone builds.
+- PASS — `node packages/mcp-server/src/smoke-http.mjs`.
+- PASS — `node packages/mcp-server/src/smoke.mjs`: 184/184.
+- PASS — `node packages/mcp-server/src/smoke-protocol.mjs`: 42/42.
+- PASS — `node packages/mcp-server/src/smoke-discovery.mjs`: 13/13.
+- PASS — `npm run typecheck`: exit 0 across all workspaces.
+- PASS — `git diff --check origin/main...HEAD`.
+- FAIL (unrelated/environmental, retained as a failure) — root `npm test`: core 255/255 and GUI 317/318; `apps/gui/src/main/kanmerGit.test.ts` failed `renameBoardBranch > keeps the history, the path and the remote consistent` with a 10s hook timeout and cleanup EPERM in `C:\Users\Alex\AppData\Local\Temp\kanmer-git-6wewS2`. The failure is outside this PR's files and was not counted as a pass.
+- NOT RUN — `npm run plugin:check` is intentionally refused in a linked worktree; the generated artifact is committed and must be checked from normal merged main.
+- UNAVAILABLE — `npm run verify` is not defined on this base, as recorded by the implementation report.
+
+## Blocking comment
+
+1. **Blocking — resolve/validate the project before binding.** `KanmerHttpHost.start()` calls `httpServer.listen()` and only then awaits `projectFingerprint()`. `projectFingerprint()` is the first operation that calls `resolveRoot()`, so the listener can bind before board/root resolution and fingerprint validation. A runtime probe from a temp cwd with no board produced `FAILED no Kanmer board found...` after the listener had already bound; closing the failed host left the temp directory busy until the orphaned listener/socket cleanup completed. This violates MCP-025 checklist #62, FRD-025 RA-PROJECT-1/2 startup sequencing, and the ADR lifecycle's resolve-before-bind contract; it also leaves an embedded host with a partial-start resource leak. Resolve/capture the immutable project before `listen()`, and make failed startup roll back listener/timer/socket state. Regression-test the no-board/fingerprint-failure path.
+
+   Disposition: filed blocking review-follow-up ticket [[MCP-036]], which blocks MCP-025. No merge or stage move performed.
+
+## Non-blocking observations
+
+- The prior MCP-031 per-session identity/capability isolation and MCP-032 self-identifying stdio bundle fixes remain covered by the current two-session HTTP smoke and 184/184 stdio smoke.
+- The remote exclusion set remains empty because MCP-020 dispatch tools are not present in this base; the named policy and exact parity test are appropriate for this sequencing.
+- The implementation correctly leaves bearer lifecycle to MCP-026 and tunnel lifecycle to MCP-021.
+
+## Verdict
+
+**NEEDS CHANGES — do not merge PR #107 or move MCP-025 to Verifying until MCP-036 is fixed, independently reviewed, and verified.**

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -80,10 +80,18 @@ const unsafeTokenPath = path.join(root, "unsafe-token");
 await writeFile(unsafeTokenPath, "not-a-token\n", { mode: 0o600 });
 await chmod(unsafeTokenPath, 0o600);
 await assert.rejects(() => loadTokenFile(unsafeTokenPath), /REMOTE_AUTH_INVALID_TOKEN/);
+await assert.rejects(() => loadTokenFile(root), /REMOTE_AUTH_SECRET_FILE_UNSAFE/, "directories are not secret files");
+const oversizedTokenPath = path.join(root, "oversized-token");
+await writeFile(oversizedTokenPath, "x".repeat(129), { mode: 0o600 });
+await chmod(oversizedTokenPath, 0o600);
+await assert.rejects(() => loadTokenFile(oversizedTokenPath), /REMOTE_AUTH_SECRET_FILE_UNSAFE/);
 if (process.platform !== "win32") {
   await chmod(tokenPath, 0o644);
   await assert.rejects(() => loadTokenFile(tokenPath), /REMOTE_AUTH_SECRET_FILE_UNSAFE/);
   await chmod(tokenPath, 0o600);
+  const symlinkPath = path.join(root, "token-link");
+  await symlink(tokenPath, symlinkPath);
+  await assert.rejects(() => loadTokenFile(symlinkPath), /REMOTE_AUTH_SECRET_FILE_UNSAFE/);
 }
 const host = createKanmerHttpHost({
   authorizer: new BearerAuthorizer(generated.verifier),

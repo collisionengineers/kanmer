@@ -38,6 +38,15 @@ async function dnsProbe(hostname: string, signal?: AbortSignal): Promise<readonl
   }
 }
 
+function isCanonicalLoopbackEndpoint(endpoint: string): boolean {
+  try {
+    const parsed = new URL(endpoint);
+    return parsed.protocol === "http:" && (parsed.hostname === "127.0.0.1" || parsed.hostname === "[::1]") && parsed.pathname === "/mcp" && !parsed.username && !parsed.password && !parsed.search && !parsed.hash;
+  } catch {
+    return false;
+  }
+}
+
 const args = process.argv.slice(2);
 const requested = args.find((arg): arg is DoctorMode => (DOCTOR_MODES as readonly string[]).includes(arg));
 const mode = requested ?? "config";
@@ -101,6 +110,7 @@ if (invalid) {
       localStatus: async () => {
         const endpoint = process.env.KANMER_LOCAL_ENDPOINT;
         if (!endpoint) return { state: "stopped", authRequired: false };
+        if (!isCanonicalLoopbackEndpoint(endpoint)) return { state: "failed", endpoint, authRequired: false };
         const response = await fetch(endpoint, { method: "POST", redirect: "manual", signal: controller.signal });
         await response.body?.cancel();
         return { state: response.status === 401 ? "ready" : "failed", endpoint, authRequired: response.status === 401, projectFingerprint: process.env.KANMER_EXPECTED_PROJECT };

@@ -213,9 +213,9 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
   options.signal?.removeEventListener("abort", abortExternal);
   const counts = { pass: checks.filter((check) => check.status === "pass").length, warn: checks.filter((check) => check.status === "warn").length, fail: checks.filter((check) => check.status === "fail").length, skipped: checks.filter((check) => check.status === "skipped").length };
   const requiredSkipped = checks.filter((check) => check.status === "skipped" && check.severity === "required").length;
-  const status = counts.fail || requiredSkipped || cleanupErrors.length ? "fail" : counts.warn ? "warn" : "pass";
   const finished = options.now ? options.now() : Date.now();
   const cancelled = Boolean(options.signal?.aborted);
+  const status = cancelled || totalTimedOut || counts.fail || requiredSkipped || cleanupErrors.length ? "fail" : counts.warn ? "warn" : "pass";
   const exitCode = cancelled || totalTimedOut ? 2 : counts.fail || requiredSkipped || cleanupErrors.length ? 1 : 0;
   return { schemaVersion: 1, mode: options.mode, startedAt: new Date(started).toISOString(), finishedAt: new Date(finished).toISOString(), durationMs: Math.max(0, finished - started), status, exitCode, checks, counts, ...(cleanupErrors.length ? { cleanupErrors } : {}) };
 }

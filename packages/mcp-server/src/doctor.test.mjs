@@ -24,6 +24,7 @@ test("doctor cancellation produces explicit skipped checks without throwing", as
   controller.abort();
   const result = await runDoctor({ mode: "public", signal: controller.signal });
   assert.equal(result.checks.every((check) => check.status === "skipped"), true);
+  assert.equal(result.status, "fail");
   assert.equal(result.exitCode, 2);
 });
 
@@ -67,6 +68,7 @@ test("late MCP factories close their client after a per-check timeout", async ()
   const checks = Object.fromEntries(["PROJECT_CONFIG_VALID", "REMOTE_CONFIG_VALID", "SECRET_REFERENCE_VALID", "TUNNEL_EXECUTABLE_VALID", "TUNNEL_CONFIG_VALID", "LOCAL_STATUS_READY", "LOCAL_BIND_LOOPBACK", "AUTH_MISSING_REJECTED", "AUTH_WRONG_REJECTED"].map((id) => [id, pass]));
   const report = await runDoctor({ mode: "local", timeoutMs: 5, config: { projectRoot: "fixture", expectedProject: "kanmer-proj-v1:fixture", remoteHostname: "doctor.example.test", secretReference: "protected-ref" }, dependencies: { checks, token: async () => "protected-token", mcp: async () => { await new Promise((resolve) => setTimeout(resolve, 30)); return { tools: [], close: async () => { closes++; } }; } } });
   await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.equal(report.status, "fail");
   assert.equal(report.exitCode, 2);
   assert.equal(closes, 1);
 });

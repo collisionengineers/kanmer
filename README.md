@@ -257,6 +257,30 @@ boundary and doctor troubleshooting, read the [remote-access manual](docs/manual
 
 If no board is found the server **exits with an error naming every path it tried**, rather than starting up against an empty one. To create a board where none exists, pass `--init` (or set `KANMER_INIT=1`).
 
+### Claude Desktop (headless MCPB)
+
+For a GUI-free Windows connection, build or download the versioned
+`kanmer-<version>.mcpb` bundle from `dist/mcpb/` and install it through Claude
+Desktop's local extension flow. Set its required `board_root` value to the
+directory that directly contains `.kanmer` — normally the existing
+`<repo>/.worktrees/kanmer` board worktree. The bundle starts the same local
+stdio server with Node 20 or newer, exposes the existing tools and prompts, and
+does not install Kanmer skills, start the GUI, create worktrees, sync Git, or
+open an HTTP endpoint. Keep the GUI closed while testing this path; Git state
+and any concurrent file edits remain the operator's responsibility.
+
+Build and validate the bundle locally with:
+
+```bash
+npm run mcpb:check
+```
+
+The deterministic package rail does not replace real-host acceptance. A real
+Claude Desktop install should call `get_status`, read one ticket, perform a
+reversible write, restart, uninstall, and restore the board; record that host
+evidence separately. If the bundle is removed, the board files it accessed are
+not removed.
+
 **codex** — add to your project's `.codex/config.toml`, replacing `<kanmer-repo>` with wherever you cloned this repo (see [examples/codex-config.toml](examples/codex-config.toml)):
 
 ```toml

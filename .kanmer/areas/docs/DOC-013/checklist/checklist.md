@@ -3,8 +3,8 @@
 ## Evidence gates (must precede user-visible claims)
 
 - [x] Re-read merged MCP-027 PR #114 (`765c3f6f3ef27ea8b7d7223267b181a19a7d0de6`) report/proof and record the shipped doctor contract.
-- [ ] Wait for GUI-095 independent review, merge to main, and post-implementation report/proof before writing exact GUI labels, storage behavior, ownership, lifecycle, rotation, or doctor UI wording.
-- [ ] Re-read merged GUI-095 source/tests/report/proof immediately before implementing the manual; do not use provisional worktree files as the contract.
+- [x] Wait for GUI-095 independent review, merge to main, and post-implementation report/proof before writing exact GUI labels, storage behavior, ownership, lifecycle, rotation, or doctor UI wording (PR #118 merged at `3a905486`, proof `1dfa5b10`).
+- [x] Re-read merged GUI-095 source/tests/report/proof immediately before implementing the manual; exact labels and lifecycle were taken from merged `main` and its 337-test GUI rail.
 - [ ] Re-read MCP-028 merged proof before making public-provider, Worker, or disposable end-to-end success claims.
 - [ ] Stop and escalate any implementation/FRD/ADR conflict rather than documenting an inferred behavior.
 

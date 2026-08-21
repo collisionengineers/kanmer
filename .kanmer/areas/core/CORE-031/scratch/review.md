@@ -25,3 +25,7 @@ Provisional verdict: NEEDS CHANGES solely for this documentation/contract mismat
 ## Independent review — latest f1c4a680 (HEAD)
 
 NEEDS CHANGES. Implementation behavior is green and independently verified: npm test PASS (core 256, GUI 318, HTTP 61, scripts 66), full typecheck PASS, npm run test:scripts PASS 66/66, import-safe VERIFY_STEPS/root script and diff check pass, and the standalone report records clean npm ci plus npm run verify plus plugin/skills/agents rails. However, the canonical ticket contract is internally inconsistent: scripts/verify.mjs, AGENTS.md, checklist/progress, and report implement/document build-first, while plan.md Required changes item 2 and open-questions.md still declare the old test -> typecheck -> build order (and the governing MASTERPLAN S-01 wording remains stale). Reconcile the governing plan/open-question command order to the shipped build-first rail, then re-review; no code blocker found.
+
+## Re-review update — reconciled docs
+
+**PASS.** The canonical plan (version 83f963817b3dd70c) and open-questions (version 8f2f3528c8ed2060) now both specify the shipped build → test → typecheck order. The prior documentation blocker is resolved. Existing independent evidence remains green: npm test core 256, GUI 318, HTTP 61, scripts 66; full typecheck; import-safe VERIFY_STEPS; clean standalone npm ci plus npm run verify; skills/agents/plugin rails; and clean worktree/diff check. No remaining blocker.

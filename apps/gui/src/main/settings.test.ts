@@ -23,6 +23,8 @@ describe("dispatch settings", () => {
 
   it("rejects invalid control characters and oversized values before writing", async () => {
     await expect(setDispatchSettings({ providers: { codex: { defaultModel: "bad\0model" } } })).rejects.toThrow(/invalid/);
+    await expect(setDispatchSettings({ providers: { codex: { defaultModel: "bad\nmodel" } } })).rejects.toThrow(/invalid/);
+    await expect(setDispatchSettings({ providers: { codex: { defaultModel: "bad\tmodel" } } })).rejects.toThrow(/invalid/);
     await expect(setDispatchSettings({ providers: { codex: { promptSuffix: "x".repeat(4001) } } })).rejects.toThrow(/invalid/);
   });
 });

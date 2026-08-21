@@ -67,13 +67,14 @@ const DEFAULTS: AppSettings = {
 };
 const MAX_RECENT = 8;
 const MAX_MODEL = 200;
-const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
+const MODEL_CONTROL = /[\u0000-\u001f\u007f]/;
+const SUFFIX_CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 let settingsQueue: Promise<void> = Promise.resolve();
 
-function cleanText(value: unknown, max: number): string | undefined {
+function cleanText(value: unknown, max: number, control = SUFFIX_CONTROL): string | undefined {
   if (typeof value !== "string") return undefined;
   const text = value.trim();
-  return text && text.length <= max && !CONTROL.test(text) ? text : undefined;
+  return text && text.length <= max && !control.test(text) ? text : undefined;
 }
 
 function normalizeProviderSettings(raw: unknown, strict = false): DispatchProviderSettings {
@@ -82,7 +83,7 @@ function normalizeProviderSettings(raw: unknown, strict = false): DispatchProvid
     return {};
   }
   const value = raw as Record<string, unknown>;
-  const defaultModel = cleanText(value.defaultModel, MAX_MODEL);
+  const defaultModel = cleanText(value.defaultModel, MAX_MODEL, MODEL_CONTROL);
   const suffix = cleanText(value.promptSuffix, DISPATCH_PROMPT_SUFFIX_MAX);
   if (strict && value.defaultModel !== undefined && defaultModel === undefined) throw new Error("default model is invalid");
   if (strict && value.promptSuffix !== undefined && suffix === undefined) throw new Error("prompt suffix is invalid");
@@ -94,7 +95,7 @@ function normalizeProviderSettings(raw: unknown, strict = false): DispatchProvid
         if (strict) continue;
         continue;
       }
-      const clean = cleanText(model, MAX_MODEL);
+      const clean = cleanText(model, MAX_MODEL, MODEL_CONTROL);
       if (clean) taskModels[task as DispatchTaskId] = clean;
       else if (strict && model !== undefined) throw new Error(`task model for ${task} is invalid`);
     }

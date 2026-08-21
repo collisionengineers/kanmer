@@ -14,11 +14,17 @@ async function mcpPayload(response) {
 
 const root = await mkdtemp(path.join(os.tmpdir(), "kanmer-http-smoke-"));
 process.env.KANMER_ROOT = root;
-const { createKanmerHttpHost, BearerAuthorizer, generateBearerToken } = await import("../dist/http.js");
+const { createKanmerHttpHost, BearerAuthorizer, createTokenFile, generateBearerToken, loadTokenFile } = await import("../dist/http.js");
 
 const cli = spawnSync(process.execPath, [fileURLToPath(new URL("../dist/http-cli.js", import.meta.url))], { encoding: "utf8" });
 assert.equal(cli.status, 1);
 assert.match(cli.stderr, /REMOTE_AUTH_MISSING/i);
+
+const tokenPath = path.join(root, "remote-token");
+const tokenResult = await createTokenFile(tokenPath);
+assert.match(tokenResult.fingerprint, /^sha256:[a-f0-9]{12}$/);
+assert.deepEqual(await loadTokenFile(tokenPath), tokenResult.verifier);
+await assert.rejects(() => createTokenFile(tokenPath), /EEXIST/);
 
 assert.throws(() => createKanmerHttpHost({}), /authorizer/);
 assert.throws(() => createKanmerHttpHost({ authorizer: { authorize: async () => ({ principal: "x" }) }, host: "0.0.0.0" }), /bind only/i);
@@ -96,11 +102,17 @@ try {
   assert.notEqual((await mcpPayload(deletedItem)).result.isError, true);
   const foreign = await fetch(endpoint, { method: "GET", headers: { authorization: `Bearer ${other.token}`, "mcp-session-id": session } });
   assert.equal(foreign.status, 401, "authentication runs before session lookup");
-  const deleted = await fetch(endpoint, { method: "DELETE", headers: { authorization: `Bearer ${generated.token}`, "mcp-session-id": session, "mcp-protocol-version": "2025-11-25" } });
-  assert.equal(deleted.status, 200);
+  const rotated = generateBearerToken();
+  await host.rotateBearerVerifier(rotated.verifier);
+  const oldAfterRotation = await fetch(endpoint, { method: "GET", headers: { authorization: `Bearer ${generated.token}`, "mcp-session-id": session } });
+  assert.equal(oldAfterRotation.status, 401, "old token fails immediately after rotation");
+  const oldSessionAfterRotation = await fetch(endpoint, { method: "GET", headers: { authorization: `Bearer ${rotated.token}`, "mcp-session-id": session } });
+  assert.equal(oldSessionAfterRotation.status, 400, "rotation invalidates old sessions");
+  await host.revokeBearer();
+  const revoked = await fetch(endpoint, { method: "POST", headers: { authorization: `Bearer ${rotated.token}` } });
+  assert.equal(revoked.status, 401, "revocation fails closed");
   const malformed = await fetch(endpoint, { method: "POST", headers: { authorization: `Bearer ${generated.token}`, "content-type": "application/json" }, body: "{" });
-  assert.equal(malformed.status, 400);
-  await host.invalidatePrincipal(generated.verifier.tokenId);
+  assert.equal(malformed.status, 401, "revoked auth runs before JSON parsing");
   await host.close();
   await host.close();
   process.stdout.write("PASS  HTTP initialize/tools/list/session/delete smoke\n");

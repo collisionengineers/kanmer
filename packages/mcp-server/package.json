@@ -5,7 +5,8 @@
   "type": "module",
   "bin": {
     "kanmer-mcp": "./dist/index.js",
-    "kanmer-mcp-http": "./dist/http-cli.js"
+    "kanmer-mcp-http": "./dist/http-cli.js",
+    "kanmer-mcp-token": "./dist/remote-token-cli.js"
   },
   "main": "./dist/index.js",
   "files": ["dist"],

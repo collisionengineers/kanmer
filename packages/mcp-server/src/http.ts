@@ -5,9 +5,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { createKanmerMcpServer, projectFingerprint } from "./index.js";
-import { unauthorizedHeaders } from "./http-auth.js";
+import { BearerAuthorizer, type BearerVerifier, unauthorizedHeaders } from "./http-auth.js";
 
 export { BearerAuthorizer, generateBearerToken, verifierForToken } from "./http-auth.js";
+export { createTokenFile, loadTokenFile } from "./http-secret.js";
 
 export interface HttpAuthorizer {
   authorize(request: { headers: IncomingMessage["headers"] }): Promise<{ principal: string }>;
@@ -214,6 +215,20 @@ export class KanmerHttpHost {
 
   async invalidatePrincipal(principal: string): Promise<void> {
     await Promise.all([...this.sessions.entries()].filter(([, session]) => session.principal === principal).map(([id]) => this.closeSession(id)));
+  }
+
+  /** Local-parent lifecycle control only; never exposed as an MCP tool. */
+  async rotateBearerVerifier(verifier: BearerVerifier): Promise<void> {
+    if (!(this.options.authorizer instanceof BearerAuthorizer)) throw new Error("REMOTE_AUTH_UNSUPPORTED_LIFECYCLE");
+    const previous = this.options.authorizer.replace(verifier);
+    if (previous) await this.invalidatePrincipal(previous);
+  }
+
+  /** Revocation closes active sessions and makes every subsequent request fail closed. */
+  async revokeBearer(): Promise<void> {
+    if (!(this.options.authorizer instanceof BearerAuthorizer)) throw new Error("REMOTE_AUTH_UNSUPPORTED_LIFECYCLE");
+    const previous = this.options.authorizer.revoke();
+    if (previous) await this.invalidatePrincipal(previous);
   }
 
   private async closeSession(id: string): Promise<void> {

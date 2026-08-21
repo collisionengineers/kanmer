@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T20:15:19.395Z
+updated_at: 2026-08-21T20:24:21.590Z
 lane_limit: 3
 stop_reason:
 ---
@@ -283,3 +283,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-21T20:13:28.874Z — CORE-022 assigned to /root/gui082_executor as the next conflict-free HZN-007 lane after complete packet, HZN-007 context, links CORE-021/GUI-005, FRD-007/FRD-015, and gates were reread. Fresh core-022-migration-eperm/.worktrees/core-022 was created from origin/main 52073fc6 and taken without force; implement only migration EPERM retry/resume, stale-temp hygiene, and GUI watcher/sync pause scope, with no affected-board repair or release. Author will stop at Review.
+
+
+- 2026-08-21T20:24:21.590Z — CORE-022 reconciliation completed on merged main: d0f927a3f9aab7fa6f4716410138126f3ff1fc35 is reachable from origin/main 52073fc6 and existing PR #28 is merged at dfc2b059aaab7f6dbaac5085c9a2b475c538cd09. Fresh branch/worktree had no source diff, so no duplicate PR was created. Checklist is 21/25 with real 242-ticket fixture and second-run boxes open because the fixture was unavailable; no Windows lock proof claimed. Report/checklist written, enter-review gates pass, and ticket moved Implementing→Review. Focused 28/28, core 257/257, GUI 349/349, typecheck/build, protocol 42/42, discovery 13/13, headless rerun, and scripts 79/79 passed. Root npm test retained unrelated MCP HTTP failures (first 2/61, rerun 1/61 project-resolution spawn ETIMEDOUT); plugin:check retained linked-worktree refusal. Author lane stops at Review for independent root review/merged-main verification/closeout.

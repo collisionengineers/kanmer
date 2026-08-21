@@ -1,0 +1,1 @@
+Review handoff: PR #131 https://github.com/collisionengineers/kanmer/pull/131 opened from commit c01e06764fbd5c795d00b8276c0f2250059057f8. Author lane stops at Review; independent reviewer owns review/merge. Deterministic checks PASS; no real-user visual typing/save session was available.

@@ -30,4 +30,4 @@ No Claude Desktop host is available in this lane. Real install, GUI-closed conne
 
 ## Review handoff
 
-Branch: mcp-008-headless-mcpb. The implementation is committed and pushed; PR reference and commit SHA are recorded on the ticket after push. Author stops at Review for independent review; no merge was performed.
+Branch: mcp-008-headless-mcpb. Commit 9d0c8364f1d6d3e69e1a7ca4d1dfbbad3f0b763e is pushed and PR #130 is open. Author stops at Review for independent review; no merge was performed.

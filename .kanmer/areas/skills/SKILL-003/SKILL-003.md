@@ -5,7 +5,7 @@ title: 6.3 kanmer-docs decision table
 status: implementing
 area: skills
 order: 160
-assignee: claude-code
+assignee: gui017-executor
 profile: feature
 stageEntered:
   preparing: '2026-08-16T05:27:15.097Z'
@@ -13,6 +13,9 @@ stageEntered:
   verifying: '2026-08-16T05:31:50.818Z'
   done: '2026-08-16T05:31:51.073Z'
   implementing: '2026-08-21T08:55:14.250Z'
+taken_at: '2026-08-21T23:14:14.651Z'
+branch: skill-003-decision-table
+worktree: .worktrees/skill-003
 labels:
   - v3-phase-6
 groups:
@@ -27,7 +30,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/19'
 archived: false
 created: '2026-08-16T00:31:38.792Z'
-updated: '2026-08-21T12:55:47.277Z'
+updated: '2026-08-21T23:14:14.651Z'
 ---
 
 Add the PRD/FRD/ADR decision table and the granularity test to the kanmer-docs skill; retain doc-structure mirror regeneration.

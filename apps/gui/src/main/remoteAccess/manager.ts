@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { isIP } from "node:net";
 import { tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { app, clipboard } from "electron";
@@ -32,6 +33,7 @@ interface DoctorProcess {
   directory: string;
   configGeneration: string | null;
   runtimeGeneration: string | null;
+  cancel?: () => void;
 }
 
 interface SecretDeliveryRecord {
@@ -94,11 +96,25 @@ function isHostname(value: string): boolean {
   if (value.length < 1 || value.length > 253 || /[^A-Za-z0-9.-]/.test(value) || value.includes("..") || value.startsWith(".") || value.endsWith(".")) return false;
   if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/.test(value)) return false;
   const lower = value.toLowerCase();
-  return lower !== "localhost" && lower !== "localhost.localdomain" && !/^127(?:\.|$)/.test(lower) && lower !== "::1";
+  return lower !== "localhost" && lower !== "localhost.localdomain" && isIP(lower) === 0 && value === lower;
 }
 
 function isSafePath(value: string): boolean {
   return value.length > 0 && value.length <= 2048 && !/[\u0000-\u001f\u007f]/.test(value) && !/["'`]/.test(value);
+}
+
+function isSafeCredentialsPath(value: string): boolean {
+  return isSafePath(value) && isAbsolute(value) && !value.split(/[\\/]+/).includes("..");
+}
+
+function isSafeExecutable(value: string): boolean {
+  if (!isSafePath(value)) return false;
+  if (isAbsolute(value)) return !value.split(/[\\/]+/).includes("..");
+  return /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value);
+}
+
+function isTunnelId(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 function isSafeRootPath(value: string): boolean {
@@ -176,6 +192,8 @@ export class RemoteAccessManager {
   private activeStarts = 0;
   private readonly startWaiters: Array<() => void> = [];
   private scavenged = false;
+  private registryReconciled = false;
+  private settingsDepth = 0;
   private readonly clipboardAdapter: RemoteClipboardPort;
 
   public constructor(
@@ -203,11 +221,15 @@ export class RemoteAccessManager {
       this.scavenged = true;
       await this.scavengeRuntimeResidue();
     }
+    if (!this.settingsDepth && !this.registryReconciled) {
+      this.registryReconciled = true;
+      await withSettingsFileLock(() => this.persist());
+    }
   }
 
   private withSettingsLock<T>(work: () => Promise<T>): Promise<T> {
     const previous = this.settingsQueue;
-    const run = previous.catch(() => undefined).then(() => withSettingsFileLock(work));
+    const run = previous.catch(() => undefined).then(() => withSettingsFileLock(async () => { this.settingsDepth++; try { return await work(); } finally { this.settingsDepth--; } }));
     this.settingsQueue = run.then(() => undefined, () => undefined);
     return run;
   }
@@ -309,14 +331,20 @@ export class RemoteAccessManager {
 
   async overview(): Promise<RemoteProjectView[]> {
     await this.load();
-    return Object.values(this.data.projects)
+    const projects = Object.values(this.data.projects)
       .sort((a, b) => a.identity.fingerprint.localeCompare(b.identity.fingerprint))
-      .map(({ projectId, identity }) => {
+    return Promise.all(projects.map(async ({ projectId, identity }) => {
         const existing = this.records.get(projectId);
         const record = existing ?? this.record(projectId, identity);
-        if (!existing) record.status = statusFor(projectId, identity, "missing", { configGeneration: record.configGeneration, lastError: "REMOTE_PROJECT_NOT_OPEN" });
+        if (!existing) {
+          let lastError = "REMOTE_PROJECT_NOT_OPEN";
+          try {
+            if (!isSafeRootPath(identity.boardRoot) || !isSafeRootPath(identity.repoRoot) || !(await stat(identity.boardRoot)).isDirectory() || !(await stat(identity.repoRoot)).isDirectory()) lastError = "REMOTE_PROJECT_PATH_MISSING";
+          } catch { lastError = "REMOTE_PROJECT_PATH_MISSING"; }
+          record.status = statusFor(projectId, identity, "missing", { configGeneration: record.configGeneration, lastError });
+        }
         return this.view(record);
-      });
+      }));
   }
 
   async reconcile(projectId: string, identity: RemoteProjectIdentity, expectedConfigGeneration: string | null = null): Promise<RemoteProjectView> {
@@ -414,7 +442,7 @@ export class RemoteAccessManager {
     await this.load();
     const record = this.record(projectId, identity);
     if (patch.expectedConfigGeneration !== record.configGeneration) throw new Error("REMOTE_CONFIG_VERSION_CONFLICT");
-    if (!isSafePath(patch.executable.trim()) || !isSafePath(patch.credentialsFile.trim()) || !patch.tunnelId.trim() || !isSafePath(patch.tunnelId.trim()) || !isHostname(patch.hostname.trim())) throw new Error("REMOTE_CONFIG_INVALID");
+    if (!isSafeExecutable(patch.executable.trim()) || !isSafeCredentialsPath(patch.credentialsFile.trim()) || !isTunnelId(patch.tunnelId.trim()) || !isHostname(patch.hostname.trim())) throw new Error("REMOTE_CONFIG_INVALID");
     const previous = this.data.configs[identity.fingerprint];
     for (const [fingerprint, other] of Object.entries(this.data.configs)) {
       if (fingerprint !== identity.fingerprint && (other.tunnelId === patch.tunnelId.trim() || other.hostname === patch.hostname.trim())) throw new Error("REMOTE_RESOURCE_DUPLICATE");
@@ -869,12 +897,14 @@ export class RemoteAccessManager {
         if (record.doctor?.child === child) record.doctor = undefined;
         if (result instanceof Error) reject(result); else resolve(result);
       };
-      const timeout = setTimeout(() => { killOwnedTree(child); void rm(directory, { recursive: true, force: true }); this.emit(record, record.status.state, { action: "idle", public: mode === "public" ? "stale" : record.status.public, severity: "error", lastError: "REMOTE_DOCTOR_TIMEOUT" }); finish(new Error("REMOTE_DOCTOR_TIMEOUT")); }, 120_000);
+      const timeout = setTimeout(() => { if (settled) return; killOwnedTree(child); void rm(directory, { recursive: true, force: true }); this.emit(record, record.status.state, { action: "idle", public: mode === "public" ? "stale" : record.status.public, severity: "error", lastError: "REMOTE_DOCTOR_TIMEOUT" }); finish(new Error("REMOTE_DOCTOR_TIMEOUT")); }, 120_000);
+      if (record.doctor?.child === child) record.doctor.cancel = () => { if (settled) return; clearTimeout(timeout); killOwnedTree(child); void rm(directory, { recursive: true, force: true }); finish(new Error("REMOTE_DOCTOR_CANCELLED")); };
       child.stdout?.setEncoding("utf8");
       child.stdout?.on("data", (chunk: string) => { if (output.length < MAX_OUTPUT_BUFFER) output += chunk.slice(0, MAX_OUTPUT_BUFFER - output.length); });
       child.stderr?.on("data", () => undefined);
-      child.once("error", (error) => { clearTimeout(timeout); void rm(directory, { recursive: true, force: true }); this.emit(record, record.status.state, { action: "idle", public: mode === "public" ? "stale" : record.status.public, severity: "error", lastError: message(error) }); finish(error); });
+      child.once("error", (error) => { if (settled) return; clearTimeout(timeout); void rm(directory, { recursive: true, force: true }); this.emit(record, record.status.state, { action: "idle", public: mode === "public" ? "stale" : record.status.public, severity: "error", lastError: message(error) }); finish(error); });
       child.once("exit", async (code) => {
+        if (settled) return;
         clearTimeout(timeout);
         await rm(directory, { recursive: true, force: true });
         if (settled) return;
@@ -943,8 +973,10 @@ export class RemoteAccessManager {
     const deadline = Date.now() + 8_000;
     await Promise.all(records.map(async (record) => {
       if (record.doctor) {
-        killOwnedTree(record.doctor.child);
-        await rm(record.doctor.directory, { recursive: true, force: true }).catch(() => undefined);
+        const doctor = record.doctor;
+        doctor.cancel?.();
+        killOwnedTree(doctor.child);
+        await rm(doctor.directory, { recursive: true, force: true }).catch(() => undefined);
         record.doctor = undefined;
       }
       await this.stopProcess(record, deadline).catch(() => undefined);

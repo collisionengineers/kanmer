@@ -13,7 +13,7 @@ const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
 
 const identity = { fingerprint: "kanmer-proj-v1:" + "a".repeat(64), boardRoot: "/repo/.worktrees/kanmer", repoRoot: "/repo", format: 3, boardSource: "file" as const };
-const config = { executable: "cloudflared", tunnelId: "tunnel", credentialsFile: "/credentials.json", hostname: "mcp.example.com", enabled: true, autoStart: false, expectedConfigGeneration: null };
+const config = { executable: "cloudflared", tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", credentialsFile: "/credentials.json", hostname: "mcp.example.com", enabled: true, autoStart: false, expectedConfigGeneration: null };
 const owner = { webContentsId: 1, frameRoutingId: 1 };
 
 describe("RemoteAccessManager", () => {
@@ -50,7 +50,7 @@ describe("RemoteAccessManager", () => {
     await Promise.all([manager.register("/repo", identity), manager.register("/other", second)]);
     const [first, other] = await Promise.all([
       manager.saveConfig("/repo", identity, config),
-      manager.saveConfig("/other", second, { ...config, tunnelId: "other-tunnel", hostname: "other.example.com" }),
+      manager.saveConfig("/other", second, { ...config, tunnelId: "4f9620b4-423e-4f37-a30e-61ffcf91f404", hostname: "other.example.com" }),
     ]);
     expect(first.identity.fingerprint).not.toBe(other.identity.fingerprint);
     expect(first.config.hostname).toBe("mcp.example.com");

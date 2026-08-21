@@ -1,6 +1,6 @@
 import { app } from "electron";
 import { join } from "node:path";
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 
 export type Theme = "dark" | "light" | "system";
 export type CardDensity = "comfortable" | "compact";
@@ -111,7 +111,11 @@ export function setOpenTabs(openTabs: string[], activeTab: string): Promise<AppS
 }
 
 function writeSettings(settings: AppSettings): void {
-  writeFileSync(file(), `${JSON.stringify(settings, null, 2)}\n`, "utf8");
+  const target = file();
+  mkdirSync(join(app.getPath("userData")), { recursive: true });
+  const temporary = `${target}.${process.pid}.${Date.now()}.tmp`;
+  writeFileSync(temporary, `${JSON.stringify(settings, null, 2)}\n`, "utf8");
+  renameSync(temporary, target);
 }
 
 /** Serialize every settings.json read-modify-write, including remote access. */

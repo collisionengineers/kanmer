@@ -1042,7 +1042,7 @@ function countUsage(items: Item[]) {
   return acc;
 }
 
-function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
+export function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
   const [view, setView] = useState<RemoteProjectView | null>(null);
   const [overview, setOverview] = useState<RemoteProjectView[]>([]);
   const [status, setStatus] = useState<RemoteStatus | null>(null);
@@ -1129,14 +1129,14 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
       <p className="hint">Remote access is per project. Kanmer stores only this project’s Cloudflare references and keeps the bearer token in encrypted OS storage.</p>
       <div className="settings-section" aria-label="Registered remote-access projects">
         <h4>Registered projects</h4>
-        {overview.length === 0 ? <p className="hint">No projects are registered yet.</p> : <div className="remote-project-grid">{overview.map((project) => <article className="card" key={project.identity.fingerprint} aria-label={`Remote access project ${project.projectId}`}><strong>{project.projectId}</strong><span className="hint">{project.status.state} · {project.config.hostname || "no hostname"}</span><span className="hint">Board {project.status.health.board} · Listener {project.status.health.listener} · Auth {project.status.health.authentication} · Tunnel {project.status.health.tunnel} · Remote {project.status.health.remote}</span>{project.status.lastSummary && <span className="hint">Last doctor: {project.status.lastSummary}</span>}</article>)}</div>}
+        {overview.length === 0 ? <p className="hint">No projects are registered yet.</p> : <div className="remote-project-grid">{overview.map((project) => <article className="card" key={project.identity.fingerprint} aria-label={`Remote access project ${project.projectId}`}><strong>{project.projectId}</strong><span className="hint">State {project.status.state} · Action {project.status.action} · Severity {project.status.severity}</span><span className="hint">{project.config.hostname || "no hostname"} · Board {project.status.health.board} · Listener {project.status.health.listener} · Auth {project.status.health.authentication} · Tunnel {project.status.health.tunnel} · Remote {project.status.health.remote}</span>{project.status.lastSummary && <span className="hint">Last doctor: {project.status.lastSummary}</span>}{project.projectId === projectId ? <span className="hint">Selected project actions are below.</span> : <button className="ghost xs" disabled={busy !== null} onClick={() => void run("open", async () => { await window.kanmer.openProject(project.projectId); setOverview(await window.kanmer.remoteOverview()); })}>Open project</button>}</article>)}</div>}
       </div>
       {view?.identity && <p className="hint">Project fingerprint: <code>{view.identity.fingerprint}</code></p>}
       {error && <div className="banner error">{error}</div>}
       {message && <div className="banner success">{message}</div>}
       <div className="field-row">
         <label className="field"><span>cloudflared executable</span><input value={draft.executable} onChange={(e) => setDraft({ ...draft, executable: e.target.value })} placeholder="C:\\Tools\\cloudflared.exe" /></label>
-        <label className="field"><span>Tunnel id</span><input value={draft.tunnelId} onChange={(e) => setDraft({ ...draft, tunnelId: e.target.value })} /></label>
+        <label className="field"><span>Tunnel id</span><input value={draft.tunnelId} onChange={(e) => setDraft({ ...draft, tunnelId: e.target.value })} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" /></label>
       </div>
       <label className="field"><span>Credentials file</span><input value={draft.credentialsFile} onChange={(e) => setDraft({ ...draft, credentialsFile: e.target.value })} placeholder="C:\\Users\\…\\.json" /></label>
       <label className="field"><span>Public hostname</span><input value={draft.hostname} onChange={(e) => setDraft({ ...draft, hostname: e.target.value })} placeholder="kanmer.example.com" /></label>
@@ -1147,7 +1147,7 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
         <button className="ghost sm" disabled={busy !== null || !view?.config.executable || view.config.secretConfigured} onClick={() => void createSecret(false)}>Create token</button>
         <button className="ghost sm" disabled={busy !== null || !view?.config.secretConfigured || active} onClick={() => void createSecret(true)}>Rotate token</button>
       </div>
-      {token && <div className="banner warn" role="dialog" aria-modal="true" aria-labelledby="remote-token-title"><h4 id="remote-token-title">One-time bearer token</h4><p>Copy this token now for <code>{projectId}</code>. It expires in 60 seconds and is cleared from the system clipboard on quit or expiry.</p><code aria-label={tokenRevealed ? "One-time token" : "Hidden one-time token"}>{tokenRevealed ? token.value : "•".repeat(token.value.length)}</code><button className="ghost xs" autoFocus onClick={() => setTokenRevealed((revealed) => !revealed)} aria-label={tokenRevealed ? "Hide one-time token" : "Reveal one-time token"}>{tokenRevealed ? "Hide" : "Reveal"}</button><button className="primary xs" onClick={() => void copyToken()}>Copy and dismiss</button></div>}
+      {token && <div className="banner warn" role="dialog" aria-modal="true" aria-labelledby="remote-token-title" aria-describedby="remote-token-description"><h4 id="remote-token-title">One-time bearer token</h4><p id="remote-token-description">Copy this token now for <code>{projectId}</code>. It expires in 60 seconds and is cleared from the system clipboard on quit or expiry.</p><code aria-label={tokenRevealed ? "Revealed one-time token" : "Masked one-time token"}>{tokenRevealed ? token.value : "•".repeat(token.value.length)}</code><button className="ghost xs" autoFocus onClick={() => setTokenRevealed((revealed) => !revealed)} aria-label={tokenRevealed ? "Mask one-time token" : "Reveal one-time token"}>{tokenRevealed ? "Mask" : "Reveal"}</button><button className="primary xs" onClick={() => void copyToken()}>Copy and dismiss</button></div>}
       <div className="settings-section">
         <h4>Status: {status?.state ?? "disabled"}</h4>
         {status && <p className="hint">Local: <strong>{status.local}</strong> · Tunnel: <strong>{status.tunnel}</strong> · Public: <strong>{status.public}</strong></p>}

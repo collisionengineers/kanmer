@@ -146,7 +146,7 @@ function assertTrustedRemoteSender(event: IpcMainInvokeEvent): void {
     if (actual.protocol === "file:") allowedUrl = actual.href === pathToFileURL(join(__dirname, "../renderer/index.html")).href;
     else if (devUrl) {
       const expected = new URL(devUrl);
-      allowedUrl = actual.origin === expected.origin && actual.pathname === expected.pathname && !actual.search && !actual.hash;
+      allowedUrl = (expected.protocol === "http:" || expected.protocol === "https:") && !expected.search && !expected.hash && actual.origin === expected.origin && actual.pathname === expected.pathname && !actual.search && !actual.hash;
     }
   } catch { allowedUrl = false; }
   if (!trusted || !allowedUrl) throw new Error("REMOTE_IPC_UNTRUSTED_SENDER");
@@ -297,7 +297,7 @@ function createWindow(): void {
       const actual = new URL(url);
       if (devUrl) {
         const expected = new URL(devUrl);
-        internal = actual.origin === expected.origin && actual.pathname === expected.pathname && !actual.search && !actual.hash;
+        internal = (expected.protocol === "http:" || expected.protocol === "https:") && !expected.search && !expected.hash && actual.origin === expected.origin && actual.pathname === expected.pathname && !actual.search && !actual.hash;
       } else {
         internal = actual.href === pathToFileURL(join(__dirname, "../renderer/index.html")).href;
       }

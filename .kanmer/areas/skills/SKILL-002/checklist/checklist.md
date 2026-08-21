@@ -27,7 +27,7 @@
 - [x] proof.md finalised (PR URL + merge date recorded)
 - [x] Moved to final stage
 - [x] Outcome recorded in ticket report
-- [ ] cd out of worktree; `git worktree remove .worktrees/skill-002`
-- [ ] `git branch -d skill-002-template-guidance`
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] cd out of worktree; `git worktree remove .worktrees/skill-002`
+- [x] `git branch -d skill-002-template-guidance`
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

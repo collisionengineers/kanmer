@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=a35e1fd0
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-21T23:07:40.613Z
+updated_at: 2026-08-21T23:10:56.374Z
 ---
 
 # Current auto run — HZN-007
@@ -17,7 +17,7 @@ updated_at: 2026-08-21T23:07:40.613Z
 Open `automation/runs/20260821T105846Z-codex-mcp-client.md`, then re-read HZN-007/context.md, the live roster, and get_doc_gates for every ticket before dispatching. This pointer is written only after the complete immutable run record was written and read back.
 
 
-Last handoff: SKILL-002 handoff: corrected plan-template identity line in b609c383a203d3956f09a72a324ed09396b28227; PR #139 opened. Checklist 14/14 and report read back; 14-template audit, verify:skills, agents-block 31/31, core build, scripts 80/80 after build, plugin:check, and diff-check passed. Moved Implementing to Review; independent review/merge required; no cleanup.
+Last handoff: SKILL-002 closeout complete: PR #139 merged at d473b6fa542d28439e69e9939d7721467cddd800; .worktrees/skill-002 removed, branch skill-002-template-guidance deleted, fetch --prune and worktree prune completed. Ticket is Done and released; final checklist/proof readback complete; no source changes.
 
 
 Last handoff: CORE-036 merged-main verification recorded at 2026-08-21T22:49:50.557Z; ticket remains Verifying because npm run verify and npm run dist:check each exited 1 on normal main. PR #127 merge 470b2fad is present; no board move, release, or worktree cleanup was performed.

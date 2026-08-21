@@ -71,7 +71,7 @@
 - [x] Build exact direct argument array and validate ordering against installed version.
 - [x] Use `shell: false`, neutral cwd, owned process group/tree, no-autoupdate.
 - [x] Use minimal environment and omit bearer/verifier/development/unrelated secret variables.
-- [ ] Capture PID/version/attempt before output processing.
+- [x] Capture PID/version/attempt before output processing.
 - [ ] Request structured logs where supported.
 - [x] Bound line/ring-buffer size and rate.
 - [x] Parse defensively and map allowlisted fields only.

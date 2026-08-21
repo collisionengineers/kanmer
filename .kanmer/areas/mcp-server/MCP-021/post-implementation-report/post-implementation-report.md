@@ -33,3 +33,7 @@ Implementation commits on this branch include the provider-neutral adapter, fake
 ## Review follow-up
 
 Commit 88911daa wires the headless remote CLI to perform an authenticated local MCP initialize/DELETE handshake before provider spawn. The protected token is used only for that local request and is never passed to the adapter or emitted in status/diagnostics. Build, typecheck, and 10 targeted auth/HTTP/remote tests passed after this follow-up.
+
+## Evidence correction
+
+After the final supervisor/version hardening, the focused HTTP/tunnel suite is 44/44 (the repository npm test run immediately before these final review-only commits was 43/43). The additional targeted supervisor and adapter tests also pass; build and typecheck remain green.

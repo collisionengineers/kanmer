@@ -2,7 +2,7 @@
 
 ## Predecessor contract
 
-- [ ] Read accepted remote-access FRD/ADR and requirement ids.
+- [x] Read accepted remote-access FRD/ADR and requirement ids.
 - [ ] Read MCP-025 implementation/tests/readiness/config/session/authorizer contracts.
 - [x] Confirm auth can run before body parsing and session lookup.
 - [x] Confirm stdio has no HTTP-auth import/config dependency.
@@ -40,20 +40,20 @@
 - [x] Use a fixed dummy comparison path for malformed/missing candidates where practical.
 - [x] Prove configured digest itself does not authenticate.
 - [x] Include no candidate/token in errors.
-- [ ] Search code for prohibited raw string equality.
+- [x] Search code for prohibited raw string equality.
 
 ## Active verifier lifecycle
 
 - [x] Implement absent/active/revoked state.
 - [x] Fail production authorizer construction/start without active verifier.
-- [ ] Snapshot one verifier generation per request.
+- [x] Snapshot one verifier generation per request.
 - [x] Return only opaque principal metadata.
-- [ ] Validate replacement before rotation.
+- [x] Validate replacement before rotation.
 - [x] Invalidate all prior-generation sessions.
-- [ ] Fail safe/stop if activation and invalidation become ambiguous.
+- [x] Fail safe/stop if activation and invalidation become ambiguous.
 - [x] Revoke closes sessions and disables auth.
 - [ ] Test concurrent authorization, rollback, repeated rotation/revoke, and idempotency.
-- [ ] Emit only redacted lifecycle events.
+- [x] Emit only redacted lifecycle events.
 
 ## Protected token-file generation
 
@@ -70,8 +70,8 @@
 
 ## Protected token-file loading
 
-- [ ] Accept exactly one approved secret/verifier source.
-- [ ] Reject conflicting sources.
+- [x] Accept exactly one approved secret/verifier source.
+- [x] Reject conflicting sources.
 - [x] `lstat` and reject symlink/non-regular files.
 - [x] Use no-follow/open/fstat consistency checks where supported.
 - [x] Enforce bounded file size.
@@ -113,7 +113,7 @@
 - [x] Expose local parent/in-process rotation, not a remote MCP tool.
 - [ ] Persist new protected secret before activation.
 - [x] Atomically replace verifier and invalidate sessions.
-- [ ] Emit redacted rotation event.
+- [x] Emit redacted rotation event.
 - [x] Prove old token/session fail immediately.
 - [x] Require fresh initialization with new token.
 - [ ] Use transactional controlled restart if safe in-place rotation is unavailable.
@@ -127,8 +127,8 @@
 - [ ] Never serialize arbitrary request/config/error objects.
 - [ ] Aggregate repetitive auth failures.
 - [ ] Scan ready/stopped/status/errors/stacks/logs/diagnostics/activity/MCP/board/process surfaces for canary.
-- [ ] Test thrown secret-bearing errors.
-- [ ] Test no/wrong/malformed/query/cookie/digest/duplicate credentials all fail identically.
+- [x] Test thrown secret-bearing errors.
+- [x] Test no/wrong/malformed/query/cookie/digest/duplicate credentials all fail identically.
 - [x] Test invalid auth before malformed/oversized body parsing.
 - [x] Test valid initialize/discovery/safe read.
 - [x] Test auth on every subsequent method.

@@ -47,3 +47,5 @@ Implementation is ready for independent re-review; do not merge this branch.
 - Added registry path/orphan and Windows canonicalization tests plus the renderer accessibility/multi-project integration test.
 
 Final follow-up rails: focused remote tests 5 files/18 tests passed; full GUI suite 37 files/334 tests passed; root typecheck passed; GUI build passed; git diff --check passed. No standalone MCP bundle bytes were changed.
+
+Correction: after adding the canonical-path registry fixture, the final full GUI suite is 37 files/336 tests passed (not 334); the focused remote suite remains 5 files/18 tests passed. GUI build, root typecheck, and git diff --check also passed.

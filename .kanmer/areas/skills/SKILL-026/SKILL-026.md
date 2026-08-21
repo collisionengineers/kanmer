@@ -2,13 +2,15 @@
 id: SKILL-026
 type: ticket
 title: AGENTS.md ownership integration verification
-status: review
+status: done
 area: skills
 assignee: codex-mcp-client
 profile: chore
 stageEntered:
   preparing: '2026-08-21T01:12:09.070Z'
   review: '2026-08-21T01:18:32.515Z'
+  verifying: '2026-08-21T01:19:18.042Z'
+  done: '2026-08-21T01:19:49.973Z'
 taken_at: '2026-08-21T01:14:41.602Z'
 branch: skill-026-agents-ownership-integration
 worktree: .worktrees/skill-026
@@ -28,7 +30,7 @@ prs:
   - '99'
 archived: false
 created: '2026-08-20T10:14:57.069Z'
-updated: '2026-08-21T01:18:32.515Z'
+updated: '2026-08-21T01:19:49.973Z'
 ---
 
 ## What

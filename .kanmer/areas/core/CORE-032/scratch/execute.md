@@ -1,1 +1,3 @@
 2026-08-21: Commit a24f924b512c22e14641d6a7c8102860862ae6a3 pushed; PR https://github.com/collisionengineers/kanmer/pull/136 opened with Kanmer: CORE-032. GitHub Actions check verify is currently IN_PROGRESS at run 32531237498/job/96923485539; real run conclusion and duration remain pending/inconclusive. Author will stop at Review and will not merge.
+
+Final PR evidence: #136 run 32531237498 had exactly one verify check on Windows/Bash/Node 20.20.2; setup passed, shared verify failed at apps/gui/src/main/kanmerGit.test.ts (RUNNER~1 vs runneradmin temp path). Job 01:29, run envelope 01:35, conclusion failure. Checklist/report updated; author stops at Review without self-review, merge, protection, or cleanup.

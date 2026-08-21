@@ -28,3 +28,9 @@ CORE-032 implements MASTERPLAN S-02 and Appendix A's GHA contract. CORE-031 is m
 ## Risks and handoff
 
 The PR check intentionally exposes the existing verify-rail failure rather than changing it. A real Windows run may reproduce or differ from the local migration timeout; its exact conclusion owns acceptance of the CI check. No real board-sync post-merge run is available in this execution lane. Independent review should inspect the one-file diff, PR check, and preserved failure before deciding whether to merge or create a follow-up for the unrelated migration flake. Author stops at Review and will not self-review, merge, configure protection, or clean up.
+
+## GitHub result addendum — 2026-08-21
+
+PR #136 received exactly one verify check. GitHub ran it on windows-latest with Bash and Node v20.20.2. Run 32531237498 / job 96923485539 started at 2026-08-21T22:02:25Z and completed at 2026-08-21T22:03:54Z (job elapsed 01:29; run envelope 01:35), below the ten-minute target. Checkout and setup steps passed. The authoritative npm run verify step failed with exit 1 at apps/gui/src/main/kanmerGit.test.ts: expected C:\Users\RUNNER~1\AppData\Local\Temp\... but received C:\Users\runneradmin\AppData\Local\Temp\.... The local normal-checkout rail also independently failed first on the pre-existing core migration timeout recorded above. Both failures are preserved; no unrelated test or workflow change was made.
+
+The real check proves the workflow contract and exposes the existing rail failure; it is not a green acceptance result. Post-merge kanmer-board non-trigger evidence remains INCONCLUSIVE. Independent review should decide whether to merge this one-file workflow with the known verify failure or defer/follow up on the unrelated test owner.

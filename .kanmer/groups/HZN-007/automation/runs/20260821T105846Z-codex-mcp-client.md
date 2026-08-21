@@ -270,3 +270,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-21T20:02:50.857Z — MCP-008 docs follow-up committed and pushed: ca104f4526a43f4bd40ce4b54a218b4472c493f2 adds README headless MCPB install/root/uninstall guidance and corrects ADR-0012 stale consequence. PR #130 remains open at Review; checklist now 55/93 with real-host proof still INCONCLUSIVE.
+
+- 2026-08-21T20:12:00.000Z — GUI-101 PR #129 independently reviewed and PASSed; merged to main at c362217a43056622b7e5f3cd42bf79d91a661e81. Deterministic package/fixture/session rails and dist:check 8/8 passed; proof written and exact worktree/branch removed. Real installed update/two-location host evidence is INCONCLUSIVE, so GUI-101 remains Verifying and released pending an authorized disposable Windows/VM/feed lane.
+- 2026-08-21T20:12:00.000Z — MCP-008 PR #130 independently reviewed and PASSed; merged to main at 52073fc6521ae25b07d8f4b2c54b6d563f62cc21. Merged-main mcpb:check, headless smoke 6/6, plugin check, typecheck, and script rails passed; proof written and exact worktree/branch removed. Real Claude Desktop install/read/write/restart/uninstall evidence is INCONCLUSIVE, so MCP-008 remains Verifying and released pending the named host acceptance.

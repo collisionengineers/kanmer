@@ -3,8 +3,8 @@ import { chmod, lstat, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path, { isAbsolute } from "node:path";
 import { cloudflaredConfig, type CloudflaredTunnelOptions, validateCloudflaredTunnel } from "./cloudflared-config.js";
-import { validateTunnelStartInput, type TunnelAdapter, type TunnelLogEvent, type TunnelProcess, type TunnelStatus, type TunnelTarget } from "./types.js";
-import { allocateLoopbackPort, waitForTunnelReadiness } from "./readiness.js";
+import { validateTunnelStartInput, type TunnelAdapter, type TunnelDoctorResult, type TunnelLogEvent, type TunnelProcess, type TunnelStatus, type TunnelTarget } from "./types.js";
+import { reserveLoopbackPort, waitForTunnelReadiness, type LoopbackPortLease } from "./readiness.js";
 import { validateCloudflaredExecutable, validateCloudflaredIngress } from "./cloudflared-validate.js";
 import { TunnelLogBuffer } from "./logs.js";
 
@@ -45,7 +45,7 @@ function safeFailureCode(error: unknown): string {
   return /^TUNNEL_[A-Z0-9_]+$/.test(message) ? message : "TUNNEL_START_FAILED";
 }
 
-async function stopOwnedChild(child: ChildProcess, exited: Promise<unknown>): Promise<void> {
+async function stopOwnedChild(child: ChildProcess, exited: Promise<unknown>, settleIfProviderIsSilent?: () => void): Promise<void> {
   if (!child.killed) {
     if (process.platform !== "win32" && child.pid) {
       try { process.kill(-child.pid, "SIGTERM"); }
@@ -66,7 +66,14 @@ async function stopOwnedChild(child: ChildProcess, exited: Promise<unknown>): Pr
     try { process.kill(-child.pid, "SIGKILL"); }
     catch { child.kill("SIGKILL"); }
   } else child.kill("SIGKILL");
-  await exited;
+  await Promise.race([
+    exited,
+    new Promise<void>((resolve) => { const timer = setTimeout(resolve, 1_000); timer.unref(); }),
+  ]);
+  // A force-killed Windows process is not guaranteed to emit Node's exit
+  // event.  Settle the owned handle after the bounded wait so shutdown cannot
+  // hang forever; the OS taskkill/SIGKILL remains the process-tree authority.
+  settleIfProviderIsSilent?.();
 }
 
 export class CloudflaredAdapter implements TunnelAdapter {
@@ -79,6 +86,15 @@ export class CloudflaredAdapter implements TunnelAdapter {
 
   getDiagnostics(): readonly TunnelLogEvent[] { return this.diagnostics.snapshot(); }
   getStatus(): TunnelStatus { return { ...this.status }; }
+  async doctor(): Promise<TunnelDoctorResult> {
+    const checks: Array<{ id: string; ok: boolean; code?: string }> = [];
+    try { await validateRegularFile(this.options.executable, "TUNNEL_EXECUTABLE_INVALID", false); await (this.options.validateExecutable?.(this.options.executable) ?? validateCloudflaredExecutable({ executable: this.options.executable })); checks.push({ id: "executable", ok: true }); }
+    catch (error) { checks.push({ id: "executable", ok: false, code: safeFailureCode(error) }); }
+    try { await validateRegularFile(this.options.credentialsFile, "TUNNEL_CREDENTIALS_FILE_UNSAFE", true); checks.push({ id: "credentials", ok: true }); }
+    catch (error) { checks.push({ id: "credentials", ok: false, code: safeFailureCode(error) }); }
+    return { provider: "cloudflared", ok: checks.every((check) => check.ok), checks };
+  }
+  async stop(): Promise<void> { await this.active?.stop(); }
   subscribe(listener: (status: TunnelStatus) => void): () => void {
     this.listeners.add(listener);
     listener(this.getStatus());
@@ -103,6 +119,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
     this.starting = true;
     const attempt = this.status.attempt + 1;
     this.transition("validating", target, { attempt });
+    let metricsLease: LoopbackPortLease | undefined;
     try {
       validateTunnelStartInput({
         config: {
@@ -115,13 +132,14 @@ export class CloudflaredAdapter implements TunnelAdapter {
       await validateRegularFile(this.options.executable, "TUNNEL_EXECUTABLE_INVALID", false);
       const executableValidation = await (this.options.validateExecutable?.(this.options.executable) ?? validateCloudflaredExecutable({ executable: this.options.executable }));
       await validateRegularFile(this.options.credentialsFile, "TUNNEL_CREDENTIALS_FILE_UNSAFE", true);
-    const metricsPort = this.options.metricsPort ?? await allocateLoopbackPort();
+    const metricsPort = this.options.metricsPort ?? (metricsLease = await reserveLoopbackPort()).port;
     if (!Number.isSafeInteger(metricsPort) || metricsPort < 1 || metricsPort > 65_535) throw new Error("TUNNEL_METRICS_PORT_INVALID");
     const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-"));
     await chmod(directory, 0o700);
     const configPath = path.join(directory, "config.yml");
     let child: ChildProcess | undefined;
     let childExited: Promise<{ code: number | null; signal: NodeJS.Signals | null }> | undefined;
+    let settleChildExit: ((result: { code: number | null; signal: NodeJS.Signals | null }) => void) | undefined;
     try {
       await writeFile(configPath, cloudflaredConfig(this.options, target), { encoding: "utf8", mode: 0o600, flag: "wx" });
       await chmod(configPath, 0o600);
@@ -132,6 +150,11 @@ export class CloudflaredAdapter implements TunnelAdapter {
       const ingressValidation = this.options.validateIngress
         ?? (!this.options.validateExecutable && this.spawnProcess === spawn ? (config: string, hostname: string) => validateCloudflaredIngress({ executable: this.options.executable, configPath: config, hostname }) : undefined);
       if (ingressValidation) await ingressValidation(configPath, this.options.hostname);
+      // Release the reservation immediately before spawning the owned child;
+      // this bounds the collision window to the direct spawn boundary and
+      // guarantees release on every error path below.
+      await metricsLease?.release();
+      metricsLease = undefined;
       this.transition("starting", target, { attempt });
       const spawned = this.spawnProcess(this.options.executable, ["tunnel", "--no-autoupdate", "--metrics", `127.0.0.1:${metricsPort}`, "--config", configPath, "run", this.options.tunnelId], {
         cwd: directory,
@@ -150,7 +173,15 @@ export class CloudflaredAdapter implements TunnelAdapter {
       // Register exit before awaiting spawn.  A child can fail between spawn's
       // creation and its event delivery; registering afterward loses that
       // terminal event and can leave readiness hanging forever.
-      const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => spawned.once("exit", (code, signal) => resolve({ code, signal })));
+      const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => { settleChildExit = resolve; });
+      let settled = false;
+      const settle = (result: { code: number | null; signal: NodeJS.Signals | null }) => {
+        if (settled) return;
+        settled = true;
+        settleChildExit?.(result);
+      };
+      spawned.once("exit", (code, signal) => settle({ code, signal }));
+      spawned.once("error", () => settle({ code: null, signal: null }));
       childExited = exited;
       void exited.then(() => this.diagnostics.flush().forEach((event) => this.options.onLog?.(event)));
       await Promise.race([
@@ -180,7 +211,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
         stop: () => stopPromise ??= (async () => {
           intentionalStop = true;
           this.transition("stopping", target, { attempt, pid: spawned.pid });
-          await stopOwnedChild(spawned, exited);
+          await stopOwnedChild(spawned, exited, () => settle({ code: null, signal: null }));
           await cleanupPromise;
         })(),
       };
@@ -202,12 +233,15 @@ export class CloudflaredAdapter implements TunnelAdapter {
       });
       return handle;
     } catch (error) {
-      if (child && childExited) await stopOwnedChild(child, childExited);
+      if (child && childExited) await stopOwnedChild(child, childExited, () => settleChildExit?.({ code: null, signal: null }));
       else if (child && !child.killed) child.kill("SIGTERM");
+      await metricsLease?.release();
+      metricsLease = undefined;
       await rm(directory, { recursive: true, force: true });
       throw error;
     }
     } catch (error) {
+      await metricsLease?.release();
       this.transition("failed", target, { attempt, code: safeFailureCode(error) });
       throw error;
     } finally { this.starting = false; }

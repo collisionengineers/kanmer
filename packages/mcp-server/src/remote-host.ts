@@ -7,7 +7,7 @@ export interface RemoteHostOptions {
   readonly hostname: string;
   readonly tunnel: TunnelAdapter;
   /** Doctor/GUI may perform an authenticated MCP initialize before forwarding. */
-  readonly verifyLocal?: (ready: HttpReadyEvent) => Promise<void>;
+  readonly verifyLocal: (ready: HttpReadyEvent) => Promise<void>;
   /** Opaque auth-rotation generation; never bearer material. */
   readonly authGeneration?: () => string | undefined;
   /** Kept low-frequency in production; injectable for deterministic tests. */
@@ -45,7 +45,7 @@ export class KanmerRemoteHost {
         this.ready ??= await this.http.start();
         if (!this.ready.authRequired || !/^kanmer-proj-v1:[a-f0-9]{64}$/.test(this.ready.projectFingerprint)) throw new Error("TUNNEL_LOCAL_READY_INVALID");
         this.status = { ...this.status, local: "ready" }; this.emit();
-        await options.verifyLocal?.(this.ready);
+        await options.verifyLocal(this.ready);
         const authGeneration = options.authGeneration?.();
         if (authGeneration && !/^sha256:[a-f0-9]{12}$/.test(authGeneration)) throw new Error("TUNNEL_AUTH_GENERATION_INVALID");
         const process = await options.tunnel.start({

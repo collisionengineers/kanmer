@@ -10,6 +10,7 @@ const generated = generateBearerToken();
 const remote = createKanmerRemoteHost({
   authorizer: new BearerAuthorizer(generated.verifier),
   hostname: "kanmer.example.test",
+  verifyLocal: async () => {},
   tunnel: {
     start: async (received) => {
       target = received;

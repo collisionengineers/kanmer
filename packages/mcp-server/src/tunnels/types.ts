@@ -1,3 +1,5 @@
+import { isIP } from "node:net";
+
 /** Provider-neutral input for a process which forwards one public hostname to Kanmer's loopback HTTP listener. */
 export type TunnelState = "stopped" | "validating" | "starting" | "connected" | "degraded" | "stopping" | "failed";
 
@@ -66,7 +68,7 @@ export function validateTunnelStartInput(input: TunnelStartInput): void {
   try { endpoint = new URL(target.endpoint); hostname = new URL(`https://${target.hostname}`); }
   catch { throw new Error("TUNNEL_TARGET_INVALID"); }
   if (endpoint.protocol !== "http:" || !["127.0.0.1", "[::1]"].includes(endpoint.hostname) || !endpoint.port || endpoint.username || endpoint.password || endpoint.pathname !== "/mcp" || endpoint.search || endpoint.hash) throw new Error("TUNNEL_TARGET_INVALID");
-  if (hostname.protocol !== "https:" || hostname.hostname !== target.hostname.toLowerCase() || hostname.username || hostname.password || hostname.port || hostname.pathname !== "/" || hostname.search || hostname.hash || target.hostname.includes("*")) throw new Error("TUNNEL_TARGET_INVALID");
+  if (hostname.protocol !== "https:" || hostname.hostname !== target.hostname.toLowerCase() || hostname.username || hostname.password || hostname.port || hostname.pathname !== "/" || hostname.search || hostname.hash || target.hostname.includes("*") || isIP(hostname.hostname) !== 0) throw new Error("TUNNEL_TARGET_INVALID");
 
   const policy = { ...DEFAULT_TUNNEL_RESTART_POLICY, ...input.restartPolicy };
   if (!Object.values(policy).every((value) => Number.isSafeInteger(value) && value >= 0) || policy.maxRestarts > 10 || policy.baseDelayMs > policy.maxDelayMs || policy.stableResetMs < 1) throw new Error("TUNNEL_RESTART_POLICY_INVALID");
@@ -83,6 +85,18 @@ export interface TunnelStatus {
   readonly code?: string;
   readonly projectFingerprint?: string;
   readonly authGeneration?: string;
+}
+
+export interface TunnelDoctorCheck {
+  readonly id: string;
+  readonly ok: boolean;
+  readonly code?: string;
+}
+
+export interface TunnelDoctorResult {
+  readonly provider: string;
+  readonly ok: boolean;
+  readonly checks: readonly TunnelDoctorCheck[];
 }
 
 export type TunnelEvent =
@@ -104,8 +118,11 @@ export interface TunnelProcess {
 }
 
 export interface TunnelAdapter {
+  doctor(): Promise<TunnelDoctorResult>;
   start(target: TunnelTarget): Promise<TunnelProcess>;
-  getStatus?(): TunnelStatus;
+  getStatus(): TunnelStatus;
+  stop(): Promise<void>;
+  getDiagnostics(): readonly TunnelLogEvent[];
   subscribe?(listener: (status: TunnelStatus) => void): () => void;
 }
 

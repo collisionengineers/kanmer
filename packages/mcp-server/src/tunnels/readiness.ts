@@ -1,5 +1,10 @@
 const LOOPBACK = new Set(["127.0.0.1", "[::1]"]);
 
+export interface LoopbackPortLease {
+  readonly port: number;
+  release(): Promise<void>;
+}
+
 export interface ReadinessOptions {
   readonly endpoint: string;
   readonly timeoutMs?: number;
@@ -7,20 +12,34 @@ export interface ReadinessOptions {
   readonly fetchImpl?: typeof fetch;
 }
 
+/** Hold a loopback-only port reservation until the child is ready to bind it. */
+export async function reserveLoopbackPort(): Promise<LoopbackPortLease> {
+  const server = createServer();
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string" || address.address !== "127.0.0.1" || !address.port) {
+    if (server.listening) server.close();
+    throw new Error("TUNNEL_METRICS_PORT_ALLOCATION_FAILED");
+  }
+  let released = false;
+  return {
+    port: address.port,
+    release: async () => {
+      if (released) return;
+      released = true;
+      if (server.listening) await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    },
+  };
+}
+
 /** Obtain a currently free loopback TCP port without ever binding publicly. */
 export async function allocateLoopbackPort(): Promise<number> {
-  const server = createServer();
-  try {
-    await new Promise<void>((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(0, "127.0.0.1", resolve);
-    });
-    const address = server.address();
-    if (!address || typeof address === "string" || address.address !== "127.0.0.1" || !address.port) throw new Error("TUNNEL_METRICS_PORT_ALLOCATION_FAILED");
-    return address.port;
-  } finally {
-    if (server.listening) await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
-  }
+  const lease = await reserveLoopbackPort();
+  try { return lease.port; }
+  finally { await lease.release(); }
 }
 
 function assertLoopbackReadyEndpoint(value: string): URL {

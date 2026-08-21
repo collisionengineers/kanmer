@@ -1,10 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { allocateLoopbackPort, waitForTunnelReadiness } from "../../dist/tunnels/readiness.js";
+import { allocateLoopbackPort, reserveLoopbackPort, waitForTunnelReadiness } from "../../dist/tunnels/readiness.js";
+import { createServer } from "node:net";
 
 test("allocator returns an unprivileged loopback port", async () => {
   const port = await allocateLoopbackPort();
   assert.ok(Number.isInteger(port) && port > 1024 && port <= 65_535);
+});
+
+test("port lease owns the reservation until an idempotent release", async () => {
+  const lease = await reserveLoopbackPort();
+  const contender = createServer();
+  try {
+    await assert.rejects(() => new Promise((resolve, reject) => {
+      contender.once("error", reject);
+      contender.listen(lease.port, "127.0.0.1", resolve);
+    }), /EADDRINUSE/);
+    await lease.release();
+    await lease.release();
+    await new Promise((resolve, reject) => { contender.once("error", reject); contender.listen(lease.port, "127.0.0.1", resolve); });
+  } finally { if (contender.listening) await new Promise((resolve) => contender.close(resolve)); }
 });
 
 test("readiness accepts only a bounded successful loopback /ready response", async () => {

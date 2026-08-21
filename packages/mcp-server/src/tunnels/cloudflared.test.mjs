@@ -22,6 +22,26 @@ test("provider-neutral start validation rejects unsafe targets, unknown modes, a
   assert.throws(() => validateTunnelStartInput({ ...input, restartPolicy: { maxRestarts: 11 } }), /TUNNEL_RESTART_POLICY_INVALID/);
 });
 
+test("adapter exposes a redacted doctor surface for executable and credential checks", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-doctor-"));
+  try {
+    const credentials = path.join(directory, "credentials.json");
+    await writeFile(credentials, "{}", { mode: 0o600 });
+    const adapter = createCloudflaredAdapter({
+      executable: process.execPath,
+      tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403",
+      credentialsFile: credentials,
+      hostname: "kanmer.example.test",
+      validateExecutable: async () => ({ version: "2026.8.1" }),
+    });
+    assert.deepEqual(await adapter.doctor(), { provider: "cloudflared", ok: true, checks: [{ id: "executable", ok: true }, { id: "credentials", ok: true }] });
+    const broken = createCloudflaredAdapter({ executable: process.execPath, tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", credentialsFile: path.join(directory, "missing"), hostname: "kanmer.example.test", validateExecutable: async () => ({ version: "2026.8.1" }) });
+    const result = await broken.doctor();
+    assert.equal(result.ok, false);
+    assert.equal(result.checks[1].code, "TUNNEL_CREDENTIALS_FILE_UNSAFE");
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
 test("adapter validates an owned credentials file before starting a direct child", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-test-"));
   try {
@@ -177,6 +197,24 @@ test("an owned child exit fails the attempt without waiting for readiness timeou
     }, fakeSpawn);
     await assert.rejects(() => adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /TUNNEL_CHILD_EXITED_BEFORE_READY/);
     assert.equal(adapter.getStatus().code, "TUNNEL_CHILD_EXITED_BEFORE_READY");
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test("provider error without an exit event settles and cleans the attempt", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-error-"));
+  try {
+    const credentials = path.join(directory, "credentials.json");
+    await writeFile(credentials, "{}", { mode: 0o600 });
+    const fakeSpawn = () => {
+      const child = new EventEmitter();
+      child.pid = 4321; child.killed = false;
+      child.stdout = new PassThrough(); child.stderr = new PassThrough();
+      child.kill = () => { child.killed = true; return true; };
+      queueMicrotask(() => { child.emit("spawn"); child.emit("error", new Error("provider unavailable")); });
+      return child;
+    };
+    const adapter = createCloudflaredAdapter({ executable: process.execPath, tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", credentialsFile: credentials, hostname: "kanmer.example.test", validateExecutable: async () => {}, waitForReady: () => new Promise(() => {}) }, fakeSpawn);
+    await assert.rejects(() => Promise.race([adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), new Promise((_, reject) => setTimeout(() => reject(new Error("hung")), 1_000))]), /TUNNEL_CHILD_EXITED_BEFORE_READY/);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 

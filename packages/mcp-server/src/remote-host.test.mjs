@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createKanmerRemoteHost } from "../dist/remote-host.js";
 
+const verifyLocal = async () => {};
+
 test("remote host starts bearer-protected HTTP before giving one loopback target to its tunnel", async () => {
   let target;
   let stop;
@@ -10,6 +12,7 @@ test("remote host starts bearer-protected HTTP before giving one loopback target
   const remote = createKanmerRemoteHost({
     authorizer: { authorize: async () => ({ principal: "test" }) },
     authGeneration: () => "sha256:0123456789ab",
+    verifyLocal,
     onStatus: (status) => statuses.push(status),
     hostname: "kanmer.example.test",
     tunnel: { start: async (received) => { target = received; return { exited, stop: async () => stop() }; } },
@@ -29,6 +32,7 @@ test("remote host starts bearer-protected HTTP before giving one loopback target
 test("provider startup failure leaves the local authenticated HTTP host available and marks provider failed", async () => {
   const remote = createKanmerRemoteHost({
     authorizer: { authorize: async () => ({ principal: "test" }) }, hostname: "kanmer.example.test",
+    verifyLocal,
     tunnel: { start: async () => { throw new Error("provider unavailable"); } },
   });
   try {
@@ -60,6 +64,7 @@ test("remote host accepts only opaque auth-generation metadata before a tunnel s
   const remote = createKanmerRemoteHost({
     authorizer: { authorize: async () => ({ principal: "test" }) },
     authGeneration: () => "Bearer must-not-reach-provider",
+    verifyLocal,
     hostname: "kanmer.example.test",
     tunnel: { start: async () => { starts++; throw new Error("unreachable"); } },
   });
@@ -76,7 +81,7 @@ test("provider readiness loss becomes degraded and a later local-ready poll reco
   let stop;
   const exited = new Promise((resolve) => { stop = () => resolve({ code: 0, signal: null }); });
   const remote = createKanmerRemoteHost({
-    authorizer: { authorize: async () => ({ principal: "test" }) }, hostname: "kanmer.example.test", healthPollMs: 5,
+    authorizer: { authorize: async () => ({ principal: "test" }) }, hostname: "kanmer.example.test", healthPollMs: 5, verifyLocal,
     scheduleHealthPoll: (next) => { poll = next; return () => { poll = undefined; }; },
     tunnel: { start: async () => ({
       exited,
@@ -101,7 +106,7 @@ test("remote shutdown closes the authenticated listener before stopping its tunn
   let resolveExit;
   const exited = new Promise((resolve) => { resolveExit = resolve; });
   const remote = createKanmerRemoteHost({
-    authorizer: { authorize: async () => ({ principal: "test" }) }, hostname: "kanmer.example.test",
+    authorizer: { authorize: async () => ({ principal: "test" }) }, hostname: "kanmer.example.test", verifyLocal,
     tunnel: { start: async (received) => {
       target = received;
       return {
@@ -125,7 +130,7 @@ test("origin invalidation stops forwarding but keeps the authenticated local lis
   let resolveExit;
   const exited = new Promise((resolve) => { resolveExit = resolve; });
   const remote = createKanmerRemoteHost({
-    authorizer: { authorize: async () => ({ principal: "test" }) }, hostname: "kanmer.example.test",
+    authorizer: { authorize: async () => ({ principal: "test" }) }, hostname: "kanmer.example.test", verifyLocal,
     tunnel: { start: async (received) => {
       target = received;
       return { exited, stop: async () => { stopped = true; resolveExit({ code: 0, signal: null }); } };

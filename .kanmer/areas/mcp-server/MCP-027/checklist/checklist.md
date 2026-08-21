@@ -166,3 +166,6 @@ Final verification on commit `0719a399`:
 - [x] Final cleanup hardening makes per-session close idempotent, registers each client in the run cleanup stack, and prevents duplicate close calls after successful session closure (commit `91a0a64b`).
 
 - [x] Packaged HTTP probes cancel response bodies after header-only inspection, keeping diagnostic sockets bounded (commit `0552e6f7`).
+
+- [x] Cancellation and total-timeout reports are non-healthy (status fail with exit 2) and regression assertions cover both paths.
+- [x] CLI local status validates an exact loopback HTTP `/mcp` endpoint before any request; unsafe endpoint references fail closed without probing (commit `2d54db9e`).

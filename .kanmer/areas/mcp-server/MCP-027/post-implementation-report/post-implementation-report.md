@@ -55,3 +55,5 @@ Commit `0719a399` verification: `npm test` PASS (core 256, GUI 318, MCP 59, scri
 Follow-up hardening commit `91a0a64b` makes client cleanup idempotent and records each session closer in the cleanup stack; the final teardown therefore cannot double-close a successfully closed local/public session, while late clients are still closed after timeout/cancellation.
 
 The packaged probe hardening in `0552e6f7` cancels header-only HTTP response bodies, so route/auth diagnostics do not retain response streams or sockets.
+
+Final review blockers are closed in `2d54db9e`: cancellation/total-timeout reports now have non-healthy status with exit 2, and the CLI validates exact loopback `/mcp` endpoints before issuing local status requests. Doctor regression tests cover cancellation and late timeout status.

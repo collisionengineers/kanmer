@@ -81,3 +81,5 @@ The packaged localStatus callback fetches KANMER_LOCAL_ENDPOINT before LOCAL_BIN
 ### Verdict
 
 NEEDS CHANGES — not safe to merge until cancellation/total-timeout status is corrected and tested.
+
+Final re-review through 0552e6f7: NEEDS CHANGES; do not merge. The new probe/localStatus response-body cancellation is present and typecheck/build plus focused HTTP rail pass (59/59), doctor tests pass (7/7), and diff check is clean. However cancellation/total-timeout still produce a contradictory report: an already-aborted public run returns `status: "pass"`, `exitCode: 2`, counts `{pass:0,warn:0,fail:0,skipped:26}`; the cancellation skips are severity `info`, while aggregation only treats required skipped/fail/cleanup errors as unhealthy. Add an explicit cancelled/timeout status or count these as failure, and assert both status and exit code. Also, the CLI localStatus fetches `KANMER_LOCAL_ENDPOINT` before LOCAL_BIND_LOOPBACK validates it, so an unsafe env endpoint can receive a POST; validate/allowlist the endpoint before fetching and add a regression test.

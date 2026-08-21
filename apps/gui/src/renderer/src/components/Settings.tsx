@@ -15,6 +15,9 @@ import type {
   SkillsStatus,
   Theme, KanmerGitStatus,
   UiPreferences,
+  DispatchSettings,
+  DispatchProviderSettings,
+  DispatchTaskInfo,
 } from "../../../shared/ipc.js";
 import type { RemoteConfigInput, RemoteDoctorResult, RemoteProjectView, RemoteStatus } from "../../../shared/ipc.js";
 import { useClient } from "../lib/client.js";
@@ -28,13 +31,14 @@ import {
   type Vocabulary,
 } from "../lib/profileDraft.js";
 
-type SettingsTab = "board" | "profiles" | "appearance" | "git" | "connect" | "remote";
+type SettingsTab = "board" | "profiles" | "appearance" | "git" | "connect" | "dispatch" | "remote";
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: "board", label: "Board" },
   { id: "profiles", label: "Profiles" },
   { id: "appearance", label: "Appearance" },
   { id: "git", label: "Git" },
   { id: "connect", label: "Connect" },
+  { id: "dispatch", label: "Dispatch" },
   { id: "remote", label: "Remote access" },
 ];
 
@@ -326,11 +330,77 @@ export function Settings({
             )}
 
             {tab === "connect" && <ConnectSection />}
+
+            {tab === "dispatch" && <DispatchSection />}
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+/** Machine-local background-dispatch controls, generated from the shared task/provider lists. */
+function DispatchSection(): JSX.Element {
+  const [settings, setSettings] = useState<DispatchSettings>({ providers: {} });
+  const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<DispatchTaskInfo[]>([]);
+  const [selectedTask, setSelectedTask] = useState("files");
+  const [previews, setPreviews] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    void Promise.all([window.kanmer.getSettings(), window.kanmer.listProviders(), window.kanmer.listDispatchTasks()]).then(([saved, list, taskList]) => {
+      setSettings(saved.dispatch ?? { providers: {} });
+      setProviders(list.filter((provider) => provider.dispatch));
+      setTasks(taskList);
+    }).catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
+  }, []);
+
+  useEffect(() => {
+    for (const provider of providers) {
+      void window.kanmer.dispatchPromptPreview(selectedTask, settings.providers[provider.id as keyof typeof settings.providers]?.promptSuffix)
+        .then((value) => setPreviews((current) => ({ ...current, [provider.id]: value })))
+        .catch(() => setPreviews((current) => ({ ...current, [provider.id]: "" })));
+    }
+  }, [providers, selectedTask, settings.providers]);
+
+  const save = async (next: DispatchSettings) => {
+    setBusy(true); setError(null); setMessage(null);
+    try {
+      const saved = await window.kanmer.setDispatchSettings(next);
+      setSettings(saved.dispatch);
+      setMessage("Dispatch settings saved.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setBusy(false); }
+  };
+
+  const updateProvider = (id: string, patch: Partial<DispatchProviderSettings>) => {
+    const current = settings.providers[id as keyof typeof settings.providers] ?? {};
+    const next: DispatchSettings = { providers: { ...settings.providers, [id]: { ...current, ...patch } } };
+    void save(next);
+  };
+
+  return <div className="settings-section">
+    <h3>Background dispatch</h3>
+    <p className="hint">These machine-local settings affect agents started by Kanmer. Built-in task prompts remain authoritative; your instructions are appended. Settings are plaintext in Electron user data — do not enter secrets.</p>
+    {error && <div className="banner error">{error}</div>}
+    {message && <div className="banner ok">{message}</div>}
+    {providers.map((provider) => {
+      const value = settings.providers[provider.id as keyof typeof settings.providers] ?? {};
+      const taskOverrides = value.taskModels ?? {};
+      return <div className="dispatch-provider" key={provider.id}>
+        <div className="provider-row"><strong>{provider.label}</strong><span className="hint">{provider.id} · {provider.model ? `model ${provider.model.flag} verified` : "CLI default only"}</span><button className="ghost xs" disabled={busy || Object.keys(value).length === 0} onClick={() => void save({ providers: { ...settings.providers, [provider.id]: undefined } })}>Reset</button></div>
+        {provider.model ? <label className="field"><span>Default model</span><input value={value.defaultModel ?? ""} maxLength={200} placeholder="CLI default" onBlur={(e) => updateProvider(provider.id, { defaultModel: e.target.value })} /></label> : <p className="hint">This provider has no measured model override; dispatch uses its CLI default.</p>}
+        <label className="field"><span>Task override</span><select value={selectedTask} onChange={(e) => setSelectedTask(e.target.value)}>{tasks.map((task) => <option key={task.id} value={task.id}>{task.label}</option>)}</select><input value={taskOverrides[selectedTask as keyof typeof taskOverrides] ?? ""} maxLength={200} placeholder="Use provider default" onBlur={(e) => updateProvider(provider.id, { taskModels: { ...taskOverrides, [selectedTask]: e.target.value } })} /></label>
+        <label className="field"><span>Additional instructions</span><textarea value={value.promptSuffix ?? ""} maxLength={4000} rows={3} placeholder="Optional house rules appended to every dispatch" onBlur={(e) => updateProvider(provider.id, { promptSuffix: e.target.value })} /></label>
+        <details><summary>Prompt preview</summary><pre className="dispatch-preview">{previews[provider.id] ?? ""}</pre></details>
+      </div>;
+    })}
+    {providers.length === 0 && <p className="hint">No provider currently supports background dispatch.</p>}
+  </div>;
 }
 
 /** Register the MCP server + install skills for any supported host (data-driven). */

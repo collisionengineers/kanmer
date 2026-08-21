@@ -1,6 +1,7 @@
 import { app } from "electron";
 import { join } from "node:path";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dispatchProviderById, DISPATCH_PROMPT_SUFFIX_MAX, DISPATCH_TASKS, type DispatchProviderId, type DispatchTaskId } from "@kanmer/core";
 
 export type Theme = "dark" | "light" | "system";
 export type CardDensity = "comfortable" | "compact";
@@ -21,6 +22,16 @@ export interface WindowBounds {
   maximized: boolean;
 }
 
+export interface DispatchProviderSettings {
+  defaultModel?: string;
+  taskModels?: Partial<Record<DispatchTaskId, string>>;
+  promptSuffix?: string;
+}
+
+export interface DispatchSettings {
+  providers: Partial<Record<DispatchProviderId, DispatchProviderSettings>>;
+}
+
 export interface AppSettings extends UiPreferences {
   theme: Theme;
   recentProjects: string[];
@@ -36,6 +47,7 @@ export interface AppSettings extends UiPreferences {
   gitSyncMinutes: number;
   /** GUI remote-access registry; owned by the remote-access store but preserved by settings writes. */
   remoteAccess?: Record<string, unknown>;
+  dispatch: DispatchSettings;
 }
 
 const DEFAULTS: AppSettings = {
@@ -51,9 +63,73 @@ const DEFAULTS: AppSettings = {
   defaultArea: "",
   kanmerBranch: "kanmer-board",
   gitSyncMinutes: 0,
+  dispatch: { providers: {} },
 };
 const MAX_RECENT = 8;
+const MAX_MODEL = 200;
+const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 let settingsQueue: Promise<void> = Promise.resolve();
+
+function cleanText(value: unknown, max: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const text = value.trim();
+  return text && text.length <= max && !CONTROL.test(text) ? text : undefined;
+}
+
+function normalizeProviderSettings(raw: unknown, strict = false): DispatchProviderSettings {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    if (strict) throw new Error("dispatch provider settings must be an object");
+    return {};
+  }
+  const value = raw as Record<string, unknown>;
+  const defaultModel = cleanText(value.defaultModel, MAX_MODEL);
+  const suffix = cleanText(value.promptSuffix, DISPATCH_PROMPT_SUFFIX_MAX);
+  if (strict && value.defaultModel !== undefined && defaultModel === undefined) throw new Error("default model is invalid");
+  if (strict && value.promptSuffix !== undefined && suffix === undefined) throw new Error("prompt suffix is invalid");
+  const taskModels: Partial<Record<DispatchTaskId, string>> = {};
+  const knownTasks = new Set(DISPATCH_TASKS.map((task) => task.id));
+  if (value.taskModels && typeof value.taskModels === "object" && !Array.isArray(value.taskModels)) {
+    for (const [task, model] of Object.entries(value.taskModels as Record<string, unknown>)) {
+      if (!knownTasks.has(task as DispatchTaskId)) {
+        if (strict) continue;
+        continue;
+      }
+      const clean = cleanText(model, MAX_MODEL);
+      if (clean) taskModels[task as DispatchTaskId] = clean;
+      else if (strict && model !== undefined) throw new Error(`task model for ${task} is invalid`);
+    }
+  } else if (strict && value.taskModels !== undefined) throw new Error("task models must be an object");
+  return {
+    ...(defaultModel ? { defaultModel } : {}),
+    ...(Object.keys(taskModels).length ? { taskModels } : {}),
+    ...(suffix ? { promptSuffix: suffix } : {}),
+  };
+}
+
+export function normalizeDispatchSettings(raw: unknown, strict = false): DispatchSettings {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    if (strict) throw new Error("dispatch settings must be an object");
+    return { providers: {} };
+  }
+  const providers: Partial<Record<DispatchProviderId, DispatchProviderSettings>> = {};
+  const rawProviders = (raw as Record<string, unknown>).providers;
+  if (!rawProviders || typeof rawProviders !== "object" || Array.isArray(rawProviders)) {
+    if (strict && rawProviders !== undefined) throw new Error("dispatch providers must be an object");
+    return { providers };
+  }
+  for (const [id, value] of Object.entries(rawProviders as Record<string, unknown>)) {
+    if (!dispatchProviderById(id)) { if (strict) continue; continue; }
+    const clean = normalizeProviderSettings(value, strict);
+    if (Object.keys(clean).length) providers[id as DispatchProviderId] = clean;
+  }
+  return { providers };
+}
+
+export function resolveDispatchSettings(settings: DispatchSettings, provider: DispatchProviderId, taskId?: DispatchTaskId) {
+  const value = settings.providers[provider];
+  const model = taskId ? value?.taskModels?.[taskId] ?? value?.defaultModel : value?.defaultModel;
+  return { ...(model ? { model } : {}), promptSuffix: value?.promptSuffix ?? "", promptCustomized: Boolean(value?.promptSuffix?.trim()) };
+}
 
 function file(): string {
   return join(app.getPath("userData"), "settings.json");
@@ -78,6 +154,7 @@ export function readSettings(): AppSettings {
       kanmerBranch: typeof parsed.kanmerBranch === "string" && parsed.kanmerBranch.trim() ? parsed.kanmerBranch.trim() : "kanmer-board",
       gitSyncMinutes: Number.isInteger(parsed.gitSyncMinutes) && (parsed.gitSyncMinutes ?? 0) > 0 ? parsed.gitSyncMinutes! : 0,
       ...(parsed.remoteAccess && typeof parsed.remoteAccess === "object" ? { remoteAccess: parsed.remoteAccess as Record<string, unknown> } : {}),
+      dispatch: normalizeDispatchSettings(parsed.dispatch),
       ...(bounds && typeof bounds.width === "number" && typeof bounds.height === "number"
         ? { windowBounds: bounds }
         : {}),
@@ -93,6 +170,16 @@ export function setKanmerGitPreferences(kanmerBranch: string, gitSyncMinutes: nu
     const settings = readSettings();
     settings.kanmerBranch = kanmerBranch.trim() || "kanmer-board";
     settings.gitSyncMinutes = Number.isInteger(gitSyncMinutes) && gitSyncMinutes > 0 ? gitSyncMinutes : 0;
+    writeSettings(settings);
+    return settings;
+  });
+}
+
+export function setDispatchSettings(dispatch: DispatchSettings): Promise<AppSettings> {
+  return withSettingsFileLock(async () => {
+    const normalized = normalizeDispatchSettings(dispatch, true);
+    const settings = readSettings();
+    settings.dispatch = normalized;
     writeSettings(settings);
     return settings;
   });

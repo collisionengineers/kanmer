@@ -2,6 +2,22 @@ A connected agent can work your board while you talk to it. **Dispatch** is the
 other direction: you point Kanmer at a ticket, choose one job, and it starts a
 background agent to do that job and nothing else.
 
+## Choosing a model and adding operator instructions
+
+Open **Settings → Dispatch** to configure background dispatch on this machine.
+Each dispatchable provider has a default model, optional per-task override, and
+an optional suffix of additional instructions. The task's built-in prompt is
+always retained; the suffix is appended and cannot replace the ticket workflow.
+Leave the model blank to use the provider CLI default. Model names are opaque,
+limited to 200 characters, and are not checked against a catalogue. The suffix
+is limited to 4,000 characters. These settings are stored as plaintext in your
+Electron user data, so never enter credentials or secrets.
+
+If a provider is not shown, Kanmer does not support starting it in the
+background. A failed configured model is reported as a failed dispatch; Kanmer
+does not retry without the model. Live provider authentication and model
+availability remain host-specific.
+
 ## Doing it
 
 Right-click a card → **Dispatch to agent** → pick the agent → pick the task.

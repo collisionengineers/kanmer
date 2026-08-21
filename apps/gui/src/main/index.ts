@@ -18,6 +18,7 @@ import { pathToFileURL } from "node:url";
 import { classifyKanmerPath } from "../shared/kanmerPath.js";
 import {
   BOUNDARIES,
+  composeDispatchPrompt,
   DISPATCH_TASKS,
   DOC_TYPES,
   GATE_EXEMPT_DIRS,
@@ -56,6 +57,7 @@ import {
   setNotifications,
   setOpenTabs,
   setPreferences,
+  setDispatchSettings,
   setTheme,
   setKanmerGitPreferences,
   setWindowBounds,
@@ -815,6 +817,7 @@ function registerIpc(): void {
   });
   ipcMain.handle(CH.setNotifications, (_e, on: boolean) => setNotifications(on));
   ipcMain.handle(CH.setPreferences, (_e, patch: Partial<UiPreferences>) => setPreferences(patch));
+  ipcMain.handle(CH.setDispatchSettings, (_e, settings) => setDispatchSettings(settings));
   ipcMain.handle(CH.setKanmerGitPreferences, (_e, prefs: { kanmerBranch: string; gitSyncMinutes: number }) =>
     applyGitPreferences(prefs.kanmerBranch, prefs.gitSyncMinutes),
   );
@@ -870,6 +873,14 @@ function registerIpc(): void {
         ...(f.warning ? { warning: f.warning } : {}),
       };
     });
+  });
+  ipcMain.handle(CH.dispatchTasks, () => DISPATCH_TASKS.map((task) => ({
+    id: task.id, label: task.label, deliverable: task.deliverable, prompt: task.prompt("TICK-001"),
+  })));
+  ipcMain.handle(CH.dispatchPromptPreview, (_e, taskId: string, suffix?: string) => {
+    const task = DISPATCH_TASKS.find((candidate) => candidate.id === taskId);
+    if (!task) throw new Error(`Unknown dispatch task "${taskId}".`);
+    return composeDispatchPrompt(task.prompt("TICK-001"), suffix ?? "");
   });
   ipcMain.handle(CH.cancelDispatch, (_e, dispatchId: string) => cancelDispatch(dispatchId));
   ipcMain.handle(CH.listDispatches, (_e, p: string) => listDispatches(p));

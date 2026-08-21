@@ -35,11 +35,31 @@ export function takeTicketPromptText(id: string): string {
 
 /** One dispatchable task: a granular deliverable with an unambiguous done-condition. */
 export interface DispatchTask {
-  id: string;
+  id: DispatchTaskId;
   label: string;
   /** What must exist for this task to be finished. */
   deliverable: string;
   prompt: (ticketId: string) => string;
+}
+
+export type DispatchTaskId =
+  | "research-quick"
+  | "research-deep"
+  | "files"
+  | "plan"
+  | "execute"
+  | "verify";
+
+export const DISPATCH_PROMPT_SUFFIX_MAX = 4000;
+const SUFFIX_HEADER = "Additional operator instructions for this provider:";
+
+/** Compose an append-only operator suffix without forking the built-in prompt. */
+export function composeDispatchPrompt(builtIn: string, suffix = ""): string {
+  if (suffix.length > DISPATCH_PROMPT_SUFFIX_MAX || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(suffix)) {
+    throw new Error(`dispatch prompt suffix must be at most ${DISPATCH_PROMPT_SUFFIX_MAX} characters and contain no control characters`);
+  }
+  const normalized = suffix.trim();
+  return normalized ? `${builtIn}\n\n${SUFFIX_HEADER}\n${normalized}` : builtIn;
 }
 
 /**

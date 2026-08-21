@@ -94,12 +94,15 @@ if (invalid) {
       },
       probe: async ({ endpoint, authorization, followRedirects, signal }) => {
         const response = await fetch(endpoint, { method: "POST", redirect: followRedirects ? "follow" : "manual", signal, headers: { ...(authorization ? { authorization } : {}), accept: "application/json, text/event-stream" } });
-        return { status: response.status, location: response.headers.get("location") ?? undefined, challenge: response.headers.get("www-authenticate") ?? undefined, contentType: response.headers.get("content-type") ?? undefined };
+        const metadata = { status: response.status, location: response.headers.get("location") ?? undefined, challenge: response.headers.get("www-authenticate") ?? undefined, contentType: response.headers.get("content-type") ?? undefined };
+        await response.body?.cancel();
+        return metadata;
       },
       localStatus: async () => {
         const endpoint = process.env.KANMER_LOCAL_ENDPOINT;
         if (!endpoint) return { state: "stopped", authRequired: false };
         const response = await fetch(endpoint, { method: "POST", redirect: "manual", signal: controller.signal });
+        await response.body?.cancel();
         return { state: response.status === 401 ? "ready" : "failed", endpoint, authRequired: response.status === 401, projectFingerprint: process.env.KANMER_EXPECTED_PROJECT };
       },
       tunnelStatus: async () => {

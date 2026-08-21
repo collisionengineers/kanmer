@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T22:55:44.433Z
+updated_at: 2026-08-21T22:58:17.518Z
 lane_limit: 3
 stop_reason:
 ---
@@ -199,6 +199,12 @@ stop_reason:
 - 2026-08-21T21:58:43.370Z — 2026-08-21T21:58:24.054Z — GUI-068 assigned to /root/gui099_executor in .worktrees/gui-068 on gui-068-auto-update-verification; scope is packaged updater verification/reconciliation only. Historical 0.3.2→0.3.3 success evidence exists in GUI-068 scratch; refusal screenshot and respawn timing remain unverified and will be recorded INCONCLUSIVE if no controlled host/capture is available.
 
 - 2026-08-21T22:15:54.565Z — 2026-08-21T22:15:43.591Z — GUI-068 handed off at Review after fresh gate readback (chore: plan/questions satisfied; proof intentionally not satisfied for future Done gate). Deterministic evidence: focused updater 40/40 PASS; full GUI rerun 351/351 PASS after build:core; typecheck PASS; dist:check PASS with updater package OK (8 checks). First full GUI attempt exit 1 preserved in report (unbuilt core resolution plus 10s Git hook timeout). Existing 0.3.2→0.3.3 app-driven update is PASS evidence; refusal screenshot, negative holder path, numerical respawn timing remain INCONCLUSIVE. No product source diff, commit, or PR; independent review required.
+
+- 2026-08-21T22:57:42.343Z — GUI-016 taken in .worktrees/gui-016 on gui-016-dispatch-task-picker for scoped task-picker reconciliation; existing PR #24/ca25bdc is merged and no duplicate source work is planned; GUI-017 and provider work remain out of scope.
+
+- 2026-08-21T22:58:08.235Z — GUI-016 handoff complete: existing merged PR #24 implementation ca25bdc reconciled on main; checklist 14/14 and report read back; core prompts 8/8, GUI dispatch 2/2, GUI typecheck/build, plugin build/check passed. No live provider or interactive three-level keyboard proof claimed. Moved Implementing to Review; fresh gui-016-dispatch-task-picker worktree remains for independent review, no cleanup.
+
+- 2026-08-21T22:58:17.518Z — 2026-08-21T22:57:42.881Z — MCP-008 verified and closed out on merged main. Fresh gates pass; status moved Verifying→Done at 22:57:04.489Z. PR #130 is MERGED (2026-08-21T20:05:10Z), merge 52073fc6521ae25b07d8f4b2c54b6d563f62cc21; implementation SHAs 9d0c8364, 5b4a9544, ca104f45. npm ci exit 1 EPERM Rollup unlink preserved; repair install exit 0. Build, MCPB build/check, headless 6/6, npm test core 263/GUI 352/HTTP 61/scripts 79, typecheck, manual, plugin:check, shared verify, diff-check passed. Real Claude Desktop install/read/write/restart/uninstall/cleanup remains INCONCLUSIVE with no authorized host; checklist intentionally retains those unchecked. No MCP-008 worktree or branch exists; take_ticket release completed.
 
 ## Resume instruction
 

@@ -128,3 +128,21 @@ Append measured MCPB tool/schema and real-host evidence here; never convert pack
 Measured implementation evidence (2026-08-21): `npm run mcpb:check` PASS — pinned @anthropic-ai/mcpb 2.1.2, live protocol metadata 30 tools / 2 prompts, exact 3-file archive staging↔unpack byte comparison, generated output dist/mcpb/kanmer-0.3.3.mcpb. `npm run smoke:headless` PASS — standalone CJS copied to a temporary host with no reachable repository node_modules; explicit board root, live list/get_status/create/list checks, outside-host marker preserved, cleanup complete. `npm run plugin:check` PASS — 30 tools, bundle bytes, isolated handshake. `npm run test:scripts` PASS 75/75; full typecheck PASS; manual freshness PASS; git diff --check PASS. Full npm test: core 257/257 and GUI 343/343 PASS; MCP HTTP suite has two environment-sensitive failures preserved in the implementation report: spawnSync ETIMEDOUT in src/http.test.mjs and TUNNEL_READINESS_TIMEOUT in src/tunnels/readiness.test.mjs. Real Claude Desktop host acceptance is unavailable and remains unchecked/INCONCLUSIVE.
 
 Merged-main verification reconciliation — 2026-08-21: the required deterministic rails were rerun on `main` at `1b5ae0d4`, with MCP-008 merge `52073fc6521ae25b07d8f4b2c54b6d563f62cc21` reachable. `npm ci` failed with the preserved Windows EPERM Rollup-native-module unlink error; dependency repair via `npm install --ignore-scripts --no-audit --no-fund` exited 0. `npm run build`, `mcpb:build`, `mcpb:check`, `smoke:headless`, `test:scripts` (79/79), `npm test` (core 263, GUI 352, HTTP 61, scripts 79), typecheck, manual, plugin:check, shared `npm run verify`, and `git diff --check` passed. The earlier checklist's real Claude Desktop acceptance boxes remain intentionally unchecked/INCONCLUSIVE: no authorized Claude Desktop host is available for MCPB install, GUI-closed read/write, restart, uninstall, screenshots, or cleanup. No deterministic result is being used as a substitute.
+
+---
+
+## Closeout — MCP-008
+
+- [x] PR merge verified — [#130](https://github.com/collisionengineers/kanmer/pull/130), MERGED 2026-08-21T20:05:10Z, merge commit `52073fc6521ae25b07d8f4b2c54b6d563f62cc21`.
+- [x] proof.md finalised with merged-main commands, hashes, and the explicit Claude Desktop INCONCLUSIVE boundary.
+- [x] Moved to final stage — Verifying → Done at 2026-08-21T22:57:04.489Z.
+- [x] Outcome/traceability recorded on the ticket: implementation commits and PR #130 were already recorded; no new source changes in verification.
+- [x] No ticket worktree is recorded or present for `mcp-008-headless-mcpb`; the implementation worktree was released before verification.
+- [x] No ticket branch cleanup required; `mcp-008-headless-mcpb` is not present as a local worktree/branch.
+- [x] `git fetch --prune` + `git worktree prune` completed/read-only state checked.
+- [ ] `take_ticket action: release` — pending final closeout record.
+
+Real Claude Desktop installation/read/write/restart/uninstall and host cleanup remain INCONCLUSIVE; the related checklist boxes intentionally remain unchecked.
+
+- [x] `git fetch --prune origin` and `git worktree prune` completed; no `mcp-008-headless-mcpb` worktree or local branch exists.
+- [x] Ticket has no taken worktree fields; release is safe after this final board record.

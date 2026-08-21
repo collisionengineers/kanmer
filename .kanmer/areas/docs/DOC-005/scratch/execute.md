@@ -1,0 +1,1 @@
+Reconciled historical implementation on merged main; no source diff on fresh branch. Preserved initial release:notes exit 1 due unbuilt core dist; build:core exit 0; subsequent release notes both roots exit 0; verify:agents-block 31/31, scripts 79/79, typecheck and diff-check exit 0. Existing PR #26 is the implementation PR; no duplicate PR created.

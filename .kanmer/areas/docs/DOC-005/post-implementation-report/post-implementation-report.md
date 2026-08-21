@@ -1,68 +1,37 @@
-# Post-implementation report
+# Post-implementation report — DOC-005
 
-PR [#26](https://github.com/collisionengineers/kanmer/pull/26). The last ticket
-of the v3 roadmap.
+## Disposition
 
-## File changes
+DOC-005's scoped implementation is already present on merged main from PR [#26](https://github.com/collisionengineers/kanmer/pull/26): source commit 1df633e7dd4b424ac0a7107ac08d2289c61260dd, merge commit 05a335dc0e9b4b75ef9904218c55ca643f9a519d. The fresh doc-005-operating-rule branch is clean at origin/main and has no source diff. No duplicate/no-op PR was created.
 
-| Path | Change |
+## Scope audit
+
+| Path | Confirmed behavior |
 |---|---|
-| `AGENTS.md` | §0, the operating rule — outside the managed block. |
-| `docs/README.md` | The same rule with reasoning and the evidence table. |
-| `scripts/release-notes.mjs` | **New** — the stretch. |
-| `package.json` | `release:notes`. |
+| AGENTS.md | Operating rule is outside the kanmer:instructions managed markers. |
+| docs/README.md | Contributor-facing rule includes reasoning and dated evidence about backfilled and collapsed history. |
+| scripts/release-notes.mjs | Read-only grouped draft from stageEntered.done after a tag/date, with PR links; resolves the board through the shared git common directory so main and ticket worktrees find the board. |
+| package.json | release:notes invokes scripts/release-notes.mjs. |
 
-## Against the governing docs
+No files outside DOC-005's planned scope were changed.
 
-**ADR-0010** — setup is reconciliation and the board reflects reality; the
-operating rule is the human-facing half of that.
+## Governing document
 
-## The decision that shaped this ticket
+ADR-0010 says setup reconciles existing reality into Kanmer and is idempotent. The implementation makes the contributor rule explicit without claiming historical tickets followed a process that did not yet exist; the release-note stretch consumes committed stage history rather than inferring shipment from updated timestamps.
 
-Writing "Kanmer's own work goes through Kanmer" as an unqualified claim would
-have been false and checkable-as-false in the same commit — 60 backfilled
-tickets and 26 closed by a collapsed move are right there on the board.
+## Verification evidence
 
-So both documents carry the counts. The rule is stated with when it became
-enforceable and what preceded it. That also makes it useful: a reader opening a
-15 August ticket with no stage history now knows why, instead of concluding the
-process is decoration.
+- Initial node invocation of release:notes from the fresh ticket worktree — exit 1 because packages/core/dist/index.js was not built. This first failure is retained.
+- npm run build:core — exit 0.
+- npm run release:notes -- --since v0.3.2 from the ticket worktree — exit 0; grouped real board output, 93 tickets across 5 areas.
+- npm run release:notes -- --since v0.3.2 from normal main — exit 0; same grouped real board output.
+- npm run verify:agents-block — exit 0, 31/31 checks.
+- npm run test:scripts — exit 0, 79/79 tests.
+- npm run typecheck — exit 0 across core, mcp-server, ui and gui.
+- git diff --check — exit 0.
 
-## The stretch earned its place
+The release-notes command printed only to stdout. No intentional source or board-worktree files were modified by the audit.
 
-`release-notes.mjs` is the first consumer of `stageEntered`. Until now that
-field was recorded and read by nothing — a process that only demands things gets
-followed less reliably than one that produces something.
+## Follow-up / verification handoff
 
-## A root-confusion bug, caught by using the thing
-
-The first version resolved the board from the script's own root, which is wrong
-whenever it runs from a per-ticket worktree — the normal case. `git rev-parse
---git-common-dir` fixes it.
-
-This is the third instance of the same class in this project (the GUI watcher
-rooted at the source tree; `assertRefs` in CORE-001). It was caught here only
-because the script was run from a worktree rather than the main checkout, which
-is an argument for running things where they will be used rather than where they
-are convenient.
-
-## For review
-
-**The counts are a snapshot.** "60 backfilled, 26 collapsed" is true today and
-will drift as the board grows. Nothing regenerates them. A script could, but a
-generated paragraph in AGENTS.md is a new artifact to keep in sync — I judged a
-dated statement of fact better than a live one, and that is arguable.
-
-**Nobody has followed the rule from a cold start.** It describes what the last
-sixteen tickets did, written by the same agent that did them. Whether it reads
-clearly to someone arriving without that context is untested.
-
-**`release:notes` is not wired into `release.mjs`.** It prints; the release
-script does not call it. Deliberate — notes need editing — but it does mean
-remembering to run it.
-
-## What kanmer-verify should run
-
-`verify:agents-block`; `node scripts/release-notes.mjs` from both the main
-checkout and a worktree, confirming both find the board; confirm AGENTS.md §0
-sits outside the markers; full suite.
+The existing merged implementation should be independently reviewed against the packet and ADR-0010; merged-main verification should rerun verify:agents-block, the script rail, typecheck, and release:notes from both roots. External release deployment is not part of DOC-005. The historical PR #26 is the implementation PR; this lane will not fabricate a second PR for an empty branch.

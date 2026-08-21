@@ -72,3 +72,17 @@ highest-value remaining skill ticket.
 `ls plugins/kanmer/skills | wc -l` = 12; README rows = 12; the exit grep clean
 except the two AGENTS-block lines and one verb; `docs_todo` still in 7 skills;
 `verify:agents-block`; `plugin:build` + `plugin:check`; both smokes; full tests.
+
+## Current-base reconciliation
+
+The original scoped implementation is already merged into the current base: `130f837e34119af80532b4f5ccb17add896c56c8` is reachable through merge `8af1991c8350ae4bf7b44532dd434ee24ce7b8e4`, and the fresh branch starts at `cfd2e35aa7fbff1807fccd32caadf64442b2c70a`. No duplicate source changes were introduced. The existing PR #15 remains the traceable delivery for this ticket.
+
+Fresh current-base evidence:
+
+- `npm run verify:skills` exit 0: all 13 checks passed, including the 12-skill roster, zero semantic gate-rule violations, profile-aware routing, template contracts, and durable auto-run contracts.
+- `npm run verify:agents-block` exit 0: 31/31 checks passed.
+- `npm run test:scripts` exit 0: 79/79 passed.
+- `npm run typecheck` exit 0 across core, MCP server, UI, and GUI.
+- Linked-worktree `npm run plugin:check` initially exited 1 because `@kanmer/core` resolved to the main checkout; this failure is retained. After `npm install --ignore-scripts --no-audit --no-fund` created local workspace links, `npm run plugin:build` exit 0 and `npm run plugin:check` exit 0 (30 tools match, bundle bytes match, 12 skill frontmatters parse). The generated bundle was restored because this reconciliation has no source delta.
+
+The broad historical grep remains intentionally superseded by `verify-skill-prose.mjs`: ordinary words such as planning and the AGENTS-block residue owned by SKILL-005 are not v2 stage/gate rules. `docs_todo` and `link_doc` remain live and were explicitly verified. Scope remains limited to SKILL-001; no SKILL-002/003/004/005 prose or unrelated provider work was changed.

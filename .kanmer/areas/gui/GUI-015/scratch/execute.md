@@ -1,0 +1,1 @@
+2026-08-21 reconciliation: GUI-015 is superseded by GUI-070. Historical PR #23/841c5bc is merged history; GUI-070/2f06713 intentionally removed the view and FRD-011 is withdrawn. Fresh audit worktree is clean; no code or duplicate PR. Typecheck/build pass; GUI test runner hung and was interrupted (exit 1), so not claimed PASS. Stop at Review for independent root disposition.

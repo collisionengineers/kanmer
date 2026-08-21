@@ -40,7 +40,7 @@ stop_reason:
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | DOC-012 | done | chore; gates pass; checklist reconciled | finished | codex-mcp-client | — | 1 | reconciled three stale closeout/link boxes via MCP | 76/76 checked; merged proof/cleanup evidence confirmed | 84 | 2026-08-21T10:59:48.714Z |
 | 2 | DOC-017 | done | chore; proof pass; checklist 15/15; released | finished | /root/doc017_reviewer | cleaned (doc-017 worktree/branch removed) | 1 | merged PR #106; verified on 4997214; closeout released | complete; no follow-up defect | 106 | 2026-08-21T11:05:49.624Z |
-| 3 | MCP-025 | implementing | feature; next=backlog; blocked=false; blockers=DOC-012 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:16.301Z |
+| 3 | MCP-025 | implementing | feature; 32 unchecked implementation/test items; rework from merged historical state | active | /root/mcp025_implementer | mcp-025-streamable-http-finish / .worktrees/mcp-025 | 1 | implementation lane assigned after DOC-017 closeout | pending worker result | 90 | 2026-08-21T11:07:18.094Z |
 | 4 | MCP-026 | implementing | feature; next=backlog; blocked=true; blockers=MCP-025 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:16.588Z |
 | 5 | MCP-021 | implementing | feature; next=review; blocked=true; blockers=DOC-012,MCP-025,MCP-026 | queued | — | mcp-021-cloudflared-adapter|.worktrees/mcp-021 | 0 | rostered | live state recorded | — | 2026-08-21T10:57:16.881Z |
 | 6 | MCP-027 | preparing | feature; next=review; blocked=true; blockers=MCP-021 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:17.165Z |
@@ -130,3 +130,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T11:04:01.653Z — Read-only historical audit lane assigned to /root/historical_auditor for the 75 named backfill tickets; no fabricated lifecycle evidence or board mutation authorized.
 
 - 2026-08-21T11:05:49.625Z — DOC-017 finished: independent review PASS, PR #106 merged at 49972143a7226aac2bc7ded71857161fddb3eb7e, merged-main proof written, checklist 15/15, ticket released, worktree/branch cleaned.
+
+- 2026-08-21T11:07:18.094Z — MCP-025 implementation lane assigned to /root/mcp025_implementer on new branch/worktree to reconcile its 32 unchecked items; no independent review/merge by author.

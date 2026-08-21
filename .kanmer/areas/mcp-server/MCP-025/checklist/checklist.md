@@ -173,3 +173,11 @@ Implemented the shared registry factory and `remote-http-v1` policy hook, a loop
 All previously unchecked implementation and verification boxes are now backed by the current branch. The HTTP host validates bounded header/body/connection/request/keep-alive/session/concurrency/TTL/shutdown settings before binding; rejects malformed session ids; validates exact configured Origins before authorization/body parsing; binds one canonical project fingerprint; and emits SDK protocol metadata plus one redacted stopped event. The official SDK client test compares remote and stdio tool names and input schemas, calls get_status, and proves the readiness fingerprint matches the project identity. Tests cover concurrent initialization, total in-flight/session limits, malformed/unknown/cross-principal/expired/restarted sessions, fake-clock and real-TTL expiry, disconnect-safe cleanup, bounded forced shutdown, and repeated close. The remote exclusion set remains the single named policy and is empty because MCP-020 dispatch tools are not present in this base; the exact set-difference test therefore matches local discovery. Test authorizers are defined only in test modules; production requires the injected BearerAuthorizer seam and the CLI fails closed without its protected token file. Stdio remains unchanged and the provider command still points to stdio.
 
 The repository has no `scripts/verify.mjs` or `npm run verify` script on this base (command recorded as unavailable, not treated as a pass). Root typecheck/test results and plugin byte-check are recorded in the post-implementation report; Windows verification is the same PowerShell/Node command rail used by this Windows checkout. The generated plugin artifact is refreshed with the canonical build script because the shared project-fingerprint helper changed.
+
+## Merged-main closeout — 2026-08-21
+
+- [x] Main merge 4d65d91 verified; MCP-036/MCP-037 remediations included.
+- [x] Main verification rerun: npm test, build, typecheck, plugin:check, HTTP/stdio/protocol/discovery smokes, and diff-check all pass.
+- [x] Proof written on merged main; release and worktree cleanup follow after stage transitions.
+
+The historical `npm run verify`/Windows boxes remain documented as unavailable or represented by the Windows command rail in the report; no unavailable command is claimed as a passing result.

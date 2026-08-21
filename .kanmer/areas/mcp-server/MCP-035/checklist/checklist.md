@@ -14,3 +14,9 @@
 - git diff --check passed. plugin:check was not run in the linked worktree because the repository contract makes normal checkout authoritative.
 - Commit 0593a38bd5722eeba07ed7288fb05e58e10e5c52 pushed on mcp-035-legacy-doc-validation.
 - PR #110 opened: https://github.com/collisionengineers/kanmer/pull/110.
+
+## Review and closeout — 2026-08-21
+
+- [x] Independent review PASS recorded in scratch/independent-review.
+- [x] PR #110 merged to main at cb35e7f; proof written on merged main.
+- [x] Main tests, typecheck, build, plugin check, smokes, and diff-check pass.

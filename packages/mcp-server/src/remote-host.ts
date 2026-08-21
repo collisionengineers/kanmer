@@ -118,7 +118,13 @@ export class KanmerRemoteHost {
     // session shutdown ahead of tunnel-child shutdown.
     try { await this.http.close(); }
     finally { await this.supervisor.stop(); }
-    this.status = { ...this.status, local: "stopped", provider: "stopped" }; this.emit();
+    // A final stopped snapshot must not make a past invalidation look current.
+    // Keep the public endpoint for a caller that needs to display what stopped,
+    // but replace transient lifecycle state rather than spreading it forward.
+    this.status = this.status.endpoint
+      ? { local: "stopped", provider: "stopped", publicVerification: "unknown", endpoint: this.status.endpoint }
+      : { local: "stopped", provider: "stopped", publicVerification: "unknown" };
+    this.emit();
   }
 }
 

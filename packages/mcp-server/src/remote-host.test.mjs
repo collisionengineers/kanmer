@@ -92,12 +92,12 @@ test("origin invalidation stops forwarding but keeps the authenticated local lis
       return { exited, stop: async () => { stopped = true; resolveExit({ code: 0, signal: null }); } };
     } },
   });
-  try {
-    await remote.start();
-    await remote.invalidateOrigin();
-    assert.equal(stopped, true);
-    assert.deepEqual(remote.getStatus(), { local: "ready", provider: "failed", publicVerification: "unknown", endpoint: "https://kanmer.example.test/mcp", reason: "TUNNEL_ORIGIN_INVALIDATED" });
-    const response = await fetch(target.endpoint, { headers: { authorization: "Bearer anything" } });
-    assert.equal(response.status, 400);
-  } finally { await remote.close(); }
+  await remote.start();
+  await remote.invalidateOrigin();
+  assert.equal(stopped, true);
+  assert.deepEqual(remote.getStatus(), { local: "ready", provider: "failed", publicVerification: "unknown", endpoint: "https://kanmer.example.test/mcp", reason: "TUNNEL_ORIGIN_INVALIDATED" });
+  const response = await fetch(target.endpoint, { headers: { authorization: "Bearer anything" } });
+  assert.equal(response.status, 400);
+  await remote.close();
+  assert.deepEqual(remote.getStatus(), { local: "stopped", provider: "stopped", publicVerification: "unknown", endpoint: "https://kanmer.example.test/mcp" });
 });

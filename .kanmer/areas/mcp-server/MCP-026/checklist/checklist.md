@@ -156,3 +156,14 @@
 - [x] Run `git diff --check` and inspect status/temporary artifacts.
 - [ ] Record format, source, test matrix, canary scan, Windows residual risk, and compatibility evidence.
 - [x] Stop before tunnel exposure or merge.
+
+## Closeout — MCP-026
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`): MERGED 2026-08-21T00:25:35Z — https://github.com/collisionengineers/kanmer/pull/93
+- [x] proof.md finalised (PR URL + merge commit `62939b7` recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body ([[GUI-095]], [[MCP-021]], and [[MCP-028]] follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/mcp-026`
+- [x] `git branch -d mcp-026-bearer-auth` (merged branch deleted safely)
+- [x] `git fetch --prune` + `git worktree prune` (remote branch deleted too)
+- [x] `take_ticket action: "release"`

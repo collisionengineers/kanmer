@@ -2,12 +2,13 @@
 id: CORE-027
 type: ticket
 title: Give @kanmer/core a browser-safe subpath export
-status: implementing
+status: review
 area: core
 assignee: codex-mcp-client
 profile: feature
 stageEntered:
   preparing: '2026-08-21T00:52:08.922Z'
+  review: '2026-08-21T01:00:34.139Z'
 taken_at: '2026-08-21T00:52:35.910Z'
 branch: core-027-browser-subpath
 worktree: .worktrees/core-027
@@ -19,9 +20,13 @@ groups:
 links:
   - GUI-078
 docs_todo: true
+commits:
+  - 050877d1328b5a9cc0209edbfb37851bf66ccf70
+prs:
+  - '96'
 archived: false
 created: '2026-08-16T20:18:36.563Z'
-updated: '2026-08-21T00:52:35.910Z'
+updated: '2026-08-21T01:00:34.139Z'
 ---
 
 ## What

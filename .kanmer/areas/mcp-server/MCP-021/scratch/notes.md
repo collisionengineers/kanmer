@@ -23,3 +23,5 @@ Regression smoke evidence: `npm run smoke:http` passed HTTP initialize/tools/lis
 Fixture checkpoint: commit e84f16e adds `tunnels/fixtures/fake-cloudflared.mjs`, a standalone no-network fake with direct version/help, loopback-only readiness, and termination behavior, plus direct fixture coverage. Focused suite is now 18/18; no real Cloudflare process/account/DNS is involved.
 
 Startup-state checkpoint: commit ecb3460 ensures a pre-provider validation/spawn failure emits provider `failed` while preserving the authenticated local HTTP listener; remote-host integration test covers it. Typecheck and focused suite 19/19 pass.
+
+Typed-contract checkpoint: commit da879de adds a provider-discriminated named-credentials config, opaque credential reference, generic start input, and non-secret project/auth status fields. MCP typecheck and focused 19-test suite pass.

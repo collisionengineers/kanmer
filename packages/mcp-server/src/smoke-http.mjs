@@ -72,6 +72,7 @@ const securityEvents = [];
 assert.equal(JSON.stringify(generated.verifier).includes(generated.token), false, "verifier serialization never contains raw token");
 assert.equal(JSON.stringify(generated.verifier).includes(generated.verifier.digest.toString("hex")), false, "verifier serialization never contains digest");
 const directAuthorizer = new BearerAuthorizer(generated.verifier);
+await Promise.all(Array.from({ length: 16 }, () => directAuthorizer.authorize({ headers: { authorization: `Bearer ${generated.token}` } })));
 for (const authorization of [undefined, "", "Basic x", `Bearer ${generated.token} extra`, `Bearer ${generated.token}\t`, ["Bearer x", "Bearer y"]]) {
   await assert.rejects(() => directAuthorizer.authorize({ headers: { authorization } }));
 }
@@ -175,6 +176,10 @@ try {
   assert.equal(oldAfterRotation.status, 401, "old token fails immediately after rotation");
   const oldSessionAfterRotation = await fetch(endpoint, { method: "GET", headers: { authorization: `Bearer ${rotated.token}`, "mcp-session-id": session } });
   assert.equal(oldSessionAfterRotation.status, 400, "rotation invalidates old sessions");
+  await assert.rejects(() => host.rotateBearerVerifier({ tokenId: "bad", digest: Buffer.alloc(1), fingerprint: "sha256:000000000000" }), /REMOTE_AUTH_INVALID_CONFIG/);
+  const newTokenSurvivesRejectedRotation = await fetch(endpoint, { method: "GET", headers: { authorization: `Bearer ${rotated.token}` } });
+  assert.equal(newTokenSurvivesRejectedRotation.status, 400, "invalid rotation leaves the active verifier unchanged");
+  await host.revokeBearer();
   await host.revokeBearer();
   const revoked = await fetch(endpoint, { method: "POST", headers: { authorization: `Bearer ${rotated.token}` } });
   assert.equal(revoked.status, 401, "revocation fails closed");

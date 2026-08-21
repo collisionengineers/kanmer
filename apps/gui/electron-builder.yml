@@ -17,6 +17,10 @@ files:
 extraResources:
   - from: ../../packages/mcp-server/dist/standalone/kanmer-mcp.cjs
     to: mcp/kanmer-mcp.cjs
+  - from: ../../packages/mcp-server/dist/standalone/remote-cli.cjs
+    to: mcp/remote-cli.cjs
+  - from: ../../packages/mcp-server/dist/standalone/doctor-cli.cjs
+    to: mcp/doctor-cli.cjs
   # The plugin itself: skills, and the tree each marketplace manifest below
   # points at as `./plugins/kanmer`.
   - from: ../../plugins/kanmer

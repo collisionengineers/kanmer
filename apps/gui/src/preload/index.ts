@@ -8,6 +8,7 @@ import {
   type MenuCommand,
   type RevealPayload,
   type UpdateStatusEvent,
+  type RemoteStatus,
 } from "../shared/ipc.js";
 
 const api: KanmerApi = {
@@ -112,6 +113,23 @@ const api: KanmerApi = {
     const listener = (_e: unknown, payload: UpdateStatusEvent) => cb(payload);
     ipcRenderer.on(CH.updateStatus, listener);
     return () => ipcRenderer.removeListener(CH.updateStatus, listener);
+  },
+  remoteRegister: (p) => ipcRenderer.invoke(CH.remoteRegister, p),
+  remoteView: (p) => ipcRenderer.invoke(CH.remoteView, p),
+  remoteOverview: () => ipcRenderer.invoke(CH.remoteOverview),
+  remoteReconcile: (p) => ipcRenderer.invoke(CH.remoteReconcile, p),
+  remoteRemove: (p) => ipcRenderer.invoke(CH.remoteRemove, p),
+  remoteSaveConfig: (p, config) => ipcRenderer.invoke(CH.remoteSaveConfig, p, config),
+  remoteCreateSecret: (p, rotate) => ipcRenderer.invoke(CH.remoteCreateSecret, p, rotate),
+  remoteConsumeSecret: (p, deliveryId) => ipcRenderer.invoke(CH.remoteConsumeSecret, p, deliveryId),
+  remoteCopySecret: (p, deliveryId) => ipcRenderer.invoke(CH.remoteCopySecret, p, deliveryId),
+  remoteStart: (p, expectedConfigGeneration) => ipcRenderer.invoke(CH.remoteStart, p, expectedConfigGeneration),
+  remoteStop: (p, expectedRuntimeGeneration) => ipcRenderer.invoke(CH.remoteStop, p, expectedRuntimeGeneration),
+  remoteDoctor: (p, expected) => ipcRenderer.invoke(CH.remoteDoctor, p, expected),
+  onRemoteStatus: (cb) => {
+    const listener = (_e: unknown, status: RemoteStatus) => cb(status);
+    ipcRenderer.on(CH.remoteStatus, listener);
+    return () => ipcRenderer.removeListener(CH.remoteStatus, listener);
   },
 };
 

@@ -57,6 +57,7 @@ if (invalid) {
   process.stderr.write("doctor: invalid invocation; use config|local|public and --json (no raw token, URL, insecure, or mutation flags)\n");
   process.exitCode = 2;
 } else {
+  void (async () => {
   const controller = new AbortController();
   const abort = () => controller.abort();
   process.once("SIGINT", abort);
@@ -144,4 +145,5 @@ if (invalid) {
   process.removeListener("SIGTERM", abort);
   process.stdout.write(json ? `${JSON.stringify(report)}\n` : `${renderDoctor(report)}\n`);
   process.exitCode = report.exitCode;
+  })();
 }

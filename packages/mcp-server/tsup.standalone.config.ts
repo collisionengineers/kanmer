@@ -17,7 +17,11 @@ import { versionDefine } from "./version-define.mjs";
  * No `shims`: CJS has `__filename` natively, which is all `identity.ts` needs.
  */
 export default defineConfig({
-  entry: { "kanmer-mcp": "src/index.ts" },
+  entry: {
+    "kanmer-mcp": "src/index.ts",
+    "remote-cli": "src/remote-cli.ts",
+    "doctor-cli": "src/doctor-cli.ts",
+  },
   outDir: "dist/standalone",
   format: ["cjs"],
   clean: true,

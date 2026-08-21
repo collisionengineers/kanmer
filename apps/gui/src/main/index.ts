@@ -9,10 +9,12 @@ import {
   screen,
   shell,
   type MenuItemConstructorOptions,
+  type IpcMainInvokeEvent,
 } from "electron";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
+import { pathToFileURL } from "node:url";
 import { classifyKanmerPath } from "../shared/kanmerPath.js";
 import {
   BOUNDARIES,
@@ -103,6 +105,9 @@ import {
 } from "./updater.js";
 import { mcpSessions } from "./mcp-sessions.js";
 import { captureSmokePage, requestedSmokeCapturePath, writeSmokeCapture } from "./smokeCapture.js";
+import { remoteProjectIdentity } from "./remoteAccess/identity.js";
+import { RemoteAccessManager } from "./remoteAccess/manager.js";
+import type { RemoteConfigInput } from "../shared/ipc.js";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -118,6 +123,50 @@ interface ProjectContext {
   syncStatus: KanmerGitStatus;
 }
 const contexts = new Map<string, ProjectContext>();
+let remoteAccess: RemoteAccessManager | null = null;
+let remoteQuitInProgress = false;
+
+async function remoteIdentity(ctx: ProjectContext) {
+  const [{ source }, format] = await Promise.all([ctx.store.getBoardWithSource(), ctx.store.detectFormat()]);
+  return remoteProjectIdentity({ boardRoot: ctx.boardRoot, repoRoot: ctx.sourceRoot, format, boardSource: source });
+}
+
+function requireRemoteAccess(): RemoteAccessManager {
+  if (!remoteAccess) throw new Error("REMOTE_MANAGER_NOT_READY");
+  return remoteAccess;
+}
+
+function assertTrustedRemoteSender(event: IpcMainInvokeEvent): void {
+  const frame = event.senderFrame;
+  const trusted = mainWindow?.webContents === event.sender && mainWindow?.webContents.mainFrame === frame;
+  const devUrl = process.env["ELECTRON_RENDERER_URL"];
+  let allowedUrl = false;
+  try {
+    const actual = new URL(frame?.url ?? "");
+    if (actual.protocol === "file:") allowedUrl = actual.href === pathToFileURL(join(__dirname, "../renderer/index.html")).href;
+    else if (devUrl) {
+      const expected = new URL(devUrl);
+      allowedUrl = (expected.protocol === "http:" || expected.protocol === "https:") && !expected.search && !expected.hash && actual.origin === expected.origin && actual.pathname === expected.pathname && !actual.search && !actual.hash;
+    }
+  } catch { allowedUrl = false; }
+  if (!trusted || !allowedUrl) throw new Error("REMOTE_IPC_UNTRUSTED_SENDER");
+}
+
+function assertRemoteProjectId(value: unknown): asserts value is string {
+  if (typeof value !== "string" || value.length === 0 || value.length > 4096) throw new Error("REMOTE_PROJECT_ID_INVALID");
+}
+
+function assertRemoteConfig(value: unknown): asserts value is RemoteConfigInput {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("REMOTE_CONFIG_INVALID");
+  const keys = Object.keys(value).sort().join(",");
+  if (keys !== "autoStart,credentialsFile,enabled,executable,expectedConfigGeneration,hostname,tunnelId") throw new Error("REMOTE_CONFIG_UNKNOWN_FIELD");
+  const config = value as Partial<RemoteConfigInput>;
+  if (![config.executable, config.tunnelId, config.credentialsFile, config.hostname].every((part) => typeof part === "string") || typeof config.enabled !== "boolean" || typeof config.autoStart !== "boolean" || (config.expectedConfigGeneration !== null && typeof config.expectedConfigGeneration !== "string")) throw new Error("REMOTE_CONFIG_INVALID");
+}
+
+function remoteOwner(event: IpcMainInvokeEvent): { webContentsId: number; frameRoutingId: number } {
+  return { webContentsId: event.sender.id, frameRoutingId: event.senderFrame.routingId };
+}
 
 // ---------------------------------------------------------------------------
 // Single instance: a second launch focuses the existing window instead.
@@ -198,6 +247,8 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 
@@ -210,7 +261,7 @@ function createWindow(): void {
   let boundsTimer: NodeJS.Timeout | null = null;
   const saveBounds = () => {
     if (!mainWindow) return;
-    setWindowBounds({ ...mainWindow.getNormalBounds(), maximized: mainWindow.isMaximized() });
+    void setWindowBounds({ ...mainWindow.getNormalBounds(), maximized: mainWindow.isMaximized() });
   };
   const scheduleSaveBounds = () => {
     if (boundsTimer) clearTimeout(boundsTimer);
@@ -241,8 +292,17 @@ function createWindow(): void {
     return { action: "deny" };
   });
   mainWindow.webContents.on("will-navigate", (e, url) => {
-    const isDev = devUrl && url.startsWith(devUrl);
-    if (isDev || url.startsWith("file:")) return; // in-app loads stay
+    let internal = false;
+    try {
+      const actual = new URL(url);
+      if (devUrl) {
+        const expected = new URL(devUrl);
+        internal = (expected.protocol === "http:" || expected.protocol === "https:") && !expected.search && !expected.hash && actual.origin === expected.origin && actual.pathname === expected.pathname && !actual.search && !actual.hash;
+      } else {
+        internal = actual.href === pathToFileURL(join(__dirname, "../renderer/index.html")).href;
+      }
+    } catch { internal = false; }
+    if (internal) return;
     e.preventDefault();
     if (/^https?:/i.test(url)) void shell.openExternal(url);
   });
@@ -495,7 +555,7 @@ async function openProject(root: string): Promise<OpenProjectResult> {
   const store = new KanmerStore(boardRoot, { repoRoot: projectId });
 
   await store.init();
-  recordRecentProject(projectId);
+  await recordRecentProject(projectId);
   const ownWrites = new Map<string, number>();
   // Watch where the store actually reads. On a git project `ensureBoardWorktree`
   // moves the board to `.worktrees/kanmer` and `git rm`s + gitignores the source
@@ -509,6 +569,13 @@ async function openProject(root: string): Promise<OpenProjectResult> {
   contexts.set(projectId, ctx);
   buildMenu(); // refresh the Open Recent submenu
   return snapshotOf(ctx);
+}
+
+async function autoStartRegisteredProjects(): Promise<void> {
+  if (!remoteAccess) return;
+  const registrations = await remoteAccess.autoStartRegistrations();
+  const results = await remoteAccess.autoStart(registrations);
+  for (const result of results) if (!result.ok) console.error(`[remote-access] auto-start failed for ${result.projectId}: ${result.error ?? "REMOTE_AUTOSTART_FAILED"}`);
 }
 
 async function snapshotOf(ctx: ProjectContext): Promise<OpenProjectResult> {
@@ -546,7 +613,7 @@ async function closeProject(projectId: string): Promise<void> {
  * until the project was closed and reopened.
  */
 async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number): Promise<AppSettings> {
-  const settings = setKanmerGitPreferences(kanmerBranch, gitSyncMinutes);
+  const settings = await setKanmerGitPreferences(kanmerBranch, gitSyncMinutes);
   for (const [projectId, ctx] of contexts) {
     const { boardRoot, branch } = ctx.syncStatus;
     if (ctx.syncStatus.available && boardRoot && branch !== settings.kanmerBranch) {
@@ -635,6 +702,55 @@ function registerIpc(): void {
   ipcMain.handle(CH.openProject, (_e, root: string) => openProject(root));
   ipcMain.handle(CH.closeProject, (_e, projectId: string) => closeProject(projectId));
   ipcMain.handle(CH.currentProject, () => [...contexts.keys()][0] ?? null);
+  ipcMain.handle(CH.remoteRegister, async (e, projectId: string) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId);
+    const ctx = requireCtx(projectId);
+    return requireRemoteAccess().register(projectId, await remoteIdentity(ctx));
+  });
+  ipcMain.handle(CH.remoteView, async (e, projectId: string) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId);
+    const ctx = requireCtx(projectId);
+    return requireRemoteAccess().viewFor(projectId, await remoteIdentity(ctx));
+  });
+  ipcMain.handle(CH.remoteOverview, async (e) => { assertTrustedRemoteSender(e); return requireRemoteAccess().overview(); });
+  ipcMain.handle(CH.remoteReconcile, async (e, projectId: string, expectedConfigGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expectedConfigGeneration !== undefined && expectedConfigGeneration !== null && typeof expectedConfigGeneration !== "string") throw new Error("REMOTE_CONFIG_VERSION_INVALID");
+    const ctx = requireCtx(projectId);
+    return requireRemoteAccess().reconcile(projectId, await remoteIdentity(ctx), expectedConfigGeneration ?? null);
+  });
+  ipcMain.handle(CH.remoteRemove, async (e, projectId: string, expectedConfigGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expectedConfigGeneration !== undefined && expectedConfigGeneration !== null && typeof expectedConfigGeneration !== "string") throw new Error("REMOTE_CONFIG_VERSION_INVALID");
+    const ctx = requireCtx(projectId);
+    await requireRemoteAccess().remove(projectId, await remoteIdentity(ctx), expectedConfigGeneration ?? null);
+  });
+  ipcMain.handle(CH.remoteSaveConfig, async (e, projectId: string, config: RemoteConfigInput) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); assertRemoteConfig(config);
+    const ctx = requireCtx(projectId);
+    return requireRemoteAccess().saveConfig(projectId, await remoteIdentity(ctx), config);
+  });
+  ipcMain.handle(CH.remoteCreateSecret, async (e, projectId: string, rotate?: boolean, expectedConfigGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (rotate !== undefined && typeof rotate !== "boolean") throw new Error("REMOTE_ROTATE_INVALID"); if (expectedConfigGeneration !== undefined && expectedConfigGeneration !== null && typeof expectedConfigGeneration !== "string") throw new Error("REMOTE_CONFIG_VERSION_INVALID");
+    const ctx = requireCtx(projectId);
+    return requireRemoteAccess().createSecret(projectId, await remoteIdentity(ctx), rotate === true, remoteOwner(e), expectedConfigGeneration ?? null);
+  });
+  ipcMain.handle(CH.remoteConsumeSecret, (e, projectId: string, deliveryId: string) => { assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (typeof deliveryId !== "string") throw new Error("REMOTE_DELIVERY_INVALID"); return requireRemoteAccess().consumeSecretDelivery(projectId, deliveryId, remoteOwner(e)); });
+  ipcMain.handle(CH.remoteCopySecret, (e, projectId: string, deliveryId: string) => { assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (typeof deliveryId !== "string") throw new Error("REMOTE_DELIVERY_INVALID"); return requireRemoteAccess().copySecretDelivery(projectId, deliveryId, remoteOwner(e)); });
+  ipcMain.handle(CH.remoteStart, async (e, projectId: string, expectedConfigGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expectedConfigGeneration !== undefined && expectedConfigGeneration !== null && typeof expectedConfigGeneration !== "string") throw new Error("REMOTE_CONFIG_VERSION_INVALID");
+    const ctx = requireCtx(projectId);
+    const identity = await remoteIdentity(ctx);
+    return requireRemoteAccess().start(projectId, identity, { root: ctx.boardRoot, repoRoot: ctx.sourceRoot }, expectedConfigGeneration ?? null);
+  });
+  ipcMain.handle(CH.remoteStop, async (e, projectId: string, expectedRuntimeGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expectedRuntimeGeneration !== undefined && expectedRuntimeGeneration !== null && typeof expectedRuntimeGeneration !== "string") throw new Error("REMOTE_RUNTIME_VERSION_INVALID");
+    const ctx = requireCtx(projectId);
+    return requireRemoteAccess().stop(projectId, await remoteIdentity(ctx), expectedRuntimeGeneration ?? null);
+  });
+  ipcMain.handle(CH.remoteDoctor, async (e, projectId: string, expected?: { configGeneration?: string | null; runtimeGeneration?: string | null }) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expected !== undefined && (!expected || typeof expected !== "object" || (expected.configGeneration !== undefined && expected.configGeneration !== null && typeof expected.configGeneration !== "string") || (expected.runtimeGeneration !== undefined && expected.runtimeGeneration !== null && typeof expected.runtimeGeneration !== "string"))) throw new Error("REMOTE_VERSION_INVALID");
+    const ctx = requireCtx(projectId);
+    return requireRemoteAccess().doctor(projectId, await remoteIdentity(ctx), { root: ctx.boardRoot, repoRoot: ctx.sourceRoot }, expected?.configGeneration ?? null, expected?.runtimeGeneration ?? null);
+  });
   ipcMain.handle(CH.getBoard, (_e, p: string) => requireStore(p).getBoard());
   ipcMain.handle(CH.setBoard, async (_e, p: string, board: BoardConfig) => {
     markOwnWrite(p, "board");
@@ -692,8 +808,8 @@ function registerIpc(): void {
   );
   ipcMain.handle(CH.getLinks, (_e, p: string, id: string) => getLinkGraph(requireStore(p), id));
   ipcMain.handle(CH.getSettings, () => readSettings());
-  ipcMain.handle(CH.setTheme, (_e, theme: Theme) => {
-    const settings = setTheme(theme);
+  ipcMain.handle(CH.setTheme, async (_e, theme: Theme) => {
+    const settings = await setTheme(theme);
     applyNativeTheme(settings.theme);
     return settings;
   });
@@ -949,6 +1065,8 @@ app.whenReady().then(async () => {
   // Must equal electron-builder's appId: it's stamped on the Start-Menu
   // shortcut and is what makes Windows toasts + taskbar grouping work.
   app.setAppUserModelId("com.kanmer.app");
+  remoteAccess = new RemoteAccessManager(app.getPath("userData"));
+  remoteAccess.subscribe((status) => mainWindow?.webContents.send(CH.remoteStatus, status));
   registerIpc();
   buildMenu();
   // Auto-open a project on launch: explicit env override, else the most
@@ -962,6 +1080,7 @@ app.whenReady().then(async () => {
     }
   }
   createWindow();
+  void autoStartRegisteredProjects().catch((error) => console.error(`[remote-access] persisted auto-start unavailable: ${error instanceof Error ? error.message : String(error)}`));
   // After createWindow, and wrapped: a failing updater must never be the reason
   // the app does not start.
   try {
@@ -987,6 +1106,13 @@ app.on("window-all-closed", () => {
 // electron-updater's autoInstallOnAppQuit installs) fires after it.
 app.on("before-quit", (e) => {
   maybeBlockQuitForUpdate(e);
+  if (e.defaultPrevented || !remoteAccess || remoteQuitInProgress) return;
+  remoteQuitInProgress = true;
+  e.preventDefault();
+  void remoteAccess.closeAll().then(
+    () => { remoteQuitInProgress = false; app.quit(); },
+    (error) => { console.error(`[remote-access] quit cleanup failed: ${error instanceof Error ? error.message : String(error)}`); remoteQuitInProgress = false; app.quit(); },
+  );
 });
 
 app.on("will-quit", () => {

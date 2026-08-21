@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T21:24:20.388Z
+updated_at: 2026-08-21T21:24:44.764Z
 lane_limit: 3
 stop_reason:
 ---
@@ -191,6 +191,10 @@ stop_reason:
 - 2026-08-21T20:59:31.493Z — 2026-08-21T20:59:23Z — GUI-010 independent review finding assigned: Review→Implementing via MCP (expected_updated 2026-08-21T20:55:29.322Z; resulting updated 2026-08-21T20:59:23.294Z); branch gui-010-reference-files/worktree .worktrees/gui-010; scope pre-normalization plain-filename rejection and regression for foo/../mockup.png; no GUI-105/015/016/017 or provider scope; manual visual proof remains INCONCLUSIVE; no merge or cleanup authorized.
 
 - 2026-08-21T21:03:47.336Z — 2026-08-21T21:03:41Z — GUI-010 review-fix result: committed 60705980 and pushed PR #133; basename-before-resolve guard rejects foo/../mockup.png for add/remove; focused core 6/6, full core 258/258, focused Editor 1/1, full GUI 351/351, typecheck/build/plugin/boot-smoke/diff-check PASS; initial missing-Electron boot failure retained; manual visual proof INCONCLUSIVE; moved Implementing→Review via MCP after fresh gates (resulting updated 2026-08-21T21:03:41.520Z); awaiting independent review, no merge or cleanup.
+
+- 2026-08-21T21:24:35.043Z — 2026-08-21T21:16:37Z — SKILL-001 assigned to /root/gui099_executor without force after full packet, HZN-007 context, governing refs, links, and gates read; fresh branch skill-001-roster-sweep and worktree .worktrees/skill-001 recorded by take_ticket. Scope is roster sweep only; SKILL-002/003/004/005 and provider work excluded. Existing implementation commit 130f837e is reachable from current main; reconciliation and fresh rails planned.
+
+- 2026-08-21T21:24:44.764Z — 2026-08-21T21:24:23Z — SKILL-001 handoff result: scoped roster sweep is already reachable on current main via 130f837e34119af80532b4f5ccb17add896c56c8 and merge 8af1991c8350ae4bf7b44532dd434ee24ce7b8e4; no duplicate source diff created. Checklist 16/16 and report/scratch reconciled. verify:skills exit 0, verify:agents-block 31/31 exit 0, test:scripts 79/79 exit 0, typecheck exit 0, local plugin:build/check exit 0; initial linked-worktree plugin:check exit 1 preserved. Fresh get_doc_gates passed, ticket moved Implementing→Review at updated 2026-08-21T21:24:23.460Z. Existing PR #15 is traceability; independent review/merge required. No cleanup or merge.
 
 ## Resume instruction
 

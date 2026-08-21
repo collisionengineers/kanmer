@@ -251,7 +251,7 @@ export interface LegacyCodexDrainResult {
 
 /** Whether a host's copied skill set is present and outdated (Phase 6.2). */
 export interface SkillsStatus {
-  scope: "marketplace" | "project" | "agentsOnly";
+  scope: "marketplace" | "plugin" | "project" | "agentsOnly";
   installedVersion: string | null;
   bundledVersion: string;
   updateAvailable: boolean;

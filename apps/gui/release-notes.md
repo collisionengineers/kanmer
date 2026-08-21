@@ -8,6 +8,14 @@ there) and uses it as the GitHub release body.
 
 ## 0.3.3 (unreleased — notes accumulating)
 
+### Grok Connect uses the native Kanmer plugin
+
+Grok Connect now preflights the CLI and Node runtime, installs the user-scoped
+`kanmer` plugin, verifies it with `grok inspect`, and then retires only legacy
+Kanmer state under `.grok/`. It no longer copies skills or writes a project MCP
+registration. Connect and Disconnect warn that this plugin scope affects all
+Grok workspaces for the current user.
+
 ### Windows repairs restore Kanmer's stable MCP launcher
 
 The Windows installer now owns a stable per-user MCP launcher. Repairing or

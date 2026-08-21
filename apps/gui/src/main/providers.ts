@@ -44,6 +44,7 @@ export function codexPortableProbeInvocation(): Invocation {
 export type RegistrationState = "registered" | "absent" | "indeterminate";
 
 export type RegisterSpec =
+  | { kind: "none" }
   | {
       kind: "cli";
       addCommand: (inv: Invocation, root: string) => string;
@@ -100,8 +101,22 @@ export type InstallSpec =
    * below are pinned to their manifests by a test in providers.test.ts rather
    * than reconciled into one name.
    */
-  | { kind: "marketplace"; marketplaceCommands: (marketplaceRoot: string) => string[] }
-  | { kind: "copySkills"; skillsScope: "project" | "global" | "agentsOnly"; skillsDir?: string };
+   | { kind: "marketplace"; marketplaceCommands: (marketplaceRoot: string) => string[] }
+   | { kind: "copySkills"; skillsScope: "project" | "global" | "agentsOnly"; skillsDir?: string }
+   | {
+       /** A host-native plugin, installed in the host's user scope. */
+       kind: "plugin";
+       scope: "user";
+       pluginName: string;
+       installCommand: (pluginRoot: string) => string;
+       uninstallCommand: () => string;
+       listCommand: () => string;
+       inspectCommand: () => string;
+       /** State written by older Kanmer releases; retired after plugin proof. */
+       legacyConfigPath: string;
+       legacyConfigUnmerge: (existing: string) => string;
+       legacySkillsDir: string;
+     };
 
 export interface AgentProvider {
   id: ProviderId;
@@ -772,25 +787,23 @@ export const PROVIDERS: AgentProvider[] = [
   {
     id: "grok",
     label: "Grok CLI",
-    register: {
-      kind: "configFile",
-      // grok's own project scope, and nobody else's (ADR-0013). Re-verified
-      // 2026-08-16 against the installed CLI: `grok mcp add --scope project`
-      // writes `./.grok/config.toml`, and grok's shipped docs give the merge
-      // order as `config.toml` > Claude > Cursor > `.mcp.json` — so this file
-      // is the *highest*-priority source, while `.mcp.json` is a compat source
-      // grok reads only until the Claude import marker is set. Kanmer used to
-      // write `.mcp.json`, which `claude mcp add -s project` also owns: the
-      // same key in the same file, so grok's disconnect deleted Claude's
-      // registration. Existing grok users reconnect once; Kanmer does not
-      // rewrite `.mcp.json` to migrate them, because reaching into another
-      // host's file is the defect, not the fix.
-      configPath: STALENESS_PROVIDER_PATHS.grok.registrationFile,
-      merge: tomlMcpServersMerge,
-      unmerge: tomlMcpServersUnmerge,
-      registrationState: tomlRegistrationState,
+    // Grok's native plugin is user-scoped and supplies both skills and the MCP
+    // server. Connect must not write a project registration or copy skills;
+    // the legacy paths remain here solely so a successful install/uninstall can
+    // retire residue from older Kanmer releases without touching user content.
+    register: { kind: "none" },
+    install: {
+      kind: "plugin",
+      scope: "user",
+      pluginName: "kanmer",
+      installCommand: (root) => `grok plugin install ${q(root)} --trust`,
+      uninstallCommand: () => "grok plugin uninstall kanmer --confirm",
+      listCommand: () => "grok plugin list",
+      inspectCommand: () => "grok inspect",
+      legacyConfigPath: STALENESS_PROVIDER_PATHS.grok.registrationFile,
+      legacyConfigUnmerge: tomlMcpServersUnmerge,
+      legacySkillsDir: STALENESS_PROVIDER_PATHS.grok.skillsDir,
     },
-    install: { kind: "copySkills", skillsScope: "project", skillsDir: STALENESS_PROVIDER_PATHS.grok.skillsDir },
     dispatch: true,
     dispatchCli: "grok",
     dispatchArgs: (prompt, root) => ["-p", prompt, "--cwd", root],

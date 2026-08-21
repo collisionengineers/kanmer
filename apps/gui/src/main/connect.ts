@@ -438,7 +438,7 @@ async function installSkills(provider: AgentProvider, root: string): Promise<Ski
     return { note: notes.join("; "), failure: null };
   }
   // copySkills: copy skills for a project dir after the universal block is ensured.
-  if (provider.install.skillsScope === "project" && provider.install.skillsDir) {
+  if (provider.install.kind === "copySkills" && provider.install.skillsScope === "project" && provider.install.skillsDir) {
     const dest = join(root, provider.install.skillsDir);
     const version = await bundledSkillsVersion();
     // Reconcile, don't overlay: the stamp records the roster so retired skills
@@ -459,7 +459,7 @@ async function installSkills(provider: AgentProvider, root: string): Promise<Ski
 
 export interface SkillsStatus {
   /** How this host receives skills. */
-  scope: "marketplace" | "project" | "agentsOnly";
+  scope: "marketplace" | "plugin" | "project" | "agentsOnly";
   /** The stamped version of the copied skill set (project scope only), else null. */
   installedVersion: string | null;
   /** The version bundled with this app. */
@@ -483,6 +483,7 @@ export async function skillsStatus(id: ProviderId, projectRoot: string): Promise
     updateAvailable: false,
   };
   if (!provider || provider.install.kind === "marketplace") return base;
+  if (provider.install.kind === "plugin") return { ...base, scope: "plugin" };
   if (provider.install.skillsScope !== "project" || !provider.install.skillsDir) {
     return { ...base, scope: "agentsOnly" };
   }
@@ -512,6 +513,13 @@ export async function skillsStatus(id: ProviderId, projectRoot: string): Promise
 export async function updateSkills(id: ProviderId, projectRoot: string): Promise<ConnectResult> {
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
+  if (provider.install.kind === "plugin") {
+    return {
+      ok: false,
+      command: "grok plugin update kanmer",
+      output: "Grok manages Kanmer skills through its user-scoped plugin; use Connect to reinstall it.",
+    };
+  }
   try {
     const { note, failure } = await installSkills(provider, projectRoot);
     // Same rule as connectAgent: a failed install command is reported as a
@@ -535,6 +543,181 @@ export async function updateSkills(id: ProviderId, projectRoot: string): Promise
 export interface ConnectOptions {
   /** Test-only seam for the Codex launcher probe. */
   probeRunner?: CodexProbeRunner;
+  /** Test-only seam for provider commands; production uses the host shell. */
+  commandRunner?: ConnectCommandRunner;
+  /** Test-only plugin root seam; production resolves the packaged/dev bundle. */
+  pluginRootPath?: string;
+}
+
+export type ConnectCommandRunner = (
+  command: string,
+  cwd: string,
+) => Promise<{ stdout: string; stderr: string }>;
+
+const defaultCommandRunner: ConnectCommandRunner = async (command, cwd) => {
+  const result = await execAsync(command, { cwd, timeout: 60_000, maxBuffer: 256 * 1024 });
+  return { stdout: String(result.stdout ?? ""), stderr: String(result.stderr ?? "") };
+};
+
+function commandText(result: { stdout: string; stderr: string }): string {
+  return (result.stdout || result.stderr || "").trim();
+}
+
+function pluginPresent(pluginName: string, output: string): boolean {
+  const escaped = pluginName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${escaped}\\b`, "i").test(output);
+}
+
+function pluginCapabilityPresent(pluginName: string, output: string): boolean {
+  return output
+    .split(/\r?\n/)
+    .some(
+      (line) =>
+        pluginPresent(pluginName, line) &&
+        /enabled/i.test(line) &&
+        /skills?/i.test(line) &&
+        /MCPs?/i.test(line),
+    );
+}
+
+async function retireLegacyPluginState(
+  provider: AgentProvider,
+  projectRoot: string,
+): Promise<string[]> {
+  if (provider.install.kind !== "plugin") return [];
+  const legacy = provider.install;
+  const notes: string[] = [];
+  const config = resolveConfigPath(legacy.legacyConfigPath, projectRoot);
+  if (existsSync(config)) {
+    const existing = await readFile(config, "utf8");
+    const next = legacy.legacyConfigUnmerge(existing);
+    if (next !== existing) await writeAtomic(config, next);
+    notes.push(`legacy ${legacy.legacyConfigPath} reconciled`);
+  }
+  await removeBundledSkillsOnly(projectRoot, legacy.legacySkillsDir);
+  notes.push(`legacy copied skills removed from ${legacy.legacySkillsDir}`);
+  if (await hasRegisteredCopySkillsPeer(provider.id, projectRoot)) {
+    notes.push("AGENTS.md block retained for another connected copy-skills host");
+  } else {
+    await dropAgentsBlock(projectRoot);
+    notes.push("AGENTS.md block reconciled; no connected copy-skills host remains");
+  }
+  return notes;
+}
+
+async function connectNativePlugin(
+  provider: AgentProvider,
+  projectRoot: string,
+  options: ConnectOptions,
+): Promise<ConnectResult> {
+  if (provider.install.kind !== "plugin") throw new Error("native plugin provider expected");
+  const spec = provider.install;
+  const run = options.commandRunner ?? defaultCommandRunner;
+  const runtime = process.env.KANMER_NODE?.trim() || "node";
+  const runtimeCommand = `${q(runtime)} --version`;
+  const bundledRoot = options.pluginRootPath ?? pluginRoot();
+  try {
+    const cli = await run("grok --version", projectRoot);
+    const pluginHelp = await run("grok plugin --help", projectRoot);
+    const runtimeResult = await run(runtimeCommand, projectRoot);
+    const required = [
+      join(bundledRoot, ".claude-plugin", "plugin.json"),
+      join(bundledRoot, "skills"),
+      join(bundledRoot, "mcp", "claude.mcp.json"),
+      join(bundledRoot, "mcp", "kanmer-mcp.cjs"),
+    ];
+    const missing = required.filter((path) => !existsSync(path));
+    if (missing.length > 0) {
+      throw new Error(`Kanmer plugin bundle is incomplete; missing ${missing.join(", ")}`);
+    }
+    const descriptor = await readFile(join(bundledRoot, "mcp", "claude.mcp.json"), "utf8");
+    if (descriptor.includes('"cwd"') || descriptor.includes("--root")) {
+      throw new Error("Kanmer plugin MCP descriptor must not pin cwd or --root");
+    }
+    const install = spec.installCommand(bundledRoot);
+    const installed = await run(install, projectRoot);
+    const inspect = await run(spec.inspectCommand(), projectRoot);
+    const inspected = commandText(inspect);
+    if (!pluginCapabilityPresent(spec.pluginName, inspected)) {
+      return {
+        ok: false,
+        command: spec.inspectCommand(),
+        output:
+          `Grok plugin install returned success, but ${spec.inspectCommand()} did not report ` +
+          `${spec.pluginName}. No legacy project state was changed.`,
+      };
+    }
+    const prompt =
+      "Call the Kanmer get_status tool for this project and return exactly KANMER_GET_STATUS_OK.";
+    const functionalCommand = `grok -p ${q(prompt)} --cwd ${q(projectRoot)}`;
+    const functional = await run(functionalCommand, projectRoot);
+    const functionalOutput = commandText(functional);
+    if (!functionalOutput.includes("KANMER_GET_STATUS_OK")) {
+      return {
+        ok: false,
+        command: functionalCommand,
+        output:
+          `Grok plugin inspect passed, but the fresh functional get_status probe did not return ` +
+          "KANMER_GET_STATUS_OK. No legacy project state was changed.",
+      };
+    }
+    const cleanup = await retireLegacyPluginState(provider, projectRoot);
+    return {
+      ok: true,
+      command: install,
+      output: [
+        `Grok ${commandText(cli) || "CLI preflight passed"}`,
+        `plugin help ${commandText(pluginHelp) ? "passed" : "returned no output"}`,
+        `runtime ${commandText(runtimeResult) || "preflight passed"}`,
+        commandText(installed) || "plugin installed",
+        `inspect: ${inspected}`,
+        `functional get_status: ${functionalOutput}`,
+        ...cleanup,
+      ].join("; "),
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      command: spec.installCommand(bundledRoot),
+      output: commandFailureText(err),
+    };
+  }
+}
+
+async function disconnectNativePlugin(
+  provider: AgentProvider,
+  projectRoot: string,
+  options: ConnectOptions = {},
+): Promise<ConnectResult> {
+  if (provider.install.kind !== "plugin") throw new Error("native plugin provider expected");
+  const spec = provider.install;
+  const run = options.commandRunner ?? defaultCommandRunner;
+  try {
+    const before = await run(spec.listCommand(), projectRoot);
+    const beforeText = commandText(before);
+    let uninstall = "plugin already absent";
+    if (pluginPresent(spec.pluginName, beforeText)) {
+      const result = await run(spec.uninstallCommand(), projectRoot);
+      uninstall = commandText(result) || "plugin uninstalled";
+    }
+    const after = await run(spec.listCommand(), projectRoot);
+    const inspected = await run(spec.inspectCommand(), projectRoot);
+    if (pluginPresent(spec.pluginName, commandText(after)) || pluginPresent(spec.pluginName, commandText(inspected))) {
+      return {
+        ok: false,
+        command: spec.uninstallCommand(),
+        output: `Grok still reports ${spec.pluginName} after uninstall; no legacy project state was changed.`,
+      };
+    }
+    const cleanup = await retireLegacyPluginState(provider, projectRoot);
+    return {
+      ok: true,
+      command: spec.uninstallCommand(),
+      output: [uninstall, "plugin absent from list and inspect", ...cleanup].join("; "),
+    };
+  } catch (err) {
+    return { ok: false, command: spec.uninstallCommand(), output: commandFailureText(err) };
+  }
 }
 
 export async function connectAgent(
@@ -545,6 +728,7 @@ export async function connectAgent(
 ): Promise<ConnectResult> {
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
+  if (provider.install.kind === "plugin") return connectNativePlugin(provider, projectRoot, options);
   const inv = serverInvocation(id, boardRoot, projectRoot);
   try {
     if (id === "codex") {
@@ -560,7 +744,7 @@ export async function connectAgent(
       }
       const { stdout, stderr } = await execAsync(command, { cwd: projectRoot });
       output = (stdout || stderr || "Registered.").trim();
-    } else {
+    } else if (provider.register.kind === "configFile") {
       const path = resolveConfigPath(provider.register.configPath, projectRoot);
       const existing = existsSync(path) ? await readFile(path, "utf8") : null;
       await writeAtomic(path, provider.register.merge(existing, inv));
@@ -590,6 +774,8 @@ export async function connectAgent(
       // .agents/mcp_config.json" is true and, alone, misleading — so the
       // condition is said here, at the moment the file is written.
       if (id === "antigravity") output += ` ${antigravityBindingNote(projectRoot)}`;
+    } else {
+      throw new Error(`Provider ${id} has no project registration; expected native plugin path.`);
     }
     const skills = await installSkills(provider, projectRoot).catch(
       (e): SkillsInstallOutcome => ({
@@ -621,7 +807,9 @@ export async function connectAgent(
     const command =
       provider.register.kind === "cli"
         ? provider.register.addCommand(inv, projectRoot)
-        : `edit ${provider.register.configPath}`;
+        : provider.register.kind === "configFile"
+          ? `edit ${provider.register.configPath}`
+          : `connect ${id}`;
     return { ok: false, command, output: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -739,16 +927,21 @@ export async function drainLegacyCodexRegistrations(names: string[]): Promise<Le
 }
 
 /** Disconnect a provider: unregister the server and remove copied skills + the block. */
-export async function disconnectAgent(id: ProviderId, projectRoot: string): Promise<ConnectResult> {
+export async function disconnectAgent(
+  id: ProviderId,
+  projectRoot: string,
+  options: ConnectOptions = {},
+): Promise<ConnectResult> {
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
+  if (provider.install.kind === "plugin") return disconnectNativePlugin(provider, projectRoot, options);
   try {
     const cleanupNotes: string[] = ["provider registration removed"];
     if (provider.register.kind === "cli") {
       for (const cmd of provider.register.removeCommands(projectRoot)) {
         await execAsync(cmd, { cwd: projectRoot }).catch(() => undefined);
       }
-    } else {
+    } else if (provider.register.kind === "configFile") {
       const path = resolveConfigPath(provider.register.configPath, projectRoot);
       if (existsSync(path)) {
         await writeAtomic(path, provider.register.unmerge(await readFile(path, "utf8")));
@@ -758,6 +951,8 @@ export async function disconnectAgent(id: ProviderId, projectRoot: string): Prom
       for (const cmd of provider.register.removeCommands?.(projectRoot) ?? []) {
         await execAsync(cmd, { cwd: projectRoot }).catch(() => undefined);
       }
+    } else {
+      throw new Error(`Provider ${id} has no project registration; expected native plugin path.`);
     }
     if (provider.install.kind === "copySkills") {
       if (provider.install.skillsScope === "project" && provider.install.skillsDir) {

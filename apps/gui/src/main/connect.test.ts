@@ -2,6 +2,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { applyManagedBlock } from "./agentsBlock.js";
 
 vi.mock("electron", () => ({ app: { isPackaged: false, getAppPath: () => "/unused" } }));
 
@@ -112,11 +113,25 @@ describe("registration ownership (GUI-079)", () => {
       "[mcp_servers.kanmer]\ncommand = 'Kanmer.exe'\n\n[mcp_servers.linear]\nurl = 'https://mcp.linear.app/mcp'\n",
     );
 
-    const result = await disconnectAgent("grok", root);
+    let installed = true;
+    const commandRunner = async (command: string) => {
+      if (command === "grok plugin list") {
+        return { stdout: installed ? "kanmer (user, enabled)" : "No plugins installed.", stderr: "" };
+      }
+      if (command === "grok plugin uninstall kanmer --confirm") {
+        installed = false;
+        return { stdout: "Uninstalled 1 plugin(s)", stderr: "" };
+      }
+      if (command === "grok inspect") {
+        return { stdout: installed ? "kanmer (user, enabled) 12 skills, 1 MCPs" : "", stderr: "" };
+      }
+      throw new Error(`unexpected command: ${command}`);
+    };
+    const result = await disconnectAgent("grok", root, { commandRunner });
 
     expect(result.ok).toBe(true);
     await expect(readFile(join(root, ".mcp.json"), "utf8")).resolves.toBe(CLAUDE_MCP_JSON);
-    // And its own file loses only the kanmer entry.
+    // Its legacy file loses only the kanmer entry.
     const grokConfig = await readFile(join(root, ".grok", "config.toml"), "utf8");
     expect(grokConfig).not.toContain("mcp_servers.kanmer");
     expect(grokConfig).toContain("mcp_servers.linear");
@@ -142,6 +157,74 @@ describe("registration ownership (GUI-079)", () => {
 
     expect(result.ok).toBe(true);
     expect(result.output).toContain("no connected copy-skills host remains");
+  });
+});
+
+describe("Grok native plugin lifecycle (MCP-014)", () => {
+  it("preflights, installs, verifies with inspect, then retires legacy project state", async () => {
+    const root = await tempRoot();
+    const bundle = join(root, "plugin");
+    await writeTree(root, {
+      "plugin/.claude-plugin/plugin.json": "{}\n",
+      "plugin/skills/kanmer-plan/SKILL.md": "skill\n",
+      "plugin/mcp/claude.mcp.json": '{"mcpServers":{"kanmer":{"args":["${CLAUDE_PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"]}}}\n',
+      "plugin/mcp/kanmer-mcp.cjs": "\n",
+    });
+    await writeTree(root, {
+      ".grok/config.toml":
+        "[mcp_servers.kanmer]\ncommand = 'old'\n\n[mcp_servers.linear]\nurl = 'https://mcp.linear.app/mcp'\n",
+      ".grok/skills/old-skill/SKILL.md": "old\n",
+      ".grok/skills/.kanmer-skills-version": "0.2.0\nskills:\nold-skill\n",
+      "AGENTS.md": applyManagedBlock("# user\n"),
+    });
+    const seen: string[] = [];
+    const commandRunner = async (command: string) => {
+      seen.push(command);
+      if (command === "grok --version") return { stdout: "grok 1.0.5", stderr: "" };
+      if (command === "grok plugin --help") return { stdout: "install uninstall", stderr: "" };
+      if (command === "node --version") return { stdout: "v24.15.0", stderr: "" };
+      if (command.startsWith("grok plugin install ")) return { stdout: "Installed 1 plugin(s)", stderr: "" };
+      if (command === "grok inspect") return { stdout: "kanmer (user, enabled) 12 skills, 1 MCPs", stderr: "" };
+      if (command.startsWith("grok -p ")) return { stdout: "KANMER_GET_STATUS_OK", stderr: "" };
+      throw new Error(`unexpected command: ${command}`);
+    };
+
+    const result = await connectAgent("grok", root, root, { commandRunner, pluginRootPath: bundle });
+
+    expect(result.ok).toBe(true);
+    expect(seen.slice(0, 3)).toEqual(["grok --version", "grok plugin --help", "node --version"]);
+    expect(seen[3]).toContain("grok plugin install");
+    expect(seen[3]).toContain("--trust");
+    expect(seen[5]).toContain("grok -p");
+    expect(result.output).toContain("inspect: kanmer (user, enabled)");
+    expect(await readFile(join(root, ".grok", "config.toml"), "utf8")).toContain("mcp_servers.linear");
+    await missing(root, ".grok", "skills", "old-skill", "SKILL.md");
+    expect(await readFile(join(root, "AGENTS.md"), "utf8")).toBe("# user\n");
+  });
+
+  it("does not retire legacy state when inspect cannot prove the plugin", async () => {
+    const root = await tempRoot();
+    const bundle = join(root, "plugin");
+    await writeTree(root, {
+      "plugin/.claude-plugin/plugin.json": "{}\n",
+      "plugin/skills/kanmer-plan/SKILL.md": "skill\n",
+      "plugin/mcp/claude.mcp.json": '{"mcpServers":{"kanmer":{"args":["${CLAUDE_PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"]}}}\n',
+      "plugin/mcp/kanmer-mcp.cjs": "\n",
+    });
+    await writeTree(root, {
+      ".grok/config.toml": "[mcp_servers.kanmer]\ncommand = 'old'\n",
+      ".grok/skills/old-skill/SKILL.md": "old\n",
+      ".grok/skills/.kanmer-skills-version": "0.2.0\nskills:\nold-skill\n",
+    });
+    const commandRunner = async (command: string) => {
+      if (command === "grok inspect") return { stdout: "", stderr: "" };
+      return { stdout: "ok", stderr: "" };
+    };
+    const result = await connectAgent("grok", root, root, { commandRunner, pluginRootPath: bundle });
+    expect(result.ok).toBe(false);
+    expect(result.output).toContain("No legacy project state was changed");
+    expect(await readFile(join(root, ".grok", "config.toml"), "utf8")).toContain("mcp_servers.kanmer");
+    await expect(readFile(join(root, ".grok", "skills", "old-skill", "SKILL.md"), "utf8")).resolves.toBe("old\n");
   });
 });
 

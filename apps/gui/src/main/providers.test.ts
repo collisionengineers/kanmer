@@ -44,13 +44,13 @@ describe("provider registry", () => {
   });
 
   it("uses core's staleness path catalog for every owned provider path", () => {
-    for (const id of ["codex", "opencode", "grok", "antigravity"] as const) {
+    for (const id of ["codex", "opencode", "antigravity"] as const) {
       const register = providerById(id)!.register;
       if (register.kind !== "configFile") throw new Error(`expected ${id} config file`);
       expect(register.configPath).toBe(STALENESS_PROVIDER_PATHS[id].registrationFile);
     }
 
-    for (const id of ["opencode", "grok", "antigravity"] as const) {
+    for (const id of ["opencode", "antigravity"] as const) {
       const install = providerById(id)!.install;
       if (install.kind !== "copySkills") throw new Error(`expected ${id} copied skills`);
       expect(install.skillsDir).toBe(STALENESS_PROVIDER_PATHS[id].skillsDir);
@@ -115,21 +115,22 @@ describe("provider registry", () => {
     }
   });
 
-  it("grok registers in its own project config.toml", () => {
-    // Established 2026-08-16 against the installed binary (ADR-0009's method
-    // clause, FRD-012 R5), commands recorded in ADR-0013:
-    // `grok mcp add --scope project` writes ./.grok/config.toml, and grok's
-    // shipped docs give the merge order config.toml > Claude > Cursor >
-    // .mcp.json — so this is the highest-priority source, not a fallback.
-    const reg = providerById("grok")!.register;
-    if (reg.kind !== "configFile") throw new Error("expected configFile");
-    expect(reg.configPath).toBe(".grok/config.toml");
-    const out = reg.merge(null, inv);
-    expect(TOML.parse(out)).toMatchObject({
-      mcp_servers: { kanmer: { command: inv.command, env: { ELECTRON_RUN_AS_NODE: "1" } } },
+  it("Grok uses the native user-scoped plugin and retains legacy cleanup knowledge", () => {
+    const provider = providerById("grok")!;
+    expect(provider.register).toEqual({ kind: "none" });
+    const install = provider.install;
+    if (install.kind !== "plugin") throw new Error("expected native plugin");
+    expect(install).toMatchObject({
+      scope: "user",
+      pluginName: "kanmer",
+      legacyConfigPath: ".grok/config.toml",
+      legacySkillsDir: ".grok/skills",
     });
-    expect(reg.merge(out, inv)).toBe(out); // idempotent
-    expect(TOML.parse(reg.unmerge(out))).toEqual({});
+    expect(install.installCommand("C:\\Kanmer\\plugins\\kanmer")).toContain(
+      "grok plugin install",
+    );
+    expect(install.installCommand("C:\\Kanmer\\plugins\\kanmer")).toContain("--trust");
+    expect(install.uninstallCommand()).toBe("grok plugin uninstall kanmer --confirm");
   });
 
   it("each config-file provider answers registration from its own file's shape", () => {
@@ -142,12 +143,7 @@ describe("provider registry", () => {
     expect(state("opencode", '{"mcpServers":{"kanmer":{}}}')).toBe("absent");
     expect(state("antigravity", '{"mcpServers":{"kanmer":{}}}')).toBe("registered");
     expect(state("antigravity", '{"mcpServers":{"other":{}}}')).toBe("absent");
-    expect(state("grok", "[mcp_servers.kanmer]\ncommand = 'x'\n")).toBe("registered");
     expect(state("codex", "[mcp_servers.other]\ncommand = 'x'\n")).toBe("absent");
-    // grok is answered out of its own TOML now, so a Claude-written .mcp.json
-    // cannot be mistaken for grok's registration — connect.test.ts asserts that
-    // end to end, against real files.
-    expect(state("grok", "[mcp_servers.other]\ncommand = 'x'\n")).toBe("absent");
     // "Cannot read" is kept distinct from "no": disconnect keeps the shared
     // AGENTS.md block on it, the legacy sweep refuses to drain on it.
     expect(state("codex", "[not valid")).toBe("indeterminate");
@@ -579,10 +575,9 @@ describe("project skill installs (FRD-012 R2)", () => {
     expect(antigravity).toMatchObject({ skillsScope: "project", skillsDir: ".agents/skills" });
   });
 
-  it("Grok keeps its own directory — it does not read .agents/skills", () => {
+  it("Grok no longer copies a project skill tree", () => {
     const install = providerById("grok")!.install;
-    if (install.kind !== "copySkills") throw new Error("unreachable");
-    expect(install.skillsDir).toBe(".grok/skills");
+    expect(install.kind).toBe("plugin");
   });
 });
 

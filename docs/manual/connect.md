@@ -20,8 +20,12 @@ project's board with that host's agent-tool client, and it installs Kanmer's
 skills for that host so the agent knows the working practices, not just the
 tools. The row reports what it wrote.
 
-Everything is written **inside this project**. Connecting does not change your
-global configuration or affect your other repositories.
+Grok is the exception: its native `kanmer` plugin is installed in the user's
+Grok profile, so it affects every Grok workspace for that user. Connect warns
+before this user-scoped change, preflights the CLI/runtime, verifies
+`grok inspect`, and then retires only legacy Kanmer state under `.grok/`. Other
+providers keep their project-scoped registration or skill paths; connecting
+them does not change your global configuration.
 
 ## Restart the agent afterwards
 

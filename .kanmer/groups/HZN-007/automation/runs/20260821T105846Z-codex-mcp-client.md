@@ -3,11 +3,11 @@ kind: auto-run
 schema: 1
 run_id: 20260821T105846Z-codex-mcp-client
 group: HZN-007
-project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=a35e1fd0
+project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T23:30:25.767Z
+updated_at: 2026-08-21T23:37:33.584Z
 lane_limit: 3
 stop_reason:
 ---
@@ -412,3 +412,16 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T23:19:30.000Z — SKILL-021 assigned to /root/gui082_executor on fresh skill-021-packet-sha-skills/.worktrees/skill-021 after complete ticket packet, HZN-007/EPIC-009 context, MCP-023/MCP-024 dependencies, live links/activity, and get_doc_gates were reread. take_ticket succeeded without force. Scope is limited to the execute/review/verify packet, expected-project capability sniff, SHA-bound review/proof records, exact merged-SHA detached verification, focused deterministic rails, and ticket report/checklist; do not touch GUI-017 or SKILL-003. Author stops at Review for independent root review/merge.
 
 - 2026-08-22T00:29:00+01:00 — SKILL-021 implementation completed on skill-021-packet-sha-skills/.worktrees/skill-021 at df56503baafe3ef5a2e3fa78e2d9d3376495af12; PR #141 opened with Kanmer: SKILL-021. The three-file scope is bounded to execute/review/verify packet, capability, SHA-attestation, detached-merge-SHA, proof, and stop-condition choreography. checklist 51/51, report/scratch/readbacks complete; verify:skills exit 0, diff/contract rails pass, build:core exit 0, first test:scripts exit 1 from missing core dist retained, exact rerun 80/80 PASS. get_doc_gates enter-review pass; Implementing→Review moved at 2026-08-21T23:28:16.705Z. Independent root review/merge and CORE-035 integration proof remain pending; no self-review, merge, next ticket, or cleanup.
+
+
+- 2026-08-21T23:37:33.584Z — closeout reconciliation: GUI-017 historical PR #25 is merged at 39080d7f2d4deed02671f85674c4ae2c2179d4a0; current-main proof/checklist finalized (22 manual chapters, check:manual, manual 11/11, typecheck, diff-check, full GUI 352/352; Electron interactive/boot remains INCONCLUSIVE), ticket Done/released and .worktrees/gui-017 plus branch removed.
+
+- 2026-08-21T23:37:33.584Z — closeout reconciliation: SKILL-003 corrective PR #140 is merged at af61144ce743f74b2aba92fb0778588b0b9bedd0; one-file decision-table/provenance sync independently reviewed, proof/checklist finalized 18/18, verify:skills/agents-block/plugin:check/diff-check pass; GitHub verify red only on the pre-existing runneradmin vs RUNNER~1 path assertion and explicitly dispositioned to CORE-032; ticket Done/released and .worktrees/skill-003 plus branch removed.
+
+- 2026-08-21T23:37:33.584Z — independent review hold: SKILL-021 PR #141 commit df56503baafe3ef5a2e3fa78e2d9d3376495af12 remains Review. Root review found required GitHub verify red on the pre-existing Windows runner path-alias assertion; review scratch is needs-changes with disposition deferred to CORE-032, which is linked. No merge, verification, or cleanup performed.
+
+- 2026-08-21T23:37:33.584Z — lane assignment: GUI-075 is taken by /root/gui099_executor on gui-075-dispatch-settings/.worktrees/gui-075. Scope is provider-specific model flags and prompt suffix settings, shared core SSOT, validation, UI, tests, and review packet; author must stop at Review for independent root review.
+
+- 2026-08-21T23:37:33.584Z — lane assignment: MCP-020 Verifying closeout delegated to /root/mcp017_verifier. It must verify merged PR #137 on main, preserve disabled-default/live-provider INCONCLUSIVE evidence, walk Verifying→Done only if gates/proof pass, release and clean its exact recorded worktree/branch.
+
+- 2026-08-21T23:37:33.584Z — provider-neutral milestone remains externally INCONCLUSIVE at MCP-028: Wrangler 4.125.0 is available, but cloudflared and Cloudflare/bearer credentials are absent; scratch records the blocker via MCP and no endpoint/proof is fabricated.

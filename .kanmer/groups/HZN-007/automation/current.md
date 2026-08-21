@@ -4,10 +4,10 @@ schema: 1
 run_id: 20260821T105846Z-codex-mcp-client
 run_path: automation/runs/20260821T105846Z-codex-mcp-client.md
 group: HZN-007
-project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=a35e1fd0
+project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-21T23:30:25.767Z
+updated_at: 2026-08-21T23:37:33.584Z
 ---
 
 # Current auto run — HZN-007
@@ -42,3 +42,6 @@ Last handoff: SKILL-021 assigned to /root/gui082_executor on skill-021-packet-sh
 
 
 Last handoff: SKILL-021 Review-ready at 2026-08-21T23:28:16.705Z: PR #141, commit df56503baafe3ef5a2e3fa78e2d9d3376495af12, branch skill-021-packet-sha-skills, worktree .worktrees/skill-021; checklist 51/51 and post-implementation report/scratch read back. verify:skills, diff/contract rails, build:core, and exact test:scripts rerun 80/80 pass; first fresh-worktree test:scripts missing-core-dist exit 1 retained. Independent review/merge required; author stops at Review. CORE-035 integration proof remains pending.
+
+
+Last handoff: 2026-08-21T23:37:33.584Z — GUI-017 and SKILL-003 closeouts are finalized and cleaned; SKILL-021 is held in Review on PR #141 for the pre-existing GitHub Windows path-alias failure, linked to CORE-032; GUI-075 is implementing on its dedicated worktree; MCP-020 Verifying closeout is assigned to /root/mcp017_verifier; MCP-028 provider-neutral external proof is INCONCLUSIVE pending cloudflared/credentials. Resume by reading the run record, HZN-007/context.md, and live gates before any further dispatch.

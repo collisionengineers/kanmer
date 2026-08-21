@@ -206,6 +206,7 @@ if (!existsSync(launcher)) {
     "%SystemRoot%\\System32\\reg.exe",
     "resources\\mcp\\kanmer-mcp.cjs",
     "ELECTRON_RUN_AS_NODE=1",
+    '"--probe"',
   ];
   const absent = markers.filter((marker) => !launcherText.includes(marker));
   if (absent.length > 0) {
@@ -223,10 +224,33 @@ if (!existsSync(launcher)) {
 }
 
 const builderConfig = readFileSync(join(root, "apps", "gui", "electron-builder.yml"), "utf8");
+if (!/extraFiles:\s*[\s\S]*?from:\s*build\/kanmer-mcp\.cmd[\s\S]*?to:\s*kanmer-mcp\.cmd/.test(builderConfig)) {
+  fail(
+    "apps/gui/electron-builder.yml does not package build/kanmer-mcp.cmd as the install-root launcher",
+    "add the GUI-099 extraFiles entry so NSIS receives the static launcher source",
+  );
+}
 if (!/nsis:[\s\S]*?include: build\/installer\.nsh/.test(builderConfig)) {
   fail(
     "apps/gui/electron-builder.yml does not configure build/installer.nsh",
     "set nsis.include to the GUI-099 lifecycle hook; extraFiles alone cannot own upgrades or uninstall",
+  );
+}
+
+const installer = readFileSync(join(root, "apps", "gui", "build", "installer.nsh"), "utf8");
+const installerMarkers = [
+  "!macro customInstall",
+  "!macro customUnInstall",
+  'HKCU "Software\\Kanmer" "InstallDir"',
+  "${isUpdated}",
+  "lstrcmpi",
+  'DeleteRegValue HKCU "Software\\Kanmer" "InstallDir"',
+];
+const missingInstallerMarkers = installerMarkers.filter((marker) => !installer.includes(marker));
+if (missingInstallerMarkers.length > 0) {
+  fail(
+    `apps/gui/build/installer.nsh is missing lifecycle marker(s): ${missingInstallerMarkers.join(", ")}`,
+    "restore the GUI-099 install/uninstall ownership hooks before shipping the package",
   );
 }
 

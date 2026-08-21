@@ -32,7 +32,7 @@ export class KanmerRemoteHost {
         this.status = { ...this.status, local: "starting" }; this.emit();
         this.ready ??= await this.http.start();
         this.status = { ...this.status, local: "ready" }; this.emit();
-        return options.tunnel.start({ endpoint: this.ready.endpoint, hostname: options.hostname });
+        return options.tunnel.start({ endpoint: this.ready.endpoint, hostname: options.hostname, projectFingerprint: this.ready.projectFingerprint });
       },
       onState: (state) => {
         const provider: RemoteHostStatus["provider"] = state === "stopped" ? "stopped" : state === "starting" ? "starting" : state;

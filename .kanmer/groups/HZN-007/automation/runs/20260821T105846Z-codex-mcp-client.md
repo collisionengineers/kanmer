@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T21:03:47.336Z
+updated_at: 2026-08-21T21:17:38.124Z
 lane_limit: 3
 stop_reason:
 ---
@@ -324,3 +324,4 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T21:12:30.000Z — GUI-010 independently reviewed and closed: PR #133 merged to main at cfd2e35aa7fbff1807fccd32caadf64442b2c70a, including the normalized reference-path safety fix 60705980. Merged-main verification passed core 258/258 with an explicit 30-second timeout (the earlier default 5-second migration timeout is retained), GUI 351/351, workspace typecheck, GUI build, stdio smoke 195/195, and diff-check. The main-checkout plugin baseline mismatch was recorded honestly (checkout-relative esbuild comments); plugin:build/plugin:check passed in the main checkout and the generated artifact was restored because no artifact-only commit was authorized. Proof was rewritten, GUI-010 walked Review→Verifying→Done with fresh gates, released, and its exact worktree/branch cleanup is pending this ledger update. Native GUI drag/drop/open/remove remains INCONCLUSIVE.
 
 - 2026-08-21T21:13:30.000Z — GUI-010 exact cleanup completed: removed .worktrees/gui-010 and local gui-010-reference-files after the merged PR and closeout release; git worktree prune leaves only the main checkout, board worktree, and intentionally retained CORE-036 external-proof worktree.
+- 2026-08-21T21:17:38.124Z — GUI-015 assigned to /root/gui082_executor on fresh gui-015-backlog-list-audit/.worktrees/gui-015 from origin/main cfd2e35a after full ticket packet, HZN-007/HZN-001/EPIC-006 contexts, links, FRD-011, PRD-001, and live gates were reread. The existing implementation is historical PR #23 (841c5bc) and was intentionally removed by GUI-070 (2f06713); FRD-011 is now status: withdrawn and explicitly forbids reinstatement. Audit only the stale board record; do not resurrect BacklogTable or absorb GUI-016/GUI-017. Author will stop before any code change unless the governing contradiction is resolved by an authorized board/document update.

@@ -5,6 +5,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { createKanmerMcpServer, projectFingerprint } from "./index.js";
+import { unauthorizedHeaders } from "./http-auth.js";
+
+export { BearerAuthorizer, generateBearerToken, verifierForToken } from "./http-auth.js";
 
 export interface HttpAuthorizer {
   authorize(request: { headers: IncomingMessage["headers"] }): Promise<{ principal: string }>;
@@ -164,7 +167,7 @@ export class KanmerHttpHost {
       const authorized = await this.options.authorizer.authorize({ headers: req.headers });
       principal = authorized.principal;
       if (!principal) throw new Error("empty principal");
-    } catch { return writeText(res, 401, "Unauthorized"); }
+    } catch { return writeText(res, 401, "Unauthorized", unauthorizedHeaders()); }
     if (this.inFlight >= this.options.maxInFlight) return writeText(res, 429, "Too many requests");
     this.inFlight++;
     try {

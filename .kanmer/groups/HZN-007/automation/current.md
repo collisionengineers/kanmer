@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=a35e1fd0
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-21T22:41:53.378Z
+updated_at: 2026-08-21T22:43:28.052Z
 ---
 
 # Current auto run — HZN-007
@@ -17,4 +17,4 @@ updated_at: 2026-08-21T22:41:53.378Z
 Open `automation/runs/20260821T105846Z-codex-mcp-client.md`, then re-read HZN-007/context.md, the live roster, and get_doc_gates for every ticket before dispatching. This pointer is written only after the complete immutable run record was written and read back.
 
 
-Last handoff: live reconciliation recorded; provider-neutral tunnel milestone is substantially Done, MCP-028 remains Preparing, and 33 non-Done HZN-007 members plus archived/historical audits still require routing. Re-read live roster and gates before assignment.
+Last handoff: three independent verification lanes active: CORE-036 (recorded worktree), MCP-008 and CORE-022 on merged main; provider-neutral MCP-028 remains queued for protected external proof; blocked dependency tickets remain parked.

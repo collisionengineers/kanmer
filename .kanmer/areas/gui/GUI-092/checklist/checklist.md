@@ -13,3 +13,16 @@
 
 - The `electron-builder publish --files` command advertised by v26.15.3 rejects this repository's valid GitHub publish config even under `--policy never`; it was not adopted.
 - `npx electron-builder --win --publish never` followed by `check-updater-package.mjs` passes locally as a no-network packaging analogue.
+
+---
+
+## Closeout — GUI-092
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date recorded)
+- [x] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/gui-092`
+- [ ] `git branch -d gui-092-one-pack-release` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

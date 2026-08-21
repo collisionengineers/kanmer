@@ -1,49 +1,22 @@
-# Proof
+# Proof — SKILL-003
 
-PR [#19](https://github.com/collisionengineers/kanmer/pull/19), merged
-(`aacd09f`). Verified on the merged base.
+Verified on merged `main` at `af61144ce743f74b2aba92fb0778588b0b9bedd0`.
 
-## Checks
+## Traceability
 
-| Check | Result |
-|---|---|
-| Skill's table vs `docs/README.md` | **identical** (diffed, not eyeballed) |
-| Widened residue grep (`\bimpact\b`, `kanmer-import`) across all 12 skills | **0 files** |
-| `verify:agents-block` | 26/26 |
+Historical implementation PR #19 (`aacd09ff86f58cfe910b9e2182b37b03a3bd604f`) and corrective PR #140 (`d7e107b9f27a64851935310e8768fbc2c249fb75), merged as `af61144ce743f74b2aba92fb0778588b0b9bedd0`) are reachable from this main head. PR #140 changes only `plugins/kanmer/skills/kanmer-docs/SKILL.md`, synchronizing the decision-table granularity/provenance and cross-cutting wording with the canonical README.
 
-The widened grep is the meaningful one. SKILL-001's version matched `impact\.md`
-and returned clean while two bare `impact` references survived. `\bimpact\b`
-catches both forms and now returns nothing anywhere in the roster.
+## Deterministic checks
 
-## The defect this actually fixed
+- Canonical decision/granularity block vs `docs/README.md` — PASS, identical.
+- `rg '\\bimpact\\b|kanmer-import' plugins/kanmer/skills -g SKILL.md` — PASS, zero residue.
+- `npm run verify:skills` — PASS, all skill prose checks.
+- `npm run verify:agents-block` — PASS, 31/31.
+- `npm run plugin:check` — PASS: 34 tools, bundle bytes, 12 skill frontmatters, manifests and isolated handshake.
+- `git diff --check` — PASS.
 
-Not "wrong paths" — the skill stated `DEFAULT_REPO_DOCS`, which is correct for a
-fresh repo. It hardcoded a **configurable** value. On this board:
+## CI boundary
 
-```
-repoDocs:
-  prd: docs/product/prd/**
-```
+GitHub Actions `verify` was rerun after review and remains **FAIL**, exactly on the pre-existing unrelated Windows path-alias assertion in `src/main/kanmerGit.test.ts`: 351/352 GUI tests pass; expected `C:\\Users\\RUNNER~1\\...`, received `C:\\Users\\runneradmin\\...`. CORE-032 is the existing tracking ticket for this environment-specific failure. The failed CI result is preserved; no unrelated test or scope was changed in SKILL-003.
 
-an agent following the old text writes to `docs/prd/` — classified by no glob —
-or links a path `assertRefs` rejects. That is not hypothetical: it happened
-during this session and was recorded at the time as an authoring mistake.
-
-The skill now says to read the globs from `get_doc_gates` and treats the
-defaults as an example.
-
-## Not proven
-
-**The duplicated table has no automated guard.** It matches today because it was
-diffed today. `docs/README.md` and the skill can drift tomorrow with nothing to
-catch it — the AGENTS block has a byte-identity assertion for exactly this and
-this pair does not. A deliberate call, and the weakest point in this ticket.
-
-**Nothing prevents the next too-narrow exit grep.** This ticket fixed the misses
-from one; the general problem — "zero hits" being only as strong as the pattern
-— is unaddressed.
-
-**No agent has authored a governing doc under the new instructions.** The
-correctness claim is that the skill no longer states a path this board rejects,
-which is checkable and checked. Whether an agent actually calls `get_doc_gates`
-for the globs rather than reusing the example is not.
+The skill change itself has no executable or generated-artifact impact, and all bounded local rails pass. The duplicated table has no automated future byte-identity guard and the residue sweep remains pattern-dependent; those are accepted risks documented in the report.

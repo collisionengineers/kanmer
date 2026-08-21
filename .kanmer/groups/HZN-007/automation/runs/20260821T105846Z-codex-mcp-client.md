@@ -261,3 +261,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-21T19:58:39.071Z — MCP-008 moved Implementing→Review after get_doc_gates confirmed post-implementation-report and questions-resolved. PR #130 remains open for independent review; author did not merge or self-review. Claude Desktop real-host acceptance remains INCONCLUSIVE.
+
+
+- 2026-08-21T20:00:08.683Z — MCP-008 follow-up fix committed and pushed: 5b4a95448c2f0f3902d37a72c2727c5cff999de0 bumps mcpb/manifest.json with release versions so release.mjs cannot leave the source manifest stale. PR #130 remains open; ticket traceability/report refreshed.

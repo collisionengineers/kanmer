@@ -59,7 +59,7 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
-  check("tools/list returns 31 tools", tools.tools.length === 31, `got ${tools.tools.length}`);
+  check("tools/list returns 34 tools", tools.tools.length === 34, `got ${tools.tools.length}`);
   for (const name of [
     "append_scratch",
     "link_doc",
@@ -72,6 +72,9 @@ try {
     "get_group_doc",
     "set_group_doc",
     "get_execution_packet",
+    "dispatch_task",
+    "list_dispatches",
+    "cancel_dispatch",
   ]) {
     check(`${name} tool exists`, tools.tools.some((t) => t.name === name));
   }
@@ -91,6 +94,12 @@ try {
   check("get_ticket_doc is read-only", gtd?.annotations?.readOnlyHint === true);
   const gep = tools.tools.find((t) => t.name === "get_execution_packet");
   check("get_execution_packet is read-only", gep?.annotations?.readOnlyHint === true);
+  const dispatchStart = tools.tools.find((t) => t.name === "dispatch_task");
+  const dispatchList = tools.tools.find((t) => t.name === "list_dispatches");
+  const dispatchCancel = tools.tools.find((t) => t.name === "cancel_dispatch");
+  check("dispatch_task is mutating and project-bound", dispatchStart?.annotations?.readOnlyHint === false && dispatchStart.inputSchema?.properties?.expected_project?.type === "string");
+  check("list_dispatches is read-only", dispatchList?.annotations?.readOnlyHint === true);
+  check("cancel_dispatch is mutating and project-bound", dispatchCancel?.annotations?.readOnlyHint === false && dispatchCancel.inputSchema?.properties?.expected_project?.type === "string");
   const rmc = tools.tools.find((t) => t.name === "remove_column");
   check("remove_column is destructive", rmc?.annotations?.destructiveHint === true);
   const createItemsTool = tools.tools.find((t) => t.name === "create_items");
@@ -106,6 +115,15 @@ try {
     createItemsTool?.inputSchema?.properties?.expected_project?.type === "string" &&
       createItemsTool?.inputSchema?.properties?.items?.items?.properties?.expected_project === undefined,
   );
+  const statusAtStart = JSON.parse(textOf(await client.callTool({ name: "get_status", arguments: {} })));
+  check("get_status exposes dispatch policy", statusAtStart.dispatch?.enabled === false && typeof statusAtStart.dispatch?.reason === "string");
+  const disabledDispatch = await client.callTool({ name: "dispatch_task", arguments: { ticket_id: "TICK-001", provider: "claude", task: "research-quick" } });
+  const disabledPayload = JSON.parse(textOf(disabledDispatch));
+  check("default-disabled dispatch refuses without side effects", disabledPayload.ok === false && disabledPayload.code === "DISPATCH_DISABLED");
+  const disabledList = JSON.parse(textOf(await client.callTool({ name: "list_dispatches", arguments: {} })));
+  check("list_dispatches reports disabled policy", disabledList.policy?.enabled === false && Array.isArray(disabledList.dispatches));
+  const disabledCancel = JSON.parse(textOf(await client.callTool({ name: "cancel_dispatch", arguments: { dispatch_id: "not-real" } })));
+  check("cancel_dispatch refuses while disabled", disabledCancel.ok === false && disabledCancel.code === "DISPATCH_DISABLED");
   const posixIdentity = projectIdentity({
     boardRoot: "/srv/kanmer-board/",
     format: 3,

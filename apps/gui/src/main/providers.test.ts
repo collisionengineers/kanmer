@@ -23,7 +23,7 @@ import {
 import * as TOML from "smol-toml";
 import { applyManagedBlock, removeManagedBlock, START, END, BLOCK_BODY } from "./agentsBlock.js";
 import { BLOCK_BODY as CANONICAL_BODY } from "../../../../scripts/agents-block-body.mjs";
-import { SKILL_DESTINATIONS, STALENESS_PROVIDER_PATHS } from "@kanmer/core";
+import { listDispatchProviders, SKILL_DESTINATIONS, STALENESS_PROVIDER_PATHS } from "@kanmer/core";
 
 const inv: Invocation = {
   command: "/opt/electron",
@@ -198,6 +198,11 @@ describe("provider registry", () => {
       ROOT,
     ]);
     expect(providerById("antigravity")!.dispatchArgs).toBeUndefined();
+  });
+
+  it("derives the GUI dispatch roster exactly from core's shared registry", () => {
+    expect(dispatchableProviders().map((p) => p.id)).toEqual(listDispatchProviders().map((p) => p.id));
+    expect(dispatchableProviders().map((p) => p.label)).toEqual(listDispatchProviders().map((p) => p.label));
   });
 });
 

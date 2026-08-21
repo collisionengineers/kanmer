@@ -157,9 +157,19 @@ for (const proto of PROTOCOLS) {
 
     const tools = await server.send("tools/list", {});
     check(
-      `tools/list returns 31 tools on ${proto}`,
-      tools.result?.tools?.length === 31,
+      `tools/list returns 34 tools on ${proto}`,
+      tools.result?.tools?.length === 34,
       `got ${tools.result?.tools?.length}`,
+    );
+    const dispatchTask = tools.result?.tools?.find((tool) => tool.name === "dispatch_task");
+    const listDispatches = tools.result?.tools?.find((tool) => tool.name === "list_dispatches");
+    const cancelDispatch = tools.result?.tools?.find((tool) => tool.name === "cancel_dispatch");
+    check(`dispatch schemas and annotations are synchronized on ${proto}`,
+      dispatchTask?.annotations?.readOnlyHint === false &&
+        listDispatches?.annotations?.readOnlyHint === true &&
+        cancelDispatch?.annotations?.readOnlyHint === false &&
+        dispatchTask?.inputSchema?.properties?.expected_project?.type === "string" &&
+        cancelDispatch?.inputSchema?.properties?.expected_project?.type === "string",
     );
     const createItems = tools.result?.tools?.find((tool) => tool.name === "create_items");
     check(

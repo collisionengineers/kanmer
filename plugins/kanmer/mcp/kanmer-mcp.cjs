@@ -37534,6 +37534,7 @@ var StdioServerTransport = class {
 // src/index.ts
 var import_node_child_process = require("child_process");
 var import_node_path5 = __toESM(require("path"), 1);
+var import_node_os = require("os");
 var import_node_util = require("util");
 
 // ../core/dist/index.js
@@ -37552,17 +37553,22 @@ var import_promises3 = __toESM(require("fs/promises"), 1);
 var import_path6 = __toESM(require("path"), 1);
 var import_promises4 = __toESM(require("fs/promises"), 1);
 var import_gray_matter2 = __toESM(require_gray_matter(), 1);
-var import_fs2 = __toESM(require("fs"), 1);
-var import_path7 = __toESM(require("path"), 1);
+var import_child_process = require("child_process");
+var import_fs2 = require("fs");
+var import_promises5 = require("fs/promises");
+var import_path7 = require("path");
 var import_crypto2 = require("crypto");
-var import_promises5 = __toESM(require("fs/promises"), 1);
+var import_fs3 = __toESM(require("fs"), 1);
 var import_path8 = __toESM(require("path"), 1);
-var import_fs3 = require("fs");
+var import_crypto3 = require("crypto");
 var import_promises6 = __toESM(require("fs/promises"), 1);
 var import_path9 = __toESM(require("path"), 1);
-var import_path10 = __toESM(require("path"), 1);
+var import_fs4 = require("fs");
 var import_promises7 = __toESM(require("fs/promises"), 1);
+var import_path10 = __toESM(require("path"), 1);
 var import_path11 = __toESM(require("path"), 1);
+var import_promises8 = __toESM(require("fs/promises"), 1);
+var import_path12 = __toESM(require("path"), 1);
 var import_chokidar = __toESM(require_chokidar(), 1);
 var ItemTypeSchema = external_exports.enum(["ticket", "plan", "research"]);
 var BoardColumnSchema = external_exports.object({
@@ -38733,6 +38739,222 @@ var DISPATCH_TASKS = Object.freeze([
     prompt: (id) => `Verify Kanmer ticket ${id} on merged main. ${COMMON} Run the checks for real \u2014 do not reason about what would happen \u2014 and record the evidence under proof/. Check what get_doc_gates says the required proof type is: a visual proof wants a screenshot under proof/assets/, test-output wants the actual output, command-log wants the commands and what they printed. Compiling is not evidence.`
   }
 ]);
+function dispatchTaskById(id) {
+  return DISPATCH_TASKS.find((t) => t.id === id);
+}
+function taskFeasibility(taskId, ctx) {
+  const has = (type) => (ctx.docCounts[type] ?? 0) > 0;
+  switch (taskId) {
+    case "execute":
+      if (!has("plan")) {
+        return { ok: false, reason: "no plan yet \u2014 dispatch \u201CWrite plan + checklist\u201D first" };
+      }
+      return has("checklist") ? { ok: true } : { ok: true, warning: "no checklist \u2014 the agent will work from the plan alone" };
+    case "verify":
+      if (ctx.stage === "backlog" || ctx.stage === "preparing" || ctx.stage === "implementing") {
+        return { ok: false, reason: "nothing is merged yet \u2014 verify runs on merged main" };
+      }
+      return { ok: true };
+    case "plan":
+      return has("research") || has("files") ? { ok: true } : { ok: true, warning: "no research or files yet \u2014 the plan will be less grounded" };
+    case "research-deep":
+      return has("research") ? { ok: true, warning: "research already exists \u2014 deep mode will add to it" } : { ok: true };
+    default:
+      return { ok: true };
+  }
+}
+var PROVIDERS = Object.freeze([
+  Object.freeze({ id: "codex", label: "Codex", cli: "codex", args: (prompt) => ["exec", prompt] }),
+  Object.freeze({ id: "claude", label: "Claude Code", cli: "claude", args: (prompt) => ["-p", prompt] }),
+  Object.freeze({ id: "opencode", label: "opencode", cli: "opencode", args: (prompt) => ["run", prompt] }),
+  Object.freeze({ id: "grok", label: "Grok CLI", cli: "grok", args: (prompt, sourceRoot) => ["-p", prompt, "--cwd", sourceRoot] })
+]);
+function dispatchProviderById(id) {
+  return PROVIDERS.find((provider) => provider.id === id);
+}
+var DEFAULT_TIMEOUT_MS = 30 * 60 * 1e3;
+var MAX_TIMEOUT_MS = 2 * 60 * 60 * 1e3;
+var MAX_TAIL_LINES = 50;
+var MAX_RECENT = 50;
+function defaultTreeKill(child) {
+  if (child.pid === void 0) return;
+  if (process.platform === "win32") {
+    (0, import_child_process.execFile)("taskkill", ["/pid", String(child.pid), "/T", "/F"], () => void 0);
+    return;
+  }
+  try {
+    process.kill(-child.pid, "SIGTERM");
+  } catch {
+    child.kill("SIGTERM");
+  }
+}
+var DispatchSupervisor = class {
+  constructor(options2) {
+    this.options = options2;
+    this.maxActive = options2.maxActive ?? 1;
+    this.defaultTimeoutMs = options2.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.maxTimeoutMs = options2.maxTimeoutMs ?? MAX_TIMEOUT_MS;
+    this.spawnFn = options2.spawn ?? ((command, args, spawnOptions) => (0, import_child_process.spawn)(command, [...args], spawnOptions));
+    this.killFn = options2.treeKill ?? defaultTreeKill;
+    this.now = options2.now ?? Date.now;
+    this.sink = options2.statusSink ?? (() => void 0);
+    this.recorder = options2.recordTerminal ?? (() => void 0);
+    this.env = options2.env ?? process.env;
+    if (!Number.isInteger(this.maxActive) || this.maxActive < 1) throw new Error("maxActive must be a positive integer");
+    if (!Number.isFinite(this.defaultTimeoutMs) || this.defaultTimeoutMs < 1) throw new Error("defaultTimeoutMs must be positive");
+    if (!Number.isFinite(this.maxTimeoutMs) || this.maxTimeoutMs < this.defaultTimeoutMs) throw new Error("maxTimeoutMs must be >= defaultTimeoutMs");
+  }
+  options;
+  active = /* @__PURE__ */ new Map();
+  locks = /* @__PURE__ */ new Map();
+  recent = [];
+  maxActive;
+  defaultTimeoutMs;
+  maxTimeoutMs;
+  spawnFn;
+  killFn;
+  now;
+  sink;
+  recorder;
+  env;
+  async start(request) {
+    const provider = dispatchProviderById(request.provider);
+    if (!provider) throw new Error(`Unknown dispatch provider "${request.provider}".`);
+    const lock = `${request.projectId}\0${request.ticketId}`;
+    if (this.locks.has(lock)) throw new Error(`${request.ticketId} already has a dispatch in flight for this project.`);
+    if (this.active.size >= this.maxActive) throw new Error(`Dispatch concurrency limit reached (${this.maxActive}).`);
+    const timeoutMs = request.timeoutMs ?? this.defaultTimeoutMs;
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > this.maxTimeoutMs) throw new Error(`timeout must be an integer between 1 and ${this.maxTimeoutMs}ms.`);
+    const dispatchId = `${request.ticketId}-${(0, import_crypto2.randomUUID)()}`;
+    const startedAt = this.now();
+    const status = {
+      dispatchId,
+      projectId: request.projectId,
+      ...request.projectFingerprint ? { projectFingerprint: request.projectFingerprint } : {},
+      ticketId: request.ticketId,
+      provider: request.provider,
+      ...request.task ? { task: request.task.id, taskLabel: request.task.label, deliverable: request.task.deliverable } : {},
+      requestedBy: request.requestedBy,
+      state: "running",
+      startedAt
+    };
+    await (0, import_promises5.mkdir)(this.options.logDir, { recursive: true });
+    const logPath = (0, import_path7.join)(this.options.logDir, `${dispatchId}.log`);
+    const log = (0, import_fs2.createWriteStream)(logPath, { flags: "a" });
+    let child;
+    try {
+      child = this.spawnFn(provider.cli, provider.args(request.prompt ?? request.task?.prompt ?? "", request.sourceRoot), {
+        cwd: request.sourceRoot,
+        env: this.env,
+        windowsHide: true,
+        detached: process.platform !== "win32"
+      });
+    } catch (error2) {
+      log.end();
+      await (0, import_promises5.rm)(logPath, { force: true }).catch(() => void 0);
+      throw new Error(`Couldn't start ${provider.cli}: ${error2 instanceof Error ? error2.message : String(error2)}. Is its CLI installed and authenticated?`);
+    }
+    const tail = [];
+    const timer = setTimeout(() => {
+      const handle2 = this.active.get(dispatchId);
+      if (!handle2 || handle2.terminal) return;
+      handle2.status.state = "timed-out";
+      handle2.status.reason = "timeout";
+      this.emit(handle2);
+      this.killFn(handle2.child);
+    }, timeoutMs);
+    const handle = { child, status, tail, log, timer, terminal: false, logPath };
+    this.active.set(dispatchId, handle);
+    this.locks.set(lock, dispatchId);
+    const onData = (chunk) => {
+      const text = chunk.toString();
+      log.write(text);
+      for (const line of text.split(/\r?\n/)) if (line.trim()) {
+        tail.push(line);
+        if (tail.length > MAX_TAIL_LINES) tail.shift();
+      }
+      this.emit(handle);
+    };
+    child.stdout?.on("data", onData);
+    child.stderr?.on("data", onData);
+    child.once("error", (error2) => {
+      if (handle.terminal) return;
+      handle.terminal = true;
+      clearTimeout(handle.timer);
+      onData(`
+[dispatch error] ${error2.message}
+`);
+      handle.status.state = "failed";
+      handle.status.exitCode = null;
+      handle.status.reason = "spawn-error";
+      this.finish(lock, handle);
+    });
+    child.once("close", (code) => {
+      if (handle.terminal) return;
+      handle.terminal = true;
+      clearTimeout(handle.timer);
+      if (handle.status.state === "running") handle.status.state = code === 0 ? "done" : "failed";
+      handle.status.exitCode = code;
+      this.finish(lock, handle);
+    });
+    this.emit(handle);
+    return { ...status };
+  }
+  list(filter = {}) {
+    const active = [...this.active.values()].map((handle) => handle.status);
+    const all = filter.includeRecent === false ? active : [...active, ...this.recent];
+    return all.filter(
+      (status) => (filter.projectId === void 0 || status.projectId === filter.projectId) && (filter.ticketId === void 0 || status.ticketId === filter.ticketId) && (filter.state === void 0 || status.state === filter.state)
+    ).map((status) => ({ ...status }));
+  }
+  listLocal(filter = {}) {
+    const statuses = this.list(filter);
+    return statuses.map((status) => {
+      const handle = this.active.get(status.dispatchId);
+      return { ...status, ...handle ? { tail: handle.tail.slice(-MAX_TAIL_LINES), logPath: handle.logPath } : {} };
+    });
+  }
+  setSpawnForTests(spawnFn) {
+    this.spawnFn = spawnFn ?? ((command, args, spawnOptions) => (0, import_child_process.spawn)(command, [...args], spawnOptions));
+  }
+  cancel(dispatchId, reason = "cancelled", cancelledBy) {
+    const handle = this.active.get(dispatchId);
+    if (!handle || handle.terminal) return null;
+    handle.status.state = "cancelled";
+    handle.status.reason = reason;
+    if (cancelledBy) handle.status.cancelledBy = cancelledBy;
+    this.emit(handle);
+    this.killFn(handle.child);
+    return { ...handle.status };
+  }
+  killAll() {
+    for (const handle of this.active.values()) {
+      if (!handle.terminal) {
+        handle.status.state = "cancelled";
+        handle.status.reason = "server-shutdown";
+        this.killFn(handle.child);
+      }
+    }
+  }
+  emit(handle) {
+    this.sink({ ...handle.status, tail: handle.tail.slice(-MAX_TAIL_LINES), logPath: handle.logPath });
+  }
+  finish(lock, handle) {
+    handle.status.endedAt = this.now();
+    this.active.delete(handle.status.dispatchId);
+    if (this.locks.get(lock) === handle.status.dispatchId) this.locks.delete(lock);
+    handle.log.end();
+    this.recent.unshift({ ...handle.status });
+    if (this.recent.length > MAX_RECENT) this.recent.length = MAX_RECENT;
+    void Promise.resolve().then(() => this.recorder({ ...handle.status }, handle.tail.slice(-MAX_TAIL_LINES))).catch((error2) => {
+      handle.status.recordingError = error2 instanceof Error ? error2.message : String(error2);
+      const recent = this.recent.find((s) => s.dispatchId === handle.status.dispatchId);
+      if (recent) recent.recordingError = handle.status.recordingError;
+      this.emit(handle);
+    });
+    this.emit(handle);
+  }
+};
 var CURRENT_FORMAT = 3;
 async function readVersion(paths) {
   if (!await pathExists(paths.versionFile)) return null;
@@ -38775,40 +38997,40 @@ var REGISTRATION_FILES = [
 ];
 function readOrNull(file) {
   try {
-    return import_fs2.default.readFileSync(file, "utf8");
+    return import_fs3.default.readFileSync(file, "utf8");
   } catch {
     return null;
   }
 }
 function isDir(p) {
   try {
-    return import_fs2.default.statSync(p).isDirectory();
+    return import_fs3.default.statSync(p).isDirectory();
   } catch {
     return false;
   }
 }
 function exists(p) {
   try {
-    import_fs2.default.statSync(p);
+    import_fs3.default.statSync(p);
     return true;
   } catch {
     return false;
   }
 }
 function digest(text) {
-  return (0, import_crypto2.createHash)("sha256").update(text.replace(/\r\n/g, "\n")).digest("hex");
+  return (0, import_crypto3.createHash)("sha256").update(text.replace(/\r\n/g, "\n")).digest("hex");
 }
 function walkFiles(dir, base = dir, out = []) {
   let entries;
   try {
-    entries = import_fs2.default.readdirSync(dir, { withFileTypes: true });
+    entries = import_fs3.default.readdirSync(dir, { withFileTypes: true });
   } catch {
     return out;
   }
   for (const entry of entries) {
-    const full = import_path7.default.join(dir, entry.name);
+    const full = import_path8.default.join(dir, entry.name);
     if (entry.isDirectory()) walkFiles(full, base, out);
-    else if (entry.isFile()) out.push(import_path7.default.relative(base, full).split(import_path7.default.sep).join("/"));
+    else if (entry.isFile()) out.push(import_path8.default.relative(base, full).split(import_path8.default.sep).join("/"));
   }
   return out;
 }
@@ -38822,7 +39044,7 @@ function nameList(names, max = 4) {
 }
 function referenceBlockBody(bundledSkillsDir2) {
   if (!bundledSkillsDir2) return null;
-  const skill = readOrNull(import_path7.default.join(bundledSkillsDir2, "kanmer-setup", "SKILL.md"));
+  const skill = readOrNull(import_path8.default.join(bundledSkillsDir2, "kanmer-setup", "SKILL.md"));
   if (skill === null) return null;
   return blockBodyOf(skill);
 }
@@ -38837,7 +39059,7 @@ function hasEitherMarker(text) {
 }
 var SETUP_FIX = "run kanmer-setup (it reconciles; FRD-013)";
 function agentsBlockRow(repoRoot, reference) {
-  const file = import_path7.default.join(repoRoot, "AGENTS.md");
+  const file = import_path8.default.join(repoRoot, "AGENTS.md");
   const text = readOrNull(file);
   if (text === null) {
     if (exists(file)) {
@@ -38890,7 +39112,7 @@ function agentsBlockRow(repoRoot, reference) {
 }
 function skillRows(repoRoot, bundledSkillsDir2) {
   const rows = [];
-  const present = SKILL_DESTINATIONS.map((rel) => ({ rel, abs: import_path7.default.join(repoRoot, rel) })).filter(
+  const present = SKILL_DESTINATIONS.map((rel) => ({ rel, abs: import_path8.default.join(repoRoot, rel) })).filter(
     (d) => isDir(d.abs)
   );
   if (present.length === 0) return rows;
@@ -38915,20 +39137,20 @@ function skillRows(repoRoot, bundledSkillsDir2) {
   }
   const reference = /* @__PURE__ */ new Map();
   for (const rel of bundled) {
-    const text = readOrNull(import_path7.default.join(bundledSkillsDir2, rel));
+    const text = readOrNull(import_path8.default.join(bundledSkillsDir2, rel));
     if (text !== null) reference.set(rel, digest(text));
   }
   const bundledFolders = [...new Set(bundled.map(skillFolderOf))];
   for (const dest of present) {
     const installedFolders = new Set(
-      bundledFolders.filter((folder) => isDir(import_path7.default.join(dest.abs, folder)))
+      bundledFolders.filter((folder) => isDir(import_path8.default.join(dest.abs, folder)))
     );
     if (installedFolders.size === 0) continue;
     const missing = [];
     const differing = [];
     for (const [rel, sha] of reference) {
       if (!installedFolders.has(skillFolderOf(rel))) continue;
-      const text = readOrNull(import_path7.default.join(dest.abs, rel));
+      const text = readOrNull(import_path8.default.join(dest.abs, rel));
       if (text === null) {
         missing.push(rel);
         continue;
@@ -38947,7 +39169,7 @@ function skillRows(repoRoot, bundledSkillsDir2) {
         fix: `${SETUP_FIX}, or reconnect this project in the Kanmer app`
       });
     }
-    const retired = RETIRED_SKILL_PATHS.filter((rel) => exists(import_path7.default.join(dest.abs, rel)));
+    const retired = RETIRED_SKILL_PATHS.filter((rel) => exists(import_path8.default.join(dest.abs, rel)));
     if (retired.length) {
       rows.push({
         artefact: "skills",
@@ -38956,7 +39178,7 @@ function skillRows(repoRoot, bundledSkillsDir2) {
         fix: "delete them, or reconnect in the Kanmer app (tracked as GUI-080)"
       });
     }
-    if (!exists(import_path7.default.join(dest.abs, SKILLS_STAMP_FILE))) {
+    if (!exists(import_path8.default.join(dest.abs, SKILLS_STAMP_FILE))) {
       rows.push({
         artefact: "skills-stamp",
         state: "unstamped",
@@ -39048,13 +39270,13 @@ function kanmerRootIn(text, format) {
   }
 }
 function sameRoot(a, b) {
-  const norm = (p) => import_path7.default.resolve(p).replace(/[\\/]+/g, "/").replace(/\/+$/, "").toLowerCase();
+  const norm = (p) => import_path8.default.resolve(p).replace(/[\\/]+/g, "/").replace(/\/+$/, "").toLowerCase();
   return norm(a) === norm(b);
 }
 function registrationRows(repoRoot, projectRoot2) {
   const rows = [];
   for (const rel of REGISTRATION_FILES) {
-    const file = import_path7.default.join(repoRoot, rel);
+    const file = import_path8.default.join(repoRoot, rel);
     if (!exists(file)) continue;
     const text = readOrNull(file);
     if (text === null) {
@@ -39127,16 +39349,16 @@ function detectStaleness(input) {
 var MAX_LINES = 5e3;
 var SIZE_CHECK_BYTES = 512e3;
 function activityFile(paths) {
-  return import_path8.default.join(paths.data, "activity.jsonl");
+  return import_path9.default.join(paths.data, "activity.jsonl");
 }
 async function appendActivity(paths, entries) {
   if (entries.length === 0) return;
   const file = activityFile(paths);
   try {
-    await import_promises5.default.mkdir(paths.data, { recursive: true });
-    await import_promises5.default.appendFile(file, entries.map((e) => `${JSON.stringify(e)}
+    await import_promises6.default.mkdir(paths.data, { recursive: true });
+    await import_promises6.default.appendFile(file, entries.map((e) => `${JSON.stringify(e)}
 `).join(""), "utf8");
-    const stat = await import_promises5.default.stat(file);
+    const stat = await import_promises6.default.stat(file);
     if (stat.size > SIZE_CHECK_BYTES) {
       const lines = (await readText(file)).split("\n").filter(Boolean);
       if (lines.length > MAX_LINES) {
@@ -39165,7 +39387,7 @@ async function readActivity(paths, opts = {}) {
   return opts.limit !== void 0 && entries.length > opts.limit ? entries.slice(-opts.limit) : entries;
 }
 function pathApi(platform) {
-  return platform === "win32" ? import_path10.default.win32 : import_path10.default;
+  return platform === "win32" ? import_path11.default.win32 : import_path11.default;
 }
 function normalizeWorktreePath(input, base, platform = process.platform) {
   const api = pathApi(platform);
@@ -39265,12 +39487,12 @@ var CREATE_ATTEMPTS = 20;
 function referencePath(dir, name) {
   const candidate = name.trim();
   if (!candidate || candidate === "." || candidate === "..") throw new Error(`Invalid reference name "${candidate}"`);
-  if (import_path9.default.basename(candidate) !== candidate) {
+  if (import_path10.default.basename(candidate) !== candidate) {
     throw new Error(`Reference name "${name}" is outside reference/; it must be a plain filename`);
   }
-  const resolved = import_path9.default.resolve(dir, candidate);
-  const root = import_path9.default.resolve(dir);
-  if (resolved !== import_path9.default.join(root, import_path9.default.basename(resolved)) || !resolved.startsWith(root + import_path9.default.sep)) {
+  const resolved = import_path10.default.resolve(dir, candidate);
+  const root = import_path10.default.resolve(dir);
+  if (resolved !== import_path10.default.join(root, import_path10.default.basename(resolved)) || !resolved.startsWith(root + import_path10.default.sep)) {
     throw new Error(`Reference name "${name}" is outside reference/; it must be a plain filename`);
   }
   return resolved;
@@ -39465,7 +39687,7 @@ var KanmerStore = class {
     await this.setBoard(board);
     if (kind === "area") {
       try {
-        await import_promises6.default.rmdir(areaDir(this.paths, id));
+        await import_promises7.default.rmdir(areaDir(this.paths, id));
       } catch {
       }
     }
@@ -39501,21 +39723,21 @@ var KanmerStore = class {
     const warnings = [];
     let areaFolders = [];
     try {
-      areaFolders = await import_promises6.default.readdir(this.paths.areasRoot);
+      areaFolders = await import_promises7.default.readdir(this.paths.areasRoot);
     } catch {
     }
     for (const areaFolder of areaFolders) {
-      const areaPath = import_path9.default.join(this.paths.areasRoot, areaFolder);
+      const areaPath = import_path10.default.join(this.paths.areasRoot, areaFolder);
       let entries;
       try {
-        entries = await import_promises6.default.readdir(areaPath, { withFileTypes: true }).then(
+        entries = await import_promises7.default.readdir(areaPath, { withFileTypes: true }).then(
           (d) => d.filter((e) => e.isDirectory()).map((e) => e.name)
         );
       } catch {
         continue;
       }
       for (const ticketFolder of entries) {
-        const file = import_path9.default.join(areaPath, ticketFolder, `${ticketFolder}.md`);
+        const file = import_path10.default.join(areaPath, ticketFolder, `${ticketFolder}.md`);
         if (!await pathExists(file)) continue;
         try {
           const item = parseItem(await readText(file));
@@ -39546,16 +39768,16 @@ var KanmerStore = class {
       const dir = typeDir(this.paths, type);
       let names;
       try {
-        names = await import_promises6.default.readdir(dir);
+        names = await import_promises7.default.readdir(dir);
       } catch {
         continue;
       }
       for (const name of names) {
         if (!name.endsWith(".md")) continue;
-        const file = import_path9.default.join(dir, name);
+        const file = import_path10.default.join(dir, name);
         try {
           const item = parseItem(await readText(file));
-          const fromName = import_path9.default.basename(name, ".md");
+          const fromName = import_path10.default.basename(name, ".md");
           if (item.id !== fromName) {
             warnings.push({
               file,
@@ -39579,12 +39801,12 @@ var KanmerStore = class {
     itemFile(this.paths, "ticket", id);
     let areaFolders = [];
     try {
-      areaFolders = await import_promises6.default.readdir(this.paths.areasRoot);
+      areaFolders = await import_promises7.default.readdir(this.paths.areasRoot);
     } catch {
     }
     for (const areaFolder of areaFolders) {
-      const dir = import_path9.default.join(this.paths.areasRoot, areaFolder, id);
-      const file = import_path9.default.join(dir, `${id}.md`);
+      const dir = import_path10.default.join(this.paths.areasRoot, areaFolder, id);
+      const file = import_path10.default.join(dir, `${id}.md`);
       if (await pathExists(file)) return { kind: "v2", file, dir, areaFolder };
     }
     for (const type of ITEM_TYPES) {
@@ -39721,9 +39943,9 @@ var KanmerStore = class {
       const targetFolder = safeAreaFolder(next.area ?? "");
       if (targetFolder !== null && targetFolder !== loc.areaFolder) {
         const newDir = ticketDirIn(this.paths, next.area ?? "", id);
-        await ensureDir(import_path9.default.dirname(newDir));
-        await import_promises6.default.rename(loc.dir, newDir);
-        file = import_path9.default.join(newDir, `${id}.md`);
+        await ensureDir(import_path10.default.dirname(newDir));
+        await import_promises7.default.rename(loc.dir, newDir);
+        file = import_path10.default.join(newDir, `${id}.md`);
       }
     }
     await writeFileAtomic(file, serialiseItem(next));
@@ -39989,7 +40211,7 @@ var KanmerStore = class {
       );
     }
     const file = docPathIn(loc.dir, doc);
-    await ensureDir(import_path9.default.dirname(file));
+    await ensureDir(import_path10.default.dirname(file));
     const existing = await pathExists(file) ? await readText(file) : null;
     if (opts.expectedVersion !== void 0) {
       const actual = existing === null ? null : contentVersion(existing);
@@ -40042,16 +40264,16 @@ ${content.trim()}
     const loc = await this.locateItem(id);
     if (!loc || loc.kind !== "v2") throw new Error(`No item with id "${id}"`);
     const dir = docDirIn(loc.dir, "reference");
-    const base = (name ?? import_path9.default.basename(sourcePath)).trim();
+    const base = (name ?? import_path10.default.basename(sourcePath)).trim();
     referencePath(dir, base);
     await ensureDir(dir);
-    const ext = import_path9.default.extname(base);
+    const ext = import_path10.default.extname(base);
     const stem = base.slice(0, base.length - ext.length);
     for (let n = 1; ; n++) {
       const final = n === 1 ? base : `${stem}-${n}${ext}`;
       const destination = referencePath(dir, final);
       try {
-        await import_promises6.default.copyFile(sourcePath, destination, import_fs3.constants.COPYFILE_EXCL);
+        await import_promises7.default.copyFile(sourcePath, destination, import_fs4.constants.COPYFILE_EXCL);
         await this.appendActivityFor(id, "reference", final);
         return { name: final };
       } catch (err) {
@@ -40104,7 +40326,7 @@ ${content.trim()}
     const loc = await this.locateItem(id);
     if (!loc) return { deleted: false, cleanedLinks: [], bodyReferencesRemain: [] };
     if (loc.kind === "v2") {
-      await import_promises6.default.rm(loc.dir, { recursive: true, force: true });
+      await import_promises7.default.rm(loc.dir, { recursive: true, force: true });
     } else {
       await removeFile(loc.file);
     }
@@ -40312,7 +40534,7 @@ ${content.trim()}
   async setGroupDoc(id, rel, content) {
     if (!await readGroup(this.paths, id)) throw new Error(`No group with id "${id}"`);
     const file = groupDocPath(this.paths, id, rel);
-    await ensureDir(import_path9.default.dirname(file));
+    await ensureDir(import_path10.default.dirname(file));
     await writeFileAtomic(file, `${content.trim()}
 `);
     await appendActivity(this.paths, [this.activity(id, "doc", { field: `group:${rel}` })]);
@@ -40352,10 +40574,10 @@ ${content.trim()}
     }
     const file = docPathIn(loc.dir, `scratch/${slug}`);
     const had = await pathExists(file);
-    await ensureDir(import_path9.default.dirname(file));
+    await ensureDir(import_path10.default.dirname(file));
     const block = `${content.trim()}
 `;
-    await import_promises6.default.appendFile(file, had ? `
+    await import_promises7.default.appendFile(file, had ? `
 ${block}` : block, "utf8");
     await appendActivity(this.paths, [
       this.activity(id, "doc", { field: `scratch/${slug}`, to: "append" })
@@ -40540,7 +40762,7 @@ async function migrateToV2(store2, opts = {}) {
   const ticketDest = /* @__PURE__ */ new Map();
   for (const t of tickets) {
     const folder = destAreaFolder(t, report.notes);
-    const dest = import_path11.default.join("areas", folder, t.id);
+    const dest = import_path12.default.join("areas", folder, t.id);
     ticketDest.set(t.id, folder);
     report.ticketMoves.push({ id: t.id, to: dest });
   }
@@ -40572,7 +40794,7 @@ async function migrateToV2(store2, opts = {}) {
   const ticketDestFile = /* @__PURE__ */ new Map();
   for (const t of tickets) {
     const dir = ticketDirIn(paths, ticketDest.get(t.id) === NO_AREA_DIR ? "" : t.area ?? "", t.id);
-    const dest = import_path11.default.join(dir, `${t.id}.md`);
+    const dest = import_path12.default.join(dir, `${t.id}.md`);
     ticketDestFile.set(t.id, dest);
     claim(dest, sourceKey(t));
   }
@@ -40580,7 +40802,7 @@ async function migrateToV2(store2, opts = {}) {
   for (const c of conversions) {
     const folder = destAreaFolder(c, report.notes);
     const dir = ticketDirIn(paths, folder === NO_AREA_DIR ? "" : c.area ?? "", c.id);
-    const dest = import_path11.default.join(dir, `${c.id}.md`);
+    const dest = import_path12.default.join(dir, `${c.id}.md`);
     conversionDest.set(c.id, dest);
     claim(dest, sourceKey(c));
   }
@@ -40590,22 +40812,22 @@ async function migrateToV2(store2, opts = {}) {
 - ${report.blockers.join("\n- ")}`);
   }
   if (dryRun) return report;
-  await import_promises7.default.mkdir(paths.areasRoot, { recursive: true });
+  await import_promises8.default.mkdir(paths.areasRoot, { recursive: true });
   await store2.setBoard(board);
   const legacyFile = (item) => {
     const dir = item.type === "ticket" ? paths.tickets : item.type === "plan" ? paths.plans : paths.research;
-    return import_path11.default.join(dir, `${item.id}.md`);
+    return import_path12.default.join(dir, `${item.id}.md`);
   };
   let resumed = false;
   for (const t of tickets) {
     const dest = ticketDestFile.get(t.id);
-    const dir = import_path11.default.dirname(dest);
+    const dir = import_path12.default.dirname(dest);
     const src = legacyFile(t);
     const destExists = await pathExists(dest);
     const srcExists = await pathExists(src);
     if (destExists && srcExists) {
       report.notes.push(
-        `${t.id} already exists at its v2 location; the legacy copy at ${import_path11.default.relative(paths.kanmer, src)} was left in place \u2014 compare and delete it by hand.`
+        `${t.id} already exists at its v2 location; the legacy copy at ${import_path12.default.relative(paths.kanmer, src)} was left in place \u2014 compare and delete it by hand.`
       );
       resumed = true;
       continue;
@@ -40618,13 +40840,13 @@ async function migrateToV2(store2, opts = {}) {
       report.notes.push(`${t.id} has no file at either its legacy or its v2 location \u2014 skipped.`);
       continue;
     }
-    await import_promises7.default.mkdir(dir, { recursive: true });
-    await import_promises7.default.rename(src, dest);
+    await import_promises8.default.mkdir(dir, { recursive: true });
+    await import_promises8.default.rename(src, dest);
   }
   for (const f of folds) {
     const folder = ticketDest.get(f.ticket.id) ?? NO_AREA_DIR;
     const dir = ticketDirIn(paths, folder === NO_AREA_DIR ? "" : f.ticket.area ?? "", f.ticket.id);
-    const target = import_path11.default.join(dir, `${f.as}.md`);
+    const target = import_path12.default.join(dir, `${f.as}.md`);
     const content = `# ${f.doc.title}
 
 ${f.doc.body.trim()}
@@ -40636,7 +40858,7 @@ ${f.doc.body.trim()}
           `${f.ticket.id}'s ${f.as}.md already holds "${f.doc.id}" \u2014 left as it was.`
         );
         resumed = true;
-        await import_promises7.default.rm(legacyFile(f.doc), { force: true });
+        await import_promises8.default.rm(legacyFile(f.doc), { force: true });
         continue;
       }
       await writeFileAtomic(target, `${existing.trimEnd()}
@@ -40650,7 +40872,7 @@ ${content}`);
     } else {
       await writeFileAtomic(target, content);
     }
-    await import_promises7.default.rm(legacyFile(f.doc), { force: true });
+    await import_promises8.default.rm(legacyFile(f.doc), { force: true });
   }
   for (const c of conversions) {
     const label = c.type === "plan" ? "legacy-plan" : "legacy-research";
@@ -40665,7 +40887,7 @@ ${content}`);
       if (already) {
         report.notes.push(`${c.id} was already converted to a ticket \u2014 left as it was.`);
         resumed = true;
-        await import_promises7.default.rm(legacyFile(c), { force: true });
+        await import_promises8.default.rm(legacyFile(c), { force: true });
         continue;
       }
     }
@@ -40680,9 +40902,9 @@ ${content}`);
       type: "ticket",
       labels: [.../* @__PURE__ */ new Set([...c.labels ?? [], label])]
     };
-    await import_promises7.default.mkdir(import_path11.default.dirname(destFile), { recursive: true });
+    await import_promises8.default.mkdir(import_path12.default.dirname(destFile), { recursive: true });
     await writeFileAtomic(destFile, serialiseItem(converted));
-    await import_promises7.default.rm(legacyFile(c), { force: true });
+    await import_promises8.default.rm(legacyFile(c), { force: true });
   }
   const foldedIds = new Set(folds.map((f) => f.doc.id));
   if (foldedIds.size > 0) {
@@ -40716,11 +40938,11 @@ ${content}`);
   }
   for (const dir of [paths.tickets, paths.plans, paths.research]) {
     try {
-      await import_promises7.default.rmdir(dir);
+      await import_promises8.default.rmdir(dir);
     } catch {
       if (await pathExists(dir)) {
         report.notes.push(
-          `${import_path11.default.basename(dir)}/ still has non-item files \u2014 left in place, remove it by hand.`
+          `${import_path12.default.basename(dir)}/ still has non-item files \u2014 left in place, remove it by hand.`
         );
       }
     }
@@ -40894,7 +41116,7 @@ async function migrateToV3(store2, opts = {}) {
     mapping.set(key, entry);
     if (!mapped) report.needsRestage.push({ id: item.id, from: item.status });
     for (const [from, dest] of Object.entries(DOC_MOVES)) {
-      if (await pathExists(import_path11.default.join(loc.dir, from))) {
+      if (await pathExists(import_path12.default.join(loc.dir, from))) {
         report.docMoves.push({ id: item.id, from, to: dest });
       }
     }
@@ -40926,18 +41148,18 @@ async function migrateToV3(store2, opts = {}) {
     const loc = await store2.locateItem(item.id);
     if (!loc || loc.kind !== "v2" || !loc.dir) continue;
     for (const [from, dest] of Object.entries(DOC_MOVES)) {
-      const src = import_path11.default.join(loc.dir, from);
+      const src = import_path12.default.join(loc.dir, from);
       if (!await pathExists(src)) continue;
-      const target = import_path11.default.join(loc.dir, ...dest.split("/"));
-      await ensureDir(import_path11.default.dirname(target));
-      if (!await pathExists(target)) await import_promises7.default.rename(src, target);
+      const target = import_path12.default.join(loc.dir, ...dest.split("/"));
+      await ensureDir(import_path12.default.dirname(target));
+      if (!await pathExists(target)) await import_promises8.default.rename(src, target);
     }
     for (const name of await listDirSafe(loc.dir)) {
       if (!name.startsWith(SCRATCH_PREFIX) || !name.endsWith(".md")) continue;
-      const src = import_path11.default.join(loc.dir, name);
-      const target = import_path11.default.join(loc.dir, "scratch", name.slice(SCRATCH_PREFIX.length));
-      await ensureDir(import_path11.default.dirname(target));
-      if (!await pathExists(target)) await import_promises7.default.rename(src, target);
+      const src = import_path12.default.join(loc.dir, name);
+      const target = import_path12.default.join(loc.dir, "scratch", name.slice(SCRATCH_PREFIX.length));
+      await ensureDir(import_path12.default.dirname(target));
+      if (!await pathExists(target)) await import_promises8.default.rename(src, target);
     }
     if (item.profile !== void 0 && item.priority === void 0) {
       resumed = true;
@@ -40995,19 +41217,19 @@ async function sweepStaleTemps(kanmerDir) {
   async function walk(dir) {
     let entries;
     try {
-      entries = await import_promises7.default.readdir(dir, { withFileTypes: true });
+      entries = await import_promises8.default.readdir(dir, { withFileTypes: true });
     } catch {
       return;
     }
     for (const e of entries) {
-      const full = import_path11.default.join(dir, e.name);
+      const full = import_path12.default.join(dir, e.name);
       if (e.isDirectory()) {
         await walk(full);
       } else if (TMP_FILE_RE.test(e.name)) {
         try {
-          const st = await import_promises7.default.stat(full);
+          const st = await import_promises8.default.stat(full);
           if (st.mtimeMs < cutoff) {
-            await import_promises7.default.rm(full, { force: true });
+            await import_promises8.default.rm(full, { force: true });
             swept++;
           }
         } catch {
@@ -41020,7 +41242,7 @@ async function sweepStaleTemps(kanmerDir) {
 }
 async function listDirSafe(dir) {
   try {
-    return await import_promises7.default.readdir(dir);
+    return await import_promises8.default.readdir(dir);
   } catch {
     return [];
   }
@@ -41417,11 +41639,55 @@ function projectIdentity(input) {
   return { ...payload, boardSource: input.boardSource, fingerprint };
 }
 
+// src/dispatch-policy.ts
+var DEFAULT_TIMEOUT_MS2 = 30 * 60 * 1e3;
+var DEFAULT_MAX_TIMEOUT_MS = 2 * 60 * 60 * 1e3;
+var MAX_ACTIVE = 16;
+function disabled(reason) {
+  return { enabled: false, providers: [], tasks: [], maxActive: 1, timeoutMs: DEFAULT_TIMEOUT_MS2, maxTimeoutMs: DEFAULT_MAX_TIMEOUT_MS, approval: null, reason };
+}
+function csv(value) {
+  if (!value || value.trim() === "") return null;
+  const values = [...new Set(value.split(",").map((part) => part.trim()).filter(Boolean))];
+  return values.length ? values : null;
+}
+function boundedInteger(value, fallback, min, max) {
+  if (value === void 0 || value.trim() === "") return fallback;
+  if (!/^\d+$/.test(value.trim())) return null;
+  const n = Number(value);
+  return Number.isSafeInteger(n) && n >= min && n <= max ? n : null;
+}
+function parseDispatchPolicy(env = process.env) {
+  const enabled = env.KANMER_DISPATCH_ENABLED?.trim().toLowerCase();
+  if (enabled === void 0 || enabled === "false" || enabled === "0" || enabled === "") return disabled("dispatch is disabled by operator policy");
+  if (enabled !== "true" && enabled !== "1") return disabled("KANMER_DISPATCH_ENABLED must be true or false");
+  const providers = csv(env.KANMER_DISPATCH_PROVIDERS);
+  if (!providers) return disabled("KANMER_DISPATCH_PROVIDERS must name at least one provider");
+  const unknownProvider = providers.find((id) => !dispatchProviderById(id));
+  if (unknownProvider) return disabled(`unknown dispatch provider "${unknownProvider}"`);
+  const tasks = csv(env.KANMER_DISPATCH_TASKS);
+  if (!tasks) return disabled("KANMER_DISPATCH_TASKS must name at least one task");
+  const unknownTask = tasks.find((id) => !dispatchTaskById(id));
+  if (unknownTask) return disabled(`unknown dispatch task "${unknownTask}"`);
+  const maxActive = boundedInteger(env.KANMER_DISPATCH_MAX_ACTIVE, 1, 1, MAX_ACTIVE);
+  if (maxActive === null) return disabled(`KANMER_DISPATCH_MAX_ACTIVE must be an integer between 1 and ${MAX_ACTIVE}`);
+  const timeoutMs = boundedInteger(env.KANMER_DISPATCH_TIMEOUT_MS, DEFAULT_TIMEOUT_MS2, 1, DEFAULT_MAX_TIMEOUT_MS);
+  if (timeoutMs === null) return disabled(`KANMER_DISPATCH_TIMEOUT_MS must be an integer between 1 and ${DEFAULT_MAX_TIMEOUT_MS}`);
+  const maxTimeoutMs = boundedInteger(env.KANMER_DISPATCH_MAX_TIMEOUT_MS, Math.max(timeoutMs, DEFAULT_MAX_TIMEOUT_MS), timeoutMs, DEFAULT_MAX_TIMEOUT_MS * 4);
+  if (maxTimeoutMs === null) return disabled(`KANMER_DISPATCH_MAX_TIMEOUT_MS must be an integer between ${timeoutMs} and ${DEFAULT_MAX_TIMEOUT_MS * 4}`);
+  const approval = env.KANMER_DISPATCH_APPROVAL?.trim().toLowerCase();
+  if (approval !== "elicit" && approval !== "preapproved") return disabled("KANMER_DISPATCH_APPROVAL must be elicit or preapproved");
+  return { enabled: true, providers, tasks, maxActive, timeoutMs, maxTimeoutMs, approval };
+}
+function dispatchPolicyView(policy) {
+  return { enabled: policy.enabled, providers: [...policy.providers], tasks: [...policy.tasks], maxActive: policy.maxActive, timeoutMs: policy.timeoutMs, maxTimeoutMs: policy.maxTimeoutMs, approval: policy.approval, ...policy.reason ? { reason: policy.reason } : {} };
+}
+
 // src/index.ts
-var execFile = (0, import_node_util.promisify)(import_node_child_process.execFile);
+var execFile2 = (0, import_node_util.promisify)(import_node_child_process.execFile);
 async function inspectBoardBranch(root) {
   try {
-    const { stdout } = await execFile("git", ["symbolic-ref", "--short", "HEAD"], {
+    const { stdout } = await execFile2("git", ["symbolic-ref", "--short", "HEAD"], {
       cwd: root,
       windowsHide: true
     });
@@ -41569,12 +41835,37 @@ function remoteHttpToolNames() {
   const registered = server._registeredTools ?? {};
   return Object.keys(registered).filter((name) => !REMOTE_HTTP_EXCLUDED_TOOLS.has(name)).sort();
 }
+function dispatchTerminalSummary(status, tail) {
+  return [
+    `## Dispatch ${status.dispatchId} \u2014 ${status.provider}`,
+    `- state: ${status.state} (exit ${status.exitCode ?? "unknown"})`,
+    status.reason ? `- reason: ${status.reason}` : "",
+    "",
+    "```",
+    ...tail.slice(-50),
+    "```"
+  ].filter(Boolean).join("\n");
+}
+function dispatchRefusal(code, reason, policy) {
+  return ok({ ok: false, code, reason, policy });
+}
 function createKanmerMcpServer(policy = "local-stdio") {
   if (policy !== "local-stdio" && policy !== "remote-http-v1") {
     throw new Error(`Unknown MCP exposure policy: ${policy}`);
   }
   if (!rootResolved) resolveRoot();
   const server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
+  const dispatchPolicy = parseDispatchPolicy(process.env);
+  const dispatchLogRoot = process.env.KANMER_DISPATCH_LOG_DIR?.trim() || import_node_path5.default.join((0, import_node_os.homedir)(), ".kanmer", "dispatch");
+  const dispatchSupervisor = new DispatchSupervisor({
+    logDir: dispatchLogRoot,
+    maxActive: dispatchPolicy.maxActive,
+    defaultTimeoutMs: dispatchPolicy.timeoutMs,
+    maxTimeoutMs: dispatchPolicy.maxTimeoutMs,
+    recordTerminal: async (status, tail) => {
+      await store.appendScratch(status.ticketId, "dispatch", dispatchTerminalSummary(status, tail));
+    }
+  });
   const registerTool = server.registerTool.bind(server);
   server.registerTool = ((name, config2, ...args) => {
     if (policy === "remote-http-v1" && REMOTE_HTTP_EXCLUDED_TOOLS.has(name)) return { remove: () => void 0 };
@@ -41662,6 +41953,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
         boardSource: source,
         project: projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source }),
         compat: { expectedProject: "optional" },
+        dispatch: dispatchPolicyView(dispatchPolicy),
         deploymentTracking: board.deployment !== void 0,
         boardWorktree: {
           path: projectRoot,
@@ -41795,6 +42087,112 @@ function createKanmerMcpServer(policy = "local-stdio") {
         boardSource: source
       });
       return ok(await getExecutionPacket({ store, id, actor: actorName(server, extra), project }));
+    })
+  );
+  server.registerTool(
+    "dispatch_task",
+    {
+      title: "Dispatch one named task",
+      description: "Start one fixed, named core task for one existing ticket through the operator-enabled dispatch policy. The caller chooses only ticket, shared provider id, shared task id and an optional bounded timeout; command, args, prompt, cwd, environment and log path are never accepted. Dispatch is disabled by default, bearer authentication is not authorization, and `get_status.dispatch` explains the local policy. Refusals are normal structured `{ok:false,code,reason}` results and never create a child or log before all checks and approval pass.",
+      inputSchema: {
+        ticket_id: external_exports.string().describe("Existing non-archived ticket id"),
+        provider: external_exports.string().describe("Operator-allowlisted shared provider id: codex | claude | opencode | grok"),
+        task: external_exports.string().describe("Operator-allowlisted core task id from DISPATCH_TASKS"),
+        timeout_ms: external_exports.number().int().positive().optional().describe("Optional bounded timeout in milliseconds"),
+        expected_project: expectedProjectField
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
+    },
+    guard(async ({ ticket_id, provider, task: taskId, timeout_ms, expected_project }, extra) => {
+      const policy2 = dispatchPolicyView(dispatchPolicy);
+      if (!dispatchPolicy.enabled) return dispatchRefusal("DISPATCH_DISABLED", dispatchPolicy.reason ?? "dispatch is disabled", policy2);
+      if (!dispatchPolicy.providers.includes(provider)) return dispatchRefusal("DISPATCH_PROVIDER_NOT_ALLOWED", `provider "${provider}" is not allowlisted`, policy2);
+      if (!dispatchPolicy.tasks.includes(taskId)) return dispatchRefusal("DISPATCH_TASK_NOT_ALLOWED", `task "${taskId}" is not allowlisted`, policy2);
+      const format = await store.detectFormat();
+      const { source } = await store.getBoardWithSource();
+      const identity = projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
+      if (expected_project !== void 0 && expected_project !== identity.fingerprint) {
+        return failCoded(new KanmerError("WRONG_PROJECT", `expected project ${expected_project} does not match current project ${identity.fingerprint}`));
+      }
+      const item = await store.getItem(ticket_id);
+      if (!item || item.type !== "ticket") return dispatchRefusal("DISPATCH_TICKET_NOT_FOUND", `No ticket "${ticket_id}".`, policy2);
+      if (item.archived) return dispatchRefusal("DISPATCH_TICKET_ARCHIVED", `${ticket_id} is archived.`, policy2);
+      if (item.taken_at) return dispatchRefusal("DISPATCH_TICKET_TAKEN", `${ticket_id} is already taken; dispatch does not steal tickets.`, policy2);
+      const info = await store.getTicketDocsInfo(ticket_id);
+      const task = dispatchTaskById(taskId);
+      if (!task) return dispatchRefusal("DISPATCH_TASK_UNKNOWN", `Unknown task "${taskId}".`, policy2);
+      const feasibility = taskFeasibility(taskId, { stage: item.status, docCounts: info?.counts ?? {} });
+      if (!feasibility.ok) return dispatchRefusal("DISPATCH_TASK_INFEASIBLE", feasibility.reason ?? "task is not feasible for this ticket", policy2);
+      if (dispatchSupervisor.list({ projectId: projectRoot, ticketId: ticket_id, includeRecent: false }).length > 0) return dispatchRefusal("DISPATCH_DUPLICATE", `${ticket_id} already has a dispatch in flight for this project.`, policy2);
+      if (dispatchPolicy.approval === "elicit") {
+        if (!server.server.getClientCapabilities()?.elicitation) return dispatchRefusal("DISPATCH_APPROVAL_UNAVAILABLE", "dispatch approval requires an MCP host with elicitation capability", policy2);
+        try {
+          const approval = await server.server.elicitInput({
+            message: `Allow ${provider}/${taskId} to run for ticket ${ticket_id} in the configured Kanmer project?`,
+            requestedSchema: { type: "object", properties: { confirm: { type: "boolean", description: "true to proceed" } }, required: ["confirm"] }
+          });
+          if (approval.action !== "accept" || approval.content?.confirm !== true) return dispatchRefusal("DISPATCH_APPROVAL_DECLINED", "dispatch approval was declined", policy2);
+        } catch {
+          return dispatchRefusal("DISPATCH_APPROVAL_UNAVAILABLE", "dispatch approval round trip failed; dispatch remains refused", policy2);
+        }
+      }
+      try {
+        const status = await dispatchSupervisor.start({
+          projectId: projectRoot,
+          projectFingerprint: identity.fingerprint,
+          sourceRoot: store.paths.repoRoot,
+          ticketId: ticket_id,
+          provider,
+          requestedBy: actorName(server, extra),
+          task: { id: task.id, label: task.label, deliverable: task.deliverable, prompt: task.prompt(ticket_id) },
+          ...timeout_ms === void 0 ? {} : { timeoutMs: timeout_ms }
+        });
+        return ok({ ok: true, status, deliverable: task.deliverable, warning: feasibility.warning ?? null, policy: policy2 });
+      } catch (error2) {
+        return dispatchRefusal("DISPATCH_START_REFUSED", error2 instanceof Error ? error2.message : String(error2), policy2);
+      }
+    })
+  );
+  server.registerTool(
+    "list_dispatches",
+    {
+      title: "List dispatches",
+      description: "List active and bounded recent dispatch lifecycle metadata for this configured project. Output is sanitized: no command, environment, local log path or raw output tail is ever returned. When policy is disabled the response says so instead of pretending the feature is absent.",
+      inputSchema: {
+        ticket_id: external_exports.string().optional().describe("Filter by ticket id"),
+        state: external_exports.enum(["running", "done", "failed", "cancelled", "timed-out"]).optional(),
+        include_recent: external_exports.boolean().optional().default(true)
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    guard(async ({ ticket_id, state, include_recent }) => ok({
+      policy: dispatchPolicyView(dispatchPolicy),
+      dispatches: dispatchSupervisor.list({ projectId: projectRoot, ...ticket_id ? { ticketId: ticket_id } : {}, ...state ? { state } : {}, includeRecent: include_recent })
+    }))
+  );
+  server.registerTool(
+    "cancel_dispatch",
+    {
+      title: "Cancel a dispatch",
+      description: "Cancel one active dispatch in this configured project. The caller supplies only an opaque dispatch id and a short reason; the server resolves the child and performs safe descendant cancellation. Cancellation is project-bound and policy-bound, and the cancelling actor is recorded.",
+      inputSchema: {
+        dispatch_id: external_exports.string().min(1).max(200).describe("Opaque dispatch id returned by dispatch_task/list_dispatches"),
+        reason: external_exports.string().max(200).optional().describe("Short human-readable cancellation reason"),
+        expected_project: expectedProjectField
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+    },
+    guard(async ({ dispatch_id, reason, expected_project }, extra) => {
+      const policy2 = dispatchPolicyView(dispatchPolicy);
+      if (!dispatchPolicy.enabled) return dispatchRefusal("DISPATCH_DISABLED", dispatchPolicy.reason ?? "dispatch is disabled", policy2);
+      const format = await store.detectFormat();
+      const { source } = await store.getBoardWithSource();
+      const identity = projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
+      if (expected_project !== void 0 && expected_project !== identity.fingerprint) return failCoded(new KanmerError("WRONG_PROJECT", `expected project ${expected_project} does not match current project ${identity.fingerprint}`));
+      const active = dispatchSupervisor.list({ projectId: projectRoot, includeRecent: false }).find((status2) => status2.dispatchId === dispatch_id);
+      if (!active) return dispatchRefusal("DISPATCH_NOT_FOUND", `No active dispatch "${dispatch_id}" in this project.`, policy2);
+      const status = dispatchSupervisor.cancel(dispatch_id, reason?.trim() || "cancelled by client", actorName(server, extra));
+      return status ? ok({ ok: true, status, policy: policy2 }) : dispatchRefusal("DISPATCH_NOT_FOUND", `No active dispatch "${dispatch_id}" in this project.`, policy2);
     })
   );
   server.registerTool(

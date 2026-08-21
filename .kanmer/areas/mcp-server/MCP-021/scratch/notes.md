@@ -59,3 +59,5 @@ Current Cloudflare docs support `--loglevel`/`--logfile` and metrics but do not 
 Commit `1d580c7` closes the post-spawn readiness-failure cleanup gap: the adapter now awaits its owned child’s bounded shutdown before removing the private runtime directory. A regression test verifies this sequence. Focused tunnel/HTTP suite passed 24/24, MCP typecheck and diff check passed.
 
 Commit `78625d7` adds explicit terminal-vs-transient exit classification to the bounded supervisor. The default remains backward-compatible transient behavior, while callers can fail terminal configuration/security/origin-class exits immediately without scheduling a retry. Regression suite passed 25/25 plus MCP typecheck/diff check.
+
+Commit `1391a00` runs direct executable validation from the system temporary directory and retains only `PATH` plus Windows `SystemRoot`, matching child launch safety. Suite passed 25/25, typecheck/diff clean.

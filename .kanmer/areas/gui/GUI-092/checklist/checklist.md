@@ -1,9 +1,15 @@
 # Checklist — GUI-092
 
-- [ ] Add and test local release artifact coherence verification.
-- [ ] Derive and validate the publish file set from the one local pack.
-- [ ] Replace second package build with explicit artifact-list publishing.
-- [ ] Reuse the validated artifact list for the bounded repair upload.
-- [ ] Update dry-run/release diagnostics to describe the one-pack workflow.
-- [ ] Run script tests, relevant type/build checks, release dry-run, and diff check.
+- [x] Add and test local release artifact coherence verification.
+- [x] Resolve whether the installed Electron Builder can safely publish exact existing files; record the config-validation limitation.
+- [x] Replace the two NSIS package invocations with one `--win --publish always` package after tag push.
+- [x] Run packed-app validation and local coherence validation after the sole package.
+- [x] Change failed remote verification to a bounded re-check that never repackages.
+- [x] Update dry-run/release diagnostics to describe the one-package workflow.
+- [x] Run script tests, relevant type/build/package checks, and diff check.
 - [ ] Record the next-release installed-client acceptance as external follow-up evidence; do not claim it locally.
+
+## Progress notes
+
+- The `electron-builder publish --files` command advertised by v26.15.3 rejects this repository's valid GitHub publish config even under `--policy never`; it was not adopted.
+- `npx electron-builder --win --publish never` followed by `check-updater-package.mjs` passes locally as a no-network packaging analogue.

@@ -28,10 +28,11 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// ../../node_modules/ajv/dist/compile/codegen/code.js
+// ../../../../node_modules/ajv/dist/compile/codegen/code.js
 var require_code = __commonJS({
-  "../../node_modules/ajv/dist/compile/codegen/code.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/codegen/code.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.regexpCode = exports2.getEsmExportName = exports2.getProperty = exports2.safeStringify = exports2.stringify = exports2.strConcat = exports2.addCodeArg = exports2.str = exports2._ = exports2.nil = exports2._Code = exports2.Name = exports2.IDENTIFIER = exports2._CodeOrName = void 0;
@@ -183,9 +184,9 @@ var require_code = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/codegen/scope.js
+// ../../../../node_modules/ajv/dist/compile/codegen/scope.js
 var require_scope = __commonJS({
-  "../../node_modules/ajv/dist/compile/codegen/scope.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/codegen/scope.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.ValueScope = exports2.ValueScopeName = exports2.Scope = exports2.varKinds = exports2.UsedValueState = void 0;
@@ -328,9 +329,9 @@ var require_scope = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/codegen/index.js
+// ../../../../node_modules/ajv/dist/compile/codegen/index.js
 var require_codegen = __commonJS({
-  "../../node_modules/ajv/dist/compile/codegen/index.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/codegen/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.or = exports2.and = exports2.not = exports2.CodeGen = exports2.operators = exports2.varKinds = exports2.ValueScopeName = exports2.ValueScope = exports2.Scope = exports2.Name = exports2.regexpCode = exports2.stringify = exports2.getProperty = exports2.nil = exports2.strConcat = exports2.str = exports2._ = void 0;
@@ -1048,9 +1049,9 @@ var require_codegen = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/util.js
+// ../../../../node_modules/ajv/dist/compile/util.js
 var require_util = __commonJS({
-  "../../node_modules/ajv/dist/compile/util.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/util.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.checkStrictMode = exports2.getErrorPath = exports2.Type = exports2.useFunc = exports2.setEvaluated = exports2.evaluatedPropsToName = exports2.mergeEvaluated = exports2.eachItem = exports2.unescapeJsonPointer = exports2.escapeJsonPointer = exports2.escapeFragment = exports2.unescapeFragment = exports2.schemaRefOrVal = exports2.schemaHasRulesButRef = exports2.schemaHasRules = exports2.checkUnknownRules = exports2.alwaysValidSchema = exports2.toHash = void 0;
@@ -1215,9 +1216,9 @@ var require_util = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/names.js
+// ../../../../node_modules/ajv/dist/compile/names.js
 var require_names = __commonJS({
-  "../../node_modules/ajv/dist/compile/names.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/names.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -1254,9 +1255,9 @@ var require_names = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/errors.js
+// ../../../../node_modules/ajv/dist/compile/errors.js
 var require_errors = __commonJS({
-  "../../node_modules/ajv/dist/compile/errors.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/errors.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.extendErrors = exports2.resetErrorsCount = exports2.reportExtraError = exports2.reportError = exports2.keyword$DataError = exports2.keywordError = void 0;
@@ -1376,9 +1377,9 @@ var require_errors = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/validate/boolSchema.js
+// ../../../../node_modules/ajv/dist/compile/validate/boolSchema.js
 var require_boolSchema = __commonJS({
-  "../../node_modules/ajv/dist/compile/validate/boolSchema.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/validate/boolSchema.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.boolOrEmptySchema = exports2.topBoolOrEmptySchema = void 0;
@@ -1427,9 +1428,9 @@ var require_boolSchema = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/rules.js
+// ../../../../node_modules/ajv/dist/compile/rules.js
 var require_rules = __commonJS({
-  "../../node_modules/ajv/dist/compile/rules.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/rules.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.getRules = exports2.isJSONType = void 0;
@@ -1458,9 +1459,9 @@ var require_rules = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/validate/applicability.js
+// ../../../../node_modules/ajv/dist/compile/validate/applicability.js
 var require_applicability = __commonJS({
-  "../../node_modules/ajv/dist/compile/validate/applicability.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/validate/applicability.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.shouldUseRule = exports2.shouldUseGroup = exports2.schemaHasRulesForType = void 0;
@@ -1481,9 +1482,9 @@ var require_applicability = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/validate/dataType.js
+// ../../../../node_modules/ajv/dist/compile/validate/dataType.js
 var require_dataType = __commonJS({
-  "../../node_modules/ajv/dist/compile/validate/dataType.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/validate/dataType.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.reportTypeError = exports2.checkDataTypes = exports2.checkDataType = exports2.coerceAndCheckDataType = exports2.getJSONTypes = exports2.getSchemaTypes = exports2.DataType = void 0;
@@ -1665,9 +1666,9 @@ var require_dataType = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/validate/defaults.js
+// ../../../../node_modules/ajv/dist/compile/validate/defaults.js
 var require_defaults = __commonJS({
-  "../../node_modules/ajv/dist/compile/validate/defaults.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/validate/defaults.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.assignDefaults = void 0;
@@ -1702,9 +1703,9 @@ var require_defaults = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/code.js
+// ../../../../node_modules/ajv/dist/vocabularies/code.js
 var require_code2 = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/code.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/code.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.validateUnion = exports2.validateArray = exports2.usePattern = exports2.callValidateCode = exports2.schemaProperties = exports2.allSchemaProperties = exports2.noPropertyInData = exports2.propertyInData = exports2.isOwnProperty = exports2.hasPropFunc = exports2.reportMissingProp = exports2.checkMissingProp = exports2.checkReportMissingProp = void 0;
@@ -1835,9 +1836,9 @@ var require_code2 = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/validate/keyword.js
+// ../../../../node_modules/ajv/dist/compile/validate/keyword.js
 var require_keyword = __commonJS({
-  "../../node_modules/ajv/dist/compile/validate/keyword.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/validate/keyword.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.validateKeywordUsage = exports2.validSchemaType = exports2.funcKeywordCode = exports2.macroKeywordCode = void 0;
@@ -1953,9 +1954,9 @@ var require_keyword = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/validate/subschema.js
+// ../../../../node_modules/ajv/dist/compile/validate/subschema.js
 var require_subschema = __commonJS({
-  "../../node_modules/ajv/dist/compile/validate/subschema.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/validate/subschema.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.extendSubschemaMode = exports2.extendSubschemaData = exports2.getSubschema = void 0;
@@ -2036,9 +2037,9 @@ var require_subschema = __commonJS({
   }
 });
 
-// ../../node_modules/fast-deep-equal/index.js
+// ../../../../node_modules/fast-deep-equal/index.js
 var require_fast_deep_equal = __commonJS({
-  "../../node_modules/fast-deep-equal/index.js"(exports2, module2) {
+  "../../../../node_modules/fast-deep-equal/index.js"(exports2, module2) {
     "use strict";
     module2.exports = function equal(a, b) {
       if (a === b) return true;
@@ -2071,9 +2072,9 @@ var require_fast_deep_equal = __commonJS({
   }
 });
 
-// ../../node_modules/json-schema-traverse/index.js
+// ../../../../node_modules/json-schema-traverse/index.js
 var require_json_schema_traverse = __commonJS({
-  "../../node_modules/json-schema-traverse/index.js"(exports2, module2) {
+  "../../../../node_modules/json-schema-traverse/index.js"(exports2, module2) {
     "use strict";
     var traverse = module2.exports = function(schema, opts, cb) {
       if (typeof opts == "function") {
@@ -2159,9 +2160,9 @@ var require_json_schema_traverse = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/resolve.js
+// ../../../../node_modules/ajv/dist/compile/resolve.js
 var require_resolve = __commonJS({
-  "../../node_modules/ajv/dist/compile/resolve.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/resolve.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.getSchemaRefs = exports2.resolveUrl = exports2.normalizeId = exports2._getFullPath = exports2.getFullPath = exports2.inlineRef = void 0;
@@ -2315,9 +2316,9 @@ var require_resolve = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/validate/index.js
+// ../../../../node_modules/ajv/dist/compile/validate/index.js
 var require_validate = __commonJS({
-  "../../node_modules/ajv/dist/compile/validate/index.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/validate/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.getData = exports2.KeywordCxt = exports2.validateFunctionCode = void 0;
@@ -2823,9 +2824,9 @@ var require_validate = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/runtime/validation_error.js
+// ../../../../node_modules/ajv/dist/runtime/validation_error.js
 var require_validation_error = __commonJS({
-  "../../node_modules/ajv/dist/runtime/validation_error.js"(exports2) {
+  "../../../../node_modules/ajv/dist/runtime/validation_error.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var ValidationError = class extends Error {
@@ -2839,9 +2840,9 @@ var require_validation_error = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/ref_error.js
+// ../../../../node_modules/ajv/dist/compile/ref_error.js
 var require_ref_error = __commonJS({
-  "../../node_modules/ajv/dist/compile/ref_error.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/ref_error.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var resolve_1 = require_resolve();
@@ -2856,9 +2857,9 @@ var require_ref_error = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/compile/index.js
+// ../../../../node_modules/ajv/dist/compile/index.js
 var require_compile = __commonJS({
-  "../../node_modules/ajv/dist/compile/index.js"(exports2) {
+  "../../../../node_modules/ajv/dist/compile/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.resolveSchema = exports2.getCompilingSchema = exports2.resolveRef = exports2.compileSchema = exports2.SchemaEnv = void 0;
@@ -3080,9 +3081,9 @@ var require_compile = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/refs/data.json
+// ../../../../node_modules/ajv/dist/refs/data.json
 var require_data = __commonJS({
-  "../../node_modules/ajv/dist/refs/data.json"(exports2, module2) {
+  "../../../../node_modules/ajv/dist/refs/data.json"(exports2, module2) {
     module2.exports = {
       $id: "https://raw.githubusercontent.com/ajv-validator/ajv/master/lib/refs/data.json#",
       description: "Meta-schema for $data reference (JSON AnySchema extension proposal)",
@@ -3099,9 +3100,9 @@ var require_data = __commonJS({
   }
 });
 
-// ../../node_modules/fast-uri/lib/utils.js
+// ../../../../node_modules/fast-uri/lib/utils.js
 var require_utils = __commonJS({
-  "../../node_modules/fast-uri/lib/utils.js"(exports2, module2) {
+  "../../../../node_modules/fast-uri/lib/utils.js"(exports2, module2) {
     "use strict";
     var isUUID = RegExp.prototype.test.bind(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu);
     var isIPv4 = RegExp.prototype.test.bind(/^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)$/u);
@@ -3225,8 +3226,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path16) {
-      let input = path16;
+    function removeDotSegments(path17) {
+      let input = path17;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3412,9 +3413,9 @@ var require_utils = __commonJS({
   }
 });
 
-// ../../node_modules/fast-uri/lib/schemes.js
+// ../../../../node_modules/fast-uri/lib/schemes.js
 var require_schemes = __commonJS({
-  "../../node_modules/fast-uri/lib/schemes.js"(exports2, module2) {
+  "../../../../node_modules/fast-uri/lib/schemes.js"(exports2, module2) {
     "use strict";
     var { isUUID } = require_utils();
     var URN_REG = /([\da-z][\d\-a-z]{0,31}):((?:[\w!$'()*+,\-.:;=@]|%[\da-f]{2})+)/iu;
@@ -3478,8 +3479,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path16, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path16 && path16 !== "/" ? path16 : void 0;
+        const [path17, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path17 && path17 !== "/" ? path17 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -3622,9 +3623,9 @@ var require_schemes = __commonJS({
   }
 });
 
-// ../../node_modules/fast-uri/index.js
+// ../../../../node_modules/fast-uri/index.js
 var require_fast_uri = __commonJS({
-  "../../node_modules/fast-uri/index.js"(exports2, module2) {
+  "../../../../node_modules/fast-uri/index.js"(exports2, module2) {
     "use strict";
     var { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizePercentEncoding, normalizePathEncoding, escapePreservingEscapes, reescapeHostDelimiters, isIPv4, nonSimpleDomain } = require_utils();
     var { SCHEMES, getSchemeHandler } = require_schemes();
@@ -3934,9 +3935,9 @@ var require_fast_uri = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/runtime/uri.js
+// ../../../../node_modules/ajv/dist/runtime/uri.js
 var require_uri = __commonJS({
-  "../../node_modules/ajv/dist/runtime/uri.js"(exports2) {
+  "../../../../node_modules/ajv/dist/runtime/uri.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var uri = require_fast_uri();
@@ -3945,9 +3946,9 @@ var require_uri = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/core.js
+// ../../../../node_modules/ajv/dist/core.js
 var require_core = __commonJS({
-  "../../node_modules/ajv/dist/core.js"(exports2) {
+  "../../../../node_modules/ajv/dist/core.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.CodeGen = exports2.Name = exports2.nil = exports2.stringify = exports2.str = exports2._ = exports2.KeywordCxt = void 0;
@@ -4556,9 +4557,9 @@ var require_core = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/core/id.js
+// ../../../../node_modules/ajv/dist/vocabularies/core/id.js
 var require_id = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/core/id.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/core/id.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var def = {
@@ -4571,9 +4572,9 @@ var require_id = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/core/ref.js
+// ../../../../node_modules/ajv/dist/vocabularies/core/ref.js
 var require_ref = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/core/ref.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/core/ref.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.callRef = exports2.getValidate = void 0;
@@ -4693,9 +4694,9 @@ var require_ref = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/core/index.js
+// ../../../../node_modules/ajv/dist/vocabularies/core/index.js
 var require_core2 = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/core/index.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/core/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var id_1 = require_id();
@@ -4714,9 +4715,9 @@ var require_core2 = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/validation/limitNumber.js
+// ../../../../node_modules/ajv/dist/vocabularies/validation/limitNumber.js
 var require_limitNumber = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/validation/limitNumber.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/validation/limitNumber.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -4746,9 +4747,9 @@ var require_limitNumber = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/validation/multipleOf.js
+// ../../../../node_modules/ajv/dist/vocabularies/validation/multipleOf.js
 var require_multipleOf = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/validation/multipleOf.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/validation/multipleOf.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -4774,9 +4775,9 @@ var require_multipleOf = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/runtime/ucs2length.js
+// ../../../../node_modules/ajv/dist/runtime/ucs2length.js
 var require_ucs2length = __commonJS({
-  "../../node_modules/ajv/dist/runtime/ucs2length.js"(exports2) {
+  "../../../../node_modules/ajv/dist/runtime/ucs2length.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     function ucs2length(str2) {
@@ -4800,9 +4801,9 @@ var require_ucs2length = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/validation/limitLength.js
+// ../../../../node_modules/ajv/dist/vocabularies/validation/limitLength.js
 var require_limitLength = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/validation/limitLength.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/validation/limitLength.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -4832,9 +4833,9 @@ var require_limitLength = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/validation/pattern.js
+// ../../../../node_modules/ajv/dist/vocabularies/validation/pattern.js
 var require_pattern = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/validation/pattern.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/validation/pattern.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -4869,9 +4870,9 @@ var require_pattern = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/validation/limitProperties.js
+// ../../../../node_modules/ajv/dist/vocabularies/validation/limitProperties.js
 var require_limitProperties = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/validation/limitProperties.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/validation/limitProperties.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -4898,9 +4899,9 @@ var require_limitProperties = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/validation/required.js
+// ../../../../node_modules/ajv/dist/vocabularies/validation/required.js
 var require_required = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/validation/required.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/validation/required.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -4980,9 +4981,9 @@ var require_required = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/validation/limitItems.js
+// ../../../../node_modules/ajv/dist/vocabularies/validation/limitItems.js
 var require_limitItems = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/validation/limitItems.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/validation/limitItems.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5009,9 +5010,9 @@ var require_limitItems = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/runtime/equal.js
+// ../../../../node_modules/ajv/dist/runtime/equal.js
 var require_equal = __commonJS({
-  "../../node_modules/ajv/dist/runtime/equal.js"(exports2) {
+  "../../../../node_modules/ajv/dist/runtime/equal.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var equal = require_fast_deep_equal();
@@ -5020,9 +5021,9 @@ var require_equal = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/validation/uniqueItems.js
+// ../../../../node_modules/ajv/dist/vocabularies/validation/uniqueItems.js
 var require_uniqueItems = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/validation/uniqueItems.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/validation/uniqueItems.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var dataType_1 = require_dataType();
@@ -5087,9 +5088,9 @@ var require_uniqueItems = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/validation/const.js
+// ../../../../node_modules/ajv/dist/vocabularies/validation/const.js
 var require_const = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/validation/const.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/validation/const.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5116,9 +5117,9 @@ var require_const = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/validation/enum.js
+// ../../../../node_modules/ajv/dist/vocabularies/validation/enum.js
 var require_enum = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/validation/enum.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/validation/enum.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5165,9 +5166,9 @@ var require_enum = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/validation/index.js
+// ../../../../node_modules/ajv/dist/vocabularies/validation/index.js
 var require_validation = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/validation/index.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/validation/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var limitNumber_1 = require_limitNumber();
@@ -5203,9 +5204,9 @@ var require_validation = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/additionalItems.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/additionalItems.js
 var require_additionalItems = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/additionalItems.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/additionalItems.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.validateAdditionalItems = void 0;
@@ -5256,9 +5257,9 @@ var require_additionalItems = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/items.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/items.js
 var require_items = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/items.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/items.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.validateTuple = void 0;
@@ -5313,9 +5314,9 @@ var require_items = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/prefixItems.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/prefixItems.js
 var require_prefixItems = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/prefixItems.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/prefixItems.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var items_1 = require_items();
@@ -5330,9 +5331,9 @@ var require_prefixItems = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/items2020.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/items2020.js
 var require_items2020 = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/items2020.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/items2020.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5365,9 +5366,9 @@ var require_items2020 = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/contains.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/contains.js
 var require_contains = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/contains.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/contains.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5459,9 +5460,9 @@ var require_contains = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/dependencies.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/dependencies.js
 var require_dependencies = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/dependencies.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/dependencies.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.validateSchemaDeps = exports2.validatePropertyDeps = exports2.error = void 0;
@@ -5553,9 +5554,9 @@ var require_dependencies = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/propertyNames.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/propertyNames.js
 var require_propertyNames = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/propertyNames.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/propertyNames.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5596,9 +5597,9 @@ var require_propertyNames = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js
 var require_additionalProperties = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -5702,9 +5703,9 @@ var require_additionalProperties = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/properties.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/properties.js
 var require_properties = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/properties.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/properties.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var validate_1 = require_validate();
@@ -5760,9 +5761,9 @@ var require_properties = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/patternProperties.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/patternProperties.js
 var require_patternProperties = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/patternProperties.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/patternProperties.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -5834,9 +5835,9 @@ var require_patternProperties = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/not.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/not.js
 var require_not = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/not.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/not.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var util_1 = require_util();
@@ -5865,9 +5866,9 @@ var require_not = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/anyOf.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/anyOf.js
 var require_anyOf = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/anyOf.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/anyOf.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -5882,9 +5883,9 @@ var require_anyOf = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/oneOf.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/oneOf.js
 var require_oneOf = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/oneOf.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/oneOf.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5940,9 +5941,9 @@ var require_oneOf = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/allOf.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/allOf.js
 var require_allOf = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/allOf.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/allOf.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var util_1 = require_util();
@@ -5967,9 +5968,9 @@ var require_allOf = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/if.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/if.js
 var require_if = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/if.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/if.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -6036,9 +6037,9 @@ var require_if = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/thenElse.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/thenElse.js
 var require_thenElse = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/thenElse.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/thenElse.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var util_1 = require_util();
@@ -6054,9 +6055,9 @@ var require_thenElse = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/applicator/index.js
+// ../../../../node_modules/ajv/dist/vocabularies/applicator/index.js
 var require_applicator = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/applicator/index.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/applicator/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var additionalItems_1 = require_additionalItems();
@@ -6102,9 +6103,9 @@ var require_applicator = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/format/format.js
+// ../../../../node_modules/ajv/dist/vocabularies/format/format.js
 var require_format = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/format/format.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/format/format.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -6192,9 +6193,9 @@ var require_format = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/format/index.js
+// ../../../../node_modules/ajv/dist/vocabularies/format/index.js
 var require_format2 = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/format/index.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/format/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var format_1 = require_format();
@@ -6203,9 +6204,9 @@ var require_format2 = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/metadata.js
+// ../../../../node_modules/ajv/dist/vocabularies/metadata.js
 var require_metadata = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/metadata.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/metadata.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.contentVocabulary = exports2.metadataVocabulary = void 0;
@@ -6226,9 +6227,9 @@ var require_metadata = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/draft7.js
+// ../../../../node_modules/ajv/dist/vocabularies/draft7.js
 var require_draft7 = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/draft7.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/draft7.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var core_1 = require_core2();
@@ -6248,9 +6249,9 @@ var require_draft7 = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/discriminator/types.js
+// ../../../../node_modules/ajv/dist/vocabularies/discriminator/types.js
 var require_types = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/discriminator/types.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/discriminator/types.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DiscrError = void 0;
@@ -6262,9 +6263,9 @@ var require_types = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/vocabularies/discriminator/index.js
+// ../../../../node_modules/ajv/dist/vocabularies/discriminator/index.js
 var require_discriminator = __commonJS({
-  "../../node_modules/ajv/dist/vocabularies/discriminator/index.js"(exports2) {
+  "../../../../node_modules/ajv/dist/vocabularies/discriminator/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -6367,9 +6368,9 @@ var require_discriminator = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/refs/json-schema-draft-07.json
+// ../../../../node_modules/ajv/dist/refs/json-schema-draft-07.json
 var require_json_schema_draft_07 = __commonJS({
-  "../../node_modules/ajv/dist/refs/json-schema-draft-07.json"(exports2, module2) {
+  "../../../../node_modules/ajv/dist/refs/json-schema-draft-07.json"(exports2, module2) {
     module2.exports = {
       $schema: "http://json-schema.org/draft-07/schema#",
       $id: "http://json-schema.org/draft-07/schema#",
@@ -6524,9 +6525,9 @@ var require_json_schema_draft_07 = __commonJS({
   }
 });
 
-// ../../node_modules/ajv/dist/ajv.js
+// ../../../../node_modules/ajv/dist/ajv.js
 var require_ajv = __commonJS({
-  "../../node_modules/ajv/dist/ajv.js"(exports2, module2) {
+  "../../../../node_modules/ajv/dist/ajv.js"(exports2, module2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.MissingRefError = exports2.ValidationError = exports2.CodeGen = exports2.Name = exports2.nil = exports2.stringify = exports2.str = exports2._ = exports2.KeywordCxt = exports2.Ajv = void 0;
@@ -6594,9 +6595,9 @@ var require_ajv = __commonJS({
   }
 });
 
-// ../../node_modules/ajv-formats/dist/formats.js
+// ../../../../node_modules/ajv-formats/dist/formats.js
 var require_formats = __commonJS({
-  "../../node_modules/ajv-formats/dist/formats.js"(exports2) {
+  "../../../../node_modules/ajv-formats/dist/formats.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.formatNames = exports2.fastFormats = exports2.fullFormats = void 0;
@@ -6797,9 +6798,9 @@ var require_formats = __commonJS({
   }
 });
 
-// ../../node_modules/ajv-formats/dist/limit.js
+// ../../../../node_modules/ajv-formats/dist/limit.js
 var require_limit = __commonJS({
-  "../../node_modules/ajv-formats/dist/limit.js"(exports2) {
+  "../../../../node_modules/ajv-formats/dist/limit.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.formatLimitDefinition = void 0;
@@ -6869,9 +6870,9 @@ var require_limit = __commonJS({
   }
 });
 
-// ../../node_modules/ajv-formats/dist/index.js
+// ../../../../node_modules/ajv-formats/dist/index.js
 var require_dist = __commonJS({
-  "../../node_modules/ajv-formats/dist/index.js"(exports2, module2) {
+  "../../../../node_modules/ajv-formats/dist/index.js"(exports2, module2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var formats_1 = require_formats();
@@ -6911,9 +6912,9 @@ var require_dist = __commonJS({
   }
 });
 
-// ../../node_modules/kind-of/index.js
+// ../../../../node_modules/kind-of/index.js
 var require_kind_of = __commonJS({
-  "../../node_modules/kind-of/index.js"(exports2, module2) {
+  "../../../../node_modules/kind-of/index.js"(exports2, module2) {
     "use strict";
     var toString = Object.prototype.toString;
     module2.exports = function kindOf(val) {
@@ -7033,9 +7034,9 @@ var require_kind_of = __commonJS({
   }
 });
 
-// ../../node_modules/is-extendable/index.js
+// ../../../../node_modules/is-extendable/index.js
 var require_is_extendable = __commonJS({
-  "../../node_modules/is-extendable/index.js"(exports2, module2) {
+  "../../../../node_modules/is-extendable/index.js"(exports2, module2) {
     "use strict";
     module2.exports = function isExtendable(val) {
       return typeof val !== "undefined" && val !== null && (typeof val === "object" || typeof val === "function");
@@ -7043,9 +7044,9 @@ var require_is_extendable = __commonJS({
   }
 });
 
-// ../../node_modules/extend-shallow/index.js
+// ../../../../node_modules/extend-shallow/index.js
 var require_extend_shallow = __commonJS({
-  "../../node_modules/extend-shallow/index.js"(exports2, module2) {
+  "../../../../node_modules/extend-shallow/index.js"(exports2, module2) {
     "use strict";
     var isObject2 = require_is_extendable();
     module2.exports = function extend2(o) {
@@ -7074,9 +7075,9 @@ var require_extend_shallow = __commonJS({
   }
 });
 
-// ../../node_modules/section-matter/index.js
+// ../../../../node_modules/section-matter/index.js
 var require_section_matter = __commonJS({
-  "../../node_modules/section-matter/index.js"(exports2, module2) {
+  "../../../../node_modules/section-matter/index.js"(exports2, module2) {
     "use strict";
     var typeOf = require_kind_of();
     var extend2 = require_extend_shallow();
@@ -7181,9 +7182,9 @@ var require_section_matter = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/common.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/common.js
 var require_common = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/common.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/common.js"(exports2, module2) {
     "use strict";
     function isNothing(subject) {
       return typeof subject === "undefined" || subject === null;
@@ -7226,9 +7227,9 @@ var require_common = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/exception.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/exception.js
 var require_exception = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/exception.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/exception.js"(exports2, module2) {
     "use strict";
     function YAMLException(reason, mark) {
       Error.call(this);
@@ -7256,9 +7257,9 @@ var require_exception = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/mark.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/mark.js
 var require_mark = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/mark.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/mark.js"(exports2, module2) {
     "use strict";
     var common = require_common();
     function Mark(name, buffer, position, line, column) {
@@ -7314,9 +7315,9 @@ var require_mark = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type.js
 var require_type = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type.js"(exports2, module2) {
     "use strict";
     var YAMLException = require_exception();
     var TYPE_CONSTRUCTOR_OPTIONS = [
@@ -7373,9 +7374,9 @@ var require_type = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema.js
 var require_schema = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema.js"(exports2, module2) {
     "use strict";
     var common = require_common();
     var YAMLException = require_exception();
@@ -7461,9 +7462,9 @@ var require_schema = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/str.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/str.js
 var require_str = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/str.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/str.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     module2.exports = new Type("tag:yaml.org,2002:str", {
@@ -7475,9 +7476,9 @@ var require_str = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/seq.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/seq.js
 var require_seq = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/seq.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/seq.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     module2.exports = new Type("tag:yaml.org,2002:seq", {
@@ -7489,9 +7490,9 @@ var require_seq = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/map.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/map.js
 var require_map = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/map.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/map.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     module2.exports = new Type("tag:yaml.org,2002:map", {
@@ -7503,9 +7504,9 @@ var require_map = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/failsafe.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/failsafe.js
 var require_failsafe = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/failsafe.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/failsafe.js"(exports2, module2) {
     "use strict";
     var Schema = require_schema();
     module2.exports = new Schema({
@@ -7518,9 +7519,9 @@ var require_failsafe = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/null.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/null.js
 var require_null = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/null.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/null.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     function resolveYamlNull(data) {
@@ -7558,9 +7559,9 @@ var require_null = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/bool.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/bool.js
 var require_bool = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/bool.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/bool.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     function resolveYamlBoolean(data) {
@@ -7595,9 +7596,9 @@ var require_bool = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/int.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/int.js
 var require_int = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/int.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/int.js"(exports2, module2) {
     "use strict";
     var common = require_common();
     var Type = require_type();
@@ -7728,9 +7729,9 @@ var require_int = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/float.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/float.js
 var require_float = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/float.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/float.js"(exports2, module2) {
     "use strict";
     var common = require_common();
     var Type = require_type();
@@ -7823,9 +7824,9 @@ var require_float = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/json.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/json.js
 var require_json = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/json.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/json.js"(exports2, module2) {
     "use strict";
     var Schema = require_schema();
     module2.exports = new Schema({
@@ -7842,9 +7843,9 @@ var require_json = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/core.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/core.js
 var require_core3 = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/core.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/core.js"(exports2, module2) {
     "use strict";
     var Schema = require_schema();
     module2.exports = new Schema({
@@ -7855,9 +7856,9 @@ var require_core3 = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/timestamp.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/timestamp.js
 var require_timestamp = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/timestamp.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/timestamp.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     var YAML_DATE_REGEXP = new RegExp(
@@ -7916,9 +7917,9 @@ var require_timestamp = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/merge.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/merge.js
 var require_merge = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/merge.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/merge.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     function resolveYamlMerge(data) {
@@ -7931,9 +7932,9 @@ var require_merge = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/binary.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/binary.js
 var require_binary = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/binary.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/binary.js"(exports2, module2) {
     "use strict";
     var NodeBuffer;
     try {
@@ -8024,9 +8025,9 @@ var require_binary = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/omap.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/omap.js
 var require_omap = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/omap.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/omap.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     var _hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -8061,9 +8062,9 @@ var require_omap = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/pairs.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/pairs.js
 var require_pairs = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/pairs.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/pairs.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     var _toString = Object.prototype.toString;
@@ -8099,9 +8100,9 @@ var require_pairs = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/set.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/set.js
 var require_set = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/set.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/set.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     var _hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -8126,9 +8127,9 @@ var require_set = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/default_safe.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/default_safe.js
 var require_default_safe = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/default_safe.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/default_safe.js"(exports2, module2) {
     "use strict";
     var Schema = require_schema();
     module2.exports = new Schema({
@@ -8149,9 +8150,9 @@ var require_default_safe = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/undefined.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/undefined.js
 var require_undefined = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/undefined.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/undefined.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     function resolveJavascriptUndefined() {
@@ -8176,9 +8177,9 @@ var require_undefined = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/regexp.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/regexp.js
 var require_regexp = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/regexp.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/regexp.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     function resolveJavascriptRegExp(data) {
@@ -8220,9 +8221,9 @@ var require_regexp = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/function.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/function.js
 var require_function = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/function.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/function.js"(exports2, module2) {
     "use strict";
     var esprima;
     try {
@@ -8275,9 +8276,9 @@ var require_function = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/default_full.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/default_full.js
 var require_default_full = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/default_full.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/default_full.js"(exports2, module2) {
     "use strict";
     var Schema = require_schema();
     module2.exports = Schema.DEFAULT = new Schema({
@@ -8293,9 +8294,9 @@ var require_default_full = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/loader.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/loader.js
 var require_loader = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/loader.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/loader.js"(exports2, module2) {
     "use strict";
     var common = require_common();
     var YAMLException = require_exception();
@@ -9417,9 +9418,9 @@ var require_loader = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/dumper.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/dumper.js
 var require_dumper = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/dumper.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/dumper.js"(exports2, module2) {
     "use strict";
     var common = require_common();
     var YAMLException = require_exception();
@@ -9965,9 +9966,9 @@ var require_dumper = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml.js
 var require_js_yaml = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml.js"(exports2, module2) {
     "use strict";
     var loader = require_loader();
     var dumper = require_dumper();
@@ -10000,18 +10001,18 @@ var require_js_yaml = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/index.js
+// ../../../../node_modules/gray-matter/node_modules/js-yaml/index.js
 var require_js_yaml2 = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/index.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/node_modules/js-yaml/index.js"(exports2, module2) {
     "use strict";
     var yaml2 = require_js_yaml();
     module2.exports = yaml2;
   }
 });
 
-// ../../node_modules/gray-matter/lib/engines.js
+// ../../../../node_modules/gray-matter/lib/engines.js
 var require_engines = __commonJS({
-  "../../node_modules/gray-matter/lib/engines.js"(exports, module) {
+  "../../../../node_modules/gray-matter/lib/engines.js"(exports, module) {
     "use strict";
     var yaml = require_js_yaml2();
     var engines = exports = module.exports;
@@ -10047,9 +10048,9 @@ var require_engines = __commonJS({
   }
 });
 
-// ../../node_modules/strip-bom-string/index.js
+// ../../../../node_modules/strip-bom-string/index.js
 var require_strip_bom_string = __commonJS({
-  "../../node_modules/strip-bom-string/index.js"(exports2, module2) {
+  "../../../../node_modules/strip-bom-string/index.js"(exports2, module2) {
     "use strict";
     module2.exports = function(str2) {
       if (typeof str2 === "string" && str2.charAt(0) === "\uFEFF") {
@@ -10060,9 +10061,9 @@ var require_strip_bom_string = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/lib/utils.js
+// ../../../../node_modules/gray-matter/lib/utils.js
 var require_utils2 = __commonJS({
-  "../../node_modules/gray-matter/lib/utils.js"(exports2) {
+  "../../../../node_modules/gray-matter/lib/utils.js"(exports2) {
     "use strict";
     var stripBom = require_strip_bom_string();
     var typeOf = require_kind_of();
@@ -10100,9 +10101,9 @@ var require_utils2 = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/lib/defaults.js
+// ../../../../node_modules/gray-matter/lib/defaults.js
 var require_defaults2 = __commonJS({
-  "../../node_modules/gray-matter/lib/defaults.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/lib/defaults.js"(exports2, module2) {
     "use strict";
     var engines2 = require_engines();
     var utils = require_utils2();
@@ -10119,9 +10120,9 @@ var require_defaults2 = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/lib/engine.js
+// ../../../../node_modules/gray-matter/lib/engine.js
 var require_engine = __commonJS({
-  "../../node_modules/gray-matter/lib/engine.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/lib/engine.js"(exports2, module2) {
     "use strict";
     module2.exports = function(name, options2) {
       let engine = options2.engines[name] || options2.engines[aliase(name)];
@@ -10153,9 +10154,9 @@ var require_engine = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/lib/stringify.js
+// ../../../../node_modules/gray-matter/lib/stringify.js
 var require_stringify = __commonJS({
-  "../../node_modules/gray-matter/lib/stringify.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/lib/stringify.js"(exports2, module2) {
     "use strict";
     var typeOf = require_kind_of();
     var getEngine = require_engine();
@@ -10206,9 +10207,9 @@ var require_stringify = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/lib/excerpt.js
+// ../../../../node_modules/gray-matter/lib/excerpt.js
 var require_excerpt = __commonJS({
-  "../../node_modules/gray-matter/lib/excerpt.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/lib/excerpt.js"(exports2, module2) {
     "use strict";
     var defaults = require_defaults2();
     module2.exports = function(file, options2) {
@@ -10233,9 +10234,9 @@ var require_excerpt = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/lib/to-file.js
+// ../../../../node_modules/gray-matter/lib/to-file.js
 var require_to_file = __commonJS({
-  "../../node_modules/gray-matter/lib/to-file.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/lib/to-file.js"(exports2, module2) {
     "use strict";
     var typeOf = require_kind_of();
     var stringify = require_stringify();
@@ -10267,9 +10268,9 @@ var require_to_file = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/lib/parse.js
+// ../../../../node_modules/gray-matter/lib/parse.js
 var require_parse = __commonJS({
-  "../../node_modules/gray-matter/lib/parse.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/lib/parse.js"(exports2, module2) {
     "use strict";
     var getEngine = require_engine();
     var defaults = require_defaults2();
@@ -10284,9 +10285,9 @@ var require_parse = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/index.js
+// ../../../../node_modules/gray-matter/index.js
 var require_gray_matter = __commonJS({
-  "../../node_modules/gray-matter/index.js"(exports2, module2) {
+  "../../../../node_modules/gray-matter/index.js"(exports2, module2) {
     "use strict";
     var fs12 = require("fs");
     var sections = require_section_matter();
@@ -10400,9 +10401,9 @@ var require_gray_matter = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/nodes/identity.js
+// ../../../../node_modules/yaml/dist/nodes/identity.js
 var require_identity = __commonJS({
-  "../../node_modules/yaml/dist/nodes/identity.js"(exports2) {
+  "../../../../node_modules/yaml/dist/nodes/identity.js"(exports2) {
     "use strict";
     var ALIAS = /* @__PURE__ */ Symbol.for("yaml.alias");
     var DOC = /* @__PURE__ */ Symbol.for("yaml.document");
@@ -10457,9 +10458,9 @@ var require_identity = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/visit.js
+// ../../../../node_modules/yaml/dist/visit.js
 var require_visit = __commonJS({
-  "../../node_modules/yaml/dist/visit.js"(exports2) {
+  "../../../../node_modules/yaml/dist/visit.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var BREAK = /* @__PURE__ */ Symbol("break visit");
@@ -10477,17 +10478,17 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path16) {
-      const ctrl = callVisitor(key, node, visitor, path16);
+    function visit_(key, node, visitor, path17) {
+      const ctrl = callVisitor(key, node, visitor, path17);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path16, ctrl);
-        return visit_(key, ctrl, visitor, path16);
+        replaceNode(key, path17, ctrl);
+        return visit_(key, ctrl, visitor, path17);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path16 = Object.freeze(path16.concat(node));
+          path17 = Object.freeze(path17.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = visit_(i, node.items[i], visitor, path16);
+            const ci = visit_(i, node.items[i], visitor, path17);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -10498,13 +10499,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path16 = Object.freeze(path16.concat(node));
-          const ck = visit_("key", node.key, visitor, path16);
+          path17 = Object.freeze(path17.concat(node));
+          const ck = visit_("key", node.key, visitor, path17);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = visit_("value", node.value, visitor, path16);
+          const cv = visit_("value", node.value, visitor, path17);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -10525,17 +10526,17 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path16) {
-      const ctrl = await callVisitor(key, node, visitor, path16);
+    async function visitAsync_(key, node, visitor, path17) {
+      const ctrl = await callVisitor(key, node, visitor, path17);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path16, ctrl);
-        return visitAsync_(key, ctrl, visitor, path16);
+        replaceNode(key, path17, ctrl);
+        return visitAsync_(key, ctrl, visitor, path17);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path16 = Object.freeze(path16.concat(node));
+          path17 = Object.freeze(path17.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = await visitAsync_(i, node.items[i], visitor, path16);
+            const ci = await visitAsync_(i, node.items[i], visitor, path17);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -10546,13 +10547,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path16 = Object.freeze(path16.concat(node));
-          const ck = await visitAsync_("key", node.key, visitor, path16);
+          path17 = Object.freeze(path17.concat(node));
+          const ck = await visitAsync_("key", node.key, visitor, path17);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = await visitAsync_("value", node.value, visitor, path16);
+          const cv = await visitAsync_("value", node.value, visitor, path17);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -10579,23 +10580,23 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path16) {
+    function callVisitor(key, node, visitor, path17) {
       if (typeof visitor === "function")
-        return visitor(key, node, path16);
+        return visitor(key, node, path17);
       if (identity.isMap(node))
-        return visitor.Map?.(key, node, path16);
+        return visitor.Map?.(key, node, path17);
       if (identity.isSeq(node))
-        return visitor.Seq?.(key, node, path16);
+        return visitor.Seq?.(key, node, path17);
       if (identity.isPair(node))
-        return visitor.Pair?.(key, node, path16);
+        return visitor.Pair?.(key, node, path17);
       if (identity.isScalar(node))
-        return visitor.Scalar?.(key, node, path16);
+        return visitor.Scalar?.(key, node, path17);
       if (identity.isAlias(node))
-        return visitor.Alias?.(key, node, path16);
+        return visitor.Alias?.(key, node, path17);
       return void 0;
     }
-    function replaceNode(key, path16, node) {
-      const parent = path16[path16.length - 1];
+    function replaceNode(key, path17, node) {
+      const parent = path17[path17.length - 1];
       if (identity.isCollection(parent)) {
         parent.items[key] = node;
       } else if (identity.isPair(parent)) {
@@ -10615,9 +10616,9 @@ var require_visit = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/doc/directives.js
+// ../../../../node_modules/yaml/dist/doc/directives.js
 var require_directives = __commonJS({
-  "../../node_modules/yaml/dist/doc/directives.js"(exports2) {
+  "../../../../node_modules/yaml/dist/doc/directives.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var visit = require_visit();
@@ -10786,9 +10787,9 @@ var require_directives = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/doc/anchors.js
+// ../../../../node_modules/yaml/dist/doc/anchors.js
 var require_anchors = __commonJS({
-  "../../node_modules/yaml/dist/doc/anchors.js"(exports2) {
+  "../../../../node_modules/yaml/dist/doc/anchors.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var visit = require_visit();
@@ -10856,9 +10857,9 @@ var require_anchors = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/doc/applyReviver.js
+// ../../../../node_modules/yaml/dist/doc/applyReviver.js
 var require_applyReviver = __commonJS({
-  "../../node_modules/yaml/dist/doc/applyReviver.js"(exports2) {
+  "../../../../node_modules/yaml/dist/doc/applyReviver.js"(exports2) {
     "use strict";
     function applyReviver(reviver, obj, key, val) {
       if (val && typeof val === "object") {
@@ -10906,9 +10907,9 @@ var require_applyReviver = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/nodes/toJS.js
+// ../../../../node_modules/yaml/dist/nodes/toJS.js
 var require_toJS = __commonJS({
-  "../../node_modules/yaml/dist/nodes/toJS.js"(exports2) {
+  "../../../../node_modules/yaml/dist/nodes/toJS.js"(exports2) {
     "use strict";
     var identity = require_identity();
     function toJS(value, arg, ctx) {
@@ -10936,9 +10937,9 @@ var require_toJS = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/nodes/Node.js
+// ../../../../node_modules/yaml/dist/nodes/Node.js
 var require_Node = __commonJS({
-  "../../node_modules/yaml/dist/nodes/Node.js"(exports2) {
+  "../../../../node_modules/yaml/dist/nodes/Node.js"(exports2) {
     "use strict";
     var applyReviver = require_applyReviver();
     var identity = require_identity();
@@ -10977,9 +10978,9 @@ var require_Node = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/nodes/Alias.js
+// ../../../../node_modules/yaml/dist/nodes/Alias.js
 var require_Alias = __commonJS({
-  "../../node_modules/yaml/dist/nodes/Alias.js"(exports2) {
+  "../../../../node_modules/yaml/dist/nodes/Alias.js"(exports2) {
     "use strict";
     var anchors = require_anchors();
     var visit = require_visit();
@@ -11093,9 +11094,9 @@ var require_Alias = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/nodes/Scalar.js
+// ../../../../node_modules/yaml/dist/nodes/Scalar.js
 var require_Scalar = __commonJS({
-  "../../node_modules/yaml/dist/nodes/Scalar.js"(exports2) {
+  "../../../../node_modules/yaml/dist/nodes/Scalar.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var Node = require_Node();
@@ -11123,9 +11124,9 @@ var require_Scalar = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/doc/createNode.js
+// ../../../../node_modules/yaml/dist/doc/createNode.js
 var require_createNode = __commonJS({
-  "../../node_modules/yaml/dist/doc/createNode.js"(exports2) {
+  "../../../../node_modules/yaml/dist/doc/createNode.js"(exports2) {
     "use strict";
     var Alias = require_Alias();
     var identity = require_identity();
@@ -11198,17 +11199,17 @@ var require_createNode = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/nodes/Collection.js
+// ../../../../node_modules/yaml/dist/nodes/Collection.js
 var require_Collection = __commonJS({
-  "../../node_modules/yaml/dist/nodes/Collection.js"(exports2) {
+  "../../../../node_modules/yaml/dist/nodes/Collection.js"(exports2) {
     "use strict";
     var createNode = require_createNode();
     var identity = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema, path16, value) {
+    function collectionFromPath(schema, path17, value) {
       let v = value;
-      for (let i = path16.length - 1; i >= 0; --i) {
-        const k = path16[i];
+      for (let i = path17.length - 1; i >= 0; --i) {
+        const k = path17[i];
         if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
           const a = [];
           a[k] = v;
@@ -11227,7 +11228,7 @@ var require_Collection = __commonJS({
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
-    var isEmptyPath = (path16) => path16 == null || typeof path16 === "object" && !!path16[Symbol.iterator]().next().done;
+    var isEmptyPath = (path17) => path17 == null || typeof path17 === "object" && !!path17[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
       constructor(type, schema) {
         super(type);
@@ -11257,11 +11258,11 @@ var require_Collection = __commonJS({
        * be a Pair instance or a `{ key, value }` object, which may not have a key
        * that already exists in the map.
        */
-      addIn(path16, value) {
-        if (isEmptyPath(path16))
+      addIn(path17, value) {
+        if (isEmptyPath(path17))
           this.add(value);
         else {
-          const [key, ...rest] = path16;
+          const [key, ...rest] = path17;
           const node = this.get(key, true);
           if (identity.isCollection(node))
             node.addIn(rest, value);
@@ -11275,8 +11276,8 @@ var require_Collection = __commonJS({
        * Removes a value from the collection.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path16) {
-        const [key, ...rest] = path16;
+      deleteIn(path17) {
+        const [key, ...rest] = path17;
         if (rest.length === 0)
           return this.delete(key);
         const node = this.get(key, true);
@@ -11290,8 +11291,8 @@ var require_Collection = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path16, keepScalar) {
-        const [key, ...rest] = path16;
+      getIn(path17, keepScalar) {
+        const [key, ...rest] = path17;
         const node = this.get(key, true);
         if (rest.length === 0)
           return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -11309,8 +11310,8 @@ var require_Collection = __commonJS({
       /**
        * Checks if the collection includes a value with the key `key`.
        */
-      hasIn(path16) {
-        const [key, ...rest] = path16;
+      hasIn(path17) {
+        const [key, ...rest] = path17;
         if (rest.length === 0)
           return this.has(key);
         const node = this.get(key, true);
@@ -11320,8 +11321,8 @@ var require_Collection = __commonJS({
        * Sets a value in this collection. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path16, value) {
-        const [key, ...rest] = path16;
+      setIn(path17, value) {
+        const [key, ...rest] = path17;
         if (rest.length === 0) {
           this.set(key, value);
         } else {
@@ -11341,9 +11342,9 @@ var require_Collection = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/stringify/stringifyComment.js
+// ../../../../node_modules/yaml/dist/stringify/stringifyComment.js
 var require_stringifyComment = __commonJS({
-  "../../node_modules/yaml/dist/stringify/stringifyComment.js"(exports2) {
+  "../../../../node_modules/yaml/dist/stringify/stringifyComment.js"(exports2) {
     "use strict";
     var stringifyComment = (str2) => str2.replace(/^(?!$)(?: $)?/gm, "#");
     function indentComment(comment, indent) {
@@ -11358,9 +11359,9 @@ var require_stringifyComment = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/stringify/foldFlowLines.js
+// ../../../../node_modules/yaml/dist/stringify/foldFlowLines.js
 var require_foldFlowLines = __commonJS({
-  "../../node_modules/yaml/dist/stringify/foldFlowLines.js"(exports2) {
+  "../../../../node_modules/yaml/dist/stringify/foldFlowLines.js"(exports2) {
     "use strict";
     var FOLD_FLOW = "flow";
     var FOLD_BLOCK = "block";
@@ -11494,9 +11495,9 @@ ${indent}${text.slice(fold + 1, end2)}`;
   }
 });
 
-// ../../node_modules/yaml/dist/stringify/stringifyString.js
+// ../../../../node_modules/yaml/dist/stringify/stringifyString.js
 var require_stringifyString = __commonJS({
-  "../../node_modules/yaml/dist/stringify/stringifyString.js"(exports2) {
+  "../../../../node_modules/yaml/dist/stringify/stringifyString.js"(exports2) {
     "use strict";
     var Scalar = require_Scalar();
     var foldFlowLines = require_foldFlowLines();
@@ -11777,9 +11778,9 @@ ${indent}`);
   }
 });
 
-// ../../node_modules/yaml/dist/stringify/stringify.js
+// ../../../../node_modules/yaml/dist/stringify/stringify.js
 var require_stringify2 = __commonJS({
-  "../../node_modules/yaml/dist/stringify/stringify.js"(exports2) {
+  "../../../../node_modules/yaml/dist/stringify/stringify.js"(exports2) {
     "use strict";
     var anchors = require_anchors();
     var identity = require_identity();
@@ -11901,9 +11902,9 @@ ${ctx.indent}${str2}`;
   }
 });
 
-// ../../node_modules/yaml/dist/stringify/stringifyPair.js
+// ../../../../node_modules/yaml/dist/stringify/stringifyPair.js
 var require_stringifyPair = __commonJS({
-  "../../node_modules/yaml/dist/stringify/stringifyPair.js"(exports2) {
+  "../../../../node_modules/yaml/dist/stringify/stringifyPair.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var Scalar = require_Scalar();
@@ -12034,9 +12035,9 @@ ${ctx.indent}`;
   }
 });
 
-// ../../node_modules/yaml/dist/log.js
+// ../../../../node_modules/yaml/dist/log.js
 var require_log = __commonJS({
-  "../../node_modules/yaml/dist/log.js"(exports2) {
+  "../../../../node_modules/yaml/dist/log.js"(exports2) {
     "use strict";
     var node_process = require("process");
     function debug(logLevel, ...messages) {
@@ -12056,9 +12057,9 @@ var require_log = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/yaml-1.1/merge.js
+// ../../../../node_modules/yaml/dist/schema/yaml-1.1/merge.js
 var require_merge2 = __commonJS({
-  "../../node_modules/yaml/dist/schema/yaml-1.1/merge.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/yaml-1.1/merge.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var Scalar = require_Scalar();
@@ -12116,9 +12117,9 @@ var require_merge2 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/nodes/addPairToJSMap.js
+// ../../../../node_modules/yaml/dist/nodes/addPairToJSMap.js
 var require_addPairToJSMap = __commonJS({
-  "../../node_modules/yaml/dist/nodes/addPairToJSMap.js"(exports2) {
+  "../../../../node_modules/yaml/dist/nodes/addPairToJSMap.js"(exports2) {
     "use strict";
     var log = require_log();
     var merge2 = require_merge2();
@@ -12180,9 +12181,9 @@ var require_addPairToJSMap = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/nodes/Pair.js
+// ../../../../node_modules/yaml/dist/nodes/Pair.js
 var require_Pair = __commonJS({
-  "../../node_modules/yaml/dist/nodes/Pair.js"(exports2) {
+  "../../../../node_modules/yaml/dist/nodes/Pair.js"(exports2) {
     "use strict";
     var createNode = require_createNode();
     var stringifyPair = require_stringifyPair();
@@ -12220,9 +12221,9 @@ var require_Pair = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/stringify/stringifyCollection.js
+// ../../../../node_modules/yaml/dist/stringify/stringifyCollection.js
 var require_stringifyCollection = __commonJS({
-  "../../node_modules/yaml/dist/stringify/stringifyCollection.js"(exports2) {
+  "../../../../node_modules/yaml/dist/stringify/stringifyCollection.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var stringify = require_stringify2();
@@ -12371,9 +12372,9 @@ ${indent}${end}`;
   }
 });
 
-// ../../node_modules/yaml/dist/nodes/YAMLMap.js
+// ../../../../node_modules/yaml/dist/nodes/YAMLMap.js
 var require_YAMLMap = __commonJS({
-  "../../node_modules/yaml/dist/nodes/YAMLMap.js"(exports2) {
+  "../../../../node_modules/yaml/dist/nodes/YAMLMap.js"(exports2) {
     "use strict";
     var stringifyCollection = require_stringifyCollection();
     var addPairToJSMap = require_addPairToJSMap();
@@ -12515,9 +12516,9 @@ var require_YAMLMap = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/common/map.js
+// ../../../../node_modules/yaml/dist/schema/common/map.js
 var require_map2 = __commonJS({
-  "../../node_modules/yaml/dist/schema/common/map.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/common/map.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var YAMLMap = require_YAMLMap();
@@ -12537,9 +12538,9 @@ var require_map2 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/nodes/YAMLSeq.js
+// ../../../../node_modules/yaml/dist/nodes/YAMLSeq.js
 var require_YAMLSeq = __commonJS({
-  "../../node_modules/yaml/dist/nodes/YAMLSeq.js"(exports2) {
+  "../../../../node_modules/yaml/dist/nodes/YAMLSeq.js"(exports2) {
     "use strict";
     var createNode = require_createNode();
     var stringifyCollection = require_stringifyCollection();
@@ -12653,9 +12654,9 @@ var require_YAMLSeq = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/common/seq.js
+// ../../../../node_modules/yaml/dist/schema/common/seq.js
 var require_seq2 = __commonJS({
-  "../../node_modules/yaml/dist/schema/common/seq.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/common/seq.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var YAMLSeq = require_YAMLSeq();
@@ -12675,9 +12676,9 @@ var require_seq2 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/common/string.js
+// ../../../../node_modules/yaml/dist/schema/common/string.js
 var require_string = __commonJS({
-  "../../node_modules/yaml/dist/schema/common/string.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/common/string.js"(exports2) {
     "use strict";
     var stringifyString = require_stringifyString();
     var string3 = {
@@ -12694,9 +12695,9 @@ var require_string = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/common/null.js
+// ../../../../node_modules/yaml/dist/schema/common/null.js
 var require_null2 = __commonJS({
-  "../../node_modules/yaml/dist/schema/common/null.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/common/null.js"(exports2) {
     "use strict";
     var Scalar = require_Scalar();
     var nullTag = {
@@ -12712,9 +12713,9 @@ var require_null2 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/core/bool.js
+// ../../../../node_modules/yaml/dist/schema/core/bool.js
 var require_bool2 = __commonJS({
-  "../../node_modules/yaml/dist/schema/core/bool.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/core/bool.js"(exports2) {
     "use strict";
     var Scalar = require_Scalar();
     var boolTag = {
@@ -12736,9 +12737,9 @@ var require_bool2 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/stringify/stringifyNumber.js
+// ../../../../node_modules/yaml/dist/stringify/stringifyNumber.js
 var require_stringifyNumber = __commonJS({
-  "../../node_modules/yaml/dist/stringify/stringifyNumber.js"(exports2) {
+  "../../../../node_modules/yaml/dist/stringify/stringifyNumber.js"(exports2) {
     "use strict";
     function stringifyNumber({ format, minFractionDigits, tag, value }) {
       if (typeof value === "bigint")
@@ -12763,9 +12764,9 @@ var require_stringifyNumber = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/core/float.js
+// ../../../../node_modules/yaml/dist/schema/core/float.js
 var require_float2 = __commonJS({
-  "../../node_modules/yaml/dist/schema/core/float.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/core/float.js"(exports2) {
     "use strict";
     var Scalar = require_Scalar();
     var stringifyNumber = require_stringifyNumber();
@@ -12809,9 +12810,9 @@ var require_float2 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/core/int.js
+// ../../../../node_modules/yaml/dist/schema/core/int.js
 var require_int2 = __commonJS({
-  "../../node_modules/yaml/dist/schema/core/int.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/core/int.js"(exports2) {
     "use strict";
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
@@ -12854,9 +12855,9 @@ var require_int2 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/core/schema.js
+// ../../../../node_modules/yaml/dist/schema/core/schema.js
 var require_schema2 = __commonJS({
-  "../../node_modules/yaml/dist/schema/core/schema.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/core/schema.js"(exports2) {
     "use strict";
     var map = require_map2();
     var _null4 = require_null2();
@@ -12882,9 +12883,9 @@ var require_schema2 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/json/schema.js
+// ../../../../node_modules/yaml/dist/schema/json/schema.js
 var require_schema3 = __commonJS({
-  "../../node_modules/yaml/dist/schema/json/schema.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/json/schema.js"(exports2) {
     "use strict";
     var Scalar = require_Scalar();
     var map = require_map2();
@@ -12949,9 +12950,9 @@ var require_schema3 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/yaml-1.1/binary.js
+// ../../../../node_modules/yaml/dist/schema/yaml-1.1/binary.js
 var require_binary2 = __commonJS({
-  "../../node_modules/yaml/dist/schema/yaml-1.1/binary.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/yaml-1.1/binary.js"(exports2) {
     "use strict";
     var node_buffer = require("buffer");
     var Scalar = require_Scalar();
@@ -13015,9 +13016,9 @@ var require_binary2 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/yaml-1.1/pairs.js
+// ../../../../node_modules/yaml/dist/schema/yaml-1.1/pairs.js
 var require_pairs2 = __commonJS({
-  "../../node_modules/yaml/dist/schema/yaml-1.1/pairs.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/yaml-1.1/pairs.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var Pair = require_Pair();
@@ -13093,9 +13094,9 @@ ${cn.comment}` : item.comment;
   }
 });
 
-// ../../node_modules/yaml/dist/schema/yaml-1.1/omap.js
+// ../../../../node_modules/yaml/dist/schema/yaml-1.1/omap.js
 var require_omap2 = __commonJS({
-  "../../node_modules/yaml/dist/schema/yaml-1.1/omap.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/yaml-1.1/omap.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var toJS = require_toJS();
@@ -13171,9 +13172,9 @@ var require_omap2 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/yaml-1.1/bool.js
+// ../../../../node_modules/yaml/dist/schema/yaml-1.1/bool.js
 var require_bool3 = __commonJS({
-  "../../node_modules/yaml/dist/schema/yaml-1.1/bool.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/yaml-1.1/bool.js"(exports2) {
     "use strict";
     var Scalar = require_Scalar();
     function boolStringify({ value, source }, ctx) {
@@ -13203,9 +13204,9 @@ var require_bool3 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/yaml-1.1/float.js
+// ../../../../node_modules/yaml/dist/schema/yaml-1.1/float.js
 var require_float3 = __commonJS({
-  "../../node_modules/yaml/dist/schema/yaml-1.1/float.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/yaml-1.1/float.js"(exports2) {
     "use strict";
     var Scalar = require_Scalar();
     var stringifyNumber = require_stringifyNumber();
@@ -13252,9 +13253,9 @@ var require_float3 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/yaml-1.1/int.js
+// ../../../../node_modules/yaml/dist/schema/yaml-1.1/int.js
 var require_int3 = __commonJS({
-  "../../node_modules/yaml/dist/schema/yaml-1.1/int.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/yaml-1.1/int.js"(exports2) {
     "use strict";
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
@@ -13331,9 +13332,9 @@ var require_int3 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/yaml-1.1/set.js
+// ../../../../node_modules/yaml/dist/schema/yaml-1.1/set.js
 var require_set2 = __commonJS({
-  "../../node_modules/yaml/dist/schema/yaml-1.1/set.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/yaml-1.1/set.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var Pair = require_Pair();
@@ -13420,9 +13421,9 @@ var require_set2 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/yaml-1.1/timestamp.js
+// ../../../../node_modules/yaml/dist/schema/yaml-1.1/timestamp.js
 var require_timestamp2 = __commonJS({
-  "../../node_modules/yaml/dist/schema/yaml-1.1/timestamp.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/yaml-1.1/timestamp.js"(exports2) {
     "use strict";
     var stringifyNumber = require_stringifyNumber();
     function parseSexagesimal(str2, asBigInt) {
@@ -13508,9 +13509,9 @@ var require_timestamp2 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/yaml-1.1/schema.js
+// ../../../../node_modules/yaml/dist/schema/yaml-1.1/schema.js
 var require_schema4 = __commonJS({
-  "../../node_modules/yaml/dist/schema/yaml-1.1/schema.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/yaml-1.1/schema.js"(exports2) {
     "use strict";
     var map = require_map2();
     var _null4 = require_null2();
@@ -13552,9 +13553,9 @@ var require_schema4 = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/tags.js
+// ../../../../node_modules/yaml/dist/schema/tags.js
 var require_tags = __commonJS({
-  "../../node_modules/yaml/dist/schema/tags.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/tags.js"(exports2) {
     "use strict";
     var map = require_map2();
     var _null4 = require_null2();
@@ -13646,9 +13647,9 @@ var require_tags = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/schema/Schema.js
+// ../../../../node_modules/yaml/dist/schema/Schema.js
 var require_Schema = __commonJS({
-  "../../node_modules/yaml/dist/schema/Schema.js"(exports2) {
+  "../../../../node_modules/yaml/dist/schema/Schema.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var map = require_map2();
@@ -13678,9 +13679,9 @@ var require_Schema = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/stringify/stringifyDocument.js
+// ../../../../node_modules/yaml/dist/stringify/stringifyDocument.js
 var require_stringifyDocument = __commonJS({
-  "../../node_modules/yaml/dist/stringify/stringifyDocument.js"(exports2) {
+  "../../../../node_modules/yaml/dist/stringify/stringifyDocument.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var stringify = require_stringify2();
@@ -13758,9 +13759,9 @@ var require_stringifyDocument = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/doc/Document.js
+// ../../../../node_modules/yaml/dist/doc/Document.js
 var require_Document = __commonJS({
-  "../../node_modules/yaml/dist/doc/Document.js"(exports2) {
+  "../../../../node_modules/yaml/dist/doc/Document.js"(exports2) {
     "use strict";
     var Alias = require_Alias();
     var Collection = require_Collection();
@@ -13836,9 +13837,9 @@ var require_Document = __commonJS({
           this.contents.add(value);
       }
       /** Adds a value to the document. */
-      addIn(path16, value) {
+      addIn(path17, value) {
         if (assertCollection(this.contents))
-          this.contents.addIn(path16, value);
+          this.contents.addIn(path17, value);
       }
       /**
        * Create a new `Alias` node, ensuring that the target `node` has the required anchor.
@@ -13913,14 +13914,14 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path16) {
-        if (Collection.isEmptyPath(path16)) {
+      deleteIn(path17) {
+        if (Collection.isEmptyPath(path17)) {
           if (this.contents == null)
             return false;
           this.contents = null;
           return true;
         }
-        return assertCollection(this.contents) ? this.contents.deleteIn(path16) : false;
+        return assertCollection(this.contents) ? this.contents.deleteIn(path17) : false;
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -13935,10 +13936,10 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path16, keepScalar) {
-        if (Collection.isEmptyPath(path16))
+      getIn(path17, keepScalar) {
+        if (Collection.isEmptyPath(path17))
           return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-        return identity.isCollection(this.contents) ? this.contents.getIn(path16, keepScalar) : void 0;
+        return identity.isCollection(this.contents) ? this.contents.getIn(path17, keepScalar) : void 0;
       }
       /**
        * Checks if the document includes a value with the key `key`.
@@ -13949,10 +13950,10 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value at `path`.
        */
-      hasIn(path16) {
-        if (Collection.isEmptyPath(path16))
+      hasIn(path17) {
+        if (Collection.isEmptyPath(path17))
           return this.contents !== void 0;
-        return identity.isCollection(this.contents) ? this.contents.hasIn(path16) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path17) : false;
       }
       /**
        * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -13969,13 +13970,13 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path16, value) {
-        if (Collection.isEmptyPath(path16)) {
+      setIn(path17, value) {
+        if (Collection.isEmptyPath(path17)) {
           this.contents = value;
         } else if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, Array.from(path16), value);
+          this.contents = Collection.collectionFromPath(this.schema, Array.from(path17), value);
         } else if (assertCollection(this.contents)) {
-          this.contents.setIn(path16, value);
+          this.contents.setIn(path17, value);
         }
       }
       /**
@@ -14067,9 +14068,9 @@ var require_Document = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/errors.js
+// ../../../../node_modules/yaml/dist/errors.js
 var require_errors2 = __commonJS({
-  "../../node_modules/yaml/dist/errors.js"(exports2) {
+  "../../../../node_modules/yaml/dist/errors.js"(exports2) {
     "use strict";
     var YAMLError = class extends Error {
       constructor(name, pos, code, message) {
@@ -14132,9 +14133,9 @@ ${pointer}
   }
 });
 
-// ../../node_modules/yaml/dist/compose/resolve-props.js
+// ../../../../node_modules/yaml/dist/compose/resolve-props.js
 var require_resolve_props = __commonJS({
-  "../../node_modules/yaml/dist/compose/resolve-props.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/resolve-props.js"(exports2) {
     "use strict";
     function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
       let spaceBefore = false;
@@ -14266,9 +14267,9 @@ var require_resolve_props = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/util-contains-newline.js
+// ../../../../node_modules/yaml/dist/compose/util-contains-newline.js
 var require_util_contains_newline = __commonJS({
-  "../../node_modules/yaml/dist/compose/util-contains-newline.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/util-contains-newline.js"(exports2) {
     "use strict";
     function containsNewline(key) {
       if (!key)
@@ -14308,9 +14309,9 @@ var require_util_contains_newline = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/util-flow-indent-check.js
+// ../../../../node_modules/yaml/dist/compose/util-flow-indent-check.js
 var require_util_flow_indent_check = __commonJS({
-  "../../node_modules/yaml/dist/compose/util-flow-indent-check.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/util-flow-indent-check.js"(exports2) {
     "use strict";
     var utilContainsNewline = require_util_contains_newline();
     function flowIndentCheck(indent, fc, onError) {
@@ -14326,9 +14327,9 @@ var require_util_flow_indent_check = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/util-map-includes.js
+// ../../../../node_modules/yaml/dist/compose/util-map-includes.js
 var require_util_map_includes = __commonJS({
-  "../../node_modules/yaml/dist/compose/util-map-includes.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/util-map-includes.js"(exports2) {
     "use strict";
     var identity = require_identity();
     function mapIncludes(ctx, items, search) {
@@ -14342,9 +14343,9 @@ var require_util_map_includes = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/resolve-block-map.js
+// ../../../../node_modules/yaml/dist/compose/resolve-block-map.js
 var require_resolve_block_map = __commonJS({
-  "../../node_modules/yaml/dist/compose/resolve-block-map.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/resolve-block-map.js"(exports2) {
     "use strict";
     var Pair = require_Pair();
     var YAMLMap = require_YAMLMap();
@@ -14450,9 +14451,9 @@ var require_resolve_block_map = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/resolve-block-seq.js
+// ../../../../node_modules/yaml/dist/compose/resolve-block-seq.js
 var require_resolve_block_seq = __commonJS({
-  "../../node_modules/yaml/dist/compose/resolve-block-seq.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/resolve-block-seq.js"(exports2) {
     "use strict";
     var YAMLSeq = require_YAMLSeq();
     var resolveProps = require_resolve_props();
@@ -14501,9 +14502,9 @@ var require_resolve_block_seq = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/resolve-end.js
+// ../../../../node_modules/yaml/dist/compose/resolve-end.js
 var require_resolve_end = __commonJS({
-  "../../node_modules/yaml/dist/compose/resolve-end.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/resolve-end.js"(exports2) {
     "use strict";
     function resolveEnd(end, offset, reqSpace, onError) {
       let comment = "";
@@ -14544,9 +14545,9 @@ var require_resolve_end = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/resolve-flow-collection.js
+// ../../../../node_modules/yaml/dist/compose/resolve-flow-collection.js
 var require_resolve_flow_collection = __commonJS({
-  "../../node_modules/yaml/dist/compose/resolve-flow-collection.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/resolve-flow-collection.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var Pair = require_Pair();
@@ -14738,9 +14739,9 @@ var require_resolve_flow_collection = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/compose-collection.js
+// ../../../../node_modules/yaml/dist/compose/compose-collection.js
 var require_compose_collection = __commonJS({
-  "../../node_modules/yaml/dist/compose/compose-collection.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/compose-collection.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var Scalar = require_Scalar();
@@ -14803,9 +14804,9 @@ var require_compose_collection = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/resolve-block-scalar.js
+// ../../../../node_modules/yaml/dist/compose/resolve-block-scalar.js
 var require_resolve_block_scalar = __commonJS({
-  "../../node_modules/yaml/dist/compose/resolve-block-scalar.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/resolve-block-scalar.js"(exports2) {
     "use strict";
     var Scalar = require_Scalar();
     function resolveBlockScalar(ctx, scalar, onError) {
@@ -14986,9 +14987,9 @@ var require_resolve_block_scalar = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/resolve-flow-scalar.js
+// ../../../../node_modules/yaml/dist/compose/resolve-flow-scalar.js
 var require_resolve_flow_scalar = __commonJS({
-  "../../node_modules/yaml/dist/compose/resolve-flow-scalar.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/resolve-flow-scalar.js"(exports2) {
     "use strict";
     var Scalar = require_Scalar();
     var resolveEnd = require_resolve_end();
@@ -15206,9 +15207,9 @@ var require_resolve_flow_scalar = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/compose-scalar.js
+// ../../../../node_modules/yaml/dist/compose/compose-scalar.js
 var require_compose_scalar = __commonJS({
-  "../../node_modules/yaml/dist/compose/compose-scalar.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/compose-scalar.js"(exports2) {
     "use strict";
     var identity = require_identity();
     var Scalar = require_Scalar();
@@ -15287,9 +15288,9 @@ var require_compose_scalar = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/util-empty-scalar-position.js
+// ../../../../node_modules/yaml/dist/compose/util-empty-scalar-position.js
 var require_util_empty_scalar_position = __commonJS({
-  "../../node_modules/yaml/dist/compose/util-empty-scalar-position.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/util-empty-scalar-position.js"(exports2) {
     "use strict";
     function emptyScalarPosition(offset, before, pos) {
       if (before) {
@@ -15317,9 +15318,9 @@ var require_util_empty_scalar_position = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/compose-node.js
+// ../../../../node_modules/yaml/dist/compose/compose-node.js
 var require_compose_node = __commonJS({
-  "../../node_modules/yaml/dist/compose/compose-node.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/compose-node.js"(exports2) {
     "use strict";
     var Alias = require_Alias();
     var identity = require_identity();
@@ -15423,9 +15424,9 @@ var require_compose_node = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/compose-doc.js
+// ../../../../node_modules/yaml/dist/compose/compose-doc.js
 var require_compose_doc = __commonJS({
-  "../../node_modules/yaml/dist/compose/compose-doc.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/compose-doc.js"(exports2) {
     "use strict";
     var Document = require_Document();
     var composeNode = require_compose_node();
@@ -15466,9 +15467,9 @@ var require_compose_doc = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/compose/composer.js
+// ../../../../node_modules/yaml/dist/compose/composer.js
 var require_composer = __commonJS({
-  "../../node_modules/yaml/dist/compose/composer.js"(exports2) {
+  "../../../../node_modules/yaml/dist/compose/composer.js"(exports2) {
     "use strict";
     var node_process = require("process");
     var directives = require_directives();
@@ -15674,9 +15675,9 @@ ${end.comment}` : end.comment;
   }
 });
 
-// ../../node_modules/yaml/dist/parse/cst-scalar.js
+// ../../../../node_modules/yaml/dist/parse/cst-scalar.js
 var require_cst_scalar = __commonJS({
-  "../../node_modules/yaml/dist/parse/cst-scalar.js"(exports2) {
+  "../../../../node_modules/yaml/dist/parse/cst-scalar.js"(exports2) {
     "use strict";
     var resolveBlockScalar = require_resolve_block_scalar();
     var resolveFlowScalar = require_resolve_flow_scalar();
@@ -15859,9 +15860,9 @@ var require_cst_scalar = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/parse/cst-stringify.js
+// ../../../../node_modules/yaml/dist/parse/cst-stringify.js
 var require_cst_stringify = __commonJS({
-  "../../node_modules/yaml/dist/parse/cst-stringify.js"(exports2) {
+  "../../../../node_modules/yaml/dist/parse/cst-stringify.js"(exports2) {
     "use strict";
     var stringify = (cst) => "type" in cst ? stringifyToken(cst) : stringifyItem(cst);
     function stringifyToken(token) {
@@ -15920,9 +15921,9 @@ var require_cst_stringify = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/parse/cst-visit.js
+// ../../../../node_modules/yaml/dist/parse/cst-visit.js
 var require_cst_visit = __commonJS({
-  "../../node_modules/yaml/dist/parse/cst-visit.js"(exports2) {
+  "../../../../node_modules/yaml/dist/parse/cst-visit.js"(exports2) {
     "use strict";
     var BREAK = /* @__PURE__ */ Symbol("break visit");
     var SKIP = /* @__PURE__ */ Symbol("skip children");
@@ -15935,9 +15936,9 @@ var require_cst_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    visit.itemAtPath = (cst, path16) => {
+    visit.itemAtPath = (cst, path17) => {
       let item = cst;
-      for (const [field, index] of path16) {
+      for (const [field, index] of path17) {
         const tok = item?.[field];
         if (tok && "items" in tok) {
           item = tok.items[index];
@@ -15946,23 +15947,23 @@ var require_cst_visit = __commonJS({
       }
       return item;
     };
-    visit.parentCollection = (cst, path16) => {
-      const parent = visit.itemAtPath(cst, path16.slice(0, -1));
-      const field = path16[path16.length - 1][0];
+    visit.parentCollection = (cst, path17) => {
+      const parent = visit.itemAtPath(cst, path17.slice(0, -1));
+      const field = path17[path17.length - 1][0];
       const coll = parent?.[field];
       if (coll && "items" in coll)
         return coll;
       throw new Error("Parent collection not found");
     };
-    function _visit(path16, item, visitor) {
-      let ctrl = visitor(item, path16);
+    function _visit(path17, item, visitor) {
+      let ctrl = visitor(item, path17);
       if (typeof ctrl === "symbol")
         return ctrl;
       for (const field of ["key", "value"]) {
         const token = item[field];
         if (token && "items" in token) {
           for (let i = 0; i < token.items.length; ++i) {
-            const ci = _visit(Object.freeze(path16.concat([[field, i]])), token.items[i], visitor);
+            const ci = _visit(Object.freeze(path17.concat([[field, i]])), token.items[i], visitor);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -15973,18 +15974,18 @@ var require_cst_visit = __commonJS({
             }
           }
           if (typeof ctrl === "function" && field === "key")
-            ctrl = ctrl(item, path16);
+            ctrl = ctrl(item, path17);
         }
       }
-      return typeof ctrl === "function" ? ctrl(item, path16) : ctrl;
+      return typeof ctrl === "function" ? ctrl(item, path17) : ctrl;
     }
     exports2.visit = visit;
   }
 });
 
-// ../../node_modules/yaml/dist/parse/cst.js
+// ../../../../node_modules/yaml/dist/parse/cst.js
 var require_cst = __commonJS({
-  "../../node_modules/yaml/dist/parse/cst.js"(exports2) {
+  "../../../../node_modules/yaml/dist/parse/cst.js"(exports2) {
     "use strict";
     var cstScalar = require_cst_scalar();
     var cstStringify = require_cst_stringify();
@@ -16084,9 +16085,9 @@ var require_cst = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/parse/lexer.js
+// ../../../../node_modules/yaml/dist/parse/lexer.js
 var require_lexer = __commonJS({
-  "../../node_modules/yaml/dist/parse/lexer.js"(exports2) {
+  "../../../../node_modules/yaml/dist/parse/lexer.js"(exports2) {
     "use strict";
     var cst = require_cst();
     function isEmpty(ch) {
@@ -16673,9 +16674,9 @@ var require_lexer = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/parse/line-counter.js
+// ../../../../node_modules/yaml/dist/parse/line-counter.js
 var require_line_counter = __commonJS({
-  "../../node_modules/yaml/dist/parse/line-counter.js"(exports2) {
+  "../../../../node_modules/yaml/dist/parse/line-counter.js"(exports2) {
     "use strict";
     var LineCounter = class {
       constructor() {
@@ -16704,9 +16705,9 @@ var require_line_counter = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/parse/parser.js
+// ../../../../node_modules/yaml/dist/parse/parser.js
 var require_parser = __commonJS({
-  "../../node_modules/yaml/dist/parse/parser.js"(exports2) {
+  "../../../../node_modules/yaml/dist/parse/parser.js"(exports2) {
     "use strict";
     var node_process = require("process");
     var cst = require_cst();
@@ -17578,9 +17579,9 @@ var require_parser = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/public-api.js
+// ../../../../node_modules/yaml/dist/public-api.js
 var require_public_api = __commonJS({
-  "../../node_modules/yaml/dist/public-api.js"(exports2) {
+  "../../../../node_modules/yaml/dist/public-api.js"(exports2) {
     "use strict";
     var composer = require_composer();
     var Document = require_Document();
@@ -17675,9 +17676,9 @@ var require_public_api = __commonJS({
   }
 });
 
-// ../../node_modules/yaml/dist/index.js
+// ../../../../node_modules/yaml/dist/index.js
 var require_dist2 = __commonJS({
-  "../../node_modules/yaml/dist/index.js"(exports2) {
+  "../../../../node_modules/yaml/dist/index.js"(exports2) {
     "use strict";
     var composer = require_composer();
     var Document = require_Document();
@@ -17727,11 +17728,11 @@ var require_dist2 = __commonJS({
   }
 });
 
-// ../../node_modules/picomatch/lib/constants.js
+// ../../../../node_modules/picomatch/lib/constants.js
 var require_constants = __commonJS({
-  "../../node_modules/picomatch/lib/constants.js"(exports2, module2) {
+  "../../../../node_modules/picomatch/lib/constants.js"(exports2, module2) {
     "use strict";
-    var path16 = require("path");
+    var path17 = require("path");
     var WIN_SLASH = "\\\\/";
     var WIN_NO_SLASH = `[^${WIN_SLASH}]`;
     var DEFAULT_MAX_EXTGLOB_RECURSION = 0;
@@ -17905,7 +17906,7 @@ var require_constants = __commonJS({
       /* | */
       CHAR_ZERO_WIDTH_NOBREAK_SPACE: 65279,
       /* \uFEFF */
-      SEP: path16.sep,
+      SEP: path17.sep,
       /**
        * Create EXTGLOB_CHARS
        */
@@ -17928,11 +17929,11 @@ var require_constants = __commonJS({
   }
 });
 
-// ../../node_modules/picomatch/lib/utils.js
+// ../../../../node_modules/picomatch/lib/utils.js
 var require_utils3 = __commonJS({
-  "../../node_modules/picomatch/lib/utils.js"(exports2) {
+  "../../../../node_modules/picomatch/lib/utils.js"(exports2) {
     "use strict";
-    var path16 = require("path");
+    var path17 = require("path");
     var win32 = process.platform === "win32";
     var {
       REGEX_BACKSLASH,
@@ -17961,7 +17962,7 @@ var require_utils3 = __commonJS({
       if (options2 && typeof options2.windows === "boolean") {
         return options2.windows;
       }
-      return win32 === true || path16.sep === "\\";
+      return win32 === true || path17.sep === "\\";
     };
     exports2.escapeLast = (input, char, lastIdx) => {
       const idx = input.lastIndexOf(char, lastIdx);
@@ -17989,9 +17990,9 @@ var require_utils3 = __commonJS({
   }
 });
 
-// ../../node_modules/picomatch/lib/scan.js
+// ../../../../node_modules/picomatch/lib/scan.js
 var require_scan = __commonJS({
-  "../../node_modules/picomatch/lib/scan.js"(exports2, module2) {
+  "../../../../node_modules/picomatch/lib/scan.js"(exports2, module2) {
     "use strict";
     var utils = require_utils3();
     var {
@@ -18319,9 +18320,9 @@ var require_scan = __commonJS({
   }
 });
 
-// ../../node_modules/picomatch/lib/parse.js
+// ../../../../node_modules/picomatch/lib/parse.js
 var require_parse2 = __commonJS({
-  "../../node_modules/picomatch/lib/parse.js"(exports2, module2) {
+  "../../../../node_modules/picomatch/lib/parse.js"(exports2, module2) {
     "use strict";
     var constants = require_constants();
     var utils = require_utils3();
@@ -19321,11 +19322,11 @@ var require_parse2 = __commonJS({
   }
 });
 
-// ../../node_modules/picomatch/lib/picomatch.js
+// ../../../../node_modules/picomatch/lib/picomatch.js
 var require_picomatch = __commonJS({
-  "../../node_modules/picomatch/lib/picomatch.js"(exports2, module2) {
+  "../../../../node_modules/picomatch/lib/picomatch.js"(exports2, module2) {
     "use strict";
-    var path16 = require("path");
+    var path17 = require("path");
     var scan = require_scan();
     var parse4 = require_parse2();
     var utils = require_utils3();
@@ -19410,7 +19411,7 @@ var require_picomatch = __commonJS({
     };
     picomatch.matchBase = (input, glob, options2, posix = utils.isWindows(options2)) => {
       const regex = glob instanceof RegExp ? glob : picomatch.makeRe(glob, options2);
-      return regex.test(path16.basename(input));
+      return regex.test(path17.basename(input));
     };
     picomatch.isMatch = (str2, patterns, options2) => picomatch(patterns, options2)(str2);
     picomatch.parse = (pattern, options2) => {
@@ -19462,17 +19463,17 @@ var require_picomatch = __commonJS({
   }
 });
 
-// ../../node_modules/picomatch/index.js
+// ../../../../node_modules/picomatch/index.js
 var require_picomatch2 = __commonJS({
-  "../../node_modules/picomatch/index.js"(exports2, module2) {
+  "../../../../node_modules/picomatch/index.js"(exports2, module2) {
     "use strict";
     module2.exports = require_picomatch();
   }
 });
 
-// ../../node_modules/readdirp/index.js
+// ../../../../node_modules/readdirp/index.js
 var require_readdirp = __commonJS({
-  "../../node_modules/readdirp/index.js"(exports2, module2) {
+  "../../../../node_modules/readdirp/index.js"(exports2, module2) {
     "use strict";
     var fs12 = require("fs");
     var { Readable } = require("stream");
@@ -19526,8 +19527,8 @@ var require_readdirp = __commonJS({
         return {
           root: ".",
           /* eslint-disable no-unused-vars */
-          fileFilter: (path16) => true,
-          directoryFilter: (path16) => true,
+          fileFilter: (path17) => true,
+          directoryFilter: (path17) => true,
           /* eslint-enable no-unused-vars */
           type: FILE_TYPE,
           lstat: false,
@@ -19547,7 +19548,7 @@ var require_readdirp = __commonJS({
         this._directoryFilter = normalizeFilter(opts.directoryFilter);
         const statMethod = opts.lstat ? lstat : stat;
         if (wantBigintFsStats) {
-          this._stat = (path16) => statMethod(path16, { bigint: true });
+          this._stat = (path17) => statMethod(path17, { bigint: true });
         } else {
           this._stat = statMethod;
         }
@@ -19568,9 +19569,9 @@ var require_readdirp = __commonJS({
         this.reading = true;
         try {
           while (!this.destroyed && batch > 0) {
-            const { path: path16, depth, files = [] } = this.parent || {};
+            const { path: path17, depth, files = [] } = this.parent || {};
             if (files.length > 0) {
-              const slice = files.splice(0, batch).map((dirent) => this._formatEntry(dirent, path16));
+              const slice = files.splice(0, batch).map((dirent) => this._formatEntry(dirent, path17));
               for (const entry of await Promise.all(slice)) {
                 if (this.destroyed) return;
                 const entryType = await this._getEntryType(entry);
@@ -19605,20 +19606,20 @@ var require_readdirp = __commonJS({
           this.reading = false;
         }
       }
-      async _exploreDir(path16, depth) {
+      async _exploreDir(path17, depth) {
         let files;
         try {
-          files = await readdir(path16, this._rdOptions);
+          files = await readdir(path17, this._rdOptions);
         } catch (error2) {
           this._onError(error2);
         }
-        return { files, depth, path: path16 };
+        return { files, depth, path: path17 };
       }
-      async _formatEntry(dirent, path16) {
+      async _formatEntry(dirent, path17) {
         let entry;
         try {
           const basename = this._isDirent ? dirent.name : dirent;
-          const fullPath = sysPath.resolve(sysPath.join(path16, basename));
+          const fullPath = sysPath.resolve(sysPath.join(path17, basename));
           entry = { path: sysPath.relative(this._root, fullPath), fullPath, basename };
           entry[this._statsProp] = this._isDirent ? dirent : await this._stat(fullPath);
         } catch (err) {
@@ -19700,26 +19701,26 @@ var require_readdirp = __commonJS({
   }
 });
 
-// ../../node_modules/normalize-path/index.js
+// ../../../../node_modules/normalize-path/index.js
 var require_normalize_path = __commonJS({
-  "../../node_modules/normalize-path/index.js"(exports2, module2) {
+  "../../../../node_modules/normalize-path/index.js"(exports2, module2) {
     "use strict";
-    module2.exports = function(path16, stripTrailing) {
-      if (typeof path16 !== "string") {
+    module2.exports = function(path17, stripTrailing) {
+      if (typeof path17 !== "string") {
         throw new TypeError("expected path to be a string");
       }
-      if (path16 === "\\" || path16 === "/") return "/";
-      var len = path16.length;
-      if (len <= 1) return path16;
+      if (path17 === "\\" || path17 === "/") return "/";
+      var len = path17.length;
+      if (len <= 1) return path17;
       var prefix = "";
-      if (len > 4 && path16[3] === "\\") {
-        var ch = path16[2];
-        if ((ch === "?" || ch === ".") && path16.slice(0, 2) === "\\\\") {
-          path16 = path16.slice(2);
+      if (len > 4 && path17[3] === "\\") {
+        var ch = path17[2];
+        if ((ch === "?" || ch === ".") && path17.slice(0, 2) === "\\\\") {
+          path17 = path17.slice(2);
           prefix = "//";
         }
       }
-      var segs = path16.split(/[/\\]+/);
+      var segs = path17.split(/[/\\]+/);
       if (stripTrailing !== false && segs[segs.length - 1] === "") {
         segs.pop();
       }
@@ -19728,9 +19729,9 @@ var require_normalize_path = __commonJS({
   }
 });
 
-// ../../node_modules/anymatch/index.js
+// ../../../../node_modules/anymatch/index.js
 var require_anymatch = __commonJS({
-  "../../node_modules/anymatch/index.js"(exports2, module2) {
+  "../../../../node_modules/anymatch/index.js"(exports2, module2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var picomatch = require_picomatch2();
@@ -19757,17 +19758,17 @@ var require_anymatch = __commonJS({
       if (!isList && typeof _path !== "string") {
         throw new TypeError("anymatch: second argument must be a string: got " + Object.prototype.toString.call(_path));
       }
-      const path16 = normalizePath(_path, false);
+      const path17 = normalizePath(_path, false);
       for (let index = 0; index < negPatterns.length; index++) {
         const nglob = negPatterns[index];
-        if (nglob(path16)) {
+        if (nglob(path17)) {
           return returnIndex ? -1 : false;
         }
       }
-      const applied = isList && [path16].concat(args.slice(1));
+      const applied = isList && [path17].concat(args.slice(1));
       for (let index = 0; index < patterns.length; index++) {
         const pattern = patterns[index];
-        if (isList ? pattern(...applied) : pattern(path16)) {
+        if (isList ? pattern(...applied) : pattern(path17)) {
           return returnIndex ? index : true;
         }
       }
@@ -19795,9 +19796,9 @@ var require_anymatch = __commonJS({
   }
 });
 
-// ../../node_modules/is-extglob/index.js
+// ../../../../node_modules/is-extglob/index.js
 var require_is_extglob = __commonJS({
-  "../../node_modules/is-extglob/index.js"(exports2, module2) {
+  "../../../../node_modules/is-extglob/index.js"(exports2, module2) {
     "use strict";
     module2.exports = function isExtglob(str2) {
       if (typeof str2 !== "string" || str2 === "") {
@@ -19813,9 +19814,9 @@ var require_is_extglob = __commonJS({
   }
 });
 
-// ../../node_modules/is-glob/index.js
+// ../../../../node_modules/is-glob/index.js
 var require_is_glob = __commonJS({
-  "../../node_modules/is-glob/index.js"(exports2, module2) {
+  "../../../../node_modules/is-glob/index.js"(exports2, module2) {
     "use strict";
     var isExtglob = require_is_extglob();
     var chars = { "{": "}", "(": ")", "[": "]" };
@@ -19945,9 +19946,9 @@ var require_is_glob = __commonJS({
   }
 });
 
-// ../../node_modules/glob-parent/index.js
+// ../../../../node_modules/glob-parent/index.js
 var require_glob_parent = __commonJS({
-  "../../node_modules/glob-parent/index.js"(exports2, module2) {
+  "../../../../node_modules/glob-parent/index.js"(exports2, module2) {
     "use strict";
     var isGlob = require_is_glob();
     var pathPosixDirname = require("path").posix.dirname;
@@ -19974,9 +19975,9 @@ var require_glob_parent = __commonJS({
   }
 });
 
-// ../../node_modules/braces/lib/utils.js
+// ../../../../node_modules/braces/lib/utils.js
 var require_utils4 = __commonJS({
-  "../../node_modules/braces/lib/utils.js"(exports2) {
+  "../../../../node_modules/braces/lib/utils.js"(exports2) {
     "use strict";
     exports2.isInteger = (num) => {
       if (typeof num === "number") {
@@ -20056,9 +20057,9 @@ var require_utils4 = __commonJS({
   }
 });
 
-// ../../node_modules/braces/lib/stringify.js
+// ../../../../node_modules/braces/lib/stringify.js
 var require_stringify3 = __commonJS({
-  "../../node_modules/braces/lib/stringify.js"(exports2, module2) {
+  "../../../../node_modules/braces/lib/stringify.js"(exports2, module2) {
     "use strict";
     var utils = require_utils4();
     module2.exports = (ast, options2 = {}) => {
@@ -20087,9 +20088,9 @@ var require_stringify3 = __commonJS({
   }
 });
 
-// ../../node_modules/is-number/index.js
+// ../../../../node_modules/is-number/index.js
 var require_is_number = __commonJS({
-  "../../node_modules/is-number/index.js"(exports2, module2) {
+  "../../../../node_modules/is-number/index.js"(exports2, module2) {
     "use strict";
     module2.exports = function(num) {
       if (typeof num === "number") {
@@ -20103,9 +20104,9 @@ var require_is_number = __commonJS({
   }
 });
 
-// ../../node_modules/to-regex-range/index.js
+// ../../../../node_modules/to-regex-range/index.js
 var require_to_regex_range = __commonJS({
-  "../../node_modules/to-regex-range/index.js"(exports2, module2) {
+  "../../../../node_modules/to-regex-range/index.js"(exports2, module2) {
     "use strict";
     var isNumber = require_is_number();
     var toRegexRange = (min, max, options2) => {
@@ -20314,9 +20315,9 @@ var require_to_regex_range = __commonJS({
   }
 });
 
-// ../../node_modules/fill-range/index.js
+// ../../../../node_modules/fill-range/index.js
 var require_fill_range = __commonJS({
-  "../../node_modules/fill-range/index.js"(exports2, module2) {
+  "../../../../node_modules/fill-range/index.js"(exports2, module2) {
     "use strict";
     var util2 = require("util");
     var toRegexRange = require_to_regex_range();
@@ -20508,9 +20509,9 @@ var require_fill_range = __commonJS({
   }
 });
 
-// ../../node_modules/braces/lib/compile.js
+// ../../../../node_modules/braces/lib/compile.js
 var require_compile2 = __commonJS({
-  "../../node_modules/braces/lib/compile.js"(exports2, module2) {
+  "../../../../node_modules/braces/lib/compile.js"(exports2, module2) {
     "use strict";
     var fill = require_fill_range();
     var utils = require_utils4();
@@ -20560,9 +20561,9 @@ var require_compile2 = __commonJS({
   }
 });
 
-// ../../node_modules/braces/lib/expand.js
+// ../../../../node_modules/braces/lib/expand.js
 var require_expand = __commonJS({
-  "../../node_modules/braces/lib/expand.js"(exports2, module2) {
+  "../../../../node_modules/braces/lib/expand.js"(exports2, module2) {
     "use strict";
     var fill = require_fill_range();
     var stringify = require_stringify3();
@@ -20654,9 +20655,9 @@ var require_expand = __commonJS({
   }
 });
 
-// ../../node_modules/braces/lib/constants.js
+// ../../../../node_modules/braces/lib/constants.js
 var require_constants2 = __commonJS({
-  "../../node_modules/braces/lib/constants.js"(exports2, module2) {
+  "../../../../node_modules/braces/lib/constants.js"(exports2, module2) {
     "use strict";
     module2.exports = {
       MAX_LENGTH: 1e4,
@@ -20755,9 +20756,9 @@ var require_constants2 = __commonJS({
   }
 });
 
-// ../../node_modules/braces/lib/parse.js
+// ../../../../node_modules/braces/lib/parse.js
 var require_parse3 = __commonJS({
-  "../../node_modules/braces/lib/parse.js"(exports2, module2) {
+  "../../../../node_modules/braces/lib/parse.js"(exports2, module2) {
     "use strict";
     var stringify = require_stringify3();
     var {
@@ -20993,9 +20994,9 @@ var require_parse3 = __commonJS({
   }
 });
 
-// ../../node_modules/braces/index.js
+// ../../../../node_modules/braces/index.js
 var require_braces = __commonJS({
-  "../../node_modules/braces/index.js"(exports2, module2) {
+  "../../../../node_modules/braces/index.js"(exports2, module2) {
     "use strict";
     var stringify = require_stringify3();
     var compile = require_compile2();
@@ -21056,9 +21057,9 @@ var require_braces = __commonJS({
   }
 });
 
-// ../../node_modules/binary-extensions/binary-extensions.json
+// ../../../../node_modules/binary-extensions/binary-extensions.json
 var require_binary_extensions = __commonJS({
-  "../../node_modules/binary-extensions/binary-extensions.json"(exports2, module2) {
+  "../../../../node_modules/binary-extensions/binary-extensions.json"(exports2, module2) {
     module2.exports = [
       "3dm",
       "3ds",
@@ -21325,28 +21326,28 @@ var require_binary_extensions = __commonJS({
   }
 });
 
-// ../../node_modules/binary-extensions/index.js
+// ../../../../node_modules/binary-extensions/index.js
 var require_binary_extensions2 = __commonJS({
-  "../../node_modules/binary-extensions/index.js"(exports2, module2) {
+  "../../../../node_modules/binary-extensions/index.js"(exports2, module2) {
     "use strict";
     module2.exports = require_binary_extensions();
   }
 });
 
-// ../../node_modules/is-binary-path/index.js
+// ../../../../node_modules/is-binary-path/index.js
 var require_is_binary_path = __commonJS({
-  "../../node_modules/is-binary-path/index.js"(exports2, module2) {
+  "../../../../node_modules/is-binary-path/index.js"(exports2, module2) {
     "use strict";
-    var path16 = require("path");
+    var path17 = require("path");
     var binaryExtensions = require_binary_extensions2();
     var extensions = new Set(binaryExtensions);
-    module2.exports = (filePath) => extensions.has(path16.extname(filePath).slice(1).toLowerCase());
+    module2.exports = (filePath) => extensions.has(path17.extname(filePath).slice(1).toLowerCase());
   }
 });
 
-// ../../node_modules/chokidar/lib/constants.js
+// ../../../../node_modules/chokidar/lib/constants.js
 var require_constants3 = __commonJS({
-  "../../node_modules/chokidar/lib/constants.js"(exports2) {
+  "../../../../node_modules/chokidar/lib/constants.js"(exports2) {
     "use strict";
     var { sep } = require("path");
     var { platform } = process;
@@ -21408,9 +21409,9 @@ var require_constants3 = __commonJS({
   }
 });
 
-// ../../node_modules/chokidar/lib/nodefs-handler.js
+// ../../../../node_modules/chokidar/lib/nodefs-handler.js
 var require_nodefs_handler = __commonJS({
-  "../../node_modules/chokidar/lib/nodefs-handler.js"(exports2, module2) {
+  "../../../../node_modules/chokidar/lib/nodefs-handler.js"(exports2, module2) {
     "use strict";
     var fs12 = require("fs");
     var sysPath = require("path");
@@ -21473,20 +21474,20 @@ var require_nodefs_handler = __commonJS({
     };
     var isEmptySet = (val) => val instanceof Set ? val.size === 0 : !val;
     var FsWatchInstances = /* @__PURE__ */ new Map();
-    function createFsWatchInstance(path16, options2, listener, errHandler, emitRaw) {
+    function createFsWatchInstance(path17, options2, listener, errHandler, emitRaw) {
       const handleEvent = (rawEvent, evPath) => {
-        listener(path16);
-        emitRaw(rawEvent, evPath, { watchedPath: path16 });
-        if (evPath && path16 !== evPath) {
+        listener(path17);
+        emitRaw(rawEvent, evPath, { watchedPath: path17 });
+        if (evPath && path17 !== evPath) {
           fsWatchBroadcast(
-            sysPath.resolve(path16, evPath),
+            sysPath.resolve(path17, evPath),
             KEY_LISTENERS,
-            sysPath.join(path16, evPath)
+            sysPath.join(path17, evPath)
           );
         }
       };
       try {
-        return fs12.watch(path16, options2, handleEvent);
+        return fs12.watch(path17, options2, handleEvent);
       } catch (error2) {
         errHandler(error2);
       }
@@ -21498,13 +21499,13 @@ var require_nodefs_handler = __commonJS({
         listener(val1, val2, val3);
       });
     };
-    var setFsWatchListener = (path16, fullPath, options2, handlers) => {
+    var setFsWatchListener = (path17, fullPath, options2, handlers) => {
       const { listener, errHandler, rawEmitter } = handlers;
       let cont = FsWatchInstances.get(fullPath);
       let watcher;
       if (!options2.persistent) {
         watcher = createFsWatchInstance(
-          path16,
+          path17,
           options2,
           listener,
           errHandler,
@@ -21518,7 +21519,7 @@ var require_nodefs_handler = __commonJS({
         addAndConvert(cont, KEY_RAW, rawEmitter);
       } else {
         watcher = createFsWatchInstance(
-          path16,
+          path17,
           options2,
           fsWatchBroadcast.bind(null, fullPath, KEY_LISTENERS),
           errHandler,
@@ -21531,7 +21532,7 @@ var require_nodefs_handler = __commonJS({
           cont.watcherUnusable = true;
           if (isWindows && error2.code === "EPERM") {
             try {
-              const fd = await open(path16, "r");
+              const fd = await open(path17, "r");
               await close(fd);
               broadcastErr(error2);
             } catch (err) {
@@ -21562,7 +21563,7 @@ var require_nodefs_handler = __commonJS({
       };
     };
     var FsWatchFileInstances = /* @__PURE__ */ new Map();
-    var setFsWatchFileListener = (path16, fullPath, options2, handlers) => {
+    var setFsWatchFileListener = (path17, fullPath, options2, handlers) => {
       const { listener, rawEmitter } = handlers;
       let cont = FsWatchFileInstances.get(fullPath);
       let listeners = /* @__PURE__ */ new Set();
@@ -21588,7 +21589,7 @@ var require_nodefs_handler = __commonJS({
             });
             const currmtime = curr.mtimeMs;
             if (curr.size !== prev.size || currmtime > prev.mtimeMs || currmtime === 0) {
-              foreach(cont.listeners, (listener2) => listener2(path16, curr));
+              foreach(cont.listeners, (listener2) => listener2(path17, curr));
             }
           })
         };
@@ -21619,24 +21620,24 @@ var require_nodefs_handler = __commonJS({
        * @param {Function} listener on fs change
        * @returns {Function} closer for the watcher instance
        */
-      _watchWithNodeFs(path16, listener) {
+      _watchWithNodeFs(path17, listener) {
         const opts = this.fsw.options;
-        const directory = sysPath.dirname(path16);
-        const basename = sysPath.basename(path16);
+        const directory = sysPath.dirname(path17);
+        const basename = sysPath.basename(path17);
         const parent = this.fsw._getWatchedDir(directory);
         parent.add(basename);
-        const absolutePath = sysPath.resolve(path16);
+        const absolutePath = sysPath.resolve(path17);
         const options2 = { persistent: opts.persistent };
         if (!listener) listener = EMPTY_FN;
         let closer;
         if (opts.usePolling) {
           options2.interval = opts.enableBinaryInterval && isBinaryPath(basename) ? opts.binaryInterval : opts.interval;
-          closer = setFsWatchFileListener(path16, absolutePath, options2, {
+          closer = setFsWatchFileListener(path17, absolutePath, options2, {
             listener,
             rawEmitter: this.fsw._emitRaw
           });
         } else {
-          closer = setFsWatchListener(path16, absolutePath, options2, {
+          closer = setFsWatchListener(path17, absolutePath, options2, {
             listener,
             errHandler: this._boundHandleError,
             rawEmitter: this.fsw._emitRaw
@@ -21660,7 +21661,7 @@ var require_nodefs_handler = __commonJS({
         const parent = this.fsw._getWatchedDir(dirname);
         let prevStats = stats;
         if (parent.has(basename)) return;
-        const listener = async (path16, newStats) => {
+        const listener = async (path17, newStats) => {
           if (!this.fsw._throttle(THROTTLE_MODE_WATCH, file, 5)) return;
           if (!newStats || newStats.mtimeMs === 0) {
             try {
@@ -21672,9 +21673,9 @@ var require_nodefs_handler = __commonJS({
                 this.fsw._emit(EV_CHANGE, file, newStats2);
               }
               if (isLinux && prevStats.ino !== newStats2.ino) {
-                this.fsw._closeFile(path16);
+                this.fsw._closeFile(path17);
                 prevStats = newStats2;
-                this.fsw._addPathCloser(path16, this._watchWithNodeFs(file, listener));
+                this.fsw._addPathCloser(path17, this._watchWithNodeFs(file, listener));
               } else {
                 prevStats = newStats2;
               }
@@ -21705,7 +21706,7 @@ var require_nodefs_handler = __commonJS({
        * @param {String} item basename of this item
        * @returns {Promise<Boolean>} true if no more processing is needed for this entry.
        */
-      async _handleSymlink(entry, directory, path16, item) {
+      async _handleSymlink(entry, directory, path17, item) {
         if (this.fsw.closed) {
           return;
         }
@@ -21715,7 +21716,7 @@ var require_nodefs_handler = __commonJS({
           this.fsw._incrReadyCount();
           let linkPath;
           try {
-            linkPath = await fsrealpath(path16);
+            linkPath = await fsrealpath(path17);
           } catch (e) {
             this.fsw._emitReady();
             return true;
@@ -21724,12 +21725,12 @@ var require_nodefs_handler = __commonJS({
           if (dir.has(item)) {
             if (this.fsw._symlinkPaths.get(full) !== linkPath) {
               this.fsw._symlinkPaths.set(full, linkPath);
-              this.fsw._emit(EV_CHANGE, path16, entry.stats);
+              this.fsw._emit(EV_CHANGE, path17, entry.stats);
             }
           } else {
             dir.add(item);
             this.fsw._symlinkPaths.set(full, linkPath);
-            this.fsw._emit(EV_ADD, path16, entry.stats);
+            this.fsw._emit(EV_ADD, path17, entry.stats);
           }
           this.fsw._emitReady();
           return true;
@@ -21757,9 +21758,9 @@ var require_nodefs_handler = __commonJS({
             return;
           }
           const item = entry.path;
-          let path16 = sysPath.join(directory, item);
+          let path17 = sysPath.join(directory, item);
           current.add(item);
-          if (entry.stats.isSymbolicLink() && await this._handleSymlink(entry, directory, path16, item)) {
+          if (entry.stats.isSymbolicLink() && await this._handleSymlink(entry, directory, path17, item)) {
             return;
           }
           if (this.fsw.closed) {
@@ -21768,8 +21769,8 @@ var require_nodefs_handler = __commonJS({
           }
           if (item === target || !target && !previous.has(item)) {
             this.fsw._incrReadyCount();
-            path16 = sysPath.join(dir, sysPath.relative(dir, path16));
-            this._addToNodeFs(path16, initialAdd, wh, depth + 1);
+            path17 = sysPath.join(dir, sysPath.relative(dir, path17));
+            this._addToNodeFs(path17, initialAdd, wh, depth + 1);
           }
         }).on(EV_ERROR, this._boundHandleError);
         return new Promise(
@@ -21839,13 +21840,13 @@ var require_nodefs_handler = __commonJS({
        * @param {String=} target Child path actually targeted for watch
        * @returns {Promise}
        */
-      async _addToNodeFs(path16, initialAdd, priorWh, depth, target) {
+      async _addToNodeFs(path17, initialAdd, priorWh, depth, target) {
         const ready = this.fsw._emitReady;
-        if (this.fsw._isIgnored(path16) || this.fsw.closed) {
+        if (this.fsw._isIgnored(path17) || this.fsw.closed) {
           ready();
           return false;
         }
-        const wh = this.fsw._getWatchHelpers(path16, depth);
+        const wh = this.fsw._getWatchHelpers(path17, depth);
         if (!wh.hasGlob && priorWh) {
           wh.hasGlob = priorWh.hasGlob;
           wh.globFilter = priorWh.globFilter;
@@ -21859,11 +21860,11 @@ var require_nodefs_handler = __commonJS({
             ready();
             return false;
           }
-          const follow = this.fsw.options.followSymlinks && !path16.includes(STAR) && !path16.includes(BRACE_START);
+          const follow = this.fsw.options.followSymlinks && !path17.includes(STAR) && !path17.includes(BRACE_START);
           let closer;
           if (stats.isDirectory()) {
-            const absPath = sysPath.resolve(path16);
-            const targetPath = follow ? await fsrealpath(path16) : path16;
+            const absPath = sysPath.resolve(path17);
+            const targetPath = follow ? await fsrealpath(path17) : path17;
             if (this.fsw.closed) return;
             closer = await this._handleDir(wh.watchPath, stats, initialAdd, depth, target, wh, targetPath);
             if (this.fsw.closed) return;
@@ -21871,26 +21872,26 @@ var require_nodefs_handler = __commonJS({
               this.fsw._symlinkPaths.set(absPath, targetPath);
             }
           } else if (stats.isSymbolicLink()) {
-            const targetPath = follow ? await fsrealpath(path16) : path16;
+            const targetPath = follow ? await fsrealpath(path17) : path17;
             if (this.fsw.closed) return;
             const parent = sysPath.dirname(wh.watchPath);
             this.fsw._getWatchedDir(parent).add(wh.watchPath);
             this.fsw._emit(EV_ADD, wh.watchPath, stats);
-            closer = await this._handleDir(parent, stats, initialAdd, depth, path16, wh, targetPath);
+            closer = await this._handleDir(parent, stats, initialAdd, depth, path17, wh, targetPath);
             if (this.fsw.closed) return;
             if (targetPath !== void 0) {
-              this.fsw._symlinkPaths.set(sysPath.resolve(path16), targetPath);
+              this.fsw._symlinkPaths.set(sysPath.resolve(path17), targetPath);
             }
           } else {
             closer = this._handleFile(wh.watchPath, stats, initialAdd);
           }
           ready();
-          this.fsw._addPathCloser(path16, closer);
+          this.fsw._addPathCloser(path17, closer);
           return false;
         } catch (error2) {
           if (this.fsw._handleError(error2)) {
             ready();
-            return path16;
+            return path17;
           }
         }
       }
@@ -21899,9 +21900,9 @@ var require_nodefs_handler = __commonJS({
   }
 });
 
-// ../../node_modules/chokidar/lib/fsevents-handler.js
+// ../../../../node_modules/chokidar/lib/fsevents-handler.js
 var require_fsevents_handler = __commonJS({
-  "../../node_modules/chokidar/lib/fsevents-handler.js"(exports2, module2) {
+  "../../../../node_modules/chokidar/lib/fsevents-handler.js"(exports2, module2) {
     "use strict";
     var fs12 = require("fs");
     var sysPath = require("path");
@@ -21964,18 +21965,18 @@ var require_fsevents_handler = __commonJS({
       131840,
       262912
     ]);
-    var createFSEventsInstance = (path16, callback) => {
-      const stop = fsevents.watch(path16, callback);
+    var createFSEventsInstance = (path17, callback) => {
+      const stop = fsevents.watch(path17, callback);
       return { stop };
     };
-    function setFSEventsListener(path16, realPath, listener, rawEmitter) {
+    function setFSEventsListener(path17, realPath, listener, rawEmitter) {
       let watchPath = sysPath.extname(realPath) ? sysPath.dirname(realPath) : realPath;
       const parentPath = sysPath.dirname(watchPath);
       let cont = FSEventsWatchers.get(watchPath);
       if (couldConsolidate(parentPath)) {
         watchPath = parentPath;
       }
-      const resolvedPath = sysPath.resolve(path16);
+      const resolvedPath = sysPath.resolve(path17);
       const hasSymlink = resolvedPath !== realPath;
       const filteredListener = (fullPath, flags, info) => {
         if (hasSymlink) fullPath = fullPath.replace(realPath, resolvedPath);
@@ -22020,10 +22021,10 @@ var require_fsevents_handler = __commonJS({
         }
       };
     }
-    var couldConsolidate = (path16) => {
+    var couldConsolidate = (path17) => {
       let count = 0;
       for (const watchPath of FSEventsWatchers.keys()) {
-        if (watchPath.indexOf(path16) === 0) {
+        if (watchPath.indexOf(path17) === 0) {
           count++;
           if (count >= consolidateThreshhold) {
             return true;
@@ -22033,9 +22034,9 @@ var require_fsevents_handler = __commonJS({
       return false;
     };
     var canUse = () => fsevents && FSEventsWatchers.size < 128;
-    var calcDepth = (path16, root) => {
+    var calcDepth = (path17, root) => {
       let i = 0;
-      while (!path16.indexOf(root) && (path16 = sysPath.dirname(path16)) !== root) i++;
+      while (!path17.indexOf(root) && (path17 = sysPath.dirname(path17)) !== root) i++;
       return i;
     };
     var sameTypes = (info, stats) => info.type === FSEVENT_TYPE_DIRECTORY && stats.isDirectory() || info.type === FSEVENT_TYPE_SYMLINK && stats.isSymbolicLink() || info.type === FSEVENT_TYPE_FILE && stats.isFile();
@@ -22046,41 +22047,41 @@ var require_fsevents_handler = __commonJS({
       constructor(fsw) {
         this.fsw = fsw;
       }
-      checkIgnored(path16, stats) {
+      checkIgnored(path17, stats) {
         const ipaths = this.fsw._ignoredPaths;
-        if (this.fsw._isIgnored(path16, stats)) {
-          ipaths.add(path16);
+        if (this.fsw._isIgnored(path17, stats)) {
+          ipaths.add(path17);
           if (stats && stats.isDirectory()) {
-            ipaths.add(path16 + ROOT_GLOBSTAR);
+            ipaths.add(path17 + ROOT_GLOBSTAR);
           }
           return true;
         }
-        ipaths.delete(path16);
-        ipaths.delete(path16 + ROOT_GLOBSTAR);
+        ipaths.delete(path17);
+        ipaths.delete(path17 + ROOT_GLOBSTAR);
       }
-      addOrChange(path16, fullPath, realPath, parent, watchedDir, item, info, opts) {
+      addOrChange(path17, fullPath, realPath, parent, watchedDir, item, info, opts) {
         const event = watchedDir.has(item) ? EV_CHANGE : EV_ADD;
-        this.handleEvent(event, path16, fullPath, realPath, parent, watchedDir, item, info, opts);
+        this.handleEvent(event, path17, fullPath, realPath, parent, watchedDir, item, info, opts);
       }
-      async checkExists(path16, fullPath, realPath, parent, watchedDir, item, info, opts) {
+      async checkExists(path17, fullPath, realPath, parent, watchedDir, item, info, opts) {
         try {
-          const stats = await stat(path16);
+          const stats = await stat(path17);
           if (this.fsw.closed) return;
           if (sameTypes(info, stats)) {
-            this.addOrChange(path16, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.addOrChange(path17, fullPath, realPath, parent, watchedDir, item, info, opts);
           } else {
-            this.handleEvent(EV_UNLINK, path16, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.handleEvent(EV_UNLINK, path17, fullPath, realPath, parent, watchedDir, item, info, opts);
           }
         } catch (error2) {
           if (error2.code === "EACCES") {
-            this.addOrChange(path16, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.addOrChange(path17, fullPath, realPath, parent, watchedDir, item, info, opts);
           } else {
-            this.handleEvent(EV_UNLINK, path16, fullPath, realPath, parent, watchedDir, item, info, opts);
+            this.handleEvent(EV_UNLINK, path17, fullPath, realPath, parent, watchedDir, item, info, opts);
           }
         }
       }
-      handleEvent(event, path16, fullPath, realPath, parent, watchedDir, item, info, opts) {
-        if (this.fsw.closed || this.checkIgnored(path16)) return;
+      handleEvent(event, path17, fullPath, realPath, parent, watchedDir, item, info, opts) {
+        if (this.fsw.closed || this.checkIgnored(path17)) return;
         if (event === EV_UNLINK) {
           const isDirectory = info.type === FSEVENT_TYPE_DIRECTORY;
           if (isDirectory || watchedDir.has(item)) {
@@ -22088,16 +22089,16 @@ var require_fsevents_handler = __commonJS({
           }
         } else {
           if (event === EV_ADD) {
-            if (info.type === FSEVENT_TYPE_DIRECTORY) this.fsw._getWatchedDir(path16);
+            if (info.type === FSEVENT_TYPE_DIRECTORY) this.fsw._getWatchedDir(path17);
             if (info.type === FSEVENT_TYPE_SYMLINK && opts.followSymlinks) {
               const curDepth = opts.depth === void 0 ? void 0 : calcDepth(fullPath, realPath) + 1;
-              return this._addToFsEvents(path16, false, true, curDepth);
+              return this._addToFsEvents(path17, false, true, curDepth);
             }
             this.fsw._getWatchedDir(parent).add(item);
           }
           const eventName = info.type === FSEVENT_TYPE_DIRECTORY ? event + DIR_SUFFIX : event;
-          this.fsw._emit(eventName, path16);
-          if (eventName === EV_ADD_DIR) this._addToFsEvents(path16, false, true);
+          this.fsw._emit(eventName, path17);
+          if (eventName === EV_ADD_DIR) this._addToFsEvents(path17, false, true);
         }
       }
       /**
@@ -22114,41 +22115,41 @@ var require_fsevents_handler = __commonJS({
         const watchCallback = async (fullPath, flags, info) => {
           if (this.fsw.closed) return;
           if (opts.depth !== void 0 && calcDepth(fullPath, realPath) > opts.depth) return;
-          const path16 = transform2(sysPath.join(
+          const path17 = transform2(sysPath.join(
             watchPath,
             sysPath.relative(watchPath, fullPath)
           ));
-          if (globFilter && !globFilter(path16)) return;
-          const parent = sysPath.dirname(path16);
-          const item = sysPath.basename(path16);
+          if (globFilter && !globFilter(path17)) return;
+          const parent = sysPath.dirname(path17);
+          const item = sysPath.basename(path17);
           const watchedDir = this.fsw._getWatchedDir(
-            info.type === FSEVENT_TYPE_DIRECTORY ? path16 : parent
+            info.type === FSEVENT_TYPE_DIRECTORY ? path17 : parent
           );
           if (wrongEventFlags.has(flags) || info.event === FSEVENT_UNKNOWN) {
             if (typeof opts.ignored === FUNCTION_TYPE) {
               let stats;
               try {
-                stats = await stat(path16);
+                stats = await stat(path17);
               } catch (error2) {
               }
               if (this.fsw.closed) return;
-              if (this.checkIgnored(path16, stats)) return;
+              if (this.checkIgnored(path17, stats)) return;
               if (sameTypes(info, stats)) {
-                this.addOrChange(path16, fullPath, realPath, parent, watchedDir, item, info, opts);
+                this.addOrChange(path17, fullPath, realPath, parent, watchedDir, item, info, opts);
               } else {
-                this.handleEvent(EV_UNLINK, path16, fullPath, realPath, parent, watchedDir, item, info, opts);
+                this.handleEvent(EV_UNLINK, path17, fullPath, realPath, parent, watchedDir, item, info, opts);
               }
             } else {
-              this.checkExists(path16, fullPath, realPath, parent, watchedDir, item, info, opts);
+              this.checkExists(path17, fullPath, realPath, parent, watchedDir, item, info, opts);
             }
           } else {
             switch (info.event) {
               case FSEVENT_CREATED:
               case FSEVENT_MODIFIED:
-                return this.addOrChange(path16, fullPath, realPath, parent, watchedDir, item, info, opts);
+                return this.addOrChange(path17, fullPath, realPath, parent, watchedDir, item, info, opts);
               case FSEVENT_DELETED:
               case FSEVENT_MOVED:
-                return this.checkExists(path16, fullPath, realPath, parent, watchedDir, item, info, opts);
+                return this.checkExists(path17, fullPath, realPath, parent, watchedDir, item, info, opts);
             }
           }
         };
@@ -22180,12 +22181,12 @@ var require_fsevents_handler = __commonJS({
             return this.fsw._emitReady();
           }
           this.fsw._incrReadyCount();
-          this._addToFsEvents(linkTarget || linkPath, (path16) => {
+          this._addToFsEvents(linkTarget || linkPath, (path17) => {
             let aliasedPath = linkPath;
             if (linkTarget && linkTarget !== DOT_SLASH) {
-              aliasedPath = path16.replace(linkTarget, linkPath);
-            } else if (path16 !== DOT_SLASH) {
-              aliasedPath = sysPath.join(linkPath, path16);
+              aliasedPath = path17.replace(linkTarget, linkPath);
+            } else if (path17 !== DOT_SLASH) {
+              aliasedPath = sysPath.join(linkPath, path17);
             }
             return transform2(aliasedPath);
           }, false, curDepth);
@@ -22212,7 +22213,7 @@ var require_fsevents_handler = __commonJS({
           this.fsw._emit(isDir2 ? EV_ADD_DIR : EV_ADD, pp, stats);
         }
       }
-      initWatch(realPath, path16, wh, processPath) {
+      initWatch(realPath, path17, wh, processPath) {
         if (this.fsw.closed) return;
         const closer = this._watchWithFsEvents(
           wh.watchPath,
@@ -22220,7 +22221,7 @@ var require_fsevents_handler = __commonJS({
           processPath,
           wh.globFilter
         );
-        this.fsw._addPathCloser(path16, closer);
+        this.fsw._addPathCloser(path17, closer);
       }
       /**
        * Handle added path with fsevents
@@ -22230,13 +22231,13 @@ var require_fsevents_handler = __commonJS({
        * @param {Number=} priorDepth Level of subdirectories already traversed.
        * @returns {Promise<void>}
        */
-      async _addToFsEvents(path16, transform2, forceAdd, priorDepth) {
+      async _addToFsEvents(path17, transform2, forceAdd, priorDepth) {
         if (this.fsw.closed) {
           return;
         }
         const opts = this.fsw.options;
         const processPath = typeof transform2 === FUNCTION_TYPE ? transform2 : IDENTITY_FN;
-        const wh = this.fsw._getWatchHelpers(path16);
+        const wh = this.fsw._getWatchHelpers(path17);
         try {
           const stats = await statMethods[wh.statMethod](wh.watchPath);
           if (this.fsw.closed) return;
@@ -22244,7 +22245,7 @@ var require_fsevents_handler = __commonJS({
             throw null;
           }
           if (stats.isDirectory()) {
-            if (!wh.globFilter) this.emitAdd(processPath(path16), stats, processPath, opts, forceAdd);
+            if (!wh.globFilter) this.emitAdd(processPath(path17), stats, processPath, opts, forceAdd);
             if (priorDepth && priorDepth > opts.depth) return;
             this.fsw._readdirp(wh.watchPath, {
               fileFilter: (entry) => wh.filterPath(entry),
@@ -22278,14 +22279,14 @@ var require_fsevents_handler = __commonJS({
         }
         if (opts.persistent && forceAdd !== true) {
           if (typeof transform2 === FUNCTION_TYPE) {
-            this.initWatch(void 0, path16, wh, processPath);
+            this.initWatch(void 0, path17, wh, processPath);
           } else {
             let realPath;
             try {
               realPath = await realpath(wh.watchPath);
             } catch (e) {
             }
-            this.initWatch(realPath, path16, wh, processPath);
+            this.initWatch(realPath, path17, wh, processPath);
           }
         }
       }
@@ -22295,9 +22296,9 @@ var require_fsevents_handler = __commonJS({
   }
 });
 
-// ../../node_modules/chokidar/index.js
+// ../../../../node_modules/chokidar/index.js
 var require_chokidar = __commonJS({
-  "../../node_modules/chokidar/index.js"(exports2) {
+  "../../../../node_modules/chokidar/index.js"(exports2) {
     "use strict";
     var { EventEmitter } = require("events");
     var fs12 = require("fs");
@@ -22379,19 +22380,19 @@ var require_chokidar = __commonJS({
       }
       return str2;
     };
-    var normalizePathToUnix = (path16) => toUnix(sysPath.normalize(toUnix(path16)));
-    var normalizeIgnored = (cwd = EMPTY_STR) => (path16) => {
-      if (typeof path16 !== STRING_TYPE) return path16;
-      return normalizePathToUnix(sysPath.isAbsolute(path16) ? path16 : sysPath.join(cwd, path16));
+    var normalizePathToUnix = (path17) => toUnix(sysPath.normalize(toUnix(path17)));
+    var normalizeIgnored = (cwd = EMPTY_STR) => (path17) => {
+      if (typeof path17 !== STRING_TYPE) return path17;
+      return normalizePathToUnix(sysPath.isAbsolute(path17) ? path17 : sysPath.join(cwd, path17));
     };
-    var getAbsolutePath = (path16, cwd) => {
-      if (sysPath.isAbsolute(path16)) {
-        return path16;
+    var getAbsolutePath = (path17, cwd) => {
+      if (sysPath.isAbsolute(path17)) {
+        return path17;
       }
-      if (path16.startsWith(BANG)) {
-        return BANG + sysPath.join(cwd, path16.slice(1));
+      if (path17.startsWith(BANG)) {
+        return BANG + sysPath.join(cwd, path17.slice(1));
       }
-      return sysPath.join(cwd, path16);
+      return sysPath.join(cwd, path17);
     };
     var undef = (opts, key) => opts[key] === void 0;
     var DirEntry = class {
@@ -22447,16 +22448,16 @@ var require_chokidar = __commonJS({
     var STAT_METHOD_F = "stat";
     var STAT_METHOD_L = "lstat";
     var WatchHelper = class {
-      constructor(path16, watchPath, follow, fsw) {
+      constructor(path17, watchPath, follow, fsw) {
         this.fsw = fsw;
-        this.path = path16 = path16.replace(REPLACER_RE, EMPTY_STR);
+        this.path = path17 = path17.replace(REPLACER_RE, EMPTY_STR);
         this.watchPath = watchPath;
         this.fullWatchPath = sysPath.resolve(watchPath);
-        this.hasGlob = watchPath !== path16;
-        if (path16 === EMPTY_STR) this.hasGlob = false;
+        this.hasGlob = watchPath !== path17;
+        if (path17 === EMPTY_STR) this.hasGlob = false;
         this.globSymlink = this.hasGlob && follow ? void 0 : false;
-        this.globFilter = this.hasGlob ? anymatch(path16, void 0, ANYMATCH_OPTS) : false;
-        this.dirParts = this.getDirParts(path16);
+        this.globFilter = this.hasGlob ? anymatch(path17, void 0, ANYMATCH_OPTS) : false;
+        this.dirParts = this.getDirParts(path17);
         this.dirParts.forEach((parts) => {
           if (parts.length > 1) parts.pop();
         });
@@ -22485,12 +22486,12 @@ var require_chokidar = __commonJS({
         const matchesGlob = this.hasGlob && typeof this.globFilter === FUNCTION_TYPE ? this.globFilter(resolvedPath) : true;
         return matchesGlob && this.fsw._isntIgnored(resolvedPath, stats) && this.fsw._hasReadPermissions(stats);
       }
-      getDirParts(path16) {
+      getDirParts(path17) {
         if (!this.hasGlob) return [];
         const parts = [];
-        const expandedPath = path16.includes(BRACE_START) ? braces.expand(path16) : [path16];
-        expandedPath.forEach((path17) => {
-          parts.push(sysPath.relative(this.watchPath, path17).split(SLASH_OR_BACK_SLASH_RE));
+        const expandedPath = path17.includes(BRACE_START) ? braces.expand(path17) : [path17];
+        expandedPath.forEach((path18) => {
+          parts.push(sysPath.relative(this.watchPath, path18).split(SLASH_OR_BACK_SLASH_RE));
         });
         return parts;
       }
@@ -22596,34 +22597,34 @@ var require_chokidar = __commonJS({
         this.closed = false;
         let paths = unifyPaths(paths_);
         if (cwd) {
-          paths = paths.map((path16) => {
-            const absPath = getAbsolutePath(path16, cwd);
-            if (disableGlobbing || !isGlob(path16)) {
+          paths = paths.map((path17) => {
+            const absPath = getAbsolutePath(path17, cwd);
+            if (disableGlobbing || !isGlob(path17)) {
               return absPath;
             }
             return normalizePath(absPath);
           });
         }
-        paths = paths.filter((path16) => {
-          if (path16.startsWith(BANG)) {
-            this._ignoredPaths.add(path16.slice(1));
+        paths = paths.filter((path17) => {
+          if (path17.startsWith(BANG)) {
+            this._ignoredPaths.add(path17.slice(1));
             return false;
           }
-          this._ignoredPaths.delete(path16);
-          this._ignoredPaths.delete(path16 + SLASH_GLOBSTAR);
+          this._ignoredPaths.delete(path17);
+          this._ignoredPaths.delete(path17 + SLASH_GLOBSTAR);
           this._userIgnored = void 0;
           return true;
         });
         if (this.options.useFsEvents && this._fsEventsHandler) {
           if (!this._readyCount) this._readyCount = paths.length;
           if (this.options.persistent) this._readyCount += paths.length;
-          paths.forEach((path16) => this._fsEventsHandler._addToFsEvents(path16));
+          paths.forEach((path17) => this._fsEventsHandler._addToFsEvents(path17));
         } else {
           if (!this._readyCount) this._readyCount = 0;
           this._readyCount += paths.length;
           Promise.all(
-            paths.map(async (path16) => {
-              const res = await this._nodeFsHandler._addToNodeFs(path16, !_internal, 0, 0, _origAdd);
+            paths.map(async (path17) => {
+              const res = await this._nodeFsHandler._addToNodeFs(path17, !_internal, 0, 0, _origAdd);
               if (res) this._emitReady();
               return res;
             })
@@ -22645,15 +22646,15 @@ var require_chokidar = __commonJS({
         if (this.closed) return this;
         const paths = unifyPaths(paths_);
         const { cwd } = this.options;
-        paths.forEach((path16) => {
-          if (!sysPath.isAbsolute(path16) && !this._closers.has(path16)) {
-            if (cwd) path16 = sysPath.join(cwd, path16);
-            path16 = sysPath.resolve(path16);
+        paths.forEach((path17) => {
+          if (!sysPath.isAbsolute(path17) && !this._closers.has(path17)) {
+            if (cwd) path17 = sysPath.join(cwd, path17);
+            path17 = sysPath.resolve(path17);
           }
-          this._closePath(path16);
-          this._ignoredPaths.add(path16);
-          if (this._watched.has(path16)) {
-            this._ignoredPaths.add(path16 + SLASH_GLOBSTAR);
+          this._closePath(path17);
+          this._ignoredPaths.add(path17);
+          if (this._watched.has(path17)) {
+            this._ignoredPaths.add(path17 + SLASH_GLOBSTAR);
           }
           this._userIgnored = void 0;
         });
@@ -22711,36 +22712,36 @@ var require_chokidar = __commonJS({
        * @param {*=} val3
        * @returns the error if defined, otherwise the value of the FSWatcher instance's `closed` flag
        */
-      async _emit(event, path16, val1, val2, val3) {
+      async _emit(event, path17, val1, val2, val3) {
         if (this.closed) return;
         const opts = this.options;
-        if (isWindows) path16 = sysPath.normalize(path16);
-        if (opts.cwd) path16 = sysPath.relative(opts.cwd, path16);
-        const args = [event, path16];
+        if (isWindows) path17 = sysPath.normalize(path17);
+        if (opts.cwd) path17 = sysPath.relative(opts.cwd, path17);
+        const args = [event, path17];
         if (val3 !== void 0) args.push(val1, val2, val3);
         else if (val2 !== void 0) args.push(val1, val2);
         else if (val1 !== void 0) args.push(val1);
         const awf = opts.awaitWriteFinish;
         let pw;
-        if (awf && (pw = this._pendingWrites.get(path16))) {
+        if (awf && (pw = this._pendingWrites.get(path17))) {
           pw.lastChange = /* @__PURE__ */ new Date();
           return this;
         }
         if (opts.atomic) {
           if (event === EV_UNLINK) {
-            this._pendingUnlinks.set(path16, args);
+            this._pendingUnlinks.set(path17, args);
             setTimeout(() => {
-              this._pendingUnlinks.forEach((entry, path17) => {
+              this._pendingUnlinks.forEach((entry, path18) => {
                 this.emit(...entry);
                 this.emit(EV_ALL, ...entry);
-                this._pendingUnlinks.delete(path17);
+                this._pendingUnlinks.delete(path18);
               });
             }, typeof opts.atomic === "number" ? opts.atomic : 100);
             return this;
           }
-          if (event === EV_ADD && this._pendingUnlinks.has(path16)) {
+          if (event === EV_ADD && this._pendingUnlinks.has(path17)) {
             event = args[0] = EV_CHANGE;
-            this._pendingUnlinks.delete(path16);
+            this._pendingUnlinks.delete(path17);
           }
         }
         if (awf && (event === EV_ADD || event === EV_CHANGE) && this._readyEmitted) {
@@ -22758,15 +22759,15 @@ var require_chokidar = __commonJS({
               this.emitWithAll(event, args);
             }
           };
-          this._awaitWriteFinish(path16, awf.stabilityThreshold, event, awfEmit);
+          this._awaitWriteFinish(path17, awf.stabilityThreshold, event, awfEmit);
           return this;
         }
         if (event === EV_CHANGE) {
-          const isThrottled = !this._throttle(EV_CHANGE, path16, 50);
+          const isThrottled = !this._throttle(EV_CHANGE, path17, 50);
           if (isThrottled) return this;
         }
         if (opts.alwaysStat && val1 === void 0 && (event === EV_ADD || event === EV_ADD_DIR || event === EV_CHANGE)) {
-          const fullPath = opts.cwd ? sysPath.join(opts.cwd, path16) : path16;
+          const fullPath = opts.cwd ? sysPath.join(opts.cwd, path17) : path17;
           let stats;
           try {
             stats = await stat(fullPath);
@@ -22797,28 +22798,28 @@ var require_chokidar = __commonJS({
        * @param {Number} timeout duration of time to suppress duplicate actions
        * @returns {Object|false} tracking object or false if action should be suppressed
        */
-      _throttle(actionType, path16, timeout) {
+      _throttle(actionType, path17, timeout) {
         if (!this._throttled.has(actionType)) {
           this._throttled.set(actionType, /* @__PURE__ */ new Map());
         }
         const action = this._throttled.get(actionType);
-        const actionPath = action.get(path16);
+        const actionPath = action.get(path17);
         if (actionPath) {
           actionPath.count++;
           return false;
         }
         let timeoutObject;
         const clear = () => {
-          const item = action.get(path16);
+          const item = action.get(path17);
           const count = item ? item.count : 0;
-          action.delete(path16);
+          action.delete(path17);
           clearTimeout(timeoutObject);
           if (item) clearTimeout(item.timeoutObject);
           return count;
         };
         timeoutObject = setTimeout(clear, timeout);
         const thr = { timeoutObject, clear, count: 0 };
-        action.set(path16, thr);
+        action.set(path17, thr);
         return thr;
       }
       _incrReadyCount() {
@@ -22832,27 +22833,27 @@ var require_chokidar = __commonJS({
        * @param {EventName} event
        * @param {Function} awfEmit Callback to be called when ready for event to be emitted.
        */
-      _awaitWriteFinish(path16, threshold, event, awfEmit) {
+      _awaitWriteFinish(path17, threshold, event, awfEmit) {
         let timeoutHandler;
-        let fullPath = path16;
-        if (this.options.cwd && !sysPath.isAbsolute(path16)) {
-          fullPath = sysPath.join(this.options.cwd, path16);
+        let fullPath = path17;
+        if (this.options.cwd && !sysPath.isAbsolute(path17)) {
+          fullPath = sysPath.join(this.options.cwd, path17);
         }
         const now = /* @__PURE__ */ new Date();
         const awaitWriteFinish = (prevStat) => {
           fs12.stat(fullPath, (err, curStat) => {
-            if (err || !this._pendingWrites.has(path16)) {
+            if (err || !this._pendingWrites.has(path17)) {
               if (err && err.code !== "ENOENT") awfEmit(err);
               return;
             }
             const now2 = Number(/* @__PURE__ */ new Date());
             if (prevStat && curStat.size !== prevStat.size) {
-              this._pendingWrites.get(path16).lastChange = now2;
+              this._pendingWrites.get(path17).lastChange = now2;
             }
-            const pw = this._pendingWrites.get(path16);
+            const pw = this._pendingWrites.get(path17);
             const df = now2 - pw.lastChange;
             if (df >= threshold) {
-              this._pendingWrites.delete(path16);
+              this._pendingWrites.delete(path17);
               awfEmit(void 0, curStat);
             } else {
               timeoutHandler = setTimeout(
@@ -22863,11 +22864,11 @@ var require_chokidar = __commonJS({
             }
           });
         };
-        if (!this._pendingWrites.has(path16)) {
-          this._pendingWrites.set(path16, {
+        if (!this._pendingWrites.has(path17)) {
+          this._pendingWrites.set(path17, {
             lastChange: now,
             cancelWait: () => {
-              this._pendingWrites.delete(path16);
+              this._pendingWrites.delete(path17);
               clearTimeout(timeoutHandler);
               return event;
             }
@@ -22887,20 +22888,20 @@ var require_chokidar = __commonJS({
        * @param {fs.Stats=} stats result of fs.stat
        * @returns {Boolean}
        */
-      _isIgnored(path16, stats) {
-        if (this.options.atomic && DOT_RE.test(path16)) return true;
+      _isIgnored(path17, stats) {
+        if (this.options.atomic && DOT_RE.test(path17)) return true;
         if (!this._userIgnored) {
           const { cwd } = this.options;
           const ign = this.options.ignored;
           const ignored = ign && ign.map(normalizeIgnored(cwd));
-          const paths = arrify(ignored).filter((path17) => typeof path17 === STRING_TYPE && !isGlob(path17)).map((path17) => path17 + SLASH_GLOBSTAR);
+          const paths = arrify(ignored).filter((path18) => typeof path18 === STRING_TYPE && !isGlob(path18)).map((path18) => path18 + SLASH_GLOBSTAR);
           const list = this._getGlobIgnored().map(normalizeIgnored(cwd)).concat(ignored, paths);
           this._userIgnored = anymatch(list, void 0, ANYMATCH_OPTS);
         }
-        return this._userIgnored([path16, stats]);
+        return this._userIgnored([path17, stats]);
       }
-      _isntIgnored(path16, stat2) {
-        return !this._isIgnored(path16, stat2);
+      _isntIgnored(path17, stat2) {
+        return !this._isIgnored(path17, stat2);
       }
       /**
        * Provides a set of common helpers and properties relating to symlink and glob handling.
@@ -22908,10 +22909,10 @@ var require_chokidar = __commonJS({
        * @param {Number=} depth at any depth > 0, this isn't a glob
        * @returns {WatchHelper} object containing helpers for this path
        */
-      _getWatchHelpers(path16, depth) {
-        const watchPath = depth || this.options.disableGlobbing || !isGlob(path16) ? path16 : globParent(path16);
+      _getWatchHelpers(path17, depth) {
+        const watchPath = depth || this.options.disableGlobbing || !isGlob(path17) ? path17 : globParent(path17);
         const follow = this.options.followSymlinks;
-        return new WatchHelper(path16, watchPath, follow, this);
+        return new WatchHelper(path17, watchPath, follow, this);
       }
       // Directory helpers
       // -----------------
@@ -22950,66 +22951,66 @@ var require_chokidar = __commonJS({
        * @returns {void}
       */
       _remove(directory, item, isDirectory) {
-        const path16 = sysPath.join(directory, item);
-        const fullPath = sysPath.resolve(path16);
-        isDirectory = isDirectory != null ? isDirectory : this._watched.has(path16) || this._watched.has(fullPath);
-        if (!this._throttle("remove", path16, 100)) return;
+        const path17 = sysPath.join(directory, item);
+        const fullPath = sysPath.resolve(path17);
+        isDirectory = isDirectory != null ? isDirectory : this._watched.has(path17) || this._watched.has(fullPath);
+        if (!this._throttle("remove", path17, 100)) return;
         if (!isDirectory && !this.options.useFsEvents && this._watched.size === 1) {
           this.add(directory, item, true);
         }
-        const wp = this._getWatchedDir(path16);
+        const wp = this._getWatchedDir(path17);
         const nestedDirectoryChildren = wp.getChildren();
-        nestedDirectoryChildren.forEach((nested) => this._remove(path16, nested));
+        nestedDirectoryChildren.forEach((nested) => this._remove(path17, nested));
         const parent = this._getWatchedDir(directory);
         const wasTracked = parent.has(item);
         parent.remove(item);
         if (this._symlinkPaths.has(fullPath)) {
           this._symlinkPaths.delete(fullPath);
         }
-        let relPath = path16;
-        if (this.options.cwd) relPath = sysPath.relative(this.options.cwd, path16);
+        let relPath = path17;
+        if (this.options.cwd) relPath = sysPath.relative(this.options.cwd, path17);
         if (this.options.awaitWriteFinish && this._pendingWrites.has(relPath)) {
           const event = this._pendingWrites.get(relPath).cancelWait();
           if (event === EV_ADD) return;
         }
-        this._watched.delete(path16);
+        this._watched.delete(path17);
         this._watched.delete(fullPath);
         const eventName = isDirectory ? EV_UNLINK_DIR : EV_UNLINK;
-        if (wasTracked && !this._isIgnored(path16)) this._emit(eventName, path16);
+        if (wasTracked && !this._isIgnored(path17)) this._emit(eventName, path17);
         if (!this.options.useFsEvents) {
-          this._closePath(path16);
+          this._closePath(path17);
         }
       }
       /**
        * Closes all watchers for a path
        * @param {Path} path
        */
-      _closePath(path16) {
-        this._closeFile(path16);
-        const dir = sysPath.dirname(path16);
-        this._getWatchedDir(dir).remove(sysPath.basename(path16));
+      _closePath(path17) {
+        this._closeFile(path17);
+        const dir = sysPath.dirname(path17);
+        this._getWatchedDir(dir).remove(sysPath.basename(path17));
       }
       /**
        * Closes only file-specific watchers
        * @param {Path} path
        */
-      _closeFile(path16) {
-        const closers = this._closers.get(path16);
+      _closeFile(path17) {
+        const closers = this._closers.get(path17);
         if (!closers) return;
         closers.forEach((closer) => closer());
-        this._closers.delete(path16);
+        this._closers.delete(path17);
       }
       /**
        *
        * @param {Path} path
        * @param {Function} closer
        */
-      _addPathCloser(path16, closer) {
+      _addPathCloser(path17, closer) {
         if (!closer) return;
-        let list = this._closers.get(path16);
+        let list = this._closers.get(path17);
         if (!list) {
           list = [];
-          this._closers.set(path16, list);
+          this._closers.set(path17, list);
         }
         list.push(closer);
       }
@@ -23040,7 +23041,16 @@ var require_chokidar = __commonJS({
   }
 });
 
-// ../../node_modules/zod/v3/external.js
+// src/index.ts
+var src_exports = {};
+__export(src_exports, {
+  REMOTE_HTTP_EXCLUDED_TOOLS: () => REMOTE_HTTP_EXCLUDED_TOOLS,
+  createKanmerMcpServer: () => createKanmerMcpServer,
+  projectFingerprint: () => projectFingerprint
+});
+module.exports = __toCommonJS(src_exports);
+
+// ../../../../node_modules/zod/v3/external.js
 var external_exports = {};
 __export(external_exports, {
   BRAND: () => BRAND,
@@ -23152,7 +23162,7 @@ __export(external_exports, {
   void: () => voidType
 });
 
-// ../../node_modules/zod/v3/helpers/util.js
+// ../../../../node_modules/zod/v3/helpers/util.js
 var util;
 (function(util2) {
   util2.assertEqual = (_) => {
@@ -23286,7 +23296,7 @@ var getParsedType = (data) => {
   }
 };
 
-// ../../node_modules/zod/v3/ZodError.js
+// ../../../../node_modules/zod/v3/ZodError.js
 var ZodIssueCode = util.arrayToEnum([
   "invalid_type",
   "invalid_literal",
@@ -23404,7 +23414,7 @@ ZodError.create = (issues) => {
   return error2;
 };
 
-// ../../node_modules/zod/v3/locales/en.js
+// ../../../../node_modules/zod/v3/locales/en.js
 var errorMap = (issue2, _ctx) => {
   let message;
   switch (issue2.code) {
@@ -23507,7 +23517,7 @@ var errorMap = (issue2, _ctx) => {
 };
 var en_default = errorMap;
 
-// ../../node_modules/zod/v3/errors.js
+// ../../../../node_modules/zod/v3/errors.js
 var overrideErrorMap = en_default;
 function setErrorMap(map) {
   overrideErrorMap = map;
@@ -23516,10 +23526,10 @@ function getErrorMap() {
   return overrideErrorMap;
 }
 
-// ../../node_modules/zod/v3/helpers/parseUtil.js
+// ../../../../node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path16, errorMaps, issueData } = params;
-  const fullPath = [...path16, ...issueData.path || []];
+  const { data, path: path17, errorMaps, issueData } = params;
+  const fullPath = [...path17, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -23626,20 +23636,20 @@ var isDirty = (x) => x.status === "dirty";
 var isValid = (x) => x.status === "valid";
 var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
 
-// ../../node_modules/zod/v3/helpers/errorUtil.js
+// ../../../../node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
 (function(errorUtil2) {
   errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
   errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
 })(errorUtil || (errorUtil = {}));
 
-// ../../node_modules/zod/v3/types.js
+// ../../../../node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path16, key) {
+  constructor(parent, value, path17, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path16;
+    this._path = path17;
     this._key = key;
   }
   get path() {
@@ -27081,7 +27091,7 @@ var coerce = {
 };
 var NEVER = INVALID;
 
-// ../../node_modules/zod/v4/core/core.js
+// ../../../../node_modules/zod/v4/core/core.js
 var NEVER2 = Object.freeze({
   status: "aborted"
 });
@@ -27140,7 +27150,7 @@ function config(newConfig) {
   return globalConfig;
 }
 
-// ../../node_modules/zod/v4/core/util.js
+// ../../../../node_modules/zod/v4/core/util.js
 var util_exports = {};
 __export(util_exports, {
   BIGINT_FORMAT_RANGES: () => BIGINT_FORMAT_RANGES,
@@ -27276,10 +27286,10 @@ function assignProp(target, prop, value) {
     configurable: true
   });
 }
-function getElementAtPath(obj, path16) {
-  if (!path16)
+function getElementAtPath(obj, path17) {
+  if (!path17)
     return obj;
-  return path16.reduce((acc, key) => acc?.[key], obj);
+  return path17.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -27599,11 +27609,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path16, issues) {
+function prefixIssues(path17, issues) {
   return issues.map((iss) => {
     var _a;
     (_a = iss).path ?? (_a.path = []);
-    iss.path.unshift(path16);
+    iss.path.unshift(path17);
     return iss;
   });
 }
@@ -27661,7 +27671,7 @@ var Class = class {
   }
 };
 
-// ../../node_modules/zod/v4/core/errors.js
+// ../../../../node_modules/zod/v4/core/errors.js
 var initializer = (inst, def) => {
   inst.name = "$ZodError";
   Object.defineProperty(inst, "_zod", {
@@ -27736,7 +27746,7 @@ function formatError(error2, _mapper) {
   return fieldErrors;
 }
 
-// ../../node_modules/zod/v4/core/parse.js
+// ../../../../node_modules/zod/v4/core/parse.js
 var _parse = (_Err) => (schema, value, _ctx, _params) => {
   const ctx = _ctx ? Object.assign(_ctx, { async: false }) : { async: false };
   const result = schema._zod.run({ value, issues: [] }, ctx);
@@ -27788,7 +27798,7 @@ var _safeParseAsync = (_Err) => async (schema, value, _ctx) => {
 };
 var safeParseAsync = /* @__PURE__ */ _safeParseAsync($ZodRealError);
 
-// ../../node_modules/zod/v4/core/regexes.js
+// ../../../../node_modules/zod/v4/core/regexes.js
 var cuid = /^[cC][^\s-]{8,}$/;
 var cuid2 = /^[0-9a-z]+$/;
 var ulid = /^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$/;
@@ -27846,7 +27856,7 @@ var _null = /null/i;
 var lowercase = /^[^A-Z]*$/;
 var uppercase = /^[^a-z]*$/;
 
-// ../../node_modules/zod/v4/core/checks.js
+// ../../../../node_modules/zod/v4/core/checks.js
 var $ZodCheck = /* @__PURE__ */ $constructor("$ZodCheck", (inst, def) => {
   var _a;
   inst._zod ?? (inst._zod = {});
@@ -28231,7 +28241,7 @@ var $ZodCheckOverwrite = /* @__PURE__ */ $constructor("$ZodCheckOverwrite", (ins
   };
 });
 
-// ../../node_modules/zod/v4/core/doc.js
+// ../../../../node_modules/zod/v4/core/doc.js
 var Doc = class {
   constructor(args = []) {
     this.content = [];
@@ -28267,14 +28277,14 @@ var Doc = class {
   }
 };
 
-// ../../node_modules/zod/v4/core/versions.js
+// ../../../../node_modules/zod/v4/core/versions.js
 var version = {
   major: 4,
   minor: 0,
   patch: 0
 };
 
-// ../../node_modules/zod/v4/core/schemas.js
+// ../../../../node_modules/zod/v4/core/schemas.js
 var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
   var _a;
   inst ?? (inst = {});
@@ -29512,7 +29522,7 @@ function handleRefineResult(result, payload, input, inst) {
   }
 }
 
-// ../../node_modules/zod/v4/locales/en.js
+// ../../../../node_modules/zod/v4/locales/en.js
 var parsedType = (data) => {
   const t = typeof data;
   switch (t) {
@@ -29630,7 +29640,7 @@ function en_default2() {
   };
 }
 
-// ../../node_modules/zod/v4/core/registries.js
+// ../../../../node_modules/zod/v4/core/registries.js
 var $ZodRegistry = class {
   constructor() {
     this._map = /* @__PURE__ */ new Map();
@@ -29678,7 +29688,7 @@ function registry() {
 }
 var globalRegistry = /* @__PURE__ */ registry();
 
-// ../../node_modules/zod/v4/core/api.js
+// ../../../../node_modules/zod/v4/core/api.js
 function _string(Class2, params) {
   return new Class2({
     type: "string",
@@ -30117,7 +30127,7 @@ function _refine(Class2, fn, _params) {
   return schema;
 }
 
-// ../../node_modules/zod/v4/core/to-json-schema.js
+// ../../../../node_modules/zod/v4/core/to-json-schema.js
 var JSONSchemaGenerator = class {
   constructor(params) {
     this.counter = 0;
@@ -30884,7 +30894,7 @@ function isTransforming(_schema, _ctx) {
   throw new Error(`Unknown schema type: ${def.type}`);
 }
 
-// ../../node_modules/zod/v4/mini/schemas.js
+// ../../../../node_modules/zod/v4/mini/schemas.js
 var ZodMiniType = /* @__PURE__ */ $constructor("ZodMiniType", (inst, def) => {
   if (!inst._zod)
     throw new Error("Uninitialized schema in ZodMiniType.");
@@ -30930,7 +30940,7 @@ function object(shape, params) {
   return new ZodMiniObject(def);
 }
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
 function isZ4Schema(s) {
   const schema = s;
   return !!schema._zod;
@@ -31014,11 +31024,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path16) {
-  if (path16.length === 0) {
+function getDotPath(path17) {
+  if (path17.length === 0) {
     return "object root";
   }
-  return path16.reduce((acc, seg, index) => {
+  return path17.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -31090,7 +31100,7 @@ function getLiteralValue(schema) {
   return void 0;
 }
 
-// ../../node_modules/zod/v4/classic/iso.js
+// ../../../../node_modules/zod/v4/classic/iso.js
 var iso_exports2 = {};
 __export(iso_exports2, {
   ZodISODate: () => ZodISODate,
@@ -31131,7 +31141,7 @@ function duration2(params) {
   return _isoDuration(ZodISODuration, params);
 }
 
-// ../../node_modules/zod/v4/classic/errors.js
+// ../../../../node_modules/zod/v4/classic/errors.js
 var initializer2 = (inst, issues) => {
   $ZodError.init(inst, issues);
   inst.name = "ZodError";
@@ -31165,13 +31175,13 @@ var ZodRealError = $constructor("ZodError", initializer2, {
   Parent: Error
 });
 
-// ../../node_modules/zod/v4/classic/parse.js
+// ../../../../node_modules/zod/v4/classic/parse.js
 var parse3 = /* @__PURE__ */ _parse(ZodRealError);
 var parseAsync2 = /* @__PURE__ */ _parseAsync(ZodRealError);
 var safeParse3 = /* @__PURE__ */ _safeParse(ZodRealError);
 var safeParseAsync3 = /* @__PURE__ */ _safeParseAsync(ZodRealError);
 
-// ../../node_modules/zod/v4/classic/schemas.js
+// ../../../../node_modules/zod/v4/classic/schemas.js
 var ZodType2 = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
   $ZodType.init(inst, def);
   inst.def = def;
@@ -31782,10 +31792,10 @@ function preprocess(fn, schema) {
   return pipe(transform(fn), schema);
 }
 
-// ../../node_modules/zod/v4/classic/external.js
+// ../../../../node_modules/zod/v4/classic/external.js
 config(en_default2());
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/types.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/types.js
 var LATEST_PROTOCOL_VERSION = "2025-11-25";
 var SUPPORTED_PROTOCOL_VERSIONS = [LATEST_PROTOCOL_VERSION, "2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"];
 var RELATED_TASK_META_KEY = "io.modelcontextprotocol/related-task";
@@ -33316,12 +33326,12 @@ var UrlElicitationRequiredError = class extends McpError {
   }
 };
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js
 function isTerminal(status) {
   return status === "completed" || status === "failed" || status === "cancelled";
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/Options.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/Options.js
 var ignoreOverride = /* @__PURE__ */ Symbol("Let zodToJsonSchema decide on which parser to use");
 var defaultOptions = {
   name: void 0,
@@ -33355,7 +33365,7 @@ var getDefaultOptions = (options2) => typeof options2 === "string" ? {
   ...options2
 };
 
-// ../../node_modules/zod-to-json-schema/dist/esm/Refs.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/Refs.js
 var getRefs = (options2) => {
   const _options = getDefaultOptions(options2);
   const currentPath = _options.name !== void 0 ? [..._options.basePath, _options.definitionPath, _options.name] : _options.basePath;
@@ -33376,7 +33386,7 @@ var getRefs = (options2) => {
   };
 };
 
-// ../../node_modules/zod-to-json-schema/dist/esm/errorMessages.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/errorMessages.js
 function addErrorMessage(res, key, errorMessage, refs) {
   if (!refs?.errorMessages)
     return;
@@ -33392,7 +33402,7 @@ function setResponseValueAndErrors(res, key, value, errorMessage, refs) {
   addErrorMessage(res, key, errorMessage, refs);
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/getRelativePath.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/getRelativePath.js
 var getRelativePath = (pathA, pathB) => {
   let i = 0;
   for (; i < pathA.length && i < pathB.length; i++) {
@@ -33402,7 +33412,7 @@ var getRelativePath = (pathA, pathB) => {
   return [(pathA.length - i).toString(), ...pathB.slice(i)].join("/");
 };
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/any.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/any.js
 function parseAnyDef(refs) {
   if (refs.target !== "openAi") {
     return {};
@@ -33418,7 +33428,7 @@ function parseAnyDef(refs) {
   };
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/array.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/array.js
 function parseArrayDef(def, refs) {
   const res = {
     type: "array"
@@ -33442,7 +33452,7 @@ function parseArrayDef(def, refs) {
   return res;
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/bigint.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/bigint.js
 function parseBigintDef(def, refs) {
   const res = {
     type: "integer",
@@ -33488,24 +33498,24 @@ function parseBigintDef(def, refs) {
   return res;
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/boolean.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/boolean.js
 function parseBooleanDef() {
   return {
     type: "boolean"
   };
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/branded.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/branded.js
 function parseBrandedDef(_def, refs) {
   return parseDef(_def.type._def, refs);
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/catch.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/catch.js
 var parseCatchDef = (def, refs) => {
   return parseDef(def.innerType._def, refs);
 };
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/date.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/date.js
 function parseDateDef(def, refs, overrideDateStrategy) {
   const strategy = overrideDateStrategy ?? refs.dateStrategy;
   if (Array.isArray(strategy)) {
@@ -33564,7 +33574,7 @@ var integerDateParser = (def, refs) => {
   return res;
 };
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/default.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/default.js
 function parseDefaultDef(_def, refs) {
   return {
     ...parseDef(_def.innerType._def, refs),
@@ -33572,12 +33582,12 @@ function parseDefaultDef(_def, refs) {
   };
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/effects.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/effects.js
 function parseEffectsDef(_def, refs) {
   return refs.effectStrategy === "input" ? parseDef(_def.schema._def, refs) : parseAnyDef(refs);
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/enum.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/enum.js
 function parseEnumDef(def) {
   return {
     type: "string",
@@ -33585,7 +33595,7 @@ function parseEnumDef(def) {
   };
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/intersection.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/intersection.js
 var isJsonSchema7AllOfType = (type) => {
   if ("type" in type && type.type === "string")
     return false;
@@ -33627,7 +33637,7 @@ function parseIntersectionDef(def, refs) {
   } : void 0;
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/literal.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/literal.js
 function parseLiteralDef(def, refs) {
   const parsedType2 = typeof def.value;
   if (parsedType2 !== "bigint" && parsedType2 !== "number" && parsedType2 !== "boolean" && parsedType2 !== "string") {
@@ -33647,7 +33657,7 @@ function parseLiteralDef(def, refs) {
   };
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/string.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/string.js
 var emojiRegex2 = void 0;
 var zodPatterns = {
   /**
@@ -33972,7 +33982,7 @@ function stringifyRegExpWithFlags(regex, refs) {
   return pattern;
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/record.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/record.js
 function parseRecordDef(def, refs) {
   if (refs.target === "openAi") {
     console.warn("Warning: OpenAI may not support records in schemas! Try an array of key-value pairs instead.");
@@ -34024,7 +34034,7 @@ function parseRecordDef(def, refs) {
   return schema;
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/map.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/map.js
 function parseMapDef(def, refs) {
   if (refs.mapStrategy === "record") {
     return parseRecordDef(def, refs);
@@ -34049,7 +34059,7 @@ function parseMapDef(def, refs) {
   };
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/nativeEnum.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/nativeEnum.js
 function parseNativeEnumDef(def) {
   const object3 = def.values;
   const actualKeys = Object.keys(def.values).filter((key) => {
@@ -34063,7 +34073,7 @@ function parseNativeEnumDef(def) {
   };
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/never.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/never.js
 function parseNeverDef(refs) {
   return refs.target === "openAi" ? void 0 : {
     not: parseAnyDef({
@@ -34073,7 +34083,7 @@ function parseNeverDef(refs) {
   };
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/null.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/null.js
 function parseNullDef(refs) {
   return refs.target === "openApi3" ? {
     enum: ["null"],
@@ -34083,7 +34093,7 @@ function parseNullDef(refs) {
   };
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/union.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/union.js
 var primitiveMappings = {
   ZodString: "string",
   ZodNumber: "number",
@@ -34151,7 +34161,7 @@ var asAnyOf = (def, refs) => {
   return anyOf.length ? { anyOf } : void 0;
 };
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/nullable.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/nullable.js
 function parseNullableDef(def, refs) {
   if (["ZodString", "ZodNumber", "ZodBigInt", "ZodBoolean", "ZodNull"].includes(def.innerType._def.typeName) && (!def.innerType._def.checks || !def.innerType._def.checks.length)) {
     if (refs.target === "openApi3") {
@@ -34183,7 +34193,7 @@ function parseNullableDef(def, refs) {
   return base && { anyOf: [base, { type: "null" }] };
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/number.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/number.js
 function parseNumberDef(def, refs) {
   const res = {
     type: "number"
@@ -34232,7 +34242,7 @@ function parseNumberDef(def, refs) {
   return res;
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/object.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/object.js
 function parseObjectDef(def, refs) {
   const forceOptionalIntoNullable = refs.target === "openAi";
   const result = {
@@ -34302,7 +34312,7 @@ function safeIsOptional(schema) {
   }
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/optional.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/optional.js
 var parseOptionalDef = (def, refs) => {
   if (refs.currentPath.toString() === refs.propertyPath?.toString()) {
     return parseDef(def.innerType._def, refs);
@@ -34321,7 +34331,7 @@ var parseOptionalDef = (def, refs) => {
   } : parseAnyDef(refs);
 };
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/pipeline.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/pipeline.js
 var parsePipelineDef = (def, refs) => {
   if (refs.pipeStrategy === "input") {
     return parseDef(def.in._def, refs);
@@ -34341,12 +34351,12 @@ var parsePipelineDef = (def, refs) => {
   };
 };
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/promise.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/promise.js
 function parsePromiseDef(def, refs) {
   return parseDef(def.type._def, refs);
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/set.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/set.js
 function parseSetDef(def, refs) {
   const items = parseDef(def.valueType._def, {
     ...refs,
@@ -34366,7 +34376,7 @@ function parseSetDef(def, refs) {
   return schema;
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/tuple.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/tuple.js
 function parseTupleDef(def, refs) {
   if (def.rest) {
     return {
@@ -34394,24 +34404,24 @@ function parseTupleDef(def, refs) {
   }
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/undefined.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/undefined.js
 function parseUndefinedDef(refs) {
   return {
     not: parseAnyDef(refs)
   };
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/unknown.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/unknown.js
 function parseUnknownDef(refs) {
   return parseAnyDef(refs);
 }
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parsers/readonly.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parsers/readonly.js
 var parseReadonlyDef = (def, refs) => {
   return parseDef(def.innerType._def, refs);
 };
 
-// ../../node_modules/zod-to-json-schema/dist/esm/selectParser.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/selectParser.js
 var selectParser = (def, typeName, refs) => {
   switch (typeName) {
     case ZodFirstPartyTypeKind.ZodString:
@@ -34487,7 +34497,7 @@ var selectParser = (def, typeName, refs) => {
   }
 };
 
-// ../../node_modules/zod-to-json-schema/dist/esm/parseDef.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/parseDef.js
 function parseDef(def, refs, forceResolution = false) {
   const seenItem = refs.seen.get(def);
   if (refs.override) {
@@ -34543,7 +34553,7 @@ var addMeta = (def, refs, jsonSchema) => {
   return jsonSchema;
 };
 
-// ../../node_modules/zod-to-json-schema/dist/esm/zodToJsonSchema.js
+// ../../../../node_modules/zod-to-json-schema/dist/esm/zodToJsonSchema.js
 var zodToJsonSchema = (schema, options2) => {
   const refs = getRefs(options2);
   let definitions = typeof options2 === "object" && options2.definitions ? Object.entries(options2.definitions).reduce((acc, [name2, schema2]) => ({
@@ -34605,7 +34615,7 @@ var zodToJsonSchema = (schema, options2) => {
   return combined;
 };
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js
 function mapMiniTarget(t) {
   if (!t)
     return "draft-7";
@@ -34647,7 +34657,7 @@ function parseWithCompat(schema, data) {
   return result.data;
 }
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js
 var DEFAULT_REQUEST_TIMEOUT_MSEC = 6e4;
 var Protocol = class {
   constructor(_options) {
@@ -35601,7 +35611,7 @@ function mergeCapabilities(base, additional) {
   return result;
 }
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js
 var import_ajv = __toESM(require_ajv(), 1);
 var import_ajv_formats = __toESM(require_dist(), 1);
 function createDefaultAjvInstance() {
@@ -35669,7 +35679,7 @@ var AjvJsonSchemaValidator = class {
   }
 };
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/server.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/server.js
 var ExperimentalServerTasks = class {
   constructor(_server) {
     this._server = _server;
@@ -35882,7 +35892,7 @@ var ExperimentalServerTasks = class {
   }
 };
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/helpers.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/helpers.js
 function assertToolsCallTaskCapability(requests, method, entityName) {
   if (!requests) {
     throw new Error(`${entityName} does not support task creation (required for ${method})`);
@@ -35917,7 +35927,7 @@ function assertClientRequestTaskCapability(requests, method, entityName) {
   }
 }
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/index.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/index.js
 var Server = class extends Protocol {
   /**
    * Initializes this server with the given name and version information.
@@ -36288,7 +36298,7 @@ var Server = class extends Protocol {
   }
 };
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/completable.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/completable.js
 var COMPLETABLE_SYMBOL = /* @__PURE__ */ Symbol.for("mcp.completable");
 function isCompletable(schema) {
   return !!schema && typeof schema === "object" && COMPLETABLE_SYMBOL in schema;
@@ -36302,7 +36312,7 @@ var McpZodTypeKind;
   McpZodTypeKind2["Completable"] = "McpCompletable";
 })(McpZodTypeKind || (McpZodTypeKind = {}));
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/uriTemplate.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/uriTemplate.js
 var MAX_TEMPLATE_LENGTH = 1e6;
 var MAX_VARIABLE_LENGTH = 1e6;
 var MAX_TEMPLATE_EXPRESSIONS = 1e4;
@@ -36524,7 +36534,7 @@ var UriTemplate = class _UriTemplate {
   }
 };
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/toolNameValidation.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/toolNameValidation.js
 var TOOL_NAME_REGEX = /^[A-Za-z0-9._-]{1,128}$/;
 function validateToolName(name) {
   const warnings = [];
@@ -36582,7 +36592,7 @@ function validateAndWarnToolName(name) {
   return result.isValid;
 }
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/mcp-server.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/mcp-server.js
 var ExperimentalMcpServerTasks = class {
   constructor(_mcpServer) {
     this._mcpServer = _mcpServer;
@@ -36597,7 +36607,7 @@ var ExperimentalMcpServerTasks = class {
   }
 };
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
 var McpServer = class {
   constructor(serverInfo, options2) {
     this._registeredResources = {};
@@ -37413,10 +37423,10 @@ var EMPTY_COMPLETION_RESULT = {
   }
 };
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
 var import_node_process = __toESM(require("process"), 1);
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js
 var STDIO_DEFAULT_MAX_BUFFER_SIZE = 10 * 1024 * 1024;
 var ReadBuffer = class {
   constructor(options2) {
@@ -37453,7 +37463,7 @@ function serializeMessage(message) {
   return JSON.stringify(message) + "\n";
 }
 
-// ../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
+// ../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
 var StdioServerTransport = class {
   constructor(_stdin = import_node_process.default.stdin, _stdout = import_node_process.default.stdout, options2) {
     this._stdin = _stdin;
@@ -37522,10 +37532,11 @@ var StdioServerTransport = class {
 
 // src/index.ts
 var import_node_child_process = require("child_process");
-var import_node_path4 = __toESM(require("path"), 1);
+var import_node_crypto3 = require("crypto");
+var import_node_path5 = __toESM(require("path"), 1);
 var import_node_util = require("util");
 
-// ../core/dist/index.js
+// ../../../../packages/core/dist/index.js
 var import_path = __toESM(require("path"), 1);
 var import_path2 = __toESM(require("path"), 1);
 var import_fs = __toESM(require("fs"), 1);
@@ -38535,6 +38546,14 @@ function firstBlocking(report, fromStage, toStage) {
   const to = stageIndex(toStage);
   return boundariesCrossed(report.boundaries, from, to).find((b) => !b.passable) ?? null;
 }
+function deriveMembers(group, items, lastStage) {
+  const members = items.filter((i) => (i.groups ?? []).includes(group.id)).map((i) => ({ id: i.id, title: i.title, status: i.status, archived: i.archived })).sort((a, b) => a.id.localeCompare(b.id, void 0, { numeric: true }));
+  const progress = {};
+  for (const stage of STAGE_IDS) progress[stage] = 0;
+  const live = members.filter((member) => !member.archived);
+  for (const member of live) if (member.status in progress) progress[member.status]++;
+  return { ...group, members, progress, total: live.length, complete: progress[lastStage] ?? 0 };
+}
 var GROUPS_DIR = "groups";
 var GroupFrontmatterSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -38596,18 +38615,6 @@ async function listGroups(paths, opts = {}) {
 async function writeGroup(paths, group) {
   await import_promises4.default.mkdir(groupDir(paths, group.id), { recursive: true });
   await writeFileAtomic(groupFile(paths, group.id), serialiseGroup(group));
-}
-function deriveMembers(group, items, lastStage) {
-  const members = items.filter((i) => (i.groups ?? []).includes(group.id)).map((i) => ({ id: i.id, title: i.title, status: i.status, archived: i.archived })).sort((a, b) => a.id.localeCompare(b.id, void 0, { numeric: true }));
-  const progress = {};
-  for (const stage of STAGE_IDS) progress[stage] = 0;
-  let total = 0;
-  for (const m of members) {
-    if (m.archived) continue;
-    total++;
-    if (m.status in progress) progress[m.status]++;
-  }
-  return { ...group, members, progress, total, complete: progress[lastStage] ?? 0 };
 }
 function groupDocPath(paths, id, rel) {
   const norm = rel.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
@@ -40045,7 +40052,8 @@ ${content.trim()}
       counts,
       documentPaths,
       checklist,
-      references: await listReferences(loc.dir)
+      references: await listReferences(loc.dir),
+      scratch: await this.listScratch(id)
     };
   }
   /**
@@ -41157,6 +41165,50 @@ async function readTicketDocuments(store2, id, docs) {
   return store2.getDocsWithVersions(id, unique);
 }
 
+// src/errors.ts
+var KanmerError = class extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+    this.name = "KanmerError";
+  }
+  code;
+};
+function classifiedCode(message) {
+  if (message.startsWith("Conflict:")) return "REVISION_CONFLICT";
+  if (/\bentering\b.*\brequires\b/i.test(message) || /\bcannot move\b.*\bcrosses\b/i.test(message)) return "GATE_BLOCKED";
+  return void 0;
+}
+function failCoded(error2) {
+  const message = error2 instanceof Error ? error2.message : String(error2);
+  const code = error2 instanceof KanmerError ? error2.code : classifiedCode(message);
+  const text = message.startsWith("Conflict:") ? message : `Error: ${message}`;
+  return {
+    content: [{ type: "text", text }],
+    isError: true,
+    ...code ? { structuredContent: { error: { code, message } } } : {}
+  };
+}
+
+// src/project-identity.ts
+var import_node_crypto2 = require("crypto");
+var import_node_path4 = __toESM(require("path"), 1);
+function canonicalProjectPath(input) {
+  let value = import_node_path4.default.resolve(input).replace(/\\/g, "/");
+  value = value.replace(/^([A-Z]):/, (_, drive) => `${drive.toLowerCase()}:`);
+  if (!/^\/$/.test(value) && !/^[a-z]:\/$/.test(value)) value = value.replace(/\/+$/, "");
+  return value;
+}
+function projectIdentity(input) {
+  const payload = {
+    boardRoot: canonicalProjectPath(input.boardRoot),
+    format: input.format,
+    repoRoot: canonicalProjectPath(input.repoRoot)
+  };
+  const fingerprint = `kanmer-proj-v1:${(0, import_node_crypto2.createHash)("sha256").update(JSON.stringify(payload)).digest("hex")}`;
+  return { ...payload, boardSource: input.boardSource, fingerprint };
+}
+
 // src/index.ts
 var execFile = (0, import_node_util.promisify)(import_node_child_process.execFile);
 async function inspectBoardBranch(root) {
@@ -41170,20 +41222,21 @@ async function inspectBoardBranch(root) {
     return null;
   }
 }
-function boardWorktreeRepair(boardSource, actualBranch, expectedBranch, path16) {
+function boardWorktreeRepair(boardSource, actualBranch, expectedBranch, path17) {
   if (boardSource === "default") {
-    return `This path is serving a synthesized default board; check ${path16} when tickets are expected.`;
+    return `This path is serving a synthesized default board; check ${path17} when tickets are expected.`;
   }
   if (actualBranch === expectedBranch) return "No repair is required.";
   if (actualBranch) {
     return `Board worktree is on "${actualBranch}", expected "${expectedBranch}". Restore the board worktree through Kanmer setup or board Git repair.`;
   }
-  return `Board branch inspection failed or HEAD is detached. Restore ${path16} to "${expectedBranch}" through Kanmer setup or board Git repair.`;
+  return `Board branch inspection failed or HEAD is detached. Restore ${path17} to "${expectedBranch}" through Kanmer setup or board Git repair.`;
 }
 var projectRoot;
 var rootSource;
 var repoRootSource;
 var store;
+var rootResolved = false;
 function resolveRoot() {
   const argv = process.argv.slice(2);
   const resolved = resolveProjectRoot(argv, process.env);
@@ -41193,19 +41246,20 @@ function resolveRoot() {
   const repoRootFlag = argv.some((a) => a === "--repo-root" || a.startsWith("--repo-root="));
   repoRootSource = repoRoot === void 0 ? "derived" : repoRootFlag ? "flag" : "env";
   store = new KanmerStore(projectRoot, { repoRoot });
+  rootResolved = true;
 }
 function ok(data) {
   return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
 }
 function fail(message) {
-  return { content: [{ type: "text", text: `Error: ${message}` }], isError: true };
+  return failCoded(new Error(message));
 }
 function guard(fn) {
   return async (...args) => {
     try {
       return await fn(...args);
     } catch (err) {
-      return fail(err instanceof Error ? err.message : String(err));
+      return failCoded(err);
     }
   };
 }
@@ -41215,26 +41269,19 @@ async function ensureInit() {
   await store.init();
   initialised = true;
 }
-function write(fn) {
-  return guard(async (...args) => {
-    store.setActor(actorName(args[1]));
-    await ensureInit();
-    return fn(...args);
-  });
-}
-function actorName(extra) {
+function actorName(requestServer, extra) {
   const meta = extra?._meta;
   const candidates = [
     meta?.["io.modelcontextprotocol/client"]?.name,
     meta?.["clientInfo"]?.name
   ];
   for (const c of candidates) if (typeof c === "string" && c) return c;
-  return server.server.getClientVersion()?.name ?? "agent";
+  return requestServer.server.getClientVersion()?.name ?? "agent";
 }
-async function confirmDestructive(message) {
-  if (!server.server.getClientCapabilities()?.elicitation) return true;
+async function confirmDestructive(requestServer, message) {
+  if (!requestServer.server.getClientCapabilities()?.elicitation) return true;
   try {
-    const res = await server.server.elicitInput({
+    const res = await requestServer.server.elicitInput({
       message,
       requestedSchema: {
         type: "object",
@@ -41304,832 +41351,881 @@ var createFields = {
   deployment: external_exports.string().optional().describe("Deployment status (only when the board declares environments): n/a | not-deployed | <env-id>"),
   body: external_exports.string().optional().describe("Markdown body; may contain [[id]] wiki-links")
 };
-var server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
-server.registerTool(
-  "get_status",
-  {
-    title: "Project status",
-    description: "Orientation call \u2014 use it first, every session. Answers both of the questions you have at session start: WHICH BOARD, and WHICH SERVER. Board: the project root and `rootSource` (how it was found: flag | env | cwd | cwd-worktree | ancestor | ancestor-worktree | init), the `repoRoot` that governing-doc refs resolve against and its `repoRootSource` (flag | env | derived), whether .kanmer/ exists (this tool never creates it), the storage format version, whether the board came from a real board.yml or is the synthesized default, per-stage and per-type item counts, archived/taken counts, and how many file warnings the listing produced. Server: a `server` block naming the build that is answering \u2014 the release `version`, the resolved `path` of the running script, the runtime `sha256` of its bytes (plus `sha256Short`), its `mtime` and `size`, and the `build` shape (packaged | plugin | dev-standalone | dev-esm | unknown). Two hosts pointed at the same board can be running different server builds that enforce different gates; comparing `server.sha256` is how you see that instead of guessing. Repo: a `repo` block answering WHICH KANMER THIS REPO WAS SET UP BY \u2014 `{ upToDate, stale: [{ artefact, state, detail, fix }] }`. Itemised, never a bare boolean. Artefacts checked are the ones migration does not touch: the AGENTS.md managed block, the installed skills trees and their `.kanmer-skills-version` stamps, `board.yml`, and the provider MCP registrations \u2014 compared by CONTENT HASH against what this build ships, not by version string (no artefact records a product version). `state` is `behind` (act on it), `compensated` (the file is old and the runtime already papers over it \u2014 informational, no action), `unstamped` (no evidence either way) or `unknown` (could not be read). `upToDate` is true iff nothing is `behind`. Repair is never automatic: run `kanmer-setup`, which is the reconciliation path (FRD-013). Board format is not listed here \u2014 it is the `format` field above. Board worktree: an informational, non-blocking `boardWorktree` block reports the board path, expected and actual branch, branch match, board source, active ticket count, and operator repair guidance. It never checks out, repairs, initializes, or refuses another tool. IMPORTANT: the `server` block is absent on servers older than 0.3.3, and the `repo` block on servers older than 0.3.4 \u2014 that ABSENCE is itself the signal 'this build predates the check', not an error. Individual fields are null if they could not be read; the call never fails over it.",
-    inputSchema: {},
-    annotations: { readOnlyHint: true, openWorldHint: false }
-  },
-  guard(async () => {
-    const exists2 = await store.exists();
-    const format = await store.detectFormat();
-    const { board, source } = await store.getBoardWithSource();
-    const { items, warnings } = await store.listItemsWithWarnings({ includeArchived: true });
-    const active = items.filter((i) => !i.archived);
-    const expectedBranch = process.env.KANMER_BOARD_BRANCH?.trim() || "kanmer-board";
-    const actualBranch = await inspectBoardBranch(projectRoot);
-    const byStage = {};
-    for (const s of STAGE_IDS) byStage[s] = 0;
-    let offBoardStage = 0;
-    const byType = {};
-    for (const item of active) {
-      if (item.status in byStage) byStage[item.status]++;
-      else offBoardStage++;
-      byType[item.type] = (byType[item.type] ?? 0) + 1;
-    }
-    return ok({
-      // --- Identity: which board, and which server. ---------------------
-      // These four plus `server` are the block an agent reads to know what it
-      // is talking to. `projectRoot`/`rootSource` are MCP-010's, unchanged.
-      projectRoot,
-      /** What governing-doc `refs` resolve against — MCP-012. */
-      repoRoot: store.paths.repoRoot,
-      /** Which resolution step produced projectRoot — see ADR-0012. */
-      rootSource,
-      /** How repoRoot was reached: flag | env | derived — MCP-012. */
-      repoRootSource,
-      /**
-       * Which build is answering. Absent on servers older than 0.3.3, and that
-       * absence is the signal — see the tool description. Never throws: any
-       * field it could not determine is null.
-       */
-      server: serverIdentity(),
-      /**
-       * Whether this REPO's Kanmer artefacts are as new as the build above —
-       * CORE-023. `server` says which binary is answering; this says whether
-       * what it left behind in the repo has kept up. Itemised, because "stale:
-       * true" is not actionable and the whole point is naming what.
-       *
-       * Recomputed every call, not cached: the obvious next move after reading
-       * it is `kanmer-setup`, and a cached answer would survive its own fix.
-       * Never throws — an unreadable artefact reports `unknown`.
-       */
-      repo: detectStaleness({
-        paths: store.paths,
-        board,
-        boardSource: source,
-        format,
-        bundledSkillsDir: bundledSkillsDir()
-      }),
-      kanmerDir: store.paths.kanmer,
-      exists: exists2,
-      format,
-      boardSource: source,
-      deploymentTracking: board.deployment !== void 0,
-      boardWorktree: {
-        path: projectRoot,
-        expectedBranch,
-        actualBranch,
-        onBoardBranch: actualBranch === expectedBranch,
-        boardSource: source,
-        ticketCount: active.filter((item) => item.type === "ticket").length,
-        repair: boardWorktreeRepair(source, actualBranch, expectedBranch, projectRoot)
-      },
-      counts: {
-        byStage,
-        byType,
-        offBoardStage,
-        archived: items.length - active.length,
-        taken: active.filter((i) => i.taken_at).length
-      },
-      warningsCount: warnings.length
-    });
-  })
-);
-server.registerTool(
-  "list_board",
-  {
-    title: "List board configuration",
-    description: 'Return the board configuration: the ordered statuses (the workflow stages, which are the kanban columns), the areas (each with the id prefix its tickets are born with), the priorities, and the legacy id prefixes. Call this to learn valid status/area/priority ids before creating or moving items. The `source` field says whether this is a real board.yml ("file") or the synthesized default for a project with no board yet ("default").',
-    inputSchema: {},
-    annotations: { readOnlyHint: true, openWorldHint: false }
-  },
-  guard(async () => {
-    const { board, source } = await store.getBoardWithSource();
-    return ok({
-      ...board,
-      source,
-      stages: STAGES,
-      profiles: resolveProfiles(board),
-      defaultProfile: board.defaultProfile ?? "fix",
-      groupKinds: resolveGroupKinds(board),
-      proofTypes: resolveProofTypes(board),
-      docTypes: DOC_TYPES,
-      gateExemptFolders: GATE_EXEMPT_DIRS,
-      boundaries: BOUNDARIES,
-      repoDocs: repoDocsMap(board),
-      deploymentTracking: board.deployment !== void 0
-    });
-  })
-);
-server.registerTool(
-  "list_items",
-  {
-    title: "List items",
-    description: "List items as summaries (no body). Filter by type, status (workflow stage), area, label, group, or updated_since (ISO timestamp \u2014 only items changed after it). Filters combine with AND, so group + status narrows to one stage of one group. Sort by id (default) or updated_desc; cap with limit. Archived items are excluded unless include_archived is true (summaries carry `archived` either way). Summaries also carry `taken` (who/where, when a ticket is taken), `profile`, and `docs`/`checklist` (pipeline document presence and checklist progress) \u2014 which is why this, rather than get_group, is how you build a roster from a group: get_group's derived members carry only id/title/stage. Normally returns a plain array; if any files in .kanmer are malformed or misnamed, returns { items, warnings } instead so the problem is visible.",
-    inputSchema: {
-      type: itemTypeEnum.optional().describe("Restrict to one item type"),
-      status: external_exports.string().optional().describe("Filter by status id (workflow stage)"),
-      area: external_exports.string().optional().describe("Filter by area id"),
-      label: external_exports.string().optional().describe("Filter by a label"),
-      group: external_exports.string().optional().describe(
-        "Filter by group membership, e.g. EPIC-001 or HZN-003. An unknown group id returns no items rather than erroring \u2014 a filter asks a question, it does not assert one."
-      ),
-      include_archived: external_exports.boolean().optional().describe("Include archived items"),
-      updated_since: external_exports.string().optional().describe("Only items whose `updated` is after this ISO timestamp"),
-      sort: external_exports.enum(["id", "updated_desc"]).optional().describe("Sort order (default id)"),
-      limit: external_exports.number().int().positive().optional().describe("Return at most this many")
-    },
-    annotations: { readOnlyHint: true, openWorldHint: false }
-  },
-  guard(
-    async ({ type, status, area, label, group, include_archived, updated_since, sort, limit }) => {
-      const { items, warnings } = await store.listItemsWithWarnings({
-        type,
-        status,
-        area,
-        label,
-        group,
-        includeArchived: include_archived
-      });
-      let selected = items;
-      if (updated_since !== void 0) {
-        selected = selected.filter((i) => i.updated > updated_since);
-      }
-      if (sort === "updated_desc") {
-        selected = [...selected].sort((a, b) => a.updated < b.updated ? 1 : -1);
-      }
-      if (limit !== void 0) selected = selected.slice(0, limit);
-      const blocked = await blockedSet();
-      const summaries = await Promise.all(selected.map((i) => summarise(i, blocked)));
-      return ok(warnings.length ? { items: summaries, warnings } : summaries);
-    }
-  )
-);
-server.registerTool(
-  "get_item",
-  {
-    title: "Get an item",
-    description: "Return the full frontmatter and markdown body of one item by id (e.g. API-001). For tickets this also reports which pipeline document types exist (docs), their exact readable documentPaths, and checklist progress \u2014 read a selected path with get_ticket_doc.",
-    inputSchema: { id: external_exports.string().describe("Item id, e.g. API-001") },
-    annotations: { readOnlyHint: true, openWorldHint: false }
-  },
-  guard(async ({ id }) => {
-    const item = await store.getItem(id);
-    if (!item) return fail(`No item with id "${id}"`);
-    const info = await store.getTicketDocsInfo(id);
-    const blocked = (await blockedSet()).has(id);
-    return ok(
-      info ? {
-        ...item,
-        blocked,
-        docs: info.docs,
-        documentPaths: info.documentPaths,
-        checklist: info.checklist
-      } : { ...item, blocked }
-    );
-  })
-);
-server.registerTool(
-  "get_ticket_doc",
-  {
-    title: "Read a ticket document",
-    description: "Read one ticket document (`doc`) or 1\u201325 selected documents (`docs`). Supply exactly one form. The legacy single response is unchanged; batch returns ordered per-document content/version records. Missing known documents are normal entries; versions bind to returned bytes and are not an atomic snapshot.",
-    inputSchema: {
-      id: external_exports.string().describe("Ticket id"),
-      doc: ticketDocEnum.optional().describe("One document (legacy form)"),
-      docs: external_exports.array(ticketDocEnum).min(1).max(25).optional().describe("1\u201325 documents (batch form; mutually exclusive with doc)")
-    },
-    annotations: { readOnlyHint: true, openWorldHint: false }
-  },
-  guard(async ({ id, doc, docs }) => {
-    if (doc === void 0 === (docs === void 0)) throw new Error("Supply exactly one of doc or docs.");
-    if (doc !== void 0) {
-      const [result] = await readTicketDocuments(store, id, [doc]);
-      return ok({ id, ...result });
-    }
-    return ok({ id, documents: await readTicketDocuments(store, id, docs) });
-  })
-);
-server.registerTool(
-  "search_items",
-  {
-    title: "Search items",
-    description: "Full-text search over item id, title, body, labels and assignee. Returns matching summaries.",
-    inputSchema: {
-      query: external_exports.string().describe("Text to search for"),
-      type: itemTypeEnum.optional().describe("Restrict to one item type")
-    },
-    annotations: { readOnlyHint: true, openWorldHint: false }
-  },
-  guard(async ({ query, type }) => {
-    const blocked = await blockedSet();
-    return ok(
-      await Promise.all(
-        (await store.searchItems(query, { type })).map((i) => summarise(i, blocked))
-      )
-    );
-  })
-);
-server.registerTool(
-  "create_group",
-  {
-    title: "Create a group",
-    description: "Create a cross-cutting group of tickets: an `epic` (these ship together) or a `horizon` (this is what matters now). Returns the group including its allocated id (EPIC-001, HZN-001). The body is the group's goal; add shared context agents should read with set_group_doc. Add members by calling update_item(groups: [...]) on each ticket \u2014 membership lives on tickets, and the member list is always derived, never stored.",
-    inputSchema: {
-      kind: external_exports.string().describe("Group kind (see list_board \u2192 groupKinds): epic | horizon"),
-      title: external_exports.string().describe("Short title"),
-      body: external_exports.string().optional().describe("Markdown body \u2014 the group's goal")
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
-  },
-  write(async ({ kind, title, body }) => ok(await store.createGroup(kind, title, body ?? "")))
-);
-server.registerTool(
-  "update_group",
-  {
-    title: "Update a group",
-    description: "Patch a group's own fields: title, body and archived. Only provided fields change; a supplied body REPLACES the whole body rather than merging, and a patch that changes nothing does NOT bump `updated`. Set archived to true to retire a group \u2014 it drops out of list_groups unless include_archived, stays readable, and its member tickets are untouched; archiving is the retirement path and there is no delete, since deleting would orphan the membership recorded on the tickets. `kind` cannot be changed here \u2014 the id prefix (EPIC-, HZN-) is allocated from it, so create a new group and archive the old one instead. Membership is not patchable here either: it lives on the tickets, via update_item(groups: [...]), and the member list is always derived. Pass expected_updated (the `updated` you last read) to be rejected with a conflict instead of overwriting a concurrent edit.",
-    inputSchema: {
-      id: external_exports.string().describe("Group id, e.g. EPIC-001"),
-      title: external_exports.string().optional().describe("New title"),
-      body: external_exports.string().optional().describe("Markdown body \u2014 replaces the whole body"),
-      archived: external_exports.boolean().optional().describe("true retires the group (reversible); members are untouched"),
-      expected_updated: external_exports.string().optional().describe(
-        "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the group changed since."
-      )
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
-  },
-  write(
-    async ({ id, expected_updated, ...patch }) => ok(await store.updateGroup(id, { ...patch, expectedUpdated: expected_updated }))
-  )
-);
-server.registerTool(
-  "get_group",
-  {
-    title: "Get a group",
-    description: "A group with its derived membership: every ticket that names it, each with title and stage, plus per-stage progress counts. Members and progress are computed from the tickets on every read, so they cannot go stale. Archived members are listed but excluded from the counts. Read this before working any member ticket \u2014 the group's shared context is part of the ticket's context.",
-    inputSchema: { id: external_exports.string().describe("Group id, e.g. EPIC-001") },
-    annotations: { readOnlyHint: true, openWorldHint: false }
-  },
-  guard(async ({ id }) => {
-    const group = await store.getGroup(id);
-    return group ? ok(group) : fail(`No group with id "${id}"`);
-  })
-);
-server.registerTool(
-  "list_groups",
-  {
-    title: "List groups",
-    description: "Every group, optionally filtered by kind. Archived groups are excluded unless include_archived is true \u2014 archiving is how a group is retired, since deleting one would orphan the membership recorded on its tickets. Retire one with update_group(id, archived: true); it is reversible.",
-    inputSchema: {
-      kind: external_exports.string().optional().describe("Only this kind (epic | horizon)"),
-      include_archived: external_exports.boolean().optional()
-    },
-    annotations: { readOnlyHint: true, openWorldHint: false }
-  },
-  guard(
-    async ({ kind, include_archived }) => ok(await store.listGroups({ kind, includeArchived: include_archived }))
-  )
-);
-server.registerTool(
-  "get_group_doc",
-  {
-    title: "Read a group's shared document",
-    description: "Read a shared context document from a group's folder by relative path (`context.md`, `decisions/api.md`). These are free-form \u2014 a group's context is whatever its work needs \u2014 and every member ticket's agent is expected to have read them.",
-    inputSchema: {
-      id: external_exports.string().describe("Group id"),
-      path: external_exports.string().describe("Path within the group folder, e.g. context.md")
-    },
-    annotations: { readOnlyHint: true, openWorldHint: false }
-  },
-  guard(async ({ id, path: rel }) => ok({ id, path: rel, content: await store.getGroupDoc(id, rel) }))
-);
-server.registerTool(
-  "set_group_doc",
-  {
-    title: "Write a group's shared document",
-    description: "Write a shared context document into a group's folder. Use this for the context every member ticket needs \u2014 the decision that binds them, the constraint they all sit under \u2014 rather than repeating it in each ticket. Cannot write the group's own `<ID>.md` \u2014 edit that with update_group instead.",
-    inputSchema: {
-      id: external_exports.string().describe("Group id"),
-      path: external_exports.string().describe("Path within the group folder, e.g. context.md"),
-      content: external_exports.string().describe("Markdown content")
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
-  },
-  write(async ({ id, path: rel, content }) => ok(await store.setGroupDoc(id, rel, content)))
-);
-server.registerTool(
-  "get_links",
-  {
-    title: "Get links and backlinks",
-    description: "Return the items this item links to (frontmatter links[] plus [[wiki]] links in its body), the items that link back to it, plus the typed dependency edges: blocks (stored) and blockedBy (derived \u2014 never stored). Each id is annotated with its title.",
-    inputSchema: { id: external_exports.string().describe("Item id, e.g. API-001") },
-    annotations: { readOnlyHint: true, openWorldHint: false }
-  },
-  guard(async ({ id }) => {
-    const graph = await getLinkGraph(store, id);
-    const titles = new Map(
-      (await store.listItems({ includeArchived: true })).map((i) => [i.id, i.title])
-    );
-    const withTitles = (ids) => ids.map((linkId) => ({ id: linkId, title: titles.get(linkId) ?? null }));
-    return ok({
-      id: graph.id,
-      links: withTitles(graph.links),
-      backlinks: withTitles(graph.backlinks),
-      blocks: withTitles(graph.blocks),
-      blockedBy: withTitles(graph.blockedBy)
-    });
-  })
-);
-server.registerTool(
-  "get_activity",
-  {
-    title: "Read the activity log",
-    description: "What actually happened on the board: one entry per mutation ({ts, id, op, field, from, to, actor}), oldest-first. Filter by item id and/or since (ISO timestamp); limit keeps the most recent N. Derived convenience, not truth \u2014 the log is safe to delete and never consulted for state.",
-    inputSchema: {
-      id: external_exports.string().optional().describe("Only entries for this item"),
-      since: external_exports.string().optional().describe("Only entries after this ISO timestamp"),
-      limit: external_exports.number().int().positive().optional().describe("Most recent N entries (default 200)")
-    },
-    annotations: { readOnlyHint: true, openWorldHint: false }
-  },
-  guard(
-    async ({ id, since, limit }) => ok(await store.getActivity({ id, since, limit: limit ?? 200 }))
-  )
-);
-server.registerTool(
-  "get_doc_gates",
-  {
-    title: "Inspect the document model and gates",
-    description: "With an `id`: the ticket's resolved doc types, which of them exist, its area and current status, and the per-area gate rules \u2014 enough to self-check before move_item instead of failing into a gate. Without an `id`: the board's document model (default + per-area doc types and gates, the governing-doc path globs, and whether deployment tracking is on).",
-    inputSchema: {
-      id: external_exports.string().optional().describe("Ticket id to inspect; omit for the board's config")
-    },
-    annotations: { readOnlyHint: true, openWorldHint: false }
-  },
-  guard(async ({ id }) => {
-    const board = await store.getBoard();
-    if (id !== void 0) {
-      const item = await store.getItem(id);
-      if (!item) return fail(`No item with id "${id}"`);
-      const report = await store.getDocGates(id);
-      if (!report) return fail(`"${id}" has no ticket folder to inspect.`);
-      const info = await store.getTicketDocsInfo(id);
-      return ok({
-        id,
-        area: item.area,
-        status: item.status,
-        stages: STAGE_IDS,
-        ...report,
-        docCounts: info?.counts ?? {},
-        documentPaths: info?.documentPaths ?? [],
-        references: info?.references ?? [],
-        refs: item.refs ?? [],
-        docs_todo: item.docs_todo === true
-      });
-    }
-    return ok({
-      stages: STAGES,
-      boundaries: BOUNDARIES,
-      profiles: resolveProfiles(board),
-      defaultProfile: board.defaultProfile ?? "fix",
-      docTypes: DOC_TYPES,
-      gateExemptFolders: GATE_EXEMPT_DIRS,
-      proofTypes: resolveProofTypes(board),
-      repoDocs: repoDocsMap(board),
-      deploymentTracking: board.deployment ?? null
-    });
-  })
-);
-server.registerTool(
-  "create_item",
-  {
-    title: "Create an item",
-    description: "Create a ticket. Returns the created item including its allocated id \u2014 tickets born in an area get that area's prefix (e.g. API-007); area-less tickets get the fallback prefix. status defaults to the first workflow stage; status/area/priority are validated against the board and links[] targets must exist. Creation is ungated: a ticket may be created directly in any stage (imports/backfills of finished work) \u2014 the document gates apply on move_item, not creation. Link governing docs with refs (each must exist) or set docs_todo. On format-2 boards plans and research are documents inside a ticket's folder (set_ticket_doc), not standalone items.",
-    inputSchema: createFields,
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
-  },
-  write(async (input) => ok(await store.createItem(input)))
-);
-server.registerTool(
-  "create_items",
-  {
-    title: "Create several items",
-    description: "Bulk create up to 50 items in one call (sequential, so ids stay ordered). Each entry takes the same fields as create_item, including that creation is ungated \u2014 an entry may be created directly in any stage, which is what makes importing or backfilling finished work possible. Document gates apply on move_item, not creation. Partial success is possible: the result carries one { ok, item | error } per entry, in order.",
-    inputSchema: {
-      items: external_exports.array(external_exports.object(createFields)).min(1).max(50).describe("Entries to create, in order")
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
-  },
-  write(async ({ items }) => {
-    const results = [];
-    for (const entry of items) {
-      try {
-        results.push({ ok: true, item: await store.createItem(entry) });
-      } catch (err) {
-        results.push({ ok: false, error: err instanceof Error ? err.message : String(err) });
-      }
-    }
-    return ok({
-      created: results.filter((r) => r.ok).length,
-      failed: results.filter((r) => !r.ok).length,
-      results
-    });
-  })
-);
-server.registerTool(
-  "update_item",
-  {
-    title: "Update an item",
-    description: "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically (a patch that changes nothing does NOT bump `updated`). Changing a ticket's area moves its folder \u2014 the id never changes. Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here \u2014 create a new item and archive the old one instead. Pass expected_updated (the `updated` you last read) when rewriting the body so a concurrent edit is rejected as a conflict instead of overwritten.",
-    inputSchema: {
-      id: external_exports.string().describe("Item id to update"),
-      title: external_exports.string().optional(),
-      status: external_exports.string().optional(),
-      area: external_exports.string().optional(),
-      assignee: external_exports.string().optional(),
-      profile: external_exports.string().optional().describe(
-        "Requirement profile: feature | fix | chore | spike | custom. Gates re-evaluate immediately \u2014 changing it can unblock a move that was blocked a moment ago."
-      ),
-      requires: external_exports.record(external_exports.array(external_exports.string())).optional().describe('Inline requirements, honoured only when profile is "custom"'),
-      groups: external_exports.array(external_exports.string()).optional().describe("Group ids this ticket belongs to"),
-      order: external_exports.number().optional().describe("Manual sort key (move_item's position computes this)"),
-      labels: external_exports.array(external_exports.string()).optional(),
-      links: external_exports.array(external_exports.string()).optional(),
-      blocks: external_exports.array(external_exports.string()).optional().describe("Ids this item blocks"),
-      refs: external_exports.array(external_exports.string()).optional().describe("Repo-relative governing-doc paths (each must exist); [] clears them"),
-      docs_todo: external_exports.boolean().optional().describe("A governing doc is still to be created"),
-      commits: external_exports.array(external_exports.string()).optional().describe("Commit SHAs; [] clears them"),
-      prs: external_exports.array(external_exports.string()).optional().describe("PR references; [] clears them"),
-      deployment: external_exports.string().optional().describe('Deployment status; pass "" to clear (only when the board declares environments)'),
-      body: external_exports.string().optional(),
-      archived: external_exports.boolean().optional(),
-      expected_updated: external_exports.string().optional().describe(
-        "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the item changed since."
-      )
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
-  },
-  write(
-    async ({ id, expected_updated, ...patch }) => ok(await store.updateItem(id, { ...patch, expectedUpdated: expected_updated }))
-  )
-);
-server.registerTool(
-  "move_item",
-  {
-    title: "Move an item to a workflow stage",
-    description: `Kanban move: set an item's status, i.e. move it to one of the six fixed stages (backlog, preparing, implementing, review, verifying, done). Enforces the ticket's profile gates and names the unmet requirement and boundary on failure. IMPORTANT: a single move may cross at most ONE gated boundary \u2014 writing every document and jumping straight to done is refused even though nothing is missing, because the pipeline is meant to be walked, not satisfied at the end. Move one stage at a time; the refusal names the next one. Which boundaries your ticket has depends on its profile, so call get_doc_gates to self-check first. Optional position places the item within the column: "top", "bottom", or { after: "API-003" } \u2014 this maintains the manual order humans see.`,
-    inputSchema: {
-      id: external_exports.string().describe("Item id to move"),
-      status: external_exports.string().describe("Target status id (workflow stage)"),
-      position: external_exports.union([external_exports.enum(["top", "bottom"]), external_exports.object({ after: external_exports.string() })]).optional().describe("Where in the column to place the item"),
-      expected_updated: external_exports.string().optional().describe(
-        "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the item changed since."
-      )
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
-  },
-  write(
-    async ({ id, status, position, expected_updated }) => ok(await store.moveItem(id, { status, position, expectedUpdated: expected_updated }))
-  )
-);
-server.registerTool(
-  "take_ticket",
-  {
-    title: "Take or release a ticket",
-    description: "Take a ticket before working it: records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client's name), and moves the ticket to the working stage (default: the board's `implementing` stage). Errors if the ticket is already taken unless force is true. action: \"release\" clears taken_at/branch/worktree when the work ends.",
-    inputSchema: {
-      id: external_exports.string().describe("Ticket id"),
-      action: external_exports.enum(["take", "release"]).default("take"),
-      branch: external_exports.string().optional().describe("Branch the work happens on (required for take)"),
-      worktree: external_exports.string().optional().describe("Worktree path, when working in one"),
-      stage: external_exports.string().optional().describe("Stage to move to (default: implementing)"),
-      assignee: external_exports.string().optional().describe("Defaults to the calling client's name"),
-      force: external_exports.boolean().optional().describe("Take over an already-taken ticket")
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
-  },
-  write(async ({ id, action, branch, worktree, stage, assignee, force }, extra) => {
-    if (action === "release") return ok(await store.releaseTicket(id));
-    if (!branch) return fail(`branch is required when taking a ticket \u2014 it's the point of taking`);
-    return ok(
-      await store.takeTicket(id, {
-        branch,
-        worktree,
-        stage,
-        assignee: assignee ?? actorName(extra),
-        force
-      })
-    );
-  })
-);
-server.registerTool(
-  "set_ticket_doc",
-  {
-    title: "Write a ticket document",
-    description: "Write one of a ticket's pipeline documents into its folder. `doc` is a document id from the ticket area's configured doc types (see get_doc_gates); an unknown id is rejected with the valid ids, and a doc that `requires` others is rejected until they exist. Plain Markdown, no frontmatter. Pass append: true to add below the existing content (for progress notes) instead of replacing it. For free-form notes use append_scratch instead. Pass the `version` you last read from get_ticket_doc as `expected_version` to be rejected instead of overwriting a concurrent edit; the result carries the new `version`.",
-    inputSchema: {
-      id: external_exports.string().describe("Ticket id"),
-      doc: ticketDocEnum.describe("Which document"),
-      content: external_exports.string().describe("Markdown content"),
-      append: external_exports.boolean().optional().describe("Append below existing content instead of replacing"),
-      expected_version: external_exports.string().optional().describe(
-        "Optimistic concurrency: the `version` you last read from get_ticket_doc. Rejected as a conflict if the document changed since. Omit for last-write-wins."
-      )
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
-  },
-  write(async ({ id, doc, content, append, expected_version }) => {
-    const { version: version2 } = await store.setDoc(id, doc, content, {
-      append,
-      expectedVersion: expected_version
-    });
-    return ok({ id, doc, written: true, appended: append === true, version: version2 });
-  })
-);
-server.registerTool(
-  "append_scratch",
-  {
-    title: "Append a scratch note",
-    description: `Append a free-form working note to a ticket's scratch file (scratch-<slug>.md). Separate from set_ticket_doc: scratch is never gated or validated against the doc types \u2014 it is the agent's running notepad. Read it back with get_ticket_doc(doc: "scratch-<slug>"). Successive appends are separated by a blank line. slug defaults to "notes".`,
-    inputSchema: {
-      id: external_exports.string().describe("Ticket id"),
-      slug: external_exports.string().optional().describe('Scratch slug (default "notes") \u2192 scratch-<slug>.md'),
-      content: external_exports.string().describe("Markdown to append below a blank line")
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
-  },
-  write(async ({ id, slug, content }) => {
-    const useSlug = slug ?? "notes";
-    const { file } = await store.appendScratch(id, useSlug, content);
-    return ok({ id, slug: useSlug, appended: true, file });
-  })
-);
-server.registerTool(
-  "link_doc",
-  {
-    title: "Link or unlink a governing document",
-    description: "Maintain a ticket's refs[] \u2014 repo-relative paths to governing docs (PRD/FRD/ADR) in the repo's own /docs/. add validates the path exists under the project root; remove drops it. Distinct from link_items (item\u2194item); this is item\u2194repo-file. A linked governing doc satisfies the leave-backlog gate.",
-    inputSchema: {
-      id: external_exports.string().describe("Ticket id"),
-      path: external_exports.string().describe("Repo-relative path, e.g. docs/prd/checkout.md"),
-      action: external_exports.enum(["add", "remove"]).default("add")
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
-  },
-  write(async ({ id, path: refPath, action }) => {
-    const item = await store.getItem(id);
-    if (!item) return fail(`No item with id "${id}"`);
-    const refs = new Set(item.refs ?? []);
-    if (action === "remove") refs.delete(refPath);
-    else refs.add(refPath);
-    return ok(await store.updateItem(id, { refs: [...refs] }));
-  })
-);
-server.registerTool(
-  "link_items",
-  {
-    title: "Link or unlink two items",
-    description: `Add or remove a structured relation from source_id to target_id. rel "relates" (default) writes the source's links[]; rel "blocks" writes blocks[] \u2014 meaning the source blocks the target (blocked-by is derived, never stored). Adding requires the target to exist; removal works even on dangling links.`,
-    inputSchema: {
-      source_id: external_exports.string().describe("The item that will hold the link"),
-      target_id: external_exports.string().describe("The item being linked to / blocked"),
-      action: external_exports.enum(["add", "remove"]).default("add"),
-      rel: external_exports.enum(["relates", "blocks"]).default("relates")
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
-  },
-  write(
-    async ({ source_id, target_id, action, rel }) => ok(await linkItems(store, source_id, target_id, action, rel))
-  )
-);
-server.registerTool(
-  "add_column",
-  {
-    title: "Add a board column",
-    description: "Add a new column to the board: a status (workflow stage), area or priority. Areas group tickets within stage columns and are colour-coded; provide a hex color, and optionally a 2-6 uppercase-alphanumeric id prefix for tickets born there (derived from the id when omitted). Returns the updated board configuration.",
-    inputSchema: {
-      id: external_exports.string().describe("New column id, e.g. ui"),
-      name: external_exports.string().describe("Display name, e.g. UI"),
-      kind: columnKindEnum.default("area"),
-      color: external_exports.string().optional().describe("Hex colour, e.g. #5b8cff (recommended for areas)"),
-      prefix: external_exports.string().optional().describe("Areas only: id prefix for tickets born in this area, e.g. API")
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
-  },
-  write(
-    async ({ id, name, kind, color, prefix }) => ok(
-      await store.addColumn(kind, {
-        id,
-        name,
-        ...color ? { color } : {},
-        ...prefix ? { prefix } : {}
-      })
-    )
-  )
-);
-server.registerTool(
-  "update_column",
-  {
-    title: "Update a board column",
-    description: "Rename or recolour a status/area/priority, or pin an area's id prefix. The column id itself is immutable (items reference it).",
-    inputSchema: {
-      kind: columnKindEnum,
-      id: external_exports.string().describe("Column id to update"),
-      name: external_exports.string().optional(),
-      color: external_exports.string().optional(),
-      prefix: external_exports.string().optional().describe("Areas only")
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
-  },
-  write(
-    async ({ kind, id, name, color, prefix }) => ok(await store.updateColumn(kind, id, { name, color, prefix }))
-  )
-);
-server.registerTool(
-  "remove_column",
-  {
-    title: "Remove a board column",
-    description: "Remove a status/area/priority from the board. Refuses while items still use it unless migrate_to names another column of the same kind \u2014 then every matching item is rewritten to it first (an area migration moves ticket folders; migrating tickets into the final stage still requires their proof.md). Returns the updated board plus the ids that were migrated.",
-    inputSchema: {
-      kind: columnKindEnum,
-      id: external_exports.string().describe("Column id to remove"),
-      migrate_to: external_exports.string().optional().describe("Column id (same kind) to move the referencing items to")
-    },
-    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false }
-  },
-  write(async ({ kind, id, migrate_to }) => {
-    if (migrate_to !== void 0) {
-      const proceed = await confirmDestructive(
-        `Remove ${kind} "${id}" and move every item using it to "${migrate_to}"?`
-      );
-      if (!proceed) return fail("cancelled by user");
-    }
-    return ok(await store.removeColumn(kind, id, { migrateTo: migrate_to }));
-  })
-);
-server.registerTool(
-  "reorder_columns",
-  {
-    title: "Reorder board columns",
-    description: "Reorder the statuses, areas or priorities. `order` must be a permutation of the existing ids. Note that the FIRST status is where new items land and the LAST status is the proof-gated final stage.",
-    inputSchema: {
-      kind: columnKindEnum,
-      order: external_exports.array(external_exports.string()).min(1).describe("Every existing id, in the new order")
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
-  },
-  write(async ({ kind, order }) => ok(await store.reorderColumns(kind, order)))
-);
-server.registerTool(
-  "migrate_board",
-  {
-    title: "Migrate / upgrade the board",
-    description: "Bring the board fully current: run the v1\u2192v2 migration if needed, then backfill the 7-stage default (alias-aware, additive \u2014 never renames or reorders existing stages, never touches item files). Pass dry_run: true to preview what would move and which stages would be added without writing. The agent-facing route to the same upgrade the GUI offers.",
-    inputSchema: {
-      dry_run: external_exports.boolean().optional().describe("Preview without writing")
-    },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
-  },
-  write(async ({ dry_run }) => ok(await migrateBoard(store, { dryRun: dry_run })))
-);
-server.registerTool(
-  "delete_item",
-  {
-    title: "Delete an item",
-    description: "Permanently delete an item by id. For tickets this removes the whole ticket folder \u2014 pipeline documents and attachments included. This cannot be undone (prefer update_item with archived: true). Frontmatter links[] in other items that pointed at the deleted id are cleaned up automatically (cleanedLinks); [[wiki]] references in bodies are prose and stay put (bodyReferencesRemain).",
-    inputSchema: { id: external_exports.string().describe("Item id to delete") },
-    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true }
-  },
-  write(async ({ id }) => {
-    const proceed = await confirmDestructive(
-      `Permanently delete "${id}" (its whole folder, documents and attachments included)?`
-    );
-    if (!proceed) return fail("cancelled by user");
-    const result = await store.deleteItem(id);
-    return result.deleted ? ok({
-      deleted: id,
-      cleanedLinks: result.cleanedLinks,
-      bodyReferencesRemain: result.bodyReferencesRemain
-    }) : fail(`No item with id "${id}"`);
-  })
-);
-server.registerResource(
-  "board",
-  "kanmer://board",
-  {
-    title: "Kanmer board configuration",
-    description: "The stages, areas and priorities driving this project's board",
-    mimeType: "application/json"
-  },
-  async (uri) => ({
-    contents: [
-      {
-        uri: uri.href,
-        mimeType: "application/json",
-        text: JSON.stringify(await store.getBoardWithSource(), null, 2)
-      }
-    ]
-  })
-);
-server.registerResource(
-  "item",
-  new ResourceTemplate("kanmer://items/{id}", {
-    list: async () => ({
-      resources: (await store.listItems()).map((i) => ({
-        uri: `kanmer://items/${i.id}`,
-        name: i.id,
-        description: i.title,
-        mimeType: "text/markdown"
-      }))
-    })
-  }),
-  {
-    title: "Kanmer items",
-    description: "Each ticket/plan/research item as Markdown with frontmatter",
-    mimeType: "text/markdown"
-  },
-  async (uri, variables) => {
-    const id = String(variables["id"]);
-    const item = await store.getItem(id);
-    if (!item) throw new Error(`No item with id "${id}"`);
-    return {
-      contents: [{ uri: uri.href, mimeType: "text/markdown", text: serialiseItem(item) }]
-    };
-  }
-);
-var subscriptions = /* @__PURE__ */ new Set();
-var subscriptionWatch = null;
-function ensureSubscriptionWatcher() {
-  if (subscriptionWatch) return;
-  subscriptionWatch = watchKanmer(projectRoot, (_event, file) => {
-    const base = import_node_path4.default.basename(file);
-    if (base === "board.yml" && subscriptions.has("kanmer://board")) {
-      void server.server.sendResourceUpdated({ uri: "kanmer://board" });
-    }
-    if (base.endsWith(".md")) {
-      const uri = `kanmer://items/${base.slice(0, -3)}`;
-      if (subscriptions.has(uri)) {
-        void server.server.sendResourceUpdated({ uri });
-      }
-    }
-  });
+var expectedProjectField = external_exports.string().optional().describe("Optional project fingerprint from get_status.project.fingerprint; send only when get_status.compat.expectedProject is optional");
+function withProject(shape) {
+  return { ...shape, expected_project: expectedProjectField };
 }
-server.server.registerCapabilities({ resources: { subscribe: true } });
-server.server.setRequestHandler(SubscribeRequestSchema, async (req) => {
-  subscriptions.add(req.params.uri);
-  ensureSubscriptionWatcher();
-  return {};
-});
-server.server.setRequestHandler(UnsubscribeRequestSchema, async (req) => {
-  subscriptions.delete(req.params.uri);
-  return {};
-});
-server.registerPrompt(
-  "standup",
-  {
-    title: "Board standup",
-    description: "Summarise what happened on the Kanmer board and what needs attention"
-  },
-  () => ({
-    messages: [
-      {
-        role: "user",
-        content: {
-          type: "text",
-          text: "Give me a standup from the Kanmer board. Call get_status first, then list_items (sort: updated_desc) for the current picture. Group by the board's configured stages by role \u2014 first stage is Up next, last stage is Recently done, a review-like stage is In review, everything between is In flight (include taken branch/worktree info). Flag stale items, off-board stages, and any warnings. Keep it scannable: one line per item."
+var REMOTE_HTTP_EXCLUDED_TOOLS = /* @__PURE__ */ new Set();
+function createKanmerMcpServer(policy = "local-stdio") {
+  if (policy !== "local-stdio" && policy !== "remote-http-v1") {
+    throw new Error(`Unknown MCP exposure policy: ${policy}`);
+  }
+  if (!rootResolved) resolveRoot();
+  const server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
+  const registerTool = server.registerTool.bind(server);
+  server.registerTool = ((name, config2, ...args) => {
+    if (policy === "remote-http-v1" && REMOTE_HTTP_EXCLUDED_TOOLS.has(name)) return { remove: () => void 0 };
+    const next = config2.annotations?.readOnlyHint === false && config2.inputSchema ? { ...config2, inputSchema: withProject(config2.inputSchema) } : config2;
+    return Reflect.apply(registerTool, server, [name, next, ...args]);
+  });
+  function write(fn) {
+    return guard(async (input, ...rest) => {
+      const { expected_project, ...cleanInput } = input;
+      if (expected_project !== void 0) {
+        const format = await store.detectFormat();
+        const { source } = await store.getBoardWithSource();
+        const identity = projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
+        if (expected_project !== identity.fingerprint) {
+          throw new KanmerError("WRONG_PROJECT", `expected project ${expected_project} does not match current project ${identity.fingerprint}`);
         }
       }
-    ]
-  })
-);
-server.registerPrompt(
-  "take-ticket",
-  {
-    title: "Take a ticket",
-    description: "Take a Kanmer ticket and work it through the doc pipeline",
-    argsSchema: { id: external_exports.string().describe("Ticket id to take") }
-  },
-  ({ id }) => ({
-    messages: [
-      {
-        role: "user",
-        content: { type: "text", text: takeTicketPromptText(id) }
+      store.setActor(actorName(server, rest[0]));
+      await ensureInit();
+      return fn(cleanInput, ...rest);
+    });
+  }
+  server.registerTool(
+    "get_status",
+    {
+      title: "Project status",
+      description: "Orientation call \u2014 use it first, every session. Answers both of the questions you have at session start: WHICH BOARD, and WHICH SERVER. Board: the project root and `rootSource` (how it was found: flag | env | cwd | cwd-worktree | ancestor | ancestor-worktree | init), the `repoRoot` that governing-doc refs resolve against and its `repoRootSource` (flag | env | derived), whether .kanmer/ exists (this tool never creates it), the storage format version, whether the board came from a real board.yml or is the synthesized default, per-stage and per-type item counts, archived/taken counts, and how many file warnings the listing produced. Server: a `server` block naming the build that is answering \u2014 the release `version`, the resolved `path` of the running script, the runtime `sha256` of its bytes (plus `sha256Short`), its `mtime` and `size`, and the `build` shape (packaged | plugin | dev-standalone | dev-esm | unknown). Two hosts pointed at the same board can be running different server builds that enforce different gates; comparing `server.sha256` is how you see that instead of guessing. Repo: a `repo` block answering WHICH KANMER THIS REPO WAS SET UP BY \u2014 `{ upToDate, stale: [{ artefact, state, detail, fix }] }`. Itemised, never a bare boolean. Artefacts checked are the ones migration does not touch: the AGENTS.md managed block, the installed skills trees and their `.kanmer-skills-version` stamps, `board.yml`, and the provider MCP registrations \u2014 compared by CONTENT HASH against what this build ships, not by version string (no artefact records a product version). `state` is `behind` (act on it), `compensated` (the file is old and the runtime already papers over it \u2014 informational, no action), `unstamped` (no evidence either way) or `unknown` (could not be read). `upToDate` is true iff nothing is `behind`. Repair is never automatic: run `kanmer-setup`, which is the reconciliation path (FRD-013). Board format is not listed here \u2014 it is the `format` field above. Board worktree: an informational, non-blocking `boardWorktree` block reports the board path, expected and actual branch, branch match, board source, active ticket count, and operator repair guidance. It never checks out, repairs, initializes, or refuses another tool. Project safety: `project` gives a machine-local fingerprint over the canonical board root, format and repo root. When `compat.expectedProject` is `optional`, a client may send that fingerprint as `expected_project` on any write; omit it for older servers that do not advertise compatibility. IMPORTANT: the `server` block is absent on servers older than 0.3.3, and the `repo` block on servers older than 0.3.4 \u2014 that ABSENCE is itself the signal 'this build predates the check', not an error. Individual fields are null if they could not be read; the call never fails over it.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    guard(async () => {
+      const exists2 = await store.exists();
+      const format = await store.detectFormat();
+      const { board, source } = await store.getBoardWithSource();
+      const { items, warnings } = await store.listItemsWithWarnings({ includeArchived: true });
+      const active = items.filter((i) => !i.archived);
+      const expectedBranch = process.env.KANMER_BOARD_BRANCH?.trim() || "kanmer-board";
+      const actualBranch = await inspectBoardBranch(projectRoot);
+      const byStage = {};
+      for (const s of STAGE_IDS) byStage[s] = 0;
+      let offBoardStage = 0;
+      const byType = {};
+      for (const item of active) {
+        if (item.status in byStage) byStage[item.status]++;
+        else offBoardStage++;
+        byType[item.type] = (byType[item.type] ?? 0) + 1;
       }
-    ]
-  })
-);
+      return ok({
+        // --- Identity: which board, and which server. ---------------------
+        // These four plus `server` are the block an agent reads to know what it
+        // is talking to. `projectRoot`/`rootSource` are MCP-010's, unchanged.
+        projectRoot,
+        /** What governing-doc `refs` resolve against — MCP-012. */
+        repoRoot: store.paths.repoRoot,
+        /** Which resolution step produced projectRoot — see ADR-0012. */
+        rootSource,
+        /** How repoRoot was reached: flag | env | derived — MCP-012. */
+        repoRootSource,
+        /**
+         * Which build is answering. Absent on servers older than 0.3.3, and that
+         * absence is the signal — see the tool description. Never throws: any
+         * field it could not determine is null.
+         */
+        server: serverIdentity(),
+        /**
+         * Whether this REPO's Kanmer artefacts are as new as the build above —
+         * CORE-023. `server` says which binary is answering; this says whether
+         * what it left behind in the repo has kept up. Itemised, because "stale:
+         * true" is not actionable and the whole point is naming what.
+         *
+         * Recomputed every call, not cached: the obvious next move after reading
+         * it is `kanmer-setup`, and a cached answer would survive its own fix.
+         * Never throws — an unreadable artefact reports `unknown`.
+         */
+        repo: detectStaleness({
+          paths: store.paths,
+          board,
+          boardSource: source,
+          format,
+          bundledSkillsDir: bundledSkillsDir()
+        }),
+        kanmerDir: store.paths.kanmer,
+        exists: exists2,
+        format,
+        boardSource: source,
+        project: projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source }),
+        compat: { expectedProject: "optional" },
+        deploymentTracking: board.deployment !== void 0,
+        boardWorktree: {
+          path: projectRoot,
+          expectedBranch,
+          actualBranch,
+          onBoardBranch: actualBranch === expectedBranch,
+          boardSource: source,
+          ticketCount: active.filter((item) => item.type === "ticket").length,
+          repair: boardWorktreeRepair(source, actualBranch, expectedBranch, projectRoot)
+        },
+        counts: {
+          byStage,
+          byType,
+          offBoardStage,
+          archived: items.length - active.length,
+          taken: active.filter((i) => i.taken_at).length
+        },
+        warningsCount: warnings.length
+      });
+    })
+  );
+  server.registerTool(
+    "list_board",
+    {
+      title: "List board configuration",
+      description: 'Return the board configuration: the ordered statuses (the workflow stages, which are the kanban columns), the areas (each with the id prefix its tickets are born with), the priorities, and the legacy id prefixes. Call this to learn valid status/area/priority ids before creating or moving items. The `source` field says whether this is a real board.yml ("file") or the synthesized default for a project with no board yet ("default").',
+      inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    guard(async () => {
+      const { board, source } = await store.getBoardWithSource();
+      return ok({
+        ...board,
+        source,
+        stages: STAGES,
+        profiles: resolveProfiles(board),
+        defaultProfile: board.defaultProfile ?? "fix",
+        groupKinds: resolveGroupKinds(board),
+        proofTypes: resolveProofTypes(board),
+        docTypes: DOC_TYPES,
+        gateExemptFolders: GATE_EXEMPT_DIRS,
+        boundaries: BOUNDARIES,
+        repoDocs: repoDocsMap(board),
+        deploymentTracking: board.deployment !== void 0
+      });
+    })
+  );
+  server.registerTool(
+    "list_items",
+    {
+      title: "List items",
+      description: "List items as summaries (no body). Filter by type, status (workflow stage), area, label, group, or updated_since (ISO timestamp \u2014 only items changed after it). Filters combine with AND, so group + status narrows to one stage of one group. Sort by id (default) or updated_desc; cap with limit. Archived items are excluded unless include_archived is true (summaries carry `archived` either way). Summaries also carry `taken` (who/where, when a ticket is taken), `profile`, and `docs`/`checklist` (pipeline document presence and checklist progress) \u2014 which is why this, rather than get_group, is how you build a roster from a group: get_group's derived members carry only id/title/stage. Normally returns a plain array; if any files in .kanmer are malformed or misnamed, returns { items, warnings } instead so the problem is visible.",
+      inputSchema: {
+        type: itemTypeEnum.optional().describe("Restrict to one item type"),
+        status: external_exports.string().optional().describe("Filter by status id (workflow stage)"),
+        area: external_exports.string().optional().describe("Filter by area id"),
+        label: external_exports.string().optional().describe("Filter by a label"),
+        group: external_exports.string().optional().describe(
+          "Filter by group membership, e.g. EPIC-001 or HZN-003. An unknown group id returns no items rather than erroring \u2014 a filter asks a question, it does not assert one."
+        ),
+        include_archived: external_exports.boolean().optional().describe("Include archived items"),
+        updated_since: external_exports.string().optional().describe("Only items whose `updated` is after this ISO timestamp"),
+        sort: external_exports.enum(["id", "updated_desc"]).optional().describe("Sort order (default id)"),
+        limit: external_exports.number().int().positive().optional().describe("Return at most this many")
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    guard(
+      async ({ type, status, area, label, group, include_archived, updated_since, sort, limit }) => {
+        const { items, warnings } = await store.listItemsWithWarnings({
+          type,
+          status,
+          area,
+          label,
+          group,
+          includeArchived: include_archived
+        });
+        let selected = items;
+        if (updated_since !== void 0) {
+          selected = selected.filter((i) => i.updated > updated_since);
+        }
+        if (sort === "updated_desc") {
+          selected = [...selected].sort((a, b) => a.updated < b.updated ? 1 : -1);
+        }
+        if (limit !== void 0) selected = selected.slice(0, limit);
+        const blocked = await blockedSet();
+        const summaries = await Promise.all(selected.map((i) => summarise(i, blocked)));
+        return ok(warnings.length ? { items: summaries, warnings } : summaries);
+      }
+    )
+  );
+  server.registerTool(
+    "get_item",
+    {
+      title: "Get an item",
+      description: "Return the full frontmatter and markdown body of one item by id (e.g. API-001). For tickets this also reports which pipeline document types exist (docs), their exact readable documentPaths, and checklist progress \u2014 read a selected path with get_ticket_doc.",
+      inputSchema: { id: external_exports.string().describe("Item id, e.g. API-001") },
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    guard(async ({ id }) => {
+      const item = await store.getItem(id);
+      if (!item) return fail(`No item with id "${id}"`);
+      const info = await store.getTicketDocsInfo(id);
+      const blocked = (await blockedSet()).has(id);
+      return ok(
+        info ? {
+          ...item,
+          blocked,
+          docs: info.docs,
+          documentPaths: info.documentPaths,
+          checklist: info.checklist
+        } : { ...item, blocked }
+      );
+    })
+  );
+  server.registerTool(
+    "get_ticket_doc",
+    {
+      title: "Read a ticket document",
+      description: "Read one ticket document (`doc`) or 1\u201325 selected documents (`docs`). Supply exactly one form. The legacy single response is unchanged; batch returns ordered per-document content/version records. Missing known documents are normal entries; versions bind to returned bytes and are not an atomic snapshot.",
+      inputSchema: {
+        id: external_exports.string().describe("Ticket id"),
+        doc: ticketDocEnum.optional().describe("One document (legacy form)"),
+        docs: external_exports.array(ticketDocEnum).min(1).max(25).optional().describe("1\u201325 documents (batch form; mutually exclusive with doc)")
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    guard(async ({ id, doc, docs }) => {
+      if (doc === void 0 === (docs === void 0)) throw new Error("Supply exactly one of doc or docs.");
+      if (doc !== void 0) {
+        const [result] = await readTicketDocuments(store, id, [doc]);
+        return ok({ id, ...result });
+      }
+      return ok({ id, documents: await readTicketDocuments(store, id, docs) });
+    })
+  );
+  server.registerTool(
+    "search_items",
+    {
+      title: "Search items",
+      description: "Full-text search over item id, title, body, labels and assignee. Returns matching summaries.",
+      inputSchema: {
+        query: external_exports.string().describe("Text to search for"),
+        type: itemTypeEnum.optional().describe("Restrict to one item type")
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    guard(async ({ query, type }) => {
+      const blocked = await blockedSet();
+      return ok(
+        await Promise.all(
+          (await store.searchItems(query, { type })).map((i) => summarise(i, blocked))
+        )
+      );
+    })
+  );
+  server.registerTool(
+    "create_group",
+    {
+      title: "Create a group",
+      description: "Create a cross-cutting group of tickets: an `epic` (these ship together) or a `horizon` (this is what matters now). Returns the group including its allocated id (EPIC-001, HZN-001). The body is the group's goal; add shared context agents should read with set_group_doc. Add members by calling update_item(groups: [...]) on each ticket \u2014 membership lives on tickets, and the member list is always derived, never stored.",
+      inputSchema: {
+        kind: external_exports.string().describe("Group kind (see list_board \u2192 groupKinds): epic | horizon"),
+        title: external_exports.string().describe("Short title"),
+        body: external_exports.string().optional().describe("Markdown body \u2014 the group's goal")
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+    },
+    write(async ({ kind, title, body }) => ok(await store.createGroup(kind, title, body ?? "")))
+  );
+  server.registerTool(
+    "update_group",
+    {
+      title: "Update a group",
+      description: "Patch a group's own fields: title, body and archived. Only provided fields change; a supplied body REPLACES the whole body rather than merging, and a patch that changes nothing does NOT bump `updated`. Set archived to true to retire a group \u2014 it drops out of list_groups unless include_archived, stays readable, and its member tickets are untouched; archiving is the retirement path and there is no delete, since deleting would orphan the membership recorded on the tickets. `kind` cannot be changed here \u2014 the id prefix (EPIC-, HZN-) is allocated from it, so create a new group and archive the old one instead. Membership is not patchable here either: it lives on the tickets, via update_item(groups: [...]), and the member list is always derived. Pass expected_updated (the `updated` you last read) to be rejected with a conflict instead of overwriting a concurrent edit.",
+      inputSchema: {
+        id: external_exports.string().describe("Group id, e.g. EPIC-001"),
+        title: external_exports.string().optional().describe("New title"),
+        body: external_exports.string().optional().describe("Markdown body \u2014 replaces the whole body"),
+        archived: external_exports.boolean().optional().describe("true retires the group (reversible); members are untouched"),
+        expected_updated: external_exports.string().optional().describe(
+          "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the group changed since."
+        )
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
+    },
+    write(
+      async ({ id, expected_updated, ...patch }) => ok(await store.updateGroup(id, { ...patch, expectedUpdated: expected_updated }))
+    )
+  );
+  server.registerTool(
+    "get_group",
+    {
+      title: "Get a group",
+      description: "A group with its derived membership: every ticket that names it, each with title and stage, plus per-stage progress counts. Members and progress are computed from the tickets on every read, so they cannot go stale. Archived members are listed but excluded from the counts. Read this before working any member ticket \u2014 the group's shared context is part of the ticket's context.",
+      inputSchema: { id: external_exports.string().describe("Group id, e.g. EPIC-001") },
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    guard(async ({ id }) => {
+      const group = await store.getGroup(id);
+      return group ? ok(group) : fail(`No group with id "${id}"`);
+    })
+  );
+  server.registerTool(
+    "list_groups",
+    {
+      title: "List groups",
+      description: "Every group, optionally filtered by kind. Archived groups are excluded unless include_archived is true \u2014 archiving is how a group is retired, since deleting one would orphan the membership recorded on its tickets. Retire one with update_group(id, archived: true); it is reversible.",
+      inputSchema: {
+        kind: external_exports.string().optional().describe("Only this kind (epic | horizon)"),
+        include_archived: external_exports.boolean().optional()
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    guard(
+      async ({ kind, include_archived }) => ok(await store.listGroups({ kind, includeArchived: include_archived }))
+    )
+  );
+  server.registerTool(
+    "get_group_doc",
+    {
+      title: "Read a group's shared document",
+      description: "Read a shared context document from a group's folder by relative path (`context.md`, `decisions/api.md`). These are free-form \u2014 a group's context is whatever its work needs \u2014 and every member ticket's agent is expected to have read them.",
+      inputSchema: {
+        id: external_exports.string().describe("Group id"),
+        path: external_exports.string().describe("Path within the group folder, e.g. context.md")
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    guard(async ({ id, path: rel }) => ok({ id, path: rel, content: await store.getGroupDoc(id, rel) }))
+  );
+  server.registerTool(
+    "set_group_doc",
+    {
+      title: "Write a group's shared document",
+      description: "Write a shared context document into a group's folder. Use this for the context every member ticket needs \u2014 the decision that binds them, the constraint they all sit under \u2014 rather than repeating it in each ticket. Cannot write the group's own `<ID>.md` \u2014 edit that with update_group instead.",
+      inputSchema: {
+        id: external_exports.string().describe("Group id"),
+        path: external_exports.string().describe("Path within the group folder, e.g. context.md"),
+        content: external_exports.string().describe("Markdown content")
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+    },
+    write(async ({ id, path: rel, content }) => ok(await store.setGroupDoc(id, rel, content)))
+  );
+  server.registerTool(
+    "get_links",
+    {
+      title: "Get links and backlinks",
+      description: "Return the items this item links to (frontmatter links[] plus [[wiki]] links in its body), the items that link back to it, plus the typed dependency edges: blocks (stored) and blockedBy (derived \u2014 never stored). Each id is annotated with its title.",
+      inputSchema: { id: external_exports.string().describe("Item id, e.g. API-001") },
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    guard(async ({ id }) => {
+      const graph = await getLinkGraph(store, id);
+      const titles = new Map(
+        (await store.listItems({ includeArchived: true })).map((i) => [i.id, i.title])
+      );
+      const withTitles = (ids) => ids.map((linkId) => ({ id: linkId, title: titles.get(linkId) ?? null }));
+      return ok({
+        id: graph.id,
+        links: withTitles(graph.links),
+        backlinks: withTitles(graph.backlinks),
+        blocks: withTitles(graph.blocks),
+        blockedBy: withTitles(graph.blockedBy)
+      });
+    })
+  );
+  server.registerTool(
+    "get_activity",
+    {
+      title: "Read the activity log",
+      description: "What actually happened on the board: one entry per mutation ({ts, id, op, field, from, to, actor}), oldest-first. Filter by item id and/or since (ISO timestamp); limit keeps the most recent N. Derived convenience, not truth \u2014 the log is safe to delete and never consulted for state.",
+      inputSchema: {
+        id: external_exports.string().optional().describe("Only entries for this item"),
+        since: external_exports.string().optional().describe("Only entries after this ISO timestamp"),
+        limit: external_exports.number().int().positive().optional().describe("Most recent N entries (default 200)")
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    guard(
+      async ({ id, since, limit }) => ok(await store.getActivity({ id, since, limit: limit ?? 200 }))
+    )
+  );
+  server.registerTool(
+    "get_doc_gates",
+    {
+      title: "Inspect the document model and gates",
+      description: "With an `id`: the ticket's resolved doc types, which of them exist, its area and current status, and the per-area gate rules \u2014 enough to self-check before move_item instead of failing into a gate. Without an `id`: the board's document model (default + per-area doc types and gates, the governing-doc path globs, and whether deployment tracking is on).",
+      inputSchema: {
+        id: external_exports.string().optional().describe("Ticket id to inspect; omit for the board's config")
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    guard(async ({ id }) => {
+      const board = await store.getBoard();
+      if (id !== void 0) {
+        const item = await store.getItem(id);
+        if (!item) return fail(`No item with id "${id}"`);
+        const report = await store.getDocGates(id);
+        if (!report) return fail(`"${id}" has no ticket folder to inspect.`);
+        const info = await store.getTicketDocsInfo(id);
+        return ok({
+          id,
+          area: item.area,
+          status: item.status,
+          stages: STAGE_IDS,
+          ...report,
+          docCounts: info?.counts ?? {},
+          documentPaths: info?.documentPaths ?? [],
+          references: info?.references ?? [],
+          refs: item.refs ?? [],
+          docs_todo: item.docs_todo === true
+        });
+      }
+      return ok({
+        stages: STAGES,
+        boundaries: BOUNDARIES,
+        profiles: resolveProfiles(board),
+        defaultProfile: board.defaultProfile ?? "fix",
+        docTypes: DOC_TYPES,
+        gateExemptFolders: GATE_EXEMPT_DIRS,
+        proofTypes: resolveProofTypes(board),
+        repoDocs: repoDocsMap(board),
+        deploymentTracking: board.deployment ?? null
+      });
+    })
+  );
+  server.registerTool(
+    "create_item",
+    {
+      title: "Create an item",
+      description: "Create a ticket. Returns the created item including its allocated id \u2014 tickets born in an area get that area's prefix (e.g. API-007); area-less tickets get the fallback prefix. status defaults to the first workflow stage; status/area/priority are validated against the board and links[] targets must exist. Creation is ungated: a ticket may be created directly in any stage (imports/backfills of finished work) \u2014 the document gates apply on move_item, not creation. Link governing docs with refs (each must exist) or set docs_todo. On format-2 boards plans and research are documents inside a ticket's folder (set_ticket_doc), not standalone items.",
+      inputSchema: createFields,
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+    },
+    write(async (input) => ok(await store.createItem(input)))
+  );
+  server.registerTool(
+    "create_items",
+    {
+      title: "Create several items",
+      description: "Bulk create up to 50 items in one call (sequential, so ids stay ordered). Each entry takes the same fields as create_item, including that creation is ungated \u2014 an entry may be created directly in any stage, which is what makes importing or backfilling finished work possible. Document gates apply on move_item, not creation. Partial success is possible: the result carries one { ok, item | error } per entry, in order.",
+      inputSchema: {
+        items: external_exports.array(external_exports.object(createFields)).min(1).max(50).describe("Entries to create, in order")
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+    },
+    write(async ({ items }) => {
+      const results = [];
+      for (const entry of items) {
+        try {
+          results.push({ ok: true, item: await store.createItem(entry) });
+        } catch (err) {
+          results.push({ ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+      }
+      return ok({
+        created: results.filter((r) => r.ok).length,
+        failed: results.filter((r) => !r.ok).length,
+        results
+      });
+    })
+  );
+  server.registerTool(
+    "update_item",
+    {
+      title: "Update an item",
+      description: "Patch a frontmatter field and/or the markdown body of an existing item. Only provided fields change; `updated` is stamped automatically (a patch that changes nothing does NOT bump `updated`). Changing a ticket's area moves its folder \u2014 the id never changes. Set archived to true to hide an item from the board without deleting it. `type` cannot be changed here \u2014 create a new item and archive the old one instead. Pass expected_updated (the `updated` you last read) when rewriting the body so a concurrent edit is rejected as a conflict instead of overwritten.",
+      inputSchema: {
+        id: external_exports.string().describe("Item id to update"),
+        title: external_exports.string().optional(),
+        status: external_exports.string().optional(),
+        area: external_exports.string().optional(),
+        assignee: external_exports.string().optional(),
+        profile: external_exports.string().optional().describe(
+          "Requirement profile: feature | fix | chore | spike | custom. Gates re-evaluate immediately \u2014 changing it can unblock a move that was blocked a moment ago."
+        ),
+        requires: external_exports.record(external_exports.array(external_exports.string())).optional().describe('Inline requirements, honoured only when profile is "custom"'),
+        groups: external_exports.array(external_exports.string()).optional().describe("Group ids this ticket belongs to"),
+        order: external_exports.number().optional().describe("Manual sort key (move_item's position computes this)"),
+        labels: external_exports.array(external_exports.string()).optional(),
+        links: external_exports.array(external_exports.string()).optional(),
+        blocks: external_exports.array(external_exports.string()).optional().describe("Ids this item blocks"),
+        refs: external_exports.array(external_exports.string()).optional().describe("Repo-relative governing-doc paths (each must exist); [] clears them"),
+        docs_todo: external_exports.boolean().optional().describe("A governing doc is still to be created"),
+        commits: external_exports.array(external_exports.string()).optional().describe("Commit SHAs; [] clears them"),
+        prs: external_exports.array(external_exports.string()).optional().describe("PR references; [] clears them"),
+        deployment: external_exports.string().optional().describe('Deployment status; pass "" to clear (only when the board declares environments)'),
+        body: external_exports.string().optional(),
+        archived: external_exports.boolean().optional(),
+        expected_updated: external_exports.string().optional().describe(
+          "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the item changed since."
+        )
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
+    },
+    write(
+      async ({ id, expected_updated, ...patch }) => ok(await store.updateItem(id, { ...patch, expectedUpdated: expected_updated }))
+    )
+  );
+  server.registerTool(
+    "move_item",
+    {
+      title: "Move an item to a workflow stage",
+      description: `Kanban move: set an item's status, i.e. move it to one of the six fixed stages (backlog, preparing, implementing, review, verifying, done). Enforces the ticket's profile gates and names the unmet requirement and boundary on failure. IMPORTANT: a single move may cross at most ONE gated boundary \u2014 writing every document and jumping straight to done is refused even though nothing is missing, because the pipeline is meant to be walked, not satisfied at the end. Move one stage at a time; the refusal names the next one. Which boundaries your ticket has depends on its profile, so call get_doc_gates to self-check first. Optional position places the item within the column: "top", "bottom", or { after: "API-003" } \u2014 this maintains the manual order humans see.`,
+      inputSchema: {
+        id: external_exports.string().describe("Item id to move"),
+        status: external_exports.string().describe("Target status id (workflow stage)"),
+        position: external_exports.union([external_exports.enum(["top", "bottom"]), external_exports.object({ after: external_exports.string() })]).optional().describe("Where in the column to place the item"),
+        expected_updated: external_exports.string().optional().describe(
+          "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the item changed since."
+        )
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
+    },
+    write(
+      async ({ id, status, position, expected_updated }) => ok(await store.moveItem(id, { status, position, expectedUpdated: expected_updated }))
+    )
+  );
+  server.registerTool(
+    "take_ticket",
+    {
+      title: "Take or release a ticket",
+      description: "Take a ticket before working it: records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client's name), and moves the ticket to the working stage (default: the board's `implementing` stage). Errors if the ticket is already taken unless force is true. action: \"release\" clears taken_at/branch/worktree when the work ends.",
+      inputSchema: {
+        id: external_exports.string().describe("Ticket id"),
+        action: external_exports.enum(["take", "release"]).default("take"),
+        branch: external_exports.string().optional().describe("Branch the work happens on (required for take)"),
+        worktree: external_exports.string().optional().describe("Worktree path, when working in one"),
+        stage: external_exports.string().optional().describe("Stage to move to (default: implementing)"),
+        assignee: external_exports.string().optional().describe("Defaults to the calling client's name"),
+        force: external_exports.boolean().optional().describe("Take over an already-taken ticket")
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+    },
+    write(async ({ id, action, branch, worktree, stage, assignee, force }, extra) => {
+      if (action === "release") return ok(await store.releaseTicket(id));
+      if (!branch) return fail(`branch is required when taking a ticket \u2014 it's the point of taking`);
+      return ok(
+        await store.takeTicket(id, {
+          branch,
+          worktree,
+          stage,
+          assignee: assignee ?? actorName(server, extra),
+          force
+        })
+      );
+    })
+  );
+  server.registerTool(
+    "set_ticket_doc",
+    {
+      title: "Write a ticket document",
+      description: "Write one of a ticket's pipeline documents into its folder. `doc` is a document id from the ticket area's configured doc types (see get_doc_gates); an unknown id is rejected with the valid ids, and a doc that `requires` others is rejected until they exist. Plain Markdown, no frontmatter. Pass append: true to add below the existing content (for progress notes) instead of replacing it. For free-form notes use append_scratch instead. Pass the `version` you last read from get_ticket_doc as `expected_version` to be rejected instead of overwriting a concurrent edit; the result carries the new `version`.",
+      inputSchema: {
+        id: external_exports.string().describe("Ticket id"),
+        doc: ticketDocEnum.describe("Which document"),
+        content: external_exports.string().describe("Markdown content"),
+        append: external_exports.boolean().optional().describe("Append below existing content instead of replacing"),
+        expected_version: external_exports.string().optional().describe(
+          "Optimistic concurrency: the `version` you last read from get_ticket_doc. Rejected as a conflict if the document changed since. Omit for last-write-wins."
+        )
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+    },
+    write(async ({ id, doc, content, append, expected_version }) => {
+      const { version: version2 } = await store.setDoc(id, doc, content, {
+        append,
+        expectedVersion: expected_version
+      });
+      return ok({ id, doc, written: true, appended: append === true, version: version2 });
+    })
+  );
+  server.registerTool(
+    "append_scratch",
+    {
+      title: "Append a scratch note",
+      description: `Append a free-form working note to a ticket's scratch file (scratch-<slug>.md). Separate from set_ticket_doc: scratch is never gated or validated against the doc types \u2014 it is the agent's running notepad. Read it back with get_ticket_doc(doc: "scratch-<slug>"). Successive appends are separated by a blank line. slug defaults to "notes".`,
+      inputSchema: {
+        id: external_exports.string().describe("Ticket id"),
+        slug: external_exports.string().optional().describe('Scratch slug (default "notes") \u2192 scratch-<slug>.md'),
+        content: external_exports.string().describe("Markdown to append below a blank line")
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+    },
+    write(async ({ id, slug, content }) => {
+      const useSlug = slug ?? "notes";
+      const { file } = await store.appendScratch(id, useSlug, content);
+      return ok({ id, slug: useSlug, appended: true, file });
+    })
+  );
+  server.registerTool(
+    "link_doc",
+    {
+      title: "Link or unlink a governing document",
+      description: "Maintain a ticket's refs[] \u2014 repo-relative paths to governing docs (PRD/FRD/ADR) in the repo's own /docs/. add validates the path exists under the project root; remove drops it. Distinct from link_items (item\u2194item); this is item\u2194repo-file. A linked governing doc satisfies the leave-backlog gate.",
+      inputSchema: {
+        id: external_exports.string().describe("Ticket id"),
+        path: external_exports.string().describe("Repo-relative path, e.g. docs/prd/checkout.md"),
+        action: external_exports.enum(["add", "remove"]).default("add")
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
+    },
+    write(async ({ id, path: refPath, action }) => {
+      const item = await store.getItem(id);
+      if (!item) return fail(`No item with id "${id}"`);
+      const refs = new Set(item.refs ?? []);
+      if (action === "remove") refs.delete(refPath);
+      else refs.add(refPath);
+      return ok(await store.updateItem(id, { refs: [...refs] }));
+    })
+  );
+  server.registerTool(
+    "link_items",
+    {
+      title: "Link or unlink two items",
+      description: `Add or remove a structured relation from source_id to target_id. rel "relates" (default) writes the source's links[]; rel "blocks" writes blocks[] \u2014 meaning the source blocks the target (blocked-by is derived, never stored). Adding requires the target to exist; removal works even on dangling links.`,
+      inputSchema: {
+        source_id: external_exports.string().describe("The item that will hold the link"),
+        target_id: external_exports.string().describe("The item being linked to / blocked"),
+        action: external_exports.enum(["add", "remove"]).default("add"),
+        rel: external_exports.enum(["relates", "blocks"]).default("relates")
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
+    },
+    write(
+      async ({ source_id, target_id, action, rel }) => ok(await linkItems(store, source_id, target_id, action, rel))
+    )
+  );
+  server.registerTool(
+    "add_column",
+    {
+      title: "Add a board column",
+      description: "Add a new column to the board: a status (workflow stage), area or priority. Areas group tickets within stage columns and are colour-coded; provide a hex color, and optionally a 2-6 uppercase-alphanumeric id prefix for tickets born there (derived from the id when omitted). Returns the updated board configuration.",
+      inputSchema: {
+        id: external_exports.string().describe("New column id, e.g. ui"),
+        name: external_exports.string().describe("Display name, e.g. UI"),
+        kind: columnKindEnum.default("area"),
+        color: external_exports.string().optional().describe("Hex colour, e.g. #5b8cff (recommended for areas)"),
+        prefix: external_exports.string().optional().describe("Areas only: id prefix for tickets born in this area, e.g. API")
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+    },
+    write(
+      async ({ id, name, kind, color, prefix }) => ok(
+        await store.addColumn(kind, {
+          id,
+          name,
+          ...color ? { color } : {},
+          ...prefix ? { prefix } : {}
+        })
+      )
+    )
+  );
+  server.registerTool(
+    "update_column",
+    {
+      title: "Update a board column",
+      description: "Rename or recolour a status/area/priority, or pin an area's id prefix. The column id itself is immutable (items reference it).",
+      inputSchema: {
+        kind: columnKindEnum,
+        id: external_exports.string().describe("Column id to update"),
+        name: external_exports.string().optional(),
+        color: external_exports.string().optional(),
+        prefix: external_exports.string().optional().describe("Areas only")
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
+    },
+    write(
+      async ({ kind, id, name, color, prefix }) => ok(await store.updateColumn(kind, id, { name, color, prefix }))
+    )
+  );
+  server.registerTool(
+    "remove_column",
+    {
+      title: "Remove a board column",
+      description: "Remove a status/area/priority from the board. Refuses while items still use it unless migrate_to names another column of the same kind \u2014 then every matching item is rewritten to it first (an area migration moves ticket folders; migrating tickets into the final stage still requires their proof.md). Returns the updated board plus the ids that were migrated.",
+      inputSchema: {
+        kind: columnKindEnum,
+        id: external_exports.string().describe("Column id to remove"),
+        migrate_to: external_exports.string().optional().describe("Column id (same kind) to move the referencing items to")
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false }
+    },
+    write(async ({ kind, id, migrate_to }) => {
+      if (migrate_to !== void 0) {
+        const proceed = await confirmDestructive(
+          server,
+          `Remove ${kind} "${id}" and move every item using it to "${migrate_to}"?`
+        );
+        if (!proceed) return fail("cancelled by user");
+      }
+      return ok(await store.removeColumn(kind, id, { migrateTo: migrate_to }));
+    })
+  );
+  server.registerTool(
+    "reorder_columns",
+    {
+      title: "Reorder board columns",
+      description: "Reorder the statuses, areas or priorities. `order` must be a permutation of the existing ids. Note that the FIRST status is where new items land and the LAST status is the proof-gated final stage.",
+      inputSchema: {
+        kind: columnKindEnum,
+        order: external_exports.array(external_exports.string()).min(1).describe("Every existing id, in the new order")
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
+    },
+    write(async ({ kind, order }) => ok(await store.reorderColumns(kind, order)))
+  );
+  server.registerTool(
+    "migrate_board",
+    {
+      title: "Migrate / upgrade the board",
+      description: "Bring the board fully current: run the v1\u2192v2 migration if needed, then backfill the 7-stage default (alias-aware, additive \u2014 never renames or reorders existing stages, never touches item files). Pass dry_run: true to preview what would move and which stages would be added without writing. The agent-facing route to the same upgrade the GUI offers.",
+      inputSchema: {
+        dry_run: external_exports.boolean().optional().describe("Preview without writing")
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
+    },
+    write(async ({ dry_run }) => ok(await migrateBoard(store, { dryRun: dry_run })))
+  );
+  server.registerTool(
+    "delete_item",
+    {
+      title: "Delete an item",
+      description: "Permanently delete an item by id. For tickets this removes the whole ticket folder \u2014 pipeline documents and attachments included. This cannot be undone (prefer update_item with archived: true). Frontmatter links[] in other items that pointed at the deleted id are cleaned up automatically (cleanedLinks); [[wiki]] references in bodies are prose and stay put (bodyReferencesRemain).",
+      inputSchema: { id: external_exports.string().describe("Item id to delete") },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true }
+    },
+    write(async ({ id }) => {
+      const proceed = await confirmDestructive(
+        server,
+        `Permanently delete "${id}" (its whole folder, documents and attachments included)?`
+      );
+      if (!proceed) return fail("cancelled by user");
+      const result = await store.deleteItem(id);
+      return result.deleted ? ok({
+        deleted: id,
+        cleanedLinks: result.cleanedLinks,
+        bodyReferencesRemain: result.bodyReferencesRemain
+      }) : fail(`No item with id "${id}"`);
+    })
+  );
+  server.registerResource(
+    "board",
+    "kanmer://board",
+    {
+      title: "Kanmer board configuration",
+      description: "The stages, areas and priorities driving this project's board",
+      mimeType: "application/json"
+    },
+    async (uri) => ({
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(await store.getBoardWithSource(), null, 2)
+        }
+      ]
+    })
+  );
+  server.registerResource(
+    "item",
+    new ResourceTemplate("kanmer://items/{id}", {
+      list: async () => ({
+        resources: (await store.listItems()).map((i) => ({
+          uri: `kanmer://items/${i.id}`,
+          name: i.id,
+          description: i.title,
+          mimeType: "text/markdown"
+        }))
+      })
+    }),
+    {
+      title: "Kanmer items",
+      description: "Each ticket/plan/research item as Markdown with frontmatter",
+      mimeType: "text/markdown"
+    },
+    async (uri, variables) => {
+      const id = String(variables["id"]);
+      const item = await store.getItem(id);
+      if (!item) throw new Error(`No item with id "${id}"`);
+      return {
+        contents: [{ uri: uri.href, mimeType: "text/markdown", text: serialiseItem(item) }]
+      };
+    }
+  );
+  const subscriptions = /* @__PURE__ */ new Set();
+  let subscriptionWatch = null;
+  function ensureSubscriptionWatcher() {
+    if (subscriptionWatch) return;
+    subscriptionWatch = watchKanmer(projectRoot, (_event, file) => {
+      const base = import_node_path5.default.basename(file);
+      if (base === "board.yml" && subscriptions.has("kanmer://board")) {
+        void server.server.sendResourceUpdated({ uri: "kanmer://board" });
+      }
+      if (base.endsWith(".md")) {
+        const uri = `kanmer://items/${base.slice(0, -3)}`;
+        if (subscriptions.has(uri)) {
+          void server.server.sendResourceUpdated({ uri });
+        }
+      }
+    });
+  }
+  server.server.registerCapabilities({ resources: { subscribe: true } });
+  server.server.setRequestHandler(SubscribeRequestSchema, async (req) => {
+    subscriptions.add(req.params.uri);
+    ensureSubscriptionWatcher();
+    return {};
+  });
+  server.server.setRequestHandler(UnsubscribeRequestSchema, async (req) => {
+    subscriptions.delete(req.params.uri);
+    return {};
+  });
+  server.registerPrompt(
+    "standup",
+    {
+      title: "Board standup",
+      description: "Summarise what happened on the Kanmer board and what needs attention"
+    },
+    () => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: "Give me a standup from the Kanmer board. Call get_status first, then list_items (sort: updated_desc) for the current picture. Group by the board's configured stages by role \u2014 first stage is Up next, last stage is Recently done, a review-like stage is In review, everything between is In flight (include taken branch/worktree info). Flag stale items, off-board stages, and any warnings. Keep it scannable: one line per item."
+          }
+        }
+      ]
+    })
+  );
+  server.registerPrompt(
+    "take-ticket",
+    {
+      title: "Take a ticket",
+      description: "Take a Kanmer ticket and work it through the doc pipeline",
+      argsSchema: { id: external_exports.string().describe("Ticket id to take") }
+    },
+    ({ id }) => ({
+      messages: [
+        {
+          role: "user",
+          content: { type: "text", text: takeTicketPromptText(id) }
+        }
+      ]
+    })
+  );
+  return server;
+}
+function projectFingerprint() {
+  if (!rootResolved) resolveRoot();
+  return (0, import_node_crypto3.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 16);
+}
 async function main() {
-  resolveRoot();
+  const stdioServer = createKanmerMcpServer("local-stdio");
   const transport = new StdioServerTransport();
-  await server.connect(transport);
+  await stdioServer.connect(transport);
   const id = serverIdentity();
   process.stderr.write(
     `kanmer-mcp ready \u2014 root: ${projectRoot} (${rootSource}), repo: ${store.paths.repoRoot} (${repoRootSource}), build: ${id.build} v${id.version ?? "?"} sha ${id.sha256Short ?? "?"}
 `
   );
 }
-main().catch((err) => {
+var invokedName = import_node_path5.default.basename(process.argv[1] ?? "");
+if (invokedName === "index.js" || invokedName === "kanmer-mcp.cjs") main().catch((err) => {
   const message = err instanceof Error ? err.message : String(err);
   const detail = message.startsWith("no Kanmer board found") || !(err instanceof Error) ? message : err.stack;
   process.stderr.write(`kanmer-mcp fatal: ${detail}
 `);
   process.exit(1);
+});
+// Annotate the CommonJS export names for ESM import in node:
+0 && (module.exports = {
+  REMOTE_HTTP_EXCLUDED_TOOLS,
+  createKanmerMcpServer,
+  projectFingerprint
 });
 /*! Bundled license information:
 

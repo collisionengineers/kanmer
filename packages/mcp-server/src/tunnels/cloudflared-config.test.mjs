@@ -30,4 +30,7 @@ test("cloudflared config fails closed for broad public routes and non-loopback o
     assert.throws(() => validateCloudflaredTunnel(options, { ...target, endpoint }), /TUNNEL_ORIGIN_INVALID/);
   }
   assert.throws(() => validateCloudflaredTunnel(options, { ...target, hostname: "other.example.test" }), /TUNNEL_HOSTNAME_MISMATCH/);
+  assert.throws(() => validateCloudflaredTunnel({ ...options, credentialsFile: "C:/x\n- service: http://bad" }, target), /TUNNEL_CREDENTIALS_PATH_INVALID/);
+  assert.throws(() => validateCloudflaredTunnel({ ...options, hostname: "kanmer.example.test\nother" }, target), /TUNNEL_HOSTNAME_INVALID/);
+  assert.throws(() => validateCloudflaredTunnel(options, { ...target, endpoint: "http://127.0.0.1:1/mcp\nother" }), /TUNNEL_ORIGIN_INVALID/);
 });

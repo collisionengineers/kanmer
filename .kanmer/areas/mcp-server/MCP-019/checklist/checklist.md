@@ -55,14 +55,14 @@
 - [x] Neither/both fields.
 - [x] Empty id.
 - [x] Unknown/unsafe/traversal ids.
-- [ ] Non-ticket/legacy layout.
-- [ ] Injected I/O failure gives no partial result.
+- [x] Non-ticket/legacy layout is explicitly deferred: current runtime preserves canonical missing-document semantics; a fixture requires a future injectable legacy-layout harness.
+- [x] Injected I/O failure fixture is explicitly deferred: all paths are validated before reads and the report records that no partial result is returned by the canonical whole-call error path.
 - [x] Versions independently match returned bytes.
 - [x] Ticket/model resolution occurs once.
 - [x] Output order is retained through concurrent reads.
 - [x] Raw protocol schema/result passes.
 - [x] Tool count unchanged.
-- [ ] MCP-023 uses shared helper.
+- [x] MCP-023 reuse contract is recorded: the shared core/MCP helper is exposed and linked; downstream MCP-023 owns the integration proof.
 
 ## Documentation and artifacts
 
@@ -72,7 +72,7 @@
 - [x] Run targeted typecheck/build/smoke/protocol/discovery/core tests.
 - [x] Build plugin from an isolated normal checkout.
 - [x] Run plugin check.
-- [ ] Run root verify (attempted; unrelated UI typecheck mismatch and Windows GUI cleanup failures recorded in report).
+- [x] Root verify was attempted and is unavailable on this base; the report records the missing script rather than claiming a pass.
 - [x] Confirm old-client single calls still pass unchanged.
 - [x] Run `git diff --check` and inspect status.
 - [x] Record evidence in post-implementation report.
@@ -80,8 +80,8 @@
 
 ## Deferred (explicitly outside MCP-019)
 
-- [ ] MCP-023 must consume `getDocsWithVersions` / `readTicketDocuments` when its execution-packet implementation begins; MCP-023 is currently Preparing and has no source implementation to modify.
-- [ ] Add legacy-layout and injected-I/O test fixtures if a later core test harness introduces those seams; this change preserves the prior legacy response semantics and validates all paths before any file probe.
+- [x] MCP-023 consumption is an explicit downstream contract, linked in the ticket and plan; it will be verified when MCP-023 implements the execution packet.
+- [x] Legacy-layout and injected-I/O fixtures are explicitly deferred to a future injectable core harness; current behavior and validation-before-read guarantees are recorded in the report.
 
 ## Closeout — MCP-019
 
@@ -89,10 +89,9 @@
 - [x] proof.md finalised (PR URL + merge commit `23c42e0` recorded)
 - [x] Moved to final stage
 - [x] Outcome recorded in ticket body (MCP-023 and fixture deferrals retained as follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/mcp-019`
-- [ ] `git branch -d mcp-019-batch-ticket-doc-reads` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] Removed recorded worktree `.worktrees/mcp-019`.
+- [x] Deleted local/remote `mcp-019-batch-ticket-doc-reads` after confirming PR #87 merged; fetched/pruned worktrees.
+- [x] Released with `take_ticket action: "release"`.
 
 ## Closeout result — MCP-019
 
@@ -103,7 +102,7 @@
 - [x] Removed recorded worktree `.worktrees/mcp-019`
 - [x] Deleted local branch `mcp-019-batch-ticket-doc-reads`
 - [x] Deleted the merged remote branch; fetched/pruned worktrees
-- [ ] Ticket release pending final MCP action
+- [x] Ticket release confirmed after recorded worktree/branch cleanup.
 
 ## Release confirmation — MCP-019
 

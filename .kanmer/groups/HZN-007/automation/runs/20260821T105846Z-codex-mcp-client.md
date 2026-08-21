@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T11:21:10.000Z
+updated_at: 2026-08-21T11:31:10.000Z
 lane_limit: 3
 stop_reason:
 ---
@@ -44,7 +44,7 @@ stop_reason:
 | 73 | GUI-106 | backlog | fix; needs files + plan; remediation from MCP-005 audit | queued | — | — | 0 | added from archived audit | pending research/plan | — | 2026-08-21T11:10:29.870Z |
 | 1 | DOC-012 | done | chore; gates pass; checklist reconciled | finished | codex-mcp-client | — | 1 | reconciled three stale closeout/link boxes via MCP | 76/76 checked; merged proof/cleanup evidence confirmed | 84 | 2026-08-21T10:59:48.714Z |
 | 2 | DOC-017 | done | chore; proof pass; checklist 15/15; released | finished | /root/doc017_reviewer | cleaned (doc-017 worktree/branch removed) | 1 | merged PR #106; verified on 4997214; closeout released | complete; no follow-up defect | 106 | 2026-08-21T11:05:49.624Z |
-| 3 | MCP-025 | implementing | feature; 32 unchecked implementation/test items; rework from merged historical state | active | /root/mcp025_implementer | mcp-025-streamable-http-finish / .worktrees/mcp-025 | 1 | implementation lane assigned after DOC-017 closeout | pending worker result | 90 | 2026-08-21T11:07:18.094Z |
+| 3 | MCP-025 | review | feature; gates pass; PR #107; independent review assigned | active | /root/mcp025_reviewer | mcp-025-streamable-http-finish / .worktrees/mcp-025 | 1 | PR #107 opened; moved implementing→review; reviewer assigned | pending independent review/merge | 107 | 2026-08-21T11:31:10.000Z |
 | 4 | MCP-026 | implementing | feature; next=backlog; blocked=true; blockers=MCP-025 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:16.588Z |
 | 5 | MCP-021 | implementing | feature; next=review; blocked=true; blockers=DOC-012,MCP-025,MCP-026 | queued | — | mcp-021-cloudflared-adapter|.worktrees/mcp-021 | 0 | rostered | live state recorded | — | 2026-08-21T10:57:16.881Z |
 | 6 | MCP-027 | preparing | feature; next=review; blocked=true; blockers=MCP-021 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:17.165Z |
@@ -149,3 +149,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 | 77 | MCP-034 | backlog | fix; needs files + plan; closes independent MCP-022 findings | queued | — | — | 0 | added from post-hoc review | pending research/plan | — | 2026-08-21T11:20:20.495Z |
 
 - 2026-08-21T11:20:20.495Z — Independent post-hoc review of MCP-022 recorded three scoped findings; created MCP-034, linked it to MCP-022, attached to HZN-007, and queued it for the full-board completion run.
+
+- 2026-08-21T11:31:10.000Z — MCP-025 implementation committed as bae88b8, PR #107 opened, ticket moved to Review, and independent reviewer /root/mcp025_reviewer assigned.

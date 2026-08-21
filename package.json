@@ -22,6 +22,9 @@
     "smoke:http": "npm run build:server && node packages/mcp-server/src/smoke-http.mjs",
     "smoke:remote": "npm run build:server && node packages/mcp-server/src/smoke-remote.mjs",
     "smoke:doctor": "npm run build:server && node packages/mcp-server/src/smoke-doctor.mjs",
+    "smoke:headless": "node packages/mcp-server/src/smoke-headless.mjs",
+    "mcpb:build": "npm run build && node scripts/build-mcpb.mjs",
+    "mcpb:check": "npm run mcpb:build && node scripts/check-mcpb-sync.mjs",
     "verify:agents-block": "node scripts/verify-agents-block.mjs",
     "verify:skills": "node scripts/verify-skill-prose.mjs",
     "dev:gui": "npm run dev -w @kanmer/gui",
@@ -39,5 +42,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@anthropic-ai/mcpb": "2.1.2"
   }
 }

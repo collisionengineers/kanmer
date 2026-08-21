@@ -9,6 +9,8 @@ covers: shipped Connect (5 providers, registry, AGENTS block, skill stamping) + 
 
 Connect registers the project's board with an agent host's MCP client and installs the skill roster — per provider, idempotently, with a copy-paste fallback when a command fails. Five providers: Claude Code, codex, opencode, Grok CLI, Antigravity.
 
+Claude Desktop MCPB installation is a separate headless path: install the versioned `.mcpb`, choose the directory containing the board's `.kanmer`, and keep the GUI closed. The bundle uses local stdio only and does not change Connect's provider registration files.
+
 ## Requirements
 
 - R1. **Registration matrix (end-state):** Claude Code — `claude mcp add kanmer -s project` (project `.mcp.json`, **Claude's alone**; stale user-scope cleanup retained). **codex — project config file** `<root>/.codex/config.toml` (`[mcp_servers.kanmer]`, TOML merge preserving unknown keys, idempotent unmerge), with the *project must be trusted* caveat surfaced in the UI, plus legacy cleanup `codex mcp remove kanmer-<project>` on reconnect. opencode — `opencode.json` merge (as shipped). **Grok — `<root>/.grok/config.toml`** (`[mcp_servers.kanmer]`, the same TOML merge as codex; grok's native project scope and its highest-priority MCP source — it no longer writes `.mcp.json`, see ADR-0013). Antigravity — `.agents/mcp_config.json` (as shipped).

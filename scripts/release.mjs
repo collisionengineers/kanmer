@@ -24,7 +24,7 @@
 //
 // Usage: node scripts/release.mjs <version> [--dry-run]
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -306,6 +306,7 @@ run("npm install --package-lock-only");
 // ---------------------------------------------------------------------------
 run("npm run build");
 run("node scripts/build-plugin.mjs");
+run("node scripts/build-mcpb.mjs");
 // Paranoia, cheap: prove the committed bundle now matches a fresh build at the
 // NEW version before anything is packed, committed, tagged or pushed. If this
 // ever fails, the release stops here with the tree still local and fixable.
@@ -348,6 +349,12 @@ try {
   console.error("\npublisher exited non-zero; checking the public release before deciding whether it failed:");
   console.error(error.message);
 }
+const mcpbPath = join(root, "dist", "mcpb", `kanmer-${version}.mcpb`);
+if (!existsSync(mcpbPath)) {
+  refuse(`MCPB output is missing after the release build: ${mcpbPath}`, "run `npm run mcpb:build` and inspect the generated bundle");
+}
+copyFileSync(mcpbPath, join(releaseDir, `kanmer-${version}.mcpb`));
+console.log(`copied MCPB release asset: ${mcpbPath}`);
 run("node scripts/check-updater-package.mjs");
 assertLocalPackageCoherent();
 

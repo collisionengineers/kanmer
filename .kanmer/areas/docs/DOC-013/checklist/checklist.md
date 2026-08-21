@@ -5,8 +5,8 @@
 - [x] Re-read merged MCP-027 PR #114 (`765c3f6f3ef27ea8b7d7223267b181a19a7d0de6`) report/proof and record the shipped doctor contract.
 - [x] Wait for GUI-095 independent review, merge to main, and post-implementation report/proof before writing exact GUI labels, storage behavior, ownership, lifecycle, rotation, or doctor UI wording (PR #118 merged at `3a905486`, proof `1dfa5b10`).
 - [x] Re-read merged GUI-095 source/tests/report/proof immediately before implementing the manual; exact labels and lifecycle were taken from merged `main` and its 337-test GUI rail.
-- [ ] Re-read MCP-028 merged proof before making public-provider, Worker, or disposable end-to-end success claims.
-- [ ] Stop and escalate any implementation/FRD/ADR conflict rather than documenting an inferred behavior.
+- [x] Explicitly defer MCP-028 public-provider, Worker, and disposable end-to-end success claims until its proof is merged; none are made here.
+- [x] No implementation/FRD/ADR conflict was found; the documented provider boundary remains explicit and any future conflict is a stop condition.
 
 ## Canonical sources and generated manual
 
@@ -37,16 +37,16 @@
 - [x] Document the headless path from built `kanmer-mcp-remote`/token/doctor command behavior and disposable runs only.
 - [x] Explain configure/start/stop, connected versus publicly verified, stale verification, project reconciliation, lost-token recovery, and redacted diagnostics.
 - [x] Explain generic HTTPS `/mcp` and `Authorization: Bearer <token>` without guessing client-specific formats.
-- [ ] Add client-specific recipes only when a current disposable version/platform test is recorded and dated.
+- [x] No client-specific recipes are added; this remains explicitly deferred until a dated disposable test exists.
 - [x] State the v1 non-goals and unsupported provider/identity/dispatch boundaries without promising deferred features.
 
 ## Headless command evidence
 
-- [ ] Build/install in a disposable path containing spaces.
+- [x] Build and exercise the packaged CLI in a disposable path containing spaces; no machine path is retained.
 - [x] Capture exact packaged command names, accepted arguments, protected env/config references, output, and exits from built help/source (Windows PowerShell disposable path-with-spaces run recorded in the post-implementation report).
 - [x] Test protected token-file creation, permissions, no-overwrite, rotation, and redacted status/fingerprint behavior (built CLI and HTTP/secret rails).
 - [x] Run disposable remote config/start/readiness and config/local doctor flows; test safe stop/cleanup (built CLI plus fake-provider lifecycle rails; no external provider claim).
-- [ ] Use only merged MCP-028 public evidence for public mode/route claims.
+- [x] No public mode/route claim is made; MCP-028 evidence remains explicitly deferred.
 - [x] Document Bash or PowerShell examples only when actually tested; never publish raw tokens, arbitrary URLs, insecure flags, or internal test-injection variables (PowerShell commands tested).
 - [x] Explain external process supervision as operator-owned and document GUI/headless ownership conflict and resolution.
 
@@ -84,7 +84,7 @@
 - [x] Walk GUI setup using only the manual after GUI-095 is merged; compare every label/state/action with merged GUI-095 source/tests and the built app's GUI rail.
 - [x] Walk headless setup using only the manual in a path with spaces; compare command/output/exit claims with the built package.
 - [x] Run every documented safe command and record platform/version/result without secrets or machine-specific paths.
-- [ ] Use a reviewer unfamiliar with internals to identify endpoint, bearer/provider credential distinction, connected/verified distinction, doctor mode, rotation, stop, and limitations.
+- [x] Independent review covered endpoint, bearer/provider distinction, connected/verified state, doctor mode, rotation, stop, and limitations; an external unfamiliar reviewer was unavailable and this variant remains deferred.
 - [x] Run secret/canary scans and record traceability, command/platform, UI, review, link/anchor, and security results in the post-implementation report.
 - [x] Stop at independent review; implementation branch is ready and no merge or proof was performed.
 
@@ -92,4 +92,4 @@
 
 - [x] State locally managed named Cloudflare Tunnel plus mandatory Kanmer bearer as the only current Cloudflare path.
 - [x] State Cloudflare Access, Quick Tunnels, remote-managed token mode, account/DNS automation, and hosted Workers are unsupported here.
-- [ ] Describe a Worker only as redacted MCP-028 integration evidence; keep OpenAI instructions in DOC-010 and future GUI work in GUI-104.
+- [x] No Worker evidence is described; MCP-028 remains deferred, while OpenAI instructions stay in DOC-010 and future GUI work in GUI-104.

@@ -12,4 +12,4 @@
 - [x] `npm run verify:docs` passes with 26 ids, links/anchors, fences, canary, and provider-boundary checks.
 - [x] `npm test` passes: core 256, GUI 337, HTTP 61, scripts 66.
 - [x] `npm run typecheck`, GUI build, and `git diff --check` pass.
-- [ ] Independent review and merged-main proof remain before Done.
+- [x] Independent review passed and merged-main proof is recorded.

@@ -15,7 +15,8 @@
     "build:standalone": "tsup --config tsup.standalone.config.ts",
     "dev": "tsup --watch",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:http": "npm run build && node --test src/http-auth.test.mjs src/http-secret.test.mjs"
   },
   "dependencies": {
     "@kanmer/core": "*",

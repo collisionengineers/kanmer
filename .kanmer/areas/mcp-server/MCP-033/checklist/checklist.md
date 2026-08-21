@@ -10,3 +10,13 @@
 - [ ] Independently review and merge only the artifact-only PR.
 - [ ] Verify on merged main that `plugin:check` passes with clean status.
 - [ ] Write proof, move Done, close out the ticket, and release worktree/branch.
+
+## Closeout — 2026-08-21
+
+- [x] Confirmed PR #104 merged at `1962f028adae43955693658beff382b3160caa54`.
+- [x] Confirmed merged-main proof: canonical bundle SHA `c1fc1143175e08ccdc894ec85e69dde1edecc126`, `plugin:check` and MCP smoke pass.
+- [ ] Remove recorded `.worktrees/mcp-033` and delete `mcp-033-canonical-plugin-bundle`.
+- [ ] Release ticket after cleanup.
+
+- [x] Removed `.worktrees/mcp-033`, deleted local/remote `mcp-033-canonical-plugin-bundle`, and pruned worktrees.
+- [x] Released ticket; [[MCP-022]] may now re-run its final normal-main proof.

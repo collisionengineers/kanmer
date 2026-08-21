@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T19:22:17.541Z
+updated_at: 2026-08-21T19:26:00.000Z
 lane_limit: 3
 stop_reason:
 ---
@@ -169,6 +169,9 @@ stop_reason:
 - 2026-08-21T19:20:00.000Z — Independent review of GUI-096 PASS: PR #91 is merged and reachable; current-main GUI suite passed 37 files / 338 tests (Editor 10/10), with no blocking finding. GUI-096 moved Review→Verifying→Done after proof append; ticket released. Exact .worktrees/gui-096 removed, local audit branch deleted, and worktree prune completed. Screenshots and unrelated HTTP verify failures remain explicitly unclaimed.
 
 - 2026-08-21T19:22:17.541Z — GUI-100 implementation is review-ready on gui-100-codex-shim-connect/.worktrees/gui-100 at commit 2b5915690139e67bbc21acab0ede00d8c2365966; PR #126 opened. Checklist is 68/68, post-implementation report and ADR-0018 link are present, docs_todo is false, and Implementing→Review passed. Focused/full GUI/core, typecheck, build, manual, numbering, root npm test (including MCP HTTP 61/61 and scripts 75/75) and diff checks pass. The pre-build scripts failure and earlier bounded HTTP timeouts remain preserved in checklist; no real-host/provider proof is claimed. Stop at Review for independent review; GUI-101/102 remain downstream.
+
+
+- 2026-08-21T19:26:00.000Z — GUI-100 independent review PASS: PR #126 matched the report and governing docs; focused provider/connect tests passed 91/91. PR #126 merged to main at 3403fd86622e8223fec3e1bb691eb2e0eb960482; ticket moved Review→Verifying→Done with merged-main proof, downstream GUI-101/GUI-102 limitations explicit, and ticket released. Exact GUI-100 worktree removed; local and origin branches deleted; fetch --prune/worktree prune completed.
 
 ## Resume instruction
 

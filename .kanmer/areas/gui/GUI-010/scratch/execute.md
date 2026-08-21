@@ -1,0 +1,1 @@
+Review handoff: PR #133 https://github.com/collisionengineers/kanmer/pull/133 opened from commit ae5aa1fee6cf0d5bee8cff7fd16813bbc28651c9. Author lane stops at Review; independent reviewer owns review/merge. Core/GUI/plugin/e2e deterministic checks PASS; boot setup failure retained and manual visual drag/drop/open/remove proof remains INCONCLUSIVE.

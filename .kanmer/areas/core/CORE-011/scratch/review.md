@@ -1,0 +1,5 @@
+## Independent review — 2026-08-21
+
+Reviewed the merged CORE-011 implementation b5b332e0474081c17cda348a6fb5166c29788ae0 (PR #15 merged at 8af1991c) against FRD-002 G2a/G2b. The implementation correctly counts gated boundaries rather than stages, refuses multi-gate jumps before writes with a distinct actionable error, preserves chore/spike acceptance paths, and stamps first-entry stageEntered without overwriting it. Existing tests cover structural gate behavior and stage history. No source changes are needed in this audit lane.
+
+Independent deterministic verification: focused gates/store 95/95 PASS (including 13 gate tests and 82 store tests), full core 257/257 PASS; typecheck, core/server build, GUI build, stdio 184/184, protocol 42/42, discovery 13/13, plugin build, and diff-check passed in the execution lane. Linked-worktree plugin:check refusal is preserved as an environment limitation because the workspace resolves @kanmer/core from the main checkout; this must be rerun from normal main before final closure. Review disposition: approve merged implementation; move to Verifying for merged-main plugin parity proof.

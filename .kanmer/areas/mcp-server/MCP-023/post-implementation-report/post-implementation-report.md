@@ -36,3 +36,5 @@ The first full-core attempt recorded an incomplete fixture setup (the test's tem
 ## Traceability and scope
 
 The production caller is `packages/mcp-server/src/index.ts` → `getExecutionPacket` → the shared core document APIs. No MCP-020/021/025 work, provider/HTTP work, external-host proof, or unrelated feature was added. `docs_todo` remains governed by the existing ticket refs; the PR is ready for independent review and merge.
+
+The implementation is committed as `2cdd0c68` and published in PR #135 (`Kanmer: MCP-023`, `mcp-023-execution-packet`). The PR-opening checklist item is now satisfied; the checklist is 44/44. The ticket remains in Review for independent review and merge; this author lane did not merge or clean up the branch/worktree.

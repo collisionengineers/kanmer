@@ -55,7 +55,7 @@
 - [x] Run core tests, typecheck, build, standard/protocol/discovery smokes.
 - [x] From normal main checkout run plugin build/check and commit generated bundle.
 - [x] Confirm no take/move/worktree/init/activity/extra document API or model summary was added.
-- [ ] Open PR with `Kanmer: MCP-023`; name `get_execution_packet` as production caller.
+- [x] Open PR with `Kanmer: MCP-023`; name `get_execution_packet` as production caller.
 - [x] Keep `docs_todo` until DOC-011 links governing docs.
 - [x] Stop at review readiness; do not merge or begin SKILL-021/CORE-035.
 

@@ -146,3 +146,19 @@ Downstream by design (not claimed complete here): real loopback disposable-board
 - [x] Per-check abort, late-client cleanup, total deadline, and surfaced cleanup failures are implemented and tested.
 - [x] Canonical project resolver, protected secret-reference validator, official MCP orientation, and canonical remote tool-policy callbacks are wired for the CLI/library boundary.
 - [x] Duplicate CLI source removed; one packaged CLI entry remains.
+
+## Final review remediation — 2026-08-21
+
+- [x] Packaged CLI wires local/public status, bearer probes, tunnel readiness, DNS, TLS, route, protected token, official MCP orientation, and canonical remote tool policy; `KANMER_LOCAL_ENDPOINT` is passed as the local endpoint.
+- [x] DNS resolution owns a cancellable `Resolver` handle; HTTP, TLS, MCP, and per-check operations receive the shared abort signal.
+- [x] Required unavailable checks fail aggregation rather than yielding a successful warning-only report; not-applicable/prerequisite skips remain explicit informational skips.
+- [x] Injected monotonic clock is used for total deadlines and report durations; a fake-clock regression test proves a valid run does not immediately time out.
+- [x] CLI MCP setup closes the client on every orientation/list failure; cleanup errors affect status/exit and are shown by the human renderer.
+
+Final verification on commit `0719a399`:
+
+- [x] `npm run build` — PASS.
+- [x] `npm run typecheck` — PASS for core, MCP server, UI, and GUI.
+- [x] `npm test` — PASS: core 256, GUI 318, MCP/HTTP/doctor 59, scripts 66.
+- [x] Built doctor CLI public invocation without configured dependencies fails with exit 1 and explicit failed checks; it does not report a warning-only success.
+- [x] `smoke:http` — PASS; `smoke:protocol` — 42/42; `smoke:discovery` — 13/13; `git diff --check` — PASS.

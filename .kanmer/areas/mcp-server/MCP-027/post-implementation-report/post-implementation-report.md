@@ -45,3 +45,9 @@ Independent review initially found five blockers. The follow-up implementation a
 5. The duplicate `.mjs` CLI was removed; `doctor-cli.ts` is the single packaged entry.
 
 Additional focused evidence: `test:http` now passes 58/58, including public healthy matrix, redaction allowlist, cancellation, and late-client timeout cleanup; MCP typecheck passes.
+
+## Final review remediation and verification — 2026-08-21
+
+The final remediation wires every production CLI boundary required by the review: local endpoint status and loopback checks, raw bearer probes, provider status, cancellable DNS, platform TLS, redirect/content-type-safe public route probing, protected token loading, official Streamable HTTP orientation, and canonical remote tool names. Required missing dependencies now fail the aggregate report; injected clocks drive deadline/timing behavior; late MCP clients, sockets, and cleanup failures are handled and surfaced. The human renderer includes cleanup errors, and the duplicate CLI source is gone.
+
+Commit `0719a399` verification: `npm test` PASS (core 256, GUI 318, MCP 59, scripts 66); `npm run build` PASS; `npm run typecheck` PASS for all workspaces; built doctor tests PASS (7/7); HTTP smoke PASS; protocol smoke 42/42; discovery smoke 13/13; `git diff --check` PASS. A built `public --json` invocation without configured dependencies exits 1 with explicit failed checks, never a warning-only success. The controlled real public tunnel/TLS acceptance remains downstream MCP-028 scope.

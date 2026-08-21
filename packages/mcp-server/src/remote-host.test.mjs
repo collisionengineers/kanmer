@@ -18,7 +18,7 @@ test("remote host starts bearer-protected HTTP before giving one loopback target
     assert.deepEqual(await remote.start(), { endpoint: "https://kanmer.example.test/mcp" });
     assert.match(target.endpoint, /^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
     assert.equal(target.hostname, "kanmer.example.test");
-    assert.match(target.projectFingerprint, /^[0-9a-f]{16}$/);
+    assert.match(target.projectFingerprint, /^kanmer-proj-v1:[0-9a-f]{64}$/);
     assert.equal(target.authGeneration, "sha256:0123456789ab");
     assert.deepEqual(remote.getStatus(), { local: "ready", provider: "running", publicVerification: "unknown", endpoint: "https://kanmer.example.test/mcp" });
     assert.deepEqual(statuses.at(-1), remote.getStatus());
@@ -34,6 +34,24 @@ test("provider startup failure leaves the local authenticated HTTP host availabl
   try {
     await assert.rejects(() => remote.start(), /provider unavailable/);
     assert.deepEqual(remote.getStatus(), { local: "ready", provider: "failed", publicVerification: "unknown" });
+  } finally { await remote.close(); }
+});
+
+test("local verification runs before provider spawn and blocks an unhealthy origin", async () => {
+  let verified;
+  let starts = 0;
+  const remote = createKanmerRemoteHost({
+    authorizer: { authorize: async () => ({ principal: "test" }) },
+    hostname: "kanmer.example.test",
+    verifyLocal: async (ready) => { verified = ready; throw new Error("local handshake failed"); },
+    tunnel: { start: async () => { starts++; throw new Error("must not spawn"); } },
+  });
+  try {
+    await assert.rejects(() => remote.start(), /local handshake failed/);
+    assert.equal(starts, 0);
+    assert.equal(verified.authRequired, true);
+    assert.equal(remote.getStatus().local, "ready");
+    assert.equal(remote.getStatus().provider, "failed");
   } finally { await remote.close(); }
 });
 

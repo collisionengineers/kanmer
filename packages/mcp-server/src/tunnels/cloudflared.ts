@@ -5,7 +5,7 @@ import path, { isAbsolute } from "node:path";
 import { cloudflaredConfig, type CloudflaredTunnelOptions, validateCloudflaredTunnel } from "./cloudflared-config.js";
 import { validateTunnelStartInput, type TunnelAdapter, type TunnelLogEvent, type TunnelProcess, type TunnelStatus, type TunnelTarget } from "./types.js";
 import { allocateLoopbackPort, waitForTunnelReadiness } from "./readiness.js";
-import { validateCloudflaredExecutable } from "./cloudflared-validate.js";
+import { validateCloudflaredExecutable, validateCloudflaredIngress } from "./cloudflared-validate.js";
 import { TunnelLogBuffer } from "./logs.js";
 
 export { validateTunnelStartInput } from "./types.js";
@@ -16,6 +16,8 @@ export interface CloudflaredAdapterOptions extends CloudflaredTunnelOptions {
   readonly waitForReady?: (endpoint: string) => Promise<void>;
   readonly onLog?: (event: TunnelLogEvent) => void;
   readonly validateExecutable?: (executable: string) => Promise<void>;
+  /** Optional test seam; production validates the generated rules with cloudflared. */
+  readonly validateIngress?: (configPath: string, hostname: string) => Promise<void>;
 }
 
 /** Test-only spawn seam; normal construction always uses Node's direct spawn. */
@@ -115,6 +117,13 @@ export class CloudflaredAdapter implements TunnelAdapter {
     try {
       await writeFile(configPath, cloudflaredConfig(this.options, target), { encoding: "utf8", mode: 0o600, flag: "wx" });
       await chmod(configPath, 0o600);
+      // In production, run only cloudflared's documented local ingress
+      // validation/rule commands.  They inspect the generated file and do not
+      // contact the account or mutate DNS.  Injected spawners use the explicit
+      // seam so deterministic fixtures do not accidentally invoke a host CLI.
+      const ingressValidation = this.options.validateIngress
+        ?? (!this.options.validateExecutable && this.spawnProcess === spawn ? (config: string, hostname: string) => validateCloudflaredIngress({ executable: this.options.executable, configPath: config, hostname }) : undefined);
+      if (ingressValidation) await ingressValidation(configPath, this.options.hostname);
       this.transition("starting", target, { attempt });
       const spawned = this.spawnProcess(this.options.executable, ["tunnel", "--no-autoupdate", "--metrics", `127.0.0.1:${metricsPort}`, "--config", configPath, "run", this.options.tunnelId], {
         cwd: directory,
@@ -171,7 +180,11 @@ export class CloudflaredAdapter implements TunnelAdapter {
       void exited.then((result) => {
         if (this.active !== handle) return;
         this.active = undefined;
-        this.transition(intentionalStop ? "stopped" : "failed", target, { attempt, pid: spawned.pid, code: result.code === null ? "signal" : String(result.code) });
+        this.transition(intentionalStop ? "stopped" : "failed", target, {
+          attempt,
+          pid: spawned.pid,
+          ...(intentionalStop ? {} : { code: result.code === null ? "signal" : String(result.code) }),
+        });
       });
       return handle;
     } catch (error) {

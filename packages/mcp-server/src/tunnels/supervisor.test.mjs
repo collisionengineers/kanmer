@@ -86,3 +86,43 @@ test("terminal exit classification fails without scheduling an unsafe retry", as
   assert.deepEqual(states, ["starting", "running", "failed"]);
   assert.equal(exits.length, 1);
 });
+
+test("supervisor rejects overlapping starts while a retry is pending", async () => {
+  const exits = [];
+  let releaseDelay;
+  const delay = new Promise((resolve) => { releaseDelay = resolve; });
+  const supervisor = new TunnelSupervisor({
+    maxRestarts: 1,
+    restartPolicy: { baseDelayMs: 10, maxDelayMs: 10 },
+    wait: async () => delay,
+    start: async () => {
+      const exit = deferred(); exits.push(exit);
+      return { exited: exit.promise, stop: async () => exit.resolve({ code: 0, signal: null }) };
+    },
+  });
+  await supervisor.start();
+  exits[0].resolve({ code: 1, signal: null });
+  await new Promise(setImmediate);
+  await assert.rejects(() => supervisor.start(), /TUNNEL_SUPERVISOR_NOT_STARTABLE/);
+  releaseDelay();
+  await new Promise(setImmediate);
+  await supervisor.stop();
+});
+
+test("stop during provider start disposes the late child and does not publish it", async () => {
+  let resolveStart;
+  let stopped = 0;
+  const supervisor = new TunnelSupervisor({
+    start: async () => {
+      await new Promise((resolve) => { resolveStart = resolve; });
+      const exit = deferred();
+      return { exited: exit.promise, stop: async () => { stopped++; exit.resolve({ code: 0, signal: null }); } };
+    },
+  });
+  const starting = supervisor.start();
+  const stopping = supervisor.stop();
+  resolveStart();
+  await assert.rejects(() => starting, /TUNNEL_SUPERVISOR_STOPPED/);
+  await stopping;
+  assert.equal(stopped, 1);
+});

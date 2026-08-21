@@ -2,13 +2,14 @@
 id: CORE-036
 type: ticket
 title: Tag-push release verification workflow
-status: implementing
+status: review
 area: core
 order: 200
 assignee: core036-take
 profile: chore
 stageEntered:
   preparing: '2026-08-20T16:03:18.784Z'
+  review: '2026-08-21T19:27:49.096Z'
 taken_at: '2026-08-21T19:04:23.566Z'
 branch: core-036-tag-push-release-verification
 worktree: .worktrees/core-036
@@ -19,9 +20,13 @@ groups:
 links:
   - GUI-092
   - GUI-093
+commits:
+  - 4fe2cea3
+prs:
+  - '127'
 archived: false
 created: '2026-08-20T10:14:42.545Z'
-updated: '2026-08-21T19:27:12.137Z'
+updated: '2026-08-21T19:27:49.096Z'
 ---
 
 ## What

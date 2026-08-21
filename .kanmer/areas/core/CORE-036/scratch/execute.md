@@ -1,1 +1,3 @@
 Blocked before implementation by the ticket's explicit CORE-031 prerequisite: current origin/main at 71e3a05 has no root `npm run verify` script and no `VERIFY_STEPS` source. Direct `npm run verify` reports `Missing script: "verify"`. Per plan/checklist failure rule, no temporary/inlined command list or release workflow was added. Worktree/branch is ready: `.worktrees/core-036` / `core-036-tag-push-release-verification`.
+
+Implementation commit 4fe2cea3 pushed on core-036-tag-push-release-verification; PR #127 opened. Local verify and dist:check passed. External real-tag/negative-release evidence remains explicitly unavailable.

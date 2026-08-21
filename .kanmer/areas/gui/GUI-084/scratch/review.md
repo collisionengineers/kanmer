@@ -1,0 +1,3 @@
+## GUI-084 merged-main reconciliation — 2026-08-21
+
+Decision: retain cross-platform native Notification per FRD-018 R3; OS-owned native chrome cannot be portably themed, so no Windows toastXml or in-app replacement was added. Current main d9379d32 includes classifier fix 36039277, ticket-id/stage title/body and click-to-reveal. Focused classifier 7/7, full GUI 338/338, GUI typecheck/build, and diff-check passed. npm run verify reached all tests/smokes/typechecks and exited 1 only at plugin:check because the linked worktree resolved @kanmer/core from the main checkout. No interactive native-toast capture or visual pass is claimed; independent root review remains required.

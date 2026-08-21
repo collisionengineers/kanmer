@@ -25,15 +25,14 @@ Kanmer ships its own manual, readable offline inside the app. Help → **Kanmer 
   R3a. **The build refuses a chapter that is not fit to ship.** It rejects: a missing chapter file; a top-level `# ` heading in an authored body (the title is supplied by the generator, so an H1 there is the shape the withdrawn derivation produced); fewer than 400 characters of prose once code fences, tables, headings and list markers are stripped; a `FRD-`/`ADR-`/`PRD-` token or a requirement-list line (`R1.`, `AC2.`) in any title or body; and any `docs/…` path, which is a dead end for a reader. Paths under `.kanmer/` and `.worktrees/` are explicitly permitted — those exist on the user's own disk. The rules that are not viewer-specific apply to the generated chapter too.
 
   R3b. **`--check` must be reached by something.** It runs in the root `test` script and as a named step in the release verification gate. Before DOC-007 nothing invoked it, so a stale committed artifact could ship silently.
-- R4. Contextual entry points: a "?" affordance on gate-block messages deep-links to the relevant chapter. (A matching "?" on Settings tabs was removed — GUI-074 — since it deep-linked into chapters that were mostly unwritten stubs, and F1 / Help → Manual already provide entry to the manual without it. The gate-block-message affordance below was never implemented; see GUI-081, which will implement it or formally withdraw this clause.)
+- R4. **Contextual entry points — withdrawn (GUI-074, GUI-081):** Kanmer has no contextual manual-help affordance. GUI-074 removed the Settings-tab "?" because F1 / Help → **Kanmer Manual** already provide access; the separate gate-block-message "?" was never built and is withdrawn by GUI-081 rather than being described as a removed feature. Gate refusals use their own human-facing guidance (GUI-087); the manual remains available through F1 and the Help menu.
 - R5. Versioned with the app; no network required.
 
 ## Acceptance criteria
 
 1. Fresh install, offline: F1 opens the manual; searching "profile" lands on the profiles chapter.
 2. The shortcuts chapter matches every live binding (test compares the binding table to the rendered chapter).
-3. A gate-block message's "?" opens "Tickets, profiles & gates".
-4. Dark/light/system themes all render the manual natively (no white flash, no unstyled content).
-5. *(added DOC-007)* The build refuses a chapter reduced to its heading, or one carrying a requirement id or a `docs/…` path, and names the reason. The guard this replaces could never fire: the lead-prose extractor trimmed the lead and then stripped the H1 with a regex requiring a trailing newline `trim()` had already removed, so the heading survived and the `if (!body)` check tested a value the preceding line guaranteed non-empty.
+3. Dark/light/system themes all render the manual natively (no white flash, no unstyled content).
+4. *(added DOC-007)* The build refuses a chapter reduced to its heading, or one carrying a requirement id or a `docs/…` path, and names the reason. The guard this replaces could never fire: the lead-prose extractor trimmed the lead and then stripped the H1 with a regex requiring a trailing newline `trim()` had already removed, so the heading survived and the `if (!body)` check tested a value the preceding line guaranteed non-empty.
 
 Related: user request (R9) · FRD-019 · FRD-002 · content written for the user, fact-checked against shipped code.

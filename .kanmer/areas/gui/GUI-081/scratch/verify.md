@@ -1,0 +1,1 @@
+Verified PR #97 on merged main `2ab18ca`: manual check current (19 chapters), targeted gate-error test 4/4, stale-requirement search clear, R4 history/access assertions present, and `git diff --check` clean.

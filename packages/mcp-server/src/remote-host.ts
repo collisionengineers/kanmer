@@ -6,6 +6,8 @@ export interface RemoteHostOptions {
   readonly authorizer: HttpAuthorizer;
   readonly hostname: string;
   readonly tunnel: TunnelAdapter;
+  /** Opaque auth-rotation generation; never bearer material. */
+  readonly authGeneration?: () => string | undefined;
   /** Kept low-frequency in production; injectable for deterministic tests. */
   readonly healthPollMs?: number;
   /** Test seam for the provider-owned readiness monitor. */
@@ -40,7 +42,14 @@ export class KanmerRemoteHost {
         this.status = { ...this.status, local: "starting" }; this.emit();
         this.ready ??= await this.http.start();
         this.status = { ...this.status, local: "ready" }; this.emit();
-        const process = await options.tunnel.start({ endpoint: this.ready.endpoint, hostname: options.hostname, projectFingerprint: this.ready.projectFingerprint });
+        const authGeneration = options.authGeneration?.();
+        if (authGeneration && !/^sha256:[a-f0-9]{12}$/.test(authGeneration)) throw new Error("TUNNEL_AUTH_GENERATION_INVALID");
+        const process = await options.tunnel.start({
+          endpoint: this.ready.endpoint,
+          hostname: options.hostname,
+          projectFingerprint: this.ready.projectFingerprint,
+          ...(authGeneration ? { authGeneration } : {}),
+        });
         this.monitorHealth(process);
         return process;
       },

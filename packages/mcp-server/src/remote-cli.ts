@@ -15,6 +15,7 @@ try {
   const verifier = await loadTokenFile(required("KANMER_HTTP_TOKEN_FILE"));
   const remote = createKanmerRemoteHost({
     authorizer: new BearerAuthorizer(verifier),
+    authGeneration: () => verifier.fingerprint,
     hostname: required("KANMER_TUNNEL_HOSTNAME"),
     tunnel: createCloudflaredAdapter({
       executable: required("KANMER_CLOUDFLARED_EXECUTABLE"),

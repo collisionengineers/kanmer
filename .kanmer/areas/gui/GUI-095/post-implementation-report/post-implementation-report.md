@@ -32,3 +32,7 @@ This PR is deliberately Cloudflare-only and does not implement the OpenAI provid
 ## Stop point
 
 Implementation is ready for independent re-review; do not merge this branch.
+
+## Additional rail verification
+
+- The first concurrent `npm run test:http -w @kanmer/mcp-server` run had one transient `TUNNEL_READINESS_TIMEOUT` (60/61); the isolated readiness test passed, and the subsequent full `test:http` rerun passed 61/61. `npm run test:scripts` passed 66/66 and the remote CLI smoke passed.

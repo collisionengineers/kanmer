@@ -20,3 +20,10 @@
 - [x] Regenerated the artifact with local workspace paths; `npm run plugin:check` now passes (30 tools, byte-identical bundle).
 - [x] Correction commit `0b097a6a` pushed; PR #116 opened for independent review.
 - [ ] Run plugin:check on merged main after PR #116 merges.
+
+## Main-checkout byte reproducibility correction
+
+- [x] Fresh build and `plugin:check` on the canonical main checkout pass: 30 tools, byte-identical bundle, 12 skill frontmatters, manifests v0.3.3, isolated handshake.
+- [x] Copied the main-generated artifact into a dedicated ticket worktree; only the generated bundle changed.
+- [x] Commit `9905ffa4` pushed; PR #117 opened for independent review.
+- [ ] Run plugin:check on merged main after PR #117 merges.

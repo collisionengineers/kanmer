@@ -9,8 +9,8 @@
 - [x] it runs against this repo and produces real output
 - [x] release:notes script added
 
-## Progress notes — 2026-08-21 reconciliation
+## Progress notes — 2026-08-21 reconciliation and scoped fix
 
-The scoped implementation already exists on merged main from PR #26 (source commit 1df633e7dd4b424ac0a7107ac08d2289c61260dd; merge commit 05a335dc0e9b4b75ef9904218c55ca643f9a519d). The fresh doc-005-operating-rule worktree has no source diff, so no duplicate/no-op implementation commit was created.
+The historical implementation is present on merged main from PR #26 (source 1df633e7dd4b424ac0a7107ac08d2289c61260dd; merge 05a335dc0e9b4b75ef9904218c55ca643f9a519d). Fresh audit found one in-scope defect: numeric and #number PR refs were emitted as invalid relative Markdown links (for example [PR](96)). The scoped fix normalizes shorthand refs through the origin remote, preserving full URLs, and adds scripts/release-notes.test.mjs.
 
-Evidence from the fresh worktree and normal main checkout: the first release:notes invocation from the fresh worktree exited 1 because packages/core/dist/index.js had not been built; npm run build:core then exited 0. After that prerequisite, npm run release:notes -- --since v0.3.2 exited 0 from both the ticket worktree and main checkout and produced real grouped output (93 tickets across 5 areas). verify:agents-block exited 0 (31/31), npm run test:scripts exited 0 (79/79), npm run typecheck exited 0, and git diff --check exited 0. The initial missing-build failure is retained; it is a prerequisite/environment result, not silently overwritten.
+The fresh worktree first recorded release:notes exit 1 because packages/core/dist/index.js was not built; npm run build:core then exited 0. With the prerequisite built, release:notes exited 0 from the ticket worktree and normal main before the patch, and exits 0 on the patched worktree with shorthand links normalized to full /pull/<number> URLs. verify:agents-block exited 0 (31/31), npm run test:scripts exited 0 (80/80 including the regression), npm run typecheck exited 0, and git diff --check exited 0. The first missing-build failure is retained as execution evidence.

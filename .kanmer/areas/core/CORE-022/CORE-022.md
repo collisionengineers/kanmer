@@ -5,7 +5,7 @@ title: Migration survives EPERM and resumes per ticket
 status: implementing
 area: core
 order: 50
-assignee: claude-code
+assignee: core022-take
 profile: feature
 stageEntered:
   preparing: '2026-08-16T13:17:30.131Z'
@@ -13,6 +13,9 @@ stageEntered:
   verifying: '2026-08-16T13:29:09.769Z'
   done: '2026-08-16T13:29:35.016Z'
   implementing: '2026-08-21T08:55:07.519Z'
+taken_at: '2026-08-21T20:13:01.945Z'
+branch: core-022-migration-eperm
+worktree: .worktrees/core-022
 labels:
   - bug
   - migration
@@ -31,7 +34,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/28'
 archived: false
 created: '2026-08-16T13:17:25.100Z'
-updated: '2026-08-21T12:55:47.219Z'
+updated: '2026-08-21T20:13:01.945Z'
 ---
 
 A user's format-2 → format-3 migration failed three times on Windows and left

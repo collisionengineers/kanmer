@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T20:48:12.896Z
+updated_at: 2026-08-21T20:13:28.874Z
 lane_limit: 3
 stop_reason:
 ---
@@ -275,3 +275,9 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T20:12:00.000Z — MCP-008 PR #130 independently reviewed and PASSed; merged to main at 52073fc6521ae25b07d8f4b2c54b6d563f62cc21. Merged-main mcpb:check, headless smoke 6/6, plugin check, typecheck, and script rails passed; proof written and exact worktree/branch removed. Real Claude Desktop install/read/write/restart/uninstall evidence is INCONCLUSIVE, so MCP-008 remains Verifying and released pending the named host acceptance.
 
 - 2026-08-21T20:16:00.000Z — Next conflict-free wave assigned under HZN-007: CORE-022 (migration/Windows), GUI-007 (profiles editor), and MCP-014 (Grok plugin install). Each lane must reread its complete packet, group context, and get_doc_gates, work only in its ticket worktree, stop at Review, and preserve unavailable provider/host evidence as INCONCLUSIVE.
+
+
+- 2026-08-21T20:12:51.663Z — MCP-014 assigned: full ticket packet, FRD-012, HZN-005 (no context.md present), HZN-007 context and live gates reread; fresh .worktrees/mcp-014 / mcp-014-grok-plugin registered from origin/main 52073fc6. Scope is the explicit Grok native user-plugin lifecycle only; preserve dispatch and do not touch MCP-015.
+
+
+- 2026-08-21T20:13:28.874Z — CORE-022 assigned to /root/gui082_executor as the next conflict-free HZN-007 lane after complete packet, HZN-007 context, links CORE-021/GUI-005, FRD-007/FRD-015, and gates were reread. Fresh core-022-migration-eperm/.worktrees/core-022 was created from origin/main 52073fc6 and taken without force; implement only migration EPERM retry/resume, stale-temp hygiene, and GUI watcher/sync pause scope, with no affected-board repair or release. Author will stop at Review.

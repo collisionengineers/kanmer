@@ -25,12 +25,14 @@ links: []
 refs:
   - docs/functional/frd/FRD-014-doc-type-guidance.md
 commits:
-  - 78ee829
+  - 78ee829b33a41503128e214f393053ae34b2ba22
+  - b609c383a203d3956f09a72a324ed09396b28227
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/18'
+  - 'https://github.com/collisionengineers/kanmer/pull/139'
 archived: false
 created: '2026-08-16T00:31:38.780Z'
-updated: '2026-08-21T23:04:02.562Z'
+updated: '2026-08-21T23:07:12.551Z'
 ---
 
 Identity first-lines on every template; the files template with two sections and the contrast rule; per-proof-type templates; group and ticket template updates for the `groups`/`profile` fields; a research summary template for deep mode.

@@ -1,0 +1,1 @@
+2026-08-21 corrective commit b609c383a203d3956f09a72a324ed09396b28227 pushed on skill-002-template-guidance; PR #139 opened for the one-line plan-template identity fix. Existing PR #18 implementation remains merged. Checklist/report read back; stop for independent review.

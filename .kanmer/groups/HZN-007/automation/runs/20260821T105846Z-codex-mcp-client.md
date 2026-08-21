@@ -137,6 +137,9 @@ stop_reason:
 
 - 2026-08-21T18:28:19.174Z — MCP-017 reached Review on PR #105 at live stage transition 2026-08-21T18:28:19.174Z, with implementation commit dd9f736050dcf029db8c42bcebe258875500410d and 15/16 checklist items. The executor lane stopped; independent reviewer assignment is now required. No merge has occurred.
 
+- 2026-08-21T18:29:44.491Z — DOC-011 completed Verifying→Done using merged-main proof at 12708f9d: numbering/full verification metadata reconciliation and proof landed; checklist 55/55; ticket released/closeout cleanup recorded by the verification lane. Its worktree is now eligible for removal after final status confirmation.
+- 2026-08-21T18:29:44.491Z — Lane 1 reassigned to /root/gui082_executor for taken GUI-082 on GUI-082-stylesheet-selector-audit/C:\\Users\\Alex\\Documents\\GitHub\\kanmer\\.worktrees\\gui-082. Packet, HZN-006/HZN-007 context, links and gates were reread. Existing branch already contains implementation commit 74f35c1a but board checklist is 0/21; finish evidence/report, independent review/merge, merged-main proof and closeout only for GUI-082.
+
 ## Resume instruction
 
 Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's complete document inventory, links, taken state and get_doc_gates before dispatching. Reconcile the ledger against live state and do not replay a completed action solely because this run was interrupted. Before every assignment/result/stage transition, update and read this history record and automation/current.md.

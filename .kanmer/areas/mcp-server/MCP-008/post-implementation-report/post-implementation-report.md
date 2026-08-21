@@ -11,7 +11,7 @@ Implemented the scoped headless MCPB distribution for Claude Desktop and other M
 - Added scripts/check-mcpb-sync.mjs for manifest validation, archive unpack/byte round-trip, exact file-set/unsafe-path checks, generated metadata validation, and source-manifest immutability.
 - Added packages/mcp-server/src/smoke-headless.mjs, which runs the standalone CJS from a temporary host without reachable repository node_modules and verifies protocol, status, read/write, and outside-host preservation.
 - Added root mcpb:build/mcpb:check and smoke:headless scripts, wired MCPB check and headless smoke into shared VERIFY_STEPS, and added release.mjs inclusion of the versioned MCPB in the existing release asset/repair flow.
-- Updated FRD-022, FRD-012, AGENTS.md, and release-time MCPB version bumping; generated MCPB output remains ignored under dist/mcpb/.
+- Updated FRD-022, FRD-012, ADR-0012, README, AGENTS.md, and release-time MCPB version bumping; generated MCPB output remains ignored under dist/mcpb/.
 
 ## Evidence
 
@@ -30,4 +30,4 @@ No Claude Desktop host is available in this lane. Real install, GUI-closed conne
 
 ## Review handoff
 
-Branch: mcp-008-headless-mcpb. Commits 9d0c83645835da418ad9041cf8cda428db82d53b and 5b4a95448c2f0f3902d37a72c2727c5cff999de0 are pushed and PR #130 is open. Author stops at Review for independent review; no merge was performed.
+Branch: mcp-008-headless-mcpb. Commits 9d0c83645835da418ad9041cf8cda428db82d53b, 5b4a95448c2f0f3902d37a72c2727c5cff999de0, and ca104f4526a43f4bd40ce4b54a218b4472c493f2 are pushed and PR #130 is open. Author stops at Review for independent review; no merge was performed.

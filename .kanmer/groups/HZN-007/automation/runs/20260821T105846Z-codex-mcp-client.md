@@ -267,3 +267,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-21T20:01:09.221Z — MCP-008 review handoff packet refreshed: checklist now records 48/93 evidence-backed boxes; unsupported real Claude Desktop acceptance remains unchecked/INCONCLUSIVE. Branch is clean, PR #130 open, no merge.
+
+
+- 2026-08-21T20:02:50.857Z — MCP-008 docs follow-up committed and pushed: ca104f4526a43f4bd40ce4b54a218b4472c493f2 adds README headless MCPB install/root/uninstall guidance and corrects ADR-0012 stale consequence. PR #130 remains open at Review; checklist now 55/93 with real-host proof still INCONCLUSIVE.

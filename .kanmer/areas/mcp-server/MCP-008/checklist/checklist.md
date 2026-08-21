@@ -80,14 +80,14 @@
 
 - [x] Amend FRD-022 headless/MCPB mode and limits.
 - [x] Amend FRD-012 install matrix for Claude Desktop MCPB.
-- [ ] Correct ADR-0012 stale MCPB consequence without changing discovery order.
-- [ ] Document that board worktree must already exist.
-- [ ] Document tools/prompts but no Kanmer skills.
-- [ ] Document one board, Node 20, win32, local stdio and no HTTP dependency.
-- [ ] Document no GUI periodic Git sync/worktree creation while closed.
-- [ ] Add/update Claude Desktop MCPB install/root/troubleshooting/uninstall manual.
+- [x] Correct ADR-0012 stale MCPB consequence without changing discovery order.
+- [x] Document that board worktree must already exist.
+- [x] Document tools/prompts but no Kanmer skills.
+- [x] Document one board, Node 20, win32, local stdio and no HTTP dependency.
+- [x] Document no GUI periodic Git sync/worktree creation while closed.
+- [x] Add/update Claude Desktop MCPB install/root/troubleshooting/uninstall manual.
 - [x] Update AGENTS command/release/package guidance.
-- [ ] Regenerate/check the manual; do not hand-edit generated structures.
+- [x] Regenerate/check the manual; do not hand-edit generated structures.
 
 ## Real Claude Desktop proof
 

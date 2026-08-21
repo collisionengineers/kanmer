@@ -13,3 +13,11 @@ Blocking findings:
 Additional rail evidence: the import-only check printed the exact nine commands without executing them; `npm pkg get scripts.verify` returned `node scripts/verify.mjs`; `npm run test:scripts` passed 48/48. Root `npm run typecheck` also failed, but only in unchanged baseline files (`packages/ui/src/demo.tsx` and GUI test import of `inspectBoardWorktree`), so I am recording that as an existing rail problem rather than attributing it to this four-file diff.
 
 Verdict: NEEDS CHANGES. Re-review after a clean standalone rail (or documented contract correction), a complete post-implementation report/checklist, and no unclassified baseline failures.
+
+## Re-review — f1c4a6805c1235d40051628a7d7d5c4ff4120c54
+
+Recheck evidence: branch is clean; four-file diff vs main is scoped; `git diff --check` passes; import-only output is the nine-step build-first array; `npm pkg get scripts.verify` is exact; `npm test` passes core 256, GUI 318, HTTP 61, scripts 66; `npm run typecheck` passes all workspaces; `npm run test:scripts` passes 66/66. The report/checklist now contain standalone PASS evidence and the disposable board cleanup claim.
+
+Remaining blocking documentation inconsistency: `plan.md`'s governing-doc/approach and ordered implementation steps now say build-first, but its authoritative `Required changes` item 2 still enumerates the old order beginning with `npm test` and placing `npm run build` third. `open-questions.md` also still marks the old test-first order as the resolved authoritative order. `MASTERPLAN.md` likewise still states test-first for S-01. The implementation/report and `VERIFY_STEPS` correctly use build-first to satisfy the clean-checkout contract, but the governing docs do not agree with the shipped behavior. Update the plan required list/open-questions/MASTERPLAN source or explicitly record the approved amendment before review PASS; do not leave two conflicting canonical orders.
+
+Provisional verdict: NEEDS CHANGES solely for this documentation/contract mismatch. No merge performed.

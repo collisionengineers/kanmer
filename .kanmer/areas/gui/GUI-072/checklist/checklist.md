@@ -12,9 +12,9 @@ Derived from plan.md, one box per step.
 - [x] **Open every PNG with the `Read` tool** — actually look at the images; measuring geometry does not satisfy the operator's proof condition
 - [x] Numeric assertions captured: checkbox width ≤ ~20px at all four sites, label `display:flex`, checkbox vertical centre aligned with label text, label box single-line, label-text click still toggles `checked`, `.check-row` unchanged before vs. after
 - [x] Post-implementation report written; PR opened
-- [ ] Review (author = reviewer, stated in the first line); merge with `gh pr merge`
-- [ ] `move_item GUI-072 verifying`; write `proof.md` from merged main — including a description of what the before/after images SHOW in words that could only come from looking, plus the honest limit (Chromium layout from `styles.css`; not the packaged app at the user's DPI or under OS accessibility scaling)
-- [ ] `move_item GUI-072 done`; closeout from the MAIN checkout (worktree removed, branch deleted, ticket released)
+- [x] Review (author = reviewer, stated in the first line); merge with `gh pr merge`
+- [x] `move_item GUI-072 verifying`; write `proof.md` from merged main — including a description of what the before/after images SHOW in words that could only come from looking, plus the honest limit (Chromium layout from `styles.css`; not the packaged app at the user's DPI or under OS accessibility scaling)
+- [x] `move_item GUI-072 done`; closeout from the MAIN checkout (worktree removed, branch deleted, ticket released)
 
 ## Progress notes
 

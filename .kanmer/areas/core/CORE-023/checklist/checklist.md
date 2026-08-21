@@ -22,8 +22,8 @@ Derived from plan.md, one box per step.
 - [x] `npm run plugin:build`, then `npm run plugin:check` settled in a clean detached checkout (MCP-010's recipe)
 - [x] Rail green: `npm test`, `npm run typecheck`, `npm run plugin:check`, `npm run smoke:protocol`
 - [x] Post-implementation report written; PR opened
-- [ ] Verification run on merged main → `proof` (this box produces proof.md)
-- [ ] GUI-surface follow-up ticket filed at closeout
+- [x] Verification run on merged main → `proof` (this box produces proof.md)
+- [x] GUI-surface follow-up ticket filed at closeout (GUI-090).
 
 ## Progress notes
 

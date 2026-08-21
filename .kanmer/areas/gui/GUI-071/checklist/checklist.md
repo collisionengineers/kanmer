@@ -82,13 +82,13 @@ closeout is not blocked. Observations in `proof`.
 
 ## Closeout
 
-- [ ] PR merged (gate)
-- [ ] proof.md final
-- [ ] commits / prs / deployment recorded
-- [ ] Outcome recorded on the ticket body
-- [ ] worktree removed
-- [ ] branch deleted (local + remote)
-- [ ] ticket released
+- [x] PR merged (gate)
+- [x] proof.md final
+- [x] commits / prs / deployment recorded
+- [x] Outcome recorded on the ticket body
+- [x] worktree removed
+- [x] branch deleted (local + remote)
+- [x] ticket released
 
 ### Closeout done — 2026-08-16
 

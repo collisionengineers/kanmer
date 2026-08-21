@@ -7,7 +7,7 @@
 - [x] Change failed remote verification to a bounded re-check that never repackages.
 - [x] Update dry-run/release diagnostics to describe the one-package workflow.
 - [x] Run script tests, relevant type/build/package checks, and diff check.
-- [ ] Record the next-release installed-client acceptance as external follow-up evidence; do not claim it locally.
+- Deferred disposition: Record the next-release installed-client acceptance as external follow-up evidence; do not claim it locally.
 
 ## Progress notes
 

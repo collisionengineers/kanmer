@@ -33,7 +33,7 @@
 
 ## Executable and credentials
 
-- [ ] Implement explicit/app-managed/PATH discovery precedence.
+- Deferred disposition: Implement explicit/app-managed/PATH discovery precedence.
 - [x] Resolve absolute regular executable.
 - [x] Run bounded direct `--version`/required help checks.
 - [x] Enforce supported syntax/version contract.
@@ -42,7 +42,7 @@
 - [x] Validate protected regular credentials reference and platform permissions.
 - [x] Avoid reading/logging credential content except minimal approved consistency metadata.
 - [x] Reject arbitrary provider fragments/options/secrets.
-- [ ] Keep any second credential mode separately discriminated and tested.
+- Deferred disposition: Keep any second credential mode separately discriminated and tested.
 
 ## Runtime ingress/config
 
@@ -72,7 +72,7 @@
 - [x] Use `shell: false`, neutral cwd, owned process group/tree, no-autoupdate.
 - [x] Use minimal environment and omit bearer/verifier/development/unrelated secret variables.
 - [x] Capture PID/version/attempt before output processing.
-- [ ] Request structured logs where supported.
+- Deferred disposition: Request structured logs where supported.
 - [x] Bound line/ring-buffer size and rate.
 - [x] Parse defensively and map allowlisted fields only.
 - [x] Redact credential/bearer/path/id/URL canaries.
@@ -99,7 +99,7 @@
 - [x] Start authenticated HTTP host first.
 - [x] Verify local auth/project MCP handshake before provider spawn.
 - [x] Pass only origin and non-secret generation metadata to adapter.
-- [ ] Keep local/auth/provider/public-verification health dimensions separate.
+- [x] Keep local/auth/provider/public-verification health dimensions separate.
 - [x] Stop tunnel on origin/project/auth generation change.
 - [x] Keep healthy local host when provider alone fails.
 - [x] Close HTTP sessions/listener before the tunnel child on parent/operator shutdown (FRD-025 RA-TUNNEL-6).
@@ -116,17 +116,17 @@
 - [x] Test origin/project/auth change stops forwarding.
 - [x] Test crash/restart/backoff/reset/exhaustion.
 - [x] Test intentional stop/no restart/no residue.
-- [ ] Test graceful/forced process-tree shutdown on Windows/POSIX.
-- [ ] Test spaces/metacharacters remain data.
+- [x] Test graceful/forced process-tree shutdown on Windows/POSIX.
+- [x] Test spaces/metacharacters remain data.
 - [x] Test metrics collision/readiness failure/flap.
 - [x] Test exact ingress/catch-all and canary absence.
 - [x] Test Quick Tunnel absent/rejected.
 - [x] Test adapter performs no board/tool mutation.
 - [x] Add built fake-provider remote smoke.
-- [ ] Run optional real-binary version/help/config smoke only with explicit path.
+- Deferred disposition: Run optional real-binary version/help/config smoke only with explicit path.
 - [x] Leave real public proof to MCP-028.
 - [x] Confirm no MCP tool/count/reference change.
-- [ ] Run tests, typecheck, build, HTTP/remote smokes, root verify, and Windows PR rail.
+- Deferred rail: root verify was unavailable before CORE-031; the Windows PR rail is external. Merged-main tests, typecheck, build, HTTP/remote smokes, and plugin checks are recorded in proof.
 - [x] Rebuild plugin only if canonical stdio bytes intentionally change.
 - [x] Run `git diff --check`; inspect process table/temp/runtime/board residue.
 - [x] Record version/flags/config/argv/readiness/restart/shutdown/canary evidence.

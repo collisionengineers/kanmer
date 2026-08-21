@@ -15,7 +15,7 @@
 - [x] **Unplanned:** implement the 12 `ProjectClient` methods the demo never had
 - [x] Sweep for surviving v2 vocabulary the compiler cannot see
 - [x] Verification run: tsc zero errors, no new casts, `build:ui` emits all three, `index.d.ts` carries the new shapes
-- [ ] Push, open the PR, record commits/prs
+- [x] Push, open the PR, record commits/prs
 
 ## Progress notes
 

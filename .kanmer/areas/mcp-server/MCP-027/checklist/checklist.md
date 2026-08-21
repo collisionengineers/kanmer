@@ -2,128 +2,128 @@
 
 ## Report contract
 
-- [ ] Read accepted FRD/ADR and predecessor APIs/reports.
-- [ ] Define `config|local|public` modes.
-- [ ] Define `pass|warn|fail|skipped` and explicit severity.
-- [ ] Define schema-v1 safe report/check/repair types.
-- [ ] Register all 26 exact ids in stable order.
-- [ ] Define mode applicability and acyclic prerequisites.
-- [ ] Define deterministic aggregation and exits 0/1/2.
-- [ ] Ensure result types cannot carry secrets/body/document/full session data.
-- [ ] Test uniqueness/order/dependencies/modes/aggregation/exits.
+- [x] Read accepted FRD/ADR and predecessor APIs/reports.
+- [x] Define `config|local|public` modes.
+- [x] Define `pass|warn|fail|skipped` and explicit severity.
+- [x] Define schema-v1 safe report/check/repair types.
+- [x] Register all 26 exact ids in stable order.
+- [x] Define mode applicability and acyclic prerequisites.
+- [x] Define deterministic aggregation and exits 0/1/2.
+- [x] Ensure result types cannot carry secrets/body/document/full session data.
+- [x] Test uniqueness/order/dependencies/modes/aggregation/exits.
 
 ## Execution engine and dependencies
 
-- [ ] Wrap canonical project/config/secret/tunnel/DNS/TLS/HTTP/MCP/clock/log dependencies.
-- [ ] Duplicate no predecessor schema or validator.
-- [ ] Register cleanup for every secret/client/socket/process handle.
-- [ ] Bound each check and total run with cancellation.
-- [ ] Run checks in stable order.
-- [ ] Emit explicit skipped entries for failed prerequisites.
-- [ ] Continue independent checks after ordinary failure.
-- [ ] Capture safe expected/observed/duration/repair data.
-- [ ] Clean up on pass/fail/cancel/exception.
-- [ ] Test multi-failure, skip, warning, timeout, cancellation, throw, and cleanup.
+- [x] Wrap canonical project/config/secret/tunnel/DNS/TLS/HTTP/MCP/clock/log dependencies.
+- [x] Duplicate no predecessor schema or validator.
+- [x] Register cleanup for every secret/client/socket/process handle.
+- [x] Bound each check and total run with cancellation.
+- [x] Run checks in stable order.
+- [x] Emit explicit skipped entries for failed prerequisites.
+- [x] Continue independent checks after ordinary failure.
+- [x] Capture safe expected/observed/duration/repair data.
+- [x] Clean up on pass/fail/cancel/exception.
+- [x] Test multi-failure, skip, warning, timeout, cancellation, throw, and cleanup.
 
 ## Configuration checks
 
-- [ ] Implement `PROJECT_CONFIG_VALID` through canonical root/fingerprint logic.
-- [ ] Implement `REMOTE_CONFIG_VALID` through canonical remote validator.
-- [ ] Implement `SECRET_REFERENCE_VALID` without retrieving/reporting raw token.
-- [ ] Implement `TUNNEL_EXECUTABLE_VALID` without starting provider.
-- [ ] Implement `TUNNEL_CONFIG_VALID` without resource mutation.
-- [ ] Map canonical codes to safe layer/repair references.
-- [ ] Prove config mode performs no network/child/board operation.
+- [x] Implement `PROJECT_CONFIG_VALID` through canonical root/fingerprint logic.
+- [x] Implement `REMOTE_CONFIG_VALID` through canonical remote validator.
+- [x] Implement `SECRET_REFERENCE_VALID` without retrieving/reporting raw token.
+- [x] Implement `TUNNEL_EXECUTABLE_VALID` without starting provider.
+- [x] Implement `TUNNEL_CONFIG_VALID` without resource mutation.
+- [x] Map canonical codes to safe layer/repair references.
+- [x] Prove config mode performs no network/child/board operation.
 
 ## Local status and bearer probes
 
-- [ ] Read current local remote-host status through trusted local interface.
-- [ ] Require healthy listener, expected project, auth required, and current generation.
-- [ ] Verify observed bind is loopback, not configured value only.
-- [ ] Do not auto-start a stopped host.
-- [ ] Send one missing-auth raw HTTP probe and require exact generic 401/challenge.
-- [ ] Generate an independent same-shape wrong token.
-- [ ] Send one wrong-auth probe and require identical outcome.
-- [ ] Prove negative probes create/refresh no session.
-- [ ] Bound requests and redact all values.
+- [x] Read current local remote-host status through trusted local interface.
+- [x] Require healthy listener, expected project, auth required, and current generation.
+- [x] Verify observed bind is loopback, not configured value only.
+- [x] Do not auto-start a stopped host.
+- [x] Send one missing-auth raw HTTP probe and require exact generic 401/challenge.
+- [x] Generate an independent same-shape wrong token.
+- [x] Send one wrong-auth probe and require identical outcome.
+- [x] Prove negative probes create/refresh no session.
+- [x] Bound requests and redact all values.
 
 ## Protected valid credential and local MCP
 
-- [ ] Retrieve raw bearer only through MCP-026 protected provider at point of use.
-- [ ] Keep it scoped and register cleanup/zeroization best-effort.
-- [ ] Fail/skip dependents safely if retrieval fails.
-- [ ] Read no Cloudflare credential content.
-- [ ] Use official Streamable HTTP client locally.
-- [ ] Complete `AUTH_VALID_ACCEPTED` and `MCP_INITIALIZE_LOCAL`.
-- [ ] Call one canonical read-only orientation/status tool.
-- [ ] Compare full expected project fingerprint.
-- [ ] Compare exact exported remote tool policy and dispatch exclusion.
-- [ ] Close client/session and assert no leak.
-- [ ] Test healthy/wrong-project/tool-drift/protocol/timeout/server-close/session-leak cases.
+- [x] Retrieve raw bearer only through MCP-026 protected provider at point of use.
+- [x] Keep it scoped and register cleanup/zeroization best-effort.
+- [x] Fail/skip dependents safely if retrieval fails.
+- [x] Read no Cloudflare credential content.
+- [x] Use official Streamable HTTP client locally.
+- [x] Complete `AUTH_VALID_ACCEPTED` and `MCP_INITIALIZE_LOCAL`.
+- [x] Call one canonical read-only orientation/status tool.
+- [x] Compare full expected project fingerprint.
+- [x] Compare exact exported remote tool policy and dispatch exclusion.
+- [x] Close client/session and assert no leak.
+- [x] Test healthy/wrong-project/tool-drift/protocol/timeout/server-close/session-leak cases.
 
 ## Tunnel and public network
 
-- [ ] Require matching MCP-021 provider/config/origin/project/auth generation.
-- [ ] Require provider readiness, not PID.
-- [ ] Report every starting/degraded/restart/exhausted/failed state safely.
-- [ ] Do not start/stop provider.
-- [ ] Use configured HTTPS hostname only.
-- [ ] Reject arbitrary URL/path/user-info/query/fragment drift.
-- [ ] Resolve DNS with timeout and safe metadata.
-- [ ] Validate TLS with platform trust/hostname and no insecure pass.
-- [ ] Report safe protocol/issuer/expiry metadata.
-- [ ] Do not follow redirects; fail login/HTML/intermediary response.
-- [ ] Bound DNS/TCP/TLS/HTTP resources and close sockets.
-- [ ] Test trusted/untrusted/wrong-host/expiry/redirect/login/timeout/oversize fixtures.
+- [x] Require matching MCP-021 provider/config/origin/project/auth generation.
+- [x] Require provider readiness, not PID.
+- [x] Report every starting/degraded/restart/exhausted/failed state safely.
+- [x] Do not start/stop provider.
+- [x] Use configured HTTPS hostname only.
+- [x] Reject arbitrary URL/path/user-info/query/fragment drift.
+- [x] Resolve DNS with timeout and safe metadata.
+- [x] Validate TLS with platform trust/hostname and no insecure pass.
+- [x] Report safe protocol/issuer/expiry metadata.
+- [x] Do not follow redirects; fail login/HTML/intermediary response.
+- [x] Bound DNS/TCP/TLS/HTTP resources and close sockets.
+- [x] Test trusted/untrusted/wrong-host/expiry/redirect/login/timeout/oversize fixtures.
 
 ## Public MCP and consistency
 
-- [ ] Run missing-auth public check.
-- [ ] Use official client with valid bearer and standard TLS.
-- [ ] Initialize public MCP.
-- [ ] Call the same read-only orientation tool.
-- [ ] Compare full project fingerprint.
-- [ ] Compare exact remote tool policy.
-- [ ] Close public diagnostic session.
-- [ ] Compare local/public project/protocol/policy/auth generation safely.
-- [ ] Leave real provider proof to MCP-028.
+- [x] Run missing-auth public check.
+- [x] Use official client with valid bearer and standard TLS.
+- [x] Initialize public MCP.
+- [x] Call the same read-only orientation tool.
+- [x] Compare full project fingerprint.
+- [x] Compare exact remote tool policy.
+- [x] Close public diagnostic session.
+- [x] Compare local/public project/protocol/policy/auth generation safely.
+- Deferred disposition: Leave real provider proof to MCP-028.
 
 ## Redaction, no mutation, repairs
 
-- [ ] Seed canaries for token/provider credential/session/path/document phrase.
-- [ ] Scan JSON/human/stderr/errors/dependencies/status/cleanup surfaces.
-- [ ] Represent redaction proof honestly in production versus instrumented tests.
-- [ ] Snapshot/hash disposable board before/after.
-- [ ] Ensure fixed check/tool registry references no mutator.
-- [ ] Fail any attempted mutating probe registration.
-- [ ] Define stable provider-neutral repair catalog plus cloudflared-specific entries.
-- [ ] Render human output from JSON report only.
-- [ ] Show counts, first blocking layer, later independent failures, and next repair.
-- [ ] Keep JSON stdout prose/ANSI-free.
+- [x] Seed canaries for token/provider credential/session/path/document phrase.
+- [x] Scan JSON/human/stderr/errors/dependencies/status/cleanup surfaces.
+- [x] Represent redaction proof honestly in production versus instrumented tests.
+- [x] Snapshot/hash disposable board before/after.
+- [x] Ensure fixed check/tool registry references no mutator.
+- [x] Fail any attempted mutating probe registration.
+- [x] Define stable provider-neutral repair catalog plus cloudflared-specific entries.
+- [x] Render human output from JSON report only.
+- [x] Show counts, first blocking layer, later independent failures, and next repair.
+- [x] Keep JSON stdout prose/ANSI-free.
 
 ## CLI, smoke, and verification
 
-- [ ] Implement explicit mode and `--json`.
-- [ ] Accept canonical config/project refs only.
-- [ ] Reject raw token, arbitrary URL, insecure, auto-fix, and provider-mutation flags.
-- [ ] Handle signals with cleanup.
-- [ ] Emit exact exits 0/1/2.
-- [ ] Test argv/exits/cancel/stdout/stderr/path spaces/canary.
-- [ ] Run built config and local smoke on disposable board/token/fake tunnel.
-- [ ] Run broken fixture and assert exact failed/skipped ids/exit 1.
-- [ ] Run invalid invocation and assert exit 2.
-- [ ] Export stable types for GUI-095/MCP-028.
-- [ ] Confirm no MCP tool/count/reference/plugin change.
-- [ ] Run doctor tests, integration, smoke, transport/auth/tunnel regressions.
-- [ ] Run `npm test`, typecheck, build, root verify, Windows rail.
-- [ ] Run `git diff --check`; inspect processes/sockets/temp/board residue.
-- [ ] Record reports, TLS fixtures, canary/no-mutation/cleanup evidence and public handoff.
-- [ ] Stop before real public acceptance or merge.
+- [x] Implement explicit mode and `--json`.
+- [x] Accept canonical config/project refs only.
+- [x] Reject raw token, arbitrary URL, insecure, auto-fix, and provider-mutation flags.
+- [x] Handle signals with cleanup.
+- [x] Emit exact exits 0/1/2.
+- [x] Test argv/exits/cancel/stdout/stderr/path spaces/canary.
+- Deferred disposition: Run built config and local smoke on disposable board/token/fake tunnel.
+- Deferred disposition: Run broken fixture and assert exact failed/skipped ids/exit 1.
+- [x] Run invalid invocation and assert exit 2.
+- [x] Export stable types for GUI-095/MCP-028.
+- [x] Confirm no MCP tool/count/reference/plugin change.
+- [x] Run doctor tests, integration, smoke, transport/auth/tunnel regressions.
+- [x] Run `npm test`, typecheck, build, root verify, Windows rail.
+- [x] Run `git diff --check`; inspect processes/sockets/temp/board residue.
+- [x] Record reports, TLS fixtures, canary/no-mutation/cleanup evidence and public handoff.
+- [x] Stop before real public acceptance or merge; MCP-028 owns the controlled public acceptance.
 
 ## Roadmap amendment — Cloudflare doctor boundary
 
-- [ ] Classify executable/version, ingress-invalid, ingress-host-mismatch, tunnel-unready, local-origin, bearer and board/project failures separately.
-- [ ] Keep all provider config, bearer and diagnostic output redacted; do not introduce Access/service-token support.
+- [x] Classify executable/version, ingress-invalid, ingress-host-mismatch, tunnel-unready, local-origin, bearer and board/project failures separately.
+- [x] Keep all provider config, bearer and diagnostic output redacted; do not introduce Access/service-token support.
 
 ## Execution reconciliation — 2026-08-21
 

@@ -22,8 +22,8 @@
 - [x] Rail green: `npm test`, `npm run typecheck`, `npm run build:ui`, `npm run check:manual`
 - [x] `KANMER_SMOKE=1` boot: no Backlog tab; Ctrl+1/2/3 → Board/Standup/Archived with no gap; Backlog column reachable and workable on the board
 - [x] `git fetch origin && git rebase origin/main` (GUI-072 in flight in `styles.css`), rail re-run, PR opened
-- [ ] GUI-071's first verification criterion struck via `update_item`
-- [ ] Verification run on merged main (this box produces proof.md)
+- [x] GUI-071's first verification criterion struck via `update_item`
+- [x] Verification run on merged main (this box produces proof.md)
 
 ## Progress notes
 
@@ -79,14 +79,14 @@ parked in `open-questions` as its own ticket.
 
 ## Closeout — GUI-070
 
-- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
-- [ ] proof.md finalised (PR URL + merge date appended)
-- [ ] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/gui-070`
-- [ ] `git branch -d gui-070-remove-backlog-view` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-070`
+- [x] `git branch -d gui-070-remove-backlog-view` (`-D` if squash/rebase-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`
 
 ### Closeout progress
 

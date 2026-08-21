@@ -56,14 +56,14 @@ Connect hazard did not bite.
 
 ## Closeout — MCP-007
 
-- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
-- [ ] proof.md finalised (PR URL + merge date appended)
-- [ ] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/mcp-007`
-- [ ] `git branch -D mcp-007-worktree-guard` (squash-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/mcp-007`
+- [x] `git branch -D mcp-007-worktree-guard` (squash-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`
 
 ### Closeout done — 2026-08-16
 

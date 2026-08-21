@@ -8,15 +8,15 @@
 
 ## Implementation
 
-- [ ] Regenerate the committed standalone MCP bundle.
-- [ ] Confirm the diff is artifact-only.
-- [ ] Run plugin:check and diff checks.
-- [ ] Write the post-implementation report.
+- [x] Regenerate the committed standalone MCP bundle.
+- [x] Confirm the diff is artifact-only.
+- [x] Run plugin:check and diff checks.
+- [x] Write the post-implementation report.
 
 ## Review
 
 - [ ] Independent reviewer records PASS or findings.
-- [ ] PR is merged into main.
+- [ ] PR #111 is merged into main.
 
 ## Verification and closeout
 

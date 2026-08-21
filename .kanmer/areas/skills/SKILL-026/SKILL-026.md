@@ -2,12 +2,15 @@
 id: SKILL-026
 type: ticket
 title: AGENTS.md ownership integration verification
-status: preparing
+status: implementing
 area: skills
-assignee: ''
+assignee: codex-mcp-client
 profile: chore
 stageEntered:
   preparing: '2026-08-21T01:12:09.070Z'
+taken_at: '2026-08-21T01:14:41.602Z'
+branch: skill-026-agents-ownership-integration
+worktree: .worktrees/skill-026
 labels:
   - integration
 groups:
@@ -20,7 +23,7 @@ refs:
   - docs/architecture/adr/ADR-0015-staleness-by-content-not-version.md
 archived: false
 created: '2026-08-20T10:14:57.069Z'
-updated: '2026-08-21T01:13:32.437Z'
+updated: '2026-08-21T01:14:41.602Z'
 ---
 
 ## What

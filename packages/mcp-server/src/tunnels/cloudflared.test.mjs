@@ -15,6 +15,8 @@ test("adapter validates an owned credentials file before starting a direct child
       tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403",
       credentialsFile: credentials,
       hostname: "kanmer.example.test",
+      metricsPort: 43124,
+      waitForReady: async () => {},
     };
     const adapter = createCloudflaredAdapter(options);
     const child = await adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" });

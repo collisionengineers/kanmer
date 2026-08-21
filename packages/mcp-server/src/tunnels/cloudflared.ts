@@ -4,9 +4,12 @@ import os from "node:os";
 import path, { isAbsolute } from "node:path";
 import { cloudflaredConfig, type CloudflaredTunnelOptions, validateCloudflaredTunnel } from "./cloudflared-config.js";
 import type { TunnelAdapter, TunnelLogEvent, TunnelProcess, TunnelTarget } from "./types.js";
+import { waitForTunnelReadiness } from "./readiness.js";
 
 export interface CloudflaredAdapterOptions extends CloudflaredTunnelOptions {
   readonly executable: string;
+  readonly metricsPort: number;
+  readonly waitForReady?: (endpoint: string) => Promise<void>;
   readonly onLog?: (event: TunnelLogEvent) => void;
 }
 
@@ -33,35 +36,40 @@ export class CloudflaredAdapter implements TunnelAdapter {
     validateCloudflaredTunnel(this.options, target);
     await validateRegularFile(this.options.executable, "TUNNEL_EXECUTABLE_INVALID", false);
     await validateRegularFile(this.options.credentialsFile, "TUNNEL_CREDENTIALS_FILE_UNSAFE", true);
+    if (!Number.isSafeInteger(this.options.metricsPort) || this.options.metricsPort < 1 || this.options.metricsPort > 65_535) throw new Error("TUNNEL_METRICS_PORT_INVALID");
     const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-"));
     const configPath = path.join(directory, "config.yml");
+    let child: ChildProcess | undefined;
     try {
       await writeFile(configPath, cloudflaredConfig(this.options, target), { encoding: "utf8", mode: 0o600 });
       await chmod(configPath, 0o600);
-      const child: ChildProcess = spawn(this.options.executable, ["--no-autoupdate", "tunnel", "--config", configPath, "run", this.options.tunnelId], {
+      const spawned = spawn(this.options.executable, ["--no-autoupdate", "--metrics", `127.0.0.1:${this.options.metricsPort}`, "tunnel", "--config", configPath, "run", this.options.tunnelId], {
         cwd: directory,
         env: { PATH: process.env.PATH ?? "" },
         shell: false,
         windowsHide: true,
         stdio: ["ignore", "pipe", "pipe"],
       });
-      if (!child.stdout || !child.stderr) throw new Error("TUNNEL_STDIO_UNAVAILABLE");
-      child.stdout.setEncoding("utf8"); child.stderr.setEncoding("utf8");
-      child.stdout.on("data", (line: string) => logLine(this.options.onLog, line));
-      child.stderr.on("data", (line: string) => logLine(this.options.onLog, line));
+      child = spawned;
+      if (!spawned.stdout || !spawned.stderr) throw new Error("TUNNEL_STDIO_UNAVAILABLE");
+      spawned.stdout.setEncoding("utf8"); spawned.stderr.setEncoding("utf8");
+      spawned.stdout.on("data", (line: string) => logLine(this.options.onLog, line));
+      spawned.stderr.on("data", (line: string) => logLine(this.options.onLog, line));
       await new Promise<void>((resolve, reject) => {
-        child.once("spawn", resolve);
-        child.once("error", reject);
+        spawned.once("spawn", resolve);
+        spawned.once("error", reject);
       });
-      const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => child.once("exit", (code, signal) => resolve({ code, signal })));
+      const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => spawned.once("exit", (code, signal) => resolve({ code, signal })));
+      await (this.options.waitForReady?.(`http://127.0.0.1:${this.options.metricsPort}/ready`) ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${this.options.metricsPort}/ready` }));
       const cleanup = () => rm(directory, { recursive: true, force: true });
       void exited.then(cleanup, cleanup);
       return {
-        pid: child.pid,
+        pid: spawned.pid,
         exited,
-        async stop() { if (!child.killed) child.kill("SIGTERM"); await exited; },
+        async stop() { if (!spawned.killed) spawned.kill("SIGTERM"); await exited; },
       };
     } catch (error) {
+      if (child && !child.killed) child.kill("SIGTERM");
       await rm(directory, { recursive: true, force: true });
       throw error;
     }

@@ -77,3 +77,16 @@ Append the allocated ADR number, numbering output, amended requirement identifie
 - [x] Core tests 250/250, GUI tests 288/288, script tests 48/48, numbering and diff checks passed.
 - [x] Post-merge mapping prerequisite is complete; all five mappings were read back on merged main and gates pass.
 - [x] CORE-031 is merged; `npm run verify` passed on merged main and DOC-011 was re-read with gates before closeout.
+
+---
+
+## Closeout — DOC-011
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/doc-011`
+- [ ] `git branch -d doc-011-compiled-workflow` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

@@ -1,0 +1,1 @@
+Started implementation in .worktrees/mcp-035 on branch mcp-035-legacy-doc-validation from origin/main at 4997214. Scope locked to shared getDocsWithVersions validation plus regression coverage; no MCP-025/036/037 changes.

@@ -19,9 +19,9 @@
 
 ## Review
 
-- [ ] Independent reviewer records PASS or findings.
-- [ ] Any findings are fixed, rejected with reason, accepted as risk, or deferred to a linked ticket.
-- [ ] PR is merged into the MCP-025 transport branch.
+- [x] Independent reviewer records PASS or findings.
+- [x] Any findings are fixed, rejected with reason, accepted as risk, or deferred to a linked ticket; MCP-037 had no residual findings.
+- [x] PR #109 is merged into the MCP-025 transport branch at d189cbc46bc440ee3d24b7045306bdfbe84997a7.
 
 ## Verification and closeout
 

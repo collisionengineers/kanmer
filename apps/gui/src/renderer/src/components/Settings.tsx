@@ -729,41 +729,44 @@ function ProfilesTab(): JSX.Element {
       </p>
 
       <div className="settings-section">
-        <table className="profiles-table">
-          <thead>
-            <tr>
-              <th>Profile</th>
-              {model.boundaries.map((b) => (
-                <th key={b}>{b.replace("-", " ")}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {Object.keys(draftProfiles).map((name) => (
-              <tr key={name}>
-                <td>
-                  <code>{name}</code>
-                </td>
-                {model.boundaries.map((b) => {
-                  const key = `${name}.${b}`;
-                  const errs = errors[key];
-                  return (
-                    <td key={b}>
-                      <input
-                        className={errs ? "invalid" : ""}
-                        value={(draftProfiles[name]?.[b] ?? []).join(", ")}
-                        placeholder="—"
-                        aria-label={`${name}, ${b}`}
-                        onChange={(e) => edit(name, b, e.target.value)}
-                      />
-                      {errs && <p className="field-error">{errs.join("; ")}</p>}
-                    </td>
-                  );
-                })}
+        <div className="profiles-table-wrap">
+          <table className="profiles-table">
+            <thead>
+              <tr>
+                <th>Profile</th>
+                {model.boundaries.map((b) => (
+                  <th key={b}>{b.replace("-", " ")}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {Object.keys(draftProfiles).map((name) => (
+                <tr key={name}>
+                  <td>
+                    <code>{name}</code>
+                  </td>
+                  {model.boundaries.map((b) => {
+                    const key = `${name}.${b}`;
+                    const errs = errors[key];
+                    return (
+                      <td key={b}>
+                        <input
+                          className={errs ? "invalid" : ""}
+                          value={(draftProfiles[name]?.[b] ?? []).join(", ")}
+                          placeholder="—"
+                          aria-label={`${name}, ${b}`}
+                          aria-invalid={Boolean(errs)}
+                          onChange={(e) => edit(name, b, e.target.value)}
+                        />
+                        {errs && <p className="field-error">{errs.join("; ")}</p>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <p className="hint">
           Comma-separated. A requirement is a document type, optionally
           <code>/named</code>, and for proof <code>:type</code> and <code>@environment</code> —

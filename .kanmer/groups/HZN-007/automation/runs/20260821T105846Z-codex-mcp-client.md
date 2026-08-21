@@ -148,6 +148,7 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 77 | MCP-034 | backlog | fix; needs files + plan; closes independent MCP-022 findings | queued | — | — | 0 | added from post-hoc review | pending research/plan | — | 2026-08-21T11:20:20.495Z |
 | 78 | MCP-036 | implementing | fix; next=review; blocked=false; blockers=MCP-025 | review-follow-up | /root/mcp025_reviewer | mcp-036-prebind-project|.worktrees/mcp-036 | 1 | PR #108 opened against MCP-025 branch; independent review assigned | awaiting review; validation green | 108 | 2026-08-21T11:50:00.000Z |
+| 79 | MCP-037 | review | fix; next=verifying; blocked=false; blockers=MCP-036 | review-follow-up | /root/mcp025_reviewer | mcp-037-http-start-cleanup|.worktrees/mcp-037 | 1 | PR #109 opened against MCP-025 branch; independent review assigned | awaiting review; validation green | 109 | 2026-08-21T11:54:10.021Z |
 
 - 2026-08-21T11:20:20.495Z — Independent post-hoc review of MCP-022 recorded three scoped findings; created MCP-034, linked it to MCP-022, attached to HZN-007, and queued it for the full-board completion run.
 
@@ -157,3 +158,4 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 - 2026-08-21T11:42:00.000Z — Done-incomplete lane reconciled MCP-022 (32/32), MCP-019 (78/78, MCP-035 created for legacy unsafe-id finding), and MCP-033 (16/16); independent reviews recorded.
 - 2026-08-21T11:50:00.000Z — MCP-036 remediation implemented on branch mcp-036-prebind-project from MCP-025's feature branch, validated (HTTP 7/7, stdio 184/184, protocol 42/42, discovery 13/13, typecheck, build, diff-check), committed c3c2f2a, PR #108 opened against the MCP-025 branch, and assigned to the independent MCP-025 reviewer. MCP-025 remains held in Review until this startup-order defect is independently cleared.
+- 2026-08-21T11:54:10.021Z — MCP-037 created from the independent MCP-036 review finding, implemented on mcp-037-http-start-cleanup from the MCP-036 branch, validated (HTTP 7/7 including destroyed-timer/no-listener regression, stdio 184/184, protocol 42/42, discovery 13/13, build, typecheck, diff-check), committed 1d1ee22, PR #109 opened against the MCP-025 branch, and assigned to the independent reviewer. MCP-036 and MCP-025 remain held.

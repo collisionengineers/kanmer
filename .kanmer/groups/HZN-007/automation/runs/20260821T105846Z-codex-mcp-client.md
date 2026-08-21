@@ -126,6 +126,11 @@ stop_reason:
 
 - 2026-08-21T18:14:16.483Z — Lane 1 assigned to /root/doc011_verifier for DOC-011. The ticket packet, all eight exact document paths, EPIC-009/HZN-004/HZN-007 context, live links, and gates were reread. DOC-011 is Verifying with 43/55 checklist items, proof missing, and 12 stale post-merge/reference boxes; the worker must verify merged main, reconcile only evidence-backed checklist items, write proof after checks, move one boundary to Done, release, and clean its recorded worktree/branch. No merge authority is delegated.
 
+- 2026-08-21T18:14:48.276Z — Lane 2 assigned to /root/mcp017_executor for MCP-017 on recorded mcp-017-plugin-checkout-guard/.worktrees/mcp-017. Packet and EPIC-009/HZN-004/HZN-007 context were reread; implementing with 15/16 checklist items. Complete the remaining implementation-report/PR/review/merged-main verification/closeout path without self-review or merge, preserving the linked-worktree plugin-check guard.
+- 2026-08-21T18:14:48.276Z — Lane 3 assigned to /root/gui099_executor for GUI-099 on recorded gui-099-installer-launcher/.worktrees/gui-099. Packet and EPIC-011/HZN-005/HZN-007 context were reread; implementing with 0/65 checklist items and docs_todo true. Complete only the installer-owned launcher/NSIS/package/docs scope, use independent review, and do not begin GUI-100/101/102 or merge.
+
+- 2026-08-21T18:15:27.768Z — MCP-028 environment preflight (read-only): no Cloudflare credential environment names, `cloudflared`, or `wrangler` executable are available on this runner. The real public Worker/tunnel proof is therefore not dispatched yet; this is an external-environment prerequisite, not a product PASS/FAIL. Continue unblocked lanes and request only the exact protected environment/credential permission when all other safe work is exhausted.
+
 ## Resume instruction
 
 Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's complete document inventory, links, taken state and get_doc_gates before dispatching. Reconcile the ledger against live state and do not replay a completed action solely because this run was interrupted. Before every assignment/result/stage transition, update and read this history record and automation/current.md.

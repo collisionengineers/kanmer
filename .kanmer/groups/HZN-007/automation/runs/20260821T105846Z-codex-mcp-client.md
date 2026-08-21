@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T20:44:07.037Z
+updated_at: 2026-08-21T20:44:36.891Z
 lane_limit: 3
 stop_reason:
 ---
@@ -300,3 +300,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-21T20:46:00.000Z — Next conflict-free implementation wave assigned after MCP-014 cleanup: CORE-011 → /root/gui082_executor (core gate timestamp enforcement), GUI-010 → /root/gui099_executor (reference-files UI), and MCP-024 → /root/mcp017_verifier (SHA-bound review/proof records). Each lane must reread its full packet, HZN-007 context, exact gates, and links; use its own ticket worktree/branch; stop at Review; no author self-review/merge.
+
+
+- 2026-08-21T20:44:36.891Z — CORE-011 assigned to /root/gui082_executor on fresh core-011-one-gate-per-move/.worktrees/core-011 from origin/main cb8fa1f0 after complete packet, HZN-007 context, FRD-002/PRD-001 refs, links, and gates were reread. Implement only the one-gated-boundary-per-move structural refusal, durable stageEntered stamps, and governing-doc amendment; do not implement the rejected mtime/activity-log R2 or unrelated workflow redesign. Author will stop at Review.

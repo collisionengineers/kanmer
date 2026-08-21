@@ -22,7 +22,7 @@ blocks:
   - CORE-032
 archived: false
 created: '2026-08-20T10:14:42.483Z'
-updated: '2026-08-21T12:55:47.198Z'
+updated: '2026-08-21T17:00:19.336Z'
 ---
 
 ## What
@@ -32,10 +32,10 @@ updated: '2026-08-21T12:55:47.198Z'
 GitHub cannot require a check that doesn't exist; AGENTS.md §10 is manual-only today. One step list prevents a third pyramid.
 
 ## Approach
-dependency-free (same family as release.mjs). Steps: `npm test` (includes check:manual) → `npm run typecheck` (all workspaces) → `npm run build` → both MCP smokes → `npm run smoke:discovery` → `npm run verify:skills` → `npm run verify:agents-block` → `npm run plugin:check`. Excluded: GUI build, Electron boot smoke, `dist:check`, `plugin:build` (plugin:check compares committed bytes to a fresh build — running plugin:build in CI would dirty the tree). This **changes the release rail** (order + adds smoke:discovery + drops the duplicate check:manual entry) — say so in AGENTS.md §6: "`npm run verify` is the PR check; `scripts/release.mjs` is verify + bump/pack; do not invent a third pyramid."
+dependency-free (same family as release.mjs). Steps: `npm run build` (materialise clean-checkout package exports) → `npm test` (includes check:manual) → `npm run typecheck` (all workspaces) → both MCP smokes → `npm run smoke:discovery` → `npm run verify:skills` → `npm run verify:agents-block` → `npm run plugin:check`. Excluded: GUI build, Electron boot smoke, `dist:check`, `plugin:build` (plugin:check compares committed bytes to a fresh build — running plugin:build in CI would dirty the tree). This **changes the release rail** (order + adds smoke:discovery + drops the duplicate check:manual entry) — say so in AGENTS.md §6: "`npm run verify` is the PR check; `scripts/release.mjs` is verify + bump/pack; do not invent a third pyramid."
 
 ## Verification
-- [ ] `npm run verify` green from the main checkout
+- [ ] `npm run verify` green from a clean standalone checkout (build-first rail; then tests/typecheck/smokes)
 - [ ] release.mjs consumes VERIFY_STEPS
 - [ ] AGENTS.md §6 updated
 

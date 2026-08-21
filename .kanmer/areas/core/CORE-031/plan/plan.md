@@ -19,7 +19,7 @@ Add `scripts/verify.mjs` as the sole owner of an immutable ordered `VERIFY_STEPS
 
 - No PRD, FRD, or ADR is currently linked in `refs`, and this ticket does not introduce a durable architecture decision requiring a new ADR.
 - **EPIC-009 context:** met by creating the verification spine required before CI and branch protection; no lease, hierarchy, new stage, or other excluded mechanism is introduced.
-- **MASTERPLAN S-01:** met literally by the exact step order, exclusions, shared-array design, release-rail wording, and main/standalone-checkout verification boundary below.
+- **MASTERPLAN S-01:** met literally by the build-first step order, exclusions, shared-array design, release-rail wording, and main/standalone-checkout verification boundary below.
 
 ## Required changes
 
@@ -64,7 +64,7 @@ Add `scripts/verify.mjs` as the sole owner of an immutable ordered `VERIFY_STEPS
 
 ## Ordered implementation steps
 
-1. Create `scripts/verify.mjs` and enter the exact nine commands once, as `VERIFY_STEPS`.
+1. Create `scripts/verify.mjs` and enter the exact nine commands once, as `VERIFY_STEPS`, with `npm run build` first so a clean checkout has the package artifacts required by GUI tests.
 2. Add the import-safe direct-entry guard before wiring any caller; confirm importing the module prints/runs nothing.
 3. Add the direct runner and confirm a deliberately failing injected shell command is not added to production code; failure semantics are provided by `execSync` throwing.
 4. Add the root npm script and use `npm pkg get scripts.verify` to confirm the public command value.
@@ -104,7 +104,7 @@ Then inspect the release diff:
 git diff -- scripts/release.mjs package.json AGENTS.md scripts/verify.mjs
 ```
 
-The post-merge verifier repeats `npm ci && npm run verify` on the merged SHA/main checkout and records the command exit codes.
+The rail intentionally builds before tests; the post-merge verifier repeats `npm ci && npm run verify` on the merged SHA/main checkout and records the command exit codes.
 
 ## Risks / open questions
 

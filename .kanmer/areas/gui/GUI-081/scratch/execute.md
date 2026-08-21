@@ -1,0 +1,1 @@
+Opened PR #97: https://github.com/collisionengineers/kanmer/pull/97. Branch evidence: `npm run check:manual` current (19 chapters); targeted GUI gate-error test 4/4; stale requirement search clear; `git diff --check` clean.

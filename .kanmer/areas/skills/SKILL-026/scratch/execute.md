@@ -1,0 +1,1 @@
+Implemented and pushed commit f9afee5. Opened PR #99: https://github.com/collisionengineers/kanmer/pull/99. The disposable run exposed and fixed a template closing-marker collision; full verification is in post-implementation-report.md.

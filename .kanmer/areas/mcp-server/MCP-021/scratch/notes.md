@@ -47,3 +47,5 @@ Regression checkpoint after `fea8b28`: `npm run test:http -w @kanmer/mcp-server`
 ## Provider logging documentation re-check — 2026-08-21
 
 Current official Cloudflare run/monitoring docs enumerate `--loglevel`, `--logfile`, and loopback `--metrics`; they do not document a local `tunnel run --logformat json` flag. Therefore this implementation does **not** add an unverified JSON flag. Provider stdout/stderr remains untrusted and is collapsed to the fixed `provider output received` diagnostic; readiness remains the loopback `/ready` endpoint. The plan’s wording is interpreted as structured JSON only where the selected provider/version documents it.
+
+Commit `fdec4e0` replaces the readiness test’s timing sleeps with an injected monitor scheduler; the loss/recovery sequence now runs deterministically (remote-host tests 3/3, MCP typecheck pass, clean diff).

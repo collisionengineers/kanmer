@@ -13,17 +13,17 @@
 - [x] Write the post-implementation report with commands, artifacts, limitation, and out-of-scope GUI-068 note.
 - [x] Open PR #98 with commit/PR traceability and record the review verdict.
 - [x] Verify the merged-main capture workflow and write proof.
-- [ ] Close out the merged worktree and branch.
+- [x] Close out the merged worktree and branch.
 
 ---
 
 ## Closeout — GUI-091
 
-- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
-- [ ] proof.md finalised (PR URL + merge date appended)
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
 - [x] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/gui-091`
-- [ ] `git branch -d gui-091-electron-capture-smoke` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-091`
+- [x] `git branch -d gui-091-electron-capture-smoke` (`-D` if squash/rebase-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

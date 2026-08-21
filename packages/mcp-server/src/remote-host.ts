@@ -37,6 +37,7 @@ export class KanmerRemoteHost {
   private stopped = false;
 
   constructor(private readonly options: RemoteHostOptions) {
+    if (typeof options.verifyLocal !== "function") throw new Error("REMOTE_LOCAL_VERIFIER_REQUIRED");
     this.publicEndpoint = `https://${options.hostname}/mcp`;
     this.http = createKanmerHttpHost({ authorizer: options.authorizer });
     this.supervisor = new TunnelSupervisor({

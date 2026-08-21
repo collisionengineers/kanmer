@@ -120,6 +120,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
     const attempt = this.status.attempt + 1;
     this.transition("validating", target, { attempt });
     let metricsLease: LoopbackPortLease | undefined;
+    let runtimeDirectory: string | undefined;
     try {
       validateTunnelStartInput({
         config: {
@@ -134,7 +135,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
       await validateRegularFile(this.options.credentialsFile, "TUNNEL_CREDENTIALS_FILE_UNSAFE", true);
     const metricsPort = this.options.metricsPort ?? (metricsLease = await reserveLoopbackPort()).port;
     if (!Number.isSafeInteger(metricsPort) || metricsPort < 1 || metricsPort > 65_535) throw new Error("TUNNEL_METRICS_PORT_INVALID");
-    const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-"));
+    const directory = runtimeDirectory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-"));
     await chmod(directory, 0o700);
     const configPath = path.join(directory, "config.yml");
     let child: ChildProcess | undefined;
@@ -242,6 +243,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
     }
     } catch (error) {
       await metricsLease?.release();
+      if (runtimeDirectory) await rm(runtimeDirectory, { recursive: true, force: true });
       this.transition("failed", target, { attempt, code: safeFailureCode(error) });
       throw error;
     } finally { this.starting = false; }

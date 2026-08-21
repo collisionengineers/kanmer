@@ -17,10 +17,14 @@ export interface GeneratedBearerToken {
   readonly verifier: BearerVerifier;
 }
 
-export function verifierForToken(token: string, tokenId = "remote-v1"): BearerVerifier {
+export function verifierForToken(token: string, tokenId?: string): BearerVerifier {
   if (!/^[A-Za-z0-9_-]{43}$/.test(token)) throw new Error("REMOTE_AUTH_INVALID_TOKEN");
   const digest = createHash("sha256").update(token, "ascii").digest();
-  return { tokenId, digest, fingerprint: `sha256:${digest.toString("hex").slice(0, 12)}` };
+  const id = tokenId ?? `remote-${digest.toString("hex").slice(0, 24)}`;
+  if (!id) throw new Error("REMOTE_AUTH_INVALID_CONFIG");
+  const publicMetadata = { tokenId: id, fingerprint: `sha256:${digest.toString("hex").slice(0, 12)}` };
+  Object.defineProperty(publicMetadata, "digest", { value: digest, enumerable: false, writable: false, configurable: false });
+  return Object.freeze(publicMetadata) as BearerVerifier;
 }
 
 export function generateBearerToken(random: (size: number) => Buffer = randomBytes): GeneratedBearerToken {
@@ -54,6 +58,7 @@ export class BearerAuthorizer implements HttpAuthorizer {
   }
 
   replace(verifier: BearerVerifier): string | undefined {
+    if (!verifier.tokenId || !Buffer.isBuffer(verifier.digest) || verifier.digest.length !== 32 || !/^sha256:[a-f0-9]{12}$/.test(verifier.fingerprint)) throw new Error("REMOTE_AUTH_INVALID_CONFIG");
     const previous = this.active?.tokenId;
     this.active = verifier;
     return previous;

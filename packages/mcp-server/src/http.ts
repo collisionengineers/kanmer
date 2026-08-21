@@ -221,7 +221,12 @@ export class KanmerHttpHost {
   async rotateBearerVerifier(verifier: BearerVerifier): Promise<void> {
     if (!(this.options.authorizer instanceof BearerAuthorizer)) throw new Error("REMOTE_AUTH_UNSUPPORTED_LIFECYCLE");
     const previous = this.options.authorizer.replace(verifier);
-    if (previous) await this.invalidatePrincipal(previous);
+    try {
+      if (previous) await this.invalidatePrincipal(previous);
+    } catch (error) {
+      this.options.authorizer.revoke();
+      throw error;
+    }
   }
 
   /** Revocation closes active sessions and makes every subsequent request fail closed. */

@@ -38,6 +38,8 @@ assert.throws(() => createKanmerHttpHost({ authorizer: { authorize: async () => 
 
 const generated = generateBearerToken();
 const other = generateBearerToken();
+assert.equal(JSON.stringify(generated.verifier).includes(generated.token), false, "verifier serialization never contains raw token");
+assert.equal(JSON.stringify(generated.verifier).includes(generated.verifier.digest.toString("hex")), false, "verifier serialization never contains digest");
 const host = createKanmerHttpHost({
   authorizer: new BearerAuthorizer(generated.verifier),
   idleTtlMs: 60_000,
@@ -109,6 +111,7 @@ try {
   const foreign = await fetch(endpoint, { method: "GET", headers: { authorization: `Bearer ${other.token}`, "mcp-session-id": session } });
   assert.equal(foreign.status, 401, "authentication runs before session lookup");
   const rotated = generateBearerToken();
+  assert.notEqual(rotated.verifier.tokenId, generated.verifier.tokenId, "rotation gets a new opaque token identity");
   await host.rotateBearerVerifier(rotated.verifier);
   const oldAfterRotation = await fetch(endpoint, { method: "GET", headers: { authorization: `Bearer ${generated.token}`, "mcp-session-id": session } });
   assert.equal(oldAfterRotation.status, 401, "old token fails immediately after rotation");

@@ -22,6 +22,7 @@ import { join } from "node:path";
 
 import {
   expectedAssets,
+  verifyLocalArtifacts,
   verifyAssets,
   sanityCheckExpected,
   fetchReleaseAssets,
@@ -289,6 +290,43 @@ describe("verifyAssets — the failure modes that were never recorded", () => {
     const r = verifyAssets({ expected, assets: GOLDEN["0.3.2"] });
     assert.equal(r.ok, false);
     assert.ok(errors(r).some((p) => p.kind === "manifest" && /sha512/.test(p.detail)));
+  });
+});
+
+describe("verifyLocalArtifacts — pre-publish manifest coherence", () => {
+  test("accepts an expected set whose manifest describes its installer", () => {
+    const expected = expectedFrom(GOLDEN["0.3.2"]);
+    const manifest = expected.find((entry) => entry.name === MANIFEST);
+    const installer = expected.find((entry) => entry.name.endsWith(".exe"));
+    installer.sha512 = "GOOD";
+    manifest.localPath = "latest.yml";
+    installer.localPath = "installer.exe";
+    expected.find((entry) => entry.name.endsWith(".blockmap")).localPath = "installer.blockmap";
+    manifest.manifest = { url: installer.name, size: installer.size, sha512: "GOOD" };
+    const result = verifyLocalArtifacts({ expected, version: "0.3.2" });
+    assert.equal(result.ok, true, formatProblems(result.problems));
+  });
+
+  test("rejects a manifest SHA-512 that differs from its local installer", () => {
+    const expected = expectedFrom(GOLDEN["0.3.2"]);
+    const manifest = expected.find((entry) => entry.name === MANIFEST);
+    const installer = expected.find((entry) => entry.name.endsWith(".exe"));
+    installer.sha512 = "GOOD";
+    manifest.localPath = "latest.yml";
+    installer.localPath = "installer.exe";
+    expected.find((entry) => entry.name.endsWith(".blockmap")).localPath = "installer.blockmap";
+    manifest.manifest = { url: installer.name, size: installer.size, sha512: "WRONG" };
+    const result = verifyLocalArtifacts({ expected, version: "0.3.2" });
+    assert.equal(result.ok, false);
+    assert.ok(result.problems.some((problem) => problem.kind === "manifest" && /sha512/.test(problem.detail)));
+  });
+
+  test("rejects a manifest that does not describe the release version", () => {
+    const expected = expectedFrom(GOLDEN["0.3.2"]);
+    expected.find((entry) => entry.name === MANIFEST).comparable = false;
+    const result = verifyLocalArtifacts({ expected, version: "0.3.2" });
+    assert.equal(result.ok, false);
+    assert.ok(result.problems.some((problem) => /does not describe version/.test(problem.detail)));
   });
 });
 

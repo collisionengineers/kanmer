@@ -28,7 +28,12 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { verifyRelease, formatProblems } from "./verify-release-assets.mjs";
+import {
+  expectedAssets,
+  formatProblems,
+  verifyLocalArtifacts,
+  verifyRelease,
+} from "./verify-release-assets.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const guiDir = join(root, "apps", "gui");
@@ -108,6 +113,19 @@ function run(command, cwd = root) {
 
 function capture(command, cwd = root) {
   return execSync(command, { cwd, encoding: "utf8" }).trim();
+}
+
+function assertLocalPackageCoherent() {
+  const { expected, notes } = expectedAssets({ version, localDir: releaseDir });
+  for (const note of notes) console.log(`  local-pack note: ${note}`);
+
+  const check = verifyLocalArtifacts({ expected, version });
+  if (!check.ok) {
+    refuse(
+      `the local package is incoherent:\n${formatProblems(check.problems)}`,
+      "rebuild once with `npx electron-builder --win --publish always` and inspect the resulting manifest before retrying",
+    );
+  }
 }
 
 /** [major, minor, patch] -> comparable. */
@@ -255,17 +273,17 @@ if (dryRun) {
     `  3. npm run build && node scripts/build-plugin.mjs && npm run plugin:check` +
       ` — rebuild the MCP bundle so it reports ${version}, not ${current}`,
   );
-  console.log("  4. build the GUI, pack with --publish never, run check-updater-package.mjs");
+  console.log("  4. build the GUI source before the release commit");
   console.log(
     `  5. git commit -am "release: v${version}" && git tag v${version}` +
       " — the commit carries the bump AND the rebuilt plugin bundle",
   );
   console.log("  6. git push && git push --tags (GitHub requires the tag to exist before it will publish against it)");
-  console.log("  7. pack again with --publish always");
+  console.log("  7. build and publish ONE Windows installer, blockmap and latest.yml");
   console.log(`  8. verify /releases/latest is v${version}, then verify EVERY published asset`);
   console.log("     (installer, blockmap, latest.yml) is present, uploaded, and byte-identical");
   console.log("     to the local build — comparing GitHub's sha256 digest against the local files");
-  console.log("  9. on any gap: re-publish ONCE, re-verify, then refuse loudly without demoting");
+  console.log("  9. on any gap: re-verify once, then refuse loudly without rebuilding or demoting");
   console.log("\nNothing was written. The tree is untouched.");
   process.exit(0);
 }
@@ -321,13 +339,11 @@ run("node scripts/build-plugin.mjs");
 run("npm run plugin:check");
 
 // ---------------------------------------------------------------------------
-// 6. Pass 1: pack WITHOUT publishing, and check the package. Catching "no
-//    app-update.yml" or "electron-updater missing from the asar" before a
-//    release exists on GitHub is worth the extra pack.
+// 6. Build the GUI source before committing the release. The sole package is
+//    intentionally deferred until after the tag is live: Electron Builder's
+//    publish mode creates a published (not draft) GitHub release for that tag.
 // ---------------------------------------------------------------------------
 run("npm run build -w @kanmer/gui");
-run("npx electron-builder --win --publish never", guiDir);
-run("node scripts/check-updater-package.mjs");
 
 // ---------------------------------------------------------------------------
 // 7. Commit, tag, and push immediately. GitHub will not create a non-draft
@@ -346,9 +362,14 @@ run("git push");
 run("git push --tags");
 
 // ---------------------------------------------------------------------------
-// 8. Pass 2: publish for real.
+// 8. Build and publish the only Windows installer. `latest.yml`, the installer
+//    and its blockmap all originate from this one package invocation. The
+//    packaged-app rail runs immediately afterwards; it is intentionally not a
+//    second --publish never pass, because NSIS output can differ per package.
 // ---------------------------------------------------------------------------
 run("npx electron-builder --win --publish always", guiDir);
+run("node scripts/check-updater-package.mjs");
+assertLocalPackageCoherent();
 
 // ---------------------------------------------------------------------------
 // 9a. The release is VISIBLE. Read exactly what GitHubProvider reads: it polls
@@ -381,11 +402,12 @@ console.log(`\nverified: /releases/latest is v${version}`);
 //     A missing .exe.blockmap is a HARD failure, same as any other missing
 //     asset. Treating it as a warning is exactly how 0.3.0 passed the old gate.
 //
-//     On a gap: re-publish ONCE, re-verify, then refuse. Bounded at one — a loop
-//     turns a visible failure into a hang. On the second failure the script does
-//     NOT demote the release: rewriting a public artifact unattended is a
-//     judgement call the operator wants to make, so refuse() names the manual
-//     command instead.
+//     On a gap: re-check once, then refuse. Never run the pack a second time:
+//     NSIS output can differ per package invocation, so a second publish is
+//     exactly how a manifest can describe a different installer. On the second
+//     failure the script does NOT demote the release: rewriting a public
+//     artifact unattended is a judgement call the operator wants to make, so
+//     refuse() names the manual command instead.
 // ---------------------------------------------------------------------------
 async function verifyAssetsNow() {
   try {
@@ -425,13 +447,12 @@ if (!check.ok && check.derivationBroken) {
 
 if (!check.ok) {
   console.error(`\nthe published release is INCOMPLETE:\n${formatProblems(check.problems)}`);
-  console.error("\nre-publishing once (EP_GH_IGNORE_TIME is set, overwriteArtifact makes this idempotent)…");
-  run("npx electron-builder --win --publish always", guiDir);
+  console.error("\nre-checking once without rebuilding; a second NSIS package could make the manifest inconsistent…");
 
   check = await verifyAssetsNow();
   if (!check.ok) {
     refuse(
-      `v${version} is STILL incomplete after one re-publish:\n${formatProblems(check.problems)}`,
+      `v${version} is STILL incomplete after one re-check:\n${formatProblems(check.problems)}`,
       "the tag and release are already public and are NOT being demoted automatically. " +
         "Fix by hand, then re-verify with " +
         `\`node scripts/verify-release-assets.mjs ${version}\`. To take the release out of ` +
@@ -440,7 +461,7 @@ if (!check.ok) {
         "       …and undo it with `--latest` once the assets are complete.",
     );
   }
-  console.log("\nthe re-publish repaired the release.");
+  console.log("\nthe re-check found the release complete.");
 }
 
 for (const p of check.problems) console.warn(`  [${p.severity}] ${p.asset}: ${p.detail}`);

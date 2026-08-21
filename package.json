@@ -12,7 +12,7 @@
     "build:core": "npm run build -w @kanmer/core",
     "build:server": "npm run build -w @kanmer/mcp-server",
     "build:ui": "npm run build -w @kanmer/core && npm run build -w @kanmer/ui",
-    "test": "npm run check:manual && npm run test -w @kanmer/core && npm run test -w @kanmer/gui && npm run test:scripts",
+    "test": "npm run check:manual && npm run test -w @kanmer/core && npm run test -w @kanmer/gui && npm run test:http -w @kanmer/mcp-server && npm run test:scripts",
     "test:scripts": "node --test \"scripts/*.test.mjs\"",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "smoke:protocol": "node packages/mcp-server/src/smoke-protocol.mjs",

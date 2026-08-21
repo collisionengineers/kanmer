@@ -5,6 +5,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { createKanmerMcpServer, projectFingerprint } from "./index.js";
+import { BearerAuthorizer, type BearerVerifier, unauthorizedHeaders } from "./http-auth.js";
+
+export { BearerAuthorizer, generateBearerToken, verifierForToken } from "./http-auth.js";
+export { createTokenFile, loadTokenFile, type TokenFileWriter } from "./http-secret.js";
 
 export interface HttpAuthorizer {
   authorize(request: { headers: IncomingMessage["headers"] }): Promise<{ principal: string }>;
@@ -22,6 +26,15 @@ export interface HttpHostOptions {
   idleTtlMs?: number;
   sweepIntervalMs?: number;
   shutdownGraceMs?: number;
+  onEvent?: (event: HttpSecurityEvent) => void;
+}
+
+/** Intentionally allowlisted diagnostics: no headers, tokens, digests, bodies, or session ids. */
+export interface HttpSecurityEvent {
+  readonly kind: "auth-rejected" | "auth-rotated" | "auth-revoked";
+  readonly at: string;
+  readonly tokenId?: string;
+  readonly fingerprint?: string;
 }
 
 export interface HttpReadyEvent {
@@ -91,13 +104,17 @@ async function readJson(req: IncomingMessage, maxBytes: number): Promise<unknown
 
 /** A loopback-only, fail-closed host around the SDK Streamable HTTP transport. */
 export class KanmerHttpHost {
-  private readonly options: Required<Omit<HttpHostOptions, "allowedOrigins">> & Pick<HttpHostOptions, "allowedOrigins">;
+  private readonly options: Required<Omit<HttpHostOptions, "allowedOrigins" | "onEvent">> & Pick<HttpHostOptions, "allowedOrigins" | "onEvent">;
   private readonly sessions = new Map<string, Session>();
   private readonly sockets = new Set<Socket>();
   private readonly httpServer: Server;
   private readonly sweepTimer: NodeJS.Timeout;
   private stopping = false;
   private inFlight = 0;
+
+  private emit(event: Omit<HttpSecurityEvent, "at">): void {
+    try { this.options.onEvent?.({ ...event, at: new Date().toISOString() }); } catch { /* diagnostics never affect serving */ }
+  }
 
   constructor(options: HttpHostOptions) {
     if (!options.authorizer) throw new Error("HTTP transport requires an authorizer");
@@ -111,6 +128,7 @@ export class KanmerHttpHost {
       host,
       port,
       allowedOrigins: options.allowedOrigins,
+      onEvent: options.onEvent,
       maxBodyBytes: positive(options.maxBodyBytes ?? DEFAULTS.maxBodyBytes, "maxBodyBytes"),
       maxSessions: positive(options.maxSessions ?? DEFAULTS.maxSessions, "maxSessions"),
       maxSessionsPerPrincipal: positive(options.maxSessionsPerPrincipal ?? DEFAULTS.maxSessionsPerPrincipal, "maxSessionsPerPrincipal"),
@@ -153,7 +171,10 @@ export class KanmerHttpHost {
 
   private async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (this.stopping) return writeText(res, 503, "Service unavailable");
-    if (req.url !== "/mcp") return writeText(res, 404, "Not found");
+    let requestUrl: URL;
+    try { requestUrl = new URL(req.url ?? "/", "http://kanmer.invalid"); }
+    catch { return writeText(res, 404, "Not found"); }
+    if (requestUrl.pathname !== "/mcp") return writeText(res, 404, "Not found");
     if (req.method !== "POST" && req.method !== "GET" && req.method !== "DELETE") {
       return writeText(res, 405, "Method not allowed", { allow: "POST, GET, DELETE" });
     }
@@ -164,7 +185,10 @@ export class KanmerHttpHost {
       const authorized = await this.options.authorizer.authorize({ headers: req.headers });
       principal = authorized.principal;
       if (!principal) throw new Error("empty principal");
-    } catch { return writeText(res, 401, "Unauthorized"); }
+    } catch {
+      this.emit({ kind: "auth-rejected" });
+      return writeText(res, 401, "Unauthorized", unauthorizedHeaders());
+    }
     if (this.inFlight >= this.options.maxInFlight) return writeText(res, 429, "Too many requests");
     this.inFlight++;
     try {
@@ -211,6 +235,27 @@ export class KanmerHttpHost {
 
   async invalidatePrincipal(principal: string): Promise<void> {
     await Promise.all([...this.sessions.entries()].filter(([, session]) => session.principal === principal).map(([id]) => this.closeSession(id)));
+  }
+
+  /** Local-parent lifecycle control only; never exposed as an MCP tool. */
+  async rotateBearerVerifier(verifier: BearerVerifier): Promise<void> {
+    if (!(this.options.authorizer instanceof BearerAuthorizer)) throw new Error("REMOTE_AUTH_UNSUPPORTED_LIFECYCLE");
+    const previous = this.options.authorizer.replace(verifier);
+    try {
+      if (previous) await this.invalidatePrincipal(previous);
+    } catch (error) {
+      this.options.authorizer.revoke();
+      throw error;
+    }
+    this.emit({ kind: "auth-rotated", tokenId: verifier.tokenId, fingerprint: verifier.fingerprint });
+  }
+
+  /** Revocation closes active sessions and makes every subsequent request fail closed. */
+  async revokeBearer(): Promise<void> {
+    if (!(this.options.authorizer instanceof BearerAuthorizer)) throw new Error("REMOTE_AUTH_UNSUPPORTED_LIFECYCLE");
+    const previous = this.options.authorizer.revoke();
+    if (previous) await this.invalidatePrincipal(previous);
+    this.emit({ kind: "auth-revoked" });
   }
 
   private async closeSession(id: string): Promise<void> {

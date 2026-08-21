@@ -5,7 +5,8 @@
   "type": "module",
   "bin": {
     "kanmer-mcp": "./dist/index.js",
-    "kanmer-mcp-http": "./dist/http-cli.js"
+    "kanmer-mcp-http": "./dist/http-cli.js",
+    "kanmer-mcp-token": "./dist/remote-token-cli.js"
   },
   "main": "./dist/index.js",
   "files": ["dist"],
@@ -14,7 +15,8 @@
     "build:standalone": "tsup --config tsup.standalone.config.ts",
     "dev": "tsup --watch",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:http": "npm run build && node --test src/http-auth.test.mjs src/http-secret.test.mjs"
   },
   "dependencies": {
     "@kanmer/core": "*",

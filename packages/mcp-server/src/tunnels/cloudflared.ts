@@ -46,7 +46,12 @@ function safeFailureCode(error: unknown): string {
 }
 
 async function stopOwnedChild(child: ChildProcess, exited: Promise<unknown>): Promise<void> {
-  if (!child.killed) child.kill("SIGTERM");
+  if (!child.killed) {
+    if (process.platform !== "win32" && child.pid) {
+      try { process.kill(-child.pid, "SIGTERM"); }
+      catch { child.kill("SIGTERM"); }
+    } else child.kill("SIGTERM");
+  }
   const graceful = await Promise.race([
     exited.then(() => true),
     new Promise<boolean>((resolve) => { const timer = setTimeout(() => resolve(false), 5_000); timer.unref(); }),
@@ -57,6 +62,9 @@ async function stopOwnedChild(child: ChildProcess, exited: Promise<unknown>): Pr
       const killer = spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { shell: false, windowsHide: true, stdio: "ignore" });
       killer.once("error", resolve); killer.once("exit", resolve);
     });
+  } else if (child.pid) {
+    try { process.kill(-child.pid, "SIGKILL"); }
+    catch { child.kill("SIGKILL"); }
   } else child.kill("SIGKILL");
   await exited;
 }
@@ -129,6 +137,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
         cwd: directory,
         env: minimalEnvironment(),
         shell: false,
+        detached: process.platform !== "win32",
         windowsHide: true,
         stdio: ["ignore", "pipe", "pipe"],
       });

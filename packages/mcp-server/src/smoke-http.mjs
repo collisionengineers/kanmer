@@ -25,6 +25,12 @@ const tokenResult = await createTokenFile(tokenPath);
 assert.match(tokenResult.fingerprint, /^sha256:[a-f0-9]{12}$/);
 assert.deepEqual(await loadTokenFile(tokenPath), tokenResult.verifier);
 await assert.rejects(() => createTokenFile(tokenPath), /EEXIST/);
+const cliTokenPath = path.join(root, "remote-token-cli");
+const tokenCli = spawnSync(process.execPath, [fileURLToPath(new URL("../dist/remote-token-cli.js", import.meta.url)), cliTokenPath], { encoding: "utf8" });
+assert.equal(tokenCli.status, 0);
+assert.match(tokenCli.stdout, /"fingerprint":"sha256:[a-f0-9]{12}"/);
+assert.equal(tokenCli.stdout.includes((await readFile(cliTokenPath, "utf8")).trim()), false, "generator never prints the raw token");
+await loadTokenFile(cliTokenPath);
 
 assert.throws(() => createKanmerHttpHost({}), /authorizer/);
 assert.throws(() => createKanmerHttpHost({ authorizer: { authorize: async () => ({ principal: "x" }) }, host: "0.0.0.0" }), /bind only/i);

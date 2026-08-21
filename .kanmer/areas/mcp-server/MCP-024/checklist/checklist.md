@@ -46,7 +46,7 @@
 - [ ] From a normal main checkout, run `npm run plugin:build && npm run plugin:check` and commit the generated bundle.
 - [x] Confirm only the MCP descriptions, MCP smoke, canonical tool reference, and generated bundle changed.
 - [x] Confirm no core gate/profile/document-type logic, skill file, FRD, generated doc-structure file, dependency, tool, or tool count changed.
-- [ ] Open the PR with `Kanmer: MCP-024` and identify `set_ticket_doc`/`get_ticket_doc` as the production storage surface and SKILL-021/CORE-025 as downstream consumers.
+- [x] Open the PR with `Kanmer: MCP-024` and identify `set_ticket_doc`/`get_ticket_doc` as the production storage surface and SKILL-021/CORE-025 as downstream consumers.
 - [x] Keep every failed test attempt in the implementation report rather than replacing it with the final green result.
 - [x] Stop at review readiness; do not merge or begin SKILL-021.
 

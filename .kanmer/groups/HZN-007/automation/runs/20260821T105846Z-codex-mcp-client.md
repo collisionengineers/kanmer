@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T20:55:36.084Z
+updated_at: 2026-08-21T20:58:12.241Z
 lane_limit: 3
 stop_reason:
 ---
@@ -310,3 +310,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 - 2026-08-21T20:56:00.000Z — CORE-011 independently reviewed and closed: existing merged implementation b5b332e is reachable on main; focused gates/store 95/95, full core 257/257, workspace/build/smoke rails and normal-main plugin:build/plugin:check passed. Proof written; ticket moved Review→Verifying→Done with fresh gates, released, and exact worktree/branch cleaned.
 - 2026-08-21T20:56:30.000Z — GUI-010 implementation reached Review on PR #133 at ae5aa1fe. Independent audit found a concrete path-safety gap: referencePath canonicalizes before rejecting plain filenames, allowing a traversal-normalized name such as foo/../mockup.png. Review finding sent to author; no merge. Manual visual drag/drop/open/remove remains INCONCLUSIVE.
+
+
+- 2026-08-21T20:58:12.241Z — MCP-024 implementation completed on mcp-024-sha-bound-records at 0d2b7893c93b97b8417d894e1f090201badb5b1c; PR #134 opened and ticket moved Implementing→Review after fresh gates. Report/checklist written and read back (40/41, normal-main plugin:check box intentionally open). Standard 195/195 smoke, protocol 42/42, discovery 13/13, core 257/257, GUI 350/350, HTTP 61/61, scripts 79/79, typecheck/build/verify:skills/diff-check passed; linked-worktree plugin:check refused by checkout guard and remains INCONCLUSIVE. Author stops for independent review.

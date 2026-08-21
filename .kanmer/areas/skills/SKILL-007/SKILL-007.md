@@ -2,7 +2,7 @@
 id: SKILL-007
 type: ticket
 title: 7.3 Convert phase labels to epic groups
-status: done
+status: implementing
 area: skills
 order: 1130
 assignee: claude-code
@@ -12,6 +12,7 @@ stageEntered:
   review: '2026-08-16T05:37:06.725Z'
   verifying: '2026-08-16T05:37:51.666Z'
   done: '2026-08-16T05:37:51.947Z'
+  implementing: '2026-08-21T08:55:16.141Z'
 labels:
   - v3-phase-7
 groups:
@@ -26,7 +27,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/20'
 archived: false
 created: '2026-08-16T00:31:38.845Z'
-updated: '2026-08-16T23:19:36.339Z'
+updated: '2026-08-21T08:55:16.141Z'
 ---
 
 kanmer-groom's conversion turns the `v3-phase-N` labels seeded in 0.3 into `epic`-kind groups, one per phase, each with a `context.md` pointing at its plan and FRDs. Seed `NOW`/`NEXT` horizon groups from what is actually in flight. Preview-first, idempotent.

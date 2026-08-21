@@ -2,7 +2,7 @@
 id: SKILL-002
 type: ticket
 title: 6.2 Templates
-status: done
+status: implementing
 area: skills
 order: 1080
 assignee: claude-code
@@ -12,6 +12,7 @@ stageEntered:
   review: '2026-08-16T05:25:46.730Z'
   verifying: '2026-08-16T05:26:22.711Z'
   done: '2026-08-16T05:26:22.963Z'
+  implementing: '2026-08-21T08:55:13.619Z'
 labels:
   - v3-phase-6
 groups:
@@ -25,7 +26,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/18'
 archived: false
 created: '2026-08-16T00:31:38.780Z'
-updated: '2026-08-16T23:19:36.306Z'
+updated: '2026-08-21T08:55:13.619Z'
 ---
 
 Identity first-lines on every template; the files template with two sections and the contrast rule; per-proof-type templates; group and ticket template updates for the `groups`/`profile` fields; a research summary template for deep mode.

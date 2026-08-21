@@ -36,6 +36,11 @@ function minimalEnvironment(): NodeJS.ProcessEnv {
   return env;
 }
 
+function safeFailureCode(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  return /^TUNNEL_[A-Z0-9_]+$/.test(message) ? message : "TUNNEL_START_FAILED";
+}
+
 async function stopOwnedChild(child: ChildProcess, exited: Promise<unknown>): Promise<void> {
   if (!child.killed) child.kill("SIGTERM");
   const graceful = await Promise.race([
@@ -150,7 +155,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
       throw error;
     }
     } catch (error) {
-      this.transition("failed", target, { attempt, code: error instanceof Error ? error.message : "TUNNEL_START_FAILED" });
+      this.transition("failed", target, { attempt, code: safeFailureCode(error) });
       throw error;
     } finally { this.starting = false; }
   }

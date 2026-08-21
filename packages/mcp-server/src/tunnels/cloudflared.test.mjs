@@ -126,3 +126,17 @@ test("readiness failure waits for the owned child to exit before cleanup", async
     assert.equal(stopped, true);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
+
+test("unexpected startup text never escapes through adapter status", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-redaction-"));
+  try {
+    const credentials = path.join(directory, "credentials.json");
+    await writeFile(credentials, "{}", { mode: 0o600 });
+    const adapter = createCloudflaredAdapter({
+      executable: process.execPath, tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", credentialsFile: credentials,
+      hostname: "kanmer.example.test", validateExecutable: async () => { throw new Error("C:/secrets/Bearer-canary"); },
+    });
+    await assert.rejects(() => adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /Bearer-canary/);
+    assert.equal(adapter.getStatus().code, "TUNNEL_START_FAILED");
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});

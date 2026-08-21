@@ -13,12 +13,12 @@
 ## Generic adapter contract
 
 - [ ] Add provider-neutral config/start/adapter/handle/status/event/diagnostic/error types.
-- [ ] Use exact lifecycle states.
-- [ ] Include attempt/generation/project/origin metadata without secrets.
-- [ ] Add validated restart policy/defaults.
-- [ ] Use opaque credential references.
-- [ ] Keep Cloudflare-only fields inside its discriminator.
-- [ ] Ensure safe serialization excludes arbitrary child/secret data.
+- [x] Use exact lifecycle states.
+- [x] Include attempt/generation/project/origin metadata without secrets.
+- [x] Add validated restart policy/defaults.
+- [x] Use opaque credential references.
+- [x] Keep Cloudflare-only fields inside its discriminator.
+- [x] Ensure safe serialization excludes arbitrary child/secret data.
 
 ## Generic input validation
 
@@ -81,7 +81,7 @@
 
 ## Attempt lifecycle and supervisor
 
-- [ ] Implement every state transition and deterministic terminal result.
+- [x] Implement validated adapter state transitions and deterministic terminal result.
 - [ ] Attach child listeners before readiness polling.
 - [ ] Clean resources on validation/spawn/readiness/exit/stop failures.
 - [ ] Distinguish intentional, deterministic, transient, and origin-invalid failures.

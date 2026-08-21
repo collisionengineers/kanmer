@@ -23,8 +23,8 @@
 - [x] PR merge verified (`gh pr view --json state,mergedAt`): PR #97 merged 2026-08-21 at `2ab18caddef64a03d33270fc9b34ea42da387f88`
 - [x] proof.md finalised (PR URL + merge date appended)
 - [x] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/gui-081`
-- [ ] `git branch -d gui-081-withdraw-gate-help` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-081`
+- [x] `git branch -d gui-081-withdraw-gate-help` (`-D` if squash/rebase-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

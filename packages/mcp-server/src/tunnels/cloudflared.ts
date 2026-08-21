@@ -120,14 +120,28 @@ export class CloudflaredAdapter implements TunnelAdapter {
       const emitLogs = (line: string) => this.diagnostics.write(line).forEach((event) => this.options.onLog?.(event));
       spawned.stdout.on("data", emitLogs);
       spawned.stderr.on("data", emitLogs);
-      await new Promise<void>((resolve, reject) => {
-        spawned.once("spawn", resolve);
-        spawned.once("error", reject);
-      });
+      // Register exit before awaiting spawn.  A child can fail between spawn's
+      // creation and its event delivery; registering afterward loses that
+      // terminal event and can leave readiness hanging forever.
       const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => spawned.once("exit", (code, signal) => resolve({ code, signal })));
       childExited = exited;
       void exited.then(() => this.diagnostics.flush().forEach((event) => this.options.onLog?.(event)));
-      await (this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`) ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${metricsPort}/ready` }));
+      await Promise.race([
+        new Promise<void>((resolve, reject) => {
+        spawned.once("spawn", resolve);
+        spawned.once("error", reject);
+        }),
+        exited.then(() => { throw new Error("TUNNEL_CHILD_EXITED_BEFORE_READY"); }),
+      ]);
+      // A child that has already exited cannot become ready.  Race readiness
+      // against the owned process so a malformed or unavailable metrics
+      // endpoint never hides an immediate provider failure behind its timeout.
+      const readiness = this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`)
+        ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${metricsPort}/ready` });
+      await Promise.race([
+        readiness,
+        exited.then(() => { throw new Error("TUNNEL_CHILD_EXITED_BEFORE_READY"); }),
+      ]);
       const cleanup = () => rm(directory, { recursive: true, force: true });
       const cleanupPromise = exited.then(cleanup, cleanup);
       let intentionalStop = false;

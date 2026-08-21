@@ -127,6 +127,29 @@ test("readiness failure waits for the owned child to exit before cleanup", async
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
+test("an owned child exit fails the attempt without waiting for readiness timeout", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-exit-"));
+  try {
+    const credentials = path.join(directory, "credentials.json");
+    await writeFile(credentials, "{}", { mode: 0o600 });
+    const fakeSpawn = () => {
+      const child = new EventEmitter();
+      child.pid = 4321; child.killed = false;
+      child.stdout = new PassThrough(); child.stderr = new PassThrough();
+      child.kill = () => { child.killed = true; return true; };
+      queueMicrotask(() => { child.emit("spawn"); child.emit("exit", 9, null); });
+      return child;
+    };
+    const adapter = createCloudflaredAdapter({
+      executable: process.execPath, tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", credentialsFile: credentials,
+      hostname: "kanmer.example.test", metricsPort: 43125, validateExecutable: async () => {},
+      waitForReady: () => new Promise(() => {}),
+    }, fakeSpawn);
+    await assert.rejects(() => adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /TUNNEL_CHILD_EXITED_BEFORE_READY/);
+    assert.equal(adapter.getStatus().code, "TUNNEL_CHILD_EXITED_BEFORE_READY");
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
 test("unexpected startup text never escapes through adapter status", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-redaction-"));
   try {

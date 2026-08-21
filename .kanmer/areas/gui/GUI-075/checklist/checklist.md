@@ -27,7 +27,7 @@
 ## Verification
 
 - [x] Core tests: 266 passed, exit 0.
-- [x] GUI tests: 354 passed across 38 files, exit 0.
+- [x] GUI tests: 355 passed across 38 files, exit 0.
 - [x] Focused dispatch/settings tests: 5 passed, exit 0.
 - [x] GUI typecheck and core build exit 0.
 - [x] GUI build exit 0 after correcting the renderer IPC boundary.

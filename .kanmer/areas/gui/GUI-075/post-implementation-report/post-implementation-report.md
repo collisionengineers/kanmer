@@ -30,7 +30,7 @@ No authenticated provider was started and no model-positive/negative live sessio
 ## Verification commands
 
 - `npm test -w @kanmer/core -- --run`: 266 tests / 13 files, exit 0.
-- `npm test -w @kanmer/gui -- --run`: 354 tests / 38 files, exit 0 (includes 45.864s Kanmer Git suite).
+- `npm test -w @kanmer/gui -- --run`: 355 tests / 38 files, exit 0 (includes 45.864s Kanmer Git suite).
 - `npm test -w @kanmer/gui -- --run src/main/dispatch.test.ts src/main/settings.test.ts`: 5 tests, exit 0.
 - `npm run typecheck -w @kanmer/gui`: exit 0.
 - `npm run build -w @kanmer/core`: exit 0.

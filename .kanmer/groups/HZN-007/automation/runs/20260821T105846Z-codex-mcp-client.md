@@ -387,3 +387,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-21T23:00:46.333Z — DOC-005 reached Review after fresh enter-review gates passed. PR #138 (75dc1ad955369db2cd0e85bd486441db94913c5e) is open on doc-005-operating-rule; it fixes malformed shorthand PR links in the historical DOC-005 release-notes implementation and adds a regression test. Checklist/report/scratch are written and read back; verify:agents-block 31/31, script tests 80/80, typecheck, release-notes output, build:core and diff-check passed. The first missing-core-dist release-notes exit 1 remains recorded. Stop for independent root review; no merge or cleanup.
+
+- 2026-08-21T23:01:38.033Z — GUI-016 closeout complete: PR #24 merge cfd41006e924664f4f3fb2c3feb5dce09551822b verified; branch gui-016-dispatch-task-picker deleted, .worktrees/gui-016 removed, fetch --prune/worktree prune completed, and ticket release confirmed. Final board/checklist readback complete; no source changes.

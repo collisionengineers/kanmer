@@ -1,0 +1,137 @@
+name: Release verification
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-verify-${{ github.repository }}-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release-verify:
+    name: release-verify
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out the pushed tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Validate tag and package versions
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "release verification requires a v<MAJOR.MINOR.PATCH> tag: $TAG_NAME" >&2
+            exit 1
+          fi
+          VERSION="${TAG_NAME#v}"
+          VERSION="$VERSION" node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+
+          const version = process.env.VERSION;
+          const files = [
+            "package.json",
+            "apps/gui/package.json",
+            "plugins/kanmer/.claude-plugin/plugin.json",
+            "plugins/kanmer/.codex-plugin/plugin.json",
+          ];
+          const mismatches = [];
+          for (const file of files) {
+            const actual = JSON.parse(readFileSync(file, "utf8")).version;
+            if (actual !== version) mismatches.push(`${file}: ${actual} (expected ${version})`);
+          }
+          if (mismatches.length > 0) {
+            console.error("tag/package version mismatch:");
+            for (const mismatch of mismatches) console.error(`  ${mismatch}`);
+            process.exit(1);
+          }
+          console.log(`validated release version ${version} for ${files.length} manifests`);
+          NODE
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run the authoritative verification rail
+        run: npm run verify
+
+      - name: Build and check the packaged updater
+        run: npm run dist:check
+
+      - name: Verify published release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          max_attempts=10
+          sleep_seconds=60
+          attempt=1
+          while true; do
+            echo "release asset verification attempt $attempt/$max_attempts"
+            set +e
+            node scripts/verify-release-assets.mjs "$VERSION"
+            result=$?
+            set -e
+
+            if [[ "$result" -eq 0 ]]; then
+              {
+                echo "### Release verification"
+                echo "- tag: $GITHUB_REF_NAME"
+                echo "- version: $VERSION"
+                echo "- local artifacts: apps/gui/release/"
+                echo "- asset verification: PASS (attempt $attempt/$max_attempts)"
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+
+            if [[ "$result" -eq 2 ]]; then
+              echo "asset verification could not run; not retrying an execution/authentication failure" >&2
+              {
+                echo "### Release verification"
+                echo "- tag: $GITHUB_REF_NAME"
+                echo "- version: $VERSION"
+                echo "- local artifacts: apps/gui/release/"
+                echo "- asset verification: INCONCLUSIVE (exit 2)"
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 2
+            fi
+
+            if [[ "$result" -ne 1 ]]; then
+              echo "asset verification returned unexpected exit $result" >&2
+              exit "$result"
+            fi
+
+            if [[ "$attempt" -ge "$max_attempts" ]]; then
+              {
+                echo "### Release verification"
+                echo "- tag: $GITHUB_REF_NAME"
+                echo "- version: $VERSION"
+                echo "- local artifacts: apps/gui/release/"
+                echo "- asset verification: FAIL after $max_attempts attempts"
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+
+            echo "release is incomplete so far; retrying in ${sleep_seconds}s"
+            sleep "$sleep_seconds"
+            attempt=$((attempt + 1))
+          done

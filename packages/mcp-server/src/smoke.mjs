@@ -4,6 +4,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
+import matter from "gray-matter";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1054,6 +1055,287 @@ try {
   check(
     "scratch is not counted among the pipeline docs",
     probeDocs.docs["scratch-research"] === undefined,
+  );
+
+  // SHA-bound review/proof records (MCP-024): frontmatter is stored as plain
+  // Markdown, written whole-file through set_ticket_doc, and parsed here with
+  // the same gray-matter library that future gate consumers must use.
+  const planWrite = await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: gpId, doc: "plan", content: "# Review plan\n\nCheck the shipped head SHA.\n" },
+  });
+  check("record fixture accepts a plan document", planWrite.isError !== true);
+  const planDoc = JSON.parse(
+    textOf(await client.callTool({ name: "get_ticket_doc", arguments: { id: gpId, doc: "plan" } })),
+  );
+  const recordTicket = JSON.parse(
+    textOf(await client.callTool({ name: "get_item", arguments: { id: gpId } })),
+  );
+  const reviewHeadSha = "a".repeat(40);
+  const reviewMarkdown = `---
+kind: review-attestation
+pr: "123"
+head_sha: "${reviewHeadSha}"
+verdict: pass
+reviewer: "smoke-reviewer"
+independent: true
+plan_hash: "${planDoc.version}"
+ticket_updated: "${recordTicket.updated}"
+findings:
+  - id: F-001
+    severity: minor
+    summary: "The fixture has a minor documentation note."
+    disposition: accepted-risk
+    reason: "The note is outside this smoke's implementation scope."
+  - id: F-002
+    severity: note
+    summary: "A downstream ticket owns the follow-up."
+    disposition: deferred-to-ticket
+    ticket: "MCP-025"
+---
+
+Initial review body.
+`;
+  const reviewWrite = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "set_ticket_doc",
+        arguments: { id: gpId, doc: "scratch/review", content: reviewMarkdown },
+      }),
+    ),
+  );
+  const reviewRead = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "get_ticket_doc",
+        arguments: { id: gpId, doc: "scratch/review" },
+      }),
+    ),
+  );
+  const reviewMatter = matter(reviewRead.content);
+  check(
+    "review attestation round-trips through scratch/review with a version",
+    reviewWrite.doc === "scratch/review" &&
+      reviewRead.exists &&
+      reviewRead.version === reviewWrite.version &&
+      reviewRead.content.includes("Initial review body") &&
+      typeof reviewRead.version === "string",
+    reviewRead.version,
+  );
+  check(
+    "gray-matter parses every review top-level field and enum",
+    reviewMatter.data.kind === "review-attestation" &&
+      reviewMatter.data.pr === "123" &&
+      reviewMatter.data.head_sha === reviewHeadSha &&
+      reviewMatter.data.verdict === "pass" &&
+      reviewMatter.data.reviewer === "smoke-reviewer" &&
+      reviewMatter.data.independent === true &&
+      reviewMatter.data.plan_hash === planDoc.version &&
+      reviewMatter.data.ticket_updated === recordTicket.updated &&
+      Array.isArray(reviewMatter.data.findings),
+    JSON.stringify(reviewMatter.data),
+  );
+  check(
+    "review findings preserve IDs, severities, summaries, dispositions and remediation fields",
+    reviewMatter.data.findings.length === 2 &&
+      reviewMatter.data.findings[0].id === "F-001" &&
+      reviewMatter.data.findings[0].severity === "minor" &&
+      reviewMatter.data.findings[0].summary.includes("minor") &&
+      reviewMatter.data.findings[0].disposition === "accepted-risk" &&
+      reviewMatter.data.findings[0].reason.includes("outside") &&
+      reviewMatter.data.findings[1].id === "F-002" &&
+      reviewMatter.data.findings[1].severity === "note" &&
+      reviewMatter.data.findings[1].disposition === "deferred-to-ticket" &&
+      reviewMatter.data.findings[1].ticket === "MCP-025",
+  );
+  const reviewReplacement = `---
+kind: review-attestation
+pr: "123"
+head_sha: "${reviewHeadSha}"
+verdict: needs-changes
+reviewer: "smoke-reviewer"
+independent: true
+plan_hash: "${planDoc.version}"
+ticket_updated: "${recordTicket.updated}"
+findings: []
+---
+
+Replacement review body.
+`;
+  const reviewReplaceResult = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "set_ticket_doc",
+        arguments: {
+          id: gpId,
+          doc: "scratch/review",
+          content: reviewReplacement,
+          expected_version: reviewRead.version,
+        },
+      }),
+    ),
+  );
+  const reviewReplacedRead = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "get_ticket_doc",
+        arguments: { id: gpId, doc: "scratch/review" },
+      }),
+    ),
+  );
+  check(
+    "review replacement is whole-file and changes the content version",
+    reviewReplaceResult.version !== reviewRead.version &&
+      reviewReplacedRead.version === reviewReplaceResult.version &&
+      reviewReplacedRead.content.includes("Replacement review body") &&
+      !reviewReplacedRead.content.includes("Initial review body") &&
+      matter(reviewReplacedRead.content).data.verdict === "needs-changes",
+  );
+  const staleReview = await client.callTool({
+    name: "set_ticket_doc",
+    arguments: {
+      id: gpId,
+      doc: "scratch/review",
+      content: reviewMarkdown,
+      expected_version: reviewRead.version,
+    },
+  });
+  check(
+    "review replacement rejects a stale expected_version",
+    staleReview.isError === true && textOf(staleReview).includes("Conflict"),
+  );
+
+  const proofSha = "b".repeat(40);
+  const proofFail = `---
+kind: proof-record
+merged_sha: "${proofSha}"
+environment: "smoke sandbox / Node ${process.version}"
+verified_at: "2026-08-21T00:00:00.000Z"
+result: FAIL
+attempts:
+  - attempted_at: "2026-08-21T00:00:00.000Z"
+    command: "npm test"
+    cwd: "."
+    exit_code: 1
+    result: FAIL
+    summary: "The first verification attempt failed."
+---
+
+First proof attempt failed.
+`;
+  const proofFailWrite = JSON.parse(
+    textOf(await client.callTool({ name: "set_ticket_doc", arguments: { id: gpId, doc: "proof", content: proofFail } })),
+  );
+  const proofFailRead = JSON.parse(
+    textOf(await client.callTool({ name: "get_ticket_doc", arguments: { id: gpId, doc: "proof" } })),
+  );
+  const proofFailMatter = matter(proofFailRead.content);
+  check(
+    "proof record round-trips a failed attempt with exact fields",
+    proofFailMatter.data.kind === "proof-record" &&
+      proofFailMatter.data.merged_sha === proofSha &&
+      proofFailMatter.data.environment.includes("smoke sandbox") &&
+      proofFailMatter.data.verified_at === "2026-08-21T00:00:00.000Z" &&
+      proofFailMatter.data.result === "FAIL" &&
+      proofFailMatter.data.attempts.length === 1 &&
+      proofFailMatter.data.attempts[0].exit_code === 1 &&
+      proofFailMatter.data.attempts[0].result === "FAIL",
+    JSON.stringify(proofFailMatter.data),
+  );
+  const gatesAfterFailedProof = JSON.parse(
+    textOf(await client.callTool({ name: "get_doc_gates", arguments: { id: gpId } })),
+  );
+  const proofGateAfterFailure = gatesAfterFailedProof.boundaries
+    .find((boundary) => boundary.boundary === "enter-done")
+    ?.requirements.find((requirement) => requirement.requirement === "proof");
+  check(
+    "a FAIL proof still satisfies the existence-only proof gate",
+    proofGateAfterFailure?.satisfied === true,
+    JSON.stringify(proofGateAfterFailure),
+  );
+  const proofPass = `---
+kind: proof-record
+merged_sha: "${proofSha}"
+environment: "smoke sandbox / Node ${process.version}"
+verified_at: "2026-08-21T00:01:00.000Z"
+result: PASS
+attempts:
+  - attempted_at: "2026-08-21T00:00:00.000Z"
+    command: "npm test"
+    cwd: "."
+    exit_code: 1
+    result: FAIL
+    summary: "The first verification attempt failed."
+  - attempted_at: "2026-08-21T00:01:00.000Z"
+    command: "npm test"
+    cwd: "."
+    exit_code: 0
+    result: PASS
+    summary: "The rerun passed after the recorded failure."
+---
+
+Second proof attempt passed; the first failure is retained.
+`;
+  const proofPassWrite = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "set_ticket_doc",
+        arguments: { id: gpId, doc: "proof", content: proofPass, expected_version: proofFailRead.version },
+      }),
+    ),
+  );
+  const proofPassRead = JSON.parse(
+    textOf(await client.callTool({ name: "get_ticket_doc", arguments: { id: gpId, doc: "proof" } })),
+  );
+  const proofPassMatter = matter(proofPassRead.content);
+  check(
+    "proof rewrite retains failed then passed attempts in chronological order",
+    proofPassWrite.version !== proofFailRead.version &&
+      proofPassMatter.data.result === "PASS" &&
+      proofPassMatter.data.attempts.length === 2 &&
+      proofPassMatter.data.attempts[0].result === "FAIL" &&
+      proofPassMatter.data.attempts[0].exit_code === 1 &&
+      proofPassMatter.data.attempts[1].result === "PASS" &&
+      proofPassMatter.data.attempts[1].exit_code === 0 &&
+      proofPassMatter.data.attempts[0].attempted_at < proofPassMatter.data.attempts[1].attempted_at,
+    JSON.stringify(proofPassMatter.data.attempts),
+  );
+
+  const scratchFixture = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "create_item",
+        arguments: { type: "ticket", title: "Scratch path probe", profile: "custom" },
+      }),
+    ),
+  );
+  await client.callTool({
+    name: "append_scratch",
+    arguments: { id: scratchFixture.id, slug: "review", content: "ordinary scratch note" },
+  });
+  const ordinaryReviewScratch = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "get_ticket_doc",
+        arguments: { id: scratchFixture.id, doc: "scratch/review" },
+      }),
+    ),
+  );
+  check(
+    "ordinary append_scratch(slug: review) maps to scratch/review.md",
+    ordinaryReviewScratch.exists && ordinaryReviewScratch.content.includes("ordinary scratch note"),
+  );
+  const sourceDescription = fs.readFileSync(path.join(__dirname, "index.ts"), "utf8");
+  const toolReference = fs.readFileSync(
+    path.resolve(__dirname, "../../..", "plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md"),
+    "utf8",
+  );
+  check(
+    "MCP descriptions and canonical reference teach scratch/<slug>, not retired scratch-<slug>",
+    !sourceDescription.includes("scratch-<slug>") &&
+      !toolReference.includes("scratch-<slug>") &&
+      sourceDescription.includes("scratch/<slug>") &&
+      toolReference.includes("scratch/<slug>"),
   );
 
   // Board-level doc model + a no-op migrate dry run.

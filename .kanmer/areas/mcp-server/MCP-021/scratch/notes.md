@@ -17,3 +17,5 @@ Optional real-binary check: `Get-Command cloudflared` returned no executable in 
 Executable-validation checkpoint: commit 97974da adds bounded direct `cloudflared --version` and `cloudflared tunnel --help` validation before any tunnel spawn, with a PATH-only child environment and fail-closed version/help errors. Fake tests inject this boundary; real validation remains unavailable because no cloudflared binary is installed. Focused suite 17/17 and typecheck pass.
 
 Shutdown checkpoint: commit 5158976 adds exact-child graceful SIGTERM with a bounded 5-second force fallback (Windows `taskkill /pid <owned pid> /T /F`, POSIX SIGKILL). It never enumerates or targets unrelated processes. Focused typecheck/tests pass.
+
+Regression smoke evidence: `npm run smoke:http` passed HTTP initialize/tools/list/session/delete; `npm run smoke:protocol` passed 30/30 across four protocol versions. The existing MCP surface remains exactly 30 tools, so the tunnel modules did not alter stdio or tool registration.

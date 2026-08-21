@@ -43,3 +43,11 @@ git diff --check
 ```
 
 Expected evidence: 175/175 MCP smoke checks, 30/30 raw-protocol checks, 13/13 discovery checks, and plugin-sync reporting 30 tools with matching bundle bytes. The author also ran the focused core document suite (49/49), core and MCP typechecks, the complete core suite (254/254), and the isolated normal-checkout plugin build/check.
+
+
+## Reconciliation — 2026-08-21
+
+- Current merged-main workspace `npm run typecheck` exits 0 across all workspaces; the historical UI demo mismatch noted above is no longer present on the current base.
+- `npm run verify` remains unavailable on this base (missing script), so no verify pass is claimed.
+- The two fixture cases and MCP-023 integration are explicit deferred/downstream contracts, not silently counted as implementation evidence; checklist dispositions record those boundaries and [[MCP-023]] remains their owner.
+- Independent post-hoc review is recorded in `scratch/independent-review.md`.

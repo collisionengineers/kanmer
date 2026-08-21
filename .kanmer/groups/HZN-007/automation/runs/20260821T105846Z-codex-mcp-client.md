@@ -245,3 +245,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T19:28:30.860Z — GUI-084 completed the native-notification reconciliation on merged main d9379d32: focused classifier 7/7, GUI 338/338, typecheck/build/diff-check passed; npm run verify retained exit 1 only at linked-worktree plugin:check after all tests/smokes/typechecks passed. Report and ticket body were written, checklist is 5/6 with proof/closeout pending, no code/PR change was made, and the ticket moved Implementing→Review for independent root review.
 
 - 2026-08-21T19:32:28.936Z — GUI-105 assigned to /root/gui082_executor on gui-105-document-path-inventory/.worktrees/gui-105 after complete packet, HZN-007 context, MCP-029/GUI-096 links, FRD-003, and gates were reread. Existing core/MCP documentPaths inventory is authoritative; implement only the GUI Editor exact-path selector/editing scope, preserve scratch/reference/assets boundaries, and stop at Review for independent root review.
+
+
+- 2026-08-21T19:36:07.054Z — MCP-008 assigned: reread the full packet, FRD-022/FRD-012 context, and live gates; preparing→implementing was passable. Fresh .worktrees/mcp-008 / mcp-008-headless-mcpb registered from origin/main 470b2fad. Scope is headless deterministic MCPB build/check/release/docs only; no HTTP, server-semantics, or GUI-075 work. Author will stop at Review.

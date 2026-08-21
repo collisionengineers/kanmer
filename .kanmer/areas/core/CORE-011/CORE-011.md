@@ -2,7 +2,7 @@
 id: CORE-011
 type: ticket
 title: Gates cannot tell a document was written after the work
-status: verifying
+status: done
 area: core
 order: 30
 assignee: core011-take
@@ -11,6 +11,7 @@ stageEntered:
   verifying: '2026-08-21T08:55:06.468Z'
   review: '2026-08-21T08:55:06.681Z'
   implementing: '2026-08-21T08:55:06.886Z'
+  done: '2026-08-21T20:55:49.311Z'
 labels:
   - bug
   - v3-phase-2
@@ -27,7 +28,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/15'
 archived: false
 created: '2026-08-16T04:24:49.811Z'
-updated: '2026-08-21T20:54:33.792Z'
+updated: '2026-08-21T20:55:49.311Z'
 ---
 
 Gates check that a document exists, never that it existed before the work it

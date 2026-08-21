@@ -37,6 +37,24 @@ function clientFor(overrides: Partial<ProjectClient> = {}): ProjectClient {
   } as unknown as ProjectClient;
 }
 
+function documentClient(paths: string[], overrides: Partial<ProjectClient> = {}): ProjectClient {
+  return clientFor({
+    getDocsInfo: vi.fn().mockResolvedValue({
+      docs: paths.length ? { research: true } : {},
+      counts: paths.length ? { research: paths.length } : {},
+      documentPaths: paths,
+      checklist: null,
+      references: [],
+      scratch: [],
+    }),
+    getDocTypes: vi.fn().mockResolvedValue([{ id: "research", name: "Research" }]),
+    getDoc: vi.fn().mockImplementation((_id: string, doc: string) =>
+      Promise.resolve({ content: `content for ${doc}`, version: `version-${doc}` }),
+    ),
+    ...overrides,
+  });
+}
+
 function renderEditor(client: ProjectClient, selected = item) {
   return render(
     <ClientContext.Provider value={client}>
@@ -52,8 +70,8 @@ describe("Editor scratch and group context", () => {
     const client = clientFor();
     renderEditor(client);
 
-    await screen.findByText("Shared context — EPIC-009");
-    expect(screen.getByRole("button", { name: /Scratch/ })).toBeTruthy();
+    await screen.findByRole("button", { name: /Scratch/ });
+    expect(screen.getByText("Shared context — EPIC-009")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Plan/ })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Scratch/ }));
     await waitFor(() => expect(client.getDoc).toHaveBeenCalledWith("GUI-096", "scratch/review"));
@@ -92,6 +110,86 @@ describe("Editor scratch and group context", () => {
     const client = clientFor({ getGroupDoc: vi.fn().mockResolvedValue(null) });
     renderEditor(client);
     expect(await screen.findByText(/No context.md is available for EPIC-009/)).toBeTruthy();
+  });
+});
+
+describe("Editor document path inventory", () => {
+  it("shows and opens a named-only research document through its exact path", async () => {
+    const client = documentClient(["research/portable-connect-integration.md"]);
+    renderEditor(client);
+    fireEvent.click(await screen.findByRole("button", { name: /Research/ }));
+    await waitFor(() => expect(client.getDoc).toHaveBeenCalledWith("GUI-096", "research/portable-connect-integration.md"));
+    expect(screen.getByRole("button", { name: "research/portable-connect-integration.md" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText("portable-connect-integration.md")).toBeTruthy();
+  });
+
+  it("lists nested duplicate basenames and prefers the conventional index", async () => {
+    const paths = ["research/a/notes.md", "research/b/notes.md", "research/research.md"];
+    const client = documentClient(paths);
+    renderEditor(client);
+    fireEvent.click(await screen.findByRole("button", { name: /Research/ }));
+    await waitFor(() => expect(client.getDoc).toHaveBeenCalledWith("GUI-096", "research/research.md"));
+    for (const path of paths) expect(screen.getByRole("button", { name: path })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "research/a/notes.md" }));
+    await waitFor(() => expect(client.getDoc).toHaveBeenCalledWith("GUI-096", "research/a/notes.md"));
+  });
+
+  it("passes an exact named path through save and protects dirty path switches", async () => {
+    const paths = ["research/a/notes.md", "research/b/notes.md"];
+    const client = documentClient(paths);
+    renderEditor(client);
+    fireEvent.click(await screen.findByRole("button", { name: /Research/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "research/a/notes.md" }));
+    await waitFor(() => expect(screen.getByText("content for research/a/notes.md")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(document.querySelector("textarea")!, { target: { value: "edited" } });
+    fireEvent.click(screen.getByRole("button", { name: "research/b/notes.md" }));
+    expect(screen.getByText(/Discard changes to GUI-096 research\/a\/notes\.md/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await waitFor(() => expect(client.getDoc).toHaveBeenCalledWith("GUI-096", "research/b/notes.md"));
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(document.querySelector("textarea")!, { target: { value: "saved" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save research/b/notes.md" }));
+    await waitFor(() => expect(client.setDoc).toHaveBeenCalledWith(
+      "GUI-096", "research/b/notes.md", "saved", { expectedVersion: "version-research/b/notes.md" },
+    ));
+  });
+
+  it("keeps the conventional index path available for an empty type", async () => {
+    const client = documentClient([], {
+      getDoc: vi.fn().mockResolvedValue({ content: null, version: null }),
+    });
+    renderEditor(client);
+    fireEvent.click(await screen.findByRole("button", { name: /Research/ }));
+    await waitFor(() => expect(client.getDoc).toHaveBeenCalledWith("GUI-096", "research/research.md"));
+    expect(screen.getByText("No research/research.md yet.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Create research/research.md" }));
+    expect(screen.getByRole("button", { name: "Save research/research.md" })).toBeTruthy();
+  });
+
+  it("retains the selected path when the live inventory gains another document", async () => {
+    const responses = [
+      { docs: { research: true }, counts: { research: 2 }, documentPaths: ["research/a.md", "research/research.md"], checklist: null, references: [], scratch: [] },
+      { docs: { research: true }, counts: { research: 3 }, documentPaths: ["research/a.md", "research/b.md", "research/research.md"], checklist: null, references: [], scratch: [] },
+    ];
+    let latest = responses[0];
+    const client = documentClient(responses[0].documentPaths, {
+      getDocsInfo: vi.fn().mockImplementation(() => {
+        latest = responses.shift() ?? latest;
+        return Promise.resolve(latest);
+      }),
+    });
+    const view = renderEditor(client);
+    fireEvent.click(await screen.findByRole("button", { name: /Research/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "research/a.md" }));
+    await waitFor(() => expect(client.getDoc).toHaveBeenCalledWith("GUI-096", "research/a.md"));
+    view.rerender(
+      <ClientContext.Provider value={client}>
+        <Editor item={item} board={board} items={[item]} knownIds={new Set([item.id])} changeSignal={1} onClose={vi.fn()} onNavigate={vi.fn()} onSave={vi.fn()} />
+      </ClientContext.Provider>,
+    );
+    await waitFor(() => expect(screen.getByRole("button", { name: "research/b.md" })).toBeTruthy());
+    expect(screen.getByRole("button", { name: "research/a.md" }).getAttribute("aria-pressed")).toBe("true");
   });
 });
 

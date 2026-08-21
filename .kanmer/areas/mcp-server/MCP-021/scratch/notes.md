@@ -71,3 +71,5 @@ Commit `fc4d076` hardens generated cloudflared runtime files: private directory 
 Commit `4dfa576` gives `CloudflaredAdapter` a provider-neutral observable lifecycle: immutable status snapshots and subscription callbacks cover stopped → validating → starting → connected → stopping → stopped, with redacted metadata and failed terminal status. It rejects a concurrent second start and records non-secret public endpoint/PID/project metadata. The standalone fake-provider test asserts the full sequence. Focused suite passed 26/26, MCP typecheck/diff clean.
 
 Commit `c30324a` makes intentional stop await protected runtime-directory cleanup and proves the generated config is absent afterward. Focused suite passed 26/26, MCP typecheck/diff clean.
+
+Commit `d1ff45e` allowlists status failure codes to exact `TUNNEL_*` identifiers; arbitrary startup exception text (including paths/bearer canaries) becomes `TUNNEL_START_FAILED`. Regression suite passed 27/27, MCP typecheck/diff clean.

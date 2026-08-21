@@ -192,7 +192,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
         this.transition(intentionalStop ? "stopped" : "failed", target, {
           attempt,
           pid: spawned.pid,
-          ...(intentionalStop ? {} : { code: result.code === null ? "signal" : String(result.code) }),
+          ...(intentionalStop ? {} : { code: result.code === null ? "TUNNEL_PROCESS_SIGNAL" : "TUNNEL_PROCESS_EXIT" }),
         });
       });
       return handle;

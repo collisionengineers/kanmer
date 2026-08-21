@@ -18,6 +18,7 @@ test("provider-neutral start validation rejects unsafe targets, unknown modes, a
   assert.doesNotThrow(() => validateTunnelStartInput(input));
   assert.throws(() => validateTunnelStartInput({ ...input, config: { ...input.config, mode: "quick" } }), /TUNNEL_PROVIDER_CONFIG_INVALID/);
   assert.throws(() => validateTunnelStartInput({ ...input, target: { ...input.target, endpoint: "http://192.168.0.1:43123/mcp" } }), /TUNNEL_TARGET_INVALID/);
+  assert.throws(() => validateTunnelStartInput({ ...input, target: undefined }), /TUNNEL_TARGET_INVALID/);
   assert.throws(() => validateTunnelStartInput({ ...input, restartPolicy: { maxRestarts: 11 } }), /TUNNEL_RESTART_POLICY_INVALID/);
 });
 

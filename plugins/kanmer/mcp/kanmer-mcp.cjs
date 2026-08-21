@@ -37532,7 +37532,6 @@ var StdioServerTransport = class {
 
 // src/index.ts
 var import_node_child_process = require("child_process");
-var import_node_crypto3 = require("crypto");
 var import_node_path5 = __toESM(require("path"), 1);
 var import_node_util = require("util");
 
@@ -39915,10 +39914,13 @@ var KanmerStore = class {
   async getDocsWithVersions(id, docs) {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
+    const files = docs.map((doc) => ({
+      doc,
+      file: docPathIn(loc.kind === "v2" ? loc.dir : "", doc)
+    }));
     if (loc.kind !== "v2") {
-      return docs.map((doc) => ({ doc, exists: false, content: null, version: null }));
+      return files.map(({ doc }) => ({ doc, exists: false, content: null, version: null }));
     }
-    const files = docs.map((doc) => ({ doc, file: docPathIn(loc.dir, doc) }));
     return Promise.all(
       files.map(async ({ doc, file }) => {
         if (!await pathExists(file)) {
@@ -42199,9 +42201,11 @@ function createKanmerMcpServer(policy = "local-stdio") {
   );
   return server;
 }
-function projectFingerprint() {
+async function projectFingerprint() {
   if (!rootResolved) resolveRoot();
-  return (0, import_node_crypto3.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 16);
+  const format = await store.detectFormat();
+  const { source } = await store.getBoardWithSource();
+  return projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source }).fingerprint;
 }
 async function main() {
   const stdioServer = createKanmerMcpServer("local-stdio");

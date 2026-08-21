@@ -38,6 +38,11 @@ const { createKanmerHttpHost, BearerAuthorizer, createTokenFile, generateBearerT
 const cli = spawnSync(process.execPath, [fileURLToPath(new URL("../dist/http-cli.js", import.meta.url))], { encoding: "utf8" });
 assert.equal(cli.status, 1);
 assert.match(cli.stderr, /REMOTE_AUTH_MISSING/i);
+const rawCanary = "B".repeat(43);
+const forbiddenCli = spawnSync(process.execPath, [fileURLToPath(new URL("../dist/http-cli.js", import.meta.url)), "--token", rawCanary], { encoding: "utf8" });
+assert.equal(forbiddenCli.status, 1);
+assert.match(forbiddenCli.stderr, /REMOTE_AUTH_RAW_TOKEN_FORBIDDEN/i);
+assert.equal(forbiddenCli.stderr.includes(rawCanary), false, "raw-token arguments are never echoed");
 
 const tokenPath = path.join(root, "remote-token");
 const tokenResult = await createTokenFile(tokenPath);
@@ -104,7 +109,8 @@ try {
   const ready = await host.start();
   assert.equal(ready.host, "127.0.0.1");
   assert.equal(ready.authRequired, true);
-  assert.match(ready.projectFingerprint, /^[a-f0-9]{16}$/);
+  assert.match(ready.projectFingerprint, /^kanmer-proj-v1:[a-f0-9]{64}$/);
+  assert.deepEqual(ready.supportedProtocolVersions, ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"]);
   const endpoint = ready.endpoint;
   const missing = await fetch(endpoint, { method: "POST" });
   assert.equal(missing.status, 401);
@@ -190,6 +196,7 @@ try {
   assert.equal(JSON.stringify(securityEvents).includes(generated.token), false, "security events never contain raw tokens");
   await host.close();
   await host.close();
+  assert.equal(securityEvents.filter((event) => event.kind === "kanmer-mcp-http-stopped").length, 1, "shutdown emits one stopped event");
   process.stdout.write("PASS  HTTP initialize/tools/list/session/delete smoke\n");
 } finally {
   await host.close();

@@ -17,7 +17,7 @@
     "dev": "tsup --watch",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "test:http": "npm run build && node --test src/http-auth.test.mjs src/http-secret.test.mjs src/remote-host.test.mjs src/remote-cli.test.mjs src/tunnels/cloudflared-config.test.mjs src/tunnels/cloudflared-validate.test.mjs src/tunnels/cloudflared.test.mjs src/tunnels/fixtures/fake-cloudflared.test.mjs src/tunnels/logs.test.mjs src/tunnels/readiness.test.mjs src/tunnels/supervisor.test.mjs"
+    "test:http": "npm run build && node --test src/http-auth.test.mjs src/http-secret.test.mjs src/http.test.mjs src/remote-host.test.mjs src/remote-cli.test.mjs src/tunnels/cloudflared-config.test.mjs src/tunnels/cloudflared-validate.test.mjs src/tunnels/cloudflared.test.mjs src/tunnels/fixtures/fake-cloudflared.test.mjs src/tunnels/logs.test.mjs src/tunnels/readiness.test.mjs src/tunnels/supervisor.test.mjs"
   },
   "dependencies": {
     "@kanmer/core": "*",

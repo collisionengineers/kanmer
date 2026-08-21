@@ -4,6 +4,7 @@ type: ticket
 title: Conduct canon enters the AGENTS.md managed block
 status: done
 area: skills
+order: 1540
 assignee: codex-mcp-client
 profile: feature
 stageEntered:
@@ -26,7 +27,7 @@ prs:
   - '77'
 archived: false
 created: '2026-08-20T10:14:57.038Z'
-updated: '2026-08-20T22:13:53.023Z'
+updated: '2026-08-21T13:02:17.535Z'
 ---
 
 ## What

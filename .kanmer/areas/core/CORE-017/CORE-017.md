@@ -4,7 +4,7 @@ type: ticket
 title: 1.5 Per-ticket scratch folder
 status: done
 area: core
-order: 170
+order: 210
 assignee: ''
 profile: custom
 requires: {}
@@ -15,7 +15,7 @@ refs:
   - docs/plans/kanmer-v2/phase-1-core-doc-model/plan.md
 archived: false
 created: '2026-08-16T05:41:17.510Z'
-updated: '2026-08-16T23:19:35.701Z'
+updated: '2026-08-21T13:02:16.820Z'
 ---
 
 Historical work, completed before this board existed. Mined from `docs/plans/kanmer-v2/phase-1-core-doc-model/plan.md`.

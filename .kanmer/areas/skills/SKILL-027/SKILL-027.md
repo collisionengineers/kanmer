@@ -4,6 +4,7 @@ type: ticket
 title: kanmer-groom gains a board-vs-reality sweep
 status: done
 area: skills
+order: 1580
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
@@ -21,7 +22,7 @@ prs:
   - '80'
 archived: false
 created: '2026-08-20T10:14:57.080Z'
-updated: '2026-08-20T22:27:29.303Z'
+updated: '2026-08-21T13:02:17.565Z'
 ---
 
 ## What

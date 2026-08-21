@@ -4,6 +4,7 @@ type: ticket
 title: kanmer-setup reconciles an AGENTS.md skeleton
 status: done
 area: skills
+order: 1550
 assignee: codex-mcp-client
 profile: feature
 stageEntered:
@@ -26,7 +27,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/79'
 archived: false
 created: '2026-08-20T10:14:57.049Z'
-updated: '2026-08-20T22:25:25.702Z'
+updated: '2026-08-21T13:02:17.541Z'
 ---
 
 ## What

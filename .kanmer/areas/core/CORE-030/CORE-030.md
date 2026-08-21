@@ -4,6 +4,7 @@ type: ticket
 title: Staleness reports .claude/skills as behind with a fix that cannot work
 status: done
 area: core
+order: 1180
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
@@ -25,7 +26,7 @@ prs:
   - '73'
 archived: false
 created: '2026-08-17T02:05:05.887Z'
-updated: '2026-08-20T21:51:14.178Z'
+updated: '2026-08-21T13:02:17.331Z'
 ---
 
 ## What

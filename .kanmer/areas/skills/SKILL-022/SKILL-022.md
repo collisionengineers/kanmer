@@ -6,7 +6,7 @@ title: >-
   context
 status: done
 area: skills
-order: 180
+order: 230
 assignee: codex-mcp-client
 profile: chore
 stageEntered:
@@ -26,7 +26,7 @@ prs:
   - '86'
 archived: false
 created: '2026-08-20T10:14:57.026Z'
-updated: '2026-08-20T23:01:49.168Z'
+updated: '2026-08-21T13:02:16.831Z'
 ---
 
 ## What

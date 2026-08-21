@@ -4,6 +4,7 @@ type: ticket
 title: AGENTS.md ownership integration verification
 status: done
 area: skills
+order: 1570
 assignee: codex-mcp-client
 profile: chore
 stageEntered:
@@ -27,7 +28,7 @@ prs:
   - '99'
 archived: false
 created: '2026-08-20T10:14:57.069Z'
-updated: '2026-08-21T01:20:46.811Z'
+updated: '2026-08-21T13:02:17.556Z'
 ---
 
 ## What

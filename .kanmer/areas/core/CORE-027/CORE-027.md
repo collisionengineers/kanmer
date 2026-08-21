@@ -4,6 +4,7 @@ type: ticket
 title: Give @kanmer/core a browser-safe subpath export
 status: done
 area: core
+order: 1160
 assignee: codex-mcp-client
 profile: feature
 stageEntered:
@@ -25,7 +26,7 @@ prs:
   - '96'
 archived: false
 created: '2026-08-16T20:18:36.563Z'
-updated: '2026-08-21T01:05:08.474Z'
+updated: '2026-08-21T13:02:17.321Z'
 ---
 
 ## What

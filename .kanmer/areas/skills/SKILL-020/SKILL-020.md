@@ -4,7 +4,7 @@ type: ticket
 title: kanmer-plan and kanmer-auto become gates-first
 status: done
 area: skills
-order: 160
+order: 200
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
@@ -24,7 +24,7 @@ prs:
   - '89'
 archived: false
 created: '2026-08-20T10:14:56.999Z'
-updated: '2026-08-20T23:19:53.800Z'
+updated: '2026-08-21T13:02:16.815Z'
 ---
 
 ## What

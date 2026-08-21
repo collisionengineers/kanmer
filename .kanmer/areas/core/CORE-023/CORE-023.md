@@ -4,6 +4,7 @@ type: ticket
 title: 'Detect when a repo''s Kanmer is older than the agent''s, and say what is stale'
 status: done
 area: core
+order: 1150
 assignee: claude-code
 profile: feature
 stageEntered:
@@ -29,7 +30,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/54'
 archived: false
 created: '2026-08-16T18:25:18.669Z'
-updated: '2026-08-21T10:57:24.867Z'
+updated: '2026-08-21T13:02:17.316Z'
 ---
 
 ## What

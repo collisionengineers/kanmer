@@ -6,7 +6,7 @@ title: >-
   board-worktree health
 status: done
 area: core
-order: 60
+order: 80
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
@@ -29,7 +29,7 @@ prs:
   - '82'
 archived: false
 created: '2026-08-20T10:14:42.524Z'
-updated: '2026-08-20T22:35:32.212Z'
+updated: '2026-08-21T13:02:16.757Z'
 ---
 
 ## What

@@ -4,6 +4,7 @@ type: ticket
 title: Delete the four pr-* review assets
 status: done
 area: skills
+order: 1520
 assignee: codex-mcp-client
 profile: chore
 stageEntered:
@@ -26,7 +27,7 @@ prs:
   - '70'
 archived: false
 created: '2026-08-16T19:17:13.249Z'
-updated: '2026-08-20T21:29:43.758Z'
+updated: '2026-08-21T13:02:17.523Z'
 ---
 
 _Owner decision 2026-08-20: delete per FRD-023 R1 — review lives in scratch/review.md, not standalone pr-* assets._

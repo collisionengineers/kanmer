@@ -4,6 +4,7 @@ type: ticket
 title: Carry the hard rules into AGENTS.md and skill prose on reconciliation
 status: done
 area: skills
+order: 1510
 assignee: claude-code
 profile: feature
 stageEntered:
@@ -28,7 +29,7 @@ prs:
   - '56'
 archived: false
 created: '2026-08-16T18:25:18.638Z'
-updated: '2026-08-17T00:17:47.473Z'
+updated: '2026-08-21T13:02:17.517Z'
 ---
 
 ## What

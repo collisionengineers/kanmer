@@ -4,7 +4,7 @@ type: ticket
 title: Give every skill an explicit numbered workflow and correct hand-offs
 status: done
 area: skills
-order: 1190
+order: 1130
 assignee: claude-code
 profile: feature
 stageEntered:
@@ -28,7 +28,7 @@ prs:
   - '#34'
 archived: false
 created: '2026-08-16T18:25:18.654Z'
-updated: '2026-08-16T23:19:36.377Z'
+updated: '2026-08-21T13:02:17.305Z'
 ---
 
 ## What

@@ -4,7 +4,7 @@ type: ticket
 title: Give a kanmer-auto run durable state on the board
 status: done
 area: skills
-order: 230
+order: 290
 assignee: codex-mcp-client
 profile: feature
 stageEntered:
@@ -31,7 +31,7 @@ prs:
   - '92'
 archived: false
 created: '2026-08-16T21:22:59.692Z'
-updated: '2026-08-20T23:50:28.337Z'
+updated: '2026-08-21T13:02:16.878Z'
 ---
 
 ## What

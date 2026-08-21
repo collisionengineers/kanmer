@@ -159,11 +159,11 @@
 
 ## Closeout — MCP-026
 
-- [x] PR merge verified (`gh pr view --json state,mergedAt`): MERGED 2026-08-21T00:25:35Z — https://github.com/collisionengineers/kanmer/pull/93
-- [x] proof.md finalised (PR URL + merge commit `62939b7` recorded)
-- [x] Moved to final stage
-- [x] Outcome recorded in ticket body ([[GUI-095]], [[MCP-021]], and [[MCP-028]] follow-ups)
-- [x] cd out of worktree; `git worktree remove .worktrees/mcp-026`
-- [x] `git branch -d mcp-026-bearer-auth` (merged branch deleted safely)
+- [x] PR merge verified (`gh pr view --json state,mergedAt`): PR #112 MERGED at `78e3faf14f9abfe2fe5cce0f38de3b72163489d6` — https://github.com/collisionengineers/kanmer/pull/112
+- [x] proof.md finalised on merged main (PR #112 URL + merge commit `78e3faf` recorded)
+- [x] Moved through Verifying to final stage
+- [x] Outcome recorded in ticket body with PR #112, merged-main proof, and [[GUI-095]], [[MCP-021]], and [[MCP-028]] follow-ups
+- [x] cd out of worktree; clean implementation worktree `.worktrees/mcp-026-finish` removed after verification
+- [x] `git branch -d mcp-026-bearer-auth-finish` (merged branch deleted safely)
 - [x] `git fetch --prune` + `git worktree prune` (remote branch deleted too)
 - [x] `take_ticket action: "release"`

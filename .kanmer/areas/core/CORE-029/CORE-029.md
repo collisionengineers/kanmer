@@ -4,6 +4,7 @@ type: ticket
 title: AGENTS.md §4 still documents v2's seven stages and configurable gates
 status: done
 area: core
+order: 1170
 assignee: codex-mcp-client
 profile: chore
 stageEntered:
@@ -26,7 +27,7 @@ prs:
   - '71'
 archived: false
 created: '2026-08-17T00:13:55.000Z'
-updated: '2026-08-20T21:35:01.963Z'
+updated: '2026-08-21T13:02:17.326Z'
 ---
 
 ## What

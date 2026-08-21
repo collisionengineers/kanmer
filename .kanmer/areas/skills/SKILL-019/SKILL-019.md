@@ -4,6 +4,7 @@ type: ticket
 title: Move OpenCode Kanmer skills to .opencode/skills
 status: done
 area: skills
+order: 1530
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
@@ -28,7 +29,7 @@ prs:
   - '63'
 archived: false
 created: '2026-08-17T02:15:59.805Z'
-updated: '2026-08-17T04:49:41.827Z'
+updated: '2026-08-21T13:02:17.529Z'
 ---
 
 ## Problem

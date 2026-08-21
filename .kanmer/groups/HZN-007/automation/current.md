@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=a35e1fd0
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-21T23:19:30.000Z
+updated_at: 2026-08-22T00:29:00+01:00
 ---
 
 # Current auto run — HZN-007
@@ -39,3 +39,6 @@ Last handoff: DOC-005 closeout complete at 2026-08-21T23:05:24.982Z; PR #138 mer
 
 
 Last handoff: SKILL-021 assigned to /root/gui082_executor on skill-021-packet-sha-skills/.worktrees/skill-021 after full packet/context/dependency/gate read and non-forced take. Implementation is limited to execute/review/verify packet and SHA paths; Review handoff pending. Author will stop at Review for independent root review/merge; GUI-017 and SKILL-003 remain untouched.
+
+
+Last handoff: SKILL-021 Review-ready at 2026-08-21T23:28:16.705Z: PR #141, commit df56503baafe3ef5a2e3fa78e2d9d3376495af12, branch skill-021-packet-sha-skills, worktree .worktrees/skill-021; checklist 51/51 and post-implementation report/scratch read back. verify:skills, diff/contract rails, build:core, and exact test:scripts rerun 80/80 pass; first fresh-worktree test:scripts missing-core-dist exit 1 retained. Independent review/merge required; author stops at Review. CORE-035 integration proof remains pending.

@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T23:19:30.000Z
+updated_at: 2026-08-22T00:29:00+01:00
 lane_limit: 3
 stop_reason:
 ---
@@ -78,7 +78,7 @@ stop_reason:
 | 34 | MCP-008 | preparing | feature; next=review; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:12.519Z |
 | 35 | MCP-023 | preparing | feature; next=review; blocked=false; blockers=MCP-022 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:13.065Z |
 | 36 | MCP-024 | preparing | fix; next=review; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:13.338Z |
-| 37 | SKILL-021 | implementing | fix; next=review; blocked=false; blockers=— | active | /root/gui082_executor | skill-021-packet-sha-skills / .worktrees/skill-021 | 1 | taken after full packet/context/dependency read | implementation in progress; exact packet/SHA skill rewrite, focused rails, report and Review handoff pending | — | 2026-08-21T23:19:30.000Z |
+| 37 | SKILL-021 | review | fix; gates pass; PR #141; independent review required | active | /root/gui082_executor | skill-021-packet-sha-skills / .worktrees/skill-021 | 1 | opened PR #141; moved Implementing→Review | commit df56503b; checklist/report 51/51 and read back; verify:skills/diff/contract rails pass; first fresh test:scripts exit 1 from missing core dist retained, build:core then exact 80/80 rerun pass; stop at Review for independent root review | 141 | 2026-08-22T00:29:00+01:00 |
 | 38 | GUI-085 | verifying | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:13.871Z |
 | 39 | MCP-017 | review | fix; gates pass; PR #105; independent review pending | active | /root/mcp017_executor | mcp-017-plugin-checkout-guard|.worktrees/mcp-017 | 1 | opened PR and moved Implementing→Review | implementation report/checklist complete; first timeout/setup failures retained; exact rerun passed; stop at Review awaiting independent reviewer | 105 | 2026-08-21T18:28:01.199Z |
 | 40 | CORE-022 | implementing | feature; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:14.459Z |
@@ -408,3 +408,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T23:18:28.760Z — SKILL-003 handoff: corrected merged decision-table provenance in d7e107b9f27a64851935310e8768fbc2c249fb75, pushed PR #140, checklist/report 10/10 and read back; verify:skills, verify:agents-block, plugin:check, table identity, residue, and diff checks pass; moved Implementing to Review for independent root review. Worktree/branch retained.
 
 - 2026-08-21T23:19:30.000Z — SKILL-021 assigned to /root/gui082_executor on fresh skill-021-packet-sha-skills/.worktrees/skill-021 after complete ticket packet, HZN-007/EPIC-009 context, MCP-023/MCP-024 dependencies, live links/activity, and get_doc_gates were reread. take_ticket succeeded without force. Scope is limited to the execute/review/verify packet, expected-project capability sniff, SHA-bound review/proof records, exact merged-SHA detached verification, focused deterministic rails, and ticket report/checklist; do not touch GUI-017 or SKILL-003. Author stops at Review for independent root review/merge.
+
+- 2026-08-22T00:29:00+01:00 — SKILL-021 implementation completed on skill-021-packet-sha-skills/.worktrees/skill-021 at df56503baafe3ef5a2e3fa78e2d9d3376495af12; PR #141 opened with Kanmer: SKILL-021. The three-file scope is bounded to execute/review/verify packet, capability, SHA-attestation, detached-merge-SHA, proof, and stop-condition choreography. checklist 51/51, report/scratch/readbacks complete; verify:skills exit 0, diff/contract rails pass, build:core exit 0, first test:scripts exit 1 from missing core dist retained, exact rerun 80/80 PASS. get_doc_gates enter-review pass; Implementing→Review moved at 2026-08-21T23:28:16.705Z. Independent root review/merge and CORE-035 integration proof remain pending; no self-review, merge, next ticket, or cleanup.

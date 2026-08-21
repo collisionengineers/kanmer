@@ -8,6 +8,8 @@ export interface RemoteHostOptions {
   readonly tunnel: TunnelAdapter;
   /** Kept low-frequency in production; injectable for deterministic tests. */
   readonly healthPollMs?: number;
+  /** Test seam for the provider-owned readiness monitor. */
+  readonly scheduleHealthPoll?: (poll: () => Promise<void>, intervalMs: number) => () => void;
   readonly onStatus?: (status: RemoteHostStatus) => void;
 }
 
@@ -25,7 +27,7 @@ export class KanmerRemoteHost {
   private readonly publicEndpoint: string;
   private ready?: Awaited<ReturnType<KanmerHttpHost["start"]>>;
   private status: RemoteHostStatus = { local: "stopped", provider: "stopped", publicVerification: "unknown" };
-  private healthTimer?: NodeJS.Timeout;
+  private cancelHealthPoll?: () => void;
   private monitoredProcess?: TunnelProcess;
   private stopped = false;
 
@@ -52,8 +54,8 @@ export class KanmerRemoteHost {
   private emit(): void { this.options.onStatus?.({ ...this.status }); }
 
   private stopHealthMonitor(): void {
-    if (this.healthTimer) clearInterval(this.healthTimer);
-    this.healthTimer = undefined;
+    this.cancelHealthPoll?.();
+    this.cancelHealthPoll = undefined;
     this.monitoredProcess = undefined;
   }
 
@@ -78,8 +80,11 @@ export class KanmerRemoteHost {
         }
       }
     };
-    this.healthTimer = setInterval(() => void check(), interval);
-    this.healthTimer.unref();
+    this.cancelHealthPoll = this.options.scheduleHealthPoll?.(check, interval) ?? (() => {
+      const timer = setInterval(() => void check(), interval);
+      timer.unref();
+      return () => clearInterval(timer);
+    })();
   }
 
   async start(): Promise<{ readonly endpoint: string }> {

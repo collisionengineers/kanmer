@@ -33,10 +33,12 @@ test("provider startup failure leaves the local authenticated HTTP host availabl
 
 test("provider readiness loss becomes degraded and a later local-ready poll recovers without restarting", async () => {
   let healthy = true;
+  let poll;
   let stop;
   const exited = new Promise((resolve) => { stop = () => resolve({ code: 0, signal: null }); });
   const remote = createKanmerRemoteHost({
     authorizer: { authorize: async () => ({ principal: "test" }) }, hostname: "kanmer.example.test", healthPollMs: 5,
+    scheduleHealthPoll: (next) => { poll = next; return () => { poll = undefined; }; },
     tunnel: { start: async () => ({
       exited,
       checkReadiness: async () => { if (!healthy) throw new Error("not ready"); },
@@ -46,10 +48,10 @@ test("provider readiness loss becomes degraded and a later local-ready poll reco
   try {
     await remote.start();
     healthy = false;
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    await poll();
     assert.equal(remote.getStatus().provider, "degraded");
     healthy = true;
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    await poll();
     assert.equal(remote.getStatus().provider, "running");
   } finally { await remote.close(); }
 });

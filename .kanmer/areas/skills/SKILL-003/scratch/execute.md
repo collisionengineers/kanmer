@@ -1,0 +1,1 @@
+2026-08-21 corrective commit d7e107b9f27a64851935310e8768fbc2c249fb75 pushed on skill-003-decision-table; PR #140 opened for the one-file canonical decision-table prose sync. Existing PR #19 implementation remains merged. Checklist/report read back; stop for independent review.

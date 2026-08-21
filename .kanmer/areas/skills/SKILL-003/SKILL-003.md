@@ -25,12 +25,14 @@ links: []
 refs:
   - docs/functional/frd/FRD-014-doc-type-guidance.md
 commits:
-  - aacd09f
+  - aacd09ff86f58cfe910b9e2182b37b03a3bd604f
+  - d7e107b9f27a64851935310e8768fbc2c249fb75
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/19'
+  - 'https://github.com/collisionengineers/kanmer/pull/140'
 archived: false
 created: '2026-08-16T00:31:38.792Z'
-updated: '2026-08-21T23:14:14.651Z'
+updated: '2026-08-21T23:17:08.615Z'
 ---
 
 Add the PRD/FRD/ADR decision table and the granularity test to the kanmer-docs skill; retain doc-structure mirror regeneration.

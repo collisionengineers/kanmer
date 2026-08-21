@@ -15,6 +15,7 @@
     "test": "npm run check:manual && npm run test -w @kanmer/core && npm run test -w @kanmer/gui && npm run test:http -w @kanmer/mcp-server && npm run test:scripts",
     "test:scripts": "node --test \"scripts/*.test.mjs\"",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "verify": "node scripts/verify.mjs",
     "smoke:protocol": "node packages/mcp-server/src/smoke-protocol.mjs",
     "smoke:discovery": "node packages/mcp-server/src/smoke-discovery.mjs",
     "smoke:http": "npm run build:server && node packages/mcp-server/src/smoke-http.mjs",

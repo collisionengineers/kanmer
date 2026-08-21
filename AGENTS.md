@@ -418,11 +418,12 @@ Run from the repo root unless noted.
 | `npm run test:scripts` | `node --test` over `scripts/*.test.mjs`. Deliberately **not** vitest: `scripts/` is dependency-free, and `node:test` needs no root devDependency, no root config, and no `package-lock.json` churn (`release.mjs` refuses on a dirty tree) |
 | `npm run typecheck` | type-check **every** workspace — core, mcp-server, ui, gui. Use this, not the per-workspace form: vitest does not typecheck, so a green `npm test` says nothing about types, and a partial typecheck says nothing about the workspaces it skipped |
 | `npm run typecheck -w @kanmer/<pkg>` | one workspace, when you want a fast loop |
+| `npm run verify` | the authoritative PR check: tests (including manual freshness), all-workspace typecheck, core/server build, all MCP smokes, skill and managed-block verification, then plugin synchronization. Run from a normal checkout, not a linked worktree, because `plugin:check` deliberately refuses there. |
 | `npm run app` | build + launch the GUI |
 | `npm run dev:gui` | GUI with hot reload |
 | `npm run dist` | build everything **and** produce `apps/gui/release/Kanmer Setup <v>.exe` |
 | `npm run dist:check` | `dist`, then `check-updater-package.mjs` — the six things that must be true for the **packaged** app to auto-update |
-| `npm run release <version>` | the whole release: verify, bump, pack twice, tag, publish, then prove clients can see it **and that every published asset is really there**. Needs `GH_TOKEN` (or `GITHUB_RELEASE_TOKEN`/`GITHUB_TOKEN`). `--dry-run` stops after the verification gate |
+| `npm run release <version>` | the same shared `npm run verify` rail, then version bump, pack twice, tag, publish, and proof that clients can see every published asset. Extend `VERIFY_STEPS`, never a third verification pyramid. Needs `GH_TOKEN` (or `GITHUB_RELEASE_TOKEN`/`GITHUB_TOKEN`). `--dry-run` stops after the verification gate |
 | `node scripts/verify-release-assets.mjs <version>` | re-check **any** published release read-only, without cutting a new one: every expected asset present, `state: uploaded`, size and sha256 matching the local build in `apps/gui/release/`. Exit 0 = pass, 1 = the release is incomplete, 2 = the *check* could not run (rate limit, bad token, API drift) — the two are never conflated |
 | `npm run plugin:build` | build, then copy the standalone MCP bundle into `plugins/kanmer/mcp/` |
 | `npm run plugin:check` | fail if MCP tool names drift from the skill's tool reference **or if the committed plugin bundle differs from a fresh build (requires `npm run build` first)**. Refuses outright inside a linked worktree, where that byte comparison cannot mean anything (§8 gotcha 8) — run it from the main checkout |

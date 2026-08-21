@@ -32,6 +32,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { checkIsolatedPlugin } from "./lib/plugin-isolation.mjs";
+import { ownsCoreResolution } from "./lib/plugin-checkout-guard.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -55,7 +56,7 @@ try {
     "run `npm install` in this checkout, then rerun `npm run plugin:check`",
   );
 }
-if (!resolvedCore.startsWith(`${ownCore}${process.platform === "win32" ? "\\" : "/"}`)) {
+if (!ownsCoreResolution({ ownCore, resolvedCore })) {
   refuse(
     `@kanmer/core resolves to ${resolvedCore}, not this checkout's ${ownCore}`,
     "run `npm install` in this checkout so its workspace dependency is local, then rerun `npm run plugin:check`",

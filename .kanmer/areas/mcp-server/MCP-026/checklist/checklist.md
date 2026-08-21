@@ -26,7 +26,7 @@
 - [x] Create stable token/generation identity without project/user data.
 - [x] Return raw token only from explicit generation API.
 - [ ] Keep deterministic entropy/time injection test-only.
-- [ ] Test encoding, length, digest, fingerprint, uniqueness, and safe serialization.
+- [x] Test encoding, length, digest, fingerprint, uniqueness, and safe serialization.
 
 ## Header parsing and verification
 
@@ -66,7 +66,7 @@
 - [x] Remove only newly created partial file on failure.
 - [x] Print path/fingerprint only by default.
 - [x] Omit or explicitly gate any one-time reveal according to accepted manual.
-- [ ] Test existing-file refusal, spaces, mode, partial cleanup, and redaction.
+- [x] Test existing-file refusal, spaces, mode, partial cleanup, and redaction.
 
 ## Protected token-file loading
 
@@ -106,7 +106,7 @@
 - [x] Include only approved auth-required/token-id/fingerprint metadata.
 - [x] Exit non-zero with coded redacted startup event on failure.
 - [x] Prove stdio ignores HTTP auth configuration.
-- [ ] Test process argv/environment/output with canary token.
+- [x] Test process argv/environment/output with canary token.
 
 ## Rotation/revocation
 
@@ -115,7 +115,7 @@
 - [x] Atomically replace verifier and invalidate sessions.
 - [ ] Emit redacted rotation event.
 - [x] Prove old token/session fail immediately.
-- [ ] Require fresh initialization with new token.
+- [x] Require fresh initialization with new token.
 - [ ] Use transactional controlled restart if safe in-place rotation is unavailable.
 - [x] Revoke clears sessions/verifier without silently deleting user secret storage.
 - [ ] Test persistence failure, invalidation failure, restart equivalent, and revoke.

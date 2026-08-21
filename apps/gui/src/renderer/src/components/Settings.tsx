@@ -1053,10 +1053,6 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [draft, setDraft] = useState<RemoteConfigInput>({ executable: "", tunnelId: "", credentialsFile: "", hostname: "", enabled: false, autoStart: false, expectedConfigGeneration: null });
-  const clipboardTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => () => { if (clipboardTimer.current) clearTimeout(clipboardTimer.current); }, []);
-
   useEffect(() => {
     if (!token) return;
     const deliveryId = token.deliveryId;
@@ -1104,7 +1100,7 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
   });
 
   const createSecret = (rotate: boolean) => run(rotate ? "rotate" : "create", async () => {
-    const delivery = await window.kanmer.remoteCreateSecret(projectId, rotate);
+    const delivery = await window.kanmer.remoteCreateSecret(projectId, rotate, view?.status.configGeneration ?? null);
     setToken({ deliveryId: delivery.deliveryId, value: delivery.token, expiresAt: Date.parse(delivery.expiresAt) });
     setTokenRevealed(false);
     setMessage(rotate ? "Token rotated. Copy it now; it will not be shown again." : "Token created. Copy it now; it will not be shown again.");
@@ -1113,25 +1109,17 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
 
   const copyToken = async () => {
     if (!token) return;
-    const copied = token.value;
-    await navigator.clipboard.writeText(token.value);
-    await window.kanmer.remoteConsumeSecret(projectId, token.deliveryId);
+    if (!await window.kanmer.remoteCopySecret(projectId, token.deliveryId)) throw new Error("REMOTE_DELIVERY_EXPIRED");
     setToken(null);
     setTokenRevealed(false);
     setMessage("Token copied. It is no longer available in Kanmer.");
-    if (clipboardTimer.current) clearTimeout(clipboardTimer.current);
-    clipboardTimer.current = setTimeout(() => {
-      void clearClipboardIfUnchanged(navigator.clipboard, copied)
-        .then((cleared) => { if (cleared) setMessage("The copied token was cleared from the clipboard."); })
-        .catch(() => setMessage("Kanmer could not verify clipboard cleanup; replace the copied token manually."));
-    }, 60_000);
   };
 
   const start = () => run("start", async () => { const next = await window.kanmer.remoteStart(projectId, view?.status.configGeneration ?? null); setStatus(next); });
   const stop = () => run("stop", async () => { const next = await window.kanmer.remoteStop(projectId, view?.status.runtimeGeneration ?? status?.runtimeGeneration ?? null); setStatus(next); });
   const runDoctor = () => run("doctor", async () => { setDoctor(await window.kanmer.remoteDoctor(projectId, { configGeneration: view?.status.configGeneration ?? null, runtimeGeneration: status?.runtimeGeneration ?? null })); });
-  const reconcile = () => run("reconcile", async () => { const next = await window.kanmer.remoteReconcile(projectId); setView(next); setStatus(next.status); setOverview(await window.kanmer.remoteOverview()); setMessage("Project identity reconciled."); });
-  const remove = () => run("remove", async () => { if (!window.confirm("Remove this project’s Cloudflare remote-access configuration and encrypted bearer?")) return; await window.kanmer.remoteRemove(projectId); setView(null); setStatus(null); setOverview(await window.kanmer.remoteOverview()); setMessage("Cloudflare remote access removed for this project."); });
+  const reconcile = () => run("reconcile", async () => { const next = await window.kanmer.remoteReconcile(projectId, view?.status.configGeneration ?? null); setView(next); setStatus(next.status); setOverview(await window.kanmer.remoteOverview()); setMessage("Project identity reconciled."); });
+  const remove = () => run("remove", async () => { if (!window.confirm("Remove this project’s Cloudflare remote-access configuration and encrypted bearer?")) return; await window.kanmer.remoteRemove(projectId, view?.status.configGeneration ?? null); setView(null); setStatus(null); setOverview(await window.kanmer.remoteOverview()); setMessage("Cloudflare remote access removed for this project."); });
   const active = status?.state === "ready" || status?.state === "starting" || status?.state === "degraded";
 
   return (
@@ -1175,13 +1163,6 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
       {doctor && <div className={`banner ${doctor.ok ? "success" : "error"}`}><strong>{doctor.summary}</strong><ul>{doctor.checks.map((check) => <li key={check.id}>{check.id}: {check.status} — {check.detail}</li>)}</ul></div>}
     </div>
   );
-}
-
-export async function clearClipboardIfUnchanged(clipboard: Pick<Clipboard, "readText" | "writeText">, expected: string): Promise<boolean> {
-  const current = await clipboard.readText();
-  if (current !== expected) return false;
-  await clipboard.writeText("");
-  return true;
 }
 
 function slug(name: string): string {

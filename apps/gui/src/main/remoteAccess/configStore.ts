@@ -17,7 +17,13 @@ function normalizeConfig(value: unknown): CloudflareRemoteConfig | null {
     [c.executable, c.tunnelId, c.credentialsFile, c.hostname].every(
       (part) => typeof part === "string" && part.length > 0 && part.length <= 2048,
     ) === false) return null;
-  return { provider: "cloudflared", executable: c.executable!, tunnelId: c.tunnelId!, credentialsFile: c.credentialsFile!, hostname: c.hostname!, secretId: c.secretId, enabled: c.enabled, autoStart: typeof c.autoStart === "boolean" ? c.autoStart : c.enabled };
+  return {
+    provider: "cloudflared", executable: c.executable!, tunnelId: c.tunnelId!, credentialsFile: c.credentialsFile!, hostname: c.hostname!,
+    secretId: c.secretId, enabled: c.enabled, autoStart: typeof c.autoStart === "boolean" ? c.autoStart : c.enabled,
+    ...(typeof c.generation === "string" ? { generation: c.generation } : {}),
+    ...(typeof c.lastDoctorSummary === "string" && c.lastDoctorSummary.length <= 240 ? { lastDoctorSummary: c.lastDoctorSummary } : {}),
+    ...(typeof c.lastDoctorAt === "string" && c.lastDoctorAt.length <= 64 ? { lastDoctorAt: c.lastDoctorAt } : {}),
+  };
 }
 
 export function remoteAccessPath(userData: string): string {

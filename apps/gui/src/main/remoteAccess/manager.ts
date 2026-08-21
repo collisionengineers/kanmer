@@ -1,13 +1,14 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { execFile, spawn, type ChildProcess } from "node:child_process";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { app } from "electron";
+import { app, clipboard } from "electron";
 import { emptyRemoteAccess, readRemoteAccess, writeRemoteAccess, type PersistedRemoteAccess } from "./configStore.js";
 import { getSecret, putSecret, removeSecret, type SecretBackend } from "./secrets.js";
 import type {
   CloudflareRemoteConfig,
+  RemoteClipboardPort,
   RemoteDoctorResult,
   RemoteProjectIdentity,
   RemoteProjectView,
@@ -15,6 +16,7 @@ import type {
   RemoteState,
   RemoteStatus,
 } from "../../shared/remote.js";
+import { clearClipboardIfUnchanged } from "../../shared/remote.js";
 
 interface SpawnedProcess {
   child: ChildProcess;
@@ -88,8 +90,28 @@ function token(): string {
 }
 
 function isHostname(value: string): boolean {
-  if (value.length < 1 || value.length > 253 || /[/:?#\s]/.test(value)) return false;
-  return /^[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$/.test(value);
+  if (value.length < 1 || value.length > 253 || /[^A-Za-z0-9.-]/.test(value) || value.includes("..") || value.startsWith(".") || value.endsWith(".")) return false;
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/.test(value)) return false;
+  const lower = value.toLowerCase();
+  return lower !== "localhost" && lower !== "localhost.localdomain" && !/^127(?:\.|$)/.test(lower) && lower !== "::1";
+}
+
+function isSafePath(value: string): boolean {
+  return value.length > 0 && value.length <= 2048 && !/[\u0000-\u001f\u007f]/.test(value) && !/["'`]/.test(value);
+}
+
+function doctorGroup(id: string): string {
+  if (/^(PROJECT_|REMOTE_CONFIG|SECRET_|TUNNEL_)/.test(id)) return "Configuration";
+  if (/^(LOCAL_|AUTH_|MCP_|SESSION_)/.test(id)) return "Local MCP";
+  if (id.includes("PUBLIC")) return "Public endpoint";
+  return "Safety";
+}
+
+function isCanonicalLocalEndpoint(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" && (parsed.hostname === "127.0.0.1" || parsed.hostname === "[::1]") && parsed.pathname === "/mcp" && !parsed.username && !parsed.password && !parsed.search && !parsed.hash;
+  } catch { return false; }
 }
 
 function statusFor(projectId: string, identity: RemoteProjectIdentity, state: RemoteState, patch: Partial<RemoteStatus> = {}): RemoteStatus {
@@ -138,21 +160,30 @@ export class RemoteAccessManager {
   private readonly records = new Map<string, RemoteRecord>();
   private readonly listeners = new Set<StatusListener>();
   private readonly deliveries = new Map<string, SecretDeliveryRecord>();
+  private readonly deliveryTimers = new Map<string, NodeJS.Timeout>();
+  private readonly clipboardTimers = new Map<string, { expected: string; timer: NodeJS.Timeout }>();
   private readonly queues = new Map<string, Promise<void>>();
   private settingsQueue: Promise<void> = Promise.resolve();
-  private registrationQueue: Promise<void> = Promise.resolve();
   private loading: Promise<void> | null = null;
   private data: PersistedRemoteAccess = emptyRemoteAccess();
   private loaded = false;
   private closing = false;
   private activeStarts = 0;
   private readonly startWaiters: Array<() => void> = [];
+  private scavenged = false;
+  private readonly clipboardAdapter: RemoteClipboardPort;
 
   public constructor(
     private readonly userData: string,
     private readonly spawnProcess: SpawnFn = (command, args, options) => spawn(command, args, options),
     private readonly backend?: SecretBackend,
-  ) {}
+    clipboardAdapter?: RemoteClipboardPort,
+  ) {
+    this.clipboardAdapter = clipboardAdapter ?? {
+      readText: () => clipboard?.readText() ?? "",
+      writeText: (value) => { if (!clipboard) throw new Error("REMOTE_CLIPBOARD_UNAVAILABLE"); clipboard.writeText(value); },
+    };
+  }
 
   private async load(): Promise<void> {
     if (this.loaded) return;
@@ -163,13 +194,51 @@ export class RemoteAccessManager {
       }).finally(() => { this.loading = null; });
     }
     await this.loading;
+    if (!this.scavenged) {
+      this.scavenged = true;
+      await this.scavengeRuntimeResidue();
+    }
   }
 
-  private persist(): Promise<void> {
+  private withSettingsLock<T>(work: () => Promise<T>): Promise<T> {
     const previous = this.settingsQueue;
-    const run = previous.catch(() => undefined).then(() => writeRemoteAccess(this.userData, this.data));
+    const run = previous.catch(() => undefined).then(work);
     this.settingsQueue = run.then(() => undefined, () => undefined);
     return run;
+  }
+
+  private persist(): Promise<void> { return writeRemoteAccess(this.userData, this.data); }
+
+  private async scavengeRuntimeResidue(): Promise<void> {
+    const owners = join(this.userData, "remote-access-owners");
+    try {
+      for (const entry of await readdir(owners, { withFileTypes: true })) {
+        if (!entry.isFile() || !/^[a-f0-9]{64}\.json$/i.test(entry.name)) continue;
+        const file = join(owners, entry.name);
+        try {
+          const value = JSON.parse(await readFile(file, "utf8")) as { pid?: unknown; nonce?: unknown; projectFingerprint?: unknown };
+          if (typeof value.pid !== "number" || !Number.isInteger(value.pid) || value.pid <= 0 || typeof value.nonce !== "string" || !/^[0-9a-f-]{36}$/i.test(value.nonce) || typeof value.projectFingerprint !== "string" || !/^kanmer-proj-v1:[a-f0-9]{64}$/i.test(value.projectFingerprint)) continue;
+          const expected = ownerPath(this.userData, value.projectFingerprint);
+          if (expected !== file) continue;
+          let alive = true;
+          try { process.kill(value.pid, 0); } catch (error) { alive = (error as NodeJS.ErrnoException).code === "EPERM"; }
+          if (!alive) await rm(file, { force: true });
+        } catch { /* malformed or unreadable owner files are ambiguous and remain */ }
+      }
+    } catch { /* first run has no owner directory */ }
+    for (const name of ["kanmer-remote", "kanmer-remote-doctor"]) {
+      const root = join(tmpdir(), name);
+      try {
+        for (const entry of await readdir(root, { withFileTypes: true })) {
+          if (!entry.isDirectory() || !/^[0-9a-f-]{36}$/i.test(entry.name)) continue;
+          const path = join(root, entry.name);
+          try {
+            const age = Date.now() - (await stat(path)).mtimeMs;
+            if (age > 60 * 60_000) await rm(path, { recursive: true, force: true });
+          } catch { /* a concurrently exiting child owns cleanup */ }
+        }
+      } catch { /* first run has no temp directory */ }
+    }
   }
 
   private enqueue<T>(projectId: string, work: () => Promise<T>): Promise<T> {
@@ -180,12 +249,6 @@ export class RemoteAccessManager {
     return run.finally(() => { if (this.queues.get(projectId) === tail) this.queues.delete(projectId); });
   }
 
-  private serializeRegistration<T>(work: () => Promise<T>): Promise<T> {
-    const previous = this.registrationQueue;
-    const run = previous.catch(() => undefined).then(work);
-    this.registrationQueue = run.then(() => undefined, () => undefined);
-    return run;
-  }
 
   private record(projectId: string, identity: RemoteProjectIdentity): RemoteRecord {
     const existing = this.records.get(projectId);
@@ -194,11 +257,15 @@ export class RemoteAccessManager {
     }
     if (existing) return existing;
     const configured = this.data.configs[identity.fingerprint];
-    const configGeneration = configured?.secretId ? `config:${identity.fingerprint}` : null;
+    const configGeneration = configured?.generation ?? (configured?.secretId ? `config:${identity.fingerprint}` : null);
     const record: RemoteRecord = {
       projectId,
       identity,
-      status: statusFor(projectId, identity, configured?.enabled && configured.secretId ? "stopped" : "disabled", { configGeneration }),
+      status: statusFor(projectId, identity, configured?.enabled && configured.secretId ? "stopped" : "disabled", {
+        configGeneration,
+        lastSummary: configured?.lastDoctorSummary ?? null,
+        lastDoctorAt: configured?.lastDoctorAt ?? null,
+      }),
       outputBuffer: "",
       configGeneration,
       runtimeGeneration: null,
@@ -208,7 +275,7 @@ export class RemoteAccessManager {
   }
 
   async register(projectId: string, identity: RemoteProjectIdentity): Promise<RemoteProjectView> {
-    return this.serializeRegistration(async () => {
+    return this.withSettingsLock(async () => {
       await this.load();
       const record = this.record(projectId, identity);
       if (record.status.state === "missing") record.status = statusFor(projectId, identity, this.data.configs[identity.fingerprint]?.enabled && this.data.configs[identity.fingerprint]?.secretId ? "stopped" : "disabled", { configGeneration: record.configGeneration });
@@ -230,31 +297,70 @@ export class RemoteAccessManager {
       });
   }
 
-  async reconcile(projectId: string, identity: RemoteProjectIdentity): Promise<RemoteProjectView> {
-    await this.load();
-    const registered = this.data.projects[identity.fingerprint];
-    if (registered && registered.projectId !== projectId) throw new Error("REMOTE_PROJECT_IDENTITY_CONFLICT");
-    return this.register(projectId, identity);
+  async reconcile(projectId: string, identity: RemoteProjectIdentity, expectedConfigGeneration: string | null = null): Promise<RemoteProjectView> {
+    return this.withSettingsLock(async () => {
+      await this.load();
+      const registered = this.data.projects[identity.fingerprint];
+      if (registered && registered.projectId !== projectId) throw new Error("REMOTE_PROJECT_IDENTITY_CONFLICT");
+      const oldEntry = Object.entries(this.data.projects).find(([fingerprint, project]) => project.projectId === projectId && fingerprint !== identity.fingerprint);
+      if (oldEntry) {
+        const [oldFingerprint, oldProject] = oldEntry;
+        if (oldProject.identity.repoRoot !== identity.repoRoot) throw new Error("REMOTE_PROJECT_IDENTITY_CONFLICT");
+        const oldRecord = this.records.get(projectId);
+        if (oldRecord?.process || oldRecord?.doctor) throw new Error("REMOTE_STOP_BEFORE_RECONCILE");
+        const oldGeneration = oldRecord?.configGeneration ?? this.data.configs[oldFingerprint]?.generation ?? (this.data.configs[oldFingerprint]?.secretId ? `config:${oldFingerprint}` : null);
+        if (expectedConfigGeneration !== oldGeneration) throw new Error("REMOTE_CONFIG_VERSION_CONFLICT");
+        const oldConfig = this.data.configs[oldFingerprint];
+        const newConfig = this.data.configs[identity.fingerprint];
+        const newProject = this.data.projects[identity.fingerprint];
+        delete this.data.projects[oldFingerprint];
+        delete this.data.configs[oldFingerprint];
+        if (oldConfig) this.data.configs[identity.fingerprint] = oldConfig;
+        this.data.projects[identity.fingerprint] = { projectId, identity };
+        if (oldRecord) this.records.delete(projectId);
+        try { await this.persist(); }
+        catch (error) {
+          if (oldConfig) this.data.configs[oldFingerprint] = oldConfig;
+          else delete this.data.configs[oldFingerprint];
+          if (newConfig) this.data.configs[identity.fingerprint] = newConfig;
+          else delete this.data.configs[identity.fingerprint];
+          this.data.projects[oldFingerprint] = oldProject;
+          if (newProject) this.data.projects[identity.fingerprint] = newProject;
+          else delete this.data.projects[identity.fingerprint];
+          if (oldRecord) this.records.set(projectId, oldRecord);
+          throw error;
+        }
+        return this.view(this.record(projectId, identity));
+      }
+      const record = this.record(projectId, identity);
+      if (record.status.state === "missing") record.status = statusFor(projectId, identity, this.data.configs[identity.fingerprint]?.enabled && this.data.configs[identity.fingerprint]?.secretId ? "stopped" : "disabled", { configGeneration: record.configGeneration });
+      this.data.projects[identity.fingerprint] = { projectId, identity };
+      await this.persist();
+      return this.view(record);
+    });
   }
 
-  async remove(projectId: string, identity: RemoteProjectIdentity): Promise<void> {
+  async remove(projectId: string, identity: RemoteProjectIdentity, expectedConfigGeneration: string | null = null): Promise<void> {
     return this.enqueue(projectId, async () => {
-      await this.load();
-      const record = this.record(projectId, identity);
-      if (record.process || record.doctor) throw new Error("REMOTE_STOP_BEFORE_REMOVE");
-      const previousConfig = this.data.configs[identity.fingerprint];
-      const previousProject = this.data.projects[identity.fingerprint];
-      delete this.data.configs[identity.fingerprint];
-      delete this.data.projects[identity.fingerprint];
-      try { await this.persist(); }
-      catch (error) {
-        if (previousConfig) this.data.configs[identity.fingerprint] = previousConfig;
-        if (previousProject) this.data.projects[identity.fingerprint] = previousProject;
-        throw error;
-      }
-      this.invalidateDeliveries(projectId);
-      if (previousConfig?.secretId) await removeSecret(this.userData, previousConfig.secretId).catch(() => undefined);
-      this.records.delete(projectId);
+      await this.withSettingsLock(async () => {
+        await this.load();
+        const record = this.record(projectId, identity);
+        if (expectedConfigGeneration !== record.configGeneration) throw new Error("REMOTE_CONFIG_VERSION_CONFLICT");
+        if (record.process || record.doctor) throw new Error("REMOTE_STOP_BEFORE_REMOVE");
+        const previousConfig = this.data.configs[identity.fingerprint];
+        const previousProject = this.data.projects[identity.fingerprint];
+        delete this.data.configs[identity.fingerprint];
+        delete this.data.projects[identity.fingerprint];
+        try { await this.persist(); }
+        catch (error) {
+          if (previousConfig) this.data.configs[identity.fingerprint] = previousConfig;
+          if (previousProject) this.data.projects[identity.fingerprint] = previousProject;
+          throw error;
+        }
+        this.invalidateDeliveries(projectId);
+        if (previousConfig?.secretId) await removeSecret(this.userData, previousConfig.secretId).catch(() => undefined);
+        this.records.delete(projectId);
+      });
     });
   }
 
@@ -265,7 +371,7 @@ export class RemoteAccessManager {
 
   private view(record: RemoteRecord): RemoteProjectView {
     const config = this.data.configs[record.identity.fingerprint];
-    const safeConfig = config ? (({ secretId: _secretId, ...safe }) => ({ ...safe, secretConfigured: Boolean(config.secretId) }))(config) : null;
+    const safeConfig = config ? (({ secretId: _secretId, generation: _generation, ...safe }) => ({ ...safe, secretConfigured: Boolean(config.secretId) }))(config) : null;
     return {
       projectId: record.projectId,
       identity: record.identity,
@@ -277,38 +383,52 @@ export class RemoteAccessManager {
   }
 
   async saveConfig(projectId: string, identity: RemoteProjectIdentity, patch: RemoteConfigPatch): Promise<RemoteProjectView> {
-    return this.enqueue(projectId, () => this.saveConfigNow(projectId, identity, patch));
+    return this.enqueue(projectId, () => this.withSettingsLock(() => this.saveConfigNow(projectId, identity, patch)));
   }
 
   private async saveConfigNow(projectId: string, identity: RemoteProjectIdentity, patch: RemoteConfigPatch): Promise<RemoteProjectView> {
     await this.load();
     const record = this.record(projectId, identity);
     if (patch.expectedConfigGeneration !== record.configGeneration) throw new Error("REMOTE_CONFIG_VERSION_CONFLICT");
-    if (!patch.executable.trim() || !patch.tunnelId.trim() || !patch.credentialsFile.trim() || !isHostname(patch.hostname.trim())) throw new Error("REMOTE_CONFIG_INVALID");
+    if (!isSafePath(patch.executable.trim()) || !isSafePath(patch.credentialsFile.trim()) || !patch.tunnelId.trim() || !isSafePath(patch.tunnelId.trim()) || !isHostname(patch.hostname.trim())) throw new Error("REMOTE_CONFIG_INVALID");
     const previous = this.data.configs[identity.fingerprint];
     for (const [fingerprint, other] of Object.entries(this.data.configs)) {
       if (fingerprint !== identity.fingerprint && (other.tunnelId === patch.tunnelId.trim() || other.hostname === patch.hostname.trim())) throw new Error("REMOTE_RESOURCE_DUPLICATE");
     }
     if (record.process && (previous?.hostname !== patch.hostname || previous?.tunnelId !== patch.tunnelId || previous?.credentialsFile !== patch.credentialsFile || previous?.executable !== patch.executable)) throw new Error("REMOTE_STOP_BEFORE_RECONFIGURE");
-    const configGeneration = randomUUID();
+    const nextGeneration = randomUUID();
     this.data.configs[identity.fingerprint] = {
       provider: "cloudflared", executable: patch.executable.trim(), tunnelId: patch.tunnelId.trim(), credentialsFile: patch.credentialsFile.trim(), hostname: patch.hostname.trim(), enabled: patch.enabled,
       autoStart: patch.autoStart,
       secretId: previous?.secretId ?? "",
+      generation: nextGeneration,
     };
-    record.configGeneration = configGeneration;
-    record.status = statusFor(projectId, identity, patch.enabled && previous?.secretId ? "stopped" : "disabled", { configGeneration, public: "stale" });
-    await this.persist();
+    record.configGeneration = nextGeneration;
+    record.status = statusFor(projectId, identity, patch.enabled && previous?.secretId ? "stopped" : "disabled", { configGeneration: nextGeneration, public: "stale" });
+    try {
+      await this.persist();
+    } catch (error) {
+      if (previous) this.data.configs[identity.fingerprint] = previous;
+      else delete this.data.configs[identity.fingerprint];
+      record.configGeneration = previous?.generation ?? (previous?.secretId ? `config:${identity.fingerprint}` : null);
+      record.status = statusFor(projectId, identity, previous?.enabled && previous.secretId ? "stopped" : "disabled", {
+        configGeneration: record.configGeneration,
+        lastSummary: previous?.lastDoctorSummary ?? null,
+        lastDoctorAt: previous?.lastDoctorAt ?? null,
+      });
+      throw error;
+    }
     return this.view(record);
   }
 
-  async createSecret(projectId: string, identity: RemoteProjectIdentity, rotate = false, owner: { webContentsId: number; frameRoutingId: number } = { webContentsId: -1, frameRoutingId: -1 }): Promise<RemoteSecretDelivery> {
-    return this.enqueue(projectId, () => this.createSecretNow(projectId, identity, rotate, owner));
+  async createSecret(projectId: string, identity: RemoteProjectIdentity, rotate = false, owner: { webContentsId: number; frameRoutingId: number } = { webContentsId: -1, frameRoutingId: -1 }, expectedConfigGeneration?: string | null): Promise<RemoteSecretDelivery> {
+    return this.enqueue(projectId, () => this.withSettingsLock(() => this.createSecretNow(projectId, identity, rotate, owner, expectedConfigGeneration)));
   }
 
-  private async createSecretNow(projectId: string, identity: RemoteProjectIdentity, rotate = false, owner: { webContentsId: number; frameRoutingId: number }): Promise<RemoteSecretDelivery> {
+  private async createSecretNow(projectId: string, identity: RemoteProjectIdentity, rotate = false, owner: { webContentsId: number; frameRoutingId: number }, expectedConfigGeneration?: string | null): Promise<RemoteSecretDelivery> {
     await this.load();
     const record = this.record(projectId, identity);
+    if (expectedConfigGeneration !== undefined && expectedConfigGeneration !== record.configGeneration) throw new Error("REMOTE_CONFIG_VERSION_CONFLICT");
     if (record.process) throw new Error("REMOTE_STOP_BEFORE_ROTATE");
     const config = this.data.configs[identity.fingerprint];
     if (!config) throw new Error("REMOTE_CONFIG_REQUIRED");
@@ -321,6 +441,7 @@ export class RemoteAccessManager {
     config.secretId = stored.id;
     config.enabled = true;
     record.configGeneration = randomUUID();
+    config.generation = record.configGeneration;
     record.status = statusFor(projectId, identity, "stopped", { configGeneration: record.configGeneration, public: "stale" });
     try {
       await this.persist();
@@ -338,13 +459,23 @@ export class RemoteAccessManager {
     const deliveryId = randomUUID();
     const expiresAt = Date.now() + 60_000;
     this.deliveries.set(deliveryId, { token: generated, expiresAt, projectId, fingerprint: identity.fingerprint, ...owner });
-    setTimeout(() => this.deliveries.delete(deliveryId), 60_000).unref();
+    const timer = setTimeout(() => {
+      const current = this.deliveries.get(deliveryId);
+      if (current) current.token = "";
+      this.deliveries.delete(deliveryId);
+      this.deliveryTimers.delete(deliveryId);
+    }, 60_000);
+    timer.unref();
+    this.deliveryTimers.set(deliveryId, timer);
     return { deliveryId, expiresAt: new Date(expiresAt).toISOString(), token: generated };
   }
 
   private invalidateDeliveries(projectId: string): void {
     for (const [deliveryId, delivery] of this.deliveries) if (delivery.projectId === projectId) {
       delivery.token = "";
+      const timer = this.deliveryTimers.get(deliveryId);
+      if (timer) clearTimeout(timer);
+      this.deliveryTimers.delete(deliveryId);
       this.deliveries.delete(deliveryId);
     }
   }
@@ -353,11 +484,39 @@ export class RemoteAccessManager {
   consumeSecretDelivery(projectId: string, deliveryId: string, owner: { webContentsId: number; frameRoutingId: number }): boolean {
     const entry = this.deliveries.get(deliveryId);
     this.deliveries.delete(deliveryId);
+    const timer = this.deliveryTimers.get(deliveryId);
+    if (timer) clearTimeout(timer);
+    this.deliveryTimers.delete(deliveryId);
     if (!entry || entry.expiresAt <= Date.now() || entry.projectId !== projectId || entry.webContentsId !== owner.webContentsId || entry.frameRoutingId !== owner.frameRoutingId) {
       if (entry) entry.token = "";
       return false;
     }
     entry.token = "";
+    return true;
+  }
+
+  /** Copy the one-time capability in the main process; the renderer never receives clipboard authority. */
+  copySecretDelivery(projectId: string, deliveryId: string, owner: { webContentsId: number; frameRoutingId: number }): boolean {
+    const entry = this.deliveries.get(deliveryId);
+    if (!entry || entry.expiresAt <= Date.now() || entry.projectId !== projectId || entry.webContentsId !== owner.webContentsId || entry.frameRoutingId !== owner.frameRoutingId) {
+      if (entry) entry.token = "";
+      this.deliveries.delete(deliveryId);
+      return false;
+    }
+    const value = entry.token;
+    try { this.clipboardAdapter.writeText(value); }
+    catch { return false; }
+    this.consumeSecretDelivery(projectId, deliveryId, owner);
+    const oldTimer = this.clipboardTimers.get(deliveryId);
+    if (oldTimer) clearTimeout(oldTimer.timer);
+    const timer = setTimeout(() => {
+      const current = this.clipboardTimers.get(deliveryId);
+      if (!current) return;
+      try { clearClipboardIfUnchanged(this.clipboardAdapter, current.expected); } catch { /* quit or clipboard provider may already be unavailable */ }
+      this.clipboardTimers.delete(deliveryId);
+    }, 60_000);
+    timer.unref();
+    this.clipboardTimers.set(deliveryId, { expected: value, timer });
     return true;
   }
 
@@ -370,7 +529,7 @@ export class RemoteAccessManager {
       ? { ...record.status.health, listener: "ready" as const, authentication: "ready" as const, sessions: "ready" as const, tunnel: "ready" as const, remote: record.status.public === "verified" ? "ready" as const : "stale" as const }
       : state === "degraded"
         ? { ...record.status.health, listener: "ready" as const, authentication: "ready" as const, sessions: "ready" as const, tunnel: "stale" as const, remote: "stale" as const }
-        : { ...record.status.health, listener: "not-run" as const, authentication: "not-run" as const, sessions: "not-run" as const, tunnel: state === "error" ? "failed" as const : "not-run" as const };
+        : { ...record.status.health, listener: "not-run" as const, authentication: "not-run" as const, sessions: "not-run" as const, tunnel: state === "error" ? "failed" as const : "not-run" as const, remote: state === "error" ? "stale" as const : record.status.health.remote };
     record.status = { ...record.status, ...patch, state, action: state === "starting" ? "starting" : state === "stopping" ? "stopping" : patch.action ?? "idle", severity: state === "error" || state === "missing" ? "error" : patch.severity ?? "info", health, local, tunnel, updatedAt: new Date().toISOString() };
     for (const listener of this.listeners) listener(record.status);
   }
@@ -414,6 +573,18 @@ export class RemoteAccessManager {
     }));
   }
 
+  /** Return the persisted projects eligible for startup in deterministic order. */
+  async autoStartRegistrations(): Promise<Array<{ projectId: string; identity: RemoteProjectIdentity; paths: { root: string; repoRoot: string } }>> {
+    await this.load();
+    return Object.values(this.data.projects)
+      .filter(({ identity }) => {
+        const config = this.data.configs[identity.fingerprint];
+        return Boolean(config?.enabled && config.autoStart && config.secretId);
+      })
+      .sort((a, b) => a.identity.fingerprint.localeCompare(b.identity.fingerprint))
+      .map(({ projectId, identity }) => ({ projectId, identity, paths: { root: identity.boardRoot, repoRoot: identity.repoRoot } }));
+  }
+
   private async startNow(projectId: string, identity: RemoteProjectIdentity, paths: { root: string; repoRoot: string }, expectedConfigGeneration: string | null): Promise<RemoteStatus> {
     await this.load();
     const record = this.record(projectId, identity);
@@ -426,8 +597,14 @@ export class RemoteAccessManager {
     const ownerNonce = randomUUID();
     const ownerFile = ownerPath(this.userData, identity.fingerprint);
     try {
-      await readFile(ownerFile, "utf8");
-      throw new Error("REMOTE_OWNER_EXISTS");
+      const current = JSON.parse(await readFile(ownerFile, "utf8")) as { pid?: unknown; nonce?: unknown; projectFingerprint?: unknown };
+      if (typeof current.pid !== "number" || !Number.isInteger(current.pid) || current.pid <= 0 || typeof current.nonce !== "string" || typeof current.projectFingerprint !== "string") throw new Error("REMOTE_OWNER_EXISTS");
+      try { process.kill(current.pid, 0); throw new Error("REMOTE_OWNER_EXISTS"); }
+      catch (error) {
+        if (error instanceof Error && error.message === "REMOTE_OWNER_EXISTS") throw error;
+        if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw new Error("REMOTE_OWNER_EXISTS");
+        await rm(ownerFile, { force: true });
+      }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
@@ -466,7 +643,8 @@ export class RemoteAccessManager {
     } catch (error) {
       if (directory) await rm(directory, { recursive: true, force: true });
       record.runtimeGeneration = null;
-      this.emit(record, "error", { runtimeGeneration: null, lastError: message(error), diagnostics: [] });
+      record.startAbort = undefined;
+      this.emit(record, "error", { endpoint: null, public: "stale", runtimeGeneration: null, lastError: message(error), diagnostics: [] });
       throw error;
     }
     record.process = { child, directory, tokenFile, ownerFile, ownerNonce };
@@ -508,11 +686,12 @@ export class RemoteAccessManager {
     for (const line of lines) {
       try {
         const event = JSON.parse(line) as { kind?: string; endpoint?: string; tokenId?: string; fingerprint?: string; projectFingerprint?: string; status?: { state?: string; local?: string; provider?: string; endpoint?: string; reason?: string; attempt?: number } };
-        if (event.kind === "kanmer-mcp-remote-ready" && event.endpoint && event.projectFingerprint === record.identity.fingerprint) {
+        if (event.kind === "kanmer-mcp-remote-ready" && event.endpoint && isCanonicalLocalEndpoint(event.endpoint) && event.projectFingerprint === record.identity.fingerprint) {
           this.emit(record, "ready", { endpoint: event.endpoint, tokenId: event.tokenId ?? null, generation: event.tokenId ?? null, runtimeGeneration: record.runtimeGeneration, public: "stale" });
         } else if (event.kind === "kanmer-mcp-remote-status" && event.status) {
           const state = event.status.provider === "degraded" ? "degraded" : event.status.provider === "failed" ? "error" : event.status.provider === "running" ? "ready" : event.status.local === "starting" ? "starting" : record.status.state;
-          this.emit(record, state, { endpoint: event.status.endpoint ?? record.status.endpoint, diagnostics: event.status.reason ? [event.status.reason] : [] });
+          const endpoint = event.status.endpoint && isCanonicalLocalEndpoint(event.status.endpoint) ? event.status.endpoint : record.status.endpoint;
+          this.emit(record, state, { endpoint, diagnostics: event.status.reason ? [event.status.reason] : [] });
         }
       } catch { /* only protocol JSON is consumed; raw child output is intentionally discarded */ }
     }
@@ -541,7 +720,7 @@ export class RemoteAccessManager {
       this.emit(record, "error", { diagnostics: [`REMOTE_TEMP_CLEANUP_FAILED:${message(cleanupError)}`] });
     });
     record.runtimeGeneration = null;
-    this.emit(record, "error", { endpoint: null, lastError: message(error), diagnostics: [], runtimeGeneration: null });
+    this.emit(record, "error", { endpoint: null, public: "stale", lastError: message(error), diagnostics: [], runtimeGeneration: null });
   }
 
   async stop(projectId: string, identity: RemoteProjectIdentity, expectedRuntimeGeneration: string | null = null): Promise<RemoteStatus> {
@@ -606,22 +785,29 @@ export class RemoteAccessManager {
     const tokenFile = join(directory, "token");
     await writeFile(tokenFile, `${secret}\n`, { encoding: "ascii", mode: 0o600 });
     const mode = record.process && (record.status.state === "ready" || record.status.state === "degraded") ? "public" : "config";
-    const child = this.spawnProcess(process.execPath, [doctorCliEntry(), mode, "--json"], {
-      cwd: paths.root,
-      detached: process.platform !== "win32",
-      env: childEnvironment({
-        ...(app.isPackaged ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
-        KANMER_ROOT: paths.root,
-        KANMER_REPO_ROOT: paths.repoRoot,
-        KANMER_EXPECTED_PROJECT: identity.fingerprint,
-        KANMER_REMOTE_HOSTNAME: config.hostname,
-        KANMER_TOKEN_FILE: tokenFile,
-        KANMER_LOCAL_ENDPOINT: record.status.endpoint ?? "",
-        CLOUDFLARED_PATH: config.executable,
-        CLOUDFLARED_TUNNEL_ID: config.tunnelId,
-        CLOUDFLARED_CREDENTIALS_FILE: config.credentialsFile,
-      }), stdio: ["ignore", "pipe", "pipe"],
-    });
+    let child: ChildProcess;
+    try {
+      child = this.spawnProcess(process.execPath, [doctorCliEntry(), mode, "--json"], {
+        cwd: paths.root,
+        detached: process.platform !== "win32",
+        env: childEnvironment({
+          ...(app.isPackaged ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
+          KANMER_ROOT: paths.root,
+          KANMER_REPO_ROOT: paths.repoRoot,
+          KANMER_EXPECTED_PROJECT: identity.fingerprint,
+          KANMER_REMOTE_HOSTNAME: config.hostname,
+          KANMER_TOKEN_FILE: tokenFile,
+          KANMER_LOCAL_ENDPOINT: record.status.endpoint ?? "",
+          CLOUDFLARED_PATH: config.executable,
+          CLOUDFLARED_TUNNEL_ID: config.tunnelId,
+          CLOUDFLARED_CREDENTIALS_FILE: config.credentialsFile,
+        }), stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (error) {
+      await rm(directory, { recursive: true, force: true });
+      this.emit(record, record.status.state, { action: "idle", severity: "error", public: mode === "public" ? "stale" : record.status.public, lastError: message(error) });
+      throw error;
+    }
     record.doctor = { child, directory, configGeneration: record.configGeneration, runtimeGeneration: record.runtimeGeneration };
     return await new Promise<RemoteDoctorResult>((resolve, reject) => {
       let output = "";
@@ -632,21 +818,23 @@ export class RemoteAccessManager {
         if (record.doctor?.child === child) record.doctor = undefined;
         if (result instanceof Error) reject(result); else resolve(result);
       };
-      const timeout = setTimeout(() => { killOwnedTree(child); void rm(directory, { recursive: true, force: true }); finish(new Error("REMOTE_DOCTOR_TIMEOUT")); }, 120_000);
+      const timeout = setTimeout(() => { killOwnedTree(child); void rm(directory, { recursive: true, force: true }); this.emit(record, record.status.state, { action: "idle", public: mode === "public" ? "stale" : record.status.public, severity: "error", lastError: "REMOTE_DOCTOR_TIMEOUT" }); finish(new Error("REMOTE_DOCTOR_TIMEOUT")); }, 120_000);
       child.stdout?.setEncoding("utf8");
       child.stdout?.on("data", (chunk: string) => { if (output.length < MAX_OUTPUT_BUFFER) output += chunk.slice(0, MAX_OUTPUT_BUFFER - output.length); });
       child.stderr?.on("data", () => undefined);
-      child.once("error", (error) => { clearTimeout(timeout); void rm(directory, { recursive: true, force: true }); finish(error); });
+      child.once("error", (error) => { clearTimeout(timeout); void rm(directory, { recursive: true, force: true }); this.emit(record, record.status.state, { action: "idle", public: mode === "public" ? "stale" : record.status.public, severity: "error", lastError: message(error) }); finish(error); });
       child.once("exit", async (code) => {
         clearTimeout(timeout);
         await rm(directory, { recursive: true, force: true });
         try {
-          const report = JSON.parse(output.trim()) as { status?: string; checks?: Array<{ id?: string; status?: string; details?: { reason?: string } }> };
+          const report = JSON.parse(output.trim()) as { status?: string; checks?: Array<{ id?: string; status?: string; details?: { reason?: string; observed?: string }; repair?: { actions?: string[] } }> };
           const status = report.status === "pass" || report.status === "warn" || report.status === "fail" ? report.status : "fail";
           const checks: RemoteDoctorResult["checks"] = (report.checks ?? []).map((check) => ({
             id: check.id ?? "unknown",
+            group: doctorGroup(check.id ?? "unknown"),
             status: (check.status === "pass" || check.status === "warn" || check.status === "fail" || check.status === "skipped" ? check.status : "fail") as RemoteDoctorResult["checks"][number]["status"],
-            detail: check.details?.reason ?? "no detail",
+            detail: (check.details?.reason ?? check.details?.observed ?? "no detail").slice(0, 240),
+            repair: check.repair?.actions?.join(" ").slice(0, 240) ?? null,
           }));
           const reportResult: RemoteDoctorResult = {
             projectId,
@@ -655,16 +843,26 @@ export class RemoteAccessManager {
             summary: status,
             checks,
             severity: status === "fail" ? "error" : status === "warn" ? "warning" : "info",
-            repair: checks.find((check) => check.status === "fail" || check.status === "warn")?.detail ?? null,
+            repair: checks.find((check) => check.status === "fail" || check.status === "warn")?.repair ?? checks.find((check) => check.status === "fail" || check.status === "warn")?.detail ?? null,
             mode,
             configGeneration: record.configGeneration,
             runtimeGeneration: record.runtimeGeneration,
           };
           const current = record.configGeneration === reportResult.configGeneration && record.runtimeGeneration === reportResult.runtimeGeneration;
-          const summary = reportResult.summary === "pass" ? "Doctor passed" : reportResult.summary === "warn" ? "Doctor found warnings" : "Doctor failed";
-          if (current) this.emit(record, record.status.state, { action: "idle", severity: reportResult.severity, lastSummary: summary, lastRepair: reportResult.repair, lastDoctorAt: new Date().toISOString(), public: reportResult.ok && mode === "public" ? "verified" : mode === "public" ? "stale" : record.status.public });
+          if (current) {
+            const doctorAt = new Date().toISOString();
+            this.emit(record, record.status.state, { action: "idle", severity: reportResult.severity, lastSummary: reportResult.summary, lastRepair: reportResult.repair, lastDoctorAt: doctorAt, public: reportResult.ok && mode === "public" ? "verified" : mode === "public" ? "stale" : record.status.public });
+            const configured = this.data.configs[identity.fingerprint];
+            if (configured) {
+              configured.lastDoctorSummary = reportResult.summary.slice(0, 240);
+              configured.lastDoctorAt = doctorAt;
+              await this.withSettingsLock(() => this.persist()).catch((error) => {
+                this.emit(record, record.status.state, { severity: "warning", diagnostics: [`REMOTE_DOCTOR_SUMMARY_PERSIST_FAILED:${message(error)}`] });
+              });
+            }
+          }
           finish(reportResult);
-        } catch { finish(new Error(code === 0 ? "REMOTE_DOCTOR_INVALID_OUTPUT" : `REMOTE_DOCTOR_EXIT_${code ?? "unknown"}`)); }
+        } catch { const failure = code === 0 ? "REMOTE_DOCTOR_INVALID_OUTPUT" : `REMOTE_DOCTOR_EXIT_${code ?? "unknown"}`; this.emit(record, record.status.state, { action: "idle", public: mode === "public" ? "stale" : record.status.public, severity: "error", lastError: failure }); finish(new Error(failure)); }
       });
     });
   }
@@ -673,6 +871,14 @@ export class RemoteAccessManager {
     if (this.closing) return;
     this.closing = true;
     while (this.startWaiters.length) this.startWaiters.shift()?.();
+    for (const timer of this.deliveryTimers.values()) clearTimeout(timer);
+    this.deliveryTimers.clear();
+    for (const { expected, timer } of this.clipboardTimers.values()) {
+      clearTimeout(timer);
+      try { clearClipboardIfUnchanged(this.clipboardAdapter, expected); } catch { /* quit cleanup is best effort */ }
+    }
+    this.clipboardTimers.clear();
+    for (const delivery of this.deliveries.values()) delivery.token = "";
     this.deliveries.clear();
     const records = [...this.records.values()];
     for (const record of records) {
@@ -703,14 +909,14 @@ export class RemoteAccessManager {
 
 function remoteCliEntry(): string {
   const override = process.env.KANMER_REMOTE_CLI;
-  if (override) return override;
+  if (override && !app.isPackaged) return override;
   if (app.isPackaged) return join(process.resourcesPath, "mcp", "remote-cli.cjs");
   return join(app.getAppPath(), "..", "..", "packages", "mcp-server", "dist", "remote-cli.js");
 }
 
 function doctorCliEntry(): string {
   const override = process.env.KANMER_DOCTOR_CLI;
-  if (override) return override;
+  if (override && !app.isPackaged) return override;
   if (app.isPackaged) return join(process.resourcesPath, "mcp", "doctor-cli.cjs");
   return join(app.getAppPath(), "..", "..", "packages", "mcp-server", "dist", "doctor-cli.js");
 }

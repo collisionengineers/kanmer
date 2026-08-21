@@ -122,6 +122,7 @@ const api: KanmerApi = {
   remoteSaveConfig: (p, config) => ipcRenderer.invoke(CH.remoteSaveConfig, p, config),
   remoteCreateSecret: (p, rotate) => ipcRenderer.invoke(CH.remoteCreateSecret, p, rotate),
   remoteConsumeSecret: (p, deliveryId) => ipcRenderer.invoke(CH.remoteConsumeSecret, p, deliveryId),
+  remoteCopySecret: (p, deliveryId) => ipcRenderer.invoke(CH.remoteCopySecret, p, deliveryId),
   remoteStart: (p, expectedConfigGeneration) => ipcRenderer.invoke(CH.remoteStart, p, expectedConfigGeneration),
   remoteStop: (p, expectedRuntimeGeneration) => ipcRenderer.invoke(CH.remoteStop, p, expectedRuntimeGeneration),
   remoteDoctor: (p, expected) => ipcRenderer.invoke(CH.remoteDoctor, p, expected),

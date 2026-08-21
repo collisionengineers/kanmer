@@ -1,5 +1,16 @@
 export const REMOTE_CONFIG_VERSION = 1 as const;
 
+export interface RemoteClipboardPort {
+  readText(): string;
+  writeText(value: string): void;
+}
+
+export function clearClipboardIfUnchanged(clipboard: RemoteClipboardPort, expected: string): boolean {
+  if (clipboard.readText() !== expected) return false;
+  clipboard.writeText("");
+  return true;
+}
+
 export type RemoteState = "disabled" | "missing" | "stopped" | "starting" | "ready" | "degraded" | "stopping" | "error";
 export type RemoteAction = "idle" | "starting" | "stopping" | "diagnosing" | "rotating" | "removing";
 export type RemoteSeverity = "info" | "warning" | "error";
@@ -23,6 +34,10 @@ export interface CloudflareRemoteConfig {
   secretId: string;
   enabled: boolean;
   autoStart: boolean;
+  /** Opaque optimistic-concurrency generation persisted with the config. */
+  generation?: string;
+  lastDoctorSummary?: string;
+  lastDoctorAt?: string;
 }
 
 export interface RemoteProjectIdentity {
@@ -61,7 +76,7 @@ export interface RemoteStatus {
 export interface RemoteProjectView {
   projectId: string;
   identity: RemoteProjectIdentity;
-  config: Omit<CloudflareRemoteConfig, "secretId"> & { secretConfigured: boolean };
+  config: Omit<CloudflareRemoteConfig, "secretId" | "generation"> & { secretConfigured: boolean };
   status: RemoteStatus;
 }
 
@@ -75,7 +90,7 @@ export interface RemoteDoctorResult {
   ok: boolean;
   projectId: string;
   fingerprint: string;
-  checks: Array<{ id: string; status: "pass" | "warn" | "fail" | "skipped"; detail: string }>;
+  checks: Array<{ id: string; group?: string; status: "pass" | "warn" | "fail" | "skipped"; detail: string; repair?: string | null }>;
   summary: string;
   severity: RemoteSeverity;
   repair: string | null;

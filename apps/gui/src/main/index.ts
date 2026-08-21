@@ -14,6 +14,7 @@ import {
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
+import { pathToFileURL } from "node:url";
 import { classifyKanmerPath } from "../shared/kanmerPath.js";
 import {
   BOUNDARIES,
@@ -142,8 +143,11 @@ function assertTrustedRemoteSender(event: IpcMainInvokeEvent): void {
   let allowedUrl = false;
   try {
     const actual = new URL(frame?.url ?? "");
-    if (actual.protocol === "file:") allowedUrl = actual.pathname.endsWith("/renderer/index.html");
-    else if (devUrl) allowedUrl = actual.origin === new URL(devUrl).origin;
+    if (actual.protocol === "file:") allowedUrl = actual.href === pathToFileURL(join(__dirname, "../renderer/index.html")).href;
+    else if (devUrl) {
+      const expected = new URL(devUrl);
+      allowedUrl = actual.origin === expected.origin && actual.pathname === expected.pathname && !actual.search && !actual.hash;
+    }
   } catch { allowedUrl = false; }
   if (!trusted || !allowedUrl) throw new Error("REMOTE_IPC_UNTRUSTED_SENDER");
 }
@@ -554,11 +558,15 @@ async function openProject(root: string): Promise<OpenProjectResult> {
   const minutes = readSettings().gitSyncMinutes;
   if (syncStatus.available && minutes > 0) ctx.syncTimer = setInterval(() => void syncProject(projectId), minutes * 60_000);
   contexts.set(projectId, ctx);
-  void remoteAccess?.autoStart([{ projectId, identity: await remoteIdentity(ctx), paths: { root: ctx.boardRoot, repoRoot: ctx.sourceRoot } }]).then((results) => {
-    for (const result of results) if (!result.ok) console.error(`[remote-access] auto-start failed for ${result.projectId}: ${result.error ?? "REMOTE_AUTOSTART_FAILED"}`);
-  }).catch((error) => console.error(`[remote-access] auto-start unavailable: ${error instanceof Error ? error.message : String(error)}`));
   buildMenu(); // refresh the Open Recent submenu
   return snapshotOf(ctx);
+}
+
+async function autoStartRegisteredProjects(): Promise<void> {
+  if (!remoteAccess) return;
+  const registrations = await remoteAccess.autoStartRegistrations();
+  const results = await remoteAccess.autoStart(registrations);
+  for (const result of results) if (!result.ok) console.error(`[remote-access] auto-start failed for ${result.projectId}: ${result.error ?? "REMOTE_AUTOSTART_FAILED"}`);
 }
 
 async function snapshotOf(ctx: ProjectContext): Promise<OpenProjectResult> {
@@ -696,27 +704,28 @@ function registerIpc(): void {
     return requireRemoteAccess().viewFor(projectId, await remoteIdentity(ctx));
   });
   ipcMain.handle(CH.remoteOverview, async (e) => { assertTrustedRemoteSender(e); return requireRemoteAccess().overview(); });
-  ipcMain.handle(CH.remoteReconcile, async (e, projectId: string) => {
-    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId);
+  ipcMain.handle(CH.remoteReconcile, async (e, projectId: string, expectedConfigGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expectedConfigGeneration !== undefined && expectedConfigGeneration !== null && typeof expectedConfigGeneration !== "string") throw new Error("REMOTE_CONFIG_VERSION_INVALID");
     const ctx = requireCtx(projectId);
-    return requireRemoteAccess().reconcile(projectId, await remoteIdentity(ctx));
+    return requireRemoteAccess().reconcile(projectId, await remoteIdentity(ctx), expectedConfigGeneration ?? null);
   });
-  ipcMain.handle(CH.remoteRemove, async (e, projectId: string) => {
-    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId);
+  ipcMain.handle(CH.remoteRemove, async (e, projectId: string, expectedConfigGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expectedConfigGeneration !== undefined && expectedConfigGeneration !== null && typeof expectedConfigGeneration !== "string") throw new Error("REMOTE_CONFIG_VERSION_INVALID");
     const ctx = requireCtx(projectId);
-    await requireRemoteAccess().remove(projectId, await remoteIdentity(ctx));
+    await requireRemoteAccess().remove(projectId, await remoteIdentity(ctx), expectedConfigGeneration ?? null);
   });
   ipcMain.handle(CH.remoteSaveConfig, async (e, projectId: string, config: RemoteConfigInput) => {
     assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); assertRemoteConfig(config);
     const ctx = requireCtx(projectId);
     return requireRemoteAccess().saveConfig(projectId, await remoteIdentity(ctx), config);
   });
-  ipcMain.handle(CH.remoteCreateSecret, async (e, projectId: string, rotate?: boolean) => {
-    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (rotate !== undefined && typeof rotate !== "boolean") throw new Error("REMOTE_ROTATE_INVALID");
+  ipcMain.handle(CH.remoteCreateSecret, async (e, projectId: string, rotate?: boolean, expectedConfigGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (rotate !== undefined && typeof rotate !== "boolean") throw new Error("REMOTE_ROTATE_INVALID"); if (expectedConfigGeneration !== undefined && expectedConfigGeneration !== null && typeof expectedConfigGeneration !== "string") throw new Error("REMOTE_CONFIG_VERSION_INVALID");
     const ctx = requireCtx(projectId);
-    return requireRemoteAccess().createSecret(projectId, await remoteIdentity(ctx), rotate === true, remoteOwner(e));
+    return requireRemoteAccess().createSecret(projectId, await remoteIdentity(ctx), rotate === true, remoteOwner(e), expectedConfigGeneration ?? null);
   });
   ipcMain.handle(CH.remoteConsumeSecret, (e, projectId: string, deliveryId: string) => { assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (typeof deliveryId !== "string") throw new Error("REMOTE_DELIVERY_INVALID"); return requireRemoteAccess().consumeSecretDelivery(projectId, deliveryId, remoteOwner(e)); });
+  ipcMain.handle(CH.remoteCopySecret, (e, projectId: string, deliveryId: string) => { assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (typeof deliveryId !== "string") throw new Error("REMOTE_DELIVERY_INVALID"); return requireRemoteAccess().copySecretDelivery(projectId, deliveryId, remoteOwner(e)); });
   ipcMain.handle(CH.remoteStart, async (e, projectId: string, expectedConfigGeneration?: string | null) => {
     assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expectedConfigGeneration !== undefined && expectedConfigGeneration !== null && typeof expectedConfigGeneration !== "string") throw new Error("REMOTE_CONFIG_VERSION_INVALID");
     const ctx = requireCtx(projectId);
@@ -1062,6 +1071,7 @@ app.whenReady().then(async () => {
     }
   }
   createWindow();
+  void autoStartRegisteredProjects().catch((error) => console.error(`[remote-access] persisted auto-start unavailable: ${error instanceof Error ? error.message : String(error)}`));
   // After createWindow, and wrapped: a failing updater must never be the reason
   // the app does not start.
   try {

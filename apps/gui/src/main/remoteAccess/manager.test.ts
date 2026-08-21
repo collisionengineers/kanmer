@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -87,5 +87,45 @@ describe("RemoteAccessManager", () => {
     const newDelivery = await manager.createSecret("/repo", identity, true, owner);
     expect(manager.consumeSecretDelivery("/repo", oldDelivery.deliveryId, owner)).toBe(false);
     expect(manager.consumeSecretDelivery("/repo", newDelivery.deliveryId, owner)).toBe(true);
+  });
+
+  it("copies in main and clears only an unchanged clipboard value", async () => {
+    vi.useFakeTimers();
+    try {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-remote-manager-")); roots.push(root);
+    let clipboardValue = "";
+    const clipboard = { readText: () => clipboardValue, writeText: (value: string) => { clipboardValue = value; } };
+    const manager = new RemoteAccessManager(root, undefined, undefined, clipboard);
+    await manager.register("/repo", identity);
+    await manager.saveConfig("/repo", identity, config);
+    const delivery = await manager.createSecret("/repo", identity, false, owner);
+    expect(manager.copySecretDelivery("/repo", delivery.deliveryId, owner)).toBe(true);
+    expect(clipboardValue).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    vi.advanceTimersByTime(60_001);
+    expect(clipboardValue).toBe("");
+    const secondDelivery = await manager.createSecret("/repo", identity, true, owner);
+    expect(manager.copySecretDelivery("/repo", secondDelivery.deliveryId, owner)).toBe(true);
+    clipboardValue = "a newer user value";
+    vi.advanceTimersByTime(60_001);
+    expect(clipboardValue).toBe("a newer user value");
+    await manager.closeAll();
+    expect(clipboardValue).toBe("a newer user value");
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("enumerates deterministic persisted auto-start registrations and scavenges dead owners", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-remote-manager-")); roots.push(root);
+    const ownerDir = join(root, "remote-access-owners");
+    await (await import("node:fs/promises")).mkdir(ownerDir, { recursive: true });
+    await writeFile(join(ownerDir, `${"a".repeat(64)}.json`), JSON.stringify({ pid: 999999, nonce: "00000000-0000-0000-0000-000000000000", projectFingerprint: identity.fingerprint }));
+    const manager = new RemoteAccessManager(root);
+    await manager.register("/repo", identity);
+    const first = await manager.viewFor("/repo", identity);
+    await manager.saveConfig("/repo", identity, { ...config, autoStart: true, expectedConfigGeneration: first.status.configGeneration });
+    const configured = await manager.viewFor("/repo", identity);
+    await manager.createSecret("/repo", identity, false, owner, configured.status.configGeneration);
+    const registrations = await manager.autoStartRegistrations();
+    expect(registrations.map((entry) => entry.projectId)).toEqual(["/repo"]);
+    await expect(readFile(join(ownerDir, `${"a".repeat(64)}.json`))).rejects.toMatchObject({ code: "ENOENT" });
   });
 });

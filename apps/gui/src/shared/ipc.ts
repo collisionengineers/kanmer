@@ -20,6 +20,7 @@ import type {
   UpdateItemPatch,
   V3Report,
   RepoStaleness,
+  DispatchStatus as CoreDispatchStatus,
 } from "@kanmer/core";
 import type {
   RemoteDoctorResult,
@@ -278,20 +279,8 @@ export interface DispatchOption {
   warning?: string;
 }
 
-export interface DispatchStatus {
-  dispatchId: string;
-  /** Canonical project root that owns this dispatch. */
-  projectId: string;
-  ticketId: string;
-  provider: ConnectTarget;
-  state: "running" | "done" | "failed" | "cancelled" | "timed-out";
-  startedAt: number;
-  /** The scoped task, when the dispatch was given one (FRD-010). */
-  task?: string;
-  taskLabel?: string;
-  /** What must exist for the task to be finished. */
-  deliverable?: string;
-  exitCode?: number | null;
+export interface DispatchStatus extends CoreDispatchStatus {
+  /** Bounded local diagnostics; MCP status deliberately omits this field. */
   tail?: string[];
 }
 

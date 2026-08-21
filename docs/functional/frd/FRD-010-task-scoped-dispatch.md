@@ -17,6 +17,12 @@ Dispatch fires a background agent at **one granular deliverable** for one ticket
 - R4. Worktree discipline unchanged: dispatch never pre-creates worktrees; only the execute task's skill does.
 - R5. The drawer shows ticket, task, provider, state; a completed dispatch's deliverable is one click away (opens the ticket's relevant doc tab).
 - R6. kanmer-auto and dispatch cross-reference each other in prose: auto = agent-side many-ticket orchestration; dispatch = GUI-side single deliverable.
+- R7. **Shared GUI/MCP contract:** GUI and MCP consume one dispatch-provider registry and one injectable supervisor contract. MCP exposes exactly `dispatch_task`, `list_dispatches` and `cancel_dispatch`; each run is bound to the configured project and ticket, uses a named core task/fixed provider CLI, and returns sanitized lifecycle metadata.
+- R8. **Separate authorization boundary:** MCP dispatch is disabled by default. An operator must explicitly configure provider/task allowlists, bounded concurrency/timeouts and either fail-closed host elicitation or `preapproved` policy. Bearer authentication alone never authorizes process launch.
+- R9. **Safe remote behavior:** callers cannot provide commands, args, prompts, cwd, environment, pids or log paths. Cross-project, taken, duplicate, infeasible, unauthorized, malformed-policy and approval failures refuse before child/log creation; terminal scratch/audit failures remain visible in status.
+- R7. **Shared GUI/MCP contract:** GUI and MCP consume one dispatch-provider registry and one injectable supervisor contract. MCP exposes exactly `dispatch_task`, `list_dispatches` and `cancel_dispatch`; each run is bound to the configured project and ticket, uses a named core task/fixed provider CLI, and returns sanitized lifecycle metadata.
+- R8. **Separate authorization boundary:** MCP dispatch is disabled by default. An operator must explicitly configure provider/task allowlists, bounded concurrency/timeouts and either fail-closed host elicitation or `preapproved` policy. Bearer authentication alone never authorizes process launch.
+- R9. **Safe remote behavior:** callers cannot provide commands, args, prompts, cwd, environment, pids or log paths. Cross-project, taken, duplicate, infeasible, unauthorized, malformed-policy and approval failures refuse before child/log creation; terminal scratch/audit failures remain visible in status.
 
 ## Acceptance criteria
 
@@ -29,3 +35,11 @@ Related: D5/D11 · FRD-009 · FRD-002 · FRD-016 (worktrees).
 ## Compiled-workflow end state (ADR-0016)
 
 `get_execution_packet` is the bounded, read-only weak-agent entry point. A ready response derives profile readiness and returns project, ticket, first-group context, required documents, gates, extras, stop condition, and commands. Refusal is ordered and has no write side effect. It never takes a ticket, moves a stage, dispatches, or creates a worktree; those remain separate operations. A ready packet is the dispatch-enablement signal, including for a chore with a plan, while a spike remains outside execution.
+
+## MCP-020 shared dispatch end state
+
+The MCP start/list/cancel surface is a controlled extension of the GUI drawer, not a remote shell. `KANMER_DISPATCH_ENABLED=true` is necessary but insufficient: `KANMER_DISPATCH_PROVIDERS`, `KANMER_DISPATCH_TASKS`, bounded `KANMER_DISPATCH_MAX_ACTIVE`/timeout values and `KANMER_DISPATCH_APPROVAL=elicit|preapproved` must all be valid. Missing or malformed policy is disabled. The process supervisor keeps only active and bounded recent metadata in memory; full output remains local, while one bounded terminal summary is recorded to the ticket scratch. Live provider credentials and remote-host acceptance are operator evidence, not fabricated by repository tests.
+
+## MCP-020 shared dispatch end state
+
+The MCP start/list/cancel surface is a controlled extension of the GUI drawer, not a remote shell. `KANMER_DISPATCH_ENABLED=true` is necessary but insufficient: `KANMER_DISPATCH_PROVIDERS`, `KANMER_DISPATCH_TASKS`, bounded `KANMER_DISPATCH_MAX_ACTIVE`/timeout values and `KANMER_DISPATCH_APPROVAL=elicit|preapproved` must all be valid. Missing or malformed policy is disabled. The process supervisor keeps only active and bounded recent metadata in memory; full output remains local, while one bounded terminal summary is recorded to the ticket scratch. Live provider credentials and remote-host acceptance are operator evidence, not fabricated by repository tests.

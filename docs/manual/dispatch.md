@@ -92,3 +92,34 @@ They are the working practices behind the stages in this manual — one per job.
 You do not need to learn them; they are listed here only so that seeing
 `kanmer-plan` scroll past reads as *"it is writing the plan"* rather than as
 something going wrong.
+
+## Remote MCP dispatch is opt-in
+
+The MCP server exposes the same bounded contract as three tools:
+`dispatch_task`, `list_dispatches`, and `cancel_dispatch`. It is **disabled by
+default**. An operator who deliberately wants a host to launch local agents
+must configure all of the following in its process environment:
+
+```text
+KANMER_DISPATCH_ENABLED=true
+KANMER_DISPATCH_PROVIDERS=codex,claude
+KANMER_DISPATCH_TASKS=research-quick,files
+KANMER_DISPATCH_MAX_ACTIVE=1
+KANMER_DISPATCH_TIMEOUT_MS=1800000
+KANMER_DISPATCH_APPROVAL=elicit
+```
+
+Provider and task ids are closed allowlists from Kanmer's core registry. The
+caller cannot provide a command, prompt, working directory, environment, pid,
+or log path. The server checks the project fingerprint, ticket state,
+feasibility, duplicate/concurrency limits and approval before it creates a
+child or local log. `elicit` refuses when the host cannot complete approval;
+`preapproved` is an explicit operator decision, not a fallback. Bearer-token
+authentication proves access to an endpoint but does not authorize process
+launch.
+
+Remote list/cancel responses contain only sanitized lifecycle metadata. Raw
+output and local log paths remain on the host; one bounded terminal summary is
+written to ticket scratch, and a scratch failure remains visible as
+`recordingError`. Credentials or a live provider/remote host are not implied by
+these repository checks.

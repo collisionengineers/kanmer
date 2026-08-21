@@ -6,6 +6,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { execFile as execFileCallback } from "node:child_process";
 import path from "node:path";
+import { homedir } from "node:os";
 import { promisify } from "node:util";
 import { z } from "zod";
 import {
@@ -26,6 +27,9 @@ import {
   resolveProfiles,
   resolveProofTypes,
   serialiseItem,
+  DispatchSupervisor,
+  dispatchTaskById,
+  taskFeasibility,
   takeTicketPromptText,
   watchKanmer,
   type Item,
@@ -39,6 +43,7 @@ import { readTicketDocuments } from "./ticket-docs.js";
 import { getExecutionPacket } from "./execution-packet.js";
 import { failCoded, KanmerError } from "./errors.js";
 import { projectIdentity } from "./project-identity.js";
+import { dispatchPolicyView, parseDispatchPolicy } from "./dispatch-policy.js";
 
 const execFile = promisify(execFileCallback);
 
@@ -315,6 +320,22 @@ export function remoteHttpToolNames(): readonly string[] {
   return Object.keys(registered).filter((name) => !REMOTE_HTTP_EXCLUDED_TOOLS.has(name)).sort();
 }
 
+function dispatchTerminalSummary(status: { dispatchId: string; provider: string; state: string; exitCode?: number | null; reason?: string }, tail: readonly string[]): string {
+  return [
+    `## Dispatch ${status.dispatchId} — ${status.provider}`,
+    `- state: ${status.state} (exit ${status.exitCode ?? "unknown"})`,
+    status.reason ? `- reason: ${status.reason}` : "",
+    "",
+    "```",
+    ...tail.slice(-50),
+    "```",
+  ].filter(Boolean).join("\n");
+}
+
+function dispatchRefusal(code: string, reason: string, policy: ReturnType<typeof dispatchPolicyView>) {
+  return ok({ ok: false, code, reason, policy });
+}
+
 /**
  * Construct the one canonical Kanmer registry for a transport. The factory is
  * deliberately transport-agnostic: stdio and HTTP attach their SDK transports
@@ -329,6 +350,17 @@ export function createKanmerMcpServer(policy: ExposurePolicy = "local-stdio"): M
   // Each factory result owns its negotiated client identity and capabilities.
   // HTTP creates one result per session, so this must never be module-global.
   const server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
+  const dispatchPolicy = parseDispatchPolicy(process.env);
+  const dispatchLogRoot = process.env.KANMER_DISPATCH_LOG_DIR?.trim() || path.join(homedir(), ".kanmer", "dispatch");
+  const dispatchSupervisor = new DispatchSupervisor({
+    logDir: dispatchLogRoot,
+    maxActive: dispatchPolicy.maxActive,
+    defaultTimeoutMs: dispatchPolicy.timeoutMs,
+    maxTimeoutMs: dispatchPolicy.maxTimeoutMs,
+    recordTerminal: async (status, tail) => {
+      await store.appendScratch(status.ticketId, "dispatch", dispatchTerminalSummary(status, tail));
+    },
+  });
   const registerTool = server.registerTool.bind(server);
   // All mutating tool schemas carry transport metadata at their call boundary.
   // This is intentionally central: a future write tool cannot silently lose
@@ -438,6 +470,7 @@ server.registerTool(
       boardSource: source,
       project: projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source }),
       compat: { expectedProject: "optional" },
+      dispatch: dispatchPolicyView(dispatchPolicy),
       deploymentTracking: board.deployment !== undefined,
       boardWorktree: {
         path: projectRoot,
@@ -589,6 +622,116 @@ server.registerTool(
       boardSource: source,
     });
     return ok(await getExecutionPacket({ store, id, actor: actorName(server, extra), project }));
+  }),
+);
+
+server.registerTool(
+  "dispatch_task",
+  {
+    title: "Dispatch one named task",
+    description:
+      "Start one fixed, named core task for one existing ticket through the operator-enabled dispatch policy. The caller chooses only ticket, shared provider id, shared task id and an optional bounded timeout; command, args, prompt, cwd, environment and log path are never accepted. Dispatch is disabled by default, bearer authentication is not authorization, and `get_status.dispatch` explains the local policy. Refusals are normal structured `{ok:false,code,reason}` results and never create a child or log before all checks and approval pass.",
+    inputSchema: {
+      ticket_id: z.string().describe("Existing non-archived ticket id"),
+      provider: z.string().describe("Operator-allowlisted shared provider id: codex | claude | opencode | grok"),
+      task: z.string().describe("Operator-allowlisted core task id from DISPATCH_TASKS"),
+      timeout_ms: z.number().int().positive().optional().describe("Optional bounded timeout in milliseconds"),
+      expected_project: expectedProjectField,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  guard(async ({ ticket_id, provider, task: taskId, timeout_ms, expected_project }, extra) => {
+    const policy = dispatchPolicyView(dispatchPolicy);
+    if (!dispatchPolicy.enabled) return dispatchRefusal("DISPATCH_DISABLED", dispatchPolicy.reason ?? "dispatch is disabled", policy);
+    if (!dispatchPolicy.providers.includes(provider as never)) return dispatchRefusal("DISPATCH_PROVIDER_NOT_ALLOWED", `provider "${provider}" is not allowlisted`, policy);
+    if (!dispatchPolicy.tasks.includes(taskId)) return dispatchRefusal("DISPATCH_TASK_NOT_ALLOWED", `task "${taskId}" is not allowlisted`, policy);
+    const format = await store.detectFormat();
+    const { source } = await store.getBoardWithSource();
+    const identity = projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
+    if (expected_project !== undefined && expected_project !== identity.fingerprint) {
+      return failCoded(new KanmerError("WRONG_PROJECT", `expected project ${expected_project} does not match current project ${identity.fingerprint}`));
+    }
+    const item = await store.getItem(ticket_id);
+    if (!item || item.type !== "ticket") return dispatchRefusal("DISPATCH_TICKET_NOT_FOUND", `No ticket "${ticket_id}".`, policy);
+    if (item.archived) return dispatchRefusal("DISPATCH_TICKET_ARCHIVED", `${ticket_id} is archived.`, policy);
+    if (item.taken_at) return dispatchRefusal("DISPATCH_TICKET_TAKEN", `${ticket_id} is already taken; dispatch does not steal tickets.`, policy);
+    const info = await store.getTicketDocsInfo(ticket_id);
+    const task = dispatchTaskById(taskId);
+    if (!task) return dispatchRefusal("DISPATCH_TASK_UNKNOWN", `Unknown task "${taskId}".`, policy);
+    const feasibility = taskFeasibility(taskId, { stage: item.status, docCounts: info?.counts ?? {} });
+    if (!feasibility.ok) return dispatchRefusal("DISPATCH_TASK_INFEASIBLE", feasibility.reason ?? "task is not feasible for this ticket", policy);
+    if (dispatchSupervisor.list({ projectId: projectRoot, ticketId: ticket_id, includeRecent: false }).length > 0) return dispatchRefusal("DISPATCH_DUPLICATE", `${ticket_id} already has a dispatch in flight for this project.`, policy);
+    if (dispatchPolicy.approval === "elicit") {
+      if (!server.server.getClientCapabilities()?.elicitation) return dispatchRefusal("DISPATCH_APPROVAL_UNAVAILABLE", "dispatch approval requires an MCP host with elicitation capability", policy);
+      try {
+        const approval = await server.server.elicitInput({
+          message: `Allow ${provider}/${taskId} to run for ticket ${ticket_id} in the configured Kanmer project?`,
+          requestedSchema: { type: "object", properties: { confirm: { type: "boolean", description: "true to proceed" } }, required: ["confirm"] },
+        });
+        if (approval.action !== "accept" || (approval.content as { confirm?: boolean })?.confirm !== true) return dispatchRefusal("DISPATCH_APPROVAL_DECLINED", "dispatch approval was declined", policy);
+      } catch {
+        return dispatchRefusal("DISPATCH_APPROVAL_UNAVAILABLE", "dispatch approval round trip failed; dispatch remains refused", policy);
+      }
+    }
+    try {
+      const status = await dispatchSupervisor.start({
+        projectId: projectRoot,
+        projectFingerprint: identity.fingerprint,
+        sourceRoot: store.paths.repoRoot,
+        ticketId: ticket_id,
+        provider: provider as never,
+        requestedBy: actorName(server, extra),
+        task: { id: task.id, label: task.label, deliverable: task.deliverable, prompt: task.prompt(ticket_id) },
+        ...(timeout_ms === undefined ? {} : { timeoutMs: timeout_ms }),
+      });
+      return ok({ ok: true, status, deliverable: task.deliverable, warning: feasibility.warning ?? null, policy });
+    } catch (error) {
+      return dispatchRefusal("DISPATCH_START_REFUSED", error instanceof Error ? error.message : String(error), policy);
+    }
+  }),
+);
+
+server.registerTool(
+  "list_dispatches",
+  {
+    title: "List dispatches",
+    description: "List active and bounded recent dispatch lifecycle metadata for this configured project. Output is sanitized: no command, environment, local log path or raw output tail is ever returned. When policy is disabled the response says so instead of pretending the feature is absent.",
+    inputSchema: {
+      ticket_id: z.string().optional().describe("Filter by ticket id"),
+      state: z.enum(["running", "done", "failed", "cancelled", "timed-out"]).optional(),
+      include_recent: z.boolean().optional().default(true),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  guard(async ({ ticket_id, state, include_recent }) => ok({
+    policy: dispatchPolicyView(dispatchPolicy),
+    dispatches: dispatchSupervisor.list({ projectId: projectRoot, ...(ticket_id ? { ticketId: ticket_id } : {}), ...(state ? { state } : {}), includeRecent: include_recent }),
+  })),
+);
+
+server.registerTool(
+  "cancel_dispatch",
+  {
+    title: "Cancel a dispatch",
+    description: "Cancel one active dispatch in this configured project. The caller supplies only an opaque dispatch id and a short reason; the server resolves the child and performs safe descendant cancellation. Cancellation is project-bound and policy-bound, and the cancelling actor is recorded.",
+    inputSchema: {
+      dispatch_id: z.string().min(1).max(200).describe("Opaque dispatch id returned by dispatch_task/list_dispatches"),
+      reason: z.string().max(200).optional().describe("Short human-readable cancellation reason"),
+      expected_project: expectedProjectField,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  guard(async ({ dispatch_id, reason, expected_project }, extra) => {
+    const policy = dispatchPolicyView(dispatchPolicy);
+    if (!dispatchPolicy.enabled) return dispatchRefusal("DISPATCH_DISABLED", dispatchPolicy.reason ?? "dispatch is disabled", policy);
+    const format = await store.detectFormat();
+    const { source } = await store.getBoardWithSource();
+    const identity = projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
+    if (expected_project !== undefined && expected_project !== identity.fingerprint) return failCoded(new KanmerError("WRONG_PROJECT", `expected project ${expected_project} does not match current project ${identity.fingerprint}`));
+    const active = dispatchSupervisor.list({ projectId: projectRoot, includeRecent: false }).find((status) => status.dispatchId === dispatch_id);
+    if (!active) return dispatchRefusal("DISPATCH_NOT_FOUND", `No active dispatch "${dispatch_id}" in this project.`, policy);
+    const status = dispatchSupervisor.cancel(dispatch_id, reason?.trim() || "cancelled by client", actorName(server, extra));
+    return status ? ok({ ok: true, status, policy }) : dispatchRefusal("DISPATCH_NOT_FOUND", `No active dispatch "${dispatch_id}" in this project.`, policy);
   }),
 );
 

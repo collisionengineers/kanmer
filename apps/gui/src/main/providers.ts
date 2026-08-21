@@ -5,7 +5,12 @@
 // surface is unit-testable without spawning anything.
 import { basename } from "node:path";
 import * as TOML from "smol-toml";
-import { STALENESS_PROVIDER_PATHS } from "@kanmer/core";
+import {
+  dispatchProviderById,
+  listDispatchProviders,
+  STALENESS_PROVIDER_PATHS,
+  type DispatchProviderId,
+} from "@kanmer/core";
 
 export type ProviderId = "codex" | "claude" | "opencode" | "grok" | "antigravity";
 
@@ -141,6 +146,16 @@ export interface AgentProvider {
    */
   dispatchCli?: string;
   dispatchArgs?: (prompt: string, root: string) => string[];
+}
+
+/** Adapt the shared dispatch-only registry to Connect's larger provider record. */
+function sharedDispatchSpec(id: DispatchProviderId): Pick<AgentProvider, "dispatchCli" | "dispatchArgs"> {
+  const provider = dispatchProviderById(id);
+  if (!provider) throw new Error(`Missing shared dispatch provider ${id}`);
+  return {
+    dispatchCli: provider.cli,
+    dispatchArgs: (prompt, root) => [...provider.args(prompt, root)],
+  };
 }
 
 /** Quote a shell argument for the copy-paste fallback command line. */
@@ -735,8 +750,7 @@ export const PROVIDERS: AgentProvider[] = [
       ],
     },
     dispatch: true,
-    dispatchCli: "codex",
-    dispatchArgs: (prompt) => ["exec", prompt],
+    ...sharedDispatchSpec("codex"),
   },
   {
     id: "claude",
@@ -759,8 +773,7 @@ export const PROVIDERS: AgentProvider[] = [
       ],
     },
     dispatch: true,
-    dispatchCli: "claude",
-    dispatchArgs: (prompt) => ["-p", prompt],
+    ...sharedDispatchSpec("claude"),
   },
   {
     id: "opencode",
@@ -781,8 +794,7 @@ export const PROVIDERS: AgentProvider[] = [
       skillsDir: STALENESS_PROVIDER_PATHS.opencode.skillsDir,
     },
     dispatch: true,
-    dispatchCli: "opencode",
-    dispatchArgs: (prompt) => ["run", prompt],
+    ...sharedDispatchSpec("opencode"),
   },
   {
     id: "grok",
@@ -805,8 +817,7 @@ export const PROVIDERS: AgentProvider[] = [
       legacySkillsDir: STALENESS_PROVIDER_PATHS.grok.skillsDir,
     },
     dispatch: true,
-    dispatchCli: "grok",
-    dispatchArgs: (prompt, root) => ["-p", prompt, "--cwd", root],
+    ...sharedDispatchSpec("grok"),
   },
   {
     id: "antigravity",
@@ -875,8 +886,5 @@ export function listProviders(): { id: ProviderId; label: string; dispatch: bool
 
 /** Providers that support a background dispatch (for the "Dispatch to agent →" menu). */
 export function dispatchableProviders(): { id: ProviderId; label: string }[] {
-  return PROVIDERS.filter((p) => p.dispatch && p.dispatchCli && p.dispatchArgs).map((p) => ({
-    id: p.id,
-    label: p.label,
-  }));
+  return listDispatchProviders().map(({ id, label }) => ({ id, label }));
 }

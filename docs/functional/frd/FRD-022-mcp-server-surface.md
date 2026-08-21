@@ -9,7 +9,7 @@ The agent-facing contract. Local stdio server; root resolved `--root` → `KANME
 
 MCPB desktop distribution is a headless packaging of this same stdio server, not a second transport: its Windows-only manifest requires a user-selected board root and passes that root to the existing standalone entry point. It carries no GUI, HTTP transport, worktree creation, Git sync, or machine-specific path; real Claude Desktop acceptance remains an operator-host check.
 
-- R1. **Tool inventory (end-state), by category.** Read: get_status, list_board, list_items, get_item, get_ticket_doc, search_items, get_links, get_activity, get_doc_gates, **get_group, list_groups, get_group_doc**. Write: create_item, create_items (cap 50), update_item, move_item, take_ticket, set_ticket_doc, append_scratch, link_items, link_doc, migrate_board, **create_group, update_group, set_group_doc**, column tools (kind: **area only** — status and priority kinds removed per FRD-007/008). Destructive: delete_item, remove_column.
+- R1. **Tool inventory (end-state), by category.** Read: get_status, list_board, list_items, get_item, get_ticket_doc, search_items, get_links, get_activity, get_doc_gates, **get_group, list_groups, get_group_doc**, `list_dispatches`. Write: create_item, create_items (cap 50), update_item, move_item, take_ticket, set_ticket_doc, append_scratch, link_items, link_doc, migrate_board, **create_group, update_group, set_group_doc**, column tools (kind: **area only** — status and priority kinds removed per FRD-007/008), `dispatch_task`, `cancel_dispatch`. Destructive: delete_item, remove_column. Dispatch tools are policy-bound and disabled by default; `dispatch_task` and `cancel_dispatch` are mutating but not destructive board operations.
 - R2. Annotations are honest: `readOnlyHint` on every read, `destructiveHint` only where true — this is what makes host approval modes work.
 - R3. Descriptions are a contract layer (ADR-0009): they teach profiles, gates, the read-everything duty, and group context in-line; `get_doc_gates` is named as the orientation call before any move; parameter docs never contradict the core.
 - R4. Actor attribution via `_meta` client identity feeds the activity log; MRTR elicitation guards destructive ops where the host supports it; resources/subscriptions and prompts remain; the take-ticket prompt text is core-SSOT shared with dispatch (FRD-010 R2).
@@ -37,8 +37,8 @@ Related: FRD-001/002/003/006/007/008 · ADR-0009 · **ADR-0012 (root resolution 
   Reads still never create `.kanmer/`: `init` is lazy and only the `write()` wrapper calls
   `ensureInit()` — `--init` governs whether that write is permitted to create a board, it
   does not make a read create one.
-- R1 — **31 tools registered** (recounted from `registerTool` call sites, MCP-023): the 13 reads
-  listed, 16 writes, and 2 destructive. The count reached the end state via the six group tools —
+- R1 — **34 tools registered** (recounted from `registerTool` call sites, MCP-020): the 14 reads,
+  18 writes, and 2 destructive. The count reached the end state via the six group tools —
   the five above plus **`update_group`** (MCP-006), which is what makes FRD-001 G4's
   archive-as-retirement performable and closes the gap where `list_groups` and `set_group_doc`
   described operations no tool offered. The Phase 3 column-tool delta is **done**: `kind` is
@@ -66,4 +66,4 @@ after MCP-010: board discovery is covered by a third smoke script (`smoke-discov
 
 ## Compiled-workflow end state (ADR-0016)
 
-The end-state registry has 31 tools after `get_execution_packet`. Every write accepts optional `expected_project`; `create_items` applies it once to the call. The server compares a canonical machine-local fingerprint before initialization and strips it before storage. `get_status` exposes `project`, `boardWorktree`, and `compat.expectedProject`. Compatible structured errors are exactly `WRONG_PROJECT`, `REVISION_CONFLICT`, and `GATE_BLOCKED` while preserving useful text for older clients. The packet is read-only and reuses the shared multi-document inventory; it returns the bounded execution material and refusal order described by FRD-010.
+The end-state registry has 34 tools after `get_execution_packet` and MCP-020's three dispatch tools. Every write accepts optional `expected_project`; `create_items` applies it once to the call. The server compares a canonical machine-local fingerprint before initialization and strips it before storage. `get_status` exposes `project`, `boardWorktree`, `compat.expectedProject`, and a sanitized dispatch policy block. Compatible board structured errors remain exactly `WRONG_PROJECT`, `REVISION_CONFLICT`, and `GATE_BLOCKED`; dispatch refusals use stable normal-data codes and never expose process details. The packet is read-only and reuses the shared multi-document inventory; it returns the bounded execution material and refusal order described by FRD-010.

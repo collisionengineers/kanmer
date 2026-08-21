@@ -500,6 +500,7 @@ export function createDemoClient(seed?: {
       projectId,
       ticketId,
       provider,
+      requestedBy: "demo",
       state: "running",
       startedAt: Date.now(),
       tail: ["(demo) agent started"],

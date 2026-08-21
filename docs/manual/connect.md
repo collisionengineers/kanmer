@@ -95,7 +95,7 @@ because the installed MCP process is replaced during the update.
 This path was exercised successfully on Windows with `tunnel-client` 0.0.11.
 Your own tunnel identifier, workspace, and credentials are private operational
 state and must not be committed. The packaged MCP smoke separately verifies all
-31 tools and their file mutations.
+34 tools and their file mutations, including the policy-bound dispatch/list/cancel surface when an operator explicitly enables it.
 
 ### More than one project
 

@@ -13,6 +13,9 @@ export interface CloudflaredAdapterOptions extends CloudflaredTunnelOptions {
   readonly onLog?: (event: TunnelLogEvent) => void;
 }
 
+/** Test-only spawn seam; normal construction always uses Node's direct spawn. */
+export type CloudflaredSpawner = typeof spawn;
+
 async function validateRegularFile(value: string, errorCode: string, privateFile: boolean): Promise<void> {
   if (!value || value.includes("\0") || !isAbsolute(value)) throw new Error(errorCode);
   let metadata;
@@ -30,7 +33,7 @@ function logLine(onLog: CloudflaredAdapterOptions["onLog"], line: string): void 
 }
 
 export class CloudflaredAdapter implements TunnelAdapter {
-  constructor(private readonly options: CloudflaredAdapterOptions) {}
+  constructor(private readonly options: CloudflaredAdapterOptions, private readonly spawnProcess: CloudflaredSpawner = spawn) {}
 
   async start(target: TunnelTarget): Promise<TunnelProcess> {
     validateCloudflaredTunnel(this.options, target);
@@ -44,7 +47,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
     try {
       await writeFile(configPath, cloudflaredConfig(this.options, target), { encoding: "utf8", mode: 0o600 });
       await chmod(configPath, 0o600);
-      const spawned = spawn(this.options.executable, ["--no-autoupdate", "--metrics", `127.0.0.1:${metricsPort}`, "tunnel", "--config", configPath, "run", this.options.tunnelId], {
+      const spawned = this.spawnProcess(this.options.executable, ["--no-autoupdate", "--metrics", `127.0.0.1:${metricsPort}`, "tunnel", "--config", configPath, "run", this.options.tunnelId], {
         cwd: directory,
         env: { PATH: process.env.PATH ?? "" },
         shell: false,
@@ -77,6 +80,6 @@ export class CloudflaredAdapter implements TunnelAdapter {
   }
 }
 
-export function createCloudflaredAdapter(options: CloudflaredAdapterOptions): CloudflaredAdapter {
-  return new CloudflaredAdapter(options);
+export function createCloudflaredAdapter(options: CloudflaredAdapterOptions, spawnProcess?: CloudflaredSpawner): CloudflaredAdapter {
+  return new CloudflaredAdapter(options, spawnProcess);
 }

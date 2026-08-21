@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T19:26:00.000Z
+updated_at: 2026-08-21T19:31:30.000Z
 lane_limit: 3
 stop_reason:
 ---
@@ -172,6 +172,9 @@ stop_reason:
 
 
 - 2026-08-21T19:26:00.000Z — GUI-100 independent review PASS: PR #126 matched the report and governing docs; focused provider/connect tests passed 91/91. PR #126 merged to main at 3403fd86622e8223fec3e1bb691eb2e0eb960482; ticket moved Review→Verifying→Done with merged-main proof, downstream GUI-101/GUI-102 limitations explicit, and ticket released. Exact GUI-100 worktree removed; local and origin branches deleted; fetch --prune/worktree prune completed.
+
+
+- 2026-08-21T19:31:30.000Z — GUI-084 independently reviewed and PASSed as a merged-main reconciliation: classifier test 7/7 on current main; native OS notification styling limitation and FRD-018 decision were accepted without a fabricated visual pass. Ticket moved Review→Verifying→Done, proof written, released, and exact worktree/branch cleanup completed. CORE-036 PR #127 independently reviewed and merged; merged-main proof records local rails PASS and real tag/disposable-release Actions evidence INCONCLUSIVE, so the ticket remains Verifying pending authorized external release proof.
 
 ## Resume instruction
 

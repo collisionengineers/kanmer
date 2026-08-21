@@ -52,7 +52,7 @@
 - [x] Add terminal `http_status:404` catch-all.
 - [ ] Include allowlisted fields only.
 - [x] Include no provider credential content or Kanmer bearer/verifier.
-- [ ] Create config exclusively and read back/parse in tests.
+- [x] Create config exclusively and read back/parse in tests.
 - [ ] Reject control/newline/metacharacter injection.
 - [x] Remove runtime config/directory on every terminal path.
 

@@ -65,3 +65,5 @@ Commit `1391a00` runs direct executable validation from the system temporary dir
 ## FRD shutdown-order correction — 2026-08-21
 
 FRD-025 RA-TUNNEL-6 is authoritative over the prior plan wording: remote shutdown must stop accepting requests and close sessions/listener **before** stopping the tunnel child. Commit `a43df73` implements and tests that order; the test verifies the loopback endpoint refuses connections inside the child’s stop callback. Updated plan/checklist wording to the governing contract. Focused suite passed 26/26 with MCP typecheck and diff check clean.
+
+Commit `fc4d076` hardens generated cloudflared runtime files: private directory mode, exclusive config creation, and a read-back test that asserts exact ingress/catch-all semantics and protected POSIX file mode. Focused suite passed 26/26, typecheck/diff clean.

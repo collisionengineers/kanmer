@@ -2,12 +2,12 @@
 
 ## Architecture and API inspection
 
-- [ ] Read current project/settings/main/preload/renderer/process/test architecture.
-- [ ] Read actual MCP-021/025/026/027 exports/events/errors/reports.
-- [ ] Verify pinned Electron safeStorage/IPC/clipboard/security APIs.
-- [ ] Define accepted secure storage backends and reject plaintext fallback.
-- [ ] Confirm true app quit versus window/tray lifecycle.
-- [ ] Update file paths before coding if canonical layout differs.
+- [x] Read current project/settings/main/preload/renderer/process/test architecture.
+- [x] Read actual MCP-021/025/026/027 exports/events/errors/reports.
+- [x] Verify pinned Electron safeStorage/IPC/clipboard/security APIs.
+- [x] Define accepted secure storage backends and reject plaintext fallback.
+- [x] Confirm true app quit versus window/tray lifecycle.
+- [x] Update file paths before coding if canonical layout differs.
 
 ## Settings and types
 

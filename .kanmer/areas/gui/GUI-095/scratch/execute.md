@@ -1,0 +1,1 @@
+Taken into .worktrees/gui-095 on gui-095-cloudflare-remote-access from origin/main at 75919cb8. Initial architecture/API/safeStorage/lifecycle/file-path inspection complete; implementation begins with main-process types/settings/secrets/manager and narrow IPC.

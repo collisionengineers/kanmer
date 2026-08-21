@@ -8,9 +8,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** The authoritative ordered verification commands for PRs and releases. */
 export const VERIFY_STEPS = Object.freeze([
+  "npm run build",
+  // The GUI imports @kanmer/core from its package export. A clean checkout
+  // has no generated dist yet, so build the workspace artifacts before tests.
   "npm test",
   "npm run typecheck",
-  "npm run build",
   "node packages/mcp-server/src/smoke.mjs",
   "npm run smoke:protocol",
   "npm run smoke:discovery",

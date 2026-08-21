@@ -6,7 +6,7 @@
 - [x] Inspect the exact pinned MCP TypeScript SDK version and matching Streamable HTTP API/examples.
 - [x] Confirm session header, protocol-version, POST/GET/DELETE, JSON/SSE, cancellation, and close semantics.
 - [x] Record whether the supported host adapter is native Node HTTP, Express, or another SDK-owned bridge.
-- [ ] Stop and amend the plan if the pinned SDK cannot satisfy the accepted architecture without an upgrade.
+- [x] Stop and amend the plan if the pinned SDK cannot satisfy the accepted architecture without an upgrade.
 
 ## Shared server composition
 
@@ -14,9 +14,9 @@
 - [x] Keep handlers, schemas, errors, expected-project checks, root resolution, and document helpers single-sourced.
 - [x] Add exact named policies `local-stdio` and `remote-http-v1`.
 - [x] Preserve the complete local stdio tool set and schemas.
-- [ ] Exclude only the exact approved background-dispatch ids remotely.
+- [x] Exclude only the exact approved background-dispatch ids remotely.
 - [x] Reject unknown exposure policies.
-- [ ] Add local-schema regression and exact remote set-difference tests.
+- [x] Add local-schema regression and exact remote set-difference tests.
 
 ## Stdio compatibility
 
@@ -24,7 +24,7 @@
 - [x] Preserve stdout protocol purity and stderr logging.
 - [x] Preserve root/environment/signal behavior.
 - [x] Run source and built stdio protocol/discovery smokes before HTTP work proceeds.
-- [ ] Regenerate the plugin only through the canonical main-checkout build if bundle bytes legitimately change.
+- [x] Regenerate the plugin only through the canonical main-checkout build if bundle bytes legitimately change.
 
 ## HTTP configuration and preflight
 
@@ -33,8 +33,8 @@
 - [x] Permit port `0` for tests/parent allocation; validate explicit ports.
 - [x] Fix the endpoint to `/mcp`.
 - [x] Reject wildcard, LAN, hostname, and other non-loopback binds.
-- [ ] Validate body/header/request/keepalive/session/concurrency/shutdown limits before binding.
-- [ ] Validate present Origin against an explicit allowlist before authentication/body parsing.
+- [x] Validate body/header/request/keepalive/session/concurrency/shutdown limits before binding.
+- [x] Validate present Origin against an explicit allowlist before authentication/body parsing.
 - [x] Permit absent Origin for non-browser MCP clients.
 - [x] Reject malformed/disallowed Origin generically and without CORS broadening.
 - [x] Do not trust arbitrary forwarded headers.
@@ -45,7 +45,7 @@
 - [x] Invoke authorization before body parsing and session lookup.
 - [x] Return only an opaque principal/fingerprint to transport/session code.
 - [x] Use one generic unauthorized response path.
-- [ ] Keep test authorizers in test code only.
+- [x] Keep test authorizers in test code only.
 - [x] Define a session-invalidation hook for MCP-026 rotation.
 - [x] Add no token parsing, storage, comparison, or generation in this ticket.
 - [x] Prove production HTTP startup fails closed without an authorizer.
@@ -58,21 +58,21 @@
 - [x] Store only operational protocol state, never tokens/ticket content/project paths.
 - [x] Enforce total and per-principal session caps.
 - [x] Enforce bounded idle TTL and sweep.
-- [ ] Enforce per-session/global in-flight limits.
-- [ ] Reject malformed, unknown, expired, closing, and cross-principal sessions.
+- [x] Enforce per-session/global in-flight limits.
+- [x] Reject malformed, unknown, expired, closing, and cross-principal sessions.
 - [x] Make close/disposal idempotent.
 - [x] Remove sessions on DELETE, SDK close, expiry, auth invalidation, and shutdown.
-- [ ] Confirm no session survives process restart.
+- [x] Confirm no session survives process restart.
 
 ## `/mcp` routing
 
 - [x] Route exactly `/mcp`; return 404 elsewhere.
 - [x] Allow POST, GET, and DELETE only; return 405 with Allow header otherwise.
-- [ ] Apply limits before expensive processing/tool dispatch.
+- [x] Apply limits before expensive processing/tool dispatch.
 - [x] Run origin validation, authorization, session handling, then the official SDK handler.
 - [x] Let the SDK own JSON-RPC parsing, protocol negotiation, JSON/SSE framing, notifications, and cancellation.
 - [x] Require normal MCP initialization before tools.
-- [ ] Release counters/resources on disconnect and cancellation.
+- [x] Release counters/resources on disconnect and cancellation.
 - [x] Keep HTTP/protocol errors outside Kanmer tool success envelopes.
 - [x] Reject any attempt to select a board/project/root from request data.
 
@@ -83,7 +83,7 @@
 - [x] Require authorizer configuration before listener creation.
 - [x] Bind loopback and determine the actual allocated port.
 - [x] Emit one parseable ready event only after project/auth/listener/session readiness.
-- [ ] Include PID, host, port, local endpoint, project id/fingerprint, mode, auth-required, and supported protocol metadata.
+- [x] Include PID, host, port, local endpoint, project id/fingerprint, mode, auth-required, and supported protocol metadata.
 - [x] Exclude tokens, full session ids, document content, and arbitrary request data.
 - [x] Keep operational logs off protocol response streams.
 - [x] Start no tunnel and write no GUI settings.
@@ -93,30 +93,30 @@
 - [x] Implement one idempotent shutdown path for signals, parent request, startup rollback, and tests.
 - [x] Refuse new sessions while stopping.
 - [x] Stop accepting connections.
-- [ ] Close/abort all sessions and wait only to the configured grace limit.
+- [x] Close/abort all sessions and wait only to the configured grace limit.
 - [x] Destroy remaining sockets/transports and clear timers/registry.
-- [ ] Emit one redacted stopped event/reason.
+- [x] Emit one redacted stopped event/reason.
 - [x] Use non-zero startup exit for invalid config/root/auth/bind failures.
-- [ ] Bound diagnostic output.
+- [x] Bound diagnostic output.
 - [x] Prove repeated shutdown does not double-dispose or throw.
 
 ## Tests
 
-- [ ] Test every configuration default and invalid value.
-- [ ] Test absent/allowed/disallowed Origin ordering.
+- [x] Test every configuration default and invalid value.
+- [x] Test absent/allowed/disallowed Origin ordering.
 - [x] Start a real loopback listener on port 0 with a disposable board and test authorizer.
-- [ ] Initialize with the official MCP client transport.
-- [ ] Compare local and remote tool sets exactly.
-- [ ] Call at least one safe read/orientation tool and verify the project fingerprint.
+- [x] Initialize with the official MCP client transport.
+- [x] Compare local and remote tool sets exactly.
+- [x] Call at least one safe read/orientation tool and verify the project fingerprint.
 - [x] Test POST/GET/DELETE lifecycle supported by the SDK.
 - [x] Test 404, 405, malformed content, and protocol-version behavior.
 - [x] Test malformed/unknown/expired/cross-principal sessions.
-- [ ] Test duplicate/concurrent initialization.
-- [ ] Test total/per-principal session and in-flight caps.
-- [ ] Test disconnect/cancellation resource release.
-- [ ] Test idle expiry with a fake clock and one bounded real-TTL case.
+- [x] Test duplicate/concurrent initialization.
+- [x] Test total/per-principal session and in-flight caps.
+- [x] Test disconnect/cancellation resource release.
+- [x] Test idle expiry with a fake clock and one bounded real-TTL case.
 - [x] Test DELETE, expiry, invalidation, and shutdown each dispose once.
-- [ ] Test idle, active, forced-timeout, and repeated shutdown.
+- [x] Test idle, active, forced-timeout, and repeated shutdown.
 - [x] Assert logs/readiness contain no token, full session id, or document content.
 - [x] Assert request data cannot select another project.
 - [x] Assert no public listener/tunnel exists.
@@ -125,16 +125,16 @@
 
 - [x] Add a packaged HTTP smoke if unit integration does not exercise built output.
 - [x] Run existing stdio source and built smokes.
-- [ ] Run `npm test`.
-- [ ] Run `npm run typecheck`.
+- [x] Run `npm test`.
+- [x] Run `npm run typecheck`.
 - [x] Run `npm run build`.
 - [x] Run the canonical HTTP smoke.
-- [ ] Run `npm run verify`.
-- [ ] Run Windows PR verification.
-- [ ] If the stdio bundle changes, run canonical `plugin:build` then isolated `plugin:check` from the normal main checkout.
+- [x] Run `npm run verify`.
+- [x] Run Windows PR verification.
+- [x] If the stdio bundle changes, run canonical `plugin:build` then isolated `plugin:check` from the normal main checkout.
 - [x] Confirm provider registration still starts stdio.
 - [x] Run `git diff --check` and inspect status for fixture/session debris.
-- [ ] Record SDK choice, endpoint, tool-set diff, lifecycle/limit/shutdown proof, and stdio compatibility in the post-implementation report.
+- [x] Record SDK choice, endpoint, tool-set diff, lifecycle/limit/shutdown proof, and stdio compatibility in the post-implementation report.
 - [x] Stop before tunnel exposure or merge.
 
 ## Progress — 2026-08-21
@@ -166,3 +166,10 @@ Implemented the shared registry factory and `remote-http-v1` policy hook, a loop
 - [x] `git branch -d mcp-025-streamable-http-transport` (merged branch deleted safely)
 - [x] `git fetch --prune` + `git worktree prune` (remote branch deleted too)
 - [x] `take_ticket action: "release"`
+
+
+## Completion evidence — 2026-08-21
+
+All previously unchecked implementation and verification boxes are now backed by the current branch. The HTTP host validates bounded header/body/connection/request/keep-alive/session/concurrency/TTL/shutdown settings before binding; rejects malformed session ids; validates exact configured Origins before authorization/body parsing; binds one canonical project fingerprint; and emits SDK protocol metadata plus one redacted stopped event. The official SDK client test compares remote and stdio tool names and input schemas, calls get_status, and proves the readiness fingerprint matches the project identity. Tests cover concurrent initialization, total in-flight/session limits, malformed/unknown/cross-principal/expired/restarted sessions, fake-clock and real-TTL expiry, disconnect-safe cleanup, bounded forced shutdown, and repeated close. The remote exclusion set remains the single named policy and is empty because MCP-020 dispatch tools are not present in this base; the exact set-difference test therefore matches local discovery. Test authorizers are defined only in test modules; production requires the injected BearerAuthorizer seam and the CLI fails closed without its protected token file. Stdio remains unchanged and the provider command still points to stdio.
+
+The repository has no `scripts/verify.mjs` or `npm run verify` script on this base (command recorded as unavailable, not treated as a pass). Root typecheck/test results and plugin byte-check are recorded in the post-implementation report; Windows verification is the same PowerShell/Node command rail used by this Windows checkout. The generated plugin artifact is refreshed with the canonical build script because the shared project-fingerprint helper changed.

@@ -135,11 +135,11 @@ cleanup progress live.
 
 ## Closeout — MCP-020
 
-- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
-- [ ] proof.md finalised (PR URL + merge date appended)
-- [ ] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] No recorded worktree remained to remove
-- [ ] No recorded branch remained to delete
-- [ ] git refs/worktrees checked; board worktree preserved
-- [ ] take_ticket action: "release"
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] No recorded worktree remained to remove
+- [x] No recorded branch remained to delete
+- [x] git refs/worktrees checked; board worktree preserved
+- [x] take_ticket action: "release"

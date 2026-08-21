@@ -1,0 +1,1 @@
+Opened PR #100: https://github.com/collisionengineers/kanmer/pull/100\n\nImplementation commit: `d7ade00`. Rebased on `a34f087` before push. Checks: `npm run test:scripts` (59 passing), `npm run typecheck`, `npx electron-builder --win --publish never` + `node scripts/check-updater-package.mjs` (7 checks), and `git diff --check`.

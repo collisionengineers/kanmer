@@ -15,7 +15,7 @@ The release rail now treats a non-zero Electron Builder publisher exit as an unt
 ## Governing docs
 
 - **FRD-021 Auto-update — meets.** The release process still verifies the visible latest release and remote installer/blockmap/manifest integrity. It now performs that proof after a potentially partial publisher failure and repairs only exact artifacts from the single local package before its bounded final check.
-- No governing document changed. The implementation is release-rail reliability work within the existing FRD; it does not modify updater runtime behaviour.
+- **FRD-021 as-built record — corrected.** Its GUI-066 amendment now records the one-package exact-file recovery, replacing the stale second Electron Builder re-publish description. R3 and updater runtime behaviour are unchanged.
 
 ## Risks / follow-ups
 

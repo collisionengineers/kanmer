@@ -7,7 +7,7 @@ Refactor the post-package release decision into a dependency-injected, dependenc
 ## Governing docs
 
 - **FRD-021 Auto-update — meets.** The release rail proves the visible latest release and complete, byte-identical installer/blockmap/manifest set even in the failure mode that previously skipped proof. The repair is bounded, uses the already-built artifacts, and refuses with manual guidance on an unresolved problem; no updater runtime contract changes.
-- No governing document is modified: this is an implementation of existing release-discipline behaviour, not a product or architecture change.
+- **FRD-021 as-built record — corrected.** The GUI-066 amendment formerly described a second Electron Builder re-publish. It now accurately records the GUI-092/GUI-093 one-package exact-file repair; R3 itself is unchanged.
 
 ## Steps
 
@@ -16,7 +16,7 @@ Refactor the post-package release decision into a dependency-injected, dependenc
 3. Build explicit GitHub upload arguments from expected asset local paths and GitHub-safe names, preserving the tested space-to-dash mapping and using clobber semantics.
 4. Integrate the helper into release.mjs: catch the sole publisher error; still run the local rails when usable; verify latest visibility and all remote assets; upload/re-verify only where required; preserve a failed publisher error only when remote evidence cannot establish a complete release.
 5. Add deterministic node:test coverage for publisher success, complete-after-422 acceptance, partial-release repair/recheck, failed repair refusal, one-attempt bound, exact upload names, and no Electron Builder invocation in recovery.
-6. Update dry-run, comments, and refusal diagnostics to describe one package plus exact-file recovery; amend FRD-021 only if wording is demonstrably stale.
+6. Update dry-run, comments, refusal diagnostics, and the stale FRD-021 as-built recovery record to describe one package plus exact-file recovery.
 7. Run script tests, relevant release dry-run/no-network checks, root typecheck, focused build/package analogue when practical, and diff check. Do not create a tag, release, or production upload.
 
 ## Verification

@@ -9,7 +9,7 @@
 - [x] Repair an incomplete release once from those exact files, without any Electron Builder run.
 - [x] Re-verify remote assets after the bounded repair and refuse with actionable diagnostics when still incomplete.
 - [x] Add deterministic tests for success, 422-with-complete-assets, partial repair, failed repair, bounded attempts, and no second package.
-- [x] Update release diagnostics/dry-run prose and only any genuinely stale FRD wording.
+- [x] Update release diagnostics/dry-run prose and correct the stale FRD-021 as-built recovery record.
 - [x] Run script tests, typecheck, safe release diagnostics, relevant package/build rails, and diff check.
 - [ ] Write the implementation report, PR traceability, merged-main proof, and closeout.
 

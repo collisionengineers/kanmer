@@ -58,10 +58,10 @@
 
 ## Metrics/readiness
 
-- [ ] Bind metrics/readiness to loopback only.
+- [x] Bind metrics/readiness to loopback only.
 - [ ] Use canonical/bounded port allocator with collision handling.
-- [ ] Poll documented readiness with timeout/abort/size limits.
-- [ ] Require readiness, not child existence/log prose, for connected.
+- [x] Poll documented readiness with timeout/abort/size limits.
+- [x] Require readiness, not child existence/log prose, for connected.
 - [ ] Move degraded/recovered on readiness loss/return.
 - [ ] Release poller/port resources idempotently.
 - [ ] Test success, timeout, malformed, flap, exit, collision, abort, cleanup.

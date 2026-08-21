@@ -36,6 +36,7 @@ No authenticated provider was started and no model-positive/negative live sessio
 - `npm run build -w @kanmer/core`: exit 0.
 - `npm run build -w @kanmer/gui`: first attempt exit 1 because renderer imported Node-only core runtime; fixed by task/prompt IPC, rerun exit 0. The failure is preserved here.
 - `git diff --check`: exit 0.
+- `npm run check:manual`: exit 0 after `npm run build:manual` refreshed generated chapters in fcec021d.
 
 ## Deviations / review requests
 

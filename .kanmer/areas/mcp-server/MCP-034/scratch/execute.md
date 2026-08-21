@@ -1,0 +1,1 @@
+Taken on branch `mcp-034-close-mcp022-findings` in `.worktrees/mcp-034`. Implementing only the three MCP-022 independent-review findings: cross-host Windows identity vectors, single-boundary leaving gate classification, and user-owned AGENTS convention guidance.

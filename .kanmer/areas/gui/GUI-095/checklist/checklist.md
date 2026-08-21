@@ -46,3 +46,5 @@ Live public-route evidence against a real Cloudflare route, full Electron integr
 The third remediation adds shared settings locking/atomic sync, Windows canonical path normalization, orphan/unsafe-record reconciliation, pre-spawn and cancelled-doctor cleanup, startup missing-path validation, exact dev URL validation, and the renderer project-card/token-dialog integration test. Final follow-up evidence is 37 GUI test files/334 tests, focused remote tests 5 files/18 tests, root typecheck, GUI build, and git diff --check all passing. Deferred public-route, live Electron/Windows canary, and OpenAI-provider evidence remain explicitly deferred prose only.
 
 Correction: final full GUI suite is 37 files/336 tests passed after the Windows canonical-path fixture; focused remote suite is 5 files/18 tests passed. No checklist state changed.
+
+Validator alignment note: Cloudflare tunnel UUID, executable, credentials path, and non-IP DNS hostname validation now matches the canonical MCP adapter boundary; malformed persisted records are dropped and covered by tests.

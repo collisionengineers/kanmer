@@ -2,13 +2,13 @@
 
 ## Contract and official behavior
 
-- [ ] Read accepted FRD/ADR and actual requirement ids.
-- [ ] Read MCP-025/026 origin/auth/readiness/shutdown contracts.
+- [x] Read accepted FRD/ADR and actual requirement ids.
+- [x] Read MCP-025/026 origin/auth/readiness/shutdown contracts.
 - [ ] Re-check current official named-tunnel, config, run, no-autoupdate, metrics/readiness, JSON logs, and signal docs.
 - [ ] Record exact tested `cloudflared --version` and `--help` syntax.
-- [ ] Confirm Quick Tunnel remains excluded from production.
-- [ ] Inspect canonical child-process/temp/app-data/log helpers.
-- [ ] Confirm no unapproved executable packaging promise.
+- [x] Confirm Quick Tunnel remains excluded from production.
+- [x] Inspect canonical child-process/temp/app-data/log helpers.
+- [x] Confirm no unapproved executable packaging promise.
 
 ## Generic adapter contract
 
@@ -22,14 +22,14 @@
 
 ## Generic input validation
 
-- [ ] Require exact HTTP loopback origin and valid port.
-- [ ] Reject LAN/wildcard/hostname/user-info/query/fragment origin.
+- [x] Require exact HTTP loopback origin and valid port.
+- [x] Reject LAN/wildcard/hostname/user-info/query/fragment origin.
 - [ ] Require healthy auth-required local ready record and project/auth generation.
-- [ ] Require canonical HTTPS public hostname with no wildcard/user-info/query/fragment/unexpected path.
-- [ ] Normalize hostname safely.
+- [x] Require canonical HTTPS public hostname with no wildcard/user-info/query/fragment/unexpected path.
+- [x] Normalize hostname safely.
 - [ ] Reject unknown provider modes/invalid restart bounds.
-- [ ] Return deterministic validation checks before spawn.
-- [ ] Test all accepted/rejected vectors.
+- [x] Return deterministic validation checks before spawn.
+- [x] Test all accepted/rejected vectors.
 
 ## Executable and credentials
 
@@ -38,7 +38,7 @@
 - [ ] Run bounded direct `--version`/required help checks.
 - [ ] Enforce supported syntax/version contract.
 - [ ] Perform no update/login/create/DNS/service operation.
-- [ ] Validate one named-tunnel id/mode.
+- [x] Validate one named-tunnel id/mode.
 - [ ] Validate protected regular credentials reference and platform permissions.
 - [ ] Avoid reading/logging credential content except minimal approved consistency metadata.
 - [ ] Reject arbitrary provider fragments/options/secrets.
@@ -46,15 +46,15 @@
 
 ## Runtime ingress/config
 
-- [ ] Create protected unique runtime directory outside repo/board.
+- [x] Create protected unique runtime directory outside repo/board.
 - [ ] Use safe serializer accepted by tested cloudflared.
-- [ ] Map one exact hostname to one exact loopback origin.
-- [ ] Add terminal `http_status:404` catch-all.
+- [x] Map one exact hostname to one exact loopback origin.
+- [x] Add terminal `http_status:404` catch-all.
 - [ ] Include allowlisted fields only.
-- [ ] Include no provider credential content or Kanmer bearer/verifier.
+- [x] Include no provider credential content or Kanmer bearer/verifier.
 - [ ] Create config exclusively and read back/parse in tests.
 - [ ] Reject control/newline/metacharacter injection.
-- [ ] Remove runtime config/directory on every terminal path.
+- [x] Remove runtime config/directory on every terminal path.
 
 ## Metrics/readiness
 
@@ -70,13 +70,13 @@
 
 - [ ] Build exact direct argument array and validate ordering against installed version.
 - [ ] Use `shell: false`, neutral cwd, owned process group/tree, no-autoupdate.
-- [ ] Use minimal environment and omit bearer/verifier/development/unrelated secret variables.
+- [x] Use minimal environment and omit bearer/verifier/development/unrelated secret variables.
 - [ ] Capture PID/version/attempt before output processing.
 - [ ] Request structured logs where supported.
 - [ ] Bound line/ring-buffer size and rate.
 - [ ] Parse defensively and map allowlisted fields only.
 - [ ] Redact credential/bearer/path/id/URL canaries.
-- [ ] Never use log prose as primary readiness.
+- [x] Never use log prose as primary readiness.
 - [ ] Test exact argv/env/cwd/options and malicious output.
 
 ## Attempt lifecycle and supervisor
@@ -96,16 +96,16 @@
 
 ## Remote-host composition
 
-- [ ] Start authenticated HTTP host first.
+- [x] Start authenticated HTTP host first.
 - [ ] Verify local auth/project MCP handshake before provider spawn.
-- [ ] Pass only origin and non-secret generation metadata to adapter.
+- [x] Pass only origin and non-secret generation metadata to adapter.
 - [ ] Keep local/auth/provider/public-verification health dimensions separate.
 - [ ] Stop tunnel on origin/project/auth generation change.
 - [ ] Keep healthy local host when provider alone fails.
-- [ ] Stop tunnel before HTTP on parent/operator shutdown.
+- [x] Stop tunnel before HTTP on parent/operator shutdown.
 - [ ] Make combined shutdown bounded/idempotent.
 - [ ] Emit machine-readable redacted status.
-- [ ] Keep stdio/local HTTP defaults tunnel-free.
+- [x] Keep stdio/local HTTP defaults tunnel-free.
 
 ## Tests and verification
 
@@ -124,8 +124,8 @@
 - [ ] Test adapter performs no board/tool mutation.
 - [ ] Add built fake-provider remote smoke.
 - [ ] Run optional real-binary version/help/config smoke only with explicit path.
-- [ ] Leave real public proof to MCP-028.
-- [ ] Confirm no MCP tool/count/reference change.
+- [x] Leave real public proof to MCP-028.
+- [x] Confirm no MCP tool/count/reference change.
 - [ ] Run tests, typecheck, build, HTTP/remote smokes, root verify, and Windows PR rail.
 - [ ] Rebuild plugin only if canonical stdio bytes intentionally change.
 - [ ] Run `git diff --check`; inspect process table/temp/runtime/board residue.

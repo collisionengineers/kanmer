@@ -36,6 +36,7 @@ import { resolveProjectRoot, resolveRepoRoot } from "./root.js";
 import { SERVER_VERSION, serverIdentity } from "./identity.js";
 import { bundledSkillsDir } from "./bundled.js";
 import { readTicketDocuments } from "./ticket-docs.js";
+import { getExecutionPacket } from "./execution-packet.js";
 import { failCoded, KanmerError } from "./errors.js";
 import { projectIdentity } from "./project-identity.js";
 
@@ -566,6 +567,28 @@ server.registerTool(
           }
         : { ...item, blocked },
     );
+  }),
+);
+
+server.registerTool(
+  "get_execution_packet",
+  {
+    title: "Get an execution packet",
+    description:
+      "Return one bounded, read-only implementation packet for a ticket, or a normal ready:false refusal with code GATE_BLOCKED. Refusals are ordered: non-ticket/legacy, spike, unmet leave-preparing requirements, unresolved questions, then occupancy by another actor. A ready packet contains the ticket, ordered group contexts, profile-resolved gates, plan/checklist/files index documents with versions, extra document paths and versions, a stop condition, and command hint. It never takes, moves, writes, dispatches, or creates a worktree.",
+    inputSchema: { id: z.string().describe("Ticket id") },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  guard(async ({ id }, extra) => {
+    const format = await store.detectFormat();
+    const { source } = await store.getBoardWithSource();
+    const project = projectIdentity({
+      boardRoot: projectRoot,
+      format,
+      repoRoot: store.paths.repoRoot,
+      boardSource: source,
+    });
+    return ok(await getExecutionPacket({ store, id, actor: actorName(server, extra), project }));
   }),
 );
 

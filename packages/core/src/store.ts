@@ -979,6 +979,32 @@ export class KanmerStore {
   }
 
   /**
+   * Enumerate every Markdown ticket document with an exact-content version.
+   *
+   * The inventory is deliberately separate from `getDocsWithVersions`: the
+   * latter is a request-ordered read for callers that already know paths,
+   * while this method is the one discovery API used by execution packets.
+   * Legacy items and non-ticket layouts have no ticket-folder inventory and
+   * return null; no filesystem or activity-log writes occur.
+   */
+  async listTicketDocsWithVersions(id: string): Promise<TicketDocumentWithVersion[] | null> {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    if (loc.kind !== "v2") return null;
+    const item = parseItem(await readText(loc.file));
+    if (item.type !== "ticket") return null;
+
+    const { documentPaths } = await documentInventory(loc.dir);
+    return Promise.all(
+      documentPaths.map(async (doc) => {
+        const file = docPathIn(loc.dir, doc);
+        const content = await readText(file);
+        return { doc, exists: true, content, version: contentVersion(content) };
+      }),
+    );
+  }
+
+  /**
    * Write (or append to) one of a ticket's pipeline documents. Docs are plain
    * Markdown with no frontmatter. `append` adds after a blank line so
    * progress notes never clobber existing content.

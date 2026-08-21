@@ -4,7 +4,7 @@ Verified on merged `main` at `af61144ce743f74b2aba92fb0778588b0b9bedd0`.
 
 ## Traceability
 
-Historical implementation PR #19 (`aacd09ff86f58cfe910b9e2182b37b03a3bd604f`) and corrective PR #140 (`d7e107b9f27a64851935310e8768fbc2c249fb75), merged as `af61144ce743f74b2aba92fb0778588b0b9bedd0`) are reachable from this main head. PR #140 changes only `plugins/kanmer/skills/kanmer-docs/SKILL.md`, synchronizing the decision-table granularity/provenance and cross-cutting wording with the canonical README.
+Historical implementation PR #19 (`aacd09ff86f58cfe910b9e2182b37b03a3bd604f`) and corrective PR #140 (`d7e107b9f27a64851935310e8768fbc2c249fb75`), merged as `af61144ce743f74b2aba92fb0778588b0b9bedd0`, are reachable from this main head. PR #140 changes only `plugins/kanmer/skills/kanmer-docs/SKILL.md`, synchronizing the decision-table granularity/provenance and cross-cutting wording with the canonical README.
 
 ## Deterministic checks
 
@@ -23,4 +23,4 @@ The skill change itself has no executable or generated-artifact impact, and all 
 
 ## Closeout traceability
 
-PR #140: https://github.com/collisionengineers/kanmer/pull/140 — merged 2026-08-21T23:22:50Z into \`main\` as \`af61144ce743f74b2aba92fb0778588b0b9bedd0\`.
+PR #140: https://github.com/collisionengineers/kanmer/pull/140 — merged 2026-08-21T23:22:50Z into `main` as `af61144ce743f74b2aba92fb0778588b0b9bedd0`.

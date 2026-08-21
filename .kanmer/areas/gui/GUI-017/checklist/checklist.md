@@ -23,34 +23,17 @@ This is a reconciliation of the already-merged implementation, not a new source 
 
 # Closeout checklist
 
-Append to the ticket's checklist.md when closeout starts (set_ticket_doc doc: "checklist", append: true) so cleanup progress is visible on the board.
+Closeout progress for GUI-017.
 
 ---
 
 ## Closeout — GUI-017
 
-- [ ] PR merge verified (gh pr view --json state,mergedAt)
-- [ ] proof.md finalised (PR URL + merge date appended)
-- [ ] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; git worktree remove .worktrees/gui-017
-- [ ] git branch -d gui-017-in-app-manual (-D if squash/rebase-merged)
-- [ ] git fetch --prune + git worktree prune
-- [ ] take_ticket action: "release"
-
-# Closeout checklist
-
-Append to the ticket's checklist.md when closeout starts (set_ticket_doc doc: "checklist", append: true) so cleanup progress is visible on the board.
-
----
-
-## Closeout — GUI-017
-
-- [ ] PR merge verified (gh pr view --json state,mergedAt)
-- [ ] proof.md finalised (PR URL + merge date appended)
-- [ ] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; git worktree remove .worktrees/gui-017
-- [ ] git branch -d gui-017-in-app-manual (-D if squash/rebase-merged)
-- [ ] git fetch --prune + git worktree prune
-- [ ] take_ticket action: "release"
+- [x] PR merge verified (gh pr view --json state,mergedAt)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; git worktree remove .worktrees/gui-017
+- [x] git branch -d gui-017-in-app-manual (-D if squash/rebase-merged)
+- [x] git fetch --prune + git worktree prune
+- [x] take_ticket action: "release"

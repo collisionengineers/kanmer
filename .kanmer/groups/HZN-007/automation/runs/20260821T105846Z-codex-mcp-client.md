@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T21:24:44.764Z
+updated_at: 2026-08-21T21:55:00.000Z
 lane_limit: 3
 stop_reason:
 ---
@@ -336,3 +336,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T21:30:00.000Z — Verification rail retained two npm run verify exits of 1: first failed GUI kanmerGit cleanup hooks (2/351) with EPERM under concurrent filesystem load; second failed the default 5-second core migration test (257/258) with ENOTEMPTY cleanup. Explicit core rerun with 30-second timeout passed 258/258; these failures remain evidence, not erased.
 
 - 2026-08-21T21:39:28.241Z — MCP-023 implementation reached Review: PR #135 / commit 2cdd0c68; report and checklist written (44/44), enter-review gates pass, and Implementing→Review completed. Full npm test passed (core 259, GUI 351, HTTP/remote 61, scripts 79), with typecheck/build, stdio 214/214, protocol 42/42, discovery 13/13, plugin:build/check, manual, and diff-check passing; the initial fixture/timeout failures remain recorded in the report. Independent review/merge is required; author lane stops and worktree/branch remain.
+
+
+- 2026-08-21T21:55:00.000Z — MCP-023 independently reviewed and closed: PR #135 merged to main at 75cc4a89 (source 2cdd0c68). Merged-main build completed; core 259/259, all-workspace typecheck, plugin:check (31 tools and byte parity), stdio smoke 214/214, protocol 42/42, and discovery 13/13 passed. The initial concurrent stale-build typecheck/plugin/protocol failures remain preserved in MCP-023 proof. Proof was written, ticket moved Review→Verifying→Done with fresh gates, released, and exact worktree/branch cleanup completed.

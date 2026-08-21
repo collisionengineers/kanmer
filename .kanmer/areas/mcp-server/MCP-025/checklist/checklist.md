@@ -155,3 +155,14 @@ Implemented the shared registry factory and `remote-http-v1` policy hook, a loop
 - [x] Restore bundled-skill discovery from the self-identifying `dev-esm` entry path.
 - [x] Build from the linked ticket worktree and verify the normal stdio smoke reports `dist/index.js`, its real hash/size, `dev-esm`, and live AGENTS staleness.
 - [x] Re-run HTTP and protocol smokes to confirm the fail-closed HTTP transport and per-session isolation remain intact.
+
+## Closeout — MCP-025
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`): MERGED 2026-08-20T23:56:52Z — https://github.com/collisionengineers/kanmer/pull/90
+- [x] proof.md finalised (PR URL + merge commit `a05fd9e` recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link; [[MCP-026]] and [[MCP-021]] follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/mcp-025`
+- [ ] `git branch -d mcp-025-streamable-http-transport` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

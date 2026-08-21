@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T23:37:33.584Z
+updated_at: 2026-08-21T23:41:22.192Z
 lane_limit: 3
 stop_reason:
 ---
@@ -211,6 +211,8 @@ stop_reason:
 - 2026-08-21T23:15:32.188Z — GUI-017 result: audit complete; historical PR #25 already merged and current main contains implementation plus DOC-007 reconciliation; checklist/report/scratch read back; deterministic rails passed except preserved full npm test initial exit 1 from missing packages/core/dist/index.js, fixed by build:core and targeted rerun; Electron boot smoke exit 1 with Electron-install environment error; interactive/manual screenshot evidence INCONCLUSIVE; moved Implementing to Review at 2026-08-21T23:15:26.044Z; no GUI-016/provider scope touched; stopped for independent review.
 
 - 2026-08-21T23:30:25.767Z — GUI-075 assigned to /root/gui099_executor on gui-075-dispatch-settings/.worktrees/gui-075. Scope: machine-local per-provider dispatch model/prompt settings, shared dispatch SSOT integration, focused tests/docs only; no provider tunnel or skills work.
+
+- 2026-08-21T23:41:22.192Z — GUI-075 implementation result recorded: shared typed provider model argv, machine-local settings, append-only prompt suffix, IPC-generated Dispatch Settings UI. Verification: core 266/266 and GUI 354/354 passed; focused 5/5; typecheck/build/diff-check pass after preserving first renderer build failure. Live authenticated provider and visual proof INCONCLUSIVE; docs follow-up explicit.
 
 ## Resume instruction
 

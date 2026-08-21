@@ -1,44 +1,22 @@
-# Proof
+# Proof — SKILL-002
 
-PR [#18](https://github.com/collisionengineers/kanmer/pull/18), merged on GitHub
-(`78ee829`). Verified on the merged base.
+## Merged-main verification
 
-## The exit criterion, run
+PR #139 merged at 2026-08-21T23:08:58Z as d473b6fa542d28439e69e9939d7721467cddd800. Main HEAD is d473b6fa542d28439e69e9939d7721467cddd800, and corrective commit b609c383a203d3956f09a72a324ed09396b28227 is reachable. Historical implementation PR #18 commit 78ee829b33a41503128e214f393053ae34b2ba22 remains reachable.
 
-The ticket names it: every shipped template's identity line, grep-able.
+## Result
 
-```sh
-for f in plugins/kanmer/skills/*/assets/*template*.md; do
-  sed -n '3p' "$f" | grep -q '^\*.*Not ' || echo "MISSING: $f"
-done
-```
+The plan template once again carries the required line-3 identity contrast: “The plan. Not the checklist …”. The 14-template inventory remains intact; the change is confined to the one lost identity line.
 
-**No output** across **14** templates. Line 3 because line 1 is the heading and
-line 2 is blank — the fixed position is what makes this checkable rather than a
-matter of reading each file.
+## Verification
 
-## Other checks
+- Targeted 14-template identity audit — PASS, 14/14; priority hits 0; files-template Impact hits 0.
+- npm run verify:skills — PASS.
+- npm run verify:agents-block — PASS, 31/31.
+- npm run build -w @kanmer/core — PASS.
+- npm run test:scripts — PASS, 80/80 after core build.
+- npm run plugin:check — PASS from normal main checkout.
+- git diff --check — PASS.
+- GitHub PR verify — FAIL only at the pre-existing Windows GUI temp-path assertion (runneradmin versus RUNNER~1); no SKILL-002 files were implicated and the failure is retained.
 
-| Check | Result |
-|---|---|
-| Templates containing `priority` | **0** |
-| `files-template.md` containing "Impact" | **0** — the SKILL-001 loose end is closed |
-| Template count | 14 (12 before, +2 proof flavours) |
-| `verify:agents-block` | 26/26 |
-
-## Not proven
-
-**Whether the distinctions are drawn in the right place.** The grep proves every
-template *has* an identity line. It cannot prove the line is correct. These are
-one-line judgements that will be read far more often than they were written, and
-`report ↔ proof` and `research ↔ files` are my phrasing of a subtler split
-than the FRDs state outright.
-
-**Whether they change behaviour.** The premise is that an agent reading "Not the
-Y" writes a different document. Untestable here, and it is the entire point.
-
-**Two items from the ticket were deliberately not built** — a deep-mode research
-summary template (FRD-005's deep mode landed in SKILL-001 without a summary
-concept, so the template would be for nothing) and a group template (groups have
-no `assets/` file; `create_group` takes title and body directly). Both are
-argued in the report rather than silently dropped.
+Independent review found no blocking defect. No live agent behavior is claimed; the ticket is a deterministic template-guidance correction.

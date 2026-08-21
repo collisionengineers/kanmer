@@ -21,9 +21,13 @@ links: []
 blocks:
   - CORE-033
   - CORE-024
+commits:
+  - a24f924b512c22e14641d6a7c8102860862ae6a3
+prs:
+  - 'https://github.com/collisionengineers/kanmer/pull/136'
 archived: false
 created: '2026-08-20T10:14:42.500Z'
-updated: '2026-08-21T21:56:56.420Z'
+updated: '2026-08-21T22:03:13.793Z'
 ---
 
 ## What

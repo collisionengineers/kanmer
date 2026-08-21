@@ -59,7 +59,7 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
-  check("tools/list returns 30 tools", tools.tools.length === 30, `got ${tools.tools.length}`);
+  check("tools/list returns 31 tools", tools.tools.length === 31, `got ${tools.tools.length}`);
   for (const name of [
     "append_scratch",
     "link_doc",
@@ -71,6 +71,7 @@ try {
     "list_groups",
     "get_group_doc",
     "set_group_doc",
+    "get_execution_packet",
   ]) {
     check(`${name} tool exists`, tools.tools.some((t) => t.name === name));
   }
@@ -88,6 +89,8 @@ try {
   check("get_status is read-only", gs?.annotations?.readOnlyHint === true);
   const gtd = tools.tools.find((t) => t.name === "get_ticket_doc");
   check("get_ticket_doc is read-only", gtd?.annotations?.readOnlyHint === true);
+  const gep = tools.tools.find((t) => t.name === "get_execution_packet");
+  check("get_execution_packet is read-only", gep?.annotations?.readOnlyHint === true);
   const rmc = tools.tools.find((t) => t.name === "remove_column");
   check("remove_column is destructive", rmc?.annotations?.destructiveHint === true);
   const createItemsTool = tools.tools.find((t) => t.name === "create_items");
@@ -1726,6 +1729,164 @@ Second proof attempt passed; the first failure is retained.
     "update_group refuses an unknown id",
     (await client.callTool({ name: "update_group", arguments: { id: "EPIC-404", title: "x" } }))
       .isError === true,
+  );
+
+  // MCP-023: one bounded packet or a deterministic, normal-result refusal.
+  await client.callTool({
+    name: "set_group_doc",
+    arguments: { id: epic.id, path: "context.md", content: "# Shared execution context\n\nAuthoritative context." },
+  });
+  const packetId = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "create_item",
+        arguments: {
+          title: "packet-ready feature",
+          status: "implementing",
+          profile: "feature",
+          docs_todo: true,
+          groups: [epic.id],
+          body: "Packet body.",
+        },
+      }),
+    ),
+  ).id;
+  const packetDocs = [
+    ["research", "Research input."],
+    ["files", "Files map."],
+    ["plan", "# Plan\n\n## Stop condition\nStop after the checklist.\n\n## Commands\nnpm test\n\n### Detail\nKeep the command exact."],
+    ["checklist", "- [x] bounded task"],
+    ["open-questions", "- [x] resolved"],
+    ["research/nested", "Nested research."],
+  ];
+  for (const [doc, content] of packetDocs) {
+    const written = await client.callTool({ name: "set_ticket_doc", arguments: { id: packetId, doc, content } });
+    check(`packet fixture writes ${doc}`, written.isError !== true);
+  }
+  await client.callTool({
+    name: "append_scratch",
+    arguments: { id: packetId, slug: "packet-note", content: "scratch" },
+  });
+  const packetTicketFile = path.join(sandbox, ".kanmer", "areas", "_none", packetId, `${packetId}.md`);
+  const packetActivity = path.join(sandbox, ".kanmer", "data", "activity.jsonl");
+  const packetBefore = {
+    tree: treeSnapshot(sandbox),
+    ticket: fs.readFileSync(packetTicketFile, "utf8"),
+    activity: fs.readFileSync(packetActivity, "utf8"),
+  };
+  const readyPacket = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: packetId } })),
+  );
+  check(
+    "ready packet returns the exact bounded shape",
+    readyPacket.ready === true &&
+      readyPacket.code === undefined &&
+      readyPacket.ticket.id === packetId &&
+      readyPacket.ticket.body.trim() === "Packet body." &&
+      readyPacket.gates.profile === "feature" &&
+      readyPacket.documents.plan.exists === true &&
+      readyPacket.documents.checklist.exists === true &&
+      readyPacket.documents.files.exists === true,
+    JSON.stringify(Object.keys(readyPacket)),
+  );
+  check(
+    "ready packet carries authoritative group context",
+    readyPacket.groupContexts.length === 1 &&
+      readyPacket.groupContexts[0].id === epic.id &&
+      readyPacket.groupContexts[0].context === "# Shared execution context\n\nAuthoritative context.\n",
+  );
+  check(
+    "ready packet lists index versions and extra paths without extra contents",
+    /^[a-f0-9]{16}$/.test(readyPacket.documents.plan.version) &&
+      readyPacket.extraDocs.some((doc) => doc.path === "research/nested.md" && /^[a-f0-9]{16}$/.test(doc.version)) &&
+      readyPacket.extraDocs.every((doc) => !Object.prototype.hasOwnProperty.call(doc, "content")) &&
+      !readyPacket.extraDocs.some((doc) => ["plan/plan.md", "checklist/checklist.md", "files/files.md"].includes(doc.path)),
+  );
+  check(
+    "ready packet parses stop condition and commands",
+    readyPacket.stopCondition === "Stop after the checklist." &&
+      readyPacket.commandsHint === "npm test\n\n### Detail\nKeep the command exact.",
+    JSON.stringify({ stop: readyPacket.stopCondition, commands: readyPacket.commandsHint }),
+  );
+  const packetAfter = {
+    tree: treeSnapshot(sandbox),
+    ticket: fs.readFileSync(packetTicketFile, "utf8"),
+    activity: fs.readFileSync(packetActivity, "utf8"),
+  };
+  check("ready packet is read-only", JSON.stringify(packetAfter) === JSON.stringify(packetBefore));
+
+  const refusedMissing = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: "TICK-404" } })),
+  );
+  check(
+    "missing ticket is a normal GATE_BLOCKED refusal",
+    refusedMissing.ready === false && refusedMissing.code === "GATE_BLOCKED" &&
+      Array.isArray(refusedMissing.missing) && refusedMissing.missing.length === 0,
+  );
+
+  const spikeId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "packet spike", status: "implementing", profile: "spike", docs_todo: true } })),
+  ).id;
+  const refusedSpike = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: spikeId } })),
+  );
+  check(
+    "spike refusal dominates missing gates",
+    refusedSpike.ready === false && refusedSpike.code === "GATE_BLOCKED" &&
+      refusedSpike.reason.includes("spike") && refusedSpike.missing.length === 0,
+  );
+
+  const gatedId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "gated packet", status: "implementing", profile: "feature", docs_todo: true } })),
+  ).id;
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: gatedId, doc: "open-questions", content: "- [ ] unresolved" } });
+  const refusedDocs = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: gatedId } })),
+  );
+  check(
+    "missing document refusal precedes unresolved questions",
+    refusedDocs.ready === false && refusedDocs.missing.join(",") === "research,files,plan,checklist" &&
+      !refusedDocs.missing.includes("questions-resolved"),
+  );
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: gatedId, doc: "research", content: "Research" } });
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: gatedId, doc: "files", content: "Files" } });
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: gatedId, doc: "plan", content: "Plan" } });
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: gatedId, doc: "checklist", content: "Checklist" } });
+  const refusedQuestions = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: gatedId } })),
+  );
+  check(
+    "unresolved question refusal is dedicated and ordered",
+    refusedQuestions.ready === false &&
+      JSON.stringify(refusedQuestions.missing) === JSON.stringify(["questions-resolved"]),
+  );
+
+  const choreId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "plan-only chore", status: "implementing", profile: "chore", docs_todo: true } })),
+  ).id;
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: choreId, doc: "plan", content: "# Chore plan" } });
+  const chorePacket = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: choreId } })),
+  );
+  check(
+    "plan-only chore receives a ready packet",
+    chorePacket.ready === true && chorePacket.documents.plan.exists === true &&
+      chorePacket.documents.files.exists === false && chorePacket.documents.checklist.exists === false &&
+      chorePacket.stopCondition === "Stop at the checklist; do not merge; do not start another ticket.",
+  );
+
+  const occupiedId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "occupied packet", status: "implementing", profile: "chore", docs_todo: true } })),
+  ).id;
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: occupiedId, doc: "plan", content: "# Occupied" } });
+  await client.callTool({ name: "take_ticket", arguments: { id: occupiedId, branch: "other-branch", worktree: ".worktrees/other", assignee: "other-agent" } });
+  const refusedOccupied = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: occupiedId } })),
+  );
+  check(
+    "other actor occupancy refuses with no missing documents",
+    refusedOccupied.ready === false && refusedOccupied.missing.length === 0 &&
+      refusedOccupied.reason.includes("other-agent") && refusedOccupied.reason.includes("other-branch"),
   );
 
   const del1 = await client.callTool({ name: "delete_item", arguments: { id: "TICK-001" } });

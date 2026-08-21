@@ -37,7 +37,7 @@ Related: FRD-001/002/003/006/007/008 · ADR-0009 · **ADR-0012 (root resolution 
   Reads still never create `.kanmer/`: `init` is lazy and only the `write()` wrapper calls
   `ensureInit()` — `--init` governs whether that write is permitted to create a board, it
   does not make a read create one.
-- R1 — **30 tools registered** (recounted from `registerTool` call sites, MCP-006): the 12 reads
+- R1 — **31 tools registered** (recounted from `registerTool` call sites, MCP-023): the 13 reads
   listed, 16 writes, and 2 destructive. The count reached the end state via the six group tools —
   the five above plus **`update_group`** (MCP-006), which is what makes FRD-001 G4's
   archive-as-retirement performable and closes the gap where `list_groups` and `set_group_doc`

@@ -585,6 +585,31 @@ describe("format v2", () => {
     expect(info?.checklist).toEqual({ checked: 2, total: 3 });
   });
 
+  it("lists recursive ticket Markdown docs with sorted paths and exact versions", async () => {
+    const t = await store.createItem({ type: "ticket", title: "Inventory" });
+    await store.setDoc(t.id, "research/zeta", "zeta");
+    await store.setDoc(t.id, "research/alpha", "alpha");
+    await store.setDoc(t.id, "plan", "plan");
+    await fs.mkdir(path.join(root, ".kanmer", "areas", "_none", t.id, "reference"), { recursive: true });
+    await fs.writeFile(
+      path.join(root, ".kanmer", "areas", "_none", t.id, "reference", "input.bin"),
+      "not markdown",
+      "utf8",
+    );
+    const activityBefore = await fs.readFile(path.join(root, ".kanmer", "data", "activity.jsonl"), "utf8");
+    const listed = await store.listTicketDocsWithVersions(t.id);
+    const activityAfter = await fs.readFile(path.join(root, ".kanmer", "data", "activity.jsonl"), "utf8");
+
+    expect(listed?.map((doc) => doc.doc)).toEqual([
+      "plan/plan.md",
+      "research/alpha.md",
+      "research/zeta.md",
+    ]);
+    expect(listed?.every((doc) => doc.exists && doc.version && doc.content)).toBe(true);
+    expect(listed?.find((doc) => doc.doc === "research/alpha.md")?.version).toMatch(/^[a-f0-9]{16}$/);
+    expect(activityAfter).toBe(activityBefore);
+  });
+
   it("setDoc rejects a stale expectedVersion and leaves the file alone", async () => {
     const t = await store.createItem({ type: "ticket", title: "A" });
     const { version: stale } = await store.setDoc(t.id, "research", "A");
@@ -1075,6 +1100,7 @@ describe("format v1 compatibility", () => {
   it("validates document paths before the legacy missing-document response", async () => {
     const missing = await v1store.getDocsWithVersions("TICK-001", ["files"]);
     expect(missing).toEqual([{ doc: "files", exists: false, content: null, version: null }]);
+    expect(await v1store.listTicketDocsWithVersions("TICK-001")).toBeNull();
 
     for (const [unsafe, message] of [
       ["../../escape", /Invalid segment/],

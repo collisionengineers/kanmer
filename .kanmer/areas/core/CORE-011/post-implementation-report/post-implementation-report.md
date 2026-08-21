@@ -1,79 +1,46 @@
 # Post-implementation report
 
-Commit `b5b332e` on `core-011-one-gate-per-move`.
+## Reconciliation outcome
 
-## What shipped, and what did not
+CORE-011's scoped implementation is already merged in commit b5b332e0f3b7f9c1da7e2ec8bbcf7c716fbec3ec, reachable from origin/main cb8fa1f0. The historical change shipped through PR https://github.com/collisionengineers/kanmer/pull/15, merged at 8af1991c8350ae4bf7b44532dd434ee24ce7b8e4. This fresh branch and worktree were taken to audit and reconcile the board record; there is no source diff to commit and no duplicate or empty PR was opened.
 
-**Shipped:** one gated boundary per move, and `stageEntered` as committed
-history.
+The shipped scope is one gated boundary per move, with durable first-entry stageEntered frontmatter stamps and the FRD-002 G2 amendment. The rejected mtime/activity-log R2 and done-only-from-verifying R1 were not implemented: research records why neither is a valid substitute for structural refusal.
 
-**Not shipped, and this is the headline:** both rules the ticket proposed. R2
-(document must predate the transition) is unimplementable — the activity log is
-gitignored and git carries no mtimes, so neither timestamp survives a clone, and
-even with both committed the board records nothing about when the *code* was
-written, so it cannot tell code-then-plan from plan-then-code. R1 as written
-(`done` only from `verifying`) contradicts the shipped `spike`-straight-to-Done
-acceptance case.
+## Historical implementation surface
 
-The rule that replaced them is structural rather than forensic, which is why it
-is trustworthy: there is no timestamp to be wrong about.
+- packages/core/src/gates.ts: gatedBoundariesCrossed and collapsesPipeline.
+- packages/core/src/store.ts: refusal before document checks and stageEntered stamping after a permitted gate.
+- packages/core/src/types.ts and frontmatter.ts: stageEntered schema and key order.
+- packages/core/src/gates.test.ts and store.test.ts: profile matrix, collapse refusal, and stageEntered coverage.
+- packages/mcp-server/src/smoke.mjs: collapse checks.
+- docs/functional/frd/FRD-002-requirement-profiles.md: G2 amendment.
 
-## File changes
+## Governing documents
 
-| Path | Change |
-|---|---|
-| `gates.ts` | `gatedBoundariesCrossed`, `collapsesPipeline`. |
-| `store.ts` | Refusal in `assertDocGate` **before** the missing-document check; `stageEntered` stamped in `updateItem` after the gate. |
-| `types.ts`, `frontmatter.ts` | `stageEntered` on the schema and in `KEY_ORDER`. |
-| `gates.test.ts` | **New** — the profile matrix, 7 tests. |
-| `store.test.ts` | 3 new; 1 existing rewritten (see below). |
-| `smoke.mjs` | 3 new checks; 1 existing corrected. |
-| `FRD-002` | G2a/G2b. |
+FRD-002 G2 is amended rather than violated. The amendment narrows jumps with multiple gated boundaries and records why R1 and mtime/activity-log R2 were dropped. PRD-001 problem 1 is addressed structurally. No timestamp-causation claim is made.
 
-## Against the governing docs
+## Verification and exact outcomes
 
-**FRD-002 G2** is amended, not violated — G2a narrows the jump G2 permits, and
-the amendment states why, with the rejected alternatives recorded so they are
-not re-proposed. **PRD-001 problem 1** is the thing being fixed.
+- npm run test -w @kanmer/core -- src/gates.test.ts src/store.test.ts src/profile-matrix.test.ts — PASS, 3 files / 97 tests.
+- npm run test -w @kanmer/core — PASS, 11 files / 257 tests.
+- npm run typecheck — PASS for core, mcp-server, ui, and gui.
+- npm run build -w @kanmer/gui — PASS; existing gray-matter eval warning only.
+- npm run build — PASS for core and mcp-server, including standalone bundle.
+- node packages/mcp-server/src/smoke.mjs — PASS, 184/184.
+- npm run smoke:protocol — PASS, 42/42.
+- npm run smoke:discovery — PASS, 13/13.
+- npm run plugin:build — PASS.
+- npm run plugin:check — FAIL, exit 1. Exact preserved failure: plugin:check refused because @kanmer/core resolves to C:\Users\Alex\Documents\GitHub\kanmer\packages\core\dist\index.js, not this checkout's C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\core-011\packages\core; the suggested fix is to run npm install in this checkout so its workspace dependency is local. This check is inconclusive for the linked worktree and is not reported as PASS.
+- git diff --check — PASS; the fresh branch has no source diff.
 
-## Two existing assertions were wrong and are now corrected
+## Limitations and handoff
 
-**`store.test.ts` "a proof-gated positioned move…"** asserted a `fix` ticket's
-Backlog→Done jump fails with "leaving Preparing requires files, plan". That jump
-is now refused earlier by the collapse rule. Its real invariant — a refused
-positioned move leaves siblings' `order` untouched — is preserved by making it a
-single-gate move that fails on a missing document.
+No new source commit or PR was created because the implementation is already merged; creating a duplicate would misstate traceability. plugin:check could not run successfully in this linked worktree because of its dependency resolution guard, and no package-install workaround was performed. stageEntered is not causal proof and historical tickets were not backfilled. No external runtime evidence is claimed. Independent root review should inspect the merged implementation, FRD-002 amendment, and this reconciliation before any verifying or closeout work. The author stops at Review and will not self-review, merge, or clean up the worktree.
 
-**`smoke.mjs` "a multi-stage jump is refused by the FIRST unmet boundary"**
-kept passing after the change, because it matched on `"leaving Backlog"` and the
-collapse message happens to contain that phrase in its boundary list. It was
-passing for the wrong reason. Rewritten to assert the collapse explicitly.
+## Traceability
 
-## Risks and follow-ups
-
-**This is a behaviour change on a live board.** Any caller doing a legitimate
-multi-gate jump now fails. Searched: the GUI moves one stage per drag, and the
-skills move one stage per phase. The MCP tool description for `move_item` still
-describes the old freedom and should be updated — ADR-0009 makes tool
-descriptions a contract layer, so that belongs with the Phase 6 skill sweep
-rather than here.
-
-**`stageEntered` does not backfill.** Tickets already Done have no history, and
-inventing one would be fabrication. It starts recording from this commit.
-
-## What kanmer-verify must run, and why it cannot be trusted from the worktree
-
-The per-ticket worktree links the root `node_modules`, which makes
-`@kanmer/core` resolve to the **main checkout**. Cross-package builds in a
-worktree therefore bundle the wrong source — `mcp-server`'s dist was built
-without this change and the new smoke checks failed against stale code. Vitest
-is unaffected (relative imports).
-
-So verification must run on the merged base in the main checkout:
-
-1. `npm run build` then `npm run test` — core and gui
-2. `node packages/mcp-server/src/smoke.mjs` — the 3 new checks must pass, and
-   the corrected one must fail for the right reason if reverted
-3. `npm run smoke:protocol`
-4. `npm run plugin:build` + `plugin:check` — core compiles into the bundle
-5. `typecheck` + `build` for the GUI, and the boot smoke
+- Ticket: CORE-011.
+- Branch: core-011-one-gate-per-move.
+- Worktree: .worktrees/core-011.
+- Commit: b5b332e0f3b7f9c1da7e2ec8bbcf7c716fbec3ec.
+- PR: https://github.com/collisionengineers/kanmer/pull/15 (merged; merge commit 8af1991c8350ae4bf7b44532dd434ee24ce7b8e4).

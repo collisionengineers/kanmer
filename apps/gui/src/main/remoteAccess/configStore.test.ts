@@ -58,4 +58,21 @@ describe("remote access persistence", () => {
     expect(loaded.projects[fingerprint].projectId).toBe("c:/Repo");
     expect(loaded.projects[fingerprint].identity.repoRoot).toBe("c:/Repo");
   });
+
+  it("redacts token-shaped persisted doctor diagnostics", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-remote-config-")); roots.push(root);
+    const fingerprint = `kanmer-proj-v1:${"d".repeat(64)}`;
+    await writeRemoteAccess(root, {
+      version: 1,
+      projects: {
+        [fingerprint]: { projectId: "/repo", identity: { fingerprint, boardRoot: "/repo/.worktrees/kanmer", repoRoot: "/repo", format: 3, boardSource: "file" } },
+      },
+      configs: {
+        [fingerprint]: { provider: "cloudflared", executable: "cloudflared", tunnelId: "5f9620b4-423e-4f37-a30e-61ffcf91f405", credentialsFile: "/credentials.json", hostname: "kanmer.example.com", enabled: true, autoStart: false, secretId: "", lastDoctorSummary: `token-${"a".repeat(40)}`, lastDoctorRepair: `repair-${"b".repeat(40)}` },
+      },
+    } as never);
+    const loaded = await readRemoteAccess(root);
+    expect(loaded.configs[fingerprint].lastDoctorSummary).toBe("[redacted]");
+    expect(loaded.configs[fingerprint].lastDoctorRepair).toBe("[redacted]");
+  });
 });

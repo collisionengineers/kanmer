@@ -35,6 +35,10 @@ function safeHostname(value: unknown): value is string {
   return /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/.test(value) && isIP(value) === 0 && value === value.toLowerCase();
 }
 
+function safeDiagnostic(value: unknown, limit: number): value is string {
+  return typeof value === "string" && value.length <= limit && !/[\u0000-\u001f\u007f]/.test(value);
+}
+
 function normalizeConfig(value: unknown): CloudflareRemoteConfig | null {
   if (!value || typeof value !== "object") return null;
   const c = value as Partial<CloudflareRemoteConfig>;
@@ -43,10 +47,10 @@ function normalizeConfig(value: unknown): CloudflareRemoteConfig | null {
   return {
     provider: "cloudflared", executable: c.executable!, tunnelId: c.tunnelId!, credentialsFile: c.credentialsFile!, hostname: c.hostname!,
     secretId: c.secretId, enabled: c.enabled, autoStart: typeof c.autoStart === "boolean" ? c.autoStart : c.enabled,
-    ...(typeof c.generation === "string" ? { generation: c.generation } : {}),
-    ...(typeof c.lastDoctorSummary === "string" && c.lastDoctorSummary.length <= 240 ? { lastDoctorSummary: c.lastDoctorSummary } : {}),
-    ...(typeof c.lastDoctorRepair === "string" && c.lastDoctorRepair.length <= 512 ? { lastDoctorRepair: c.lastDoctorRepair } : {}),
-    ...(typeof c.lastDoctorAt === "string" && c.lastDoctorAt.length <= 64 ? { lastDoctorAt: c.lastDoctorAt } : {}),
+    ...(typeof c.generation === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(c.generation) ? { generation: c.generation } : {}),
+    ...(safeDiagnostic(c.lastDoctorSummary, 240) ? { lastDoctorSummary: c.lastDoctorSummary.replace(/[A-Za-z0-9_-]{32,}/g, "[redacted]") } : {}),
+    ...(safeDiagnostic(c.lastDoctorRepair, 512) ? { lastDoctorRepair: c.lastDoctorRepair.replace(/[A-Za-z0-9_-]{32,}/g, "[redacted]") } : {}),
+    ...(safeDiagnostic(c.lastDoctorAt, 64) ? { lastDoctorAt: c.lastDoctorAt } : {}),
   };
 }
 

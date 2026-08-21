@@ -22,7 +22,7 @@ export interface CloudflaredAdapterOptions extends CloudflaredTunnelOptions {
 export type CloudflaredSpawner = typeof spawn;
 
 async function validateRegularFile(value: string, errorCode: string, privateFile: boolean): Promise<void> {
-  if (!value || value.includes("\0") || !isAbsolute(value)) throw new Error(errorCode);
+  if (!value || /[\u0000-\u001f\u007f]/.test(value) || !isAbsolute(value)) throw new Error(errorCode);
   let metadata;
   try { metadata = await lstat(value); } catch { throw new Error(errorCode); }
   if (!metadata.isFile() || metadata.isSymbolicLink()) throw new Error(errorCode);

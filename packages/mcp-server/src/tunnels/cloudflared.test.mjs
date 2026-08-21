@@ -40,6 +40,7 @@ test("adapter validates an owned credentials file before starting a direct child
     assert.ok(child.pid);
     await child.exited;
     await assert.rejects(() => createCloudflaredAdapter({ ...options, credentialsFile: path.join(directory, "missing") }).start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /TUNNEL_CREDENTIALS_FILE_UNSAFE/);
+    await assert.rejects(() => createCloudflaredAdapter({ ...options, executable: `${process.execPath}\nunsafe` }).start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /TUNNEL_EXECUTABLE_INVALID/);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 

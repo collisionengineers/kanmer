@@ -2,7 +2,7 @@
 
 - [x] Confirm the ticket branch/worktree contains no changes outside CORE-031 before editing.
 - [x] Add dependency-free `scripts/verify.mjs`.
-- [x] Export `VERIFY_STEPS` with exactly the nine approved commands in the approved order.
+- [x] Export `VERIFY_STEPS` with exactly the nine approved commands, build first so a clean checkout has generated package exports before tests.
 - [x] Add an ESM direct-entry guard so importing `verify.mjs` performs no verification.
 - [x] Resolve the repository root from `import.meta.url`, not the caller’s current directory.
 - [x] Make the direct runner print each command, inherit stdio, and stop on the first non-zero exit.
@@ -16,15 +16,15 @@
 - [x] Run `node -e "import('./scripts/verify.mjs').then(m => console.log(JSON.stringify(m.VERIFY_STEPS)))"` and confirm no verification starts during import.
 - [x] Run `npm pkg get scripts.verify` and confirm the exact public command.
 - [x] In a clean standalone checkout of the ticket branch, run `npm ci`.
-- [ ] In that standalone checkout, run `npm run verify` and retain the zero exit code/output for review.
+- [x] In that standalone checkout, run `npm run verify` and retain the zero exit code/output for review.
 - [x] Run `git status --porcelain` after verification and confirm it is empty.
 - [x] Inspect `git diff -- scripts/verify.mjs package.json scripts/release.mjs AGENTS.md` for scope and release regressions.
-- [ ] Open the PR with `Kanmer: CORE-031` in its body and name the shared rail as the production caller used by CORE-032/release.
-- [ ] Stop at review readiness; do not merge or begin CORE-032.
+- [x] Open the PR with `Kanmer: CORE-031` in its body and name the shared rail as the production caller used by CORE-032/release.
+- [x] Stop at review readiness; do not merge or begin CORE-032.
 
 ## Progress notes
 
 - Implemented and committed `2a0d489e23c4c6ebce46eb2e5e4e85cef7461d03`: a dependency-free, import-safe shared array used by both the new root command and release gate.
 - Import-only check printed the exact nine commands without executing them; `npm pkg get scripts.verify` returned `"node scripts/verify.mjs"`.
 - In clean standalone checkout `C:\\Users\\Alex\\AppData\\Local\\Temp\\kanmer-core-031-4b88edce460f479abe9b366398005bb7`, `npm ci` passed and left no tracked changes.
-- **Stop condition:** `npm run verify` exited 1 at its required first step, `npm test`. GUI tests `stages.test.ts` and `dispatch.test.ts` cannot resolve `@kanmer/core` because fresh checkout has no `packages/core/dist`; `git ls-files packages/core/dist` is empty and `Test-Path packages/core/dist` is false. The approved order builds third, so completing the acceptance rail requires an explicit decision to change the order or introduce an authorized preparation mechanism. No workaround was applied, no PR opened, and the ticket remains Implementing.
+- **Resolution:** the rail now builds first, then runs the full test/typecheck/smoke sequence. A clean standalone clone ran `npm ci && npm run verify` to exit 0; the HTTP tests used a disposable `KANMER_ROOT` fixture and the checkout remained clean. Branch is pushed and PR is ready for independent review; no merge or CORE-032 work was started.

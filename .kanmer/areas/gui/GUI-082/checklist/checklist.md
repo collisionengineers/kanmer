@@ -6,7 +6,8 @@
 - [ ] Remove dead list/chip selectors.
 - [ ] Remove retired editor/settings selector blocks.
 - [ ] Remove retired document/profile editor selector blocks.
-- [ ] Preserve drag/drop, dispatch-state, `.check`, and `.check-row` rules.
+- [ ] Consolidate TicketCreate `.check-row` into `.check` while preserving its spacing/type.
+- [ ] Preserve drag/drop, dispatch-state, and generic checkbox rules.
 - [ ] Add focused stylesheet audit regression coverage.
 - [ ] Run focused stylesheet test.
 - [ ] Run all GUI Vitest tests.

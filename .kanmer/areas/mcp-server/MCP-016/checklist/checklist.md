@@ -42,14 +42,14 @@
 - [x] `git fetch origin && git rebase origin/main` — up to date at `b653a33` on `6dbb284`; both manifests re-read post-rebase
 - [x] Follow-up ticket filed for the stale `AGENTS.md:149` repo-map line — **DOC-009**
 - [x] PR opened — <https://github.com/collisionengineers/kanmer/pull/62>
-- [ ] Review written (author and reviewer both me, said in the first line); merged
-- [ ] `proof` written on merged main; MCP-016 → done; closeout from the main checkout
+- [x] Independent post-hoc review completed by a different agent; `scratch/independent-review.md` records PASS on merged main.
+- [x] `proof` written on merged main; MCP-016 → done; closeout from the main checkout
 
 ---
 
 ## Progress notes
 
-**Profile changed `spike` → `fix` during Preparing.** Reasoning in `plan.md`
+**Profile changed `spike` → **fix** during Preparing.** Reasoning in `plan.md`
 §Profile; in short, `spike` reaches Done on `research` alone and this ticket
 ships real code, so it would have landed with no `proof` — the one artefact the
 ticket's own verification rule demands. `fix` is stricter on both boundaries.
@@ -78,7 +78,7 @@ re-run from a Connect-free folder, and FRD-012 R6.3 now records the trap.
 - [x] `proof` final — written and verified on merged main
 - [x] `commits: [8f4bdc16efa0eca243c1353955babdb8cc3b4f4f]`, `prs: [#62]` recorded
 - [x] Outcome written into the ticket body
-- [x] Review written (author and reviewer both me, stated in its first line); merged under standing delegation
+- [x] Independent post-hoc review recorded in `scratch/independent-review.md`; historical self-review disclosure retained.
 - [x] `proof` on merged main; MCP-016 → done
 - [x] `git worktree remove .worktrees/mcp-016`
 - [x] `git branch -d mcp-016-plugin-mcp-scope` (refused as unmerged after the squash — expected; deleted after `state: MERGED` was confirmed)

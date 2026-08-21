@@ -42,3 +42,31 @@ The added test only monkeypatches invalidatePrincipal() itself to throw (HTTP te
 - npm run plugin:check — not runnable from this linked ticket worktree; it refused because the workspace dependency resolved to the main checkout. git diff origin/main...HEAD -- plugins is empty, so no plugin artifact/source drift is present in this PR.
 
 No merge was performed because of the blocking finding.
+
+# Re-review update — PR #112 remediation
+
+Date: 2026-08-21
+Reviewed head f1027ae1fccf9d727e2f3b8459691142b4d379f2 (full PR #112, including b3b62f8 and dd52486c).
+
+## Verdict
+
+**PASS — prior blocking finding resolved.** PR #112 is mergeable from the MCP-026 security/protocol review. No proof or stage update was performed.
+
+The earlier finding was that closeSession() used Promise.allSettled() and discarded transport/server close failures. f1027ae changes this to fail-visible Promise.all. rotateBearerVerifier() now observes a real close rejection, revokes the active verifier, and rethrows; the regression test patches the actual live session.server.close() and proves both old and replacement credentials fail closed. Async sweep/onclose paths catch and emit only redacted bounded diagnostics, and shutdown records close failure, forces socket cleanup, emits stopped, then rethrows the close error.
+
+Checked again with no remaining finding: immutable verifier snapshots and digest zeroing; persistence before activation and old-verifier retention on persistence failure; protected token-file and Windows residual handling; raw CLI/env rejection; diagnostic redaction/aggregate auth failures; no tunnel/GUI/OAuth/dispatch/stdio/tool-surface/plugin source drift.
+
+## Reproducible checks for f1027ae
+
+- npm run test:http -w @kanmer/mcp-server — PASS, 10/10.
+- npm run typecheck -w @kanmer/mcp-server — PASS.
+- node packages/mcp-server/src/smoke-http.mjs — PASS.
+- npm run test:http includes a fresh MCP-server build and standalone build — PASS.
+- git diff --check origin/main...HEAD — PASS.
+- PR #112 is OPEN and MERGEABLE at f1027ae1fccf9d727e2f3b8459691142b4d379f2.
+
+Earlier broader rails remain recorded in this review: all-workspace build/typecheck, stdio 184/184, protocol 42/42, and discovery 13/13 passed; root npm test had unrelated Windows core timeout/ENOTEMPTY failures. No plugin files are in the PR diff and plugin:check was blocked only by linked-worktree dependency resolution.
+
+PASS authorizes merging PR #112. Do not write proof or move ticket stages.
+
+Merge record: PR #112 merged into main at 78e3faf14f9abfe2fe5cce0f38de3b72163489d6 (2026-08-21T12:58:43Z). No proof or ticket stage change performed.

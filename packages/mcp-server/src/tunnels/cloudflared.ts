@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { chmod, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path, { isAbsolute } from "node:path";
 import { cloudflaredConfig, type CloudflaredTunnelOptions, validateCloudflaredTunnel } from "./cloudflared-config.js";
@@ -24,8 +24,8 @@ export type CloudflaredSpawner = typeof spawn;
 async function validateRegularFile(value: string, errorCode: string, privateFile: boolean): Promise<void> {
   if (!value || value.includes("\0") || !isAbsolute(value)) throw new Error(errorCode);
   let metadata;
-  try { metadata = await stat(value); } catch { throw new Error(errorCode); }
-  if (!metadata.isFile()) throw new Error(errorCode);
+  try { metadata = await lstat(value); } catch { throw new Error(errorCode); }
+  if (!metadata.isFile() || metadata.isSymbolicLink()) throw new Error(errorCode);
   // Windows ACLs are not represented by POSIX mode bits.  On POSIX, fail
   // closed when a bearer-adjacent credentials file is group/world accessible.
   if (privateFile && process.platform !== "win32" && (metadata.mode & 0o077) !== 0) throw new Error(errorCode);

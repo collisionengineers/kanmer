@@ -87,3 +87,11 @@ Append implementation notes here; do not rewrite the plan during execution.
 - Implemented the single read-only Windows tag workflow in .github/workflows/release.yml and updated AGENTS.md to name the stable release-verify check and publisher/validator split.
 - Local evidence: git diff --check passed; npm run verify completed the shared build/test/smoke/skills/agents/plugin rails on this branch; npm run dist:check completed the Windows packaging/update-package rail.
 - The workflow contract, version guards, permissions, bounded exit-class polling, and no-publish/no-repair behavior were reviewed against the plan. Real GitHub tag-trigger green proof and the disposable incomplete-release red proof are external-environment evidence and remain explicitly unclaimed until a real run is authorized/available.
+
+## Merged-main verification — 2026-08-21
+
+- Normal main/origin-main was 1b5ae0d4546d1b57be393b38f4813f9ecfb6e7d5. git diff --check exited 0.
+- npm run verify exited 1 at the existing core migration resume test (5-second timeout plus ENOTEMPTY cleanup; 262/263 core tests).
+- npm run dist:check exited 1 at the GUI renderer Vite missing-chunk resolution after core/server/main/preload build.
+- PR #127 is merged at 470b2fad5d16ca4edcc9833b3f674460f994e73d; source 99fb8022 is not an ancestor because the PR was squash-merged.
+- External real-tag green and disposable incomplete-release red proof remains INCONCLUSIVE; no release/tag/publish/repair action was run. Ticket remains Verifying; no boxes were fabricated or ticked.

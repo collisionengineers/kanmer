@@ -2,21 +2,24 @@
 
 ## Merged artifact
 
-- PR #127 merged on 2026-08-21 at merge commit 470b2fad5d16ca4edcc9833b3f674460f994e73d.
-- Implementation commit 99fb8022b3510e25981c83197ee7f41ca57a95ad is reachable from merged main.
-- The merged artifact contains only the read-only tag-push workflow and AGENTS.md operational contract; publishing/repair ownership remains local release.mjs.
+- PR #127 is merged: https://github.com/collisionengineers/kanmer/pull/127, merged 2026-08-21 at squash/merge commit 470b2fad5d16ca4edcc9833b3f674460f994e73d.
+- Normal main and origin/main were at 1b5ae0d4546d1b57be393b38f4813f9ecfb6e7d5 during this verification; git merge-base --is-ancestor 470b2fad5d16ca4edcc9833b3f674460f994e73d origin/main exited 0.
+- The implementation source commit is 99fb8022b3510e25981c83197ee7f41ca57a95ad; because PR #127 was squash-merged, git merge-base --is-ancestor 99fb8022b3510e25981c83197ee7f41ca57a95ad origin/main exited 1. The earlier proof reachability statement is corrected here; the merged commit is the reachable traceability SHA.
+- The merged artifact contains the read-only tag-push workflow and its AGENTS.md operational contract; publishing/repair ownership remains local release.mjs.
 
-## Local verification
+## Merged-main verification — 2026-08-21
+
+Commands ran from the normal repository checkout on merged main (not the board worktree):
 
 - git diff --check — exit 0.
-- npm run verify — exit 0 on the implementation branch: build, core 256, GUI 338, HTTP/protocol/discovery/scripting/skills/agents/plugin rails completed.
-- npm run dist:check — exit 0 on the implementation branch: packaged Windows installer and updater-package checks completed.
-- Workflow review confirms strict tag/version validation, one release-verify job, contents: read only, exact npm rails, bounded exit-class polling, local artifact summary, and no publish/repair commands.
+- npm run verify — exit 1. Build completed, then the existing core migration test migration: v2 → v3 > resuming still finishes the tickets the interrupted run never reached timed out at the 5-second Vitest default; cleanup also reported ENOTEMPTY for the temporary .kanmer directory. Result: 262 passed, 1 failed of 263 core tests; scripts/verify.mjs stopped at npm test.
+- npm run dist:check — exit 1. Core/server and GUI main/preload bundles completed, but the GUI renderer build failed because Vite could not resolve node_modules/vite/dist/node/chunks/dep-D-7KCb9p.js imported by dep-BK3b2jBa.js. The updater-package check was not reached.
+- Prior implementation-branch evidence in the report recorded npm run verify and npm run dist:check exit 0; those historical branch results do not replace these merged-main results.
 
-## External proof status
+## External release proof
 
-- The next real v<semver> tag green Actions run and deliberately incomplete-release red run were not run. They require an authorized release/tag cycle and external GitHub state; INCONCLUSIVE is recorded, not PASS. The two checklist boxes remain unchecked.
+- A real next v<semver> tag green Actions run and a deliberately incomplete disposable-release red run were not run. They require an authorized release/tag cycle and external GitHub release state; they remain INCONCLUSIVE, not PASS. No tag, release, publish, repair, or demotion command was run by this verification lane.
 
 ## Conclusion
 
-The implementation is merged and locally verified; external Actions/release proof remains the explicit outstanding condition from the ticket plan.
+Independent review and merge are complete, but merged-main verification has two preserved exit-1 results above and the external release runs are unavailable. CORE-036 remains in Verifying; it must not be moved to Done or cleaned up until the verification failures/external evidence are dispositioned by the controlling lane.

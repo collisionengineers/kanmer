@@ -240,3 +240,7 @@ Stop when the built local doctor produces a deterministic redacted schema-v1 con
 ## Roadmap amendment — Cloudflare doctor boundary
 
 Add deterministic checks for cloudflared executable/version, generated ingress validation, exact-host ingress match, local listener, tunnel readiness, negative/positive bearer outcomes and expected project identity. Emit distinct redacted results for provider/config, local host, bearer and board failures. Do not add Access, service-token or identity checks.
+
+## Research reconciliation (2026-08-21)
+
+Research confirms the canonical MCP registry/exposure policy is `packages/mcp-server/src/index.ts`; the `server.ts` path in `files.md` is stale and is not to be created. Reuse MCP-021/025/026 validators, status, protected secret provider, official MCP client behavior, and remote exposure policy without duplicate schemas. The current checkout has no `scripts/verify.mjs`; wire doctor verification through existing package/root rails and leave any shared verify integration to CORE-031. Public DNS/TLS/provider acceptance remains fixture-only here; MCP-028 owns controlled public proof. No unresolved product questions were found.

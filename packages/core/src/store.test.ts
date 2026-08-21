@@ -1214,6 +1214,15 @@ describe("reference files", () => {
     expect(await fs.readFile(first.path, "utf8")).toBe("PNG-BYTES");
   });
 
+  it("keeps concurrent same-name copies distinct", async () => {
+    const t = await store.createItem({ type: "ticket", title: "Ref" });
+    const results = await Promise.all(Array.from({ length: 4 }, () => store.addReference(t.id, src)));
+    expect(new Set(results.map((result) => result.name))).toEqual(
+      new Set(["mockup.png", "mockup-2.png", "mockup-3.png", "mockup-4.png"]),
+    );
+    expect((await store.getTicketDocsInfo(t.id))?.references).toHaveLength(4);
+  });
+
   it("refuses a name that would escape the ticket folder", async () => {
     const t = await store.createItem({ type: "ticket", title: "Ref" });
     for (const bad of ["../escape.png", "..", "sub/dir.png", "."]) {
@@ -1228,6 +1237,7 @@ describe("reference files", () => {
     const t = await store.createItem({ type: "ticket", title: "Ref" });
     await store.addReference(t.id, src);
     await expect(store.removeReference(t.id, "../../mockup.png")).rejects.toThrow(/outside/);
+    await expect(store.removeReference(t.id, "sub/mockup.png")).rejects.toThrow(/plain filename/);
     await store.removeReference(t.id, "mockup.png");
     expect((await store.getTicketDocsInfo(t.id))?.references).toEqual([]);
   });

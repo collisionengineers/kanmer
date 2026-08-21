@@ -37557,6 +37557,7 @@ var import_path7 = __toESM(require("path"), 1);
 var import_crypto2 = require("crypto");
 var import_promises5 = __toESM(require("fs/promises"), 1);
 var import_path8 = __toESM(require("path"), 1);
+var import_fs3 = require("fs");
 var import_promises6 = __toESM(require("fs/promises"), 1);
 var import_path9 = __toESM(require("path"), 1);
 var import_path10 = __toESM(require("path"), 1);
@@ -39261,6 +39262,16 @@ async function linkItems(store2, sourceId, targetId, action, rel = "relates") {
 }
 var ITEM_TYPES = ["ticket", "plan", "research"];
 var CREATE_ATTEMPTS = 20;
+function referencePath(dir, name) {
+  const candidate = name.trim();
+  if (!candidate || candidate === "." || candidate === "..") throw new Error(`Invalid reference name "${candidate}"`);
+  const resolved = import_path9.default.resolve(dir, candidate);
+  const root = import_path9.default.resolve(dir);
+  if (resolved !== import_path9.default.join(root, import_path9.default.basename(resolved)) || !resolved.startsWith(root + import_path9.default.sep)) {
+    throw new Error(`Reference name "${name}" is outside reference/; it must be a plain filename`);
+  }
+  return resolved;
+}
 function nowIso() {
   return (/* @__PURE__ */ new Date()).toISOString();
 }
@@ -40005,20 +40016,21 @@ ${content.trim()}
     if (!loc || loc.kind !== "v2") throw new Error(`No item with id "${id}"`);
     const dir = docDirIn(loc.dir, "reference");
     const base = (name ?? import_path9.default.basename(sourcePath)).trim();
-    if (!base || base === "." || base === "..") throw new Error(`Invalid reference name "${base}"`);
-    const resolved = import_path9.default.resolve(dir, base);
-    const root = import_path9.default.resolve(dir);
-    if (resolved !== import_path9.default.join(root, import_path9.default.basename(resolved)) || !resolved.startsWith(root + import_path9.default.sep)) {
-      throw new Error(`Reference name "${base}" must be a plain filename inside reference/`);
-    }
+    referencePath(dir, base);
     await ensureDir(dir);
     const ext = import_path9.default.extname(base);
     const stem = base.slice(0, base.length - ext.length);
-    let final = base;
-    for (let n = 2; await pathExists(import_path9.default.join(dir, final)); n++) final = `${stem}-${n}${ext}`;
-    await import_promises6.default.copyFile(sourcePath, import_path9.default.join(dir, final));
-    await this.appendActivityFor(id, "reference", final);
-    return { name: final };
+    for (let n = 1; ; n++) {
+      const final = n === 1 ? base : `${stem}-${n}${ext}`;
+      const destination = referencePath(dir, final);
+      try {
+        await import_promises6.default.copyFile(sourcePath, destination, import_fs3.constants.COPYFILE_EXCL);
+        await this.appendActivityFor(id, "reference", final);
+        return { name: final };
+      } catch (err) {
+        if (err.code !== "EEXIST") throw err;
+      }
+    }
   }
   /**
    * Delete a reference file. There is no archive for one — it is an input, not
@@ -40028,11 +40040,7 @@ ${content.trim()}
     const loc = await this.locateItem(id);
     if (!loc || loc.kind !== "v2") throw new Error(`No item with id "${id}"`);
     const dir = docDirIn(loc.dir, "reference");
-    const resolved = import_path9.default.resolve(dir, name);
-    const root = import_path9.default.resolve(dir);
-    if (!resolved.startsWith(root + import_path9.default.sep)) {
-      throw new Error(`Reference "${name}" is outside reference/`);
-    }
+    const resolved = referencePath(dir, name);
     await removeFile(resolved);
     await this.appendActivityFor(id, "reference", name);
   }

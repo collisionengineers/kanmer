@@ -1,3 +1,4 @@
+import { constants as fsConstants } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
@@ -107,6 +108,17 @@ const ITEM_TYPES: ItemType[] = ["ticket", "plan", "research"];
 
 /** Bound on exclusive-create retries; ~2× the worst realistic contention. */
 const CREATE_ATTEMPTS = 20;
+
+function referencePath(dir: string, name: string): string {
+  const candidate = name.trim();
+  if (!candidate || candidate === "." || candidate === "..") throw new Error(`Invalid reference name "${candidate}"`);
+  const resolved = path.resolve(dir, candidate);
+  const root = path.resolve(dir);
+  if (resolved !== path.join(root, path.basename(resolved)) || !resolved.startsWith(root + path.sep)) {
+    throw new Error(`Reference name "${name}" is outside reference/; it must be a plain filename`);
+  }
+  return resolved;
+}
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -1042,23 +1054,22 @@ export class KanmerStore {
     if (!loc || loc.kind !== "v2") throw new Error(`No item with id "${id}"`);
     const dir = docDirIn(loc.dir, "reference");
     const base = (name ?? path.basename(sourcePath)).trim();
-    if (!base || base === "." || base === "..") throw new Error(`Invalid reference name "${base}"`);
-
-    const resolved = path.resolve(dir, base);
-    const root = path.resolve(dir);
-    if (resolved !== path.join(root, path.basename(resolved)) || !resolved.startsWith(root + path.sep)) {
-      throw new Error(`Reference name "${base}" must be a plain filename inside reference/`);
-    }
+    referencePath(dir, base);
 
     await ensureDir(dir);
     const ext = path.extname(base);
     const stem = base.slice(0, base.length - ext.length);
-    let final = base;
-    for (let n = 2; await pathExists(path.join(dir, final)); n++) final = `${stem}-${n}${ext}`;
-
-    await fs.copyFile(sourcePath, path.join(dir, final));
-    await this.appendActivityFor(id, "reference", final);
-    return { name: final };
+    for (let n = 1; ; n++) {
+      const final = n === 1 ? base : `${stem}-${n}${ext}`;
+      const destination = referencePath(dir, final);
+      try {
+        await fs.copyFile(sourcePath, destination, fsConstants.COPYFILE_EXCL);
+        await this.appendActivityFor(id, "reference", final);
+        return { name: final };
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
+      }
+    }
   }
 
   /**
@@ -1069,11 +1080,7 @@ export class KanmerStore {
     const loc = await this.locateItem(id);
     if (!loc || loc.kind !== "v2") throw new Error(`No item with id "${id}"`);
     const dir = docDirIn(loc.dir, "reference");
-    const resolved = path.resolve(dir, name);
-    const root = path.resolve(dir);
-    if (!resolved.startsWith(root + path.sep)) {
-      throw new Error(`Reference "${name}" is outside reference/`);
-    }
+    const resolved = referencePath(dir, name);
     await removeFile(resolved);
     await this.appendActivityFor(id, "reference", name);
   }

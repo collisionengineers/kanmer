@@ -193,6 +193,35 @@ describe("Editor document path inventory", () => {
   });
 });
 
+describe("Editor reference files", () => {
+  it("renders attachments and routes add, open, and confirmed remove actions", async () => {
+    const pickReferences = vi.fn().mockResolvedValue(["C:/incoming/mockup.png"]);
+    const addReference = vi.fn().mockResolvedValue({ name: "mockup-2.png" });
+    const openReference = vi.fn().mockResolvedValue(undefined);
+    const removeReference = vi.fn().mockResolvedValue(undefined);
+    const client = clientFor({
+      getDocsInfo: vi.fn().mockResolvedValue({
+        docs: { plan: true }, counts: { plan: 1 }, documentPaths: [], checklist: null,
+        references: [{ name: "mockup.png", path: "C:/project/reference/mockup.png" }], scratch: [],
+      }),
+      pickReferences, addReference, openReference, removeReference,
+    });
+    renderEditor(client);
+
+    fireEvent.click(await screen.findByRole("button", { name: "mockup.png" }));
+    expect(openReference).toHaveBeenCalledWith("GUI-096", "mockup.png");
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(screen.getByText(/Delete mockup\.png\?/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(removeReference).toHaveBeenCalledWith("GUI-096", "mockup.png"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Add files…" }));
+    await waitFor(() => expect(pickReferences).toHaveBeenCalled());
+    expect(addReference).toHaveBeenCalledWith("GUI-096", "C:/incoming/mockup.png");
+  });
+});
+
 describe("Editor modes", () => {
   it.each([
     ["approval", "ticket"],

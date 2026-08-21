@@ -87,7 +87,7 @@
 ## Validation
 
 - [x] Add docs to canonical indexes/maps.
-- [ ] Link actual paths to EPIC/tickets after creation.
+- [x] Link actual paths to EPIC/tickets after creation.
 - [x] Search and resolve conflicting promises within scope.
 - [x] Run doc/link/Markdown/Mermaid validation.
 - [x] Run root verify where applicable.
@@ -109,8 +109,11 @@
 - [x] Confirmed PR #84 merged at `e2bef96dd4422e37988e0297273eda422c5ec990`.
 - [x] Confirmed final `proof/proof.md` on merged main.
 - [x] Recorded commit and PR traceability.
-- [ ] Remove recorded ticket worktree and local branch.
-- [ ] Prune remote/worktree metadata and release the ticket.
+- [x] Remove recorded ticket worktree and local branch.
+- [x] Prune remote/worktree metadata and release the ticket.
 
 - [x] Removed `.worktrees/doc-012` after confirming it was clean.
 - [x] Deleted local and remote `doc-012-remote-access-governance`, fetched/pruned, and confirmed the board worktree remains intact.
+
+
+- 2026-08-21 reconciliation: FRD-025 and ADR-0017 refs were linked to DOC-017, MCP-025, MCP-026, MCP-021, MCP-027, GUI-095, DOC-013, and MCP-028. Confirmed `.worktrees/doc-012` is absent, the recorded local/remote branch was deleted and pruned, and the ticket is released; the existing merged-main proof remains authoritative.

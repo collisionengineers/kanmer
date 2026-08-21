@@ -1,0 +1,123 @@
+---
+kind: auto-run
+schema: 1
+run_id: 20260821T105846Z-codex-mcp-client
+group: HZN-007
+project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=a35e1fd0
+controller: codex-mcp-client
+status: running
+created_at: 2026-08-21T10:58:46.923Z
+updated_at: 2026-08-21T10:58:46.923Z
+lane_limit: 3
+stop_reason:
+---
+
+# Auto run — 20260821T105846Z-codex-mcp-client
+
+## Selection contract
+
+- Group: `HZN-007` — Full-board completion
+- Target point: closeout / Done
+- Included tickets: DOC-012, DOC-017, MCP-025, MCP-026, MCP-021, MCP-027, GUI-095, DOC-013, MCP-028, MCP-022, MCP-019, MCP-033, CORE-023, SKILL-018, GUI-070, GUI-071, GUI-072, GUI-074, GUI-078, GUI-080, GUI-092, MCP-007, MCP-016, CORE-024, CORE-025, CORE-031, CORE-032, CORE-033, CORE-035, DOC-011, GUI-096, CORE-011, GUI-098, MCP-008, MCP-023, MCP-024, SKILL-021, GUI-085, MCP-017, CORE-022, MCP-018, SKILL-017, DOC-005, GUI-099, GUI-007, GUI-010, GUI-015, GUI-016, GUI-017, GUI-064, GUI-079, SKILL-001, SKILL-002, SKILL-003, SKILL-004, SKILL-005, SKILL-007, CORE-026, CORE-036, DOC-007, GUI-068, GUI-075, GUI-082, GUI-084, GUI-100, GUI-101, GUI-102, GUI-104, GUI-105, MCP-014, MCP-015, MCP-020
+- Lane partition:
+  - Lane 1 (provider-neutral milestone, dependency-serial): DOC-012 → DOC-017 → MCP-025 → MCP-026 → MCP-021 → MCP-027 → GUI-095 → DOC-013 → MCP-028
+  - Lane 2 (Done-incomplete reconciliation, serial): MCP-022 → MCP-019 → MCP-033 → CORE-023 → SKILL-018 → GUI-070 → GUI-071 → GUI-072 → GUI-074 → GUI-078 → GUI-080 → GUI-092 → MCP-007 → MCP-016
+  - Lane 3 (remaining active roster, dependency waves and file-conflict serialisation): CORE-024 → CORE-025 → CORE-031 → CORE-032 → CORE-033 → CORE-035 → DOC-011 → GUI-096 → CORE-011 → GUI-098 → MCP-008 → MCP-023 → MCP-024 → SKILL-021 → GUI-085 → MCP-017 → CORE-022 → MCP-018 → SKILL-017 → DOC-005 → GUI-099 → GUI-007 → GUI-010 → GUI-015 → GUI-016 → GUI-017 → GUI-064 → GUI-079 → SKILL-001 → SKILL-002 → SKILL-003 → SKILL-004 → SKILL-005 → SKILL-007 → CORE-026 → CORE-036 → DOC-007 → GUI-068 → GUI-075 → GUI-082 → GUI-084 → GUI-100 → GUI-101 → GUI-102 → GUI-104 → GUI-105 → MCP-014 → MCP-015 → MCP-020
+- Skipped tickets and reasons: archived tickets are audit-only until disposition; 75 historical Done backfills are audit-only without fabricated lifecycle evidence; no selected ticket was skipped for taken state. Existing taken records are resumed on recorded branches/worktrees.
+- Project fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=a35e1fd0
+
+## Run invariants
+
+- The controller is codex-mcp-client and the maximum concurrent lanes are 3.
+- This run uses only existing Kanmer tools and phase skills.
+- The controller never auto-merges a pull request.
+- Live board state, resolved gates, exact document paths, and merged-main evidence override the embedded roadmap snapshot.
+- A ticket is finished only after independent review/merge, merged-main verification, final proof, traceability, and closeout cleanup.
+
+## Ticket ledger
+
+| Order | Ticket | Observed stage | Gates / next action | Disposition | Worker | Branch / worktree | Attempt | Last action | Last result | PR | Updated |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | DOC-012 | done | chore; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:15.692Z |
+| 2 | DOC-017 | preparing | chore; next=done; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:26.423Z |
+| 3 | MCP-025 | implementing | feature; next=backlog; blocked=false; blockers=DOC-012 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:16.301Z |
+| 4 | MCP-026 | implementing | feature; next=backlog; blocked=true; blockers=MCP-025 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:16.588Z |
+| 5 | MCP-021 | implementing | feature; next=review; blocked=true; blockers=DOC-012,MCP-025,MCP-026 | queued | — | mcp-021-cloudflared-adapter|.worktrees/mcp-021 | 0 | rostered | live state recorded | — | 2026-08-21T10:57:16.881Z |
+| 6 | MCP-027 | preparing | feature; next=review; blocked=true; blockers=MCP-021 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:17.165Z |
+| 7 | GUI-095 | preparing | feature; next=review; blocked=true; blockers=MCP-021 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:17.472Z |
+| 8 | DOC-013 | preparing | chore; next=done; blocked=true; blockers=MCP-026 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:17.874Z |
+| 9 | MCP-028 | preparing | chore; next=done; blocked=true; blockers=MCP-026,MCP-027,GUI-095 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:18.170Z |
+| 10 | MCP-022 | done | feature; next=backlog; blocked=false; blockers=MCP-033 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:12.806Z |
+| 11 | MCP-019 | done | feature; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:15.042Z |
+| 12 | MCP-033 | done | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:31.629Z |
+| 13 | CORE-023 | done | feature; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:24.867Z |
+| 14 | SKILL-018 | done | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:24.474Z |
+| 15 | GUI-070 | done | fix; next=backlog; blocked=false; blockers=GUI-069 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:20.621Z |
+| 16 | GUI-071 | done | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:27.192Z |
+| 17 | GUI-072 | done | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:20.958Z |
+| 18 | GUI-074 | done | chore; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:21.241Z |
+| 19 | GUI-078 | done | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:21.540Z |
+| 20 | GUI-080 | done | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:22.176Z |
+| 21 | GUI-092 | done | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:28.642Z |
+| 22 | MCP-007 | done | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:30.321Z |
+| 23 | MCP-016 | done | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:31.124Z |
+| 24 | CORE-024 | preparing | fix; next=review; blocked=true; blockers=CORE-032 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:08.734Z |
+| 25 | CORE-025 | preparing | fix; next=review; blocked=true; blockers=CORE-024 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:09.092Z |
+| 26 | CORE-031 | implementing | chore; next=done; blocked=false; blockers=— | queued | — | core-031-shared-verify-steps|.worktrees/core-031 | 0 | rostered | live state recorded | — | 2026-08-21T10:57:09.417Z |
+| 27 | CORE-032 | preparing | chore; next=done; blocked=true; blockers=CORE-031 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:09.837Z |
+| 28 | CORE-033 | preparing | chore; next=done; blocked=true; blockers=CORE-032,GUI-085 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:10.149Z |
+| 29 | CORE-035 | preparing | chore; next=done; blocked=true; blockers=CORE-025,CORE-033,MCP-023,SKILL-021 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:10.552Z |
+| 30 | DOC-011 | verifying | chore; next=done; blocked=false; blockers=— | queued | — | doc-011-compiled-workflow|.worktrees/doc-011 | 0 | rostered | live state recorded | — | 2026-08-21T10:57:11.111Z |
+| 31 | GUI-096 | implementing | feature; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:11.475Z |
+| 32 | CORE-011 | implementing | feature; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:11.867Z |
+| 33 | GUI-098 | verifying | feature; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:12.265Z |
+| 34 | MCP-008 | preparing | feature; next=review; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:12.519Z |
+| 35 | MCP-023 | preparing | feature; next=review; blocked=false; blockers=MCP-022 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:13.065Z |
+| 36 | MCP-024 | preparing | fix; next=review; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:13.338Z |
+| 37 | SKILL-021 | preparing | fix; next=review; blocked=true; blockers=MCP-023,MCP-024 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:13.600Z |
+| 38 | GUI-085 | verifying | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:13.871Z |
+| 39 | MCP-017 | implementing | fix; next=done; blocked=false; blockers=— | queued | — | mcp-017-plugin-checkout-guard|.worktrees/mcp-017 | 0 | rostered | live state recorded | — | 2026-08-21T10:57:14.154Z |
+| 40 | CORE-022 | implementing | feature; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:14.459Z |
+| 41 | MCP-018 | verifying | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:14.754Z |
+| 42 | SKILL-017 | preparing | fix; next=review; blocked=false; blockers=SKILL-016 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:15.339Z |
+| 43 | DOC-005 | implementing | feature; next=backlog; blocked=true; blockers=CORE-001,SKILL-001 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:15.990Z |
+| 44 | GUI-099 | implementing | feature; next=review; blocked=false; blockers=— | queued | — | gui-099-installer-launcher|.worktrees/gui-099 | 0 | rostered | live state recorded | — | 2026-08-21T10:57:18.546Z |
+| 45 | GUI-007 | implementing | feature; next=backlog; blocked=false; blockers=CORE-003,CORE-005 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:18.864Z |
+| 46 | GUI-010 | implementing | feature; next=backlog; blocked=false; blockers=CORE-004 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:19.160Z |
+| 47 | GUI-015 | implementing | feature; next=backlog; blocked=false; blockers=GUI-006 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:19.440Z |
+| 48 | GUI-016 | implementing | feature; next=backlog; blocked=false; blockers=GUI-009,GUI-012 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:19.750Z |
+| 49 | GUI-017 | implementing | feature; next=backlog; blocked=false; blockers=GUI-009 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:20.029Z |
+| 50 | GUI-064 | verifying | feature; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:20.335Z |
+| 51 | GUI-079 | verifying | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:21.885Z |
+| 52 | SKILL-001 | implementing | feature; next=backlog; blocked=false; blockers=MCP-001 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:22.461Z |
+| 53 | SKILL-002 | implementing | feature; next=backlog; blocked=true; blockers=SKILL-001 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:22.767Z |
+| 54 | SKILL-003 | implementing | feature; next=backlog; blocked=true; blockers=SKILL-001 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:23.208Z |
+| 55 | SKILL-004 | implementing | feature; next=backlog; blocked=true; blockers=SKILL-001 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:23.506Z |
+| 56 | SKILL-005 | implementing | feature; next=backlog; blocked=true; blockers=SKILL-001 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:23.852Z |
+| 57 | SKILL-007 | implementing | feature; next=backlog; blocked=true; blockers=SKILL-001 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:24.168Z |
+| 58 | CORE-026 | preparing | feature; next=implementing; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:25.227Z |
+| 59 | CORE-036 | implementing | chore; next=done; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:25.600Z |
+| 60 | DOC-007 | implementing | feature; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:26.017Z |
+| 61 | GUI-068 | preparing | chore; next=done; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:26.795Z |
+| 62 | GUI-075 | preparing | feature; next=review; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:27.534Z |
+| 63 | GUI-082 | implementing | chore; next=done; blocked=false; blockers=— | queued | — | GUI-082-stylesheet-selector-audit|C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\gui-082 | 0 | rostered | live state recorded | — | 2026-08-21T10:57:27.959Z |
+| 64 | GUI-084 | preparing | fix; next=implementing; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:28.319Z |
+| 65 | GUI-100 | preparing | feature; next=review; blocked=true; blockers=GUI-099 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:28.991Z |
+| 66 | GUI-101 | preparing | feature; next=review; blocked=true; blockers=GUI-100 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:29.265Z |
+| 67 | GUI-102 | preparing | chore; next=done; blocked=true; blockers=GUI-100,GUI-101 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:29.517Z |
+| 68 | GUI-104 | preparing | feature; next=review; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:29.796Z |
+| 69 | GUI-105 | preparing | feature; next=review; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:30.077Z |
+| 70 | MCP-014 | preparing | feature; next=review; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:30.576Z |
+| 71 | MCP-015 | preparing | feature; next=review; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:30.843Z |
+| 72 | MCP-020 | preparing | feature; next=review; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:31.375Z |
+
+## Event log
+
+- 2026-08-21T10:58:46.923Z — run created after live reconciliation. 57 non-Done plus 15 Done-incomplete tickets were rostered; all were attached to HZN-007 with existing groups preserved.
+- 2026-08-21T10:58:46.923Z — baseline reconciliation: live status format 3, 209 active tickets, 27 Preparing, 24 Implementing, 6 Verifying, 152 Done, 10 archived, 6 taken, 0 warnings. Packaged MCP is 0.3.3 and reports AGENTS managed-block drift plus compensated board-config state.
+- 2026-08-21T10:58:46.923Z — provider-neutral milestone is dependency-serial; DOC-012 is Done but incomplete and must be reconciled before downstream tunnel work. MCP-021 remains taken on branch mcp-021-cloudflared-adapter / worktree .worktrees/mcp-021 and is waiting on MCP-025 and MCP-026.
+- 2026-08-21T10:58:46.923Z — archived and historical tickets remain outside the execution roster pending evidence-based audit; valid unresolved defects must join this run as linked tickets.
+
+## Resume instruction
+
+Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's complete document inventory, links, taken state and get_doc_gates before dispatching. Reconcile the ledger against live state and do not replay a completed action solely because this run was interrupted. Before every assignment/result/stage transition, update and read this history record and automation/current.md.

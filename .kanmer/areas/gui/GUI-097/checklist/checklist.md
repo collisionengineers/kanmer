@@ -21,3 +21,14 @@
 - [x] Confirm no core/MCP/IPC/schema/gate/stage/view/dispatch-feasibility/package/lock change.
 - [x] Open PR #101 with traceability.
 - [ ] Merged-main proof and closeout.
+
+## Closeout — GUI-097
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, no follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/gui-097`
+- [ ] `git branch -D gui-097-editor-modes` (squash-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

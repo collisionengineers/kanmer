@@ -15,3 +15,5 @@ Official-doc check (2026-08-21): Cloudflare's Run parameters page confirms `clou
 Optional real-binary check: `Get-Command cloudflared` returned no executable in this controlled Windows environment. No binary was downloaded or a public tunnel started. The optional version/help/config smoke remains explicitly unrun; normal validation stays fake-provider-only.
 
 Executable-validation checkpoint: commit 97974da adds bounded direct `cloudflared --version` and `cloudflared tunnel --help` validation before any tunnel spawn, with a PATH-only child environment and fail-closed version/help errors. Fake tests inject this boundary; real validation remains unavailable because no cloudflared binary is installed. Focused suite 17/17 and typecheck pass.
+
+Shutdown checkpoint: commit 5158976 adds exact-child graceful SIGTERM with a bounded 5-second force fallback (Windows `taskkill /pid <owned pid> /T /F`, POSIX SIGKILL). It never enumerates or targets unrelated processes. Focused typecheck/tests pass.

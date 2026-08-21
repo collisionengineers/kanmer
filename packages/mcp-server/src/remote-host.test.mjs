@@ -5,10 +5,12 @@ import { createKanmerRemoteHost } from "../dist/remote-host.js";
 test("remote host starts bearer-protected HTTP before giving one loopback target to its tunnel", async () => {
   let target;
   let stop;
+  const statuses = [];
   const exited = new Promise((resolve) => { stop = () => resolve({ code: 0, signal: null }); });
   const remote = createKanmerRemoteHost({
     authorizer: { authorize: async () => ({ principal: "test" }) },
     authGeneration: () => "sha256:0123456789ab",
+    onStatus: (status) => statuses.push(status),
     hostname: "kanmer.example.test",
     tunnel: { start: async (received) => { target = received; return { exited, stop: async () => stop() }; } },
   });
@@ -19,6 +21,8 @@ test("remote host starts bearer-protected HTTP before giving one loopback target
     assert.match(target.projectFingerprint, /^[0-9a-f]{16}$/);
     assert.equal(target.authGeneration, "sha256:0123456789ab");
     assert.deepEqual(remote.getStatus(), { local: "ready", provider: "running", publicVerification: "unknown", endpoint: "https://kanmer.example.test/mcp" });
+    assert.deepEqual(statuses.at(-1), remote.getStatus());
+    assert.equal(JSON.stringify(statuses).includes('"principal"'), false);
   } finally { await remote.close(); }
 });
 

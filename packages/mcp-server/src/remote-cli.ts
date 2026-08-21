@@ -17,6 +17,9 @@ try {
     authorizer: new BearerAuthorizer(verifier),
     authGeneration: () => verifier.fingerprint,
     hostname: required("KANMER_TUNNEL_HOSTNAME"),
+    onStatus: (status) => {
+      process.stdout.write(`${JSON.stringify({ kind: "kanmer-mcp-remote-status", version: 1, status })}\n`);
+    },
     tunnel: createCloudflaredAdapter({
       executable: required("KANMER_CLOUDFLARED_EXECUTABLE"),
       tunnelId: required("KANMER_CLOUDFLARED_TUNNEL_ID"),

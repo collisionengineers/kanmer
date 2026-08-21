@@ -189,7 +189,11 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
     return defaultCheck(id, context, dependencies);
   };
   const perCheckTimeout = options.timeoutMs && Number.isSafeInteger(options.timeoutMs) && options.timeoutMs > 0 ? options.timeoutMs : 30_000;
-  const deadline = started + (options.totalTimeoutMs && options.totalTimeoutMs > 0 ? options.totalTimeoutMs : 5 * 60_000);
+  const totalTimeout = options.totalTimeoutMs && options.totalTimeoutMs > 0 ? options.totalTimeoutMs : 5 * 60_000;
+  const deadline = started + totalTimeout;
+  let resolveCurrentDeadline: (() => void) | undefined;
+  const totalTimer = setTimeout(() => { totalTimedOut = true; controller.abort(); resolveCurrentDeadline?.(); }, totalTimeout);
+  totalTimer.unref();
   for (const id of DOCTOR_CHECK_IDS) {
     const definition = doctorCheck(id);
     const add = (value: DoctorCheckResult) => { byId.set(id, value); checks.push(value); };
@@ -200,15 +204,23 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
     if (controller.signal.aborted) { add(result(id, options.mode, "skipped", "info", detail("doctor run cancelled"))); continue; }
     const checkStarted = Date.now(); let timer: NodeJS.Timeout | undefined; let checkTimedOut = false;
     try {
-      const value = await new Promise<DoctorCheckResult | DoctorSafeDetails | void>((resolve, reject) => { timer = setTimeout(() => { checkTimedOut = true; controller.abort(); resolve(result(id, options.mode, "fail", definition.severity, detail("check timed out"), definition.repair)); }, perCheckTimeout); timer.unref(); runOne(id, definition).then(resolve, reject); });
+      const value = await new Promise<DoctorCheckResult | DoctorSafeDetails | void>((resolve, reject) => {
+        resolveCurrentDeadline = () => { if (timer) clearTimeout(timer); resolve(result(id, options.mode, "fail", definition.severity, detail("doctor total deadline exceeded"), definition.repair)); };
+        timer = setTimeout(() => { checkTimedOut = true; controller.abort(); resolve(result(id, options.mode, "fail", definition.severity, detail("check timed out"), definition.repair)); }, perCheckTimeout);
+        timer.unref();
+        runOne(id, definition).then(resolve, reject);
+      });
       if (timer) clearTimeout(timer);
+      resolveCurrentDeadline = undefined;
       const raw = value && typeof value === "object" && "status" in value ? value as DoctorCheckResult : { status: "pass" as const, details: value as DoctorSafeDetails | undefined };
       const status = DOCTOR_STATUSES.includes(raw.status) ? raw.status : "fail";
       const normalized = result(id, options.mode, status, definition.severity, sanitizeDetails(raw.details), definition.repair, status === "skipped" ? definition.prerequisites : undefined);
       add({ ...normalized, details: sanitizeDetails({ ...(normalized.details ?? {}), durationMs: Date.now() - checkStarted }) });
       if (checkTimedOut) totalTimedOut = true;
-    } catch { if (timer) clearTimeout(timer); add(safeFailure(id, options.mode, definition)); }
+    } catch { if (timer) clearTimeout(timer); resolveCurrentDeadline = undefined; add(safeFailure(id, options.mode, definition)); }
   }
+  clearTimeout(totalTimer);
+  if (now() >= deadline) totalTimedOut = true;
   await cleanup();
   options.signal?.removeEventListener("abort", abortExternal);
   const counts = { pass: checks.filter((check) => check.status === "pass").length, warn: checks.filter((check) => check.status === "warn").length, fail: checks.filter((check) => check.status === "fail").length, skipped: checks.filter((check) => check.status === "skipped").length };

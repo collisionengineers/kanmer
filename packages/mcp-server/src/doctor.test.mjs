@@ -106,3 +106,14 @@ test("packaged local CLI rejects an unsafe endpoint before probing it", async ()
   const report = JSON.parse(stdout);
   assert.equal(report.checks.find((check) => check.id === "LOCAL_STATUS_READY").status, "fail");
 });
+
+test("doctor total deadline covers an overlong final check", async () => {
+  const checks = Object.fromEntries(DOCTOR_CHECK_IDS.map((id) => [id, async () => {
+    if (id === "NO_BOARD_MUTATION") await new Promise((resolve) => setTimeout(resolve, 200));
+    return { status: "pass" };
+  }]));
+  const report = await runDoctor({ mode: "config", totalTimeoutMs: 20, dependencies: { checks } });
+  assert.equal(report.status, "fail");
+  assert.equal(report.exitCode, 2);
+  assert.ok(report.durationMs < 150);
+});

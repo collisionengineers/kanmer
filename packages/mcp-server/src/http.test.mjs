@@ -66,7 +66,15 @@ test("project resolution fails before binding and leaves no listener", () => {
     const { createKanmerHttpHost } = await import(${JSON.stringify(httpEntry.href)});
     const host = createKanmerHttpHost({ authorizer: { authorize: async () => ({ principal: "probe" }) } });
     try { await host.start(); process.stdout.write("UNEXPECTED_READY"); process.exitCode = 2; }
-    catch (error) { process.stdout.write(String(error?.message ?? error)); }
+    catch (error) {
+      await host.close();
+      await host.close();
+      process.stdout.write(JSON.stringify({
+        message: String(error?.message ?? error),
+        listening: host.httpServer.listening,
+        timerDestroyed: host.sweepTimer._destroyed,
+      }));
+    }
   `;
   const cleanEnv = { ...process.env };
   delete cleanEnv.KANMER_ROOT;
@@ -79,7 +87,10 @@ test("project resolution fails before binding and leaves no listener", () => {
   });
   assert.equal(result.error, undefined, result.error?.message);
   assert.equal(result.status, 0, `child did not fail cleanly: ${result.stderr}`);
-  assert.match(result.stdout, /no Kanmer board found/i);
+  const failure = JSON.parse(result.stdout);
+  assert.match(failure.message, /no Kanmer board found/i);
+  assert.equal(failure.listening, false);
+  assert.equal(failure.timerDestroyed, true);
   assert.doesNotMatch(result.stdout, /UNEXPECTED_READY/);
 });
 

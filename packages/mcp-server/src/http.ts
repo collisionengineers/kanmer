@@ -210,10 +210,11 @@ export class KanmerHttpHost {
 
   async start(): Promise<HttpReadyEvent> {
     if (this.stopping) throw new Error("HTTP host is stopping");
-    // Resolve the immutable project before binding. A failed root/board
-    // resolution must never leave a listener or timer behind.
-    const fingerprint = await projectFingerprint();
     try {
+      // Resolve the immutable project before binding. Keep this await inside
+      // the rollback boundary so a root/board failure also clears the
+      // constructor-created sweep timer.
+      const fingerprint = await projectFingerprint();
       await new Promise<void>((resolve, reject) => {
         const onError = (error: Error) => { this.httpServer.off("listening", onListening); reject(error); };
         const onListening = () => { this.httpServer.off("error", onError); resolve(); };

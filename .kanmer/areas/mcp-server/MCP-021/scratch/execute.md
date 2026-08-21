@@ -1,1 +1,3 @@
 Checkpoint `d01a1f6`: added `KanmerRemoteHost.invalidateOrigin()` for the owning project/auth lifecycle. It stops tunnel forwarding, reports static `TUNNEL_ORIGIN_INVALIDATED`, and deliberately leaves the authenticated local HTTP service available for investigation or recreation; focused HTTP suite 28/28, MCP typecheck, and scoped diff check pass. Automatic wiring to concrete project/auth observers remains unfinished.
+
+Commits `883da82` and `ade71f3`: register the owned child-exit listener before waiting for spawn/readiness (so early exit cannot hang an attempt) and share one idempotent stop promise. Added regression for child exit while readiness is pending and concurrent-stop cleanup. Focused HTTP/adapter suite 29/29, MCP typecheck, and diff check pass.

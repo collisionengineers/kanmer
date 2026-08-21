@@ -1,0 +1,1 @@
+Merged-main verification on 000be887: npm run test:scripts (66 pass), npm run typecheck, npm run build -w @kanmer/gui, npm run check:manual, and git diff --check all passed. With release credentials removed, release.mjs 0.3.4 --dry-run refused before mutation as designed. No production release was created.

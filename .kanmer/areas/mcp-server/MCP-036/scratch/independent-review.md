@@ -31,3 +31,13 @@ PR #108 is based on MCP-025's transport branch and changes only `packages/mcp-se
 ## Verdict
 
 **NEEDS CHANGES — do not merge PR #108 until MCP-037 is fixed, independently reviewed, and verified.**
+
+# Final re-review after MCP-037 / PR #109 — 2026-08-21
+
+## Disposition
+
+MCP-037's PR #109 is merged into the MCP-025 transport branch at `d189cbc46bc440ee3d24b7045306bdfbe84997a7`. The merged branch contains MCP-036's `c3c2f2a` and MCP-037's `1d1ee22`; the timer-leak finding is fixed and independently reviewed PASS. PR #108 is superseded by #109; no separate merge is required.
+
+## Verdict
+
+**PASS — MCP-036's blocking finding is resolved in the final MCP-025 branch.** MCP-036 remains held only for the parent MCP-025 merge and merged-main verification; this reviewer did not move it.

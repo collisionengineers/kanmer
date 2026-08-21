@@ -125,3 +125,17 @@ The PR adds the HTTP lifecycle test rail and hardening changes in `packages/mcp-
 ## Verdict
 
 **NEEDS CHANGES — do not merge PR #107 or move MCP-025 to Verifying until MCP-036 is fixed, independently reviewed, and verified.**
+
+# Final independent re-review after MCP-036/MCP-037 — 2026-08-21
+
+## Remediation disposition
+
+MCP-036's project-before-bind fix and MCP-037's timer rollback fix are both present in the final transport branch at merge commit `d189cbc46bc440ee3d24b7045306bdfbe84997a7`. The no-board regression proves no listener, destroyed timer, and repeated-close safety. PR #108 is superseded by PR #109 and requires no separate merge.
+
+## Final review scope
+
+The combined branch preserves the canonical shared registry, loopback-only `/mcp`, injected fail-closed authorizer seam, exact origin/method/path checks, principal-bound sessions, bounded limits/expiry/disconnect/DELETE/shutdown behavior, readiness metadata, per-session isolation, stdio identity/plugin behavior, and the no-bearer/no-tunnel boundary.
+
+## Final verdict
+
+**PASS — merge PR #107 to main.**

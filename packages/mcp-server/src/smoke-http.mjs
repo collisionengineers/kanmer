@@ -38,6 +38,11 @@ const { createKanmerHttpHost, BearerAuthorizer, createTokenFile, generateBearerT
 const cli = spawnSync(process.execPath, [fileURLToPath(new URL("../dist/http-cli.js", import.meta.url))], { encoding: "utf8" });
 assert.equal(cli.status, 1);
 assert.match(cli.stderr, /REMOTE_AUTH_MISSING/i);
+const rawCanary = "B".repeat(43);
+const forbiddenCli = spawnSync(process.execPath, [fileURLToPath(new URL("../dist/http-cli.js", import.meta.url)), "--token", rawCanary], { encoding: "utf8" });
+assert.equal(forbiddenCli.status, 1);
+assert.match(forbiddenCli.stderr, /REMOTE_AUTH_RAW_TOKEN_FORBIDDEN/i);
+assert.equal(forbiddenCli.stderr.includes(rawCanary), false, "raw-token arguments are never echoed");
 
 const tokenPath = path.join(root, "remote-token");
 const tokenResult = await createTokenFile(tokenPath);

@@ -6,8 +6,9 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { isInitializeRequest, SUPPORTED_PROTOCOL_VERSIONS } from "@modelcontextprotocol/sdk/types.js";
 import { createKanmerMcpServer, projectFingerprint } from "./index.js";
 import { BearerAuthorizer, type BearerVerifier, unauthorizedHeaders } from "./http-auth.js";
+import { safeDiagnosticMessage } from "./http-diagnostics.js";
 
-export { BearerAuthorizer, generateBearerToken, verifierForToken } from "./http-auth.js";
+export { BearerAuthorizer, generateBearerToken, generateBearerTokenForTest, verifierForToken } from "./http-auth.js";
 export { createTokenFile, loadTokenFile, type TokenFileWriter } from "./http-secret.js";
 
 export interface HttpAuthorizer {
@@ -41,6 +42,7 @@ export interface HttpSecurityEvent {
   readonly at: string;
   readonly tokenId?: string;
   readonly fingerprint?: string;
+  readonly count?: number;
 }
 
 export interface HttpStoppedEvent {
@@ -154,6 +156,8 @@ export class KanmerHttpHost {
   private stopping = false;
   private stoppedEmitted = false;
   private inFlight = 0;
+  private authFailureWindowStarted = 0;
+  private authFailureCount = 0;
 
   private emit(event: HttpEventInput): void {
     try {
@@ -161,12 +165,25 @@ export class KanmerHttpHost {
     } catch (error) {
       // Observer failures must not affect protocol responses, but they must
       // remain visible to the parent rather than disappearing silently.
-      const detail = error instanceof Error ? error.message : String(error);
-      process.stderr.write(`kanmer-mcp-http diagnostic observer failed: ${detail.slice(0, 256)}\n`);
+      process.stderr.write(`kanmer-mcp-http diagnostic observer failed: ${safeDiagnosticMessage(error)}\n`);
     }
   }
 
   private now(): number { return this.options.clock?.() ?? Date.now(); }
+
+  private recordAuthFailure(): void {
+    const now = this.now();
+    if (now - this.authFailureWindowStarted >= 1_000) {
+      this.authFailureWindowStarted = now;
+      this.authFailureCount = 0;
+    }
+    this.authFailureCount++;
+    // Emit the first failure and bounded aggregate checkpoints only.  The
+    // HTTP response remains one generic 401 for every request.
+    if (this.authFailureCount === 1 || this.authFailureCount % 32 === 0) {
+      this.emit({ kind: "auth-rejected", count: this.authFailureCount });
+    }
+  }
 
   constructor(options: HttpHostOptions) {
     if (!options.authorizer) throw new Error("HTTP transport requires an authorizer");
@@ -280,7 +297,7 @@ export class KanmerHttpHost {
         principal = authorized.principal;
         if (!principal) throw new Error("empty principal");
       } catch {
-        this.emit({ kind: "auth-rejected" });
+        this.recordAuthFailure();
         return writeText(res, 401, "Unauthorized", unauthorizedHeaders());
       }
       const sessionId = typeof req.headers["mcp-session-id"] === "string" ? req.headers["mcp-session-id"] : undefined;
@@ -311,7 +328,10 @@ export class KanmerHttpHost {
         });
         const mcpServer = createKanmerMcpServer("remote-http-v1");
         created = { principal, transport, server: mcpServer, lastActive: this.now(), inFlight: 0, closing: false };
-        transport.onclose = () => { const id = transport.sessionId; if (id) void this.closeSession(id); };
+        transport.onclose = () => {
+          const id = transport.sessionId;
+          if (id) void this.closeSession(id).catch((error) => this.reportCloseFailure(error));
+        };
         await mcpServer.connect(transport);
         session = created;
       }
@@ -331,7 +351,11 @@ export class KanmerHttpHost {
 
   private async sweep(): Promise<void> {
     const cutoff = this.now() - this.options.idleTtlMs;
-    await Promise.all([...this.sessions.entries()].filter(([, session]) => session.lastActive < cutoff && session.inFlight === 0).map(([id]) => this.closeSession(id)));
+    try {
+      await Promise.all([...this.sessions.entries()].filter(([, session]) => session.lastActive < cutoff && session.inFlight === 0).map(([id]) => this.closeSession(id)));
+    } catch (error) {
+      this.reportCloseFailure(error);
+    }
   }
 
   async invalidatePrincipal(principal: string): Promise<void> {
@@ -339,8 +363,12 @@ export class KanmerHttpHost {
   }
 
   /** Local-parent lifecycle control only; never exposed as an MCP tool. */
-  async rotateBearerVerifier(verifier: BearerVerifier): Promise<void> {
+  async rotateBearerVerifier(verifier: BearerVerifier, options: { persist?: () => Promise<void> } = {}): Promise<void> {
     if (!(this.options.authorizer instanceof BearerAuthorizer)) throw new Error("REMOTE_AUTH_UNSUPPORTED_LIFECYCLE");
+    if (options.persist) {
+      try { await options.persist(); }
+      catch { throw new Error("REMOTE_AUTH_SECRET_PERSIST_FAILED"); }
+    }
     const previous = this.options.authorizer.replace(verifier);
     try {
       if (previous) await this.invalidatePrincipal(previous);
@@ -364,7 +392,14 @@ export class KanmerHttpHost {
     if (!session || session.closing) return;
     session.closing = true;
     this.sessions.delete(id);
-    await Promise.allSettled([session.transport.close(), session.server.close()]);
+    // Both close operations are started, but neither result is discarded.
+    // Rotation/revocation must observe a rejection and fail closed when a
+    // transport or MCP server cannot be invalidated.
+    await Promise.all([session.transport.close(), session.server.close()]);
+  }
+
+  private reportCloseFailure(error: unknown): void {
+    process.stderr.write(`kanmer-mcp-http session close failed: ${safeDiagnosticMessage(error, "REMOTE_AUTH_SESSION_CLOSE_FAILED")}\n`);
   }
 
   async close(): Promise<void> {
@@ -375,7 +410,10 @@ export class KanmerHttpHost {
     // cleanup is armed before awaiting either operation so a stuck transport
     // cannot make shutdown unbounded.
     const listenerClosed = new Promise<void>((resolve) => this.httpServer.close(() => resolve()));
-    const sessionsClosed = Promise.all([...this.sessions.keys()].map((id) => this.closeSession(id)));
+    let sessionCloseError: unknown;
+    const sessionsClosed = Promise.all([...this.sessions.keys()].map((id) => this.closeSession(id))).catch((error) => {
+      sessionCloseError = error;
+    });
     let forced = false;
     const force = setTimeout(() => {
       forced = true;
@@ -386,7 +424,7 @@ export class KanmerHttpHost {
       Promise.all([listenerClosed, sessionsClosed]).then(() => true),
       new Promise<boolean>((resolve) => setTimeout(() => resolve(false), this.options.shutdownGraceMs)),
     ]);
-    if (!completed) forced = true;
+    if (!completed || sessionCloseError) forced = true;
     if (forced) {
       for (const socket of this.sockets) socket.destroy();
     }
@@ -395,6 +433,7 @@ export class KanmerHttpHost {
       this.stoppedEmitted = true;
       this.emit({ kind: "kanmer-mcp-http-stopped", reason: forced ? "forced-timeout" : "requested" });
     }
+    if (sessionCloseError) throw sessionCloseError;
   }
 }
 

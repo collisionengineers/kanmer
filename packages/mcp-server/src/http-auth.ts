@@ -27,7 +27,22 @@ export function verifierForToken(token: string, tokenId?: string): BearerVerifie
   return Object.freeze(publicMetadata) as BearerVerifier;
 }
 
-export function generateBearerToken(random: (size: number) => Buffer = randomBytes): GeneratedBearerToken {
+function copyVerifier(verifier: BearerVerifier): BearerVerifier {
+  if (!verifier.tokenId || !Buffer.isBuffer(verifier.digest) || verifier.digest.length !== 32 || !/^sha256:[a-f0-9]{12}$/.test(verifier.fingerprint)) {
+    throw new Error("REMOTE_AUTH_INVALID_CONFIG");
+  }
+  const copy = { tokenId: verifier.tokenId, fingerprint: verifier.fingerprint } as { tokenId: string; fingerprint: string; digest: Buffer };
+  Object.defineProperty(copy, "digest", { value: Buffer.from(verifier.digest), enumerable: false, writable: false, configurable: false });
+  return Object.freeze(copy) as BearerVerifier;
+}
+
+export function generateBearerToken(): GeneratedBearerToken {
+  const token = randomBytes(TOKEN_BYTES).toString("base64url");
+  return { token, verifier: verifierForToken(token) };
+}
+
+/** Deterministic entropy is intentionally test-only and is not part of the public API. */
+export function generateBearerTokenForTest(random: (size: number) => Buffer): GeneratedBearerToken {
   const token = random(TOKEN_BYTES).toString("base64url");
   return { token, verifier: verifierForToken(token) };
 }
@@ -42,7 +57,7 @@ function candidateFromHeaders(headers: IncomingHttpHeaders): string | undefined 
 export class BearerAuthorizer implements HttpAuthorizer {
   private active: BearerVerifier | undefined;
 
-  constructor(verifier?: BearerVerifier) { this.active = verifier; }
+  constructor(verifier?: BearerVerifier) { this.active = verifier ? copyVerifier(verifier) : undefined; }
 
   async authorize(request: { headers: IncomingHttpHeaders }): Promise<{ principal: string }> {
     const token = candidateFromHeaders(request.headers);
@@ -58,15 +73,19 @@ export class BearerAuthorizer implements HttpAuthorizer {
   }
 
   replace(verifier: BearerVerifier): string | undefined {
-    if (!verifier.tokenId || !Buffer.isBuffer(verifier.digest) || verifier.digest.length !== 32 || !/^sha256:[a-f0-9]{12}$/.test(verifier.fingerprint)) throw new Error("REMOTE_AUTH_INVALID_CONFIG");
+    const next = copyVerifier(verifier);
     const previous = this.active?.tokenId;
-    this.active = verifier;
+    const old = this.active;
+    this.active = next;
+    old?.digest.fill(0);
     return previous;
   }
 
   revoke(): string | undefined {
-    const previous = this.active?.tokenId;
+    const old = this.active;
+    const previous = old?.tokenId;
     this.active = undefined;
+    old?.digest.fill(0);
     return previous;
   }
 }

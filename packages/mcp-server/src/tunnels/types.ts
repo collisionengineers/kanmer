@@ -8,6 +8,27 @@ export interface TunnelTarget {
   readonly authGeneration?: string;
 }
 
+/** Reference only: secret bytes are intentionally not representable here. */
+export interface TunnelCredentialReference { readonly path: string; }
+
+export interface CloudflaredNamedTunnelConfig {
+  readonly provider: "cloudflared";
+  readonly mode: "named-credentials";
+  readonly executable: string;
+  readonly tunnelId: string;
+  readonly hostname: string;
+  readonly credentials: TunnelCredentialReference;
+}
+
+/** Future providers extend this discriminated union without leaking their fields into generic status. */
+export type TunnelProviderConfig = CloudflaredNamedTunnelConfig;
+
+export interface TunnelStartInput {
+  readonly config: TunnelProviderConfig;
+  readonly target: TunnelTarget;
+  readonly restartPolicy?: Partial<TunnelRestartPolicy>;
+}
+
 export interface TunnelRestartPolicy {
   readonly maxRestarts: number;
   readonly baseDelayMs: number;
@@ -30,6 +51,8 @@ export interface TunnelStatus {
   readonly publicEndpoint?: string;
   readonly pid?: number;
   readonly code?: string;
+  readonly projectFingerprint?: string;
+  readonly authGeneration?: string;
 }
 
 export type TunnelEvent =

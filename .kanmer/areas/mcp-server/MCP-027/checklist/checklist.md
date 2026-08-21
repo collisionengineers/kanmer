@@ -124,3 +124,17 @@
 
 - [ ] Classify executable/version, ingress-invalid, ingress-host-mismatch, tunnel-unready, local-origin, bearer and board/project failures separately.
 - [ ] Keep all provider config, bearer and diagnostic output redacted; do not introduce Access/service-token support.
+
+## Execution reconciliation — 2026-08-21
+
+Implemented and verified in this ticket:
+
+- [x] Modes, statuses, explicit severities, schema-v1 safe report, exact 26-id ordered registry, mode applicability, acyclic prerequisites, aggregation, and exits 0/1/2.
+- [x] Safe details sanitize bearer/secret/password/credential/session/body/document keys; repair catalog and grouped human renderer are derived from the JSON report.
+- [x] Stable-order engine emits prerequisite skips, continues independent checks, bounds each check, handles thrown dependencies and cancellation, and closes registered client/cleanup callbacks.
+- [x] Canonical MCP-021 tunnel executable/config/status seams are reused; no provider start/stop/resource mutation occurs in doctor.
+- [x] Injected local status, loopback binding, negative bearer probes, protected token/MCP client, fingerprint/tool-policy/session-close, tunnel readiness, DNS, TLS, and no-mutation seams are exported for GUI-095/MCP-028 without duplicate transport/auth schemas.
+- [x] CLI exposes only config|local|public and --json, rejects raw token/arbitrary URL/insecure/auto-fix/provider-mutation/unknown flags, handles signals, and keeps JSON stdout clean.
+- [x] Built doctor smoke and the HTTP/auth/tunnel regression rail pass; no MCP tool count/reference/plugin bytes changed.
+
+Downstream by design (not claimed complete here): real loopback disposable-board/TLS fixture matrix and controlled named-tunnel public acceptance belong to GUI-095/MCP-028. Their interfaces are dependency-injected and the exact check ids/report contract are frozen for that handoff.

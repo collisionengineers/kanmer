@@ -61,3 +61,7 @@ Commit `1d580c7` closes the post-spawn readiness-failure cleanup gap: the adapte
 Commit `78625d7` adds explicit terminal-vs-transient exit classification to the bounded supervisor. The default remains backward-compatible transient behavior, while callers can fail terminal configuration/security/origin-class exits immediately without scheduling a retry. Regression suite passed 25/25 plus MCP typecheck/diff check.
 
 Commit `1391a00` runs direct executable validation from the system temporary directory and retains only `PATH` plus Windows `SystemRoot`, matching child launch safety. Suite passed 25/25, typecheck/diff clean.
+
+## FRD shutdown-order correction — 2026-08-21
+
+FRD-025 RA-TUNNEL-6 is authoritative over the prior plan wording: remote shutdown must stop accepting requests and close sessions/listener **before** stopping the tunnel child. Commit `a43df73` implements and tests that order; the test verifies the loopback endpoint refuses connections inside the child’s stop callback. Updated plan/checklist wording to the governing contract. Focused suite passed 26/26 with MCP typecheck and diff check clean.

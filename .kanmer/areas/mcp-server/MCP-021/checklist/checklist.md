@@ -102,7 +102,7 @@
 - [ ] Keep local/auth/provider/public-verification health dimensions separate.
 - [ ] Stop tunnel on origin/project/auth generation change.
 - [ ] Keep healthy local host when provider alone fails.
-- [x] Stop tunnel before HTTP on parent/operator shutdown.
+- [x] Close HTTP sessions/listener before the tunnel child on parent/operator shutdown (FRD-025 RA-TUNNEL-6).
 - [ ] Make combined shutdown bounded/idempotent.
 - [ ] Emit machine-readable redacted status.
 - [x] Keep stdio/local HTTP defaults tunnel-free.

@@ -169,7 +169,7 @@ Add a provider-neutral tunnel lifecycle around the already healthy MCP-025/026 l
 118. Monitor HTTP process/listener/project/auth generation.
 119. On origin death/change/mismatch, stop tunnel immediately and mark degraded/failed before any restart.
 120. On tunnel failure, keep authenticated local host running unless operator stop/config policy says otherwise.
-121. On parent/GUI stop, stop tunnel first, verify child exit/cleanup, then stop HTTP sessions/listener according to accepted lifecycle.
+121. On parent/GUI stop, stop accepting requests, close HTTP sessions/listener, then stop the tunnel child and finalize redacted diagnostics, as required by FRD-025 RA-TUNNEL-6.
 122. Make combined shutdown idempotent and bounded.
 123. Emit one machine-readable remote-ready/status/stopped stream without secrets.
 124. Do not start tunnel from stdio entry or local HTTP CLI by default.

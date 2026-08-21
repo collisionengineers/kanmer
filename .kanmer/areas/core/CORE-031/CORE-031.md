@@ -2,7 +2,7 @@
 id: CORE-031
 type: ticket
 title: Create `npm run verify` wrapping one shared VERIFY_STEPS
-status: review
+status: done
 area: core
 order: 10
 assignee: codex-mcp-client
@@ -10,9 +10,8 @@ profile: chore
 stageEntered:
   preparing: '2026-08-20T12:02:11.660Z'
   review: '2026-08-21T17:10:28.714Z'
-taken_at: '2026-08-20T21:51:18.907Z'
-branch: core-031-shared-verify-steps
-worktree: .worktrees/core-031
+  verifying: '2026-08-21T17:52:09.568Z'
+  done: '2026-08-21T17:52:14.525Z'
 labels: []
 groups:
   - EPIC-009
@@ -31,7 +30,7 @@ prs:
   - '120'
 archived: false
 created: '2026-08-20T10:14:42.483Z'
-updated: '2026-08-21T17:10:28.714Z'
+updated: '2026-08-21T17:52:16.964Z'
 ---
 
 ## What
@@ -49,4 +48,4 @@ dependency-free (same family as release.mjs). Steps: `npm run build` (materialis
 - [x] AGENTS.md §6 updated
 
 ## Outcome
-Shared verification is wired into the root PR command and release gate. Standalone verification passed with a clean checkout; PR #120 is ready for independent review.
+PR #120 merged to `main` at `d58bb781`. Shared verification is wired into the root PR command and release gate. Standalone verification passed with a clean checkout, and merged-main verification passed after later MCP artifact remediation. Independent review passed; proof is recorded after merge.

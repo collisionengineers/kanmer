@@ -139,3 +139,11 @@ The combined branch preserves the canonical shared registry, loopback-only `/mcp
 ## Final verdict
 
 **PASS — merge PR #107 to main.**
+
+## Final verification evidence — 2026-08-21
+
+Final review tree: `d189cbc46bc440ee3d24b7045306bdfbe84997a7` (PR #109 remediation included). `npm run build` PASS (core + ESM/standalone MCP); `npm run typecheck` PASS (all workspaces); `npm run test:http -w @kanmer/mcp-server` PASS 7/7; `smoke-http.mjs` PASS; stdio smoke PASS 184/184; protocol smoke PASS 42/42; discovery smoke PASS 13/13; `git diff --check` PASS and worktree clean. The no-board startup regression (listener absent, constructor timer destroyed, repeated close safe) was directly exercised during the MCP-037 review.
+
+Repository test note (not caused by changed PR files): root `npm test` failed on an unrelated core ordering test timeout after 254 passing tests; a focused `npm run test -w @kanmer/core` rerun also had two unrelated core timeout failures (253/255). These failures are recorded, not treated as MCP HTTP failures; the affected HTTP rail/build/typecheck/smokes are green. `npm run plugin:check` is intentionally not run in linked worktree because the command refuses there; plugin artifact is included in the PR diff. `npm run verify` is unavailable in this checkout and was already noted in the implementation report.
+
+Disposition: PASS for PR #107 scope; merge authorized after confirming PR is CLEAN/MERGEABLE. PR #108 is superseded by PR #109 (merged into this branch); MCP-036 scratch records that disposition.

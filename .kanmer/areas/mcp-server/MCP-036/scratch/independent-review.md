@@ -41,3 +41,7 @@ MCP-037's PR #109 is merged into the MCP-025 transport branch at `d189cbc46bc440
 ## Verdict
 
 **PASS — MCP-036's blocking finding is resolved in the final MCP-025 branch.** MCP-036 remains held only for the parent MCP-025 merge and merged-main verification; this reviewer did not move it.
+
+## Final disposition cross-check — 2026-08-21
+
+MCP-037 / PR #109 is merged at `d189cbc46bc440ee3d24b7045306bdfbe84997a7` and contains both `c3c2f2a` (project resolution within rollback-protected HTTP startup) and `1d1ee22` (cleanup of the constructor sweep timer on pre-bind resolution failure). Independent final checks on the resulting MCP-025 branch: HTTP unit 7/7, build PASS, typecheck PASS, HTTP smoke PASS, stdio 184/184, protocol 42/42, discovery 13/13, diff check PASS. PR #108 is superseded by PR #109. MCP-036 disposition is therefore PASS, pending only MCP-025 merged-main verification; reviewer did not move this ticket or write proof.

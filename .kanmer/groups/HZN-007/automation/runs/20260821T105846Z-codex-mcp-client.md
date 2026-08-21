@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T11:31:10.000Z
+updated_at: 2026-08-21T11:42:00.000Z
 lane_limit: 3
 stop_reason:
 ---
@@ -51,9 +51,9 @@ stop_reason:
 | 7 | GUI-095 | preparing | feature; next=review; blocked=true; blockers=MCP-021 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:17.472Z |
 | 8 | DOC-013 | preparing | chore; next=done; blocked=true; blockers=MCP-026 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:17.874Z |
 | 9 | MCP-028 | preparing | chore; next=done; blocked=true; blockers=MCP-026,MCP-027,GUI-095 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:18.170Z |
-| 10 | MCP-022 | done | feature; next=backlog; blocked=false; blockers=MCP-033 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:12.806Z |
-| 11 | MCP-019 | done | feature; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:15.042Z |
-| 12 | MCP-033 | done | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:31.629Z |
+| 10 | MCP-022 | done | feature; checklist 32/32; independent review PASS WITH FINDINGS; MCP-034 queued | finished | /root/historical_auditor | — | 1 | reconciled checklist/body and recorded review findings | complete; remediation MCP-034 | 102 | 2026-08-21T11:20:57.179Z |
+| 11 | MCP-019 | done | feature; checklist 78/78; independent review PASS WITH FINDING; MCP-035 queued | finished | /root/historical_auditor | — | 1 | reconciled deferred dispositions and release boxes; recorded legacy validation finding | complete; remediation MCP-035 | 87 | 2026-08-21T11:41:11.273Z |
+| 12 | MCP-033 | done | fix; checklist 16/16; independent review PASS; merged proof confirmed | finished | /root/historical_auditor | — | 1 | reconciled checklist with post-hoc review and merged proof | complete; no follow-up defect | 104 | 2026-08-21T11:42:00.000Z |
 | 13 | CORE-023 | done | feature; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:24.867Z |
 | 14 | SKILL-018 | done | fix; next=backlog; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:24.474Z |
 | 15 | GUI-070 | done | fix; next=backlog; blocked=false; blockers=GUI-069 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:20.621Z |
@@ -151,3 +151,7 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T11:20:20.495Z — Independent post-hoc review of MCP-022 recorded three scoped findings; created MCP-034, linked it to MCP-022, attached to HZN-007, and queued it for the full-board completion run.
 
 - 2026-08-21T11:31:10.000Z — MCP-025 implementation committed as bae88b8, PR #107 opened, ticket moved to Review, and independent reviewer /root/mcp025_reviewer assigned.
+
+- 2026-08-21T11:40:48.856Z — Independent review of MCP-019 reproduced a legacy-format unsafe document-id validation bypass; created MCP-035, linked it to MCP-019, attached to HZN-007, and queued it for remediation.
+
+- 2026-08-21T11:42:00.000Z — Done-incomplete lane reconciled MCP-022 (32/32), MCP-019 (78/78, MCP-035 created for legacy unsafe-id finding), and MCP-033 (16/16); independent reviews recorded.

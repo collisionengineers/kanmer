@@ -57,3 +57,5 @@ Commit `a67d5ac` adds a 32-event, 4 KiB-line provider diagnostic buffer. It clas
 Current Cloudflare docs support `--loglevel`/`--logfile` and metrics but do not document an unverified local JSON flag, so no guessed process argument was added.
 
 Commit `1d580c7` closes the post-spawn readiness-failure cleanup gap: the adapter now awaits its owned child’s bounded shutdown before removing the private runtime directory. A regression test verifies this sequence. Focused tunnel/HTTP suite passed 24/24, MCP typecheck and diff check passed.
+
+Commit `78625d7` adds explicit terminal-vs-transient exit classification to the bounded supervisor. The default remains backward-compatible transient behavior, while callers can fail terminal configuration/security/origin-class exits immediately without scheduling a retry. Regression suite passed 25/25 plus MCP typecheck/diff check.

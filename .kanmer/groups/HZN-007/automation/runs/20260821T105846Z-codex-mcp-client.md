@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T20:33:06.392Z
+updated_at: 2026-08-21T19:48:08.069Z
 lane_limit: 3
 stop_reason:
 ---
@@ -248,3 +248,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-21T19:36:07.054Z — MCP-008 assigned: reread the full packet, FRD-022/FRD-012 context, and live gates; preparing→implementing was passable. Fresh .worktrees/mcp-008 / mcp-008-headless-mcpb registered from origin/main 470b2fad. Scope is headless deterministic MCPB build/check/release/docs only; no HTTP, server-semantics, or GUI-075 work. Author will stop at Review.
+
+
+- 2026-08-21T19:48:08.069Z — GUI-105 implementation completed on gui-105-document-path-inventory/.worktrees/gui-105 at d64000dd1d84138a54ff952ed1c80f18d23c8055; PR #128 opened and ticket moved Implementing→Review after a fresh gate check. Checklist is 13/14 with only the manual GUI-102 portable-connect visual proof explicitly open; post-implementation report is present and enter-review gates pass. Focused Editor 15/15, full GUI 348/348 (37 files), all-workspace typecheck, core/server build, GUI build, and diff-check passed. Author stops at Review; independent review/merge is required.

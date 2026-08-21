@@ -21,3 +21,7 @@
 
 - 2026-08-21: `dd9f736` extracts the current ownership predicate. The check's linked-worktree refusal is intentionally preserved; its normal-checkout success is reserved for post-merge verification because `plugin:check` is designed to refuse in this ticket worktree.
 - Evidence: focused guard test 5/5; `npm run test:scripts` 71/71; core 255 tests; GUI and MCP HTTP rails passed; `npm run typecheck` and `git diff --check` passed.
+
+- 2026-08-21 verification: focused guard test 5/5; `npm run test:scripts` 71/71; `npm run build` passed; linked-worktree `npm run plugin:check` refused with exit 1 as designed.
+- First exact `npm test` retained a pre-existing core migration timeout (254/255; Vitest 5s timeout); after build, the exact command passed with core 255/255, GUI 318/318, HTTP 3/3, scripts 71/71.
+- First `npm run typecheck` failed before build because the fresh worktree lacked generated core declarations; after build, all workspaces typechecked successfully. `git diff --check` passed.

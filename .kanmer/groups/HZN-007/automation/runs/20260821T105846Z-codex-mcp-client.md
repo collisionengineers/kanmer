@@ -131,6 +131,8 @@ stop_reason:
 
 - 2026-08-21T18:15:27.768Z — MCP-028 environment preflight (read-only): no Cloudflare credential environment names, `cloudflared`, or `wrangler` executable are available on this runner. The real public Worker/tunnel proof is therefore not dispatched yet; this is an external-environment prerequisite, not a product PASS/FAIL. Continue unblocked lanes and request only the exact protected environment/credential permission when all other safe work is exhausted.
 
+- 2026-08-21T18:25:46.389Z — Baseline packaged-app rail on clean main passed: `npm run dist:check` exit 0; Windows installer, blockmap, unpacked app and updater-package seven-check validation completed for 0.3.3. This is baseline evidence only; the final run must repeat after all merged changes and verify packaged MCP/documentPaths/runtime parity.
+
 ## Resume instruction
 
 Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's complete document inventory, links, taken state and get_doc_gates before dispatching. Reconcile the ledger against live state and do not replay a completed action solely because this run was interrupted. Before every assignment/result/stage transition, update and read this history record and automation/current.md.

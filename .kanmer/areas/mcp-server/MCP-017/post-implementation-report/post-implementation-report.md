@@ -14,10 +14,13 @@
 
 - `node --test scripts/plugin-checkout-guard.test.mjs`: 5/5 passed.
 - `npm run test:scripts`: 71/71 passed.
-- Root test component rails passed: manual check, core (255 tests), GUI suite, MCP HTTP (3 tests), and scripts suite. A single `npm test` invocation was started; the terminal capture stopped while the already-green GUI portion was reporting, so the component commands above are the recorded complete evidence.
-- `npm run typecheck`: all workspaces passed.
+- `npm run build`: passed; core and MCP server/standalone bundles built.
+- First exact `npm test`: failed at the existing core migration test `migration: v2 → v3 > resuming does not rewrite tickets an earlier run already migrated` with the Vitest 5-second timeout (254/255 core tests). The command stopped before GUI/HTTP/scripts.
+- First `npm run typecheck`: failed in the fresh worktree because the GUI resolved `@kanmer/core` to a missing/unbuilt declaration entry. This was setup state, not a source error.
+- After the build, exact `npm test`: passed — manual freshness, core 255/255, GUI 318/318, MCP HTTP 3/3, and scripts 71/71.
+- After the build, `npm run typecheck`: passed for every workspace.
 - `git diff --check`: passed.
-- In the ticket worktree, `npm run plugin:check` correctly refused because `@kanmer/core` resolved to the main checkout rather than this worktree. This is the expected safety behaviour, not a test failure. Run it from merged normal `main` during verify.
+- In this linked ticket worktree, `npm run plugin:check` correctly refused (exit 1) because `@kanmer/core` resolves to the main checkout rather than this worktree. Its normal-checkout success is reserved for merged-main verification.
 
 ## Traceability
 
@@ -26,4 +29,4 @@
 
 ## Risks and follow-up
 
-The helper deliberately has no filesystem or Git access, matching the production guard's current direct ownership property. It does not restore the obsolete MCP-007 Git probe or overlap CORE-034's board-worktree policy.
+The helper deliberately has no filesystem or Git access, matching the production guard's current direct ownership property. It does not restore the obsolete MCP-007 Git probe or overlap CORE-034's board-worktree policy. Merged-main verification must run `npm run plugin:check` from the normal checkout and record its exit/output.

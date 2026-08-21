@@ -48,3 +48,5 @@ The third remediation adds shared settings locking/atomic sync, Windows canonica
 Correction: final full GUI suite is 37 files/336 tests passed after the Windows canonical-path fixture; focused remote suite is 5 files/18 tests passed. No checklist state changed.
 
 Validator alignment note: Cloudflare tunnel UUID, executable, credentials path, and non-IP DNS hostname validation now matches the canonical MCP adapter boundary; malformed persisted records are dropped and covered by tests.
+
+Final validator/redaction note: cbbeb64c redacts token-shaped persisted doctor diagnostics. Final evidence is 37 GUI files/337 tests, focused remote 5 files/19 tests, root typecheck, GUI build, and diff check all passing.

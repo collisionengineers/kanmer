@@ -5,3 +5,5 @@ Third remediation applied on the existing branch: shared settings lock/atomic wr
 Final validation tightening aligned GUI persistence/save validation with MCP cloudflared: tunnel UUIDs, safe executable token/absolute path, absolute credential path without traversal, and lowercase non-IP DNS hostname. Focused 5-file/18-test suite, full 37-file/336-test GUI suite, root typecheck, GUI build, and diff check passed.
 
 Committed b420cdd8 and pushed gui-095-cloudflare-remote-access. PR #118 re-review requested: https://github.com/collisionengineers/kanmer/pull/118#issuecomment-5372827188. No merge performed.
+
+Final follow-up commit cbbeb64c pushed: persisted doctor summary/repair token-shaped strings are redacted and malformed-record coverage added. PR #118 re-review updated at https://github.com/collisionengineers/kanmer/pull/118#issuecomment-5372875573. Branch remains unmerged.

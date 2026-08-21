@@ -51,3 +51,5 @@ Final follow-up rails: focused remote tests 5 files/18 tests passed; full GUI su
 Correction: after adding the canonical-path registry fixture, the final full GUI suite is 37 files/336 tests passed (not 334); the focused remote suite remains 5 files/18 tests passed. GUI build, root typecheck, and git diff --check also passed.
 
 Validator alignment correction: persisted and newly saved configurations now require Cloudflare named-tunnel UUIDs, an executable command token or absolute path without traversal, an absolute credential path without traversal, and a lowercase non-IP DNS hostname, matching the MCP cloudflared validator. Focused and full rails remained green after this tightening.
+
+Final validator/redaction follow-up: commit cbbeb64c also redacts token-shaped strings from persisted doctor summary/repair fields and adds coverage for malformed diagnostics. Final full GUI suite is 37 files/337 tests passed; focused remote suite is 5 files/19 tests passed. Root typecheck, GUI build, and git diff --check passed after this commit.

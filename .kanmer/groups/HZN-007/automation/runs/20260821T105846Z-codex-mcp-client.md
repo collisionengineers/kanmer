@@ -38,6 +38,9 @@ stop_reason:
 
 | Order | Ticket | Observed stage | Gates / next action | Disposition | Worker | Branch / worktree | Attempt | Last action | Last result | PR | Updated |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 74 | GUI-107 | backlog | fix; needs files + plan; historical GUI-008 remediation | queued | — | — | 0 | added from historical audit | pending research/plan | — | 2026-08-21T11:11:20.044Z |
+| 75 | GUI-108 | backlog | fix; needs files + plan; consolidated GUI-009/GUI-023 remediation | queued | — | — | 0 | added from historical audit | pending research/plan | — | 2026-08-21T11:11:20.044Z |
+| 76 | GUI-109 | backlog | fix; needs files + plan; historical GUI-013 remediation | queued | — | — | 0 | added from historical audit | pending research/plan | — | 2026-08-21T11:11:20.044Z |
 | 73 | GUI-106 | backlog | fix; needs files + plan; remediation from MCP-005 audit | queued | — | — | 0 | added from archived audit | pending research/plan | — | 2026-08-21T11:10:29.870Z |
 | 1 | DOC-012 | done | chore; gates pass; checklist reconciled | finished | codex-mcp-client | — | 1 | reconciled three stale closeout/link boxes via MCP | 76/76 checked; merged proof/cleanup evidence confirmed | 84 | 2026-08-21T10:59:48.714Z |
 | 2 | DOC-017 | done | chore; proof pass; checklist 15/15; released | finished | /root/doc017_reviewer | cleaned (doc-017 worktree/branch removed) | 1 | merged PR #106; verified on 4997214; closeout released | complete; no follow-up defect | 106 | 2026-08-21T11:05:49.624Z |
@@ -135,3 +138,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T11:07:18.094Z — MCP-025 implementation lane assigned to /root/mcp025_implementer on new branch/worktree to reconcile its 32 unchecked items; no independent review/merge by author.
 
 - 2026-08-21T11:10:29.870Z — Archived audit found MCP-005 has a unique unresolved session-survival limitation. Created GUI-106, linked to MCP-005 and GUI-099–102, added it to HZN-007, and queued it as a remediation before final completion.
+
+- 2026-08-21T11:11:20.044Z — Historical audit completed 75/75 backfills. Created GUI-107 (GUI-008 custom requires), GUI-108 (consolidated GUI-009/GUI-023 gate UX), and GUI-109 (GUI-013 Add to group); linked each to source records and added to HZN-007.

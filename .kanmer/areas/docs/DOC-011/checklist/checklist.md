@@ -45,16 +45,16 @@
 
 ## Kanmer ticket references
 
-- [ ] Re-read MCP-022 and link the compiled-workflow ADR plus FRD-022 using Kanmer tools.
-- [ ] Re-read MCP-023 and link the ADR plus FRD-010 and FRD-022.
-- [ ] Re-read GUI-096 and link the ADR plus FRD-003 and FRD-019.
-- [ ] Re-read GUI-097 and link the ADR plus FRD-019.
-- [ ] Re-read GUI-098 and link the ADR plus FRD-019 and FRD-020.
-- [ ] Use fresh `expected_updated` values for every metadata mutation; re-read and reapply on conflict.
-- [ ] Set `docs_todo:false` only after all required paths for that ticket exist and link successfully.
-- [ ] Re-read all five tickets and confirm exact refs, no duplicate paths, and `docs_todo:false`.
-- [ ] Run `get_doc_gates` for all five and confirm governing-document readiness remains passable.
-- [ ] Record each returned ticket update/version in the implementation report.
+- [x] Re-read MCP-022; its refs include ADR-0016 and FRD-022, applied through Kanmer (activity 2026-08-20T22:27:27Z).
+- [x] Re-read MCP-023; its refs include ADR-0016, FRD-010, and FRD-022, applied through Kanmer (activity 2026-08-20T22:27:27Z).
+- [x] Re-read GUI-096; its refs include ADR-0016, FRD-003, and FRD-019, applied through Kanmer (activity 2026-08-20T22:27:27Z).
+- [x] Re-read GUI-097; its refs include ADR-0016 and FRD-019, applied through Kanmer (activity 2026-08-20T22:27:27Z).
+- [x] Re-read GUI-098; its refs include ADR-0016, FRD-019, and FRD-020, applied through Kanmer (activity 2026-08-20T22:27:27Z).
+- [x] Fresh item reads and activity records confirm each metadata mutation used the current expected revision; no conflict occurred.
+- [x] All five tickets set `docs_todo:false` only after their exact repository paths existed and refs were accepted; fresh gates pass.
+- [x] Fresh reads of all five tickets confirm exact refs, no duplicates, and `docs_todo:false`.
+- [x] Fresh `get_doc_gates` reads for all five report governing-document readiness passable.
+- [x] Mapping activity timestamps and exact ref/readback evidence are recorded in the post-implementation report.
 
 ## Scope and hand-off
 
@@ -75,5 +75,5 @@ Append the allocated ADR number, numbering output, amended requirement identifie
 - [x] ADR-0016 allocated; numbering command passed before and after the source change.
 - [x] Source scope is the new ADR and the ten listed FRDs; generated doc-structure and product code were untouched.
 - [x] Core tests 250/250, GUI tests 288/288, script tests 48/48, numbering and diff checks passed.
-- [ ] Pending post-merge: apply the five refs/docs_todo metadata mappings after MCP can validate ADR-0016/FRD paths on main; then re-read the tickets and gates.
-- [ ] Pending dependency: run npm run verify after CORE-031 makes that shared rail available on main.
+- [x] Post-merge mapping prerequisite is complete; all five mappings were read back on merged main and gates pass.
+- [x] CORE-031 is merged; `npm run verify` passed on merged main and DOC-011 was re-read with gates before closeout.

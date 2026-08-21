@@ -100,7 +100,7 @@ try {
   const missing = await fetch(endpoint, { method: "POST" });
   assert.equal(missing.status, 401);
   const queryCredential = await fetch(`${endpoint}?token=${generated.token}`, { method: "POST" });
-  assert.equal(queryCredential.status, 404, "query credentials never select the MCP route");
+  assert.equal(queryCredential.status, 401, "query credentials never authenticate MCP");
   const cookieCredential = await fetch(endpoint, { method: "POST", headers: { cookie: `token=${generated.token}` } });
   assert.equal(cookieCredential.status, 401, "cookies never authenticate MCP");
   const deniedOrigin = await fetch(endpoint, { method: "POST", headers: { authorization: `Bearer ${generated.token}`, origin: "https://not-allowed.example" } });

@@ -171,7 +171,10 @@ export class KanmerHttpHost {
 
   private async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (this.stopping) return writeText(res, 503, "Service unavailable");
-    if (req.url !== "/mcp") return writeText(res, 404, "Not found");
+    let requestUrl: URL;
+    try { requestUrl = new URL(req.url ?? "/", "http://kanmer.invalid"); }
+    catch { return writeText(res, 404, "Not found"); }
+    if (requestUrl.pathname !== "/mcp") return writeText(res, 404, "Not found");
     if (req.method !== "POST" && req.method !== "GET" && req.method !== "DELETE") {
       return writeText(res, 405, "Method not allowed", { allow: "POST, GET, DELETE" });
     }

@@ -1044,6 +1044,7 @@ function countUsage(items: Item[]) {
 
 function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
   const [view, setView] = useState<RemoteProjectView | null>(null);
+  const [overview, setOverview] = useState<RemoteProjectView[]>([]);
   const [status, setStatus] = useState<RemoteStatus | null>(null);
   const [doctor, setDoctor] = useState<RemoteDoctorResult | null>(null);
   const [token, setToken] = useState<{ deliveryId: string; value: string; expiresAt: number } | null>(null);
@@ -1051,7 +1052,7 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [draft, setDraft] = useState<RemoteConfigInput>({ executable: "", tunnelId: "", credentialsFile: "", hostname: "", enabled: false });
+  const [draft, setDraft] = useState<RemoteConfigInput>({ executable: "", tunnelId: "", credentialsFile: "", hostname: "", enabled: false, autoStart: false, expectedConfigGeneration: null });
   const clipboardTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => { if (clipboardTimer.current) clearTimeout(clipboardTimer.current); }, []);
@@ -1060,14 +1061,14 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
     if (!token) return;
     const deliveryId = token.deliveryId;
     const timer = setTimeout(() => {
-      void window.kanmer.remoteConsumeSecret(deliveryId).catch(() => undefined);
+      void window.kanmer.remoteConsumeSecret(projectId, deliveryId).catch(() => undefined);
       setToken(null);
       setTokenRevealed(false);
       setMessage("The one-time token delivery expired without being copied.");
     }, Math.max(0, token.expiresAt - Date.now()));
     return () => {
       clearTimeout(timer);
-      void window.kanmer.remoteConsumeSecret(deliveryId).catch(() => undefined);
+      void window.kanmer.remoteConsumeSecret(projectId, deliveryId).catch(() => undefined);
     };
   }, [token]);
 
@@ -1076,7 +1077,8 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
       const next = await window.kanmer.remoteRegister(projectId);
       setView(next);
       setStatus(next.status);
-      setDraft({ executable: next.config.executable, tunnelId: next.config.tunnelId, credentialsFile: next.config.credentialsFile, hostname: next.config.hostname, enabled: next.config.enabled });
+      setDraft({ executable: next.config.executable, tunnelId: next.config.tunnelId, credentialsFile: next.config.credentialsFile, hostname: next.config.hostname, enabled: next.config.enabled, autoStart: next.config.autoStart, expectedConfigGeneration: next.status.configGeneration });
+      setOverview(await window.kanmer.remoteOverview());
       setError(null);
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
   }, [projectId]);
@@ -1085,6 +1087,7 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
     void load();
     const remove = window.kanmer.onRemoteStatus((next) => {
       if (next.projectId === projectId) setStatus(next);
+      setOverview((current) => current.map((project) => project.projectId === next.projectId ? { ...project, status: next } : project));
     });
     return remove;
   }, [load, projectId]);
@@ -1097,7 +1100,7 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
 
   const save = () => run("save", async () => {
     const next = await window.kanmer.remoteSaveConfig(projectId, draft);
-    setView(next); setStatus(next.status); setMessage("Cloudflare configuration saved. Store the tunnel credentials file outside the project.");
+    setView(next); setStatus(next.status); setDraft({ ...draft, expectedConfigGeneration: next.status.configGeneration }); setMessage("Cloudflare configuration saved. Store the tunnel credentials file outside the project.");
   });
 
   const createSecret = (rotate: boolean) => run(rotate ? "rotate" : "create", async () => {
@@ -1112,7 +1115,7 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
     if (!token) return;
     const copied = token.value;
     await navigator.clipboard.writeText(token.value);
-    await window.kanmer.remoteConsumeSecret(token.deliveryId);
+    await window.kanmer.remoteConsumeSecret(projectId, token.deliveryId);
     setToken(null);
     setTokenRevealed(false);
     setMessage("Token copied. It is no longer available in Kanmer.");
@@ -1124,15 +1127,21 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
     }, 60_000);
   };
 
-  const start = () => run("start", async () => { const next = await window.kanmer.remoteStart(projectId); setStatus(next); });
-  const stop = () => run("stop", async () => { const next = await window.kanmer.remoteStop(projectId); setStatus(next); });
-  const runDoctor = () => run("doctor", async () => { setDoctor(await window.kanmer.remoteDoctor(projectId)); });
+  const start = () => run("start", async () => { const next = await window.kanmer.remoteStart(projectId, view?.status.configGeneration ?? null); setStatus(next); });
+  const stop = () => run("stop", async () => { const next = await window.kanmer.remoteStop(projectId, view?.status.runtimeGeneration ?? status?.runtimeGeneration ?? null); setStatus(next); });
+  const runDoctor = () => run("doctor", async () => { setDoctor(await window.kanmer.remoteDoctor(projectId, { configGeneration: view?.status.configGeneration ?? null, runtimeGeneration: status?.runtimeGeneration ?? null })); });
+  const reconcile = () => run("reconcile", async () => { const next = await window.kanmer.remoteReconcile(projectId); setView(next); setStatus(next.status); setOverview(await window.kanmer.remoteOverview()); setMessage("Project identity reconciled."); });
+  const remove = () => run("remove", async () => { if (!window.confirm("Remove this project’s Cloudflare remote-access configuration and encrypted bearer?")) return; await window.kanmer.remoteRemove(projectId); setView(null); setStatus(null); setOverview(await window.kanmer.remoteOverview()); setMessage("Cloudflare remote access removed for this project."); });
   const active = status?.state === "ready" || status?.state === "starting" || status?.state === "degraded";
 
   return (
     <div className="settings-section">
       <h3>Cloudflare Tunnel</h3>
       <p className="hint">Remote access is per project. Kanmer stores only this project’s Cloudflare references and keeps the bearer token in encrypted OS storage.</p>
+      <div className="settings-section" aria-label="Registered remote-access projects">
+        <h4>Registered projects</h4>
+        {overview.length === 0 ? <p className="hint">No projects are registered yet.</p> : <ul>{overview.map((project) => <li key={project.identity.fingerprint}><strong>{project.projectId}</strong> — {project.status.state} — {project.config.hostname || "no hostname"}</li>)}</ul>}
+      </div>
       {view?.identity && <p className="hint">Project fingerprint: <code>{view.identity.fingerprint}</code></p>}
       {error && <div className="banner error">{error}</div>}
       {message && <div className="banner success">{message}</div>}
@@ -1143,6 +1152,7 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
       <label className="field"><span>Credentials file</span><input value={draft.credentialsFile} onChange={(e) => setDraft({ ...draft, credentialsFile: e.target.value })} placeholder="C:\\Users\\…\\.json" /></label>
       <label className="field"><span>Public hostname</span><input value={draft.hostname} onChange={(e) => setDraft({ ...draft, hostname: e.target.value })} placeholder="kanmer.example.com" /></label>
       <label className="checkbox"><input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} /> Enable this project’s Cloudflare remote access</label>
+      <label className="checkbox"><input type="checkbox" checked={draft.autoStart} onChange={(e) => setDraft({ ...draft, autoStart: e.target.checked })} /> Start this project automatically when Kanmer opens</label>
       <div className="button-row">
         <button className="primary sm" disabled={busy !== null} onClick={() => void save()}>{busy === "save" ? "Saving…" : "Save configuration"}</button>
         <button className="ghost sm" disabled={busy !== null || !view?.config.executable || view.config.secretConfigured} onClick={() => void createSecret(false)}>Create token</button>
@@ -1157,7 +1167,9 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
         <div className="button-row">
           <button className="primary sm" disabled={busy !== null || active || !view?.config.secretConfigured} onClick={() => void start()}>{busy === "start" ? "Starting…" : "Start"}</button>
           <button className="ghost sm" disabled={busy !== null || !active} onClick={() => void stop()}>{busy === "stop" ? "Stopping…" : "Stop"}</button>
-          <button className="ghost sm" disabled={busy !== null || !view?.config.secretConfigured} onClick={() => void runDoctor()}>{busy === "doctor" ? "Checking…" : "Run doctor"}</button>
+        <button className="ghost sm" disabled={busy !== null || !view?.config.secretConfigured} onClick={() => void runDoctor()}>{busy === "doctor" ? "Checking…" : "Run doctor"}</button>
+          <button className="ghost sm" disabled={busy !== null} onClick={() => void reconcile()}>{busy === "reconcile" ? "Reconciling…" : "Reconcile identity"}</button>
+          <button className="ghost sm" disabled={busy !== null || active} onClick={() => void remove()}>{busy === "remove" ? "Removing…" : "Remove"}</button>
         </div>
       </div>
       {doctor && <div className={`banner ${doctor.ok ? "success" : "error"}`}><strong>{doctor.summary}</strong><ul>{doctor.checks.map((check) => <li key={check.id}>{check.id}: {check.status} — {check.detail}</li>)}</ul></div>}

@@ -31,13 +31,15 @@ import type {
 
 export type { RemoteDoctorResult, RemoteProjectIdentity, RemoteProjectView, RemoteSecretDelivery, RemoteStatus };
 
-export interface RemoteConfigInput {
-  executable: string;
-  tunnelId: string;
-  credentialsFile: string;
-  hostname: string;
-  enabled: boolean;
-}
+  export interface RemoteConfigInput {
+    executable: string;
+    tunnelId: string;
+    credentialsFile: string;
+    hostname: string;
+    enabled: boolean;
+    autoStart: boolean;
+    expectedConfigGeneration: string | null;
+  }
 
 /** What `migrateBoard` reports: the three upgrade steps, in order. */
 export interface BoardMigrationReport {
@@ -137,6 +139,9 @@ export const CH = {
   remoteStop: "kanmer:remoteStop",
   remoteDoctor: "kanmer:remoteDoctor",
   remoteStatus: "kanmer:remoteStatus",
+  remoteOverview: "kanmer:remoteOverview",
+  remoteReconcile: "kanmer:remoteReconcile",
+  remoteRemove: "kanmer:remoteRemove",
 } as const;
 
 /**
@@ -621,11 +626,14 @@ export interface KanmerApi {
   /** Cloudflare-only remote access, keyed by the canonical MCP project fingerprint. */
   remoteRegister(projectId: string): Promise<RemoteProjectView>;
   remoteView(projectId: string): Promise<RemoteProjectView>;
+  remoteOverview(): Promise<RemoteProjectView[]>;
+  remoteReconcile(projectId: string): Promise<RemoteProjectView>;
+  remoteRemove(projectId: string): Promise<void>;
   remoteSaveConfig(projectId: string, config: RemoteConfigInput): Promise<RemoteProjectView>;
   remoteCreateSecret(projectId: string, rotate?: boolean): Promise<RemoteSecretDelivery>;
-  remoteConsumeSecret(deliveryId: string): Promise<boolean>;
-  remoteStart(projectId: string): Promise<RemoteStatus>;
-  remoteStop(projectId: string): Promise<RemoteStatus>;
-  remoteDoctor(projectId: string): Promise<RemoteDoctorResult>;
+  remoteConsumeSecret(projectId: string, deliveryId: string): Promise<boolean>;
+  remoteStart(projectId: string, expectedConfigGeneration?: string | null): Promise<RemoteStatus>;
+  remoteStop(projectId: string, expectedRuntimeGeneration?: string | null): Promise<RemoteStatus>;
+  remoteDoctor(projectId: string, expected?: { configGeneration?: string | null; runtimeGeneration?: string | null }): Promise<RemoteDoctorResult>;
   onRemoteStatus(cb: (status: RemoteStatus) => void): () => void;
 }

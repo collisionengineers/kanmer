@@ -17,7 +17,7 @@ function normalizeConfig(value: unknown): CloudflareRemoteConfig | null {
     [c.executable, c.tunnelId, c.credentialsFile, c.hostname].every(
       (part) => typeof part === "string" && part.length > 0 && part.length <= 2048,
     ) === false) return null;
-  return { provider: "cloudflared", executable: c.executable!, tunnelId: c.tunnelId!, credentialsFile: c.credentialsFile!, hostname: c.hostname!, secretId: c.secretId, enabled: c.enabled };
+  return { provider: "cloudflared", executable: c.executable!, tunnelId: c.tunnelId!, credentialsFile: c.credentialsFile!, hostname: c.hostname!, secretId: c.secretId, enabled: c.enabled, autoStart: typeof c.autoStart === "boolean" ? c.autoStart : c.enabled };
 }
 
 export function remoteAccessPath(userData: string): string {

@@ -139,7 +139,12 @@ function assertTrustedRemoteSender(event: IpcMainInvokeEvent): void {
   const frame = event.senderFrame;
   const trusted = mainWindow?.webContents === event.sender && mainWindow?.webContents.mainFrame === frame;
   const devUrl = process.env["ELECTRON_RENDERER_URL"];
-  const allowedUrl = frame && (frame.url.startsWith("file:") || (devUrl ? frame.url.startsWith(devUrl) : false));
+  let allowedUrl = false;
+  try {
+    const actual = new URL(frame?.url ?? "");
+    if (actual.protocol === "file:") allowedUrl = actual.pathname.endsWith("/renderer/index.html");
+    else if (devUrl) allowedUrl = actual.origin === new URL(devUrl).origin;
+  } catch { allowedUrl = false; }
   if (!trusted || !allowedUrl) throw new Error("REMOTE_IPC_UNTRUSTED_SENDER");
 }
 
@@ -150,9 +155,13 @@ function assertRemoteProjectId(value: unknown): asserts value is string {
 function assertRemoteConfig(value: unknown): asserts value is RemoteConfigInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("REMOTE_CONFIG_INVALID");
   const keys = Object.keys(value).sort().join(",");
-  if (keys !== "credentialsFile,enabled,executable,hostname,tunnelId") throw new Error("REMOTE_CONFIG_UNKNOWN_FIELD");
+  if (keys !== "autoStart,credentialsFile,enabled,executable,expectedConfigGeneration,hostname,tunnelId") throw new Error("REMOTE_CONFIG_UNKNOWN_FIELD");
   const config = value as Partial<RemoteConfigInput>;
-  if (![config.executable, config.tunnelId, config.credentialsFile, config.hostname].every((part) => typeof part === "string") || typeof config.enabled !== "boolean") throw new Error("REMOTE_CONFIG_INVALID");
+  if (![config.executable, config.tunnelId, config.credentialsFile, config.hostname].every((part) => typeof part === "string") || typeof config.enabled !== "boolean" || typeof config.autoStart !== "boolean" || (config.expectedConfigGeneration !== null && typeof config.expectedConfigGeneration !== "string")) throw new Error("REMOTE_CONFIG_INVALID");
+}
+
+function remoteOwner(event: IpcMainInvokeEvent): { webContentsId: number; frameRoutingId: number } {
+  return { webContentsId: event.sender.id, frameRoutingId: event.senderFrame.routingId };
 }
 
 // ---------------------------------------------------------------------------
@@ -545,6 +554,9 @@ async function openProject(root: string): Promise<OpenProjectResult> {
   const minutes = readSettings().gitSyncMinutes;
   if (syncStatus.available && minutes > 0) ctx.syncTimer = setInterval(() => void syncProject(projectId), minutes * 60_000);
   contexts.set(projectId, ctx);
+  void remoteAccess?.autoStart([{ projectId, identity: await remoteIdentity(ctx), paths: { root: ctx.boardRoot, repoRoot: ctx.sourceRoot } }]).then((results) => {
+    for (const result of results) if (!result.ok) console.error(`[remote-access] auto-start failed for ${result.projectId}: ${result.error ?? "REMOTE_AUTOSTART_FAILED"}`);
+  }).catch((error) => console.error(`[remote-access] auto-start unavailable: ${error instanceof Error ? error.message : String(error)}`));
   buildMenu(); // refresh the Open Recent submenu
   return snapshotOf(ctx);
 }
@@ -683,6 +695,17 @@ function registerIpc(): void {
     const ctx = requireCtx(projectId);
     return requireRemoteAccess().viewFor(projectId, await remoteIdentity(ctx));
   });
+  ipcMain.handle(CH.remoteOverview, async (e) => { assertTrustedRemoteSender(e); return requireRemoteAccess().overview(); });
+  ipcMain.handle(CH.remoteReconcile, async (e, projectId: string) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId);
+    const ctx = requireCtx(projectId);
+    return requireRemoteAccess().reconcile(projectId, await remoteIdentity(ctx));
+  });
+  ipcMain.handle(CH.remoteRemove, async (e, projectId: string) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId);
+    const ctx = requireCtx(projectId);
+    await requireRemoteAccess().remove(projectId, await remoteIdentity(ctx));
+  });
   ipcMain.handle(CH.remoteSaveConfig, async (e, projectId: string, config: RemoteConfigInput) => {
     assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); assertRemoteConfig(config);
     const ctx = requireCtx(projectId);
@@ -691,24 +714,24 @@ function registerIpc(): void {
   ipcMain.handle(CH.remoteCreateSecret, async (e, projectId: string, rotate?: boolean) => {
     assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (rotate !== undefined && typeof rotate !== "boolean") throw new Error("REMOTE_ROTATE_INVALID");
     const ctx = requireCtx(projectId);
-    return requireRemoteAccess().createSecret(projectId, await remoteIdentity(ctx), rotate === true);
+    return requireRemoteAccess().createSecret(projectId, await remoteIdentity(ctx), rotate === true, remoteOwner(e));
   });
-  ipcMain.handle(CH.remoteConsumeSecret, (e, deliveryId: string) => { assertTrustedRemoteSender(e); if (typeof deliveryId !== "string") throw new Error("REMOTE_DELIVERY_INVALID"); return requireRemoteAccess().consumeSecretDelivery(deliveryId); });
-  ipcMain.handle(CH.remoteStart, async (e, projectId: string) => {
-    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId);
+  ipcMain.handle(CH.remoteConsumeSecret, (e, projectId: string, deliveryId: string) => { assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (typeof deliveryId !== "string") throw new Error("REMOTE_DELIVERY_INVALID"); return requireRemoteAccess().consumeSecretDelivery(projectId, deliveryId, remoteOwner(e)); });
+  ipcMain.handle(CH.remoteStart, async (e, projectId: string, expectedConfigGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expectedConfigGeneration !== undefined && expectedConfigGeneration !== null && typeof expectedConfigGeneration !== "string") throw new Error("REMOTE_CONFIG_VERSION_INVALID");
     const ctx = requireCtx(projectId);
     const identity = await remoteIdentity(ctx);
-    return requireRemoteAccess().start(projectId, identity, { root: ctx.boardRoot, repoRoot: ctx.sourceRoot });
+    return requireRemoteAccess().start(projectId, identity, { root: ctx.boardRoot, repoRoot: ctx.sourceRoot }, expectedConfigGeneration ?? null);
   });
-  ipcMain.handle(CH.remoteStop, async (e, projectId: string) => {
-    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId);
+  ipcMain.handle(CH.remoteStop, async (e, projectId: string, expectedRuntimeGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expectedRuntimeGeneration !== undefined && expectedRuntimeGeneration !== null && typeof expectedRuntimeGeneration !== "string") throw new Error("REMOTE_RUNTIME_VERSION_INVALID");
     const ctx = requireCtx(projectId);
-    return requireRemoteAccess().stop(projectId, await remoteIdentity(ctx));
+    return requireRemoteAccess().stop(projectId, await remoteIdentity(ctx), expectedRuntimeGeneration ?? null);
   });
-  ipcMain.handle(CH.remoteDoctor, async (e, projectId: string) => {
-    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId);
+  ipcMain.handle(CH.remoteDoctor, async (e, projectId: string, expected?: { configGeneration?: string | null; runtimeGeneration?: string | null }) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expected !== undefined && (!expected || typeof expected !== "object" || (expected.configGeneration !== undefined && expected.configGeneration !== null && typeof expected.configGeneration !== "string") || (expected.runtimeGeneration !== undefined && expected.runtimeGeneration !== null && typeof expected.runtimeGeneration !== "string"))) throw new Error("REMOTE_VERSION_INVALID");
     const ctx = requireCtx(projectId);
-    return requireRemoteAccess().doctor(projectId, await remoteIdentity(ctx), { root: ctx.boardRoot, repoRoot: ctx.sourceRoot });
+    return requireRemoteAccess().doctor(projectId, await remoteIdentity(ctx), { root: ctx.boardRoot, repoRoot: ctx.sourceRoot }, expected?.configGeneration ?? null, expected?.runtimeGeneration ?? null);
   });
   ipcMain.handle(CH.getBoard, (_e, p: string) => requireStore(p).getBoard());
   ipcMain.handle(CH.setBoard, async (_e, p: string, board: BoardConfig) => {

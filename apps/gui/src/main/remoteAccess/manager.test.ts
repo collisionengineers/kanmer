@@ -13,7 +13,8 @@ const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
 
 const identity = { fingerprint: "kanmer-proj-v1:" + "a".repeat(64), boardRoot: "/repo/.worktrees/kanmer", repoRoot: "/repo", format: 3, boardSource: "file" as const };
-const config = { executable: "cloudflared", tunnelId: "tunnel", credentialsFile: "/credentials.json", hostname: "mcp.example.com", enabled: true };
+const config = { executable: "cloudflared", tunnelId: "tunnel", credentialsFile: "/credentials.json", hostname: "mcp.example.com", enabled: true, autoStart: false, expectedConfigGeneration: null };
+const owner = { webContentsId: 1, frameRoutingId: 1 };
 
 describe("RemoteAccessManager", () => {
   it("serializes config and persists a bearer before one-time delivery", async () => {
@@ -22,10 +23,10 @@ describe("RemoteAccessManager", () => {
     await manager.register("/repo", identity);
     const configured = await manager.saveConfig("/repo", identity, config);
     expect(configured.config.secretConfigured).toBe(false);
-    const delivery = await manager.createSecret("/repo", identity);
+    const delivery = await manager.createSecret("/repo", identity, false, owner);
     expect(delivery.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(manager.consumeSecretDelivery(delivery.deliveryId)).toBe(true);
-    expect(manager.consumeSecretDelivery(delivery.deliveryId)).toBe(false);
+    expect(manager.consumeSecretDelivery("/repo", delivery.deliveryId, owner)).toBe(true);
+    expect(manager.consumeSecretDelivery("/repo", delivery.deliveryId, owner)).toBe(false);
     await expect(manager.createSecret("/repo", identity)).rejects.toThrow("REMOTE_SECRET_EXISTS");
   });
 
@@ -36,9 +37,9 @@ describe("RemoteAccessManager", () => {
       const manager = new RemoteAccessManager(root);
       await manager.register("/repo", identity);
       await manager.saveConfig("/repo", identity, config);
-      const delivery = await manager.createSecret("/repo", identity);
+      const delivery = await manager.createSecret("/repo", identity, false, owner);
       vi.advanceTimersByTime(60_001);
-      expect(manager.consumeSecretDelivery(delivery.deliveryId)).toBe(false);
+      expect(manager.consumeSecretDelivery("/repo", delivery.deliveryId, owner)).toBe(false);
     } finally { vi.useRealTimers(); }
   });
 
@@ -54,7 +55,8 @@ describe("RemoteAccessManager", () => {
     expect(first.identity.fingerprint).not.toBe(other.identity.fingerprint);
     expect(first.config.hostname).toBe("mcp.example.com");
     expect(other.config.hostname).toBe("other.example.com");
-    await expect(manager.saveConfig("/other", second, { ...config, hostname: "mcp.example.com" })).rejects.toThrow("REMOTE_RESOURCE_DUPLICATE");
+    const otherView = await manager.viewFor("/other", second);
+    await expect(manager.saveConfig("/other", second, { ...config, hostname: "mcp.example.com", expectedConfigGeneration: otherView.status.configGeneration })).rejects.toThrow("REMOTE_RESOURCE_DUPLICATE");
   });
 
   it("preserves both projects when registration starts concurrently", async () => {
@@ -64,5 +66,26 @@ describe("RemoteAccessManager", () => {
     await Promise.all([manager.register("/repo", identity), manager.register("/third", second)]);
     const persisted = JSON.parse(await readFile(join(root, "settings.json"), "utf8")) as { remoteAccess: { projects: Record<string, unknown> } };
     expect(Object.keys(persisted.remoteAccess.projects)).toEqual(expect.arrayContaining([identity.fingerprint, second.fingerprint]));
+  });
+
+  it("binds delivery consumption to its project and initiating frame", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-remote-manager-")); roots.push(root);
+    const manager = new RemoteAccessManager(root);
+    await manager.register("/repo", identity);
+    await manager.saveConfig("/repo", identity, config);
+    const delivery = await manager.createSecret("/repo", identity, false, owner);
+    expect(manager.consumeSecretDelivery("/other", delivery.deliveryId, owner)).toBe(false);
+    expect(manager.consumeSecretDelivery("/repo", delivery.deliveryId, { webContentsId: 2, frameRoutingId: 1 })).toBe(false);
+  });
+
+  it("invalidates the old one-time delivery after a successful rotation", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-remote-manager-")); roots.push(root);
+    const manager = new RemoteAccessManager(root);
+    await manager.register("/repo", identity);
+    await manager.saveConfig("/repo", identity, config);
+    const oldDelivery = await manager.createSecret("/repo", identity, false, owner);
+    const newDelivery = await manager.createSecret("/repo", identity, true, owner);
+    expect(manager.consumeSecretDelivery("/repo", oldDelivery.deliveryId, owner)).toBe(false);
+    expect(manager.consumeSecretDelivery("/repo", newDelivery.deliveryId, owner)).toBe(true);
   });
 });

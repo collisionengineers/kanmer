@@ -116,12 +116,15 @@ const api: KanmerApi = {
   },
   remoteRegister: (p) => ipcRenderer.invoke(CH.remoteRegister, p),
   remoteView: (p) => ipcRenderer.invoke(CH.remoteView, p),
+  remoteOverview: () => ipcRenderer.invoke(CH.remoteOverview),
+  remoteReconcile: (p) => ipcRenderer.invoke(CH.remoteReconcile, p),
+  remoteRemove: (p) => ipcRenderer.invoke(CH.remoteRemove, p),
   remoteSaveConfig: (p, config) => ipcRenderer.invoke(CH.remoteSaveConfig, p, config),
   remoteCreateSecret: (p, rotate) => ipcRenderer.invoke(CH.remoteCreateSecret, p, rotate),
-  remoteConsumeSecret: (deliveryId) => ipcRenderer.invoke(CH.remoteConsumeSecret, deliveryId),
-  remoteStart: (p) => ipcRenderer.invoke(CH.remoteStart, p),
-  remoteStop: (p) => ipcRenderer.invoke(CH.remoteStop, p),
-  remoteDoctor: (p) => ipcRenderer.invoke(CH.remoteDoctor, p),
+  remoteConsumeSecret: (p, deliveryId) => ipcRenderer.invoke(CH.remoteConsumeSecret, p, deliveryId),
+  remoteStart: (p, expectedConfigGeneration) => ipcRenderer.invoke(CH.remoteStart, p, expectedConfigGeneration),
+  remoteStop: (p, expectedRuntimeGeneration) => ipcRenderer.invoke(CH.remoteStop, p, expectedRuntimeGeneration),
+  remoteDoctor: (p, expected) => ipcRenderer.invoke(CH.remoteDoctor, p, expected),
   onRemoteStatus: (cb) => {
     const listener = (_e: unknown, status: RemoteStatus) => cb(status);
     ipcRenderer.on(CH.remoteStatus, listener);

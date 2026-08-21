@@ -24,6 +24,12 @@ describe("remote access secret storage", () => {
     expect(() => secureBackend({ ...backend(), isEncryptionAvailable: () => false })).toThrow("REMOTE_SECURE_STORAGE_UNAVAILABLE");
   });
 
+  it("accepts Electron's Linux backend names", () => {
+    expect(secureBackend(backend("gnome_libsecret"))).toBe("gnome_libsecret");
+    expect(secureBackend(backend("kwallet5"))).toBe("kwallet5");
+    expect(secureBackend(backend("kwallet6"))).toBe("kwallet6");
+  });
+
   it("stores encrypted bytes and decrypts only through the approved backend", async () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-remote-secret-")); roots.push(root);
     const selected = backend();

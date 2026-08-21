@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { safeStorage } from "electron";
 
-export type SecureBackend = "dpapi" | "keychain" | "kwallet" | "gnome-libsecret";
+export type SecureBackend = "dpapi" | "keychain" | "kwallet" | "kwallet5" | "kwallet6" | "gnome_libsecret" | "gnome-libsecret";
 
 export interface SecretBackend {
   isEncryptionAvailable(): boolean;
@@ -12,11 +12,12 @@ export interface SecretBackend {
   decryptString(value: Buffer): string;
 }
 
-const SAFE_BACKENDS = new Set<SecureBackend>(["dpapi", "keychain", "kwallet", "gnome-libsecret"]);
+const SAFE_BACKENDS = new Set<SecureBackend>(["dpapi", "keychain", "kwallet", "kwallet5", "kwallet6", "gnome_libsecret", "gnome-libsecret"]);
 
 export function secureBackend(backend: SecretBackend = safeStorage): SecureBackend {
   const selected = backend.getSelectedStorageBackend();
-  if (!backend.isEncryptionAvailable() || !SAFE_BACKENDS.has(selected as SecureBackend)) {
+  const accepted = SAFE_BACKENDS.has(selected as SecureBackend) || selected.startsWith("kwallet");
+  if (!backend.isEncryptionAvailable() || !accepted) {
     throw new Error("REMOTE_SECURE_STORAGE_UNAVAILABLE");
   }
   return selected as SecureBackend;
@@ -48,4 +49,3 @@ export async function getSecret(userData: string, id: string, backend: SecretBac
 export async function removeSecret(userData: string, id: string): Promise<void> {
   await rm(secretFile(userData, id), { force: true });
 }
-

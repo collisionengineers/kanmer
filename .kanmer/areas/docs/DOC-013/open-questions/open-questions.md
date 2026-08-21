@@ -2,36 +2,25 @@
 
 ## Resolved decisions
 
-- **Primary audience paths?** One recommended GUI-managed path and one explicit headless path, both sharing the same security/doctor model.
-- **Provider-neutral structure?** The main manual uses provider-neutral terms. Cloudflared account/tunnel/DNS/credential details live in a separate provider appendix.
-- **Does the manual document Quick Tunnels?** Only as explicitly unsupported for production remote MCP; no setup path.
-- **What is the public success definition?** A passing MCP-027 public doctor for the current project/config/runtime/auth generation, not a live child or “connected” tunnel status.
-- **What commands are documented?** Only actual built/package commands verified after MCP-021/025/026/027 implementation. Proposed ticket filenames/flags are not copied blindly.
-- **What UI labels are documented?** Exact GUI-095 shipped labels/states/actions, verified through the built app/tests.
-- **How are client examples handled?** State the generic HTTPS `/mcp` plus standard bearer contract. Add client-specific examples only when their current format/version is tested and clearly dated; do not guess.
-- **How is bearer delivery described?** One-time secure generation/rotation; ordinary status shows fingerprint only; no raw CLI argument/plaintext setting; lost token is recovered by rotation.
-- **Can GUI remote access continue after true app quit?** No. State this explicitly; headless operation is a separate owner/process path.
-- **Can GUI and headless own the same project/tunnel?** No. Explain duplicate-owner refusal and safe resolution.
-- **How are all projects covered?** Explain independent fingerprint-bound configuration, bounded auto-start, unique hostname/tunnel identity, and isolated failures.
-- **How is troubleshooting organized?** Exact MCP-027 check ids, layers, safe observed/expected meaning, ordered repair, rerun mode, and when to stop rather than retry.
-- **Does the manual suggest auto-repair or insecure diagnostics?** No. No TLS bypass, wildcard bind, token URL, raw-log publication, or deterministic-failure retry.
-- **Are screenshots required?** No. Prefer exact text/UI labels unless the repository has a maintained screenshot workflow; never capture a real token modal.
-- **Where are secrets/examples sourced?** Only obvious placeholders and disposable synthetic values. Add a canary/pattern scan.
-- **Does this ticket alter FRD/ADR requirements?** No; only add traceability references where canonical practice permits.
-- **Does this ticket implement code or rebuild the plugin?** No.
+- **What is the implementation evidence baseline?** MCP-027 is merged in PR #114 at `765c3f6f3ef27ea8b7d7223267b181a19a7d0de6`. Its schema-v1 doctor report, 26-check registry, `config|local|public` modes, optional `--json`, protected references, safe redaction, and exit codes 0/1/2 are the documentation contract. The source of truth is `packages/mcp-server/src/doctor-cli.ts` and the five `doctor/` modules, not old ticket prose.
+- **What must happen before GUI wording is written?** GUI-095 must be independently reviewed, merged to main, and have its post-implementation report/proof. Only then may DOC-013 copy exact labels, fields, storage/permission behavior, owner conflict, auto-start, true quit, rotation/revoke, status, and doctor presentation. Provisional files in the GUI-095 worktree are not a contract.
+- **What must happen before public claims are finalized?** MCP-028 merged proof is required for public-provider, Worker, client, and disposable end-to-end acceptance claims. Until then, document only the shipped local/adapter contract and clearly mark public evidence as downstream.
+- **Where does the manual live?** Authored chapters live in `docs/manual/`; the canonical new files are `remote-access.md`, `remote-access-troubleshooting.md`, and `providers/cloudflared.md`. There is no `docs/manual/README.md`.
+- **How is the in-app manual updated?** Extend `CHAPTERS` in `scripts/build-manual.mjs` and regenerate `apps/gui/src/renderer/src/manual/chapters.generated.ts`; never hand-edit the generated artifact.
+- **How is docs verification added?** No `scripts/verify-docs.mjs` or `verify:docs` exists today. DOC-013 may add one deterministic docs-only verifier and `verify:docs`, but must not redefine a shared root `verify` surface owned elsewhere.
+- **What is the headless command contract?** `kanmer-doctor` is the packaged doctor bin and accepts only `config|local|public` plus optional `--json`. `kanmer-mcp-remote` accepts no arguments and uses protected token/tunnel configuration. Exact examples are written only after disposable runs against the built package.
+- **What is the provider boundary?** The generic manual describes HTTPS Streamable HTTP plus Kanmer bearer. The provider appendix describes only the locally managed named Cloudflare Tunnel. Access, Quick Tunnels for production, remote-managed token mode, account/DNS automation, executable download, and hosted Kanmer Worker are unsupported here.
+- **How are credentials and clients described?** Use “bearer token” only for the Kanmer application credential and “provider credential” for tunnel material. Use generic HTTPS `/mcp` and `Authorization: Bearer <token>`; add client-specific formats only after a current disposable test with version/date/platform recorded.
+- **How are security and lifecycle limits described?** State one project/fingerprint per endpoint/process, bearer in addition to provider controls, no per-user identity, one active token, rotation disconnects sessions, true GUI quit ends GUI ownership, headless ownership is separate, and remote tools remain subject to Kanmer workflow gates. Never document raw token arguments, insecure TLS, wildcard binds, token URLs, raw logs, or blind retries.
+- **Does DOC-013 change governance or implementation?** No. It adds documentation, generated-manual indexing, and a docs-only verifier; it does not modify FRD/ADR requirements, remote-access code, the plugin, provider infrastructure, or the separate DOC-010 path.
 
 ## Deferred explicitly
 
-- `[deferred]` Additional tunnel-provider appendices until adapters ship.
-- `[deferred]` Unverified remote-client-specific recipes.
-- `[deferred]` Always-on OS service/supervisor setup as a Kanmer-owned feature.
-- `[deferred]` OAuth/per-user identity migration guide.
-- `[deferred]` Screenshot-heavy walkthrough/localization.
+- [deferred] Additional tunnel-provider appendices until adapters ship.
+- [deferred] MCP-028 public-provider/Worker/client acceptance details until its proof is merged.
+- [deferred] Unverified remote-client-specific recipes.
+- [deferred] Always-on OS service/supervisor setup as a Kanmer-owned feature.
+- [deferred] OAuth/per-user identity migration guidance.
+- [deferred] Screenshot-heavy walkthroughs and localization.
 
-No unresolved implementation questions remain.
-
-## Resolved roadmap amendment — 2026-08-21
-
-- **Cloudflare Access?** Not supported or documented for this release.
-- **Cloudflare Worker?** Used only as the disposable remote MCP client for [[MCP-028]]; hosted Kanmer needs a separate ADR.
-- **OpenAI tunnel?** Separate stdio route in [[DOC-010]], with future GUI work in [[GUI-104]].
+No unresolved design questions remain. The GUI-095 and MCP-028 items above are resolved workflow gates: they constrain when claims may be written, rather than inviting guesses or requiring a design decision.

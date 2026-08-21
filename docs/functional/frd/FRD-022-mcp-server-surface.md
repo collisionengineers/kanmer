@@ -7,6 +7,8 @@ covers: shipped server (backfill) + v3 tool delta (groups, profiles, removals)
 
 The agent-facing contract. Local stdio server; root resolved `--root` → `KANMER_ROOT` → **board discovery from cwd upwards** → `--init`, and otherwise **fatal** (ADR-0012); **reads never create `.kanmer/`** — only an actual write does, and only where a root was asserted or `--init` was passed.
 
+MCPB desktop distribution is a headless packaging of this same stdio server, not a second transport: its Windows-only manifest requires a user-selected board root and passes that root to the existing standalone entry point. It carries no GUI, HTTP transport, worktree creation, Git sync, or machine-specific path; real Claude Desktop acceptance remains an operator-host check.
+
 - R1. **Tool inventory (end-state), by category.** Read: get_status, list_board, list_items, get_item, get_ticket_doc, search_items, get_links, get_activity, get_doc_gates, **get_group, list_groups, get_group_doc**. Write: create_item, create_items (cap 50), update_item, move_item, take_ticket, set_ticket_doc, append_scratch, link_items, link_doc, migrate_board, **create_group, update_group, set_group_doc**, column tools (kind: **area only** — status and priority kinds removed per FRD-007/008). Destructive: delete_item, remove_column.
 - R2. Annotations are honest: `readOnlyHint` on every read, `destructiveHint` only where true — this is what makes host approval modes work.
 - R3. Descriptions are a contract layer (ADR-0009): they teach profiles, gates, the read-everything duty, and group context in-line; `get_doc_gates` is named as the orientation call before any move; parameter docs never contradict the core.

@@ -16,6 +16,8 @@ export const VERIFY_STEPS = Object.freeze([
   "npm test",
   "npm run typecheck",
   "node packages/mcp-server/src/smoke.mjs",
+  "npm run smoke:headless",
+  "npm run mcpb:check",
   "npm run smoke:protocol",
   "npm run smoke:discovery",
   "npm run verify:skills",

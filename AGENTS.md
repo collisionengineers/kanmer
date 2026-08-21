@@ -435,6 +435,8 @@ Run from the repo root unless noted.
 | `npm run dist` | build everything **and** produce `apps/gui/release/Kanmer Setup <v>.exe` |
 | `npm run dist:check` | `dist`, then `check-updater-package.mjs` — the eight things that must be true for the **packaged** app to auto-update |
 | `npm run release <version>` | the same shared `npm run verify` rail, then version bump, pack twice, tag, publish, and proof that clients can see every published asset. Extend `VERIFY_STEPS`, never a third verification pyramid. Needs `GH_TOKEN` (or `GITHUB_RELEASE_TOKEN`/`GITHUB_TOKEN`). `--dry-run` stops after the verification gate |
+| `npm run mcpb:check` | build and deterministically validate the Windows Claude Desktop MCPB from the standalone server; generated output is under `dist/mcpb/` and is not committed |
+| `npm run smoke:headless` | run the standalone MCP server from a temporary host with no repository `node_modules`, using an explicit board root |
 | `node scripts/verify-release-assets.mjs <version>` | re-check **any** published release read-only, without cutting a new one: every expected asset present, `state: uploaded`, size and sha256 matching the local build in `apps/gui/release/`. Exit 0 = pass, 1 = the release is incomplete, 2 = the *check* could not run (rate limit, bad token, API drift) — the two are never conflated |
 | `npm run plugin:build` | build, then copy the standalone MCP bundle into `plugins/kanmer/mcp/` |
 | `npm run plugin:check` | fail if MCP tool names drift from the skill's tool reference **or if the committed plugin bundle differs from a fresh build (requires `npm run build` first)**. Refuses outright inside a linked worktree, where that byte comparison cannot mean anything (§8 gotcha 8) — run it from the main checkout |

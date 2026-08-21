@@ -24,7 +24,7 @@
 //
 // Usage: node scripts/release.mjs <version> [--dry-run]
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -51,6 +51,7 @@ const pluginManifestPaths = [
   join(root, "plugins", "kanmer", ".claude-plugin", "plugin.json"),
   join(root, "plugins", "kanmer", ".codex-plugin", "plugin.json"),
 ];
+const mcpbManifestPath = join(root, "mcpb", "manifest.json");
 const notesPath = join(guiDir, "release-notes.md");
 
 const OWNER = "collisionengineers";
@@ -238,7 +239,7 @@ if (dryRun) {
   console.log("\n--- dry run: the verification gate passed ---");
   console.log("Would now:");
   console.log(
-    `  1. write ${version} into apps/gui/package.json, package.json and both plugin.json manifests`,
+    `  1. write ${version} into apps/gui/package.json, package.json, both plugin.json manifests and mcpb/manifest.json`,
   );
   console.log("  2. npm install --package-lock-only");
   console.log(
@@ -276,6 +277,7 @@ function bump(path) {
 bump(guiPkgPath);
 bump(rootPkgPath);
 for (const path of pluginManifestPaths) bump(path);
+bump(mcpbManifestPath);
 run("npm install --package-lock-only");
 
 // ---------------------------------------------------------------------------
@@ -306,6 +308,7 @@ run("npm install --package-lock-only");
 // ---------------------------------------------------------------------------
 run("npm run build");
 run("node scripts/build-plugin.mjs");
+run("node scripts/build-mcpb.mjs");
 // Paranoia, cheap: prove the committed bundle now matches a fresh build at the
 // NEW version before anything is packed, committed, tagged or pushed. If this
 // ever fails, the release stops here with the tree still local and fixable.
@@ -348,6 +351,12 @@ try {
   console.error("\npublisher exited non-zero; checking the public release before deciding whether it failed:");
   console.error(error.message);
 }
+const mcpbPath = join(root, "dist", "mcpb", `kanmer-${version}.mcpb`);
+if (!existsSync(mcpbPath)) {
+  refuse(`MCPB output is missing after the release build: ${mcpbPath}`, "run `npm run mcpb:build` and inspect the generated bundle");
+}
+copyFileSync(mcpbPath, join(releaseDir, `kanmer-${version}.mcpb`));
+console.log(`copied MCPB release asset: ${mcpbPath}`);
 run("node scripts/check-updater-package.mjs");
 assertLocalPackageCoherent();
 

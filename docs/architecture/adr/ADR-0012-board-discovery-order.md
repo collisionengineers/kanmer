@@ -201,9 +201,11 @@ the corrected premise above: it breaks the dominant case.
   `plugins/kanmer/mcp/kanmer-mcp.cjs` carries its own compiled copy of
   `resolveProjectRoot` and is sha256-gated by `scripts/check-plugin-sync.mjs`.
   Build it from the main checkout, never from inside a worktree (MCP-007).
-- **The `.mcpb` desktop install (MCP-008) gains nothing but the error message.**
-  Its cwd is the host's, unrelated to any repo. There the diagnostic *is* the
-  deliverable.
+- **The `.mcpb` desktop install (MCP-008) supplies context explicitly.** Its
+  required `user_config.board_root` value is passed as `--root` to the same
+  local stdio server. A bad selection still produces the fatal diagnostic;
+  the bundle does not infer a board, create a worktree, run the GUI, sync Git,
+  or add an HTTP transport.
 - **A new cost on startup**: one `existsSync` plus one `readdir` per ancestor
   level, only when no root was asserted. Parked as a question on MCP-010; the
   walk terminates at the first `.git` directory in practice.

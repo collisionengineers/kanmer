@@ -5,7 +5,6 @@ import {
   UnsubscribeRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { execFile as execFileCallback } from "node:child_process";
-import { createHash } from "node:crypto";
 import path from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
@@ -1326,9 +1325,11 @@ server.registerPrompt(
 }
 
 /** A stable, non-secret identifier for status/readiness without exposing a path. */
-export function projectFingerprint(): string {
+export async function projectFingerprint(): Promise<string> {
   if (!rootResolved) resolveRoot();
-  return createHash("sha256").update(projectRoot).digest("hex").slice(0, 16);
+  const format = await store.detectFormat();
+  const { source } = await store.getBoardWithSource();
+  return projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source }).fingerprint;
 }
 
 // ---------------------------------------------------------------------------

@@ -104,7 +104,8 @@ try {
   const ready = await host.start();
   assert.equal(ready.host, "127.0.0.1");
   assert.equal(ready.authRequired, true);
-  assert.match(ready.projectFingerprint, /^[a-f0-9]{16}$/);
+  assert.match(ready.projectFingerprint, /^kanmer-proj-v1:[a-f0-9]{64}$/);
+  assert.deepEqual(ready.supportedProtocolVersions, ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"]);
   const endpoint = ready.endpoint;
   const missing = await fetch(endpoint, { method: "POST" });
   assert.equal(missing.status, 401);
@@ -190,6 +191,7 @@ try {
   assert.equal(JSON.stringify(securityEvents).includes(generated.token), false, "security events never contain raw tokens");
   await host.close();
   await host.close();
+  assert.equal(securityEvents.filter((event) => event.kind === "kanmer-mcp-http-stopped").length, 1, "shutdown emits one stopped event");
   process.stdout.write("PASS  HTTP initialize/tools/list/session/delete smoke\n");
 } finally {
   await host.close();

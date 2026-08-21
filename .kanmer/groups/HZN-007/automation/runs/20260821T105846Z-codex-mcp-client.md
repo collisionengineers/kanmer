@@ -39,7 +39,7 @@ stop_reason:
 | Order | Ticket | Observed stage | Gates / next action | Disposition | Worker | Branch / worktree | Attempt | Last action | Last result | PR | Updated |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | DOC-012 | done | chore; gates pass; checklist reconciled | finished | codex-mcp-client | — | 1 | reconciled three stale closeout/link boxes via MCP | 76/76 checked; merged proof/cleanup evidence confirmed | 84 | 2026-08-21T10:59:48.714Z |
-| 2 | DOC-017 | preparing | chore; next=done; blocked=false; blockers=— | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:26.423Z |
+| 2 | DOC-017 | review | chore; report/checklist pass; awaiting independent merge review | active | /root/doc017_reviewer | doc-017-cloudflare-boundary / .worktrees/doc-017 | 1 | independent kanmer-review assigned for PR #106 | pending reviewer result | 106 | 2026-08-21T11:02:30.863Z |
 | 3 | MCP-025 | implementing | feature; next=backlog; blocked=false; blockers=DOC-012 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:16.301Z |
 | 4 | MCP-026 | implementing | feature; next=backlog; blocked=true; blockers=MCP-025 | queued | — | — | 0 | rostered | live state recorded | — | 2026-08-21T10:57:16.588Z |
 | 5 | MCP-021 | implementing | feature; next=review; blocked=true; blockers=DOC-012,MCP-025,MCP-026 | queued | — | mcp-021-cloudflared-adapter|.worktrees/mcp-021 | 0 | rostered | live state recorded | — | 2026-08-21T10:57:16.881Z |
@@ -123,3 +123,5 @@ stop_reason:
 Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's complete document inventory, links, taken state and get_doc_gates before dispatching. Reconcile the ledger against live state and do not replay a completed action solely because this run was interrupted. Before every assignment/result/stage transition, update and read this history record and automation/current.md.
 
 - 2026-08-21T10:59:42.219Z — DOC-012 reconciled in place: linked merged FRD/ADR refs to the provider-neutral milestone tickets, confirmed worktree/branch cleanup and release, checked the three stale closeout boxes, and re-read gates (all pass).
+
+- 2026-08-21T11:02:30.863Z — DOC-017 entered Review with PR #106; independent reviewer /root/doc017_reviewer assigned. Author lane will not review or merge.

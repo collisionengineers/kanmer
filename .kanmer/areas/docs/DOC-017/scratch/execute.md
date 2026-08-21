@@ -1,0 +1,1 @@
+Opened PR #106 (https://github.com/collisionengineers/kanmer/pull/106) from commit 5576186. `node scripts/build-manual.mjs --check`, stale-wording search, and `git diff --check` passed. Worktree `.worktrees/doc-017`, branch `doc-017-cloudflare-boundary` remains taken through review.

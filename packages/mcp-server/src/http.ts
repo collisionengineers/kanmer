@@ -26,6 +26,15 @@ export interface HttpHostOptions {
   idleTtlMs?: number;
   sweepIntervalMs?: number;
   shutdownGraceMs?: number;
+  onEvent?: (event: HttpSecurityEvent) => void;
+}
+
+/** Intentionally allowlisted diagnostics: no headers, tokens, digests, bodies, or session ids. */
+export interface HttpSecurityEvent {
+  readonly kind: "auth-rejected" | "auth-rotated" | "auth-revoked";
+  readonly at: string;
+  readonly tokenId?: string;
+  readonly fingerprint?: string;
 }
 
 export interface HttpReadyEvent {
@@ -95,13 +104,17 @@ async function readJson(req: IncomingMessage, maxBytes: number): Promise<unknown
 
 /** A loopback-only, fail-closed host around the SDK Streamable HTTP transport. */
 export class KanmerHttpHost {
-  private readonly options: Required<Omit<HttpHostOptions, "allowedOrigins">> & Pick<HttpHostOptions, "allowedOrigins">;
+  private readonly options: Required<Omit<HttpHostOptions, "allowedOrigins" | "onEvent">> & Pick<HttpHostOptions, "allowedOrigins" | "onEvent">;
   private readonly sessions = new Map<string, Session>();
   private readonly sockets = new Set<Socket>();
   private readonly httpServer: Server;
   private readonly sweepTimer: NodeJS.Timeout;
   private stopping = false;
   private inFlight = 0;
+
+  private emit(event: Omit<HttpSecurityEvent, "at">): void {
+    try { this.options.onEvent?.({ ...event, at: new Date().toISOString() }); } catch { /* diagnostics never affect serving */ }
+  }
 
   constructor(options: HttpHostOptions) {
     if (!options.authorizer) throw new Error("HTTP transport requires an authorizer");
@@ -115,6 +128,7 @@ export class KanmerHttpHost {
       host,
       port,
       allowedOrigins: options.allowedOrigins,
+      onEvent: options.onEvent,
       maxBodyBytes: positive(options.maxBodyBytes ?? DEFAULTS.maxBodyBytes, "maxBodyBytes"),
       maxSessions: positive(options.maxSessions ?? DEFAULTS.maxSessions, "maxSessions"),
       maxSessionsPerPrincipal: positive(options.maxSessionsPerPrincipal ?? DEFAULTS.maxSessionsPerPrincipal, "maxSessionsPerPrincipal"),
@@ -168,7 +182,10 @@ export class KanmerHttpHost {
       const authorized = await this.options.authorizer.authorize({ headers: req.headers });
       principal = authorized.principal;
       if (!principal) throw new Error("empty principal");
-    } catch { return writeText(res, 401, "Unauthorized", unauthorizedHeaders()); }
+    } catch {
+      this.emit({ kind: "auth-rejected" });
+      return writeText(res, 401, "Unauthorized", unauthorizedHeaders());
+    }
     if (this.inFlight >= this.options.maxInFlight) return writeText(res, 429, "Too many requests");
     this.inFlight++;
     try {
@@ -227,6 +244,7 @@ export class KanmerHttpHost {
       this.options.authorizer.revoke();
       throw error;
     }
+    this.emit({ kind: "auth-rotated", tokenId: verifier.tokenId, fingerprint: verifier.fingerprint });
   }
 
   /** Revocation closes active sessions and makes every subsequent request fail closed. */
@@ -234,6 +252,7 @@ export class KanmerHttpHost {
     if (!(this.options.authorizer instanceof BearerAuthorizer)) throw new Error("REMOTE_AUTH_UNSUPPORTED_LIFECYCLE");
     const previous = this.options.authorizer.revoke();
     if (previous) await this.invalidatePrincipal(previous);
+    this.emit({ kind: "auth-revoked" });
   }
 
   private async closeSession(id: string): Promise<void> {

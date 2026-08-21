@@ -68,6 +68,7 @@ assert.throws(() => createKanmerHttpHost({ authorizer: { authorize: async () => 
 
 const generated = generateBearerToken();
 const other = generateBearerToken();
+const securityEvents = [];
 assert.equal(JSON.stringify(generated.verifier).includes(generated.token), false, "verifier serialization never contains raw token");
 assert.equal(JSON.stringify(generated.verifier).includes(generated.verifier.digest.toString("hex")), false, "verifier serialization never contains digest");
 const directAuthorizer = new BearerAuthorizer(generated.verifier);
@@ -86,6 +87,7 @@ if (process.platform !== "win32") {
 }
 const host = createKanmerHttpHost({
   authorizer: new BearerAuthorizer(generated.verifier),
+  onEvent: (event) => securityEvents.push(event),
   idleTtlMs: 60_000,
 });
 
@@ -166,6 +168,9 @@ try {
   assert.equal(revoked.status, 401, "revocation fails closed");
   const malformed = await fetch(endpoint, { method: "POST", headers: { authorization: `Bearer ${generated.token}`, "content-type": "application/json" }, body: "{" });
   assert.equal(malformed.status, 401, "revoked auth runs before JSON parsing");
+  assert.ok(securityEvents.some((event) => event.kind === "auth-rotated" && event.fingerprint === rotated.verifier.fingerprint));
+  assert.ok(securityEvents.some((event) => event.kind === "auth-revoked"));
+  assert.equal(JSON.stringify(securityEvents).includes(generated.token), false, "security events never contain raw tokens");
   await host.close();
   await host.close();
   process.stdout.write("PASS  HTTP initialize/tools/list/session/delete smoke\n");

@@ -98,3 +98,7 @@ Exit: 0 healthy/warnings, 1 completed with required failure, 2 invalid invocatio
 - Follow cross-host redirects.
 - Require public network/provider credentials in normal CI.
 - Change stdio/tool surface or hand-edit plugin bytes.
+
+## Implementation reconciliation — 2026-08-21
+
+The packaged/local CLI is implemented by `packages/mcp-server/src/doctor-cli.ts` and emitted as `dist/doctor-cli.js`; the duplicate source `.mjs` sketch was removed after review so there is one canonical CLI. The doctor library now wires protected token/MCP, project, secret-reference, canonical tool-policy, local/public status, DNS/TLS/route, and cleanup seams. Public acceptance remains MCP-028.

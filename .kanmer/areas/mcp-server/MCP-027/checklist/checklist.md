@@ -138,3 +138,11 @@ Implemented and verified in this ticket:
 - [x] Built doctor smoke and the HTTP/auth/tunnel regression rail pass; no MCP tool count/reference/plugin bytes changed.
 
 Downstream by design (not claimed complete here): real loopback disposable-board/TLS fixture matrix and controlled named-tunnel public acceptance belong to GUI-095/MCP-028. Their interfaces are dependency-injected and the exact check ids/report contract are frozen for that handoff.
+
+## Review remediation checklist — 2026-08-21
+
+- [x] Independent public success path uses a separate protected MCP session, accepts route-level 401 reachability, and compares local/public snapshots after session close.
+- [x] Safety checks default to structural redaction/no-mutation passes; top-level result fields are allowlisted and canary tests cover injected details.
+- [x] Per-check abort, late-client cleanup, total deadline, and surfaced cleanup failures are implemented and tested.
+- [x] Canonical project resolver, protected secret-reference validator, official MCP orientation, and canonical remote tool-policy callbacks are wired for the CLI/library boundary.
+- [x] Duplicate CLI source removed; one packaged CLI entry remains.

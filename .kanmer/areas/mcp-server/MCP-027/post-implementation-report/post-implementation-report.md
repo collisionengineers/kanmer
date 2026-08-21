@@ -33,3 +33,15 @@ The report shape contains no token, credential bytes, body, document content, or
 ## Known deferred scope
 
 The real loopback disposable-board client/TLS fixture matrix and controlled public acceptance are intentionally downstream integration work (GUI-095/MCP-028), not fabricated as complete in this ticket. The existing canonical HTTP/auth/tunnel suites remain green.
+
+## Review remediation — 2026-08-21
+
+Independent review initially found five blockers. The follow-up implementation addresses each:
+
+1. Public mode now creates a separate protected public MCP session, accepts the expected unauthenticated 401 as a reachable route, snapshots local/public fingerprint and tool policy before idempotent session close, and has a non-overridden healthy public test.
+2. Redaction and no-mutation checks have production defaults; results and repairs are allowlisted before serialization, and canary/top-level-field tests prove no leakage.
+3. Per-check timeout aborts the shared run signal, late MCP factories close clients after timeout, total-run deadlines produce exit 2, and cleanup failures are surfaced in the report.
+4. Project, remote-config, protected-secret-reference, and canonical tool-policy callbacks are wired in the CLI/library seam; the CLI uses the official Streamable HTTP client and `get_status` orientation call.
+5. The duplicate `.mjs` CLI was removed; `doctor-cli.ts` is the single packaged entry.
+
+Additional focused evidence: `test:http` now passes 58/58, including public healthy matrix, redaction allowlist, cancellation, and late-client timeout cleanup; MCP typecheck passes.

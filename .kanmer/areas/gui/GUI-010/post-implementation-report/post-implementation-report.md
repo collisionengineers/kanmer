@@ -44,3 +44,9 @@ On merged `main`, run:
 - If a disposable Windows GUI session is authorized, drag a real PNG, open it, confirm the filename, and remove it; record the result as PASS or INCONCLUSIVE.
 
 Observed in this lane: focused core reference 6/6; focused Editor reference 1/1; core 258/258; GUI 351/351; typecheck/build/plugin rails/e2e/diff-check PASS; boot smoke retained first exit 1 setup failure and second exit 0 after Electron rebuild.
+
+## Independent review follow-up
+
+The review finding that `referencePath()` canonicalized before enforcing the plain-filename contract is fixed. It now rejects any candidate where `path.basename(candidate) !== candidate` before `path.resolve()`, so `foo/../mockup.png` cannot resolve inside `reference/` and bypass the safety rule. The add and remove regression coverage both assert rejection.
+
+Review-fix commit: `60705980` (`fix(gui): reject normalized reference paths`), pushed to PR #133. Re-run evidence: focused core reference 6/6; focused Editor reference 1/1; full core 258/258; full GUI 351/351 across 37 files; all-workspace typecheck exit 0; GUI build exit 0; plugin:build and plugin:check exit 0; boot smoke exit 0 after the retained initial missing-Electron failure and `npm rebuild electron`; `git diff --check` exit 0. Manual visual drag/drop/open/remove proof remains INCONCLUSIVE. No GUI-105/015/016/017, provider, or unrelated scope was added.

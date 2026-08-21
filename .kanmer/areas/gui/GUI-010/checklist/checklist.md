@@ -15,3 +15,9 @@
 - [x] plugin rebuild (core changed)
 
 Verification evidence: focused core reference suite 6/6; focused Editor reference test 1/1; full core Vitest 258/258; full GUI Vitest 351/351 across 37 files; root `npm run typecheck` exit 0; GUI build exit 0; plugin:build and plugin:check exit 0; core→built-MCP enumeration probe PASS; `git diff --check` exit 0. Boot smoke first exited 1 because Electron's binary was absent after the intentional `npm install --ignore-scripts` dependency setup; `npm rebuild electron` exited 0 and the rerun exited 0. Manual visual drag/drop/open/remove proof was not available and remains an explicit verification follow-up.
+
+## Independent review follow-up
+
+- [x] Pre-normalization plain-filename rejection for `foo/../mockup.png` (add and remove)
+
+Review-fix evidence: core reference suite 6/6; full core 258/258; focused Editor reference test 1/1; full GUI 351/351 across 37 files; all-workspace typecheck exit 0; GUI build exit 0; plugin:build and plugin:check exit 0; boot smoke exit 0 after the retained initial missing-Electron failure and `npm rebuild electron`; diff check exit 0. Manual visual drag/drop/open/remove proof remains INCONCLUSIVE.

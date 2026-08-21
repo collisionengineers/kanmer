@@ -43,7 +43,7 @@
 - [x] Run `npm run build`.
 - [x] Run the standard, protocol, and discovery MCP smokes.
 - [x] Run `npm run verify:skills`.
-- [ ] From a normal main checkout, run `npm run plugin:build && npm run plugin:check` and commit the generated bundle.
+- [x] From a normal main checkout, run `npm run plugin:build && npm run plugin:check` and commit the generated bundle — normal-main parity passed after merge; generated bundle is committed.
 - [x] Confirm only the MCP descriptions, MCP smoke, canonical tool reference, and generated bundle changed.
 - [x] Confirm no core gate/profile/document-type logic, skill file, FRD, generated doc-structure file, dependency, tool, or tool count changed.
 - [x] Open the PR with `Kanmer: MCP-024` and identify `set_ticket_doc`/`get_ticket_doc` as the production storage surface and SKILL-021/CORE-025 as downstream consumers.

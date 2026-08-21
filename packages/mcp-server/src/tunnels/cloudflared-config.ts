@@ -14,7 +14,7 @@ function exactHostname(value: string): string {
   if (control.test(value)) throw new Error("TUNNEL_HOSTNAME_INVALID");
   let parsed: URL;
   try { parsed = new URL(`https://${value}`); } catch { throw new Error("TUNNEL_HOSTNAME_INVALID"); }
-  if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.port || parsed.pathname !== "/" || parsed.search || parsed.hash || parsed.hostname !== value.toLowerCase() || value.includes("*") || !value.includes(".") || isIP(parsed.hostname) !== 0) {
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.port || parsed.pathname !== "/" || parsed.search || parsed.hash || parsed.hostname !== value.toLowerCase() || value.includes("*") || !value.includes(".") || isIP(parsed.hostname.replace(/^\[|\]$/g, "")) !== 0) {
     throw new Error("TUNNEL_HOSTNAME_INVALID");
   }
   return parsed.hostname;

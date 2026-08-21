@@ -1,3 +1,5 @@
+import { createServer } from "node:net";
+
 const LOOPBACK = new Set(["127.0.0.1", "[::1]"]);
 
 export interface LoopbackPortLease {
@@ -41,6 +43,33 @@ export async function reserveLoopbackPort(maxAttempts = 3): Promise<LoopbackPort
   throw new Error("TUNNEL_METRICS_PORT_ALLOCATION_FAILED");
 }
 
+/** Hold a caller-selected loopback TCP port until the child is ready to bind it. */
+export async function reserveSpecificLoopbackPort(port: number): Promise<LoopbackPortLease> {
+  if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) throw new Error("TUNNEL_METRICS_PORT_INVALID");
+  const server = createServer();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(port, "127.0.0.1", resolve);
+    });
+    const address = server.address();
+    if (!address || typeof address === "string" || address.address !== "127.0.0.1" || address.port !== port) throw new Error("TUNNEL_METRICS_PORT_ALLOCATION_FAILED");
+    let released = false;
+    return {
+      port,
+      release: async () => {
+        if (released) return;
+        released = true;
+        if (server.listening) await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      },
+    };
+  } catch (error) {
+    if (server.listening) await new Promise<void>((resolve, reject) => server.close((closeError) => closeError ? reject(closeError) : resolve()));
+    if (error instanceof Error && /^TUNNEL_/.test(error.message)) throw error;
+    throw new Error("TUNNEL_METRICS_PORT_IN_USE");
+  }
+}
+
 /** Obtain a currently free loopback TCP port without ever binding publicly. */
 export async function allocateLoopbackPort(): Promise<number> {
   const lease = await reserveLoopbackPort();
@@ -81,4 +110,3 @@ export async function waitForTunnelReadiness(options: ReadinessOptions): Promise
   }
   throw new Error("TUNNEL_READINESS_TIMEOUT");
 }
-import { createServer } from "node:net";

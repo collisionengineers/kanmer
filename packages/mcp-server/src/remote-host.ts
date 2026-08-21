@@ -41,6 +41,10 @@ export class KanmerRemoteHost {
     this.publicEndpoint = `https://${options.hostname}/mcp`;
     this.http = createKanmerHttpHost({ authorizer: options.authorizer });
     this.supervisor = new TunnelSupervisor({
+      // cloudflared reserves exit 78 for configuration/usage failures.  A
+      // bad generated config must not trigger an unbounded-looking restart
+      // loop; other exits remain transient provider failures.
+      classifyExit: (result) => result.code === 78 ? "terminal" : "transient",
       start: async () => {
         this.status = { ...this.status, local: "starting" }; this.emit();
         this.ready ??= await this.http.start();

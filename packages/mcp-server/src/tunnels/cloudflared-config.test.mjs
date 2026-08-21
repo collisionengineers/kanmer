@@ -23,7 +23,7 @@ test("cloudflared config permits one exact HTTPS hostname and loopback MCP origi
 });
 
 test("cloudflared config fails closed for broad public routes and non-loopback origins", () => {
-  for (const hostname of ["*.example.test", "https://kanmer.example.test", "user@kanmer.example.test", "kanmer.example.test/path", "localhost", "192.0.2.10"]) {
+  for (const hostname of ["*.example.test", "https://kanmer.example.test", "user@kanmer.example.test", "kanmer.example.test/path", "localhost", "192.0.2.10", "[2001:db8::1]"]) {
     assert.throws(() => validateCloudflaredTunnel({ ...options, hostname }, { ...target, hostname }), /TUNNEL_HOSTNAME_INVALID/);
   }
   for (const endpoint of ["http://0.0.0.0:43123/mcp", "https://127.0.0.1:43123/mcp", "http://127.0.0.1:43123/other", "http://127.0.0.1/mcp?x=1"]) {

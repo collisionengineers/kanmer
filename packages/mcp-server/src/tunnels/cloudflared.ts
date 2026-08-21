@@ -4,7 +4,7 @@ import os from "node:os";
 import path, { isAbsolute } from "node:path";
 import { cloudflaredConfig, type CloudflaredTunnelOptions, validateCloudflaredTunnel } from "./cloudflared-config.js";
 import { validateTunnelStartInput, type TunnelAdapter, type TunnelDoctorResult, type TunnelLogEvent, type TunnelProcess, type TunnelStatus, type TunnelTarget } from "./types.js";
-import { reserveLoopbackPort, waitForTunnelReadiness, type LoopbackPortLease } from "./readiness.js";
+import { reserveLoopbackPort, reserveSpecificLoopbackPort, waitForTunnelReadiness, type LoopbackPortLease } from "./readiness.js";
 import { validateCloudflaredExecutable, validateCloudflaredIngress } from "./cloudflared-validate.js";
 import { TunnelLogBuffer } from "./logs.js";
 
@@ -133,8 +133,10 @@ export class CloudflaredAdapter implements TunnelAdapter {
       await validateRegularFile(this.options.executable, "TUNNEL_EXECUTABLE_INVALID", false);
       const executableValidation = await (this.options.validateExecutable?.(this.options.executable) ?? validateCloudflaredExecutable({ executable: this.options.executable }));
       await validateRegularFile(this.options.credentialsFile, "TUNNEL_CREDENTIALS_FILE_UNSAFE", true);
-    const metricsPort = this.options.metricsPort ?? (metricsLease = await reserveLoopbackPort()).port;
-    if (!Number.isSafeInteger(metricsPort) || metricsPort < 1 || metricsPort > 65_535) throw new Error("TUNNEL_METRICS_PORT_INVALID");
+    metricsLease = this.options.metricsPort === undefined
+      ? await reserveLoopbackPort()
+      : await reserveSpecificLoopbackPort(this.options.metricsPort);
+    const metricsPort = metricsLease.port;
     const directory = runtimeDirectory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-"));
     await chmod(directory, 0o700);
     const configPath = path.join(directory, "config.yml");
@@ -195,20 +197,43 @@ export class CloudflaredAdapter implements TunnelAdapter {
       // A child that has already exited cannot become ready.  Race readiness
       // against the owned process so a malformed or unavailable metrics
       // endpoint never hides an immediate provider failure behind its timeout.
-      const readiness = this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`)
-        ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${metricsPort}/ready` });
+      let handle: TunnelProcess | undefined;
+      const checkReadiness = async (): Promise<void> => {
+        try {
+          await (this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`)
+            ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${metricsPort}/ready` }));
+          if (handle && this.active === handle && this.status.state === "degraded") {
+            this.transition("connected", target, {
+              attempt,
+              pid: spawned.pid,
+              publicEndpoint: `https://${target.hostname}/mcp`,
+              ...(executableValidation && typeof executableValidation.version === "string" ? { providerVersion: executableValidation.version } : {}),
+            });
+          }
+        } catch (error) {
+          if (handle && this.active === handle && this.status.state === "connected") {
+            this.transition("degraded", target, {
+              attempt,
+              pid: spawned.pid,
+              publicEndpoint: `https://${target.hostname}/mcp`,
+              ...(executableValidation && typeof executableValidation.version === "string" ? { providerVersion: executableValidation.version } : {}),
+            });
+          }
+          throw error;
+        }
+      };
       await Promise.race([
-        readiness,
+        checkReadiness(),
         exited.then(() => { throw new Error("TUNNEL_CHILD_EXITED_BEFORE_READY"); }),
       ]);
       const cleanup = () => rm(directory, { recursive: true, force: true });
       const cleanupPromise = exited.then(cleanup, cleanup);
       let intentionalStop = false;
       let stopPromise: Promise<void> | undefined;
-      const handle: TunnelProcess = {
+      handle = {
         pid: spawned.pid,
         exited,
-        checkReadiness: () => this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`) ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${metricsPort}/ready` }),
+        checkReadiness,
         stop: () => stopPromise ??= (async () => {
           intentionalStop = true;
           this.transition("stopping", target, { attempt, pid: spawned.pid });

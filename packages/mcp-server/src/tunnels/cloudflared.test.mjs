@@ -18,6 +18,7 @@ test("provider-neutral start validation rejects unsafe targets, unknown modes, a
   assert.doesNotThrow(() => validateTunnelStartInput(input));
   assert.throws(() => validateTunnelStartInput({ ...input, config: { ...input.config, mode: "quick" } }), /TUNNEL_PROVIDER_CONFIG_INVALID/);
   assert.throws(() => validateTunnelStartInput({ ...input, target: { ...input.target, endpoint: "http://192.168.0.1:43123/mcp" } }), /TUNNEL_TARGET_INVALID/);
+  assert.throws(() => validateTunnelStartInput({ ...input, target: { ...input.target, hostname: "[2001:db8::1]" } }), /TUNNEL_TARGET_INVALID/);
   assert.throws(() => validateTunnelStartInput({ ...input, target: undefined }), /TUNNEL_TARGET_INVALID/);
   assert.throws(() => validateTunnelStartInput({ ...input, restartPolicy: { maxRestarts: 11 } }), /TUNNEL_RESTART_POLICY_INVALID/);
 });
@@ -151,6 +152,36 @@ test("standalone fake provider reaches local readiness and leaves no credential 
     assert.equal(adapter.getStatus().publicEndpoint, "https://kanmer.example.test/mcp");
     assert.ok(diagnostics.some((event) => event.message === "provider output received"));
     assert.equal(JSON.stringify(diagnostics).includes(canary), false);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test("adapter status follows provider readiness degradation and recovery", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-flap-"));
+  try {
+    const credentials = path.join(directory, "credentials.json");
+    await writeFile(credentials, "{}", { mode: 0o600 });
+    let healthy = true;
+    const fakeSpawn = () => {
+      const child = new EventEmitter();
+      child.pid = 4321; child.killed = false;
+      child.stdout = new PassThrough(); child.stderr = new PassThrough();
+      child.kill = () => { child.killed = true; queueMicrotask(() => child.emit("exit", 0, null)); return true; };
+      queueMicrotask(() => child.emit("spawn"));
+      return child;
+    };
+    const adapter = createCloudflaredAdapter({
+      executable: process.execPath, tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", credentialsFile: credentials,
+      hostname: "kanmer.example.test", metricsPort: 43129, validateExecutable: async () => {},
+      waitForReady: async () => { if (!healthy) throw new Error("provider not ready"); },
+    }, fakeSpawn);
+    const handle = await adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" });
+    healthy = false;
+    await assert.rejects(() => handle.checkReadiness?.(), /provider not ready/);
+    assert.equal(adapter.getStatus().state, "degraded");
+    healthy = true;
+    await handle.checkReadiness?.();
+    assert.equal(adapter.getStatus().state, "connected");
+    await handle.stop();
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 

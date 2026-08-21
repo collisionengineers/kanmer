@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T22:58:17.518Z
+updated_at: 2026-08-21T23:00:46.333Z
 lane_limit: 3
 stop_reason:
 ---
@@ -384,3 +384,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-21T22:55:44.433Z — DOC-005 assigned to doc005-executor on fresh doc-005-operating-rule/.worktrees/doc-005 from origin/main 1b5ae0d4 after complete ticket packet, HZN-007 context, ADR-0010, links/activity, and live gates were read. take_ticket succeeded without force despite stale historical assignee; current merged implementation is PR #26 (source 1df633e7, merge 05a335dc). Audit only DOC-005 scope; no duplicate/no-op PR or unrelated work; stop at Review if a real scoped diff is required.
+
+
+- 2026-08-21T23:00:46.333Z — DOC-005 reached Review after fresh enter-review gates passed. PR #138 (75dc1ad955369db2cd0e85bd486441db94913c5e) is open on doc-005-operating-rule; it fixes malformed shorthand PR links in the historical DOC-005 release-notes implementation and adds a regression test. Checklist/report/scratch are written and read back; verify:agents-block 31/31, script tests 80/80, typecheck, release-notes output, build:core and diff-check passed. The first missing-core-dist release-notes exit 1 remains recorded. Stop for independent root review; no merge or cleanup.

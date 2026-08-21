@@ -20,3 +20,15 @@
 - 2026-08-21 — Reconciled existing merged implementation rather than duplicating it. PR #24 merge `cfd41006e924664f4f3fb2c3feb5dce09551822b` and implementation `ca25bdc6aafd8482fb0885438b6277d97e80fa8b` are reachable from merged `main` HEAD `1b5ae0d4546d1b57be393b38f4813f9ecfb6e7d5`; fresh branch `gui-016-dispatch-task-picker` has no source diff.
 - 2026-08-21 — `npm run test -w @kanmer/core -- src/prompts.test.ts`: 8/8 PASS. `npm run test -w @kanmer/gui -- src/main/dispatch.test.ts`: 2/2 PASS. GUI typecheck and build passed. Root `npm run plugin:build` and `npm run plugin:check` passed (34 tools, bundle bytes match).
 - 2026-08-21 — No live agent CLI was spawned and no interactive three-level keyboard/menu session was available; this handoff relies on the merged source plus deterministic tests and build checks. End-to-end provider execution remains unclaimed.
+
+
+## Closeout — GUI-016
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date already recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body / report
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-016`
+- [x] `git branch -d gui-016-dispatch-task-picker`
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

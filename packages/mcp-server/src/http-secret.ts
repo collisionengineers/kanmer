@@ -5,7 +5,19 @@ import { generateBearerToken, verifierForToken, type BearerVerifier } from "./ht
 
 const MAX_TOKEN_FILE_BYTES = 128;
 
-export async function createTokenFile(file: string): Promise<{ verifier: BearerVerifier; fingerprint: string }> {
+export interface TokenFileWriter {
+  write(handle: Awaited<ReturnType<typeof open>>, token: string): Promise<void>;
+}
+
+const defaultWriter: TokenFileWriter = {
+  async write(handle, token) {
+    await handle.writeFile(`${token}\n`, "ascii");
+    await handle.sync();
+  },
+};
+
+/** The optional writer is test-only fault injection for atomic cleanup coverage. */
+export async function createTokenFile(file: string, writer: TokenFileWriter = defaultWriter): Promise<{ verifier: BearerVerifier; fingerprint: string }> {
   const parent = await lstat(dirname(file));
   if (!parent.isDirectory() || parent.isSymbolicLink()) throw new Error("REMOTE_AUTH_SECRET_FILE_UNSAFE");
   const generated = generateBearerToken();
@@ -14,8 +26,7 @@ export async function createTokenFile(file: string): Promise<{ verifier: BearerV
   try {
     handle = await open(file, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600);
     created = true;
-    await handle.writeFile(`${generated.token}\n`, "ascii");
-    await handle.sync();
+    await writer.write(handle, generated.token);
     return { verifier: generated.verifier, fingerprint: generated.verifier.fingerprint };
   } catch (error) {
     if (created) await rm(file, { force: true });

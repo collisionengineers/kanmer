@@ -8,7 +8,7 @@ import { createKanmerMcpServer, projectFingerprint } from "./index.js";
 import { BearerAuthorizer, type BearerVerifier, unauthorizedHeaders } from "./http-auth.js";
 
 export { BearerAuthorizer, generateBearerToken, verifierForToken } from "./http-auth.js";
-export { createTokenFile, loadTokenFile } from "./http-secret.js";
+export { createTokenFile, loadTokenFile, type TokenFileWriter } from "./http-secret.js";
 
 export interface HttpAuthorizer {
   authorize(request: { headers: IncomingMessage["headers"] }): Promise<{ principal: string }>;

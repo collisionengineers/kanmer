@@ -6,6 +6,7 @@ export function renderDoctor(report: DoctorReport): string {
     `Kanmer doctor (${report.mode}) — ${report.status.toUpperCase()} (exit ${report.exitCode})`,
     `checks: ${report.counts.pass} pass, ${report.counts.warn} warn, ${report.counts.fail} fail, ${report.counts.skipped} skipped`,
   ];
+  if (report.cleanupErrors?.length) lines.push(`cleanup errors: ${report.cleanupErrors.join("; ")}`);
   let current = "";
   const firstFailure = report.checks.find((check) => check.status === "fail");
   if (firstFailure) lines.push(`first blocking layer: ${group(firstFailure.id)} (${firstFailure.id})`);

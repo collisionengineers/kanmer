@@ -70,3 +70,17 @@ test("late MCP factories close their client after a per-check timeout", async ()
   assert.equal(report.exitCode, 2);
   assert.equal(closes, 1);
 });
+
+test("doctor uses the injected clock for its total deadline", async () => {
+  let clock = 1_000;
+  const report = await runDoctor({
+    mode: "config",
+    now: () => clock,
+    totalTimeoutMs: 120_000,
+    config: { projectRoot: "fixture", expectedProject: "kanmer-proj-v1:fixture", remoteHostname: "doctor.example.test", secretReference: "protected-ref" },
+    dependencies: { checks: Object.fromEntries(DOCTOR_CHECK_IDS.map((id) => [id, async () => ({ status: "pass" })])) },
+  });
+  assert.equal(report.exitCode, 0);
+  assert.equal(report.status, "pass");
+  assert.equal(report.checks.some((check) => check.details?.reason === "doctor total deadline exceeded"), false);
+});

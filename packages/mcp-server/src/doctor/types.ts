@@ -84,9 +84,9 @@ export interface DoctorDependencies {
     readonly tools?: readonly string[];
     readonly protocolVersion?: string;
   }>;
-  readonly resolveDns?: (hostname: string) => Promise<readonly string[]>;
+  readonly resolveDns?: (hostname: string, signal?: AbortSignal) => Promise<readonly string[]>;
   readonly tls?: (request: { readonly hostname: string; readonly port: number; readonly signal?: AbortSignal }) => Promise<{ readonly protocol?: string; readonly issuer?: string; readonly sanMatch: boolean; readonly valid: boolean; readonly expiresAt?: string }>;
-  readonly probe?: (request: { readonly endpoint: string; readonly authorization?: string; readonly followRedirects?: boolean }) => Promise<{ readonly status: number; readonly location?: string; readonly challenge?: string }>;
+  readonly probe?: (request: { readonly endpoint: string; readonly authorization?: string; readonly followRedirects?: boolean; readonly signal?: AbortSignal }) => Promise<{ readonly status: number; readonly location?: string; readonly challenge?: string; readonly contentType?: string }>;
   readonly mcp?: (request: { readonly endpoint: string; readonly token: string; readonly signal?: AbortSignal }) => Promise<{ readonly projectFingerprint?: string; readonly tools: readonly string[]; readonly protocolVersion?: string; close(): Promise<void> }>;
   readonly token?: (signal?: AbortSignal) => Promise<string>;
   readonly expectedTools?: () => Promise<readonly string[]>;

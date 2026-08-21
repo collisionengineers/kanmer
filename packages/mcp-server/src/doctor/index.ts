@@ -94,7 +94,7 @@ async function defaultCheck(id: DoctorCheckId, context: DoctorCheckContext, depe
     catch { return safeFailure(id, context.mode, definition, "tunnel status unavailable"); }
   }
   if (id === "LOCAL_STATUS_READY" && dependencies.localStatus) {
-    try { const status = await dependencies.localStatus(); const healthy = (status.state === undefined || status.state === "ready") && status.authRequired === true && (!context.config.expectedProject || status.projectFingerprint === context.config.expectedProject); return healthy ? result(id, context.mode, "pass", definition.severity, detail("local authenticated host is ready")) : result(id, context.mode, "fail", definition.severity, detail("local host is absent, stopping, unauthenticated, or bound to another project")); }
+    try { const status = await dependencies.localStatus(); const healthy = status.state === "ready" && status.authRequired === true && (!context.config.expectedProject || status.projectFingerprint === context.config.expectedProject); return healthy ? result(id, context.mode, "pass", definition.severity, detail("local authenticated host is ready")) : result(id, context.mode, "fail", definition.severity, detail("local host is absent, stopping, unauthenticated, or bound to another project")); }
     catch { return safeFailure(id, context.mode, definition, "local status unavailable"); }
   }
   if (id === "LOCAL_BIND_LOOPBACK" && dependencies.localStatus) {
@@ -104,7 +104,7 @@ async function defaultCheck(id: DoctorCheckId, context: DoctorCheckContext, depe
   if (["AUTH_MISSING_REJECTED", "AUTH_WRONG_REJECTED", "AUTH_MISSING_PUBLIC_REJECTED"].includes(id) && dependencies.probe) {
     const endpoint = context.mode === "local" ? (context.config.localEndpoint ?? "") : `https://${context.config.remoteHostname ?? context.config.tunnel?.hostname ?? ""}/mcp`;
     const wrong = id === "AUTH_WRONG_REJECTED" ? `Bearer ${randomBytes(32).toString("base64url")}` : undefined;
-    try { const response = await dependencies.probe({ endpoint, ...(wrong ? { authorization: wrong } : {}), followRedirects: false }); const pass = response.status === 401 && Boolean(response.challenge) && !response.location; return pass ? result(id, context.mode, "pass", definition.severity, detail("unauthenticated request was rejected with a generic challenge", "401", "401")) : result(id, context.mode, "fail", definition.severity, detail("endpoint did not reject unauthenticated access as required")); }
+    try { const response = await dependencies.probe({ endpoint, ...(wrong ? { authorization: wrong } : {}), followRedirects: false, signal: context.signal }); const pass = response.status === 401 && Boolean(response.challenge) && !response.location; return pass ? result(id, context.mode, "pass", definition.severity, detail("unauthenticated request was rejected with a generic challenge", "401", "401")) : result(id, context.mode, "fail", definition.severity, detail("endpoint did not reject unauthenticated access as required")); }
     catch { return safeFailure(id, context.mode, definition, "bearer probe failed"); }
   }
   if (id === "PUBLIC_TLS_VALID" && dependencies.tls && context.config.remoteHostname) {
@@ -113,17 +113,17 @@ async function defaultCheck(id: DoctorCheckId, context: DoctorCheckContext, depe
   }
   if (id === "PUBLIC_ROUTE_NO_REDIRECT" && dependencies.probe) {
     const endpoint = `https://${context.config.remoteHostname ?? context.config.tunnel?.hostname ?? ""}/mcp`;
-    try { const response = await dependencies.probe({ endpoint, followRedirects: false }); const reachable = response.status === 401 || (response.status >= 200 && response.status < 300); return reachable && !response.location ? result(id, context.mode, "pass", definition.severity, detail("configured HTTPS route reached MCP without redirect", String(response.status))) : result(id, context.mode, "fail", definition.severity, detail("public route redirected or returned an intermediary response")); }
+    try { const response = await dependencies.probe({ endpoint, followRedirects: false, signal: context.signal }); const reachable = response.status === 401 || (response.status >= 200 && response.status < 300); const intermediary = /html|login|text\/html/i.test(response.contentType ?? ""); return reachable && !response.location && !intermediary ? result(id, context.mode, "pass", definition.severity, detail("configured HTTPS route reached MCP without redirect", String(response.status))) : result(id, context.mode, "fail", definition.severity, detail("public route redirected or returned an intermediary response")); }
     catch { return safeFailure(id, context.mode, definition, "public route probe failed"); }
   }
   if (id === "PUBLIC_DNS_RESOLVES" && dependencies.resolveDns && context.config.remoteHostname) {
-    try { const addresses = await dependencies.resolveDns(context.config.remoteHostname); return addresses.length ? result(id, context.mode, "pass", definition.severity, sanitizeDetails({ addressCount: addresses.length })) : result(id, context.mode, "fail", definition.severity, detail("hostname resolved to no addresses")); }
+    try { const addresses = await dependencies.resolveDns(context.config.remoteHostname, context.signal); return addresses.length ? result(id, context.mode, "pass", definition.severity, sanitizeDetails({ addressCount: addresses.length })) : result(id, context.mode, "fail", definition.severity, detail("hostname resolved to no addresses")); }
     catch { return safeFailure(id, context.mode, definition, "DNS resolution failed"); }
   }
   if (id === "LOCAL_PUBLIC_CONSISTENT") return result(id, context.mode, "fail", definition.severity, detail("trusted local status is required for local/public consistency"));
   if (id === "DIAGNOSTIC_REDACTION") return result(id, context.mode, "pass", definition.severity, detail("report fields are allowlisted and redacted before serialization"));
   if (id === "NO_BOARD_MUTATION") return result(id, context.mode, "pass", definition.severity, detail("doctor registry contains no board mutator or provider resource operation"));
-  return result(id, context.mode, "skipped", "info", detail("diagnostic dependency is not available in this invocation"));
+  return result(id, context.mode, "skipped", definition.severity, detail("diagnostic dependency is not available in this invocation"));
 }
 
 export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
@@ -161,7 +161,6 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
       if (closed || controller.signal.aborted) { try { await client.close(); } catch { cleanupErrors.push("late MCP session cleanup failed"); } throw new Error("doctor run cancelled"); }
       clients.set("local", client);
       const closeClient = () => client.close();
-      cleanups.push(closeClient);
       dependencies.registerCleanup?.(closeClient);
       return result(id, context.mode, "pass", definition.severity, detail("protected credential accepted by MCP transport"));
     }
@@ -170,7 +169,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
     if (id === "MCP_INITIALIZE_PUBLIC" && !clients.has("public") && dependencies.mcp && credentialToken) {
       const client = await dependencies.mcp({ endpoint: `https://${config.remoteHostname ?? config.tunnel?.hostname ?? ""}/mcp`, token: credentialToken, signal: controller.signal });
       if (closed || controller.signal.aborted) { try { await client.close(); } catch { cleanupErrors.push("late MCP session cleanup failed"); } throw new Error("doctor run cancelled"); }
-      clients.set("public", client); cleanups.push(() => client.close());
+      clients.set("public", client);
     }
     if (id === "MCP_INITIALIZE_LOCAL" || id === "MCP_INITIALIZE_PUBLIC") return clients.has(phase) ? result(id, context.mode, "pass", definition.severity, detail("official MCP client initialized")) : result(id, context.mode, "skipped", "info", detail("valid credential client was not established"));
     if (id === "PROJECT_FINGERPRINT_LOCAL" || id === "PROJECT_FINGERPRINT_PUBLIC") { const client = clients.get(phase); if (!client) return result(id, context.mode, "skipped", "info", detail("MCP client was not established")); return client.projectFingerprint && config.expectedProject && client.projectFingerprint === config.expectedProject ? result(id, context.mode, "pass", definition.severity, detail("project fingerprint matches expected project")) : result(id, context.mode, "fail", definition.severity, detail("project fingerprint does not match expected project")); }
@@ -185,7 +184,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
     const definition = doctorCheck(id);
     const add = (value: DoctorCheckResult) => { byId.set(id, value); checks.push(value); };
     if (!definition.modes.includes(options.mode)) { add(result(id, options.mode, "skipped", "info", detail(`not applicable to ${options.mode} mode`))); continue; }
-    if (Date.now() >= deadline) { totalTimedOut = true; controller.abort(); add(result(id, options.mode, "skipped", "info", detail("doctor total deadline exceeded"), definition.repair)); continue; }
+    if (now() >= deadline) { totalTimedOut = true; controller.abort(); add(result(id, options.mode, "skipped", "info", detail("doctor total deadline exceeded"), definition.repair)); continue; }
     const unmet = definition.prerequisites.filter((prerequisite) => { const prior = byId.get(prerequisite); return prior && (prior.status === "fail" || prior.status === "skipped"); });
     if (unmet.length) { add(result(id, options.mode, "skipped", "info", detail(`prerequisite ${unmet.join(", ")} did not pass`), definition.repair, unmet)); continue; }
     if (controller.signal.aborted) { add(result(id, options.mode, "skipped", "info", detail("doctor run cancelled"))); continue; }
@@ -203,9 +202,10 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
   await cleanup();
   options.signal?.removeEventListener("abort", abortExternal);
   const counts = { pass: checks.filter((check) => check.status === "pass").length, warn: checks.filter((check) => check.status === "warn").length, fail: checks.filter((check) => check.status === "fail").length, skipped: checks.filter((check) => check.status === "skipped").length };
-  const status = counts.fail ? "fail" : counts.warn ? "warn" : "pass";
+  const requiredSkipped = checks.filter((check) => check.status === "skipped" && check.severity === "required").length;
+  const status = counts.fail || requiredSkipped || cleanupErrors.length ? "fail" : counts.warn ? "warn" : "pass";
   const finished = options.now ? options.now() : Date.now();
   const cancelled = Boolean(options.signal?.aborted);
-  const exitCode = cancelled || totalTimedOut ? 2 : counts.fail ? 1 : 0;
+  const exitCode = cancelled || totalTimedOut ? 2 : counts.fail || requiredSkipped || cleanupErrors.length ? 1 : 0;
   return { schemaVersion: 1, mode: options.mode, startedAt: new Date(started).toISOString(), finishedAt: new Date(finished).toISOString(), durationMs: Math.max(0, finished - started), status, exitCode, checks, counts, ...(cleanupErrors.length ? { cleanupErrors } : {}) };
 }

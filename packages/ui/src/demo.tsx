@@ -20,7 +20,8 @@ import type {
   MovePosition,
   UpdateItemPatch,
 } from "@kanmer/core";
-import type { Group, GroupWithMembers } from "@kanmer/core";
+import type { Group } from "@kanmer/core";
+import { BOUNDARIES, DEFAULT_PROFILE_ID, DEFAULT_PROFILES, DEFAULT_PROOF_TYPES, deriveMembers, DOC_TYPES, FIRST_STAGE, GATE_EXEMPT_DIRS, LAST_STAGE, STAGE_IDS } from "@kanmer/core/browser";
 import type { KanmerApi } from "../../../apps/gui/src/shared/ipc.js";
 import { ClientContext, type ProjectClient } from "../../../apps/gui/src/renderer/src/lib/client.js";
 import { columnCards } from "../../../apps/gui/src/renderer/src/lib/board.js";
@@ -43,73 +44,6 @@ import { columnCards } from "../../../apps/gui/src/renderer/src/lib/board.js";
  *
  * Source: `packages/core/src/stages.ts` and `packages/core/src/profiles.ts`.
  */
-const STAGE_IDS = ["backlog", "preparing", "implementing", "review", "verifying", "done"] as const;
-const FIRST_STAGE = STAGE_IDS[0];
-const LAST_STAGE = STAGE_IDS[STAGE_IDS.length - 1];
-const DOC_TYPES = [
-  "research",
-  "files",
-  "plan",
-  "checklist",
-  "open-questions",
-  "post-implementation-report",
-  "proof",
-] as const;
-const GATE_EXEMPT_DIRS = ["reference", "scratch", "assets"] as const;
-const BOUNDARIES = [
-  "leave-backlog",
-  "leave-preparing",
-  "enter-review",
-  "enter-verifying",
-  "enter-done",
-] as const;
-const DEFAULT_PROOF_TYPES = ["visual", "test-output", "command-log"] as const;
-const DEFAULT_PROFILE_ID = "fix";
-const DEFAULT_PROFILES: Record<string, Record<string, string[]>> = {
-  feature: {
-    "leave-backlog": ["governing-doc"],
-    "leave-preparing": ["research", "files", "plan", "checklist", "questions-resolved"],
-    "enter-review": ["post-implementation-report", "questions-resolved"],
-    "enter-done": ["proof", "questions-resolved"],
-  },
-  fix: {
-    "leave-preparing": ["files", "plan", "questions-resolved"],
-    "enter-done": ["proof", "questions-resolved"],
-  },
-  chore: {
-    "leave-preparing": ["plan", "questions-resolved"],
-    "enter-done": ["proof", "questions-resolved"],
-  },
-  spike: {
-    "enter-done": ["research", "questions-resolved"],
-  },
-  custom: {},
-};
-
-/**
- * `deriveMembers`, inlined for the same reason — the real one lives in
- * `packages/core/src/groups.ts`, which imports `node:fs`.
- *
- * The rule it encodes is the load-bearing part and is copied faithfully:
- * archived members are **listed** so nothing silently disappears, but excluded
- * from every count, because progress means "of the work still live".
- */
-function deriveDemoMembers(group: Group, list: Item[]): GroupWithMembers {
-  const members = list
-    .filter((i) => (i.groups ?? []).includes(group.id))
-    .map((i) => ({ id: i.id, title: i.title, status: i.status, archived: i.archived }))
-    .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
-  const live = members.filter((m) => !m.archived);
-  const progress: Record<string, number> = Object.fromEntries(STAGE_IDS.map((s) => [s, 0]));
-  for (const m of live) progress[m.status] = (progress[m.status] ?? 0) + 1;
-  return {
-    ...group,
-    members,
-    progress,
-    total: live.length,
-    complete: live.filter((m) => m.status === LAST_STAGE).length,
-  };
-}
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -637,7 +571,14 @@ export function createDemoClient(seed?: {
       const counts = Object.fromEntries(
         Object.keys(present).map((t) => [t, t in have ? 1 : 0]),
       );
-      return { docs: present, checklist, counts, references: [] };
+      return {
+        docs: present,
+        checklist,
+        counts,
+        documentPaths: Object.keys(have).sort(),
+        references: [],
+        scratch: [],
+      };
     },
     getDocTypes: async () => structuredClone(DEMO_DOC_TYPES),
     getDocModel: async () => ({
@@ -692,7 +633,7 @@ export function createDemoClient(seed?: {
         .map((g) => structuredClone(g)),
     getGroup: async (id) => {
       const g = groups.find((x) => x.id === id);
-      return g ? deriveDemoMembers(structuredClone(g), items) : null;
+      return g ? deriveMembers(structuredClone(g), items, LAST_STAGE) : null;
     },
     createGroup: async (kind, title, body) => {
       const now = new Date().toISOString();

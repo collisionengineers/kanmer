@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T23:00:46.333Z
+updated_at: 2026-08-21T23:05:24.982Z
 lane_limit: 3
 stop_reason:
 ---
@@ -206,6 +206,8 @@ stop_reason:
 
 - 2026-08-21T22:58:17.518Z — 2026-08-21T22:57:42.881Z — MCP-008 verified and closed out on merged main. Fresh gates pass; status moved Verifying→Done at 22:57:04.489Z. PR #130 is MERGED (2026-08-21T20:05:10Z), merge 52073fc6521ae25b07d8f4b2c54b6d563f62cc21; implementation SHAs 9d0c8364, 5b4a9544, ca104f45. npm ci exit 1 EPERM Rollup unlink preserved; repair install exit 0. Build, MCPB build/check, headless 6/6, npm test core 263/GUI 352/HTTP 61/scripts 79, typecheck, manual, plugin:check, shared verify, diff-check passed. Real Claude Desktop install/read/write/restart/uninstall/cleanup remains INCONCLUSIVE with no authorized host; checklist intentionally retains those unchecked. No MCP-008 worktree or branch exists; take_ticket release completed.
 
+- 2026-08-21T23:05:15.784Z — GUI-017 assigned to /root/gui099_executor in .worktrees/gui-017 on gui-017-in-app-manual; scope is in-app manual audit/reconciliation only (no GUI-016 or provider work); historical PR #25 implementation will be verified and unavailable interactive evidence preserved explicitly.
+
 ## Resume instruction
 
 Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's complete document inventory, links, taken state and get_doc_gates before dispatching. Reconcile the ledger against live state and do not replay a completed action solely because this run was interrupted. Before every assignment/result/stage transition, update and read this history record and automation/current.md.
@@ -389,3 +391,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T23:00:46.333Z — DOC-005 reached Review after fresh enter-review gates passed. PR #138 (75dc1ad955369db2cd0e85bd486441db94913c5e) is open on doc-005-operating-rule; it fixes malformed shorthand PR links in the historical DOC-005 release-notes implementation and adds a regression test. Checklist/report/scratch are written and read back; verify:agents-block 31/31, script tests 80/80, typecheck, release-notes output, build:core and diff-check passed. The first missing-core-dist release-notes exit 1 remains recorded. Stop for independent root review; no merge or cleanup.
 
 - 2026-08-21T23:01:38.033Z — GUI-016 closeout complete: PR #24 merge cfd41006e924664f4f3fb2c3feb5dce09551822b verified; branch gui-016-dispatch-task-picker deleted, .worktrees/gui-016 removed, fetch --prune/worktree prune completed, and ticket release confirmed. Final board/checklist readback complete; no source changes.
+
+
+- 2026-08-21T23:05:24.982Z — DOC-005 closeout complete: PR #138 merged at af6edf7f782b12e2dac455276e6804ab491d0bd3; merged-main proof and Outcome were final/read back; checklist is 16/16. Removed .worktrees/doc-005, deleted local and remote doc-005-operating-rule, ran git fetch --prune and git worktree prune, and released the ticket through MCP. Live item is Done with no taken_at, branch, or worktree; no source changes remain in the lane.

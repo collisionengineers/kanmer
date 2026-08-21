@@ -37,3 +37,13 @@ Implementation is ready for independent re-review; do not merge this branch.
 
 - The first concurrent MCP HTTP run had one transient `TUNNEL_READINESS_TIMEOUT` (60/61); the isolated readiness test passed, and the subsequent sequential MCP HTTP rerun passed 61/61.
 - `npm run test:scripts` passed 66/66.
+
+## Third remediation evidence (0ac5b2dd follow-up)
+
+- Unified remote registry persistence with the existing settings writers through a shared async lock and atomic temp-file/rename writes; concurrent project registration preserves both the remote registry and unrelated settings fields.
+- Canonicalized persisted project, board, and repository paths before identity matching (including Windows slash/drive spellings), dropped orphan project/config records, rejected invalid secret ids and unsafe credential paths, and retained collision-safe reconcile/remove behavior.
+- Auto-start and overview validate absolute existing project/board roots and surface missing persisted projects without spawning. Doctor temp directories now carry owned PID markers, are cleaned only when stale/dead, and cancellation/timeout/error paths suppress late callbacks and remove token material.
+- Tightened development URL validation to require an exact HTTP(S) origin/path without query or fragment for navigation and IPC sender checks. The token dialog now exposes a descriptive accessible name/description, masked/revealed labels, expiry cleanup, and project cards show state/action/severity, health dimensions, doctor summary and open-project action.
+- Added registry path/orphan and Windows canonicalization tests plus the renderer accessibility/multi-project integration test.
+
+Final follow-up rails: focused remote tests 5 files/18 tests passed; full GUI suite 37 files/334 tests passed; root typecheck passed; GUI build passed; git diff --check passed. No standalone MCP bundle bytes were changed.

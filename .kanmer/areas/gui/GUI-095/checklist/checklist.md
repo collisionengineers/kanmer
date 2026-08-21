@@ -40,3 +40,7 @@
 ## Explicitly deferred
 
 Live public-route evidence against a real Cloudflare route, full Electron integration/accessibility/Windows canary evidence, and any OpenAI provider lifecycle remain outside this implementation pass. The OpenAI provider is tracked by [[GUI-104]]. No checkbox above claims those deferred items.
+
+## Remediation evidence note
+
+The third remediation adds shared settings locking/atomic sync, Windows canonical path normalization, orphan/unsafe-record reconciliation, pre-spawn and cancelled-doctor cleanup, startup missing-path validation, exact dev URL validation, and the renderer project-card/token-dialog integration test. Final follow-up evidence is 37 GUI test files/334 tests, focused remote tests 5 files/18 tests, root typecheck, GUI build, and git diff --check all passing. Deferred public-route, live Electron/Windows canary, and OpenAI-provider evidence remain explicitly deferred prose only.

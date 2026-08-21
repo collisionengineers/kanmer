@@ -326,3 +326,9 @@ Stop when the built GUI can securely configure and operate independent remote ac
 ## Roadmap amendment — split provider lifecycles
 
 GUI-095 owns only the named Cloudflare Tunnel path: executable reference, tunnel identity, exact hostname, credential-file reference, Kanmer bearer lifecycle, doctor/status and per-project start/stop. Exclude OpenAI tunnel-client/profile management; that work moves to [[GUI-104]]. Exclude Access, account/DNS automation, Quick Tunnels, remote-managed tokens and Worker-hosted MCP.
+
+## Remediation amendment — 2026-08-21
+
+Implemented the previously blocked bounded lifecycle surfaces: deterministic multi-project auto-start with a maximum-two semaphore and independent failures; exclusive owner records for duplicate headless detection without takeover; explicit remove/reconcile operations; a registered-project overview; bounded tracked doctor/remote-child cleanup with exact owned-tree escalation; project/frame-bound one-time delivery; transactional rotation ordering; expected config/runtime versions; exact renderer-origin validation; allowlisted child environments; enriched safe status/doctor dimensions; and Electron Linux safeStorage backend aliases.
+
+The remaining evidence boundary is explicit: no live Cloudflare public endpoint or credentials are fabricated, and full Electron integration/accessibility/Windows canary evidence remains review evidence. OpenAI provider lifecycle remains [[GUI-104]].

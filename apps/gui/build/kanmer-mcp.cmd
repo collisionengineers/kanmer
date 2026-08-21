@@ -17,7 +17,7 @@ if not exist "%SystemRoot%\System32\reg.exe" (
   >&2 echo Kanmer MCP launcher: the system registry tool is missing.
   exit /b 65
 )
-for /f "tokens=1,2,*" %%A in ('"%SystemRoot%\System32\reg.exe" query "HKCU\Software\Kanmer" /v "InstallDir" 2^>nul') do (
+for /f "tokens=1,2,*" %%A in ('%SystemRoot%\System32\reg.exe query "HKCU\Software\Kanmer" /v "InstallDir" 2^>nul') do (
   if /I "%%A"=="InstallDir" if /I "%%B"=="REG_SZ" if not defined INSTALL_DIR set "INSTALL_DIR=%%C"
 )
 if not defined INSTALL_DIR (
@@ -50,7 +50,7 @@ exit /b 65
 :probe
 call :resolve
 if errorlevel 1 exit /b %ERRORLEVEL%
-echo Kanmer MCP launcher: healthy (%INSTALL_DIR%)
+echo Kanmer MCP launcher: healthy
 exit /b 0
 
 :launch

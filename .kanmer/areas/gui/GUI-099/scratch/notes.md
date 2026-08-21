@@ -1,0 +1,1 @@
+Implementation and controlled Windows lifecycle evidence complete. PR #124 is ready for independent review; author must not review or merge. Exact exits, the retained first concurrent npm test failure, clean rerun, installer paths, shim hash, and cleanup are recorded in checklist and post-implementation-report.

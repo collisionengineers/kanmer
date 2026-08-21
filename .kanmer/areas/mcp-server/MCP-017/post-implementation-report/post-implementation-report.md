@@ -25,8 +25,8 @@
 ## Traceability
 
 - Commit: `dd9f736050dcf029db8c42bcebe258875500410d`
-- PR: pending creation.
+- PR: #105 — https://github.com/collisionengineers/kanmer/pull/105 (merged 2026-08-21; merge commit 1fa516248610e8294819f50572b5d67e8495bb30).
 
 ## Risks and follow-up
 
-The helper deliberately has no filesystem or Git access, matching the production guard's current direct ownership property. It does not restore the obsolete MCP-007 Git probe or overlap CORE-034's board-worktree policy. Merged-main verification must run `npm run plugin:check` from the normal checkout and record its exit/output.
+The helper deliberately has no filesystem or Git access, matching the production guard's current direct ownership property. It does not restore the obsolete MCP-007 Git probe or overlap CORE-034's board-worktree policy. Merged-main verification completed on main at 1fa516248610e8294819f50572b5d67e8495bb30; npm run plugin:check passed with the committed bundle byte parity.

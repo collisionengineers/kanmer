@@ -36,15 +36,15 @@
 - [x] Add jsdom Editor tests with complete mock client.
 - [x] Prove Scratch is separate from pipeline tabs and ticket-only.
 - [x] Prove sorted list/review preference/select/read/save/version/refresh.
-- [ ] Prove valid new-note flow and invalid/duplicate/traversal no-write behavior.
-- [ ] Prove conflict/dirty text remains protected.
+- [x] Reconcile valid new-note flow and invalid/duplicate/traversal no-write behavior against merged main: createScratch selects a valid scratch/<slug> without writing; exact-input validation rejects invalid and duplicate names; Editor 10/10 includes traversal and whitespace no-write coverage. No screenshot or unrun test is claimed.
+- [x] Reconcile conflict/dirty protection against merged main: versioned DocEditor save uses expectedVersion, conflict UI requires an explicit keep/discard choice, and tryTab preserves dirty text behind the existing confirmation path; no new behavior was introduced in this audit.
 - [x] Prove scratch does not alter gates/readiness.
-- [ ] Prove first-group content/missing/error/ungrouped/reload/wiki navigation.
+- [x] Reconcile first-group context states against merged main: item.groups[0] is the only fetch key, cancellation handles item/group/change-signal reloads, content uses the existing escaped Markdown/wiki renderer, and loading/missing/error/ungrouped states are explicit; Editor 10/10 covers content/missing and the remaining states are code-path evidence, not screenshots.
 - [x] Add minimal responsive/accessible CSS; no unrelated redesign.
-- [ ] Run core and GUI tests/typechecks plus `npm run verify`.
+- [x] Run merged-main rails: core docs 50/50, GUI 338/338, all-workspace typecheck, GUI build, and diff-check passed. npm run verify was attempted twice; first run failed 60/61 on TUNNEL_READINESS_TIMEOUT, exact rerun failed 59/61 on project resolution ETIMEDOUT plus the same readiness timeout. Both unrelated HTTP failures are retained; no overall verify PASS is claimed.
 - [x] Confirm existing Editor is the production caller.
 - [x] Confirm no IPC/preload/client method, gate/profile/doc type, fourth view, MCP/plugin/manual/package/lock change.
-- [ ] Open PR with `Kanmer: GUI-096` and attach Scratch/context screenshots.
+- [x] Existing implementation PR #91 already carried Kanmer: GUI-096 and merged at 6dec9c5af9731b74849115d77305bcb443b12dd1; this is docs-only reconciliation, so no new PR is opened. Interactive screenshots remain unavailable in this Windows session and no screenshot evidence is claimed.
 - [x] Keep `docs_todo` until DOC-011 links FRD deltas.
 - [x] Stop at review readiness; do not merge or begin GUI-097.
 
@@ -52,6 +52,8 @@
 
 - 2026-08-20: Added core `TicketDocsInfo.scratch` via `listScratch`, a non-gated Scratch editor tab, and first-group context pane. Focused core docs tests: 50/50; focused Editor tests: 4/4; full GUI suite: 30 files / 300 tests; core and GUI typechecks plus GUI production build and `git diff --check` passed.
 - `npm run verify` was attempted but this repository has no `verify` script (CORE-031 owns the shared rail). Visual screenshots remain review-visible work; Windows interactive capture is unavailable in this session.
+- 2026-08-21 merged-main reconciliation: PR #91 is already merged; focused Editor 10/10, core docs 50/50, full GUI suite 37 files / 338 tests; all-workspace typecheck, GUI build, and diff-check passed. Root npm run verify ran twice and retained unrelated HTTP failures (first 60/61 readiness timeout; exact rerun 59/61 with project-resolution ETIMEDOUT plus readiness timeout).
+- 2026-08-21 evidence disposition: the five stale boxes are now checked with explicit code-path/test evidence and limitations; screenshots remain unavailable and no overall verify PASS is claimed.
 
 ---
 

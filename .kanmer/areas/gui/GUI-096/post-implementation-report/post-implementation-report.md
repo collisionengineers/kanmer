@@ -31,3 +31,9 @@ PR #91 is ready for independent review. Interactive screenshots could not be cap
 ## Verify on merged main
 
 Run the core docs test, full GUI test suite, both typechecks, GUI build, and `git diff --check`. The root `verify` rail can only be included after CORE-031 provides it.
+
+## Merged-main reconciliation — 2026-08-21
+
+No new implementation is proposed. PR #91 is already merged; this pass reconciles its five stale evidence boxes against current main. Focused Editor tests passed 10/10; core docs 50/50; full GUI 338/338; all-workspace typecheck; GUI build; and diff-check all passed. The shared npm run verify rail was attempted twice and failed only in unrelated HTTP environment tests: first 60/61 (TUNNEL_READINESS_TIMEOUT), exact rerun 59/61 (same timeout plus project resolution ETIMEDOUT). Failures remain recorded and no overall verify PASS is claimed.
+
+The implementation existing validation, versioned conflict/dirty handling, and first-group context state paths were inspected on merged main; existing tests cover core scratch/read/save, invalid no-write, and content/missing cases. Interactive screenshots unavailable in this Windows session; none claimed.

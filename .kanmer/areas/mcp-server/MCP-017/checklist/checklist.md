@@ -25,3 +25,11 @@
 - 2026-08-21 verification: focused guard test 5/5; `npm run test:scripts` 71/71; `npm run build` passed; linked-worktree `npm run plugin:check` refused with exit 1 as designed.
 - First exact `npm test` retained a pre-existing core migration timeout (254/255; Vitest 5s timeout); after build, the exact command passed with core 255/255, GUI 318/318, HTTP 3/3, scripts 71/71.
 - First `npm run typecheck` failed before build because the fresh worktree lacked generated core declarations; after build, all workspaces typechecked successfully. `git diff --check` passed.
+
+## Closeout — MCP-017
+
+- [x] PR #105 is merged and proof records the merge URL, date, and SHA.
+- [x] Implementation commit dd9f736050dcf029db8c42bcebe258875500410d is reachable from merged main.
+- [x] Independent review PASS is recorded in scratch/review.md.
+- [x] Merged-main proof is written and gates pass.
+- [x] Exact worktree .worktrees/mcp-017 removed; local/remote branch mcp-017-plugin-checkout-guard deleted; fetch --prune/worktree prune completed; ticket released.

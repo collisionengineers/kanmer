@@ -53,3 +53,15 @@ NEEDS CHANGES — do not merge PR #91. Resolve [[GUI-103]], update the PR, and r
 ## Verdict
 
 PASS — the blocking whitespace-normalization defect is fixed. Merge PR #91 and move GUI-096 to Verifying.
+
+# Independent review — GUI-096
+
+Disposition: PASS.
+
+- PR #91 is MERGED on main at 6dec9c5af9731b74849115d77305bcb443b12dd1; all recorded feature/remediation commits are reachable.
+- The author packet was reread: research/files/plan/checklist/open-questions/report/proof are present; checklist is 44/44 and enter-review gates pass.
+- Independent merged-main run: `npm test -w @kanmer/gui` exit 0, 37 files / 338 tests passed, including Editor 10/10; no GUI-096 regression.
+- Scope matches the ticket and governing docs: gate-exempt scratch tab, first-group read-only context pane, existing IPC/core document surface; no GUI-097 scope.
+- The packet correctly retains unrelated shared-verify HTTP failures and unavailable screenshots; no blocking finding.
+
+Reviewed by root controller on 2026-08-21 after the author lane stopped at Review.

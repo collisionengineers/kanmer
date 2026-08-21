@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T18:36:00.000Z
+updated_at: 2026-08-21T19:22:17.541Z
 lane_limit: 3
 stop_reason:
 ---
@@ -144,6 +144,32 @@ stop_reason:
 
 - 2026-08-21T18:36:00.000Z — DOC-011 closeout cleanup verified after merged-main reachability: exact worktree .worktrees/doc-011 removed, local branch doc-011-compiled-workflow deleted after merge SHA ancestry check, origin branch deleted, fetch --prune/worktree prune completed; board ticket remains Done, released, checklist 63/63, gates pass.
 
+- 2026-08-21T18:41:27.300Z — MCP-017 merged-main verification completed: PR #105 merge 1fa516248610e8294819f50572b5d67e8495bb30 and implementation dd9f736050dcf029db8c42bcebe258875500410d are reachable; focused guard 5/5, scripts 71/71, plugin:check 30 tools/byte parity, npm test core 256 + GUI 337 + HTTP 61 + scripts 71, typecheck/build/diff-check all exit 0. Proof e42516ba8fcf17e4 was written, report traceability corrected, and MCP-017 moved Verifying→Done. Exact worktree/branch closeout remains for the next handoff.
+
+- 2026-08-21T18:47:00.000Z — MCP-017 closeout completed after merged-main proof: checklist normalized to 20/20; ticket released; exact .worktrees/mcp-017 removed; local and origin mcp-017-plugin-checkout-guard branches deleted; fetch --prune and worktree prune passed.
+
+- 2026-08-21T18:47:00.000Z — GUI-082 author lane reconciled through local dev MCP after packaged transport loss: report and checklist written, implementation 74f35c1a recorded, gates pass, moved Implementing→Review, pushed branch, and opened PR #125. Independent review/merge is assigned to /root/mcp017_verifier; author lane will not merge.
+
+- 2026-08-21T18:48:53.097Z — GUI-099 executor result: implementation completed on recorded gui-099-installer-launcher/.worktrees/gui-099; PR #124 opened and moved Implementing→Review at 2026-08-21T18:48:53.097Z. Checklist is 65/65, post-implementation report is present, ADR-0018 is linked, docs_todo is false, and enter-review gates pass. Evidence includes the retained first concurrent npm test failure, clean rerun, exact installer/launcher lifecycle exits, packed/source shim hash, stdio smoke, and restored baseline. Author lane stopped; independent review/merge is required, with no provider registration or GUI-100/101/102 scope.
+
+- 2026-08-21T18:50:52.500Z — Independent GUI-082 review PASS: PR #125 at 74f35c1a matched its packet and FRD-019/GUI-072 constraints; focused stylesheet 5/5, GUI 319/319, GUI typecheck/build:ui/diff-check, and root npm test (core 255, GUI 319, HTTP 3, scripts 66) passed. Review scratch/review.md was written and read back. PR #125 merged at 802758af0d188597a4ab2783ecf9b70c0bf58631; GUI-082 moved Review→Verifying. Exact worktree/branch closeout and merged-main proof remain.
+
+- 2026-08-21T19:02:30.846Z — Lane 3 assigned to /root/gui099_executor for GUI-100 on recorded gui-100-codex-shim-connect/.worktrees/gui-100 after GUI-099 merged at d9379d32. GUI-100 packet, EPIC-011/HZN-007 context, complete docs, links and gates were reread; Preparing→Implementing is passable. Worktree was created from origin/main and the ticket was taken without force. Implement only the Codex Connect shim registration/probe/migration scope; GUI-101/102 remain gated downstream and no real-host/provider proof may be claimed here.
+
+
+- 2026-08-21T19:02:30.846Z — GUI-100 was taken by /root/gui099_executor on gui-100-codex-shim-connect/.worktrees/gui-100 after GUI-099 merged at d9379d32. The packet, EPIC-011/HZN-007 context, links and gates were reread; work is limited to Codex Connect shim registration/probe/migration. GUI-101/GUI-102 remain downstream and no real-host/provider proof is claimed.
+
+
+- 2026-08-21T19:03:49.579Z — GUI-096 was taken by /root/gui082_executor on gui-096-merged-evidence-audit/.worktrees/gui-096 from origin/main for merged-main evidence reconciliation only. Existing PR #91 and implementation commits are being audited; no new GUI-097 scope is authorized.
+
+
+- 2026-08-21T19:04:23.566Z — CORE-036 was taken by core036-take on core-036-tag-push-release-verification/.worktrees/core-036. Existing clean worktree was reused after packet/gate/context reread; implementation is limited to tag-push release verification and must stop at independent review.
+
+
+- 2026-08-21T19:20:00.000Z — Independent review of GUI-096 PASS: PR #91 is merged and reachable; current-main GUI suite passed 37 files / 338 tests (Editor 10/10), with no blocking finding. GUI-096 moved Review→Verifying→Done after proof append; ticket released. Exact .worktrees/gui-096 removed, local audit branch deleted, and worktree prune completed. Screenshots and unrelated HTTP verify failures remain explicitly unclaimed.
+
+- 2026-08-21T19:22:17.541Z — GUI-100 implementation is review-ready on gui-100-codex-shim-connect/.worktrees/gui-100 at commit 2b5915690139e67bbc21acab0ede00d8c2365966; PR #126 opened. Checklist is 68/68, post-implementation report and ADR-0018 link are present, docs_todo is false, and Implementing→Review passed. Focused/full GUI/core, typecheck, build, manual, numbering, root npm test (including MCP HTTP 61/61 and scripts 75/75) and diff checks pass. The pre-build scripts failure and earlier bounded HTTP timeouts remain preserved in checklist; no real-host/provider proof is claimed. Stop at Review for independent review; GUI-101/102 remain downstream.
+
 ## Resume instruction
 
 Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's complete document inventory, links, taken state and get_doc_gates before dispatching. Reconcile the ledger against live state and do not replay a completed action solely because this run was interrupted. Before every assignment/result/stage transition, update and read this history record and automation/current.md.
@@ -201,3 +227,9 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T18:28:01.199Z — MCP-017 implementation lane completed on recorded branch/worktree. Commit dd9f736050dcf029db8c42bcebe258875500410d; PR #105 is open; ticket moved Implementing→Review after a fresh gate check. Focused guard 5/5, scripts 71/71, build/typecheck/diff-check passed; exact npm test first retained a core migration timeout and then passed after build (core 255, GUI 318, HTTP 3, scripts 71). Linked-worktree plugin:check correctly refused. Author lane stops at Review; independent reviewer must own review/merge.
 
 - 2026-08-21T18:33:00.000Z — Run-ledger recovery: an empty write was detected before cleanup and the prior committed run record was restored verbatim through Kanmer. DOC-011 checklist was reconciled to 63/63, ticket released after merged-main proof (PR #81, merge SHA 920ecf957e51ccc299b21ff4ee88d9e0ee24e81d), and gates pass. Exact worktree/branch cleanup remains pending verification. MCP-017 independent review, GUI-082 implementation, and GUI-099 implementation remain active lanes; no merge authority is delegated to the controller.
+
+- 2026-08-21T19:04:05.011Z — Lane 3 assigned to /root/gui082_executor for GUI-096 merged-main evidence reconciliation. Complete packet, EPIC-009/HZN-004/HZN-007 context, links, gates, existing PR #91 merge/proof, and prior checklist limitations were reread. A fresh branch/worktree gui-096-merged-evidence-audit/.worktrees/gui-096 was created from origin/main and taken without force. Reconcile the five remaining evidence boxes against merged main; preserve limitations honestly, do not start GUI-097, and hand off to /root for independent review.
+
+- 2026-08-21T19:15:56.650Z — GUI-096 merged-main evidence reconciliation completed on d9379d32; checklist normalized 44/44, proof/report updated with retained verify failures and screenshot limitation; no code/PR change; moved Implementing→Review for independent root review.
+
+- 2026-08-21T19:21:21.234Z — GUI-084 assigned to /root/gui082_executor on gui-084-notification-wording-style/.worktrees/gui-084 after packet, HZN-005/HZN-007 context, links, FRD-018, and gates were reread. The styling contract was resolved to cross-platform native notifications with OS-owned chrome; checklist is 5/6 with the report/proof/closeout item intentionally pending. Implement only the notification wording/styling scope, preserve the no-visual-pass limitation, and stop at Review for independent root review.

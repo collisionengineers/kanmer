@@ -1,0 +1,3 @@
+## GUI-096 merged-main reconciliation — 2026-08-21
+
+Taken audit branch gui-096-merged-evidence-audit / .worktrees/gui-096. Existing PR #91 merge remains authoritative. Focused Editor 10/10, core docs 50/50, GUI 338/338, all-workspace typecheck, GUI build, and diff-check passed. Shared verify first run: HTTP 60/61 with readiness timeout; exact rerun: 59/61 with project-resolution ETIMEDOUT plus readiness timeout. Failures are retained and unrelated to GUI-096; no overall verify PASS or screenshot evidence is claimed. Five stale checklist boxes were reconciled with explicit limitations; independent review handoff remains required.

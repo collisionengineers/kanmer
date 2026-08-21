@@ -124,3 +124,22 @@ Merged-main verification notes (2026-08-22):
 - npm run typecheck, npm run build, node packages/mcp-server/src/smoke.mjs (224/224), npm run smoke:protocol (46/46), npm run smoke:discovery (13/13), npm run check:manual, npm run verify:skills, npm run plugin:check, and git diff --check: PASS.
 - Prior initial typecheck failure and GitHub Windows path-alias CI failure remain recorded in proof; neither was weakened or erased.
 - Live authorized provider dispatch/start/observe/cancel remains INCONCLUSIVE; no provider success is claimed. Default-disabled refusal and policy/smoke coverage are the accepted deterministic evidence.
+
+# Closeout checklist
+
+Append to the ticket's checklist.md when closeout starts
+(`set_ticket_doc doc: "checklist", append: true`) so the human watches
+cleanup progress live.
+
+---
+
+## Closeout — MCP-020
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] No recorded worktree remained to remove
+- [ ] No recorded branch remained to delete
+- [ ] git refs/worktrees checked; board worktree preserved
+- [ ] take_ticket action: "release"

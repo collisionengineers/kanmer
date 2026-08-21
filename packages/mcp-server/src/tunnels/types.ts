@@ -75,6 +75,8 @@ export interface TunnelProcess {
 
 export interface TunnelAdapter {
   start(target: TunnelTarget): Promise<TunnelProcess>;
+  getStatus?(): TunnelStatus;
+  subscribe?(listener: (status: TunnelStatus) => void): () => void;
 }
 
 export interface TunnelLogEvent {

@@ -3,7 +3,7 @@ import { chmod, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path, { isAbsolute } from "node:path";
 import { cloudflaredConfig, type CloudflaredTunnelOptions, validateCloudflaredTunnel } from "./cloudflared-config.js";
-import type { TunnelAdapter, TunnelLogEvent, TunnelProcess, TunnelTarget } from "./types.js";
+import type { TunnelAdapter, TunnelLogEvent, TunnelProcess, TunnelStatus, TunnelTarget } from "./types.js";
 import { allocateLoopbackPort, waitForTunnelReadiness } from "./readiness.js";
 import { validateCloudflaredExecutable } from "./cloudflared-validate.js";
 import { TunnelLogBuffer } from "./logs.js";
@@ -54,15 +54,41 @@ async function stopOwnedChild(child: ChildProcess, exited: Promise<unknown>): Pr
 
 export class CloudflaredAdapter implements TunnelAdapter {
   private readonly diagnostics = new TunnelLogBuffer();
+  private readonly listeners = new Set<(status: TunnelStatus) => void>();
+  private status: TunnelStatus = { state: "stopped", provider: "cloudflared", attempt: 0, changedAt: new Date().toISOString() };
+  private active?: TunnelProcess;
+  private starting = false;
   constructor(private readonly options: CloudflaredAdapterOptions, private readonly spawnProcess: CloudflaredSpawner = spawn) {}
 
   getDiagnostics(): readonly TunnelLogEvent[] { return this.diagnostics.snapshot(); }
+  getStatus(): TunnelStatus { return { ...this.status }; }
+  subscribe(listener: (status: TunnelStatus) => void): () => void {
+    this.listeners.add(listener);
+    listener(this.getStatus());
+    return () => this.listeners.delete(listener);
+  }
+
+  private transition(state: TunnelStatus["state"], target?: TunnelTarget, patch: Partial<TunnelStatus> = {}): void {
+    this.status = {
+      ...this.status,
+      ...patch,
+      state,
+      changedAt: new Date().toISOString(),
+      ...(target ? { projectFingerprint: target.projectFingerprint, authGeneration: target.authGeneration } : {}),
+    };
+    for (const listener of this.listeners) listener(this.getStatus());
+  }
 
   async start(target: TunnelTarget): Promise<TunnelProcess> {
-    validateCloudflaredTunnel(this.options, target);
-    await validateRegularFile(this.options.executable, "TUNNEL_EXECUTABLE_INVALID", false);
-    await (this.options.validateExecutable?.(this.options.executable) ?? validateCloudflaredExecutable({ executable: this.options.executable }));
-    await validateRegularFile(this.options.credentialsFile, "TUNNEL_CREDENTIALS_FILE_UNSAFE", true);
+    if (this.active || this.starting) throw new Error("TUNNEL_ALREADY_ACTIVE");
+    this.starting = true;
+    const attempt = this.status.attempt + 1;
+    this.transition("validating", target, { attempt });
+    try {
+      validateCloudflaredTunnel(this.options, target);
+      await validateRegularFile(this.options.executable, "TUNNEL_EXECUTABLE_INVALID", false);
+      await (this.options.validateExecutable?.(this.options.executable) ?? validateCloudflaredExecutable({ executable: this.options.executable }));
+      await validateRegularFile(this.options.credentialsFile, "TUNNEL_CREDENTIALS_FILE_UNSAFE", true);
     const metricsPort = this.options.metricsPort ?? await allocateLoopbackPort();
     if (!Number.isSafeInteger(metricsPort) || metricsPort < 1 || metricsPort > 65_535) throw new Error("TUNNEL_METRICS_PORT_INVALID");
     const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-"));
@@ -73,6 +99,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
     try {
       await writeFile(configPath, cloudflaredConfig(this.options, target), { encoding: "utf8", mode: 0o600, flag: "wx" });
       await chmod(configPath, 0o600);
+      this.transition("starting", target, { attempt });
       const spawned = this.spawnProcess(this.options.executable, ["tunnel", "--no-autoupdate", "--metrics", `127.0.0.1:${metricsPort}`, "--config", configPath, "run", this.options.tunnelId], {
         cwd: directory,
         env: minimalEnvironment(),
@@ -96,18 +123,35 @@ export class CloudflaredAdapter implements TunnelAdapter {
       await (this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`) ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${metricsPort}/ready` }));
       const cleanup = () => rm(directory, { recursive: true, force: true });
       void exited.then(cleanup, cleanup);
-      return {
+      let intentionalStop = false;
+      const handle: TunnelProcess = {
         pid: spawned.pid,
         exited,
         checkReadiness: () => this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`) ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${metricsPort}/ready` }),
-        async stop() { await stopOwnedChild(spawned, exited); },
+        stop: async () => {
+          intentionalStop = true;
+          this.transition("stopping", target, { attempt, pid: spawned.pid });
+          await stopOwnedChild(spawned, exited);
+        },
       };
+      this.active = handle;
+      this.transition("connected", target, { attempt, pid: spawned.pid, publicEndpoint: `https://${target.hostname}/mcp` });
+      void exited.then((result) => {
+        if (this.active !== handle) return;
+        this.active = undefined;
+        this.transition(intentionalStop ? "stopped" : "failed", target, { attempt, pid: spawned.pid, code: result.code === null ? "signal" : String(result.code) });
+      });
+      return handle;
     } catch (error) {
       if (child && childExited) await stopOwnedChild(child, childExited);
       else if (child && !child.killed) child.kill("SIGTERM");
       await rm(directory, { recursive: true, force: true });
       throw error;
     }
+    } catch (error) {
+      this.transition("failed", target, { attempt, code: error instanceof Error ? error.message : "TUNNEL_START_FAILED" });
+      throw error;
+    } finally { this.starting = false; }
   }
 }
 

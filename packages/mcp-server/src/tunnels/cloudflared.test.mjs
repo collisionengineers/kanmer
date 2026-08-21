@@ -89,9 +89,15 @@ test("standalone fake provider reaches local readiness and leaves no credential 
       validateExecutable: async () => {},
       onLog: (event) => diagnostics.push(event),
     }, (command, args, options) => nodeSpawn(command, [fixture, ...args], options));
+    const states = [];
+    const unsubscribe = adapter.subscribe((status) => states.push(status.state));
     const handle = await adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" });
     await handle.checkReadiness();
     await handle.stop();
+    await handle.exited;
+    unsubscribe();
+    assert.deepEqual(states, ["stopped", "validating", "starting", "connected", "stopping", "stopped"]);
+    assert.equal(adapter.getStatus().publicEndpoint, "https://kanmer.example.test/mcp");
     assert.ok(diagnostics.some((event) => event.message === "provider output received"));
     assert.equal(JSON.stringify(diagnostics).includes(canary), false);
   } finally { await rm(directory, { recursive: true, force: true }); }

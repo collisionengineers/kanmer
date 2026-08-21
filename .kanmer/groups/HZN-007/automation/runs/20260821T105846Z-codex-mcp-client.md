@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T21:58:43.370Z
+updated_at: 2026-08-21T22:07:19.968Z
 lane_limit: 3
 stop_reason:
 ---
@@ -344,3 +344,4 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 - 2026-08-21T21:56:33.064Z — MCP-020 taken for bounded shared GUI/MCP dispatch implementation on branch mcp-020-controlled-dispatch and worktree .worktrees/mcp-020. MCP-022 is merged Done and expected_project/structured errors are available; prior readiness note was stale. Scope is limited to named provider/task dispatch, fail-closed policy/approval, project/ticket binding, sanitized list/cancel, shared GUI supervisor contract, tests and docs; no provider host credentials are assumed. Independent review/merge required; no cleanup.
 - 2026-08-21T21:57:15.313Z — CORE-032 assigned to /root/gui082_executor on fresh core-032-gha-verify/.worktrees/core-032 from origin/main 75cc4a89 after complete ticket packet, HZN-007/HZN-004/EPIC-009 contexts, links, MASTERPLAN S-02/Appendix A, dependency CORE-031, and live gates were reread. Implement only .github/workflows/pr.yml with one Windows verify job; do not touch CORE-024/CORE-033, protection, board files, verify rail, or unrelated workflows. Real GitHub PR/Actions evidence may be unavailable and must remain INCONCLUSIVE. Author will stop at Review.
+- 2026-08-21T22:07:19.968Z — CORE-032 implementation completed on core-032-gha-verify/.worktrees/core-032: commit a24f924b512c22e14641d6a7c8102860862ae6a3, PR #136 opened against main with Kanmer: CORE-032, and ticket moved Implementing→Review after get_doc_gates/readback. One-file workflow static contract and diff checks passed. PR run 32531237498/job 96923485539 produced exactly one verify check on Windows/Bash/Node 20.20.2; setup passed, but npm run verify failed at apps/gui/src/main/kanmerGit.test.ts due runneradmin versus RUNNER~1 temp-path expectation. Job elapsed 01:29, run envelope 01:35, conclusion failure; local normal verify also retained a pre-existing core migration timeout. Checklist is 18/21 with real-check success and post-merge board-sync evidence intentionally open/INCONCLUSIVE. Author stops at Review; no self-review, merge, protection, unrelated fixes, or cleanup.

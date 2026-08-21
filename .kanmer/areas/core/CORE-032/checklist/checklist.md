@@ -20,7 +20,7 @@
 - [ ] Confirm the run uses Windows, Bash, Node 20, and executes both npm ci and npm run verify successfully. Setup/checkout/Node/Bash succeeded, but the shared verify rail failed; this remains unchecked.
 - [x] Record the run ID, head SHA, conclusion, and elapsed duration; note whether it meets the under-ten-minute target. Run 32531237498, head a24f924b512c22e14641d6a7c8102860862ae6a3, conclusion failure, job 01:29 / run envelope 01:35, under ten minutes.
 - [ ] After merge, use an ordinary board-sync push to confirm pr.yml creates no kanmer-board run; do not manufacture a board change.
-- [ ] Stop at review readiness; do not configure protection, add kanmer-gate, merge, or begin a blocked ticket.
+- [x] Stop at review readiness; do not configure protection, add kanmer-gate, merge, or begin a blocked ticket.
 
 ## Progress notes
 

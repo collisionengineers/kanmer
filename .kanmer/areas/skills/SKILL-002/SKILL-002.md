@@ -2,7 +2,7 @@
 id: SKILL-002
 type: ticket
 title: 6.2 Templates
-status: implementing
+status: review
 area: skills
 order: 150
 assignee: codex-skill002
@@ -32,7 +32,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/139'
 archived: false
 created: '2026-08-16T00:31:38.780Z'
-updated: '2026-08-21T23:07:12.551Z'
+updated: '2026-08-21T23:07:34.286Z'
 ---
 
 Identity first-lines on every template; the files template with two sections and the contrast rule; per-proof-type templates; group and ticket template updates for the `groups`/`profile` fields; a research summary template for deep mode.

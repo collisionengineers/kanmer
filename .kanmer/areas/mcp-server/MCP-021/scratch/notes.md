@@ -55,3 +55,5 @@ Commit `fdec4e0` replaces the readiness test’s timing sleeps with an injected 
 Commit `a67d5ac` adds a 32-event, 4 KiB-line provider diagnostic buffer. It classifies JSON/plain/oversize output using fixed codes, coalesces repeats, drains a final partial line on process exit, and never stores or emits provider text. The direct adapter now exposes only redacted snapshots/callbacks. Tests prove bearer/credential/query canaries never surface, repeated output coalesces, oversized input is bounded, and partial output is safe. `npm run test:http -w @kanmer/mcp-server` passed 23/23; MCP typecheck and diff check passed.
 
 Current Cloudflare docs support `--loglevel`/`--logfile` and metrics but do not document an unverified local JSON flag, so no guessed process argument was added.
+
+Commit `1d580c7` closes the post-spawn readiness-failure cleanup gap: the adapter now awaits its owned child’s bounded shutdown before removing the private runtime directory. A regression test verifies this sequence. Focused tunnel/HTTP suite passed 24/24, MCP typecheck and diff check passed.

@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T19:31:30.000Z
+updated_at: 2026-08-21T20:33:06.392Z
 lane_limit: 3
 stop_reason:
 ---
@@ -176,6 +176,8 @@ stop_reason:
 
 - 2026-08-21T19:31:30.000Z — GUI-084 independently reviewed and PASSed as a merged-main reconciliation: classifier test 7/7 on current main; native OS notification styling limitation and FRD-018 decision were accepted without a fabricated visual pass. Ticket moved Review→Verifying→Done, proof written, released, and exact worktree/branch cleanup completed. CORE-036 PR #127 independently reviewed and merged; merged-main proof records local rails PASS and real tag/disposable-release Actions evidence INCONCLUSIVE, so the ticket remains Verifying pending authorized external release proof.
 
+- 2026-08-21T20:33:06.392Z — Lane 3 assigned to /root/gui099_executor for GUI-101 on fresh gui-101-packaging-host-proof/.worktrees/gui-101 from origin/main 470b2fad. GUI-100 is Done at merged main 3403fd86622e8223fec3e1bb691eb2e0eb960482; GUI-101 packet, exact research/files/plan/checklist/open-questions, EPIC-011/HZN-007 context, links and gates were reread. Scope is packaged dist:check rail, updater-session compatibility and controlled real-host evidence only; do not recreate GUI-099/100 or start GUI-102. Real-host proof must remain INCONCLUSIVE if no safe disposable host/feed is available.
+
 ## Resume instruction
 
 Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's complete document inventory, links, taken state and get_doc_gates before dispatching. Reconcile the ledger against live state and do not replay a completed action solely because this run was interrupted. Before every assignment/result/stage transition, update and read this history record and automation/current.md.
@@ -241,3 +243,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T19:21:21.234Z — GUI-084 assigned to /root/gui082_executor on gui-084-notification-wording-style/.worktrees/gui-084 after packet, HZN-005/HZN-007 context, links, FRD-018, and gates were reread. The styling contract was resolved to cross-platform native notifications with OS-owned chrome; checklist is 5/6 with the report/proof/closeout item intentionally pending. Implement only the notification wording/styling scope, preserve the no-visual-pass limitation, and stop at Review for independent root review.
 
 - 2026-08-21T19:28:30.860Z — GUI-084 completed the native-notification reconciliation on merged main d9379d32: focused classifier 7/7, GUI 338/338, typecheck/build/diff-check passed; npm run verify retained exit 1 only at linked-worktree plugin:check after all tests/smokes/typechecks passed. Report and ticket body were written, checklist is 5/6 with proof/closeout pending, no code/PR change was made, and the ticket moved Implementing→Review for independent root review.
+
+- 2026-08-21T19:32:28.936Z — GUI-105 assigned to /root/gui082_executor on gui-105-document-path-inventory/.worktrees/gui-105 after complete packet, HZN-007 context, MCP-029/GUI-096 links, FRD-003, and gates were reread. Existing core/MCP documentPaths inventory is authoritative; implement only the GUI Editor exact-path selector/editing scope, preserve scratch/reference/assets boundaries, and stop at Review for independent root review.

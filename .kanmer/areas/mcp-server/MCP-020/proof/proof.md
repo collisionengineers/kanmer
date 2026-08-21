@@ -66,4 +66,18 @@ attempts:
     result: INCONCLUSIVE
     summary: "No disposable authenticated provider host was authorized or available; no live provider success is claimed."
 ---
-MCP-020 merged as PR #137 at 1b5ae0d4546d1b57be393b38f4813f9ecfb6e7d5. The shared supervisor/provider registry, three controlled MCP tools, and fail-closed dispatch policy are proven by deterministic tests, builds and protocol/smoke rails. Dispatch remains disabled by default, and live authenticated provider acceptance is explicitly INCONCLUSIVE. The ticket remains Verifying pending that external acceptance; the CI path assertion failure is retained rather than weakened.
+MCP-020 merged as PR #137 at 1b5ae0d4546d1b57be393b38f4813f9ecfb6e7d5. The shared supervisor/provider registry, three controlled MCP tools, and fail-closed dispatch policy are proven by deterministic tests, builds and protocol/smoke rails. Dispatch remains disabled by default, and live authenticated provider acceptance is explicitly INCONCLUSIVE. The deterministic merged-main feature gate passes. Live authorized provider dispatch/start/observe/cancel remains INCONCLUSIVE because no disposable authenticated host/credential was available; no provider success is claimed. The CI path assertion failure and initial typecheck failure remain retained rather than weakened. This accepted external-evidence risk does not invalidate the disabled-by-default feature gate.
+
+## Merged-main verification rerun — 2026-08-22
+
+- Verified on main af61144ce743f74b2aba92fb0778588b0b9bedd0; merged PR #137 SHA 1b5ae0d4546d1b57be393b38f4813f9ecfb6e7d5 is an ancestor.
+- npm test -w @kanmer/core -- --testTimeout=30000 — PASS, 263/263.
+- npm test -w @kanmer/gui — PASS, 352/352.
+- npm run typecheck — PASS.
+- npm run build — PASS (core and MCP server/standalone).
+- node packages/mcp-server/src/smoke.mjs — PASS, 224/224.
+- npm run smoke:protocol — PASS, 46/46.
+- npm run smoke:discovery — PASS, 13/13.
+- npm run check:manual — PASS, manual up to date (22 chapters).
+- npm run verify:skills — PASS; npm run plugin:check — PASS (34 tools, synchronized bundle); git diff --check — PASS.
+- Live authenticated provider success remains INCONCLUSIVE; the default-disabled start/list/cancel refusal path is proven without claiming a provider run.

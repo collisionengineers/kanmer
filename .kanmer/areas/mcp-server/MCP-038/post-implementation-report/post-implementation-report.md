@@ -2,16 +2,16 @@
 
 ## Scope delivered
 
-Regenerated only plugins/kanmer/mcp/kanmer-mcp.cjs from merged main using the canonical npm run plugin:build flow. The source/tool/auth/tunnel surfaces are unchanged.
+Regenerated only plugins/kanmer/mcp/kanmer-mcp.cjs from the current merged main source. After MCP-035 merged, the first candidate was correctly rejected by independent review because its bundle hash did not match authoritative normal-main output. The branch was rebased onto origin/main cb35e7f and the artifact was regenerated from the normal main checkout's canonical build output.
 
 ## Validation
 
-- npm run plugin:build — PASS; copied 1476 KB standalone bundle.
-- git diff --stat — one artifact only, 514 insertions and 514 deletions.
-- git diff --check — PASS.
-- npm run plugin:check — PASS on the normal main checkout after the same canonical regeneration: 30 tools match, bundle bytes match, 12 skill frontmatters parse, manifests v0.3.3, isolated handshake lists 30 tools.
-- Linked-worktree plugin:check refusal was expected because the repository contract requires the normal checkout's workspace resolution; this is recorded rather than misreported as a product failure.
+- npm run plugin:build on normal main — PASS.
+- npm run plugin:check on normal main — PASS: 30 tools, bundle bytes match fresh build, 12 skill frontmatters, manifests v0.3.3, isolated handshake 30 tools.
+- Current normal-main artifact SHA-256: 48583b7eb295dc599822dc65778a4adda9181755323824ef984f74aa4d309f6e.
+- MCP-038 branch candidate copied from that canonical output and checked with git diff --check — PASS.
+- Branch diff remains artifact-only: plugins/kanmer/mcp/kanmer-mcp.cjs.
 
-## Review and integration
+## Review disposition
 
-Commit 13e0d3f is pushed in PR #111 against main. It awaits independent review. MCP-025 remains in Verifying until this required release artifact is merged and rechecked.
+Independent review of the first PR #111 candidate found a reproducibility mismatch and returned NEEDS CHANGES. The branch was rebased and regenerated; corrected commit 0636eda supersedes 13e0d3f. PR #111 remains open for re-review.

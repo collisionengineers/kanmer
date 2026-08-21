@@ -18,3 +18,14 @@ test("remote host starts bearer-protected HTTP before giving one loopback target
     assert.deepEqual(remote.getStatus(), { local: "ready", provider: "running", publicVerification: "unknown", endpoint: "https://kanmer.example.test/mcp" });
   } finally { await remote.close(); }
 });
+
+test("provider startup failure leaves the local authenticated HTTP host available and marks provider failed", async () => {
+  const remote = createKanmerRemoteHost({
+    authorizer: { authorize: async () => ({ principal: "test" }) }, hostname: "kanmer.example.test",
+    tunnel: { start: async () => { throw new Error("provider unavailable"); } },
+  });
+  try {
+    await assert.rejects(() => remote.start(), /provider unavailable/);
+    assert.deepEqual(remote.getStatus(), { local: "ready", provider: "failed", publicVerification: "unknown" });
+  } finally { await remote.close(); }
+});

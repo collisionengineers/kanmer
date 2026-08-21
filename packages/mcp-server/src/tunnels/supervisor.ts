@@ -33,7 +33,8 @@ export class TunnelSupervisor {
   async start(): Promise<void> {
     if (this.process || this.stopping) throw new Error("TUNNEL_SUPERVISOR_NOT_STARTABLE");
     this.emit("starting");
-    await this.launch();
+    try { await this.launch(); }
+    catch (error) { this.emit("failed"); throw error; }
   }
 
   private async launch(): Promise<void> {

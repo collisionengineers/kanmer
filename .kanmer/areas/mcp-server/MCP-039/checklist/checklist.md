@@ -27,3 +27,10 @@
 - [x] Copied the main-generated artifact into a dedicated ticket worktree; only the generated bundle changed.
 - [x] Commit `9905ffa4` pushed; PR #117 opened for independent review.
 - [ ] Run plugin:check on merged main after PR #117 merges.
+
+## Final canonical-install verification
+
+- [x] Reconciled dependencies with `npm ci --ignore-scripts` in the canonical main checkout.
+- [x] Fresh main build reproduces the committed PR #116 artifact hash `e604b0335bca0b38fb0eefbd1537b5ed5e3d93eb`.
+- [x] `npm run plugin:check` passes on main: 30 tools, matching bytes, 12 skill frontmatters, manifests v0.3.3, isolated handshake.
+- [x] PR #117 was closed because its alternate nested-label bytes are not reproducible under the lockfile install.

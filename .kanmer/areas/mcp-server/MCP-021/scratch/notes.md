@@ -21,3 +21,5 @@ Shutdown checkpoint: commit 5158976 adds exact-child graceful SIGTERM with a bou
 Regression smoke evidence: `npm run smoke:http` passed HTTP initialize/tools/list/session/delete; `npm run smoke:protocol` passed 30/30 across four protocol versions. The existing MCP surface remains exactly 30 tools, so the tunnel modules did not alter stdio or tool registration.
 
 Fixture checkpoint: commit e84f16e adds `tunnels/fixtures/fake-cloudflared.mjs`, a standalone no-network fake with direct version/help, loopback-only readiness, and termination behavior, plus direct fixture coverage. Focused suite is now 18/18; no real Cloudflare process/account/DNS is involved.
+
+Startup-state checkpoint: commit ecb3460 ensures a pre-provider validation/spawn failure emits provider `failed` while preserving the authenticated local HTTP listener; remote-host integration test covers it. Typecheck and focused suite 19/19 pass.

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { spawn as nodeSpawn } from "node:child_process";
-import { access, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { PassThrough } from "node:stream";
 import os from "node:os";
@@ -41,6 +41,22 @@ test("adapter validates an owned credentials file before starting a direct child
     await child.exited;
     await assert.rejects(() => createCloudflaredAdapter({ ...options, credentialsFile: path.join(directory, "missing") }).start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /TUNNEL_CREDENTIALS_FILE_UNSAFE/);
     await assert.rejects(() => createCloudflaredAdapter({ ...options, executable: `${process.execPath}\nunsafe` }).start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /TUNNEL_EXECUTABLE_INVALID/);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test("adapter refuses a symlinked credentials reference when the platform permits one", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-link-"));
+  try {
+    const credentials = path.join(directory, "credentials.json");
+    const linked = path.join(directory, "linked-credentials.json");
+    await writeFile(credentials, "{}", { mode: 0o600 });
+    try { await symlink(credentials, linked, "file"); }
+    catch { t.skip("creating file symlinks is not enabled for this account"); return; }
+    const adapter = createCloudflaredAdapter({
+      executable: process.execPath, tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", credentialsFile: linked,
+      hostname: "kanmer.example.test", validateExecutable: async () => {},
+    });
+    await assert.rejects(() => adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" }), /TUNNEL_CREDENTIALS_FILE_UNSAFE/);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 

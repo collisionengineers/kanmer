@@ -45,6 +45,13 @@ export async function loadTokenFile(file: string): Promise<BearerVerifier> {
   return (await loadTokenMaterial(file)).verifier;
 }
 
+/** Validate only the protected reference metadata; this never opens or reads token bytes. */
+export async function validateTokenFileReference(file: string): Promise<{ readonly valid: true; readonly size: number }> {
+  const stat = await lstat(file);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > MAX_TOKEN_FILE_BYTES || (process.platform !== "win32" && (stat.mode & 0o077) !== 0)) throw new Error("REMOTE_AUTH_SECRET_FILE_UNSAFE");
+  return { valid: true, size: stat.size };
+}
+
 /** Internal remote-host bootstrap material; callers must never serialize or forward token. */
 export async function loadTokenMaterial(file: string): Promise<{ readonly token: string; readonly verifier: BearerVerifier }> {
   const before = await lstat(file);

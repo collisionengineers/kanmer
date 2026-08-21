@@ -307,6 +307,13 @@ export type ExposurePolicy = "local-stdio" | "remote-http-v1";
  */
 export const REMOTE_HTTP_EXCLUDED_TOOLS = new Set<string>();
 
+/** Canonical read-only tool policy used by the remote doctor and HTTP smoke. */
+export function remoteHttpToolNames(): readonly string[] {
+  const server = createKanmerMcpServer("remote-http-v1");
+  const registered = (server as unknown as { readonly _registeredTools?: Record<string, unknown> })._registeredTools ?? {};
+  return Object.keys(registered).filter((name) => !REMOTE_HTTP_EXCLUDED_TOOLS.has(name)).sort();
+}
+
 /**
  * Construct the one canonical Kanmer registry for a transport. The factory is
  * deliberately transport-agnostic: stdio and HTTP attach their SDK transports

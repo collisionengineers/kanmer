@@ -9,7 +9,7 @@ import { BearerAuthorizer, type BearerVerifier, unauthorizedHeaders } from "./ht
 import { safeDiagnosticMessage } from "./http-diagnostics.js";
 
 export { BearerAuthorizer, generateBearerToken, generateBearerTokenForTest, verifierForToken } from "./http-auth.js";
-export { createTokenFile, loadTokenFile, type TokenFileWriter } from "./http-secret.js";
+export { createTokenFile, loadTokenFile, validateTokenFileReference, type TokenFileWriter } from "./http-secret.js";
 
 export interface HttpAuthorizer {
   authorize(request: { headers: IncomingMessage["headers"] }): Promise<{ principal: string }>;

@@ -6,6 +6,7 @@ import { cloudflaredConfig, type CloudflaredTunnelOptions, validateCloudflaredTu
 import type { TunnelAdapter, TunnelLogEvent, TunnelProcess, TunnelTarget } from "./types.js";
 import { allocateLoopbackPort, waitForTunnelReadiness } from "./readiness.js";
 import { validateCloudflaredExecutable } from "./cloudflared-validate.js";
+import { TunnelLogBuffer } from "./logs.js";
 
 export interface CloudflaredAdapterOptions extends CloudflaredTunnelOptions {
   readonly executable: string;
@@ -26,12 +27,6 @@ async function validateRegularFile(value: string, errorCode: string, privateFile
   // Windows ACLs are not represented by POSIX mode bits.  On POSIX, fail
   // closed when a bearer-adjacent credentials file is group/world accessible.
   if (privateFile && process.platform !== "win32" && (metadata.mode & 0o077) !== 0) throw new Error(errorCode);
-}
-
-function logLine(onLog: CloudflaredAdapterOptions["onLog"], line: string): void {
-  // Provider diagnostics are untrusted: they can contain configuration or
-  // access material.  Preserve only the fact that output occurred.
-  if (line.trim()) onLog?.({ provider: "cloudflared", level: "info", message: "provider output received" });
 }
 
 /** Keep only the executable-search path plus Windows' required system root. */
@@ -58,7 +53,10 @@ async function stopOwnedChild(child: ChildProcess, exited: Promise<unknown>): Pr
 }
 
 export class CloudflaredAdapter implements TunnelAdapter {
+  private readonly diagnostics = new TunnelLogBuffer();
   constructor(private readonly options: CloudflaredAdapterOptions, private readonly spawnProcess: CloudflaredSpawner = spawn) {}
+
+  getDiagnostics(): readonly TunnelLogEvent[] { return this.diagnostics.snapshot(); }
 
   async start(target: TunnelTarget): Promise<TunnelProcess> {
     validateCloudflaredTunnel(this.options, target);
@@ -83,13 +81,15 @@ export class CloudflaredAdapter implements TunnelAdapter {
       child = spawned;
       if (!spawned.stdout || !spawned.stderr) throw new Error("TUNNEL_STDIO_UNAVAILABLE");
       spawned.stdout.setEncoding("utf8"); spawned.stderr.setEncoding("utf8");
-      spawned.stdout.on("data", (line: string) => logLine(this.options.onLog, line));
-      spawned.stderr.on("data", (line: string) => logLine(this.options.onLog, line));
+      const emitLogs = (line: string) => this.diagnostics.write(line).forEach((event) => this.options.onLog?.(event));
+      spawned.stdout.on("data", emitLogs);
+      spawned.stderr.on("data", emitLogs);
       await new Promise<void>((resolve, reject) => {
         spawned.once("spawn", resolve);
         spawned.once("error", reject);
       });
       const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => spawned.once("exit", (code, signal) => resolve({ code, signal })));
+      void exited.then(() => this.diagnostics.flush().forEach((event) => this.options.onLog?.(event)));
       await (this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`) ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${metricsPort}/ready` }));
       const cleanup = () => rm(directory, { recursive: true, force: true });
       void exited.then(cleanup, cleanup);

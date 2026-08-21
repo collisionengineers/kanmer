@@ -80,5 +80,7 @@ export interface TunnelAdapter {
 export interface TunnelLogEvent {
   readonly provider: string;
   readonly level: "debug" | "info" | "warn" | "error";
+  readonly code: string;
+  readonly count: number;
   readonly message: string;
 }

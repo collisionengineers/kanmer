@@ -2,7 +2,7 @@
 
 ## Reconciliation outcome
 
-CORE-011's scoped implementation is already merged in commit b5b332e0f3b7f9c1da7e2ec8bbcf7c716fbec3ec, reachable from origin/main cb8fa1f0. The historical change shipped through PR https://github.com/collisionengineers/kanmer/pull/15, merged at 8af1991c8350ae4bf7b44532dd434ee24ce7b8e4. This fresh branch and worktree were taken to audit and reconcile the board record; there is no source diff to commit and no duplicate or empty PR was opened.
+CORE-011's scoped implementation is already merged in commit b5b332e0474081c17cda348a6fb5166c29788ae0, reachable from origin/main cb8fa1f0. The historical change shipped through PR https://github.com/collisionengineers/kanmer/pull/15, merged at 8af1991c8350ae4bf7b44532dd434ee24ce7b8e4. This fresh branch and worktree were taken to audit and reconcile the board record; there is no source diff to commit and no duplicate or empty PR was opened.
 
 The shipped scope is one gated boundary per move, with durable first-entry stageEntered frontmatter stamps and the FRD-002 G2 amendment. The rejected mtime/activity-log R2 and done-only-from-verifying R1 were not implemented: research records why neither is a valid substitute for structural refusal.
 
@@ -42,5 +42,5 @@ No new source commit or PR was created because the implementation is already mer
 - Ticket: CORE-011.
 - Branch: core-011-one-gate-per-move.
 - Worktree: .worktrees/core-011.
-- Commit: b5b332e0f3b7f9c1da7e2ec8bbcf7c716fbec3ec.
+- Commit: b5b332e0474081c17cda348a6fb5166c29788ae0.
 - PR: https://github.com/collisionengineers/kanmer/pull/15 (merged; merge commit 8af1991c8350ae4bf7b44532dd434ee24ce7b8e4).

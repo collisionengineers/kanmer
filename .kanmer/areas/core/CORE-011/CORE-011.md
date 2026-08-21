@@ -25,12 +25,12 @@ refs:
   - docs/functional/frd/FRD-002-requirement-profiles.md
   - docs/product/prd/PRD-001-kanmer-v3.md
 commits:
-  - b5b332e0f3b7f9c1da7e2ec8bbcf7c716fbec3ec
+  - b5b332e0474081c17cda348a6fb5166c29788ae0
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/15'
 archived: false
 created: '2026-08-16T04:24:49.811Z'
-updated: '2026-08-21T20:50:19.842Z'
+updated: '2026-08-21T20:52:40.579Z'
 ---
 
 Gates check that a document exists, never that it existed before the work it

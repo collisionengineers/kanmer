@@ -17,7 +17,7 @@
 
 ## Progress notes
 
-- 2026-08-21: Reconciled the ticket against merged main. The scoped implementation is already present in commit b5b332e0f3b7f9c1da7e2ec8bbcf7c716fbec3ec, reachable from origin/main cb8fa1f0, through merged PR https://github.com/collisionengineers/kanmer/pull/15 (merge 8af1991c8350ae4bf7b44532dd434ee24ce7b8e4). No source diff exists on the fresh branch and no duplicate or empty PR was created.
+- 2026-08-21: Reconciled the ticket against merged main. The scoped implementation is already present in commit b5b332e0474081c17cda348a6fb5166c29788ae0, reachable from origin/main cb8fa1f0, through merged PR https://github.com/collisionengineers/kanmer/pull/15 (merge 8af1991c8350ae4bf7b44532dd434ee24ce7b8e4). No source diff exists on the fresh branch and no duplicate or empty PR was created.
 - 2026-08-21: Fresh branch core-011-one-gate-per-move and worktree .worktrees/core-011 were recorded by take_ticket. The author is stopping at Review for independent review.
 - Focused core gate/store/profile tests: PASS, 3 files and 97 tests.
 - Full core test suite: PASS, 11 files and 257 tests.

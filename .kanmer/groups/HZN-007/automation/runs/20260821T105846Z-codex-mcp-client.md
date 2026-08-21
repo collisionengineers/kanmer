@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T22:15:54.565Z
+updated_at: 2026-08-21T22:49:50.557Z
 lane_limit: 3
 stop_reason:
 ---
@@ -366,3 +366,9 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T22:43:28.052Z — lane assignment: /root/mcp017_verifier owns independent merged-main verification of CORE-022 (currently Verifying), including migration/EPERM/resume evidence, proof, adjacent moves and exact cleanup; failures and unavailable Windows evidence remain explicit.
 
 - 2026-08-21T22:46:56.522Z — CORE-022 merged-main verification completed at HEAD 1b5ae0d4546d1b57be393b38f4813f9ecfb6e7d5; implementation d0f927a3f9aab7fa6f4716410138126f3ff1fc35 is reachable. Focused IO/migration 28/28, full core 263/263, core typecheck and build passed. The planned 242-ticket fixture and live Windows EPERM/file-lock run are unavailable and recorded INCONCLUSIVE in proof; ticket remains Verifying, with no release or cleanup.
+
+
+- 2026-08-21T22:49:50.557Z — CORE-036 merged-main verification on normal main at origin/main 1b5ae0d4546d1b57be393b38f4813f9ecfb6e7d5: git diff --check exit 0; npm run verify exit 1 in the existing core migration resume test (5s timeout followed by ENOTEMPTY cleanup); npm run dist:check exit 1 because the GUI renderer build could not resolve vite\dist\node\chunks\dep-D-7KCb9p.js after core/server/main/preload builds. PR #127 is MERGED at squash commit 470b2fad5d16ca4edcc9833b3f674460f994e73d; source 99fb8022 is not an ancestor (merge-base check exit 1), so traceability must use the merged SHA. External tag-green and disposable-negative workflow proof remains INCONCLUSIVE. Ticket remains Verifying; no move, release, or cleanup performed.
+
+
+- 2026-08-21T22:50:13.818Z — archived-audit reconciliation: CORE-021 remains archived with its open design questions explicitly closed as a non-viable timestamp/branch-gate proposal; current core has no child-process implementation for this concern. CORE-028 remains archived as shipped-ownerless; duplicate-ADR numbering rail and tests are present on main. GUI-086 and GUI-089 remain archived duplicates of GUI-085; their corroborating timing/EPERM evidence is retained on GUI-085. GUI-094 remains archived as the superseded parent split into EPIC-011 descendants GUI-099/100/101/102; active descendants still carry the remaining packaging/integration work. GUI-103 is confirmed archived (despite the stale earlier list snapshot) as the resolved GUI-096 padded-name review finding, covered by GUI-096 PR #91 commit b6ad3da. MCP-005 remains archived and superseded by EPIC-011 plus MCP-008 after measurement refuted the relocation premise. MCP-031 and MCP-032 remain archived review findings incorporated by MCP-025/MCP-040; current HTTP session isolation, stdio identity/staleness, smoke, protocol, and plugin parity rails pass. SKILL-028 remains archived as resolved by SKILL-016 PR #92 commit 4d963c5. No archived item yielded a unique untracked defect; the one live scope from GUI-094 is represented by its active descendants.

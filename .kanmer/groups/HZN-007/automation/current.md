@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=a35e1fd0
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-21T22:46:56.522Z
+updated_at: 2026-08-21T22:49:50.557Z
 ---
 
 # Current auto run — HZN-007
@@ -18,3 +18,9 @@ Open `automation/runs/20260821T105846Z-codex-mcp-client.md`, then re-read HZN-00
 
 
 Last handoff: CORE-022 merged-main proof recorded at 1b5ae0d4546d1b57be393b38f4813f9ecfb6e7d5; deterministic checks pass, real 242-ticket/Windows contention evidence remains INCONCLUSIVE and ticket stays Verifying.
+
+
+Last handoff: CORE-036 merged-main verification recorded at 2026-08-21T22:49:50.557Z; ticket remains Verifying because npm run verify and npm run dist:check each exited 1 on normal main. PR #127 merge 470b2fad is present; no board move, release, or worktree cleanup was performed.
+
+
+Last handoff: archived audit reconciliation complete; all ten named archived records retain traceable duplicate/superseded/resolved dispositions, and GUI-103 is confirmed archived in live state.

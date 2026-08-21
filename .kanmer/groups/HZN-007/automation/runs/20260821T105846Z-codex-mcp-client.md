@@ -38,6 +38,7 @@ stop_reason:
 
 | Order | Ticket | Observed stage | Gates / next action | Disposition | Worker | Branch / worktree | Attempt | Last action | Last result | PR | Updated |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 73 | GUI-106 | backlog | fix; needs files + plan; remediation from MCP-005 audit | queued | — | — | 0 | added from archived audit | pending research/plan | — | 2026-08-21T11:10:29.870Z |
 | 1 | DOC-012 | done | chore; gates pass; checklist reconciled | finished | codex-mcp-client | — | 1 | reconciled three stale closeout/link boxes via MCP | 76/76 checked; merged proof/cleanup evidence confirmed | 84 | 2026-08-21T10:59:48.714Z |
 | 2 | DOC-017 | done | chore; proof pass; checklist 15/15; released | finished | /root/doc017_reviewer | cleaned (doc-017 worktree/branch removed) | 1 | merged PR #106; verified on 4997214; closeout released | complete; no follow-up defect | 106 | 2026-08-21T11:05:49.624Z |
 | 3 | MCP-025 | implementing | feature; 32 unchecked implementation/test items; rework from merged historical state | active | /root/mcp025_implementer | mcp-025-streamable-http-finish / .worktrees/mcp-025 | 1 | implementation lane assigned after DOC-017 closeout | pending worker result | 90 | 2026-08-21T11:07:18.094Z |
@@ -132,3 +133,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T11:05:49.625Z — DOC-017 finished: independent review PASS, PR #106 merged at 49972143a7226aac2bc7ded71857161fddb3eb7e, merged-main proof written, checklist 15/15, ticket released, worktree/branch cleaned.
 
 - 2026-08-21T11:07:18.094Z — MCP-025 implementation lane assigned to /root/mcp025_implementer on new branch/worktree to reconcile its 32 unchecked items; no independent review/merge by author.
+
+- 2026-08-21T11:10:29.870Z — Archived audit found MCP-005 has a unique unresolved session-survival limitation. Created GUI-106, linked to MCP-005 and GUI-099–102, added it to HZN-007, and queued it as a remediation before final completion.

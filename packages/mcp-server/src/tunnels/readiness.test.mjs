@@ -22,6 +22,11 @@ test("port lease owns the reservation until an idempotent release", async () => 
   } finally { if (contender.listening) await new Promise((resolve) => contender.close(resolve)); }
 });
 
+test("allocator rejects unbounded retry policies", async () => {
+  await assert.rejects(() => reserveLoopbackPort(0), /TUNNEL_METRICS_PORT_POLICY_INVALID/);
+  await assert.rejects(() => reserveLoopbackPort(6), /TUNNEL_METRICS_PORT_POLICY_INVALID/);
+});
+
 test("readiness accepts only a bounded successful loopback /ready response", async () => {
   let attempts = 0;
   await waitForTunnelReadiness({

@@ -13,26 +13,32 @@ export interface ReadinessOptions {
 }
 
 /** Hold a loopback-only port reservation until the child is ready to bind it. */
-export async function reserveLoopbackPort(): Promise<LoopbackPortLease> {
-  const server = createServer();
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", resolve);
-  });
-  const address = server.address();
-  if (!address || typeof address === "string" || address.address !== "127.0.0.1" || !address.port) {
-    if (server.listening) server.close();
-    throw new Error("TUNNEL_METRICS_PORT_ALLOCATION_FAILED");
+export async function reserveLoopbackPort(maxAttempts = 3): Promise<LoopbackPortLease> {
+  if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 5) throw new Error("TUNNEL_METRICS_PORT_POLICY_INVALID");
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const server = createServer();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        server.once("error", reject);
+        server.listen(0, "127.0.0.1", resolve);
+      });
+      const address = server.address();
+      if (!address || typeof address === "string" || address.address !== "127.0.0.1" || !address.port) throw new Error("TUNNEL_METRICS_PORT_ALLOCATION_FAILED");
+      let released = false;
+      return {
+        port: address.port,
+        release: async () => {
+          if (released) return;
+          released = true;
+          if (server.listening) await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+        },
+      };
+    } catch (error) {
+      if (server.listening) await new Promise<void>((resolve, reject) => server.close((closeError) => closeError ? reject(closeError) : resolve()));
+      if (attempt === maxAttempts) throw new Error(error instanceof Error && /^TUNNEL_/.test(error.message) ? error.message : "TUNNEL_METRICS_PORT_ALLOCATION_FAILED");
+    }
   }
-  let released = false;
-  return {
-    port: address.port,
-    release: async () => {
-      if (released) return;
-      released = true;
-      if (server.listening) await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
-    },
-  };
+  throw new Error("TUNNEL_METRICS_PORT_ALLOCATION_FAILED");
 }
 
 /** Obtain a currently free loopback TCP port without ever binding publicly. */

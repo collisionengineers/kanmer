@@ -162,7 +162,7 @@ Implemented the shared registry factory and `remote-http-v1` policy hook, a loop
 - [x] proof.md finalised (PR URL + merge commit `a05fd9e` recorded)
 - [x] Moved to final stage
 - [x] Outcome recorded in ticket body (PR link; [[MCP-026]] and [[MCP-021]] follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/mcp-025`
-- [ ] `git branch -d mcp-025-streamable-http-transport` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] cd out of worktree; `git worktree remove .worktrees/mcp-025`
+- [x] `git branch -d mcp-025-streamable-http-transport` (merged branch deleted safely)
+- [x] `git fetch --prune` + `git worktree prune` (remote branch deleted too)
+- [x] `take_ticket action: "release"`

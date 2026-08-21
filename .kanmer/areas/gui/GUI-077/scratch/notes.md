@@ -11,3 +11,15 @@ Disposition: needs changes — author should add focused main-process tests and 
 ## Review remediation — 2026-08-21
 
 Addressed the review blocker in commit `8442b28`: added focused main-process native-theme mapping/update coverage (`nativeTheme.test.ts`), which passes alongside the full GUI suite and GUI typecheck. Pushed to PR #94; kept ticket in Review for re-review.
+
+## Independent re-review — 2026-08-21
+
+Re-reviewed PR #94 after remediation. The diff is limited to the native-theme synchronization in Electron main plus a testable mapping helper and six focused Vitest assertions. It sets `nativeTheme.themeSource` before window creation, maps dark/light/system settings to the native chrome background, reapplies after settings changes, and only reacts to OS updates while the preference is `system`.
+
+Independent evidence: `npx vitest run src/main/nativeTheme.test.ts` passed 6/6; GUI typecheck passed; `git diff --check origin/main...HEAD` passed; ticket worktree is clean. PR #94 is OPEN, MERGEABLE, with no checks, comments, or reviews outstanding.
+
+Disposition: PASS. The prior coverage blocker is resolved. Merge to Verifying is approved.
+
+## Merged-main verification — 2026-08-21
+
+PR #94 merged at `50c78b0a931892a398a8ae84b32475f09404c7c3`. On main, focused native-theme tests passed 6/6, GUI typecheck passed, and `git diff --check HEAD~1..HEAD` was clean. Proof recorded.

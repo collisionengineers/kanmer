@@ -14,7 +14,7 @@
 - [x] Extend the existing `check-updater-package.mjs` failure collector rather than add a second verifier.
 - [x] Assert `win-unpacked/kanmer-mcp.cmd` exists.
 - [x] Assert exact HKCU key/value and system `reg.exe` markers.
-- [ ] Assert `Kanmer.exe`, `resources\mcp\kanmer-mcp.cjs`, `ELECTRON_RUN_AS_NODE=1` and `--probe` markers.
+- [x] Assert `Kanmer.exe`, `resources\mcp\kanmer-mcp.cjs`, `ELECTRON_RUN_AS_NODE=1` and `--probe` markers.
 - [x] Assert no build-user/source absolute path appears in the shim.
 - [x] Assert `electron-builder.yml` packages the shim with `extraFiles`.
 - [x] Assert the expected NSIS include is configured.

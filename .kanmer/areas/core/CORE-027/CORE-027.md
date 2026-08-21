@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-21T01:00:34.139Z'
   verifying: '2026-08-21T01:01:32.245Z'
   done: '2026-08-21T01:04:37.070Z'
-taken_at: '2026-08-21T00:52:35.910Z'
-branch: core-027-browser-subpath
-worktree: .worktrees/core-027
 labels:
   - design-system
   - packaging
@@ -28,7 +25,7 @@ prs:
   - '96'
 archived: false
 created: '2026-08-16T20:18:36.563Z'
-updated: '2026-08-21T01:04:37.070Z'
+updated: '2026-08-21T01:05:08.474Z'
 ---
 
 ## What

@@ -1,0 +1,1 @@
+2026-08-21 — Closeout: PR #96 merged as `3c1ad6d`; proof was recorded after merged-main checks passed (`build:ui`, full typecheck, 255 core tests, browser import smoke, diff check). Removing only `.worktrees/core-027` and the merged `core-027-browser-subpath` branch, then releasing the ticket.

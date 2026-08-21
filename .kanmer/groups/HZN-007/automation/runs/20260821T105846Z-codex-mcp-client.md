@@ -364,3 +364,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T22:43:28.052Z — lane assignment: /root/gui099_executor owns independent merged-main verification of MCP-008 (currently Verifying), including .mcpb/Claude Desktop evidence, proof, adjacent moves and exact cleanup; no external host evidence may be fabricated.
 
 - 2026-08-21T22:43:28.052Z — lane assignment: /root/mcp017_verifier owns independent merged-main verification of CORE-022 (currently Verifying), including migration/EPERM/resume evidence, proof, adjacent moves and exact cleanup; failures and unavailable Windows evidence remain explicit.
+
+- 2026-08-21T22:46:56.522Z — CORE-022 merged-main verification completed at HEAD 1b5ae0d4546d1b57be393b38f4813f9ecfb6e7d5; implementation d0f927a3f9aab7fa6f4716410138126f3ff1fc35 is reachable. Focused IO/migration 28/28, full core 263/263, core typecheck and build passed. The planned 242-ticket fixture and live Windows EPERM/file-lock run are unavailable and recorded INCONCLUSIVE in proof; ticket remains Verifying, with no release or cleanup.

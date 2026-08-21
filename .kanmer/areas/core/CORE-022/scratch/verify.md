@@ -1,0 +1,1 @@
+2026-08-21 merged-main verification: HEAD 1b5ae0d4546d1b57be393b38f4813f9ecfb6e7d5 contains d0f927a3f9aab7fa6f4716410138126f3ff1fc35. Focused IO/migration tests 28/28, full core 263/263, core typecheck and build passed. Real 242-ticket fixture and live Windows EPERM/antivirus lock run are unavailable and remain INCONCLUSIVE; ticket stays Verifying.

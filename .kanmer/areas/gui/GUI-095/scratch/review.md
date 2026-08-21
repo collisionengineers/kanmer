@@ -22,3 +22,39 @@ Additional concrete findings from source inspection:
 - Remote ready output is accepted whenever endpoint is any truthy string and projectFingerprint matches; manager does not validate endpoint HTTPS hostname or the ready/status DTO shape. Child status reason is copied into renderer diagnostics. Canonical child is trusted, but required allowlisted output/endpoint validation is missing.
 - createSecret rotation does not invalidate prior in-memory delivery records, and deliveries have no project field. Hard-crash/orphan temp token dirs under tmpdir are never scavenged on startup. manager record.outputBuffer and doctor output are unbounded.
 - Manager config schema omits persisted config version, secret fingerprint/timestamps, restart policy, last doctor summary/time, and remove/reconcile operations; this is materially less than the persisted settings contract in files.md/plan.md.
+
+## Independent re-review — 2026-08-21 — remediation `6ca0263f`
+
+**Disposition: NEEDS CHANGES / BLOCK. Do not merge.**
+
+The remediation fixes several earlier issues: per-project queues and max-two start semaphore exist; settings writes are queued within the manager; delivery is project/frame-bound and old deliveries are invalidated after successful rotation; child environments are allowlisted and output is bounded; owner records and tracked doctor/process cleanup are present; config/runtime generations are exposed; safeStorage includes the real Electron Linux aliases; status/doctor DTOs are redacted and dimensioned.
+
+Verification performed:
+
+- `npm test -w @kanmer/gui -- --run src/main/remoteAccess ...`: 4 files / 13 focused tests passed; the previously run full GUI suite was 37 files / 332 tests.
+- `npm run typecheck -w @kanmer/gui`: passed.
+- `npm run build -w @kanmer/gui`: passed.
+- Sequential `npm run test:http -w @kanmer/mcp-server`: 61/61 passed. A prior concurrent run had one readiness timeout (60/61); isolated readiness and this sequential rerun passed.
+- `git diff --check origin/main...HEAD`: **failed** at `apps/gui/src/main/remoteAccess/identity.test.ts:18` and `apps/gui/src/renderer/src/components/Settings.remote.test.ts:15` (blank lines at EOF).
+
+Blocking findings:
+
+1. **Registry-wide startup is not wired.** `openProject()` calls `remoteAccess.autoStart()` with a one-element array for only the project just opened. No app-ready enumeration starts all persisted registered projects, so a configured auto-start project that is not the current/opened project remains `missing` and never starts. The manager semaphore is therefore not exercising the required multi-project startup contract.
+
+2. **Ownership recovery and reconcile are incomplete.** `startNow()` rejects any existing owner file as `REMOTE_OWNER_EXISTS` without checking PID/nonce liveness or scavenging stale owner/temp directories, while force-kill/crash paths can leave the owner file behind. A single crash can permanently block future GUI start. `reconcile()` only registers the current fingerprint; it does not migrate/rekey a persisted old fingerprint when the project path moves, and an old stale registry entry remains. This is not a usable explicit reconcile flow.
+
+3. **Bearer clipboard cleanup is not quit-safe.** The renderer owns the 60-second timer; unmount cleanup only calls `clearTimeout`, so quit/reload before expiry leaves the copied bearer in the system clipboard indefinitely. The contract requires true-quit cleanup, and the one-time token UI remains inline rather than an accessible modal with the required consequence/focus semantics.
+
+4. **Unexpected process failure can leave public status verified.** `processFailed()` emits error with `endpoint: null`, but `emit()` preserves `record.status.public` and spreads the prior `health.remote` for the error state. A previously verified runtime can therefore report `state:error` while `public:"verified"`/remote health remains ready. Failure must force public stale and invalidate remote health/verification.
+
+5. **Doctor output is not the canonical safe report contract.** The parser reduces checks to id/status/detail and derives `repair` from the first warning/failure detail. It drops structured repair code/actions and grouping needed to map MCP-027 checks to repair anchors; it does not persist approved last summary/time in settings. This fails the required full safe report/repair rendering and persistence contract.
+
+6. **Mutating IPC lacks complete optimistic validation and settings ownership.** `remoteCreateSecret`, `remoteReconcile`, and `remoteRemove` have no expected config-generation argument/check; the doctor expected object does not reject unknown fields. `RemoteAccessManager` serializes only its own `configStore` writes, separately from the existing settings writer, so the claimed shared app-settings write ownership is not proved and concurrent settings updates can still be lost.
+
+7. **Process/event and sender boundaries remain too permissive.** Ready events accept any truthy `event.endpoint` without exact HTTPS/hostname/`/mcp` validation or schema validation. `assertTrustedRemoteSender()` accepts any local file URL whose path merely ends in `/renderer/index.html`, and `will-navigate` allows arbitrary `file:` navigation; a spoofed local renderer can satisfy the IPC check. Require the exact packaged renderer path (and exact dev origin/path) and reject unsafe navigation. Packaged code also still honors unrestricted `KANMER_REMOTE_CLI`/`KANMER_DOCTOR_CLI` path overrides.
+
+8. **Secure-backend allowlist is still not exact.** `selected.startsWith("kwallet")` accepts arbitrary backend names such as `kwallet-malicious`; accept only the documented exact aliases and add a negative test.
+
+9. **Evidence is insufficient for the claims.** Manager tests cover persistence/delivery only (6 tests); there are no focused tests for startup enumeration/semaphore, stale owner recovery, process failure status invalidation, quit/clipboard cleanup, IPC origin/schema rejection, doctor DTO mapping, or redaction canaries. The ticket report/checklist claim those behaviors as delivered despite the missing proof.
+
+Required before PASS: wire registry-wide deterministic app-ready auto-start; define and test stale-owner/temp recovery plus real reconcile semantics; move clipboard cleanup/quit handling into the main/preload boundary and provide the modal/accessibility contract; invalidate public/remote status on failures; preserve canonical doctor checks/repair metadata and approved summary persistence; add expected-generation checks and a single settings write boundary; tighten exact sender/navigation/ready-event validation and packaged CLI paths; make secure backend matching exact; fix the two diff-check EOF failures; and add regression/security/canary tests for each.

@@ -57,3 +57,5 @@ Follow-up hardening commit `91a0a64b` makes client cleanup idempotent and record
 The packaged probe hardening in `0552e6f7` cancels header-only HTTP response bodies, so route/auth diagnostics do not retain response streams or sockets.
 
 Final review blockers are closed in `2d54db9e`: cancellation/total-timeout reports now have non-healthy status with exit 2, and the CLI validates exact loopback `/mcp` endpoints before issuing local status requests. Doctor regression tests cover cancellation and late timeout status.
+
+The final doctor rail is now 60/60: it includes a packaged local CLI regression with a disposable listener proving unsafe non-loopback-path endpoints are rejected before any POST. The change is in `e446f619`.

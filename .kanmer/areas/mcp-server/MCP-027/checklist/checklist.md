@@ -169,3 +169,5 @@ Final verification on commit `0719a399`:
 
 - [x] Cancellation and total-timeout reports are non-healthy (status fail with exit 2) and regression assertions cover both paths.
 - [x] CLI local status validates an exact loopback HTTP `/mcp` endpoint before any request; unsafe endpoint references fail closed without probing (commit `2d54db9e`).
+
+- [x] Packaged local CLI regression starts a disposable listener, rejects an unsafe non-`/mcp` endpoint before any POST, and proves zero hits (commit `e446f619`).

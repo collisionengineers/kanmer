@@ -71,6 +71,34 @@ type FieldKey = (typeof FIELD_KEYS)[number];
 type EditorTab = "ticket" | "scratch" | TicketDoc;
 export type EditorMode = "approval" | "execution" | "review" | "evidence";
 
+/** The exact pipeline paths core exposes, grouped by their top-level type. */
+export function documentPathsByType(
+  paths: readonly string[],
+  types: readonly string[],
+): Record<string, string[]> {
+  const allowed = new Set(types);
+  const grouped: Record<string, string[]> = {};
+  for (const path of paths) {
+    const slash = path.indexOf("/");
+    if (slash <= 0) continue;
+    const type = path.slice(0, slash);
+    if (!allowed.has(type)) continue;
+    (grouped[type] ??= []).push(path);
+  }
+  for (const values of Object.values(grouped)) values.sort();
+  return grouped;
+}
+
+/** Prefer a type's conventional index, then the first existing path. */
+export function preferredDocumentPath(type: string, paths: readonly string[]): string {
+  const index = `${type}/${type}.md`;
+  return paths.includes(index) ? index : paths[0] ?? index;
+}
+
+function documentLabel(doc: string): string {
+  return doc.endsWith(".md") ? doc : `${doc}.md`;
+}
+
 export const EDITOR_MODES: ReadonlyArray<{ id: EditorMode; label: string; description: string }> = [
   { id: "approval", label: "Approval", description: "Ticket and group context" },
   { id: "execution", label: "Execution", description: "Plan" },
@@ -132,9 +160,15 @@ export function Editor(props: EditorProps): JSX.Element {
   // touched is left alone instead of being clobbered.
   const baseline = useRef<Snapshot>(snapOf(item));
   const [tab, setTab] = useState<EditorTab>(() => startingTabForMode(mode));
-  const [pendingTab, setPendingTab] = useState<{ tab: EditorTab; scratchSlug?: string; mode?: EditorMode } | null>(null);
+  const [pendingTab, setPendingTab] = useState<{
+    tab: EditorTab;
+    scratchSlug?: string;
+    docPath?: string;
+    mode?: EditorMode;
+  } | null>(null);
   const appliedMode = useRef<{ id: string; mode: EditorMode }>({ id: item.id, mode });
   const [docsInfo, setDocsInfo] = useState<TicketDocsInfo | null>(null);
+  const [selectedDocPaths, setSelectedDocPaths] = useState<Record<string, string>>({});
   const [scratchSlug, setScratchSlug] = useState<string | null>(null);
   const [newScratchSlug, setNewScratchSlug] = useState("");
   const [scratchError, setScratchError] = useState<string | null>(null);
@@ -237,6 +271,30 @@ export function Editor(props: EditorProps): JSX.Element {
     }
     void client.getDocTypes(item.id).then(setDocTypes);
   }, [item.id, item.area, item.type]);
+
+  const pathsByType = useMemo(
+    () => documentPathsByType(docsInfo?.documentPaths ?? [], docTypes.map((d) => d.id)),
+    [docsInfo?.documentPaths, docTypes],
+  );
+
+  // Keep a selected exact path stable across inventory refreshes. While the
+  // document editor is dirty, defer reconciliation so an agent's inventory
+  // update cannot unmount the editor and discard the user's text.
+  useEffect(() => {
+    if (docDirty) return;
+    setSelectedDocPaths((current) => {
+      let changed = false;
+      const next = { ...current };
+      for (const type of docTypes.map((d) => d.id)) {
+        const preferred = preferredDocumentPath(type, pathsByType[type] ?? []);
+        if (!pathsByType[type]?.includes(current[type] ?? "")) {
+          if (next[type] !== preferred) changed = true;
+          next[type] = preferred;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [docDirty, docTypes, pathsByType]);
 
   const dirtyKeys = useMemo(
     () => FIELD_KEYS.filter((k) => form[k] !== baseline.current[k]),
@@ -366,12 +424,30 @@ export function Editor(props: EditorProps): JSX.Element {
    * key change and the doc→Ticket unmount), so they are guarded where the
    * loss happens rather than by stretching App's item-level trySelect.
    */
-  const tryTab = (next: EditorTab, nextScratchSlug?: string, nextMode?: EditorMode) => {
-    const changesDocument = next !== tab || (next === "scratch" && nextScratchSlug !== scratchSlug);
-    if (changesDocument && docDirty) setPendingTab({ tab: next, scratchSlug: nextScratchSlug, mode: nextMode });
+  const activeDocPath =
+    tab !== "ticket" && tab !== "scratch"
+      ? selectedDocPaths[tab] ?? preferredDocumentPath(tab, pathsByType[tab] ?? [])
+      : undefined;
+
+  const tryTab = (
+    next: EditorTab,
+    nextScratchSlug?: string,
+    nextMode?: EditorMode,
+    nextDocPath?: string,
+  ) => {
+    const changesDocument =
+      next !== tab ||
+      (next === "scratch" && nextScratchSlug !== scratchSlug) ||
+      (next !== "ticket" && next !== "scratch" && nextDocPath !== undefined && nextDocPath !== activeDocPath);
+    if (changesDocument && docDirty) {
+      setPendingTab({ tab: next, scratchSlug: nextScratchSlug, docPath: nextDocPath, mode: nextMode });
+    }
     else {
       setTab(next);
       if (next === "scratch" && nextScratchSlug !== undefined) setScratchSlug(nextScratchSlug);
+      if (next !== "ticket" && next !== "scratch" && nextDocPath !== undefined) {
+        setSelectedDocPaths((current) => ({ ...current, [next]: nextDocPath }));
+      }
       if (nextMode) onModeChange?.(nextMode);
     }
   };
@@ -663,7 +739,7 @@ export function Editor(props: EditorProps): JSX.Element {
 
       {pendingTab !== null && (
         <ConfirmModal
-          message={`Discard changes to ${item.id} ${tab}.md?`}
+          message={`Discard changes to ${item.id} ${documentLabel(tab === "ticket" ? "ticket" : tab === "scratch" ? `scratch/${scratchSlug ?? ""}` : activeDocPath ?? tab)}?`}
           actionLabel="Discard"
           onCancel={() => setPendingTab(null)}
           onConfirm={() => {
@@ -674,6 +750,9 @@ export function Editor(props: EditorProps): JSX.Element {
             if (pendingTab.mode) onModeChange?.(pendingTab.mode);
             if (pendingTab.tab === "scratch" && pendingTab.scratchSlug !== undefined) {
               setScratchSlug(pendingTab.scratchSlug);
+            }
+            if (pendingTab.tab !== "ticket" && pendingTab.tab !== "scratch" && pendingTab.docPath !== undefined) {
+              setSelectedDocPaths((current) => ({ ...current, [pendingTab.tab]: pendingTab.docPath! }));
             }
             setPendingTab(null);
           }}
@@ -709,16 +788,25 @@ export function Editor(props: EditorProps): JSX.Element {
           )}
         </section>
       ) : tab !== "ticket" ? (
-        <DocEditor
-          key={`${item.id}:${tab}`}
-          id={item.id}
-          doc={tab}
-          progressDoc={progressDoc}
-          knownIds={knownIds}
-          changeSignal={changeSignal}
-          onDirty={setDocDirty}
-          onNavigate={onNavigate}
-        />
+        <>
+          <DocumentPathSelector
+            type={tab}
+            paths={pathsByType[tab] ?? []}
+            selected={activeDocPath ?? preferredDocumentPath(tab, pathsByType[tab] ?? [])}
+            onSelect={(path) => tryTab(tab, undefined, undefined, path)}
+          />
+          <DocEditor
+            key={`${item.id}:${activeDocPath ?? tab}`}
+            id={item.id}
+            doc={activeDocPath ?? preferredDocumentPath(tab, pathsByType[tab] ?? [])}
+            progressDoc={progressDoc}
+            knownIds={knownIds}
+            changeSignal={changeSignal}
+            onDirty={setDocDirty}
+            onNavigate={onNavigate}
+            onSaved={refreshDocsInfo}
+          />
+        </>
       ) : (
         <>
           {gates && <ReadinessPanel gates={gates} onOpenDoc={(t) => tryTab(t)} />}
@@ -988,6 +1076,45 @@ function LinkGroup({
   );
 }
 
+function DocumentPathSelector({
+  type,
+  paths,
+  selected,
+  onSelect,
+}: {
+  type: string;
+  paths: string[];
+  selected: string;
+  onSelect: (path: string) => void;
+}): JSX.Element {
+  const relative = (path: string) => path.startsWith(`${type}/`) ? path.slice(type.length + 1) : path;
+  return (
+    <nav className="document-paths" aria-label={`${type} document paths`}>
+      <span className="document-paths-label">Files</span>
+      {paths.length === 0 ? (
+        <span className="document-paths-empty">No saved {type} files yet; the index path is ready to create.</span>
+      ) : (
+        <div className="document-path-list" role="list">
+          {paths.map((path) => (
+            <div key={path} role="listitem">
+              <button
+                type="button"
+                className={path === selected ? "chip link active" : "chip link"}
+                aria-label={path}
+                aria-pressed={path === selected}
+                title={path}
+                onClick={() => onSelect(path)}
+              >
+                {relative(path)}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </nav>
+  );
+}
+
 /**
  * One pipeline document: edit/preview/save whole-doc, with the checklist tab
  * rendering interactive checkboxes that write straight back to disk.
@@ -1019,6 +1146,7 @@ function DocEditor({
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const dirty = editing && text !== (content ?? "");
+  const label = documentLabel(doc);
   // What the last save tried to write — "Overwrite anyway" re-issues exactly
   // that, which matters for the checklist toggle (its content never reaches
   // `text`).
@@ -1122,15 +1250,15 @@ function DocEditor({
   if (content === null && !editing) {
     return (
       <div className="doc-empty">
-        <p>No {doc}.md yet.</p>
+        <p>No {label} yet.</p>
         <button
           className="primary sm"
           onClick={() => {
-            setText(`# ${id} ${doc}\n\n`);
+            setText(`# ${id} ${label}\n\n`);
             setEditing(true);
           }}
         >
-          Create {doc}.md
+          Create {label}
         </button>
       </div>
     );
@@ -1158,7 +1286,7 @@ function DocEditor({
             Cancel
           </button>
           <button className="primary" disabled={saving} onClick={() => void saveDoc(text)}>
-            {saving ? "Saving…" : `Save ${doc}.md`}
+            {saving ? "Saving…" : `Save ${label}`}
           </button>
         </div>
       </div>

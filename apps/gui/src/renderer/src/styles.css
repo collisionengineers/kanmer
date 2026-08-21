@@ -596,6 +596,46 @@ textarea.body {
   border-color: var(--accent);
   color: var(--accent);
 }
+.document-paths {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 0 2px;
+  border-bottom: 1px solid var(--line);
+}
+.document-paths-label {
+  flex: 0 0 auto;
+  padding-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+}
+.document-path-list {
+  display: flex;
+  flex: 1 1 240px;
+  gap: 5px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.document-path-list > [role="listitem"] {
+  min-width: 0;
+}
+.document-path-list .chip {
+  max-width: min(420px, 70vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.document-path-list .active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.document-paths-empty {
+  color: var(--muted);
+  font-size: 11px;
+}
 .group-context-pane {
   border: 1px solid var(--line);
   border-radius: 6px;

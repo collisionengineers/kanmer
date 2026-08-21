@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T18:34:30.000Z
+updated_at: 2026-08-21T18:36:00.000Z
 lane_limit: 3
 stop_reason:
 ---
@@ -141,6 +141,8 @@ stop_reason:
 - 2026-08-21T18:29:44.491Z — Lane 1 reassigned to /root/gui082_executor for taken GUI-082 on GUI-082-stylesheet-selector-audit/C:\\Users\\Alex\\Documents\\GitHub\\kanmer\\.worktrees\\gui-082. Packet, HZN-006/HZN-007 context, links and gates were reread. Existing branch already contains implementation commit 74f35c1a but board checklist is 0/21; finish evidence/report, independent review/merge, merged-main proof and closeout only for GUI-082.
 
 - 2026-08-21T18:34:30.000Z — Independent review of MCP-017 PASS: linked-worktree guard behavior, dependency-free tests, adversarial vectors, and normal-main plugin parity all passed. PR #105 merged at 1fa516248610e8294819f50572b5d67e8495bb30; ticket moved Review→Verifying. Merged-main proof and closeout cleanup are the next handoff; reviewer noted only non-blocking report wording to reconcile.
+
+- 2026-08-21T18:36:00.000Z — DOC-011 closeout cleanup verified after merged-main reachability: exact worktree .worktrees/doc-011 removed, local branch doc-011-compiled-workflow deleted after merge SHA ancestry check, origin branch deleted, fetch --prune/worktree prune completed; board ticket remains Done, released, checklist 63/63, gates pass.
 
 ## Resume instruction
 

@@ -69,3 +69,5 @@ FRD-025 RA-TUNNEL-6 is authoritative over the prior plan wording: remote shutdow
 Commit `fc4d076` hardens generated cloudflared runtime files: private directory mode, exclusive config creation, and a read-back test that asserts exact ingress/catch-all semantics and protected POSIX file mode. Focused suite passed 26/26, typecheck/diff clean.
 
 Commit `4dfa576` gives `CloudflaredAdapter` a provider-neutral observable lifecycle: immutable status snapshots and subscription callbacks cover stopped → validating → starting → connected → stopping → stopped, with redacted metadata and failed terminal status. It rejects a concurrent second start and records non-secret public endpoint/PID/project metadata. The standalone fake-provider test asserts the full sequence. Focused suite passed 26/26, MCP typecheck/diff clean.
+
+Commit `c30324a` makes intentional stop await protected runtime-directory cleanup and proves the generated config is absent afterward. Focused suite passed 26/26, MCP typecheck/diff clean.

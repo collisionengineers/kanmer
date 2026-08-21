@@ -574,11 +574,11 @@ server.registerTool(
   {
     title: "Read a ticket document",
     description:
-      "Read one ticket document (`doc`) or 1–25 selected documents (`docs`). Supply exactly one form. The legacy single response is unchanged; batch returns ordered per-document content/version records. Missing known documents are normal entries; versions bind to returned bytes and are not an atomic snapshot.",
+      "Read one ticket document (`doc`) or 1–25 selected documents (`docs`) by type-relative path. Supply exactly one form. Scratch files use `scratch/<slug>` (for example, `scratch/review`) and map to `scratch/<slug>.md`. The legacy single response is unchanged; batch returns ordered per-document content/version records. Missing known documents are normal entries; versions bind to returned bytes and are not an atomic snapshot.",
     inputSchema: {
       id: z.string().describe("Ticket id"),
-      doc: ticketDocEnum.optional().describe("One document (legacy form)"),
-      docs: z.array(ticketDocEnum).min(1).max(25).optional().describe("1–25 documents (batch form; mutually exclusive with doc)"),
+      doc: ticketDocEnum.optional().describe("One type-relative document path (legacy form)"),
+      docs: z.array(ticketDocEnum).min(1).max(25).optional().describe("1–25 type-relative document paths (batch form; mutually exclusive with doc)"),
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
@@ -980,7 +980,7 @@ server.registerTool(
   {
     title: "Write a ticket document",
     description:
-      "Write one of a ticket's pipeline documents into its folder. `doc` is a document id from the ticket area's configured doc types (see get_doc_gates); an unknown id is rejected with the valid ids, and a doc that `requires` others is rejected until they exist. Plain Markdown, no frontmatter. Pass append: true to add below the existing content (for progress notes) instead of replacing it. For free-form notes use append_scratch instead. Pass the `version` you last read from get_ticket_doc as `expected_version` to be rejected instead of overwriting a concurrent edit; the result carries the new `version`.",
+      "Write one of a ticket's pipeline documents into its folder. `doc` is a document id from the ticket area's configured doc types (see get_doc_gates); an unknown id is rejected with the valid ids, and a doc that `requires` others is rejected until they exist. Plain Markdown is preserved byte-for-byte, including frontmatter used by SHA-bound review/proof records. Pass append: true only for running-note content; frontmatter records such as `scratch/review` and `proof` require a whole-file write with append omitted or false. For free-form notes use append_scratch instead. Pass the `version` you last read from get_ticket_doc as `expected_version` to be rejected instead of overwriting a concurrent edit; the result carries the new `version`.",
     inputSchema: {
       id: z.string().describe("Ticket id"),
       doc: ticketDocEnum.describe("Which document"),
@@ -1010,10 +1010,10 @@ server.registerTool(
   {
     title: "Append a scratch note",
     description:
-      'Append a free-form working note to a ticket\'s scratch file (scratch-<slug>.md). Separate from set_ticket_doc: scratch is never gated or validated against the doc types — it is the agent\'s running notepad. Read it back with get_ticket_doc(doc: "scratch-<slug>"). Successive appends are separated by a blank line. slug defaults to "notes".',
+      'Append a free-form running note to a ticket\'s scratch file (`scratch/<slug>.md`). Separate from set_ticket_doc: scratch is never gated or validated against the doc types. Read it back with get_ticket_doc(doc: "scratch/<slug>"). Use whole-file set_ticket_doc for frontmatter-backed SHA-bound records; successive note appends are separated by a blank line. slug defaults to "notes".',
     inputSchema: {
       id: z.string().describe("Ticket id"),
-      slug: z.string().optional().describe('Scratch slug (default "notes") → scratch-<slug>.md'),
+      slug: z.string().optional().describe('Scratch slug (default "notes") → scratch/<slug>.md'),
       content: z.string().describe("Markdown to append below a blank line"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },

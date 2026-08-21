@@ -31,8 +31,8 @@ Every mutating tool accepts `expected_project?` at its **top-level call boundary
 | `update_item` | Patch frontmatter and/or the body. Omitted fields are left alone, but a supplied `body` **replaces** the whole body — it is not merged. A patch that changes nothing is a no-op and does **not** bump `updated`. Changing a ticket's `area` moves its folder; the id never changes. `archived: true` hides from board. `type` **cannot** be changed — create a new item and archive the old one instead. Pass `expected_updated` (the `updated` you last read) when rewriting a body: if the item changed since, the call fails with a conflict telling you to re-read, instead of silently overwriting the newer version. Passing `[]` clears an array field (`refs`/`commits`/`prs`); `deployment: ""` clears deployment. Changing `profile` re-evaluates the gates immediately — a move blocked a moment ago may now be allowed. `groups` is how membership is set; there is no add/remove tool. | `id`, `title?`, `status?`, `area?`, `profile?`, `requires?`, `groups?`, `assignee?`, `order?`, `labels?`, `links?`, `blocks?`, `refs?`, `docs_todo?`, `commits?`, `prs?`, `deployment?`, `body?`, `archived?`, `expected_updated?` |
 | `move_item` | Move an item to one of the six fixed stages. Enforces the ticket's **profile gates** and names the unmet requirement and boundary on failure — call `get_doc_gates` to self-check first. **A single move may cross at most one gated boundary**: writing every document and jumping straight to `done` is refused even though nothing is missing, because the pipeline is meant to be walked rather than satisfied at the end. Move one stage at a time; the refusal names the next one. Optional `position` places it within the column — `"top"`, `"bottom"`, or `{ after: "API-003" }` — maintaining the manual order the human sees. | `id`, `status`, `position?`, `expected_updated?` |
 | `take_ticket` | Take a ticket before working it: records `taken_at` + `branch` (required) + `worktree?`, sets assignee (defaults to your client name), moves to the working stage (default `implementing`). Errors if already taken unless `force`. `action: "release"` clears the taken fields when the work ends. | `id`, `action` (`take`/`release`), `branch`, `worktree?`, `stage?`, `assignee?`, `force?` |
-| `set_ticket_doc` | Write one pipeline document into a ticket's folder (plain Markdown, no frontmatter). `doc` is a **per-area configured** doc id (`get_doc_gates`); an unknown id is rejected with the valid ids, and a doc that `requires` others is rejected until they exist. `append: true` adds below existing content — for progress notes. For free-form notes use `append_scratch`. Pass the `version` you last read from `get_ticket_doc` as `expected_version` and a concurrent edit is refused with a conflict; the result carries the new `version`. | `id`, `doc`, `content`, `append?`, `expected_version?` |
-| `append_scratch` | Append a free-form working note to a ticket's scratch file (`scratch-<slug>.md`). Never gated or validated against the doc types — the agent's running notepad. Read it back with `get_ticket_doc(doc: "scratch-<slug>")`. Successive appends are separated by a blank line. | `id`, `slug?` (default `notes`), `content` |
+| `set_ticket_doc` | Write one pipeline document into a ticket's folder as plain Markdown, preserving frontmatter bytes when a SHA-bound record uses it. `doc` is a **per-area configured** doc id (`get_doc_gates`); an unknown id is rejected with the valid ids, and a doc that `requires` others is rejected until they exist. `append: true` adds below existing content — for running notes only. For frontmatter records use a whole-file write with append omitted/false; for free-form notes use `append_scratch`. Pass the `version` you last read from `get_ticket_doc` as `expected_version` and a concurrent edit is refused with a conflict; the result carries the new `version`. | `id`, `doc`, `content`, `append?`, `expected_version?` |
+| `append_scratch` | Append a free-form running note to a ticket's scratch file (`scratch/<slug>.md`). Never gated or validated against the doc types — the agent's running notepad. Read it back with `get_ticket_doc(doc: "scratch/<slug>")`. Use whole-file `set_ticket_doc(doc: "scratch/review")` for frontmatter-backed SHA-bound records; successive note appends are separated by a blank line. | `id`, `slug?` (default `notes`), `content` |
 | `link_doc` | Maintain a ticket's `refs[]` — repo-relative paths to governing docs (PRD/FRD/ADR) in the repo's own `/docs/`. `add` validates the path exists under the project root; `remove` drops it. Distinct from `link_items` (item↔item); this is item↔repo-file. A linked governing doc satisfies the leave-backlog gate. | `id`, `path`, `action` (`add`/`remove`) |
 | `link_items` | Add/remove a structured relation source → target. `rel: "relates"` (default) writes `links[]`; `rel: "blocks"` writes `blocks[]` — source blocks target, and blocked-by derives from it. `add` requires the target to exist; `remove` works even on dangling links so they can be cleaned. | `source_id`, `target_id`, `action` (`add`/`remove`), `rel?` (`relates`/`blocks`) |
 | `migrate_board` | Bring the board fully current: run the v1→v2 migration if needed, then backfill the 7-stage default (alias-aware, additive — never renames/reorders existing stages, never touches item files). `dry_run: true` previews what would move and which stages would be added. | `dry_run?` |
@@ -136,8 +136,8 @@ type's conventional index file.
 
 Scratch is a folder like the rest, but its files are addressed by **slug**:
 `append_scratch <id> review "…"` writes `scratch/review.md`, and you read it back
-as `get_ticket_doc(doc: "scratch-review")`. The doc id and the path differ — that
-is the one place in the layout where they do.
+as `get_ticket_doc(doc: "scratch/review")`. The MCP doc path is the same
+type-relative path with its `.md` suffix omitted.
 
 | Type | Where it lives | Id prefix | Use for |
 |---|---|---|---|
@@ -148,6 +148,97 @@ is the one place in the layout where they do.
 `create_item` with `type: "plan"` or `"research"` is **rejected** — those live
 inside a ticket folder as documents. Unmigrated format-1 boards still accept
 them; call `get_status` to see which format a board uses.
+
+## SHA-bound record schemas
+
+These records are advisory in this horizon. The ordinary document gates remain
+existence-based: a `FAIL` or `INCONCLUSIVE` proof file still satisfies the
+structural proof gate, while the review/verify skills and future gate consumers
+must stop rather than treat failing evidence as a pass. The records are plain
+Markdown with YAML frontmatter and are parsed with `gray-matter`; do not extract
+SHA fields with a regular expression.
+
+### Review attestation
+
+The physical path is `scratch/review.md`, addressed through MCP as
+`scratch/review`. Write or replace the whole file with
+`set_ticket_doc(doc: "scratch/review")`; do not use `append_scratch` for this
+record. Read the current document version first and pass it as
+`expected_version` on replacement so a concurrent review cannot be clobbered.
+
+The frontmatter is exactly:
+
+```yaml
+kind: review-attestation
+pr: "123"
+head_sha: "<full reviewed PR head SHA>"
+verdict: pass
+reviewer: "reviewer-id"
+independent: true
+plan_hash: "<get_ticket_doc(doc: \"plan\").version>"
+ticket_updated: "<ticket updated timestamp read for review>"
+findings: []
+```
+
+`kind` is the literal `review-attestation`. `pr` is a non-empty string (a PR
+number or URL). `head_sha` is the full reviewed commit id, normally 40 lowercase
+hex characters. `verdict` is exactly `pass` or `needs-changes`; `reviewer` is a
+non-empty stable identity; `independent` is boolean; `plan_hash` is exactly the
+content-version returned by `get_ticket_doc(doc: "plan")`, not a separately
+computed hash; `ticket_updated` is the ticket timestamp read for that review;
+and `findings` is an ordered array.
+
+Each finding is an ordered mapping with these keys and enums:
+
+```yaml
+- id: F-001
+  severity: blocker # blocker | major | minor | note
+  summary: "Non-empty finding summary"
+  disposition: open # open | fixed | rejected-with-reason | accepted-risk | deferred-to-ticket
+  reason: "Required for rejected-with-reason or accepted-risk"
+  ticket: "MCP-025" # required for deferred-to-ticket
+```
+
+`id` is a stable `F-###`-style string and `summary` is non-empty. `reason` is
+required for `rejected-with-reason` and `accepted-risk`, and optional otherwise.
+`ticket` is required for `deferred-to-ticket`, and optional otherwise. The body
+holds the human-readable change coverage, acceptance checks, finding details,
+dispositions, and residual risk; frontmatter is the machine-facing authority.
+
+### Proof record
+
+The physical path is `proof/proof.md`, addressed through MCP as `proof`. Replace
+it with whole-file `set_ticket_doc(doc: "proof")`, using the current document
+version as `expected_version` when rewriting. Its frontmatter is exactly:
+
+```yaml
+kind: proof-record
+merged_sha: "<full merge commit SHA>"
+environment: "Windows 11 / Node 20 / local merged worktree"
+verified_at: "<ISO-8601 timestamp>"
+result: PASS
+attempts: []
+```
+
+`kind` is the literal `proof-record`; `merged_sha`, `environment`, and
+`verified_at` are non-empty strings; and top-level `result` is exactly one of
+`PASS | FAIL | INCONCLUSIVE | NOT_APPLICABLE | WAIVED_BY_OPERATOR`.
+`attempts` is chronological history. Each attempt contains:
+
+```yaml
+- attempted_at: "<ISO-8601 timestamp>"
+  command: "<exact command or manual check>"
+  cwd: "<repo-root-relative or injected path>"
+  exit_code: 0 # integer, or null for manual/inconclusive checks
+  result: PASS # PASS | FAIL | INCONCLUSIVE | NOT_APPLICABLE
+  summary: "<observed output/result synopsis>"
+```
+
+An attempt's `result` is exactly `PASS | FAIL | INCONCLUSIVE | NOT_APPLICABLE`.
+Failed and inconclusive attempts are retained in order when a later attempt
+passes; a successful rewrite must not erase that history. `WAIVED_BY_OPERATOR`
+is a top-level disposition only and requires the operator identity and reason in
+the Markdown body; it is not a normal attempt result.
 
 Which documents a ticket owes comes from its **profile**, not from its area and
 not from a fixed pipeline — call `get_doc_gates` for the ticket's actual types

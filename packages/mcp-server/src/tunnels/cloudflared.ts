@@ -34,6 +34,13 @@ function logLine(onLog: CloudflaredAdapterOptions["onLog"], line: string): void 
   if (line.trim()) onLog?.({ provider: "cloudflared", level: "info", message: "provider output received" });
 }
 
+/** Keep only the executable-search path plus Windows' required system root. */
+function minimalEnvironment(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { PATH: process.env.PATH ?? "" };
+  if (process.platform === "win32" && process.env.SystemRoot) env.SystemRoot = process.env.SystemRoot;
+  return env;
+}
+
 async function stopOwnedChild(child: ChildProcess, exited: Promise<unknown>): Promise<void> {
   if (!child.killed) child.kill("SIGTERM");
   const graceful = await Promise.race([
@@ -68,7 +75,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
       await chmod(configPath, 0o600);
       const spawned = this.spawnProcess(this.options.executable, ["tunnel", "--no-autoupdate", "--metrics", `127.0.0.1:${metricsPort}`, "--config", configPath, "run", this.options.tunnelId], {
         cwd: directory,
-        env: { PATH: process.env.PATH ?? "" },
+        env: minimalEnvironment(),
         shell: false,
         windowsHide: true,
         stdio: ["ignore", "pipe", "pipe"],

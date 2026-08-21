@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
+import { spawn as nodeSpawn } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { PassThrough } from "node:stream";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { createCloudflaredAdapter } from "../../dist/tunnels/cloudflared.js";
 
@@ -58,8 +60,34 @@ test("fake provider receives one direct no-autoupdate metrics invocation and mus
     const handle = await adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" });
     assert.deepEqual(calls[0].args, ["tunnel", "--no-autoupdate", "--metrics", "127.0.0.1:43125", "--config", calls[0].args[5], "run", "3f9620b4-423e-4f37-a30e-61ffcf91f403"]);
     assert.equal(calls[0].options.shell, false);
-    assert.deepEqual(Object.keys(calls[0].options.env), ["PATH"]);
+    assert.deepEqual(Object.keys(calls[0].options.env), process.platform === "win32" && process.env.SystemRoot ? ["PATH", "SystemRoot"] : ["PATH"]);
     assert.equal(calls[0].args.join(" ").includes("credential-canary-not-an-argument"), false);
     await handle.stop();
   } finally { if (server && !closed) await new Promise((resolve) => server.close(resolve)); await rm(directory, { recursive: true, force: true }); }
+});
+
+test("standalone fake provider reaches local readiness and leaves no credential content in diagnostics", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-integration-"));
+  try {
+    const credentials = path.join(directory, "credentials.json");
+    const canary = "credential-canary-must-not-appear";
+    await writeFile(credentials, canary, { mode: 0o600 });
+    const metricsPort = 43128;
+    const diagnostics = [];
+    const fixture = fileURLToPath(new URL("./fixtures/fake-cloudflared.mjs", import.meta.url));
+    const adapter = createCloudflaredAdapter({
+      executable: process.execPath,
+      tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403",
+      credentialsFile: credentials,
+      hostname: "kanmer.example.test",
+      metricsPort,
+      validateExecutable: async () => {},
+      onLog: (event) => diagnostics.push(event),
+    }, (command, args, options) => nodeSpawn(command, [fixture, ...args], options));
+    const handle = await adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" });
+    await handle.checkReadiness();
+    await handle.stop();
+    assert.ok(diagnostics.some((event) => event.message === "provider output received"));
+    assert.equal(JSON.stringify(diagnostics).includes(canary), false);
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });

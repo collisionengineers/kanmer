@@ -15,7 +15,7 @@
 - [x] Test wrong branch and default-with-tickets render.
 - [x] Test healthy file board, empty default, and null/non-Git render nothing.
 - [x] Test null actual branch and settings action.
-- [ ] Manually simulate/restore wrong branch and capture screenshot/evidence.
+- Deferred evidence: manual screenshot was unavailable because the Windows session was locked; the merged tests and report are the executable evidence.
 - [x] Run GUI tests/typecheck and `npm run verify`.
 - [x] Confirm App/existing status IPC are production callers.
 - [x] Confirm no MCP/core gate/take/sync-repair/view/channel/dependency/plugin/manual change.

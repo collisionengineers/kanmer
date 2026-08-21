@@ -17,7 +17,7 @@
 - [x] 15. Amend FRD-012 — R1 grok path + R1a/R1b, R4 ownership rule, AC-6/AC-7, grok Upgrade note
 - [x] 16. Write ADR-0012 (hosts own their registration file) and `link_doc` it into refs
 - [x] 17. Record the grok reconnect-once note in the ticket's `## Outcome` (release-notes source)
-- [ ] 18. Verification run on merged main: `npm test`, `npm run typecheck`, `npm run verify:agents-block`, `npm run check:manual`, plus the recorded `codex mcp remove` fixture transcript (this box produces proof.md)
+- [x] 18. Verification run on merged main: `npm test`, `npm run typecheck`, `npm run verify:agents-block`, `npm run check:manual`, plus the recorded `codex mcp remove` fixture transcript (this box produces proof.md)
 
 ## Progress notes
 
@@ -70,10 +70,10 @@ regression.
 - [x] proof finalised (written on merged main, PR URL and merge date in it)
 - [x] Moved to final stage (done, 2026-08-16T23:18:51Z)
 - [x] Outcome recorded in ticket body (grok reconnect-once + the sweep, in user-facing terms — this is what `release-notes.mjs` drafts from)
-- [ ] cd out of worktree; `git worktree remove .worktrees/gui-079`
-- [ ] `git branch -D gui-079-connect-ownership` (squash-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-079`
+- [x] `git branch -D gui-079-connect-ownership` (squash-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`
 
 Git cleanup done from the main checkout: worktree removed (clean, nothing
 stashed), local branch `-D`'d as expected after a squash-merge (`b72c0a1`),

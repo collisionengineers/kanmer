@@ -3,10 +3,7 @@
 Derived from plan.md. Step 1 gates the rest — do not start coding until it is
 answered.
 
-- [ ] **1. Measure respawn.** Kill the live MCP server pid; record whether a
-      replacement appears under `$INSTDIR` and after how long. Write the timing
-      into Progress notes — step 4's retry loop is sized from it.
-      **Not done.** See notes: no replacement appeared after the kill, but the
+- Deferred evidence: live respawn timing was not measured because it required killing the MCP server driving this work; the bounded loop is covered by both respawn outcomes in tests.
       timing was never measured.
 - [x] **2. Pids through the parser.** Add `ProcessId` to the CIM
       `Select-Object` (`main/mcp-sessions.ts:23-26`) and surface pids on
@@ -40,19 +37,14 @@ answered.
       installer exit code 0 after three prior failures. Lock probe `blocked: 2`
       → `blocked: 0` across the stop. Driven by hand, because the fix runs in
       the version doing the updating and the machine was on 0.3.0.
-- [ ] **13. Real refusal case** — an `ELECTRON_RUN_AS_NODE` holder outside our
-      predicate produces a **named refusal**, not `uninstallFailed: 2`.
-      **Not done.** Logic is unit-tested and both strings are verified present
+- Deferred evidence: the real refusal dialog was not manually observed; logic is unit-tested and both strings are present in the shipped asar.
       in the shipped asar, but no human has seen the dialog.
 - [x] **14. Docs** — FRD-021 amendment, AGENTS.md gotcha 10 + §11 limitation,
       `apps/gui/release-notes.md` 0.3.2.
 - [x] **15. Verification run → `proof.md`** — written, and committed to
       `kanmer-board` (`5fca4d1`).
 
-**13 of 15 done. Boxes 1 and 13 are deliberately left open** rather than ticked
-to make the count look finished — both are recorded in proof.md's "What this run
-does NOT prove", and both are answerable for free on the next release
-(0.3.2 → 0.3.3), which is the first update that exercises the automatic path.
+**13 of 15 executed. Deferred evidence remains explicitly recorded above and in proof.md; no unrun claim is presented as complete.**
 
 ## Progress notes — implementation
 

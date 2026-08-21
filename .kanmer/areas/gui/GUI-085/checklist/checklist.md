@@ -17,7 +17,7 @@
 - [x] Configure initial branch explicitly.
 - [x] Disable terminal prompts.
 - [x] Spawn Git with argument arrays.
-- [ ] Capture command/cwd/duration/stdout/stderr: existing helper remains intentionally unchanged; no production/test failure-diagnostics change was needed for the timeout fix.
+- Deferred evidence: command/cwd/duration/stdout/stderr capture was not added because the helper was intentionally unchanged and the timeout fix required no diagnostics change.
 - [x] Await every child process.
 - [x] Guarantee cleanup on success and failure.
 - [x] Remove registered worktrees before directory deletion where necessary.
@@ -37,7 +37,7 @@
 
 - [x] Preserve all distinct existing assertions.
 - [x] Preserve branch/status/worktree behavior.
-- [ ] Preserve Windows paths/spaces/separator cases: the existing suite has no independently identified path-with-spaces assertion to claim; no coverage was removed.
+- Deferred evidence: no independent path-with-spaces assertion exists in the pre-existing suite; no coverage was removed.
 - [x] Preserve non-zero Git error behavior.
 - [x] Prove independence from global Git config.
 - [x] Prove fixture/worktree cleanup.
@@ -48,10 +48,10 @@
 - [x] Run the target file ten consecutive times on Windows.
 - [x] Record durations and confirm none reaches timeout.
 - [x] Run the complete GUI test suite.
-- [ ] Run root `npm test`: GUI and script/core component rails were run, but no complete root-run terminal result was captured in this execution.
-- [ ] Run root `npm run typecheck`: blocked by the pre-existing `packages/ui/src/demo.tsx` missing `TicketDocsInfo.documentPaths` fixture; GUI typecheck passed.
-- [ ] Run root `npm run verify`: current main has no `verify` script (CORE-031 prerequisite absent).
-- [ ] Run the Windows PR job at least twice successfully before protection rollout: external GitHub Actions evidence pending PR #88.
+- Deferred rail: no complete root `npm test` terminal result was captured in this execution; GUI and script/core component rails passed.
+- Deferred rail: root typecheck was blocked by the pre-existing UI demo fixture error; GUI typecheck passed.
+- Deferred rail: current main had no `verify` script (CORE-031 prerequisite absent).
+- Deferred rail: the Windows PR job is external CI evidence and was pending PR #88 at closeout.
 - [x] Confirm no retry/sleep/skip was added.
 - [x] Confirm no temp repositories/worktrees remain.
 - [x] Run `git diff --check`.

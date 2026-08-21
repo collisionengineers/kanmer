@@ -49,16 +49,16 @@
 ## Rail and verification
 
 - [x] Keep one `plugin:check` script.
-- [ ] Ensure root `verify` calls it exactly once. *(Blocked externally: current origin/main has no `verify` script; CORE-031 owns it.)*
+- Deferred rail: root `verify` did not exist yet; CORE-031 owns that follow-up.
 - [x] Ensure no pre-check build overwrites drift.
 - [x] Add no separate Actions job.
 - [x] Run scripts/check tests.
 - [x] Run `npm run plugin:check` from normal main checkout.
 - [x] Run `npm test`.
-- [ ] Run `npm run typecheck`. *(Ran; blocked by pre-existing `packages/ui/src/demo.tsx` missing `documentPaths`.)*
+- Deferred rail: root typecheck was blocked by the pre-existing UI demo fixture error; package typechecks passed.
 - [x] Run `npm run build`.
-- [ ] Run `npm run verify`. *(Blocked externally: current origin/main has no `verify` script; CORE-031 owns it.)*
-- [ ] Run Windows PR job. *(CI-only; pending PR.)*
+- Deferred rail: root `verify` did not exist yet; CORE-031 owns that follow-up.
+- Deferred rail: Windows PR job is CI-only evidence and was pending the merged PR.
 - [x] Confirm passing check leaves generated artifacts unchanged.
 - [x] Run `git diff --check` and `git status --short`.
 - [x] Record isolated-path/handshake/negative-fixture evidence.

@@ -64,6 +64,12 @@ export type TunnelEvent =
 export interface TunnelProcess {
   readonly pid?: number;
   readonly exited: Promise<{ readonly code: number | null; readonly signal: NodeJS.Signals | null }>;
+  /**
+   * Optional, provider-owned readiness check.  The orchestrator uses this
+   * only after an initial successful start; it never substitutes log output
+   * or a public request for the provider's local health signal.
+   */
+  readonly checkReadiness?: () => Promise<void>;
   stop(): Promise<void>;
 }
 

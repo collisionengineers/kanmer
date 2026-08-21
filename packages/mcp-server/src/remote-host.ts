@@ -1,17 +1,19 @@
 import { createKanmerHttpHost, type HttpAuthorizer, type KanmerHttpHost } from "./http.js";
 import { TunnelSupervisor } from "./tunnels/supervisor.js";
-import type { TunnelAdapter } from "./tunnels/types.js";
+import type { TunnelAdapter, TunnelProcess } from "./tunnels/types.js";
 
 export interface RemoteHostOptions {
   readonly authorizer: HttpAuthorizer;
   readonly hostname: string;
   readonly tunnel: TunnelAdapter;
+  /** Kept low-frequency in production; injectable for deterministic tests. */
+  readonly healthPollMs?: number;
   readonly onStatus?: (status: RemoteHostStatus) => void;
 }
 
 export interface RemoteHostStatus {
   readonly local: "stopped" | "starting" | "ready" | "stopping";
-  readonly provider: "stopped" | "starting" | "running" | "restarting" | "failed";
+  readonly provider: "stopped" | "starting" | "running" | "restarting" | "degraded" | "failed";
   readonly publicVerification: "unknown";
   readonly endpoint?: string;
 }
@@ -23,6 +25,9 @@ export class KanmerRemoteHost {
   private readonly publicEndpoint: string;
   private ready?: Awaited<ReturnType<KanmerHttpHost["start"]>>;
   private status: RemoteHostStatus = { local: "stopped", provider: "stopped", publicVerification: "unknown" };
+  private healthTimer?: NodeJS.Timeout;
+  private monitoredProcess?: TunnelProcess;
+  private stopped = false;
 
   constructor(private readonly options: RemoteHostOptions) {
     this.publicEndpoint = `https://${options.hostname}/mcp`;
@@ -32,10 +37,13 @@ export class KanmerRemoteHost {
         this.status = { ...this.status, local: "starting" }; this.emit();
         this.ready ??= await this.http.start();
         this.status = { ...this.status, local: "ready" }; this.emit();
-        return options.tunnel.start({ endpoint: this.ready.endpoint, hostname: options.hostname, projectFingerprint: this.ready.projectFingerprint });
+        const process = await options.tunnel.start({ endpoint: this.ready.endpoint, hostname: options.hostname, projectFingerprint: this.ready.projectFingerprint });
+        this.monitorHealth(process);
+        return process;
       },
       onState: (state) => {
         const provider: RemoteHostStatus["provider"] = state === "stopped" ? "stopped" : state === "starting" ? "starting" : state;
+        if (provider === "stopped" || provider === "failed") this.stopHealthMonitor();
         this.status = { ...this.status, provider }; this.emit();
       },
     });
@@ -43,13 +51,48 @@ export class KanmerRemoteHost {
 
   private emit(): void { this.options.onStatus?.({ ...this.status }); }
 
+  private stopHealthMonitor(): void {
+    if (this.healthTimer) clearInterval(this.healthTimer);
+    this.healthTimer = undefined;
+    this.monitoredProcess = undefined;
+  }
+
+  private monitorHealth(process: TunnelProcess): void {
+    if (!process.checkReadiness) return;
+    this.stopHealthMonitor();
+    this.monitoredProcess = process;
+    const interval = this.options.healthPollMs ?? 30_000;
+    if (!Number.isSafeInteger(interval) || interval < 1) throw new Error("TUNNEL_HEALTH_POLL_INTERVAL_INVALID");
+    const check = async () => {
+      if (this.stopped || this.monitoredProcess !== process) return;
+      try {
+        await process.checkReadiness?.();
+        if (!this.stopped && this.monitoredProcess === process && this.status.provider === "degraded") {
+          this.status = { ...this.status, provider: "running" };
+          this.emit();
+        }
+      } catch {
+        if (!this.stopped && this.monitoredProcess === process && this.status.provider === "running") {
+          this.status = { ...this.status, provider: "degraded" };
+          this.emit();
+        }
+      }
+    };
+    this.healthTimer = setInterval(() => void check(), interval);
+    this.healthTimer.unref();
+  }
+
   async start(): Promise<{ readonly endpoint: string }> {
+    if (this.stopped) throw new Error("REMOTE_HOST_STOPPED");
     await this.supervisor.start();
     this.status = { ...this.status, endpoint: this.publicEndpoint }; this.emit();
     return { endpoint: this.publicEndpoint };
   }
   getStatus(): RemoteHostStatus { return { ...this.status }; }
   async close(): Promise<void> {
+    if (this.stopped) return;
+    this.stopped = true;
+    this.stopHealthMonitor();
     this.status = { ...this.status, local: "stopping" }; this.emit();
     await this.supervisor.stop(); await this.http.close();
     this.status = { ...this.status, local: "stopped", provider: "stopped" }; this.emit();

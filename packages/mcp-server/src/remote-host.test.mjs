@@ -30,3 +30,26 @@ test("provider startup failure leaves the local authenticated HTTP host availabl
     assert.deepEqual(remote.getStatus(), { local: "ready", provider: "failed", publicVerification: "unknown" });
   } finally { await remote.close(); }
 });
+
+test("provider readiness loss becomes degraded and a later local-ready poll recovers without restarting", async () => {
+  let healthy = true;
+  let stop;
+  const exited = new Promise((resolve) => { stop = () => resolve({ code: 0, signal: null }); });
+  const remote = createKanmerRemoteHost({
+    authorizer: { authorize: async () => ({ principal: "test" }) }, hostname: "kanmer.example.test", healthPollMs: 5,
+    tunnel: { start: async () => ({
+      exited,
+      checkReadiness: async () => { if (!healthy) throw new Error("not ready"); },
+      stop: async () => stop(),
+    }) },
+  });
+  try {
+    await remote.start();
+    healthy = false;
+    await new Promise((resolve) => setTimeout(resolve, 15));
+    assert.equal(remote.getStatus().provider, "degraded");
+    healthy = true;
+    await new Promise((resolve) => setTimeout(resolve, 15));
+    assert.equal(remote.getStatus().provider, "running");
+  } finally { await remote.close(); }
+});

@@ -89,6 +89,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
       return {
         pid: spawned.pid,
         exited,
+        checkReadiness: () => this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`) ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${metricsPort}/ready` }),
         async stop() { await stopOwnedChild(spawned, exited); },
       };
     } catch (error) {

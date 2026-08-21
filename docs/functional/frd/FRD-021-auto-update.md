@@ -113,10 +113,13 @@ published artifact set rather than one asset of three:
   because a check that cannot fail is worse than no check.
 - A missing `.exe.blockmap` is a **hard failure**, identical in severity to a
   missing installer or manifest. Treating it as a warning is how 0.3.0 shipped.
-- On a detected gap the script re-publishes **exactly once** and re-verifies —
-  bounded, because a retry loop turns a visible failure into a hang. It sets
-  `EP_GH_IGNORE_TIME=true` itself, which is load-bearing rather than cosmetic:
-  without it the repair pass would hit the same "skipped publishing" no-op.
+- On a detected gap the script repairs **exactly once** from the local package's
+  already-built files and re-verifies — bounded, because a retry loop turns a
+  visible failure into a hang. The repair uses `gh release upload --clobber`
+  with explicit GitHub asset names, so it does not build another installer.
+  `EP_GH_IGNORE_TIME=true` remains load-bearing for Electron Builder's one
+  publish attempt: without it an old existing release can make that publisher
+  silently skip its upload.
 - If the second verification still finds a gap the script **refuses loudly and
   does not demote the release**. `14f2715` moved `git push --tags` ahead of the
   publish, so by then the tag is public; rewriting a public artifact unattended is
@@ -136,10 +139,9 @@ published tag, which is how R3 is now demonstrable **without cutting a release**
 absent blockmap. Since `npm test` is step 1 of the release gate, those fixtures
 gate every future release.
 
-**One limit, stated rather than papered over:** the re-publish path itself is
-unproven until a real release exercises it. Its trigger is unit-tested and its
-bound is one pass, but no pre-release run actually invokes
-`electron-builder --publish always` a second time.
+**One limit, stated rather than papered over:** the exact-file repair path is
+unproven until a real release exercises it. Its trigger, name mapping and bound
+are unit-tested, but no pre-release run uploads to GitHub.
 
 **Accepted gap:** v0.3.0's blockmap is not backfilled — it needs a rebuild from
 that tag, and the cost falls only on clients still on 0.3.0, who pay one full

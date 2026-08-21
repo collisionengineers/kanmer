@@ -1,58 +1,39 @@
-# Post-implementation report
+# Post-implementation report — GUI-007
 
-PR [#21](https://github.com/collisionengineers/kanmer/pull/21).
+*Author report before independent review/merge. Proof belongs to kanmer-verify on merged main.*
 
-## File changes
+## Summary
 
-| Path | Change |
-|---|---|
-| `renderer/src/lib/profileDraft.ts` | **New** — the validation mirror and draft edits. |
-| `renderer/src/lib/profileDraft.test.ts` | **New** — 27 tests. |
-| `renderer/src/components/Settings.tsx` | `ProfilesTab` rewritten as an editor. |
-| `renderer/src/styles.css` | Inline field errors. |
-| `AGENTS.md` §7 | The three duplications as a numbered list. |
+The GUI Profiles settings surface is complete and verified: it edits profile boundary requirements, area default profiles, and the proof-type vocabulary through a cloned whole-board draft; validation mirrors core's requirement grammar; invalid drafts cannot be saved; and the save warning reports the affected-ticket blast radius. The implementation was already present on the base branch in an older untraceable commit, so this lane audited that scope and adds the missing responsive profile-table affordance plus accessible invalid-field state.
 
-## Against the governing docs
+## Changes
 
-**FRD-002 S2** — profiles and area defaults are editable, validated against the
-vocabulary. **FRD-006 R1** — the proof-type vocabulary is editable, and a
-requirement's `:type` is checked against it live.
+| File | Change | Why |
+|---|---|---|
+| `apps/gui/src/renderer/src/components/Settings.tsx` | Wrapped the profile matrix in a horizontally scrollable container and exposed `aria-invalid` on invalid requirement fields. | Keep all five boundary columns usable in narrow Settings windows and make inline validation available to assistive technology. |
+| `apps/gui/src/renderer/src/styles.css` | Added profile-table layout, cell sizing, overflow, invalid-field, and inline-error styles. | Give the Profiles editor readable table structure and a clear error affordance without changing other Settings surfaces. |
+| Existing base implementation (`lib/profileDraft.ts`, its tests, `Settings.tsx`, and `AGENTS.md` §7) | Audited and verified rather than duplicated. | The approved GUI-007 feature was already present on `origin/main`; the lane preserves it and limits the patch to the scoped editor polish. |
 
-## Decisions worth stating
+## Governing docs
 
-**Free text, not pickers.** The ticket says "per-boundary type pickers". A
-picker cannot express `proof:visual@staging`, so it would be a downgrade from
-`board.yml`. Text with inline validation keeps the grammar and still catches
-mistakes. This is a deliberate departure from the ticket's wording.
+- `docs/functional/frd/FRD-002-requirement-profiles.md` S2: profile boundary requirements and area defaults remain editable, validated against the explicit renderer vocabulary, with an explicit save and affected-ticket warning.
+- `docs/functional/frd/FRD-006-typed-proof.md` R1: proof types remain an editable vocabulary and `proof:<type>` requirements validate against it.
+- `AGENTS.md` §7: the existing third core↔renderer duplication is documented; `lib/profileDraft.ts` imports only `BoardConfig` as a type and keeps the parser split order `@` → `:` → `/`.
 
-**Empty list deletes the boundary** rather than storing `[]`, so `custom: {}`
-and `custom: { "leave-backlog": [] }` cannot differ on disk while behaving
-identically — CORE-011's gated-boundary count treats them the same.
+## Risks / follow-ups
 
-**The blast-radius count** has no equivalent in the ticket or the FRD. It exists
-because core rejects an invalid board but says nothing about a valid one that
-re-gates 46 tickets, and that is the mistake this screen makes easy.
+- The renderer mirror is intentionally literal-vocabulary based because runtime core imports are forbidden in the renderer. Existing tests cover the grammar and split-order cases, but a cross-package parity test remains a follow-up risk.
+- No real-user typing/save visual session was available in this lane; the existing boot smoke and deterministic GUI tests are PASS. A merged-main verifier may capture the Profiles tab in light/dark themes if a disposable GUI session is available.
+- No GUI-010, GUI-015, GUI-016, GUI-017, provider registration, or unrelated provider work was included.
 
-## For review — the real weakness
+## Verification hand-off
 
-**The parity check is not automated.** I verified the mirror against core's
-`parseRequirement` and `validateProfileMap` over 18 strings and they agree
-exactly. Nothing re-runs that. Core can change the split order tomorrow and the
-suite will not notice, because the suite tests the mirror against a literal
-vocabulary, not against core.
+On merged `main`, run:
 
-A permanent parity test has to live outside the renderer — a runtime core import
-in a renderer test is the thing AGENTS.md §7 forbids. Core's own suite could
-hold it, or a node-side test directory. I did not add it, and it is the weakest
-point in a duplication that this ticket makes larger.
+- `npm test --workspace @kanmer/gui` — expected PASS, 349 tests across 37 files at this lane's base.
+- `npm run typecheck` — expected exit 0.
+- `npm run build --workspace @kanmer/gui` — expected exit 0.
+- `KANMER_SMOKE=1 KANMER_OPEN=<fresh-project> npx electron . --user-data-dir=<fresh-user-data>` from `apps/gui` — expected exit 0; capture the Profiles tab only if a real UI session is available.
+- `git diff --check` — expected exit 0.
 
-**Nobody has used the editor.** Typecheck, tests and boot pass; no one has typed
-an invalid requirement into a field and watched the error appear, or saved a
-profile change and confirmed tickets re-gate. There is no renderer component
-test harness in this repo.
-
-## What kanmer-verify should run
-
-The 27 unit tests; the parity script against a rebuilt core; typecheck, build,
-boot smoke; and — if anyone can — open Settings → Profiles, type `impact` into a
-boundary and confirm the field goes red and Save disables.
+Observed in this lane: focused `profileDraft.test.ts` 28/28; full GUI Vitest 349/349 across 37 files; root typecheck exit 0; GUI build exit 0; GUI boot smoke exit 0; diff-check exit 0.

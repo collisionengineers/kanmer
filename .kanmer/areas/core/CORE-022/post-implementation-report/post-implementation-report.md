@@ -1,66 +1,39 @@
 # Post-implementation report
 
-Branch `core-022-migration-eperm`.
+## Reconciliation outcome
 
-## File changes
+CORE-022's scoped implementation is already merged on main in commit d0f927a3f9aab7fa6f4716410138126f3ff1fc35, reachable from origin/main 52073fc6. PR #28 (Migration survives EPERM and resumes per ticket (CORE-022)) is merged at dfc2b059aaab7f6dbaac5085c9a2b475c538cd09. A fresh branch/worktree was created and taken for this audit, but it has no source diff because the implementation, tests, GUI changes, FRD correction, and bundled artifact are already present on merged main. No duplicate or empty PR was created.
 
-| Path | Change |
-|---|---|
-| `packages/core/src/io.ts` | `renameWithRetry` (exported, injectable rename as a test seam); `writeFileAtomic` retries and removes its temp in a `finally`; `TMP_FILE_RE` exported. |
-| `packages/core/src/io.test.ts` | **New** — 12 tests. `io.ts` had none. |
-| `packages/core/src/migrate.ts` | Per-ticket skip in `migrateToV3`; `resumed` + `sweptTempFiles` on `V3Report`; `sweepStaleTemps`. |
-| `packages/core/src/migrate.test.ts` | 3 new tests inside the v2→v3 block. |
-| `apps/gui/src/main/index.ts` | `startWatch` extracted; `CH.migrate` pauses watcher + sync timer, restores in `finally`. |
-| `apps/gui/src/main/kanmerGit.ts` | `ensureIgnore` covers the temp pattern. |
-| `docs/functional/frd/FRD-007-fixed-six-stage-board.md` | M4 corrected; M5 added. |
+The shipped implementation provides the planned scoped behavior: renameWithRetry retries only EPERM/EBUSY/EACCES with 10/25/60/150/300 ms backoff; writeFileAtomic removes temps in finally; v3 migration skips already-shaped tickets and reports resumed; stale temps older than 60 seconds are swept and counted; ensureIgnore covers the temp pattern; and CH.migrate pauses/restores watcher and sync timer in finally. FRD-007 M4 is corrected and M5 documents contention behavior.
 
-## Against the governing docs
+## Verification with exact outcomes
 
-**FRD-007 M4** was false — it claimed partial migrations resume safely. It now
-states resumption is *per ticket*, and says why the first implementation got it
-wrong, so the mistake is not repeatable from the spec. **M5** is new and records
-the contention behaviour. **FRD-015 R5** ("writes are atomic") is unchanged in
-substance and now true under contention.
+- npm run test -w @kanmer/core -- src/io.test.ts src/migrate.test.ts — PASS, 28/28.
+- npm run test -w @kanmer/core — PASS, 11 files / 257 tests.
+- npm run typecheck — PASS, all workspaces, exit 0.
+- npm run build — PASS, core and MCP ESM/standalone builds, exit 0.
+- npm run build -w @kanmer/gui — PASS, Electron main/preload/renderer builds, exit 0. Existing gray-matter eval warning was non-fatal.
+- npm run smoke:headless — first run FAIL exit 1 because dist/standalone/kanmer-mcp.cjs was absent (ENOENT at smoke-headless.mjs:19); after npm run build, rerun PASS exit 0 with six checks.
+- npm run smoke:protocol — PASS, 42/42.
+- npm run smoke:discovery — PASS, 13/13.
+- npm run test:scripts — PASS, 79/79.
+- git diff --check — PASS, exit 0.
+- npm test — FAIL exit 1 after core 257/257 and GUI 349/349; MCP HTTP failed 2/61: project-resolution child spawn ETIMEDOUT and readiness TUNNEL_READINESS_TIMEOUT.
+- npm run test:http -w @kanmer/mcp-server — rerun FAIL exit 1 with 60/61; project-resolution child spawn ETIMEDOUT persisted, while readiness passed. These are unrelated MCP HTTP timing failures and are retained, not attributed to CORE-022.
+- npm run plugin:build — PASS, exit 0. It generated a linked-worktree-relative artifact delta, which was restored because the source implementation is already merged.
+- npm run plugin:check — FAIL exit 1 by design in this linked worktree: @kanmer/core resolved to the main checkout dist rather than this checkout. No package install workaround was applied.
 
-## Decisions worth stating
+## Evidence limits
 
-**Retry only three codes.** `EPERM`/`EBUSY`/`EACCES` are what Windows raises for
-a blocked replace. Retrying `ENOSPC` or `EROFS` would convert an immediate,
-legible failure into a slow one.
+The injected rename seam proves the EPERM/EBUSY/EACCES retry policy, bounded attempts, fail-fast non-transient behavior, original-error propagation, and temp cleanup. The current tests prove migration convergence on synthetic fixtures, including zero rewrites for already-shaped tickets and stale-temp age handling. No genuine Windows handle lock was created in this lane, and the historical 242-ticket fixture described in the existing proof was not available to rerun. Therefore the real-board/Windows checklist boxes remain explicitly open; no fabricated platform or dataset result is claimed.
 
-**The skip predicate is per ticket, not `detectFormat()`.** The format stamp is
-whole-board and deliberately written last — moving it earlier to "fix"
-resumability would mark a half-migrated board as done. The question has to be
-answered from the ticket.
+The GUI pause/restore is covered by source inspection and all-workspace typecheck/build; there is no main-process harness that exercises CH.migrate's throw path. This limitation remains explicit.
 
-**Dry runs skip the pause.** A dry run writes nothing, so stopping the watcher
-for it would be pointless churn on the common preview path.
+## Traceability and next step
 
-**Sweep only temps older than 60 s.** A younger one may belong to a write
-happening right now in another process; deleting it would break that write.
-
-## For review
-
-**Core now has a subprocess-free but timing-dependent path.** `renameWithRetry`
-sleeps. On the success path it does not, but a permanently-locked file now costs
-~545 ms before failing instead of failing instantly. That is deliberate and
-bounded, and the exhaustion test asserts the bound.
-
-**The GUI pause is the part with the least test coverage.** There is no
-main-process harness for `CH.migrate`, so the pause/restore is verified by
-typecheck and reading. The failure mode I most want a reviewer's eye on is the
-`finally`: if `startWatch` itself threw, the context would keep a closed watcher
-and live sync would be dead for the session.
-
-**`markOwnWrite` is still not called for migration.** With the watcher stopped
-there is no event to suppress, so it is unnecessary — but if anyone later
-removes the pause, the original self-contention returns silently.
-
-**Not fixed here:** the affected board (a separate call), and the GUI-005 corner
-where a board that cannot migrate also cannot be edited.
-
-## What kanmer-verify should run
-
-Full rail; then re-run the real-board fixture on merged main — copy the failing
-board to a temp dir, migrate, and assert 0 of 194 rewritten, 48 finished, 5
-temps swept, format 3, and a clean second run.
+- Ticket: CORE-022
+- Branch/worktree: core-022-migration-eperm / .worktrees/core-022
+- Existing implementation: d0f927a3f9aab7fa6f4716410138126f3ff1fc35
+- Existing merged PR: https://github.com/collisionengineers/kanmer/pull/28 (merge dfc2b059aaab7f6dbaac5085c9a2b475c538cd09)
+- No new source commit or PR was created in this reconciliation lane because main already contains the implementation; creating an empty PR would fabricate work.
+- Independent root review should inspect the merged implementation and decide whether the retained real-board/Windows evidence is sufficient for verification. Author lane stops at Review if advanced.

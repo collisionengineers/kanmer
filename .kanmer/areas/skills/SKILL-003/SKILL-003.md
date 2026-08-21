@@ -24,12 +24,13 @@ refs:
 commits:
   - aacd09ff86f58cfe910b9e2182b37b03a3bd604f
   - d7e107b9f27a64851935310e8768fbc2c249fb75
+  - af61144ce743f74b2aba92fb0778588b0b9bedd0
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/19'
   - 'https://github.com/collisionengineers/kanmer/pull/140'
 archived: false
 created: '2026-08-16T00:31:38.792Z'
-updated: '2026-08-21T23:23:46.582Z'
+updated: '2026-08-21T23:25:29.199Z'
 ---
 
 Add the PRD/FRD/ADR decision table and the granularity test to the kanmer-docs skill; retain doc-structure mirror regeneration.
@@ -40,3 +41,7 @@ Add the PRD/FRD/ADR decision table and the granularity test to the kanmer-docs s
 **Depends:** 6.1
 
 The table and test are already written up in `docs/README.md` (Phase 0.1) — keep the two consistent, or better, have the skill point at the doc.
+
+## Outcome
+
+PR #140 (https://github.com/collisionengineers/kanmer/pull/140) shipped the bounded SKILL-003 decision-table provenance correction and merged into `main` as `af61144ce743f74b2aba92fb0778588b0b9bedd0` on 2026-08-21. Historical PR #19 remains recorded for the original implementation. No follow-up ticket is required.

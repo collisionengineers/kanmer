@@ -20,3 +20,7 @@ Historical implementation PR #19 (`aacd09ff86f58cfe910b9e2182b37b03a3bd604f`) an
 GitHub Actions `verify` was rerun after review and remains **FAIL**, exactly on the pre-existing unrelated Windows path-alias assertion in `src/main/kanmerGit.test.ts`: 351/352 GUI tests pass; expected `C:\\Users\\RUNNER~1\\...`, received `C:\\Users\\runneradmin\\...`. CORE-032 is the existing tracking ticket for this environment-specific failure. The failed CI result is preserved; no unrelated test or scope was changed in SKILL-003.
 
 The skill change itself has no executable or generated-artifact impact, and all bounded local rails pass. The duplicated table has no automated future byte-identity guard and the residue sweep remains pattern-dependent; those are accepted risks documented in the report.
+
+## Closeout traceability
+
+PR #140: https://github.com/collisionengineers/kanmer/pull/140 — merged 2026-08-21T23:22:50Z into \`main\` as \`af61144ce743f74b2aba92fb0778588b0b9bedd0\`.

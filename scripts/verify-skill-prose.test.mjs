@@ -83,3 +83,25 @@ test("setup reconciles the AGENTS guide skeleton without taking ownership of hum
   assert.match(setup, /Source: AGENTS\.md skeleton created by kanmer-setup/);
   assert.match(setup, /instead of creating a duplicate/i);
 });
+
+test("greenfield playbook stays linked from setup and protects bounded planning", () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+  const playbook = readFileSync(join(root, "docs", "manual", "greenfield.md"), "utf8");
+  const setup = readFileSync(join(root, "plugins", "kanmer", "skills", "kanmer-setup", "SKILL.md"), "utf8");
+
+  for (const term of [
+    "Lean",
+    "Standard",
+    "High-assurance",
+    "one-page brief",
+    "non-goals",
+    "walking skeleton",
+    "first horizon",
+    "first real release",
+  ]) {
+    assert.match(playbook, new RegExp(term, "i"));
+  }
+  assert.match(playbook, /Do not create a lifetime backlog[\s\S]*walking skeleton/i);
+  assert.match(setup, /docs\/manual\/greenfield\.md/);
+  assert.match(setup, /brief-first interview[\s\S]*confirmation before board creation/i);
+});

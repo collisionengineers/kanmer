@@ -34,6 +34,9 @@ interface EditorProps {
   onSave: (patch: UpdateItemPatch) => Promise<Item>;
   /** Reports dirty-state changes so App can guard against losing edits. */
   onDirtyChange?: (dirty: boolean) => void;
+  /** Ephemeral presentation guidance; it never changes ticket workflow data. */
+  mode?: EditorMode;
+  onModeChange?: (mode: EditorMode) => void;
 }
 
 /** The editable fields, as flat strings (lists joined for the inputs). */
@@ -66,6 +69,18 @@ const FIELD_KEYS = [
 ] as const;
 type FieldKey = (typeof FIELD_KEYS)[number];
 type EditorTab = "ticket" | "scratch" | TicketDoc;
+export type EditorMode = "approval" | "execution" | "review" | "evidence";
+
+export const EDITOR_MODES: ReadonlyArray<{ id: EditorMode; label: string; description: string }> = [
+  { id: "approval", label: "Approval", description: "Ticket and group context" },
+  { id: "execution", label: "Execution", description: "Plan" },
+  { id: "review", label: "Review", description: "Scratch" },
+  { id: "evidence", label: "Evidence", description: "Proof" },
+];
+
+export function startingTabForMode(mode: EditorMode): EditorTab {
+  return { approval: "ticket", execution: "plan", review: "scratch", evidence: "proof" }[mode];
+}
 type GroupContext =
   | { state: "loading"; group: string }
   | { state: "ready"; group: string; content: string }
@@ -106,6 +121,8 @@ export function Editor(props: EditorProps): JSX.Element {
     onNavigate,
     onSave,
     onDirtyChange,
+    mode = "approval",
+    onModeChange,
   } = props;
 
   const client = useClient();
@@ -114,8 +131,9 @@ export function Editor(props: EditorProps): JSX.Element {
   // the live prop — so a concurrent agent edit to a field the user never
   // touched is left alone instead of being clobbered.
   const baseline = useRef<Snapshot>(snapOf(item));
-  const [tab, setTab] = useState<EditorTab>("ticket");
-  const [pendingTab, setPendingTab] = useState<{ tab: EditorTab; scratchSlug?: string } | null>(null);
+  const [tab, setTab] = useState<EditorTab>(() => startingTabForMode(mode));
+  const [pendingTab, setPendingTab] = useState<{ tab: EditorTab; scratchSlug?: string; mode?: EditorMode } | null>(null);
+  const appliedMode = useRef<{ id: string; mode: EditorMode }>({ id: item.id, mode });
   const [docsInfo, setDocsInfo] = useState<TicketDocsInfo | null>(null);
   const [scratchSlug, setScratchSlug] = useState<string | null>(null);
   const [newScratchSlug, setNewScratchSlug] = useState("");
@@ -348,13 +366,31 @@ export function Editor(props: EditorProps): JSX.Element {
    * key change and the doc→Ticket unmount), so they are guarded where the
    * loss happens rather than by stretching App's item-level trySelect.
    */
-  const tryTab = (next: EditorTab, nextScratchSlug?: string) => {
+  const tryTab = (next: EditorTab, nextScratchSlug?: string, nextMode?: EditorMode) => {
     const changesDocument = next !== tab || (next === "scratch" && nextScratchSlug !== scratchSlug);
-    if (changesDocument && docDirty) setPendingTab({ tab: next, scratchSlug: nextScratchSlug });
+    if (changesDocument && docDirty) setPendingTab({ tab: next, scratchSlug: nextScratchSlug, mode: nextMode });
     else {
       setTab(next);
       if (next === "scratch" && nextScratchSlug !== undefined) setScratchSlug(nextScratchSlug);
+      if (nextMode) onModeChange?.(nextMode);
     }
+  };
+
+  const requestMode = (nextMode: EditorMode) => {
+    if (nextMode !== mode) tryTab(startingTabForMode(nextMode), undefined, nextMode);
+  };
+
+  useEffect(() => {
+    const previous = appliedMode.current;
+    if (previous.id !== item.id || previous.mode !== mode) {
+      appliedMode.current = { id: item.id, mode };
+      setTab(startingTabForMode(mode));
+    }
+  }, [item.id, mode]);
+
+  const tabClass = (id: EditorTab) => {
+    const emphasis = id === startingTabForMode(mode) ? "mode-primary" : "mode-secondary";
+    return tab === id ? `tab active ${emphasis}` : `tab ${emphasis}`;
   };
 
   const createScratch = () => {
@@ -466,6 +502,12 @@ export function Editor(props: EditorProps): JSX.Element {
       >
       <div className="editor-head">
         <span className="editor-id">{item.id}</span>
+        <label className="editor-mode">
+          <span className="sr-only">Editor mode</span>
+          <select aria-label="Editor mode" value={mode} onChange={(e) => requestMode(e.target.value as EditorMode)}>
+            {EDITOR_MODES.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.label}</option>)}
+          </select>
+        </label>
         {item.archived && <span className="chip subtle archived-tag">archived</span>}
         <div className="spacer" />
         <button
@@ -483,19 +525,19 @@ export function Editor(props: EditorProps): JSX.Element {
       {item.type === "ticket" && docsInfo && (
         <nav className="doc-tabs">
           <button
-            className={tab === "ticket" ? "tab active" : "tab"}
+            className={tabClass("ticket")}
             onClick={() => tryTab("ticket")}
           >
             Ticket
           </button>
-          <button className={tab === "scratch" ? "tab active" : "tab"} onClick={() => tryTab("scratch")}>
+          <button className={tabClass("scratch")} onClick={() => tryTab("scratch")}>
             Scratch
             {scratchNotes.length > 0 && <span className="count">{scratchNotes.length}</span>}
           </button>
           {docTypes.map((d) => (
             <button
               key={d.id}
-              className={tab === d.id ? "tab active" : "tab"}
+              className={tabClass(d.id)}
               onClick={() => tryTab(d.id)}
             >
               {d.name}
@@ -629,6 +671,7 @@ export function Editor(props: EditorProps): JSX.Element {
             // for the render in which the tab has already changed.
             setDocDirty(false);
             setTab(pendingTab.tab);
+            if (pendingTab.mode) onModeChange?.(pendingTab.mode);
             if (pendingTab.tab === "scratch" && pendingTab.scratchSlug !== undefined) {
               setScratchSlug(pendingTab.scratchSlug);
             }

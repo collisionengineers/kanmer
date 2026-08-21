@@ -1718,6 +1718,10 @@ button.danger {
   color: var(--muted, #9aa0a6);
 }
 
+.editor-mode select { width: auto; min-width: 110px; }
+.doc-tabs .mode-secondary:not(.active) { opacity: .68; }
+.doc-tabs .mode-secondary:focus-visible { opacity: 1; }
+
 /* ---------------------------------------------------------------------------
    Context menu (FRD-019 R6). Renderer-drawn so it uses the same tokens as the
    rest of the app — which is the whole reason it replaced the native Menu.

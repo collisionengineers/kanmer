@@ -1,0 +1,3 @@
+## Independent review — 2026-08-21
+
+PR #133 now includes fix commit 60705980c930d1b2a9302847c8336302fec23801, which rejects normalized nested spellings before canonicalization and adds regressions for foo/../mockup.png on add/remove. Independent focused core reference/store 83/83 and Editor 16/16 passed; typecheck passed; the lane reported full core 258/258, GUI 351/351, build/plugin/boot/diff rails PASS with the initial Electron setup failure retained. Manual visual drag/drop/open/remove evidence remains INCONCLUSIVE and is not claimed. Review disposition: approve deterministic change; merge, then retain any manual gap only if it is a required external acceptance.

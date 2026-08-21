@@ -34,6 +34,7 @@ import {
   verifyLocalArtifacts,
   verifyRelease,
 } from "./verify-release-assets.mjs";
+import { exactUploadSpecs, settlePublication } from "./release-publish.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const guiDir = join(root, "apps", "gui");
@@ -283,7 +284,8 @@ if (dryRun) {
   console.log(`  8. verify /releases/latest is v${version}, then verify EVERY published asset`);
   console.log("     (installer, blockmap, latest.yml) is present, uploaded, and byte-identical");
   console.log("     to the local build — comparing GitHub's sha256 digest against the local files");
-  console.log("  9. on any gap: re-verify once, then refuse loudly without rebuilding or demoting");
+  console.log("  9. if publishing reports an error, verify the public release; on a gap upload the exact");
+  console.log("     one-package artifacts once, re-verify, then refuse loudly without rebuilding or demoting");
   console.log("\nNothing was written. The tree is untouched.");
   process.exit(0);
 }
@@ -367,7 +369,14 @@ run("git push --tags");
 //    packaged-app rail runs immediately afterwards; it is intentionally not a
 //    second --publish never pass, because NSIS output can differ per package.
 // ---------------------------------------------------------------------------
-run("npx electron-builder --win --publish always", guiDir);
+let publisherError = null;
+try {
+  run("npx electron-builder --win --publish always", guiDir);
+} catch (error) {
+  publisherError = error;
+  console.error("\npublisher exited non-zero; checking the public release before deciding whether it failed:");
+  console.error(error.message);
+}
 run("node scripts/check-updater-package.mjs");
 assertLocalPackageCoherent();
 
@@ -402,67 +411,69 @@ console.log(`\nverified: /releases/latest is v${version}`);
 //     A missing .exe.blockmap is a HARD failure, same as any other missing
 //     asset. Treating it as a warning is exactly how 0.3.0 passed the old gate.
 //
-//     On a gap: re-check once, then refuse. Never run the pack a second time:
-//     NSIS output can differ per package invocation, so a second publish is
-//     exactly how a manifest can describe a different installer. On the second
-//     failure the script does NOT demote the release: rewriting a public
-//     artifact unattended is a judgement call the operator wants to make, so
-//     refuse() names the manual command instead.
+//     On a gap: upload the exact files from this one package once, then
+//     re-verify and refuse if it remains incomplete. Never run the pack a
+//     second time: NSIS output can differ per package invocation, so a second
+//     publish is exactly how a manifest can describe a different installer.
 // ---------------------------------------------------------------------------
 async function verifyAssetsNow() {
-  try {
-    return await verifyRelease({
-      version,
-      localDir: releaseDir,
-      owner: OWNER,
-      repo: REPO,
-      token: process.env[tokenVar],
-    });
-  } catch (err) {
-    // The CHECK could not run. That is NOT the same as "the release is broken",
-    // and must never be reported as if it were.
-    refuse(
-      `could not verify the published assets (${err.kind ?? "error"}): ${err.message}`,
-      "this is the CHECK failing, not necessarily the release. Re-run " +
-        `\`node scripts/verify-release-assets.mjs ${version}\` once the cause is cleared, ` +
-        "and check the release by hand before assuming it is good.",
-    );
-  }
+  return verifyRelease({
+    version,
+    localDir: releaseDir,
+    owner: OWNER,
+    repo: REPO,
+    token: process.env[tokenVar],
+  });
 }
 
-let check = await verifyAssetsNow();
-console.log(`  expected ${check.expected.length} asset(s): ${check.expected.map((e) => e.name).join(", ")}`);
-for (const note of check.notes) console.log(`  note: ${note}`);
+const publication = await settlePublication({
+  publisherError,
+  verify: verifyAssetsNow,
+  repair: async (expected) => {
+    const uploads = exactUploadSpecs(expected);
+    console.error("\nthe published release is INCOMPLETE; uploading the exact one-package assets once…");
+    run(`gh release upload v${version} --clobber ${uploads.map((upload) => `"${upload}"`).join(" ")}`);
+  },
+});
 
-if (!check.ok && check.derivationBroken) {
-  // Republishing cannot fix an expected set that is wrong — the local pack
-  // output is missing, so there is nothing to compare against and nothing to
-  // upload. Refuse straight away rather than burning a repair pass.
+if (publication.status === "check-failed") {
   refuse(
-    `the expected asset set could not be derived from ${releaseDir}:\n${formatProblems(check.problems)}`,
+    `could not verify the published assets (${publication.error.kind ?? "error"}): ${publication.error.message}`,
+    "this is the CHECK failing, not necessarily the release. Re-run " +
+      `\`node scripts/verify-release-assets.mjs ${version}\` once the cause is cleared, ` +
+      "and check the release by hand before assuming it is good.",
+  );
+}
+
+if (publication.status === "local-artifacts-invalid") {
+  refuse(
+    `the expected asset set could not be derived from ${releaseDir}:\n${formatProblems(publication.check.problems)}`,
     "the pack output is missing or incomplete — this is a bug in the release script's " +
       "assumptions, not in the release. Inspect the directory before touching the release.",
   );
 }
 
-if (!check.ok) {
-  console.error(`\nthe published release is INCOMPLETE:\n${formatProblems(check.problems)}`);
-  console.error("\nre-checking once without rebuilding; a second NSIS package could make the manifest inconsistent…");
-
-  check = await verifyAssetsNow();
-  if (!check.ok) {
-    refuse(
-      `v${version} is STILL incomplete after one re-check:\n${formatProblems(check.problems)}`,
-      "the tag and release are already public and are NOT being demoted automatically. " +
-        "Fix by hand, then re-verify with " +
-        `\`node scripts/verify-release-assets.mjs ${version}\`. To take the release out of ` +
-        "/releases/latest while you work, mark it a prerelease:\n" +
-        `         gh release edit v${version} --prerelease\n` +
-        "       …and undo it with `--latest` once the assets are complete.",
-    );
-  }
-  console.log("\nthe re-check found the release complete.");
+if (publication.status === "repair-failed" || publication.status === "still-incomplete") {
+  const problems = publication.check?.problems ?? [];
+  const repairDetail = publication.status === "repair-failed"
+    ? `the exact-file repair failed: ${publication.error.message}`
+    : "the release is still incomplete after one exact-file repair";
+  refuse(
+    `${repairDetail}:\n${formatProblems(problems)}`,
+    "the tag and release are already public and are NOT being demoted automatically. " +
+      "Fix by hand, then re-verify with " +
+      `\`node scripts/verify-release-assets.mjs ${version}\`. To take the release out of ` +
+      "/releases/latest while you work, mark it a prerelease:\n" +
+      `         gh release edit v${version} --prerelease\n` +
+      "       …and undo it with `--latest` once the assets are complete.",
+  );
 }
+
+const check = publication.check;
+console.log(`  expected ${check.expected.length} asset(s): ${check.expected.map((e) => e.name).join(", ")}`);
+for (const note of check.notes) console.log(`  note: ${note}`);
+if (publication.repaired) console.log("\nthe exact-file repair restored the release without a second package.");
+if (publisherError) console.warn("\npublisher reported an error, but the externally verified release is complete.");
 
 for (const p of check.problems) console.warn(`  [${p.severity}] ${p.asset}: ${p.detail}`);
 console.log(

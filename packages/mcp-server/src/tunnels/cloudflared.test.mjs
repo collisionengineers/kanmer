@@ -67,7 +67,7 @@ test("fake provider receives one direct no-autoupdate metrics invocation and mus
     assert.match(config, /^tunnel: 3f9620b4-423e-4f37-a30e-61ffcf91f403\ncredentials-file: /);
     assert.match(config, /hostname: kanmer\.example\.test\n    service: http:\/\/127\.0\.0\.1:43123\/mcp\n  - service: http_status:404\n$/);
     if (process.platform !== "win32") assert.equal((await stat(configPath)).mode & 0o077, 0);
-    await handle.stop();
+    await Promise.all([handle.stop(), handle.stop()]);
     await assert.rejects(() => access(configPath));
   } finally { if (server && !closed) await new Promise((resolve) => server.close(resolve)); await rm(directory, { recursive: true, force: true }); }
 });

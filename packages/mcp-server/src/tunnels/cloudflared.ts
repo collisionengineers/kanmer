@@ -74,8 +74,10 @@ export class CloudflaredAdapter implements TunnelAdapter {
   }
 
   private transition(state: TunnelStatus["state"], target?: TunnelTarget, patch: Partial<TunnelStatus> = {}): void {
+    const { code: priorCode, ...prior } = this.status;
     this.status = {
-      ...this.status,
+      ...prior,
+      ...(state === "failed" && priorCode ? { code: priorCode } : {}),
       ...patch,
       state,
       changedAt: new Date().toISOString(),

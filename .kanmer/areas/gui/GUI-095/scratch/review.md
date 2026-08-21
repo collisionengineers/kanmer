@@ -58,3 +58,32 @@ Blocking findings:
 9. **Evidence is insufficient for the claims.** Manager tests cover persistence/delivery only (6 tests); there are no focused tests for startup enumeration/semaphore, stale owner recovery, process failure status invalidation, quit/clipboard cleanup, IPC origin/schema rejection, doctor DTO mapping, or redaction canaries. The ticket report/checklist claim those behaviors as delivered despite the missing proof.
 
 Required before PASS: wire registry-wide deterministic app-ready auto-start; define and test stale-owner/temp recovery plus real reconcile semantics; move clipboard cleanup/quit handling into the main/preload boundary and provide the modal/accessibility contract; invalidate public/remote status on failures; preserve canonical doctor checks/repair metadata and approved summary persistence; add expected-generation checks and a single settings write boundary; tighten exact sender/navigation/ready-event validation and packaged CLI paths; make secure backend matching exact; fix the two diff-check EOF failures; and add regression/security/canary tests for each.
+
+## Independent re-review — 2026-08-21 — `0ac5b2dd`
+
+**Disposition: NEEDS CHANGES / BLOCK. Do not merge.**
+
+Verified fixes in this commit: persisted registry enumeration now feeds app-start auto-start with deterministic fingerprint ordering and the existing max-two semaphore; dead owner files and old runtime temp directories are scavenged; clipboard copy/expiry/quit cleanup is main-owned and frame/project-bound; process/doctor failures force public state stale; persisted config generations and doctor summary/time are added; reconcile/remove/create-secret now receive expected config generations; endpoint and packaged CLI path checks are tighter; safeStorage rejects `kwallet-untrusted`.
+
+Verification:
+
+- Full GUI suite: 37 files / 334 tests passed.
+- GUI and root typechecks passed; GUI production build passed.
+- MCP HTTP regression: 61/61 passed sequentially.
+- `git diff --check origin/main...HEAD` still fails: `apps/gui/src/main/remoteAccess/identity.test.ts:18` has a blank line at EOF.
+
+Remaining blockers:
+
+1. **Settings locking is not process-wide.** `RemoteAccessManager.withSettingsLock()` only serializes manager operations. The existing `apps/gui/src/main/settings.ts` still does direct synchronous whole-file `writeFileSync`; `writeRemoteAccess()` independently reads/renames the same `settings.json`. A theme/preferences/recent-project write concurrent with remote registration/config/doctor persistence can overwrite the other namespace. The claimed shared settings-write lock is not implemented or tested.
+
+2. **Doctor setup and cancellation still leak/accept late results.** `doctorNow()` creates the temp directory/token and then performs `writeFile` outside a cleanup `try/finally`; a token-write failure leaves residue until the one-hour scavenger. On timeout/error, `finish()` settles and clears tracking, but the late `exit` callback still parses output, emits status, and persists summary if it looks current. A timed-out/failed doctor must not publish or persist a late result.
+
+3. **Reconcile is still incomplete for moved registrations and target collisions.** It only finds an old entry by the current `projectId`; when the source project path moves (and therefore projectId changes), the old fingerprint/config/secret remains orphaned and the new registration is simply added. If both old and new entries share a projectId, old config overwrites the target config without removing the target secret, leaking an orphaned encrypted record. Reconcile must explicitly migrate or reject these cases with rollback.
+
+4. **Auto-start trusts persisted paths without missing-project validation.** `autoStartRegistrations()` returns `identity.boardRoot`/`repoRoot` directly and startup invokes the canonical child for every eligible record, even when those paths no longer exist or have changed. Missing/moved projects should surface as `missing` and require explicit reconciliation, not be attempted as a stale runtime.
+
+5. **The doctor contract is still lossy and the renderer does not render it as required.** MCP-027 check repairs are `{ code, actions, section }`; the manager keeps only joined actions, drops the repair code/section, and the Settings UI renders a flat id/status/detail list without groups, repair anchors, or first-failing-layer action. No persisted repair metadata is exposed beyond the summary/time. This does not satisfy exact grouped repair rendering.
+
+6. **Renderer/security contract is incomplete.** `will-navigate` still allows any `file:` URL even though only the exact renderer path is trusted for remote IPC. Remote handlers reject such a sender, but arbitrary local navigation remains an unsafe window boundary. Persisted project identities/config paths are also only lightly type-filtered; malformed boardRoot/repoRoot/format/boardSource or unsafe persisted path values can be fed to auto-start. Validate the full identity and the same safe path/hostname rules on read.
+
+7. **Required UI/evidence remains absent.** Token delivery is still an inline banner rather than the specified accessible one-time modal; the overview is a short list inside active-project Settings rather than the required per-project cards/actions/status dimensions; there is no Electron integration/accessibility/canary coverage for IPC origin, auto-start concurrency, quit cleanup, status invalidation, doctor mapping, or settings races. The report is stale (still says 332 tests and diff-check passed, and focused manager 6 tests) and must be updated before review can pass.

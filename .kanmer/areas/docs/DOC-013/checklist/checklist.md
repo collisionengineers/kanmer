@@ -1,122 +1,95 @@
 # Checklist — DOC-013
 
-## Canonical sources and locations
+## Evidence gates (must precede user-visible claims)
 
-- [ ] Confirm canonical manual root/index and update ticket paths if different.
-- [ ] Read accepted remote FRD/ADR and requirement ids.
-- [ ] Read final MCP-021/025/026/027 and GUI-095 implementations/reports.
-- [ ] Read actual package commands/help, GUI labels/states, doctor registry/exits, storage/quit behavior, cloudflared mode/version.
-- [ ] Read MCP-028 proof/limitations when available.
-- [ ] Re-check official MCP/Electron/Cloudflare source titles relied on by implementation.
-- [ ] Map every FRD requirement and doctor id to a manual section.
-- [ ] Stop on implementation/FRD conflict rather than document fiction.
+- [x] Re-read merged MCP-027 PR #114 (`765c3f6f3ef27ea8b7d7223267b181a19a7d0de6`) report/proof and record the shipped doctor contract.
+- [ ] Wait for GUI-095 independent review, merge to main, and post-implementation report/proof before writing exact GUI labels, storage behavior, ownership, lifecycle, rotation, or doctor UI wording.
+- [ ] Re-read merged GUI-095 source/tests/report/proof immediately before implementing the manual; do not use provisional worktree files as the contract.
+- [ ] Re-read MCP-028 merged proof before making public-provider, Worker, or disposable end-to-end success claims.
+- [ ] Stop and escalate any implementation/FRD/ADR conflict rather than documenting an inferred behavior.
 
-## Terminology and security model
+## Canonical sources and generated manual
 
-- [ ] Define project fingerprint, remote host, loopback origin, public endpoint, adapter/provider, cloudflared, bearer, provider credential, session, connected, verified, GUI/headless owner.
-- [ ] Keep bearer and provider credentials distinct everywhere.
-- [ ] State one project per endpoint/process and stdio unchanged.
-- [ ] State mandatory bearer in addition to provider TLS/access controls.
-- [ ] State remote dispatch exclusion and normal Kanmer gates.
-- [ ] State possession/no per-user attribution/one token/session-rotation limits.
-- [ ] State GUI-owned access ends on true app quit.
-- [ ] List every unsupported/deferred feature once.
-- [ ] Add terminology/provider-neutral validation.
+- [x] Confirm `docs/manual/` is the authored manual root and that it currently contains 19 chapters.
+- [x] Confirm `scripts/build-manual.mjs` owns chapter order and `apps/gui/src/renderer/src/manual/chapters.generated.ts` is generated.
+- [ ] Add `remote-access.md`, `remote-access-troubleshooting.md`, and `providers/cloudflared.md`; do not create `docs/manual/README.md`.
+- [ ] Add the three chapters to `CHAPTERS` in reading order and regenerate the committed artifact.
+- [ ] Add at most one concise root README pointer, coordinating with DOC-008; do not duplicate setup instructions.
+- [ ] Keep `docs/manual/connect.md` OpenAI Secure MCP Tunnel/stdio guidance separate.
 
-## Primary manual
+## Contract and terminology
 
-- [ ] Create all required headings/anchors.
-- [ ] Add provider-neutral architecture diagram and three health dimensions.
-- [ ] Add checkable prerequisites mapped to doctor checks.
-- [ ] Explain secure storage/headless protection and duplicate ownership.
-- [ ] Verify exact GUI navigation/fields/actions/statuses/confirmations.
-- [ ] Document configure→generate→save→start→doctor→client flow.
-- [ ] Document multi-project auto-start/uniqueness/failure isolation.
-- [ ] Document connected versus verified/stale.
-- [ ] Document rotation/lost token/project move/remove/quit.
-- [ ] Use no screenshots unless maintained; never capture a real secret.
-- [ ] Link failures to exact troubleshooting entries.
+- [x] Confirm MCP-027 source paths: `doctor-cli.ts`, `doctor/types.ts`, `doctor/checks.ts`, `doctor/index.ts`, and `doctor/render.ts`.
+- [x] Confirm `kanmer-doctor` is the packaged bin, with modes `config|local|public`, optional `--json`, and exits 0/1/2.
+- [x] Confirm the registry has exactly 26 canonical check ids and schema version 1.
+- [x] Confirm `kanmer-mcp-remote` accepts no arguments and uses protected token/tunnel configuration.
+- [ ] Build a traceability worksheet mapping every FRD-025 requirement and all 26 doctor ids to manual headings and implementation tickets.
+- [ ] Define project fingerprint, remote host, loopback origin, public endpoint, adapter/provider, bearer, provider credential, session, connected, verified/stale, GUI owner, and headless owner.
+- [ ] Keep Kanmer bearer and provider credentials distinct in every chapter and example.
+- [ ] State one project/fingerprint per endpoint/process, unchanged stdio, mandatory bearer, normal workflow gates, and v1 possession/one-token/no-per-user limits.
+- [ ] List unsupported/deferred features once and link to that limitations section.
 
-## Headless commands
+## Provider-neutral remote-access chapter
 
-- [ ] Build/install actual CLI in a path with spaces.
-- [ ] Capture exact command names/flags/schema/stdout/stderr/exits from built help.
-- [ ] Execute protected token-file creation and no-overwrite behavior.
-- [ ] Execute disposable remote config/start/readiness/config/local doctor/stop.
-- [ ] Use MCP-028 safe public report only where available.
-- [ ] Test/document Bash and PowerShell only where actually supported.
-- [ ] Include no raw token arg/env/plain settings.
-- [ ] Distinguish external process supervision from shipped Kanmer ownership.
-- [ ] Explain GUI/headless ownership conflict.
-- [ ] Show safe expected output without machine paths/raw logs.
+- [ ] Create the overview, audience, security warning, and architecture/health-dimensions sections.
+- [ ] Document prerequisites without claiming Kanmer creates provider resources, DNS, or executables.
+- [ ] After GUI-095 evidence is merged, document exact GUI navigation, fields, validation, save/start states, owner conflicts, auto-start, true quit, rotate/revoke, and doctor presentation.
+- [ ] Document the headless path from built `kanmer-mcp-remote`/token/doctor command behavior and disposable runs only.
+- [ ] Explain configure/start/stop, connected versus publicly verified, stale verification, project reconciliation, lost-token recovery, and redacted diagnostics.
+- [ ] Explain generic HTTPS `/mcp` and `Authorization: Bearer <token>` without guessing client-specific formats.
+- [ ] Add client-specific recipes only when a current disposable version/platform test is recorded and dated.
+- [ ] State the complete v1 non-goals, including no remote dispatch, OAuth/per-user identity, multiple active tokens, grace rotation, WebSocket/browser API, managed relay, persistent sessions, provider automation, or hosted Worker.
 
-## Remote client setup
+## Headless command evidence
 
-- [ ] Confirm exact endpoint/base-path semantics.
-- [ ] Document standard HTTPS and Authorization bearer contract.
-- [ ] Require normal MCP initialize and expected project/tool verification.
-- [ ] Use obvious placeholders.
-- [ ] Add client-specific examples only after current format/version test.
-- [ ] Label tested client examples with version/date/platform.
-- [ ] Omit guessed formats.
-- [ ] Explain post-rotation client update/reconnect.
+- [ ] Build/install in a disposable path containing spaces.
+- [ ] Capture exact packaged command names, accepted arguments, protected env/config references, output, and exits from built help/source.
+- [ ] Test protected token-file creation, permissions, no-overwrite, rotation, and redacted status/fingerprint behavior.
+- [ ] Run disposable remote config/start/readiness and config/local doctor flows; test safe stop/cleanup.
+- [ ] Use only merged MCP-028 public evidence for public mode/route claims.
+- [ ] Document Bash or PowerShell examples only when actually tested; never publish raw tokens, arbitrary URLs, insecure flags, or internal test-injection variables.
+- [ ] Explain external process supervision as operator-owned and document GUI/headless ownership conflict and resolution.
 
-## Troubleshooting matrix
+## Doctor troubleshooting matrix
 
-- [ ] Include all 26 exact doctor ids once and no unknown ids.
-- [ ] For each: layer, mode, pass condition, safe details, causes, ordered repairs, status/log location, rerun mode, stop/escalate.
-- [ ] Explain prerequisite skips and exits 0/1/2.
-- [ ] Cover common config/auth/project/tool/tunnel/DNS/TLS/redirect/session/redaction/no-mutation scenarios.
-- [ ] Use provider-neutral repairs where possible.
-- [ ] Link cloudflared-specific repairs to appendix.
-- [ ] Prohibit insecure TLS, wildcard, Quick Tunnel production, token URL, raw log publication, force takeover, blind retry.
-- [ ] Add structural exact-id coverage validation.
+- [ ] Include each of the 26 canonical ids exactly once and no unknown ids, in registry/execution order.
+- [ ] For each id record layer, applicable mode, pass condition, safe observed/expected fields, likely causes, ordered repairs, rerun mode, and stop/escalate condition.
+- [ ] Derive repair codes/actions from `doctor/checks.ts`; derive redaction/JSON/human wording from `doctor/index.ts` and `doctor/render.ts`.
+- [ ] Explain prerequisite-driven `skipped` checks, schema v1, JSON versus human output, and exits 0/1/2.
+- [ ] Cover project/config/secret/executable/tunnel/local/auth/MCP/fingerprint/tool-policy/session/DNS/TLS/redirect/consistency/redaction/no-mutation scenarios.
+- [ ] Link cloudflared-specific repairs to the appendix and use provider-neutral repairs elsewhere.
+- [ ] Prohibit TLS bypass, wildcard bind, Quick Tunnel production, token-in-URL, raw-log sharing, force takeover, and blind retry.
 
-## Cloudflared appendix
+## Cloudflared provider appendix
 
-- [ ] State first adapter, not generic architecture.
-- [ ] Verify exact supported named-tunnel mode and executable behavior.
-- [ ] Cite/link current official provider documentation by repo convention.
-- [ ] Document external install/provision tunnel/hostname/DNS/credential reference.
-- [ ] Include no account-specific values or credentials.
-- [ ] Document exact GUI/headless fields and doctor errors.
-- [ ] Explain readiness/update/replacement/rollback.
-- [ ] State Quick Tunnels unsupported for production.
-- [ ] State provider access controls do not replace bearer.
-- [ ] Claim no Kanmer account/DNS/download automation.
+- [ ] State that this is the first adapter and not the provider-neutral architecture.
+- [ ] Verify the supported named-tunnel mode, executable, tunnel id, stable hostname/DNS route, protected credential reference, and loopback origin from merged MCP-021/025/026/027 evidence.
+- [ ] Document external install/provisioning and exact confirmed GUI/headless fields without account-specific values.
+- [ ] Explain readiness, update/replacement, rollback, and doctor interpretation.
+- [ ] State Access does not replace the Kanmer bearer; Quick Tunnels are not the production path.
+- [ ] Claim no Kanmer account/DNS automation or executable download.
 
-## Security, lifecycle, and limitations
+## Docs verifier and indexes
 
-- [ ] Document start/stop/auto-start/status/stale verification/doctor cadence.
-- [ ] Document secure backend/file/clipboard/session/project/tunnel/log boundaries.
-- [ ] Document token rotation/revoke/lost-token incident response.
-- [ ] Document project reconciliation and provider-resource non-deletion.
-- [ ] Document all v1 non-goals accurately.
-- [ ] State remote bearer can invoke approved mutating board tools but cannot bypass workflow gates.
-- [ ] Warn users to review redacted diagnostics before sharing.
+- [ ] Add `scripts/verify-docs.mjs` and root `verify:docs` only if no other ticket supplies them; do not redefine shared root `verify`.
+- [ ] Assert required files/headings/anchors, exact 26-id coverage, provider-neutral separation, and generated-manual freshness.
+- [ ] Scan forbidden secret/insecure/wildcard/Quick-Tunnel/real-path/real-host/session patterns and run a unique canary check.
+- [ ] Validate relative links, anchors, code fences, diagram text, and line endings deterministically/offline.
+- [ ] Add manual/provider/troubleshooting index entries and canonical FRD/ADR links.
+- [ ] Search for duplicate/stale remote instructions within DOC-013 scope and replace with links where appropriate.
 
-## Indexes, validation, and walkthroughs
+## Walkthroughs and handoff
 
-- [ ] Add manual/provider/troubleshooting to canonical indexes.
-- [ ] Add one concise root README pointer; coordinate DOC-008.
-- [ ] Add FRD/ADR traceability links only where canonical.
-- [ ] Validate every relative link/anchor/diagram/code fence.
-- [ ] Assert required headings/anchors/files.
-- [ ] Assert provider-neutral main file contains no provider command/account setup.
-- [ ] Scan forbidden raw token/insecure/wildcard/Quick-Tunnel/real path/hostname/session patterns.
-- [ ] Run canary scan.
-- [ ] Execute every documented command in disposable fixtures.
-- [ ] Walk GUI path using only manual.
-- [ ] Walk headless path using only manual.
-- [ ] Complete unfamiliar-reviewer usability check.
-- [ ] Compare every UI label and doctor id/repair with built implementation.
-- [ ] Run docs/root verification and `git diff --check`.
-- [ ] Search/replace duplicate stale remote instructions within scope.
-- [ ] Record traceability, command/platform/UI, review, link/anchor/secret results and deferred examples.
-- [ ] Stop before merge.
+- [ ] Run `npm run check:manual`, `npm run verify:docs`, `npm test`, `npm run typecheck`, and `git diff --check`; record exit codes.
+- [ ] Walk GUI setup using only the manual after GUI-095 is merged; compare every label/state/action with the built app.
+- [ ] Walk headless setup using only the manual in a path with spaces; compare command/output/exit claims with the built package.
+- [ ] Run every documented safe command and record platform/version/result without secrets or machine-specific paths.
+- [ ] Use a reviewer unfamiliar with internals to identify endpoint, bearer/provider credential distinction, connected/verified distinction, doctor mode, rotation, stop, and limitations.
+- [ ] Run secret/canary scans and record traceability, command/platform, UI, review, link/anchor, and security results in the post-implementation report.
+- [ ] Stop before merge; do not take or move DOC-013 in this preparation pass.
 
 ## Roadmap amendment — Cloudflare documentation boundary
 
-- [ ] State named Tunnel plus Kanmer bearer as the only current Cloudflare path.
-- [ ] State Cloudflare Access, Quick Tunnels, remote-managed token mode and hosted Workers are unsupported.
-- [ ] Describe the Worker only as redacted MCP-028 integration evidence; keep OpenAI instructions in DOC-010.
+- [ ] State locally managed named Cloudflare Tunnel plus mandatory Kanmer bearer as the only current Cloudflare path.
+- [ ] State Cloudflare Access, Quick Tunnels, remote-managed token mode, account/DNS automation, and hosted Workers are unsupported here.
+- [ ] Describe a Worker only as redacted MCP-028 integration evidence; keep OpenAI instructions in DOC-010 and future GUI work in GUI-104.

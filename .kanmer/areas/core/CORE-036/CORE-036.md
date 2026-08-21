@@ -11,12 +11,13 @@ stageEntered:
 labels: []
 groups:
   - HZN-005
+  - HZN-007
 links:
   - GUI-092
   - GUI-093
 archived: false
 created: '2026-08-20T10:14:42.545Z'
-updated: '2026-08-20T22:49:01.717Z'
+updated: '2026-08-21T10:57:25.600Z'
 ---
 
 ## What

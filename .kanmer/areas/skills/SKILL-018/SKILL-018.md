@@ -17,6 +17,7 @@ labels:
   - bug
 groups:
   - HZN-003
+  - HZN-007
 links: []
 refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
@@ -26,7 +27,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/42'
 archived: false
 created: '2026-08-16T22:08:48.761Z'
-updated: '2026-08-16T23:19:36.384Z'
+updated: '2026-08-21T10:57:24.474Z'
 ---
 
 ## What

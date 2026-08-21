@@ -17,6 +17,7 @@ labels:
   - v3-phase-6
 groups:
   - EPIC-007
+  - HZN-007
 links: []
 refs:
   - docs/functional/frd/FRD-014-doc-type-guidance.md
@@ -26,7 +27,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/19'
 archived: false
 created: '2026-08-16T00:31:38.792Z'
-updated: '2026-08-21T08:55:14.250Z'
+updated: '2026-08-21T10:57:23.208Z'
 ---
 
 Add the PRD/FRD/ADR decision table and the granularity test to the kanmer-docs skill; retain doc-structure mirror regeneration.

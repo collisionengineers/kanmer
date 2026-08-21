@@ -15,6 +15,7 @@ labels:
   - v3-phase-6
 groups:
   - EPIC-007
+  - HZN-007
 links: []
 blocks:
   - SKILL-002
@@ -35,7 +36,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/15'
 archived: false
 created: '2026-08-16T00:31:38.765Z'
-updated: '2026-08-21T08:55:12.979Z'
+updated: '2026-08-21T10:57:22.461Z'
 ---
 
 All twelve remaining skills: gate prose deleted in favour of `get_doc_gates`; six-stage and folder-path references; read-everything openings including group context; questioning prose per skill; kanmer-research rewritten for quick/deep with source classes; kanmer-auto profile-partitioned waves and files/-overlap lanes; kanmer-verify typed proof; kanmer-execute and kanmer-plan living-docs duties; auto<->dispatch cross-references. **kanmer-import deleted** (13 -> 12).

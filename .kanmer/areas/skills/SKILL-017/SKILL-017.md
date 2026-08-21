@@ -14,12 +14,13 @@ labels:
 groups:
   - EPIC-009
   - HZN-004
+  - HZN-007
 links: []
 refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
 archived: false
 created: '2026-08-16T21:22:59.709Z'
-updated: '2026-08-20T14:08:58.413Z'
+updated: '2026-08-21T10:57:15.339Z'
 ---
 
 ## What

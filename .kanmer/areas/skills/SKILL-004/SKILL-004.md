@@ -17,6 +17,7 @@ labels:
   - v3-phase-6
 groups:
   - EPIC-007
+  - HZN-007
 links: []
 refs:
   - docs/functional/frd/FRD-013-setup-as-reconciliation.md
@@ -27,7 +28,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/17'
 archived: false
 created: '2026-08-16T00:31:38.802Z'
-updated: '2026-08-21T08:55:14.872Z'
+updated: '2026-08-21T10:57:23.506Z'
 ---
 
 The reconcile loop — AGENTS block, version steps, ingest. GitHub issue ingestion with a list-then-confirm close flow and idempotent source links; per-item plan mining with the preview (N docs -> M items -> K tickets), area seeding and custom-empty profiles; commit-history fallback; greenfield interview retained; stage-proposal prose removed.

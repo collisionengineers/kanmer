@@ -15,6 +15,7 @@ labels: []
 groups:
   - EPIC-009
   - HZN-004
+  - HZN-007
 links: []
 blocks:
   - CORE-025
@@ -23,7 +24,7 @@ refs:
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 archived: false
 created: '2026-08-16T18:26:15.167Z'
-updated: '2026-08-20T13:46:18.889Z'
+updated: '2026-08-21T10:57:08.734Z'
 ---
 
 ## What

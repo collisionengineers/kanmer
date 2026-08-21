@@ -17,6 +17,8 @@ labels:
   - bug
   - migration
   - windows
+groups:
+  - HZN-007
 links:
   - CORE-021
   - GUI-005
@@ -29,7 +31,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/28'
 archived: false
 created: '2026-08-16T13:17:25.100Z'
-updated: '2026-08-21T08:55:07.519Z'
+updated: '2026-08-21T10:57:14.459Z'
 ---
 
 A user's format-2 → format-3 migration failed three times on Windows and left

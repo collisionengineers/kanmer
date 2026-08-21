@@ -17,6 +17,7 @@ labels:
   - v3-phase-6
 groups:
   - EPIC-007
+  - HZN-007
 links: []
 refs:
   - docs/functional/frd/FRD-014-doc-type-guidance.md
@@ -26,7 +27,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/18'
 archived: false
 created: '2026-08-16T00:31:38.780Z'
-updated: '2026-08-21T08:55:13.619Z'
+updated: '2026-08-21T10:57:22.767Z'
 ---
 
 Identity first-lines on every template; the files template with two sections and the contrast rule; per-proof-type templates; group and ticket template updates for the `groups`/`profile` fields; a research summary template for deep mode.

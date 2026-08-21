@@ -16,13 +16,14 @@ labels:
   - v3-phase-2
 groups:
   - EPIC-003
+  - HZN-007
 links: []
 refs:
   - docs/functional/frd/FRD-002-requirement-profiles.md
   - docs/product/prd/PRD-001-kanmer-v3.md
 archived: false
 created: '2026-08-16T04:24:49.811Z'
-updated: '2026-08-21T08:55:06.886Z'
+updated: '2026-08-21T10:57:11.867Z'
 ---
 
 Gates check that a document exists, never that it existed before the work it

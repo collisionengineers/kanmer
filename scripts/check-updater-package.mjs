@@ -186,7 +186,52 @@ if (!existsSync(join(resources, "mcp", "kanmer-mcp.cjs"))) {
 }
 
 // ---------------------------------------------------------------------------
-// 7. The packaged app is a working local plugin marketplace.
+// 7. GUI-099's source launcher lives at the install root. The installer owns
+// the stable LOCALAPPDATA copy, but a package missing this input would write a
+// registry pointer for a launcher that cannot exist. Check the packed bytes,
+// rather than merely the source configuration: packaging is the boundary that
+// must preserve the fixed launcher contract.
+// ---------------------------------------------------------------------------
+const launcher = join(unpacked, "kanmer-mcp.cmd");
+if (!existsSync(launcher)) {
+  fail(
+    `missing ${launcher}`,
+    "add apps/gui/build/kanmer-mcp.cmd through electron-builder extraFiles",
+  );
+} else {
+  const launcherText = readFileSync(launcher, "utf8");
+  const markers = [
+    "HKCU\\Software\\Kanmer",
+    '"InstallDir"',
+    "%SystemRoot%\\System32\\reg.exe",
+    "resources\\mcp\\kanmer-mcp.cjs",
+    "ELECTRON_RUN_AS_NODE=1",
+  ];
+  const absent = markers.filter((marker) => !launcherText.includes(marker));
+  if (absent.length > 0) {
+    fail(
+      `${launcher} is missing launcher-contract marker(s): ${absent.join(", ")}`,
+      "restore the fixed GUI-099 launcher contract; do not substitute a build-machine path",
+    );
+  }
+  if (/^\s*(cd|pushd|start)\b/im.test(launcherText) || launcherText.includes("%*") || /[A-Za-z]:\\Users\\/i.test(launcherText)) {
+    fail(
+      `${launcher} changes cwd, forwards arbitrary arguments, or embeds a build-machine user path`,
+      "the static shim must use only the fixed HKCU indirection and inherited provider cwd/stdio",
+    );
+  }
+}
+
+const builderConfig = readFileSync(join(root, "apps", "gui", "electron-builder.yml"), "utf8");
+if (!/nsis:[\s\S]*?include: build\/installer\.nsh/.test(builderConfig)) {
+  fail(
+    "apps/gui/electron-builder.yml does not configure build/installer.nsh",
+    "set nsis.include to the GUI-099 lifecycle hook; extraFiles alone cannot own upgrades or uninstall",
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 8. The packaged app is a working local plugin marketplace.
 //
 //    Three files, and the marketplace exists only if all three are packed: the
 //    plugin tree, and the two marketplace manifests that are the only way to
@@ -221,9 +266,9 @@ for (const rel of [
 }
 
 if (failures.length > 0) {
-  console.error(`updater package FAILED (${failures.length} of 7 checks):`);
+  console.error(`updater package FAILED (${failures.length} of 8 checks):`);
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
 
-console.log("updater package OK (7 checks)");
+console.log("updater package OK (8 checks)");

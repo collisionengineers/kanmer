@@ -1,4 +1,5 @@
 # Normalise line endings across platforms.
 * text=auto eol=lf
+apps/gui/build/kanmer-mcp.cmd text eol=crlf
 *.png binary
 *.ico binary

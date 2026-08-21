@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=a35e1fd0
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-21T23:16:18.658Z
+updated_at: 2026-08-21T23:18:28.760Z
 ---
 
 # Current auto run — HZN-007
@@ -17,7 +17,7 @@ updated_at: 2026-08-21T23:16:18.658Z
 Open `automation/runs/20260821T105846Z-codex-mcp-client.md`, then re-read HZN-007/context.md, the live roster, and get_doc_gates for every ticket before dispatching. This pointer is written only after the complete immutable run record was written and read back.
 
 
-Last handoff: SKILL-003 taken in .worktrees/skill-003 on skill-003-decision-table for bounded decision-table reconciliation. Existing PR #19 implementation is reachable; audit found only drift between the skill's duplicated granularity/provenance copy and docs/README.md, so the lane is limited to that one-file sync. No SKILL-004/005/007 or GUI-017 scope.
+Last handoff: SKILL-003 handoff: corrected merged decision-table provenance in d7e107b9f27a64851935310e8768fbc2c249fb75, pushed PR #140, checklist/report 10/10 and read back; verify:skills, verify:agents-block, plugin:check, table identity, residue, and diff checks pass; moved Implementing to Review for independent root review. Worktree/branch retained.
 
 
 Last handoff: CORE-036 merged-main verification recorded at 2026-08-21T22:49:50.557Z; ticket remains Verifying because npm run verify and npm run dist:check each exited 1 on normal main. PR #127 merge 470b2fad is present; no board move, release, or worktree cleanup was performed.

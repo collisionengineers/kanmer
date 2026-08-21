@@ -404,3 +404,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T23:10:56.374Z — SKILL-002 closeout complete: PR #139 merged at d473b6fa542d28439e69e9939d7721467cddd800; .worktrees/skill-002 removed, branch skill-002-template-guidance deleted, fetch --prune and worktree prune completed. Ticket is Done and released; final checklist/proof readback complete; no source changes.
 
 - 2026-08-21T23:16:18.658Z — SKILL-003 taken in .worktrees/skill-003 on skill-003-decision-table for bounded decision-table reconciliation. Existing PR #19 implementation is reachable; audit found only drift between the skill's duplicated granularity/provenance copy and docs/README.md, so the lane is limited to that one-file sync. No SKILL-004/005/007 or GUI-017 scope.
+
+- 2026-08-21T23:18:28.760Z — SKILL-003 handoff: corrected merged decision-table provenance in d7e107b9f27a64851935310e8768fbc2c249fb75, pushed PR #140, checklist/report 10/10 and read back; verify:skills, verify:agents-block, plugin:check, table identity, residue, and diff checks pass; moved Implementing to Review for independent root review. Worktree/branch retained.

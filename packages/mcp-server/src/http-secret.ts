@@ -29,8 +29,11 @@ export async function createTokenFile(file: string, writer: TokenFileWriter = de
     await writer.write(handle, generated.token);
     return { verifier: generated.verifier, fingerprint: generated.verifier.fingerprint };
   } catch (error) {
-    if (created) await rm(file, { force: true });
-    throw error;
+    if (!created) throw error;
+    await rm(file, { force: true });
+    // A filesystem/provider error could include data written by a custom stream;
+    // never propagate it through a CLI diagnostic where it might reveal the token.
+    throw new Error("REMOTE_AUTH_SECRET_FILE_WRITE_FAILED");
   } finally { await handle?.close(); }
 }
 

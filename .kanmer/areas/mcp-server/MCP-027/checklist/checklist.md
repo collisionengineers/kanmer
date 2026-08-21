@@ -164,3 +164,5 @@ Final verification on commit `0719a399`:
 - [x] `smoke:http` — PASS; `smoke:protocol` — 42/42; `smoke:discovery` — 13/13; `git diff --check` — PASS.
 
 - [x] Final cleanup hardening makes per-session close idempotent, registers each client in the run cleanup stack, and prevents duplicate close calls after successful session closure (commit `91a0a64b`).
+
+- [x] Packaged HTTP probes cancel response bodies after header-only inspection, keeping diagnostic sockets bounded (commit `0552e6f7`).

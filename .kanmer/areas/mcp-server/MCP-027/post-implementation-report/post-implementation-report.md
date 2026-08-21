@@ -53,3 +53,5 @@ The final remediation wires every production CLI boundary required by the review
 Commit `0719a399` verification: `npm test` PASS (core 256, GUI 318, MCP 59, scripts 66); `npm run build` PASS; `npm run typecheck` PASS for all workspaces; built doctor tests PASS (7/7); HTTP smoke PASS; protocol smoke 42/42; discovery smoke 13/13; `git diff --check` PASS. A built `public --json` invocation without configured dependencies exits 1 with explicit failed checks, never a warning-only success. The controlled real public tunnel/TLS acceptance remains downstream MCP-028 scope.
 
 Follow-up hardening commit `91a0a64b` makes client cleanup idempotent and records each session closer in the cleanup stack; the final teardown therefore cannot double-close a successfully closed local/public session, while late clients are still closed after timeout/cancellation.
+
+The packaged probe hardening in `0552e6f7` cancels header-only HTTP response bodies, so route/auth diagnostics do not retain response streams or sockets.

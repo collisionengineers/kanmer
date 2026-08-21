@@ -63,3 +63,21 @@ The prior public-session, route-401, allowlist, late-client, total-deadline, can
 ### Follow-up verdict
 
 NEEDS CHANGES. The remediation is materially improved, but PR #114 is not safe to merge until the packaged local/public CLI cannot silently skip required checks, the clock/cancellation/cleanup paths are corrected, and the focused tests cover those production paths. No merge performed.
+
+## Final review of 0719a399 + 91a0a64b
+
+Final remediation covers the five previous gaps: packaged local/public DNS, TLS, fetch probes, local status, tunnel-status seams, localEndpoint; abort-aware probe/DNS; MCP setup cleanup; required-skip aggregation; injected deadline clock. 91a0a64b makes session closers idempotent and cleanup-registered.
+
+Focused evidence: npm run test:http -w @kanmer/mcp-server PASS 59/59 (one earlier run hit the pre-existing 1 ms readiness timing race; clean rerun passed); MCP typecheck PASS; doctor build/tests PASS 7/7; doctor smoke PASS; diff check PASS. Built local/public CLI missing-config invocations now fail rather than silently succeeding.
+
+### Remaining blocking finding
+
+1. BLOCKING — timeout/cancellation reports still claim PASS with exit 2. Report status only considers failed checks, warnings, required skips, and cleanup errors. A cancelled run marks applicable checks skipped with severity info; a total-deadline run does the same. A real cancelled report is status=pass, exitCode=2, all 26 checks skipped. Reproduced against built doctor: already-aborted public run returned status pass, exit 2, counts pass 0/warn 0/fail 0/skipped 26. This contradicts the health status and documented exit-2 cancelled semantics. Disposition: aggregate cancellation/total-timeout into non-healthy status or add an explicit aborted/internal status, and assert status as well as exit in tests.
+
+### Security observation
+
+The packaged localStatus callback fetches KANMER_LOCAL_ENDPOINT before LOCAL_BIND_LOOPBACK validates it. An arbitrary environment endpoint can receive a doctor request before the loopback check. Validate localEndpoint before any fetch or derive it from canonical host status; add an unsafe-endpoint test.
+
+### Verdict
+
+NEEDS CHANGES — not safe to merge until cancellation/total-timeout status is corrected and tested.

@@ -21,3 +21,7 @@ The implementation is historical PR [#25](https://github.com/collisionengineers/
 Interactive F1/search/theme rendering, screenshot evidence, and Electron boot could not be proven here: Electron exited before launch with its exact install-environment error. These are **INCONCLUSIVE**, not PASS. The shortcut parity test does not prove that the imperative handler cannot drift from the table; that accepted risk is documented in `shortcuts.ts` and the review report.
 
 The stale pre-reconciliation proof text (12 chapters, old `VIEW_LABELS` references, and boot exit 0) was replaced during this Verifying pass.
+
+## Closeout traceability
+
+PR [#25](https://github.com/collisionengineers/kanmer/pull/25) merged at 2026-08-16T06:50:52Z as `39080d7f2d4deed02671f85674c4ae2c2179d4a0`.

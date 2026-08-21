@@ -20,3 +20,20 @@
 ## Audit disposition
 
 This is a reconciliation of the already-merged implementation, not a new source change. The historical PR remains the implementation record; later DOC-007 rewrote the authored chapters and added the generation guards. No GUI-016, provider, or other ticket scope was changed.
+
+# Closeout checklist
+
+Append to the ticket's checklist.md when closeout starts (set_ticket_doc doc: "checklist", append: true) so cleanup progress is visible on the board.
+
+---
+
+## Closeout — GUI-017
+
+- [ ] PR merge verified (gh pr view --json state,mergedAt)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; git worktree remove .worktrees/gui-017
+- [ ] git branch -d gui-017-in-app-manual (-D if squash/rebase-merged)
+- [ ] git fetch --prune + git worktree prune
+- [ ] take_ticket action: "release"

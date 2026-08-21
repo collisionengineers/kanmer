@@ -261,7 +261,7 @@ function createWindow(): void {
   let boundsTimer: NodeJS.Timeout | null = null;
   const saveBounds = () => {
     if (!mainWindow) return;
-    setWindowBounds({ ...mainWindow.getNormalBounds(), maximized: mainWindow.isMaximized() });
+    void setWindowBounds({ ...mainWindow.getNormalBounds(), maximized: mainWindow.isMaximized() });
   };
   const scheduleSaveBounds = () => {
     if (boundsTimer) clearTimeout(boundsTimer);
@@ -292,8 +292,17 @@ function createWindow(): void {
     return { action: "deny" };
   });
   mainWindow.webContents.on("will-navigate", (e, url) => {
-    const isDev = devUrl && url.startsWith(devUrl);
-    if (isDev || url.startsWith("file:")) return; // in-app loads stay
+    let internal = false;
+    try {
+      const actual = new URL(url);
+      if (devUrl) {
+        const expected = new URL(devUrl);
+        internal = actual.origin === expected.origin && actual.pathname === expected.pathname && !actual.search && !actual.hash;
+      } else {
+        internal = actual.href === pathToFileURL(join(__dirname, "../renderer/index.html")).href;
+      }
+    } catch { internal = false; }
+    if (internal) return;
     e.preventDefault();
     if (/^https?:/i.test(url)) void shell.openExternal(url);
   });
@@ -546,7 +555,7 @@ async function openProject(root: string): Promise<OpenProjectResult> {
   const store = new KanmerStore(boardRoot, { repoRoot: projectId });
 
   await store.init();
-  recordRecentProject(projectId);
+  await recordRecentProject(projectId);
   const ownWrites = new Map<string, number>();
   // Watch where the store actually reads. On a git project `ensureBoardWorktree`
   // moves the board to `.worktrees/kanmer` and `git rm`s + gitignores the source
@@ -604,7 +613,7 @@ async function closeProject(projectId: string): Promise<void> {
  * until the project was closed and reopened.
  */
 async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number): Promise<AppSettings> {
-  const settings = setKanmerGitPreferences(kanmerBranch, gitSyncMinutes);
+  const settings = await setKanmerGitPreferences(kanmerBranch, gitSyncMinutes);
   for (const [projectId, ctx] of contexts) {
     const { boardRoot, branch } = ctx.syncStatus;
     if (ctx.syncStatus.available && boardRoot && branch !== settings.kanmerBranch) {
@@ -799,8 +808,8 @@ function registerIpc(): void {
   );
   ipcMain.handle(CH.getLinks, (_e, p: string, id: string) => getLinkGraph(requireStore(p), id));
   ipcMain.handle(CH.getSettings, () => readSettings());
-  ipcMain.handle(CH.setTheme, (_e, theme: Theme) => {
-    const settings = setTheme(theme);
+  ipcMain.handle(CH.setTheme, async (_e, theme: Theme) => {
+    const settings = await setTheme(theme);
     applyNativeTheme(settings.theme);
     return settings;
   });

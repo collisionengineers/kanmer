@@ -37,6 +37,7 @@ export interface CloudflareRemoteConfig {
   /** Opaque optimistic-concurrency generation persisted with the config. */
   generation?: string;
   lastDoctorSummary?: string;
+  lastDoctorRepair?: string;
   lastDoctorAt?: string;
 }
 
@@ -76,7 +77,7 @@ export interface RemoteStatus {
 export interface RemoteProjectView {
   projectId: string;
   identity: RemoteProjectIdentity;
-  config: Omit<CloudflareRemoteConfig, "secretId" | "generation"> & { secretConfigured: boolean };
+  config: Omit<CloudflareRemoteConfig, "secretId" | "generation" | "lastDoctorSummary" | "lastDoctorRepair" | "lastDoctorAt"> & { secretConfigured: boolean };
   status: RemoteStatus;
 }
 
@@ -90,13 +91,19 @@ export interface RemoteDoctorResult {
   ok: boolean;
   projectId: string;
   fingerprint: string;
-  checks: Array<{ id: string; group?: string; status: "pass" | "warn" | "fail" | "skipped"; detail: string; repair?: string | null }>;
+  checks: Array<{ id: string; group?: string; status: "pass" | "warn" | "fail" | "skipped"; detail: string; repair?: RemoteRepair | null }>;
   summary: string;
   severity: RemoteSeverity;
-  repair: string | null;
+  repair: RemoteRepair | null;
   mode: "config" | "local" | "public";
   configGeneration: string | null;
   runtimeGeneration: string | null;
+}
+
+export interface RemoteRepair {
+  code: string;
+  actions: string[];
+  section: string;
 }
 
 export interface RemoteProjectRegistration { projectId: string; identity: RemoteProjectIdentity; }

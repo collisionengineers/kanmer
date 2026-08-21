@@ -11,10 +11,11 @@ describe("remote access persistence", () => {
   it("writes atomically and round-trips only the versioned registry", async () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-remote-config-")); roots.push(root);
     const value = emptyRemoteAccess();
-    value.projects["kanmer-proj-v1:x"] = { projectId: "/repo", identity: { fingerprint: "kanmer-proj-v1:x", boardRoot: "/repo/.worktrees/kanmer", repoRoot: "/repo", format: 3, boardSource: "file" } };
+    const fingerprint = `kanmer-proj-v1:${"a".repeat(64)}`;
+    value.projects[fingerprint] = { projectId: "/repo", identity: { fingerprint, boardRoot: "/repo/.worktrees/kanmer", repoRoot: "/repo", format: 3, boardSource: "file" } };
     await writeRemoteAccess(root, value);
     expect(JSON.parse(await readFile(remoteAccessPath(root), "utf8")).remoteAccess.version).toBe(1);
-    expect((await readRemoteAccess(root)).projects["kanmer-proj-v1:x"].projectId).toBe("/repo");
+    expect((await readRemoteAccess(root)).projects[fingerprint].projectId).toBe("/repo");
   });
 
   it("rejects malformed and secret-bearing config records on read", async () => {

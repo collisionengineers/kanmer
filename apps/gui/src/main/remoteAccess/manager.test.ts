@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -115,15 +115,19 @@ describe("RemoteAccessManager", () => {
 
   it("enumerates deterministic persisted auto-start registrations and scavenges dead owners", async () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-remote-manager-")); roots.push(root);
+    const projectRoot = await mkdtemp(join(tmpdir(), "kanmer-remote-project-")); roots.push(projectRoot);
+    const projectBoard = join(projectRoot, "board");
+    await mkdir(projectBoard, { recursive: true });
+    const projectIdentity = { ...identity, boardRoot: projectBoard, repoRoot: projectRoot };
     const ownerDir = join(root, "remote-access-owners");
     await (await import("node:fs/promises")).mkdir(ownerDir, { recursive: true });
-    await writeFile(join(ownerDir, `${"a".repeat(64)}.json`), JSON.stringify({ pid: 999999, nonce: "00000000-0000-0000-0000-000000000000", projectFingerprint: identity.fingerprint }));
+    await writeFile(join(ownerDir, `${"a".repeat(64)}.json`), JSON.stringify({ pid: 999999, nonce: "00000000-0000-0000-0000-000000000000", projectFingerprint: projectIdentity.fingerprint }));
     const manager = new RemoteAccessManager(root);
-    await manager.register("/repo", identity);
-    const first = await manager.viewFor("/repo", identity);
-    await manager.saveConfig("/repo", identity, { ...config, autoStart: true, expectedConfigGeneration: first.status.configGeneration });
-    const configured = await manager.viewFor("/repo", identity);
-    await manager.createSecret("/repo", identity, false, owner, configured.status.configGeneration);
+    await manager.register("/repo", projectIdentity);
+    const first = await manager.viewFor("/repo", projectIdentity);
+    await manager.saveConfig("/repo", projectIdentity, { ...config, autoStart: true, expectedConfigGeneration: first.status.configGeneration });
+    const configured = await manager.viewFor("/repo", projectIdentity);
+    await manager.createSecret("/repo", projectIdentity, false, owner, configured.status.configGeneration);
     const registrations = await manager.autoStartRegistrations();
     expect(registrations.map((entry) => entry.projectId)).toEqual(["/repo"]);
     await expect(readFile(join(ownerDir, `${"a".repeat(64)}.json`))).rejects.toMatchObject({ code: "ENOENT" });

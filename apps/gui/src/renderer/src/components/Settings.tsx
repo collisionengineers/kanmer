@@ -1121,6 +1121,7 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
   const reconcile = () => run("reconcile", async () => { const next = await window.kanmer.remoteReconcile(projectId, view?.status.configGeneration ?? null); setView(next); setStatus(next.status); setOverview(await window.kanmer.remoteOverview()); setMessage("Project identity reconciled."); });
   const remove = () => run("remove", async () => { if (!window.confirm("Remove this project’s Cloudflare remote-access configuration and encrypted bearer?")) return; await window.kanmer.remoteRemove(projectId, view?.status.configGeneration ?? null); setView(null); setStatus(null); setOverview(await window.kanmer.remoteOverview()); setMessage("Cloudflare remote access removed for this project."); });
   const active = status?.state === "ready" || status?.state === "starting" || status?.state === "degraded";
+  const checksByGroup = doctor?.checks.reduce<Record<string, typeof doctor.checks>>((groups, check) => { (groups[check.group ?? "Safety"] ??= []).push(check); return groups; }, {}) ?? {};
 
   return (
     <div className="settings-section">
@@ -1128,7 +1129,7 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
       <p className="hint">Remote access is per project. Kanmer stores only this project’s Cloudflare references and keeps the bearer token in encrypted OS storage.</p>
       <div className="settings-section" aria-label="Registered remote-access projects">
         <h4>Registered projects</h4>
-        {overview.length === 0 ? <p className="hint">No projects are registered yet.</p> : <ul>{overview.map((project) => <li key={project.identity.fingerprint}><strong>{project.projectId}</strong> — {project.status.state} — {project.config.hostname || "no hostname"}</li>)}</ul>}
+        {overview.length === 0 ? <p className="hint">No projects are registered yet.</p> : <div className="remote-project-grid">{overview.map((project) => <article className="card" key={project.identity.fingerprint} aria-label={`Remote access project ${project.projectId}`}><strong>{project.projectId}</strong><span className="hint">{project.status.state} · {project.config.hostname || "no hostname"}</span><span className="hint">Board {project.status.health.board} · Listener {project.status.health.listener} · Auth {project.status.health.authentication} · Tunnel {project.status.health.tunnel} · Remote {project.status.health.remote}</span>{project.status.lastSummary && <span className="hint">Last doctor: {project.status.lastSummary}</span>}</article>)}</div>}
       </div>
       {view?.identity && <p className="hint">Project fingerprint: <code>{view.identity.fingerprint}</code></p>}
       {error && <div className="banner error">{error}</div>}
@@ -1146,7 +1147,7 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
         <button className="ghost sm" disabled={busy !== null || !view?.config.executable || view.config.secretConfigured} onClick={() => void createSecret(false)}>Create token</button>
         <button className="ghost sm" disabled={busy !== null || !view?.config.secretConfigured || active} onClick={() => void createSecret(true)}>Rotate token</button>
       </div>
-      {token && <div className="banner warn" role="status"><strong>Copy this token now.</strong><code aria-label={tokenRevealed ? "One-time token" : "Hidden one-time token"}>{tokenRevealed ? token.value : "•".repeat(token.value.length)}</code><button className="ghost xs" onClick={() => setTokenRevealed((revealed) => !revealed)} aria-label={tokenRevealed ? "Hide one-time token" : "Reveal one-time token"}>{tokenRevealed ? "Hide" : "Reveal"}</button><button className="primary xs" onClick={() => void copyToken()}>Copy and dismiss</button></div>}
+      {token && <div className="banner warn" role="dialog" aria-modal="true" aria-labelledby="remote-token-title"><h4 id="remote-token-title">One-time bearer token</h4><p>Copy this token now for <code>{projectId}</code>. It expires in 60 seconds and is cleared from the system clipboard on quit or expiry.</p><code aria-label={tokenRevealed ? "One-time token" : "Hidden one-time token"}>{tokenRevealed ? token.value : "•".repeat(token.value.length)}</code><button className="ghost xs" autoFocus onClick={() => setTokenRevealed((revealed) => !revealed)} aria-label={tokenRevealed ? "Hide one-time token" : "Reveal one-time token"}>{tokenRevealed ? "Hide" : "Reveal"}</button><button className="primary xs" onClick={() => void copyToken()}>Copy and dismiss</button></div>}
       <div className="settings-section">
         <h4>Status: {status?.state ?? "disabled"}</h4>
         {status && <p className="hint">Local: <strong>{status.local}</strong> · Tunnel: <strong>{status.tunnel}</strong> · Public: <strong>{status.public}</strong></p>}
@@ -1160,7 +1161,7 @@ function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
           <button className="ghost sm" disabled={busy !== null || active} onClick={() => void remove()}>{busy === "remove" ? "Removing…" : "Remove"}</button>
         </div>
       </div>
-      {doctor && <div className={`banner ${doctor.ok ? "success" : "error"}`}><strong>{doctor.summary}</strong><ul>{doctor.checks.map((check) => <li key={check.id}>{check.id}: {check.status} — {check.detail}</li>)}</ul></div>}
+      {doctor && <div className={`banner ${doctor.ok ? "success" : "error"}`} aria-live="polite"><strong>{doctor.summary}</strong>{doctor.repair && <p><strong>{doctor.repair.section}</strong> · {doctor.repair.code}: {doctor.repair.actions[0] ?? "Follow the repair guidance."}</p>}<div>{Object.entries(checksByGroup).map(([group, checks]) => <section key={group}><h5>{group}</h5><ul>{checks.map((check) => <li key={check.id}>{check.id}: {check.status} — {check.detail}{check.repair && ` (${check.repair.actions[0] ?? check.repair.code})`}</li>)}</ul></section>)}</div></div>}
     </div>
   );
 }

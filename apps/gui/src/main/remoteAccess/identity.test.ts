@@ -15,4 +15,3 @@ describe("GUI remote project identity", () => {
     expect(current.fingerprint).not.toBe(old.fingerprint);
   });
 });
-

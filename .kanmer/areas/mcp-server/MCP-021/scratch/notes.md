@@ -89,3 +89,5 @@ Independent review initially NEEDS CHANGES (reviewer): verifyLocal optional; ada
 Additional hardening c383e9ef: early mkdtemp/chmod/lease failures now remove runtime directories and release leases; constructor rejects missing local verifier deterministically. Targeted build/typecheck and 17 cloudflared/remote tests pass. Awaiting re-review of 97f626ec+c383e9ef.
 
 Final port hardening c94d0f76: reserveLoopbackPort now retries allocation at most three times with explicit policy validation; lease remains owned until spawn boundary and release is idempotent. Readiness suite 5/5, build/typecheck pass. Awaiting final independent re-review.
+
+Independent re-review fixes committed as f6c7d196 and pushed to PR #113. Closed remaining findings: bracketed IPv6 public literals rejected in generic/config validators; explicit metricsPort now held by a loopback lease through spawn; production remote host classifies cloudflared exit 78 as terminal; adapter getStatus transitions connected↔degraded on readiness flaps. Added regression coverage. Focused npm run test:http -w @kanmer/mcp-server: PASS (52 tests). Requesting independent re-review before merge.

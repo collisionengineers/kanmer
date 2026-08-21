@@ -41,3 +41,12 @@ After the final supervisor/version hardening, the focused HTTP/tunnel suite is 4
 ## Independent review remediation
 
 The first independent review identified four blocking gaps. Commit 97f626ec addresses all four: verifyLocal is required at the exported remote-host boundary; TunnelAdapter now exposes doctor/start/status/stop/diagnostics and Cloudflared implements doctor; IP literals are rejected as public hostnames; child error/forced-silent shutdown settles with a bounded fallback; and a loopback port lease is held through the spawn boundary with idempotent release. Focused suite after remediation: 47/47.
+
+## Re-review remediation (f6c7d196)
+
+- Rejected bracketed IPv6 public literals in both provider-neutral target validation and Cloudflared hostname validation.
+- Reserved explicit and automatic metrics ports on loopback until the direct child spawn boundary; added collision/idempotence coverage.
+- Wired production supervisor exit classification so Cloudflared exit 78 is terminal and not retried.
+- Made adapter readiness checks transition `connected` → `degraded` → `connected`; added flap coverage.
+- Added terminal-exit production-host and selected-port regression tests.
+- `npm run test:http -w @kanmer/mcp-server`: PASS (52/52).

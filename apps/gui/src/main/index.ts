@@ -102,6 +102,7 @@ import {
   updateState,
 } from "./updater.js";
 import { mcpSessions } from "./mcp-sessions.js";
+import { captureSmokePage, requestedSmokeCapturePath, writeSmokeCapture } from "./smokeCapture.js";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -275,12 +276,35 @@ function createWindow(): void {
     }, 20_000);
     mainWindow.webContents.once("did-finish-load", () => {
       setTimeout(() => {
-        clearTimeout(watchdog);
+        void (async () => {
         if (!readyToShow) {
+          clearTimeout(watchdog);
           console.error("KANMER_SMOKE: renderer loaded but the window never reached ready-to-show");
           app.exit(1);
+          return;
         }
+        try {
+          const output = requestedSmokeCapturePath();
+          if (output) {
+            const marker = `KANMER-SMOKE-${Date.now()}-${process.pid}`;
+            const capture = await captureSmokePage(mainWindow!.webContents, marker);
+            await writeSmokeCapture(output, capture.png);
+            console.error(
+              `KANMER_SMOKE: captured ${capture.size.width}x${capture.size.height} renderer PNG ` +
+                `with marker ${capture.marker} at ${output}`,
+            );
+          }
+        } catch (error) {
+          clearTimeout(watchdog);
+          console.error(
+            `KANMER_SMOKE: renderer capture failed — ${error instanceof Error ? error.message : String(error)}`,
+          );
+          app.exit(1);
+          return;
+        }
+        clearTimeout(watchdog);
         app.exit(0);
+        })();
       }, 1500);
     });
   }

@@ -1,1 +1,3 @@
 Taken on branch `mcp-034-close-mcp022-findings` in `.worktrees/mcp-034`. Implementing only the three MCP-022 independent-review findings: cross-host Windows identity vectors, single-boundary leaving gate classification, and user-owned AGENTS convention guidance.
+
+Opened PR #119: https://github.com/collisionengineers/kanmer/pull/119. Commit 3e4d6a34201ac0115bc879299e57d5713ee1ef2c on branch mcp-034-close-mcp022-findings. Stopping at independent review; aggregate npm test has one HTTP ETIMEDOUT deviation, while focused HTTP and isolated retry pass. plugin:check is deferred to canonical merged-main checkout because linked-worktree guard correctly refuses.

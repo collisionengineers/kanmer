@@ -42,6 +42,11 @@ export async function createTokenFile(file: string, writer: TokenFileWriter = de
 }
 
 export async function loadTokenFile(file: string): Promise<BearerVerifier> {
+  return (await loadTokenMaterial(file)).verifier;
+}
+
+/** Internal remote-host bootstrap material; callers must never serialize or forward token. */
+export async function loadTokenMaterial(file: string): Promise<{ readonly token: string; readonly verifier: BearerVerifier }> {
   const before = await lstat(file);
   if (!before.isFile() || before.isSymbolicLink() || before.size > MAX_TOKEN_FILE_BYTES || (process.platform !== "win32" && (before.mode & 0o077) !== 0)) throw new Error("REMOTE_AUTH_SECRET_FILE_UNSAFE");
   const handle = await open(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
@@ -54,6 +59,7 @@ export async function loadTokenFile(file: string): Promise<BearerVerifier> {
     const text = bytes.subarray(0, bytesRead).toString("ascii");
     bytes.fill(0);
     if (!/^[A-Za-z0-9_-]{43}\n?$/.test(text)) throw new Error("REMOTE_AUTH_INVALID_TOKEN");
-    return verifierForToken(text.trimEnd());
+    const token = text.trimEnd();
+    return { token, verifier: verifierForToken(token) };
   } finally { await handle.close(); }
 }

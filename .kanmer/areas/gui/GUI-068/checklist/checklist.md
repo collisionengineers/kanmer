@@ -3,15 +3,25 @@
 - [ ] Prepare an isolated Windows install of a released build containing GUI-064 and record the baseline.
 - [ ] Start a real installed-app MCP session and capture its process and locked-file state.
 - [ ] Trigger the newer release through Kanmer's own update UI.
-- [ ] Confirm the MCP session is cleared and the automatic installer completes without manual intervention.
-- [ ] Confirm the newer app version starts and the existing project registration serves a real MCP call.
-- [ ] Force an uncleared Electron-as-Node holder and capture the actionable refusal dialog naming the project.
-- [ ] Confirm the refused path does not start the installer or lose the downloaded update state.
-- [ ] Measure MCP respawn behavior numerically across the complete retry window.
-- [ ] Compare the measurement with STOP_ROUNDS and SETTLE_MS.
-- [ ] If the constants or logic are invalid, correct them, add regression tests, rebuild, and repeat both update scenarios.
-- [ ] Run the full test, typecheck, dist:check, and packaged-smoke rail when source changes.
-- [ ] Record screenshots, redacted command logs, versions, installer result, and registration proof.
-- [ ] Summarise GUI-064's three former evidence gaps point by point in the post-implementation report.
+- [x] Confirm the MCP session is cleared and the automatic installer completes without manual intervention. Existing controlled scratch evidence records the real 0.3.2 → 0.3.3 app-driven update; the session dropped and required the expected reconnect afterwards.
+- [ ] Confirm the newer app version starts and the existing project registration serves a real MCP call. Existing scratch identity evidence is recorded in the report, but this lane did not repeat a live host run.
+- [ ] Force an uncleared Electron-as-Node holder and capture the actionable refusal dialog naming the project. INCONCLUSIVE: no reliable Electron-window capture path was available on this host.
+- [ ] Confirm the refused path does not start the installer or lose the downloaded update state. INCONCLUSIVE: no controlled negative-case holder run.
+- [ ] Measure MCP respawn behavior numerically across the complete retry window. INCONCLUSIVE: no live timing number obtained.
+- [ ] Compare the measurement with STOP_ROUNDS and SETTLE_MS. INCONCLUSIVE because the live measurement is absent; constants unchanged.
+- [ ] If the constants or logic are invalid, correct them, add regression tests, rebuild, and repeat both update scenarios. No source defect was demonstrated; no source changes made.
+- [ ] Run the full test, typecheck, dist:check, and packaged-smoke rail when source changes. No source changes in this evidence-only pass; deterministic full GUI test, typecheck, and dist:check results are recorded in the report.
+- [ ] Record screenshots, redacted command logs, versions, installer result, and registration proof. Existing scratch has version/sha/install evidence; refusal screenshot remains INCONCLUSIVE.
+- [x] Summarise GUI-064's three former evidence gaps point by point in the post-implementation report.
 
 ## Progress notes
+
+- `npm ci --ignore-scripts --no-audit --no-fund` exit 0 (648 packages).
+- Focused updater tests exit 0: 3 files, 40 tests.
+- First full GUI run exit 1 was preserved in the report: fresh-worktree core entry resolution failures plus one 10s Git hook timeout; after `npm run build:core` exit 0, the full GUI rerun exited 0 with 37 files/351 tests.
+- `npm run typecheck` exit 0.
+- `npm run dist:check` exit 0; `updater package OK (8 checks)`.
+- No product source diff, commit, or PR; this is a documentation/evidence reconciliation handoff.
+- Visual refusal and numerical respawn evidence remain explicitly INCONCLUSIVE; no unavailable host proof is claimed.
+
+**2 of 13 executed checklist items are closed; the remaining live/manual items are intentionally not ticked.**

@@ -45,3 +45,9 @@ because it is the user-visible cost that MCP-005 would remove and that
 
 **This ticket remains parked, but it is 1 of 4 rather than 0 of 4, and the box
 that closed is the one that needed a real release to close.**
+
+## 2026-08-21 deterministic reconciliation run
+
+Executed in fresh worktree `gui-068-auto-update-verification` from merged main. No source changes. Focused updater tests: exit 0, 3 files / 40 tests. First full GUI run: exit 1, preserved in post-implementation-report (fresh worktree lacked built @kanmer/core and one 10s Git hook timed out). `npm run build:core`: exit 0. Full GUI rerun: exit 0, 37 files / 351 tests. `npm run typecheck`: exit 0. `npm run dist:check`: exit 0; Windows NSIS package built and `updater package OK (8 checks)`.
+
+The existing controlled scratch evidence remains the only live two-version proof: app-driven 0.3.2 → 0.3.3 with a live agent MCP session, no manual installer step, packaged server identity changed to 0.3.3 sha `03196057…`; the agent session dropped and was manually reconnected afterwards. Refusal screenshot, negative holder path, and numerical respawn timing were not available in this lane and remain INCONCLUSIVE. GUI-064 gaps are point-by-point in the report; no constants or product code changed.

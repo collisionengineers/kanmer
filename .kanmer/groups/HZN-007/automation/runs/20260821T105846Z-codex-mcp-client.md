@@ -147,6 +147,7 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 | Order | Ticket | Observed stage | Gates / next action | Disposition | Worker | Branch / worktree | Attempt | Last action | Last result | PR | Updated |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 77 | MCP-034 | backlog | fix; needs files + plan; closes independent MCP-022 findings | queued | — | — | 0 | added from post-hoc review | pending research/plan | — | 2026-08-21T11:20:20.495Z |
+| 78 | MCP-036 | implementing | fix; next=review; blocked=false; blockers=MCP-025 | review-follow-up | /root/mcp025_reviewer | mcp-036-prebind-project|.worktrees/mcp-036 | 1 | PR #108 opened against MCP-025 branch; independent review assigned | awaiting review; validation green | 108 | 2026-08-21T11:50:00.000Z |
 
 - 2026-08-21T11:20:20.495Z — Independent post-hoc review of MCP-022 recorded three scoped findings; created MCP-034, linked it to MCP-022, attached to HZN-007, and queued it for the full-board completion run.
 
@@ -155,3 +156,4 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T11:40:48.856Z — Independent review of MCP-019 reproduced a legacy-format unsafe document-id validation bypass; created MCP-035, linked it to MCP-019, attached to HZN-007, and queued it for remediation.
 
 - 2026-08-21T11:42:00.000Z — Done-incomplete lane reconciled MCP-022 (32/32), MCP-019 (78/78, MCP-035 created for legacy unsafe-id finding), and MCP-033 (16/16); independent reviews recorded.
+- 2026-08-21T11:50:00.000Z — MCP-036 remediation implemented on branch mcp-036-prebind-project from MCP-025's feature branch, validated (HTTP 7/7, stdio 184/184, protocol 42/42, discovery 13/13, typecheck, build, diff-check), committed c3c2f2a, PR #108 opened against the MCP-025 branch, and assigned to the independent MCP-025 reviewer. MCP-025 remains held in Review until this startup-order defect is independently cleared.

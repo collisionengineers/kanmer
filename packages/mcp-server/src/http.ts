@@ -210,27 +210,45 @@ export class KanmerHttpHost {
 
   async start(): Promise<HttpReadyEvent> {
     if (this.stopping) throw new Error("HTTP host is stopping");
-    await new Promise<void>((resolve, reject) => {
-      const onError = (error: Error) => { this.httpServer.off("listening", onListening); reject(error); };
-      const onListening = () => { this.httpServer.off("error", onError); resolve(); };
-      this.httpServer.once("error", onError);
-      this.httpServer.once("listening", onListening);
-      this.httpServer.listen(this.options.port, this.options.host);
-    });
-    const address = this.httpServer.address();
-    if (!address || typeof address === "string") throw new Error("HTTP listener did not return a TCP address");
-    return {
-      kind: "kanmer-mcp-http-ready",
-      version: 1,
-      pid: process.pid,
-      host: this.options.host,
-      port: address.port,
-      endpoint: `http://${this.options.host}:${address.port}/mcp`,
-      projectFingerprint: await projectFingerprint(),
-      mode: "remote-http-v1",
-      authRequired: true,
-      supportedProtocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS],
-    };
+    try {
+      // Resolve the immutable project before binding. Keep this await inside
+      // the rollback boundary so a root/board failure also clears the
+      // constructor-created sweep timer.
+      const fingerprint = await projectFingerprint();
+      await new Promise<void>((resolve, reject) => {
+        const onError = (error: Error) => { this.httpServer.off("listening", onListening); reject(error); };
+        const onListening = () => { this.httpServer.off("error", onError); resolve(); };
+        this.httpServer.once("error", onError);
+        this.httpServer.once("listening", onListening);
+        this.httpServer.listen(this.options.port, this.options.host);
+      });
+      const address = this.httpServer.address();
+      if (!address || typeof address === "string") throw new Error("HTTP listener did not return a TCP address");
+      return {
+        kind: "kanmer-mcp-http-ready",
+        version: 1,
+        pid: process.pid,
+        host: this.options.host,
+        port: address.port,
+        endpoint: `http://${this.options.host}:${address.port}/mcp`,
+        projectFingerprint: fingerprint,
+        mode: "remote-http-v1",
+        authRequired: true,
+        supportedProtocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS],
+      };
+    } catch (error) {
+      await this.rollbackStart();
+      throw error;
+    }
+  }
+
+  private async rollbackStart(): Promise<void> {
+    this.stopping = true;
+    clearInterval(this.sweepTimer);
+    for (const socket of this.sockets) socket.destroy();
+    if (this.httpServer.listening) {
+      await new Promise<void>((resolve) => this.httpServer.close(() => resolve()));
+    }
   }
 
   private originAllowed(origin: string | undefined): boolean {

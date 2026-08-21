@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { connect as connectSocket } from "node:net";
 import os from "node:os";
@@ -58,6 +59,39 @@ function authorizerFor(tokens, calls = { count: 0 }) {
 
 test.after(async () => {
   await rm(root, { recursive: true, force: true });
+});
+
+test("project resolution fails before binding and leaves no listener", () => {
+  const source = `
+    const { createKanmerHttpHost } = await import(${JSON.stringify(httpEntry.href)});
+    const host = createKanmerHttpHost({ authorizer: { authorize: async () => ({ principal: "probe" }) } });
+    try { await host.start(); process.stdout.write("UNEXPECTED_READY"); process.exitCode = 2; }
+    catch (error) {
+      await host.close();
+      await host.close();
+      process.stdout.write(JSON.stringify({
+        message: String(error?.message ?? error),
+        listening: host.httpServer.listening,
+        timerDestroyed: host.sweepTimer._destroyed,
+      }));
+    }
+  `;
+  const cleanEnv = { ...process.env };
+  delete cleanEnv.KANMER_ROOT;
+  delete cleanEnv.KANMER_INIT;
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", source], {
+    cwd: os.tmpdir(),
+    env: cleanEnv,
+    encoding: "utf8",
+    timeout: 2_000,
+  });
+  assert.equal(result.error, undefined, result.error?.message);
+  assert.equal(result.status, 0, `child did not fail cleanly: ${result.stderr}`);
+  const failure = JSON.parse(result.stdout);
+  assert.match(failure.message, /no Kanmer board found/i);
+  assert.equal(failure.listening, false);
+  assert.equal(failure.timerDestroyed, true);
+  assert.doesNotMatch(result.stdout, /UNEXPECTED_READY/);
 });
 
 test("validates the bounded HTTP configuration and emits complete readiness/stopped metadata", async () => {

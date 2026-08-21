@@ -1,6 +1,6 @@
 # Plan — <ticket id>: <title>
 
-*An execution brief: reasoning establishes bounded work; the checklist distils it into independently observable actions.*
+*The plan. Not the checklist — reasoning establishes bounded work; the checklist distils it into independently observable actions.*
 
 ## Objective
 One bounded outcome.

@@ -12,6 +12,8 @@ The bearer is an application credential in addition to any controls provided by 
 
 Have a project open in Kanmer, a stable HTTPS hostname, an operator-managed named tunnel, its protected credential reference, and a supported tunnel executable installed separately. The executable and tunnel resources are outside Kanmer's ownership. The project must have a valid board and repo identity. A public route is not considered verified merely because the local listener started.
 
+Kanmer does not download an executable, create a provider account, create DNS, create a tunnel, or mint a public hostname. Install and provision those prerequisites through the provider's operator workflow, then enter references—not credential contents—in Kanmer.
+
 ## Architecture and terms
 
 The local HTTP host authenticates and speaks MCP. A tunnel adapter forwards one exact loopback origin to a provider endpoint. The public endpoint is the HTTPS URL a client uses. “Connected” means the local host and adapter are healthy; “verified” means a public doctor run has confirmed DNS, TLS, route, authentication, project identity, tool policy, and session close. A failed or old public result is shown as stale. The project fingerprint is the stable identity used to prevent cross-project use.
@@ -26,6 +28,17 @@ Create a token only after saving a valid executable. The one-time dialog is mask
 
 The installed package provides `kanmer-mcp-token <token-file>` for exclusive protected-file creation and `kanmer-doctor config|local|public [--json]`. `kanmer-mcp-remote` takes no positional arguments. It reads protected references from `KANMER_TUNNEL_PROVIDER=cloudflared`, `KANMER_HTTP_TOKEN_FILE`, `KANMER_TUNNEL_HOSTNAME`, `KANMER_CLOUDFLARED_EXECUTABLE`, `KANMER_CLOUDFLARED_TUNNEL_ID`, and `KANMER_CLOUDFLARED_CREDENTIALS_FILE`. It starts the authenticated loopback host, performs local verification, then starts the adapter and emits redacted readiness/status lines. Stop it with the normal process signal and confirm the child and listener have closed.
 
+For a disposable setup, keep the token file and package under an operator-controlled directory (a path containing spaces is supported), use a placeholder file name, and remove the directory after the run:
+
+```text
+kanmer-mcp-token <protected-token-file>
+kanmer-doctor config --json
+kanmer-mcp-remote
+<normal process signal>
+```
+
+The token command refuses an existing target rather than overwriting it. The doctor command accepts only `config`, `local`, or `public`, with optional `--json`; invalid flags and raw-token or URL arguments exit with code 2. Record only the mode, exit code, and redacted status. Do not put a real token, hostname, or machine path in a command transcript.
+
 ## Configure a remote MCP client
 
 Give the client the HTTPS endpoint ending in `/mcp` and store the bearer separately. Send `Authorization: Bearer <token>` on every request. Never put the token in a query string, URL fragment, cookie, source file, or shell history. Use the client’s ordinary Streamable HTTP MCP transport; client-specific configuration syntax varies and is intentionally not prescribed here.
@@ -34,9 +47,13 @@ Give the client the HTTPS endpoint ending in `/mcp` and store the bearer separat
 
 Use Start only after a token exists. The status surface distinguishes disabled, starting, ready, degraded, and stopped states, with local, tunnel, and public dimensions. Stop closes the authenticated listener before stopping the owned tunnel process. Auto-start is per project and is bounded and deterministic; one project's failure does not prevent other registered projects from being shown. A true Kanmer quit releases desktop ownership. Headless ownership remains separate and must be stopped explicitly.
 
+For safe cleanup, stop the process first, wait for its redacted stopped status, confirm the child and loopback listener are closed, then remove only the disposable token/package directory. Never kill an unrelated owner or delete a provider credential as cleanup.
+
 ## Run connector doctor
 
 Run doctor in `config`, `local`, or `public` mode. The report is schema version 1 and contains ordered checks with pass, warn, fail, or skipped status, severity, safe details, and an optional repair. A prerequisite failure causes dependent checks to be skipped rather than run blindly. Exit 0 means the selected checks are healthy, exit 1 means a check found a problem, and exit 2 means the check could not complete. JSON and human output carry the same safe facts.
+
+Use the [troubleshooting matrix](remote-access-troubleshooting.md#doctor-checks) to interpret each check. Provider-specific setup is isolated in the [Cloudflare named-tunnel appendix](providers/cloudflared.md#supported-named-tunnel-mode).
 
 ## Rotate or recover a token
 

@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T22:51:44.221Z
+updated_at: 2026-08-21T22:55:44.433Z
 lane_limit: 3
 stop_reason:
 ---
@@ -375,3 +375,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-21T22:51:44.221Z — CORE-036 traceability corrected through MCP after merged-main verification: item commits now record reachable merged commit 470b2fad5d16ca4edcc9833b3f674460f994e73d (PR #127); source 99fb8022 remains documented in proof but is not an ancestor after squash merge. Ticket remains Verifying with branch/worktree retained; no release or cleanup.
+
+
+- 2026-08-21T22:55:44.433Z — DOC-005 assigned to doc005-executor on fresh doc-005-operating-rule/.worktrees/doc-005 from origin/main 1b5ae0d4 after complete ticket packet, HZN-007 context, ADR-0010, links/activity, and live gates were read. take_ticket succeeded without force despite stale historical assignee; current merged implementation is PR #26 (source 1df633e7, merge 05a335dc). Audit only DOC-005 scope; no duplicate/no-op PR or unrelated work; stop at Review if a real scoped diff is required.

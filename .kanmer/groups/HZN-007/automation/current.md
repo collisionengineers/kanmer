@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=a35e1fd0
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-21T22:51:44.221Z
+updated_at: 2026-08-21T22:55:44.433Z
 ---
 
 # Current auto run — HZN-007
@@ -27,3 +27,6 @@ Last handoff: archived audit reconciliation complete; all ten named archived rec
 
 
 Last handoff: CORE-036 traceability now records reachable merged commit 470b2fad; ticket remains Verifying after preserved merged-main exit-1 checks.
+
+
+Last handoff: DOC-005 is taken on doc-005-operating-rule/.worktrees/doc-005; merged implementation PR #26 is being reconciled before any new PR.

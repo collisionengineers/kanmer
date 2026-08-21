@@ -1,0 +1,7 @@
+## Merged-main verification run — 2026-08-21
+
+Checkout: repository `main`, HEAD `1b5ae0d4` (origin/main); MCP-008 merge commit `52073fc6521ae25b07d8f4b2c54b6d563f62cc21` is reachable. Board worktree was not touched.
+
+Required rail outcomes: `npm ci` exit 1 with Windows EPERM unlink of `node_modules/@rollup/rollup-win32-x64-msvc/rollup.win32-x64-msvc.node`; failure preserved. Dependency repair `npm install --ignore-scripts --no-audit --no-fund` exit 0. `npm run build` exit 0. `npm run mcpb:build` exit 0. `npm run mcpb:check` exit 0 (3 files, 1,657,094 bytes; live 34 tools / 2 prompts; normalized content checks pass). `npm run smoke:headless` exit 0 (6/6). `npm run test:scripts` exit 0 (79/79). `npm test` exit 0: core 263, GUI 352, HTTP 61, scripts 79. `npm run typecheck` exit 0. `npm run check:manual` exit 0 (22 chapters). `npm run plugin:check` exit 0 (34 tools, bundle bytes, 12 skill frontmatters, isolated handshake). `npm run verify` completed the shared rail: build, npm test, typecheck, protocol 46/46, discovery 13/13, headless, MCPB check, skills/AGENTS checks, plugin check; no failing step observed. `git diff --check` exit 0.
+
+The current run does not have an authorized Claude Desktop host. Real MCPB install, GUI-closed get_status/read/write, restart persistence, uninstall, screenshots and cleanup remain INCONCLUSIVE and intentionally unchecked. Existing proof/checklist statements are retained; deterministic results are not substituted for host acceptance.

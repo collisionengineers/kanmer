@@ -1,50 +1,38 @@
 # Post-implementation report
 
-PR [#19](https://github.com/collisionengineers/kanmer/pull/19). Two files.
+## Reconciliation outcome
 
-## File changes
+SKILL-003's decision-table implementation was already merged in PR #19. This lane audited the merged tree and made one bounded corrective change: the duplicated decision-table section's granularity/provenance and cross-cutting wording had drifted from the canonical `docs/README.md`. Historical implementation commit `aacd09ff86f58cfe910b9e2182b37b03a3bd604f` remains reachable; corrective commit `d7e107b9f27a64851935310e8768fbc2c249fb75` is on branch `skill-003-decision-table`.
+
+## File change
 
 | Path | Change |
 |---|---|
-| `kanmer-docs/SKILL.md` | Decision table, granularity test, paths-are-configured section, `impact` → pipeline names. |
-| `kanmer-tickets/SKILL.md` | The other bare `impact`. |
+| `plugins/kanmer/skills/kanmer-docs/SKILL.md` | Synchronized the decision table’s granularity test provenance and cross-cutting FRD wording with the canonical README copy. |
 
-## Against the governing docs
+The existing merged implementation retains configurable `repoDocs` guidance, filename examples, the decision table, granularity test, and the `impact` cleanup in both relevant skills. No SKILL-004/005/007 or GUI-017 scope entered this diff.
 
-**FRD-014 R2** — the decision table and granularity test are in the skill, with
-the test's provenance. **R4** — the doc-structure mirror is retained and still
-described as descriptive-not-authoritative.
+## Governing-doc alignment
 
-## I corrected my own research mid-ticket
+FRD-014 R2 is satisfied by the self-contained PRD/FRD/ADR table and provenance-backed granularity test; the table/granularity block now matches `docs/README.md` exactly. FRD-014 R4’s descriptive doc-structure mirror guidance remains unchanged.
 
-The research first recorded "the paths are wrong". They are not — they are
-`DEFAULT_REPO_DOCS`, correct for a fresh repo. The defect is hardcoding a
-configurable value without telling the agent to check it. The research document
-was rewritten before implementing, because the wrong diagnosis produced the
-wrong fix: correcting the constants would have broken every repo using the
-defaults.
+## Verification
 
-That is also the explanation for a failure earlier in this session. A `refs`
-entry pointing at `docs/product/PRD-001-kanmer-v3.md` was rejected and I
-recorded it as my own mistake. It was the skill teaching a path this board does
-not use.
+- Table + granularity block comparison against `docs/README.md` — PASS, identical.
+- Widened `\\bimpact\\b|kanmer-import` residue grep across `plugins/kanmer/skills/*/SKILL.md` — PASS, 0 hits.
+- `npm run verify:skills` — PASS, all checks.
+- `npm run verify:agents-block` — PASS, 31/31.
+- `npm run plugin:check` from normal main checkout — PASS: 34 tools, bundle bytes match, skill frontmatters/manifests valid.
+- `git diff --check` — PASS.
 
-## For review
+## Evidence limits and prior dispositions
 
-**The duplicated table has no automated check.** `docs/README.md` and the skill
-must match; today they do, verified by diff. The AGENTS block solved the same
-problem with a byte-identity assertion in `verify-agents-block.mjs`. I judged a
-three-row table not worth a second verify script. A reviewer may reasonably
-disagree — the inconsistency is that this codebase already decided duplication
-needs a check, and this duplication does not get one.
+The duplicated prose has no automated byte-identity guard; the comparison was run for this handoff and that existing risk remains for independent review. No live agent authoring behavior is claimed. The prior report’s disposition of the widened-grep limitation remains: this fix addresses the missed bare `impact` references but does not invent a general lint framework.
 
-**SKILL-001's exit grep was too narrow** and reported clean while two `impact`
-references survived. Fixed here, but nothing prevents the next narrow grep. The
-broader problem — that "zero hits" is only as strong as the pattern — has no
-fix in this ticket.
+## Traceability and handoff
 
-## What kanmer-verify should run
-
-Diff the table in `docs/README.md` against the skill's copy — identical; the
-widened residue grep (`\bimpact\b|researching|kanmer-import`) returning only the
-verb; `verify:agents-block`.
+- Ticket: SKILL-003
+- Branch/worktree: `skill-003-decision-table` / `.worktrees/skill-003`
+- Historical PR: #19, merged; corrective commit: `d7e107b9f27a64851935310e8768fbc2c249fb75`.
+- A new PR will be opened for the corrective one-file fix, then the ticket will move one boundary to Review for independent review/merge.
+- Verify on merged main: rerun the table comparison, widened residue grep, `verify:skills`, `verify:agents-block`, and `plugin:check`.

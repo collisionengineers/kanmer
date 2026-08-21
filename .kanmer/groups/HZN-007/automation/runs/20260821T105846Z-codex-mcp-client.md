@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T23:05:24.982Z
+updated_at: 2026-08-21T23:15:32.188Z
 lane_limit: 3
 stop_reason:
 ---
@@ -208,6 +208,8 @@ stop_reason:
 
 - 2026-08-21T23:05:15.784Z — GUI-017 assigned to /root/gui099_executor in .worktrees/gui-017 on gui-017-in-app-manual; scope is in-app manual audit/reconciliation only (no GUI-016 or provider work); historical PR #25 implementation will be verified and unavailable interactive evidence preserved explicitly.
 
+- 2026-08-21T23:15:32.188Z — GUI-017 result: audit complete; historical PR #25 already merged and current main contains implementation plus DOC-007 reconciliation; checklist/report/scratch read back; deterministic rails passed except preserved full npm test initial exit 1 from missing packages/core/dist/index.js, fixed by build:core and targeted rerun; Electron boot smoke exit 1 with Electron-install environment error; interactive/manual screenshot evidence INCONCLUSIVE; moved Implementing to Review at 2026-08-21T23:15:26.044Z; no GUI-016/provider scope touched; stopped for independent review.
+
 ## Resume instruction
 
 Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's complete document inventory, links, taken state and get_doc_gates before dispatching. Reconcile the ledger against live state and do not replay a completed action solely because this run was interrupted. Before every assignment/result/stage transition, update and read this history record and automation/current.md.
@@ -400,3 +402,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T23:07:40.613Z — SKILL-002 handoff: corrected plan-template identity line in b609c383a203d3956f09a72a324ed09396b28227; PR #139 opened. Checklist 14/14 and report read back; 14-template audit, verify:skills, agents-block 31/31, core build, scripts 80/80 after build, plugin:check, and diff-check passed. Moved Implementing to Review; independent review/merge required; no cleanup.
 
 - 2026-08-21T23:10:56.374Z — SKILL-002 closeout complete: PR #139 merged at d473b6fa542d28439e69e9939d7721467cddd800; .worktrees/skill-002 removed, branch skill-002-template-guidance deleted, fetch --prune and worktree prune completed. Ticket is Done and released; final checklist/proof readback complete; no source changes.
+
+- 2026-08-21T23:16:18.658Z — SKILL-003 taken in .worktrees/skill-003 on skill-003-decision-table for bounded decision-table reconciliation. Existing PR #19 implementation is reachable; audit found only drift between the skill's duplicated granularity/provenance copy and docs/README.md, so the lane is limited to that one-file sync. No SKILL-004/005/007 or GUI-017 scope.

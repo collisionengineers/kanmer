@@ -142,8 +142,8 @@
 
 - [x] Update safe CLI help/config wording only.
 - [x] Confirm no MCP tool/reference/count change.
-- [ ] Run auth unit tests.
-- [ ] Run secret-file unit tests.
+- [x] Run auth unit tests.
+- [x] Run secret-file unit tests.
 - [x] Run HTTP integration tests.
 - [x] Run packaged HTTP smoke.
 - [x] Run stdio protocol/discovery smokes.

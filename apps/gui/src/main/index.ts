@@ -63,6 +63,11 @@ import {
   type WindowBounds,
 } from "./settings.js";
 import {
+  nativeChromeBackground,
+  refreshesForSystemTheme,
+  synchronizeNativeTheme,
+} from "./nativeTheme.js";
+import {
   ensureBoardWorktree,
   inspectBoardWorktree,
   renameBoardBranch,
@@ -147,11 +152,14 @@ function requireStore(projectId: string): KanmerStore {
   return requireCtx(projectId).store;
 }
 
-/** The theme actually in effect ("system" resolved against the OS). */
-function resolvedDark(): boolean {
-  const theme = readSettings().theme;
-  return theme === "system" ? nativeTheme.shouldUseDarkColors : theme === "dark";
+/** Keep OS-rendered chrome (title/menu/dialogs) in the same mode as the app. */
+function applyNativeTheme(theme = readSettings().theme): void {
+  synchronizeNativeTheme(theme, nativeTheme, (color) => mainWindow?.setBackgroundColor(color));
 }
+
+nativeTheme.on("updated", () => {
+  if (refreshesForSystemTheme(readSettings().theme)) applyNativeTheme("system");
+});
 
 /** Restore saved window bounds only if they still intersect a display. */
 function restorableBounds(): WindowBounds | null {
@@ -171,7 +179,9 @@ function restorableBounds(): WindowBounds | null {
 }
 
 function createWindow(): void {
+  applyNativeTheme();
   const saved = restorableBounds();
+  const theme = readSettings().theme;
   mainWindow = new BrowserWindow({
     width: saved?.width ?? 1280,
     height: saved?.height ?? 820,
@@ -180,7 +190,7 @@ function createWindow(): void {
     minHeight: 600,
     // Resolve the theme BEFORE the window exists so light-theme users don't
     // get a dark flash every launch (and vice versa).
-    backgroundColor: resolvedDark() ? "#0f1115" : "#f6f7f9",
+    backgroundColor: nativeChromeBackground(theme, nativeTheme.shouldUseDarkColors),
     show: false,
     title: "Kanmer",
     ...(iconPath() ? { icon: iconPath()! } : {}),
@@ -658,7 +668,11 @@ function registerIpc(): void {
   );
   ipcMain.handle(CH.getLinks, (_e, p: string, id: string) => getLinkGraph(requireStore(p), id));
   ipcMain.handle(CH.getSettings, () => readSettings());
-  ipcMain.handle(CH.setTheme, (_e, theme: Theme) => setTheme(theme));
+  ipcMain.handle(CH.setTheme, (_e, theme: Theme) => {
+    const settings = setTheme(theme);
+    applyNativeTheme(settings.theme);
+    return settings;
+  });
   ipcMain.handle(CH.setNotifications, (_e, on: boolean) => setNotifications(on));
   ipcMain.handle(CH.setPreferences, (_e, patch: Partial<UiPreferences>) => setPreferences(patch));
   ipcMain.handle(CH.setKanmerGitPreferences, (_e, prefs: { kanmerBranch: string; gitSyncMinutes: number }) =>

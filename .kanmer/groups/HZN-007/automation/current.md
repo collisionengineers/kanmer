@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=a35e1fd0
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-21T22:49:50.557Z
+updated_at: 2026-08-21T22:51:44.221Z
 ---
 
 # Current auto run — HZN-007
@@ -24,3 +24,6 @@ Last handoff: CORE-036 merged-main verification recorded at 2026-08-21T22:49:50.
 
 
 Last handoff: archived audit reconciliation complete; all ten named archived records retain traceable duplicate/superseded/resolved dispositions, and GUI-103 is confirmed archived in live state.
+
+
+Last handoff: CORE-036 traceability now records reachable merged commit 470b2fad; ticket remains Verifying after preserved merged-main exit-1 checks.

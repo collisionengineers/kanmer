@@ -15,7 +15,7 @@
 - [x] Run `npm test` component rails.
 - [x] Run `npm run typecheck`.
 - [x] Run `git diff --check`.
-- [ ] Write the implementation report, PR, review, merged-main proof, and closeout evidence.
+- [x] Write the implementation report, PR, review, merged-main proof, and closeout evidence.
 
 ## Progress notes
 

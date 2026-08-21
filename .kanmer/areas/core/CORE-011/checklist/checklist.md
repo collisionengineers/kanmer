@@ -13,7 +13,7 @@
 - [x] stamped on entry, never overwritten.
 - [x] survives a frontmatter round-trip.
 - [x] FRD-002 G2 amended: the structural rule and why proposed R1/R2 were dropped.
-- [ ] plugin:build + plugin:check (core compiles into the bundle) — plugin:build passed; plugin:check exited 1 because this linked worktree resolves @kanmer/core to the main checkout. The exact failure is retained below.
+- [x] plugin:build + plugin:check (core compiles into the bundle) — linked-worktree refusal retained as an expected author-lane limitation; merged-main plugin:build + plugin:check passed after merge and is recorded in the final package rail.
 
 ## Progress notes
 

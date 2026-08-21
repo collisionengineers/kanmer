@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T22:49:50.557Z
+updated_at: 2026-08-21T22:51:44.221Z
 lane_limit: 3
 stop_reason:
 ---
@@ -372,3 +372,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-21T22:50:13.818Z — archived-audit reconciliation: CORE-021 remains archived with its open design questions explicitly closed as a non-viable timestamp/branch-gate proposal; current core has no child-process implementation for this concern. CORE-028 remains archived as shipped-ownerless; duplicate-ADR numbering rail and tests are present on main. GUI-086 and GUI-089 remain archived duplicates of GUI-085; their corroborating timing/EPERM evidence is retained on GUI-085. GUI-094 remains archived as the superseded parent split into EPIC-011 descendants GUI-099/100/101/102; active descendants still carry the remaining packaging/integration work. GUI-103 is confirmed archived (despite the stale earlier list snapshot) as the resolved GUI-096 padded-name review finding, covered by GUI-096 PR #91 commit b6ad3da. MCP-005 remains archived and superseded by EPIC-011 plus MCP-008 after measurement refuted the relocation premise. MCP-031 and MCP-032 remain archived review findings incorporated by MCP-025/MCP-040; current HTTP session isolation, stdio identity/staleness, smoke, protocol, and plugin parity rails pass. SKILL-028 remains archived as resolved by SKILL-016 PR #92 commit 4d963c5. No archived item yielded a unique untracked defect; the one live scope from GUI-094 is represented by its active descendants.
+
+
+- 2026-08-21T22:51:44.221Z — CORE-036 traceability corrected through MCP after merged-main verification: item commits now record reachable merged commit 470b2fad5d16ca4edcc9833b3f674460f994e73d (PR #127); source 99fb8022 remains documented in proof but is not an ancestor after squash merge. Ticket remains Verifying with branch/worktree retained; no release or cleanup.

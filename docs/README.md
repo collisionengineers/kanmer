@@ -58,6 +58,10 @@ See [`architecture/adr/`](architecture/adr/). The accepted remote-access transpo
   021 auto-update · 022 MCP server surface · 023 agent skills system · 024 in-app manual ·
   025 remote access.
 
+**User manual** — [remote access](manual/remote-access.md) ·
+[remote-access troubleshooting](manual/remote-access-troubleshooting.md) ·
+[Cloudflare named-tunnel appendix](manual/providers/cloudflared.md).
+
 ## Reading order
 
 1. [vision](product/vision.md), then the PRD — why and what.

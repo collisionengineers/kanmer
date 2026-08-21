@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T11:42:00.000Z
+updated_at: 2026-08-21T18:34:30.000Z
 lane_limit: 3
 stop_reason:
 ---
@@ -140,6 +140,8 @@ stop_reason:
 - 2026-08-21T18:29:44.491Z — DOC-011 completed Verifying→Done using merged-main proof at 12708f9d: numbering/full verification metadata reconciliation and proof landed; checklist 55/55; ticket released/closeout cleanup recorded by the verification lane. Its worktree is now eligible for removal after final status confirmation.
 - 2026-08-21T18:29:44.491Z — Lane 1 reassigned to /root/gui082_executor for taken GUI-082 on GUI-082-stylesheet-selector-audit/C:\\Users\\Alex\\Documents\\GitHub\\kanmer\\.worktrees\\gui-082. Packet, HZN-006/HZN-007 context, links and gates were reread. Existing branch already contains implementation commit 74f35c1a but board checklist is 0/21; finish evidence/report, independent review/merge, merged-main proof and closeout only for GUI-082.
 
+- 2026-08-21T18:34:30.000Z — Independent review of MCP-017 PASS: linked-worktree guard behavior, dependency-free tests, adversarial vectors, and normal-main plugin parity all passed. PR #105 merged at 1fa516248610e8294819f50572b5d67e8495bb30; ticket moved Review→Verifying. Merged-main proof and closeout cleanup are the next handoff; reviewer noted only non-blocking report wording to reconcile.
+
 ## Resume instruction
 
 Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's complete document inventory, links, taken state and get_doc_gates before dispatching. Reconcile the ledger against live state and do not replay a completed action solely because this run was interrupted. Before every assignment/result/stage transition, update and read this history record and automation/current.md.
@@ -195,3 +197,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T14:02:20.000Z — MCP-026 independent re-review PASS; PR #112 merged at 78e3faf14f9abfe2fe5cce0f38de3b72163489d6. Merged-main verification on normal main: build, plugin:check, all-workspace typecheck, npm test (core 256, GUI 318, HTTP 10, scripts 66), stdio 184/184, protocol 42/42, discovery 13/13, HTTP smoke, diff-check PASS. Proof finalized; ticket walked Review→Verifying→Done with fresh gates, released, and implementation worktree/local+remote branch removed. Only pre-existing untracked skills-lock.json remains.
 
 - 2026-08-21T18:28:01.199Z — MCP-017 implementation lane completed on recorded branch/worktree. Commit dd9f736050dcf029db8c42bcebe258875500410d; PR #105 is open; ticket moved Implementing→Review after a fresh gate check. Focused guard 5/5, scripts 71/71, build/typecheck/diff-check passed; exact npm test first retained a core migration timeout and then passed after build (core 255, GUI 318, HTTP 3, scripts 71). Linked-worktree plugin:check correctly refused. Author lane stops at Review; independent reviewer must own review/merge.
+
+- 2026-08-21T18:33:00.000Z — Run-ledger recovery: an empty write was detected before cleanup and the prior committed run record was restored verbatim through Kanmer. DOC-011 checklist was reconciled to 63/63, ticket released after merged-main proof (PR #81, merge SHA 920ecf957e51ccc299b21ff4ee88d9e0ee24e81d), and gates pass. Exact worktree/branch cleanup remains pending verification. MCP-017 independent review, GUI-082 implementation, and GUI-099 implementation remain active lanes; no merge authority is delegated to the controller.

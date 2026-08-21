@@ -60,3 +60,37 @@ Disposition: NEEDS CHANGES (reliability). Add bounded bind/ownership collision h
 - git diff --check origin/main...HEAD — PASS.
 
 No merge performed; no proof or ticket stage changes.
+
+## Independent re-review — PR #113 at c94d0f765b7e04b80b56578def194aaf39e55834
+
+### Changes checked
+
+The PR adds the provider-neutral tunnel types/supervisor, the named-credentials Cloudflared adapter and strict ingress serializer/validator, loopback readiness/metrics reservation, bounded redacted diagnostics, direct process-tree lifecycle, authenticated local-first remote-host composition/CLI, fake-provider tests and remote smoke. The follow-up commits 88911daa, a02c1481, a23709b7, 97f626ec, c383e9ef and c94d0f76 were included in this review. No core/domain/tool/stdio/plugin/provider-account/DNS/Quick-Tunnel/public-acceptance scope drift was found.
+
+### Findings and dispositions
+
+1. **BLOCKING — provider-neutral public hostname validation still accepts bracketed IPv6 literals.** `packages/mcp-server/src/tunnels/types.ts:71` calls `isIP(hostname.hostname)` without removing URL IPv6 brackets. The generic validator therefore accepts `[2001:db8:1::1]`, despite FRD-025 RA-TUNNEL-3 / MCP-021 plan §§3.22–3.23 requiring IP literals to be rejected. Reproduction after the fresh build: `node --input-type=module -e "...validateTunnelStartInput(...hostname:'[2001:db8:1::1]'...)"` → `ACCEPT`. **Disposition: NEEDS CHANGES** — normalize/remove URL brackets before `isIP` and add IPv6 literal regression coverage in the provider-neutral validator (the Cloudflared-specific dotted-host check does not make the generic contract safe).
+
+2. **BLOCKING — an explicitly supplied metrics port bypasses the collision/ownership strategy.** `packages/mcp-server/src/tunnels/cloudflared.ts:136` reserves only when `options.metricsPort` is absent; the public `CloudflaredAdapterOptions.metricsPort` path never probes/reserves the chosen port. With a listener already bound, an adapter configured with that port still reaches `spawnProcess` (reproduction output: `occupiedPort 50136 spawnReached true error SPAWN_REACHED`). MCP-021 research §Metrics and readiness and plan §§7.59–7.61/13.135 require bounded collision handling for fixed ports. **Disposition: NEEDS CHANGES** — either remove the production fixed-port option/mark it as a strictly test-only seam and ensure production cannot receive it, or reserve/check/retry the explicit port with the same bounded ownership semantics and regression tests.
+
+3. **BLOCKING — production supervisor retries terminal provider exits.** `packages/mcp-server/src/tunnels/supervisor.ts:77` defaults an absent `classifyExit` to `transient`, while `remote-host.ts:43` constructs `TunnelSupervisor` without a classifier. Thus a Cloudflared exit such as a deterministic configuration/security failure (for example code 78) is restarted instead of terminally failing, contrary to MCP-021 research §§95–105 and plan §§11.105–11.106. Reproduction with the built RemoteHost/fake process: `startsAfterExit78 2 status running` after one code-78 exit. **Disposition: NEEDS CHANGES** — provide a provider-owned exit classification (or fail closed by default) and wire it through the production supervisor; retain the existing terminal-classification unit test and add an integrated RemoteHost/adapter regression.
+
+4. **BLOCKING — adapter status does not expose provider readiness degradation.** `TunnelAdapter`/`TunnelStatus` advertise normalized `degraded` state, but `CloudflaredAdapter` only transitions validating/starting/connected/failed/stopped. The readiness callback is polled by `KanmerRemoteHost.monitorHealth`, which changes only `RemoteHostStatus.provider`; `CloudflaredAdapter.getStatus()` remains `connected` during readiness loss. This leaves the provider-neutral adapter contract inconsistent with FRD-025 RA-TUNNEL-2, ADR-0017's connected/degraded lifecycle, and MCP-021 research §§83–93. **Disposition: NEEDS CHANGES** — make the adapter's provider status/readiness event canonical (or explicitly extend the adapter seam so the orchestrator updates it) and add a direct adapter status regression for readiness loss/recovery.
+
+5. **NON-BLOCKING evidence/documentation gap.** The author post-implementation report still records 47/47 as the final focused count and does not list c383e9ef/c94d0f76 details; the checklist retains stale unchecked entries for local handshake, allocator/collision, cleanup, and git-diff/evidence even though some are now implemented or independently checked. **Disposition: FIX IN PR** — refresh the report/checklist or record the final evidence in the next author update. This does not erase the code blockers above.
+
+### Checks
+
+- `npm run test:http -w @kanmer/mcp-server` — PASS, 48/48.
+- `npm test` — PASS: core 256/256, GUI 318/318, MCP HTTP/tunnel 48/48, scripts 66/66; manual check current.
+- `npm run build` — PASS.
+- `npm run typecheck` — PASS for core, mcp-server, ui and GUI.
+- `node packages/mcp-server/src/smoke-remote.mjs` — PASS (fake provider, no public route).
+- `npm run smoke:protocol` — PASS, 42/42.
+- `node packages/mcp-server/src/smoke-discovery.mjs` — PASS, 13/13.
+- `git diff --check origin/main...HEAD` — PASS; worktree clean.
+- Concrete negative/edge probes reproduced the IPv6 acceptance, fixed-port spawn race, and terminal-exit restart above.
+
+### Verdict
+
+**NEEDS CHANGES** — do not merge PR #113 until findings 1–4 are remediated and re-reviewed.

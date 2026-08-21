@@ -24,7 +24,7 @@ export interface DispatchProvider {
   readonly label: string;
   readonly cli: string;
   readonly buildDispatchArgs: (input: DispatchArgsInput) => readonly string[];
-  readonly modelOption: DispatchModelOption;
+  readonly modelOption?: DispatchModelOption;
 }
 
 const MODEL = (evidence: string): DispatchModelOption => ({

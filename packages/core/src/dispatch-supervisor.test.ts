@@ -33,6 +33,7 @@ describe("DispatchSupervisor", () => {
   it("uses fixed provider args, random ids, project+ticket locks and bounded recent metadata", async () => {
     const { supervisor, child } = await setup();
     const status = await supervisor.start(request());
+    expect(status.model).toBe("cli-default");
     expect(status.dispatchId).toMatch(/^MCP-020-[0-9a-f-]{36}$/);
     expect(supervisor.list({ projectId: "/project", includeRecent: false })).toHaveLength(1);
     await expect(supervisor.start(request())).rejects.toThrow(/already has/);

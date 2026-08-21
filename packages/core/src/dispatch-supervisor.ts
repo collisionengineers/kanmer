@@ -152,7 +152,7 @@ export class DispatchSupervisor {
       ticketId: request.ticketId,
       provider: request.provider,
       ...(request.task ? { task: request.task.id, taskLabel: request.task.label, deliverable: request.task.deliverable } : {}),
-      ...(request.model ? { model: request.model } : {}),
+      model: request.model ?? "cli-default",
       ...(request.promptCustomized ? { promptCustomized: true } : {}),
       requestedBy: request.requestedBy,
       state: "running",

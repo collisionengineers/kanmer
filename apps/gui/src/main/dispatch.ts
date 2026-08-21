@@ -87,6 +87,7 @@ export async function dispatchTicket(
   stores.set(projectId, store);
   const builtInPrompt = task ? task.prompt(ticketId) : takeTicketPromptText(ticketId);
   const config = resolveDispatchSettings(readSettings().dispatch, provider.id, task?.id);
+  if (config.model && !provider.modelOption) throw new Error(`Provider "${provider.label}" has no verified model override.`);
   const prompt = composeDispatchPrompt(builtInPrompt, config.promptSuffix);
   const status = await getSupervisor().start({
     projectId,

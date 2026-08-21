@@ -1225,7 +1225,7 @@ describe("reference files", () => {
 
   it("refuses a name that would escape the ticket folder", async () => {
     const t = await store.createItem({ type: "ticket", title: "Ref" });
-    for (const bad of ["../escape.png", "..", "sub/dir.png", "."]) {
+    for (const bad of ["../escape.png", "..", "sub/dir.png", "foo/../mockup.png", "."]) {
       await expect(store.addReference(t.id, src, bad), bad).rejects.toThrow();
     }
     // Nothing was written anywhere.
@@ -1238,6 +1238,7 @@ describe("reference files", () => {
     await store.addReference(t.id, src);
     await expect(store.removeReference(t.id, "../../mockup.png")).rejects.toThrow(/outside/);
     await expect(store.removeReference(t.id, "sub/mockup.png")).rejects.toThrow(/plain filename/);
+    await expect(store.removeReference(t.id, "foo/../mockup.png")).rejects.toThrow(/plain filename/);
     await store.removeReference(t.id, "mockup.png");
     expect((await store.getTicketDocsInfo(t.id))?.references).toEqual([]);
   });

@@ -112,6 +112,12 @@ const CREATE_ATTEMPTS = 20;
 function referencePath(dir: string, name: string): string {
   const candidate = name.trim();
   if (!candidate || candidate === "." || candidate === "..") throw new Error(`Invalid reference name "${candidate}"`);
+  // Validate the caller's spelling before canonicalisation.  A path such as
+  // `foo/../mockup.png` resolves inside reference/ but is still a nested path,
+  // which the reference-file contract explicitly forbids.
+  if (path.basename(candidate) !== candidate) {
+    throw new Error(`Reference name "${name}" is outside reference/; it must be a plain filename`);
+  }
   const resolved = path.resolve(dir, candidate);
   const root = path.resolve(dir);
   if (resolved !== path.join(root, path.basename(resolved)) || !resolved.startsWith(root + path.sep)) {

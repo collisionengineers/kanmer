@@ -39265,6 +39265,9 @@ var CREATE_ATTEMPTS = 20;
 function referencePath(dir, name) {
   const candidate = name.trim();
   if (!candidate || candidate === "." || candidate === "..") throw new Error(`Invalid reference name "${candidate}"`);
+  if (import_path9.default.basename(candidate) !== candidate) {
+    throw new Error(`Reference name "${name}" is outside reference/; it must be a plain filename`);
+  }
   const resolved = import_path9.default.resolve(dir, candidate);
   const root = import_path9.default.resolve(dir);
   if (resolved !== import_path9.default.join(root, import_path9.default.basename(resolved)) || !resolved.startsWith(root + import_path9.default.sep)) {

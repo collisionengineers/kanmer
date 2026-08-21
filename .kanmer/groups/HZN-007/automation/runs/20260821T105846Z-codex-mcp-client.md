@@ -125,3 +125,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T10:59:42.219Z — DOC-012 reconciled in place: linked merged FRD/ADR refs to the provider-neutral milestone tickets, confirmed worktree/branch cleanup and release, checked the three stale closeout boxes, and re-read gates (all pass).
 
 - 2026-08-21T11:02:30.863Z — DOC-017 entered Review with PR #106; independent reviewer /root/doc017_reviewer assigned. Author lane will not review or merge.
+
+- 2026-08-21T11:04:01.653Z — Read-only audit lane assigned to /root/archived_auditor for the ten archived tickets; no board or implementation mutation authorized.
+- 2026-08-21T11:04:01.653Z — Read-only historical audit lane assigned to /root/historical_auditor for the 75 named backfill tickets; no fabricated lifecycle evidence or board mutation authorized.

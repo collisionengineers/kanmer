@@ -2,7 +2,7 @@
 id: SKILL-001
 type: ticket
 title: 6.1 Roster sweep
-status: review
+status: done
 area: skills
 order: 140
 assignee: /root/gui099_executor
@@ -11,9 +11,7 @@ stageEntered:
   verifying: '2026-08-21T08:55:12.558Z'
   review: '2026-08-21T08:55:12.771Z'
   implementing: '2026-08-21T08:55:12.979Z'
-taken_at: '2026-08-21T21:16:37.844Z'
-branch: skill-001-roster-sweep
-worktree: .worktrees/skill-001
+  done: '2026-08-21T21:27:21.616Z'
 labels:
   - v3-phase-6
 groups:
@@ -40,7 +38,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/15'
 archived: false
 created: '2026-08-16T00:31:38.765Z'
-updated: '2026-08-21T21:24:23.460Z'
+updated: '2026-08-21T21:27:21.664Z'
 ---
 
 All twelve remaining skills: gate prose deleted in favour of `get_doc_gates`; six-stage and folder-path references; read-everything openings including group context; questioning prose per skill; kanmer-research rewritten for quick/deep with source classes; kanmer-auto profile-partitioned waves and files/-overlap lanes; kanmer-verify typed proof; kanmer-execute and kanmer-plan living-docs duties; auto<->dispatch cross-references. **kanmer-import deleted** (13 -> 12).

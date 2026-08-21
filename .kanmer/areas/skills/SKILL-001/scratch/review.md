@@ -39,3 +39,13 @@ satisfied. The near-miss on `docs_todo`/`link_doc` was verified against
 
 **Verdict: pass.** Merged into `v3-phase-minus-1-prework`; the line is now
 pushed and under PR #15.
+
+# Independent review — SKILL-001
+
+**Verdict: PASS; no source merge required.**
+
+The scoped implementation is already present in current main via PR #15 and commit 130f837. The author packet's findings are valid and explicitly owned by SKILL-005 or accepted as non-stage prose; verify:skills and verify:agents-block pass. The plugin checker cannot inspect prose semantics, so the move_item/tool-reference match was manually inspected and recorded as a review limitation. No SKILL-002/003/004/005 or provider scope was absorbed.
+
+Merged-main evidence: verify:skills PASS; verify:agents-block 31/31; scripts 79/79; all-workspace typecheck PASS; plugin build/check PASS after local generation, with the prior linked/committed artifact mismatch retained.
+
+Manual skill-host execution is unavailable and INCONCLUSIVE; it is not a checklist or gate requirement for this ticket.

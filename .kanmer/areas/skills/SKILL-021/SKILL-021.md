@@ -20,7 +20,8 @@ groups:
   - EPIC-009
   - HZN-004
   - HZN-007
-links: []
+links:
+  - CORE-032
 blocks:
   - CORE-035
 commits:
@@ -29,7 +30,7 @@ prs:
   - '141'
 archived: false
 created: '2026-08-20T10:14:57.015Z'
-updated: '2026-08-21T23:28:16.705Z'
+updated: '2026-08-21T23:30:30.698Z'
 ---
 
 ## What

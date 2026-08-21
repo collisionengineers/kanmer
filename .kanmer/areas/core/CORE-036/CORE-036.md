@@ -4,6 +4,7 @@ type: ticket
 title: Tag-push release verification workflow
 status: implementing
 area: core
+order: 200
 assignee: codex-mcp-client
 profile: chore
 stageEntered:
@@ -17,7 +18,7 @@ links:
   - GUI-093
 archived: false
 created: '2026-08-20T10:14:42.545Z'
-updated: '2026-08-21T10:57:25.600Z'
+updated: '2026-08-21T12:55:47.298Z'
 ---
 
 ## What

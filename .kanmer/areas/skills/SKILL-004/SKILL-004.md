@@ -4,7 +4,7 @@ type: ticket
 title: 6.4 Setup reconciliation
 status: implementing
 area: skills
-order: 1100
+order: 170
 assignee: ''
 profile: feature
 stageEntered:
@@ -28,7 +28,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/17'
 archived: false
 created: '2026-08-16T00:31:38.802Z'
-updated: '2026-08-21T10:57:23.506Z'
+updated: '2026-08-21T12:55:47.283Z'
 ---
 
 The reconcile loop — AGENTS block, version steps, ingest. GitHub issue ingestion with a list-then-confirm close flow and idempotent source links; per-item plan mining with the preview (N docs -> M items -> K tickets), area seeding and custom-empty profiles; commit-history fallback; greenfield interview retained; stage-proposal prose removed.

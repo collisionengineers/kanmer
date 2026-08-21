@@ -4,7 +4,7 @@ type: ticket
 title: Migration survives EPERM and resumes per ticket
 status: implementing
 area: core
-order: 210
+order: 50
 assignee: claude-code
 profile: feature
 stageEntered:
@@ -31,7 +31,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/28'
 archived: false
 created: '2026-08-16T13:17:25.100Z'
-updated: '2026-08-21T10:57:14.459Z'
+updated: '2026-08-21T12:55:47.219Z'
 ---
 
 A user's format-2 → format-3 migration failed three times on Windows and left

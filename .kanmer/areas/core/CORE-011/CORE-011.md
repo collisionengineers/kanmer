@@ -4,7 +4,7 @@ type: ticket
 title: Gates cannot tell a document was written after the work
 status: implementing
 area: core
-order: 110
+order: 30
 assignee: claude-code
 profile: feature
 stageEntered:
@@ -23,7 +23,7 @@ refs:
   - docs/product/prd/PRD-001-kanmer-v3.md
 archived: false
 created: '2026-08-16T04:24:49.811Z'
-updated: '2026-08-21T10:57:11.867Z'
+updated: '2026-08-21T12:55:47.208Z'
 ---
 
 Gates check that a document exists, never that it existed before the work it

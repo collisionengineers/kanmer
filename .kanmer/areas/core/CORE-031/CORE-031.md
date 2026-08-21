@@ -4,7 +4,7 @@ type: ticket
 title: Create `npm run verify` wrapping one shared VERIFY_STEPS
 status: implementing
 area: core
-order: 30
+order: 10
 assignee: codex-mcp-client
 profile: chore
 stageEntered:
@@ -22,7 +22,7 @@ blocks:
   - CORE-032
 archived: false
 created: '2026-08-20T10:14:42.483Z'
-updated: '2026-08-21T10:57:09.417Z'
+updated: '2026-08-21T12:55:47.198Z'
 ---
 
 ## What

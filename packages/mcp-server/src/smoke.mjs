@@ -968,7 +968,8 @@ try {
   });
   check(
     "leaving backlog is gated on a governing doc",
-    blockedLeave.isError === true && /governing/i.test(textOf(blockedLeave)),
+    blockedLeave.isError === true && /governing/i.test(textOf(blockedLeave)) &&
+      blockedLeave.structuredContent?.error?.code === "GATE_BLOCKED",
   );
   const linked = JSON.parse(
     textOf(

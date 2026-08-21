@@ -386,6 +386,17 @@ The only place that touches `.kanmer` files. Public API via `index.ts`. Key entr
 - **The reference is discovered, not baked** (`bundled.ts`, from MCP-012's `build` shape), and the canonical AGENTS body is read out of the bundled `kanmer-setup/SKILL.md` — the copy `verify-agents-block.mjs` check 7 pins to `BLOCK_BODY`. Nothing hardcodes the block text, so rewriting it needs no change here. Baking a skills manifest into the bundle instead would make `plugin:check` demand an MCP rebuild after **every skill-prose edit**; don't.
 - Detection only. `get_status` is `readOnlyHint` and every `fix` string is a pointer at `kanmer-setup` (FRD-013). Nothing here is cached, so a repair is visible on the next call. Absence of the `repo` block means "pre-0.3.4", not "error".
 
+**Project-safe writes** (`expected_project`, MCP-022/MCP-034): a client reads
+`get_status.project.fingerprint` and sends it as the optional top-level
+`expected_project` only when `get_status.compat.expectedProject` advertises
+`optional`; older servers remain compatible when the field is omitted. It is
+never nested in `create_item` fields or individual `create_items.items[]`
+entries and never reaches stored frontmatter. The central `write()` guard
+decorates mutating registrations based on the official MCP SDK's
+`annotations.readOnlyHint: false`, so every mutating tool must retain that
+annotation or it can silently bypass the project check. `readOnlyHint` is a
+guard dependency here, not merely descriptive metadata.
+
 **Tools** (all carry annotations so codex approval modes / Claude read-write split behave):
 - Read (`readOnlyHint`) — 12: `get_status`, `list_board`, `list_items`, `get_item`, `get_ticket_doc`, `search_items`, `get_links`, `get_activity`, `get_doc_gates`, `get_group`, `list_groups`, `get_group_doc`
 - Write — 16: `create_item`, `create_items`, `update_item`, `move_item`, `take_ticket`, `set_ticket_doc`, `append_scratch`, `link_items`, `link_doc`, `add_column`, `update_column`, `reorder_columns`, `migrate_board`, `create_group`, `update_group`, `set_group_doc`

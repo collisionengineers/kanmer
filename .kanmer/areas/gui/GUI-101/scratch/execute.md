@@ -1,0 +1,1 @@
+Opened PR #129 at https://github.com/collisionengineers/kanmer/pull/129 from commit 92a26fceb5058d9a3f0882445c86e48c58d18a42. Deterministic package/session rails PASS; real installed update and two-location host proof explicitly INCONCLUSIVE because no safe HKCU install/feed/second host is available. Author lane stops at Review; do not merge or start GUI-102.

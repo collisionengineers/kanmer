@@ -936,13 +936,19 @@ export class KanmerStore {
   async getDocsWithVersions(id: string, docs: TicketDoc[]): Promise<TicketDocumentWithVersion[]> {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
-    if (loc.kind !== "v2") {
-      return docs.map((doc) => ({ doc, exists: false, content: null, version: null }));
-    }
 
     // Calculate every path before probing any file. A malformed later entry
-    // therefore cannot yield a partial batch result.
-    const files = docs.map((doc) => ({ doc, file: docPathIn(loc.dir, doc) }));
+    // therefore cannot yield a partial batch result. Format-1 has no ticket
+    // folder to read, but it still validates against a placeholder root
+    // before returning its established all-missing response.
+    const files = docs.map((doc) => ({
+      doc,
+      file: docPathIn(loc.kind === "v2" ? loc.dir : "", doc),
+    }));
+    if (loc.kind !== "v2") {
+      return files.map(({ doc }) => ({ doc, exists: false, content: null, version: null }));
+    }
+
     return Promise.all(
       files.map(async ({ doc, file }) => {
         if (!(await pathExists(file))) {

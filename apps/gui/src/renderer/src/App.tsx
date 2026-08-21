@@ -275,6 +275,17 @@ export function App(): JSX.Element {
     try {
       // Snapshot the outgoing tab's UI state before switching.
       const prev = rootRef.current;
+      if (prev && prev !== path) {
+        try {
+          const remote = await window.kanmer.remoteView(prev);
+          if (["starting", "ready", "degraded", "stopping"].includes(remote.status.state)) {
+            const leave = window.confirm("Cloudflare remote access is active for this project. Switch projects anyway?");
+            if (!leave) return;
+          }
+        } catch {
+          // A project without remote configuration has no switch confirmation.
+        }
+      }
       if (prev) {
         savedStates.current.set(prev, {
           view: viewRef.current,
@@ -1729,6 +1740,7 @@ export function App(): JSX.Element {
 
       {settingsOpen && (
         <Settings
+          projectId={root}
           board={board}
           items={items}
           theme={settings?.theme ?? "dark"}

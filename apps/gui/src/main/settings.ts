@@ -34,6 +34,8 @@ export interface AppSettings extends UiPreferences {
   sessionInitialized: boolean;
   kanmerBranch: string;
   gitSyncMinutes: number;
+  /** GUI remote-access registry; owned by the remote-access store but preserved by settings writes. */
+  remoteAccess?: Record<string, unknown>;
 }
 
 const DEFAULTS: AppSettings = {
@@ -74,6 +76,7 @@ export function readSettings(): AppSettings {
       defaultArea: typeof parsed.defaultArea === "string" ? parsed.defaultArea : "",
       kanmerBranch: typeof parsed.kanmerBranch === "string" && parsed.kanmerBranch.trim() ? parsed.kanmerBranch.trim() : "kanmer-board",
       gitSyncMinutes: Number.isInteger(parsed.gitSyncMinutes) && (parsed.gitSyncMinutes ?? 0) > 0 ? parsed.gitSyncMinutes! : 0,
+      ...(parsed.remoteAccess && typeof parsed.remoteAccess === "object" ? { remoteAccess: parsed.remoteAccess as Record<string, unknown> } : {}),
       ...(bounds && typeof bounds.width === "number" && typeof bounds.height === "number"
         ? { windowBounds: bounds }
         : {}),

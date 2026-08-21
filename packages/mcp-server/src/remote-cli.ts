@@ -2,6 +2,7 @@ import { BearerAuthorizer } from "./http-auth.js";
 import { loadTokenMaterial } from "./http-secret.js";
 import { createKanmerRemoteHost } from "./remote-host.js";
 import { createCloudflaredAdapter } from "./tunnels/cloudflared.js";
+import { projectFingerprint } from "./index.js";
 
 const required = (name: string): string => {
   const value = process.env[name];
@@ -9,6 +10,7 @@ const required = (name: string): string => {
   return value;
 };
 
+void (async () => {
 try {
   if (process.argv.length !== 2) throw new Error("REMOTE_CLI_ACCEPTS_NO_ARGUMENTS");
   if (required("KANMER_TUNNEL_PROVIDER") !== "cloudflared") throw new Error("REMOTE_TUNNEL_PROVIDER_UNSUPPORTED");
@@ -41,10 +43,11 @@ try {
     }),
   });
   const ready = await remote.start();
-  process.stdout.write(`${JSON.stringify({ kind: "kanmer-mcp-remote-ready", version: 1, endpoint: ready.endpoint, authRequired: true, tokenId: verifier.tokenId, fingerprint: verifier.fingerprint })}\n`);
+  process.stdout.write(`${JSON.stringify({ kind: "kanmer-mcp-remote-ready", version: 1, endpoint: ready.endpoint, authRequired: true, tokenId: verifier.tokenId, fingerprint: verifier.fingerprint, projectFingerprint: await projectFingerprint() })}\n`);
   const stop = () => void remote.close().finally(() => process.exit(0));
   process.once("SIGINT", stop); process.once("SIGTERM", stop);
 } catch (error) {
   process.stderr.write(`kanmer-mcp-remote fatal: ${error instanceof Error ? error.message : "REMOTE_CONFIG_INVALID"}\n`);
   process.exit(1);
 }
+})();

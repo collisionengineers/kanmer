@@ -21,6 +21,23 @@ import type {
   V3Report,
   RepoStaleness,
 } from "@kanmer/core";
+import type {
+  RemoteDoctorResult,
+  RemoteProjectIdentity,
+  RemoteProjectView,
+  RemoteSecretDelivery,
+  RemoteStatus,
+} from "./remote.js";
+
+export type { RemoteDoctorResult, RemoteProjectIdentity, RemoteProjectView, RemoteSecretDelivery, RemoteStatus };
+
+export interface RemoteConfigInput {
+  executable: string;
+  tunnelId: string;
+  credentialsFile: string;
+  hostname: string;
+  enabled: boolean;
+}
 
 /** What `migrateBoard` reports: the three upgrade steps, in order. */
 export interface BoardMigrationReport {
@@ -111,6 +128,15 @@ export const CH = {
   mcpSessions: "kanmer:mcpSessions",
   /** Main → renderer: auto-update state changes. */
   updateStatus: "kanmer:updateStatus",
+  remoteRegister: "kanmer:remoteRegister",
+  remoteView: "kanmer:remoteView",
+  remoteSaveConfig: "kanmer:remoteSaveConfig",
+  remoteCreateSecret: "kanmer:remoteCreateSecret",
+  remoteConsumeSecret: "kanmer:remoteConsumeSecret",
+  remoteStart: "kanmer:remoteStart",
+  remoteStop: "kanmer:remoteStop",
+  remoteDoctor: "kanmer:remoteDoctor",
+  remoteStatus: "kanmer:remoteStatus",
 } as const;
 
 /**
@@ -592,4 +618,14 @@ export interface KanmerApi {
   mcpSessions(): Promise<McpSessions>;
   /** Subscribe to auto-update state changes. Returns an unsubscribe fn. */
   onUpdateStatus(cb: (payload: UpdateStatusEvent) => void): () => void;
+  /** Cloudflare-only remote access, keyed by the canonical MCP project fingerprint. */
+  remoteRegister(projectId: string): Promise<RemoteProjectView>;
+  remoteView(projectId: string): Promise<RemoteProjectView>;
+  remoteSaveConfig(projectId: string, config: RemoteConfigInput): Promise<RemoteProjectView>;
+  remoteCreateSecret(projectId: string, rotate?: boolean): Promise<RemoteSecretDelivery>;
+  remoteConsumeSecret(deliveryId: string): Promise<boolean>;
+  remoteStart(projectId: string): Promise<RemoteStatus>;
+  remoteStop(projectId: string): Promise<RemoteStatus>;
+  remoteDoctor(projectId: string): Promise<RemoteDoctorResult>;
+  onRemoteStatus(cb: (status: RemoteStatus) => void): () => void;
 }

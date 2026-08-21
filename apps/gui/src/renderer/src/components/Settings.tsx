@@ -16,6 +16,7 @@ import type {
   Theme, KanmerGitStatus,
   UiPreferences,
 } from "../../../shared/ipc.js";
+import type { RemoteConfigInput, RemoteDoctorResult, RemoteProjectView, RemoteStatus } from "../../../shared/ipc.js";
 import { useClient } from "../lib/client.js";
 import { boardDraftModified } from "../lib/settingsDraft.js";
 import {
@@ -27,16 +28,18 @@ import {
   type Vocabulary,
 } from "../lib/profileDraft.js";
 
-type SettingsTab = "board" | "profiles" | "appearance" | "git" | "connect";
+type SettingsTab = "board" | "profiles" | "appearance" | "git" | "connect" | "remote";
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: "board", label: "Board" },
   { id: "profiles", label: "Profiles" },
   { id: "appearance", label: "Appearance" },
   { id: "git", label: "Git" },
   { id: "connect", label: "Connect" },
+  { id: "remote", label: "Remote access" },
 ];
 
 interface SettingsProps {
+  projectId: string;
   board: BoardConfig;
   items: Item[];
   theme: Theme;
@@ -52,6 +55,7 @@ interface SettingsProps {
 const DEFAULT_COLOR = "#5b8cff";
 
 export function Settings({
+  projectId,
   board,
   items,
   theme,
@@ -232,6 +236,8 @@ export function Settings({
                 </div>
               </>
             )}
+
+            {tab === "remote" && <RemoteSection projectId={projectId} />}
 
             {tab === "profiles" && <ProfilesTab />}
 
@@ -1034,6 +1040,136 @@ function countUsage(items: Item[]) {
     if (i.area) acc.area[i.area] = (acc.area[i.area] ?? 0) + 1;
   }
   return acc;
+}
+
+function RemoteSection({ projectId }: { projectId: string }): JSX.Element {
+  const [view, setView] = useState<RemoteProjectView | null>(null);
+  const [status, setStatus] = useState<RemoteStatus | null>(null);
+  const [doctor, setDoctor] = useState<RemoteDoctorResult | null>(null);
+  const [token, setToken] = useState<{ deliveryId: string; value: string; expiresAt: number } | null>(null);
+  const [tokenRevealed, setTokenRevealed] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [draft, setDraft] = useState<RemoteConfigInput>({ executable: "", tunnelId: "", credentialsFile: "", hostname: "", enabled: false });
+  const clipboardTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (clipboardTimer.current) clearTimeout(clipboardTimer.current); }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    const deliveryId = token.deliveryId;
+    const timer = setTimeout(() => {
+      void window.kanmer.remoteConsumeSecret(deliveryId).catch(() => undefined);
+      setToken(null);
+      setTokenRevealed(false);
+      setMessage("The one-time token delivery expired without being copied.");
+    }, Math.max(0, token.expiresAt - Date.now()));
+    return () => {
+      clearTimeout(timer);
+      void window.kanmer.remoteConsumeSecret(deliveryId).catch(() => undefined);
+    };
+  }, [token]);
+
+  const load = useCallback(async () => {
+    try {
+      const next = await window.kanmer.remoteRegister(projectId);
+      setView(next);
+      setStatus(next.status);
+      setDraft({ executable: next.config.executable, tunnelId: next.config.tunnelId, credentialsFile: next.config.credentialsFile, hostname: next.config.hostname, enabled: next.config.enabled });
+      setError(null);
+    } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
+  }, [projectId]);
+
+  useEffect(() => {
+    void load();
+    const remove = window.kanmer.onRemoteStatus((next) => {
+      if (next.projectId === projectId) setStatus(next);
+    });
+    return remove;
+  }, [load, projectId]);
+
+  const run = async (operation: string, action: () => Promise<void>) => {
+    setBusy(operation); setError(null); setMessage(null);
+    try { await action(); } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
+    finally { setBusy(null); }
+  };
+
+  const save = () => run("save", async () => {
+    const next = await window.kanmer.remoteSaveConfig(projectId, draft);
+    setView(next); setStatus(next.status); setMessage("Cloudflare configuration saved. Store the tunnel credentials file outside the project.");
+  });
+
+  const createSecret = (rotate: boolean) => run(rotate ? "rotate" : "create", async () => {
+    const delivery = await window.kanmer.remoteCreateSecret(projectId, rotate);
+    setToken({ deliveryId: delivery.deliveryId, value: delivery.token, expiresAt: Date.parse(delivery.expiresAt) });
+    setTokenRevealed(false);
+    setMessage(rotate ? "Token rotated. Copy it now; it will not be shown again." : "Token created. Copy it now; it will not be shown again.");
+    await load();
+  });
+
+  const copyToken = async () => {
+    if (!token) return;
+    const copied = token.value;
+    await navigator.clipboard.writeText(token.value);
+    await window.kanmer.remoteConsumeSecret(token.deliveryId);
+    setToken(null);
+    setTokenRevealed(false);
+    setMessage("Token copied. It is no longer available in Kanmer.");
+    if (clipboardTimer.current) clearTimeout(clipboardTimer.current);
+    clipboardTimer.current = setTimeout(() => {
+      void clearClipboardIfUnchanged(navigator.clipboard, copied)
+        .then((cleared) => { if (cleared) setMessage("The copied token was cleared from the clipboard."); })
+        .catch(() => setMessage("Kanmer could not verify clipboard cleanup; replace the copied token manually."));
+    }, 60_000);
+  };
+
+  const start = () => run("start", async () => { const next = await window.kanmer.remoteStart(projectId); setStatus(next); });
+  const stop = () => run("stop", async () => { const next = await window.kanmer.remoteStop(projectId); setStatus(next); });
+  const runDoctor = () => run("doctor", async () => { setDoctor(await window.kanmer.remoteDoctor(projectId)); });
+  const active = status?.state === "ready" || status?.state === "starting" || status?.state === "degraded";
+
+  return (
+    <div className="settings-section">
+      <h3>Cloudflare Tunnel</h3>
+      <p className="hint">Remote access is per project. Kanmer stores only this project’s Cloudflare references and keeps the bearer token in encrypted OS storage.</p>
+      {view?.identity && <p className="hint">Project fingerprint: <code>{view.identity.fingerprint}</code></p>}
+      {error && <div className="banner error">{error}</div>}
+      {message && <div className="banner success">{message}</div>}
+      <div className="field-row">
+        <label className="field"><span>cloudflared executable</span><input value={draft.executable} onChange={(e) => setDraft({ ...draft, executable: e.target.value })} placeholder="C:\\Tools\\cloudflared.exe" /></label>
+        <label className="field"><span>Tunnel id</span><input value={draft.tunnelId} onChange={(e) => setDraft({ ...draft, tunnelId: e.target.value })} /></label>
+      </div>
+      <label className="field"><span>Credentials file</span><input value={draft.credentialsFile} onChange={(e) => setDraft({ ...draft, credentialsFile: e.target.value })} placeholder="C:\\Users\\…\\.json" /></label>
+      <label className="field"><span>Public hostname</span><input value={draft.hostname} onChange={(e) => setDraft({ ...draft, hostname: e.target.value })} placeholder="kanmer.example.com" /></label>
+      <label className="checkbox"><input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} /> Enable this project’s Cloudflare remote access</label>
+      <div className="button-row">
+        <button className="primary sm" disabled={busy !== null} onClick={() => void save()}>{busy === "save" ? "Saving…" : "Save configuration"}</button>
+        <button className="ghost sm" disabled={busy !== null || !view?.config.executable || view.config.secretConfigured} onClick={() => void createSecret(false)}>Create token</button>
+        <button className="ghost sm" disabled={busy !== null || !view?.config.secretConfigured || active} onClick={() => void createSecret(true)}>Rotate token</button>
+      </div>
+      {token && <div className="banner warn" role="status"><strong>Copy this token now.</strong><code aria-label={tokenRevealed ? "One-time token" : "Hidden one-time token"}>{tokenRevealed ? token.value : "•".repeat(token.value.length)}</code><button className="ghost xs" onClick={() => setTokenRevealed((revealed) => !revealed)} aria-label={tokenRevealed ? "Hide one-time token" : "Reveal one-time token"}>{tokenRevealed ? "Hide" : "Reveal"}</button><button className="primary xs" onClick={() => void copyToken()}>Copy and dismiss</button></div>}
+      <div className="settings-section">
+        <h4>Status: {status?.state ?? "disabled"}</h4>
+        {status && <p className="hint">Local: <strong>{status.local}</strong> · Tunnel: <strong>{status.tunnel}</strong> · Public: <strong>{status.public}</strong></p>}
+        {status?.lastError && <p className="error-text">{status.lastError}</p>}
+        {status?.endpoint && <p className="hint">Endpoint: <code>{status.endpoint}</code> <button className="ghost xs" onClick={() => void navigator.clipboard.writeText(status.endpoint!)}>Copy endpoint</button></p>}
+        <div className="button-row">
+          <button className="primary sm" disabled={busy !== null || active || !view?.config.secretConfigured} onClick={() => void start()}>{busy === "start" ? "Starting…" : "Start"}</button>
+          <button className="ghost sm" disabled={busy !== null || !active} onClick={() => void stop()}>{busy === "stop" ? "Stopping…" : "Stop"}</button>
+          <button className="ghost sm" disabled={busy !== null || !view?.config.secretConfigured} onClick={() => void runDoctor()}>{busy === "doctor" ? "Checking…" : "Run doctor"}</button>
+        </div>
+      </div>
+      {doctor && <div className={`banner ${doctor.ok ? "success" : "error"}`}><strong>{doctor.summary}</strong><ul>{doctor.checks.map((check) => <li key={check.id}>{check.id}: {check.status} — {check.detail}</li>)}</ul></div>}
+    </div>
+  );
+}
+
+export async function clearClipboardIfUnchanged(clipboard: Pick<Clipboard, "readText" | "writeText">, expected: string): Promise<boolean> {
+  const current = await clipboard.readText();
+  if (current !== expected) return false;
+  await clipboard.writeText("");
+  return true;
 }
 
 function slug(name: string): string {

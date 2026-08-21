@@ -8,6 +8,7 @@ import {
   type MenuCommand,
   type RevealPayload,
   type UpdateStatusEvent,
+  type RemoteStatus,
 } from "../shared/ipc.js";
 
 const api: KanmerApi = {
@@ -112,6 +113,19 @@ const api: KanmerApi = {
     const listener = (_e: unknown, payload: UpdateStatusEvent) => cb(payload);
     ipcRenderer.on(CH.updateStatus, listener);
     return () => ipcRenderer.removeListener(CH.updateStatus, listener);
+  },
+  remoteRegister: (p) => ipcRenderer.invoke(CH.remoteRegister, p),
+  remoteView: (p) => ipcRenderer.invoke(CH.remoteView, p),
+  remoteSaveConfig: (p, config) => ipcRenderer.invoke(CH.remoteSaveConfig, p, config),
+  remoteCreateSecret: (p, rotate) => ipcRenderer.invoke(CH.remoteCreateSecret, p, rotate),
+  remoteConsumeSecret: (deliveryId) => ipcRenderer.invoke(CH.remoteConsumeSecret, deliveryId),
+  remoteStart: (p) => ipcRenderer.invoke(CH.remoteStart, p),
+  remoteStop: (p) => ipcRenderer.invoke(CH.remoteStop, p),
+  remoteDoctor: (p) => ipcRenderer.invoke(CH.remoteDoctor, p),
+  onRemoteStatus: (cb) => {
+    const listener = (_e: unknown, status: RemoteStatus) => cb(status);
+    ipcRenderer.on(CH.remoteStatus, listener);
+    return () => ipcRenderer.removeListener(CH.remoteStatus, listener);
   },
 };
 

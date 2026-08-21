@@ -12,3 +12,9 @@
 ## Progress notes
 
 - Planning inputs: current setup skill/writer/template, core staleness detector, GUI inverse helper, completed [[SKILL-023]] and [[SKILL-024]], and EPIC-012's disposable-repo approval contract.
+
+- [ ] Reword the canonical skeleton's ownership comment so a missing-file setup input contains neither exact managed-marker sentinel; retain the writer's malformed-marker refusal.
+
+## Progress notes
+
+- First focused integration run failed as expected evidence of a real defect: the template's explanatory comment contains the exact closing marker, so `scripts/agents-block.mjs` reports `start at -1, end at 158` and refuses the no-file setup path. Plan expanded narrowly to make the canonical template safe; no writer/detector behavior will be weakened.

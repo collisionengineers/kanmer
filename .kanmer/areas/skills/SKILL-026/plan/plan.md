@@ -35,3 +35,7 @@ A standalone shell-only proof would be non-regressing; copying the body/template
 - **Test accidentally reimplements production behavior:** invoke the CLI writer, core detector, and GUI removal helper directly; use existing template/body sources instead of literals.
 - **Cross-package test becomes path-dependent:** derive repository paths from the test module and use a temporary directory under the OS temp root.
 - **Removal expectation overreaches:** assert only ownership boundaries: exact skeleton survives and the marker span is absent. Do not claim provider registration or copied-skill cleanup in this ticket.
+
+## Execution correction
+
+The planned first test exposed a defect in the existing no-file flow: the canonical template contains the exact closing marker sentinel in its explanatory comment, so the real writer correctly refuses it as malformed. Before asserting setup output, reword that comment to refer to the managed marker block without spelling either sentinel. Do **not** weaken malformed-marker detection or change the writer. Then run the same integration test as the proof that the canonical template is safe to materialise before setup.

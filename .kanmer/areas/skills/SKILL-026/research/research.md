@@ -22,3 +22,7 @@ How can the complete ownership contract be verified on disposable repositories: 
 ## Open questions
 
 - None requiring a user decision. The ticket wording, EPIC-012 contract, and completed predecessor tickets define the expected behavior.
+
+## Execution discovery
+
+The first real disposable run failed before block creation: the canonical `agents-template.md` embeds the exact closing marker text in its explanatory comment, while it does not embed the writer's longer start marker. `applyManagedBlock()` therefore sees an end marker without a start marker and correctly refuses the file as malformed. This makes the documented no-file setup path impossible. The minimal in-scope repair is to change that template prose so it describes the managed marker block without containing either exact sentinel; no writer relaxation is safe or warranted.

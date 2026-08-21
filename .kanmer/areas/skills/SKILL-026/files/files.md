@@ -33,3 +33,11 @@
 
 - Altering setup skill behavior, the canonical block or template, staleness classification, Connect registration/peer handling, or any user-owned AGENTS.md prose.
 - Adding a new setup command or an automatic staleness repair path.
+
+## Execution correction
+
+| Path | Required repair | Why |
+|---|---|---|
+| `plugins/kanmer/skills/kanmer-docs/assets/agents-template.md` | Reword its ownership comment so neither exact Kanmer marker sentinel appears. | The missing-file template is fed directly to the writer; the present closing sentinel is interpreted as malformed state and prevents setup. |
+
+The integration test remains the regression path and must prove this canonical template is now writer-safe.

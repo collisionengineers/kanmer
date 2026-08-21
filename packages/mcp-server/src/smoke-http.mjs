@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -10,6 +10,25 @@ async function mcpPayload(response) {
   const data = body.startsWith("event:") ? body.split("\n").find((line) => line.startsWith("data: "))?.slice(6) : body;
   assert.ok(data, "MCP response contains a payload");
   return JSON.parse(data);
+}
+
+async function startHttpCli(entry, tokenFile) {
+  const child = spawn(process.execPath, [entry], {
+    env: { ...process.env, KANMER_HTTP_TOKEN_FILE: tokenFile },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8"); child.stderr.setEncoding("utf8");
+  child.stdout.on("data", (chunk) => { stdout += chunk; });
+  child.stderr.on("data", (chunk) => { stderr += chunk; });
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("HTTP CLI did not become ready")), 5_000);
+    child.once("error", reject);
+    child.stdout.once("data", () => { clearTimeout(timeout); resolve(); });
+    child.once("exit", (code) => { clearTimeout(timeout); reject(new Error(`HTTP CLI exited ${code}: ${stderr}`)); });
+  });
+  return { child, stdout, stderr };
 }
 
 const root = await mkdtemp(path.join(os.tmpdir(), "kanmer-http-smoke-"));
@@ -31,6 +50,11 @@ assert.equal(tokenCli.status, 0);
 assert.match(tokenCli.stdout, /"fingerprint":"sha256:[a-f0-9]{12}"/);
 assert.equal(tokenCli.stdout.includes((await readFile(cliTokenPath, "utf8")).trim()), false, "generator never prints the raw token");
 await loadTokenFile(cliTokenPath);
+const cliHost = await startHttpCli(fileURLToPath(new URL("../dist/http-cli.js", import.meta.url)), cliTokenPath);
+const cliReady = JSON.parse(cliHost.stdout.trim());
+assert.equal(cliReady.authRequired, true);
+assert.equal(cliHost.stdout.includes((await readFile(cliTokenPath, "utf8")).trim()), false, "HTTP CLI never prints its raw token");
+cliHost.child.kill("SIGTERM");
 
 assert.throws(() => createKanmerHttpHost({}), /authorizer/);
 assert.throws(() => createKanmerHttpHost({ authorizer: { authorize: async () => ({ principal: "x" }) }, host: "0.0.0.0" }), /bind only/i);

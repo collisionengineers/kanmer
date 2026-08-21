@@ -8,7 +8,7 @@
  * browser test dependency (vitest here runs in the `node` environment over
  * pure logic; see GUI-072 open-questions O2).
  *
- * So: this catches someone deleting or renaming the `.check` rule. It does not
+ * So: this catches someone deleting or renaming the audited rules. It does not
  * catch a layout regression arriving by some other route. Do not upgrade the
  * claim in this comment without also upgrading the mechanism.
  *
@@ -43,16 +43,43 @@ describe("styles.css checkbox-row rules (presence only — not a layout assertio
     expect(body).toMatch(/width:\s*auto/);
   });
 
-  it("keeps `.check-row` intact — it is the reference implementation, not a duplicate to collapse", () => {
-    const body = ruleBody(".check-row");
+  it("uses the shared checkbox rule in TicketCreate while preserving its local spacing and type", () => {
+    expect(ruleBody(".check-row")).toBeNull();
+    expect(ruleBody(".check-row input")).toBeNull();
+    const body = ruleBody(".modal.ticket-create .check");
     expect(body).not.toBeNull();
-    expect(body).toMatch(/display:\s*flex/);
-    expect(ruleBody(".check-row input")).toMatch(/width:\s*auto/);
+    expect(body).toMatch(/margin-top:\s*6px/);
+    expect(body).toMatch(/font-size:\s*12px/);
   });
 
   it("no longer scopes checkbox rows to the filter bar", () => {
     // `.filterbar .check` was dead CSS: FilterBar has had no checkbox since the
     // initial commit, and its existence is what made `.check` look styled.
     expect(css).not.toMatch(/\.filterbar\s+\.check\b/);
+  });
+
+  it("keeps dynamic selector families while removing the audited dead rules", () => {
+    expect(css).toMatch(/\.card\.drop-before::before/);
+    expect(css).toMatch(/\.card\.drop-after::after/);
+    expect(css).toMatch(/\.chip\.dispatch-state\.timed-out/);
+
+    for (const selector of [
+      ".pri",
+      ".pri-high",
+      ".pri-urgent",
+      ".list-updated",
+      ".list-quickadd",
+      ".chip.overdue",
+      ".editor-resize",
+      ".settings-grid",
+      ".section-head",
+      ".doc-type-row",
+      ".doc-requires",
+      ".gate-row",
+      ".env-editor",
+      ".env-add",
+    ]) {
+      expect(ruleBody(selector), `${selector} should remain removed by GUI-082`).toBeNull();
+    }
   });
 });

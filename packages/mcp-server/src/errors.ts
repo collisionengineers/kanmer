@@ -11,7 +11,7 @@ function classifiedCode(message: string): KanmerErrorCode | undefined {
   if (message.startsWith("Conflict:")) return "REVISION_CONFLICT";
   // Core keeps gate failures as ordinary errors. Match its explicit movement
   // refusal wording, not generic words such as "blocked" in validation text.
-  if (/\bentering\b.*\brequires\b/i.test(message) || /\bcannot move\b.*\bcrosses\b/i.test(message)) return "GATE_BLOCKED";
+  if (/\b(?:entering|leaving)\b[^:\n]*\brequires\b/i.test(message) || /\bcannot move\b.*\bcrosses\b/i.test(message)) return "GATE_BLOCKED";
   return undefined;
 }
 

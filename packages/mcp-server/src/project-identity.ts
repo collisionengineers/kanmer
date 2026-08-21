@@ -16,9 +16,17 @@ export interface ProjectIdentity {
   fingerprint: string;
 }
 
+function isWindowsAbsolute(input: string): boolean {
+  return /^[A-Za-z]:[\\/]/.test(input) || /^\\\\/.test(input);
+}
+
 /** Canonicalise only the path details which are intentionally cross-host noisy. */
 export function canonicalProjectPath(input: string): string {
-  let value = path.resolve(input).replace(/\\/g, "/");
+  // A smoke vector can deliberately be Windows-looking even when the test
+  // host is POSIX. Native path.resolve would treat `C:\\...` as a relative
+  // filename there, producing a cwd-dependent identity. Resolve explicit
+  // Windows drive/UNC paths with win32; native paths keep host semantics.
+  let value = (isWindowsAbsolute(input) ? path.win32.resolve(input) : path.resolve(input)).replace(/\\/g, "/");
   value = value.replace(/^([A-Z]):/, (_, drive: string) => `${drive.toLowerCase()}:`);
   if (!/^\/$/.test(value) && !/^[a-z]:\/$/.test(value)) value = value.replace(/\/+$/, "");
   return value;

@@ -53,6 +53,9 @@ const CHAPTERS = [
   ["board-sync", "Sharing a board over Git", "board-sync.md"],
   ["sync", "Staying in sync", "sync.md"],
   ["settings", "Settings, tab by tab", "settings.md"],
+  ["remote-access", "Remote access", "remote-access.md"],
+  ["remote-access-troubleshooting", "Remote-access troubleshooting", "remote-access-troubleshooting.md"],
+  ["cloudflared", "Cloudflare named-tunnel appendix", "providers/cloudflared.md"],
   // "shortcuts" is inserted here by pass 2 — generated, not authored.
   ["updates", "Keeping Kanmer up to date", "updates.md"],
   ["troubleshooting", "Troubleshooting", "troubleshooting.md"],

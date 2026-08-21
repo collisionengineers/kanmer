@@ -252,6 +252,9 @@ exact Windows setup, remote-agent instructions, security boundary and
 Cloudflare/provider-portability details are in
 [Connect a private board to ChatGPT](docs/manual/connect.md#connect-a-private-board-to-chatgpt).
 
+For the provider-neutral HTTPS MCP path, including the Cloudflare named-tunnel
+boundary and doctor troubleshooting, read the [remote-access manual](docs/manual/remote-access.md).
+
 If no board is found the server **exits with an error naming every path it tried**, rather than starting up against an empty one. To create a board where none exists, pass `--init` (or set `KANMER_INIT=1`).
 
 **codex** — add to your project's `.codex/config.toml`, replacing `<kanmer-repo>` with wherever you cloned this repo (see [examples/codex-config.toml](examples/codex-config.toml)):

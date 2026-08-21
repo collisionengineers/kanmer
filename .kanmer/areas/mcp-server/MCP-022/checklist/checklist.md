@@ -39,3 +39,13 @@
 - [x] Write the post-implementation report with commit/evidence.
 - [ ] Open PR and request independent review.
 - [ ] Stop at Review; do not merge or begin [[MCP-023]].
+
+## Closeout — 2026-08-21
+
+- [x] Confirmed PR #102 merged at `f148769993472ede046cc6201645a5080481eebd`.
+- [x] Final merged-main proof includes MCP-033’s canonical bundle repair and passing normal-main `plugin:check`.
+- [ ] Remove recorded `.worktrees/mcp-022` and delete `mcp-022-project-fingerprint`.
+- [ ] Release ticket after cleanup.
+
+- [x] Removed `.worktrees/mcp-022`, deleted local/remote `mcp-022-project-fingerprint`, and pruned worktrees.
+- [x] Released ticket. [[MCP-023]] remains the separately blocked downstream implementation ticket.

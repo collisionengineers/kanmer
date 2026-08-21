@@ -2,13 +2,14 @@
 id: CORE-027
 type: ticket
 title: Give @kanmer/core a browser-safe subpath export
-status: review
+status: verifying
 area: core
 assignee: codex-mcp-client
 profile: feature
 stageEntered:
   preparing: '2026-08-21T00:52:08.922Z'
   review: '2026-08-21T01:00:34.139Z'
+  verifying: '2026-08-21T01:01:32.245Z'
 taken_at: '2026-08-21T00:52:35.910Z'
 branch: core-027-browser-subpath
 worktree: .worktrees/core-027
@@ -26,7 +27,7 @@ prs:
   - '96'
 archived: false
 created: '2026-08-16T20:18:36.563Z'
-updated: '2026-08-21T01:00:34.139Z'
+updated: '2026-08-21T01:01:32.245Z'
 ---
 
 ## What

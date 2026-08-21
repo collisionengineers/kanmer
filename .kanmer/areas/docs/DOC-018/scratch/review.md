@@ -1,0 +1,5 @@
+## Independent review — DOC-018 @ 1ceca922
+
+**PASS.** This follow-up is correctly based on merged PR #122 (`8eec2c62`) and changes only the reviewed DOC-013 hardening surfaces: `remote-access.md`, `remote-access-troubleshooting.md`, `scripts/verify-docs.mjs`, and the generated manual artifact. No implementation/runtime/provider/dependency/release changes are present. The three prior DOC-013 findings are shipped: complete 26-row matrix, expanded verifier (links/anchors/fences/provider/secret/path/canary/freshness), and redacted path-with-spaces CLI evidence in the carried report/evidence.
+
+Independent checks at HEAD: `npm run verify:docs` PASS (22 chapters, 26 IDs, links/fences/canary/provider boundaries), `npm run check:manual` PASS, `git diff --check` PASS, and clean worktree. DOC-018 report records build, full test rail (core 256, GUI 337, HTTP 61, scripts 66), all-workspace typecheck, and GUI build passing; no public/MCP-028 claims or secrets. Safe to merge this narrow follow-up; no merge performed.

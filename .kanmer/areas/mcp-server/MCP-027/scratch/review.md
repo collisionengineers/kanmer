@@ -34,3 +34,32 @@ The PR adds `doctor/types.ts`, `doctor/checks.ts`, `doctor/index.ts`, `doctor/re
 ## Verdict
 
 NEEDS CHANGES. PR #114 is not safe to merge until the five blocking findings are addressed and independently tested. No merge performed.
+
+## Follow-up review of 12a22fab
+
+Re-reviewer: independent reviewer (not the author). PR remains open.
+
+The prior public-session, route-401, allowlist, late-client, total-deadline, canonical callback, and duplicate-CLI changes were inspected. Focused rails pass: npm run typecheck -w @kanmer/mcp-server, npm run test:http -w @kanmer/mcp-server (58/58), npm run smoke:doctor -w @kanmer/mcp-server, and git diff --check.
+
+### Remaining blocking findings
+
+1. BLOCKING — packaged local/public CLI still does not run the local/public diagnosis. doctor-cli.ts wires only project resolution, secret-reference validation, token loading, official MCP client, and canonical tool names. It supplies no localStatus, probe, tunnelStatus, resolveDns, or tls callbacks, and it does not copy KANMER_LOCAL_ENDPOINT to config.localEndpoint (only to tunnel.endpoint). Consequently kanmer-doctor local/public skips required listener, bearer, tunnel, DNS, TLS, and route checks. Reproduced the equivalent packaged dependency set: public report was warn, exit 0, with 5 pass / 2 warn / 19 skipped; LOCAL_STATUS_READY and PUBLIC_DNS_RESOLVES were skipped. The “healthy public” test injects all seams and therefore does not prove the packaged CLI. Disposition: wire bounded configured-host/local status, raw bearer probes, tunnel readiness, DNS/TLS/route dependencies (or make an explicit config-only CLI mode), pass localEndpoint, and add a built CLI local/public fixture smoke that asserts required checks are not skipped.
+
+2. BLOCKING — injected clock is still incompatible with total timeout. started uses options.now(), but the deadline and per-check timings use Date.now(). With a valid deterministic clock such as () => 1000 and totalTimeoutMs: 120000, the run immediately marks every applicable check as “doctor total deadline exceeded”, returns exit 2, and reports status pass. This violates the planned deterministic clock/duration contract and produces contradictory status/exit output. Disposition: use one injected monotonic clock for deadline/timing and make timeout/cancellation status aggregate consistently; add a fake-clock test.
+
+3. BLOCKING — bounded cancellation is incomplete for network seams. probe and resolveDns accept no AbortSignal, and the CLI has no implementations for them. A timed-out probe/DNS operation can continue after the doctor returns with no owned handle or cleanup path. The MCP/TLS callbacks are signal-aware now, but this does not cover the required HTTP/DNS resource boundary. Disposition: make all potentially blocking dependencies signal/timeout-aware and test delayed probe/DNS cleanup.
+
+4. BLOCKING — official CLI MCP setup can leak its client on setup failure. The CLI mcp callback creates a Client/transport, then calls connect, get_status, parses the response, and calls listTools without a try/finally. Any failure after construction but before returning the client leaves the transport unclosed; runDoctor cannot clean it because it registers the client only after the callback resolves. This violates cleanup on internal exception. Disposition: close the client/transport on every setup failure and add a failing-orientation cleanup test.
+
+5. BLOCKING — required-check skips can still produce a successful report. The aggregate exit only counts fail/warnings; missing required dependencies become skipped and can yield exit 0. The packaged CLI example above exits 0 with 19 required diagnostic checks skipped. A doctor report that claims a warning-only healthy result while it did not perform the requested local/public checks is unsafe and misleading. Disposition: distinguish non-applicable checks from unavailable required checks and make missing required dependencies fail or exit 2.
+
+### Non-blocking observations
+
+- LOCAL_STATUS_READY treats an omitted state as healthy (undefined or ready) instead of requiring observed ready state.
+- PUBLIC_ROUTE_NO_REDIRECT only sees status/location; a 200 HTML/login intermediary can pass because the probe contract has no content-type/body-class signal.
+- Session close removes the client from clients but leaves its cleanup closure in cleanups, so normal successful public runs close each client twice (observed 2 opens / 4 close calls with a counting fixture); make cleanup registration idempotent.
+- Cleanup errors are included in cleanupErrors but do not affect exitCode, and human rendering omits them.
+
+### Follow-up verdict
+
+NEEDS CHANGES. The remediation is materially improved, but PR #114 is not safe to merge until the packaged local/public CLI cannot silently skip required checks, the clock/cancellation/cleanup paths are corrected, and the focused tests cover those production paths. No merge performed.

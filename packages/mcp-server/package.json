@@ -6,7 +6,8 @@
   "bin": {
     "kanmer-mcp": "./dist/index.js",
     "kanmer-mcp-http": "./dist/http-cli.js",
-    "kanmer-mcp-token": "./dist/remote-token-cli.js"
+    "kanmer-mcp-token": "./dist/remote-token-cli.js",
+    "kanmer-mcp-remote": "./dist/remote-cli.js"
   },
   "main": "./dist/index.js",
   "files": ["dist"],
@@ -16,7 +17,7 @@
     "dev": "tsup --watch",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "test:http": "npm run build && node --test src/http-auth.test.mjs src/http-secret.test.mjs"
+    "test:http": "npm run build && node --test src/http-auth.test.mjs src/http-secret.test.mjs src/remote-host.test.mjs src/remote-cli.test.mjs src/tunnels/cloudflared-config.test.mjs src/tunnels/cloudflared.test.mjs src/tunnels/supervisor.test.mjs"
   },
   "dependencies": {
     "@kanmer/core": "*",

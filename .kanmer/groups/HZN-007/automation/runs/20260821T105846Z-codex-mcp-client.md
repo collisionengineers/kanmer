@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-21T21:55:00.000Z
+updated_at: 2026-08-21T21:57:15.313Z
 lane_limit: 3
 stop_reason:
 ---
@@ -339,3 +339,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-21T21:55:00.000Z — MCP-023 independently reviewed and closed: PR #135 merged to main at 75cc4a89 (source 2cdd0c68). Merged-main build completed; core 259/259, all-workspace typecheck, plugin:check (31 tools and byte parity), stdio smoke 214/214, protocol 42/42, and discovery 13/13 passed. The initial concurrent stale-build typecheck/plugin/protocol failures remain preserved in MCP-023 proof. Proof was written, ticket moved Review→Verifying→Done with fresh gates, released, and exact worktree/branch cleanup completed.
+
+- 2026-08-21T21:56:33.064Z — MCP-020 taken for bounded shared GUI/MCP dispatch implementation on branch mcp-020-controlled-dispatch and worktree .worktrees/mcp-020. MCP-022 is merged Done and expected_project/structured errors are available; prior readiness note was stale. Scope is limited to named provider/task dispatch, fail-closed policy/approval, project/ticket binding, sanitized list/cancel, shared GUI supervisor contract, tests and docs; no provider host credentials are assumed. Independent review/merge required; no cleanup.
+- 2026-08-21T21:57:15.313Z — CORE-032 assigned to /root/gui082_executor on fresh core-032-gha-verify/.worktrees/core-032 from origin/main 75cc4a89 after complete ticket packet, HZN-007/HZN-004/EPIC-009 contexts, links, MASTERPLAN S-02/Appendix A, dependency CORE-031, and live gates were reread. Implement only .github/workflows/pr.yml with one Windows verify job; do not touch CORE-024/CORE-033, protection, board files, verify rail, or unrelated workflows. Real GitHub PR/Actions evidence may be unavailable and must remain INCONCLUSIVE. Author will stop at Review.

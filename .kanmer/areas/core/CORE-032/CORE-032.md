@@ -2,13 +2,16 @@
 id: CORE-032
 type: ticket
 title: GitHub Actions PR workflow — `verify` job only
-status: preparing
+status: implementing
 area: core
 order: 40
-assignee: ''
+assignee: core032-executor
 profile: chore
 stageEntered:
   preparing: '2026-08-20T12:07:12.757Z'
+taken_at: '2026-08-21T21:56:56.420Z'
+branch: core-032-gha-verify
+worktree: .worktrees/core-032
 labels: []
 groups:
   - EPIC-009
@@ -20,7 +23,7 @@ blocks:
   - CORE-024
 archived: false
 created: '2026-08-20T10:14:42.500Z'
-updated: '2026-08-21T10:57:09.837Z'
+updated: '2026-08-21T21:56:56.420Z'
 ---
 
 ## What

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,6 +40,20 @@ const generated = generateBearerToken();
 const other = generateBearerToken();
 assert.equal(JSON.stringify(generated.verifier).includes(generated.token), false, "verifier serialization never contains raw token");
 assert.equal(JSON.stringify(generated.verifier).includes(generated.verifier.digest.toString("hex")), false, "verifier serialization never contains digest");
+const directAuthorizer = new BearerAuthorizer(generated.verifier);
+for (const authorization of [undefined, "", "Basic x", `Bearer ${generated.token} extra`, `Bearer ${generated.token}\t`, ["Bearer x", "Bearer y"]]) {
+  await assert.rejects(() => directAuthorizer.authorize({ headers: { authorization } }));
+}
+await assert.rejects(() => directAuthorizer.authorize({ headers: { authorization: `Bearer ${generated.verifier.digest.toString("hex")}` } }), /UNAUTHORIZED/);
+const unsafeTokenPath = path.join(root, "unsafe-token");
+await writeFile(unsafeTokenPath, "not-a-token\n", { mode: 0o600 });
+await chmod(unsafeTokenPath, 0o600);
+await assert.rejects(() => loadTokenFile(unsafeTokenPath), /REMOTE_AUTH_INVALID_TOKEN/);
+if (process.platform !== "win32") {
+  await chmod(tokenPath, 0o644);
+  await assert.rejects(() => loadTokenFile(tokenPath), /REMOTE_AUTH_SECRET_FILE_UNSAFE/);
+  await chmod(tokenPath, 0o600);
+}
 const host = createKanmerHttpHost({
   authorizer: new BearerAuthorizer(generated.verifier),
   idleTtlMs: 60_000,

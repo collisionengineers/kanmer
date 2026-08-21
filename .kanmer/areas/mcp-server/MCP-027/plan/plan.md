@@ -236,3 +236,7 @@ MCP-028 later runs the packaged `public --json` command against a controlled nam
 ## Stop condition
 
 Stop when the built local doctor produces a deterministic redacted schema-v1 config/local report, correctly distinguishes and orders every layer, proves bearer enforcement, official MCP initialization, expected project, exact remote tool policy, session cleanup, and no board mutation against disposable fixtures, has tested public DNS/TLS/MCP logic without insecure shortcuts, passes the root rail, and is ready for review. Do not perform the real public acceptance or merge.
+
+## Roadmap amendment — Cloudflare doctor boundary
+
+Add deterministic checks for cloudflared executable/version, generated ingress validation, exact-host ingress match, local listener, tunnel readiness, negative/positive bearer outcomes and expected project identity. Emit distinct redacted results for provider/config, local host, bearer and board failures. Do not add Access, service-token or identity checks.

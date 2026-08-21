@@ -261,3 +261,10 @@ Optionally run the documented real-binary version/help/config smoke with an expl
 ## Stop condition
 
 Stop when the built remote host starts a fake/tested cloudflared named-tunnel adapter only after authenticated one-project loopback readiness, reaches provider-connected through documented loopback readiness, reports bounded redacted lifecycle, restarts only under the exact transient policy, stops without orphan/config residue, preserves stdio/tools/security boundaries, passes cross-platform local verification, and is ready for review. Do not perform the final public-tunnel acceptance or merge.
+
+## Roadmap amendment — 2026-08-21
+
+- V1 supports only the operator-provisioned, locally managed named-tunnel credential-file mode; remote-managed token mode is excluded rather than partially supported.
+- Before a child is started, validate the generated config with the installed cloudflared ingress validator and test the configured public URL against the exact ingress rule. These checks must remain local and must not mutate provider resources.
+- Cloudflare Access, Quick Tunnels, account/DNS automation, and Worker-hosted/proxy modes are excluded.
+- [[MCP-026]] is a formal blocker: an adapter may start only after the authenticated loopback origin is healthy.

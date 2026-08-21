@@ -29,3 +29,9 @@
 - `[deferred]` Screenshot-heavy walkthrough/localization.
 
 No unresolved implementation questions remain.
+
+## Resolved roadmap amendment — 2026-08-21
+
+- **Cloudflare Access?** Not supported or documented for this release.
+- **Cloudflare Worker?** Used only as the disposable remote MCP client for [[MCP-028]]; hosted Kanmer needs a separate ADR.
+- **OpenAI tunnel?** Separate stdio route in [[DOC-010]], with future GUI work in [[GUI-104]].

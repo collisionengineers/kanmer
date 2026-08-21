@@ -131,3 +131,9 @@
 - [ ] Run `git diff --check`; inspect process table/temp/runtime/board residue.
 - [ ] Record version/flags/config/argv/readiness/restart/shutdown/canary evidence.
 - [ ] Stop before public acceptance or merge.
+
+## Roadmap amendment — Cloudflare Tunnel-only mode
+
+- [ ] Restrict v1 to locally managed named-tunnel credential-file configuration; reject remote-managed token, Access and Quick Tunnel modes.
+- [ ] Run cloudflared ingress validation and exact-host ingress-rule checks against generated config without provider mutation.
+- [ ] Prove the adapter starts only after MCP-026 reports a healthy bearer-authenticated loopback origin.

@@ -322,3 +322,7 @@ Run the canonical Electron integration/smoke command with fake remote host/docto
 ## Stop condition
 
 Stop when the built GUI can securely configure and operate independent remote access for multiple registered projects using OS-backed bearer storage, narrow IPC, canonical remote-host/doctor modules, generation-safe process ownership, distinct connected/verified health, safe token delivery/rotation/clipboard handling, complete stop/quit cleanup, accessible tested UI, no canary leakage, and a review-ready PR. Do not merge.
+
+## Roadmap amendment — split provider lifecycles
+
+GUI-095 owns only the named Cloudflare Tunnel path: executable reference, tunnel identity, exact hostname, credential-file reference, Kanmer bearer lifecycle, doctor/status and per-project start/stop. Exclude OpenAI tunnel-client/profile management; that work moves to [[GUI-104]]. Exclude Access, account/DNS automation, Quick Tunnels, remote-managed tokens and Worker-hosted MCP.

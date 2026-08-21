@@ -34,3 +34,9 @@
 - `[deferred]` Automatic cloudflared download/update/signature management.
 
 No unresolved implementation questions remain.
+
+## Resolved roadmap amendment — 2026-08-21
+
+- **Which GUI provider belongs here?** Cloudflare named Tunnel only.
+- **What happens to OpenAI tunnel-client profiles?** They are independently tracked by [[GUI-104]].
+- **Does GUI configure Access, DNS or Cloudflare accounts?** No.

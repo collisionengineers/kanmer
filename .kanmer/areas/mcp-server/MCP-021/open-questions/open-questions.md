@@ -34,3 +34,9 @@
 - `[deferred]` Managed relay, multi-board routing, Windows service installation.
 
 No unresolved implementation questions remain.
+
+## Resolved roadmap amendment — 2026-08-21
+
+- **Cloudflare mode?** Locally managed named tunnel with a protected credential-file reference only.
+- **Cloudflare Access?** Unsupported in this release; Kanmer bearer is the sole application authentication.
+- **Worker role?** A disposable external MCP client in [[MCP-028]], never a hosted Kanmer service.

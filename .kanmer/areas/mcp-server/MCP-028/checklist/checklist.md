@@ -176,3 +176,9 @@
 - [ ] Run `git diff --check` and confirm no secret/output/fixture staged.
 - [ ] Link only sanitized evidence and update manual limitations if needed.
 - [ ] Stop before merge.
+
+## Roadmap amendment — Cloudflare Worker remote-client proof
+
+- [ ] Deploy a disposable Worker client with bearer in a secret binding only.
+- [ ] Prove initialize, expected-project/tool verification, disposable create/update/archive, session close and public doctor health.
+- [ ] Prove no Access/redirect/proxy path was used and delete Worker, secret, runtime config and temporary board record.

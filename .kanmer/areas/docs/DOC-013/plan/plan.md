@@ -236,3 +236,7 @@ Also execute the actual packaged remote token, remote host, and doctor commands 
 ## Stop condition
 
 Stop when a new operator can use only the verified manual to configure either GUI-managed or headless one-project remote access, securely deliver the bearer, distinguish provider credentials and connected versus verified state, run and interpret every doctor check, rotate/recover/stop safely, understand all limitations, and complete the disposable walkthrough without secret leakage or undocumented behavior; all documentation/root checks are green and the PR is ready for review.
+
+## Roadmap amendment — Cloudflare documentation boundary
+
+Document only the locally managed named Cloudflare Tunnel plus mandatory Kanmer bearer path. Treat the Worker solely as MCP-028 integration evidence. Mark Access, Quick Tunnels, remote-managed token mode, account/DNS automation and Worker-hosted Kanmer unsupported. Refer readers to [[DOC-010]] for the separate OpenAI stdio path and [[GUI-104]] for its future GUI lifecycle.

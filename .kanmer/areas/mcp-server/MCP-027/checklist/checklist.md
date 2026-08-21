@@ -119,3 +119,8 @@
 - [ ] Run `git diff --check`; inspect processes/sockets/temp/board residue.
 - [ ] Record reports, TLS fixtures, canary/no-mutation/cleanup evidence and public handoff.
 - [ ] Stop before real public acceptance or merge.
+
+## Roadmap amendment — Cloudflare doctor boundary
+
+- [ ] Classify executable/version, ingress-invalid, ingress-host-mismatch, tunnel-unready, local-origin, bearer and board/project failures separately.
+- [ ] Keep all provider config, bearer and diagnostic output redacted; do not introduce Access/service-token support.

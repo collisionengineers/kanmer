@@ -155,3 +155,9 @@
 - [ ] Run `git diff --check`; inspect app-data/process/temp/settings residue.
 - [ ] Record backend/schema/IPC/concurrency/lifecycle/doctor/rotation/quit/accessibility/canary evidence.
 - [ ] Stop before merge.
+
+## Roadmap amendment — Cloudflare-only GUI path
+
+- [ ] Configure the exact named-tunnel/hostname/credential-reference mode without generated-ingress editing.
+- [ ] Show redacted MCP-027 results and preserve bearer/provider-credential separation.
+- [ ] Verify OpenAI profile lifecycle is not implemented here and is linked to [[GUI-104]].

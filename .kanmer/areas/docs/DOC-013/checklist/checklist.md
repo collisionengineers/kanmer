@@ -114,3 +114,9 @@
 - [ ] Search/replace duplicate stale remote instructions within scope.
 - [ ] Record traceability, command/platform/UI, review, link/anchor/secret results and deferred examples.
 - [ ] Stop before merge.
+
+## Roadmap amendment — Cloudflare documentation boundary
+
+- [ ] State named Tunnel plus Kanmer bearer as the only current Cloudflare path.
+- [ ] State Cloudflare Access, Quick Tunnels, remote-managed token mode and hosted Workers are unsupported.
+- [ ] Describe the Worker only as redacted MCP-028 integration evidence; keep OpenAI instructions in DOC-010.

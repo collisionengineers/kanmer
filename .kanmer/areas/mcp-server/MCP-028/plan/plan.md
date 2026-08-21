@@ -316,3 +316,7 @@ Never put a bearer/provider credential value in the command line. The real comma
 ## Stop condition
 
 Stop when one complete real named-tunnel run for the exact reviewed commit passes every required public transport/auth/project/tool/gate/mutation/session/rotation/degradation/GUI-regression/secret-scan/cleanup check, produces only validated sanitized JSON and Markdown evidence, leaves no owned local residue, records any environment limitation honestly, and is ready for independent review and the normal merge/verification process. Do not merge.
+
+## Roadmap amendment — Cloudflare Worker remote-client proof
+
+Use a disposable Worker as an external MCP client only. Store the bearer in a Worker secret binding; initialize the public endpoint, verify project/tools, perform a disposable ticket lifecycle, close the session, capture redacted results, then delete the Worker and secret. Require no Access headers, cookies, redirects, proxy behavior or hosted Kanmer state.

@@ -2,7 +2,7 @@
 id: CORE-032
 type: ticket
 title: GitHub Actions PR workflow — `verify` job only
-status: review
+status: verifying
 area: core
 order: 40
 assignee: core032-executor
@@ -10,9 +10,7 @@ profile: chore
 stageEntered:
   preparing: '2026-08-20T12:07:12.757Z'
   review: '2026-08-21T22:06:15.840Z'
-taken_at: '2026-08-21T21:56:56.420Z'
-branch: core-032-gha-verify
-worktree: .worktrees/core-032
+  verifying: '2026-08-21T22:08:41.524Z'
 labels: []
 groups:
   - EPIC-009
@@ -28,7 +26,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/136'
 archived: false
 created: '2026-08-20T10:14:42.500Z'
-updated: '2026-08-21T22:06:15.840Z'
+updated: '2026-08-21T22:09:25.741Z'
 ---
 
 ## What

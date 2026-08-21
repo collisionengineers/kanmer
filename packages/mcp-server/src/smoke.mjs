@@ -7,6 +7,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { canonicalProjectPath, projectIdentity } from "../dist/project-identity.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // KANMER_SERVER lets us point the smoke test at the standalone bundle.
@@ -19,6 +20,17 @@ fs.writeFileSync(path.join(sandbox, "docs", "prd", "smoke.md"), "# PRD\n", "utf8
 
 function textOf(res) {
   return res.content.map((c) => c.text).join("\n");
+}
+
+/** A byte-sensitive snapshot for proving a refused fresh-root write is inert. */
+function treeSnapshot(root, rel = "") {
+  return fs.readdirSync(path.join(root, rel), { withFileTypes: true })
+    .flatMap((entry) => {
+      const child = path.join(rel, entry.name);
+      if (entry.isDirectory()) return [`d:${child}`, ...treeSnapshot(root, child)];
+      return [`f:${child}:${createHash("sha256").update(fs.readFileSync(path.join(root, child))).digest("hex")}`];
+    })
+    .sort();
 }
 
 // KANMER_NODE lets us run the server through the Electron binary as node
@@ -77,6 +89,55 @@ try {
   check("get_ticket_doc is read-only", gtd?.annotations?.readOnlyHint === true);
   const rmc = tools.tools.find((t) => t.name === "remove_column");
   check("remove_column is destructive", rmc?.annotations?.destructiveHint === true);
+  const createItemsTool = tools.tools.find((t) => t.name === "create_items");
+  check(
+    "every mutating tool exposes optional expected_project at the call boundary",
+    tools.tools
+      .filter((t) => t.annotations?.readOnlyHint === false)
+      .every((t) => t.inputSchema?.properties?.expected_project?.type === "string" &&
+        !t.inputSchema?.required?.includes("expected_project")),
+  );
+  check(
+    "create_items keeps expected_project out of individual item entries",
+    createItemsTool?.inputSchema?.properties?.expected_project?.type === "string" &&
+      createItemsTool?.inputSchema?.properties?.items?.items?.properties?.expected_project === undefined,
+  );
+  const posixIdentity = projectIdentity({
+    boardRoot: "/srv/kanmer-board/",
+    format: 3,
+    repoRoot: "/srv/kanmer-repo///",
+    boardSource: "default",
+  });
+  const posixFileIdentity = projectIdentity({
+    boardRoot: "/srv/kanmer-board/",
+    format: 3,
+    repoRoot: "/srv/kanmer-repo///",
+    boardSource: "file",
+  });
+  const windowsIdentity = projectIdentity({
+    boardRoot: "C:\\Kanmer\\Board\\",
+    format: 3,
+    repoRoot: "C:\\Kanmer\\Repo\\",
+    boardSource: "file",
+  });
+  const expectedPosixBoardRoot = process.platform === "win32" ? "c:/srv/kanmer-board" : "/srv/kanmer-board";
+  const expectedPosixRepoRoot = process.platform === "win32" ? "c:/srv/kanmer-repo" : "/srv/kanmer-repo";
+  check(
+    "project identity canonicalizes POSIX and Windows roots without changing path case",
+    posixIdentity.boardRoot === expectedPosixBoardRoot &&
+      posixIdentity.repoRoot === expectedPosixRepoRoot &&
+      windowsIdentity.boardRoot === "c:/Kanmer/Board" &&
+      windowsIdentity.repoRoot === "c:/Kanmer/Repo" &&
+      canonicalProjectPath("C:\\") === "c:/",
+    JSON.stringify({ posixIdentity, windowsIdentity }),
+  );
+  check(
+    "project identity hash has the exact ordered payload and excludes boardSource",
+    posixIdentity.fingerprint ===
+      `kanmer-proj-v1:${createHash("sha256").update(JSON.stringify({ boardRoot: expectedPosixBoardRoot, format: 3, repoRoot: expectedPosixRepoRoot })).digest("hex")}` &&
+      posixIdentity.fingerprint === posixFileIdentity.fingerprint,
+    `${posixIdentity.fingerprint} vs ${posixFileIdentity.fingerprint}`,
+  );
 
   const boardRes = await client.callTool({ name: "list_board", arguments: {} });
   const board = JSON.parse(textOf(boardRes));
@@ -112,6 +173,34 @@ try {
     statusBefore.exists === false &&
       statusBefore.format === 3 &&
       statusBefore.boardSource === "default",
+  );
+  const expectedProject = statusBefore.project?.fingerprint;
+  const expectedPayload = JSON.stringify({
+    boardRoot: path.resolve(sandbox).replace(/\\/g, "/").replace(/^([A-Z]):/, (_, drive) => `${drive.toLowerCase()}:`),
+    format: 3,
+    repoRoot: path.resolve(sandbox).replace(/\\/g, "/").replace(/^([A-Z]):/, (_, drive) => `${drive.toLowerCase()}:`),
+  });
+  check(
+    "get_status exposes the canonical versioned project fingerprint",
+    typeof expectedProject === "string" &&
+      expectedProject === `kanmer-proj-v1:${createHash("sha256").update(expectedPayload).digest("hex")}` &&
+      statusBefore.project?.boardSource === "default" &&
+      statusBefore.compat?.expectedProject === "optional",
+    JSON.stringify(statusBefore.project),
+  );
+  const beforeWrongProject = treeSnapshot(sandbox);
+  const wrongProject = await client.callTool({
+    name: "create_item",
+    arguments: { type: "ticket", title: "Rejected wrong project", expected_project: "kanmer-proj-v1:wrong" },
+  });
+  check(
+    "wrong expected_project fails before lazy initialization with structured WRONG_PROJECT",
+    wrongProject.isError === true &&
+      textOf(wrongProject).startsWith("Error:") &&
+      wrongProject.structuredContent?.error?.code === "WRONG_PROJECT" &&
+      !fs.existsSync(path.join(sandbox, ".kanmer")) &&
+      JSON.stringify(treeSnapshot(sandbox)) === JSON.stringify(beforeWrongProject),
+    JSON.stringify(wrongProject.structuredContent),
   );
   check(
     "reads alone do not create .kanmer/ (lazy init)",
@@ -297,7 +386,7 @@ try {
 
   const created = await client.callTool({
     name: "create_item",
-    arguments: { type: "ticket", title: "Smoke ticket", body: "See [[PLAN-001]]" },
+    arguments: { type: "ticket", title: "Smoke ticket", body: "See [[PLAN-001]]", expected_project: expectedProject },
   });
   const createdItem = JSON.parse(textOf(created));
   check("create_item allocates TICK-001", createdItem.id === "TICK-001", createdItem.id);
@@ -317,7 +406,7 @@ try {
   });
   check(
     "create_item rejects standalone plans on a v2 board, naming set_ticket_doc",
-    plan.isError === true && textOf(plan).includes("set_ticket_doc"),
+    plan.isError === true && textOf(plan).includes("set_ticket_doc") && plan.structuredContent === undefined,
   );
 
   // Created directly in implementing — creation is ungated, so imports/backfills
@@ -343,7 +432,8 @@ try {
   });
   check(
     "move_item into review is gated on post-implementation-report",
-    gatedReview.isError === true && textOf(gatedReview).includes("post-implementation-report"),
+    gatedReview.isError === true && textOf(gatedReview).includes("post-implementation-report") &&
+      gatedReview.structuredContent?.error?.code === "GATE_BLOCKED",
   );
 
   const badMove = await client.callTool({
@@ -356,6 +446,25 @@ try {
     textOf(await client.callTool({ name: "list_board", arguments: {} })),
   );
   check("list_board reports source: file once board.yml exists", boardAfterWrite.source === "file");
+  const wrongBulk = await client.callTool({
+    name: "create_items",
+    arguments: { items: [{ title: "must not bulk create" }], expected_project: "kanmer-proj-v1:wrong" },
+  });
+  check(
+    "wrong expected_project rejects create_items before any entry is created",
+    wrongBulk.isError === true && wrongBulk.structuredContent?.error?.code === "WRONG_PROJECT" &&
+      JSON.parse(textOf(await client.callTool({ name: "list_items", arguments: {} }))).length === 2,
+    JSON.stringify(wrongBulk.structuredContent),
+  );
+  const wrongMigration = await client.callTool({
+    name: "migrate_board",
+    arguments: { dry_run: true, expected_project: "kanmer-proj-v1:wrong" },
+  });
+  check(
+    "wrong expected_project rejects dry-run migrate_board before its handler",
+    wrongMigration.isError === true && wrongMigration.structuredContent?.error?.code === "WRONG_PROJECT",
+    JSON.stringify(wrongMigration.structuredContent),
+  );
 
   const conflict = await client.callTool({
     name: "update_item",
@@ -363,7 +472,8 @@ try {
   });
   check(
     "update_item with stale expected_updated returns a conflict",
-    conflict.isError === true && textOf(conflict).includes("Conflict"),
+    conflict.isError === true && textOf(conflict).includes("Conflict") &&
+      conflict.structuredContent?.error?.code === "REVISION_CONFLICT",
   );
 
   const traversal = await client.callTool({ name: "get_item", arguments: { id: "../evil" } });
@@ -378,6 +488,10 @@ try {
       statusAfter.boardSource === "file" &&
       statusAfter.counts.byStage.implementing === 1,
     JSON.stringify(statusAfter.counts.byStage),
+  );
+  check(
+    "transport expected_project is not persisted in ticket frontmatter",
+    !fs.readFileSync(path.join(sandbox, ".kanmer", "areas", "_none", "TICK-001", "TICK-001.md"), "utf8").includes("expected_project"),
   );
   check(
     "board worktree counts active tickets only",
@@ -1001,7 +1115,8 @@ try {
   const featBlocked = await moveTo(feature, "done");
   check(
     "a feature cannot collapse Backlog -> Done in one call",
-    featBlocked.isError === true && textOf(featBlocked).includes("crosses 4 document gates"),
+    featBlocked.isError === true && textOf(featBlocked).includes("crosses 4 document gates") &&
+      featBlocked.structuredContent?.error?.code === "GATE_BLOCKED",
     textOf(featBlocked).slice(0, 90),
   );
   check(

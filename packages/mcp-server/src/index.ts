@@ -37,6 +37,8 @@ import { resolveProjectRoot, resolveRepoRoot } from "./root.js";
 import { SERVER_VERSION, serverIdentity } from "./identity.js";
 import { bundledSkillsDir } from "./bundled.js";
 import { readTicketDocuments } from "./ticket-docs.js";
+import { failCoded, KanmerError } from "./errors.js";
+import { projectIdentity } from "./project-identity.js";
 
 const execFile = promisify(execFileCallback);
 
@@ -128,7 +130,7 @@ function ok(data: unknown) {
 
 /** Error tool result (surfaced to the model, not a protocol failure). */
 function fail(message: string) {
-  return { content: [{ type: "text" as const, text: `Error: ${message}` }], isError: true };
+  return failCoded(new Error(message));
 }
 
 /** Wrap a handler so thrown errors become clean isError results. */
@@ -137,7 +139,7 @@ function guard<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeo
     try {
       return await fn(...args);
     } catch (err) {
-      return fail(err instanceof Error ? err.message : String(err));
+      return failCoded(err);
     }
   };
 }
@@ -285,6 +287,15 @@ const createFields = {
   body: z.string().optional().describe("Markdown body; may contain [[id]] wiki-links"),
 };
 
+const expectedProjectField = z
+  .string()
+  .optional()
+  .describe("Optional project fingerprint from get_status.project.fingerprint; send only when get_status.compat.expectedProject is optional");
+
+function withProject<T extends z.ZodRawShape>(shape: T): T & { expected_project: typeof expectedProjectField } {
+  return { ...shape, expected_project: expectedProjectField };
+}
+
 // The version is the build-time-injected release, not a hardcoded literal: the
 // old "0.1.0" here was two minor versions stale and never bumped by anything.
 // `get_status.server.version` reports the same value — one fact, one source.
@@ -311,24 +322,34 @@ export function createKanmerMcpServer(policy: ExposurePolicy = "local-stdio"): M
   // Each factory result owns its negotiated client identity and capabilities.
   // HTTP creates one result per session, so this must never be module-global.
   const server = new McpServer({ name: "kanmer", version: SERVER_VERSION ?? "0.0.0-dev" });
-  if (policy === "remote-http-v1") {
-    const registerTool = server.registerTool.bind(server);
-    // Tool registrations below stay canonical. The remote policy filters once
-    // at registration/discovery time, so an excluded capability cannot reach a
-    // handler through a transport-specific branch.
-    server.registerTool = ((name: string, ...args: unknown[]) => {
-      if (REMOTE_HTTP_EXCLUDED_TOOLS.has(name)) return { remove: () => undefined } as never;
-      return Reflect.apply(registerTool, server, [name, ...args]) as never;
-    }) as typeof server.registerTool;
-  }
+  const registerTool = server.registerTool.bind(server);
+  // All mutating tool schemas carry transport metadata at their call boundary.
+  // This is intentionally central: a future write tool cannot silently lose
+  // the guard because its author forgot a local schema wrapper.
+  server.registerTool = ((name: string, config: { inputSchema?: z.ZodRawShape; annotations?: { readOnlyHint?: boolean } }, ...args: unknown[]) => {
+    if (policy === "remote-http-v1" && REMOTE_HTTP_EXCLUDED_TOOLS.has(name)) return { remove: () => undefined } as never;
+    const next = config.annotations?.readOnlyHint === false && config.inputSchema
+      ? { ...config, inputSchema: withProject(config.inputSchema) }
+      : config;
+    return Reflect.apply(registerTool, server, [name, next, ...args]) as never;
+  }) as typeof server.registerTool;
 
   /** Wrap a write handler using this server's calling-client context. */
-  function write<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeof ok>>) {
-    return guard(async (...args: A) => {
+  function write<T extends Record<string, unknown>, R extends unknown[]>(fn: (input: T, ...rest: R) => Promise<ReturnType<typeof ok>>) {
+    return guard(async (input: T, ...rest: R) => {
+      const { expected_project, ...cleanInput } = input as T & { expected_project?: string };
+      if (expected_project !== undefined) {
+        const format = await store.detectFormat();
+        const { source } = await store.getBoardWithSource();
+        const identity = projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
+        if (expected_project !== identity.fingerprint) {
+          throw new KanmerError("WRONG_PROJECT", `expected project ${expected_project} does not match current project ${identity.fingerprint}`);
+        }
+      }
       // Attribute this mutation in the activity log to the calling client.
-      store.setActor(actorName(server, args[1]));
+      store.setActor(actorName(server, rest[0]));
       await ensureInit();
-      return fn(...args);
+      return fn(cleanInput as T, ...rest);
     });
   }
 
@@ -348,6 +369,7 @@ server.registerTool(
       "Repo: a `repo` block answering WHICH KANMER THIS REPO WAS SET UP BY — `{ upToDate, stale: [{ artefact, state, detail, fix }] }`. Itemised, never a bare boolean. Artefacts checked are the ones migration does not touch: the AGENTS.md managed block, the installed skills trees and their `.kanmer-skills-version` stamps, `board.yml`, and the provider MCP registrations — compared by CONTENT HASH against what this build ships, not by version string (no artefact records a product version). " +
       "`state` is `behind` (act on it), `compensated` (the file is old and the runtime already papers over it — informational, no action), `unstamped` (no evidence either way) or `unknown` (could not be read). `upToDate` is true iff nothing is `behind`. Repair is never automatic: run `kanmer-setup`, which is the reconciliation path (FRD-013). Board format is not listed here — it is the `format` field above. " +
       "Board worktree: an informational, non-blocking `boardWorktree` block reports the board path, expected and actual branch, branch match, board source, active ticket count, and operator repair guidance. It never checks out, repairs, initializes, or refuses another tool. " +
+      "Project safety: `project` gives a machine-local fingerprint over the canonical board root, format and repo root. When `compat.expectedProject` is `optional`, a client may send that fingerprint as `expected_project` on any write; omit it for older servers that do not advertise compatibility. " +
       "IMPORTANT: the `server` block is absent on servers older than 0.3.3, and the `repo` block on servers older than 0.3.4 — that ABSENCE is itself the signal 'this build predates the check', not an error. Individual fields are null if they could not be read; the call never fails over it.",
     inputSchema: {},
     annotations: { readOnlyHint: true, openWorldHint: false },
@@ -407,6 +429,8 @@ server.registerTool(
       exists,
       format,
       boardSource: source,
+      project: projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source }),
+      compat: { expectedProject: "optional" },
       deploymentTracking: board.deployment !== undefined,
       boardWorktree: {
         path: projectRoot,

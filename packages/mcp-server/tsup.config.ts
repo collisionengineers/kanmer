@@ -2,7 +2,7 @@ import { defineConfig } from "tsup";
 import { versionDefine } from "./version-define.mjs";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/http.ts", "src/http-cli.ts", "src/remote-token-cli.ts"],
+  entry: ["src/index.ts", "src/http.ts", "src/http-cli.ts", "src/remote-token-cli.ts", "src/project-identity.ts"],
   format: ["esm"],
   // The stdio entry self-reports its own path/hash and discovers bundled
   // skills relative to that entry. Keep every ESM entry self-contained: a

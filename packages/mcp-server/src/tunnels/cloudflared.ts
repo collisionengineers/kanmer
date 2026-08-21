@@ -5,12 +5,14 @@ import path, { isAbsolute } from "node:path";
 import { cloudflaredConfig, type CloudflaredTunnelOptions, validateCloudflaredTunnel } from "./cloudflared-config.js";
 import type { TunnelAdapter, TunnelLogEvent, TunnelProcess, TunnelTarget } from "./types.js";
 import { allocateLoopbackPort, waitForTunnelReadiness } from "./readiness.js";
+import { validateCloudflaredExecutable } from "./cloudflared-validate.js";
 
 export interface CloudflaredAdapterOptions extends CloudflaredTunnelOptions {
   readonly executable: string;
   readonly metricsPort?: number;
   readonly waitForReady?: (endpoint: string) => Promise<void>;
   readonly onLog?: (event: TunnelLogEvent) => void;
+  readonly validateExecutable?: (executable: string) => Promise<void>;
 }
 
 /** Test-only spawn seam; normal construction always uses Node's direct spawn. */
@@ -38,6 +40,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
   async start(target: TunnelTarget): Promise<TunnelProcess> {
     validateCloudflaredTunnel(this.options, target);
     await validateRegularFile(this.options.executable, "TUNNEL_EXECUTABLE_INVALID", false);
+    await (this.options.validateExecutable?.(this.options.executable) ?? validateCloudflaredExecutable({ executable: this.options.executable }));
     await validateRegularFile(this.options.credentialsFile, "TUNNEL_CREDENTIALS_FILE_UNSAFE", true);
     const metricsPort = this.options.metricsPort ?? await allocateLoopbackPort();
     if (!Number.isSafeInteger(metricsPort) || metricsPort < 1 || metricsPort > 65_535) throw new Error("TUNNEL_METRICS_PORT_INVALID");

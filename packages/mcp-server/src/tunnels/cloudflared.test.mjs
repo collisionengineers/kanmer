@@ -20,6 +20,7 @@ test("adapter validates an owned credentials file before starting a direct child
       hostname: "kanmer.example.test",
       metricsPort: 43124,
       waitForReady: async () => {},
+      validateExecutable: async () => {},
     };
     const adapter = createCloudflaredAdapter(options);
     const child = await adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" });
@@ -52,6 +53,7 @@ test("fake provider receives one direct no-autoupdate metrics invocation and mus
     const adapter = createCloudflaredAdapter({
       executable: process.execPath, tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", credentialsFile: credentials,
       hostname: "kanmer.example.test", metricsPort: 43125,
+      validateExecutable: async () => {},
     }, fakeSpawn);
     const handle = await adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" });
     assert.deepEqual(calls[0].args, ["tunnel", "--no-autoupdate", "--metrics", "127.0.0.1:43125", "--config", calls[0].args[5], "run", "3f9620b4-423e-4f37-a30e-61ffcf91f403"]);

@@ -37,3 +37,7 @@ Commit 88911daa wires the headless remote CLI to perform an authenticated local 
 ## Evidence correction
 
 After the final supervisor/version hardening, the focused HTTP/tunnel suite is 44/44 (the repository npm test run immediately before these final review-only commits was 43/43). The additional targeted supervisor and adapter tests also pass; build and typecheck remain green.
+
+## Independent review remediation
+
+The first independent review identified four blocking gaps. Commit 97f626ec addresses all four: verifyLocal is required at the exported remote-host boundary; TunnelAdapter now exposes doctor/start/status/stop/diagnostics and Cloudflared implements doctor; IP literals are rejected as public hostnames; child error/forced-silent shutdown settles with a bounded fallback; and a loopback port lease is held through the spawn boundary with idempotent release. Focused suite after remediation: 47/47.

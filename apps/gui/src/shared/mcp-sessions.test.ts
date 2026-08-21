@@ -65,6 +65,31 @@ describe("parseSessions", () => {
     expect(res.projects).toEqual(["C:\\code\\proj"]);
   });
 
+  it("counts the installed MCP child behind the launcher, not cmd.exe parents or decoys", () => {
+    const child = {
+      ProcessId: 4242,
+      ExecutablePath: EXE,
+      CommandLine: `"${EXE}" "${INSTALL}\\resources\\mcp\\kanmer-mcp.cjs"`,
+    };
+    const launcherParent = {
+      ProcessId: 4241,
+      ExecutablePath: "C:\\Windows\\System32\\cmd.exe",
+      CommandLine: 'cmd.exe /d /s /c "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"',
+    };
+    const unrelatedCmd = {
+      ProcessId: 7000,
+      ExecutablePath: "C:\\Windows\\System32\\cmd.exe",
+      CommandLine: 'cmd.exe /c "C:\\other\\kanmer-mcp.cjs"',
+    };
+
+    expect(parseSessions(JSON.stringify([launcherParent, child, unrelatedCmd]), INSTALL)).toEqual({
+      count: 1,
+      projects: [],
+      pids: [child.ProcessId],
+      unknown: false,
+    });
+  });
+
   it("reads a quoted --root containing spaces as the whole path", () => {
     const out = JSON.stringify({
       ExecutablePath: EXE,

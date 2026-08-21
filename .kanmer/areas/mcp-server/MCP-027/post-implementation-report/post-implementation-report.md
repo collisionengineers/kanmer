@@ -59,3 +59,5 @@ The packaged probe hardening in `0552e6f7` cancels header-only HTTP response bod
 Final review blockers are closed in `2d54db9e`: cancellation/total-timeout reports now have non-healthy status with exit 2, and the CLI validates exact loopback `/mcp` endpoints before issuing local status requests. Doctor regression tests cover cancellation and late timeout status.
 
 The final doctor rail is now 60/60: it includes a packaged local CLI regression with a disposable listener proving unsafe non-loopback-path endpoints are rejected before any POST. The change is in `e446f619`.
+
+The overall deadline hardening in `32fb2f93` uses a run-level timer to abort and resolve an in-flight check, then performs a final deadline check. A 200 ms final-check fixture with a 20 ms budget returns non-healthy exit 2 within the bound.

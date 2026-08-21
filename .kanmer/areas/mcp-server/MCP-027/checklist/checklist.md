@@ -171,3 +171,5 @@ Final verification on commit `0719a399`:
 - [x] CLI local status validates an exact loopback HTTP `/mcp` endpoint before any request; unsafe endpoint references fail closed without probing (commit `2d54db9e`).
 
 - [x] Packaged local CLI regression starts a disposable listener, rejects an unsafe non-`/mcp` endpoint before any POST, and proves zero hits (commit `e446f619`).
+
+- [x] Run-level total deadline timer aborts and resolves an in-flight check, plus a final deadline check; an overlong final-check regression proves status fail/exit 2 and bounded report duration (commit `32fb2f93`).

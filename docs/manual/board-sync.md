@@ -52,7 +52,9 @@ visible, and a silently failing one is not.
 
 During a board-branch handoff, Kanmer also pauses the automatic timer while the
 open worktree is on the wrong branch. It does not push using the cached branch
-in the background. Once the worktree reaches the exact requested destination,
+in the background. **Retry** re-inspects the live worktree before it can commit,
+rebase, or push; if the branch is still mismatched, it remains paused and makes
+no Git mutation. Once the worktree reaches the exact requested destination,
 Kanmer clears only the handoff-generated pause and message; a real conflict or
 push error remains visible, and **Retry** is still available.
 
@@ -65,6 +67,7 @@ the same. It pushes the new name before any cleanup. For a custom-to-custom
 rename, Kanmer cannot update the hosted repository's `KANMER_BOARD_BRANCH`
 variable, so it retains the old remote ref and shows a warning. Update that
 variable to the new name first; only then is it safe to delete the old ref.
+The old ref is an intentional handoff record, not a failed cleanup.
 
 The default `kanmer-board` branch is protected by the repository's merge gate.
 Kanmer cannot edit GitHub protection, so it refuses to rename away from that

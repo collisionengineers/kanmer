@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureBoardWorktree, guardGitBranchPreference, inspectBoardWorktree, refreshBoardBranch, renameBoardBranch, shouldAttemptOrdinaryBranchRename, shouldAttemptProtectedBranchRename, shouldRunAutomaticSync, shouldScheduleAutomaticSync } from "./kanmerGit.js";
+import { ensureBoardWorktree, guardGitBranchPreference, inspectBoardWorktree, preflightBoardSync, refreshBoardBranch, renameBoardBranch, shouldAttemptOrdinaryBranchRename, shouldAttemptProtectedBranchRename, shouldRunAutomaticSync, shouldScheduleAutomaticSync } from "./kanmerGit.js";
 
 // These are deliberately real-Git integration tests: every case initialises a
 // local repository and several create worktrees/remotes. Windows process and
@@ -218,6 +218,34 @@ describe("inspectBoardWorktree", () => {
 });
 
 describe("board branch preference and cache safety", () => {
+  realGitTest("manual retry preflight pauses before syncing an unexpected live branch", async () => {
+    const status = await ensureBoardWorktree(repo, "kanmer-board");
+    const boardRoot = status.boardRoot!;
+    await git(boardRoot, "checkout", "-b", "unexpected-board");
+    const beforeRefs = await git(repo, "show-ref");
+    const beforeWorktrees = await git(repo, "worktree", "list", "--porcelain");
+
+    await expect(preflightBoardSync(status)).resolves.toMatchObject({
+      branch: "kanmer-board",
+      branchMismatch: true,
+      paused: true,
+      error: expect.stringContaining("unexpected-board"),
+    });
+    expect(await git(repo, "show-ref")).toBe(beforeRefs);
+    expect(await git(repo, "worktree", "list", "--porcelain")).toBe(beforeWorktrees);
+    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("unexpected-board");
+  });
+
+  realGitTest("manual retry preflight preserves a genuine paused error on the saved branch", async () => {
+    const status = await ensureBoardWorktree(repo, "kanmer-board");
+    await expect(preflightBoardSync({ ...status, error: "rebase conflict", paused: true })).resolves.toMatchObject({
+      branch: "kanmer-board",
+      branchMismatch: false,
+      error: "rebase conflict",
+      paused: true,
+    });
+  });
+
   it("accepts the requested branch after an administrator renames an open worktree", async () => {
     const status = {
       available: true,

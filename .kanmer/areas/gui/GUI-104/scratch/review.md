@@ -65,3 +65,9 @@ The branch advanced during review to `561d42f3`. Its follow-up fixes the custom 
 One blocker remains: persisted identity changes after an app restart are not detected. `register()` only reports `identityConflict` when an old record is already in the in-memory `records` map; after reload, it adds the new fingerprint/default profile while leaving the old persisted profile stranded. The reconcile/remove path therefore does not satisfy the migration-after-restart case (thread `PRRT_kwDOT2PEds6bXFOp`, unresolved).
 
 Verdict: NEEDS-CHANGES pending persisted-registration identity reconciliation/removal. No merge or cleanup performed.
+
+
+## Final re-review correction — a663a62f
+
+- Fixed the restart-persisted-identity finding by detecting old project entries before register creates a new profile; added restart/reconcile regression coverage.
+- Independent reviewer verdict was NEEDS-CHANGES only for this finding; it is now fixed. Await fresh hosted checks and final re-review.

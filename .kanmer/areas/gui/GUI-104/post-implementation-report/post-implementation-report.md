@@ -59,3 +59,9 @@ Updated source head: `cad3552a` (PR #157).
 - Commit 561d42f3 is the current PR #157 head. It adds consistent canonical project keys, binds the configured credential environment name with tunnel-client control-plane API-key reference, permits valid apostrophes/backticks in absolute executable paths, and surfaces auto-start credential failures.
 - Focused manager + Settings tests: 12/12 PASS. Root typecheck, GUI typecheck, GUI build, manual freshness, packaged updater 8/8, and diff-check remain PASS.
 - Hosted verification for 561d42f3 is pending; merge remains gated on fresh checks and resolved review conversations.
+
+
+## Independent re-review correction — 2026-08-22
+
+- Independent review identified one remaining restart-path defect: persisted identity changes were not detected after manager restart, so reconcile was unavailable. Commit a663a62f detects an old persisted project identity before materializing a new default profile and the regression test proves restart → conflict → reconcile.
+- Final deterministic focused suite: 13/13; GUI typecheck, manual freshness, and diff-check PASS. Fresh hosted verify and kanmer-gate for a663a62f are required before merge.

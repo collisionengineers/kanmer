@@ -2,12 +2,15 @@
 id: CORE-026
 type: ticket
 title: 'Sources: let a project declare which MCPs, plugins and llms.txt to prefer'
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: core026-executor
 profile: feature
 stageEntered:
   preparing: '2026-08-20T20:30:12.790Z'
+taken_at: '2026-08-22T08:32:18.405Z'
+branch: core-026-project-declared-sources
+worktree: .worktrees/core-026
 labels: []
 groups:
   - HZN-006
@@ -18,7 +21,7 @@ refs:
   - docs/architecture/adr/ADR-0019-project-declared-source-trust.md
 archived: false
 created: '2026-08-16T18:26:15.208Z'
-updated: '2026-08-22T08:28:00.609Z'
+updated: '2026-08-22T08:32:18.405Z'
 ---
 
 ## What

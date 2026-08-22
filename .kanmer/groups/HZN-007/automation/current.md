@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T08:34:00Z
+updated_at: 2026-08-22T08:32:34.137Z
 ---
 
 # Current auto run — HZN-007
@@ -301,3 +301,6 @@ Last handoff: 2026-08-22T08:22:47.548Z — GUI-108 hosted handoff finalized: PR 
 
 
 2026-08-22T08:36:00Z — CORE-035 final handoff details: disposable private repo collisionengineers/kanmer-spine-integration-20260822t075446z-78e5ba65, fixture PR #1 head 94f859b5, NO_TICKET probe PR #2, fixture commit f9dcfbb6. Hosted gate 32561867341/97005242239 PASS; verify 97005242134 FAIL 84/85 on disposable-origin release-notes URL mismatch. Private protection 403 remains the sole terminal external capability blocker.
+
+
+Last handoff: 2026-08-22T08:32:34.137Z — CORE-026 assigned to core026-executor: ticket is Implementing on core-026-project-declared-sources/.worktrees/core-026 from origin/main 84a20f84. Governing FRD-026 and ADR-0019 are linked, research/files/plan/checklist/questions are complete, and scope is project-declared source preferences only with no external auto-trust or unbounded llms.txt crawl. Stop at Review; no self-review/merge/cleanup.

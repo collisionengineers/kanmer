@@ -1,6 +1,79 @@
 ---
 kind: review-attestation
 pr: "168"
+head_sha: "4f106865947e556759aeb88363ea9aab7c01beac"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: pass
+reviewer: "codex-root"
+independent: true
+plan_hash: "a0b32fae7b9b14f9"
+ticket_updated: "2026-08-22T13:20:30.915Z"
+findings:
+  - id: F-001
+    severity: blocker
+    summary: "Completed administrator handoff is recognized"
+    disposition: fixed
+    reason: "CORE-048 and CORE-052 refresh the requested destination and preserve mismatch state."
+  - id: F-002
+    severity: major
+    summary: "No-board protected preference transition is guarded"
+    disposition: fixed
+    reason: "The guard retains the protected default when no Git board is open."
+  - id: F-003
+    severity: blocker
+    summary: "Hosted gate consumes configured board branch"
+    disposition: fixed
+    reason: "The workflow reads KANMER_BOARD_BRANCH with the documented fallback; rerun 32575453101 passed kanmer-gate."
+  - id: F-004
+    severity: minor
+    summary: "Protection inference is conservative"
+    disposition: accepted-risk
+    reason: "ADR-0016 excludes a GitHub protection API/App; literal protected-default inference is the documented boundary."
+  - id: F-005
+    severity: blocker
+    summary: "Merged child dependency is unblocked"
+    disposition: fixed
+    reason: "CORE-048 and CORE-052 child edges are removed after their non-squash merges."
+  - id: F-009
+    severity: blocker
+    summary: "Actions-variable handoff documentation"
+    disposition: fixed
+    reason: "Workflow comment, Settings, board-sync/settings manuals, troubleshooting, and generated guidance name KANMER_BOARD_BRANCH."
+  - id: F-010
+    severity: blocker
+    summary: "Requested destination equality"
+    disposition: fixed
+    reason: "refreshBoardBranch marks any non-destination live branch as mismatch and paused; child guards skip all rename paths."
+  - id: F-011
+    severity: major
+    summary: "Paused/error state preservation"
+    disposition: fixed
+    reason: "Refresh retains existing error/paused state on a valid handoff and surfaces mismatch state otherwise."
+  - id: F-012
+    severity: major
+    summary: "Troubleshooting guidance contradiction"
+    disposition: fixed
+    reason: "The protected-default refusal and retarget-first sequence are documented and the manual is regenerated."
+  - id: F-EXTERNAL
+    severity: minor
+    summary: "Live protection retarget proof"
+    disposition: accepted-risk
+    reason: "No authorized GitHub protection mutation or real protected-branch handoff was available; deterministic and hosted gate evidence is recorded, but live protection remains INCONCLUSIVE."
+---
+
+## Fresh cumulative independent review — CORE-043 / PR #168
+
+The exact cumulative head is 4f106865947e556759aeb88363ea9aab7c01beac, containing the original implementation plus CORE-048 and CORE-052/054/055 non-squash merges. I reread the full packet, all prior findings, FRD-020, ADR-0016, and the exact diff. The implementation now documents KANMER_BOARD_BRANCH, validates branch equality before accepting a handoff, preserves paused/error state, and blocks both rename paths on mismatch. The generated/manual surfaces agree with the workflow.
+
+Evidence: exact detached-head GUI Git 12/12 PASS; build:core, manual 22 chapters, verify-docs, scripts 89/89, and diff-check PASS; hosted rerun 32575453101 passed both kanmer-gate and verify. Broad dispatch/provider typecheck/build and live GitHub protection mutation remain explicitly preserved boundaries.
+
+Verdict: PASS. Merge non-squash into main, then move CORE-043 to Verifying. Do not verify or clean up in this review step.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "168"
 head_sha: "11930038542d402865bb26a23787d7d3cad3e2c5"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: needs-changes

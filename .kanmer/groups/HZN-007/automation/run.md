@@ -69,3 +69,6 @@
 
 
 2026-08-22T08:33:00Z — GUI-109 moved Backlog→Preparing after governing FRD-001 gate readback. Assigned to /root/gui099_executor as the third conflict-free lane; scope is existing group membership wiring in the ticket ContextMenu only. Full packet/group context and gates are required; dedicated take/worktree, research/plan/execute, independent Review, and no merge/cleanup by author.
+
+
+2026-08-22T08:32:18Z — CORE-026 moved Preparing→Implementing after FRD-026/ADR-0019, research, files, plan, checklist, and resolved questions gates passed. /root/gui082_executor owns core-026-project-declared-sources / .worktrees/core-026; source-preference scope is bounded to declared trust/applicability and bounded llms.txt handling, with no auto-install or unbounded crawl. Author stops at Review.

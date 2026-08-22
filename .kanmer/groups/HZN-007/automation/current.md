@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T08:37:00Z
+updated_at: 2026-08-22T08:40:00Z
 ---
 
 # Current auto run — HZN-007
@@ -307,3 +307,6 @@ Last handoff: 2026-08-22T08:32:34.137Z — CORE-026 assigned to core026-executor
 
 
 2026-08-22T08:37:00Z — GUI-109 assigned to /root/gui099_executor in Preparing as the third conflict-free lane after governing FRD-001 readback. Scope is Add to group ContextMenu wiring through existing membership semantics; no new group model, no cross-ticket changes, no self-merge.
+
+
+2026-08-22T08:40:00Z — CORE-026 moved Preparing→Implementing after plan/checklist gates passed; dedicated source-preference worktree is active under /root/gui082_executor. GUI-109 remains queued in Preparing for packet creation/take; CORE-035 remains Verifying with private branch-protection 403 external boundary.

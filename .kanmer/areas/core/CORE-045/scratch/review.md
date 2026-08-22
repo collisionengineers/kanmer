@@ -1,7 +1,8 @@
 ---
 kind: review-attestation
 pr: "166"
-head_sha: "1234264b292e574d38f276b91592ea0b8bef9361"
+head_sha: "0f9af92ba7bf332a3fffbc49b3273bd71b59c49a"
+base_sha: "33f32e3aae9819f1c2344863272dacb5c958fbac"
 verdict: needs-changes
 reviewer: "gui099-executor"
 independent: true
@@ -10,45 +11,77 @@ ticket_updated: "2026-08-22T10:23:07.802Z"
 findings:
   - id: F-003
     severity: blocker
-    summary: "Stale-lock recovery"
-    disposition: fixed
-    reason: "Valid JSON dead/stale locks recover only after age and liveness checks; fresh, active, malformed, uncertain and racing records remain protected. Legacy PID-only records use mtime and recover only when stale/dead. Callback failure releases the claim. The inherited renameWithRetry/writeFileAtomic/TMP_FILE_RE tests remain unchanged and the IO suite is 15/15."
-  - id: F-009
+    summary: "Stale-lock ownership race is fixed by the merged CORE-046/047/049/050 stack"
+    disposition: fixed-in-child
+    reason: "The cumulative head carries exact-inode quarantine, owner tokens, per-attempt revalidation, active replacement protection, cleanup-error propagation, and deterministic adversarial regressions. The cumulative IO rail is 22/22."
+  - id: F-009-MISSING-RANGES
     severity: blocker
-    summary: "Complete non-global IPv4/IPv6 destination policy"
+    summary: "Previously missing non-global ranges are fixed in the cumulative stack"
+    disposition: fixed-in-child
+    reason: "The cumulative classifier adds 192.175.48.0/24, 64:ff9b:1::/48, 100:0:0:1::/64, and 5f00::/16 while retaining mapped and prior special-use handling; source evidence is 14/14."
+  - id: PR-166-IPV4-WIDE
+    severity: major
+    summary: "IPv4 classifier still rejects globally reachable exceptions"
     disposition: open
-    reason: "The classifier still omits registered non-global special-use blocks, including IPv4 192.175.48.0/24 and IPv6 100:0:0:1::/64, 64:ff9b:1::/48, and 5f00::/16. The IANA registries mark these special-purpose ranges non-globally reachable; the plan requires complete known non-global coverage. DNS is called before current, response and redirect targets, but the new tests do not exercise lookup invocation on a redirect/linked hop."
+    reason: "packages/mcp-server/src/sources.ts still uses (a === 192 && b === 0), (a === 192 && b === 31 && c === 196), and (a === 192 && b === 52 && c === 193), which reject the complete blocks rather than only their non-global subranges. This still rejects documented protocol-anycast exceptions such as 192.0.0.9/.10 and preserves the original PR #166 P2 finding."
+  - id: PR-166-IPV6-WIDE
+    severity: major
+    summary: "IPv6 documentation classifier still matches 3fff/16 instead of 3fff/20"
+    disposition: open
+    reason: "The cumulative sources.ts still contains first === 0x3fff, rejecting all of 3fff::/16, including public addresses from 3fff:1000:: through 3fff:ffff::. The original PR #166 P2 finding remains open."
+  - id: PR-166-RECOVERY-ERROR
+    severity: major
+    summary: "Final recovery claim still rethrows the original EEXIST"
+    disposition: open
+    reason: "withExclusiveFileLock records retryError after a successful stale recovery followed by a failed claim, but the final attempt still executes throw error rather than propagating the actionable retry error. This preserves the original PR #166 P2 error-surfacing finding."
+  - id: PR-166-TRACE
+    severity: major
+    summary: "Parent report and item traceability are stale for the cumulative head"
+    disposition: open
+    reason: "PR #166 now points at 0f9af92b after merged CORE-046/047/049/050, but CORE-045 item metadata and post-implementation report still record only implementation 1234264b and pre-child evidence. Child reports are readable, but the parent packet must record the cumulative head/lineage before merge."
+  - id: PR-166-THREADS
+    severity: major
+    summary: "Parent PR threads remain unresolved while three findings are still open"
+    disposition: open
+    reason: "GitHub still shows the inherited PR #166 inline findings. The stale-lock P1 and missing-range P1 are fixed by child work, but the over-broad IPv4/IPv6 and recovery-error threads are not closed by the cumulative diff."
+  - id: HTTP-BOUNDARY
+    severity: minor
+    summary: "Broad HTTP readiness timing remains an inherited boundary"
+    disposition: preserved-inconclusive
+    reason: "The cumulative packet preserves the broad MCP HTTP 81/82 readiness timing and isolated readiness 7/7; no assertion was weakened."
+  - id: HOSTED-LIVE
+    severity: minor
+    summary: "Hosted and live external evidence is unavailable"
+    disposition: inconclusive
+    reason: "No hosted workflow run is claimed for the cumulative head. Live Windows handle/crash/PID-reuse/process-termination, DNS-rebinding, and packaged/live-host evidence remain INCONCLUSIVE."
 ---
-# Independent review — CORE-045
+# Independent review - CORE-045 cumulative head
 
 ## Verdict
 
-NEEDS-CHANGES. CORE-045 correctly remediates stale-lock recovery for the requested valid, legacy, fresh, active, malformed-text, uncertain, callback-cleanup and race-recheck paths, but F-009 is not complete. The classifier and deterministic fixture list omit known non-global special-purpose ranges, so the remote SSRF boundary remains incomplete.
+NEEDS-CHANGES for PR #166 at exact cumulative head 0f9af92ba7bf332a3fffbc49b3273bd71b59c49a, based on 33f32e3aae9819f1c2344863272dacb5c958fbac. The merged CORE-046/047/049/050 stack closes the stale-lock ownership and previously missing destination-range findings, but the inherited parent code still has three concrete correctness blockers and stale parent traceability. No source, merge, move, or cleanup was performed.
 
-## Packet and stacked diff
+## Scope and lineage
 
-I read the complete CORE-045 research, files, plan, checklist, open-questions, post-implementation report and execution scratch; HZN-007 context; FRD-027; ADR-0020; the linked CORE-044 review attestation; and the exact diff from CORE-044 head 33f32e3aae9819f1c2344863272dacb5c958fbac to 1234264b292e574d38f276b91592ea0b8bef9361. The five-file diff is scoped to core IO/tests, MCP source classifier/tests and the regenerated plugin bundle. Inherited IO tests are preserved unchanged; three lock tests bring that file to 15 tests.
+The exact PR compare is ten commits and five planned files: packages/core/src/io.ts, packages/core/src/io.test.ts, packages/mcp-server/src/sources.ts, packages/mcp-server/src/sources.test.mjs, and the regenerated standalone plugin artifact. The cumulative head is the non-squash merge of PR #167 into CORE-045. I read the complete CORE-045 packet, HZN-007 context, FRD-027, ADR-0020, CORE-046/049/050 reports and independent attestations, and the current PR #166 thread set.
 
-## F-003 audit
+## Finding audit
 
-- PASS: dead/stale JSON lock recovery requires both age and a demonstrably dead PID.
-- PASS: fresh, active, malformed text, and liveness-uncertain records remain protected and surface bounded EEXIST.
-- PASS: legacy PID-only records use mtime as the age source and recover only when stale/dead.
-- PASS: callback failures unlink the claimed lock.
-- PASS: the implementation re-reads contents and mtime before unlinking; a race after inspection must re-claim exclusively or surface contention.
-- INCONCLUSIVE by design: PID reuse and exact process termination between inspection and unlink require an OS stress harness and remain parked as the ticket states.
+- F-003 stale-lock ownership is closed by the child stack: tokenized ownership, exact identity checks, retry revalidation, active-marker claimant protection, and cleanup error propagation are covered by IO 22/22.
+- The added 192.175.48.0/24, 64:ff9b:1::/48, 100:0:0:1::/64, and 5f00::/16 checks close the originally missing ranges.
+- The original PR #166 IPv4 exception finding remains: 192.0.0.0/24 and the 192.31.196.0/24 and 192.52.193.0/24 matches are broader than the non-global subranges requested.
+- The original PR #166 IPv6 documentation finding remains: first === 0x3fff is /16, not the required 3fff::/20.
+- The original PR #166 recovery-error finding remains: final contention throws the earlier EEXIST instead of a subsequent non-EEXIST claim error.
 
-## F-009 audit
+## Evidence and limits
 
-The source code calls the destination check before each current request, after each response URL, and before each redirect target; lookup errors and empty results fail closed. The classifier covers the ranges exercised by the 13-test source suite and mapped IPv4 in dotted and hexadecimal forms. However, the complete special-use contract is not met: IANA IPv4 Special-Purpose Registry (https://www.iana.org/assignments/iana-ipv4-special-registry) includes 192.175.48.0/24, and IANA IPv6 Special-Purpose Registry (https://www.iana.org/assignments/iana-ipv6-special-registry) includes non-globally-reachable 100:0:0:1::/64, 64:ff9b:1::/48 and 5f00::/16, none of which the classifier rejects. The redirect/linked-hop lookup seam is present in code but is not directly asserted by the new fixture.
+- Cumulative IO: 22/22 PASS.
+- Combined child core IO/source/store: 113/113 PASS.
+- Source: 14/14 PASS; typecheck/build/plugin parity PASS.
+- Inherited CORE-045 evidence: core 106/106, source 13/13, scripts 88/88, protocol 46/46, discovery 13/13, and HTTP 81/81 before the child stack.
+- Cumulative broad HTTP remains 81/82 due unchanged readiness timing; isolated readiness is 7/7.
+- No hosted workflow run is claimed for this exact head. Live Windows and DNS-rebinding limits remain INCONCLUSIVE.
 
-## Verification evidence
+## Required disposition
 
-- PASS exit 0: npm run test -w @kanmer/core -- src/io.test.ts src/sources.test.ts src/store.test.ts — 106/106, including IO 15/15.
-- PASS exit 0: node --test packages/mcp-server/src/sources.test.mjs — 13/13.
-- PASS exit 0: npm run test:http -w @kanmer/mcp-server — 81/81.
-- The report records PASS for typecheck/build/plugin/smoke/docs/skills/managed-block/diff rails; no associated hosted workflow runs were returned for head 1234264b292e574d38f276b91592ea0b8bef9361, and PR #166 has no review threads/comments. Live DNS rebinding, PID reuse and exact crash timing remain INCONCLUSIVE.
-
-## Required remediation
-
-Add the omitted non-global special-use ranges and deterministic tests, plus a redirect/linked-hop lookup invocation regression if the “before every hop” claim is retained. Re-run the source/HTTP and relevant workspace rails, update the report/checklist and this SHA-bound attestation, and request fresh independent review. No merge, move or cleanup was performed.
+Narrow the over-broad IPv4 and IPv6 predicates, propagate the final recovery claim error, refresh CORE-045 report/item traceability to the cumulative head and child lineage, then request fresh independent review. No merge or cleanup was performed.

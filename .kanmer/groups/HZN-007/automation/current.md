@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T08:43:00Z
+updated_at: 2026-08-22T08:46:00Z
 ---
 
 # Current auto run — HZN-007
@@ -313,3 +313,6 @@ Last handoff: 2026-08-22T08:32:34.137Z — CORE-026 assigned to core026-executor
 
 
 2026-08-22T08:43:00Z — GUI-109 taken into Implementing by gui109-executor on gui-109-add-to-group/.worktrees/gui-109; packet docs and scope are recorded. CORE-026 remains Implementing and CORE-035 Verifying; all three implementation lanes are now occupied.
+
+
+2026-08-22T08:46:00Z — CORE-026 refs/gates reconciled to FRD-027 + ADR-0020 after doc-name collision audit; implementation remains active under core026-executor. GUI-109 remains active on its dedicated branch; CORE-035 stays Verifying INCONCLUSIVE.

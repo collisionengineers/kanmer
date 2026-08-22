@@ -75,3 +75,6 @@
 
 
 2026-08-22T08:42:00Z — GUI-109 taken into Implementing by gui109-executor on gui-109-add-to-group / .worktrees/gui-109 after packet/context/gates read. Research/files/plan/checklist/open-questions are present; implementation is limited to existing group membership via the ticket ContextMenu, with independent Review required and no merge/cleanup by author.
+
+
+2026-08-22T08:45:00Z — CORE-026 governing-doc names were reconciled to non-colliding docs/functional/frd/FRD-027-project-declared-sources.md and docs/architecture/adr/ADR-0020-project-declared-source-trust.md; live refs/gates now read back against those paths. Implementation remains active; no stage/merge claim.

@@ -14,3 +14,6 @@
 
 
 2026-08-22T04:55Z — MCP-028 implementation lane assigned\n\n- MCP-028 moved Preparing to Implementing through MCP on dedicated mcp-028-remote-access-integration/.worktrees/mcp-028, assigned to codex-recovery. Scope is disposable Cloudflare Worker-client integration harness and deterministic proof only; no cloudflared binary, Wrangler installation, Cloudflare credentials, tunnel, or external proof is fabricated. Independent review required; no merge.
+
+
+2026-08-22T04:57Z — CORE-024 implementation lane assigned\n\n- CORE-024 moved Preparing to Implementing through MCP on dedicated core-024-check-pr/.worktrees/core-024, assigned to core024-executor. Scope is phase-1 check-pr merge gate and kanmer-gate only; CORE-025/033/035 remain untouched. Independent review required; no merge.

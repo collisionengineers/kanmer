@@ -23,3 +23,10 @@ The prior cumulative-only closeout was reversed after reachability audit. The ex
 - [ ] branch deleted
 - [x] fetch/prune performed during correction
 - [ ] take_ticket release
+
+## Merged-main verification / closeout
+
+- [x] Reverified all recorded commits reachable from origin/main fdaededc; exact merged-main proof replaces the old feature-branch-only proof.
+- [x] IO 32/32, source 32/32, core/store 91/91, typecheck, scripts/docs/skills/agents/diff rails recorded; HTTP child timeout remains INCONCLUSIVE.
+- [x] PR #166 was already merged into the reachable cumulative lineage.
+- [ ] Worktree/branch cleanup and release pending.

@@ -1,0 +1,1 @@
+Re-verified on merged origin/main fdaededc: IO 32/32, source 32/32, core/store 91/91, typechecks, scripts/docs/skills/agents/diff passed. The broad HTTP rail is 99/100 due inherited project-resolution child spawnSync ETIMEDOUT and remains INCONCLUSIVE.

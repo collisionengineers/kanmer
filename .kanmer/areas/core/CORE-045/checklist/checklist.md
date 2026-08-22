@@ -11,13 +11,15 @@
 
 ---
 
-## Closeout — CORE-045
+## Verification correction — CORE-045
 
-- [x] PR merge verified (PR #166 merged 2026-08-22T12:55:09Z)
-- [x] proof.md finalised (PR URL, merge date, and cumulative verification basis recorded)
-- [x] Moved to final stage
-- [x] Outcome recorded in ticket body
-- [x] cd out of worktree; `git worktree remove .worktrees/core-045`
-- [x] `git branch -d core-045-lock-dns-remediation`
-- [x] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+The prior cumulative-only closeout was reversed after reachability audit. The exact branch proof is preserved, but it is not merged-main proof: origin/main is 34245be039e8fd8395b5e31835602c54e62e98a4 and does not contain the CORE-045 merge/cumulative lineage. Ticket remains Verifying; branch/worktree were restored. No closeout or release was authorized.
+
+- [x] PR merge verified into its stated feature-branch base (PR #166)
+- [ ] proof.md finalised for merged-main verification
+- [ ] Moved to final stage
+- [x] Outcome records the exact cumulative basis and no-origin-mainline claim
+- [ ] worktree removed
+- [ ] branch deleted
+- [x] fetch/prune performed during correction
+- [ ] take_ticket release

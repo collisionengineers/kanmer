@@ -654,3 +654,6 @@ Verification/closeout lanes active: CORE-045 proof and closeout completed/releas
 
 
 PR #200 CORE-079 PASS merged into CORE-026 feature branch as 3a05ab7a; CORE-079 traceability updated, block edge cleared, moved Review→Verifying. It remains unverified until CORE-026 reaches main.
+
+
+Reachability audit corrected CORE-045/047/049 back to Verifying; CORE-044–057 cumulative merges are not reachable from origin/main 34245be, so no proof/closeout accepted. Branch-only proofs preserved with explicit no-origin-mainline notes.

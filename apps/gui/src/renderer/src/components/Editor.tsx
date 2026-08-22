@@ -13,6 +13,14 @@ import type {
   UpdateItemPatch,
 } from "@kanmer/core";
 import { useClient } from "../lib/client.js";
+import {
+  cloneRequirementMap,
+  CustomRequiresEditor,
+  requirementErrors,
+  vocabularyFromModel,
+  type RequirementMap,
+} from "./CustomRequiresEditor.js";
+import type { Vocabulary } from "../lib/profileDraft.js";
 
 /** The shipped profiles plus custom — the picker's options (FRD-002 P2/P3). */
 const PROFILE_IDS = ["feature", "fix", "chore", "spike", "custom"] as const;
@@ -51,6 +59,7 @@ interface Snapshot {
   refs: string;
   deployment: string;
   body: string;
+  requires: RequirementMap;
   /** The `updated` stamp this snapshot came from — the conflict reference. */
   updated: string;
 }
@@ -66,6 +75,7 @@ const FIELD_KEYS = [
   "refs",
   "deployment",
   "body",
+  "requires",
 ] as const;
 type FieldKey = (typeof FIELD_KEYS)[number];
 type EditorTab = "ticket" | "scratch" | TicketDoc;
@@ -127,8 +137,13 @@ function snapOf(item: Item): Snapshot {
     refs: (item.refs ?? []).join(", "),
     deployment: item.deployment ?? "",
     body: item.body,
+    requires: cloneRequirementMap(item.requires),
     updated: item.updated,
   };
+}
+
+function fieldEqual(a: Snapshot, b: Snapshot, key: FieldKey): boolean {
+  return key === "requires" ? JSON.stringify(a.requires) === JSON.stringify(b.requires) : a[key] === b[key];
 }
 
 /** Ensure the item's current value is selectable even if not in board config. */
@@ -180,6 +195,8 @@ export function Editor(props: EditorProps): JSX.Element {
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
   const [refError, setRefError] = useState<string | null>(null);
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
+  const [vocabulary, setVocabulary] = useState<Vocabulary | null>(null);
+  const [vocabularyError, setVocabularyError] = useState<string | null>(null);
   /** The core gate report — what this ticket owes, and what it already has. */
   const [gates, setGates] = useState<GateReport | null>(null);
   const [docDirty, setDocDirty] = useState(false);
@@ -272,6 +289,34 @@ export function Editor(props: EditorProps): JSX.Element {
     void client.getDocTypes(item.id).then(setDocTypes);
   }, [item.id, item.area, item.type]);
 
+  useEffect(() => {
+    if (item.type !== "ticket") {
+      setVocabulary(null);
+      setVocabularyError(null);
+      return;
+    }
+    let cancelled = false;
+    setVocabulary(null);
+    setVocabularyError(null);
+    if (typeof client.getDocModel !== "function") {
+      setVocabularyError("The project document model is unavailable.");
+      return () => {
+        cancelled = true;
+      };
+    }
+    void client
+      .getDocModel()
+      .then((model) => {
+        if (!cancelled) setVocabulary(vocabularyFromModel(model, board));
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setVocabularyError(error instanceof Error ? error.message : String(error));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [board, client, item.id, item.type]);
+
   const pathsByType = useMemo(
     () => documentPathsByType(docsInfo?.documentPaths ?? [], docTypes.map((d) => d.id)),
     [docsInfo?.documentPaths, docTypes],
@@ -297,7 +342,7 @@ export function Editor(props: EditorProps): JSX.Element {
   }, [docDirty, docTypes, pathsByType]);
 
   const dirtyKeys = useMemo(
-    () => FIELD_KEYS.filter((k) => form[k] !== baseline.current[k]),
+    () => FIELD_KEYS.filter((k) => !fieldEqual(form, baseline.current, k)),
     [form],
   );
   const dirty = dirtyKeys.length > 0 || docDirty;
@@ -320,12 +365,12 @@ export function Editor(props: EditorProps): JSX.Element {
     if (item.updated === baseline.current.updated) return;
     const incoming = snapOf(item);
     const prev = formRef.current;
-    const touched = FIELD_KEYS.filter((k) => prev[k] !== baseline.current[k]);
+    const touched = FIELD_KEYS.filter((k) => !fieldEqual(prev, baseline.current, k));
     const conflicts = touched.filter(
-      (k) => incoming[k] !== baseline.current[k] && incoming[k] !== prev[k],
+      (k) => !fieldEqual(incoming, baseline.current, k) && !fieldEqual(incoming, prev, k),
     );
     const next: Snapshot = { ...incoming };
-    for (const k of touched) next[k] = prev[k];
+    for (const k of touched) Object.assign(next, { [k]: k === "requires" ? cloneRequirementMap(prev.requires) : prev[k] });
     baseline.current = incoming;
     setForm(next);
     if (conflicts.length > 0) {
@@ -355,14 +400,27 @@ export function Editor(props: EditorProps): JSX.Element {
       if (k === "labels") patch.labels = splitList(form.labels);
       else if (k === "links") patch.links = splitList(form.links);
       else if (k === "refs") patch.refs = splitList(form.refs);
+      else if (k === "requires" && form.profile === "custom") patch.requires = cloneRequirementMap(form.requires);
+      else if (k === "requires") continue;
       else patch[k] = form[k];
     }
     return patch;
   };
 
   const save = async () => {
-    const keys = FIELD_KEYS.filter((k) => form[k] !== baseline.current[k]);
+    const keys = FIELD_KEYS.filter((k) => !fieldEqual(form, baseline.current, k));
     if (keys.length === 0) return;
+    if (form.profile === "custom") {
+      if (!vocabulary) {
+        setSaveError(vocabularyError ?? "Requirement vocabulary is still loading.");
+        return;
+      }
+      const errors = requirementErrors(form.requires, vocabulary);
+      if (Object.keys(errors).length > 0) {
+        setSaveError(Object.values(errors).flat().join(" "));
+        return;
+      }
+    }
     setSaving(true);
     setSaveError(null);
     try {
@@ -371,11 +429,11 @@ export function Editor(props: EditorProps): JSX.Element {
       if (fresh && fresh.updated !== baseline.current.updated) {
         const incoming = snapOf(fresh);
         const conflicts = keys.filter(
-          (k) => incoming[k] !== baseline.current[k] && incoming[k] !== form[k],
+          (k) => !fieldEqual(incoming, baseline.current, k) && !fieldEqual(incoming, form, k),
         );
         setForm((prev) => {
           const next: Snapshot = { ...incoming };
-          for (const k of keys) next[k] = prev[k];
+          for (const k of keys) Object.assign(next, { [k]: k === "requires" ? cloneRequirementMap(prev.requires) : prev[k] });
           return next;
         });
         baseline.current = incoming;
@@ -861,6 +919,19 @@ export function Editor(props: EditorProps): JSX.Element {
               </select>
             </label>
           </div>
+
+          {form.profile === "custom" && vocabulary && (
+            <CustomRequiresEditor
+              value={form.requires}
+              vocabulary={vocabulary}
+              onChange={(requires) => setForm((current) => ({ ...current, requires }))}
+            />
+          )}
+          {form.profile === "custom" && !vocabulary && (
+            <div className="custom-requires" role="status">
+              {vocabularyError ? `Could not load requirement vocabulary: ${vocabularyError}` : "Loading custom requirements…"}
+            </div>
+          )}
 
           <div className="field-row">
             <label className="field">

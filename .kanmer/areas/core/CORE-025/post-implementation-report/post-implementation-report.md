@@ -78,3 +78,7 @@ Documentation in ADR-0011, ADR-0016, and FRD-009 now states the complete attesta
 - `npm run test:http -w @kanmer/mcp-server`: 66/67 PASS; retained exact unrelated Windows readiness failure: `src\\tunnels\\readiness.test.mjs:54`, `TUNNEL_READINESS_TIMEOUT`. No CORE-025 test failed.
 - Prior hosted run for d338349e was PASS (run 32558835415); hosted rerun for 65e364ad is required and not yet claimed.
 - PR #159 remains open; no merge performed.
+
+## Hosted follow-up verification — 2026-08-22
+
+PR #159 head `65e364ad927ef151ba0cea59b123d20feaf095b4` completed hosted run `32560013616`: `kanmer-gate` PASS (job `97000062935`, 54s) and authoritative `verify` PASS (job `97000062846`, 2m26s). GitHub annotations retain the expected Node.js 20 deprecation notice and the gate's existing review-attestation warning (`review attestation is invalid: kind must be "review-attestation"`) without failing the run. PR #159 remains open; no merge performed.

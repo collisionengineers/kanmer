@@ -73,8 +73,10 @@ import {
 } from "./nativeTheme.js";
 import {
   ensureBoardWorktree,
+  guardGitBranchPreference,
   inspectBoardWorktree,
   PROTECTED_BOARD_BRANCH,
+  refreshBoardBranch,
   renameBoardBranch,
   syncBoard,
   type KanmerGitStatus,
@@ -658,13 +660,21 @@ async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number)
   const current = readSettings();
   const requestedBranch = kanmerBranch.trim() || PROTECTED_BOARD_BRANCH;
   const branchChanged = requestedBranch !== current.kanmerBranch;
+  // An administrator can retarget and rename an open board worktree while the
+  // GUI remains running. Refresh every cached branch before deciding whether
+  // the protected-default refusal still applies.
+  await Promise.all([...contexts.values()].map(async (ctx) => {
+    ctx.syncStatus = await refreshBoardBranch(ctx.syncStatus);
+  }));
+  const hasOpenBoard = [...contexts.values()].some((ctx) => ctx.syncStatus.available && Boolean(ctx.syncStatus.boardRoot));
   const protectedOpenBoard = branchChanged && current.kanmerBranch === PROTECTED_BOARD_BRANCH &&
     [...contexts.values()].some((ctx) => ctx.syncStatus.available && ctx.syncStatus.boardRoot && ctx.syncStatus.branch === PROTECTED_BOARD_BRANCH);
 
   // The protected-default refusal is deliberately handled before any context
   // is renamed. A global setting must not leave some open boards migrated and
   // others on the protected branch when the operator handoff is still needed.
-  const targetBranch = protectedOpenBoard ? current.kanmerBranch : requestedBranch;
+  const guardedBranch = guardGitBranchPreference(current.kanmerBranch, requestedBranch, hasOpenBoard);
+  const targetBranch = protectedOpenBoard ? current.kanmerBranch : guardedBranch;
   const settings = await setKanmerGitPreferences(targetBranch, gitSyncMinutes);
   if (protectedOpenBoard) {
     for (const [projectId, ctx] of contexts) {

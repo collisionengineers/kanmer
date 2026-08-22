@@ -40,7 +40,7 @@ The first GUI-only typecheck was intentionally preserved as an initial environme
 
 ## Follow-up P2 review thread — wheel dismissal
 
-PR #164 review thread `3835707265` / GraphQL thread `PRRT_kwDOT2PEds6bX3xs` correctly identified that the `wheel` listener passed `onClose` directly, bypassing the existing `.ctx-menu` target guard. This was valid: scrolling inside the newly bounded menu could close it. The follow-up commit changes only that listener to use the guarded `close` callback and adds `ContextMenu.test.tsx`; the thread disposition is fixed and is being resolved after this recorded evidence.
+PR #164 review thread `3835707265` / GraphQL thread `PRRT_kwDOT2PEds6bX3xs` correctly identified that the `wheel` listener passed `onClose` directly, bypassing the existing `.ctx-menu` target guard. This was valid: scrolling inside the newly bounded menu could close it. The follow-up commit changes only that listener to use the guarded `close` callback and adds `ContextMenu.test.tsx`; the thread disposition is fixed and the GitHub review thread was resolved after this recorded evidence.
 
 Follow-up evidence:
 

@@ -85,6 +85,7 @@ import {
   syncBoard,
   type KanmerGitStatus,
 } from "./kanmerGit.js";
+import { armAutomaticSync } from "./syncTimer.js";
 import {
   connectAgent,
   disconnectAgent,
@@ -144,10 +145,12 @@ function clearSyncTimer(ctx: ProjectContext): void {
 }
 
 function armSyncTimer(projectId: string, ctx: ProjectContext, minutes: number): void {
-  clearSyncTimer(ctx);
-  if (shouldScheduleAutomaticSync(ctx.syncStatus, minutes)) {
-    ctx.syncTimer = setInterval(() => void syncProject(projectId, true), minutes * 60_000);
-  }
+  armAutomaticSync(
+    ctx,
+    shouldScheduleAutomaticSync(ctx.syncStatus, minutes),
+    minutes,
+    () => void syncProject(projectId, true),
+  );
 }
 
 async function remoteIdentity(ctx: ProjectContext) {
@@ -773,6 +776,7 @@ function boardWorktreeRepair(
 
 async function syncProject(projectId: string, automatic = false): Promise<KanmerGitIpcStatus> {
   const ctx = requireCtx(projectId);
+  const retryingPaused = !automatic && ctx.syncStatus.paused;
   if (automatic && ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
     const inspection = await inspectBoardWorktree(ctx.syncStatus.boardRoot, ctx.syncStatus.branch);
     ctx.syncStatus = await refreshBoardBranch(ctx.syncStatus, ctx.syncStatus.branch, inspection);
@@ -784,6 +788,9 @@ async function syncProject(projectId: string, automatic = false): Promise<Kanmer
     return blocked;
   }
   ctx.syncStatus = await syncBoard(ctx.syncStatus);
+  if (retryingPaused && shouldRunAutomaticSync(ctx.syncStatus)) {
+    armSyncTimer(projectId, ctx, readSettings().gitSyncMinutes);
+  }
   if (!shouldRunAutomaticSync(ctx.syncStatus)) clearSyncTimer(ctx);
   const status = await gitStatusForRenderer(ctx);
   mainWindow?.webContents.send(CH.gitStatus, { projectId, ...status });

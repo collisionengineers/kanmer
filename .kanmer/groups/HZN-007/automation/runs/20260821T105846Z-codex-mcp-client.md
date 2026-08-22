@@ -659,3 +659,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T06:02:00Z — CORE-024 refreshed after origin/main b6c8eb02: merged into check-pr as 9e7ab629 and pushed. Local focused/core/GUI/typecheck/build/smoke/manual/scripts rails pass; broad HTTP retry retains Windows ETIMEDOUT/readiness timeout attempts, and mcpb/plugin parity checks fail outside scope. Hosted kanmer-gate PASS run 32555645841/job 96989232191; hosted verify FAIL same run/job 96989232096 at check-mcpb-sync parity. Ticket remains Review; no merge or cleanup.
+
+
+- 2026-08-22T06:07:00Z — CORE-024 review amendment 34044bcc pushed: CLI error annotations now use kanmer/gate [CODE] and exit-2 verdicts include infrastructureError:true, with focused/core/typecheck/build rails green. New hosted run 32556078470 (verify 96990290597, kanmer-gate 96990290443) was pending at readback; no hosted PASS claimed. Ticket remains Review.

@@ -250,3 +250,6 @@ Last handoff: 2026-08-22T05:30:03Z — Hosted verification correction for GUI-10
 
 
 - 2026-08-22T06:02:00Z — CORE-024 refreshed head 9e7ab629 after origin/main b6c8eb02; hosted kanmer-gate PASS and hosted verify FAIL at out-of-scope plugin parity are recorded in the durable run. Independent Review remains required.
+
+
+- 2026-08-22T06:07:00Z — CORE-024 amended to 34044bcc for the reviewed CLI error-contract fixes; fresh hosted run 32556078470 is pending, and independent Review remains required.

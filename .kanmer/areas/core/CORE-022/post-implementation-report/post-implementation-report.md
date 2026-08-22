@@ -38,12 +38,6 @@ The GUI pause/restore is covered by source inspection and all-workspace typechec
 - No new source commit or PR was created in this reconciliation lane because main already contains the implementation; creating an empty PR would fabricate work.
 - Independent root review should inspect the merged implementation and decide whether the retained real-board/Windows evidence is sufficient for verification. Author lane stops at Review if advanced.
 
-
-## Independent merged-main rerun — 2026-08-22T00:08:04.176Z
-
-The verifier reran the scoped deterministic rail from `main` at `af61144ce743f74b2aba92fb0778588b0b9bedd0`, with the implementation `d0f927a3f9aab7fa6f4716410138126f3ff1fc35` reachable (merge-base exit 0): focused IO/migration 28/28 exit 0, full core 263/263 exit 0, core typecheck exit 0, core build exit 0, and git diff --check exit 0. The unavailable 242-ticket fixture and live Windows file-lock/EPERM run remain INCONCLUSIVE; no broader root-rail or platform claim is made.
-
-
-## Independent merged-main rerun — 2026-08-22T00:08:18.382Z
+## Independent merged-main rerun — 2026-08-22T00:09:07.715Z
 
 The verifier reran the scoped deterministic rail from `main` at `af61144ce743f74b2aba92fb0778588b0b9bedd0`, with the implementation `d0f927a3f9aab7fa6f4716410138126f3ff1fc35` reachable (merge-base exit 0): focused IO/migration 28/28 exit 0, full core 263/263 exit 0, core typecheck exit 0, core build exit 0, and git diff --check exit 0. The unavailable 242-ticket fixture and live Windows file-lock/EPERM run remain INCONCLUSIVE; no broader root-rail or platform claim is made.

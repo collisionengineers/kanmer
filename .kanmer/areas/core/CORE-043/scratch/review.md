@@ -240,3 +240,8 @@ The literal kanmer-board protection inference remains an explicitly accepted ADR
 ## Required disposition
 
 Document the KANMER_BOARD_BRANCH repository-variable handoff, require observed branch equality with the requested destination, preserve paused/error state during refresh, and update troubleshooting.md plus generated manual. Then refresh the PR body/thread dispositions and request another independent review. No stage move or merge was performed.
+
+
+## GitHub review-thread disposition
+
+On 2026-08-22 the eight historical inline threads for findings already marked `fixed` or `accepted-risk` were resolved on PR #168. The four current-head blockers remain unresolved and are deferred to CORE-059, CORE-060, and CORE-061; no unresolved blocker was silenced.

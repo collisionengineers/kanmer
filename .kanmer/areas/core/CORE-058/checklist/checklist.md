@@ -8,4 +8,4 @@
 
 ## Evidence note
 
-Focused GUI Git 15/15 and full GUI 385/385 pass. Workspace typecheck/build, scripts 88/88, protocol 46/46, docs, normal-checkout plugin parity/check, and diff-check pass. The initial stale-core linked build failure is preserved in scratch. Installed-host, packaged-release, and retroactive history-cleanup evidence remain INCONCLUSIVE/deferred.
+Post-base-sync focused GUI Git 15/15, MCP source 17/17, workspace typecheck/build, and diff-check pass. Pre-sync full GUI 385/385, scripts 88/88, protocol 46/46, docs, and normal-checkout plugin parity/check also pass; merged-base normal-checkout plugin parity/check passes with artifact SHA `6057648D81FB4CCCAB629A0EE1C05C8716A564400302238857E785C70C485100`. The initial stale-core build failure and PR artifact-only conflict are preserved in scratch/report. Installed-host, packaged-release, and retroactive history-cleanup evidence remain INCONCLUSIVE/deferred.

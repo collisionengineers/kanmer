@@ -2,11 +2,11 @@
 
 ## Result
 
-CORE-054 closes the CORE-052 P1 in which a live mismatch could leave the cached branch looking protected and still enter the protected refusal loop. The refusal decision is now mismatch-aware: any live mismatch blocks both the protected refusal rename and the ordinary rename path, preserving the current preference and live Git state.
+CORE-054 closes the CORE-052 P1 in which a live mismatch could leave the cached branch looking protected and still enter the protected refusal loop. The refusal decision is now mismatch-aware: any live mismatch blocks both the protected refusal rename and the ordinary rename path, preserving the current preference and live Git state. The original protected-open-board requirement is retained, so a valid already-retargeted context does not spuriously enter the refusal path.
 
 ## Scope and files
 
-- apps/gui/src/main/index.ts: delegates protected refusal eligibility to the mismatch-aware predicate.
+- apps/gui/src/main/index.ts: delegates protected refusal eligibility to the mismatch-aware predicate while retaining the protected cached-context requirement.
 - apps/gui/src/main/kanmerGit.ts: adds shouldAttemptProtectedBranchRename, which fails closed when branchMismatch is true.
 - apps/gui/src/main/kanmerGit.test.ts: adds a real-Git regression that snapshots refs and worktree porcelain before the mismatch decision and verifies both remain unchanged afterward.
 
@@ -19,7 +19,7 @@ CORE-054 closes the CORE-052 P1 in which a live mismatch could leave the cached 
 
 ## Checks
 
-- npm run test -w @kanmer/gui -- --run src/main/kanmerGit.test.ts: exit 0, 20/20 PASS.
+- npm run test -w @kanmer/gui -- --run src/main/kanmerGit.test.ts: exit 0, 20/20 PASS on the final correction.
 - npm run check:manual: exit 0, manual current (22 chapters).
 - npm run verify:docs: exit 0.
 - npm run build:core: exit 0.

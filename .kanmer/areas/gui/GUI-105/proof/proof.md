@@ -12,3 +12,7 @@
 The merged Editor now consumes the shared documentPaths inventory, exposes exact nested/custom paths, preserves path identity through load/save/preview/conflict and dirty-switch flows, and keeps scratch/reference/assets outside the pipeline selector. The focused tests cover named-only, nested duplicate basenames, conventional-index preference, empty creation, exact save, dirty switching, and live inventory refresh.
 
 Manual visual GUI proof was unavailable in the headless environment and is explicitly not claimed.
+
+## Done-incomplete audit disposition — 2026-08-22
+
+Manual visual GUI-102 validation remains `INCONCLUSIVE` because no authorized interactive GUI session was available. It is not claimed as PASS. The automated and merged-main evidence already recorded covers the implemented document-path inventory behavior; no product failure was demonstrated and no remediation ticket is opened. The ticket remains `Done`.

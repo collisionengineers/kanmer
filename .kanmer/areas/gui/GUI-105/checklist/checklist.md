@@ -20,3 +20,12 @@
 - 2026-08-21 — Implemented exact document-path inventory selection in the GUI Editor. Core's authoritative TicketDocsInfo.documentPaths remains the only inventory source; selectors group only configured pipeline document types and retain exact paths through load/save/preview/conflict flows.
 - 2026-08-21 — Commit d64000dd1d84138a54ff952ed1c80f18d23c8055 on gui-105-document-path-inventory.
 - 2026-08-21 — Manual GUI-102 portable-connect visual verification is not available from this headless execution; no visual proof is claimed.
+
+## Done-incomplete audit disposition — 2026-08-22
+
+This audit compared the complete ticket packet, HZN-007 context, FRD-003 reference, current document gates, merged-main proof, checklist, and activity. The ticket remains `Done` with no recorded worktree or branch.
+
+- The only unchecked checklist line is manual visual verification of GUI-102's portable-connect research file. That evidence requires an authorized interactive GUI session unavailable in this headless lane and remains explicitly `INCONCLUSIVE`, not PASS.
+- Automated/focused GUI evidence and merged-main proof cover the implemented document-path inventory behavior. No product failure was demonstrated, so no remediation ticket is justified; GUI-096 and MCP-029 remain the related context links.
+
+No source files, checklist checkboxes, or board stage were changed by this audit.

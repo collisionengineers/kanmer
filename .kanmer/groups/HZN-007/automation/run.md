@@ -180,3 +180,6 @@
 
 
 2026-08-22T12:07:57Z — CORE-050 independently reviewed PASS at fc8e591e (IO22/22, combined core113/113, typecheck/build/plugin parity); PR #172 merged into CORE-049 base as 31e572dc. Removed only circular CORE-050 blocking edges so stacked parents can merge before merged-main verification; retained links and explicit external INCONCLUSIVE limits.
+
+
+2026-08-22T12:10:00Z — CORE-043 cumulative hosted rerun 32571224767 completed PASS: kanmer-gate and verify both success after removing circular CORE-048 block and refreshing parent traceability. Fresh review attestation still needs to supersede prior NEEDS-CHANGES; live protection mutation remains INCONCLUSIVE.

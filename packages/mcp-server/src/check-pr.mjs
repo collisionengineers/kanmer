@@ -7,7 +7,7 @@ import matter from "gray-matter";
 import {
   KanmerStore,
   boardStages,
-  getLinkGraph,
+  buildLinkIndex,
   lastStageId,
   evaluateMergeGate,
   resolveMergeGateTicket,
@@ -31,10 +31,12 @@ function parseArgs(argv) {
 function readPrEvent(value) {
   const pr = value?.pull_request;
   const head = pr?.head;
-  if (!pr || !head || !Number.isInteger(pr.number) || pr.number < 1) throw new Error("event is missing pull_request.number");
+  const base = pr?.base;
+  if (!pr || !head || !base || !Number.isInteger(pr.number) || pr.number < 1) throw new Error("event is missing pull_request.number or base");
   if (typeof head.sha !== "string" || !head.sha || typeof head.ref !== "string" || !head.ref) throw new Error("event is missing pull_request.head.sha or head.ref");
+  if (typeof base.sha !== "string" || !base.sha) throw new Error("event is missing pull_request.base.sha");
   if (pr.body !== null && pr.body !== undefined && typeof pr.body !== "string") throw new Error("pull_request.body must be a string or null");
-  return { number: pr.number, headSha: head.sha, branch: head.ref, body: pr.body ?? null };
+  return { number: pr.number, headSha: head.sha, baseSha: base.sha, branch: head.ref, body: pr.body ?? null };
 }
 
 function escapeCommandData(value) {
@@ -51,13 +53,32 @@ function parseReviewEvidence(raw) {
   try {
     const parsed = matter(raw);
     const data = parsed.data;
+    const nonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
     if (!data || typeof data !== "object") return { state: "invalid", reason: "frontmatter is not an object" };
     if (data.kind !== "review-attestation") return { state: "invalid", reason: 'kind must be "review-attestation"' };
+    if (!nonEmptyString(data.pr)) return { state: "invalid", reason: "pr must be a non-empty string" };
     if (typeof data.head_sha !== "string" || !isFullGitSha(data.head_sha)) return { state: "invalid", reason: "head_sha must be a full hexadecimal Git object id" };
+    if (data.verdict !== "pass" && data.verdict !== "needs-changes") return { state: "invalid", reason: 'verdict must be "pass" or "needs-changes"' };
+    if (!nonEmptyString(data.reviewer)) return { state: "invalid", reason: "reviewer must be a non-empty string" };
+    if (typeof data.independent !== "boolean") return { state: "invalid", reason: "independent must be boolean" };
+    if (!nonEmptyString(data.plan_hash)) return { state: "invalid", reason: "plan_hash must be a non-empty string" };
+    if (!nonEmptyString(data.ticket_updated)) return { state: "invalid", reason: "ticket_updated must be a non-empty string" };
+    if (!Array.isArray(data.findings)) return { state: "invalid", reason: "findings must be an array" };
+    const severities = new Set(["blocker", "major", "minor", "note"]);
+    const dispositions = new Set(["open", "fixed", "rejected-with-reason", "accepted-risk", "deferred-to-ticket"]);
+    for (const [index, finding] of data.findings.entries()) {
+      if (!finding || typeof finding !== "object") return { state: "invalid", reason: `findings[${index}] must be an object` };
+      if (typeof finding.id !== "string" || !/^F-\d{3,}$/u.test(finding.id)) return { state: "invalid", reason: `findings[${index}].id must be an F-### identifier` };
+      if (!severities.has(finding.severity)) return { state: "invalid", reason: `findings[${index}].severity is invalid` };
+      if (!nonEmptyString(finding.summary)) return { state: "invalid", reason: `findings[${index}].summary must be non-empty` };
+      if (!dispositions.has(finding.disposition)) return { state: "invalid", reason: `findings[${index}].disposition is invalid` };
+      if ((finding.disposition === "rejected-with-reason" || finding.disposition === "accepted-risk") && !nonEmptyString(finding.reason)) return { state: "invalid", reason: `findings[${index}].reason is required for ${finding.disposition}` };
+      if (finding.disposition === "deferred-to-ticket" && !nonEmptyString(finding.ticket)) return { state: "invalid", reason: `findings[${index}].ticket is required for deferred-to-ticket` };
+    }
     return {
       state: "valid",
       headSha: data.head_sha,
-      verdict: typeof data.verdict === "string" ? data.verdict : undefined,
+      verdict: data.verdict,
       details: data,
     };
   } catch (error) {
@@ -71,9 +92,14 @@ async function phase2Evidence(store, pr, ticketId) {
   const reviewStageId = boardStages().find((stage) => stage.name.toLowerCase() === "review")?.id;
   if (!reviewStageId) throw new Error("board has no semantic review stage");
   const finalStageId = lastStageId(board);
-  const graph = await getLinkGraph(store, ticketId);
-  const all = await store.listItems({ includeArchived: true });
+  const listed = await store.listItemsWithWarnings({ includeArchived: true });
+  if (listed.warnings.length > 0) {
+    const detail = listed.warnings.map((warning) => `${warning.file}: ${warning.message}`).join("; ");
+    throw new Error(`board item files could not be read: ${detail}`);
+  }
+  const all = listed.items;
   const byId = new Map(all.map((item) => [item.id, item]));
+  const graph = buildLinkIndex(all).get(ticketId) ?? { id: ticketId, links: [], backlinks: [], blocks: [], blockedBy: [] };
   // Only the derived blockedBy direction is used. The target's outgoing
   // blocks[] is intentionally never treated as its prerequisite list.
   const blockerIds = new Set(graph.blockedBy);
@@ -89,7 +115,7 @@ async function phase2Evidence(store, pr, ticketId) {
   const commits = item.commits ?? [];
   const commitEvidence = commits.length === 0
     ? []
-    : (await assertGitRepository({ cwd: process.cwd() }), await collectCommitReachability({ commits, headSha: pr.headSha, cwd: process.cwd() }));
+    : (await assertGitRepository({ cwd: process.cwd() }), await collectCommitReachability({ commits, headSha: pr.headSha, baseSha: pr.baseSha, cwd: process.cwd() }));
   return { reviewStageId, finalStageId, blockers, review, commits: commitEvidence };
 }
 

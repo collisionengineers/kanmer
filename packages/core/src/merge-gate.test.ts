@@ -107,6 +107,7 @@ describe("KanmerStore.getOpenQuestionCount and evaluateMergeGate", () => {
       {
         code: "OPEN_QUESTIONS",
         level: "error",
+        outcome: "fail",
         message: `Kanmer ticket ${ticket.id} has 1 open question (1/2 checked)`,
       },
     ]);
@@ -119,7 +120,7 @@ describe("KanmerStore.getOpenQuestionCount and evaluateMergeGate", () => {
       branch: "CORE-404-fix",
       body: "Kanmer: CORE-405",
     });
-    expect(missing.findings[0]).toMatchObject({ code: "NO_TICKET", level: "error" });
+    expect(missing.findings[0]).toMatchObject({ code: "NO_TICKET", level: "error", outcome: "fail" });
 
     const ambiguous = await evaluateMergeGate(store, {
       number: 2,

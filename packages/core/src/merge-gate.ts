@@ -124,7 +124,7 @@ function noTicket(pr: MergeGatePrInput, message: string): MergeGateResult {
     source: null,
     pr,
     questions: null,
-    findings: [{ code: "NO_TICKET", level: "error", message } as MergeGateFinding],
+    findings: [{ code: "NO_TICKET", level: "error", outcome: "fail", message }],
   };
 }
 
@@ -278,7 +278,7 @@ export async function evaluateMergeGate(store: KanmerStore, pr: MergeGatePrInput
 
   if (!phase2) {
     const findings: MergeGateFinding[] = [];
-    if (questions.open > 0) findings.push({ code: "OPEN_QUESTIONS", level: "error", message: `Kanmer ticket ${resolved.ticketId} has ${questions.open} open question${questions.open === 1 ? "" : "s"} (${questions.checked}/${questions.total} checked)` } as MergeGateFinding);
+    if (questions.open > 0) findings.push({ code: "OPEN_QUESTIONS", level: "error", outcome: "fail", message: `Kanmer ticket ${resolved.ticketId} has ${questions.open} open question${questions.open === 1 ? "" : "s"} (${questions.checked}/${questions.total} checked)` });
     return { ok: mergeGateOk(findings), ticketId: resolved.ticketId, source: resolved.source, pr, questions, findings };
   }
 

@@ -39,7 +39,11 @@ evidence into the pure evaluator. Missing, malformed, or stale review evidence
 and unreachable historical commits are compatibility-period warnings; stage and
 live-dependency failures remain errors. This keeps the movement-gate contract
 and the GitHub merge contract explicit instead of silently broadening the
-`questions-resolved` parser.
+`questions-resolved` parser. Review attestations must satisfy the complete
+machine schema (including verdict, reviewer, independence, plan/ticket
+timestamps, and finding dispositions); recorded commit ids may be unique
+hexadecimal abbreviations, but each must be in the PR's `base..head` ancestry
+range rather than merely an ancestor of the head.
 
 `## Parked (explicitly deferred)` is promoted from a suggested heading to the **normative** escape. A question moved beneath it with a reason clears the gate, which is what makes kanmer-research's "answered or explicitly parked" mechanically true rather than aspirational.
 

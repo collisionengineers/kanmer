@@ -826,3 +826,10 @@ Last handoff: 2026-08-22T22:13Z — GUI-119 independently reviewed PASS at exact
 
 
 2026-08-22T22:14Z — GUI-119 independently reviewed PASS by core041 at exact head 0403684e; PR #217 merged non-squash into CORE-043 parent as 7654a281. Focused provider 56/56, connect 35/35, typecheck/build/manual/docs/diff PASS; full GUI and live provider/remote host remain INCONCLUSIVE. Ticket moved Review→Verifying, released, and GUI-119→CORE-043 block removed.
+
+
+## CORE-088 independent review and merge (2026-08-22T22:22:06.273Z)
+
+- Exact independent review: PASS for PR #218 head 8d62176216d8c886779217fd846149f0b04b1655 against base f2e694a4f9ce689c0949814ea88c2910ddb93f37; review attestation is SHA-bound in CORE-088 scratch/review.md with plan hash 1a709b066d0678b1.
+- Evidence: core IO 32/32, MCP source 32/32, GUI Git 31/31, typecheck, docs verification, diff-check, and plugin build all exited 0. PR #218 had no hosted checks; live DNS/rebinding, Windows cross-device/EPERM, packaged MCPB/provider, and installed-host evidence remain explicitly INCONCLUSIVE.
+- Merge: PR #218 merged non-squash into core-026-project-declared-sources as 973bcf9340aa2c627c717a00f1bcf0f6d3fca242; implementation head 8d62176216d8c886779217fd846149f0b04b1655 is recorded and reachable. CORE-088 moved Review -> Verifying after fresh get_doc_gates pass.

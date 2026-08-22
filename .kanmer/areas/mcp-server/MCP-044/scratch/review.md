@@ -29,7 +29,7 @@ findings:
     summary: "Undefined check:diff script"
     disposition: accepted-risk
     reason: "The repository has no check:diff script; this preserved packet failure is outside the ticket's production scope and did not gate the authoritative hosted verify."
-  - id: F-EXTERNAL
+  - id: F-005
     severity: minor
     summary: "Live provider and hosted handoff proof"
     disposition: accepted-risk

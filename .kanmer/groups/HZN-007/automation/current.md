@@ -740,3 +740,6 @@ Last handoff: 2026-08-22T19:01:38.547Z — CORE-086 artifact remediation: taken 
 
 
 2026-08-22T19:18Z — GUI-112 implementation handoff: commit 182cea58c0e5bb9375498edb72fc48c39eca425f is pushed as PR #207 targeting core-043-protection-retarget. Checklist 11/11 and post-implementation report are written/read back. Focused GUI Git + production sync 30/30, full GUI 48 files/412 tests, all-workspace typecheck, core/server build, GUI build, manual/docs, scripts 89/89, and diff-check pass. Linked-worktree plugin:check exit 1 is preserved as documented INCONCLUSIVE. Hosted protection/Actions-variable/multi-machine proof remains INCONCLUSIVE; no external state changed. GUI-112 is ready for independent review; author will not self-review, merge, verify, or clean up.
+
+
+19:26 UTC — fresh PR #168 review at 30ed38aa surfaced new valid findings 3836808784/3836808786/3836808787. Created blocking GUI-113 (existing/native provider registration reconciliation) and GUI-114 (shell-safe branch env serialization). CORE-043 remains held; no threads resolved.

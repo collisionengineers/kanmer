@@ -3,6 +3,50 @@ kind: review-attestation
 pr: "168"
 head_sha: "30ed38aa7052ccf01a34d6859e67ba3e5deee6b5"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: needs-changes
+reviewer: "codex-root-current-head-audit"
+independent: true
+plan_hash: "2026-08-22T19:30:00Z"
+ticket_updated: "2026-08-22T19:30:00Z"
+findings:
+  - id: F-026
+    severity: blocker
+    summary: "Saved board-branch changes reconcile existing provider registrations"
+    disposition: deferred-to-ticket
+    ticket: "GUI-113"
+    reason: "Current PR #168 thread 3836808784 shows that changing the saved branch leaves existing Codex/Claude/OpenCode registrations stale; GUI-113 owns reconciliation or an explicit reconnect contract."
+  - id: F-027
+    severity: blocker
+    summary: "Native provider plugin descriptors carry the configured board branch"
+    disposition: deferred-to-ticket
+    ticket: "GUI-113"
+    reason: "Current PR #168 thread 3836808786 shows connectNativePlugin returns before applying boardBranch, so Grok/Antigravity descriptors omit KANMER_BOARD_BRANCH; GUI-113 owns the fix."
+  - id: F-028
+    severity: blocker
+    summary: "Board-branch environment serialization is shell-safe"
+    disposition: deferred-to-ticket
+    ticket: "GUI-114"
+    reason: "Current PR #168 thread 3836808787 shows the Claude registration command interpolates raw branch text into cmd.exe; GUI-114 owns argv-safe serialization or complete escaping."
+  - id: F-025
+    severity: minor
+    summary: "Live GitHub protection and variable mutation"
+    disposition: accepted-risk
+    reason: "No authorized live protection mutation or real multi-machine handoff was available; ADR-0016 keeps this administrator-owned external boundary."
+---
+
+## Current-head independent review — NEEDS-CHANGES — 2026-08-22
+
+Reviewed exact cumulative PR #168 head 30ed38aa7052ccf01a34d6859e67ba3e5deee6b5 against main base 34245be039e8fd8395b5e31835602c54e62e98a4. The previous ten findings are covered by independently merged GUI-112 and MCP-044, but a fresh automated review at this exact head found three new blocking provider-registration/shell-safety issues. They are recorded above and linked to GUI-113 and GUI-114. No PR thread is resolved and no protected merge is authorized until those tickets are independently reviewed, merged into the cumulative branch, and the exact head is re-reviewed.
+
+Verdict: NEEDS-CHANGES. CORE-043 remains in Review and held.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "168"
+head_sha: "30ed38aa7052ccf01a34d6859e67ba3e5deee6b5"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: pass
 reviewer: "codex-root-independent"
 independent: true

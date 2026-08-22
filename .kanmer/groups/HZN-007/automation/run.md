@@ -186,3 +186,6 @@
 
 
 2026-08-22T12:10:43Z — CORE-049 cumulative PR #171 independently reviewed PASS at 31e572dc; non-squash merged into CORE-046 branch as 311c6eef4d6b5c1e6acea1b7e6d779660f792cea. Child CORE-050 merge lineage retained; merged-main verification still pending.
+
+
+2026-08-22T12:16:00Z — CORE-046 cumulative PASS at 311c6eef (IO22/22, core113/113, source14/14, typecheck/build/plugin parity); stale PR167 threads resolved; PR #167 independently merged into CORE-045 branch as 0f9af92ba. Hosted run for exact stacked head absent and remains INCONCLUSIVE.

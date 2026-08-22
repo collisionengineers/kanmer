@@ -1,3 +1,47 @@
+---
+kind: review-attestation
+pr: "163"
+head_sha: "a1a4fe629d71d149b64fd3e57979a196176b875a"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: pass
+reviewer: "codex-root-independent"
+independent: true
+plan_hash: "2026-08-22T19:31:44Z"
+ticket_updated: "2026-08-22T19:31:44Z"
+findings:
+  - id: F-001
+    severity: blocker
+    summary: "Source transport lifecycle and redirect/cache safeguards"
+    disposition: fixed
+    reason: "The cumulative tree contains CORE-081 and CORE-085 fixes; rebuilt source tests pass 26/26, including validator scoping, cancellation, forced refresh, budgets, link caps, and uncached 304 handling."
+  - id: F-002
+    severity: blocker
+    summary: "Committed MCP plugin artifact matches cumulative sources"
+    disposition: fixed-in-ticket
+    ticket: "CORE-086"
+    reason: "CORE-086 is merged into the exact a1a4fe62 cumulative head; its committed standalone artifact refresh is the recorded remediation for hosted mcpb parity."
+  - id: F-003
+    severity: minor
+    summary: "Packaged MCPB CLI parity check unavailable locally"
+    disposition: accepted-risk
+    reason: "The local @anthropic-ai/mcpb CLI is absent, so check-mcpb-sync cannot run here; hosted verify evidence and CORE-086's plugin/mcpb packet are retained without weakening the check."
+  - id: F-004
+    severity: minor
+    summary: "Live provider/network behavior"
+    disposition: accepted-risk
+    reason: "No external provider or network estate was mutated; deterministic source tests prove the bounded local contract only."
+---
+
+## Fresh cumulative independent review — PASS — 2026-08-22
+
+Reviewed the exact CORE-026 cumulative head a1a4fe629d71d149b64fd3e57979a196176b875a, which includes CORE-081, CORE-085, and CORE-086 non-squash merges, against main base 34245be039e8fd8395b5e31835602c54e62e98a4. The source transport/cache lifecycle fixes and redirect/forced-refresh remediations are present; the committed MCP artifact refresh is present at the exact head.
+
+Evidence: rebuilt core and MCP server successfully; node --test packages/mcp-server/src/sources.test.mjs passed 26/26; npm test -w @kanmer/core -- --run passed 303/303; core and MCP typechecks passed; npm run test:scripts passed 88/88; git diff --check passed. The first source-test attempt against stale dist failed and is preserved as an environment observation; rebuilding the exact cumulative tree produced the authoritative 26/26 pass. Local MCPB CLI parity is unavailable, and live provider/network behavior remains explicitly INCONCLUSIVE.
+
+Verdict: PASS for CORE-081's cumulative implementation. CORE-081 remains in Review with its dependency edge to CORE-026 until CORE-082 and CORE-083 are independently completed; do not merge or move the parent from this review step.
+
+--- Prior review history ---
+
 test
 
 ## Independent review — NEEDS-CHANGES

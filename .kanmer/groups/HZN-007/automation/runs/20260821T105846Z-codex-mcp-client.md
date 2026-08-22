@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T02:01:53.875Z
+updated_at: 2026-08-22T02:06:18.080Z
 lane_limit: 3
 stop_reason:
 ---
@@ -561,3 +561,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T01:58:21.117Z — PR #145 stacked run 32544808992 initially failed before verification during npm ci: Electron install hit ECONNRESET and npm cleanup reported EPERM. This is an external dependency-download failure, not a code result; the failed run is retained and the failed job was rerun in place.
 
 - 2026-08-22T02:01:53.875Z — merged-main follow-up after PR #145 merge 8a9eee57: test:scripts 80/80, MCP smoke 224/224, MCP server typecheck, and hosted Windows verify run 32544808992/job 96961421442 PASS. A direct local core suite remained INCONCLUSIVE/FAIL on the pre-existing migration test timeout with ENOTEMPTY cleanup; no assertion was weakened and this is retained for CORE-022.
+
+
+- 2026-08-22T02:06:18.080Z — MCP-041 merged-main verification and closeout complete: PR #145 merge 8a9eee57; original 99d3f259 and stack commits reachable. Main build, supervisor 7/7, package test:http 61/61, package typecheck and diff-check passed. Hosted run 32544808992 attempt 1 npm ci ECONNRESET/EPERM failure preserved; attempt 2 job 96961421442 passed in 2m17s. Proof/checklist/report finalized, Verifying→Done passed, exact .worktrees/mcp-041 and local/remote mcp-041-supervisor-retry removed, fetch/worktree prune passed, and release completed. No MCPB/provider/remote acceptance claim.

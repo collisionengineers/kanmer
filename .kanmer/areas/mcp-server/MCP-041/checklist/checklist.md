@@ -35,7 +35,7 @@ Verified after PR #145 merge `8a9eee57e1779f83f30504851e1bff0bf167247a`: build e
 - [x] proof.md finalised (PR URL + merge date appended)
 - [x] Moved to final stage
 - [x] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; git worktree remove .worktrees/mcp-041
-- [ ] git branch -d mcp-041-supervisor-retry (-D if squash/rebase-merged)
-- [ ] git fetch --prune + git worktree prune
-- [ ] take_ticket action: release
+- [x] cd out of worktree; git worktree remove .worktrees/mcp-041
+- [x] git branch -d mcp-041-supervisor-retry (-D if squash/rebase-merged)
+- [x] git fetch --prune + git worktree prune
+- [x] take_ticket action: release

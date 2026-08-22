@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T01:56:57.081Z
+updated_at: 2026-08-22T02:06:18.080Z
 ---
 
 # Current auto run — HZN-007
@@ -156,3 +156,6 @@ Last handoff: 2026-08-22T01:55:42.594Z — CORE-041 is stacked in PR #145 after 
 
 
 Last handoff: 2026-08-22T01:56:57.081Z — GUI-075 is Review on PR #142 head 1a04be90 with deterministic local rails PASS; independent review holds merge on the pre-existing GitHub Windows path-alias failure deferred to CORE-032. Live provider and visual evidence are INCONCLUSIVE.
+
+
+Last handoff: 2026-08-22T02:06:18.080Z — MCP-041 is Done/released after merged-main proof and exact worktree/branch cleanup. PR #145 merge 8a9eee57; hosted verify attempt 2 job 96961421442 passed in 2m17s; transient npm ci ECONNRESET/EPERM attempt 1 preserved.

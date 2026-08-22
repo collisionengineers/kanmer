@@ -79,6 +79,7 @@ import {
   type KanmerGitStatus,
 } from "./kanmerGit.js";
 import { armAutomaticSync } from "./syncTimer.js";
+import { retryBoardBranch } from "./syncBranch.js";
 import {
   connectAgent,
   disconnectAgent,
@@ -656,13 +657,20 @@ async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number)
   const settings = await setKanmerGitPreferences(kanmerBranch, gitSyncMinutes);
   for (const [projectId, ctx] of contexts) {
     const { boardRoot, branch } = ctx.syncStatus;
-    if (ctx.syncStatus.available && boardRoot && branch !== settings.kanmerBranch) {
-      const renamed = await renameBoardBranch(boardRoot, settings.kanmerBranch);
-      // A failed rename leaves the worktree on its old branch, so keep
-      // reporting that one — the board still works, it just did not move.
-      ctx.syncStatus = renamed.ok
-        ? { ...ctx.syncStatus, branch: settings.kanmerBranch, error: renamed.error, paused: false }
-        : { ...ctx.syncStatus, error: renamed.error, paused: true };
+    if (boardRoot && branch !== settings.kanmerBranch) {
+      if (ctx.syncStatus.available) {
+        const renamed = await renameBoardBranch(boardRoot, settings.kanmerBranch);
+        // A failed rename leaves the worktree on its old branch, so keep
+        // reporting that one — the board still works, it just did not move.
+        ctx.syncStatus = renamed.ok
+          ? { ...ctx.syncStatus, branch: settings.kanmerBranch, error: renamed.error, paused: false }
+          : { ...ctx.syncStatus, error: renamed.error, paused: true };
+      } else {
+        // A paused board has no active rename path, but its retry must follow
+        // the setting that is now saved. Retaining the old branch here makes
+        // the next retry repair the wrong attachment.
+        ctx.syncStatus = { ...ctx.syncStatus, branch: retryBoardBranch(branch, settings.kanmerBranch) };
+      }
       mainWindow?.webContents.send(CH.gitStatus, { projectId, ...(await gitStatusForRenderer(ctx)) });
     }
     armAutomaticSync(ctx, ctx.syncStatus.available, settings.gitSyncMinutes, () => void syncProject(projectId));
@@ -720,7 +728,8 @@ async function syncProject(projectId: string): Promise<KanmerGitIpcStatus> {
   // that state retry the in-place attachment first; syncBoard deliberately
   // refuses unavailable statuses so a repair cannot be discovered otherwise.
   if (!ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
-    ctx.syncStatus = await ensureBoardWorktree(ctx.sourceRoot, ctx.syncStatus.branch);
+    const branch = retryBoardBranch(ctx.syncStatus.branch, readSettings().kanmerBranch);
+    ctx.syncStatus = await ensureBoardWorktree(ctx.sourceRoot, branch);
     if (ctx.syncStatus.available) {
       armAutomaticSync(ctx, true, readSettings().gitSyncMinutes, () => void syncProject(projectId));
     }

@@ -23,3 +23,9 @@
 - [x] Merged-main verification at origin/main fdaededc completed; all recorded commits reachable.
 - [x] Deterministic core/source/type/script/docs/skills/agents/diff rails recorded in proof.md; one HTTP child timeout preserved INCONCLUSIVE.
 - [ ] Independent re-review or new feature work is not part of verification.
+
+## Closeout
+
+- [x] Proof written and read back for merged origin/main fdaededc.
+- [x] PR #165 confirmed MERGED on 2026-08-22T16:51:48Z.
+- [ ] Worktree and branch cleanup pending; release_ticket follows cleanup.

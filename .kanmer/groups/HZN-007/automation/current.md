@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T13:55:01.519Z
+updated_at: 2026-08-22T13:55:56.217Z
 ---
 
 # Current auto run — HZN-007
@@ -498,3 +498,6 @@ Last handoff: 2026-08-22T13:53:29.552Z — CORE-059 independently reviewed exact
 ## CORE-062 assignment — 2026-08-22T13:56Z
 
 Prepared packet/gates and CORE-058 linked context read. Took CORE-062 without force on branch core-062-attachment-ignore / worktree .worktrees/core-062, based on cumulative CORE-044 head 3c0706627cc73038d91a624e5d494d0148dce4c4. Scope is limited to local/remote attachment-path board-worktree ignore reconciliation and real-Git regressions; no source-fetch, artifact, provider, or historical cleanup changes.
+
+
+2026-08-22T13:56:00Z — CORE-059 independent PASS at 835f9f51; PR #182 merged into CORE-043 as 94f7094b and CORE-059 moved Verifying; block edge removed. CORE-043 remains blocked by CORE-060/CORE-061 (061 merged/Verifying; 060 queued). CORE-058 remains NEEDS-CHANGES with CORE-062/063 children.

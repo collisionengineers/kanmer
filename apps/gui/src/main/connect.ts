@@ -336,17 +336,40 @@ export async function removeBundledSkillsOnly(
  * registered and kept the AGENTS.md block alive for a host never connected.
  */
 async function isRegistered(provider: AgentProvider, root: string): Promise<boolean> {
-  if (provider.register.kind !== "configFile") return false;
-  const file = resolveConfigPath(provider.register.configPath, root);
+  const registration = provider.register;
+  const configPath = registration.kind === "configFile"
+    ? registration.configPath
+    : registration.kind === "cli"
+      ? registration.configPath
+      : provider.install.kind === "plugin" && provider.install.legacyRegistrationState
+        ? provider.install.legacyConfigPath
+        : undefined;
+  const registrationState = registration.kind === "configFile"
+    ? registration.registrationState
+    : registration.kind === "cli"
+      ? registration.registrationState
+      : provider.install.kind === "plugin" ? provider.install.legacyRegistrationState : undefined;
+  if (!configPath || !registrationState) return false;
+  const file = resolveConfigPath(configPath, root);
   if (!existsSync(file)) return false;
   try {
     // Indeterminate counts as registered here: a malformed configuration must
     // retain the shared instructions rather than have them pulled out from
     // under a host that may well still be connected.
-    return provider.register.registrationState(await readFile(file, "utf8")) !== "absent";
+    return registrationState(await readFile(file, "utf8")) !== "absent";
   } catch {
     return true;
   }
+}
+
+/** Any connected host may still rely on the shared AGENTS.md instructions. */
+async function hasRegisteredAgentPeer(id: ProviderId, root: string): Promise<boolean> {
+  const peers = (['codex', 'claude', 'opencode', 'grok', 'antigravity'] as ProviderId[])
+    .filter((peerId) => peerId !== id)
+    .map((peerId) => providerById(peerId))
+    .filter((peer): peer is AgentProvider => peer !== undefined);
+  for (const peer of peers) if (await isRegistered(peer, root)) return true;
+  return false;
 }
 
 /**
@@ -643,6 +666,33 @@ function parseFunctionalIdentity(output: string): {
   return null;
 }
 
+/**
+ * Prevent a legacy project registration from satisfying the native-plugin
+ * functional proof. It is restored byte-for-byte before cleanup (or on every
+ * failure), so a proof cannot silently consume user state.
+ */
+async function withLegacyRegistrationDisabled<T>(
+  provider: AgentProvider,
+  projectRoot: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  if (provider.install.kind !== "plugin") return run();
+  const config = resolveConfigPath(provider.install.legacyConfigPath, projectRoot);
+  if (!existsSync(config)) return run();
+  const existing = await readFile(config, "utf8");
+  const state = provider.install.legacyRegistrationState?.(existing);
+  if (state === "indeterminate") throw new Error(`Cannot isolate malformed ${provider.label} legacy registration for functional proof`);
+  if (state !== "registered") return run();
+  const disabled = provider.install.legacyConfigUnmerge(existing);
+  if (disabled === existing) throw new Error("Cannot isolate Antigravity legacy registration for functional proof");
+  await writeAtomic(config, disabled);
+  try {
+    return await run();
+  } finally {
+    await writeAtomic(config, existing);
+  }
+}
+
 function commandText(result: { stdout: string; stderr: string }): string {
   return (result.stdout || result.stderr || "").trim();
 }
@@ -668,8 +718,8 @@ async function retireLegacyPluginState(
   }
   await removeBundledSkillsOnly(projectRoot, legacy.legacySkillsDir);
   notes.push(`legacy copied skills removed from ${legacy.legacySkillsDir}; bundled copied skills removed`);
-  if (await hasRegisteredCopySkillsPeer(provider.id, projectRoot)) {
-    notes.push("AGENTS.md block retained for another connected host (copy-skills peer)");
+  if (await hasRegisteredAgentPeer(provider.id, projectRoot)) {
+    notes.push("AGENTS.md block retained for another connected host");
   } else {
     await dropAgentsBlock(projectRoot);
     notes.push("AGENTS.md block reconciled; no connected copy-skills host remains");
@@ -764,7 +814,7 @@ async function connectNativePlugin(
     const functionalArgv = argv?.functional(projectRoot, boardRoot);
     const functionalCommand = functionalArgv ? nativeCommandText(functionalArgv) : spec.functionalCommand(projectRoot);
     lastCommand = functionalCommand;
-    const functional = await execute(functionalCommand, functionalArgv);
+    const functional = await withLegacyRegistrationDisabled(provider, projectRoot, () => execute(functionalCommand, functionalArgv));
     const functionalOutput = `${functional.stdout}\n${functional.stderr}`.trim();
     const expected = await expectedProjectIdentity(boardRoot, projectRoot);
     const proof = parseFunctionalIdentity(functionalOutput);
@@ -1101,7 +1151,7 @@ export async function disconnectAgent(
           cleanupNotes.push("bundled copied skills removed");
         }
       }
-      const peerRemains = await hasRegisteredCopySkillsPeer(id, projectRoot);
+      const peerRemains = await hasRegisteredAgentPeer(id, projectRoot);
       if (peerRemains) {
         cleanupNotes.push("AGENTS.md block retained for another connected host");
       } else {

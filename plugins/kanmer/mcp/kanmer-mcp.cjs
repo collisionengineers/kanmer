@@ -38742,6 +38742,27 @@ var DISPATCH_TASKS = Object.freeze([
 function dispatchTaskById(id) {
   return DISPATCH_TASKS.find((t) => t.id === id);
 }
+function dispatchDeliverableProven(taskId, info, item) {
+  if (!taskId || !info) return false;
+  const has = (type) => (info.counts[type] ?? 0) > 0;
+  const hasPath = (path122) => info.documentPaths.some((candidate) => candidate.replace(/\\/g, "/") === path122);
+  switch (taskId) {
+    case "research-quick":
+      return has("research");
+    case "research-deep":
+      return has("research") && hasPath("research/summary.md");
+    case "files":
+      return has("files");
+    case "plan":
+      return has("plan") && has("checklist");
+    case "execute":
+      return has("checklist") && info.checklist !== null && info.checklist.total > 0 && info.checklist.checked === info.checklist.total && has("post-implementation-report") && (item?.prs?.length ?? 0) > 0;
+    case "verify":
+      return has("proof");
+    default:
+      return false;
+  }
+}
 function taskFeasibility(taskId, ctx) {
   const has = (type) => (ctx.docCounts[type] ?? 0) > 0;
   switch (taskId) {
@@ -38808,6 +38829,7 @@ var DispatchSupervisor = class {
     this.now = options2.now ?? Date.now;
     this.sink = options2.statusSink ?? (() => void 0);
     this.recorder = options2.recordTerminal ?? (() => void 0);
+    this.verifier = options2.verifyDeliverable;
     this.env = options2.env ?? process.env;
     if (!Number.isInteger(this.maxActive) || this.maxActive < 1) throw new Error("maxActive must be a positive integer");
     if (!Number.isFinite(this.defaultTimeoutMs) || this.defaultTimeoutMs < 1) throw new Error("defaultTimeoutMs must be positive");
@@ -38825,6 +38847,7 @@ var DispatchSupervisor = class {
   now;
   sink;
   recorder;
+  verifier;
   env;
   async start(request) {
     const provider = dispatchProviderById(request.provider);
@@ -38908,9 +38931,7 @@ var DispatchSupervisor = class {
       if (handle.terminal) return;
       handle.terminal = true;
       clearTimeout(handle.timer);
-      if (handle.status.state === "running") handle.status.state = code === 0 ? "done" : "failed";
-      handle.status.exitCode = code;
-      this.finish(lock, handle);
+      void this.finishClose(lock, handle, code);
     });
     this.emit(handle);
     return { ...status };
@@ -38953,6 +38974,25 @@ var DispatchSupervisor = class {
   }
   emit(handle) {
     this.sink({ ...handle.status, tail: handle.tail.slice(-MAX_TAIL_LINES), logPath: handle.logPath });
+  }
+  async finishClose(lock, handle, code) {
+    if (handle.status.state === "running") {
+      if (code === 0 && handle.status.deliverable) {
+        let proven = false;
+        try {
+          proven = this.verifier ? await this.verifier({ ...handle.status, exitCode: code }, handle.tail.slice(-MAX_TAIL_LINES)) : false;
+        } catch (error2) {
+          handle.status.reason = `deliverable-check-failed: ${error2 instanceof Error ? error2.message : String(error2)}`;
+        }
+        if (proven) handle.status.state = "done";
+        else if (!handle.status.reason) handle.status.reason = this.verifier ? "deliverable-unproven" : "deliverable-verification-unavailable";
+        if (!proven) handle.status.state = "failed";
+      } else {
+        handle.status.state = code === 0 ? "done" : "failed";
+      }
+    }
+    handle.status.exitCode = code;
+    this.finish(lock, handle);
   }
   finish(lock, handle) {
     handle.status.endedAt = this.now();
@@ -41879,7 +41919,8 @@ function createKanmerMcpServer(policy = "local-stdio") {
     maxTimeoutMs: dispatchPolicy.maxTimeoutMs,
     recordTerminal: async (status, tail) => {
       await store.appendScratch(status.ticketId, "dispatch", dispatchTerminalSummary(status, tail));
-    }
+    },
+    verifyDeliverable: async (status) => dispatchDeliverableProven(status.task, await store.getTicketDocsInfo(status.ticketId), await store.getItem(status.ticketId))
   });
   const registerTool = server.registerTool.bind(server);
   server.registerTool = ((name, config2, ...args) => {

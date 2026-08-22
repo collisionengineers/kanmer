@@ -64,6 +64,9 @@ export type RegisterSpec =
       kind: "cli";
       addCommand: (inv: Invocation, root: string) => string;
       removeCommands: (root: string) => string[];
+      /** Optional project file that proves this CLI host remains connected. */
+      configPath?: string;
+      registrationState?: (existing: string) => RegistrationState;
     }
   | {
       kind: "configFile";
@@ -137,6 +140,7 @@ export type InstallSpec =
        /** State written by older Kanmer releases; retired after plugin proof. */
        legacyConfigPath: string;
        legacyConfigUnmerge: (existing: string) => string;
+       legacyRegistrationState?: (existing: string) => RegistrationState;
        legacySkillsDir: string;
        /**
         * Optional argv-native lifecycle. Providers with user-controlled paths
@@ -803,6 +807,8 @@ export const PROVIDERS: AgentProvider[] = [
         "claude mcp remove kanmer -s project",
         "claude mcp remove kanmer -s user", // stale user-scope entry older versions wrote
       ],
+      configPath: ".mcp.json",
+      registrationState: (existing) => jsonRegistrationState(existing, "mcpServers"),
     },
     install: {
       kind: "marketplace",
@@ -865,6 +871,7 @@ export const PROVIDERS: AgentProvider[] = [
       descriptorPath: (root) => join(root, "mcp", "claude.mcp.json"),
       legacyConfigPath: STALENESS_PROVIDER_PATHS.grok.registrationFile,
       legacyConfigUnmerge: tomlMcpServersUnmerge,
+      legacyRegistrationState: (existing) => tomlRegistrationState(existing),
       legacySkillsDir: STALENESS_PROVIDER_PATHS.grok.skillsDir,
     },
     dispatch: true,
@@ -901,6 +908,7 @@ export const PROVIDERS: AgentProvider[] = [
       descriptorPath: (root) => join(root, "mcp_config.json"),
       legacyConfigPath: STALENESS_PROVIDER_PATHS.antigravity.registrationFile,
       legacyConfigUnmerge: mcpServersUnmerge,
+      legacyRegistrationState: (existing) => jsonRegistrationState(existing, "mcpServers"),
       legacySkillsDir: STALENESS_PROVIDER_PATHS.antigravity.skillsDir,
       argv: {
         version: () => ({ file: "agy", args: ["--version"] }),

@@ -28,6 +28,7 @@ import {
   resolveProofTypes,
   serialiseItem,
   DispatchSupervisor,
+  dispatchDeliverableProven,
   dispatchTaskById,
   taskFeasibility,
   takeTicketPromptText,
@@ -360,6 +361,8 @@ export function createKanmerMcpServer(policy: ExposurePolicy = "local-stdio"): M
     recordTerminal: async (status, tail) => {
       await store.appendScratch(status.ticketId, "dispatch", dispatchTerminalSummary(status, tail));
     },
+    verifyDeliverable: async (status) =>
+      dispatchDeliverableProven(status.task, await store.getTicketDocsInfo(status.ticketId), await store.getItem(status.ticketId)),
   });
   const registerTool = server.registerTool.bind(server);
   // All mutating tool schemas carry transport metadata at their call boundary.

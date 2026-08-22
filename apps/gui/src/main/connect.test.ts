@@ -143,12 +143,10 @@ describe("registration ownership (GUI-079)", () => {
     expect(grokConfig).toContain("mcp_servers.linear");
   });
 
-  it("a Claude-only .mcp.json no longer makes grok count as a connected host", async () => {
-    // `isRegistered` read `mcpServers.kanmer` out of `.mcp.json` to decide
-    // whether *grok* was connected, so every Claude-registered project reported
-    // grok connected and kept the AGENTS.md block alive for a host that was
-    // never connected. Fixing the unmerge without fixing the read would have
-    // been half a fix.
+  it("retains the shared block while Claude's project registration is connected", async () => {
+    // The shared block belongs to every connected host. A native-plugin
+    // cleanup must therefore notice Claude's project registration even though
+    // Claude is not a copy-skills peer.
     const root = await mkdtemp(join(tmpdir(), "kanmer-connect-"));
     roots.push(root);
     await writeFile(join(root, ".mcp.json"), CLAUDE_MCP_JSON);
@@ -162,7 +160,7 @@ describe("registration ownership (GUI-079)", () => {
     const result = await disconnectAgent("antigravity", root, { commandRunner: antigravityAbsentCommandRunner });
 
     expect(result.ok).toBe(true);
-    expect(result.output).toContain("no connected copy-skills host remains");
+    expect(result.output).toContain("another connected host");
   });
 });
 
@@ -192,6 +190,7 @@ describe("Grok native plugin lifecycle (MCP-014)", () => {
       if (command.startsWith("grok plugin install ")) return { stdout: "Installed 1 plugin(s)", stderr: "" };
       if (command === "grok inspect") return { stdout: "kanmer (user, enabled) 12 skills, 1 MCPs", stderr: "" };
       if (command.startsWith("grok -p ")) {
+        expect(await readFile(join(root, ".grok", "config.toml"), "utf8")).not.toContain("mcp_servers.kanmer");
         const identity = remoteProjectIdentity({ boardRoot: root, repoRoot: root, format: 3, boardSource: "default" });
         return {
           stdout: JSON.stringify({
@@ -272,6 +271,8 @@ describe("Antigravity native plugin lifecycle (MCP-015)", () => {
       if (file === "agy" && args[0] === "plugin" && args[1] === "install") return { stdout: "Installed plugin kanmer", stderr: "" };
       if (file === "agy" && args[0] === "plugin" && args[1] === "list") return { stdout: "kanmer", stderr: "" };
       if (file === "agy" && args[0] === "--add-dir") {
+        const isolated = JSON.parse(await readFile(join(root, ".agents", "mcp_config.json"), "utf8")) as { mcpServers?: Record<string, unknown> };
+        expect(isolated.mcpServers?.kanmer).toBeUndefined();
         const identity = remoteProjectIdentity({ boardRoot, repoRoot: root, format: 3, boardSource: "default" });
         return {
           stdout: JSON.stringify({

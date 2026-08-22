@@ -1,0 +1,1 @@
+Implementation complete pending commit/PR: PID identity + malformed stale recovery + board lock/owner/quarantine ignore. Focused/full rails and exact failures are recorded in post-implementation-report.md.

@@ -42395,7 +42395,7 @@ async function fetchText(url, fetchImpl, headers, timeoutMs, maxBytes = LLMS_TXT
 }
 async function writeCache(file, cache) {
   const content = JSON.stringify(cache, null, 2) + "\n";
-  await withExclusiveFileLock(`${file}.lock`, () => writeFileAtomic(file, content));
+  await writeFileAtomic(file, content);
 }
 function asDocument(response) {
   return {
@@ -42416,18 +42416,25 @@ async function revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImp
   if (!root) return [];
   const documents = [root];
   let bytes = Buffer.byteLength(root.text, "utf8");
-  for (const cachedDocument of cached3.documents.slice(1, LLMS_TXT_POLICY.maxLinkedPages + 1)) {
-    if (bytes >= LLMS_TXT_POLICY.maxBytes) {
-      failures.push(`${cachedDocument.url} skipped because the aggregate response limit was reached`);
-      documents.push(cachedDocument);
-      continue;
-    }
+  const cachedByUrl = new Map(cached3.documents.slice(1).map((document) => [document.url, document]));
+  const candidates = markdownLinks(root.text, new URL(root.url)).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
+  for (const candidate of candidates) {
+    const cachedDocument = cachedByUrl.get(candidate.toString());
     const requestHeaders = {};
-    if (cachedDocument.etag) requestHeaders["if-none-match"] = cachedDocument.etag;
-    if (cachedDocument.lastModified) requestHeaders["if-modified-since"] = cachedDocument.lastModified;
+    if (cachedDocument?.etag) requestHeaders["if-none-match"] = cachedDocument.etag;
+    if (cachedDocument?.lastModified) requestHeaders["if-modified-since"] = cachedDocument.lastModified;
     try {
+      const cachedBytes = cachedDocument ? Buffer.byteLength(cachedDocument.text, "utf8") : 0;
+      if (cachedDocument && bytes + cachedBytes > LLMS_TXT_POLICY.maxBytes) {
+        failures.push(`${candidate} skipped because the aggregate response limit was reached`);
+        continue;
+      }
+      if (bytes >= LLMS_TXT_POLICY.maxBytes) {
+        failures.push(`${candidate} skipped because the aggregate response limit was reached`);
+        continue;
+      }
       const response = await fetchText(
-        new URL(cachedDocument.url),
+        candidate,
         fetchImpl,
         requestHeaders,
         LLMS_TXT_POLICY.timeoutMs,
@@ -42435,6 +42442,11 @@ async function revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImp
         lookupImpl
       );
       if (response.status === 304) {
+        if (!cachedDocument) {
+          failures.push(`${candidate} returned HTTP 304 without a cached representation`);
+          continue;
+        }
+        bytes += cachedBytes;
         documents.push(cachedDocument);
       } else {
         bytes += response.bytes;
@@ -42443,7 +42455,15 @@ async function revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImp
     } catch (error2) {
       bytes += consumedBytes(error2);
       failures.push(failureText(error2));
-      documents.push(cachedDocument);
+      if (cachedDocument) {
+        const cachedBytes = Buffer.byteLength(cachedDocument.text, "utf8");
+        if (bytes + cachedBytes <= LLMS_TXT_POLICY.maxBytes) {
+          bytes += cachedBytes;
+          documents.push(cachedDocument);
+        } else {
+          failures.push(`${candidate} stale cache skipped because the aggregate response limit was reached`);
+        }
+      }
     }
   }
   return documents;
@@ -42454,96 +42474,98 @@ async function fetchLlmsTxt(options2) {
   const lookupImpl = options2.lookupImpl ?? (fetchImpl === fetch ? async (hostname2) => (await (0, import_promises9.lookup)(hostname2, { all: true, verbatim: true })).map(({ address }) => address) : void 0);
   const now = options2.now ?? Date.now;
   const cacheFile = cachePath(options2.cacheDir, root.toString());
-  const cached3 = await readCache(cacheFile);
-  const nowMs = now();
-  if (!options2.force && cached3 && cached3.url === root.toString() && Date.parse(cached3.expiresAt) > nowMs) {
-    return {
-      sourceUrl: cached3.url,
-      documents: cached3.documents,
-      failures: cached3.failures,
-      fromCache: true,
-      fetchedAt: cached3.fetchedAt
-    };
-  }
-  const headers = {};
-  if (cached3?.etag) headers["if-none-match"] = cached3.etag;
-  if (cached3?.lastModified) headers["if-modified-since"] = cached3.lastModified;
-  const failures = [];
-  let rootResponse;
-  try {
-    rootResponse = await fetchText(root, fetchImpl, headers, LLMS_TXT_POLICY.timeoutMs, LLMS_TXT_POLICY.maxBytes, lookupImpl);
-  } catch (error2) {
-    if (cached3) {
-      failures.push(failureText(error2));
+  return withExclusiveFileLock(`${cacheFile}.lock`, async () => {
+    const cached3 = await readCache(cacheFile);
+    const nowMs = now();
+    if (!options2.force && cached3 && cached3.url === root.toString() && Date.parse(cached3.expiresAt) > nowMs) {
       return {
         sourceUrl: cached3.url,
         documents: cached3.documents,
-        failures,
+        failures: cached3.failures,
         fromCache: true,
         fetchedAt: cached3.fetchedAt
       };
     }
-    throw error2;
-  }
-  if (rootResponse.status === 304 && cached3) {
-    const documents2 = await revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImpl);
-    const refreshed = {
-      ...cached3,
-      fetchedAt: new Date(nowMs).toISOString(),
-      expiresAt: new Date(nowMs + LLMS_TXT_POLICY.cacheTtlMs).toISOString(),
-      sha256: cacheDigest(documents2),
-      documents: documents2,
-      failures
-    };
-    await (0, import_promises10.mkdir)(options2.cacheDir, { recursive: true });
-    await writeCache(cacheFile, refreshed);
-    return {
-      sourceUrl: cached3.url,
-      documents: documents2,
-      failures,
-      fromCache: true,
-      fetchedAt: refreshed.fetchedAt
-    };
-  }
-  if (rootResponse.status === 304) {
-    throw new Error(`${root} returned HTTP 304 without a cached representation`);
-  }
-  const documents = [asDocument(rootResponse)];
-  const candidates = markdownLinks(rootResponse.text, new URL(rootResponse.url)).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
-  let bytes = rootResponse.bytes;
-  for (const candidate of candidates) {
-    if (bytes >= LLMS_TXT_POLICY.maxBytes) {
-      failures.push(`${candidate} skipped because the aggregate response limit was reached`);
-      continue;
-    }
+    const headers = {};
+    if (cached3?.etag) headers["if-none-match"] = cached3.etag;
+    if (cached3?.lastModified) headers["if-modified-since"] = cached3.lastModified;
+    const failures = [];
+    let rootResponse;
     try {
-      const remaining = LLMS_TXT_POLICY.maxBytes - bytes;
-      const response = await fetchText(candidate, fetchImpl, {}, LLMS_TXT_POLICY.timeoutMs, remaining, lookupImpl);
-      bytes += response.bytes;
-      if (bytes > LLMS_TXT_POLICY.maxBytes) {
+      rootResponse = await fetchText(root, fetchImpl, headers, LLMS_TXT_POLICY.timeoutMs, LLMS_TXT_POLICY.maxBytes, lookupImpl);
+    } catch (error2) {
+      if (cached3) {
+        failures.push(failureText(error2));
+        return {
+          sourceUrl: cached3.url,
+          documents: cached3.documents,
+          failures,
+          fromCache: true,
+          fetchedAt: cached3.fetchedAt
+        };
+      }
+      throw error2;
+    }
+    if (rootResponse.status === 304 && cached3) {
+      const documents2 = await revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImpl);
+      const refreshed = {
+        ...cached3,
+        fetchedAt: new Date(nowMs).toISOString(),
+        expiresAt: new Date(nowMs + LLMS_TXT_POLICY.cacheTtlMs).toISOString(),
+        sha256: cacheDigest(documents2),
+        documents: documents2,
+        failures
+      };
+      await (0, import_promises10.mkdir)(options2.cacheDir, { recursive: true });
+      await writeCache(cacheFile, refreshed);
+      return {
+        sourceUrl: cached3.url,
+        documents: documents2,
+        failures,
+        fromCache: true,
+        fetchedAt: refreshed.fetchedAt
+      };
+    }
+    if (rootResponse.status === 304) {
+      throw new Error(`${root} returned HTTP 304 without a cached representation`);
+    }
+    const documents = [asDocument(rootResponse)];
+    const candidates = markdownLinks(rootResponse.text, new URL(rootResponse.url)).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
+    let bytes = rootResponse.bytes;
+    for (const candidate of candidates) {
+      if (bytes >= LLMS_TXT_POLICY.maxBytes) {
         failures.push(`${candidate} skipped because the aggregate response limit was reached`);
         continue;
       }
-      documents.push(asDocument(response));
-    } catch (error2) {
-      bytes += consumedBytes(error2);
-      failures.push(failureText(error2));
+      try {
+        const remaining = LLMS_TXT_POLICY.maxBytes - bytes;
+        const response = await fetchText(candidate, fetchImpl, {}, LLMS_TXT_POLICY.timeoutMs, remaining, lookupImpl);
+        bytes += response.bytes;
+        if (bytes > LLMS_TXT_POLICY.maxBytes) {
+          failures.push(`${candidate} skipped because the aggregate response limit was reached`);
+          continue;
+        }
+        documents.push(asDocument(response));
+      } catch (error2) {
+        bytes += consumedBytes(error2);
+        failures.push(failureText(error2));
+      }
     }
-  }
-  const fetchedAt = new Date(nowMs).toISOString();
-  const cache = {
-    url: root.toString(),
-    fetchedAt,
-    expiresAt: new Date(nowMs + LLMS_TXT_POLICY.cacheTtlMs).toISOString(),
-    etag: rootResponse.etag,
-    lastModified: rootResponse.lastModified,
-    sha256: cacheDigest(documents),
-    documents,
-    failures
-  };
-  await (0, import_promises10.mkdir)(options2.cacheDir, { recursive: true });
-  await writeCache(cacheFile, cache);
-  return { sourceUrl: root.toString(), documents, failures, fromCache: false, fetchedAt };
+    const fetchedAt = new Date(nowMs).toISOString();
+    const cache = {
+      url: root.toString(),
+      fetchedAt,
+      expiresAt: new Date(nowMs + LLMS_TXT_POLICY.cacheTtlMs).toISOString(),
+      etag: rootResponse.etag,
+      lastModified: rootResponse.lastModified,
+      sha256: cacheDigest(documents),
+      documents,
+      failures
+    };
+    await (0, import_promises10.mkdir)(options2.cacheDir, { recursive: true });
+    await writeCache(cacheFile, cache);
+    return { sourceUrl: root.toString(), documents, failures, fromCache: false, fetchedAt };
+  });
 }
 function validateLlmsSource(source) {
   if (!source || typeof source !== "object") throw new Error("invalid source declaration");

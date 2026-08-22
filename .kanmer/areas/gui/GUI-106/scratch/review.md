@@ -55,3 +55,8 @@ The author addressed F-002..F-005 in bd83b8a531bfa5e69b9879acc2ef51fe9e0b997c; t
 - F-005: fixed pending independent re-review — installer overlap checks reject equal, ancestor, and descendant roots before external staging.
 
 Local rails are green as recorded in the report; hosted verification for bd83b8a531bfa5e69b9879acc2ef51fe9e0b997c is pending. Real packaged-host evidence remains INCONCLUSIVE.
+
+
+## Hosted rerun boundary
+
+Implementation bd83b8a531bfa5e69b9879acc2ef51fe9e0b997c and source-free CI retrigger c18b5c046f74102c86ecc5f3bd514f6e687bbeb9 are both pushed to PR #153, but GitHub emitted no check run. Manual dispatch was unavailable (HTTP 422: workflow has no workflow_dispatch trigger), so this author handoff makes no new hosted verdict. Prior hosted PASS for 0cdfafad is retained as historical activation-correction evidence only; real packaged-host evidence remains INCONCLUSIVE.

@@ -53,3 +53,8 @@ The current head bd83b8a531bfa5e69b9879acc2ef51fe9e0b997c addresses the four sub
 - F-005 fixed pending independent re-review: custom installer roots are rejected before staging when they equal, contain, or are contained by %LOCALAPPDATA%\Kanmer\mcp.
 
 Additional verification after these changes: npm test exited 0 (core 266/266, GUI 360/360, MCP HTTP 61/61, scripts 82/82); npm run typecheck exited 0; npm run dist:check exited 0 (Windows package and updater package 8/8); focused launcher/package tests exited 0 (8/8). Hosted verification for this new head is recorded when the PR rerun completes.
+
+
+## Hosted verification boundary for the remediation head
+
+The implementation head remains bd83b8a531bfa5e69b9879acc2ef51fe9e0b997c. A source-free CI retrigger commit c18b5c046f74102c86ecc5f3bd514f6e687bbeb9 was pushed to PR #153 because GitHub emitted no pull_request check run for bd83b8a531bfa5e69b9879acc2ef51fe9e0b997c; PR #153 now points at c18b5c046f74102c86ecc5f3bd514f6e687bbeb9. The repository workflow has no workflow_dispatch trigger, and the attempted manual dispatch returned HTTP 422: Workflow does not have 'workflow_dispatch' trigger. GitHub reports zero check-runs for both bd83b8a531bfa5e69b9879acc2ef51fe9e0b997c and c18b5c046f74102c86ecc5f3bd514f6e687bbeb9, so no new hosted PASS or FAIL is claimed. The earlier hosted PASS for 0cdfafad0c8c9216779ceb442893e2256bdb65fd (run 32551392188, job 96978620702) remains historical evidence for the activation correction only. Real packaged-host update/session/junction/uninstall/AV evidence remains INCONCLUSIVE.

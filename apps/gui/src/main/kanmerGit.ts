@@ -80,6 +80,15 @@ export function shouldAttemptProtectedBranchRename(
   return !hasBranchMismatch && next !== current && current === PROTECTED_BOARD_BRANCH && hasProtectedOpenBoard;
 }
 
+/** A live mismatch blocks the ordinary rename path as well as protected refusal. */
+export function shouldAttemptOrdinaryBranchRename(
+  hasBranchMismatch: boolean,
+  currentBranch: string,
+  targetBranch: string,
+): boolean {
+  return !hasBranchMismatch && currentBranch !== targetBranch;
+}
+
 const empty = (branch: string, error: string | null = null): KanmerGitStatus => ({
   available: false, boardRoot: null, branch, lastSync: null, error, paused: false,
 });

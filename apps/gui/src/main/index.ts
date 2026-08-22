@@ -78,6 +78,7 @@ import {
   PROTECTED_BOARD_BRANCH,
   refreshBoardBranch,
   renameBoardBranch,
+  shouldAttemptOrdinaryBranchRename,
   shouldAttemptProtectedBranchRename,
   syncBoard,
   type KanmerGitStatus,
@@ -693,7 +694,11 @@ async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number)
   } else {
     for (const [projectId, ctx] of contexts) {
       const { boardRoot, branch } = ctx.syncStatus;
-      if (ctx.syncStatus.available && boardRoot && branch !== settings.kanmerBranch) {
+      if (ctx.syncStatus.available && boardRoot && shouldAttemptOrdinaryBranchRename(
+        blockedBranchRefresh,
+        branch,
+        settings.kanmerBranch,
+      )) {
         const renamed = await renameBoardBranch(boardRoot, settings.kanmerBranch);
         // A failed rename leaves the worktree on its old branch, so keep
         // reporting that one — the board still works, it just did not move.

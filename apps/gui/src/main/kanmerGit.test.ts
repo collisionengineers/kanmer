@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureBoardWorktree, guardGitBranchPreference, inspectBoardWorktree, refreshBoardBranch, renameBoardBranch, shouldAttemptProtectedBranchRename } from "./kanmerGit.js";
+import { ensureBoardWorktree, guardGitBranchPreference, inspectBoardWorktree, refreshBoardBranch, renameBoardBranch, shouldAttemptOrdinaryBranchRename, shouldAttemptProtectedBranchRename } from "./kanmerGit.js";
 
 // These are deliberately real-Git integration tests: every case initialises a
 // local repository and several create worktrees/remotes. Windows process and
@@ -284,6 +284,11 @@ describe("board branch preference and cache safety", () => {
       "retargeted-board",
       true,
       refreshed.branchMismatch === true,
+    )).toBe(false);
+    expect(shouldAttemptOrdinaryBranchRename(
+      refreshed.branchMismatch === true,
+      "cached-board",
+      "kanmer-board",
     )).toBe(false);
     expect(await git(repo, "show-ref")).toBe(beforeRefs);
     expect(await git(repo, "worktree", "list", "--porcelain")).toBe(beforeWorktrees);

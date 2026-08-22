@@ -5,3 +5,5 @@
 }
 
 - 2026-08-22T18:13:53.737Z — GUI-101 verification result: proof and checklist were read back after merged-main evidence reconciliation; checklist is 75/75 with 30 deterministic PASS dispositions and 45 explicit INCONCLUSIVE dispositions. Read-only package checker exited 0 (8 checks), git diff --check exited 0, and existing merged-main verify/dist evidence remains PASS. Real installed NSIS/update/two-location/process/cleanup evidence remains unavailable (HKCU InstallDir absent; unpacked --probe exit 65; no mutation). Fresh get_doc_gates passed; Verifying→Done moved with expected_updated; GUI-102 owns authorized host follow-up and was not changed.
+
+- 2026-08-22T18:16:18.079Z — GUI-102 is implementing on gui-102-portable-connect-integration/.worktrees/gui-102 after GUI-101 closed 75/75 with deterministic packaging PASS and explicit real-host INCONCLUSIVE evidence; this lane must preserve that boundary and produce the end-to-end packaged integration proof it can safely obtain.

@@ -1,46 +1,33 @@
 # Proof
 
-PR [#17](https://github.com/collisionengineers/kanmer/pull/17), merged on GitHub.
-Verified on the merged base after fast-forwarding.
+## Merged-main identity and reachability
 
-## Checks
+Verification ran from the normal repository checkout on branch main, not the feature worktree and never the board worktree. HEAD and origin/main were both af61144ce743f74b2aba92fb0778588b0b9bedd0. The scoped implementation commit ad127405437f9a93eef5e86d697ccaadf0ebc8af9 (docs(setup): one reconcile loop in place of three modes) is an ancestor of HEAD; git merge-base --is-ancestor exited 0. The fresh reconciliation branch had no source delta, and git diff origin/main...HEAD for plugins/kanmer/skills/kanmer-setup/SKILL.md was empty.
 
-| Check | Result |
+Existing PR #17 remains the traceable historical delivery. No new feature commit or PR was created during verification.
+
+## Merged-main checks
+
+| Command | Result |
 |---|---|
-| `verify:agents-block` | **26/26** — the AGENTS section survived the rewrite intact |
-| Residue grep (`researching`, `impact.md`, `kanmer-import`, `format: 2`, "three modes") | **0** |
-| Managed block in the diff | untouched — the only apparent hit was the frontmatter `description`, checked line by line |
+| npm run verify:skills | PASS, exit 0; all 13 semantic skill-prose sections passed and the 12-skill roster was found. |
+| npm run verify:agents-block | PASS, exit 0; 31/31 checks passed, including byte identity of the fenced managed block. |
+| npm run build:core | PASS, exit 0; core ESM/browser/DTS builds and browser check completed. |
+| npm run test:scripts | PASS, exit 0; 80/80 passed on merged main after the core build. |
+| npm run typecheck | PASS, exit 0 across core, MCP server, UI, and GUI. |
+| git diff --check | PASS, exit 0. |
+| git merge-base --is-ancestor ad127405437f9a93eef5e86d697ccaadf0ebc8af9 HEAD | PASS, exit 0. |
 
-That last check is the one that mattered: this rewrite replaced everything above
-the AGENTS section while leaving that section byte-identical, and the two are in
-the same file. `verify:agents-block` would have caught a slip, but the diff was
-read as well rather than trusting the check alone.
+The earlier fresh-worktree run retained in the report had an initial test:scripts exit 1 because packages/core/dist/index.js did not yet exist; build:core followed and the exact rerun passed 80/80. That setup prerequisite failure is not presented as a merged-main regression.
 
-## The original defect, gone
+## What this proves
 
-`get_status` on this repo returns `format: 3`. The old mode table had entries
-for format 1 and format 2 only, so format 3 matched nothing. There is no mode
-table now — the loop runs the same six steps whatever the format, and step 3
-migrates only if there is something to migrate.
+The merged setup skill contains the format-independent reconcile loop, version-step and migration guidance, managed-block refresh, one-source ingestion order, explicit issue close confirmation sequence, source-marker idempotency guidance, per-plan-item historical ticket rules, plan/proof placement, fixed-stage/area/profile guidance, and the retained greenfield brief interview. Static semantic and managed-block rails pass, and the implementation SHA is reachable from merged main.
 
-## Not proven, and one of these is structural
+## Explicitly inconclusive boundaries
 
-**Prose cannot be unit-tested.** The greps prove the skill says nothing false.
-They cannot prove an agent following it behaves correctly. The three defects
-fixed across SKILL-001/004/005 were all found by *running* skills, which is a
-standing warning that reading is not enough.
+No live setup execution was performed against a disposable format-3/legacy board. Migration dry-run/apply, a second-run no-op, plan/history ingestion, source-marker duplicate suppression, issue listing/confirmation/close/comment/report, and greenfield board creation remain INCONCLUSIVE. Closing GitHub issues is destructive external state and no issue was touched. No screenshot or human interactive setup evidence exists. These boundaries are preserved from the report, checklist (13/18), and independent PASS WITH ACCEPTED RISK review; they are not upgraded to PASS by the static rails.
 
-**Step 5b is the risky instruction.** "One ticket per plan item" is a judgement
-against documents whose structure varies. The `N documents → M items → K
-tickets` preview is the only guard, and a preview only guards if the agent stops
-at it.
+## Verdict
 
-**Step 2 (version steps) has no mechanism.** No Kanmer version declares any, and
-there is no manifest of per-version actions for the skill to read. It is
-currently an instruction to a human reader rather than something executable —
-honest as written, but it will need a real mechanism the first time a version
-actually requires a step. Flagged in the report; worth its own ticket then.
-
-**Issue ingestion was not exercised.** This repo's issues are not being migrated,
-so the close sequence in 5a has never run. It is the most dangerous path in the
-skill and it is verified only by reading.
+Merged-main deterministic verification PASS for the scoped setup-reconciliation implementation, with the runtime/externally destructive behavior listed above INCONCLUSIVE. The proof is sufficient for the Verifying to Done gate under the accepted-risk review disposition.

@@ -45,19 +45,19 @@ findings:
     reason: "GUI-111 follow-up commit 51c4a3460f6bb3dfb866c541e1a7d9920394bb34 added the guarded wheel listener and ContextMenu regression; child focused tests pass 8/8, child review is PASS, and PR #164 merged that exact tree into 72e80fc8."
   - id: F-008
     severity: blocker
-    summary: "GUI-111 remains a live blocker of GUI-109 after its child PR merged"
-    disposition: open
-    reason: "The live board item GUI-111 is still Verifying, has blocks: [GUI-109], and is not Done/released. Current hosted kanmer-gate run 32565459884 job 97013332192 failed with DEPENDENCY_BLOCKED: GUI-111. GUI-109 cannot pass or merge until the child verification/closeout dependency is reconciled."
+    summary: "GUI-111 was previously a live blocker of GUI-109"
+    disposition: fixed
+    reason: "Board readback now shows GUI-111 blocks=[]; its child PR is merged and the current hosted kanmer-gate passes."
   - id: F-009
     severity: major
     summary: "Parent ticket and packet traceability remain bound to the pre-remediation head"
     disposition: open
-    reason: "GUI-109 get_item still records commits [c259af171a72fa83a9131f4f53a79d0cfd0f05b5] only; its post-implementation report and PR body describe the old 387-test tree; and the prior scratch/review attestation is bound to c259af171a72fa83a9131f4f53a79d0cfd0f05b5. Update parent commits/report/PR traceability to the merged child lineage and current head 72e80fc8 before a final pass."
+    reason: "GUI-109 get_item still records commits [c259af171a72fa83a9131f4f53a79d0cfd0f05b5] only; its post-implementation report and PR body describe the old 387-test tree; and the parent packet does not record the merged GUI-111 lineage (child head 51c4a3460f6bb3dfb866c541e1a7d9920394bb34, merge commit 72e80fc8). Refresh parent commits/report/PR traceability and exact current evidence before a final pass."
   - id: F-010
     severity: blocker
-    summary: "Current hosted verification is not green"
-    disposition: open
-    reason: "For run 32565459884, kanmer-gate job 97013332192 failed; verify job 97013332289 remained in_progress at review time. The gate log records DEPENDENCY_BLOCKED and STALE_REVIEW, so required hosted evidence is not yet passable."
+    summary: "Hosted verification was previously incomplete"
+    disposition: fixed
+    reason: "The latest exact-head run 32565459884 is green: kanmer-gate job 97013673839 PASS and verify job 97013673947 PASS. The earlier gate failure job 97013332192 is preserved as a transient dependency/stale-review attempt."
   - id: F-011
     severity: minor
     summary: "Parent PR review threads remain unresolved administratively"
@@ -68,28 +68,28 @@ findings:
 
 ## Verdict
 
-NEEDS-CHANGES. The merged tree at exact parent head 72e80fc8c45672fd13907d9741900848ce06b109 contains the GUI-111 remediation and the child PASS evidence supports F-001 through F-007. The implementation diff remains aligned with FRD-001: membership is ticket-owned, discovery uses existing listGroups, writes use updateItem with expectedUpdated, and no group storage/MCP/core model was added.
+NEEDS-CHANGES. The exact parent head 72e80fc8c45672fd13907d9741900848ce06b109 contains the GUI-111 remediation, GUI-111 is no longer a live board blocker, and the hosted gate plus authoritative verify are now green. FRD-001 alignment remains sound: membership is ticket-owned, discovery uses existing listGroups, writes use updateItem with expectedUpdated, and no group storage/MCP/core model was added.
 
-The parent packet is not review-clear. GUI-111 is still Verifying and blocks GUI-109, the latest hosted kanmer-gate failed on that dependency and the stale parent review record, the parent ticket/report/PR traceability still names only c259af171a72fa83a9131f4f53a79d0cfd0f05b5, and PR #162's six original review threads remain unresolved administratively. The parent report also still records the pre-child 44 files / 387 tests rather than the merged child's 45 files / 390 evidence.
+The parent packet is still not review-clear. GUI-109's live ticket metadata and post-implementation report remain bound to pre-remediation c259af171a72fa83a9131f4f53a79d0cfd0f05b5 and 44 files / 387 tests, while the merged tree includes the child remediation and its authoritative 45 files / 390 evidence. The PR description has the same stale verification summary. All six original parent GitHub threads remain unresolved administratively, although their code findings are fixed.
 
 ## Child merge and finding dispositions
 
 - GUI-111 PR #164 was independently passed at child head 51c4a3460f6bb3dfb866c541e1a7d9920394bb34 and merged at 2026-08-22T09:37:50Z with merge commit 72e80fc8c45672fd13907d9741900848ce06b109.
-- F-001 through F-006: fixed in the merged child tree, with deterministic evidence recorded by GUI-111.
-- F-007: fixed in the child follow-up and included in the merged parent tree; focused child groupMenu plus ContextMenu tests pass 8/8.
-- F-008: open blocker — GUI-111 remains Verifying/blocks GUI-109 and needs its own verification/closeout before this parent can pass.
-- F-009: open major traceability issue — refresh GUI-109 item commits, report, PR summary, and current review evidence to the merged lineage/head.
-- F-010: open blocker — latest hosted gate failed and verify was still pending.
-- F-011: open administrative review-thread issue — all six parent threads are still unresolved on GitHub, although their code findings are fixed.
+- F-001 through F-006: fixed in the merged child tree.
+- F-007: fixed in the child follow-up; focused child groupMenu plus ContextMenu tests pass 8/8.
+- F-008: fixed; GUI-111 blocks=[] and the gate now passes.
+- F-009: open major traceability issue. Update GUI-109 item commits, report, PR summary, and current review packet to the merged lineage/head and current 45/390 evidence.
+- F-010: fixed by the green exact-head hosted rerun.
+- F-011: open administrative issue. Resolve or otherwise explicitly disposition all six unresolved parent threads before merge.
 
 ## Evidence
 
 - PASS (exit 0): exact-base git diff --check for 84a20f8414264f65f6d851ca51849af89c80acf9..72e80fc8c45672fd13907d9741900848ce06b109.
 - PASS (recorded child evidence): focused GUI group-menu plus ContextMenu tests — 8/8; full GUI suite — 45 files / 390 tests; workspace typecheck; GUI build; manual build/check; child diff-check.
 - PASS (recorded parent pre-remediation evidence): focused group-menu 5/5, full GUI 44 files / 387 tests, typecheck/build/manual/diff-check; these do not supersede the merged-child 45/390 evidence.
+- PASS (hosted exact-head run 32565459884): kanmer-gate job 97013673839 and verify job 97013673947.
+- Preserved hosted failure: earlier job 97013332192 on the same run failed with dependency/stale-review findings before the board sync rerun; it is not erased by the later pass.
 - INCONCLUSIVE: live Electron card-menu interaction and screenshot, explicitly parked by the packet.
-- Hosted run 32563191261 is preserved as the prior stage-race attempt (verify PASS; gate failed because the event-time board snapshot saw Implementing/no review record).
-- Hosted run 32565459884 is the current exact-head attempt: kanmer-gate job 97013332192 failed with DEPENDENCY_BLOCKED GUI-111 and STALE_REVIEW; verify job 97013332289 was still in progress when reviewed. No hosted PASS is claimed.
 
 ## Scope
 

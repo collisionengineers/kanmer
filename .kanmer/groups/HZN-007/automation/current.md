@@ -618,3 +618,6 @@ CORE-058 Verifying after cumulative PASS/merge 5053af23 into CORE-044. CORE-044 
 
 
 CORE-060 implementation fbb52873 / PR #197 moved Implementing -> Review; focused 23/23, core 283/283, scripts 89/89, manual/build/diff PASS; independent review pending.
+
+
+CORE-060 review NEEDS-CHANGES at fbb52873: blockers CORE-077 (validate live branch before auto sync) and CORE-078 (re-arm timer after manual retry) created, linked and blocking CORE-060.

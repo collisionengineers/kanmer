@@ -764,3 +764,6 @@ Last handoff: 2026-08-22T19:52Z — GUI-113 implementation complete on `gui-113-
 
 
 2026-08-22T20:54Z — CORE-082 Review handoff: ticket taken without force on core-082-lock-git-isolation/.worktrees/core-082 from cumulative CORE-026 head a1a4fe629d71d149b64fd3e57979a196176b875a. Commit 388a1b28 and PR #209 target core-026-project-declared-sources. Scope is PID-reuse-safe lock identity, bounded malformed-stale recovery, and board lock/owner/quarantine Git-ignore isolation; no CORE-026 parent merge or CORE-081/083 source changes. IO 29/29, core 307/307, GUI Git 28/28, targeted Git-ignore 1/1, all-workspace typecheck/build/plugin/scripts/diff rails PASS; first uncached identity timeout and linked-worktree plugin-check failure are preserved. Live packaged Windows process-restart/PID-reuse and multi-machine filesystem evidence remain INCONCLUSIVE. CORE-082 is ready for independent review; author stops at Review with no self-review, merge, verification, or cleanup.
+
+- 2026-08-22T19:57:01.760Z — GUI-114 assigned to gui099-executor after GUI-113 PR #208 merged into CORE-043 as 69e2cc582b7ee8947f0febda6d286c18e21397a7.
+  Dedicated branch/worktree: gui-114-shell-safe-env / .worktrees/gui-114. Scope is shell-safe Claude/provider environment serialization for finding 3836808787; no GUI-113, CORE-043, native-plugin, installer, or hosted protection changes.

@@ -20,7 +20,7 @@ How can Kanmer let a project declare trusted MCPs, plugins, and `llms.txt` refer
 - Keep the contract in core plus an MCP read surface. Skills should ask that surface before open-web fallback and record which declared source they consulted in their research findings, satisfying FRD-005's citation rule.
 - Separate declaration from discovery: discovery may offer candidates extracted from the connected-provider configuration, but only a confirmed declaration becomes preferred.
 - Treat `llms.txt` as a constrained document fetch, not a crawler. The plan must specify cache location/lifecycle and deterministic limits, then test removal/revalidation so stale preferences cannot remain active.
-- This was a new capability with no governing FRD/ADR at research start. FRD-026 and ADR-0019 are now authored, linked, and recorded; the board docs_todo debt is cleared. The FRD remains draft and ADR proposed until implementation review.
+- This was a new capability with no governing FRD/ADR at research start. FRD-027 and ADR-0020 are now authored, linked, and recorded; the board docs_todo debt is cleared. The FRD remains draft and ADR proposed until implementation review.
 
 ## Open questions
 
@@ -28,7 +28,12 @@ See `open-questions`; the unresolved trust, applicability, and crawl-budget deci
 
 ## 2026-08-22 governing-doc reconciliation
 
-- Created and linked docs/functional/frd/FRD-026-project-declared-sources.md and docs/architecture/adr/ADR-0019-project-declared-source-trust.md. The ticket's docs_todo debt is cleared through the board update; the docs remain draft/proposed until implementation review.
+- Created and linked docs/functional/frd/FRD-027-project-declared-sources.md and docs/architecture/adr/ADR-0020-project-declared-source-trust.md. The ticket's docs_todo debt is cleared through the board update; the docs remain draft/proposed until implementation review.
 - Resolved packet questions with product-safe defaults: area/label selectors only, declarations prefer only already-connected/installed sources, and HTTPS same-origin llms.txt retrieval is depth-one/32 pages/2 MiB/10 seconds with 24-hour validator-aware cache.
 - HZN-006 has no context.md document (get_group_doc returned content null); its group body is a short horizon summary. HZN-007/context.md is the binding workflow context and prohibits auto-trust, scope absorption, fabricated evidence, and self-merge.
 - Current code confirms BoardConfigSchema strips unknown sources fields until extended; board.ts/store.ts are the round-trip boundary, and mcp-server/index.ts is the canonical read-tool registration point. Existing provider/connect code owns Kanmer registrations and must not auto-trust unrelated entries.
+
+
+## Review remediation — 2026-08-22
+
+- Corrected the stale governing-document traceability left by the initial numbering collision: all current references in this research record now point to FRD-027 and ADR-0020. The existing FRD-026 is the unrelated OpenAI Secure MCP Tunnel document.

@@ -53,3 +53,17 @@ Status should move only one boundary to Review after the final `get_doc_gates CO
 
 - Fresh hosted run 32563742650 for head 8eff8482926d29f7c80211b768fcffbb22d399d5 passed both jobs: kanmer-gate job 97009200164 PASS and verify job 97009200250 PASS (authoritative verification rail, 2m26s). The gate warning that no scratch/review.md attestation exists is expected because the author must not self-review.
 - PR #163 is Review-ready at 8eff8482. CORE-026 remains Review-only for independent review; no merge, self-review, or cleanup performed.
+
+
+## Independent review remediation — 2026-08-22
+
+- F-001 fixed: fetch_source now strictly validates only the declaration fields from a resolver-enriched source, and regression coverage accepts the enriched ResolvedSource shape. The declaration schema remains strict; resolver metadata is not persisted or treated as declaration input.
+- F-002 fixed: the bounded reader receives the remaining aggregate byte budget and enforces it while consuming response chunks; linked responses are cancelled once the total budget is exceeded rather than downloaded and discarded afterward. Added a deterministic over-budget stream regression.
+- F-003 fixed: research traceability now names FRD-027 and ADR-0020 consistently; FRD-026 remains the unrelated OpenAI tunnel document.
+- New source-focused rail: node --test packages/mcp-server/src/sources.test.mjs — 7/7 PASS. Full npm test — exit 0 (core 288/288, GUI 382/382, MCP HTTP 68/68, scripts 88/88); full npm run typecheck — exit 0. Rebuilt standalone/plugin bundle, smoke protocol 46/46, smoke headless, plugin sync, and diff check all pass locally.
+
+
+## Review remediation handoff — 2026-08-22
+
+- New head b5ae6f36e007a05fffd9bb2f1c6ea4a87a860477 (PR #163) fixes review findings F-001/F-002: strict validation now projects declaration fields from resolver-enriched results, and fetch response chunks are bounded by the remaining aggregate byte budget. New focused source coverage is 7/7 PASS.
+- F-003 research traceability is corrected to FRD-027/ADR-0020 via MCP. Final board gates remain passable for Review; hosted checks for b5ae6f36 are pending. Stop for independent re-review; no self-review/merge/cleanup.

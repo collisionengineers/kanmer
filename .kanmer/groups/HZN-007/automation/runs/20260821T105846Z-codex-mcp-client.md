@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T09:03:10.197Z
+updated_at: 2026-08-22T09:09:30.685Z
 lane_limit: 3
 stop_reason:
 ---
@@ -685,3 +685,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T09:00:43.617Z — CORE-026 hosted smoke remediation: PR #163 head 8eff8482 updates packages/mcp-server/src/smoke.mjs from the stale 34-tool assertion to 37. Local smoke/prose/plugin rails pass; hosted kanmer-gate passed on the corrected standalone footer and the fresh verify run is pending. Ticket remains Review; stop for independent review, no self-review/merge/cleanup.
 
 - 2026-08-22T09:03:10.197Z — CORE-026 hosted verification complete: PR #163 head 8eff8482926d29f7c80211b768fcffbb22d399d5. Fresh run 32563742650 passed kanmer-gate job 97009200164 and verify job 97009200250; the gate's no scratch/review.md warning is expected for an author handoff. Ticket remains Review for independent review; no self-review/merge/cleanup.
+
+- 2026-08-22T09:09:30.685Z — CORE-026 review remediation handed back to Review: PR #163 head b5ae6f36e007a05fffd9bb2f1c6ea4a87a860477 fixes F-001 enriched-resolver validation and F-002 streaming aggregate-byte enforcement with 7/7 source tests; F-003 research refs now consistently name FRD-027/ADR-0020. Local full rails pass; hosted rerun pending. Stop for independent re-review, no self-review/merge/cleanup.

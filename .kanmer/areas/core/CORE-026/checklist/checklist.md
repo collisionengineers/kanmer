@@ -30,3 +30,7 @@ Research and governing-doc decisions are recorded in research/research.md and op
 - Hosted verify remediation: corrected packages/mcp-server/src/smoke.mjs tool-count assertion from 34 to 37 in 8eff8482; focused local rails pass; hosted rerun pending.
 
 - Hosted rerun 32563742650: kanmer-gate PASS (97009200164); verify PASS (97009200250); no scratch/review.md warning is expected for an author handoff.
+
+- Review remediation: F-001 enriched-resolver validation and F-002 streaming aggregate-budget regressions pass; F-003 research refs reconciled to FRD-027/ADR-0020.
+
+- Review remediation handoff b5ae6f36: F-001/F-002 source regressions pass; F-003 governing refs reconciled; hosted rerun pending.

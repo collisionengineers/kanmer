@@ -71,3 +71,13 @@ Bounded review remediation is committed and pushed as b487516b (PR #152, branch 
 Local evidence after b487516b: focused GUI providers/connect 94/94; serialized full GUI 38 files, 356 tests; all-workspace typecheck passed; scripts 83/83 including release-manifests.test.mjs; plugin-sync OK (34 tools, bundle bytes, 12 skill frontmatters, manifests v0.3.3); verify:docs, verify:agents-block 31/31, verify:skills, check:manual passed; build passed; protocol smoke 46/46; discovery smoke 13/13; git diff --check passed.
 
 Hosted verify rerun is pending on the pushed head. PR #152 remains open and unmerged for independent review. The exact prior hosted failure and all six thread texts remain above in scratch/hosted-verify and scratch/review; the real agy install/functional host lane remains explicitly INCONCLUSIVE and no capability is inferred from fixtures or marker output.
+
+### 2026-08-22 fresh review findings F-008 through F-010
+
+Independent fresh review found these additional unresolved threads against b487516b; all are preserved verbatim in substance and are now bounded remediation scope:
+
+- F-008: “dispatch true but DispatchSupervisor marks any exit 0 done without terminal Kanmer deliverable.” A successful CLI exit is not proof that the named task deliverable exists; the GUI also allowed a no-task whole-ticket dispatch.
+- F-009: “retireLegacyPluginState only checks copy-skills peers; can drop AGENTS block while Claude/Codex marketplace/project hosts remain.” Shared instructions must remain while any connected host still owns the project registration.
+- F-010: “functional --add-dir proof can load legacy .agents registration when boardRoot==projectRoot; must isolate/disable legacy during proof and restore on failure.” A native plugin proof must not be satisfied by the registration it is meant to retire; both Antigravity and Grok legacy configs are isolated byte-for-byte and restored before cleanup or on failure.
+
+Bounded dispositions: DispatchSupervisor now requires an injected deliverable verifier for named tasks before reporting exit-0 "done"; failed/unavailable/unproven deliverables become failed with explicit reasons. The GUI refuses unscoped dispatch and both GUI/MCP supervisors verify the shared task deliverable against ticket docs/checklist/PR evidence. Connect's shared-peer check now includes CLI/config and legacy native registrations, and the functional probe disables any owned legacy registration for the duration of the probe, restoring exact bytes in a finally path. Regression tests cover unscoped dispatch, unproven/no verifier exits, Claude peer retention, and Antigravity/Grok legacy isolation.

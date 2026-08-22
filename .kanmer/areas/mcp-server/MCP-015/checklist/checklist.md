@@ -151,3 +151,11 @@ Append measured commands and implementation notes here; never flip dispatch befo
 - [x] All six automated review findings fixed or dispositioned in the bounded MCP-015 scope; exact thread text preserved in scratch/review.
 - [x] Local remediation rails passed: GUI 94/94 focused and 38 files/356 serialized; typecheck; scripts 83/83; plugin/docs/skills/manual; build; protocol 46/46; discovery 13/13; diff-check.
 - [ ] Hosted verify rerun on PR #152 head b487516b is pending; leave the PR open for independent review.
+
+### 2026-08-22 F-008–F-010 remediation
+
+- [x] Require and verify named Kanmer deliverables before exit-0 dispatches become done; reject no-task GUI dispatch.
+- [x] Retain AGENTS.md while any CLI/config or legacy native host registration remains connected.
+- [x] Isolate and byte-restore Grok/Antigravity legacy registrations around functional proof.
+- [x] Regression tests cover all three findings and failure/restore paths.
+- [ ] Fresh commit and hosted verify rerun pending; PR remains open for independent review.

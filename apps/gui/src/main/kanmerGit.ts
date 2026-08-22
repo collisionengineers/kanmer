@@ -22,6 +22,33 @@ export interface KanmerGitStatus {
   paused: boolean;
 }
 
+/**
+ * Refresh the cached branch in an open project from the worktree itself.
+ *
+ * The administrator handoff happens outside the GUI: the worktree can be
+ * renamed while the project remains open.  A cached branch is therefore only
+ * a hint; the worktree's symbolic ref is the source of truth before applying
+ * a protected-branch transition.
+ */
+export async function refreshBoardBranch(status: KanmerGitStatus): Promise<KanmerGitStatus> {
+  if (!status.available || !status.boardRoot) return status;
+  const inspection = await inspectBoardWorktree(status.boardRoot, status.branch);
+  if (!inspection.actualBranch || inspection.actualBranch === status.branch) return status;
+  return { ...status, branch: inspection.actualBranch, error: null, paused: false };
+}
+
+/**
+ * A branch preference must not move away from the protected default while no
+ * Git board is open to carry out (or observe) the administrator handoff.
+ * Retaining the last valid preference is the invalidation: a later project
+ * open cannot silently demand a branch that was never migrated.
+ */
+export function guardGitBranchPreference(current: string, requested: string, hasOpenBoard: boolean): string {
+  const next = requested.trim() || PROTECTED_BOARD_BRANCH;
+  if (!hasOpenBoard && current === PROTECTED_BOARD_BRANCH && next !== PROTECTED_BOARD_BRANCH) return current;
+  return next;
+}
+
 const empty = (branch: string, error: string | null = null): KanmerGitStatus => ({
   available: false, boardRoot: null, branch, lastSync: null, error, paused: false,
 });

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureBoardWorktree, inspectBoardWorktree, renameBoardBranch } from "./kanmerGit.js";
+import { ensureBoardWorktree, guardGitBranchPreference, inspectBoardWorktree, refreshBoardBranch, renameBoardBranch } from "./kanmerGit.js";
 
 // These are deliberately real-Git integration tests: every case initialises a
 // local repository and several create worktrees/remotes. Windows process and
@@ -209,6 +209,31 @@ describe("inspectBoardWorktree", () => {
       if (before === undefined) delete process.env.KANMER_BOARD_BRANCH;
       else process.env.KANMER_BOARD_BRANCH = before;
     }
+  });
+});
+
+describe("board branch preference and cache safety", () => {
+  it("accepts the actual branch after an administrator renames an open worktree", async () => {
+    const status = {
+      available: true,
+      boardRoot: repo,
+      branch: "kanmer-board",
+      lastSync: null,
+      error: null,
+      paused: false,
+    };
+    await git(repo, "checkout", "-b", "retargeted-board");
+    await expect(refreshBoardBranch(status)).resolves.toMatchObject({
+      branch: "retargeted-board",
+      error: null,
+      paused: false,
+    });
+  });
+
+  it("keeps the protected preference invalidated until a board is open", () => {
+    expect(guardGitBranchPreference("kanmer-board", "team-board", false)).toBe("kanmer-board");
+    expect(guardGitBranchPreference("kanmer-board", "team-board", true)).toBe("team-board");
+    expect(guardGitBranchPreference("team-board", "other-board", false)).toBe("other-board");
   });
 });
 

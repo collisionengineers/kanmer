@@ -900,3 +900,6 @@ GUI-123 is now Review on gui-123-preserve-gui120 / .worktrees/gui-123. Exact hea
 - Local exact-tree focused rail passed 121/121 with hookTimeout 30000; isolated index.sync passed 11/11. GUI typecheck/build, scripts 89/89, docs/manual, and diff checks passed. The earlier 120/121 EPERM teardown attempt is preserved as environment evidence.
 - CORE-043 PR #168 exact head 9519e2e8 independently reviewed PASS; hosted run 32604808898 kanmer-gate job 97108612019 and verify job 97108612103 both PASS. Live protection/native/provider/packaged evidence remains INCONCLUSIVE.
 - GUI-118 and CORE-043 scratch/review attestations were replaced with canonical F-### summaries and exact-head readback. No merge, move, or cleanup performed.
+
+
+2026-08-23T23:35Z — CORE-026 PR #163 independently merged into main as fdaededcf8bff0c5d5867e386782d8bdc32324e9 after all 93 review threads received explicit disposition replies and were resolved. PR #168 remains open; its cumulative branch is being refreshed onto fdaededc with conflict-safe preservation of both source/board-sync and provider lifecycle changes before fresh hosted evidence and independent merge.

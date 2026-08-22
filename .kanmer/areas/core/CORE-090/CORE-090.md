@@ -18,8 +18,7 @@ groups:
   - HZN-007
 links:
   - CORE-026
-blocks:
-  - CORE-026
+blocks: []
 refs:
   - docs/functional/frd/FRD-027-project-declared-sources.md
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
@@ -31,7 +30,7 @@ prs:
   - '220'
 archived: false
 created: '2026-08-22T22:26:12.855Z'
-updated: '2026-08-22T22:59:33.745Z'
+updated: '2026-08-22T22:59:43.967Z'
 ---
 
 Refresh the committed MCPB/plugin artifact after CORE-088 source-cache hardening so the authoritative mcpb:check compares equal on the cumulative CORE-026 branch. Add the generated artifact only; no source behaviour change. This ticket blocks [[CORE-026]].

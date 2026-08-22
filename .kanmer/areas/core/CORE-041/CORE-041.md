@@ -25,12 +25,14 @@ blocks:
   - MCP-041
 docs_todo: true
 commits:
-  - 88ec6307
+  - 88ec63078a10f3fbabbb57d1ad2ae451fccf4a06
+  - 849d912b
 prs:
+  - '145'
   - '149'
 archived: false
 created: '2026-08-22T01:47:24.828Z'
-updated: '2026-08-22T01:53:57.107Z'
+updated: '2026-08-22T01:56:05.453Z'
 ---
 
 The final stacked PR #145 verify rail reaches smoke.mjs and fails on hosted Windows because project identity smoke expectations hardcode c:/ for POSIX-style roots while the runner checkout is on D:. Make the smoke expectation derive the platform drive without weakening canonical path or fingerprint assertions. Keep this separate from CORE-040 release-notes cutoff and preserve exact hosted evidence.

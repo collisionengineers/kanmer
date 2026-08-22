@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T01:50:10.473Z
+updated_at: 2026-08-22T01:55:42.594Z
 lane_limit: 3
 stop_reason:
 ---
@@ -555,3 +555,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T01:46:56.318Z — CORE-040 review status correction: PR #148 closed as superseded at 2026-08-22T01:44:32Z without merge; commit 6f17bccf is stacked in still-open PR #145 (board records merge candidate ad8be25b). PASS verdict and green local rails are unchanged; CORE-040 remains Review/taken with no reviewer merge, stage move, or cleanup.
 
 - 2026-08-22T01:50:10.473Z — CORE-041 assigned from PR #145 hosted run 32544292566: smoke.mjs failed only because the Windows expectation hardcoded c:/ while canonicalProjectPath correctly mapped the POSIX-style fixture to the hosted d:/ drive. A separate test-only remediation is in flight; MCP-041 remains unmerged and blocked on a green stacked rail.
+
+- 2026-08-22T01:55:42.594Z — CORE-041 independently reviewed PASS and stacked into MCP-041 PR #145 as merge 849d912b; superseded PR #149 was closed with its hosted runneradmin vs RUNNER~1 failure preserved. PR #145 now carries CORE-037, MCP-041, CORE-038, CORE-039, CORE-040, and CORE-041 and remains open for the next hosted verify result.

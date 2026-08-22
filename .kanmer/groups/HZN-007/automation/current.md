@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T01:50:10.473Z
+updated_at: 2026-08-22T01:55:42.594Z
 ---
 
 # Current auto run — HZN-007
@@ -150,3 +150,6 @@ Last handoff: 2026-08-22T01:46:56.318Z — CORE-040 review PASS remains valid; P
 
 
 Last handoff: 2026-08-22T01:50:10.473Z — CORE-041 is assigned to a dedicated test-rail lane for the hosted Windows smoke drive mismatch; keep PR #145 open until the full stack is green.
+
+
+Last handoff: 2026-08-22T01:55:42.594Z — CORE-041 is stacked in PR #145 after independent PASS; PR #149 was closed superseded with its exact path-alias failure retained. Await the stacked hosted verify before any merge or stage move.

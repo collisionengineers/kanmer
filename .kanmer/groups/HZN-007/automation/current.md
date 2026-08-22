@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T03:52:00Z
+updated_at: 2026-08-22T03:58:00Z
 ---
 
 # Current auto run — HZN-007
@@ -189,3 +189,9 @@ Last handoff: 2026-08-22T03:12:42.450Z — MCP-015 is the second implementation 
 
 
 2026-08-22T03:52:00Z — lane assignment: GUI-106 update-safe MCP runtime delegated to /root/gui082_executor as third conflict-free lane. Scope is updater/runtime boundary only; MCP-015 connect/provider work and GUI-101/102 remain untouched. Agent must research/plan/implement on dedicated worktree, preserve real packaged-update acceptance limits, and stop at Review for independent review.
+
+
+2026-08-22T03:56:00Z — MCP-015 hosted rerun 32550191640/job 96975552621 passed after commit 16f91003 test-only seam remediation (focused connect 29/29; no production fallback). Independent re-gather found six unresolved automated review threads on current head: release manifest bump source, packaged runtime, legacy .gitignore residue, static get_status marker, shell-unsafe q() interpolation, and missing AGENTS native-plugin convention. Review attestation replaced with F-001 fixed and F-002..F-007 open; no merge or stage move.
+
+
+2026-08-22T03:58:00Z — GUI-106 preparation started by /root/gui082_executor: research/files/open-questions now present and ticket is Preparing. Dedicated updater/runtime worktree is pending plan/take; no source or cross-ticket changes claimed.

@@ -1,0 +1,1 @@
+Implemented on rebased CORE-043 cumulative head 4f106865. Focused GUI Git 20/20, core build, scripts 89/89, manual/docs/diff pass. Broad GUI/typecheck/build evidence is preserved in post-implementation-report; no hosted or live variable/protection proof claimed.

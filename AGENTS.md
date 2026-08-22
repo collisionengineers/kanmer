@@ -602,12 +602,13 @@ way, so it could not fail.
 
 ## Protected-main release operation
 
-`npm run release -- <version>` prepares the bump and deterministic artifacts on
-`release/v<version>`, pushes only that branch, and opens a PR targeting exact
-`main`. It never pushes `main`, creates a tag, or publishes. After the authorized
-PR merge and required `verify`, run
+`npm run release -- <version> --ticket <id>` prepares the bump and deterministic
+artifacts on `release/v<version>`, pushes only that branch, and opens a PR
+targeting exact `main` with a standalone `Kanmer: <id>` footer. It never pushes
+`main`, creates a tag, or publishes. After the authorized PR merge and required
+`verify`, run
 `npm run release -- <version> --publish --release-commit <full-sha>` from clean
-local `main`; the full preparation SHA must be an ancestor before the script
+local `main`; the full post-merge SHA must be an ancestor before the script
 creates/pushes only `refs/tags/v<version>` and publishes. The tag workflow stays
 read-only verification. Live PR/merge, publisher, latest-release, and real
 two-version updater evidence are external until recorded.

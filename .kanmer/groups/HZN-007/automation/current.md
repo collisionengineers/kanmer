@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T14:15:48.497Z
+updated_at: 2026-08-22T14:18:54.409Z
 ---
 
 # Current auto run — HZN-007
@@ -519,3 +519,6 @@ Last handoff: 2026-08-22T14:09Z — CORE-063 assigned to codex-recovery after pa
 
 
 CORE-063 implementation complete at 5f63636d; PR #184 opened against CORE-058 and moved Implementing -> Review after focused 18/18 GUI Git, GUI typecheck, core build, scripts 88/88, manual/docs and diff rails. Independent CORE-041 review requested; CORE-058 remains blocked by CORE-063.
+
+
+CORE-063 independently PASSed at exact 5f63636d and merged into CORE-058 as b1abac87; CORE-063 is Verifying with block edge removed. CORE-058 traceability now includes 063 implementation/merge and PR #184; cumulative fresh review requested at b1abac87 before merging CORE-058 into CORE-044.

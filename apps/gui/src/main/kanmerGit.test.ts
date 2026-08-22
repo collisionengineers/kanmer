@@ -260,6 +260,29 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("kanmer-board");
   });
 
+  realGitTest("retries a failed attached reconciliation in place after repair", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const boardRoot = created.boardRoot!;
+    const ignorePath = join(boardRoot, ".gitignore");
+    rmSync(ignorePath);
+    mkdirSync(ignorePath);
+
+    const failed = await ensureBoardWorktree(repo, "kanmer-board");
+    expect(failed.available).toBe(false);
+    expect(failed.boardRoot).toBe(resolve(boardRoot));
+    expect(failed.paused).toBe(true);
+    expect(failed.error).toBeTruthy();
+
+    // Repair the same canonical path; retry must not create or select another
+    // worktree and a repeated retry must remain idempotent.
+    rmSync(ignorePath, { recursive: true, force: true });
+    const retried = await ensureBoardWorktree(repo, "kanmer-board");
+    expect(retried).toMatchObject({ available: true, boardRoot: resolve(boardRoot), branch: "kanmer-board", error: null, paused: false });
+    const repeated = await ensureBoardWorktree(repo, "kanmer-board");
+    expect(repeated).toMatchObject({ available: true, boardRoot: resolve(boardRoot), branch: "kanmer-board", error: null, paused: false });
+    expect(readFileSync(ignorePath, "utf8")).toContain(".kanmer/data/sources/\n");
+  });
+
   realGitTest("keeps derived source cache out of the board sync", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     const cache = join(created.boardRoot!, ".kanmer", "data", "sources", "cache.json");

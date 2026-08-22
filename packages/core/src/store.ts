@@ -10,6 +10,7 @@ import {
   statOrNull,
   writeFileAtomic,
   writeFileExclusive,
+  withExclusiveFileLock,
 } from "./io.js";
 import {
   areaDir,
@@ -258,12 +259,25 @@ export class KanmerStore {
    * proofless tickets in it.
    */
   async setBoard(board: BoardConfig): Promise<void> {
-    const previous = await this.getBoard(); // re-reads disk = the true prior state
-    // A whole-board write must not strand items on a removed column — the same
-    // protection removeColumn has, so no GUI/agent setBoard path can silently
-    // drop a stage/area/priority that items still reference (audit A3).
-    await this.assertNoStrandedColumns(previous, board);
-    await writeBoard(this.paths, board);
+    await withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
+      const previous = await this.getBoard(); // re-reads disk = the true prior state
+      // A whole-board write must not strand items on a removed column — the same
+      // protection removeColumn has, so no GUI/agent setBoard path can silently
+      // drop a stage/area/priority that items still reference (audit A3).
+      await this.assertNoStrandedColumns(previous, board);
+      await writeBoard(this.paths, board);
+    });
+  }
+
+  /** Read, mutate, and write the board while holding the cross-process board lock. */
+  async updateBoard(mutator: (board: BoardConfig) => BoardConfig | Promise<BoardConfig>): Promise<BoardConfig> {
+    return withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
+      const previous = await this.getBoard();
+      const next = await mutator(structuredClone(previous));
+      await this.assertNoStrandedColumns(previous, next);
+      await writeBoard(this.paths, next);
+      return next;
+    });
   }
 
   /** Reject a board write that removes a column still referenced by an item. */

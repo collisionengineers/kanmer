@@ -504,6 +504,22 @@ describe("KanmerStore", () => {
     expect(reloaded.areas.some((a) => a.id === "api")).toBe(true);
     expect(reloaded.idPrefixes.ticket).toBe("BUG");
   });
+
+  it("serializes concurrent board mutations without losing either edit", async () => {
+    await Promise.all([
+      store.updateBoard((board) => {
+        board.sources = [{ kind: "mcp", id: "microsoft-learn" }];
+        return board;
+      }),
+      store.updateBoard((board) => {
+        board.proofTypes = ["test-output", "command-log", "visual", "manual"];
+        return board;
+      }),
+    ]);
+    const board = await store.getBoard();
+    expect(board.sources).toEqual([{ kind: "mcp", id: "microsoft-learn" }]);
+    expect(board.proofTypes).toContain("manual");
+  });
 });
 
 describe("links", () => {

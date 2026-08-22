@@ -23,6 +23,8 @@ import {
   linkItems,
   migrateBoard,
   repoDocsMap,
+  resolveSources,
+  SourceDeclarationArraySchema,
   resolveGroupKinds,
   resolveProfiles,
   resolveProofTypes,
@@ -45,6 +47,9 @@ import { getExecutionPacket } from "./execution-packet.js";
 import { failCoded, KanmerError } from "./errors.js";
 import { projectIdentity } from "./project-identity.js";
 import { dispatchPolicyView, parseDispatchPolicy } from "./dispatch-policy.js";
+import { fetchLlmsTxt, LLMS_TXT_POLICY, validateLlmsSource } from "./sources.js";
+
+export { fetchLlmsTxt, LLMS_TXT_POLICY, validateLlmsSource } from "./sources.js";
 
 const execFile = promisify(execFileCallback);
 
@@ -528,6 +533,37 @@ server.registerTool(
 );
 
 server.registerTool(
+  "get_sources",
+  {
+    title: "Resolve declared project sources",
+    description:
+      "Return the project's declared MCP, plugin, and llms.txt preferences in deterministic priority order. Host observations are optional inputs: an MCP/plugin is only available when the host says it is already connected/installed; a declaration never installs, enables, authenticates, or grants authority. llms.txt is only a declared HTTPS documentation source and is fetched separately with fetch_source under its bounded policy.",
+    inputSchema: {
+      area: z.string().optional().describe("Area id used by appliesTo.areas"),
+      labels: z.array(z.string()).max(64).optional().describe("Ticket labels used by appliesTo.labels"),
+      connected_mcp: z.array(z.string()).max(128).optional().describe("Explicit host observation of connected MCP namespaces"),
+      installed_plugins: z.array(z.string()).max(128).optional().describe("Explicit host observation of installed plugin ids"),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  guard(async ({ area, labels, connected_mcp, installed_plugins }) => {
+    const { board, source } = await store.getBoardWithSource();
+    const resolved = resolveSources(board.sources, {
+      area,
+      labels,
+      connectedMcp: connected_mcp,
+      installedPlugins: installed_plugins,
+    });
+    return ok({
+      sources: resolved,
+      source,
+      declaredCount: board.sources?.length ?? 0,
+      llmsPolicy: LLMS_TXT_POLICY,
+    });
+  }),
+);
+
+server.registerTool(
   "list_items",
   {
     title: "List items",
@@ -991,6 +1027,56 @@ server.registerTool(
 // ---------------------------------------------------------------------------
 // Write tools
 // ---------------------------------------------------------------------------
+
+server.registerTool(
+  "set_sources",
+  {
+    title: "Set declared project sources",
+    description:
+      "Replace the project's declared source preferences in board.yml. This is an explicit, project-owned declaration only: it does not install or enable MCPs/plugins, grant trust, or fetch the network. Use get_sources to resolve the result for an area/label context. The board write is protected by the normal expected_project concurrency guard.",
+    inputSchema: {
+      sources: SourceDeclarationArraySchema.describe("The complete ordered declaration list; [] clears it"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  },
+  write(async ({ sources }) => {
+    const board = await store.updateBoard((board) => {
+      board.sources = SourceDeclarationArraySchema.parse(sources);
+      return board;
+    });
+    return ok({ sources: board.sources });
+  }),
+);
+
+server.registerTool(
+  "fetch_source",
+  {
+    title: "Fetch a declared llms.txt source",
+    description:
+      "Fetch one applicable project-declared llms.txt source using a bounded same-origin depth-1 policy (32 direct pages, 2 MiB aggregate, 10-second request timeout, 24-hour cache with validators). This writes only cache metadata/content under .kanmer/data/sources; it never fetches MCP/plugin sources or treats documentation as authority. Failures remain in the response.",
+    inputSchema: {
+      source_id: z.string().min(1).max(512).describe("The exact declared HTTPS llms.txt URL"),
+      area: z.string().optional().describe("Area id used by appliesTo.areas"),
+      labels: z.array(z.string()).max(64).optional().describe("Ticket labels used by appliesTo.labels"),
+      force: z.boolean().optional().describe("Ignore a fresh cache; validators are still used when available"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  },
+  write(async ({ source_id, area, labels, force }) => {
+    const board = await store.getBoard();
+    const resolved = resolveSources(board.sources, { area, labels });
+    const source = resolved.find((candidate) => candidate.kind === "llms-txt" && candidate.id === source_id);
+    if (!source) throw new Error(`No applicable declared llms-txt source "${source_id}"`);
+    validateLlmsSource(source);
+    return ok(
+      await fetchLlmsTxt({
+        url: source.id,
+        cacheDir: path.join(store.paths.data, "sources"),
+        force,
+      }),
+    );
+  }),
+);
 
 server.registerTool(
   "create_item",

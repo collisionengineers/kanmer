@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T02:13:18.293Z
+updated_at: 2026-08-22T02:57:37.512Z
 lane_limit: 3
 stop_reason:
 ---
@@ -576,3 +576,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T02:19:56.367Z — GUI-075 hosted verification after GUI-110 stack: commit 8ded235c is stacked by merge c13596fc on PR #142. Run 32545782848/job 96963841700 completed in 2m17s. Core 266/266, GUI 355/355, MCP HTTP 61/61, scripts 80/80, typecheck/build/manual, stdio smoke 224/224 and headless smoke passed; mcpb:check exited 1 after successful package build/manifest validation because scripts/check-mcpb-sync.mjs:44 reports MCPB server differs from distributed plugin copy. Shared artifact mismatch is preserved and out of GUI-075 scope. PR stays open for independent review; no merge or cleanup; live provider/visual evidence INCONCLUSIVE.
+
+- 2026-08-22T02:57:37.512Z — GUI-075/GUI-110 stacked PR #142 merged as 4f785781 after hosted verify 32546955237 / job 96967001211 passed; MCP-042 artifact-refresh PR #150 merged into the stack as a174ce96 and resolved the committed-plugin parity failure. Proof/checklists finalized with live-provider/visual evidence explicitly parked where unavailable; tickets Done, released, and exact implementation worktrees/branches removed.
+- 2026-08-22T02:57:37.512Z — MCP-042 proof records mcpb/plugin parity SHA ae7a3c11, MCP smoke 224/224, protocol 46/46, scripts 82/82, typecheck and diff-check pass; GUI-075 merged-main local verify retained two transient HTTP failures (focused retry 12/12 passed) alongside hosted PASS; no assertion was weakened.

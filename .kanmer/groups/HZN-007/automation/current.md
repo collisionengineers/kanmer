@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T02:19:56.385Z
+updated_at: 2026-08-22T02:57:37.512Z
 ---
 
 # Current auto run — HZN-007
@@ -168,3 +168,6 @@ Last handoff: 2026-08-22T02:13:18.293Z — PR #145 stack and SKILL-017/#143, SKI
 
 
 - 2026-08-22T02:19:56.367Z — GUI-075 hosted verification after GUI-110 stack: commit 8ded235c is stacked by merge c13596fc on PR #142. Run 32545782848/job 96963841700 completed in 2m17s. Core 266/266, GUI 355/355, MCP HTTP 61/61, scripts 80/80, typecheck/build/manual, stdio smoke 224/224 and headless smoke passed; mcpb:check exited 1 after successful package build/manifest validation because scripts/check-mcpb-sync.mjs:44 reports MCPB server differs from distributed plugin copy. Shared artifact mismatch is preserved and out of GUI-075 scope. PR stays open for independent review; no merge or cleanup; live provider/visual evidence INCONCLUSIVE.
+
+
+Last handoff: 2026-08-22T02:57:37.512Z — GUI-075/GUI-110 and MCP-042 are merged, verified, Done, released, and cleaned; remaining work is re-oriented from the live board. MCP-028 remains externally INCONCLUSIVE pending cloudflared/credentials.

@@ -61,6 +61,9 @@ import {
   setTheme,
   setKanmerGitPreferences,
   setKanmerGitHandoff,
+  observeKanmerBoardBranch,
+  markNativeReconnectRequired,
+  clearNativeReconnectRequired,
   setWindowBounds,
   type AppSettings,
   type Theme,
@@ -606,7 +609,7 @@ async function openProject(root: string): Promise<OpenProjectResult> {
   const savedSettings = readSettings();
   const initialSyncStatus = await ensureBoardWorktree(projectId, savedSettings.kanmerBranch);
   const savedHandoff = savedSettings.pendingBoardHandoffs?.[projectId];
-  const syncStatus = initialSyncStatus.handoffPending || !savedHandoff
+  let syncStatus = initialSyncStatus.handoffPending || !savedHandoff
     ? initialSyncStatus
     : {
         ...initialSyncStatus,
@@ -615,6 +618,30 @@ async function openProject(root: string): Promise<OpenProjectResult> {
       };
   if (initialSyncStatus.handoffPending) await setKanmerGitHandoff(projectId, initialSyncStatus.handoffPending);
   const boardRoot = syncStatus.boardRoot ?? projectId;
+  if (syncStatus.available && syncStatus.boardRoot) {
+    const nativeReconnectRequired = await observeKanmerBoardBranch(projectId, syncStatus.branch);
+    if (nativeReconnectRequired) syncStatus.nativeReconnectRequired = nativeReconnectRequired;
+    const registrationFailures: string[] = [];
+    for (const provider of ["codex", "claude", "opencode"] as const) {
+      const result = await reconcileProviderRegistration(
+        provider,
+        projectId,
+        syncStatus.boardRoot,
+        syncStatus.branch,
+      );
+      if (!result.ok) registrationFailures.push(`${provider}: ${result.output}`);
+    }
+    if (registrationFailures.length > 0) {
+      syncStatus = {
+        ...syncStatus,
+        error: [...new Set([
+          syncStatus.error,
+          `Provider registration reconciliation failed — ${registrationFailures.join("; ")}`,
+        ].filter(Boolean))].join(" "),
+        paused: true,
+      };
+    }
+  }
   // repoRoot is the source checkout: `refs` point at the repo's own /docs/,
   // which does not move into the board worktree. Passed explicitly because we
   // know both roots here — core would otherwise have to infer it.
@@ -768,6 +795,13 @@ async function applyGitPreferencesBody(kanmerBranch: string, gitSyncMinutes: num
                 : {}),
             }
           : { ...ctx.syncStatus, error: renamed.error, paused: true };
+        if (renamed.ok) {
+          const nativeSettings = await markNativeReconnectRequired(projectId, settings.kanmerBranch);
+          ctx.syncStatus = {
+            ...ctx.syncStatus,
+            nativeReconnectRequired: nativeSettings.pendingNativeReconnects?.[projectId],
+          };
+        }
         // A previously surfaced handoff warning is durable until the operator
         // explicitly acknowledges it through confirmKanmerGitHandoff. A
         // later preference rename must not silently erase that acknowledgement
@@ -902,7 +936,7 @@ async function confirmKanmerGitHandoff(projectId: string): Promise<KanmerGitIpcS
 }
 
 /** Test seam for the production sync caller; not part of the renderer API. */
-export const __kanmerTest = { contexts, syncProject, applyGitPreferences, confirmKanmerGitHandoff };
+export const __kanmerTest = { contexts, openProject, closeProject, syncProject, applyGitPreferences, confirmKanmerGitHandoff };
 
 // The card context menu is drawn by the renderer now (FRD-019 R6). A native
 // Menu cannot read the app's CSS variables, so it was always slightly wrong in
@@ -1096,7 +1130,20 @@ function registerIpc(): void {
   );
   ipcMain.handle(CH.connectAgent, (_e, p: string, target: ConnectTarget) => {
     const ctx = requireCtx(p);
-    return connectAgent(target, ctx.sourceRoot, ctx.boardRoot, {}, readSettings().kanmerBranch);
+    return connectAgent(target, ctx.sourceRoot, ctx.boardRoot, {}, readSettings().kanmerBranch).then(async (result) => {
+      if (result.ok && (target === "grok" || target === "antigravity")) {
+        const settings = await clearNativeReconnectRequired(p, target);
+        const pending = settings.pendingNativeReconnects?.[p];
+        ctx.syncStatus = pending
+          ? { ...ctx.syncStatus, nativeReconnectRequired: pending }
+          : (() => {
+              const { nativeReconnectRequired: _native, ...withoutNative } = ctx.syncStatus;
+              return withoutNative;
+            })();
+        mainWindow?.webContents.send(CH.gitStatus, { projectId: p, ...(await gitStatusForRenderer(ctx)) });
+      }
+      return result;
+    });
   });
   ipcMain.handle(CH.disconnectAgent, (_e, p: string, target: ConnectTarget) =>
     disconnectAgent(target, requireCtx(p).sourceRoot),

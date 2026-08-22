@@ -4,7 +4,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const userData = "C:\\Windows\\Temp\\kanmer-gui075-settings";
 vi.mock("electron", () => ({ app: { getPath: () => "C:\\Windows\\Temp\\kanmer-gui075-settings" } }));
 
-const { readSettings, setDispatchSettings, setKanmerGitHandoff, resolveDispatchSettings } = await import("./settings.js");
+const {
+  readSettings,
+  setDispatchSettings,
+  setKanmerGitHandoff,
+  resolveDispatchSettings,
+  observeKanmerBoardBranch,
+  clearNativeReconnectRequired,
+} = await import("./settings.js");
 
 afterEach(async () => { await rm(userData, { recursive: true, force: true }); });
 
@@ -38,5 +45,26 @@ describe("board-branch handoff settings", () => {
 
     await setKanmerGitHandoff("C:\\repo-a", null);
     expect(readSettings().pendingBoardHandoffs).toEqual({ "C:\\repo-b": { ...handoff, from: "old-board" } });
+  });
+
+  it("retains native reconnect requirements when a closed project's branch changes", async () => {
+    const project = "C:\\repo-closed";
+    expect(await observeKanmerBoardBranch(project, "release-board")).toBeNull();
+    expect(await observeKanmerBoardBranch(project, "team-board")).toEqual({
+      branch: "team-board",
+      providers: ["grok", "antigravity"],
+    });
+    expect(readSettings().pendingNativeReconnects?.[project]).toEqual({
+      branch: "team-board",
+      providers: ["grok", "antigravity"],
+    });
+
+    await clearNativeReconnectRequired(project, "grok");
+    expect(readSettings().pendingNativeReconnects?.[project]).toEqual({
+      branch: "team-board",
+      providers: ["antigravity"],
+    });
+    await clearNativeReconnectRequired(project, "antigravity");
+    expect(readSettings().pendingNativeReconnects?.[project]).toBeUndefined();
   });
 });

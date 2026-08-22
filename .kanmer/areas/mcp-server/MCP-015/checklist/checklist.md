@@ -145,3 +145,9 @@ Append measured commands and implementation notes here; never flip dispatch befo
 - [x] Routed Antigravity lifecycle commands through argv and covered hostile path arguments.
 - [x] Documented the native plugin convention in AGENTS.md.
 - [ ] Fresh commit, hosted verify rerun, and independent review remain pending.
+
+### 2026-08-22 fresh head b487516b
+
+- [x] All six automated review findings fixed or dispositioned in the bounded MCP-015 scope; exact thread text preserved in scratch/review.
+- [x] Local remediation rails passed: GUI 94/94 focused and 38 files/356 serialized; typecheck; scripts 83/83; plugin/docs/skills/manual; build; protocol 46/46; discovery 13/13; diff-check.
+- [ ] Hosted verify rerun on PR #152 head b487516b is pending; leave the PR open for independent review.

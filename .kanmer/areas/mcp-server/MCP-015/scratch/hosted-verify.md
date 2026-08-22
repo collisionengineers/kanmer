@@ -17,3 +17,11 @@ Rerun evidence: focused connect.test.ts passed 29/29; standard full GUI run by i
 ### 2026-08-22 hosted verify rerun
 
 Hosted PR verification passed after the fixture remediation: run 32550191640, job 96975552621, check verify, conclusion pass, duration 2m27s. The PR remains open and unmerged at head 16f91003.
+
+### 2026-08-22 fresh remediation head
+
+Bounded review remediation is committed and pushed as b487516b (PR #152, branch mcp-015-antigravity-plugin-dispatch). It addresses all six preserved automated findings: release source-of-truth/test for the root Antigravity manifest; installer-owned Windows launcher in mcp_config plus launcher preflight; restored ignored .agents migration residue; exact project fingerprint/board-root/repo-root/format proof instead of a marker; execFile argv lifecycle commands with hostile-root coverage; and AGENTS.md native-plugin convention documentation.
+
+Local evidence after b487516b: focused GUI providers/connect 94/94; serialized full GUI 38 files, 356 tests; all-workspace typecheck passed; scripts 83/83 including release-manifests.test.mjs; plugin-sync OK (34 tools, bundle bytes, 12 skill frontmatters, manifests v0.3.3); verify:docs, verify:agents-block 31/31, verify:skills, check:manual passed; build passed; protocol smoke 46/46; discovery smoke 13/13; git diff --check passed.
+
+Hosted verify rerun is pending on the pushed head. PR #152 remains open and unmerged for independent review. The exact prior hosted failure and all six thread texts remain above in scratch/hosted-verify and scratch/review; the real agy install/functional host lane remains explicitly INCONCLUSIVE and no capability is inferred from fixtures or marker output.

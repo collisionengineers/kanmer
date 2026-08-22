@@ -17,3 +17,7 @@ Other rails:
 - Hosted Windows/remote file-lock proof remains INCONCLUSIVE and is left for independent review/verification.
 
 PR #196 is open for independent review; no merge performed.
+
+Full GUI suite follow-up: `npm test -w @kanmer/gui` completed 41/45 files, 303/304 tests passed. `kanmerGit.test.ts` remained 27/27. Exact inherited failures: connect/providers/skillsVersion module collection reports missing shared dispatch provider `antigravity`; dispatch.test has one existing expectation mismatch (expected `requires a named task`, received `"antigravity" doesn't support background dispatch.`).
+
+Review handoff: top-level PR #196 comment requested exact-SHA independent review. GitHub reviewer-request API rejected `gui099` because that account is not a repository collaborator; the review request remains explicit in the PR conversation. No merge performed.

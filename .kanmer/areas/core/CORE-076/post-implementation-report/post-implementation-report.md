@@ -32,3 +32,16 @@ Hosted Windows/remote file-lock behavior was not fabricated; it remains an indep
 ## Review handoff
 
 PR #196 is open for independent review against CORE-072. The implementation is limited to the orphan finalization retry and its deterministic regression. No merge was performed.
+
+## Full GUI suite follow-up
+
+After the focused rail, `npm test -w @kanmer/gui` completed with 41/45 files and 303/304 tests passing. The CORE-076 file remained green at 27/27. The four failures are inherited outside-scope Antigravity/base issues:
+
+- `src/main/connect.test.ts`: module mock collection fails because `providers.ts` reports missing shared dispatch provider `antigravity`.
+- `src/main/providers.test.ts`: the same missing shared dispatch provider error.
+- `src/main/skillsVersion.test.ts`: the same missing shared dispatch provider error.
+- `src/main/dispatch.test.ts`: existing assertion expected `requires a named task`, but the current base returns `"antigravity" doesn't support background dispatch.`
+
+No CORE-076 assertion failed, and no out-of-scope source was changed.
+
+The PR conversation contains the exact-SHA independent review request. GitHub's reviewer-request API rejected the non-collaborator account `gui099` (HTTP 422); this did not affect the open PR or source branch.

@@ -13,9 +13,6 @@ stageEntered:
   review: '2026-08-22T10:23:07.802Z'
   verifying: '2026-08-22T12:55:35.170Z'
   done: '2026-08-22T17:26:27.033Z'
-taken_at: '2026-08-22T10:13:53.002Z'
-branch: core-045-lock-dns-remediation
-worktree: .worktrees/core-045
 labels:
   - pr-review
   - security
@@ -53,7 +50,7 @@ prs:
   - '174'
 archived: false
 created: '2026-08-22T10:11:05.566Z'
-updated: '2026-08-22T17:26:39.566Z'
+updated: '2026-08-22T17:27:23.929Z'
 ---
 
 Independent review of CORE-044 / PR #165 found two blockers that must be fixed and re-reviewed before CORE-044 can merge:
@@ -62,3 +59,7 @@ Independent review of CORE-044 / PR #165 found two blockers that must be fixed a
 - F-009: DNS destination policy misses otherwise non-global IPv4/IPv6 ranges and mapped equivalents. Complete the public-destination classifier and deterministic tests; do not weaken SSRF coverage.
 
 Keep the fix stacked on CORE-044 head 33f32e3aae9819f1c2344863272dacb5c958fbac. No unrelated source/editor/provider work. CORE-044 remains blocked until this ticket is independently reviewed and dispositioned.
+
+## Outcome
+
+PR #166 merged into CORE-044 at `142af2f3b105b38b00d659019d1cfe99f3b50844`. Verification used the exact cumulative merged branch and passed IO 25/25, source 14/14, core typecheck/build, and diff-check. Hosted/live DNS rebinding and Windows crash/PID evidence remain INCONCLUSIVE; no origin/mainline claim is made.

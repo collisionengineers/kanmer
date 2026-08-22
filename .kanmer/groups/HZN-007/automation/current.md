@@ -648,3 +648,6 @@ CORE-060 cumulative PASS exact f44b6fd8, PR #197 merged non-squash into CORE-043
 
 
 CORE-061 dependency relation cleared after Verifying handoff; CORE-043 is unblocked pending fresh cumulative review at f63d953.
+
+
+Verification/closeout lanes active: CORE-045 proof and closeout completed/released at 2026-08-22T17:27Z; gui099 and core041 are processing remediation batches on merged main. CORE-043/079 independent reviews and merges remain pending gui082.

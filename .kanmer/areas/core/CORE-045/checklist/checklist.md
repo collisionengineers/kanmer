@@ -16,8 +16,8 @@
 - [x] PR merge verified (PR #166 merged 2026-08-22T12:55:09Z)
 - [x] proof.md finalised (PR URL, merge date, and cumulative verification basis recorded)
 - [x] Moved to final stage
-- [ ] Outcome recorded in ticket body (next)
-- [ ] cd out of worktree; git worktree remove .worktrees/core-045
-- [ ] git branch -d core-045-lock-dns-remediation
-- [ ] git fetch --prune + git worktree prune
-- [ ] take_ticket action: release
+- [x] Outcome recorded in ticket body
+- [x] cd out of worktree; `git worktree remove .worktrees/core-045`
+- [x] `git branch -d core-045-lock-dns-remediation`
+- [x] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

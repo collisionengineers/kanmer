@@ -241,6 +241,25 @@ describe("ensureBoardWorktree reconciliation", () => {
       .toContain(".kanmer/data/sources/cache.json");
   });
 
+  realGitTest("preserves the attached board root when ignore reconciliation fails", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const boardRoot = created.boardRoot!;
+    const ignorePath = join(boardRoot, ".gitignore");
+    rmSync(ignorePath);
+    // A directory at the ignore-file path makes the existing read/write seam
+    // fail deterministically on every supported host without a timing-based
+    // file lock or permission assumption.
+    mkdirSync(ignorePath);
+
+    const reopened = await ensureBoardWorktree(repo, "kanmer-board");
+
+    expect(reopened.available).toBe(false);
+    expect(reopened.boardRoot).toBe(resolve(boardRoot));
+    expect(reopened.paused).toBe(true);
+    expect(reopened.error).toBeTruthy();
+    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("kanmer-board");
+  });
+
   realGitTest("keeps derived source cache out of the board sync", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     const cache = join(created.boardRoot!, ".kanmer", "data", "sources", "cache.json");

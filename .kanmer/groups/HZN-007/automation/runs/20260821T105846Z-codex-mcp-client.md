@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T01:09:45.163Z
+updated_at: 2026-08-22T01:10:50.386Z
 lane_limit: 3
 stop_reason:
 ---
@@ -528,3 +528,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T01:08:53.560Z — DOC-007 closeout started after Done/proof/traceability readback. PR #49 MERGED at 19244f62; checklist closeout section appended with release last. Exact cleanup target is .worktrees/doc-007 and branch doc-007-manual-reconcile; no other worktree or board checkout may be touched.
 
 - 2026-08-22T01:09:45.163Z — DOC-007 closeout cleanup complete: proof/Outcome/checklist read back; PR #49 is MERGED at 19244f62. Exact clean .worktrees/doc-007 removed, branch doc-007-manual-reconcile deleted, fetch --prune origin and worktree prune exited 0. Negative guard fixture and visual/manual acceptance remain INCONCLUSIVE. Release is now the final lifecycle action.
+
+- 2026-08-22T02:10:28+01:00 — MCP-041 dependency/verification follow-up: replaced the temporary cherry-pick with merge commit `72da8d0769af830480e06d719c3081671dcd0be9` from `origin/core-037-windows-path-identity`, preserving original CORE-037 commit `aac1e25243fe200cc936b31a1fe78e7d041cd08b` as a reachable ancestor; no dependency edits. PR #145 and body updated, branch pushed. Stacked `npm run verify` passed core 263/263, GUI 352/352, MCP `test:http` 61/61, scripts 80/80, stdio smoke 224/224, and headless smoke; failed at `mcpb:check` because `node_modules/@anthropic-ai/mcpb/dist/cli/cli.js` is missing (`MODULE_NOT_FOUND`). Earlier HTTP/readiness/shared-verify failures and triggering GitHub 60/61 remain preserved. MCP-041 stays Review for independent merge; no cleanup.

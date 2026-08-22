@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T01:09:45.163Z
+updated_at: 2026-08-22T01:10:50.386Z
 ---
 
 # Current auto run — HZN-007
@@ -115,3 +115,5 @@ Last handoff: 2026-08-22T01:08:53.560Z — DOC-007 closeout started after Done/p
 
 
 Last handoff: 2026-08-22T01:09:45.163Z — DOC-007 cleanup complete: PR #49 merged/proof final, checklist closeout checked, exact worktree/branch removed and refs pruned. Release is the final action; negative-fixture/visual acceptance remains INCONCLUSIVE.
+
+- Last handoff: 2026-08-22T02:10:28+01:00 — MCP-041 PR #145 is pushed with implementation `99d3f259`, explicit CORE-037 ancestor `aac1e252`, and merge `72da8d07`; verify rerun reaches all tests/smokes green and is blocked only by missing mcpb CLI dependency. Remains Review; independent merge required; retain worktree/branch.

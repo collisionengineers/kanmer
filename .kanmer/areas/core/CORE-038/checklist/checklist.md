@@ -15,9 +15,10 @@
 - [x] Run the portable launcher through npm and confirm all existing script tests pass (80/80).
 - [x] Run focused type/build/diff checks and the shared verification rail, recording exact exits and unrelated first failures.
 - [x] Write the post-implementation report with scope, governing-doc rationale, risks, and merged-main verification commands.
-- [ ] Record commit and PR traceability, then move Implementing→Review only after gates pass.
+- [x] Record commit and PR traceability, then move Implementing→Review only after gates pass.
 
 ## Progress notes
 
 - 2026-08-22: PR #145 verify log reproduced the Windows Node 20 Git Bash literal-glob failure after core/GUI/HTTP rails; scope is limited to portable test-file enumeration.
 - 2026-08-22: Implementation commit 7919f5eb; local build, typecheck, launcher and scripts rail pass; shared verify stops at missing optional mcpb CLI (MODULE_NOT_FOUND), preserved in post-implementation report.
+- 2026-08-22: PR #146 opened from core-038-scripts-windows-safe; awaiting required GitHub verify checks before independent review.

@@ -8,6 +8,7 @@ import {
 import type {
   BoardConfig,
   CreateItemInput,
+  Group,
   Item,
   RepoStaleness,
 } from "@kanmer/core";
@@ -51,6 +52,7 @@ import { UpdateBanner } from "./components/UpdateBanner.js";
 import { BoardWorktreeBanner } from "./components/BoardWorktreeBanner.js";
 import { Welcome } from "./components/Welcome.js";
 import { VIEWS, VIEW_IDS, type View, viewCounts, viewItemsFor } from "./lib/views.js";
+import { groupMembershipPatch, groupMenuItems, isActiveGroup } from "./lib/groupMenu.js";
 
 const EMPTY_FILTERS: Filters = {};
 
@@ -248,7 +250,7 @@ export function App(): JSX.Element {
   const selectedRef = useRef(selectedId);
   selectedRef.current = selectedId;
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options: { preserveError?: boolean } = {}) => {
     try {
       // `format` is re-fetched here too: onDiskChange calls refresh()
       // specifically for version.json, so an external migration (an agent,
@@ -261,7 +263,7 @@ export function App(): JSX.Element {
       setBoard(b);
       setItems(list);
       setFormat(f);
-      setError(null);
+      if (!options.preserveError) setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -893,23 +895,40 @@ export function App(): JSX.Element {
   // The card context menu is rendered, not native (FRD-019 R6): a native menu
   // cannot use the app's theme variables, so it is always subtly wrong in one
   // theme. Opening it is now local state rather than an IPC round-trip.
-  const [cardMenu, setCardMenu] = useState<{ item: Item; x: number; y: number } | null>(null);
+  const [cardMenu, setCardMenu] = useState<{
+    item: Item;
+    x: number;
+    y: number;
+    projectId: string;
+  } | null>(null);
   /** Per-stage "why not" for the open menu's ticket, from get_doc_gates. */
   const [cardMenuGates, setCardMenuGates] = useState<Record<string, string[]> | null>(null);
+  /** Active groups for the open card menu; membership remains ticket-owned. */
+  const [cardMenuGroups, setCardMenuGroups] = useState<Group[]>([]);
+  const [cardMenuGroupsLoading, setCardMenuGroupsLoading] = useState(false);
+  const [cardMenuGroupError, setCardMenuGroupError] = useState<string | null>(null);
   const [dispatchTargets, setDispatchTargets] = useState<{ id: ConnectTarget; label: string }[]>([]);
   const closeCardMenu = useCallback(() => {
     setCardMenu(null);
     setCardMenuGates(null);
+    setCardMenuGroups([]);
+    setCardMenuGroupsLoading(false);
+    setCardMenuGroupError(null);
   }, []);
-  useDismissOnOutside(closeCardMenu, cardMenu !== null);
+  useDismissOnOutside(closeCardMenu, cardMenu !== null && cardMenu.projectId === root);
 
   // Gates are fetched when the menu opens rather than held for every card:
   // it is one call for the one ticket the user is actually acting on, and it is
   // always current at the moment the choices are shown.
   useEffect(() => {
     if (!cardMenu) return;
+    if (cardMenu.projectId !== root || !clientRef.current) {
+      closeCardMenu();
+      return;
+    }
     let cancelled = false;
-    void clientRef.current
+    const openedClient = clientRef.current;
+    void openedClient
       ?.getGateStatus(cardMenu.item.id)
       .then((g) => {
         if (!cancelled) setCardMenuGates(g);
@@ -918,7 +937,39 @@ export function App(): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [cardMenu]);
+  }, [cardMenu, root, closeCardMenu]);
+
+  // Group discovery is scoped to the one open menu. listGroups excludes
+  // archived groups by default, so the submenu only offers active ids.
+  useEffect(() => {
+    if (!cardMenu) return;
+    if (cardMenu.projectId !== root || !clientRef.current) {
+      closeCardMenu();
+      return;
+    }
+    let cancelled = false;
+    const openedProjectId = cardMenu.projectId;
+    const openedClient = clientRef.current;
+    setCardMenuGroupsLoading(true);
+    setCardMenuGroupError(null);
+    void openedClient
+      ?.listGroups()
+      .then((groups) => {
+        if (!cancelled && rootRef.current === openedProjectId) setCardMenuGroups(groups);
+      })
+      .catch((err) => {
+        if (!cancelled && rootRef.current === openedProjectId) {
+          setCardMenuGroups([]);
+          setCardMenuGroupError(err instanceof Error ? err.message : String(err));
+        }
+      })
+      .finally(() => {
+        if (!cancelled && rootRef.current === openedProjectId) setCardMenuGroupsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cardMenu, root, closeCardMenu]);
 
   useEffect(() => {
     void window.kanmer
@@ -933,19 +984,39 @@ export function App(): JSX.Element {
 
   const runCardAction = useCallback(
     async (fn: () => Promise<unknown> | unknown) => {
+      let actionFailed = false;
       try {
         await fn();
         setError(null);
       } catch (err) {
+        actionFailed = true;
         setError(err instanceof Error ? err.message : String(err));
       }
-      await refresh();
+      await refresh({ preserveError: actionFailed });
     },
     [refresh],
   );
 
+  const addCardToGroup = useCallback(async (item: Item, projectId: string, groupId: string) => {
+    const assertProjectIsCurrent = () => {
+      if (rootRef.current !== projectId) throw new Error("The active project changed; reopen the ticket menu and try again.");
+    };
+    assertProjectIsCurrent();
+    const activeClient = clientRef.current;
+    if (!activeClient) throw new Error("No project is open");
+    const latest = await activeClient.getItem(item.id);
+    assertProjectIsCurrent();
+    if (!latest) throw new Error(`Ticket ${item.id} no longer exists`);
+    const activeGroups = await activeClient.listGroups();
+    assertProjectIsCurrent();
+    if (!isActiveGroup(activeGroups, groupId)) {
+      throw new Error(`Group ${groupId} is no longer active; reopen the ticket menu and try again.`);
+    }
+    return activeClient.updateItem(item.id, groupMembershipPatch(latest, groupId));
+  }, []);
+
   const cardMenuItems = useCallback(
-    (item: Item): MenuItem[] => {
+    (item: Item, projectId: string): MenuItem[] => {
       const client = clientRef.current!;
       const gated = cardMenuGates;
       return [
@@ -973,8 +1044,18 @@ export function App(): JSX.Element {
                 label: "Release",
                 onSelect: () => void runCardAction(() => client.releaseTicket(item.id)),
               },
-            ]
+              ]
           : []),
+        {
+          id: "add-to-group",
+          label: "Add to group",
+          items: groupMenuItems(
+            cardMenuGroups,
+            item.groups,
+            (groupId) => void runCardAction(() => addCardToGroup(item, projectId, groupId)),
+            { loading: cardMenuGroupsLoading, error: cardMenuGroupError ?? undefined },
+          ),
+        },
         {
           id: "dispatch",
           label: "Dispatch to agent",
@@ -1030,25 +1111,44 @@ export function App(): JSX.Element {
         },
       ];
     },
-    [trySelect, openEditor, onMove, runCardAction, requestDelete, cardMenuGates, dispatchTargets],
+    [
+      trySelect,
+      openEditor,
+      onMove,
+      runCardAction,
+      requestDelete,
+      cardMenuGates,
+      cardMenuGroups,
+      cardMenuGroupsLoading,
+      cardMenuGroupError,
+      addCardToGroup,
+      dispatchTargets,
+    ],
   );
 
   // Fetch the task menu as the card menu opens: the submenu is built from it,
   // and it is cheap enough to re-read rather than cache and go stale.
   const loadDispatchOptions = useCallback(
-    (ticketId: string) => {
-      void clientRef.current
+    (ticketId: string, projectId: string) => {
+      const openedClient = clientRef.current;
+      void openedClient
         ?.dispatchOptions(ticketId)
-        .then(setDispatchOptions)
-        .catch(() => setDispatchOptions([]));
+        .then((options) => {
+          if (rootRef.current === projectId) setDispatchOptions(options);
+        })
+        .catch(() => {
+          if (rootRef.current === projectId) setDispatchOptions([]);
+        });
     },
     [],
   );
 
   const onCardContext = useCallback(
     (item: Item, x: number, y: number) => {
-      setCardMenu({ item, x, y });
-      loadDispatchOptions(item.id);
+      const projectId = rootRef.current;
+      if (!projectId) return;
+      setCardMenu({ item, x, y, projectId });
+      loadDispatchOptions(item.id, projectId);
     },
     [loadDispatchOptions],
   );
@@ -1862,11 +1962,11 @@ export function App(): JSX.Element {
         />
       )}
 
-      {cardMenu && (
+      {cardMenu && cardMenu.projectId === root && (
         <ContextMenu
           x={cardMenu.x}
           y={cardMenu.y}
-          items={cardMenuItems(cardMenu.item)}
+          items={cardMenuItems(cardMenu.item, cardMenu.projectId)}
           onClose={closeCardMenu}
           label={`Actions for ${cardMenu.item.id}`}
         />

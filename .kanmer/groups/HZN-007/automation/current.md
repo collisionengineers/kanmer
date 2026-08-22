@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T04:01:00Z
+updated_at: 2026-08-22T04:16:00Z
 ---
 
 # Current auto run — HZN-007
@@ -210,3 +210,6 @@ Last handoff: 2026-08-22T03:12:42.450Z — MCP-015 is the second implementation 
 
 
 - 2026-08-22T04:16:00Z — GUI-106 traceability correction: the actual full implementation SHA for PR #153 is `079253fe4417e9c544d59db9a1b6686619df1b3a` (verified with git rev-parse HEAD). The preceding handoff entry's expanded SHA was a transcription error; no source, PR, stage, or evidence state changes. Ticket remains Review/taken; independent review required; no merge, verification, or cleanup.
+
+
+- 2026-08-22T04:23:00Z — GUI-106 review remediation: independent review caught the post-rename installer activation probe checking current\Kanmer.exe instead of current\kanmer-mcp.exe. Corrected and amended commit `0cdfafad0c8c9216779ceb442893e2256bdb65fd`; PR #153 force-with-lease pushed. Focused launcher/updater 8/8, scripts 82/82, and dist:check Windows package/updater 8/8 pass. Hosted verify run 32551392188/job 96978620702 is pending; no hosted PASS claimed. Ticket remains Review/taken; no merge or cleanup.

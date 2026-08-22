@@ -12,7 +12,7 @@ The deterministic package/launcher rails now assert the external target, runtime
 
 - Branch/worktree: gui-106-runtime-boundary / .worktrees/gui-106
 - Base: origin/main 241ff13e
-- Commit: 079253fe4417e9c544d59db9a1b6686619df1b3a
+- Commit: 0cdfafad0c8c9216779ceb442893e2256bdb65fd
 - PR: #153 (https://github.com/collisionengineers/kanmer/pull/153)
 
 ## Checks and exact outcomes
@@ -27,6 +27,12 @@ The deterministic package/launcher rails now assert the external target, runtime
 - npm run typecheck — exit 0 for core, mcp-server, ui, and gui.
 - npm run verify — exit 1 after core 266/266 and GUI 360/360: the unrelated MCP HTTP test project resolution fails before binding and leaves no listener timed out in child node spawn (ETIMEDOUT, 60/61). This failure is preserved; no assertion was weakened.
 - Final focused launcher/package checks after the marker refinement — exit 0, 8/8; git diff --check — exit 0.
+
+## Reviewer correction
+
+Independent review found that the first amended implementation renamed staged Kanmer.exe to kanmer-mcp.exe but then checked current\Kanmer.exe, which would have aborted activation. The activation probe now checks current\kanmer-mcp.exe, and the launcher contract test asserts the post-rename path and rejects the stale check.
+
+Rerun evidence after the correction: node --test scripts/kanmer-mcp-launcher.test.mjs scripts/check-updater-package.test.mjs exited 0 (8/8); npm run test:scripts exited 0 (82/82); npm run dist:check exited 0 and rebuilt the Windows package with updater package 8/8. The hosted PR verify rerun for head 0cdfafad is pending at handoff (run 32551392188, job 96978620702); no hosted PASS is claimed yet.
 
 ## Evidence boundaries
 

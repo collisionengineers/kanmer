@@ -38010,11 +38010,20 @@ var TRANSIENT_RENAME_CODES = /* @__PURE__ */ new Set(["EPERM", "EBUSY", "EACCES"
 var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 var DEFAULT_LOCK_STALE_MS = 3e4;
 var DEFAULT_LOCK_RETRY_MS = [10, 25, 60, 150, 300, 600, 1e3];
+var LOCK_TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidLockToken(value) {
+  return typeof value === "string" && LOCK_TOKEN_RE.test(value);
+}
 function parseLockRecord(contents) {
   try {
     const parsed = JSON.parse(contents);
-    if (parsed && typeof parsed === "object" && Number.isInteger(parsed.pid) && parsed.pid > 0 && (parsed.createdAt === void 0 || typeof parsed.createdAt === "number")) {
-      return parsed;
+    const candidate = parsed;
+    if (parsed && typeof parsed === "object" && Number.isInteger(candidate.pid) && Number(candidate.pid) > 0 && (candidate.createdAt === void 0 || typeof candidate.createdAt === "number" && Number.isFinite(candidate.createdAt)) && (candidate.token === void 0 || isValidLockToken(candidate.token))) {
+      return {
+        pid: Number(candidate.pid),
+        ...candidate.createdAt === void 0 ? {} : { createdAt: Number(candidate.createdAt) },
+        ...candidate.token === void 0 ? {} : { token: candidate.token }
+      };
     }
   } catch {
   }
@@ -38030,6 +38039,7 @@ function defaultProcessAlive(pid) {
   }
 }
 function ownerMarkerPath(lockFile, token) {
+  if (!isValidLockToken(token)) throw new Error("invalid persisted lock token");
   return `${lockFile}.owner-${token}`;
 }
 async function ownerMarkerActive(markerFile, processAlive = defaultProcessAlive) {
@@ -38054,15 +38064,17 @@ async function cleanupOwnerQuarantines(lockFile, token) {
   let entries;
   try {
     entries = await import_promises.default.readdir(dir);
-  } catch {
-    return;
+  } catch (error2) {
+    if (error2.code === "ENOENT") return;
+    throw error2;
   }
   for (const entry of entries.filter((name) => name.startsWith(prefix))) {
     const quarantineFile = import_path3.default.join(dir, entry);
     try {
       const contents = await import_promises.default.readFile(quarantineFile, "utf8");
       if (parseLockRecord(contents)?.token === token) await import_promises.default.rm(quarantineFile, { force: true });
-    } catch {
+    } catch (error2) {
+      if (error2.code !== "ENOENT") throw error2;
     }
   }
 }
@@ -38070,8 +38082,9 @@ async function hasActiveOwnerMarker(lockFile, processAlive) {
   let entries;
   try {
     entries = await import_promises.default.readdir(import_path3.default.dirname(lockFile));
-  } catch {
-    return false;
+  } catch (error2) {
+    if (error2.code === "ENOENT") return false;
+    throw error2;
   }
   const prefix = `${import_path3.default.basename(lockFile)}.owner-`;
   for (const entry of entries.filter((name) => name.startsWith(prefix))) {
@@ -38115,22 +38128,38 @@ async function recoverStaleLock(lockFile, options2) {
     return false;
   }
   if (alive) return false;
-  let currentContents;
-  let currentStat;
-  try {
-    [currentContents, currentStat] = await Promise.all([import_promises.default.readFile(lockFile, "utf8"), import_promises.default.stat(lockFile)]);
-  } catch (error2) {
-    return error2.code === "ENOENT";
-  }
-  if (currentContents !== initialContents || currentStat.dev !== initialStat.dev || currentStat.ino !== initialStat.ino || currentStat.mtimeMs !== initialStat.mtimeMs) return false;
-  if (await hasActiveOwnerMarker(lockFile, options2.processAlive)) return false;
+  const stillOwnsStaleLock = async () => {
+    let currentContents;
+    let currentStat;
+    try {
+      [currentContents, currentStat] = await Promise.all([import_promises.default.readFile(lockFile, "utf8"), import_promises.default.stat(lockFile)]);
+    } catch (error2) {
+      if (error2.code === "ENOENT") return false;
+      throw error2;
+    }
+    if (currentContents !== initialContents || currentStat.dev !== initialStat.dev || currentStat.ino !== initialStat.ino || currentStat.mtimeMs !== initialStat.mtimeMs) return false;
+    const currentRecord = parseLockRecord(currentContents);
+    if (!currentRecord) return false;
+    let currentAlive;
+    try {
+      currentAlive = options2.processAlive(currentRecord.pid);
+    } catch {
+      return false;
+    }
+    if (currentAlive) return false;
+    if (currentRecord.token && await ownerMarkerActive(ownerMarkerPath(lockFile, currentRecord.token), options2.processAlive)) return false;
+    return !await hasActiveOwnerMarker(lockFile, options2.processAlive);
+  };
+  if (!await stillOwnsStaleLock()) return false;
   const quarantineFile = `${lockFile}.stale-${process.pid}-${tmpCounter()}`;
+  let renamed;
   try {
-    await options2.renameStaleLock(lockFile, quarantineFile);
+    renamed = await renameWithRetry(lockFile, quarantineFile, options2.renameStaleLock, stillOwnsStaleLock);
   } catch (error2) {
     if (error2.code === "ENOENT") return false;
     throw error2;
   }
+  if (!renamed) return false;
   let quarantinedContents;
   let quarantinedStat;
   try {
@@ -38168,10 +38197,10 @@ async function withExclusiveFileLock(lockFile, work, options2 = {}) {
     staleAfterMs: options2.staleAfterMs ?? DEFAULT_LOCK_STALE_MS,
     now: options2.now ?? Date.now,
     processAlive: options2.processAlive ?? defaultProcessAlive,
-    // Keep the injected seam for deterministic coordination, but apply the
-    // same bounded Windows retry contract used by atomic writes to every
-    // quarantine rename.
-    renameStaleLock: (from, to) => renameWithRetry(from, to, options2.renameStaleLock ?? import_promises.default.rename)
+    // Keep the injected seam as a single attempt. recoverStaleLock applies
+    // the shared bounded retry helper with ownership revalidation between
+    // transient attempts.
+    renameStaleLock: options2.renameStaleLock ?? import_promises.default.rename
   };
   await ensureDir(import_path3.default.dirname(lockFile));
   let claimed = false;
@@ -38179,6 +38208,11 @@ async function withExclusiveFileLock(lockFile, work, options2 = {}) {
   const markerFile = ownerMarkerPath(lockFile, claimToken);
   let lastError;
   const claim = async () => {
+    if (await hasActiveOwnerMarker(lockFile, lockOptions.processAlive)) {
+      const error2 = new Error("active lock owner is quarantined");
+      error2.code = "EEXIST";
+      throw error2;
+    }
     try {
       await writeFileExclusive(markerFile, `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now(), token: claimToken })}
 `);
@@ -38227,15 +38261,16 @@ async function withExclusiveFileLock(lockFile, work, options2 = {}) {
     await releaseOwnedLock(lockFile, claimToken);
   }
 }
-async function renameWithRetry(from, to, rename = import_promises.default.rename) {
+async function renameWithRetry(from, to, rename = import_promises.default.rename, beforeRetry) {
   for (let attempt = 0; ; attempt++) {
     try {
       await rename(from, to);
-      return;
+      return true;
     } catch (err) {
       const code = err.code ?? "";
       if (!TRANSIENT_RENAME_CODES.has(code) || attempt >= RENAME_RETRY_MS.length) throw err;
       await sleep(RENAME_RETRY_MS[attempt]);
+      if (beforeRetry && !await beforeRetry()) return false;
     }
   }
 }

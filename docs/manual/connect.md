@@ -13,19 +13,20 @@ Open **Settings → Connect**. You will see a row per supported host, each with 
 | Claude Code | |
 | opencode | |
 | Grok CLI | |
-| Antigravity | No background dispatch, and `agy` needs the folder bound — see below |
+| Antigravity | User-scoped native plugin; background sessions use `--add-dir` — see below |
 
 Press **Connect** on the one you use. Two things happen: Kanmer registers this
 project's board with that host's agent-tool client, and it installs Kanmer's
 skills for that host so the agent knows the working practices, not just the
 tools. The row reports what it wrote.
 
-Grok is the exception: its native `kanmer` plugin is installed in the user's
-Grok profile, so it affects every Grok workspace for that user. Connect warns
-before this user-scoped change, preflights the CLI/runtime, verifies
-`grok inspect`, and then retires only legacy Kanmer state under `.grok/`. Other
-providers keep their project-scoped registration or skill paths; connecting
-them does not change your global configuration.
+Grok and Antigravity use native `kanmer` plugins installed in the user's host
+profile, so each affects every workspace for that user. Connect warns before
+this user-scoped change, preflights the CLI/runtime, validates the plugin,
+requires a functional host proof before migration cleanup, and then retires
+only legacy Kanmer project state. Other providers keep their project-scoped
+registration or skill paths; connecting them does not change your global
+configuration.
 
 ## Restart the agent afterwards
 
@@ -160,43 +161,35 @@ bridge. Reusing Cloudflare independently would be a separate deployment: it
 would require an HTTP MCP transport, a hostname, TLS and authentication, and
 must not be inferred from the presence of the bundled executable.
 
-## "No background dispatch"
-
-A host marked **· no background dispatch** connects and receives skills exactly
-like the others; the one thing Kanmer cannot do is start it for you in the
-background to work a ticket, so it does not appear when you dispatch a task.
-Today that is Antigravity alone; the other four hosts can be dispatched to.
-
-The badge used to read "register-only", which was wrong twice over: Antigravity
-does get the skills as well as the registration, and it does not appear in the
-dispatch menu for a different reason than the badge suggested — see below.
-
 ## Antigravity: bind the folder
 
-Connecting Antigravity writes two things into your project —
-`.agents/mcp_config.json` (the board) and `.agents/skills/` (the skills, the same
-tree opencode reads). Both are the right files in the right places, and **`agy`
-reads them only in a session bound to this folder**:
+Connect installs the user-scoped native Kanmer plugin (`agy plugin install`),
+which owns its skills and root `mcp_config.json`. Older `.agents/mcp_config.json`
+and `.agents/skills/` files are migration residue; Connect removes only Kanmer's
+owned entries after a functional plugin proof.
+
+An interactive `agy` session reads the plugin's MCP and skills only when bound to
+the workspace folder:
 
 ```sh
 agy --add-dir /path/to/your/project     # binds for this session, stores nothing
 agy --new-project                        # binds by creating a project for the folder
 ```
 
-A plain `agy` started inside the project does **not** see them. It binds instead
-to its own default project, which has no folder attached at all, so your working
-directory makes no difference — and neither does trusting the workspace or the
-folder being a git repository. Kanmer does not yet establish that binding for
-you; until it does, add one of the flags above, or Antigravity will start with
-neither the board nor the skills and give no sign that anything is missing.
+A plain `agy` started inside the project does **not** bind it. For background
+dispatch Kanmer therefore always passes `--add-dir <project> -p <prompt>`; it
+never relies on cwd, creates a persistent project id, or uses `--new-project`.
 
 Two ways to tell it worked, both worth knowing because the obvious check is
 misleading: ask the agent to use a Kanmer tool and see whether it comes back with
 real board data. Do not go looking for a tool named after Kanmer in a tool list —
 a connected workspace MCP server does not appear under its own name there.
 
-This was measured against the `agy` command-line tool, version 1.1.13. The
-Antigravity IDE has not been tested, so nothing here is a claim about it.
+The read-only local CLI probe used `agy` 1.1.14: `agy plugin validate
+plugins/kanmer` reported 12 skills and 1 MCP. A real install and bound
+`get_status` tool call require an authorized disposable host and remain
+INCONCLUSIVE when that evidence is unavailable. The Antigravity IDE has not
+been tested, so nothing here is a claim about it.
 
 ## When it does not work
 

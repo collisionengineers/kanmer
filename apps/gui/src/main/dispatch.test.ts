@@ -39,14 +39,19 @@ afterEach(() => {
 });
 
 describe("project-scoped dispatches", () => {
+  it("refuses an unscoped dispatch without a named deliverable", async () => {
+    await expect(dispatchTicket(store("/one"), "antigravity", "/one", "TICK-0", {}, "/one"))
+      .rejects.toThrow(/requires a named task/);
+  });
+
   it("allows matching ticket ids in separate projects and lists only the requested project", async () => {
     const first = child(101);
     const second = child(102);
     let next = 0;
     __setSpawnForTests(() => [first, second][next++] as never);
 
-    const one = await dispatchTicket(store("/one"), "claude", "/one", "TICK-1", {}, "/one");
-    const two = await dispatchTicket(store("/two"), "claude", "/two", "TICK-1", {}, "/two");
+    const one = await dispatchTicket(store("/one"), "claude", "/one", "TICK-1", { taskId: "research-quick" }, "/one");
+    const two = await dispatchTicket(store("/two"), "claude", "/two", "TICK-1", { taskId: "research-quick" }, "/two");
 
     expect(one.projectId).toBe("/one");
     expect(two.projectId).toBe("/two");
@@ -61,8 +66,8 @@ describe("project-scoped dispatches", () => {
     const proc = child(103);
     __setSpawnForTests(() => proc as never);
     const project = store("/one");
-    await dispatchTicket(project, "claude", "/one", "TICK-1", {}, "/one");
-    await expect(dispatchTicket(project, "claude", "/one", "TICK-1", {}, "/one")).rejects.toThrow(/in flight/);
+    await dispatchTicket(project, "claude", "/one", "TICK-1", { taskId: "research-quick" }, "/one");
+    await expect(dispatchTicket(project, "claude", "/one", "TICK-1", { taskId: "research-quick" }, "/one")).rejects.toThrow(/in flight/);
     proc.emit("close", 0);
   });
 
@@ -72,7 +77,7 @@ describe("project-scoped dispatches", () => {
     const proc = child(104);
     let invocation: { command: string; args: readonly string[] } | undefined;
     __setSpawnForTests((command, args) => { invocation = { command, args }; return proc as never; });
-    const status = await dispatchTicket(store("/one"), "claude", "/one", "TICK-2", {}, "/one");
+    const status = await dispatchTicket(store("/one"), "claude", "/one", "TICK-2", { taskId: "research-quick" }, "/one");
     expect(invocation).toEqual({ command: "claude", args: ["-p", expect.stringContaining("Additional operator instructions for this provider:"), "--model", "sonnet"] });
     expect(status).toMatchObject({ model: "sonnet", promptCustomized: true });
     proc.emit("close", 0);

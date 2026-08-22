@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyManagedBlock } from "./agentsBlock.js";
+import { remoteProjectIdentity } from "./remoteAccess/identity.js";
 
 vi.mock("electron", () => ({ app: { isPackaged: false, getAppPath: () => "/unused" } }));
 
@@ -58,6 +59,11 @@ async function writeTree(root: string, files: Record<string, string>): Promise<v
 
 const missing = async (...segments: string[]) =>
   expect(readFile(join(...segments), "utf8")).rejects.toThrow();
+
+const antigravityAbsentCommandRunner = async (command: string) => {
+  if (command === "agy plugin list") return { stdout: "No imported plugins.", stderr: "" };
+  throw new Error(`unexpected command: ${command}`);
+};
 
 describe("bundled skill removal", () => {
   it("removes only bundled children and preserves unknown skills and files byte-for-byte", async () => {
@@ -137,12 +143,10 @@ describe("registration ownership (GUI-079)", () => {
     expect(grokConfig).toContain("mcp_servers.linear");
   });
 
-  it("a Claude-only .mcp.json no longer makes grok count as a connected host", async () => {
-    // `isRegistered` read `mcpServers.kanmer` out of `.mcp.json` to decide
-    // whether *grok* was connected, so every Claude-registered project reported
-    // grok connected and kept the AGENTS.md block alive for a host that was
-    // never connected. Fixing the unmerge without fixing the read would have
-    // been half a fix.
+  it("retains the shared block while Claude's project registration is connected", async () => {
+    // The shared block belongs to every connected host. A native-plugin
+    // cleanup must therefore notice Claude's project registration even though
+    // Claude is not a copy-skills peer.
     const root = await mkdtemp(join(tmpdir(), "kanmer-connect-"));
     roots.push(root);
     await writeFile(join(root, ".mcp.json"), CLAUDE_MCP_JSON);
@@ -153,10 +157,10 @@ describe("registration ownership (GUI-079)", () => {
     );
     await writeFile(join(root, "AGENTS.md"), "# Guide\n");
 
-    const result = await disconnectAgent("antigravity", root);
+    const result = await disconnectAgent("antigravity", root, { commandRunner: antigravityAbsentCommandRunner });
 
     expect(result.ok).toBe(true);
-    expect(result.output).toContain("no connected copy-skills host remains");
+    expect(result.output).toContain("another connected host");
   });
 });
 
@@ -171,6 +175,7 @@ describe("Grok native plugin lifecycle (MCP-014)", () => {
       "plugin/mcp/kanmer-mcp.cjs": "\n",
     });
     await writeTree(root, {
+      ".kanmer/version.json": JSON.stringify({ format: 2 }),
       ".grok/config.toml":
         "[mcp_servers.kanmer]\ncommand = 'old'\n\n[mcp_servers.linear]\nurl = 'https://mcp.linear.app/mcp'\n",
       ".grok/skills/old-skill/SKILL.md": "old\n",
@@ -185,7 +190,19 @@ describe("Grok native plugin lifecycle (MCP-014)", () => {
       if (command === "node --version") return { stdout: "v24.15.0", stderr: "" };
       if (command.startsWith("grok plugin install ")) return { stdout: "Installed 1 plugin(s)", stderr: "" };
       if (command === "grok inspect") return { stdout: "kanmer (user, enabled) 12 skills, 1 MCPs", stderr: "" };
-      if (command.startsWith("grok -p ")) return { stdout: "KANMER_GET_STATUS_OK", stderr: "" };
+      if (command.startsWith("grok -p ")) {
+        expect(await readFile(join(root, ".grok", "config.toml"), "utf8")).not.toContain("mcp_servers.kanmer");
+        const identity = remoteProjectIdentity({ boardRoot: root, repoRoot: root, format: 2, boardSource: "default" });
+        return {
+          stdout: JSON.stringify({
+            project_fingerprint: identity.fingerprint,
+            board_root: identity.boardRoot,
+            repo_root: identity.repoRoot,
+            format: identity.format,
+          }),
+          stderr: "",
+        };
+      }
       throw new Error(`unexpected command: ${command}`);
     };
 
@@ -228,6 +245,93 @@ describe("Grok native plugin lifecycle (MCP-014)", () => {
   });
 });
 
+describe("Antigravity native plugin lifecycle (MCP-015)", () => {
+  it("preflights, validates, installs, proves a bound tool call, then retires legacy state", async () => {
+    const root = await tempRoot();
+    const boardRoot = join(root, "safe & hostile $(whoami) `tick` ;");
+    const bundle = join(root, "plugin");
+    await writeTree(root, {
+      "plugin/plugin.json": '{"name":"kanmer","version":"0.3.3","skills":"./skills/"}\n',
+      "plugin/mcp_config.json": '{"mcpServers":{"kanmer":{"command":"cmd.exe","args":["/d","/s","/c","\\\"%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd\\\""]}}}\n',
+      "plugin/skills/kanmer-plan/SKILL.md": "skill\n",
+      "plugin/mcp/kanmer-mcp.cjs": "\n",
+    });
+    await writeTree(root, {
+      ".agents/mcp_config.json": JSON.stringify({ mcpServers: { kanmer: { command: "old" }, other: {} } }),
+      ".agents/skills/old-skill/SKILL.md": "old\n",
+      ".agents/skills/.kanmer-skills-version": "0.2.0\nskills:\nold-skill\n",
+      "AGENTS.md": applyManagedBlock("# user\n"),
+    });
+    const seen: { file: string; args: string[] }[] = [];
+    const nativeCommandRunner = async (file: string, args: string[]) => {
+      seen.push({ file, args });
+      if (file === "agy" && args[0] === "--version") return { stdout: "1.1.14", stderr: "" };
+      if (file === "agy" && args[0] === "plugin" && args[1] === "--help") return { stdout: "install validate list uninstall", stderr: "" };
+      if (file === "cmd.exe") return { stdout: "Kanmer MCP launcher: healthy", stderr: "" };
+      if (file === "agy" && args[0] === "plugin" && args[1] === "validate") return { stdout: "[ok] plugin", stderr: "" };
+      if (file === "agy" && args[0] === "plugin" && args[1] === "install") return { stdout: "Installed plugin kanmer", stderr: "" };
+      if (file === "agy" && args[0] === "plugin" && args[1] === "list") return { stdout: "kanmer", stderr: "" };
+      if (file === "agy" && args[0] === "--add-dir") {
+        const isolated = JSON.parse(await readFile(join(root, ".agents", "mcp_config.json"), "utf8")) as { mcpServers?: Record<string, unknown> };
+        expect(isolated.mcpServers?.kanmer).toBeUndefined();
+        const identity = remoteProjectIdentity({ boardRoot, repoRoot: root, format: 3, boardSource: "default" });
+        return {
+          stdout: JSON.stringify({
+            project_fingerprint: identity.fingerprint,
+            board_root: identity.boardRoot,
+            repo_root: identity.repoRoot,
+            format: identity.format,
+          }),
+          stderr: "",
+        };
+      }
+      throw new Error(`unexpected command: ${file} ${args.join(" ")}`);
+    };
+
+    const result = await connectAgent("antigravity", root, boardRoot, { nativeCommandRunner, pluginRootPath: bundle });
+
+    expect(result.ok).toBe(true);
+    expect(seen.slice(0, 4)).toEqual([
+      { file: "agy", args: ["--version"] },
+      { file: "agy", args: ["plugin", "--help"] },
+      { file: "cmd.exe", args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe'] },
+      { file: "agy", args: ["plugin", "validate", bundle] },
+    ]);
+    expect(seen[4]).toEqual({ file: "agy", args: ["plugin", "install", bundle] });
+    expect(seen[5]).toEqual({ file: "agy", args: ["plugin", "list"] });
+    expect(seen[6].file).toBe("agy");
+    expect(seen[6].args.slice(0, 2)).toEqual(["--add-dir", boardRoot]);
+    expect(seen[6].args[2]).toBe("-p");
+    expect(result.output).toContain("functional get_status");
+    const legacy = JSON.parse(await readFile(join(root, ".agents", "mcp_config.json"), "utf8"));
+    expect(legacy.mcpServers.kanmer).toBeUndefined();
+    expect(legacy.mcpServers.other).toBeTruthy();
+    await missing(root, ".agents", "skills", "old-skill", "SKILL.md");
+    await expect(readFile(join(root, "AGENTS.md"), "utf8")).resolves.toBe("# user\n");
+  });
+
+  it("does not retire legacy project state when the bound tool call cannot be proven", async () => {
+    const root = await tempRoot();
+    const bundle = join(root, "plugin");
+    await writeTree(root, {
+      "plugin/plugin.json": '{"name":"kanmer","version":"0.3.3","skills":"./skills/"}\n',
+      "plugin/mcp_config.json": '{"mcpServers":{"kanmer":{"command":"cmd.exe","args":["/d","/s","/c","\\\"%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd\\\""]}}}\n',
+      "plugin/skills/kanmer-plan/SKILL.md": "skill\n",
+      "plugin/mcp/kanmer-mcp.cjs": "\n",
+      ".agents/mcp_config.json": JSON.stringify({ mcpServers: { kanmer: { command: "old" } } }),
+    });
+    const nativeCommandRunner = async (file: string, args: string[]) => {
+      if (file === "agy" && args[0] === "plugin" && args[1] === "list") return { stdout: "kanmer", stderr: "" };
+      if (file === "agy" && args[0] === "--add-dir") return { stdout: "I could not call the tool, but KANMER_GET_STATUS_OK", stderr: "" };
+      return { stdout: "ok", stderr: "" };
+    };
+    const result = await connectAgent("antigravity", root, root, { nativeCommandRunner, pluginRootPath: bundle });
+    expect(result.ok).toBe(false);
+    expect(result.output).toContain("No legacy project state was changed");
+    expect(await readFile(join(root, ".agents", "mcp_config.json"), "utf8")).toContain("kanmer");
+  });
+});
+
 describe("disconnect peer safety", () => {
   it("retains the shared block when another copy-skills host has malformed registration", async () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-connect-"));
@@ -235,7 +339,7 @@ describe("disconnect peer safety", () => {
     await mkdir(join(root, ".agents"), { recursive: true });
     await writeFile(join(root, ".agents", "mcp_config.json"), JSON.stringify({ mcpServers: { kanmer: {} } }));
     await writeFile(join(root, "opencode.json"), "{ malformed");
-    const result = await disconnectAgent("antigravity", root);
+    const result = await disconnectAgent("antigravity", root, { commandRunner: antigravityAbsentCommandRunner });
     expect(result.ok).toBe(true);
     expect(result.output).toContain("AGENTS.md block retained for another connected host");
   });
@@ -429,7 +533,7 @@ describe("disconnect and provider-specific project skill directories", () => {
       ".agents/skills/.kanmer-skills-version": roster,
     });
 
-    const result = await disconnectAgent("antigravity", root);
+    const result = await disconnectAgent("antigravity", root, { commandRunner: antigravityAbsentCommandRunner });
 
     expect(result.ok).toBe(true);
     expect(result.output).toContain("bundled copied skills removed");

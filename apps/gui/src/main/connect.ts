@@ -5,6 +5,7 @@ import { cp, mkdir, readdir, readFile, rename, rm, rmdir, writeFile } from "node
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
+import { CURRENT_FORMAT } from "@kanmer/core";
 import {
   formatSkillsStamp,
   isNewerVersion,
@@ -16,6 +17,7 @@ import {
   type Invocation,
   type ProviderId,
   antigravityBindingNote,
+  antigravityPortableInvocation,
   codexPortableInvocation,
   codexPortableProbeInvocation,
   codexTrustFromConfig,
@@ -26,8 +28,10 @@ import {
   tomlRegistrationState,
   type LegacyCodexFinding,
   type LegacyCodexProbe,
+  type NativePluginCommand,
 } from "./providers.js";
 import { applyManagedBlock, removeManagedBlock } from "./agentsBlock.js";
+import { remoteProjectIdentity } from "./remoteAccess/identity.js";
 
 const execAsync = promisify(exec);
 
@@ -333,17 +337,40 @@ export async function removeBundledSkillsOnly(
  * registered and kept the AGENTS.md block alive for a host never connected.
  */
 async function isRegistered(provider: AgentProvider, root: string): Promise<boolean> {
-  if (provider.register.kind !== "configFile") return false;
-  const file = resolveConfigPath(provider.register.configPath, root);
+  const registration = provider.register;
+  const configPath = registration.kind === "configFile"
+    ? registration.configPath
+    : registration.kind === "cli"
+      ? registration.configPath
+      : provider.install.kind === "plugin" && provider.install.legacyRegistrationState
+        ? provider.install.legacyConfigPath
+        : undefined;
+  const registrationState = registration.kind === "configFile"
+    ? registration.registrationState
+    : registration.kind === "cli"
+      ? registration.registrationState
+      : provider.install.kind === "plugin" ? provider.install.legacyRegistrationState : undefined;
+  if (!configPath || !registrationState) return false;
+  const file = resolveConfigPath(configPath, root);
   if (!existsSync(file)) return false;
   try {
     // Indeterminate counts as registered here: a malformed configuration must
     // retain the shared instructions rather than have them pulled out from
     // under a host that may well still be connected.
-    return provider.register.registrationState(await readFile(file, "utf8")) !== "absent";
+    return registrationState(await readFile(file, "utf8")) !== "absent";
   } catch {
     return true;
   }
+}
+
+/** Any connected host may still rely on the shared AGENTS.md instructions. */
+async function hasRegisteredAgentPeer(id: ProviderId, root: string): Promise<boolean> {
+  const peers = (['codex', 'claude', 'opencode', 'grok', 'antigravity'] as ProviderId[])
+    .filter((peerId) => peerId !== id)
+    .map((peerId) => providerById(peerId))
+    .filter((peer): peer is AgentProvider => peer !== undefined);
+  for (const peer of peers) if (await isRegistered(peer, root)) return true;
+  return false;
 }
 
 /**
@@ -514,10 +541,11 @@ export async function updateSkills(id: ProviderId, projectRoot: string): Promise
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
   if (provider.install.kind === "plugin") {
+    const host = provider.label;
     return {
       ok: false,
-      command: "grok plugin update kanmer",
-      output: "Grok manages Kanmer skills through its user-scoped plugin; use Connect to reinstall it.",
+      command: `${provider.install.cli} plugin install <plugin-root>`,
+      output: `${host} manages Kanmer skills through its user-scoped plugin; use Connect to reinstall it.`,
     };
   }
   try {
@@ -545,6 +573,8 @@ export interface ConnectOptions {
   probeRunner?: CodexProbeRunner;
   /** Test-only seam for provider commands; production uses the host shell. */
   commandRunner?: ConnectCommandRunner;
+  /** Test-only argv seam for native plugin commands. */
+  nativeCommandRunner?: NativeCommandRunner;
   /** Test-only plugin root seam; production resolves the packaged/dev bundle. */
   pluginRootPath?: string;
 }
@@ -554,10 +584,115 @@ export type ConnectCommandRunner = (
   cwd: string,
 ) => Promise<{ stdout: string; stderr: string }>;
 
+export type NativeCommandRunner = (
+  file: string,
+  args: string[],
+  cwd: string,
+) => Promise<{ stdout: string; stderr: string }>;
+
 const defaultCommandRunner: ConnectCommandRunner = async (command, cwd) => {
   const result = await execAsync(command, { cwd, timeout: 60_000, maxBuffer: 256 * 1024 });
   return { stdout: String(result.stdout ?? ""), stderr: String(result.stderr ?? "") };
 };
+
+const defaultNativeCommandRunner: NativeCommandRunner = async (file, args, cwd) => {
+  const result = await execFileAsync(file, args, {
+    cwd,
+    windowsHide: true,
+    timeout: 60_000,
+    maxBuffer: 256 * 1024,
+  });
+  return { stdout: String(result.stdout ?? ""), stderr: String(result.stderr ?? "") };
+};
+
+function nativeCommandText(command: NativePluginCommand): string {
+  return [command.file, ...command.args].map(q).join(" ");
+}
+
+async function expectedProjectIdentity(boardRoot: string, repoRoot: string) {
+  const kanmerRoot = join(boardRoot, ".kanmer");
+  const boardFile = join(kanmerRoot, "data", "board.yml");
+  const versionFile = join(kanmerRoot, "version.json");
+  let format = CURRENT_FORMAT;
+  try {
+    const version = JSON.parse(await readFile(versionFile, "utf8")) as { format?: unknown };
+    if (typeof version.format === "number" && Number.isInteger(version.format) && version.format > 0) {
+      format = Math.min(CURRENT_FORMAT, version.format);
+    }
+  } catch {
+    if (existsSync(join(kanmerRoot, "tickets"))) format = 1;
+    else if (existsSync(join(kanmerRoot, "areas"))) format = 2;
+  }
+  return remoteProjectIdentity({
+    boardRoot,
+    repoRoot,
+    format,
+    boardSource: existsSync(boardFile) ? "file" : "default",
+  });
+}
+
+function parseFunctionalIdentity(output: string): {
+  fingerprint?: unknown;
+  boardRoot?: unknown;
+  repoRoot?: unknown;
+  format?: unknown;
+} | null {
+  // Hosts commonly wrap JSON in a sentence or a fenced block. Try the whole
+  // payload and one outer object (so nested `project` data is not truncated),
+  // but never treat a literal marker as proof.
+  const fenced = output.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
+  const outer = output.match(/\{[\s\S]*\}/)?.[0];
+  const candidates = [fenced, output.trim(), outer].filter((candidate, index, all): candidate is string =>
+    typeof candidate === "string" && candidate.trim() !== "" && all.indexOf(candidate) === index,
+  );
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) continue;
+      const value = parsed as Record<string, unknown>;
+      const project = value.project && typeof value.project === "object"
+        ? value.project as Record<string, unknown>
+        : value;
+      const fingerprint = value.project_fingerprint ?? project.fingerprint;
+      const boardRoot = value.board_root ?? project.boardRoot;
+      const repoRoot = value.repo_root ?? project.repoRoot;
+      const format = value.format ?? project.format;
+      if (fingerprint !== undefined || boardRoot !== undefined || repoRoot !== undefined || format !== undefined) {
+        return { fingerprint, boardRoot, repoRoot, format };
+      }
+    } catch {
+      // Keep scanning output for the one JSON object the prompt requested.
+    }
+  }
+  return null;
+}
+
+/**
+ * Prevent a legacy project registration from satisfying the native-plugin
+ * functional proof. It is restored byte-for-byte before cleanup (or on every
+ * failure), so a proof cannot silently consume user state.
+ */
+async function withLegacyRegistrationDisabled<T>(
+  provider: AgentProvider,
+  projectRoot: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  if (provider.install.kind !== "plugin") return run();
+  const config = resolveConfigPath(provider.install.legacyConfigPath, projectRoot);
+  if (!existsSync(config)) return run();
+  const existing = await readFile(config, "utf8");
+  const state = provider.install.legacyRegistrationState?.(existing);
+  if (state === "indeterminate") throw new Error(`Cannot isolate malformed ${provider.label} legacy registration for functional proof`);
+  if (state !== "registered") return run();
+  const disabled = provider.install.legacyConfigUnmerge(existing);
+  if (disabled === existing) throw new Error("Cannot isolate Antigravity legacy registration for functional proof");
+  await writeAtomic(config, disabled);
+  try {
+    return await run();
+  } finally {
+    await writeAtomic(config, existing);
+  }
+}
 
 function commandText(result: { stdout: string; stderr: string }): string {
   return (result.stdout || result.stderr || "").trim();
@@ -566,18 +701,6 @@ function commandText(result: { stdout: string; stderr: string }): string {
 function pluginPresent(pluginName: string, output: string): boolean {
   const escaped = pluginName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`\\b${escaped}\\b`, "i").test(output);
-}
-
-function pluginCapabilityPresent(pluginName: string, output: string): boolean {
-  return output
-    .split(/\r?\n/)
-    .some(
-      (line) =>
-        pluginPresent(pluginName, line) &&
-        /enabled/i.test(line) &&
-        /skills?/i.test(line) &&
-        /MCPs?/i.test(line),
-    );
 }
 
 async function retireLegacyPluginState(
@@ -595,9 +718,9 @@ async function retireLegacyPluginState(
     notes.push(`legacy ${legacy.legacyConfigPath} reconciled`);
   }
   await removeBundledSkillsOnly(projectRoot, legacy.legacySkillsDir);
-  notes.push(`legacy copied skills removed from ${legacy.legacySkillsDir}`);
-  if (await hasRegisteredCopySkillsPeer(provider.id, projectRoot)) {
-    notes.push("AGENTS.md block retained for another connected copy-skills host");
+  notes.push(`legacy copied skills removed from ${legacy.legacySkillsDir}; bundled copied skills removed`);
+  if (await hasRegisteredAgentPeer(provider.id, projectRoot)) {
+    notes.push("AGENTS.md block retained for another connected host");
   } else {
     await dropAgentsBlock(projectRoot);
     notes.push("AGENTS.md block reconciled; no connected copy-skills host remains");
@@ -608,57 +731,106 @@ async function retireLegacyPluginState(
 async function connectNativePlugin(
   provider: AgentProvider,
   projectRoot: string,
+  boardRoot: string,
   options: ConnectOptions,
 ): Promise<ConnectResult> {
   if (provider.install.kind !== "plugin") throw new Error("native plugin provider expected");
   const spec = provider.install;
   const run = options.commandRunner ?? defaultCommandRunner;
+  const argv = spec.argv;
+  const runArgv = options.nativeCommandRunner ?? defaultNativeCommandRunner;
+  const execute = async (command: string, native?: NativePluginCommand) => {
+    if (!native) return run(command, projectRoot);
+    // The string seam remains useful to existing unit fixtures; production
+    // never supplies commandRunner and therefore always takes execFile argv.
+    if (options.nativeCommandRunner) return runArgv(native.file, native.args, projectRoot);
+    if (options.commandRunner) return run(command, projectRoot);
+    return defaultNativeCommandRunner(native.file, native.args, projectRoot);
+  };
   const runtime = process.env.KANMER_NODE?.trim() || "node";
   const runtimeCommand = `${q(runtime)} --version`;
   const bundledRoot = options.pluginRootPath ?? pluginRoot();
+  let lastCommand = spec.installCommand(bundledRoot);
   try {
-    const cli = await run("grok --version", projectRoot);
-    const pluginHelp = await run("grok plugin --help", projectRoot);
-    const runtimeResult = await run(runtimeCommand, projectRoot);
-    const required = [
-      join(bundledRoot, ".claude-plugin", "plugin.json"),
-      join(bundledRoot, "skills"),
-      join(bundledRoot, "mcp", "claude.mcp.json"),
-      join(bundledRoot, "mcp", "kanmer-mcp.cjs"),
-    ];
+    const version = argv?.version();
+    lastCommand = version ? nativeCommandText(version) : `${spec.cli} --version`;
+    const cli = await execute(lastCommand, version);
+    const help = argv?.help();
+    lastCommand = help ? nativeCommandText(help) : spec.helpCommand();
+    const pluginHelp = await execute(lastCommand, help);
+    const runtimeInvocation = argv?.runtime?.();
+    lastCommand = runtimeInvocation ? nativeCommandText(runtimeInvocation) : runtimeCommand;
+    const runtimeResult = await execute(lastCommand, runtimeInvocation);
+    const required = spec.requiredFiles(bundledRoot);
     const missing = required.filter((path) => !existsSync(path));
     if (missing.length > 0) {
       throw new Error(`Kanmer plugin bundle is incomplete; missing ${missing.join(", ")}`);
     }
-    const descriptor = await readFile(join(bundledRoot, "mcp", "claude.mcp.json"), "utf8");
-    if (descriptor.includes('"cwd"') || descriptor.includes("--root")) {
-      throw new Error("Kanmer plugin MCP descriptor must not pin cwd or --root");
+    const descriptorPath = spec.descriptorPath(bundledRoot);
+    const descriptor = await readFile(descriptorPath, "utf8");
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(descriptor);
+    } catch {
+      throw new Error(`Kanmer plugin MCP descriptor is not valid JSON: ${descriptorPath}`);
     }
-    const install = spec.installCommand(bundledRoot);
-    const installed = await run(install, projectRoot);
-    const inspect = await run(spec.inspectCommand(), projectRoot);
+    const entry = (parsed as { mcpServers?: { kanmer?: { command?: unknown; args?: unknown; cwd?: unknown } } } | null)?.mcpServers?.kanmer;
+    if (!entry || !Array.isArray(entry.args)) {
+      throw new Error(`Kanmer plugin MCP descriptor has no mcpServers.kanmer entry: ${descriptorPath}`);
+    }
+    if (entry.cwd !== undefined || entry.args.some((arg) => typeof arg === "string" && /^(--root|--repo-root|cwd)$/i.test(arg))) {
+      throw new Error("Kanmer plugin MCP descriptor must not pin cwd, --root or --repo-root");
+    }
+    if (spec.cli === "agy") {
+      const launcher = antigravityPortableInvocation();
+      if (entry.command !== launcher.command || JSON.stringify(entry.args) !== JSON.stringify(launcher.args)) {
+        throw new Error(
+          "Antigravity plugin MCP descriptor must use the installer-owned %LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd launcher",
+        );
+      }
+    }
+    const validate = argv?.validate?.(bundledRoot);
+    if (validate || spec.validateCommand) {
+      lastCommand = validate ? nativeCommandText(validate) : spec.validateCommand!(bundledRoot);
+      await execute(lastCommand, validate);
+    }
+    const installArgv = argv?.install(bundledRoot);
+    const install = installArgv ? nativeCommandText(installArgv) : spec.installCommand(bundledRoot);
+    lastCommand = install;
+    const installed = await execute(install, installArgv);
+    const inspectArgv = argv?.inspect();
+    const inspectCommand = inspectArgv ? nativeCommandText(inspectArgv) : spec.inspectCommand();
+    lastCommand = inspectCommand;
+    const inspect = await execute(inspectCommand, inspectArgv);
     const inspected = commandText(inspect);
-    if (!pluginCapabilityPresent(spec.pluginName, inspected)) {
+    if (!spec.capabilityPresent(inspected)) {
       return {
         ok: false,
-        command: spec.inspectCommand(),
+        command: inspectCommand,
         output:
-          `Grok plugin install returned success, but ${spec.inspectCommand()} did not report ` +
+          `${spec.cli} plugin install returned success, but ${inspectCommand} did not report ` +
           `${spec.pluginName}. No legacy project state was changed.`,
       };
     }
-    const prompt =
-      "Call the Kanmer get_status tool for this project and return exactly KANMER_GET_STATUS_OK.";
-    const functionalCommand = `grok -p ${q(prompt)} --cwd ${q(projectRoot)}`;
-    const functional = await run(functionalCommand, projectRoot);
-    const functionalOutput = commandText(functional);
-    if (!functionalOutput.includes("KANMER_GET_STATUS_OK")) {
+    const functionalArgv = argv?.functional(projectRoot, boardRoot);
+    const functionalCommand = functionalArgv ? nativeCommandText(functionalArgv) : spec.functionalCommand(projectRoot);
+    lastCommand = functionalCommand;
+    const functional = await withLegacyRegistrationDisabled(provider, projectRoot, () => execute(functionalCommand, functionalArgv));
+    const functionalOutput = `${functional.stdout}\n${functional.stderr}`.trim();
+    const expected = await expectedProjectIdentity(boardRoot, projectRoot);
+    const proof = parseFunctionalIdentity(functionalOutput);
+    const proofOk = proof !== null &&
+      proof.fingerprint === expected.fingerprint &&
+      proof.boardRoot === expected.boardRoot &&
+      proof.repoRoot === expected.repoRoot &&
+      proof.format === expected.format;
+    if (!proofOk) {
       return {
         ok: false,
         command: functionalCommand,
         output:
-          `Grok plugin inspect passed, but the fresh functional get_status probe did not return ` +
-          "KANMER_GET_STATUS_OK. No legacy project state was changed.",
+          `${spec.cli} plugin inspect passed, but the fresh functional get_status probe did not return ` +
+          "the expected project fingerprint, board root, repo root and format. No legacy project state was changed.",
       };
     }
     const cleanup = await retireLegacyPluginState(provider, projectRoot);
@@ -666,7 +838,7 @@ async function connectNativePlugin(
       ok: true,
       command: install,
       output: [
-        `Grok ${commandText(cli) || "CLI preflight passed"}`,
+        `${spec.cli} ${commandText(cli) || "CLI preflight passed"}`,
         `plugin help ${commandText(pluginHelp) ? "passed" : "returned no output"}`,
         `runtime ${commandText(runtimeResult) || "preflight passed"}`,
         commandText(installed) || "plugin installed",
@@ -678,7 +850,7 @@ async function connectNativePlugin(
   } catch (err) {
     return {
       ok: false,
-      command: spec.installCommand(bundledRoot),
+      command: lastCommand,
       output: commandFailureText(err),
     };
   }
@@ -692,31 +864,45 @@ async function disconnectNativePlugin(
   if (provider.install.kind !== "plugin") throw new Error("native plugin provider expected");
   const spec = provider.install;
   const run = options.commandRunner ?? defaultCommandRunner;
+  const argv = spec.argv;
+  const runArgv = options.nativeCommandRunner ?? defaultNativeCommandRunner;
+  const execute = async (command: string, native?: NativePluginCommand) => {
+    if (!native) return run(command, projectRoot);
+    if (options.nativeCommandRunner) return runArgv(native.file, native.args, projectRoot);
+    if (options.commandRunner) return run(command, projectRoot);
+    return defaultNativeCommandRunner(native.file, native.args, projectRoot);
+  };
+  const listArgv = argv?.list();
+  const listCommand = listArgv ? nativeCommandText(listArgv) : spec.listCommand();
+  const uninstallArgv = argv?.uninstall();
+  const uninstallCommand = uninstallArgv ? nativeCommandText(uninstallArgv) : spec.uninstallCommand();
+  const inspectArgv = argv?.inspect();
+  const inspectCommand = inspectArgv ? nativeCommandText(inspectArgv) : spec.inspectCommand();
   try {
-    const before = await run(spec.listCommand(), projectRoot);
+    const before = await execute(listCommand, listArgv);
     const beforeText = commandText(before);
     let uninstall = "plugin already absent";
     if (pluginPresent(spec.pluginName, beforeText)) {
-      const result = await run(spec.uninstallCommand(), projectRoot);
+      const result = await execute(uninstallCommand, uninstallArgv);
       uninstall = commandText(result) || "plugin uninstalled";
     }
-    const after = await run(spec.listCommand(), projectRoot);
-    const inspected = await run(spec.inspectCommand(), projectRoot);
+    const after = await execute(listCommand, listArgv);
+    const inspected = await execute(inspectCommand, inspectArgv);
     if (pluginPresent(spec.pluginName, commandText(after)) || pluginPresent(spec.pluginName, commandText(inspected))) {
       return {
         ok: false,
-        command: spec.uninstallCommand(),
-        output: `Grok still reports ${spec.pluginName} after uninstall; no legacy project state was changed.`,
+        command: uninstallCommand,
+        output: `${spec.cli} still reports ${spec.pluginName} after uninstall; no legacy project state was changed.`,
       };
     }
     const cleanup = await retireLegacyPluginState(provider, projectRoot);
     return {
       ok: true,
-      command: spec.uninstallCommand(),
+      command: uninstallCommand,
       output: [uninstall, "plugin absent from list and inspect", ...cleanup].join("; "),
     };
   } catch (err) {
-    return { ok: false, command: spec.uninstallCommand(), output: commandFailureText(err) };
+    return { ok: false, command: uninstallCommand, output: commandFailureText(err) };
   }
 }
 
@@ -728,7 +914,7 @@ export async function connectAgent(
 ): Promise<ConnectResult> {
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
-  if (provider.install.kind === "plugin") return connectNativePlugin(provider, projectRoot, options);
+  if (provider.install.kind === "plugin") return connectNativePlugin(provider, projectRoot, boardRoot, options);
   const inv = serverInvocation(id, boardRoot, projectRoot);
   try {
     if (id === "codex") {
@@ -769,10 +955,9 @@ export async function connectAgent(
         );
         if (note) output += ` ${note}`;
       }
-      // Antigravity's registration is read only by a session bound to this
-      // folder, and Kanmer binds nothing (MCP-015). "Registered Kanmer in
-      // .agents/mcp_config.json" is true and, alone, misleading — so the
-      // condition is said here, at the moment the file is written.
+      // Retained for legacy provider specs and migration fixtures. The active
+      // Antigravity route is the native plugin lifecycle above, not this
+      // project-file branch.
       if (id === "antigravity") output += ` ${antigravityBindingNote(projectRoot)}`;
     } else {
       throw new Error(`Provider ${id} has no project registration; expected native plugin path.`);
@@ -967,7 +1152,7 @@ export async function disconnectAgent(
           cleanupNotes.push("bundled copied skills removed");
         }
       }
-      const peerRemains = await hasRegisteredCopySkillsPeer(id, projectRoot);
+      const peerRemains = await hasRegisteredAgentPeer(id, projectRoot);
       if (peerRemains) {
         cleanupNotes.push("AGENTS.md block retained for another connected host");
       } else {

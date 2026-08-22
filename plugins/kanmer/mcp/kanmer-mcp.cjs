@@ -38742,6 +38742,27 @@ var DISPATCH_TASKS = Object.freeze([
 function dispatchTaskById(id) {
   return DISPATCH_TASKS.find((t) => t.id === id);
 }
+function dispatchDeliverableProven(taskId, info, item) {
+  if (!taskId || !info) return false;
+  const has = (type) => (info.counts[type] ?? 0) > 0;
+  const hasPath = (path122) => info.documentPaths.some((candidate) => candidate.replace(/\\/g, "/") === path122);
+  switch (taskId) {
+    case "research-quick":
+      return has("research");
+    case "research-deep":
+      return has("research") && hasPath("research/summary.md");
+    case "files":
+      return has("files");
+    case "plan":
+      return has("plan") && has("checklist");
+    case "execute":
+      return has("checklist") && info.checklist !== null && info.checklist.total > 0 && info.checklist.checked === info.checklist.total && has("post-implementation-report") && (item?.prs?.length ?? 0) > 0;
+    case "verify":
+      return has("proof");
+    default:
+      return false;
+  }
+}
 function taskFeasibility(taskId, ctx) {
   const has = (type) => (ctx.docCounts[type] ?? 0) > 0;
   switch (taskId) {
@@ -38772,7 +38793,11 @@ var PROVIDERS = Object.freeze([
   Object.freeze({ id: "codex", label: "Codex", cli: "codex", buildDispatchArgs: ({ prompt, model }) => ["exec", ...model ? ["--model", model] : [], prompt], modelOption: MODEL("codex exec --help: -m, --model <MODEL>") }),
   Object.freeze({ id: "claude", label: "Claude Code", cli: "claude", buildDispatchArgs: ({ prompt, model }) => ["-p", prompt, ...model ? ["--model", model] : []], modelOption: MODEL("claude --help: --model <model>") }),
   Object.freeze({ id: "opencode", label: "opencode", cli: "opencode", buildDispatchArgs: ({ prompt, model }) => ["run", ...model ? ["--model", model] : [], prompt], modelOption: MODEL("opencode run --help: -m, --model <string>") }),
-  Object.freeze({ id: "grok", label: "Grok CLI", cli: "grok", buildDispatchArgs: ({ prompt, sourceRoot, model }) => ["-p", prompt, ...model ? ["--model", model] : [], "--cwd", sourceRoot], modelOption: MODEL("grok --help: -m, --model <MODEL>") })
+  Object.freeze({ id: "grok", label: "Grok CLI", cli: "grok", buildDispatchArgs: ({ prompt, sourceRoot, model }) => ["-p", prompt, ...model ? ["--model", model] : [], "--cwd", sourceRoot], modelOption: MODEL("grok --help: -m, --model <MODEL>") }),
+  // Antigravity does not bind a project from cwd. The source root is therefore
+  // an argv value, not spawn's cwd alone: every dispatch is session-bound and
+  // persistent project ids are deliberately out of scope (GUI-073/MCP-015).
+  Object.freeze({ id: "antigravity", label: "Antigravity", cli: "agy", buildDispatchArgs: ({ prompt, sourceRoot }) => ["--add-dir", sourceRoot, "-p", prompt] })
 ]);
 function dispatchProviderById(id) {
   return PROVIDERS.find((provider) => provider.id === id);
@@ -38804,6 +38829,7 @@ var DispatchSupervisor = class {
     this.now = options2.now ?? Date.now;
     this.sink = options2.statusSink ?? (() => void 0);
     this.recorder = options2.recordTerminal ?? (() => void 0);
+    this.verifier = options2.verifyDeliverable;
     this.env = options2.env ?? process.env;
     if (!Number.isInteger(this.maxActive) || this.maxActive < 1) throw new Error("maxActive must be a positive integer");
     if (!Number.isFinite(this.defaultTimeoutMs) || this.defaultTimeoutMs < 1) throw new Error("defaultTimeoutMs must be positive");
@@ -38821,6 +38847,7 @@ var DispatchSupervisor = class {
   now;
   sink;
   recorder;
+  verifier;
   env;
   async start(request) {
     const provider = dispatchProviderById(request.provider);
@@ -38904,9 +38931,7 @@ var DispatchSupervisor = class {
       if (handle.terminal) return;
       handle.terminal = true;
       clearTimeout(handle.timer);
-      if (handle.status.state === "running") handle.status.state = code === 0 ? "done" : "failed";
-      handle.status.exitCode = code;
-      this.finish(lock, handle);
+      void this.finishClose(lock, handle, code);
     });
     this.emit(handle);
     return { ...status };
@@ -38949,6 +38974,25 @@ var DispatchSupervisor = class {
   }
   emit(handle) {
     this.sink({ ...handle.status, tail: handle.tail.slice(-MAX_TAIL_LINES), logPath: handle.logPath });
+  }
+  async finishClose(lock, handle, code) {
+    if (handle.status.state === "running") {
+      if (code === 0 && handle.status.deliverable) {
+        let proven = false;
+        try {
+          proven = this.verifier ? await this.verifier({ ...handle.status, exitCode: code }, handle.tail.slice(-MAX_TAIL_LINES)) : false;
+        } catch (error2) {
+          handle.status.reason = `deliverable-check-failed: ${error2 instanceof Error ? error2.message : String(error2)}`;
+        }
+        if (proven) handle.status.state = "done";
+        else if (!handle.status.reason) handle.status.reason = this.verifier ? "deliverable-unproven" : "deliverable-verification-unavailable";
+        if (!proven) handle.status.state = "failed";
+      } else {
+        handle.status.state = code === 0 ? "done" : "failed";
+      }
+    }
+    handle.status.exitCode = code;
+    this.finish(lock, handle);
   }
   finish(lock, handle) {
     handle.status.endedAt = this.now();
@@ -41875,7 +41919,8 @@ function createKanmerMcpServer(policy = "local-stdio") {
     maxTimeoutMs: dispatchPolicy.maxTimeoutMs,
     recordTerminal: async (status, tail) => {
       await store.appendScratch(status.ticketId, "dispatch", dispatchTerminalSummary(status, tail));
-    }
+    },
+    verifyDeliverable: async (status) => dispatchDeliverableProven(status.task, await store.getTicketDocsInfo(status.ticketId), await store.getItem(status.ticketId))
   });
   const registerTool = server.registerTool.bind(server);
   server.registerTool = ((name, config2, ...args) => {
@@ -42107,7 +42152,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
       description: "Start one fixed, named core task for one existing ticket through the operator-enabled dispatch policy. The caller chooses only ticket, shared provider id, shared task id and an optional bounded timeout; command, args, prompt, cwd, environment and log path are never accepted. Dispatch is disabled by default, bearer authentication is not authorization, and `get_status.dispatch` explains the local policy. Refusals are normal structured `{ok:false,code,reason}` results and never create a child or log before all checks and approval pass.",
       inputSchema: {
         ticket_id: external_exports.string().describe("Existing non-archived ticket id"),
-        provider: external_exports.string().describe("Operator-allowlisted shared provider id: codex | claude | opencode | grok"),
+        provider: external_exports.string().describe("Operator-allowlisted shared provider id: codex | claude | opencode | grok | antigravity"),
         task: external_exports.string().describe("Operator-allowlisted core task id from DISPATCH_TASKS"),
         timeout_ms: external_exports.number().int().positive().optional().describe("Optional bounded timeout in milliseconds"),
         expected_project: expectedProjectField

@@ -3,7 +3,7 @@
 // (a marketplace CLI or copy-skills + the AGENTS.md block). Every register /
 // merge is a pure function, so connect.ts is a thin dispatcher and the whole
 // surface is unit-testable without spawning anything.
-import { basename } from "node:path";
+import { basename, join } from "node:path";
 import * as TOML from "smol-toml";
 import {
   dispatchProviderById,
@@ -45,6 +45,16 @@ export function codexPortableProbeInvocation(): Invocation {
   return invocation;
 }
 
+/** The installer-owned Windows runtime used by native plugin MCP configs. */
+export function antigravityPortableInvocation(probe = false): Invocation {
+  const launcher = '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"';
+  return {
+    command: "cmd.exe",
+    args: ["/d", "/s", "/c", `${launcher}${probe ? " --probe" : ""}`],
+    env: {},
+  };
+}
+
 /** Whether a config registers Kanmer — with "unreadable" kept distinct from "no". */
 export type RegistrationState = "registered" | "absent" | "indeterminate";
 
@@ -54,6 +64,9 @@ export type RegisterSpec =
       kind: "cli";
       addCommand: (inv: Invocation, root: string) => string;
       removeCommands: (root: string) => string[];
+      /** Optional project file that proves this CLI host remains connected. */
+      configPath?: string;
+      registrationState?: (existing: string) => RegistrationState;
     }
   | {
       kind: "configFile";
@@ -113,15 +126,48 @@ export type InstallSpec =
        kind: "plugin";
        scope: "user";
        pluginName: string;
+       cli: string;
+       helpCommand: () => string;
        installCommand: (pluginRoot: string) => string;
        uninstallCommand: () => string;
        listCommand: () => string;
        inspectCommand: () => string;
+       validateCommand?: (pluginRoot: string) => string;
+       functionalCommand: (projectRoot: string) => string;
+       requiredFiles: (pluginRoot: string) => string[];
+       capabilityPresent: (output: string) => boolean;
+       descriptorPath: (pluginRoot: string) => string;
        /** State written by older Kanmer releases; retired after plugin proof. */
        legacyConfigPath: string;
        legacyConfigUnmerge: (existing: string) => string;
+       legacyRegistrationState?: (existing: string) => RegistrationState;
        legacySkillsDir: string;
+       /**
+        * Optional argv-native lifecycle. Providers with user-controlled paths
+        * use this seam so connect never interpolates those paths into a shell
+        * command. The string commands remain the copy/paste compatibility
+        * surface for providers that do not need it.
+        */
+       argv?: NativePluginArgvCommands;
      };
+
+export interface NativePluginCommand {
+  file: string;
+  args: string[];
+}
+
+export interface NativePluginArgvCommands {
+  version: () => NativePluginCommand;
+  help: () => NativePluginCommand;
+  /** Runtime that the plugin's MCP descriptor launches, when not `node`. */
+  runtime?: () => NativePluginCommand;
+  install: (pluginRoot: string) => NativePluginCommand;
+  uninstall: () => NativePluginCommand;
+  list: () => NativePluginCommand;
+  inspect: () => NativePluginCommand;
+  validate?: (pluginRoot: string) => NativePluginCommand;
+  functional: (projectRoot: string, boardRoot: string) => NativePluginCommand;
+}
 
 export interface AgentProvider {
   id: ProviderId;
@@ -161,6 +207,17 @@ function sharedDispatchSpec(id: DispatchProviderId): Pick<AgentProvider, "dispat
 /** Quote a shell argument for the copy-paste fallback command line. */
 export function q(s: string): string {
   return /[\s"]/.test(s) ? `"${s.replace(/"/g, '\\"')}"` : s;
+}
+
+function nativePluginPresent(pluginName: string, output: string): boolean {
+  const escaped = pluginName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${escaped}\\b`, "i").test(output);
+}
+
+function nativePluginCapabilityPresent(pluginName: string, output: string): boolean {
+  return output
+    .split(/\r?\n/)
+    .some((line) => nativePluginPresent(pluginName, line) && (/enabled|installed/i.test(line) || line.trim().toLowerCase() === pluginName.toLowerCase()));
 }
 
 /** The stamp a copied skill set carries so Connect can offer "Update skills". */
@@ -460,27 +517,28 @@ export function codexTrustNote(trust: CodexTrust): string | null {
 
 /**
  * Antigravity's connect-time caveat — the same shape as `codexTrustNote`, and
- * for the same reason: a per-host *condition* on whether the registration is
- * read belongs in a sentence the user sees at the moment it is written, not in a
+ * for the same reason: a per-host *condition* on whether a session is bound
+ * belongs in a sentence the user sees at the moment it is installed, not in a
  * capability tier the UI has to infer.
  *
  * Unlike codex's, this one is unconditional. Codex's trust state is recorded in
  * a file Kanmer can read, so it can say whether *this* folder is trusted;
  * Antigravity's binding is a **per-session command-line flag**, so there is
  * nothing on disk to check — no project record, no trust list, no git root makes
- * it true (all three were tested and none binds). Kanmer establishes no binding
- * itself (MCP-015), so the caveat applies to every connect until it does.
+ * it true. Connect proves the user plugin, while dispatch supplies `--add-dir`;
+ * interactive sessions still need the same explicit binding.
  *
  * Deliberately silent about the Antigravity **IDE**: everything above is `agy`
- * 1.1.13, the IDE was never exercised, and ADR-0009's method clause makes an
+ * 1.1.14, the IDE was never exercised, and ADR-0009's method clause makes an
  * unchecked host a finding rather than a default. So the note names the CLI it
  * measured and leaves the IDE alone rather than guessing in either direction.
  */
 export function antigravityBindingNote(projectRoot: string): string {
   return (
-    `Antigravity's CLI (\`agy\`) reads this file — and the skills — only in a session bound to this folder: ` +
-    `start it with \`agy --add-dir ${q(projectRoot)}\` (or \`--new-project\`), or a bare \`agy\` will not see them. ` +
-    `Verified against agy 1.1.13; the Antigravity IDE was not tested.`
+    `Antigravity's Kanmer plugin is user-scoped and affects every Antigravity workspace for this user. ` +
+    `Its CLI (\`agy\`) reads the plugin's MCP and skills only in a session bound to this folder: ` +
+    `start it with \`agy --add-dir ${q(projectRoot)}\` (or a user-managed bound project); a bare \`agy\` will not see them. ` +
+    `The CLI was checked at agy 1.1.14; the Antigravity IDE was not tested.`
   );
 }
 
@@ -690,15 +748,6 @@ function jsonRegistrationState(existing: string, key: "mcp" | "mcpServers"): Reg
  * Claude's entry as grok's. grok now owns `.grok/config.toml` (ADR-0013) and no
  * Kanmer provider merges or unmerges `.mcp.json` at all.
  */
-function mcpServersMerge(existing: string | null, inv: Invocation): string {
-  return editJson(existing, (o) => {
-    const servers = (typeof o.mcpServers === "object" && o.mcpServers !== null
-      ? o.mcpServers
-      : {}) as Record<string, unknown>;
-    servers.kanmer = { command: inv.command, args: inv.args, env: inv.env };
-    o.mcpServers = servers;
-  });
-}
 function mcpServersUnmerge(existing: string): string {
   return editJson(existing, (o) => {
     if (typeof o.mcpServers === "object" && o.mcpServers !== null) {
@@ -706,10 +755,6 @@ function mcpServersUnmerge(existing: string): string {
     }
   });
 }
-function mcpServersRegistrationState(existing: string): RegistrationState {
-  return jsonRegistrationState(existing, "mcpServers");
-}
-
 /** codex/claude `mcp add` command line (shared by both CLI providers). */
 function cliAddCommand(id: "codex" | "claude", inv: Invocation, root: string): string {
   const envFlag = id === "codex" ? "--env" : "-e";
@@ -762,6 +807,8 @@ export const PROVIDERS: AgentProvider[] = [
         "claude mcp remove kanmer -s project",
         "claude mcp remove kanmer -s user", // stale user-scope entry older versions wrote
       ],
+      configPath: ".mcp.json",
+      registrationState: (existing) => jsonRegistrationState(existing, "mcpServers"),
     },
     install: {
       kind: "marketplace",
@@ -786,8 +833,7 @@ export const PROVIDERS: AgentProvider[] = [
       registrationState: opencodeRegistrationState,
     },
     // OpenCode has a native project-scoped skills directory. Keep its Kanmer
-    // roster there instead of the cross-agent `.agents/skills` tree, which
-    // Antigravity still owns and Codex also discovers.
+    // roster there instead of the legacy cross-agent `.agents/skills` tree.
     install: {
       kind: "copySkills",
       skillsScope: "project",
@@ -808,13 +854,42 @@ export const PROVIDERS: AgentProvider[] = [
       kind: "plugin",
       scope: "user",
       pluginName: "kanmer",
+      cli: "grok",
+      helpCommand: () => "grok plugin --help",
       installCommand: (root) => `grok plugin install ${q(root)} --trust`,
       uninstallCommand: () => "grok plugin uninstall kanmer --confirm",
       listCommand: () => "grok plugin list",
       inspectCommand: () => "grok inspect",
+      functionalCommand: (root) => `grok -p ${q("Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.")} --cwd ${q(root)}`,
+      requiredFiles: (root) => [
+        join(root, ".claude-plugin", "plugin.json"),
+        join(root, "skills"),
+        join(root, "mcp", "claude.mcp.json"),
+        join(root, "mcp", "kanmer-mcp.cjs"),
+      ],
+      capabilityPresent: nativePluginCapabilityPresent.bind(null, "kanmer"),
+      descriptorPath: (root) => join(root, "mcp", "claude.mcp.json"),
       legacyConfigPath: STALENESS_PROVIDER_PATHS.grok.registrationFile,
       legacyConfigUnmerge: tomlMcpServersUnmerge,
+      legacyRegistrationState: (existing) => tomlRegistrationState(existing),
       legacySkillsDir: STALENESS_PROVIDER_PATHS.grok.skillsDir,
+      argv: {
+        version: () => ({ file: "grok", args: ["--version"] }),
+        help: () => ({ file: "grok", args: ["plugin", "--help"] }),
+        install: (root) => ({ file: "grok", args: ["plugin", "install", root, "--trust"] }),
+        uninstall: () => ({ file: "grok", args: ["plugin", "uninstall", "kanmer", "--confirm"] }),
+        list: () => ({ file: "grok", args: ["plugin", "list"] }),
+        inspect: () => ({ file: "grok", args: ["inspect"] }),
+        functional: (root) => ({
+          file: "grok",
+          args: [
+            "-p",
+            "Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.",
+            "--cwd",
+            root,
+          ],
+        }),
+      },
     },
     dispatch: true,
     ...sharedDispatchSpec("grok"),
@@ -822,56 +897,62 @@ export const PROVIDERS: AgentProvider[] = [
   {
     id: "antigravity",
     label: "Antigravity",
-    register: {
-      kind: "configFile",
-      configPath: STALENESS_PROVIDER_PATHS.antigravity.registrationFile,
-      merge: mcpServersMerge,
-      unmerge: mcpServersUnmerge,
-      registrationState: mcpServersRegistrationState,
-    },
-    // `.agents/skills` is Antigravity's *primary* project location (`.agent/`
-    // singular is kept only for backward compatibility), so it is the very same
-    // tree grok also reads, per FRD-012 R2, which is why grok's separate
-    // `.grok/skills` write is redundant — MCP-014's to retire, not this entry's
-    // to claim. OpenCode deliberately uses its own `.opencode/skills` tree.
-    //
-    // **With one condition, measured 2026-08-16 against agy 1.1.13.** `agy` reads
-    // a workspace's `.agents/skills/` and `.agents/mcp_config.json` only in a
-    // session **bound to that folder**; ten runs with positive controls, and the
-    // probe MCP server's own process log, established that the binding is the
-    // whole gate. A bare `agy` binds to `default-cli-project`, whose record is
-    // `"projectResources": {}` — no folder, so there is nothing to read `.agents/`
-    // from, and the working directory is irrelevant. `--new-project`,
-    // `--project <id>` (where the record carries a `folderUri`) and
-    // `--add-dir <path>` each bind, and only the flag on the command line does:
-    // workspace *trust* is not the gate, a git root does not auto-bind, and a
-    // project merely existing does not bind. Kanmer establishes no binding today,
-    // so what Connect writes here is **correct and currently inert** — the files
-    // are in the right places and an ordinary `agy` session never looks at them.
-    // MCP-015 owns making it live; `antigravityBindingNote` says so at connect
-    // time so the user is not left to discover it. (ADR-0009's method clause,
-    // FRD-012 R2.)
+    // Native user plugin. Connect never writes project `.agents` state for new
+    // installs; those paths remain migration inputs for pre-MCP-015 connects.
+    register: { kind: "none" },
     install: {
-      kind: "copySkills",
-      skillsScope: "project",
-      skillsDir: STALENESS_PROVIDER_PATHS.antigravity.skillsDir,
+      kind: "plugin",
+      scope: "user",
+      pluginName: "kanmer",
+      cli: "agy",
+      helpCommand: () => "agy plugin --help",
+      installCommand: (root) => `agy plugin install ${q(root)}`,
+      uninstallCommand: () => "agy plugin uninstall kanmer",
+      listCommand: () => "agy plugin list",
+      // agy 1.1.14 has no inspect subcommand; list is the supported status
+      // oracle. Functional capability still requires a bound real tool call.
+      inspectCommand: () => "agy plugin list",
+      validateCommand: (root) => `agy plugin validate ${q(root)}`,
+      functionalCommand: (root) =>
+        `agy --add-dir ${q(root)} -p ${q("Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.")}`,
+      requiredFiles: (root) => [
+        join(root, "plugin.json"),
+        join(root, "mcp_config.json"),
+        join(root, "skills"),
+        join(root, "mcp", "kanmer-mcp.cjs"),
+      ],
+      capabilityPresent: nativePluginCapabilityPresent.bind(null, "kanmer"),
+      descriptorPath: (root) => join(root, "mcp_config.json"),
+      legacyConfigPath: STALENESS_PROVIDER_PATHS.antigravity.registrationFile,
+      legacyConfigUnmerge: mcpServersUnmerge,
+      legacyRegistrationState: (existing) => jsonRegistrationState(existing, "mcpServers"),
+      legacySkillsDir: STALENESS_PROVIDER_PATHS.antigravity.skillsDir,
+      argv: {
+        version: () => ({ file: "agy", args: ["--version"] }),
+        help: () => ({ file: "agy", args: ["plugin", "--help"] }),
+        runtime: () => {
+          const invocation = antigravityPortableInvocation(true);
+          return { file: invocation.command, args: invocation.args };
+        },
+        install: (root) => ({ file: "agy", args: ["plugin", "install", root] }),
+        uninstall: () => ({ file: "agy", args: ["plugin", "uninstall", "kanmer"] }),
+        list: () => ({ file: "agy", args: ["plugin", "list"] }),
+        // agy 1.1.14 has no inspect subcommand; list is the supported oracle.
+        inspect: () => ({ file: "agy", args: ["plugin", "list"] }),
+        validate: (root) => ({ file: "agy", args: ["plugin", "validate", root] }),
+        functional: (_projectRoot, boardRoot) => ({
+          file: "agy",
+          args: [
+            "--add-dir",
+            boardRoot,
+            "-p",
+            "Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.",
+          ],
+        }),
+      },
     },
-    // NOT because `agy -p` is broken. That claim — "known-broken piped, GH
-    // #318/#76" — is **refuted**: `echo hi | agy -p "Reply with exactly: PONG"`
-    // prints `PONG` and exits 0 on 1.1.13 with stdout piped exactly as `spawn`
-    // pipes it, reproduced across ten runs by two independent investigations.
-    // (The two issue numbers were never fetched — no network lookup was made —
-    // so they are recorded as unverified history, not as evidence. The behaviour
-    // was tested against the installed binary instead, which is the stronger
-    // check: ADR-0009.)
-    //
-    // `dispatch` stays false for the binding reason above. `dispatchTicket`
-    // spawns with `cwd: root` and nothing else (`dispatch.ts`), so a dispatched
-    // Antigravity agent would run unbound — blind to the very MCP server Connect
-    // had just registered for it, while appearing in the dispatch menu as though
-    // it worked. Flipping this flag is therefore not a one-line change; it needs
-    // the binding, and MCP-015 owns both.
-    dispatch: false,
+    dispatch: true,
+    ...sharedDispatchSpec("antigravity"),
   },
 ];
 

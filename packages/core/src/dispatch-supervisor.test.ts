@@ -23,7 +23,7 @@ async function setup(options: Partial<ConstructorParameters<typeof DispatchSuper
   const dir = await mkdtemp(join(tmpdir(), "kanmer-dispatch-"));
   dirs.push(dir);
   const child = fakeChild();
-  const supervisor = new DispatchSupervisor({ logDir: dir, defaultTimeoutMs: 1000, maxTimeoutMs: 5000, spawn: () => child, ...options });
+  const supervisor = new DispatchSupervisor({ logDir: dir, defaultTimeoutMs: 1000, maxTimeoutMs: 5000, spawn: () => child, verifyDeliverable: () => true, ...options });
   return { supervisor, child, dir };
 }
 
@@ -54,6 +54,22 @@ describe("DispatchSupervisor", () => {
     child.emit("close", null);
     await new Promise((resolve) => setImmediate(resolve));
     expect(supervisor.list()[0]).toMatchObject({ state: "timed-out", reason: "timeout" });
+  });
+
+  it("fails closed when a successful process leaves the named deliverable unproven", async () => {
+    const { supervisor, child } = await setup({ verifyDeliverable: () => false });
+    await supervisor.start(request("MCP-024"));
+    child.emit("close", 0);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(supervisor.list()[0]).toMatchObject({ state: "failed", exitCode: 0, reason: "deliverable-unproven" });
+  });
+
+  it("fails closed when a task has no verifier", async () => {
+    const { supervisor, child } = await setup({ verifyDeliverable: undefined });
+    await supervisor.start(request("MCP-025"));
+    child.emit("close", 0);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(supervisor.list()[0]).toMatchObject({ state: "failed", exitCode: 0, reason: "deliverable-verification-unavailable" });
   });
 
   it("surfaces terminal recording failures", async () => {

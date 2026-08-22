@@ -819,3 +819,6 @@ Last handoff: 2026-08-22T15:35Z — Independent CORE-058 review at PR #180 head 
 
 
 - 2026-08-22T19:20Z — CORE-081 execution complete: seven current CORE-026 source transport/cache findings are implemented and tested on `13b6ce22a8363c0f467e96c775eb9a09891b7bb2`; PR #202 is open against `core-026-project-declared-sources`, and MCP moved Implementing→Review after gates readback. No self-review, merge, verify, cleanup, CORE-082/083 work, or parent merge was performed. Live external source evidence remains INCONCLUSIVE.
+
+
+2026-08-22T19:22Z — CORE-084 implementation handoff: exact branch/worktree `core-084-retry-caller-regression`/`.worktrees/core-084`, based on CORE-080 head `0e1be5f32efad1da57ee27bd2a2fe80033976bd1`; commit `7cca4bf9e799aa161b6e5da879e6ad942b13154c`, PR #203 targets `core-043-protection-retarget`, and ticket is Review with checklist/report/gates read back. Focused GUI Git 27/27, GUI typecheck, core build, scripts rerun 89/89, and diff-check pass; first missing-core-dist scripts failure is preserved. Author stops at Review; independent review/merge required; CORE-080/CORE-043 remain unmerged and no proof/cleanup is claimed.

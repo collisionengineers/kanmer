@@ -426,7 +426,7 @@ Run from the repo root unless noted.
 | `npm run build` | build core + mcp-server (incl. standalone bundle) |
 | `npm run build:core` / `npm run build:server` | build just one package |
 | `npm test` | core **and GUI** vitest suites, **and** `npm run test:scripts` |
-| `npm run test:scripts` | `node --test` over `scripts/*.test.mjs`. Deliberately **not** vitest: `scripts/` is dependency-free, and `node:test` needs no root devDependency, no root config, and no `package-lock.json` churn (`release.mjs` refuses on a dirty tree) |
+| `npm run test:scripts` | `node scripts/test-scripts.mjs`, which enumerates direct `scripts/*.test.mjs` files and runs them with `node:test`. Deliberately **not** vitest: `scripts/` is dependency-free, and `node:test` needs no root devDependency, no root config, and no `package-lock.json` churn (`release.mjs` refuses on a dirty tree) |
 | `npm run typecheck` | type-check **every** workspace — core, mcp-server, ui, gui. Use this, not the per-workspace form: vitest does not typecheck, so a green `npm test` says nothing about types, and a partial typecheck says nothing about the workspaces it skipped |
 | `npm run typecheck -w @kanmer/<pkg>` | one workspace, when you want a fast loop |
 | `npm run verify` | the authoritative PR check: tests (including manual freshness), all-workspace typecheck, core/server build, all MCP smokes, skill and managed-block verification, then plugin synchronization. Run from a normal checkout, not a linked worktree, because `plugin:check` deliberately refuses there. |

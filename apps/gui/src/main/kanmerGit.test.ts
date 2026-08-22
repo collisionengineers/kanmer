@@ -1,5 +1,5 @@
 import { execFile as execFileCallback } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, existsSync, realpathSync } from "node:fs";
 import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -27,6 +27,19 @@ const git = async (cwd: string, ...args: string[]): Promise<string> =>
 /** One serial, bounded integration-test wrapper for the real Git fixture. */
 const realGitTest = (name: string, fn: () => Promise<void>): void => {
   it(name, fn, REAL_GIT_TEST_TIMEOUT_MS);
+};
+
+/** Compare filesystem identity, not Windows' short/long path spelling. */
+const pathIdentity = (input: string): string => {
+  const resolved = resolve(input);
+  if (process.platform !== "win32") return resolved;
+  try {
+    return realpathSync.native(resolved);
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+    if (code === "ENOENT" || code === "ENOTDIR") return resolved;
+    throw error;
+  }
 };
 
 /**
@@ -90,7 +103,8 @@ describe("renameBoardBranch", () => {
     expect(await git(origin, "rev-parse", "team-board")).toBe(before);
 
     // Path unchanged, so an already-registered MCP server still resolves.
-    expect(resolve(boardRoot)).toBe(resolve(join(repo, ".worktrees", "kanmer")));
+    // Hosted Windows Git may spell the same temp root with an 8.3 alias.
+    expect(pathIdentity(boardRoot)).toBe(pathIdentity(join(repo, ".worktrees", "kanmer")));
     expect(existsSync(join(boardRoot, ".kanmer", "version.json"))).toBe(true);
 
     // Old remote branch is gone, and only after the new one was pushed.
@@ -190,7 +204,7 @@ describe("ensureBoardWorktree reconciliation", () => {
 
     expect(reopened.available).toBe(true);
     expect(reopened.error).toBeNull();
-    expect(resolve(reopened.boardRoot!)).toBe(resolve(boardRoot));
+    expect(pathIdentity(reopened.boardRoot!)).toBe(pathIdentity(boardRoot));
     expect(reopened.branch).toBe("team-board");
     expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("team-board");
     expect(await git(boardRoot, "rev-parse", "HEAD")).toBe(before);
@@ -210,7 +224,7 @@ describe("ensureBoardWorktree reconciliation", () => {
   realGitTest("is idempotent once the worktree is on the branch", async () => {
     const first = await ensureBoardWorktree(repo, "kanmer-board");
     const second = await ensureBoardWorktree(repo, "kanmer-board");
-    expect(resolve(second.boardRoot!)).toBe(resolve(first.boardRoot!));
+    expect(pathIdentity(second.boardRoot!)).toBe(pathIdentity(first.boardRoot!));
     expect(second.error).toBeNull();
     expect(await remoteHeads()).toEqual(expect.arrayContaining(["main", "kanmer-board"]));
   });

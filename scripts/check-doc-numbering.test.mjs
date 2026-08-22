@@ -2,7 +2,7 @@
 //
 // node:test, not vitest — same reasoning as verify-release-assets.test.mjs:
 // scripts/ is dependency-free by convention, node:test is built in, and this
-// runs under `npm run test:scripts` (`node --test scripts/*.test.mjs`), which
+// runs under `npm run test:scripts` (`node scripts/test-scripts.mjs`), which
 // `npm test` chains.
 //
 // Two things are checked here:

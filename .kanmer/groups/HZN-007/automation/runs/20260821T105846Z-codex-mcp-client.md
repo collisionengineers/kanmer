@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T00:47:11.174Z
+updated_at: 2026-08-22T00:47:33.284Z
 lane_limit: 3
 stop_reason:
 ---
@@ -488,3 +488,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T00:47:11.174Z — SKILL-007 merged-main verification: PR #20 is MERGED at f7a0ca6; source 73e2e9c is reachable from origin/main. Fresh MCP direct-label versus derived-epic progress matched all eight phases (4/4, 3/3, 8/8, 3/3, 8/8, 4/4, 4/4, 3/3). verify:skills 0, prose tests 5/5, diff-check 0. Proof updated with exact evidence; GUI visual rendering/screenshot remains INCONCLUSIVE. enter-done gate is passable; move one boundary then closeout exact recorded worktree/branch.
+
+
+- 2026-08-22T00:47:33.284Z — SKILL-007 Verifying→Done: fresh enter-done gates passed after proof readback. Active-only MCP label/derived counts match all eight phases; archived GUI-015 was the preserved initial-query mismatch and is correctly excluded from derived progress. Visual group rendering remains INCONCLUSIVE. Ticket is Done; closeout will release and remove only skill-007-phase-groups/.worktrees/skill-007.

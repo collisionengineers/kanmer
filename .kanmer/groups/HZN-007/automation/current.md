@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:47:11.174Z
+updated_at: 2026-08-22T00:47:33.284Z
 ---
 
 # Current auto run — HZN-007
@@ -17,7 +17,7 @@ updated_at: 2026-08-22T00:47:11.174Z
 Open `automation/runs/20260821T105846Z-codex-mcp-client.md`, then re-read HZN-007/context.md, the live roster, and get_doc_gates for every ticket before dispatching. This pointer is written only after the complete immutable run record was written and read back.
 
 
-Last handoff: 2026-08-22T00:47:11.174Z — SKILL-007 merged-main verification is complete; proof records live epic/label matches and GUI visual evidence INCONCLUSIVE. Verifying→Done is gate-passable; closeout will release .worktrees/skill-007 and branch skill-007-phase-groups.
+Last handoff: 2026-08-22T00:47:33.284Z — SKILL-007 is Done after merged-main proof and fresh active-only epic/label reconciliation; visual group rendering is INCONCLUSIVE. Closeout may release and remove .worktrees/skill-007 / skill-007-phase-groups.
 
 
 Last handoff: CORE-036 merged-main verification recorded at 2026-08-21T22:49:50.557Z; ticket remains Verifying because npm run verify and npm run dist:check each exited 1 on normal main. PR #127 merge 470b2fad is present; no board move, release, or worktree cleanup was performed.

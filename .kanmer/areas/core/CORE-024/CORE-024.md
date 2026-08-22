@@ -4,13 +4,16 @@ type: ticket
 title: >-
   Implement kanmer check-pr — ticket linkage and open-questions merge gate
   (phase 1)
-status: preparing
+status: implementing
 area: core
 order: 10
-assignee: ''
+assignee: core024-executor
 profile: fix
 stageEntered:
   preparing: '2026-08-20T13:20:46.901Z'
+taken_at: '2026-08-22T04:57:09.506Z'
+branch: core-024-check-pr
+worktree: .worktrees/core-024
 labels: []
 groups:
   - EPIC-009
@@ -24,7 +27,7 @@ refs:
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 archived: false
 created: '2026-08-16T18:26:15.167Z'
-updated: '2026-08-21T10:57:08.734Z'
+updated: '2026-08-22T04:57:09.506Z'
 ---
 
 ## What

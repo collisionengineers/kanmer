@@ -316,3 +316,6 @@ Last handoff: 2026-08-22T08:32:34.137Z — CORE-026 assigned to core026-executor
 
 
 2026-08-22T08:46:00Z — CORE-026 refs/gates reconciled to FRD-027 + ADR-0020 after doc-name collision audit; implementation remains active under core026-executor. GUI-109 remains active on its dedicated branch; CORE-035 stays Verifying INCONCLUSIVE.
+
+
+Last handoff: 2026-08-22T08:50:00Z — GUI-109 Review handoff complete. Commit c259af171a72fa83a9131f4f53a79d0cfd0f05b5 is pushed on gui-109-add-to-group, PR #162 is open, and the ticket is Review with checklist 17/17, report, and traceability read back. Final focused group-menu 5/5, GUI 387/387, workspace typecheck, GUI build, manual freshness, and diff-check pass; initial stale-core typecheck exit 1 is preserved with ticket-local core rerun exit 0. Live Electron menu/screenshot remains INCONCLUSIVE. Author stops for independent review; no merge or cleanup.

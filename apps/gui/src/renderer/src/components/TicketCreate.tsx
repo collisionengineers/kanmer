@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { UI_FIRST_STAGE as FIRST_STAGE, UI_STAGES as STAGES } from "../../../shared/stages.js";
 
 /** The shipped profiles plus custom — the picker's options (FRD-002 P2/P3). */
@@ -6,6 +6,14 @@ const PROFILE_IDS = ["feature", "fix", "chore", "spike", "custom"] as const;
 import type { BoardConfig, CreateItemInput, Item } from "@kanmer/core";
 import { ChipInput } from "./ChipInput.js";
 import { useClient } from "../lib/client.js";
+import {
+  cloneRequirementMap,
+  CustomRequiresEditor,
+  requirementErrors,
+  vocabularyFromModel,
+  type RequirementMap,
+} from "./CustomRequiresEditor.js";
+import type { Vocabulary } from "../lib/profileDraft.js";
 
 interface TicketCreateProps {
   board: BoardConfig;
@@ -39,6 +47,9 @@ export function TicketCreate({
   // Profile decides what this ticket will owe at each stage boundary; empty
   // means inherit (area default, then board default).
   const [profile, setProfile] = useState("");
+  const [requires, setRequires] = useState<RequirementMap>({});
+  const [vocabulary, setVocabulary] = useState<Vocabulary | null>(null);
+  const [vocabularyError, setVocabularyError] = useState<string | null>(null);
   const [assignee, setAssignee] = useState("");
   const [labels, setLabels] = useState<string[]>([]);
   const [links, setLinks] = useState<string[]>([]);
@@ -47,6 +58,32 @@ export function TicketCreate({
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setVocabulary(null);
+    setVocabularyError(null);
+    if (typeof client.getDocModel !== "function") {
+      setVocabularyError("The project document model is unavailable.");
+      return () => {
+        cancelled = true;
+      };
+    }
+    void client
+      .getDocModel()
+      .then((model) => {
+        if (!cancelled) setVocabulary(vocabularyFromModel(model, board));
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setVocabularyError(error instanceof Error ? error.message : String(error));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [board, client]);
+
+  const customErrors = vocabulary ? requirementErrors(requires, vocabulary) : {};
+  const customInvalid = profile === "custom" && (vocabulary === null || Object.keys(customErrors).length > 0);
 
   const labelSuggestions = useMemo(
     () => [...new Set(items.flatMap((i) => i.labels ?? []))].map((l) => ({ id: l })),
@@ -58,11 +95,12 @@ export function TicketCreate({
   );
 
   const submit = async () => {
-    if (!title.trim() || busy) return;
+    if (!title.trim() || busy || customInvalid) return;
     setBusy(true);
     setFailed(false);
     const input: CreateItemInput = { type: "ticket", title: title.trim(), status };
     if (profile) input.profile = profile;
+    if (profile === "custom") input.requires = cloneRequirementMap(requires);
     if (area) input.area = area;
     if (assignee.trim()) input.assignee = assignee.trim();
     if (labels.length) input.labels = labels;
@@ -148,6 +186,15 @@ export function TicketCreate({
           </label>
         </div>
 
+        {profile === "custom" && vocabulary && (
+          <CustomRequiresEditor value={requires} vocabulary={vocabulary} onChange={setRequires} />
+        )}
+        {profile === "custom" && !vocabulary && (
+          <div className="custom-requires" role="status">
+            {vocabularyError ? `Could not load requirement vocabulary: ${vocabularyError}` : "Loading custom requirements…"}
+          </div>
+        )}
+
         <div className="field">
           <span>Labels</span>
           <ChipInput
@@ -215,7 +262,7 @@ export function TicketCreate({
           <button className="ghost sm" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary" disabled={!title.trim() || busy} onClick={() => void submit()}>
+          <button className="primary" disabled={!title.trim() || busy || customInvalid} onClick={() => void submit()}>
             {busy ? "Creating…" : "Create ticket"}
           </button>
         </div>

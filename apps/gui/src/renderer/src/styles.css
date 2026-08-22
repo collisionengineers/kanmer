@@ -496,6 +496,26 @@ textarea:focus {
 .field-row .field {
   flex: 1;
 }
+.custom-requires {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  margin: 0;
+}
+.custom-requires legend {
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.custom-requires .field > span {
+  text-transform: none;
+  letter-spacing: 0;
+}
 .body-head {
   display: flex;
   justify-content: space-between;

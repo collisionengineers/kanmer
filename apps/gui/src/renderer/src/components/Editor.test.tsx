@@ -1,11 +1,21 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { BoardConfig, Item } from "@kanmer/core";
+import type { DocModel } from "../../../shared/ipc.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ClientContext, type ProjectClient } from "../lib/client.js";
 import { Editor, startingTabForMode } from "./Editor.js";
 
 const board = { areas: [], priorities: [] } as unknown as BoardConfig;
+const model: DocModel = {
+  repoDocs: {},
+  docTypes: ["research", "files", "plan", "checklist", "post-implementation-report", "proof"],
+  gateExemptFolders: ["reference", "scratch", "assets"],
+  boundaries: ["leave-backlog", "leave-preparing", "enter-review", "enter-done"],
+  profiles: {},
+  defaultProfile: "fix",
+  proofTypes: ["visual", "test-output", "command-log"],
+};
 const item = {
   id: "GUI-096",
   type: "ticket",
@@ -28,6 +38,7 @@ function clientFor(overrides: Partial<ProjectClient> = {}): ProjectClient {
       references: [], scratch: ["notes", "review"],
     }),
     getDocTypes: vi.fn().mockResolvedValue([{ id: "plan", name: "Plan" }]),
+    getDocModel: vi.fn().mockResolvedValue(model),
     getGates: vi.fn().mockResolvedValue(null),
     getGroupDoc: vi.fn().mockResolvedValue("# Shared\n\n[[GUI-096]]"),
     getDoc: vi.fn().mockResolvedValue({ content: "draft\n", version: "v1" }),
@@ -55,10 +66,10 @@ function documentClient(paths: string[], overrides: Partial<ProjectClient> = {})
   });
 }
 
-function renderEditor(client: ProjectClient, selected = item) {
+function renderEditor(client: ProjectClient, selected = item, onSave = vi.fn().mockResolvedValue(selected)) {
   return render(
     <ClientContext.Provider value={client}>
-      <Editor item={selected} board={board} items={[selected]} knownIds={new Set([selected.id])} changeSignal={0} onClose={vi.fn()} onNavigate={vi.fn()} onSave={vi.fn()} />
+      <Editor item={selected} board={board} items={[selected]} knownIds={new Set([selected.id])} changeSignal={0} onClose={vi.fn()} onNavigate={vi.fn()} onSave={onSave} />
     </ClientContext.Provider>,
   );
 }
@@ -244,5 +255,31 @@ describe("Editor modes", () => {
     renderEditor(clientFor());
     fireEvent.change(await screen.findByLabelText("Editor mode"), { target: { value: "execution" } });
     await waitFor(() => expect(screen.getByRole("button", { name: /Plan/ }).className).toContain("active"));
+  });
+});
+
+describe("Editor custom requirements", () => {
+  it("edits and saves the core-shaped requires map", async () => {
+    const selected = { ...item, profile: "custom", requires: { "leave-backlog": ["plan"] } } as Item;
+    const onSave = vi.fn().mockResolvedValue({ ...selected, requires: { "leave-preparing": ["plan"] }, updated: "2026-08-22T01:00:00.000Z" });
+    const client = clientFor({ getItem: vi.fn().mockResolvedValue(selected) });
+    renderEditor(client, selected, onSave);
+    const requirement = await screen.findByLabelText("Requirements for leave-preparing");
+    fireEvent.change(requirement, { target: { value: "plan" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      requires: { "leave-backlog": ["plan"], "leave-preparing": ["plan"] },
+    })));
+  });
+
+  it("blocks invalid custom requirements before onSave", async () => {
+    const selected = { ...item, profile: "custom" } as Item;
+    const onSave = vi.fn().mockResolvedValue(selected);
+    renderEditor(clientFor({ getItem: vi.fn().mockResolvedValue(selected) }), selected, onSave);
+    const requirement = await screen.findByLabelText("Requirements for enter-review");
+    fireEvent.change(requirement, { target: { value: "unknown-type" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(screen.getAllByText(/unknown document type/).length).toBeGreaterThan(0));
+    expect(onSave).not.toHaveBeenCalled();
   });
 });

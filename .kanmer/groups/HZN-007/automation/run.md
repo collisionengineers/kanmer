@@ -153,3 +153,6 @@
 
 
 2026-08-22T10:55Z — CORE-046 independent review by gui099 recorded NEEDS-CHANGES: F-009 PASS, but F-003 reversed-order stale-lock ownership race remains. CORE-047 created and moved to Preparing as the linked blocker, stacked on CORE-046 54651a3c; CORE-046 and CORE-045 remain blocked. Author handoff pending; no merge, move, or cleanup beyond the required board transition.
+
+
+2026-08-22T10:59Z — CORE-047 packet prepared via MCP and taken by codex-core047-root on core-047-replacement-lock-race/.worktrees/core-047 after the CORE-046 reversed-order TOCTOU attestation. Scope is stale-lock ownership only; CORE-046/045 remain blocked. Independent review will be delegated after Review.

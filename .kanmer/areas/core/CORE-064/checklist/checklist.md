@@ -1,4 +1,4 @@
-- [ ] Preserve `boardRoot` after rename-path reconciliation failure.
-- [ ] Return actionable paused/error state without source fallback.
-- [ ] Add deterministic regression coverage.
-- [ ] Run and record focused/full verification rails.
+- [x] Preserve `boardRoot` after rename-path reconciliation failure.
+- [x] Return actionable paused/error state without source fallback.
+- [x] Add deterministic rename-then-failure regression coverage.
+- [x] Run focused/full verification rails.

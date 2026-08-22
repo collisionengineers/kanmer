@@ -73,3 +73,30 @@ and nothing re-seeds it. As those five tickets close it reads `0/5`, which means
 The merged source and live board were re-read. PR #20 merge `f7a0ca61873398a1ff9e5a93e481acec9374367e` and source `73e2e9cfa59af4488d539a2a7813a3317b1f5dd0` are recorded above and reachable from main. Direct MCP label counts still equal each epic's derived progress: 4/4, 3/3, 8/8, 3/3, 8/8, 4/5, 4/5, and 3/4 for phases 0–7. The phase group contexts and ticket-owned memberships remain present.
 
 HZN-001 and HZN-002 are intentionally static seeded lenses, not auto-maintained open-only filters. Current members therefore include completed tickets; the live state is recorded rather than incorrectly claiming the historical NOW/NEXT open roster still holds. This is consistent with the proof's existing “horizons will go stale silently” warning. No unavailable visual/manual evidence is upgraded to PASS.
+
+## Merged-main verification — 2026-08-22
+
+Verification ran against the merged `main` line, not the feature worktree. Git confirmed source commit `73e2e9cfa59af4488d539a2a7813a3317b1f5dd0` is an ancestor of `origin/main`; `gh pr view 20` confirmed state MERGED, merge commit `f7a0ca61873398a1ff9e5a93e481acec9374367e`, merged 2026-08-16T05:37:08Z. The current merged source contains the conversion procedure at `plugins/kanmer/skills/kanmer-groom/SKILL.md:77`.
+
+Fresh MCP derived-group reconciliation matched the direct source labels for every phase:
+
+| Phase | Direct label | Derived epic | Result |
+|---|---:|---:|---|
+| 0 | 4/4 | 4/4 | PASS |
+| 1 | 3/3 | 3/3 | PASS |
+| 2 | 8/8 | 8/8 | PASS |
+| 3 | 3/3 | 3/3 | PASS |
+| 4 | 8/8 | 8/8 | PASS |
+| 5 | 4/4 | 4/4 | PASS |
+| 6 | 4/4 | 4/4 | PASS |
+| 7 | 3/3 | 3/3 | PASS |
+
+The two source-count dimensions are total active tickets and done active tickets; each matched the live derived epic progress. An initial probe incorrectly included archived tickets and saw Phase 5 as 5 versus EPIC-006's 4; the exact mismatch was GUI-015, archived with its group membership intact. Re-running with archived tickets excluded (the same active-member semantics used by derived progress) produced the PASS table above. The historical idempotence evidence remains in this proof: the third conversion run created zero groups, patched zero tickets, and found 40 existing members. Current HZN-001/HZN-002 membership drift is intentionally static-horizon behavior and is not claimed as an always-current open-only filter.
+
+Checks:
+
+- `npm run verify:skills` — exit 0; all 14 sections PASS.
+- `node --test scripts/verify-skill-prose.test.mjs` — exit 0; 5/5 PASS.
+- `git diff --check` in the clean merged-main verification worktree — exit 0.
+
+Manual GUI group rendering/screenshot evidence is **INCONCLUSIVE**: no GUI launch or screenshot was available during this verification. The underlying group/member/progress numbers are verified through MCP; visual pixels are not claimed.

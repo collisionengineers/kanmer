@@ -29,11 +29,21 @@ refs:
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
 commits:
   - 1234264b292e574d38f276b91592ea0b8bef9361
+  - 0f7ccc4efad0aeae2295f3ba08e0b6e886356679
+  - 8edfede9bdb663171601cb326a67bd03792065e2
+  - fc8e591e344cb7743204f8261eb5186b76f1d3aa
+  - 31e572dc54b311164444cd5ee1a6cba225d618f2
+  - 311c6eef4d6b5c1e6acea1b7e6d779660f792cea
+  - 0f9af92ba7bf332a3fffbc49b3273bd71b59c49a
 prs:
   - '166'
+  - '167'
+  - '169'
+  - '171'
+  - '172'
 archived: false
 created: '2026-08-22T10:11:05.566Z'
-updated: '2026-08-22T10:23:07.802Z'
+updated: '2026-08-22T12:17:02.988Z'
 ---
 
 Independent review of CORE-044 / PR #165 found two blockers that must be fixed and re-reviewed before CORE-044 can merge:

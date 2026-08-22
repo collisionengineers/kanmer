@@ -1,1 +1,3 @@
 Prepared packet from PR #168 findings 3836890756/3836890758. Existing provider-owned reconciliation is safe for Codex/Claude/OpenCode; Grok/Antigravity are user-scoped native plugins, so the bounded design persists an explicit reconnect requirement instead of mutating user state during reopen.
+
+Implementation committed/pushed as d863f390cabf385e6a6889b3cfc0d0ba3edb3792. Focused production-caller rail 7/7 and combined settings+sync rail 10/10 PASS; workspace typecheck, GUI build, core build, docs, scripts 89/89, and diff-check PASS. Full GUI is 425/426 with inherited Windows kanmerGit.test.ts cleanup EPERM/hook-timeout failure recorded verbatim. Native live host/plugin proof remains INCONCLUSIVE.

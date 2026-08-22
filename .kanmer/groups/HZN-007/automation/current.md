@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:39:30+01:00
+updated_at: 2026-08-22T00:40:16.082Z
 ---
 
 # Current auto run — HZN-007
@@ -82,3 +82,6 @@ Last handoff: 2026-08-22T01:30:00+01:00 — CORE-037 is Implementing on `core-03
 \n\nLast handoff: 2026-08-22T00:36:05.137Z — SKILL-004 independent review PASS WITH ACCEPTED RISK: existing PR #17 implementation ad127405 is reachable on main; static/reconciliation rails pass, live setup/ingestion/issue-close behavior remains explicitly INCONCLUSIVE and parked. Review scratch read back; Review→Verifying moved with expected revision. No merge or source changes.\n
 
 - 2026-08-22T00:39:30+01:00 — SKILL-004 verification/closeout complete: exact merged main HEAD af61144ce743f74b2aba92fb0778588b0b9bedd0 was verified, and implementation ad127405437f9a93eef5e86d697ccaadf0ebc8af9 is reachable (ancestor exit 0). On normal main, verify:skills, verify:agents-block (31/31), build:core, test:scripts (80/80), typecheck, diff-check all exited 0. Proof was written/read back via MCP with static PASS and live setup/migration/ingestion/issue-close/greenfield behavior INCONCLUSIVE. Enter-done gates passed; SKILL-004 moved Verifying→Done. take_ticket release cleared the recorded take; clean .worktrees/skill-004 and local skill-004-setup-reconciliation were removed, git worktree prune exited 0, and no remote branch existed. No SKILL-017 or CORE-037 work was touched.
+
+
+Last handoff: 2026-08-22T01:39:51+01:00 — CORE-037 is Review on PR #144 (`aac1e25243fe200cc936b31a1fe78e7d041cd08b`), branch `core-037-windows-path-identity`, worktree `.worktrees/core-037`. Test-only Windows path identity remediation is complete; focused/full GUI rails and GUI typecheck/build pass, shared verify's missing mcpb CLI failure and baseline cleanup EPERM are preserved. Independent root review/merge required; do not clean up yet.

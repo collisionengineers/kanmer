@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T00:39:30+01:00
+updated_at: 2026-08-22T00:40:16.082Z
 lane_limit: 3
 stop_reason:
 ---
@@ -470,3 +470,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 \n\nLast handoff: 2026-08-22T00:36:05.137Z — SKILL-004 independent review PASS WITH ACCEPTED RISK: existing PR #17 implementation ad127405 is reachable on main; static/reconciliation rails pass, live setup/ingestion/issue-close behavior remains explicitly INCONCLUSIVE and parked. Review scratch read back; Review→Verifying moved with expected revision. No merge or source changes.\n
 
 - 2026-08-22T00:39:30+01:00 — SKILL-004 verification/closeout complete: exact merged main HEAD af61144ce743f74b2aba92fb0778588b0b9bedd0 was verified, and implementation ad127405437f9a93eef5e86d697ccaadf0ebc8af9 is reachable (ancestor exit 0). On normal main, verify:skills, verify:agents-block (31/31), build:core, test:scripts (80/80), typecheck, diff-check all exited 0. Proof was written/read back via MCP with static PASS and live setup/migration/ingestion/issue-close/greenfield behavior INCONCLUSIVE. Enter-done gates passed; SKILL-004 moved Verifying→Done. take_ticket release cleared the recorded take; clean .worktrees/skill-004 and local skill-004-setup-reconciliation were removed, git worktree prune exited 0, and no remote branch existed. No SKILL-017 or CORE-037 work was touched.
+
+- 2026-08-22T01:39:51+01:00 — CORE-037 Review handoff complete: test-only commit `aac1e25243fe200cc936b31a1fe78e7d041cd08b` is pushed on `core-037-windows-path-identity`; PR #144 is open. Focused real-Git GUI test passed 12/12 after the pathIdentity change; full GUI passed 37 files/352 tests; GUI typecheck/build/diff-check passed. Shared verify preserved core 263/263, GUI 352/352, HTTP 61/61, scripts 80/80, typecheck, stdio 224/224 and headless checks before failing at mcpb:check because the fresh worktree lacks the @anthropic-ai/mcpb CLI module. Baseline pre-change 11/12 cleanup EPERM/hook-timeout remains recorded. Report/checklist read back; fresh gates pass; moved Implementing→Review at 2026-08-22T00:39:30.765Z. Independent review/merge required; no self-review, merge, or cleanup.

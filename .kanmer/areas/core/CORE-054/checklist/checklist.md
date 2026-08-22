@@ -1,7 +1,14 @@
 # Checklist
 
-- [ ] Trace the mismatch and protected-refusal paths.
-- [ ] Prevent automatic rename when any live worktree mismatches the requested branch.
-- [ ] Add a regression proving refs/worktree remain unchanged.
-- [ ] Run focused GUI, docs/manual, scripts, typecheck/build checks and record exits.
-- [ ] Refresh CORE-052 cumulative traceability and hand off for independent review.
+- [x] Trace the mismatch and protected-refusal paths.
+- [x] Prevent automatic rename when any live worktree mismatches the requested branch.
+- [x] Add a regression proving refs/worktree remain unchanged.
+- [x] Run focused GUI, docs/manual, scripts, typecheck/build checks and record exits.
+- [x] Refresh CORE-052 cumulative traceability and hand off for independent review.
+
+## Evidence
+
+- Focused real-Git rail: 20/20 PASS.
+- Manual/docs/core/scripts/diff rails: PASS; scripts 89/89.
+- Typecheck and GUI build baseline failures are preserved in the report and are unrelated shared-dispatch diagnostics.
+- CORE-052 parent head 825fb79d is recorded; parent lineage will be refreshed after independent merge.

@@ -106,3 +106,52 @@ test("greenfield playbook stays linked from setup and protects bounded planning"
   assert.match(setup, /docs\/manual\/greenfield\.md/);
   assert.match(setup, /brief-first interview[\s\S]*confirmation before board creation/i);
 });
+
+test("auto prose validator rejects the legacy unbounded serial fallback", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-auto-serial-contract-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const auto = join(fixture, "plugins", "kanmer", "skills", "kanmer-auto", "SKILL.md");
+    const body = readFileSync(auto, "utf8");
+    writeFileSync(
+      auto,
+      body.replace(
+        /If parallel worker dispatch is unavailable before a worker starts,[\s\S]*?Serial mode permits only one active or uncertain ticket\./,
+        "If your host has no subagent mechanism, run the same waves sequentially — the lane partition still tells you the safe order.\n\nSerial mode permits only one active or uncertain ticket.",
+      ),
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /no unbounded serial fallback/);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
+test("auto prose validator rejects partial-roster success language", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-auto-stop-contract-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const auto = join(fixture, "plugins", "kanmer", "skills", "kanmer-auto", "SKILL.md");
+    writeFileSync(auto, `${readFileSync(auto, "utf8")}\nContinue until every ticket is done.\n`);
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /no partial completion presented as success/);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});

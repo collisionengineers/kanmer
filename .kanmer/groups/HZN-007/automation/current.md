@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T14:52:39.150Z
+updated_at: 2026-08-22T14:55:32.519Z
 ---
 
 # Current auto run — HZN-007
@@ -537,3 +537,6 @@ CORE-064 independently PASSed and merged into CORE-058 as 17cdb668; CORE-064 is 
 
 
 CORE-065 implemented at 3ffa713f; PR #186 opened against CORE-058 and moved Implementing -> Review after focused 20/20, GUI typecheck, scripts 88/88, manual/docs/diff rails. Independent cumulative review requested before CORE-058 can merge into CORE-044.
+
+
+CORE-065 independently PASSed and merged into CORE-058 as b8d8a191; CORE-065 is Verifying and CORE-058 is now unblocked in Review. Fresh cumulative CORE-058 review requested at b8d8a191 before parent merge into CORE-044.

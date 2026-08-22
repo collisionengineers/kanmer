@@ -92,6 +92,7 @@ import {
 } from "./kanmerGit.js";
 import { armAutomaticSync } from "./syncTimer.js";
 import { withSyncLifecycles } from "./syncLifecycle.js";
+import { bindRetryBoardStatus, retryBoardBranch } from "./syncBranch.js";
 import {
   connectAgent,
   disconnectAgent,
@@ -787,7 +788,11 @@ async function applyGitPreferencesBody(kanmerBranch: string, gitSyncMinutes: num
   // the protected-default refusal still applies.
   await Promise.all([...contexts.entries()].map(async ([projectId, ctx]) => {
     const previousBranch = ctx.syncStatus.branch;
-    ctx.syncStatus = await refreshBoardBranchForPreference(ctx.syncStatus, requestedBranch);
+    if (!ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
+      ctx.syncStatus = { ...ctx.syncStatus, branch: retryBoardBranch(ctx.syncStatus.branch, requestedBranch) };
+    } else {
+      ctx.syncStatus = await refreshBoardBranchForPreference(ctx.syncStatus, requestedBranch);
+    }
     if (!ctx.syncStatus.branchMismatch && previousBranch !== requestedBranch && ctx.syncStatus.branch === requestedBranch) {
       handoffReconnects.push({ projectId, branch: requestedBranch });
     }
@@ -934,7 +939,10 @@ async function syncProjectLocked(projectId: string, ctx: ProjectContext, automat
   // operator can complete the handoff outside Kanmer. Retry reconciliation
   // before treating that state as a non-Git project or attempting any sync.
   if (!ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
-    ctx.syncStatus = await ensureBoardWorktree(ctx.sourceRoot, ctx.syncStatus.branch);
+    const branch = retryBoardBranch(ctx.syncStatus.branch, readSettings().kanmerBranch);
+    const retried = await ensureBoardWorktree(ctx.sourceRoot, branch);
+    ctx.syncStatus = bindRetryBoardStatus(ctx.boardRoot, ctx.syncStatus, retried);
+    if (ctx.syncStatus.available) armSyncTimer(projectId, ctx, readSettings().gitSyncMinutes);
   }
   if (ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
     ctx.syncStatus = await preflightBoardSync(ctx.syncStatus);

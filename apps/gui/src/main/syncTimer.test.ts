@@ -15,7 +15,7 @@ describe("armAutomaticSync", () => {
     vi.advanceTimersByTime(5 * 60_000);
     expect(sync).not.toHaveBeenCalled();
 
-    // A successful retry restores the saved interval.
+    // Once the same project is repaired, the saved interval is live again.
     armAutomaticSync(state, true, 5, sync);
     expect(state.syncTimer).toBeDefined();
     vi.advanceTimersByTime(5 * 60_000);

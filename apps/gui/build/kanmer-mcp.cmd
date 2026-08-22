@@ -35,7 +35,7 @@ set "KANMER_EXE=%INSTALL_DIR%\Kanmer.exe"
 set "MCP_BUNDLE=%INSTALL_DIR%\resources\mcp\kanmer-mcp.cjs"
 set "EXTERNAL_DIR=%LOCALAPPDATA%\Kanmer\mcp\current"
 set "EXTERNAL_EXE=%EXTERNAL_DIR%\kanmer-mcp.exe"
-set "EXTERNAL_BUNDLE=%EXTERNAL_DIR%\kanmer-mcp.cjs"
+set "EXTERNAL_BUNDLE=%EXTERNAL_DIR%\resources\mcp\kanmer-mcp.cjs"
 set "EXTERNAL_ICU=%EXTERNAL_DIR%\icudtl.dat"
 set "EXTERNAL_V8=%EXTERNAL_DIR%\v8_context_snapshot.bin"
 if exist "%EXTERNAL_EXE%" if exist "%EXTERNAL_BUNDLE%" if exist "%EXTERNAL_ICU%" if exist "%EXTERNAL_V8%" (

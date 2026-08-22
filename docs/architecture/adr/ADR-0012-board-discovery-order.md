@@ -234,8 +234,14 @@ of the discovery order, not a change to the order itself.
 GUI-106 keeps that command and inherited cwd unchanged while provisioning the
 Electron-as-Node executable, its mapped runtime files, and the standalone bundle
 under `%LOCALAPPDATA%\\Kanmer\\mcp\\<version>`, exposed through a stable
-`current` boundary. The launcher retains the install-root payload as a fallback
-for legacy registrations; neither path adds `--root`, `--repo-root`, `cd`, or
-provider-specific serialization. Real packaged-update/session-survival proof is
-an integration boundary and remains INCONCLUSIVE until a disposable Windows host
-executes it.
+`current` boundary. The script is staged at
+`<runtime>\\resources\\mcp\\kanmer-mcp.cjs`, beside the bundled skills at
+`<runtime>\\resources\\plugins\\kanmer\\skills`, so `classifyBuild()` and
+`bundledSkillsDir()` continue to report the packaged identity and staleness
+source. The installer rejects roots overlapping `%LOCALAPPDATA%\\Kanmer\\mcp`
+and best-effort prunes unlocked stale version directories while retaining
+`current` and locked live runtimes. The launcher retains the install-root payload
+as a fallback for legacy registrations; neither path adds `--root`,
+`--repo-root`, `cd`, or provider-specific serialization. Real
+packaged-update/session-survival proof is an integration boundary and remains
+INCONCLUSIVE until a disposable Windows host executes it.

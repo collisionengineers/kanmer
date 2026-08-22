@@ -37,8 +37,11 @@ All in `apps/gui/src/` unless noted.
   text"). `dist:check` → `scripts/check-updater-package.mjs`, wired at `package.json`.
 - R4 — the fixed installer-owned launcher remains the registered command. Fresh installs provision
   a complete Electron-as-Node runtime under `%LOCALAPPDATA%\\Kanmer\\mcp\\<version>` and expose it
-  through the stable `current` boundary; the launcher retains the install-root
-  `process.execPath`/`extraResources` payload as a compatibility fallback for legacy registrations.
+  through the stable `current` boundary. The script is kept at
+  `<runtime>\\resources\\mcp\\kanmer-mcp.cjs` beside `<runtime>\\resources\\plugins\\kanmer\\skills`
+  so packaged identity and staleness discovery remain truthful. The launcher retains the
+  install-root `process.execPath`/`extraResources` payload as a compatibility fallback for legacy
+  registrations.
   `electron-builder.yml` sets `releaseType: release` (drafts reach zero clients) and ships the
   install-root bundle via `extraResources`.
 

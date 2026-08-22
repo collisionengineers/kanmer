@@ -67,7 +67,9 @@ the same. It pushes the new name before any cleanup. For a custom-to-custom
 rename, Kanmer cannot update the hosted repository's `KANMER_BOARD_BRANCH`
 variable, so it retains the old remote ref and shows a warning. Update that
 variable to the new name first; only then is it safe to delete the old ref.
-The old ref is an intentional handoff record, not a failed cleanup.
+This applies to every custom-to-custom rename, not just the first handoff. The
+old ref is an intentional handoff record, not a failed cleanup; the Actions
+variable must be updated before an administrator removes it.
 
 The default `kanmer-board` branch is protected by the repository's merge gate.
 Kanmer cannot edit GitHub protection, so it refuses to rename away from that

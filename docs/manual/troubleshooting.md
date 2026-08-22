@@ -86,6 +86,10 @@ line. Renaming there keeps the board's history and its working copy, and pushes
 the new name before any cleanup. A custom-to-custom rename retains the old
 remote ref and warns you to update the hosted `KANMER_BOARD_BRANCH` variable
 first; delete the old ref only after that variable points at the new branch.
+This retained-ref rule applies to every custom-to-custom rename. If Settings
+shows a board worktree together with an error while Git is marked unavailable,
+the project is a failed reconciliation, not a non-Git project: complete the
+handoff and press **Retry**.
 For the protected default, Kanmer deliberately refuses this automatic rename.
 An administrator must push the destination, set the repository Actions variable
 `KANMER_BOARD_BRANCH` to the destination, retarget protection and required

@@ -49,7 +49,10 @@ is not, rather than showing controls that cannot do anything.
 
 - **Kanmer branch** — the name of the branch your board lives on, with a
   **Rename branch** button. Non-protected branch renames happen in place and
-  keep the board's history. The protected default `kanmer-board` requires an
+  keep the board's history. A custom-to-custom rename retains the old remote
+  ref until an administrator updates the repository Actions variable
+  `KANMER_BOARD_BRANCH` to the new branch; remove the old ref only after that
+  handoff. The protected default `kanmer-board` requires an
   administrator to set the repository Actions variable `KANMER_BOARD_BRANCH`
   to the destination, retarget GitHub protection and required checks, and
   rename local board worktrees before the setting can change; Kanmer refuses
@@ -59,7 +62,9 @@ is not, rather than showing controls that cannot do anything.
   a conflict.
 
 Under those, Kanmer shows where the board worktree is and when it last synced,
-and any error from the last attempt. See **Sharing a board over Git**.
+and any error from the last attempt. A retained board worktree with an error
+means reconciliation failed (not that the project is non-Git); finish the
+hosted handoff and press **Retry**. See **Sharing a board over Git**.
 
 ## Connect
 

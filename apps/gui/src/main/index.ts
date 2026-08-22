@@ -77,7 +77,7 @@ import {
   inspectBoardWorktree,
   preflightBoardSync,
   PROTECTED_BOARD_BRANCH,
-  refreshBoardBranch,
+  refreshBoardBranchForPreference,
   renameBoardBranch,
   shouldRunAutomaticSync,
   shouldScheduleAutomaticSync,
@@ -683,7 +683,7 @@ async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number)
   // GUI remains running. Refresh every cached branch before deciding whether
   // the protected-default refusal still applies.
   await Promise.all([...contexts.values()].map(async (ctx) => {
-    ctx.syncStatus = await refreshBoardBranch(ctx.syncStatus, requestedBranch);
+    ctx.syncStatus = await refreshBoardBranchForPreference(ctx.syncStatus, requestedBranch);
   }));
   const hasOpenBoard = [...contexts.values()].some((ctx) => ctx.syncStatus.available && Boolean(ctx.syncStatus.boardRoot));
   const blockedBranchRefresh = [...contexts.values()].some((ctx) => ctx.syncStatus.branchMismatch === true);
@@ -778,6 +778,12 @@ function boardWorktreeRepair(
 async function syncProject(projectId: string, automatic = false): Promise<KanmerGitIpcStatus> {
   const ctx = requireCtx(projectId);
   const retryingPaused = !automatic && ctx.syncStatus.paused;
+  // A closed-project protected-branch refusal retains the board root so the
+  // operator can complete the handoff outside Kanmer. Retry reconciliation
+  // before treating that state as a non-Git project or attempting any sync.
+  if (!ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
+    ctx.syncStatus = await ensureBoardWorktree(ctx.sourceRoot, ctx.syncStatus.branch);
+  }
   if (ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
     ctx.syncStatus = await preflightBoardSync(ctx.syncStatus);
   }

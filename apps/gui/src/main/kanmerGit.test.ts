@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureBoardWorktree, guardGitBranchPreference, inspectBoardWorktree, preflightBoardSync, refreshBoardBranch, renameBoardBranch, shouldAttemptOrdinaryBranchRename, shouldAttemptProtectedBranchRename, shouldRunAutomaticSync, shouldScheduleAutomaticSync } from "./kanmerGit.js";
+import { ensureBoardWorktree, guardGitBranchPreference, inspectBoardWorktree, preflightBoardSync, refreshBoardBranch, refreshBoardBranchForPreference, renameBoardBranch, shouldAttemptOrdinaryBranchRename, shouldAttemptProtectedBranchRename, shouldRunAutomaticSync, shouldScheduleAutomaticSync } from "./kanmerGit.js";
 
 // These are deliberately real-Git integration tests: every case initialises a
 // local repository and several create worktrees/remotes. Windows process and
@@ -261,6 +261,29 @@ describe("board branch preference and cache safety", () => {
       error: null,
       paused: false,
       branchMismatch: false,
+    });
+  });
+
+  realGitTest("keeps an ordinary custom rename eligible while the live worktree is still on the saved branch", async () => {
+    const status = await ensureBoardWorktree(repo, "team-board");
+    const refreshed = await refreshBoardBranchForPreference(status, "renamed-board");
+
+    // Changing the preference is the local rename request, not proof that a
+    // hosted administrator handoff already happened. The current worktree is
+    // still healthy on the saved custom branch, so the ordinary rename path
+    // must remain reachable.
+    expect(refreshed).toMatchObject({ branch: "team-board", branchMismatch: false, paused: false });
+    expect(shouldAttemptOrdinaryBranchRename(refreshed.branchMismatch === true, refreshed.branch, "renamed-board")).toBe(true);
+  });
+
+  realGitTest("accepts only the exact requested branch after an administrator handoff", async () => {
+    const status = await ensureBoardWorktree(repo, "team-board");
+    await git(status.boardRoot!, "branch", "-m", "renamed-board");
+
+    await expect(refreshBoardBranchForPreference(status, "renamed-board")).resolves.toMatchObject({
+      branch: "renamed-board",
+      branchMismatch: false,
+      paused: false,
     });
   });
 

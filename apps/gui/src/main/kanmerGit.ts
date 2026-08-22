@@ -70,6 +70,33 @@ export async function refreshBoardBranch(
   return next;
 }
 
+/**
+ * Refresh a branch preference without confusing an ordinary rename with an
+ * administrator handoff. A live worktree on the saved branch is healthy input
+ * for the existing custom-to-custom rename; only a live worktree on the exact
+ * requested destination counts as a completed handoff. Every other branch is
+ * still rejected by the normal mismatch path.
+ */
+export async function refreshBoardBranchForPreference(
+  status: KanmerGitStatus,
+  requestedBranch: string,
+  observed?: BoardWorktreeInspection,
+): Promise<KanmerGitStatus> {
+  if (!status.available || !status.boardRoot) return status;
+  const destination = requestedBranch.trim() || PROTECTED_BOARD_BRANCH;
+  const inspection = observed ?? await inspectBoardWorktree(status.boardRoot, status.branch);
+  const expected = inspection.actualBranch === destination ? destination : status.branch;
+  // `inspectBoardWorktree` was intentionally read against the cached branch
+  // so an ordinary custom rename remains healthy. Once the live branch is the
+  // requested destination, normalize the expected field before handing the
+  // observation to the strict matcher; otherwise the stale cached expectation
+  // would reject the exact administrator handoff.
+  const normalized = inspection.expectedBranch === expected
+    ? inspection
+    : { ...inspection, expectedBranch: expected, onBoardBranch: inspection.actualBranch === expected };
+  return refreshBoardBranch(status, expected, normalized);
+}
+
 /** Automatic sync is safe only while the live board is available and healthy. */
 export function shouldRunAutomaticSync(status: Pick<KanmerGitStatus, "available" | "paused" | "branchMismatch">): boolean {
   return status.available && !status.paused && status.branchMismatch !== true;

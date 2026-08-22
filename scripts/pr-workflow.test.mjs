@@ -7,6 +7,7 @@ test("kanmer gate follows the configured board branch", async () => {
   assert.match(workflow, /KANMER_BOARD_BRANCH/);
   assert.match(workflow, /git fetch origin "\$KANMER_BOARD_BRANCH"/);
   assert.match(workflow, /origin\/\$KANMER_BOARD_BRANCH/);
+  assert.match(workflow, /retains the old custom remote ref/);
   assert.doesNotMatch(workflow, /git fetch origin kanmer-board/);
   assert.doesNotMatch(workflow, /origin\/kanmer-board/);
 });

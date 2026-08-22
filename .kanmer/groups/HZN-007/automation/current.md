@@ -222,3 +222,5 @@ Last handoff: 2026-08-22T03:12:42.450Z — MCP-015 is the second implementation 
 
 
 - 2026-08-22T05:08:51.942Z — GUI-106 hosted rerun boundary: implementation head bd83b8a531bfa5e69b9879acc2ef51fe9e0b997c had zero GitHub check-runs after push. A source-free CI retrigger commit c18b5c046f74102c86ecc5f3bd514f6e687bbeb9 was pushed to PR #153; it also has zero check-runs. gh workflow run pr.yml --ref gui-106-runtime-boundary returned exit 1 / HTTP 422 because pr.yml has no workflow_dispatch trigger. No new hosted PASS/FAIL is claimed. Historical hosted PASS remains only for 0cdfafad0c8c9216779ceb442893e2256bdb65fd (run 32551392188/job 96978620702). Ticket remains Review/taken; real packaged-host update/session/junction/uninstall/AV evidence remains INCONCLUSIVE; no merge or cleanup.
+
+Last handoff: 2026-08-22T06:20:00Z — CORE-024 assignment. Run ledger and readback now record the dedicated CORE-024 assignment; implementation is bounded to phase 1 and remains on core-024-check-pr/.worktrees/core-024 at Implementing pending deterministic rails and Review handoff.

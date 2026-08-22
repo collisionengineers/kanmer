@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T13:53:29.552Z
+updated_at: 2026-08-22T13:55:01.519Z
 ---
 
 # Current auto run — HZN-007
@@ -490,3 +490,11 @@ CORE-057 PR #178 was updated against cumulative CORE-044 base 3c0706627cc73038d9
 
 
 Last handoff: 2026-08-22T13:53:29.552Z — CORE-059 independently reviewed exact head 835f9f51cbb786024d8d4523d93332399d769a77 PASS; PR #182 merged non-squash as 94f7094b0b103aecec452f0e58ebaf0ad370f8ff into core-043-protection-retarget. Focused 20/20, build/scripts 89/89, manual/docs/diff pass; inherited GUI typecheck baseline failure preserved. Ticket moved Review→Verifying for merged-main proof.
+
+
+2026-08-22T13:58:00Z — CORE-058 independent review NEEDS-CHANGES at d50ddab1. New blockers CORE-062 (local/remote attachment paths skip ignore reconciliation) and CORE-063 (attached ignore failure discards known boardRoot) are linked and block CORE-058. CORE-062 is Prepared and assigned to GUI099; CORE-063 is Prepared but queued behind it. CORE-057 remains Review for GUI082 independent review; CORE-059 remains Review for GUI082 review.
+
+
+## CORE-062 assignment — 2026-08-22T13:56Z
+
+Prepared packet/gates and CORE-058 linked context read. Took CORE-062 without force on branch core-062-attachment-ignore / worktree .worktrees/core-062, based on cumulative CORE-044 head 3c0706627cc73038d91a624e5d494d0148dce4c4. Scope is limited to local/remote attachment-path board-worktree ignore reconciliation and real-Git regressions; no source-fetch, artifact, provider, or historical cleanup changes.

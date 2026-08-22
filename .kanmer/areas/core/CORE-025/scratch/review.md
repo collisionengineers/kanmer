@@ -70,3 +70,5 @@ NEEDS-CHANGES until dangling blocker evidence is fail-closed. No merge performed
 F-001 is fixed in the pending follow-up commit: `phase2Evidence` preserves dangling targets recorded on the evaluated ticket as `exists: false` dependency evidence while retaining derived `blockedBy` direction for valid edges. The CLI regression proves Review ticket `blocks: ["MISSING-ID"]` exits 1 and includes `MISSING-ID` in the `DEPENDENCY_BLOCKED` JSON check and stderr annotation.
 
 Rails: check-pr 5/5, core merge-gate 14/14, mcp-server typecheck PASS, core/mcp builds PASS, HTTP rail 68/68 PASS, diff-check PASS. Existing attestation above remains the independent reviewer’s NEEDS-CHANGES record pending fresh re-review; no merge.
+
+Hosted rerun for F-001 remediation: head `42f0ace65f8aaa7d4e4f95f516df823c0f14da7a`, run `32560430127`; `kanmer-gate` PASS job `97001049652` (1m02s), `verify` PASS job `97001049517` (1m56s). The expected stale-review warning names prior attestation head `65e364ad927ef151ba0cea59b123d20feaf095b4`; no merge.

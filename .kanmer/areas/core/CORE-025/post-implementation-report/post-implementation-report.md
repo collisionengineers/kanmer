@@ -98,3 +98,7 @@ Follow-up verification on the working head:
 - `npm run test:http -w @kanmer/mcp-server`: 68/68 PASS.
 - `git diff --check`: PASS.
 - No merge performed; fresh hosted verification is required after pushing the remediation commit.
+
+## Hosted follow-up verification — F-001 remediation — 2026-08-22
+
+PR #159 head `42f0ace65f8aaa7d4e4f95f516df823c0f14da7a` completed hosted run `32560430127`: `kanmer-gate` PASS (job `97001049652`, 1m02s) and authoritative `verify` PASS (job `97001049517`, 1m56s). The gate annotation correctly reports the prior review attestation head `65e364ad927ef151ba0cea59b123d20feaf095b4` is stale against the new head; this is a warning and does not hide the F-001 test result. Node.js 20 deprecation annotation is also preserved. PR remains open; no merge performed.

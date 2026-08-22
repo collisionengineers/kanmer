@@ -34,3 +34,15 @@ The deterministic verification commands were rerun from the normal checkout on m
 - `git diff --check` — exit 0; no tracked source diff was present.
 
 These reruns strengthen the deterministic merged-main evidence only. The planned 242-ticket fixture and genuine Windows handle/EPERM run remain INCONCLUSIVE and are not reclassified.
+
+## Exact origin/main verification — 2026-08-22
+
+A temporary detached worktree checked out the fetched merged target origin/main at b6c8eb02a82d8180b965094c4956109d4646e60b. The implementation commit d0f927a3f9aab7fa6f4716410138126f3ff1fc35 is reachable from that exact HEAD (git merge-base --is-ancestor exit 0), and PR #28 remains MERGED at dfc2b059aaab7f6dbaac5085c9a2b475c538cd09.
+
+- npm --prefix .worktrees/verify-core022-origin run test -w @kanmer/core -- src/io.test.ts src/migrate.test.ts — exit 0, 2 files / 28 tests.
+- npm --prefix .worktrees/verify-core022-origin run test -w @kanmer/core — exit 0, 13 files / 269 tests.
+- npm --prefix .worktrees/verify-core022-origin run typecheck -w @kanmer/core — exit 0.
+- npm --prefix .worktrees/verify-core022-origin run build -w @kanmer/core — exit 0, ESM/DTS/browser build check.
+- git -C .worktrees/verify-core022-origin diff --check — exit 0.
+
+These are exact merged-origin deterministic rails. They do not supply the unavailable 242-ticket fixture or a genuine Windows handle/antivirus lock. Those two checklist items remain INCONCLUSIVE and are not reclassified; CORE-022 remains Verifying, with no Done move or closeout/release.

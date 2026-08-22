@@ -41,3 +41,7 @@ The GUI pause/restore is covered by source inspection and all-workspace typechec
 ## Independent merged-main rerun — 2026-08-22T00:09:07.715Z
 
 The verifier reran the scoped deterministic rail from `main` at `af61144ce743f74b2aba92fb0778588b0b9bedd0`, with the implementation `d0f927a3f9aab7fa6f4716410138126f3ff1fc35` reachable (merge-base exit 0): focused IO/migration 28/28 exit 0, full core 263/263 exit 0, core typecheck exit 0, core build exit 0, and git diff --check exit 0. The unavailable 242-ticket fixture and live Windows file-lock/EPERM run remain INCONCLUSIVE; no broader root-rail or platform claim is made.
+
+## Exact origin/main rerun — 2026-08-22
+
+The verifier checked fetched origin/main at b6c8eb02a82d8180b965094c4956109d4646e60b in a temporary detached worktree. The scoped implementation d0f927a3f9aab7fa6f4716410138126f3ff1fc35 is reachable (merge-base exit 0), and PR #28 is MERGED at dfc2b059aaab7f6dbaac5085c9a2b475c538cd09. Focused IO/migration tests passed 28/28; full core passed 13 files / 269 tests; core typecheck, core build (ESM/DTS/browser), and diff-check all exited 0. The real 242-ticket fixture and genuine Windows handle/antivirus EPERM run remain unavailable and INCONCLUSIVE, so CORE-022 remains Verifying and no Done/closeout/release action was taken.

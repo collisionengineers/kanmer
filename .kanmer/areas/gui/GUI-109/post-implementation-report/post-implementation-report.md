@@ -32,3 +32,11 @@ All commands below ran in `.worktrees/gui-109` unless noted.
 - PASS: existing-group discovery, labels, disabled duplicate entries, empty-group explanation, append-without-duplicates, latest-revision binding, ticket-owned update path, full deterministic GUI suite, manual freshness, typecheck, build, and diff check.
 - INCONCLUSIVE: live Electron card-menu selection after reload and screenshot/visual proof. No controlled interactive desktop session was available; this remains parked in the checklist and is not promoted to PASS.
 - Not claimed: group creation/archiving UI, new storage, provider/dispatch work, CORE-026, CORE-035, or MCP/core contract changes.
+
+## Traceability
+
+- Branch: `gui-109-add-to-group`
+- Worktree: `.worktrees/gui-109`
+- Commit: `c259af171a72fa83a9131f4f53a79d0cfd0f05b5`
+- PR: #162 (`https://github.com/collisionengineers/kanmer/pull/162`)
+- PR remains open and unmerged; author stops at Review for independent review.

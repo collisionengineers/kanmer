@@ -245,6 +245,10 @@ describe("withExclusiveFileLock", () => {
     const winnerLockReady = new Promise<void>((resolve) => { winnerRecreated = resolve; });
     let releaseWinner!: () => void;
     const winnerRelease = new Promise<void>((resolve) => { releaseWinner = resolve; });
+    let staleMoved!: () => void;
+    const staleMovedPromise = new Promise<void>((resolve) => { staleMoved = resolve; });
+    let releaseStale!: () => void;
+    const staleRelease = new Promise<void>((resolve) => { releaseStale = resolve; });
     let loser: Promise<unknown> | undefined;
     const renameStaleLock = async (from: string, to: string): Promise<void> => {
       if (firstCall) {
@@ -256,7 +260,7 @@ describe("withExclusiveFileLock", () => {
         }, {
           now: () => 60_000,
           staleAfterMs: 30_000,
-          processAlive: () => false,
+          processAlive: (pid) => pid === process.pid,
           retryDelaysMs: [0],
           renameStaleLock,
         });
@@ -264,6 +268,8 @@ describe("withExclusiveFileLock", () => {
         // The second reclaimer has claimed and recreated the original path;
         // this delayed rename is the reversed ordering under test.
         await fs.rename(from, to);
+        staleMoved();
+        await staleRelease;
         return;
       }
       await fs.rename(from, to);
@@ -272,15 +278,86 @@ describe("withExclusiveFileLock", () => {
     const staleReclaimer = withExclusiveFileLock(file, async () => "stale-reclaimer", {
       now: () => 60_000,
       staleAfterMs: 30_000,
-      processAlive: () => false,
+      processAlive: (pid) => pid === process.pid,
       retryDelaysMs: [0],
       renameStaleLock,
     });
-    await expect(staleReclaimer).rejects.toMatchObject({ code: "EEXIST" });
+    await staleMovedPromise;
     if (!loser) throw new Error("winner reclaimer was not started");
-    expect(await fs.readFile(file, "utf8")).toContain(`\"pid\":${process.pid}`);
     releaseWinner();
     await expect(loser).resolves.toBe("winner");
+    releaseStale();
+    await expect(staleReclaimer).resolves.toBe("stale-reclaimer");
+    await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("does not delete an active replacement when a third claimant wins the path", async () => {
+    const file = path.join(dir, "cache-third.lock");
+    await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0 }), "utf8");
+
+    let firstCall = true;
+    let winnerReady!: () => void;
+    const winnerLockReady = new Promise<void>((resolve) => { winnerReady = resolve; });
+    let releaseWinner!: () => void;
+    const winnerRelease = new Promise<void>((resolve) => { releaseWinner = resolve; });
+    let staleMoved!: () => void;
+    const staleMovedPromise = new Promise<void>((resolve) => { staleMoved = resolve; });
+    let releaseStale!: () => void;
+    const staleRelease = new Promise<void>((resolve) => { releaseStale = resolve; });
+    let winner: Promise<unknown> | undefined;
+    const renameStaleLock = async (from: string, to: string): Promise<void> => {
+      if (firstCall) {
+        firstCall = false;
+        winner = withExclusiveFileLock(file, async () => {
+          winnerReady();
+          await winnerRelease;
+          return "winner";
+        }, {
+          now: () => 60_000,
+          staleAfterMs: 30_000,
+          processAlive: (pid) => pid === process.pid,
+          retryDelaysMs: [0],
+          renameStaleLock,
+        });
+        await winnerLockReady;
+        await fs.rename(from, to);
+        staleMoved();
+        await staleRelease;
+        return;
+      }
+      await fs.rename(from, to);
+    };
+
+    const staleReclaimer = withExclusiveFileLock(file, async () => "stale-reclaimer", {
+      now: () => 60_000,
+      staleAfterMs: 30_000,
+      processAlive: (pid) => pid === process.pid,
+      retryDelaysMs: [0],
+      renameStaleLock,
+    });
+    await staleMovedPromise;
+    if (!winner) throw new Error("winner reclaimer was not started");
+
+    let releaseThird!: () => void;
+    const thirdRelease = new Promise<void>((resolve) => { releaseThird = resolve; });
+    let thirdReady!: () => void;
+    const thirdLockReady = new Promise<void>((resolve) => { thirdReady = resolve; });
+    const third = withExclusiveFileLock(file, async () => {
+      thirdReady();
+      await thirdRelease;
+      return "third";
+    }, { retryDelaysMs: [0], processAlive: (pid) => pid === process.pid });
+    await thirdLockReady;
+    expect(await fs.readFile(file, "utf8")).toContain(`\"pid\":${process.pid}`);
+    releaseStale();
+    await expect(staleReclaimer).rejects.toMatchObject({ code: "EEXIST" });
+    const quarantinesBeforeWinnerRelease = (await fs.readdir(dir)).filter((entry) => entry.startsWith("cache-third.lock.stale-"));
+    expect(quarantinesBeforeWinnerRelease.length).toBeGreaterThan(0);
+    releaseWinner();
+    await expect(winner).resolves.toBe("winner");
+    expect(await fs.readFile(file, "utf8")).toContain(`\"pid\":${process.pid}`);
+    releaseThird();
+    await expect(third).resolves.toBe("third");
     await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
   });
 

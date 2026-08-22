@@ -221,13 +221,13 @@ export function useDismissOnOutside(onClose: () => void, active: boolean): void 
     window.addEventListener("contextmenu", close, true);
     window.addEventListener("blur", onClose);
     window.addEventListener("resize", onClose);
-    window.addEventListener("wheel", onClose, { passive: true });
+    window.addEventListener("wheel", close, { passive: true });
     return () => {
       window.removeEventListener("mousedown", close, true);
       window.removeEventListener("contextmenu", close, true);
       window.removeEventListener("blur", onClose);
       window.removeEventListener("resize", onClose);
-      window.removeEventListener("wheel", onClose);
+      window.removeEventListener("wheel", close);
     };
   }, [onClose, active]);
 }

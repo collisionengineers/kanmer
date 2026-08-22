@@ -707,3 +707,4 @@ CORE-026 PR #163 has fresh independent review comments after the prior PASS atte
 
 
 CORE-080 implementation handoff complete: commit 0e1be5f32efad1da57ee27bd2a2fe80033976bd1, PR #201 targets CORE-043 branch, focused GUI Git 26/26, core 283/283, scripts 89/89, docs/skills/manual/diff PASS; GUI typecheck/full GUI inherited dispatch-provider baseline failures explicitly preserved. Independent gui082 review/merge assigned; no self-review or parent merge.
+\n\nLast handoff: 2026-08-22T18:10Z — CORE-081 execution reconciled: stale board take metadata pointed to a missing worktree/branch, so the exact dedicated branch/worktree was recreated at cumulative CORE-026 head 3a05ab7a. Full CORE-026 current-head review scratch was read; only seven mapped source transport/cache findings are in scope. Implementation begins now; CORE-082/083 and parent merge remain untouched.

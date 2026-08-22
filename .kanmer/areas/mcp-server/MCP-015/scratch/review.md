@@ -57,3 +57,18 @@ Every GitHub review thread is represented above; no thread is silently dropped. 
 ## Residual risk
 
 Real authenticated Antigravity install/uninstall, bound `get_status`, unbound control, and IDE evidence remain INCONCLUSIVE as documented by the author; those boundaries must remain explicit after the implementation findings are resolved. The current hosted verify success covers deterministic rails only and does not close those external acceptance gaps.
+
+### 2026-08-22 automated review findings and bounded dispositions
+
+The following six unresolved automated review threads were preserved before the remediation pass. They are all in scope for this PR and remain open until the fresh head is independently gathered:
+
+1. P1, scripts/release.mjs pluginManifestPaths: “Add the Antigravity manifest to the release bump list.” The release source of truth omitted plugins/kanmer/plugin.json, allowing release/plugin:check version drift.
+2. P1, plugins/kanmer/mcp_config.json: “Ship a runtime for the Antigravity MCP command.” A hardcoded node command is not valid for packaged installs whose supported runtime is Electron-as-Node and which do not require a separate Node installation.
+3. P2, .gitignore: “Keep legacy Antigravity state ignored during migration.” Existing .agents/mcp_config.json and .agents/skills residue must remain machine-local and ignored until reconnect cleanup has proven ownership.
+4. P1, apps/gui/src/main/providers.ts functional proof: “Verify board data instead of a disclosed static marker.” A failed tool call or model echo containing KANMER_GET_STATUS_OK must not authorize legacy cleanup.
+5. P1, apps/gui/src/main/providers.ts/connect.ts command execution: “Pass Antigravity arguments without a shell.” q() interpolation was unsafe for paths containing $(), backticks, &, and ;.
+6. P1, apps/gui/src/main/providers.ts / AGENTS.md: “Document new native plugin convention in AGENTS.md.” The root Antigravity manifest, native lifecycle, runtime convention, and release source of truth must be documented in the same PR.
+
+Bounded dispositions implemented in this remediation: (1) release.mjs now bumps all three shipped plugin manifests and release-manifests.test.mjs pins that source of truth; (2) Antigravity mcp_config.json now launches the existing installer-owned Windows \`%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd\` through cmd.exe, and Connect preflights that launcher rather than node; (3) .gitignore restores both legacy .agents paths; (4) cleanup requires a fresh machine-checkable get_status identity containing the exact project fingerprint, canonical board root, repo root, and storage format, so markers/PONG/echoes fail closed; (5) Antigravity lifecycle commands use execFile argv, with hostile-root regression coverage; (6) AGENTS.md records the root manifest, launcher and lifecycle convention. No provider behavior outside the bounded native plugin path was changed.
+
+The real agy host lane remains INCONCLUSIVE: no disposable authorized plugin project or credentials are available. No install/uninstall/functional capability is inferred from list, validation, process start, marker output, or fixture output.

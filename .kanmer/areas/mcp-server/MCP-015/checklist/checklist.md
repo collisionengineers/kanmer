@@ -134,3 +134,14 @@ Append measured commands and implementation notes here; never flip dispatch befo
 - [ ] Hosted verify rerun is pending on PR #152; no merge performed.
 
 - [x] Hosted verify rerun passed: run 32550191640, job 96975552621, verify, 2m27s; PR #152 remains open and unmerged.
+
+### 2026-08-22 automated review remediation
+
+- [x] Preserved all six unresolved automated review findings and their dispositions in scratch/review and the post-implementation report.
+- [x] Added the root Antigravity manifest to release version source-of-truth coverage with a regression test.
+- [x] Switched Antigravity MCP config/runtime preflight to the installer-owned Windows launcher.
+- [x] Restored ignored legacy .agents migration paths.
+- [x] Replaced marker-only functional proof with exact project-identity proof and a marker-echo regression.
+- [x] Routed Antigravity lifecycle commands through argv and covered hostile path arguments.
+- [x] Documented the native plugin convention in AGENTS.md.
+- [ ] Fresh commit, hosted verify rerun, and independent review remain pending.

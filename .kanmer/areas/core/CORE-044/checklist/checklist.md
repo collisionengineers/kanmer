@@ -15,5 +15,5 @@
 - [x] Run focused core and source tests with exact exits, preserving prior F-001/F-002 regressions and first failures.
 - [x] Run full npm test, typecheck, core/server builds, protocol/headless smoke, docs/skills/manual/plugin-sync/diff rails, and record every exit; npm test's environment-sensitive 78/80 HTTP result is INCONCLUSIVE and its targeted rerun passed.
 - [x] Reconcile FRD-027/ADR-0020 wording only if the final diff requires it; do not add GUI source editing or provider migration.
-- [ ] Write the post-implementation report mapping all 21 findings to fixed, rejected, parked, or INCONCLUSIVE evidence.
-- [ ] Confirm PR #163 or the ticket-linked remediation PR, commit reachability, expected-project annotations, hosted checks, and final get_doc_gates readback before Review handoff.
+- [x] Write the post-implementation report mapping all 21 findings to fixed, rejected, parked, or INCONCLUSIVE evidence.
+- [x] Confirm ticket-linked PR #165, commit reachability, expected-project annotations, hosted-check state, and final get_doc_gates readback before Review handoff.

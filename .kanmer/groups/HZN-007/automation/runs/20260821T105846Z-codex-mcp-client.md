@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T09:48:16.674Z
+updated_at: 2026-08-22T10:05:03.758Z
 lane_limit: 3
 stop_reason:
 ---
@@ -695,3 +695,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T09:33:33.636Z — CORE-044 research/plan packet prepared in Preparing: research, files, open-questions (all bounded parked items explicitly checked), plan, and checklist written via MCP. Governing refs FRD-027/ADR-0020, linked CORE-026/PR #163, and all 21 automated review findings are mapped. Leave-Preparing gates passable; no implementation, take, move, source change, or PR action performed.
 
 - 2026-08-22T09:48:16.674Z — CORE-044 taken for implementation on branch `core-044-source-fetch-remediation`, worktree .worktrees/core-044, exact CORE-026 base `b5ae6f36e007a05fffd9bb2f1c6ea4a87a860477`. Scoped source/schema, board CAS, fetch/cache, test-rail, skill/roster/docs remediation is in progress. Focused core rail corrected to exit 0 (91/91); focused MCP source rail corrected to exit 0 (11/11). First failures preserved in CORE-044 scratch/execute. No PR or review move yet.
+
+- 2026-08-22T10:05:03.758Z — CORE-044 implementation handoff: commit 33f32e3aae9819f1c2344863272dacb5c958fbac pushed as PR #165 stacked on CORE-026 b5ae6f36; report/checklist complete, get_doc_gates enter-review passable, moved implementing -> review. Stop for independent review; no merge, verify, or cleanup.

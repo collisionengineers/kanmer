@@ -123,3 +123,6 @@
 
 
 ## 2026-08-22T11:10Z — GUI-109 / GUI-111 merged-main verification and closeout\n\n- PR #164 (GUI-111) and PR #162 (GUI-109) are merged; final main SHA 34245be039e8fd8395b5e31835602c54e62e98a4.\n- Independent reviews PASS: GUI-111 attestation cb05644fc52e8186; GUI-109 attestation 946ee04b23057a28; hosted gate and verify PASS; review threads resolved.\n- Detached merged-main verification PASS: focused 8/8, full GUI 45 files / 390 tests, typecheck, GUI build, manual freshness, diff check; full root suite PASS after explicit core build (core 283, GUI 390, MCP HTTP 68, scripts 88).\n- Proof records written for both tickets; GUI-111 and GUI-109 moved Verifying → Done and released. Dedicated ticket worktrees and branches removed after merge confirmation. Packaged Electron visual/live interaction remains explicitly INCONCLUSIVE.\n
+
+
+## 2026-08-22T11:20Z — CORE-044 Review handoff\n\n- CORE-044 implementation commit 33f32e3aae9819f1c2344863272dacb5c958fbac is stacked on CORE-026 PR #163 head 5ae6f36e007a05fffd9bb2f1c6ea4a87a860477; PR #165 targets core-026-project-declared-sources.\n- Checklist 17/17, post-implementation report and traceability read back; Implementing → Review moved at 2026-08-22T10:05:03.751Z.\n- Independent reviewer /root/gui099_executor assigned to audit all 21 findings and exact stacked diff. No merge, verification, or cleanup yet.\n

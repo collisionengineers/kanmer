@@ -14,7 +14,7 @@
 | plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md | Document the new source tools so plugin synchronization remains exact. |
 | plugins/kanmer/skills/kanmer-research/SKILL.md | Tell research to call get_sources first, consult available declared sources, and record provenance before general search. |
 | plugins/kanmer/skills/kanmer-plan/SKILL.md | Tell planning to consume cited source context without re-invoking sources during implementation. |
-| docs/functional/frd/FRD-026-project-declared-sources.md and docs/architecture/adr/ADR-0019-project-declared-source-trust.md | Governing feature contract and trust/fetch decision linked to the ticket. |
+| docs/functional/frd/FRD-027-project-declared-sources.md and docs/architecture/adr/ADR-0020-project-declared-source-trust.md | Governing feature contract and trust/fetch decision linked to the ticket. |
 
 ## Context files
 
@@ -36,3 +36,8 @@
 
 - GUI settings, automatic provider registration migration, external auto-trust, installation/authentication/enabling, OAuth, per-user source scopes, or arbitrary filesystem reads.
 - Cross-origin or unbounded llms.txt crawling, implementation-time source calls, or changes to core gate/profile semantics.
+
+
+## Documentation drift reconciliation — 2026-08-22
+
+- Corrected the initial numbering-collision references to the current governing documents: FRD-027 and ADR-0020. FRD-026 remains the unrelated OpenAI Secure MCP Tunnel document.

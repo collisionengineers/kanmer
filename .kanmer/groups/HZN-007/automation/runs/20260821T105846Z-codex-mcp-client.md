@@ -747,3 +747,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 2026-08-22T12:46:10Z — CORE-053 moved Implementing→Review on PR #174 head 695e12ee659b927513c7e0190a81d5ecb9e8c513 after checklist6/6, IO25/25, core303/303, typecheck/build/plugin parity PASS; live Windows EBUSY remains INCONCLUSIVE. CORE-051 remains Review behind child. Independent core041 review/merge of CORE-053 assigned.
+
+
+2026-08-22T12:47:10Z — CORE-052 moved Implementing→Review on PR #175 head 825fb79dc3528b1d341f532ce8016aa0006624c8 after 8/8 checklist/report and full GUI/manual/workflow validation; independent GUI082 review/merge assigned. CORE-053 PR #174 remains Review under independent core041 review.

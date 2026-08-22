@@ -140,6 +140,10 @@ function isPrivateAddress(hostname: string): boolean {
     const mapped = `${(seventh! >> 8) & 0xff}.${seventh! & 0xff}.${(eighth! >> 8) & 0xff}.${eighth! & 0xff}`;
     return isNonGlobalIpv4(mapped);
   }
+  if (first === 0x0064 && second === 0xff9b && third === 0 && fourth === 0 && fifth === 0 && sixth === 0) {
+    const embedded = `${(seventh! >> 8) & 0xff}.${seventh! & 0xff}.${(eighth! >> 8) & 0xff}.${eighth! & 0xff}`;
+    return isNonGlobalIpv4(embedded);
+  }
   return (
     first === 0 ||
     (first === 0x100 && second === 0 && third === 0 && fourth === 0) ||
@@ -148,10 +152,10 @@ function isPrivateAddress(hostname: string): boolean {
     (first === 0x0100 && second === 0 && third === 0 && fourth === 0x0001) ||
     (first >= 0x5f00 && first <= 0x5fff) ||
     (first === 0x2001 && (second! & 0xfff0) === 0x0010) ||
-    (first === 0x2001 && (second! & 0xfff0) === 0x0020) ||
     (first === 0x2001 && second === 0x0db8) ||
     (first >= 0xfc00 && first <= 0xfdff) ||
     (first >= 0xfe80 && first <= 0xfebf) ||
+    (first & 0xffc0) === 0xfec0 ||
     first >= 0xff00 ||
     // 3fff::/20 is 3fff:0000:: through 3fff:0fff::; checking only the
     // first group would incorrectly reject the public 3fff:1000::/16 tail.

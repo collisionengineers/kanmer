@@ -38180,7 +38180,9 @@ async function recoverStaleLock(lockFile, options2) {
     try {
       await import_promises.default.link(quarantineFile, lockFile);
     } catch (error2) {
-      if (error2.code !== "EEXIST") throw error2;
+      const code = error2.code;
+      if (code === "ENOENT") return false;
+      if (code !== "EEXIST") throw error2;
     }
     return false;
   }
@@ -38226,7 +38228,13 @@ async function withExclusiveFileLock(lockFile, work, options2 = {}) {
         const contents = await import_promises.default.readFile(lockFile, "utf8");
         if (parseLockRecord(contents)?.token === claimToken) await import_promises.default.rm(lockFile, { force: true });
       } catch (readError) {
-        if (readError.code !== "ENOENT") throw readError;
+        if (readError.code !== "ENOENT") {
+          try {
+            await import_promises.default.rm(markerFile, { force: true });
+          } finally {
+            throw readError;
+          }
+        }
       }
       await import_promises.default.rm(markerFile, { force: true });
       throw error2;
@@ -42201,7 +42209,11 @@ function isPrivateAddress(hostname2) {
     const mapped = `${seventh >> 8 & 255}.${seventh & 255}.${eighth >> 8 & 255}.${eighth & 255}`;
     return isNonGlobalIpv4(mapped);
   }
-  return first === 0 || first === 256 && second === 0 && third === 0 && fourth === 0 || first === 8193 && second === 2 && third === 0 || first === 100 && second === 65435 && third === 1 || first === 256 && second === 0 && third === 0 && fourth === 1 || first >= 24320 && first <= 24575 || first === 8193 && (second & 65520) === 16 || first === 8193 && (second & 65520) === 32 || first === 8193 && second === 3512 || first >= 64512 && first <= 65023 || first >= 65152 && first <= 65215 || first >= 65280 || // 3fff::/20 is 3fff:0000:: through 3fff:0fff::; checking only the
+  if (first === 100 && second === 65435 && third === 0 && fourth === 0 && fifth === 0 && sixth === 0) {
+    const embedded = `${seventh >> 8 & 255}.${seventh & 255}.${eighth >> 8 & 255}.${eighth & 255}`;
+    return isNonGlobalIpv4(embedded);
+  }
+  return first === 0 || first === 256 && second === 0 && third === 0 && fourth === 0 || first === 8193 && second === 2 && third === 0 || first === 100 && second === 65435 && third === 1 || first === 256 && second === 0 && third === 0 && fourth === 1 || first >= 24320 && first <= 24575 || first === 8193 && (second & 65520) === 16 || first === 8193 && second === 3512 || first >= 64512 && first <= 65023 || first >= 65152 && first <= 65215 || (first & 65472) === 65216 || first >= 65280 || // 3fff::/20 is 3fff:0000:: through 3fff:0fff::; checking only the
   // first group would incorrectly reject the public 3fff:1000::/16 tail.
   first === 16383 && (second & 61440) === 0;
 }

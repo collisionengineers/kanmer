@@ -453,6 +453,26 @@ describe("withExclusiveFileLock", () => {
     }
   });
 
+  it("removes the claimant marker when lock cleanup itself fails", async () => {
+    const file = path.join(dir, "cache-marker-cleanup.lock");
+    await fs.writeFile(file, JSON.stringify({ pid: process.pid, createdAt: 60_000 }), "utf8");
+    const realReadFile = fs.readFile.bind(fs);
+    const readSpy = vi.spyOn(fs, "readFile").mockImplementation(async (target, options) => {
+      if (String(target) === file) throw errno("EACCES");
+      return realReadFile(target, options);
+    });
+    try {
+      await expect(withExclusiveFileLock(file, async () => "must not enter", {
+        now: () => 60_000,
+        processAlive: () => true,
+        retryDelaysMs: [0],
+      })).rejects.toMatchObject({ code: "EACCES" });
+      expect((await fs.readdir(dir)).some((entry) => entry.includes(".owner-"))).toBe(false);
+    } finally {
+      readSpy.mockRestore();
+    }
+  });
+
   it("revalidates stale ownership before retrying a transient quarantine rename", async () => {
     const file = path.join(dir, "cache-revalidate.lock");
     await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0 }), "utf8");

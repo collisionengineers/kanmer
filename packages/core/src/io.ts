@@ -296,7 +296,9 @@ async function recoverStaleLock(
     try {
       await fs.link(quarantineFile, lockFile);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "ENOENT") return false;
+      if (code !== "EEXIST") throw error;
       // A concurrent writer owns the path. Keep the active replacement in
       // quarantine; its owner removes it safely during release.
     }
@@ -350,7 +352,13 @@ export async function withExclusiveFileLock<T>(
         const contents = await fs.readFile(lockFile, "utf8");
         if (parseLockRecord(contents)?.token === claimToken) await fs.rm(lockFile, { force: true });
       } catch (readError) {
-        if ((readError as NodeJS.ErrnoException).code !== "ENOENT") throw readError;
+        if ((readError as NodeJS.ErrnoException).code !== "ENOENT") {
+          try {
+            await fs.rm(markerFile, { force: true });
+          } finally {
+            throw readError;
+          }
+        }
       }
       await fs.rm(markerFile, { force: true });
       throw error;

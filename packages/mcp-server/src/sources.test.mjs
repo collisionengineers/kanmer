@@ -106,18 +106,18 @@ test("fails closed for non-global DNS destinations, including mapped IPv4", asyn
     "100::1",
     "2001:2::1",
     "64:ff9b:1::1",
+    "64:ff9b::a00:1",
     "100:0:0:1::1",
     "5f00::1",
     "5fff::1",
     "2001:10::1",
     "2001:1f::1",
-    "2001:20::1",
-    "2001:2f::1",
     "2001:db8::1",
     "3fff::1",
     "3fff:0fff::1",
     "fc00::1",
     "fe80::1",
+    "fec0::1",
     "ff02::1",
   ];
   for (const address of addresses) {
@@ -139,7 +139,15 @@ test("fails closed for non-global DNS destinations, including mapped IPv4", asyn
   }
   const publicCache = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-dns-public-"));
   try {
-    for (const address of ["93.184.216.34", "192.0.0.9", "192.0.0.10", "3fff:1000::1"]) {
+    for (const address of [
+      "93.184.216.34",
+      "192.0.0.9",
+      "192.0.0.10",
+      "3fff:1000::1",
+      "2001:20::1",
+      "2001:2f::1",
+      "64:ff9b::5db8:d822",
+    ]) {
       const result = await fetchLlmsTxt({
         url: "https://docs.example.test/llms.txt",
         cacheDir: path.join(publicCache, address.replaceAll(":", "-")),

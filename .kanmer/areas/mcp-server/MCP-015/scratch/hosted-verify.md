@@ -35,3 +35,16 @@ Independent fresh review found these additional unresolved threads against b4875
 - F-010: “functional --add-dir proof can load legacy .agents registration when boardRoot==projectRoot; must isolate/disable legacy during proof and restore on failure.” A native plugin proof must not be satisfied by the registration it is meant to retire; both Antigravity and Grok legacy configs are isolated byte-for-byte and restored before cleanup or on failure.
 
 Bounded dispositions: DispatchSupervisor now requires an injected deliverable verifier for named tasks before reporting exit-0 "done"; failed/unavailable/unproven deliverables become failed with explicit reasons. The GUI refuses unscoped dispatch and both GUI/MCP supervisors verify the shared task deliverable against ticket docs/checklist/PR evidence. Connect's shared-peer check now includes CLI/config and legacy native registrations, and the functional probe disables any owned legacy registration for the duration of the probe, restoring exact bytes in a finally path. Regression tests cover unscoped dispatch, unproven/no verifier exits, Claude peer retention, and Antigravity/Grok legacy isolation.
+
+### 2026-08-22 fresh GraphQL review findings F-011 through F-014
+
+Independent fresh review of PR 152 at fdeae1b0 found these additional current threads; the prior F-001 through F-010 dispositions remain in the earlier review sections:
+
+- F-011 (blocking/P1): Grok's functional get_status probe still used a shell-interpolated command, so a hostile project root could alter command interpretation.
+- F-012 (blocking/P1): expectedProjectIdentity hardcoded and capped the storage format at literal 3 instead of deriving the current format from core.
+- F-013 (blocking/P2): FRD-012 still described the Antigravity descriptor as node plus the PLUGIN_ROOT token, contrary to the installer-owned launcher now shipped.
+- F-014 (blocking/P2): README still said Connect writes the legacy .agents/mcp_config.json registration for Antigravity.
+
+Disposition: F-011 fixed with Grok's argv-native lifecycle/functional commands and a hostile-root argv regression assertion; injected command runners remain only deterministic test seams. F-012 fixed by importing core CURRENT_FORMAT and clamping version.json values against that source of truth while retaining legacy 1/2 detection, with a format-2 functional identity regression. F-013 fixed by aligning FRD-012's descriptor, launcher matrix, token explanation, and MCP-015 route text with cmd.exe and %LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd. F-014 fixed by documenting that native Antigravity owns skills/MCP and .agents paths are migration residue only. No real host install/tool claim is added; the authorized-host proof remains INCONCLUSIVE.
+
+Fresh commit and hosted verify rerun are pending. PR 152 stays open at Review; no merge.

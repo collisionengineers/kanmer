@@ -79,3 +79,16 @@ Independently reviewed PR #152 at head fdeae1b04a1eaab95a48c11bf637efbe94ed8ad2 
 - F-014 open: the end-user README still tells users Antigravity receives a project .agents/mcp_config.json; document the user-scoped native plugin and bound CLI behavior.
 
 No merge, Verifying move, proof, release, or cleanup is authorized while F-011..F-014 remain open.
+
+### 2026-08-22 fresh GraphQL review findings F-011 through F-014
+
+Independent fresh review of PR 152 at fdeae1b0 found these additional current threads; the prior F-001 through F-010 dispositions remain in the earlier review sections:
+
+- F-011 (blocking/P1): Grok's functional get_status probe still used a shell-interpolated command, so a hostile project root could alter command interpretation.
+- F-012 (blocking/P1): expectedProjectIdentity hardcoded and capped the storage format at literal 3 instead of deriving the current format from core.
+- F-013 (blocking/P2): FRD-012 still described the Antigravity descriptor as node plus the PLUGIN_ROOT token, contrary to the installer-owned launcher now shipped.
+- F-014 (blocking/P2): README still said Connect writes the legacy .agents/mcp_config.json registration for Antigravity.
+
+Disposition: F-011 fixed with Grok's argv-native lifecycle/functional commands and a hostile-root argv regression assertion; injected command runners remain only deterministic test seams. F-012 fixed by importing core CURRENT_FORMAT and clamping version.json values against that source of truth while retaining legacy 1/2 detection, with a format-2 functional identity regression. F-013 fixed by aligning FRD-012's descriptor, launcher matrix, token explanation, and MCP-015 route text with cmd.exe and %LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd. F-014 fixed by documenting that native Antigravity owns skills/MCP and .agents paths are migration residue only. No real host install/tool claim is added; the authorized-host proof remains INCONCLUSIVE.
+
+Fresh commit and hosted verify rerun are pending. PR 152 stays open at Review; no merge.

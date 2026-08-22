@@ -159,3 +159,11 @@ Append measured commands and implementation notes here; never flip dispatch befo
 - [x] Isolate and byte-restore Grok/Antigravity legacy registrations around functional proof.
 - [x] Regression tests cover all three findings and failure/restore paths.
 - [ ] Fresh commit and hosted verify rerun pending; PR remains open for independent review.
+
+### 2026-08-22 F-011-F-014 remediation
+
+- [x] Grok functional proof uses argv-native execution and hostile roots stay data, not shell syntax.
+- [x] Project identity derives its storage format from core CURRENT_FORMAT and tests a legacy format.
+- [x] FRD-012 describes the installer-owned Antigravity launcher and no PLUGIN_ROOT target.
+- [x] README describes native plugin MCP and legacy-only .agents migration paths.
+- [ ] Fresh commit and hosted verify rerun pending; PR remains open for independent review.

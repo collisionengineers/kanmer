@@ -32,3 +32,43 @@
 ## Verdict
 
 NEEDS-CHANGES. PR #173 is not merge-ready because the cleanup-error finding is substantive and has a linked blocking remediation ticket CORE-053. No merge, move, source edit, or worktree cleanup performed. Re-review the exact new CORE-053-inclusive head after its deterministic cleanup-error regression and cumulative traceability land.
+
+# Fresh cumulative independent review — CORE-051 / PR #173
+
+- Reviewer: independent reviewer (not `codex-core051-executor`).
+- Exact reviewed PR head: `36b57a93b6b22f10672d571fb68c160d4766cfc5` (non-squash merge of child PR #174).
+- Exact base: `core-045-lock-dns-remediation` at `0f9af92ba7bf332a3fffbc49b3273bd71b59c49a`.
+- PR #173 is OPEN, CLEAN, and MERGEABLE; no hosted checks are reported.
+- The PR head tree exactly matches independently reviewed child commit `695e12ee659b927513c7e0190a81d5ecb9e8c513`; the child is an ancestor of the cumulative head.
+- Refreshed CORE-051 report/item records child implementation `695e12ee`, child merge `36b57a93`, PRs #173/#174, and the cumulative evidence.
+
+## Findings and dispositions
+
+- CORE-045 stale-lock atomic reclaim P1 (3835806972): fixed in inherited CORE-046/047 tokenized ownership/quarantine lineage.
+- CORE-045 public IPv4 exceptions P2 (3835806975): fixed; 192.0.0.9/.10 and globally reachable 192.31.196/24, 192.52.193/24, 192.175.48/24 are retained.
+- CORE-045 3fff IPv6 boundary P2 (3835806976): fixed as `3fff::/20`.
+- CORE-045 final recovery claim error P2 (3835806978): fixed; actionable post-recovery errors are preserved.
+- CORE-045 remaining local IPv6 P1 (3835806979): fixed for `64:ff9b:1::/48` and `fec0::/10`.
+- CORE-045 released-quarantine ENOENT P2 (3836028223): fixed in CORE-049 lineage.
+- CORE-045 public 2001:20::/28 P2 (3836028224): fixed.
+- CORE-045 NAT64 embedded IPv4 P1 (3836028225): fixed for `64:ff9b::/96`.
+- PR173 claimant-marker cleanup P2 (comment 3836046591, thread `PRRT_kwDOT2PEds6bYwu4`): fixed by CORE-053/PR #174. Cleanup now attempts lock and marker removal independently and surfaces all failures in AggregateError; deterministic child regression asserts EEXIST/EACCES/EBUSY. Thread is ready to resolve after this PASS.
+
+## Evidence
+
+- Focused IO: 25/25.
+- Full @kanmer/core: 303/303.
+- Source rail: 14/14.
+- Core typecheck/build: PASS.
+- Plugin build/check and standalone byte parity: PASS.
+- Diff check: PASS.
+- Child CORE-053 received an independent PASS at exact commit `695e12ee` and was merged non-squash at `36b57a93`.
+- Live Windows EBUSY, live DNS/rebinding, and broad HTTP readiness remain explicitly INCONCLUSIVE; no external claim is fabricated.
+
+## Verdict
+
+PASS, SHA-bound to `36b57a93b6b22f10672d571fb68c160d4766cfc5`. Resolve the fixed PR173 cleanup thread, revalidate exact head/base/merge state, then merge PR #173 non-squash into CORE-045. Do not move or merge CORE-045, and do not verify or clean up.
+
+## Merge result
+
+After resolving the fixed PR173 cleanup thread, final state validation matched head `36b57a93b6b22f10672d571fb68c160d4766cfc5`, base `0f9af92ba7bf332a3fffbc49b3273bd71b59c49a`, OPEN/CLEAN/MERGEABLE. PR #173 was merged non-squash into `core-045-lock-dns-remediation` at merge SHA `02389045b7d26ad46e470af1d96a3084b486bf68` on 2026-08-22T12:51:54Z. CORE-051 moved Review → Verifying. CORE-045 was not moved or merged; no verification or cleanup performed.

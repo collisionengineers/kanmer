@@ -159,3 +159,6 @@
 
 
 2026-08-22T11:05Z — CORE-047 implementation handoff: PR #169 head 47169144e9e6fdd8b215408cbb177657e6c7a0bce stacked on CORE-046 54651a3c. Atomic quarantine now verifies the moved inode and restores replacements via exclusive hard link; reversed-order regression plus IO/core/typecheck/build/source rails recorded PASS. Ticket moved Implementing→Review; independent gui099 review assigned, no merge/cleanup.
+
+
+2026-08-22T11:19Z — CORE-047 review remediation after gui099/core041 NEEDS-CHANGES: added unique token/owner leases, token-aware release and quarantine cleanup ordering, release-order and third-claimant regressions, and regenerated standalone plugin artifact. New head 67e2be792e8480d29df7ff13128fb8c7886056a pushed to PR #169; ticket remains Review for fresh independent attestation. No merge/move/cleanup.

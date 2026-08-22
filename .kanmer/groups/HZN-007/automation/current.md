@@ -582,3 +582,6 @@ CORE-071 implementation 37bc2265 / PR #192 moved Implementing -> Review; focused
 
 
 CORE-071 remains Review with blocker CORE-074. CORE-074 implementation 59e7e0fe / PR #193 moved Implementing -> Review; append-only merge closes TOCTOU and rails pass (kanmerGit 25/25, scripts 88/88, typecheck PASS). Independent review/merge pending.
+
+
+CORE-074 PASS exact 59e7e0fe, merged non-squash into CORE-071 as c8ee9a4e; child moved Verifying and block edge removed. Fresh cumulative CORE-071 review at c8ee9a4e is now required before parent merge. CORE-072 remains Preparing.

@@ -23,3 +23,13 @@ The existing-file reconciliation path now computes only missing or re-invalidate
 ## Verdict
 
 PASS. CORE-074 closes the CORE-071 blocking TOCTOU finding with append-only, race-safe managed-rule merging and preserves symlink refusal.
+
+## Independent review — PASS — 59e7e0feaf4968b05d3d17df35052c20b6d900cf
+
+Reviewer: codex-core074-review, independent of the implementation author. Exact reviewed head: 59e7e0feaf4968b05d3d17df35052c20b6d900cf (PR #193), base CORE-071 head 37bc2265df46f609d1ddcd94ddf020e5a74941a2.
+
+The append-only reconciliation removes the stale existing-file rewrite: it selects only missing or re-invalidated managed entries and uses one O_APPEND operation, so concurrent human/process lines are not replaced by a stale snapshot. It retains symlink refusal, newline handling, and later-negation effectiveness. The focused real-Git rail passed 25/25; diff-check passed; PR had no hosted checks attached.
+
+The deterministic helper test covers missing/effective/re-invalidated rule selection, and the real-Git rail covers new/existing/attachment/mismatch/symlink/later-negation/sync behavior. PASS.
+
+PR #193 was already merged non-squash by the repository owner during this review; merge commit: c8ee9a4e96c5e9d0268e21c59247db00ed958b0b.

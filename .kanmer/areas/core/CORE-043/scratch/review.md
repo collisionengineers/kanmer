@@ -3,6 +3,88 @@ kind: review-attestation
 pr: "168"
 head_sha: "e78323d7fb8ce695e40db80380d189e236726b25"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: needs-changes
+reviewer: "codex-current-head-audit"
+independent: true
+plan_hash: "2026-08-22T18:39:56.633Z"
+ticket_updated: "2026-08-22T18:39:56.633Z"
+findings:
+  - id: F-015
+    severity: blocker
+    summary: "Custom rename must update the Actions board-branch variable"
+    disposition: deferred-to-ticket
+    ticket: "GUI-112"
+    reason: "Current PR #168 thread 3836130697 remains unresolved; GUI-112 owns the lifecycle and workflow handoff fix."
+  - id: F-016
+    severity: major
+    summary: "Resolved handoff must clear only its generated pause/error"
+    disposition: deferred-to-ticket
+    ticket: "GUI-112"
+    reason: "Current PR #168 thread 3836130700 remains unresolved; GUI-112 owns the state-lifecycle fix."
+  - id: F-017
+    severity: blocker
+    summary: "Automatic sync must stop while handoff is paused"
+    disposition: deferred-to-ticket
+    ticket: "GUI-112"
+    reason: "Current PR #168 thread 3836130702 remains unresolved; GUI-112 owns the timer and pause guard."
+  - id: F-018
+    severity: blocker
+    summary: "Managed AGENTS instructions must declare the branch convention"
+    disposition: deferred-to-ticket
+    ticket: "GUI-112"
+    reason: "Current PR #168 thread 3836130705 remains unresolved; GUI-112 includes the required managed-guide update."
+  - id: F-019
+    severity: major
+    summary: "Ordinary custom-to-custom rename must accept the actual current branch"
+    disposition: deferred-to-ticket
+    ticket: "GUI-112"
+    reason: "Current PR #168 thread 3836189719 remains unresolved; GUI-112 owns the ordinary rename path."
+  - id: F-020
+    severity: blocker
+    summary: "Local MCP processes must receive the configured board branch"
+    disposition: deferred-to-ticket
+    ticket: "MCP-044"
+    reason: "Current PR #168 thread 3836189723 remains unresolved; MCP-044 owns provider/runtime propagation."
+  - id: F-021
+    severity: major
+    summary: "Manual Retry must recheck the live branch before syncing"
+    disposition: deferred-to-ticket
+    ticket: "GUI-112"
+    reason: "Current PR #168 thread 3836579174 remains unresolved; GUI-112 owns the manual retry guard."
+  - id: F-022
+    severity: major
+    summary: "FRD and manual text must state retained-ref handoff semantics"
+    disposition: deferred-to-ticket
+    ticket: "GUI-112"
+    reason: "Current PR #168 thread 3836579176 remains unresolved; GUI-112 owns durable contract wording."
+  - id: F-023
+    severity: major
+    summary: "Settings must state that the old custom ref is retained"
+    disposition: deferred-to-ticket
+    ticket: "GUI-112"
+    reason: "Current PR #168 thread 3836720318 remains unresolved; GUI-112 owns the user-facing Settings text."
+  - id: F-024
+    severity: major
+    summary: "Settings must surface protected reconciliation failures"
+    disposition: deferred-to-ticket
+    ticket: "GUI-112"
+    reason: "Current PR #168 thread 3836720320 remains unresolved; GUI-112 owns the failed-Git status surface."
+  - id: F-EXTERNAL
+    severity: minor
+    summary: "Live GitHub protection and variable mutation"
+    disposition: accepted-risk
+    reason: "No authorized live protection mutation or real protected-branch handoff is available; no admin bypass is used."
+---
+
+## Current-head independent review — NEEDS-CHANGES — 2026-08-22
+
+Reviewed exact cumulative PR #168 head e78323d7fb8ce695e40db80380d189e236726b25 against main base 34245be039e8fd8395b5e31835602c54e62e98a4. CI rerun 32590637669 is green (verify and kanmer-gate), but current-head inline review has ten unresolved findings. Each is dispositioned to a blocking remediation ticket above; no unresolved blocker is silenced and the protected merge remains held until those tickets are independently reviewed and merged, followed by a fresh cumulative review.
+
+---
+kind: review-attestation
+pr: "168"
+head_sha: "e78323d7fb8ce695e40db80380d189e236726b25"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: pass
 reviewer: "codex-recovery"
 independent: true

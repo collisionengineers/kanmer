@@ -27,12 +27,15 @@ refs:
   - docs/functional/frd/FRD-027-project-declared-sources.md
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
 commits:
-  - 9abfc9f4
+  - 9abfc9f47b8acfa31ef57d5b30071f72de43497c
+  - ceaab8d455fd198a3421fa73bbf361ec33df0bd0
+  - d4dee4bb668d27a1942532d940eb6d4508a224ab
 prs:
   - '194'
+  - '196'
 archived: false
 created: '2026-08-22T15:15:55.500Z'
-updated: '2026-08-22T16:03:57.101Z'
+updated: '2026-08-22T16:22:25.330Z'
 ---
 
 PR #180 thread 3836323268: when orphan creation copied the source board and ignore repair failed, a later retry must complete the source-board cleanup/migration rather than only repairing .gitignore; add regression under FRD-020 R2.

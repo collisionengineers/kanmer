@@ -387,5 +387,54 @@ check(
   "path + heading",
 );
 
+console.log("\n=== 14. kanmer-auto stopping and serial-fallback contract ===");
+const stopContract = [
+  [
+    "controller reconciles every worker result",
+    /On every result or timeout[\s\S]*re-reads the live item[\s\S]*writes and reads back the run record before selecting another action/i,
+  ],
+  [
+    "mandatory stop predicates are explicit",
+    /^## 4\. Mandatory stop predicates$/m.test(autoSkill) &&
+      /wrong project fingerprint[\s\S]*durable run-state write\/readback failure[\s\S]*unknown PR, check, or merge state[\s\S]*no safe ready work/i.test(autoSkill),
+  ],
+  [
+    "only legal successful/operator stops are named",
+    /only successful terminal stop is an exhausted roster[\s\S]*only operator-wait stop is a genuine operator-only question[\s\S]*partial-roster report presented as success is a defect/i,
+  ],
+  [
+    "stop hand-off persists exact predicate and resume action",
+    /Before an intentional safe stop[\s\S]*exact predicate text\/id[\s\S]*one deterministic resume read\/action[\s\S]*Write\/read\s+back the complete history record first, then write\/read\s+back the pointer/i,
+  ],
+  [
+    "serial fallback persists lane limit and event",
+    /persist\s+`lane_limit: 1`\s+and a `parallel-unavailable` event\/reason[\s\S]*same\s+ordered roster[\s\S]*Finish\s+and\s+persist\s+the current action before assigning the next ticket/i,
+  ],
+  [
+    "serial fallback preserves independence and no pre-take",
+    /Serial mode permits only one active or uncertain ticket[\s\S]*does not pre-take\s+future tickets[\s\S]*returns to controller mode/i,
+  ],
+  [
+    "worker/ticket/run completion stays distinct",
+    /Worker completion means return at its assigned Stop condition, not\s+ticket\s+completion[\s\S]*run is `completed` only when\s+every selected non-skipped ticket reaches/i,
+  ],
+  [
+    "retry and force rules are bounded",
+    /at most one logged launch\s+retry[\s\S]*Never automatically retry failed\s+implementation[\s\S]*Never use force takeover as fallback/i,
+  ],
+];
+for (const [name, rule] of stopContract) {
+  const ok = typeof rule === "boolean" ? rule : rule.test(autoSkill);
+  check(name, ok, ok ? "contract present" : "required stopping/serial wording missing");
+}
+const forbiddenAutoClaims = [
+  ["unbounded serial fallback", /If your host has no subagent mechanism,\s*run the same waves sequentially/i],
+  ["partial completion presented as success", /continue until (?:every|all) (?:ticket|tickets) .*done/i],
+  ["role collapse", /if subagents are unavailable,\s*do all roles yourself/i],
+];
+for (const [name, rule] of forbiddenAutoClaims) {
+  check(`no ${name}`, !rule.test(autoSkill), "unsafe legacy claim absent");
+}
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

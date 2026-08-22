@@ -5,191 +5,222 @@ description: Autonomously clear one explicit Kanmer group (epic or horizon), pre
 
 # Clearing a group autonomously
 
-kanmer-auto is orchestration, not new mechanics: each ticket still goes
-through the phase skills' procedures exactly as written — this skill decides
-which tickets, in what order, and how many at once.
+`kanmer-auto` is orchestration, not a new workflow. Each ticket still follows
+the phase skills' procedures exactly as written; this skill selects the roster,
+orders safe work, reconciles every result, and controls how many lanes run at
+once. The controller never turns a worker message into board evidence.
 
-## Durable run state — required before dispatch
+## Orientation and durable-state resume
 
-This skill runs **one explicit existing group** per invocation. Area-only and
-ad-hoc selections have no durable batch owner: stop and ask the operator to
-name or create the epic/horizon before mutating tickets or dispatching workers.
-Do not add MCP tools, ticket fields, entities, leases, hidden local state, or
-automatic merging to implement this protocol.
+This skill runs one explicit existing group per invocation. Area-only and
+ad-hoc selections have no durable batch owner: stop before mutation and ask the
+operator to name or create an epic/horizon. Do not add MCP tools, ticket fields,
+entities, leases, hidden local state, or automatic merging.
 
-The durable state belongs in the group's documents, never in a ticket:
+At startup, before any ticket write or dispatch, read `get_status`, `get_group`,
+the group's `context.md`, and `automation/current.md`. A current record with
+status `running`, `paused`, or `blocked` is resumed and reconciled; it is not
+silently replaced. Validate its schema, group, project fingerprint, controller
+ownership, and referenced history path. A different controller owning a
+`running` record is a stop predicate.
+
+Durable state belongs in the group's documents, never in a ticket:
 
 - Current-run pointer: `automation/current.md`
 - Immutable run history: `automation/runs/<run-id>.md`
 
-Create a path-safe UTC run id that is unique within that group; if its history
-path already exists, append a numeric suffix until it does not. The history record uses
-`assets/run-state-template.md`; it must retain these frontmatter keys:
-`kind`, `schema`, `run_id`, `group`, `project_fingerprint`, `controller`,
-`status`, `created_at`, `updated_at`, `lane_limit`, and `stop_reason`. Its
-required headings are **Selection contract**, **Run invariants**, **Ticket
-ledger**, **Event log**, and **Resume instruction**. `status` is exactly one of
-`running`, `paused`, `blocked`, `completed`, or `aborted`; ledger dispositions
-are exactly `queued`, `active`, `waiting`, `blocked`, `finished`, or `skipped`.
+For a new run, create a path-safe unique UTC id (adding a numeric suffix on
+collision), fill `assets/run-state-template.md`, and keep its required
+frontmatter (`kind`, `schema`, `run_id`, `group`, `project_fingerprint`,
+`controller`, `status`, `created_at`, `updated_at`, `lane_limit`,
+`stop_reason`) and headings (Selection contract, Run invariants, Ticket ledger,
+Event log, Resume instruction). Run status is exactly `running`, `paused`,
+`blocked`, `completed`, or `aborted`; ticket dispositions are exactly `queued`,
+`active`, `waiting`, `blocked`, `finished`, or `skipped`.
 
-At startup, read `get_status`, `get_group`, the group's `context.md`, and
-`automation/current.md` before any dispatch. If the current record is
-`running`, `paused`, or `blocked`, resume it rather than creating a new run.
-Validate the referenced record's schema, group, and project fingerprint.
-Refuse before writing when its group or project fingerprint differs, or when a
-different controller owns an active run. Reconcile the ledger against live
-ticket state and live `get_doc_gates`; an interruption must never make the
-controller repeat a completed action just because it cannot remember it.
+Write and read it back: the complete history record before writing
+`automation/current.md`; write and read back the pointer before dispatch. Never
+overwrite an old history record. Update and read back both documents around
+every assignment, worker result, reconciliation, wait, pause, block,
+completion, or abort. Store operational state only: roster, target, lane
+partition, skip reasons, worker outcomes, and concise operator answers. Never
+store secrets, full prompts, or large command output.
 
-For a new run, collect the gates-first roster first. Then write the complete
-history record and read it back **before** writing `automation/current.md` from
-`assets/current-run-template.md`, and read that pointer back before dispatch.
-Update and read back both documents around every assignment and result, and
-before an intentional pause, block, completion, or abort. Never overwrite a
-history record; terminal state remains resumable evidence and the next run gets
-a new history path.
+## 1. Roster and gates-first readiness
 
-The record contains operational state only: roster, target, lane partition,
-skip reasons, worker outcomes, and concise operator answers. Record operator
-answers as events so a resumed controller honours them without re-asking. Do not store
-secrets, full prompts, or large command outputs in either document.
+1. Call `get_status`, then `list_items group: "<explicit group>"`; use the
+   group's order and show the resolved roster, target point, and exclusions to
+   the operator before starting. `list_items`, not `get_group`, supplies the
+   taken, blocked, and profile fields needed for selection.
+2. Read the group's shared context. Drop archived or blocked tickets and
+   tickets taken by another actor; coordinate rather than using `force`.
+3. Parse the requested target: “up to review” stops each ticket after its PR is
+   open and its ticket is in Review; the default is closeout, subject to the
+   human merge boundary. Resolve stage names with `list_board`.
+4. For every retained ticket, call `get_doc_gates` and use its current stage,
+   reachable stages, and first unmet next-boundary requirement as the routing
+   table. Do not restate profile-to-document mappings in this skill.
+5. Advance one gated boundary per move. Set `docs_todo` only when a governing
+   document genuinely needs to be written; do not create optional documents to
+   normalize the roster. A ticket with no currently required preparation phase
+   routes to its next applicable action.
+6. A user-only question at any phase parks that ticket as `waiting`, quotes the
+   question and recommendation in the event log, and pauses that lane. Never
+   guess an operator answer.
 
-## 1. Gather and scope
+## 2. Lane assignment
 
-- `get_status`, then `list_items group: "HZN-003"` for the named epic or
-  horizon. Board order is the human's ordering — respect it. Group membership
-  is derived in id order and is *not* a priority, so a group scopes the roster
-  and nothing else. An optional `area` filter narrows to one subsystem's share
-  of that group.
-  Use `list_items`, not `get_group`, to build the roster: `get_group`'s derived
-  members carry only id/title/stage, and the drop rules below need `taken` and
-  `blocked`, while §3 needs `profile`.
-- `get_group_doc` for the group's shared context — the constraint binding the
-  batch is written there once and applies to every member.
-- Drop: archived, `blocked: true`, and tickets taken by someone else
-  (coordinate, don't `force`).
-- Parse the **target point** from the request: "up to review" means each
-  ticket stops once its PR is open and the ticket sits in the review stage;
-  the default is full closeout (merge permitting — if merging is the human's
-  call, tickets park in review and you say so). Resolve stage names against
-  `list_board`.
-- **Gates are hard, and per-ticket.** Call `get_doc_gates <id>` for every ticket
-  in the roster and drive *that* ticket's boundaries — do not assume a common
-  pipeline. Profiles differ in how many stages they walk and which documents
-  they owe, so `reachable` on that call is the roster's routing table. Driving
-  every ticket through one pipeline is the mistake this warning exists to
-  prevent.
-- **One gated boundary per move.** A lane advances a ticket one stage at a time;
-  a move crossing two gated boundaries is refused. Partition the roster by
-  profile so lanes with genuinely different pipeline lengths do not block each
-  other.
-- Set `docs_todo` on tickets that need a governing doc written so they are not
-  stranded at the first gate.
-- Tell the user the roster before starting: what you scoped by (naming the
-  group, if you used one), which tickets, target point, what was skipped and
-  why. A roster resolved from a group is worth showing back before anything
-  starts — it is the one step the user cannot check by reading the request.
+Compare every retained ticket's `files` document. Disjoint file sets may use
+different lanes; overlapping files share one serial lane; a `blocks` edge orders
+the blocker before its dependent regardless of file disjointness. Cap parallel
+work at approximately three lanes.
 
-## 2. Wave 0 — route every ticket from its live gates
+Before assigning a ticket, re-read its item, links/dependencies, taken state,
+required document versions, activity, and `get_doc_gates`. Record the lane as
+`active` with worker, branch/worktree when known, attempt, timestamp, action,
+and stop condition; append a `lane-assigned` event; write/read back the full
+run record; only then dispatch.
 
-For every retained ticket, call `get_doc_gates <id>` and inspect its current
-stage, reachable stages, and first unmet next-boundary requirement. Group the
-roster by the next applicable phase/action, not by an assumed profile pipeline,
-then dispatch only that phase through the existing phase skill. Do not create
-optional documents merely to normalize the batch. A ticket with no preparation
-phase currently required advances to its next applicable workflow action rather
-than receiving speculative research. After each completed phase, re-read that
-ticket's gates before routing its next phase.
+Each lane uses its own `.worktrees/<id>` worktree and branch. No lane may touch
+`.worktrees/kanmer`, which is the board worktree on the board branch and is
+never a lane, rebase target, or cleanup target. A ticket runs through the
+existing phase skills only: `kanmer-research` → `kanmer-plan` →
+`kanmer-execute` → independent `kanmer-review` → `kanmer-verify` →
+`kanmer-closeout`, only as far as the requested target permits.
 
-Tickets whose routed phase surfaces user-only questions get parked and reported
-— don't guess on the user's behalf.
+## 3. Controller action loop and result reconciliation
 
-This is not only a routing concern: a question can surface at any point, and a
-lane that hits one **stops there and is reported as parked-on-a-question, named
-and quoted** — never rolled into the generic failure bucket. The operator can
-answer a question in seconds; they cannot answer one they were never shown. The
-gates enforce *some* of the stopping — `get_doc_gates` says which boundaries
-this ticket's profile actually has, and they are not the same for every profile —
-but the merge is outside the engine entirely, so a lane can land code on a
-question the operator never saw. Reporting it is therefore this skill's job, not
-the engine's.
+The controller chooses one safe next action per ready lane. The worker receives
+the execution packet/approved plan, exact role and allowed scope, and its
+mandatory Stop condition. The worker returns at that Stop condition or a
+mandatory stop predicate; it never chooses another ticket or dispatches a
+successor.
 
-## 3. Partition into conflict-free lanes
+On every result or timeout, the controller:
 
-Compare the file tables in each ticket's `files` document:
+1. stops conflicting dispatch while the result is uncertain;
+2. re-reads the live item, links/dependencies, documents and versions, activity,
+   Git/PR state where applicable, and `get_doc_gates`;
+3. compares actual mutations, stage, gate, checklist, branch/worktree, commit,
+   PR and error evidence with the approved scope;
+4. records the worker result, reconciliation, discrepancy, and one next action
+   in the ledger/event log; and
+5. writes and reads back the run record before selecting another action.
 
-- Tickets touching **disjoint** files → different lanes, safe in parallel.
-- Tickets with **overlapping** files → the same lane, run serially.
-- A `blocks` edge forces ordering regardless of lanes: the blocker finishes
-  (to the target point) before the blocked ticket starts.
+After anything merges to `main`, lanes still in flight rebase before opening a
+PR (`git fetch origin && git rebase origin/main`). A failed ticket does not
+silently disappear: record the exact failure, release it only under the phase
+skill's rules, return it to the appropriate stage, and classify it in the run.
 
-Cap concurrency at ~3 lanes — enough to matter, few enough that rebases and
-reviews stay manageable.
+## 4. Mandatory stop predicates
 
-## 4. Execute the waves
+These predicates stop or pause dispatch; none may be reported as successful
+completion merely because a partial roster has a standup summary:
 
-Every lane works in its **own** worktree, and none of them touches
-`.worktrees/kanmer` — in a repo set up through the GUI that is the board's own
-worktree, on the board branch, with MCP rooted in it. It is never a lane's
-worktree, never a rebase target, and never cleaned up. With ~3 lanes running git
-surgery in parallel this is the invariant with the most chances to be broken.
+1. wrong project fingerprint or required capability;
+2. unhealthy or unknown board worktree for the required action;
+3. durable run-state write/readback failure;
+4. an unresolved non-parked question;
+5. a missing required governing or pipeline document;
+6. a materially stale approved plan or document version;
+7. a live dependency;
+8. a ticket occupied by another actor;
+9. a branch/worktree mismatch or unsafe path;
+10. worker-reported plan deviation, ambiguity, destructive risk, security or
+    secret risk;
+11. a required command or environment unavailable;
+12. a failed test or verification;
+13. unknown PR, check, or merge state;
+14. the plan's explicit `## Stop condition`;
+15. an operator target, time, budget, or cancellation boundary;
+16. no safe ready work; or
+17. true run completion.
 
-Each lane's current ticket runs in its own subagent: `kanmer-plan` →
-`kanmer-execute` (own worktree `.worktrees/<id>`, own branch) → independent
-`kanmer-review` → `kanmer-verify` (validate on merged main, write proof) →
-`kanmer-closeout` — each phase only as far as the target point allows. The
-controller itself never runs `gh pr merge` or treats a passing PR as merged;
-only the review workflow may merge after an independent passing review. After
-anything merges to main, lanes still in flight rebase before opening their PRs:
+The only successful terminal stop is an exhausted roster at the declared
+target. The only operator-wait stop is a genuine operator-only question. A
+partial-roster report presented as success is a defect; safety predicates use
+`paused`, `blocked`, or `aborted` with their exact reason instead.
 
-```sh
-git fetch origin && git rebase origin/main
-```
+## 5. Persisted stop/hand-off format
 
-A ticket that fails (tests won't pass, plan turns out wrong, rebase
-conflicts beyond mechanical resolution) doesn't sink the run: release it,
-append what happened to its checklist progress notes, move it back to the
-appropriate stage, and continue the lane with the next ticket.
+Before an intentional safe stop, set the accurate run status and `stop_reason`.
+Record the exact predicate text/id, affected tickets, observed stage/gates and
+document versions, worker/attempt, commands and evidence, remaining roster,
+and one deterministic resume read/action. Append the stop event. Write/read
+back the complete history record first, then write/read back the pointer. If
+state persistence fails, report that failure and never claim a durable
+hand-off. A user-only question is quoted rather than collapsed into “blocked”.
 
-Record a ticket as `active` before assigning a worker, then record the worker,
-branch/worktree, attempt, timestamp, action, and result as they become known.
-Record the observed stage, gate, mutations, PR/error, and next action with each
-result; append both lane-assigned and worker-result/reconciliation events. Read
-live state immediately after a worker returns and write/read back state before
-reusing that lane. On restart, re-read every roster ticket's links, documents,
-gates, taken state, and activity, treating the live board as authoritative and
-logging each discrepancy. It does not blindly redispatch active or finished
-work. A user-only question becomes `waiting`, quoted in the event log, and
-pauses the affected lane. Before any planned stop, write its precise reason to
-`stop_reason`, update the pointer status, and read both documents back.
+## 6. Serial fallback — `lane_limit: 1`
 
-If your host has no subagent mechanism, run the same waves sequentially —
-the lane partition still tells you the safe order.
+If parallel worker dispatch is unavailable before a worker starts, persist
+`lane_limit: 1` and a `parallel-unavailable` event/reason, then use the same
+ordered roster, gates-first readiness, controller loop, durable state cadence,
+per-ticket take/worktree/packet rules, and stop predicates. Subagents matter
+because fresh worker contexts keep a long controller run small enough to finish;
+without them the run may span invocations, and the persisted state makes that
+span resumable rather than a new or duplicated run.
 
-## 5. Report
+Serial mode permits only one active or uncertain ticket. It does not pre-take
+future tickets, broaden scope, combine tickets, or skip reconciliation. Finish
+and persist the current action before assigning the next ticket. If the
+controller safely adopts a designated preparation or execution role, it says
+so explicitly and obeys that phase skill, then returns to controller mode at
+the role's Stop condition.
 
-Finish with a standup-style summary: **cleared** (closed out),
-**at target** (parked at the requested point, e.g. awaiting merge),
-**parked** (user-only questions — **quote them**, with the ticket id and the
-recommendation, so the operator can answer inline), **skipped**
-(blocked / taken / failed, with reasons). Every ticket in the roster
-appears in exactly one list — silent drops are how autonomous runs lose
-trust.
+## 7. Role-independence boundaries
 
-Finish the run record as `completed`, `blocked`, `paused`, or `aborted` as
-appropriate, preserving the final ledger and report in history. The pointer
-continues to identify that terminal record so the operator can inspect it; a
-later invocation creates a new run instead of rewriting it. Completion requires
-every selected non-skipped ticket to reach the declared target and no active or
-waiting lanes; otherwise retain the accurate paused or blocked state.
+Serial execution is not permission for one context to impersonate every role.
+Implementation never self-reviews; independent review and post-merge
+verification remain separate actor/context requirements. If the required
+reviewer or verifier is unavailable, stop at that boundary with the exact
+handoff, and do not waive merge-SHA proof, required checks, or live evidence.
+The controller never runs `gh pr merge` and never treats a passing PR as
+merged.
+
+## 8. Completion definition
+
+Worker completion means return at its assigned Stop condition, not ticket
+completion. A ticket reaches its lane target only with live Kanmer stage,
+documents, gates and Git/PR/proof evidence. The run is `completed` only when
+every selected non-skipped ticket reaches the declared target and no lane is
+active or waiting. Waiting, blocked, skipped, and failed reasons remain visible;
+worker final text, checklist prose, or a partial summary cannot complete a
+ticket or run.
+
+## 9. Failure and retry rules
+
+Distinguish a launch that definitely failed before mutation from an unknown
+worker status. For a clearly transient pre-mutation transport failure, record
+it, re-read taken/activity/Git/PR state, and allow at most one logged launch
+retry. If status is unknown, mark the lane waiting/blocked and dispatch nothing
+conflicting. Never automatically retry failed implementation, migration, test,
+build, or verification commands. Never use force takeover as fallback. On
+resume, reconcile the unknown attempt from live state before any new action.
+
+## 10. Report
+
+At the requested target, report every roster ticket exactly once in one of four
+lists: **cleared** (closed out), **at target** (parked at the requested point),
+**parked** (operator-only question, quoted with ticket id and recommendation),
+or **skipped** (blocked, taken, or failed with the exact reason). A partial
+roster is not a successful report. Finish the run record as `completed`,
+`paused`, `blocked`, or `aborted` only when the corresponding predicate is
+true, preserving the final ledger and report in immutable history.
+
+## 11. Phase boundaries
+
+Preparation uses each ticket's resolved gates, not a universal document list.
+Execution uses its packet, ticket worktree, checklist and no-merge boundary.
+Review uses current PR-head evidence and independence. Verification begins only
+after a confirmed merge and exact merge SHA. Done requires live proof and
+questions gates. Every stage move uses Kanmer; auto never edits board files or
+bypasses MCP.
 
 ---
 
-**No single successor — this skill *is* the hand-off.** It drives the phase
-skills in order for each ticket in its roster:
-
-    kanmer-research → -plan → -execute → -review → -verify → -closeout
-
-stopping each ticket at the requested target point, and stopping the whole run
-at any question only the operator can answer. When the roster is exhausted,
-control returns to the operator with the four-list report above.
+**No successor — this skill is the hand-off.** It drives the phase skills
+in order for each roster ticket, stopping each at the requested target or an
+operator-only question. When the roster is exhausted, control returns to the
+operator with the four-list report above. The controller never merges its own
+PR and never starts another ticket from a worker context.

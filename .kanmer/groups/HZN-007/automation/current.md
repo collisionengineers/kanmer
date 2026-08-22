@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T01:02:46.918Z
+updated_at: 2026-08-22T01:08:08.843Z
 ---
 
 # Current auto run — HZN-007
@@ -100,3 +100,12 @@ Last handoff: 2026-08-22T00:48:35.593Z — DOC-007 is taken on doc-007-manual-re
 Last handoff: 2026-08-22T00:56:33.202Z — DOC-007 is Review-ready after current-main reconciliation: existing PR #49/merge 19244f6 is reachable, current manual emits 22 chapters, and all deterministic rails are recorded. First missing-core-dist test failure and unrerun negative/visual boundaries remain explicit; no source diff, new PR, self-review, merge or cleanup. Independent root review required.
 
 - Last handoff: 2026-08-22T02:02:15+01:00 — MCP-041 is Review with PR #145 at `99d3f259639a50d0319a136816cd088e3df2da2a`; deterministic supervisor test synchronization is complete, checklist/report/gates pass, and all first failures remain recorded. Independent review/merge required; do not clean up `.worktrees/mcp-041` or its branch.
+
+
+Last handoff: 2026-08-22T01:07:45.682Z — DOC-007 is in merged-main verification on PR #49's reachable merge 19244f62; deterministic manual rails PASS, broad environment rails have preserved failures, and negative-fixture/visual evidence are INCONCLUSIVE. Next boundary is Verifying→Done only after fresh gates; then closeout exact doc-007 worktree/branch and release.
+
+
+Last handoff: 2026-08-22T01:06:18.550Z — MCP-014 merged-main verification is read back at af61144ce743f74b2aba92fb0778588b0b9bedd0. Deterministic rails are recorded in proof/scratch; fresh default core and GUI failures are preserved alongside extended-core/pass and prior standalone-GUI/pass evidence. Named Grok clean-project/get_status/post-uninstall acceptance remains INCONCLUSIVE, so ticket remains Verifying at 47/67 with no Done move or cleanup.
+
+
+Last handoff: 2026-08-22T01:08:08.843Z — DOC-007 moved Verifying→Done after fresh proof/gates readback; closeout is in progress on exact doc-007-manual-reconcile/.worktrees/doc-007. Deterministic manual rails are PASS, broad failures and negative-fixture/visual INCONCLUSIVE boundaries remain recorded. Release is last.

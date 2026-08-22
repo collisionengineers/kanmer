@@ -609,3 +609,6 @@ CORE-072 cumulative PASS exact d4dee4bb after CORE-076, PR #194 merged into CORE
 
 
 CORE-060 implementing in .worktrees/core-060 on core-060-pause-handoff-sync while CORE-058 cumulative review runs at 271790e5.
+
+
+CORE-058 cumulative PASS exact 271790e5, PR #180 merged non-squash into CORE-044 as 5053af23; moved Verifying and removed block. CORE-060 remains implementing.

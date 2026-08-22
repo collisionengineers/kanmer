@@ -65,3 +65,6 @@ Last handoff: 2026-08-22T00:13:30.433Z — SKILL-017 is implementing on skill-01
 
 
 Last handoff: 2026-08-22T01:16:42+01:00 — Done-incomplete reconciliation completed for MCP-008 and GUI-105. MCP-008 remains Done at 64/103 with named Claude Desktop acceptance explicitly INCONCLUSIVE and other unclaimed checklist residue preserved; GUI-105 remains Done at 13/14 with manual GUI-102 visual proof explicitly INCONCLUSIVE. Ticket checklist/proof/scratch dispositions and GUI-105 Outcome were read back; no remediation ticket, source change, stage move, taken worktree, or branch cleanup was needed.
+
+
+Last handoff: 2026-08-22T01:18:20+01:00 — Added and read back explicit `## Parked (explicitly deferred)` checklist dispositions for MCP-008 and GUI-105; original unchecked lines remain honest and unchanged (64/103, 13/14). External Claude Desktop/GUI visual evidence remains INCONCLUSIVE, with no remediation ticket or board move.

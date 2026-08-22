@@ -29,3 +29,7 @@ This audit compared the complete ticket packet, HZN-007 context, FRD-003 referen
 - Automated/focused GUI evidence and merged-main proof cover the implemented document-path inventory behavior. No product failure was demonstrated, so no remediation ticket is justified; GUI-096 and MCP-029 remain the related context links.
 
 No source files, checklist checkboxes, or board stage were changed by this audit.
+
+## Parked (explicitly deferred)
+
+- The single manual visual GUI-102 portable-connect verification line is deferred pending an authorized interactive GUI session. Its evidence boundary remains `INCONCLUSIVE`; automated/merged-main checks are not a substitute, and it is not ticked.

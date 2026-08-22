@@ -156,3 +156,8 @@ This audit compared the complete ticket packet, the HZN-005/HZN-007 context, cur
 - No merged-main product failure or missing in-scope implementation was demonstrated, so no remediation ticket is justified by this evidence. Any future authorized-host validation or separately owned release-rail work should be recorded on its owning ticket rather than fabricated here.
 
 The existing initial `npm ci` EPERM failure and HTTP-suite environment-sensitive failures remain preserved in the report/proof. No source files, checklist checkboxes, or board stage were changed by this audit.
+
+## Parked (explicitly deferred)
+
+- The real Claude Desktop operator/installation/lifecycle/cleanup checklist lines are deferred pending an authorized named host. Their evidence boundary remains `INCONCLUSIVE`; no deterministic/package result is substituted for them.
+- The remaining unchecked release, fixture, and verification lines are deferred as distinct or historical claims not individually established by this reconciliation. They remain unclaimed rather than being ticked; any future release-rail requirement belongs on its owning ticket. No current product defect was demonstrated and no remediation ticket is opened.

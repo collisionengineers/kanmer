@@ -719,6 +719,12 @@ function boardWorktreeRepair(
 
 async function syncProject(projectId: string): Promise<KanmerGitIpcStatus> {
   const ctx = requireCtx(projectId);
+  // A failed ignore reconciliation still carries the canonical boardRoot. In
+  // that state retry the in-place attachment first; syncBoard deliberately
+  // refuses unavailable statuses so a repair cannot be discovered otherwise.
+  if (!ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
+    ctx.syncStatus = await ensureBoardWorktree(ctx.sourceRoot, ctx.syncStatus.branch);
+  }
   ctx.syncStatus = await syncBoard(ctx.syncStatus);
   const status = await gitStatusForRenderer(ctx);
   mainWindow?.webContents.send(CH.gitStatus, { projectId, ...status });

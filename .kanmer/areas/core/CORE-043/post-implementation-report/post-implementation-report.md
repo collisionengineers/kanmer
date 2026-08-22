@@ -1,44 +1,26 @@
-# CORE-043 post-implementation report
+# CORE-043 post-implementation report — cumulative head
 
 ## Result
 
-Implemented the protection-aware board-branch rename boundary. Kanmer now refuses to automatically rename away from the protected default `kanmer-board` before any Git mutation. The GUI reports the administrator handoff, and an open-project refusal retains the old persisted branch preference while applying the requested sync interval. Non-protected/custom branch renames retain the existing history-preserving push-before-delete behavior.
+CORE-043 and its merged CORE-048 remediation together implement the protection-aware board-branch rename boundary. The cumulative head refreshes open-context branch state before protected-transition decisions, guards no-board preference persistence, and makes the hosted gate consume `KANMER_BOARD_BRANCH` with the explicit `kanmer-board` migration fallback. ADR-0016's conservative protection inference remains an accepted bounded risk; no GitHub protection API mutation is claimed.
 
-## Files changed
+## Cumulative traceability
 
-- `apps/gui/src/main/kanmerGit.ts` — protected-default constant and fail-closed refusal.
-- `apps/gui/src/main/index.ts` — preflight refusal for open protected boards and preference preservation.
-- `apps/gui/src/main/kanmerGit.test.ts` — 14 real-Git tests covering protected no-mutation, closed-project refusal, and custom history/remote behavior.
-- `apps/gui/src/renderer/src/components/Settings.tsx` — retarget-first user guidance.
-- `docs/functional/frd/FRD-020-board-git-worktree-sync.md`, `docs/manual/board-sync.md`, `docs/manual/settings.md` — governing/manual contract.
-- `apps/gui/src/renderer/src/manual/chapters.generated.ts` — regenerated shipped manual.
+- Original implementation: `1a06ead17cca8f7a6c715db3a6f6fed6b3de5da6`
+- CORE-048 child: `8ffff2a0f8848bb42868559641b56148ba893ca6`
+- Child merge into this branch: `11930038542d402865bb26a23787d7d3cad3e2c5`
+- PR #168 cumulative head: `11930038542d402865bb26a23787d7d3cad3e2c5`
+- Child PR #170: merged non-squash into this branch
 
-## Verification
+## Verification evidence
 
-| Command | Result | Evidence |
-|---|---|---|
-| `npm run test -w @kanmer/gui -- --run src/main/kanmerGit.test.ts` | PASS | 14/14, exit 0; protected default local HEAD/show-ref/remote/worktree unchanged; custom history/remote rename preserved. |
-| `npm run build:core` | PASS | exit 0. |
-| `npm run test:scripts` (after core build) | PASS | 88/88, exit 0. |
-| `npm run check:manual` | PASS | generated manual current, exit 0. |
-| `npm run verify:docs` | PASS | docs/manual/provider checks and generated manual current, exit 0. |
-| `git diff --check` | PASS | exit 0. |
+- Focused GUI Git: 16/16 PASS.
+- Workflow static rail: 1/1 PASS.
+- Scripts after core build: 89/89 PASS.
+- Core build, docs/manual checks and `git diff --check`: PASS.
+- Hosted run `32571224767`: verify PASS; kanmer-gate was dependency-blocked before the circular board edge was removed. A fresh run is required against the repaired board state.
+- Full GUI/typecheck/build dispatch/provider parity failures remain explicitly preserved from the packet; live protection retargeting is INCONCLUSIVE.
 
-## Typed failures retained
+## Stop condition
 
-- Initial `npm run test:scripts` attempt failed 2 tests because `packages/core/dist/index.js` was absent in the clean worktree; the prerequisite `npm run build:core` then passed and the rerun was 88/88. Both attempts are retained in scratch.
-- `npm run test -w @kanmer/gui` on the clean `origin/main` base ran 41 passing files/294 passing tests but failed 4 dispatch/provider cases because the base lacks shared `antigravity` dispatch parity; the focused CORE-043 file passed.
-- `npm run typecheck` failed in unrelated MCP/GUI dispatch parity (`dispatchDeliverableProven` missing export, `verifyDeliverable` option/type errors, and `antigravity` provider type mismatch).
-- `npm run build -w @kanmer/gui` failed on the same unrelated missing `dispatchDeliverableProven` export from `packages/core/dist/index.js`.
-
-## External boundary
-
-No GitHub credentials, protection API/App, or live branch-rule mutation was available or attempted. Live protection-retarget proof is INCONCLUSIVE; this packet makes no hosted protection claim. CORE-046 and other lanes were not touched.
-
-## Traceability
-
-- Branch: `core-043-protection-retarget`
-- Worktree: `.worktrees/core-043`
-- Commit: `1a06ead17cca8f7a6c715db3a6f6fed6b3de5da6`
-- PR: #168 — https://github.com/collisionengineers/kanmer/pull/168
-- Stop condition: open PR and move CORE-043 to Review; do not merge or self-review.
+The cumulative PR remains open for independent review and hosted rerun. After review PASS, merge is owned by the independent reviewer; CORE-043 and CORE-048 will then be verified together on merged main, after which proof and closeout can proceed.

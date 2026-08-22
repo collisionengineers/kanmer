@@ -5,7 +5,8 @@
 // (packages/core, apps/gui) with no root config and no root devDependencies.
 // node:test is built in (engines.node >= 20), so this adds no dependency, no
 // package-lock.json churn — which matters, because release.mjs:111-116 refuses
-// on a dirty tree — and no new config file. Run by `npm run test:scripts`,
+// on a dirty tree — and no new config file. Run by `npm run test:scripts`
+// (`node scripts/test-scripts.mjs`),
 // which `npm test` chains, which is step 1 of the release GATE: these fixtures
 // therefore gate every future release.
 //

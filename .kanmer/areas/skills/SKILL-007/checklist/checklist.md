@@ -20,11 +20,11 @@
 
 ## Closeout — SKILL-007
 
-- [ ] PR merge verified (`gh pr view 20 --json state,mergedAt`: MERGED, 2026-08-16T05:37:08Z)
-- [ ] proof.md finalised (PR URL + merge date appended)
+- [x] PR merge verified (`gh pr view 20 --json state,mergedAt`: MERGED, 2026-08-16T05:37:08Z)
+- [x] proof.md finalised (PR URL + merge date appended)
 - [x] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/skill-007`
-- [ ] `git branch -d skill-007-phase-groups`
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: \"release\"`
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/skill-007`
+- [x] `git branch -d skill-007-phase-groups`
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: \"release\"`

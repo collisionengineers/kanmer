@@ -226,6 +226,24 @@ describe("ensureBoardWorktree reconciliation", () => {
       .toContain(".kanmer/data/sources/cache.json");
   });
 
+  realGitTest("preserves the root when first-time local attachment ignore fails", async () => {
+    await git(repo, "checkout", "-b", "local-broken-ignore");
+    mkdirSync(join(repo, ".gitignore"));
+    writeFileSync(join(repo, ".gitignore", "blocked"), "directory", "utf8");
+    await git(repo, "add", "--", ".gitignore/blocked");
+    await git(repo, "commit", "-m", "fixture: broken board ignore path");
+    await git(repo, "checkout", "main");
+
+    const attached = await ensureBoardWorktree(repo, "local-broken-ignore");
+    const expectedRoot = resolve(repo, ".worktrees", "kanmer");
+    expect(attached.available).toBe(false);
+    expect(attached.boardRoot).toBe(expectedRoot);
+    expect(attached.branch).toBe("local-broken-ignore");
+    expect(attached.paused).toBe(true);
+    expect(attached.error).toBeTruthy();
+    expect(await git(expectedRoot, "symbolic-ref", "--short", "HEAD")).toBe("local-broken-ignore");
+  });
+
   realGitTest("reconciles the sources cache rule after attaching an existing remote branch", async () => {
     await git(repo, "branch", "remote-board");
     await git(repo, "push", "origin", "remote-board");
@@ -239,6 +257,26 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(ignore.match(/^\.kanmer\/data\/sources\/$/gm)).toHaveLength(1);
     expect(await git(attached.boardRoot!, "check-ignore", "--no-index", ".kanmer/data/sources/cache.json"))
       .toContain(".kanmer/data/sources/cache.json");
+  });
+
+  realGitTest("preserves the root when first-time remote attachment ignore fails", async () => {
+    await git(repo, "checkout", "-b", "remote-broken-ignore");
+    mkdirSync(join(repo, ".gitignore"));
+    writeFileSync(join(repo, ".gitignore", "blocked"), "directory", "utf8");
+    await git(repo, "add", "--", ".gitignore/blocked");
+    await git(repo, "commit", "-m", "fixture: broken remote ignore path");
+    await git(repo, "push", "origin", "remote-broken-ignore");
+    await git(repo, "checkout", "main");
+    await git(repo, "branch", "-D", "remote-broken-ignore");
+
+    const attached = await ensureBoardWorktree(repo, "remote-broken-ignore");
+    const expectedRoot = resolve(repo, ".worktrees", "kanmer");
+    expect(attached.available).toBe(false);
+    expect(attached.boardRoot).toBe(expectedRoot);
+    expect(attached.branch).toBe("remote-broken-ignore");
+    expect(attached.paused).toBe(true);
+    expect(attached.error).toBeTruthy();
+    expect(await git(expectedRoot, "symbolic-ref", "--short", "HEAD")).toBe("remote-broken-ignore");
   });
 
   realGitTest("preserves the attached board root when ignore reconciliation fails", async () => {

@@ -12,7 +12,7 @@ The deterministic package/launcher rails now assert the external target, runtime
 
 - Branch/worktree: gui-106-runtime-boundary / .worktrees/gui-106
 - Base: origin/main 241ff13e
-- Commit: 079253fe7bd42a2dbff45a65dbf659c3d9e0ebc5
+- Commit: 079253fe4417e9c544d59db9a1b6686619df1b3a
 - PR: #153 (https://github.com/collisionengineers/kanmer/pull/153)
 
 ## Checks and exact outcomes

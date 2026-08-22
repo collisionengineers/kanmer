@@ -207,3 +207,6 @@ Last handoff: 2026-08-22T03:12:42.450Z — MCP-015 is the second implementation 
 
 
 - 2026-08-22T04:14:00Z — GUI-106 Review handoff: commit `079253fe7bd42a2dbff45a65dbf659c3d9e0ebc5`, PR #153, branch `gui-106-runtime-boundary`, worktree `.worktrees/gui-106`. Checklist 16/16, post-implementation report and scratch read back; deterministic focused/full GUI, scripts, build/typecheck, Windows dist:check 8/8 pass. `npm run verify` preserved unrelated MCP HTTP child ETIMEDOUT at 60/61 after core 266/266 and GUI 360/360. External packaged update/live-session/junction/uninstall/AV evidence remains INCONCLUSIVE. Implementing→Review moved through MCP after fresh get_doc_gates; stop for independent root review. No merge, verification, or cleanup.
+
+
+- 2026-08-22T04:16:00Z — GUI-106 traceability correction: the actual full implementation SHA for PR #153 is `079253fe4417e9c544d59db9a1b6686619df1b3a` (verified with git rev-parse HEAD). The preceding handoff entry's expanded SHA was a transcription error; no source, PR, stage, or evidence state changes. Ticket remains Review/taken; independent review required; no merge, verification, or cleanup.

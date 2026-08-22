@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T00:30:10.265Z
+updated_at: 2026-08-22T00:31:30+01:00
 lane_limit: 3
 stop_reason:
 ---
@@ -458,3 +458,8 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 \n\nLast handoff: 2026-08-22T00:26:34.690Z — SKILL-017 created and archived disposable validation group EPIC-013 with SKILL-029/030/031 scenario tickets (label skill017-disposable); all are archived, outside HZN-007 roster, have no source/doc claims, and are retained only as explicit scenario audit fixtures.\n
 
 - 2026-08-22T01:30:00+01:00 — CORE-037 assigned to `codex-mcp-client` after complete packet, CORE-032/GUI-075/SKILL-021 dependency evidence, HZN-007 context, HZN-004 group body, links and gates were reread. The fix-only scope is `apps/gui/src/main/kanmerGit.test.ts` path-identity assertions; baseline focused GUI evidence (11/12 with cleanup EPERM/hook-timeout) is preserved. Dedicated branch `core-037-windows-path-identity` and worktree `.worktrees/core-037` were created from `origin/main` and recorded via `take_ticket`; implementation will stop at Review with no self-review or merge.
+
+
+- 2026-08-22T00:30:47.776Z — SKILL-017 implementation evidence: canonical kanmer-auto contract, validator section 14 and two negative regression tests are complete. Deterministic EPIC-013 scenario used SKILL-029/030/031 only, persisted parallel then lane_limit: 1 serial state, paused on an operator-only question, and archived all fixtures after readback; fixtures are intentional and excluded from the HZN-007 active roster. Rails: verify:skills 0 (14/14), prose tests 0 (7/7), build 0, scripts 0 (82/82 after build; initial 80/82 missing core/dist preserved), typecheck 0, GUI 0 (352/352), MCP HTTP 1 (60/61, Windows node.exe ETIMEDOUT), npm test 1 (unrelated Windows core timeout), verify 1 at npm test, diff-check 0. Report/checklist written; independent Review required, no merge.
+
+- 2026-08-22T00:31:30+01:00 — SKILL-004 Review handoff: existing implementation ad127405 is reachable from origin/main af61144c; no source delta was introduced on skill-004-setup-reconciliation/.worktrees/skill-004. Checklist/report were reconciled via MCP; checklist is 13/18 with the issue-close line and four parked live-behavior lines intentionally unchecked/INCONCLUSIVE. verify:skills 0, verify:agents-block 0 (31/31), build:core 0, test:scripts first 1 from missing core dist then 80/80 after build, typecheck 0, diff/ancestor 0. Enter-review gates pass and Implementing→Review moved. Existing PR #17/commit ad12740 remain traceability; no new PR/source change. Stop for independent review; no self-review, merge, verification, release, or cleanup.

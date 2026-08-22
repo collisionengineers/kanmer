@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:30:10.265Z
+updated_at: 2026-08-22T00:31:30+01:00
 ---
 
 # Current auto run — HZN-007
@@ -17,7 +17,7 @@ updated_at: 2026-08-22T00:30:10.265Z
 Open `automation/runs/20260821T105846Z-codex-mcp-client.md`, then re-read HZN-007/context.md, the live roster, and get_doc_gates for every ticket before dispatching. This pointer is written only after the complete immutable run record was written and read back.
 
 
-Last handoff: SKILL-003 handoff: corrected merged decision-table provenance in d7e107b9f27a64851935310e8768fbc2c249fb75, pushed PR #140, checklist/report 10/10 and read back; verify:skills, verify:agents-block, plugin:check, table identity, residue, and diff checks pass; moved Implementing to Review for independent root review. Worktree/branch retained.
+Last handoff: 2026-08-22T00:30:47.776Z — SKILL-017 implementation packet is report/checklist ready on skill-017-auto-stopping/.worktrees/skill-017. Focused contract rails are green; unrelated Windows full-rail timeouts are preserved in the report. Independent Review is required; no merge or cross-ticket changes.
 
 
 Last handoff: CORE-036 merged-main verification recorded at 2026-08-21T22:49:50.557Z; ticket remains Verifying because npm run verify and npm run dist:check each exited 1 on normal main. PR #127 merge 470b2fad is present; no board move, release, or worktree cleanup was performed.
@@ -76,3 +76,5 @@ Last handoff: 2026-08-22T01:18:20+01:00 — Added and read back explicit `## Par
 
 
 Last handoff: 2026-08-22T01:30:00+01:00 — CORE-037 is Implementing on `core-037-windows-path-identity` / `.worktrees/core-037`, owned by `codex-mcp-client`; scope is test-only Windows path identity normalization. Packet/gates/dependency evidence were reread, baseline 11/12 focused GUI result with cleanup EPERM/hook-timeout retained, and independent Review/merge is required.
+
+- 2026-08-22T00:31:30+01:00 — SKILL-004 Review handoff: existing implementation ad127405 is reachable from origin/main af61144c; no source delta was introduced on skill-004-setup-reconciliation/.worktrees/skill-004. Checklist/report were reconciled via MCP; checklist is 13/18 with the issue-close line and four parked live-behavior lines intentionally unchecked/INCONCLUSIVE. verify:skills 0, verify:agents-block 0 (31/31), build:core 0, test:scripts first 1 from missing core dist then 80/80 after build, typecheck 0, diff/ancestor 0. Enter-review gates pass and Implementing→Review moved. Existing PR #17/commit ad12740 remain traceability; no new PR/source change. Stop for independent review; no self-review, merge, verification, release, or cleanup.

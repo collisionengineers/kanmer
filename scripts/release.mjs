@@ -22,7 +22,7 @@
 //
 // Dependency-free, matching the other scripts in this directory.
 //
-// Usage: node scripts/release.mjs <version> [--dry-run]
+// Usage: node scripts/release.mjs <version> --ticket <id> [--dry-run]
 //        node scripts/release.mjs <version> --publish --release-commit <sha>
 import { execSync } from "node:child_process";
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -123,9 +123,17 @@ let parsedArgs;
 try {
   parsedArgs = parseReleaseArgs(argv);
 } catch (error) {
-  refuse(error.message, "use <version> [--dry-run] or <version> --publish --release-commit <full-sha>");
+  refuse(
+    error.message,
+    "use <version> --ticket <id> [--dry-run] or <version> --publish --release-commit <full-sha>",
+  );
 }
-const { dryRun, publish: publishMode, releaseCommit: requestedReleaseCommit } = parsedArgs ?? {};
+const {
+  dryRun,
+  publish: publishMode,
+  releaseCommit: requestedReleaseCommit,
+  ticket: releaseTicket,
+} = parsedArgs ?? {};
 const version = parsedArgs?.version;
 
 function run(command, cwd = root) {
@@ -165,7 +173,14 @@ function cmp(a, b) {
 // rather than after a four-minute pack.
 // ---------------------------------------------------------------------------
 if (!version) {
-  refuse("no version given", "node scripts/release.mjs <version> [--dry-run]");
+  refuse("no version given", "node scripts/release.mjs <version> --ticket <id> [--dry-run]");
+}
+
+if (!publishMode && (!releaseTicket || !/^[A-Z][A-Z0-9]{1,9}-\d+$/.test(releaseTicket))) {
+  refuse(
+    "preparation mode needs the current Kanmer ticket id",
+    "pass --ticket <ID>, for example --ticket CORE-042",
+  );
 }
 
 // 2. Version shape. Checked before anything else touches the network or disk.
@@ -267,15 +282,19 @@ function assertReleaseCommitReachable() {
   console.log(`release commit ${requestedReleaseCommit} is reachable from main`);
 }
 
-// 3. A token, in this precedence order.
-const tokenVar = ["GITHUB_RELEASE_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"].find(
-  (v) => (process.env[v] ?? "").length > 0,
-);
-if (!tokenVar) {
-  refuse(
-    "no GitHub token in the environment",
-    "set GH_TOKEN (or GITHUB_RELEASE_TOKEN / GITHUB_TOKEN) to a PAT with repo scope",
+// 3. A publisher token is needed only after the protected PR merge. The
+// preparation phase deliberately uses the operator's normal `gh auth`
+// session for branch/PR operations and must not require a second token.
+if (publishMode) {
+  const tokenVar = ["GITHUB_RELEASE_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"].find(
+    (v) => (process.env[v] ?? "").length > 0,
   );
+  if (!tokenVar) {
+    refuse(
+      "no GitHub token in the environment",
+      "set GH_TOKEN (or GITHUB_RELEASE_TOKEN / GITHUB_TOKEN) to a PAT with repo scope",
+    );
+  }
 }
 
 // 4. Release notes that mention THIS version.
@@ -410,10 +429,11 @@ const preparedCommit = capture("git rev-parse HEAD");
 run(`git push --set-upstream origin ${releaseBranchRef(version)}`);
 run(
   `gh pr create --base main --head ${releaseBranch(version)} --title "release: v${version}" ` +
-    `--body "Kanmer: CORE-042. Merge this release PR through the required verify and conversation boundary. ` +
-    `After merge, publish with --release-commit ${preparedCommit}."`,
+    `--body "Kanmer: ${releaseTicket}"`,
 );
 console.log(`\nprepared release PR for ${version} at commit ${preparedCommit}`);
+console.log("Merge this release PR through the required verify and conversation boundary.");
+console.log("After merge, update local main and rerun with --publish --release-commit <merged SHA>.");
 console.log("No tag or release asset was created; wait for the authorized PR merge before --publish.");
 process.exit(0);
 }

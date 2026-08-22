@@ -6,8 +6,14 @@ export const RELEASE_BASE_BRANCH = "main";
 export function parseReleaseArgs(argv) {
   let version;
   let releaseCommit;
+  let ticket;
   let dryRun = false;
   let publish = false;
+  const optionValue = (name, index) => {
+    const value = argv[index + 1];
+    if (!value || value.startsWith("--")) throw new Error(`${name} needs a value`);
+    return value;
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--dry-run") {
@@ -19,14 +25,20 @@ export function parseReleaseArgs(argv) {
       continue;
     }
     if (arg === "--release-commit") {
-      releaseCommit = argv[++index];
+      releaseCommit = optionValue(arg, index);
+      index += 1;
+      continue;
+    }
+    if (arg === "--ticket") {
+      ticket = optionValue(arg, index);
+      index += 1;
       continue;
     }
     if (arg.startsWith("--")) throw new Error(`unknown option ${arg}`);
     if (version !== undefined) throw new Error(`unexpected positional argument ${arg}`);
     version = arg;
   }
-  return { version, dryRun, publish, releaseCommit };
+  return { version, dryRun, publish, releaseCommit, ticket };
 }
 
 export function releaseBranch(version) {

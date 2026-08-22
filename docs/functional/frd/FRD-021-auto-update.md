@@ -195,16 +195,19 @@ bound above `App.tsx`'s `if (!root || !board)`. The R2 line's "exactly two
 ## Amended — CORE-042 protected-main release boundary
 
 R3's release owner remains `scripts/release.mjs`, but the command now has two
-explicit phases. `npm run release -- <version>` runs the shared verification
-rail, writes the version and deterministic artifacts on `release/v<version>`,
-pushes only that branch, and opens a PR targeting exact protected `main`; it
+explicit phases. `npm run release -- <version> --ticket <id>` runs the shared
+verification rail, writes the version and deterministic artifacts on
+`release/v<version>`, pushes only that branch, and opens a PR targeting exact
+protected `main` with a standalone `Kanmer: <id>` footer; preparation uses the
+operator's normal `gh auth` session and does not require a publisher token. It
 stops before creating a tag or publishing. After an authorized PR merge and
 local `main` update, `npm run release -- <version> --publish --release-commit
-<full-sha>` requires matching merged manifests and proves the preparation SHA is
-reachable before pushing only `refs/tags/v<version>` and running the existing
-single-package publisher, visibility check, updater-package check, and complete
-asset-digest verifier. `.github/workflows/release.yml` remains a tag-triggered,
-contents-read-only verifier and never publishes or repairs a release.
+<full-sha>` requires matching merged manifests and proves the supplied
+**post-merge** SHA is reachable before pushing only `refs/tags/v<version>` and
+running the existing single-package publisher, visibility check, updater-package
+check, and complete asset-digest verifier. `.github/workflows/release.yml`
+remains a tag-triggered, contents-read-only verifier and never publishes or
+repairs a release.
 
 Live PR/check enforcement, authorized merge, public tag/assets, and a real
 two-version packaged updater cycle are external evidence boundaries; they must

@@ -18,24 +18,28 @@ test("parses prepare and publish invocations without treating a SHA as the versi
     dryRun: false,
     publish: false,
     releaseCommit: undefined,
+    ticket: undefined,
   });
-  assert.deepEqual(parseReleaseArgs(["0.4.0", "--publish", "--release-commit", "a".repeat(40)]), {
+  assert.deepEqual(parseReleaseArgs(["0.4.0", "--ticket", "CORE-042", "--publish", "--release-commit", "a".repeat(40)]), {
     version: "0.4.0",
     dryRun: false,
     publish: true,
     releaseCommit: "a".repeat(40),
+    ticket: "CORE-042",
   });
   assert.deepEqual(parseReleaseArgs(["0.4.0", "--dry-run", "--publish"]), {
     version: "0.4.0",
     dryRun: true,
     publish: true,
     releaseCommit: undefined,
+    ticket: undefined,
   });
 });
 
 test("rejects unknown options and extra positional arguments", () => {
   assert.throws(() => parseReleaseArgs(["0.4.0", "--not-an-option"]), /unknown option/);
   assert.throws(() => parseReleaseArgs(["0.4.0", "0.4.1"]), /unexpected positional/);
+  assert.throws(() => parseReleaseArgs(["0.4.0", "--ticket"]), /needs a value/);
 });
 
 test("derives isolated branch and tag refs", () => {

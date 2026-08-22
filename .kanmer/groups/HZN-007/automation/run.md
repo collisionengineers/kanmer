@@ -63,3 +63,6 @@
 
 
 2026-08-22T08:09:30Z — CORE-042 closed. PR #160 merged as e141dca74bec48e7e8068b767f6db9e7a5c41322 after independent review PASS, hosted verify/kanmer-gate PASS, and merged-main scripts/core build verification PASS. Protected-main release flow now uses --ticket <id>, a standalone Kanmer footer, and a post-merge SHA. Public tag/assets, release visibility, and real two-version updater evidence remain INCONCLUSIVE; no external success claimed. Worktree/branch removed and ticket released.
+
+
+2026-08-22T08:25:00Z — GUI-108 closed. PR #161 merged as 84a20f8414264f65f6d851ca51849af89c80acf9 after independent review PASS and hosted verify/kanmer-gate PASS. Focused merged-main GUI tests 25/25, manual freshness, core build, and diff-check PASS; stale shared-core GUI build/typecheck failures are preserved. Packaged visual drag/drop remains INCONCLUSIVE. Ticket proof/Outcome/closeout complete; worktree and branch removed; ticket released.

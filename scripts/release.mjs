@@ -1,5 +1,5 @@
-// One-command release: verify everything, bump, build, tag, publish, then prove
-// that clients can actually see the result.
+// Protected-main release: prepare a version PR, then publish only after that
+// PR is merged and its release commit is reachable from main.
 //
 // There is no CI, so this script is the release process. It REFUSES; it never
 // guesses. Every check here exists because it is a failure mode that is silent
@@ -22,11 +22,21 @@
 //
 // Dependency-free, matching the other scripts in this directory.
 //
-// Usage: node scripts/release.mjs <version> [--dry-run]
+// Usage: node scripts/release.mjs <version> --ticket <id> [--dry-run]
+//        node scripts/release.mjs <version> --publish --release-commit <sha>
 import { execSync } from "node:child_process";
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import {
+  parseReleaseArgs,
+  releaseBranch,
+  releaseBranchRef,
+  releaseTag,
+  releaseTagRef,
+  isFullCommitSha,
+} from "./release-flow.mjs";
 
 import {
   expectedAssets,
@@ -75,10 +85,6 @@ const releaseDir = join(guiDir, "release");
 // ---------------------------------------------------------------------------
 process.env.EP_GH_IGNORE_TIME = "true";
 
-const argv = process.argv.slice(2);
-const dryRun = argv.includes("--dry-run");
-const version = argv.find((a) => !a.startsWith("--"));
-
 /**
  * Stop the script from a refusal without calling process.exit().
  *
@@ -111,6 +117,24 @@ function refuse(why, fix) {
   process.exitCode = 1;
   throw new Refusal(why);
 }
+
+const argv = process.argv.slice(2);
+let parsedArgs;
+try {
+  parsedArgs = parseReleaseArgs(argv);
+} catch (error) {
+  refuse(
+    error.message,
+    "use <version> --ticket <id> [--dry-run] or <version> --publish --release-commit <full-sha>",
+  );
+}
+const {
+  dryRun,
+  publish: publishMode,
+  releaseCommit: requestedReleaseCommit,
+  ticket: releaseTicket,
+} = parsedArgs ?? {};
+const version = parsedArgs?.version;
 
 function run(command, cwd = root) {
   console.log(`\n$ ${command}`);
@@ -149,7 +173,14 @@ function cmp(a, b) {
 // rather than after a four-minute pack.
 // ---------------------------------------------------------------------------
 if (!version) {
-  refuse("no version given", "node scripts/release.mjs <version> [--dry-run]");
+  refuse("no version given", "node scripts/release.mjs <version> --ticket <id> [--dry-run]");
+}
+
+if (!publishMode && (!releaseTicket || !/^[A-Z][A-Z0-9]{1,9}-\d+$/.test(releaseTicket))) {
+  refuse(
+    "preparation mode needs the current Kanmer ticket id",
+    "pass --ticket <ID>, for example --ticket CORE-042",
+  );
 }
 
 // 2. Version shape. Checked before anything else touches the network or disk.
@@ -170,19 +201,37 @@ if (!/^\d+\.\d+\.\d+$/.test(version)) {
 
 const guiPkg = JSON.parse(readFileSync(guiPkgPath, "utf8"));
 const current = guiPkg.version;
-if (cmp(version, current) <= 0) {
+if (publishMode && !requestedReleaseCommit) {
   refuse(
-    `version ${version} is not greater than the current ${current}`,
-    "pick a higher version — allowDowngrade is off, so clients ignore anything lower",
+    "publish mode needs the full SHA of the release commit prepared by the merged PR",
+    "run `npm run release -- <version> --publish --release-commit <full-sha>` from merged main",
+  );
+}
+if (publishMode && requestedReleaseCommit && !isFullCommitSha(requestedReleaseCommit)) {
+  refuse(
+    `release commit "${requestedReleaseCommit}" is not a full 40-character SHA`,
+    "copy the exact release commit SHA from the merged PR",
+  );
+}
+if (!publishMode && requestedReleaseCommit) {
+  refuse("--release-commit is only valid with --publish", "prepare the PR first, then publish after its merge");
+}
+if (publishMode ? cmp(version, current) !== 0 : cmp(version, current) <= 0) {
+  refuse(
+    publishMode
+      ? `merged main reports version ${current}, not the requested ${version}`
+      : `version ${version} is not greater than the current ${current}`,
+    publishMode
+      ? "update local main after the release PR merges, then retry without changing its manifests"
+      : "pick a higher version — allowDowngrade is off, so clients ignore anything lower",
   );
 }
 
-// 1. Clean tree on main.
+// 1. Clean tree on exact main. Both phases begin from main; preparation then
+// creates an isolated release branch before it writes anything.
 //
-// These two are about WHERE the release commit lands, so they are hard refusals
-// for a real release and advisory for --dry-run: a dry run makes no commit, no
-// tag and no push, and its whole purpose is to be runnable from a feature
-// branch before merging. Refusing there would just mean nobody runs it.
+// These checks are hard refusals for a real release and advisory for --dry-run:
+// a dry run makes no commit, branch, tag, or push.
 function requireOrWarn(bad, why, fix) {
   if (!bad) return;
   if (dryRun) console.warn(`warning (a real release would refuse): ${why}`);
@@ -203,13 +252,43 @@ requireOrWarn(
     "and the artifacts this script regenerates from it",
 );
 const branch = capture("git rev-parse --abbrev-ref HEAD");
-requireOrWarn(branch !== "main", `on branch "${branch}", not main`, "release from main");
+requireOrWarn(branch !== "main", `on branch "${branch}", not main`, "update local main, then start the release from there");
 
-// 3. A token, in this precedence order.
+function assertMergedManifestVersions() {
+  const paths = [guiPkgPath, rootPkgPath, ...pluginManifestPaths, mcpbManifestPath];
+  const mismatches = paths.flatMap((path) => {
+    const actual = JSON.parse(readFileSync(path, "utf8")).version;
+    return actual === version ? [] : [`${path}: ${actual} (expected ${version})`];
+  });
+  if (mismatches.length) {
+    refuse(
+      `merged manifests do not all report ${version}:\n${mismatches.join("\n")}`,
+      "merge the complete release PR and update local main before publishing",
+    );
+  }
+}
+
+function assertReleaseCommitReachable() {
+  try {
+    execSync(`git merge-base --is-ancestor ${requestedReleaseCommit} HEAD`, { cwd: root, stdio: "ignore" });
+  } catch (error) {
+    const exitCode = error?.status;
+    const reason = exitCode === 1 ? "is not an ancestor of local main" : `could not establish ancestry (exit ${exitCode ?? "unknown"})`;
+    refuse(
+      `release commit ${requestedReleaseCommit} ${reason}`,
+      "use the exact release commit from a normally merged PR and update local main",
+    );
+  }
+  console.log(`release commit ${requestedReleaseCommit} is reachable from main`);
+}
+
+// 3. A publisher token is needed only after the protected PR merge. The
+// preparation phase deliberately uses the operator's normal `gh auth`
+// session for branch/PR operations and must not require a second token.
 const tokenVar = ["GITHUB_RELEASE_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"].find(
   (v) => (process.env[v] ?? "").length > 0,
 );
-if (!tokenVar) {
+if (publishMode && !tokenVar) {
   refuse(
     "no GitHub token in the environment",
     "set GH_TOKEN (or GITHUB_RELEASE_TOKEN / GITHUB_TOKEN) to a PAT with repo scope",
@@ -228,7 +307,7 @@ if (!readFileSync(notesPath, "utf8").includes(version)) {
 }
 
 console.log(`release ${current} -> ${version}`);
-console.log(`token: ${tokenVar} (set)`);
+console.log(publishMode ? `token: ${tokenVar} (set)` : "token: gh auth session (publisher token not required)");
 console.log(`notes: ${notesPath}`);
 
 // ---------------------------------------------------------------------------
@@ -240,35 +319,24 @@ for (const step of VERIFY_STEPS) run(step);
 
 if (dryRun) {
   console.log("\n--- dry run: the verification gate passed ---");
-  console.log("Would now:");
-  console.log(
-    `  1. write ${version} into apps/gui/package.json, package.json, both plugin.json manifests and mcpb/manifest.json`,
-  );
-  console.log("  2. npm install --package-lock-only");
-  console.log(
-    `  3. npm run build && node scripts/build-plugin.mjs && npm run plugin:check` +
-      ` — rebuild the MCP bundle so it reports ${version}, not ${current}`,
-  );
-  console.log("  4. build the GUI source before the release commit");
-  console.log(
-    `  5. git commit -am "release: v${version}" && git tag v${version}` +
-      " — the commit carries the bump AND the rebuilt plugin bundle",
-  );
-  console.log("  6. git push && git push --tags (GitHub requires the tag to exist before it will publish against it)");
-  console.log("  7. build and publish ONE Windows installer, blockmap and latest.yml");
-  console.log(`  8. verify /releases/latest is v${version}, then verify EVERY published asset`);
-  console.log("     (installer, blockmap, latest.yml) is present, uploaded, and byte-identical");
-  console.log("     to the local build — comparing GitHub's sha256 digest against the local files");
-  console.log("  9. if publishing reports an error, verify the public release; on a gap upload the exact");
-  console.log("     one-package artifacts once, re-verify, then refuse loudly without rebuilding or demoting");
+  if (publishMode) {
+    console.log(`Would verify ${requestedReleaseCommit} is an ancestor of clean main`);
+    console.log(`Would create and push only ${releaseTagRef(version)}`);
+    console.log("Would build/publish one Windows installer and verify visibility, updater, and every asset digest");
+  } else {
+    console.log(`Would create ${releaseBranch(version)} from main (without switching in dry-run)`);
+    console.log(`Would write ${version} into all release manifests, lockfile, and deterministic artifacts`);
+    console.log("Would build the GUI, commit the release change, push only the release branch, and open a PR targeting main");
+    console.log("Would stop before creating a tag or publishing any release asset");
+    console.log(`After the PR merges, rerun: npm run release -- ${version} --publish --release-commit <full-sha>`);
+  }
   console.log("\nNothing was written. The tree is untouched.");
   process.exit(0);
 }
 
 // ---------------------------------------------------------------------------
-// 5. The version bump. apps/gui/package.json is the authoritative one —
-//    appInfo.version reads the APP dir's metadata (appInfo.js:29). The root is
-//    private and cosmetic, but kept in step so they never disagree.
+// 5. Preparation only. The version bump is performed on an isolated branch;
+//    publication mode starts from the already-merged manifests instead.
 // ---------------------------------------------------------------------------
 function bump(path) {
   const text = readFileSync(path, "utf8");
@@ -277,12 +345,38 @@ function bump(path) {
   writeFileSync(path, bumped);
   console.log(`bumped ${path}`);
 }
-bump(guiPkgPath);
-bump(rootPkgPath);
-for (const path of pluginManifestPaths) bump(path);
-bump(mcpbManifestPath);
-run("npm install --package-lock-only");
 
+function remoteRefExists(ref) {
+  try {
+    return capture(`git ls-remote --heads origin ${ref}`).length > 0;
+  } catch (error) {
+    refuse(
+      `could not inspect origin for ${ref}`,
+      "verify network/authentication, then retry so an existing release branch cannot be overwritten",
+    );
+  }
+}
+
+if (publishMode) {
+  assertMergedManifestVersions();
+  assertReleaseCommitReachable();
+} else {
+  const branchName = releaseBranch(version);
+  if (capture(`git branch --list ${branchName}`).length > 0 || remoteRefExists(releaseBranchRef(version))) {
+    refuse(
+      `release branch ${branchName} already exists locally or on origin`,
+      "finish or remove the previous release attempt through the normal PR workflow before retrying",
+    );
+  }
+  run(`git switch -c ${branchName}`);
+  bump(guiPkgPath);
+  bump(rootPkgPath);
+  for (const path of pluginManifestPaths) bump(path);
+  bump(mcpbManifestPath);
+  run("npm install --package-lock-only");
+}
+
+if (!publishMode) {
 // ---------------------------------------------------------------------------
 // 5b. Rebuild the MCP bundle, now that the version is the new one.
 //
@@ -324,21 +418,31 @@ run("npm run plugin:check");
 // ---------------------------------------------------------------------------
 run("npm run build -w @kanmer/gui");
 
+// `git commit -am` would silently omit the new flow helper/test files. Stage
+// the complete, clean release worktree so the PR contains the policy change
+// and its regression rail together with the generated version artifacts.
+run("git add -A");
+run(`git commit -m "release: v${version}"`);
+const preparedCommit = capture("git rev-parse HEAD");
+run(`git push --set-upstream origin ${releaseBranchRef(version)}`);
+run(
+  `gh pr create --base main --head ${releaseBranch(version)} --title "release: v${version}" ` +
+    `--body "Kanmer: ${releaseTicket}"`,
+);
+console.log(`\nprepared release PR for ${version} at commit ${preparedCommit}`);
+console.log("Merge this release PR through the required verify and conversation boundary.");
+console.log("After merge, update local main and rerun with --publish --release-commit <merged SHA>.");
+console.log("No tag or release asset was created; wait for the authorized PR merge before --publish.");
+process.exit(0);
+}
+
 // ---------------------------------------------------------------------------
-// 7. Commit, tag, and push immediately. GitHub will not create a non-draft
-//    release for a tag it has never seen: createRelease() sends no
-//    target_commitish, and a *published* (draft: false) release requires the
-//    tag_name to already exist as a real ref — otherwise the API returns 422
-//    "Published releases must have a valid tag". Discovered the hard way on
-//    the first non-dry-run execution of this script: publishing before
-//    pushing let GitHub silently create a broken release (wrong commit, no
-//    assets) while still returning that error to the client. So the tag must
-//    be live on origin *before* pass 2 tries to publish against it.
+// 7. Publish only from merged main. GitHub will not create a non-draft release
+//    for a tag it has never seen, so the exact tag ref is pushed only after the
+//    supplied preparation commit is proven reachable from this main checkout.
 // ---------------------------------------------------------------------------
-run(`git commit -am "release: v${version}"`);
-run(`git tag v${version}`);
-run("git push");
-run("git push --tags");
+run(`git tag ${releaseTag(version)}`);
+run(`git push origin ${releaseTagRef(version)}`);
 
 // ---------------------------------------------------------------------------
 // 8. Build and publish the only Windows installer. `latest.yml`, the installer

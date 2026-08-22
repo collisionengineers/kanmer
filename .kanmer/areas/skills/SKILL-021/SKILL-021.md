@@ -4,7 +4,7 @@ type: ticket
 title: >-
   kanmer-execute/review/verify bind to the packet, SHA records, and exact-SHA
   verification
-status: review
+status: done
 area: skills
 order: 170
 assignee: skill021-take
@@ -12,9 +12,8 @@ profile: fix
 stageEntered:
   preparing: '2026-08-20T12:43:43.531Z'
   review: '2026-08-21T23:28:16.705Z'
-taken_at: '2026-08-21T23:18:32.583Z'
-branch: skill-021-packet-sha-skills
-worktree: .worktrees/skill-021
+  verifying: '2026-08-22T02:11:12.038Z'
+  done: '2026-08-22T02:11:12.231Z'
 labels: []
 groups:
   - EPIC-009
@@ -26,11 +25,12 @@ blocks:
   - CORE-035
 commits:
   - df56503baafe3ef5a2e3fa78e2d9d3376495af12
+  - 28d525cc808ef4e8e36ee831be276da1323434d5
 prs:
   - '141'
 archived: false
 created: '2026-08-20T10:14:57.015Z'
-updated: '2026-08-21T23:30:30.698Z'
+updated: '2026-08-22T02:11:29.413Z'
 ---
 
 ## What

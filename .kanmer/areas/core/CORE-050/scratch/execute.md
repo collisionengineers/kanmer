@@ -1,0 +1,1 @@
+Taken 2026-08-22 on branch `core-050-lock-revalidation`, worktree `.worktrees/core-050`. Read full CORE-050/046/047/049 packets, HZN-007 context, FRD-027, and ADR-0020. Beginning source/test inspection; scope remains retry revalidation, active claimant protection, cleanup-error surfacing, persisted-token validation, adversarial regressions, and plugin parity.

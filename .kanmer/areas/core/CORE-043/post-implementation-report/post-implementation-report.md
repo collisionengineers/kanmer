@@ -39,6 +39,6 @@ No GitHub credentials, protection API/App, or live branch-rule mutation was avai
 
 - Branch: `core-043-protection-retarget`
 - Worktree: `.worktrees/core-043`
-- Commit: pending
-- PR: pending
+- Commit: `1a06ead17cca8f7a6c715db3a6f6fed6b3de5da6`
+- PR: #168 — https://github.com/collisionengineers/kanmer/pull/168
 - Stop condition: open PR and move CORE-043 to Review; do not merge or self-review.

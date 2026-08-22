@@ -24,3 +24,10 @@ No GitHub credentials/API/App or live branch-protection mutation was available o
 - FAIL (pre-existing base/out-of-scope) — `npm run test:scripts`: 86/88 script tests pass; `auto-run-state.test.mjs` and `release-notes.test.mjs` fail because this clean `origin/main` worktree has no `packages/core/dist/index.js` artifact. No script files changed.
 
 - PASS after the prerequisite build — `npm run build:core` exit 0, then `npm run test:scripts` 88/88 tests, exit 0. The earlier missing-dist failure remains recorded above as a typed attempt; the later pass does not erase it.
+
+## PR handoff
+
+- Pushed `core-043-protection-retarget` at `1a06ead17cca8f7a6c715db3a6f6fed6b3de5da6`.
+- Opened PR #168: https://github.com/collisionengineers/kanmer/pull/168, base `main`.
+- MCP item traceability records the full commit SHA and PR `168`.
+- No merge, review, worktree cleanup, or CORE-046 change performed.

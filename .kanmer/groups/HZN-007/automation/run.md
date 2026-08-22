@@ -84,3 +84,6 @@
 
 
 2026-08-22T08:54:00Z — CORE-026 Implementing→Review completed on PR #163 head fab7b4994b5b0c4f2eaf07a919cf6b6e06e7e763. Governing refs are FRD-027/ADR-0020; checklist 10/10, report/gates pass, bounded source resolver/fetch/tool/skill rails recorded, including redirect/cache protections and preserved external-provider/network boundaries. Author stops; independent review/hosted rerun required, no merge/cleanup.
+
+
+2026-08-22T09:00:00Z — CORE-026 hosted PR #163 latest gate PASS but verify FAIL at existing packages/mcp-server/src/smoke.mjs: tools/list assertion expects 34, actual 37 after three source tools. No merge; executor is repairing the authoritative smoke count and will rerun hosted verification before independent review.

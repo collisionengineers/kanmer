@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T08:56:00Z
+updated_at: 2026-08-22T09:02:00Z
 ---
 
 # Current auto run — HZN-007
@@ -331,3 +331,6 @@ Last handoff: 2026-08-22T08:51:53.004Z — CORE-026 implementation handed to Rev
 
 
 2026-08-22T08:56:00Z — CORE-026 is Review on PR #163 head fab7b4994b5b0c4f2eaf07a919cf6b6e06e7e763; packet/checklist/report/gates pass and source redirect/cache edge cases are covered. Independent review assigned next; no merge/cleanup. GUI-109 awaits independent review on PR #162; CORE-035 stays Verifying INCONCLUSIVE.
+
+
+2026-08-22T09:02:00Z — CORE-026 hosted verify exposed a stale smoke.mjs tools/list expectation (34 vs 37 after source tools); gate PASS/verify FAIL preserved and repair requested before independent review. GUI-109 review is pending; CORE-035 remains Verifying.

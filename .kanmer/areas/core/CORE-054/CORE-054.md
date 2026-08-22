@@ -28,11 +28,14 @@ refs:
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
 commits:
   - 1ef6852a
+  - 3964c2ca
+  - b7957214
 prs:
   - '176'
+  - '177'
 archived: false
 created: '2026-08-22T12:51:54.808Z'
-updated: '2026-08-22T12:58:45.363Z'
+updated: '2026-08-22T13:13:04.014Z'
 ---
 
 Close CORE-052 review P1: when refresh observes a live board worktree on an unexpected branch, the protected refusal path must not call renameBoardBranch or alter refs/worktree. Preserve the current preference, surface mismatch/paused state, and add an integration regression proving no automatic rename. Link [[CORE-052]].

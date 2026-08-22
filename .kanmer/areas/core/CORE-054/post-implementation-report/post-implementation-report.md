@@ -32,3 +32,6 @@ CORE-054 closes the CORE-052 P1 in which a live mismatch could leave the cached 
 ## Review handoff
 
 Ready for independent review as a stacked child of CORE-052. The author will not review or merge this PR.
+
+
+2026-08-22T13:12:22Z cumulative stack update: CORE-055 PR #177 independently passed review at exact head 3964c2ca and merged non-squash into this branch as b7957214962889891d0463a0882641c6980e29eb. The cumulative CORE-054 head is now b7957214 and contains both the protected refusal guard and the ordinary-rename mismatch guard. Fresh cumulative review of PR #176 is required before merging into CORE-052. Live GitHub protection retargeting and packaged GUI interaction remain INCONCLUSIVE.

@@ -47,3 +47,14 @@ Append to the ticket's checklist.md when closeout starts (`set_ticket_doc doc: "
 - [ ] `git branch -d <branch>` (`-D` if squash/rebase-merged)
 - [ ] `git fetch --prune` + `git worktree prune`
 - [ ] `take_ticket action: "release"`
+
+## Closeout completion — 2026-08-22
+
+- [x] PR merge verified: PR #136 MERGED at 2026-08-21T22:08:21Z; merge commit 2ba84147cc513ad23e2811e09c005772cb259cfb.
+- [x] proof.md finalized with PR URL, merge date, merged-main SHA, green hosted verify evidence, and retained failed attempts.
+- [x] Moved Verifying → Done after get_doc_gates passed.
+- [x] Outcome recorded with PR link, merge commit, CORE-037 disposition, and separate follow-ups CORE-024/CORE-033.
+- [x] No CORE-032 worktree or branch remained; git worktree list contains only main, core-036, and the board worktree.
+- [x] `git fetch --prune origin` and `git worktree prune` completed.
+- [x] `take_ticket action: release` issued; no taken_at, branch, or worktree remains on the ticket.
+- [ ] Post-merge kanmer-board non-trigger evidence remains INCONCLUSIVE and was not manufactured.

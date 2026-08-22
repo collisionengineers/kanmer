@@ -1,3 +1,5 @@
 2026-08-21 merged-main verification: HEAD 1b5ae0d4546d1b57be393b38f4813f9ecfb6e7d5 contains d0f927a3f9aab7fa6f4716410138126f3ff1fc35. Focused IO/migration tests 28/28, full core 263/263, core typecheck and build passed. Real 242-ticket fixture and live Windows EPERM/antivirus lock run are unavailable and remain INCONCLUSIVE; ticket stays Verifying.
 
 2026-08-22T00:09:07.715Z — Independent merged-main rerun at af61144ce743f74b2aba92fb0778588b0b9bedd0: focused IO/migration 28/28, full core 263/263, core typecheck, core build, and diff-check exited 0. The 242-ticket fixture and live Windows EPERM/file-lock run remain INCONCLUSIVE; CORE-022 stays Verifying.
+
+2026-08-22T03:06:02.231Z — Fresh merged-main shared rail at 4f785781e7f1993fbcde5e474640db509737c0bd: npm run verify exited 0. Build, manual freshness, core 266/266, GUI 355/355, MCP HTTP 61/61, scripts 82/82, all-workspace typecheck, MCP smoke 224/224, mcpb/plugin parity, protocol 46/46, discovery 13/13, skills/AGENTS checks and diff-check all passed. This strengthens deterministic merged-main evidence only; ticket-specific real external acceptance remains unchanged and is not fabricated.

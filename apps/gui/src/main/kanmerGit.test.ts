@@ -254,6 +254,27 @@ describe("board branch preference and cache safety", () => {
     });
   });
 
+  it("pauses a handoff when the live worktree is detached or unavailable", async () => {
+    const status = {
+      available: true,
+      boardRoot: repo,
+      branch: "kanmer-board",
+      lastSync: null,
+      error: null,
+      paused: false,
+    };
+    await expect(refreshBoardBranch(status, "kanmer-board", {
+      path: resolve(repo),
+      expectedBranch: "kanmer-board",
+      actualBranch: null,
+      onBoardBranch: false,
+    })).resolves.toMatchObject({
+      branchMismatch: true,
+      paused: true,
+      error: expect.stringContaining("detached or unavailable"),
+    });
+  });
+
   it("does not treat the cached branch as a valid handoff when the destination differs", async () => {
     const status = {
       available: true,

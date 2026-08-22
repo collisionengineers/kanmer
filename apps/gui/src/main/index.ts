@@ -773,6 +773,10 @@ function boardWorktreeRepair(
 
 async function syncProject(projectId: string, automatic = false): Promise<KanmerGitIpcStatus> {
   const ctx = requireCtx(projectId);
+  if (automatic && ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
+    const inspection = await inspectBoardWorktree(ctx.syncStatus.boardRoot, ctx.syncStatus.branch);
+    ctx.syncStatus = await refreshBoardBranch(ctx.syncStatus, ctx.syncStatus.branch, inspection);
+  }
   if (automatic && !shouldRunAutomaticSync(ctx.syncStatus)) {
     clearSyncTimer(ctx);
     const blocked = await gitStatusForRenderer(ctx);

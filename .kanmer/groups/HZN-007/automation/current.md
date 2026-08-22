@@ -912,3 +912,6 @@ Batch milestone: CORE-044 and CORE-045 are verified on origin/main fdaededc, mov
 
 
 Batch milestone: CORE-046 is verified on origin/main fdaededc, proof written, moved Verifying to Done, exact worktree/branch cleaned, and ticket released. Deterministic IO/source rails pass; shared HTTP child timeout and depth-sensitive plugin comparison remain INCONCLUSIVE. Next batch ticket: CORE-047.
+
+
+Batch blocker: CORE-048 packet was read and verification reached the merged-main reachability gate. Its recorded commit 8ffff2a0f8848bb42868559641b56148ba893ca6 is not reachable from origin/main fdaededc, so no proof/Done/cleanup/release was performed; CORE-048 remains Verifying and taken with .worktrees/core-048. CORE-044–047 are Done/released. Parent promotion is required before continuing CORE-048 onward.

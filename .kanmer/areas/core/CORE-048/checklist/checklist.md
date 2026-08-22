@@ -8,3 +8,7 @@
 - [x] Add deterministic regressions for all three blockers.
 - [x] Run focused tests, typecheck/build, and workflow/static checks.
 - [x] Record report and request independent review (PR #170; stop at Review).
+
+## Verification blocker
+
+- [ ] Merged-main proof is blocked: recorded commit 8ffff2a0 is not reachable from origin/main fdaededc. No proof, Done move, cleanup, or release until parent promotion makes the commit reachable.

@@ -1,6 +1,50 @@
 ---
 kind: review-attestation
 pr: "168"
+head_sha: "69e2cc582b7ee8947f0febda6d286c18e21397a7"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: needs-changes
+reviewer: "codex-root-current-head-audit"
+independent: true
+plan_hash: "2026-08-22T19:54:00Z"
+ticket_updated: "2026-08-22T19:54:00Z"
+findings:
+  - id: F-026
+    severity: blocker
+    summary: "Saved board-branch changes reconcile existing provider registrations"
+    disposition: fixed-in-ticket
+    ticket: "GUI-113"
+    reason: "GUI-113 was independently reviewed and merged as 69e2cc58; production applyGitPreferences now reconciles matching open projects and surfaces malformed provider registrations without mutation."
+  - id: F-027
+    severity: blocker
+    summary: "Native provider descriptors carry the configured board branch"
+    disposition: fixed-in-ticket
+    ticket: "GUI-113"
+    reason: "GUI-113 was independently reviewed and merged as 69e2cc58; Grok/Antigravity install from disposable branch-injected descriptor copies and retain a pristine source bundle."
+  - id: F-028
+    severity: blocker
+    summary: "Board-branch environment serialization is shell-safe"
+    disposition: deferred-to-ticket
+    ticket: "GUI-114"
+    reason: "Current PR #168 thread 3836808787 remains open; GUI-114 owns argv-safe Claude/provider serialization and adversarial shell-metacharacter coverage."
+  - id: F-025
+    severity: minor
+    summary: "Live GitHub protection and variable mutation"
+    disposition: accepted-risk
+    reason: "No authorized live protection mutation or real multi-machine handoff was available; ADR-0016 keeps this administrator-owned external boundary."
+---
+
+## Current-head independent review — NEEDS-CHANGES — 2026-08-22
+
+Reviewed exact cumulative PR #168 head 69e2cc582b7ee8947f0febda6d286c18e21397a7 against main base 34245be039e8fd8395b5e31835602c54e62e98a4. GUI-113 fixes the two prior provider-registration findings and is independently reviewed/merged. The shell-interpolation finding 3836808787 remains unresolved and is deferred to GUI-114; no protected merge or thread resolution is authorized until GUI-114 is independently reviewed and merged into this cumulative branch, followed by another exact-head review.
+
+Verdict: NEEDS-CHANGES. CORE-043 remains in Review and held.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "168"
 head_sha: "30ed38aa7052ccf01a34d6859e67ba3e5deee6b5"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: needs-changes

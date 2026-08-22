@@ -758,3 +758,9 @@ Last handoff: 2026-08-22T19:01:38.547Z — CORE-086 artifact remediation: taken 
 
 
 Last handoff: 2026-08-22T19:52Z — GUI-113 implementation complete on `gui-113-provider-registration-reconcile` / `.worktrees/gui-113`, commit `8fdececeb6a71ddc0b457b02750a0ac14b938496`, PR #208 targeting `core-043-protection-retarget`. Focused GUI 35/35, full GUI 48 files/417 tests, core 14 files/283 tests, all-workspace typecheck/builds, scripts 89/89, manual/docs/agents/skills/diff rails pass. Linked-worktree plugin:check and missing optional mcpb CLI failures remain INCONCLUSIVE. Ticket packet/traceability/gates are read back; GUI-113 is ready for independent review and no merge/verify/cleanup was performed.
+
+
+19:54 UTC — GUI-113 independently reviewed PASS and merged PR #208 non-squash as 69e2cc58 into CORE-043; moved to Verifying and released. GUI-114 is now the active serial GUI lane for shell-safe branch serialization; CORE-082 remains the parallel core lane.
+
+
+2026-08-22T20:54Z — CORE-082 Review handoff: ticket taken without force on core-082-lock-git-isolation/.worktrees/core-082 from cumulative CORE-026 head a1a4fe629d71d149b64fd3e57979a196176b875a. Commit 388a1b28 and PR #209 target core-026-project-declared-sources. Scope is PID-reuse-safe lock identity, bounded malformed-stale recovery, and board lock/owner/quarantine Git-ignore isolation; no CORE-026 parent merge or CORE-081/083 source changes. IO 29/29, core 307/307, GUI Git 28/28, targeted Git-ignore 1/1, all-workspace typecheck/build/plugin/scripts/diff rails PASS; first uncached identity timeout and linked-worktree plugin-check failure are preserved. Live packaged Windows process-restart/PID-reuse and multi-machine filesystem evidence remain INCONCLUSIVE. CORE-082 is ready for independent review; author stops at Review with no self-review, merge, verification, or cleanup.

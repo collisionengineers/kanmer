@@ -1,1 +1,3 @@
 Implementation complete pending commit/PR: PID identity + malformed stale recovery + board lock/owner/quarantine ignore. Focused/full rails and exact failures are recorded in post-implementation-report.md.
+
+Review handoff: commit 388a1b28 pushed as PR #209 targeting core-026-project-declared-sources (base a1a4fe62). Core IO 29/29 and full 307/307, GUI Git 28/28, targeted Git-ignore 1/1, all-workspace typecheck/build/plugin/scripts/diff rails pass. Initial IO timeout and linked-worktree plugin:check failure are preserved; live packaged Windows PID-reuse and multi-machine evidence remain INCONCLUSIVE. Author stops at Review.

@@ -73,3 +73,7 @@ Status should move only one boundary to Review after the final `get_doc_gates CO
 
 - Fresh run 32564155523 on b5ae6f36 passed kanmer-gate job 97010200239 (50s) and verify job 97010200322 (2m22s). The gate reported the prior independent review attestation head 8eff8482 did not match the remediation head; this is an expected stale-attestation warning until independent re-review refreshes it, not a source-rail failure.
 - PR #163 remains Review-only for independent re-review. No self-review, merge, or cleanup performed.
+
+## CORE-082 child remediation handoff (Review pending)
+
+CORE-082 implements the three current lock/Git artifact findings #3836536186, #3836612412, and #3836612414 on cumulative base a1a4fe62. Child commit 388a1b28 and PR #209 target core-026-project-declared-sources; deterministic core IO 29/29 and full core 307/307, GUI Git 28/28, all-workspace typecheck/build/plugin/scripts/diff rails are recorded in the child report. Live packaged Windows process-restart/PID-reuse and multi-machine filesystem evidence remain INCONCLUSIVE. CORE-026 remains Review/blocked; no parent stage or merge was changed.

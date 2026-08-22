@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T14:43:01.797Z
+updated_at: 2026-08-22T14:46:45.089Z
 ---
 
 # Current auto run — HZN-007
@@ -531,3 +531,6 @@ CORE-058 review produced two valid blockers: CORE-064 (rename-path boardRoot los
 
 
 CORE-064 implemented at c8efb926 with deterministic 19/19 focused GUI rail and full local rails; PR #185 opened against CORE-058 and moved Implementing -> Review. Independent review requested; CORE-065 remains queued.
+
+
+CORE-064 independently PASSed and merged into CORE-058 as 17cdb668; CORE-064 is Verifying with block edge removed. CORE-065 is now the single active implementation lane on core-065-retry-ignore-reconciliation; it owns the retryable failed-Git status/action seam.

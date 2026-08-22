@@ -20,3 +20,6 @@
 
 
 2026-08-22T06:14Z — GUI-106 independent re-review PASS\n\n- PR #153 current head c18b5c046f74102c86ecc5f3bd514f6e687bbeb9 (implementation bd83b8a531bfa5e69b9879acc2ef51fe9e0b997c plus source-free CI retrigger) re-reviewed independently. F-001..F-005 are fixed: packaged external identity/skills shape, stale-runtime pruning, AGENTS/updater convention, and install-root overlap rejection. Static/package 8/8, full GUI 360/360, typecheck, dist:check 8/8, and diff-check pass. GitHub emitted no checks for the new head and workflow_dispatch is absent (422); historical hosted PASS and real packaged-host evidence remain explicitly INCONCLUSIVE. Review attestation replaced with pass; merge is authorized subject to normal PR state.
+
+
+2026-08-22T06:20Z — MCP-028 independent review needs changes\n\n- PR #154 head 41ba4e3 local deterministic rails are broadly green and hosted verify run 32553943168/job 96985075079 is pending. Review attestation records F-001..F-004 open: no public-doctor invocation/evidence, incomplete document update/readback/archive lifecycle, unreachable duplicate evidence helpers, and swallowed cleanup/idempotence failures. Author remediation requested; no merge or stage move. Live Cloudflare credentials/tunnel/Worker proof remains INCONCLUSIVE.

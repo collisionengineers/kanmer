@@ -23049,7 +23049,8 @@ __export(src_exports, {
   createKanmerMcpServer: () => createKanmerMcpServer,
   fetchLlmsTxt: () => fetchLlmsTxt,
   projectFingerprint: () => projectFingerprint,
-  remoteHttpToolNames: () => remoteHttpToolNames
+  remoteHttpToolNames: () => remoteHttpToolNames,
+  validateLlmsSource: () => validateLlmsSource
 });
 module.exports = __toCommonJS(src_exports);
 
@@ -41927,7 +41928,7 @@ function markdownLinks(text, base) {
   }
   return urls;
 }
-async function fetchText(url, fetchImpl, headers, timeoutMs) {
+async function fetchText(url, fetchImpl, headers, timeoutMs, maxBytes = LLMS_TXT_POLICY.maxBytes) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -41945,13 +41946,39 @@ async function fetchText(url, fetchImpl, headers, timeoutMs) {
       throw new Error(`${url} returned unsupported content type ${contentType}`);
     }
     const length = Number(response.headers.get("content-length"));
-    if (Number.isFinite(length) && length > LLMS_TXT_POLICY.maxBytes) {
-      throw new Error(`${url} exceeds the ${LLMS_TXT_POLICY.maxBytes}-byte response limit`);
+    if (Number.isFinite(length) && length > maxBytes) {
+      throw new Error(`${url} exceeds the ${maxBytes}-byte response limit`);
     }
-    const text = await response.text();
-    if (Buffer.byteLength(text, "utf8") > LLMS_TXT_POLICY.maxBytes) {
-      throw new Error(`${url} exceeds the ${LLMS_TXT_POLICY.maxBytes}-byte response limit`);
+    if (!response.body) {
+      const text2 = await response.text();
+      if (Buffer.byteLength(text2, "utf8") > maxBytes) {
+        throw new Error(`${url} exceeds the ${maxBytes}-byte response limit`);
+      }
+      return {
+        status: response.status,
+        text: text2,
+        etag: response.headers.get("etag") ?? void 0,
+        lastModified: response.headers.get("last-modified") ?? void 0
+      };
     }
+    const reader = response.body.getReader();
+    const chunks = [];
+    let bytes = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        bytes += value.byteLength;
+        if (bytes > maxBytes) {
+          await reader.cancel();
+          throw new Error(`${url} exceeds the ${maxBytes}-byte response limit`);
+        }
+        chunks.push(Buffer.from(value));
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    const text = Buffer.concat(chunks).toString("utf8");
     return {
       status: response.status,
       text,
@@ -41996,7 +42023,7 @@ async function fetchLlmsTxt(options2) {
   const failures = [];
   let rootResponse;
   try {
-    rootResponse = await fetchText(root, fetchImpl, headers, LLMS_TXT_POLICY.timeoutMs);
+    rootResponse = await fetchText(root, fetchImpl, headers, LLMS_TXT_POLICY.timeoutMs, LLMS_TXT_POLICY.maxBytes);
   } catch (error2) {
     if (cached3) {
       failures.push(error2 instanceof Error ? error2.message : String(error2));
@@ -42032,8 +42059,13 @@ async function fetchLlmsTxt(options2) {
   const candidates = markdownLinks(rootResponse.text, root).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
   let bytes = Buffer.byteLength(rootResponse.text, "utf8");
   for (const candidate of candidates) {
+    if (bytes >= LLMS_TXT_POLICY.maxBytes) {
+      failures.push(`${candidate} skipped because the aggregate response limit was reached`);
+      continue;
+    }
     try {
-      const response = await fetchText(candidate, fetchImpl, {}, LLMS_TXT_POLICY.timeoutMs);
+      const remaining = LLMS_TXT_POLICY.maxBytes - bytes;
+      const response = await fetchText(candidate, fetchImpl, {}, LLMS_TXT_POLICY.timeoutMs, remaining);
       const size = Buffer.byteLength(response.text, "utf8");
       if (bytes + size > LLMS_TXT_POLICY.maxBytes) {
         failures.push(`${candidate} skipped because the aggregate response limit was reached`);
@@ -42062,7 +42094,14 @@ ${document.text}`).join("\n")).digest("hex"),
   return { sourceUrl: root.toString(), documents, failures, fromCache: false, fetchedAt };
 }
 function validateLlmsSource(source) {
-  const parsed = SourceDeclarationSchema.parse(source);
+  if (!source || typeof source !== "object") throw new Error("invalid source declaration");
+  const candidate = source;
+  const parsed = SourceDeclarationSchema.parse({
+    kind: candidate.kind,
+    id: candidate.id,
+    ...candidate.appliesTo === void 0 ? {} : { appliesTo: candidate.appliesTo },
+    ...candidate.priority === void 0 ? {} : { priority: candidate.priority }
+  });
   if (parsed.kind !== "llms-txt") throw new Error("only llms-txt declarations can be fetched");
 }
 
@@ -43328,7 +43367,8 @@ if (invokedName === "index.js" || invokedName === "kanmer-mcp.cjs") main().catch
   createKanmerMcpServer,
   fetchLlmsTxt,
   projectFingerprint,
-  remoteHttpToolNames
+  remoteHttpToolNames,
+  validateLlmsSource
 });
 /*! Bundled license information:
 

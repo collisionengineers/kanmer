@@ -49,7 +49,7 @@ import { projectIdentity } from "./project-identity.js";
 import { dispatchPolicyView, parseDispatchPolicy } from "./dispatch-policy.js";
 import { fetchLlmsTxt, LLMS_TXT_POLICY, validateLlmsSource } from "./sources.js";
 
-export { fetchLlmsTxt, LLMS_TXT_POLICY } from "./sources.js";
+export { fetchLlmsTxt, LLMS_TXT_POLICY, validateLlmsSource } from "./sources.js";
 
 const execFile = promisify(execFileCallback);
 

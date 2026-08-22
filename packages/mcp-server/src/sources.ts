@@ -132,6 +132,7 @@ async function fetchText(
   fetchImpl: typeof fetch,
   headers: Record<string, string>,
   timeoutMs: number,
+  maxBytes: number = LLMS_TXT_POLICY.maxBytes,
 ): Promise<{ status: number; text: string; etag?: string; lastModified?: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -152,13 +153,39 @@ async function fetchText(
       throw new Error(`${url} returned unsupported content type ${contentType}`);
     }
     const length = Number(response.headers.get("content-length"));
-    if (Number.isFinite(length) && length > LLMS_TXT_POLICY.maxBytes) {
-      throw new Error(`${url} exceeds the ${LLMS_TXT_POLICY.maxBytes}-byte response limit`);
+    if (Number.isFinite(length) && length > maxBytes) {
+      throw new Error(`${url} exceeds the ${maxBytes}-byte response limit`);
     }
-    const text = await response.text();
-    if (Buffer.byteLength(text, "utf8") > LLMS_TXT_POLICY.maxBytes) {
-      throw new Error(`${url} exceeds the ${LLMS_TXT_POLICY.maxBytes}-byte response limit`);
+    if (!response.body) {
+      const text = await response.text();
+      if (Buffer.byteLength(text, "utf8") > maxBytes) {
+        throw new Error(`${url} exceeds the ${maxBytes}-byte response limit`);
+      }
+      return {
+        status: response.status,
+        text,
+        etag: response.headers.get("etag") ?? undefined,
+        lastModified: response.headers.get("last-modified") ?? undefined,
+      };
     }
+    const reader = response.body.getReader();
+    const chunks: Buffer[] = [];
+    let bytes = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        bytes += value.byteLength;
+        if (bytes > maxBytes) {
+          await reader.cancel();
+          throw new Error(`${url} exceeds the ${maxBytes}-byte response limit`);
+        }
+        chunks.push(Buffer.from(value));
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    const text = Buffer.concat(chunks).toString("utf8");
     return {
       status: response.status,
       text,
@@ -207,7 +234,7 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
   const failures: string[] = [];
   let rootResponse: Awaited<ReturnType<typeof fetchText>>;
   try {
-    rootResponse = await fetchText(root, fetchImpl, headers, LLMS_TXT_POLICY.timeoutMs);
+    rootResponse = await fetchText(root, fetchImpl, headers, LLMS_TXT_POLICY.timeoutMs, LLMS_TXT_POLICY.maxBytes);
   } catch (error) {
     if (cached) {
       failures.push(error instanceof Error ? error.message : String(error));
@@ -244,8 +271,13 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
   const candidates = markdownLinks(rootResponse.text, root).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
   let bytes = Buffer.byteLength(rootResponse.text, "utf8");
   for (const candidate of candidates) {
+    if (bytes >= LLMS_TXT_POLICY.maxBytes) {
+      failures.push(`${candidate} skipped because the aggregate response limit was reached`);
+      continue;
+    }
     try {
-      const response = await fetchText(candidate, fetchImpl, {}, LLMS_TXT_POLICY.timeoutMs);
+      const remaining = LLMS_TXT_POLICY.maxBytes - bytes;
+      const response = await fetchText(candidate, fetchImpl, {}, LLMS_TXT_POLICY.timeoutMs, remaining);
       const size = Buffer.byteLength(response.text, "utf8");
       if (bytes + size > LLMS_TXT_POLICY.maxBytes) {
         failures.push(`${candidate} skipped because the aggregate response limit was reached`);
@@ -277,6 +309,16 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
 
 /** Validate a single declaration at the network boundary as well as at board writes. */
 export function validateLlmsSource(source: unknown): asserts source is { kind: "llms-txt"; id: string } {
-  const parsed = SourceDeclarationSchema.parse(source);
+  // resolveSources enriches declarations with availability/reason/order metadata.
+  // Validate the declaration fields strictly without asking the plain declaration
+  // schema to reject those resolver-only fields.
+  if (!source || typeof source !== "object") throw new Error("invalid source declaration");
+  const candidate = source as Record<string, unknown>;
+  const parsed = SourceDeclarationSchema.parse({
+    kind: candidate.kind,
+    id: candidate.id,
+    ...(candidate.appliesTo === undefined ? {} : { appliesTo: candidate.appliesTo }),
+    ...(candidate.priority === undefined ? {} : { priority: candidate.priority }),
+  });
   if (parsed.kind !== "llms-txt") throw new Error("only llms-txt declarations can be fetched");
 }

@@ -3,7 +3,7 @@ import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { fetchLlmsTxt } from "../dist/index.js";
+import { fetchLlmsTxt, LLMS_TXT_POLICY, validateLlmsSource } from "../dist/index.js";
 
 function fakeResponse(body, headers = {}, status = 200) {
   return new Response(body, { status, headers: { "content-type": "text/plain", ...headers } });
@@ -118,6 +118,43 @@ test("a validator response without a cached representation is surfaced", async (
       }),
       /304 without a cached representation/,
     );
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("fetch validation accepts resolver-enriched llms declarations", () => {
+  assert.doesNotThrow(() => validateLlmsSource({
+    kind: "llms-txt",
+    id: "https://docs.example.test/llms.txt",
+    availability: "available",
+    reason: "declared HTTPS documentation manifest",
+    declarationOrder: 0,
+  }));
+});
+
+test("aggregate byte budget is enforced while reading linked responses", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-"));
+  try {
+    let linkedReads = 0;
+    const fetchImpl = async (url) => {
+      if (String(url) === "https://docs.example.test/llms.txt") {
+        return fakeResponse("# Docs\n[large](large.md)");
+      }
+      linkedReads++;
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array(LLMS_TXT_POLICY.maxBytes));
+          controller.enqueue(new Uint8Array(LLMS_TXT_POLICY.maxBytes));
+          controller.close();
+        },
+      });
+      return new Response(stream, { headers: { "content-type": "text/plain" } });
+    };
+    const result = await fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl, now: () => 1_000 });
+    assert.equal(linkedReads, 1);
+    assert.equal(result.documents.length, 1);
+    assert.match(result.failures[0], /exceeds the .*byte response limit/);
   } finally {
     await rm(cacheDir, { recursive: true, force: true });
   }

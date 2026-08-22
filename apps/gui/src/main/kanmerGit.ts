@@ -22,6 +22,10 @@ export interface KanmerGitStatus {
   paused: boolean;
   /** A live worktree was observed on neither the cached nor requested branch. */
   branchMismatch?: boolean;
+  /** The mismatch detector supplied the current error rather than preserving one. */
+  branchMismatchError?: boolean;
+  /** The mismatch detector supplied the current pause rather than preserving one. */
+  branchMismatchPause?: boolean;
 }
 
 /**
@@ -41,17 +45,41 @@ export async function refreshBoardBranch(
   const inspection = await inspectBoardWorktree(status.boardRoot, destination);
   if (!inspection.actualBranch) return status;
   if (inspection.actualBranch !== destination) {
+    const mismatchError = status.branchMismatchError ?? status.error === null;
+    const mismatchPause = status.branchMismatchPause ?? !status.paused;
     return {
       ...status,
       branchMismatch: true,
-      error: status.error ?? `Board worktree is on ${inspection.actualBranch}; expected ${destination}. Complete the administrator handoff before changing Kanmer's branch setting.`,
+      branchMismatchError: mismatchError,
+      branchMismatchPause: mismatchPause,
+      error: mismatchError
+        ? `Board worktree is on ${inspection.actualBranch}; expected ${destination}. Complete the administrator handoff before changing Kanmer's branch setting.`
+        : status.error,
       paused: true,
     };
   }
   // The observed branch proves the administrator handoff reached the requested
-  // destination. Do not clear an existing sync error or paused state merely
-  // because the branch name changed.
-  return { ...status, branch: inspection.actualBranch, branchMismatch: false };
+  // destination. Clear only the error/pause that this detector supplied; a
+  // genuine sync failure that was already present must remain visible.
+  const next = { ...status, branch: inspection.actualBranch, branchMismatch: false };
+  if (status.branchMismatchError) next.error = null;
+  if (status.branchMismatchPause) next.paused = false;
+  delete next.branchMismatchError;
+  delete next.branchMismatchPause;
+  return next;
+}
+
+/** Automatic sync is safe only while the live board is available and healthy. */
+export function shouldRunAutomaticSync(status: Pick<KanmerGitStatus, "available" | "paused" | "branchMismatch">): boolean {
+  return status.available && !status.paused && status.branchMismatch !== true;
+}
+
+/** Timer creation shares the same safety predicate as timer execution. */
+export function shouldScheduleAutomaticSync(
+  status: Pick<KanmerGitStatus, "available" | "paused" | "branchMismatch">,
+  minutes: number,
+): boolean {
+  return minutes > 0 && shouldRunAutomaticSync(status);
 }
 
 /**
@@ -298,7 +326,16 @@ export async function syncBoard(status: KanmerGitStatus): Promise<KanmerGitStatu
     await git(boardRoot, ["push", "-u", "origin", `HEAD:refs/heads/${status.branch}`]);
     return { ...status, lastSync: new Date().toISOString(), error: null, paused: false };
   } catch (error) {
-    return { ...status, error: error instanceof Error ? error.message : String(error), paused: true };
+    // A new sync failure supersedes any handoff-generated state. If the
+    // operator presses Retry while the worktree is still mismatched, the
+    // resulting error must not be cleared by a later exact-destination refresh.
+    return {
+      ...status,
+      branchMismatchError: false,
+      branchMismatchPause: false,
+      error: error instanceof Error ? error.message : String(error),
+      paused: true,
+    };
   }
 }
 

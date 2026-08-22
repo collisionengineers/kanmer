@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureBoardWorktree, guardGitBranchPreference, inspectBoardWorktree, refreshBoardBranch, renameBoardBranch, shouldAttemptOrdinaryBranchRename, shouldAttemptProtectedBranchRename } from "./kanmerGit.js";
+import { ensureBoardWorktree, guardGitBranchPreference, inspectBoardWorktree, refreshBoardBranch, renameBoardBranch, shouldAttemptOrdinaryBranchRename, shouldAttemptProtectedBranchRename, shouldRunAutomaticSync, shouldScheduleAutomaticSync } from "./kanmerGit.js";
 
 // These are deliberately real-Git integration tests: every case initialises a
 // local repository and several create worktrees/remotes. Windows process and
@@ -317,10 +317,63 @@ describe("board branch preference and cache safety", () => {
     });
   });
 
+  it("clears only the mismatch-generated error and pause after the exact handoff", async () => {
+    const status = {
+      available: true,
+      boardRoot: repo,
+      branch: "kanmer-board",
+      lastSync: null,
+      error: null,
+      paused: false,
+    };
+    await git(repo, "checkout", "-b", "unexpected-board");
+    const paused = await refreshBoardBranch(status, "retargeted-board");
+    expect(paused).toMatchObject({ branchMismatch: true, branchMismatchError: true, branchMismatchPause: true, paused: true });
+
+    await git(repo, "checkout", "-b", "retargeted-board");
+    const resumed = await refreshBoardBranch(paused, "retargeted-board");
+    expect(resumed).toMatchObject({ branch: "retargeted-board", branchMismatch: false, error: null, paused: false });
+    expect(resumed).not.toHaveProperty("branchMismatchError");
+    expect(resumed).not.toHaveProperty("branchMismatchPause");
+  });
+
+  it("preserves genuine error and pause state across a mismatch handoff", async () => {
+    const status = {
+      available: true,
+      boardRoot: repo,
+      branch: "kanmer-board",
+      lastSync: null,
+      error: "rebase conflict",
+      paused: true,
+    };
+    await git(repo, "checkout", "-b", "unexpected-board");
+    const paused = await refreshBoardBranch(status, "retargeted-board");
+    expect(paused).toMatchObject({ branchMismatch: true, branchMismatchError: false, branchMismatchPause: false, error: "rebase conflict", paused: true });
+
+    await git(repo, "checkout", "-b", "retargeted-board");
+    const resumed = await refreshBoardBranch(paused, "retargeted-board");
+    expect(resumed).toMatchObject({ branch: "retargeted-board", branchMismatch: false, error: "rebase conflict", paused: true });
+  });
+
   it("keeps the protected preference invalidated until a board is open", () => {
     expect(guardGitBranchPreference("kanmer-board", "team-board", false)).toBe("kanmer-board");
     expect(guardGitBranchPreference("kanmer-board", "team-board", true)).toBe("team-board");
     expect(guardGitBranchPreference("team-board", "other-board", false)).toBe("other-board");
+  });
+});
+
+describe("automatic sync safety policy", () => {
+  const healthy = { available: true, paused: false, branchMismatch: false };
+
+  it("arms and runs only for a healthy board state", () => {
+    expect(shouldRunAutomaticSync(healthy)).toBe(true);
+    expect(shouldScheduleAutomaticSync(healthy, 1)).toBe(true);
+    expect(shouldScheduleAutomaticSync(healthy, 0)).toBe(false);
+    expect(shouldRunAutomaticSync({ ...healthy, paused: true })).toBe(false);
+    expect(shouldScheduleAutomaticSync({ ...healthy, paused: true }, 1)).toBe(false);
+    expect(shouldRunAutomaticSync({ ...healthy, branchMismatch: true })).toBe(false);
+    expect(shouldScheduleAutomaticSync({ ...healthy, branchMismatch: true }, 1)).toBe(false);
+    expect(shouldRunAutomaticSync({ ...healthy, available: false })).toBe(false);
   });
 });
 

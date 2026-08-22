@@ -87,3 +87,6 @@
 
 
 2026-08-22T09:00:00Z — CORE-026 hosted PR #163 latest gate PASS but verify FAIL at existing packages/mcp-server/src/smoke.mjs: tools/list assertion expects 34, actual 37 after three source tools. No merge; executor is repairing the authoritative smoke count and will rerun hosted verification before independent review.
+
+
+2026-08-22T09:05:00Z — Independent review of GUI-109 PR #162 head c259af171a72fa83a9131f4f53a79d0cfd0f05b5 returned NEEDS-CHANGES. Six findings (cross-project menu binding, listGroups error surfacing, archive race, submenu bounds, manual archive wording, and refresh-cleared assignment conflicts) were dispositioned deferred-to-ticket GUI-111; GUI-111 is linked/blocks GUI-109. Deterministic rails remain PASS, live Electron visual INCONCLUSIVE; no merge or stage advance.

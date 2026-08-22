@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T09:02:00Z
+updated_at: 2026-08-22T09:07:00Z
 ---
 
 # Current auto run — HZN-007
@@ -334,3 +334,9 @@ Last handoff: 2026-08-22T08:51:53.004Z — CORE-026 implementation handed to Rev
 
 
 2026-08-22T09:02:00Z — CORE-026 hosted verify exposed a stale smoke.mjs tools/list expectation (34 vs 37 after source tools); gate PASS/verify FAIL preserved and repair requested before independent review. GUI-109 review is pending; CORE-035 remains Verifying.
+
+
+Last handoff: 2026-08-22T09:00:43.617Z — CORE-026 hosted smoke remediation: PR #163 head 8eff8482 updates packages/mcp-server/src/smoke.mjs from the stale 34-tool assertion to 37. Local smoke/prose/plugin rails pass; hosted kanmer-gate passed on the corrected standalone footer and the fresh verify run is pending. Ticket remains Review; stop for independent review, no self-review/merge/cleanup.
+
+
+2026-08-22T09:07:00Z — GUI-109 independent review NEEDS-CHANGES on PR #162; six findings are preserved in blocking follow-up GUI-111 (linked/blocks GUI-109). No merge/advance; deterministic rails pass, Electron visual remains INCONCLUSIVE. CORE-026 awaits fresh smoke fix + independent review; CORE-035 remains Verifying.

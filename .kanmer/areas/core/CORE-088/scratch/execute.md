@@ -1,0 +1,1 @@
+Worktree created at .worktrees/core-088 on core-088-source-cache-atomicity from current origin/core-026-project-declared-sources f2e694a4. Packet recorded 453a9209, but parent advanced to f2e694a4 before the worktree existed; this reachable-head deviation is intentional and will be preserved in the report. Scope remains F-006 through F-009 only.

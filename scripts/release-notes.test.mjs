@@ -38,7 +38,7 @@ updated: '2026-08-21T13:02:17.321Z'
   try {
     const output = execFileSync(
       process.execPath,
-      ["scripts/release-notes.mjs", "--since", "v0.3.2"],
+      ["scripts/release-notes.mjs", "--since", "2026-08-20T00:00:00.000Z"],
       {
         cwd: root,
         encoding: "utf8",

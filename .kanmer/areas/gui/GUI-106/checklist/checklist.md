@@ -16,3 +16,16 @@
 - [x] Record real packaged-update/live-session/junction/uninstall evidence as INCONCLUSIVE where unavailable.
 - [x] Write and read back the post-implementation report, scratch handoff, commit, and PR traceability.
 - [x] Re-read get_doc_gates and move Implementing to Review only; stop for independent review.
+
+# Closeout checklist
+
+## Closeout — GUI-106
+
+- [x] PR merge verified (PR #153 state MERGED; merge commit b6c8eb02)
+- [x] proof.md finalised (merged-main rails and packaged-host INCONCLUSIVE boundary recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, deterministic proof, packaged-host follow-up)
+- [ ] cd out of worktree; git worktree remove .worktrees/gui-106
+- [ ] git branch -d gui-106-runtime-boundary
+- [ ] git fetch --prune + git worktree prune
+- [ ] take_ticket action: release

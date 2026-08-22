@@ -96,3 +96,31 @@ F-004 (close/Retry/timer lifecycle race): fixed structurally by putting close un
 - `npm run typecheck -w @kanmer/gui`: **exit 0**.
 - `git diff --check 9371e2b0e8882426d91dbc99553e96853b99197f d79f5f610b4c1dee5b2707f8a3e0b1807c771da1`: **exit 0**.
 - PR #212 remains open at the exact head with base `9371e2b0`; GitHub reported no status-check rollup in this inspection. Hosted packaging/Actions-variable/protected-main evidence remains outside local proof.
+
+## Fresh exact-head PASS review — PR #212
+
+- Exact reviewed head: `d79f5f610b4c1dee5b2707f8a3e0b1807c771da1`
+- Exact base: `9371e2b0e8882426d91dbc99553e96853b99197f`
+- Reviewer: core041-executor, independent of the implementation author; no source edits or review-thread actions.
+- Verdict: **PASS**
+
+F-001 durable pending handoff across reopen/restart: fixed and covered by settings persistence/open restoration.
+
+F-002 acknowledgement clearing only the matching warning: fixed by exact warning comparison.
+
+F-003 timer restoration on preference failure: fixed by lifecycle-locked `finally` rearming.
+
+F-004 close/Retry/timer lifecycle race: fixed by shared lifecycle serialization and context-identity timer guard.
+
+F-005 durable marker erased by later clean/failed rename: fixed in `d79f5f61`; the marker is only rewritten for a newly produced warning and is cleared only by explicit acknowledgement. The new regression passes.
+
+F-006 stale packet evidence: resolved. The post-implementation report and PR body now state exact-head focused 10/10 and broader focused 38/38 evidence.
+
+Evidence read back:
+- requested focused settings/lifecycle/index suite: **10/10 PASS**
+- broader exact-head command: **38/38 PASS**
+- GUI typecheck: **exit 0**
+- `git diff --check`: **exit 0**
+- PR #212 is OPEN, exact head/base unchanged, MERGEABLE; GitHub status-check rollup is empty. Hosted packaging/Actions-variable/protected-main proof remains the documented CORE-043 verification boundary.
+
+Authorized next action: non-squash merge PR #212 into `core-043-protection-retarget`, subject to final head/base recheck.

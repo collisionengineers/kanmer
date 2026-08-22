@@ -20,9 +20,10 @@ The existing `applyGitPreferences`, `syncProject`, `closeProject`, and `CH.syncK
 - `npm run build -w @kanmer/gui` — PASS on the implementation commit
 - `npm test -w @kanmer/gui` — PASS before the review remediation, 49 test files / 421 tests
 - Focused post-remediation suite (`settings.test.ts`, `syncLifecycle.test.ts`, `index.sync.test.ts`) — PASS, 10/10 after the final fix
+- Broader exact-head focused command — PASS, 38/38
 - New durable-warning regression — PASS
 - Retained unavailable-root Retry regressions — 4/4 PASS
 - Settings handoff persistence regression — PASS
 - `git diff --check` — PASS
 
-Independent review findings F-001..F-004 were fixed in `8f3f346d`; F-005 was fixed in `d79f5f61`. A fresh exact-head review is required before merge. Hosted Windows packaging, real GitHub Actions variable confirmation, and protected-main merge remain outside this ticket's local proof and are recorded as the parent CORE-043 verification boundary.
+Independent review findings F-001..F-005 were fixed in `8f3f346d` and `d79f5f61`; the exact-head packet now records the 10/10 focused result and 38/38 broader focused result. A fresh exact-head review is required before merge. Hosted Windows packaging, real GitHub Actions variable confirmation, and protected-main merge remain outside this ticket's local proof and are recorded as the parent CORE-043 verification boundary.

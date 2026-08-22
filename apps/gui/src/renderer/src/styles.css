@@ -235,6 +235,45 @@ textarea:focus {
   border-bottom: 1px solid #1f3543;
   color: var(--accent, #7ac0ff);
 }
+
+/* Gate refusals stay beside the drop and carry the next document action. */
+.gate-feedback {
+  position: fixed;
+  z-index: 70;
+  width: min(360px, calc(100vw - 24px));
+  box-sizing: border-box;
+  padding: 12px;
+  color: var(--fg);
+  background: var(--bg-2);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.gate-feedback-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gate-feedback-head strong {
+  flex: 1;
+}
+.gate-feedback p {
+  margin: 6px 0;
+}
+.gate-feedback-boundary {
+  color: var(--warn, #ffcf7a);
+  font-size: 12px;
+}
+.gate-feedback ul {
+  margin: 6px 0 8px;
+  padding-left: 18px;
+}
+.gate-feedback-detail {
+  color: var(--muted);
+  font-size: 11px;
+  max-height: 52px;
+  overflow: auto;
+}
 .conflict-banner {
   border-radius: var(--radius);
   border: 1px solid #433a1f;

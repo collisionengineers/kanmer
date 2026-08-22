@@ -9,7 +9,6 @@ import type {
   BoardConfig,
   CreateItemInput,
   Item,
-  MovePosition,
   RepoStaleness,
 } from "@kanmer/core";
 import { blockedIds, columnCards, optimisticOrder } from "./lib/board.js";
@@ -21,6 +20,7 @@ import { restoreTabs, restoredActiveTab } from "./lib/session.js";
 import { tabCloseDecision } from "./lib/tabClose.js";
 import { restartWarning, updateSurface } from "./lib/update.js";
 import { friendlyGateError } from "./lib/gateError.js";
+import { gateRequirementLabel, parseGateFeedback, type GateFeedback } from "./lib/gateFeedback.js";
 import { needsStalenessAttention } from "./lib/repoStaleness.js";
 import type {
   AppSettings,
@@ -34,7 +34,7 @@ import type {
   UiPreferences,
   UpdateStatusEvent,
 } from "../../shared/ipc.js";
-import { Board } from "./components/Board.js";
+import { Board, type BoardMove } from "./components/Board.js";
 import { Manual } from "./components/Manual.js";
 import { TabStrip, type Tab } from "./components/TabStrip.js";
 import { ArchivedList } from "./components/ArchivedList.js";
@@ -75,6 +75,13 @@ interface Toast {
   text: string;
 }
 
+interface GatePopover {
+  id: string;
+  message: string;
+  feedback: GateFeedback;
+  anchor: { x: number; y: number };
+}
+
 /** Per-tab transient UI state, preserved across tab switches. */
 interface SavedTabState {
   view: View;
@@ -103,6 +110,46 @@ function RepoStalenessBanner({ report }: { report: RepoStaleness | null }): JSX.
         </details>
       </div>
     </div>
+  );
+}
+
+function GateBlockedPopover({
+  value,
+  onOpen,
+  onDismiss,
+}: {
+  value: GatePopover;
+  onOpen: () => void;
+  onDismiss: () => void;
+}): JSX.Element {
+  const viewportWidth = typeof window === "undefined" ? 800 : window.innerWidth;
+  const viewportHeight = typeof window === "undefined" ? 600 : window.innerHeight;
+  const left = Math.max(12, Math.min(value.anchor.x, viewportWidth - 372));
+  const top = Math.max(12, Math.min(value.anchor.y, viewportHeight - 190));
+  const firstDocument = value.feedback.requirements.find((r) => r.documentType)?.documentType;
+  const actionLabel = firstDocument
+    ? `Open ${firstDocument.replace(/-/g, " ")}`
+    : "Open ticket";
+  return (
+    <aside
+      className="gate-feedback"
+      role="alert"
+      aria-label="Gate-blocked move"
+      style={{ left, top }}
+    >
+      <div className="gate-feedback-head">
+        <strong>Can&rsquo;t move to {stageName(value.feedback.targetStatus)}</strong>
+        <button className="ghost xs" aria-label="Dismiss gate feedback" onClick={onDismiss}>×</button>
+      </div>
+      <p className="gate-feedback-boundary">{value.feedback.boundary}</p>
+      <ul>
+        {value.feedback.requirements.map((requirement) => (
+          <li key={requirement.requirement}>{gateRequirementLabel(requirement.requirement)}</li>
+        ))}
+      </ul>
+      <p className="gate-feedback-detail">{value.message}</p>
+      <button className="primary xs" onClick={onOpen}>{actionLabel}</button>
+    </aside>
   );
 }
 
@@ -148,6 +195,7 @@ export function App(): JSX.Element {
   const [activityOpen, setActivityOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [gatePopover, setGatePopover] = useState<GatePopover | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
   const [announcement, setAnnouncement] = useState("");
@@ -184,6 +232,7 @@ export function App(): JSX.Element {
   const [pendingProject, setPendingProject] = useState<OpenTarget | null>(null);
   const [pendingTake, setPendingTake] = useState<{ id: string; branch: string } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: string } | null>(null);
+  const [pendingGateDoc, setPendingGateDoc] = useState<{ id: string; doc: string | null } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const toastSeq = useRef(0);
   const sessionHydrated = useRef(false);
@@ -720,7 +769,7 @@ export function App(): JSX.Element {
    * fractional value; errors roll back via refresh.
    */
   const onMove = useCallback(
-    async (id: string, to: { status: string; position?: MovePosition }) => {
+    async (id: string, to: BoardMove) => {
       setItems((prev) => {
         const target = prev.find((i) => i.id === id);
         if (!target) return prev;
@@ -731,19 +780,54 @@ export function App(): JSX.Element {
         return prev.map((i) => (i.id === id ? { ...i, status: to.status, order } : i));
       });
       try {
-        await clientRef.current!.moveItem(id, to);
+        const { anchor: _anchor, ...move } = to;
+        await clientRef.current!.moveItem(id, move);
         setError(null);
+        setGatePopover(null);
       } catch (err) {
         // Roll back FIRST: refresh() clears `error` on success, so setting the
         // message before it would leave a rejected move (the proof gate, a
         // conflict) silently undone with nothing on screen.
         const message = err instanceof Error ? err.message : String(err);
         await refresh();
-        setError(friendlyGateError(message));
+        let parsed: GateFeedback | null = null;
+        try {
+          const statuses = await clientRef.current!.getGateStatus(id);
+          parsed = parseGateFeedback(to.status, statuses[to.status] ?? []);
+        } catch (statusError) {
+          const detail = statusError instanceof Error ? statusError.message : String(statusError);
+          setGatePopover(null);
+          setError(`${friendlyGateError(message)} Could not reload gate details: ${detail}`);
+          return;
+        }
+        if (!parsed) {
+          setGatePopover(null);
+          setError(friendlyGateError(message));
+          return;
+        }
+        setError(null);
+        setGatePopover({
+          id,
+          message: friendlyGateError(message),
+          feedback: parsed,
+          anchor: to.anchor ?? {
+            x: typeof window === "undefined" ? 320 : window.innerWidth / 2,
+            y: typeof window === "undefined" ? 160 : window.innerHeight / 2,
+          },
+        });
       }
     },
     [refresh],
   );
+
+  const openGateDocument = useCallback(() => {
+    if (!gatePopover) return;
+    const documentType = gatePopover.feedback.requirements.find((r) => r.documentType)?.documentType ?? null;
+    setPendingGateDoc({ id: gatePopover.id, doc: documentType });
+    setGatePopover(null);
+    setView("ticket");
+    openEditor(gatePopover.id);
+  }, [gatePopover, openEditor]);
 
   /** Keyboard equivalent of drag: move an item one stage left/right. */
   const moveRelative = useCallback(
@@ -1315,6 +1399,13 @@ export function App(): JSX.Element {
       )}
 
       {error && <div className="banner error">{error}</div>}
+      {gatePopover && (
+        <GateBlockedPopover
+          value={gatePopover}
+          onOpen={openGateDocument}
+          onDismiss={() => setGatePopover(null)}
+        />
+      )}
       <div className="sr-only" aria-live="polite">
         {announcement}
       </div>
@@ -1398,6 +1489,7 @@ export function App(): JSX.Element {
             knownIds={knownIds}
             changeSignal={changeSignal}
             mode={editorMode}
+            initialDoc={pendingGateDoc?.id === selected.id ? pendingGateDoc.doc ?? undefined : undefined}
             onModeChange={setEditorMode}
             onClose={() => trySelect(null)}
             onNavigate={trySelect}

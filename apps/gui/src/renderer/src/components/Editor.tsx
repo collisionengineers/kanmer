@@ -44,6 +44,8 @@ interface EditorProps {
   onDirtyChange?: (dirty: boolean) => void;
   /** Ephemeral presentation guidance; it never changes ticket workflow data. */
   mode?: EditorMode;
+  /** A gate-feedback action may request a specific document tab on open. */
+  initialDoc?: string;
   onModeChange?: (mode: EditorMode) => void;
 }
 
@@ -165,6 +167,7 @@ export function Editor(props: EditorProps): JSX.Element {
     onSave,
     onDirtyChange,
     mode = "approval",
+    initialDoc,
     onModeChange,
   } = props;
 
@@ -207,6 +210,7 @@ export function Editor(props: EditorProps): JSX.Element {
     null,
   );
   const [saveError, setSaveError] = useState<string | null>(null);
+  const initialDocApplied = useRef<string | null>(null);
 
   // Wiki-link autocomplete state.
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -509,6 +513,16 @@ export function Editor(props: EditorProps): JSX.Element {
       if (nextMode) onModeChange?.(nextMode);
     }
   };
+
+  // Gate feedback can open this editor while it is already mounted. Wait for
+  // the document inventory before selecting the requested tab so a missing
+  // document reaches DocEditor's existing Create affordance.
+  useEffect(() => {
+    if (!initialDoc || !docsInfo || initialDocApplied.current === initialDoc) return;
+    if (!docTypes.some((doc) => doc.id === initialDoc)) return;
+    initialDocApplied.current = initialDoc;
+    tryTab(initialDoc);
+  }, [docTypes, docsInfo, initialDoc]);
 
   const requestMode = (nextMode: EditorMode) => {
     if (nextMode !== mode) tryTab(startingTabForMode(nextMode), undefined, nextMode);

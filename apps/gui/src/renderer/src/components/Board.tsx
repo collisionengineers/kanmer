@@ -10,7 +10,7 @@ interface BoardProps {
   items: Item[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onMove: (id: string, to: { status: string; position?: MovePosition }) => void;
+  onMove: (id: string, to: BoardMove) => void;
   /** Keyboard drag equivalent: move one stage left (-1) or right (+1). */
   onMoveRelative: (id: string, dir: -1 | 1) => void;
   onQuickAdd: (input: CreateItemInput) => void;
@@ -24,6 +24,13 @@ interface BoardProps {
   dispatching?: Set<string>;
   /** Card density preference (Phase 4.4): "compact" tightens padding/gaps. */
   density?: "comfortable" | "compact";
+}
+
+export interface BoardMove {
+  status: string;
+  position?: MovePosition;
+  /** Client coordinates from a drag drop; keyboard/menu moves omit this. */
+  anchor?: { x: number; y: number };
 }
 
 interface AreaGroup {
@@ -89,7 +96,13 @@ export function Board(props: BoardProps): JSX.Element {
   }, []);
 
   const onCardDrop = useCallback(
-    (statusId: string, targetId: string, edge: "before" | "after", dragged: string) => {
+    (
+      statusId: string,
+      targetId: string,
+      edge: "before" | "after",
+      dragged: string,
+      anchor: { x: number; y: number },
+    ) => {
       setDropHint(null);
       setDropTarget(null);
       if (!dragged) return;
@@ -100,6 +113,7 @@ export function Board(props: BoardProps): JSX.Element {
       onMove(dragged, {
         status: statusId,
         position: positionForDrop(column, targetId, edge, dragged),
+        anchor,
       });
     },
     [onMove],
@@ -173,7 +187,11 @@ export function Board(props: BoardProps): JSX.Element {
               setDropHint(null);
               setGated(null);
               const id = e.dataTransfer.getData("text/plain");
-              if (id) onMove(id, { status: status.id, position: "bottom" });
+              if (id) onMove(id, {
+                status: status.id,
+                position: "bottom",
+                anchor: { x: e.clientX, y: e.clientY },
+              });
             }}
           >
             {groups.map((group) => (
@@ -278,6 +296,7 @@ const Card = memo(function CardInner({
     targetId: string,
     edge: "before" | "after",
     dragged: string,
+    anchor: { x: number; y: number },
   ) => void;
   onDragBegin: (id: string) => void;
   onDragFinish: () => void;
@@ -323,6 +342,7 @@ const Card = memo(function CardInner({
           item.id,
           edgeOf(e.currentTarget, e.clientY),
           e.dataTransfer.getData("text/plain"),
+          { x: e.clientX, y: e.clientY },
         );
       }}
       onClick={() => onSelect(item.id)}

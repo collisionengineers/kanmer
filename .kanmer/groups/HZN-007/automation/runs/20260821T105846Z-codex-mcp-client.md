@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T03:19:22.137Z
+updated_at: 2026-08-22T08:01:40.564Z
 lane_limit: 3
 stop_reason:
 ---
@@ -671,3 +671,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T07:48:37.899Z — CORE-042 Review handoff: implementation commit aa6f9ddefe05aaa208fe2e00b06da019aaccb6d6 is pushed on core-042-protected-release/.worktrees/core-042 and PR #160 is open against main. The two-phase protected-main release path, pure helper/tests, AGENTS/FRD-021 update, report, checklist, and scratch are read back. Deterministic rails: helper 5/5, test:scripts 88/88, skills, AGENTS 31/31, diff-check, and build:core PASS; build:server and all-workspace typecheck retain the stale dispatchDeliverableProven core-dist baseline failure. PR verify was IN_PROGRESS and kanmer-gate QUEUED at handoff; no hosted PASS, release/tag/publisher/merge, or real updater evidence claimed. Ticket moved Implementing→Review through MCP; stop for independent review, no self-review/merge/cleanup.
 
 - 2026-08-22T07:49:26.925Z — CORE-042 hosted readback: PR #160 head aa6f9ddefe05aaa208fe2e00b06da019aaccb6d6 remains OPEN/BLOCKED. Run 32560533408 kanmer-gate job 97001287878 SUCCESS; authoritative verify job 97001287963 IN_PROGRESS. No overall hosted PASS, merge, release, tag, publisher, or cleanup claim; independent review remains required.
+
+- 2026-08-22T08:01:40.564Z — GUI-108 assigned to gui108-executor after complete recursive ticket/group/governing-doc/gate read. Ticket moved Backlog→Preparing, research/files/plan/checklist/open-questions were written and read back, then take_ticket recorded branch gui-108-actionable-gate-feedback and worktree .worktrees/gui-108 at Implementing. Scope is the renderer-only actionable gate-blocked move UX: preserve CH.getGateStatus, add drop anchoring, direct existing document-tab recovery/create affordance, and deterministic tests; no core/IPC redesign or unrelated GUI work. Independent Review is required; no self-review, merge, or cleanup.

@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T08:56:00Z
+updated_at: 2026-08-22T08:01:40.564Z
 ---
 
 # Current auto run — HZN-007
@@ -272,3 +272,5 @@ Last handoff: 2026-08-22T07:48:37.899Z — CORE-042 is Review on PR #160/head aa
 
 
 Hosted update: 2026-08-22T07:49:26.925Z — CORE-042 PR #160 kanmer-gate SUCCESS (run 32560533408/job 97001287878); verify remains IN_PROGRESS (job 97001287963). Ticket stays Review; no overall hosted PASS, merge, release, tag, publisher, or cleanup claim.
+
+Last handoff: 2026-08-22T08:01:40.564Z — GUI-108 is Implementing on gui-108-actionable-gate-feedback/.worktrees/gui-108 after MCP take; implementation and deterministic rails are pending, with independent Review required and no merge/cleanup.

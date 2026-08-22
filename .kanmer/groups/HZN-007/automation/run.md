@@ -174,3 +174,6 @@
 
 
 2026-08-22T11:50:45Z — CORE-049 independent review NEEDS-CHANGES: retry contract lacked per-attempt ownership revalidation; cumulative parent has unresolved claimant-overlap, cleanup-error, and token-path security threads. Created linked CORE-050 in Preparing to close all four before CORE-046/049 merge.
+
+
+2026-08-22T11:55:31Z — CORE-043 cumulative review found F-001/F-002/F-003 fixed by merged CORE-048, but parent traceability/hosted rerun stale and CORE-048 Verifying blocked parent merge. Removed only circular CORE-048 blocks edge via MCP; retained link and will verify child+parent together on merged main.

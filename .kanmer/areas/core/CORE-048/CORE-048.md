@@ -22,8 +22,7 @@ groups:
   - HZN-007
 links:
   - CORE-043
-blocks:
-  - CORE-043
+blocks: []
 refs:
   - docs/functional/frd/FRD-020-board-git-worktree-sync.md
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
@@ -33,7 +32,7 @@ prs:
   - '170'
 archived: false
 created: '2026-08-22T11:26:12.810Z'
-updated: '2026-08-22T11:46:09.152Z'
+updated: '2026-08-22T11:55:31.193Z'
 ---
 
 Remediate independent CORE-043 review blockers before merge: refresh cached syncStatus.branch after administrator handoff while the project stays open; clear or invalidate branch preference when no Git board is open; and remove the literal kanmer-board assumption from .github/workflows/pr.yml so the documented custom branch workflow keeps the hosted verify gate. Preserve ADR-0016 conservative protection inference as an explicit accepted risk. Link [[CORE-043]].

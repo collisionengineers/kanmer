@@ -72,3 +72,6 @@
 
 
 2026-08-22T08:32:18Z — CORE-026 moved Preparing→Implementing after FRD-026/ADR-0019, research, files, plan, checklist, and resolved questions gates passed. /root/gui082_executor owns core-026-project-declared-sources / .worktrees/core-026; source-preference scope is bounded to declared trust/applicability and bounded llms.txt handling, with no auto-install or unbounded crawl. Author stops at Review.
+
+
+2026-08-22T08:42:00Z — GUI-109 taken into Implementing by gui109-executor on gui-109-add-to-group / .worktrees/gui-109 after packet/context/gates read. Research/files/plan/checklist/open-questions are present; implementation is limited to existing group membership via the ticket ContextMenu, with independent Review required and no merge/cleanup by author.

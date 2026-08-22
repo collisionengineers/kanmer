@@ -736,6 +736,8 @@ function GitTab(): JSX.Element {
     {minutes > 0 && <label className="field"><span>Minutes</span><input type="number" min={1} step={1} value={minutes} onChange={(e) => setMinutes(Math.max(1, Math.trunc(Number(e.target.value) || 1)))} onBlur={() => void save()} /></label>}
     {!status?.available && !status?.boardRoot && !status?.error ? <p className="hint">Git sync is unavailable for this non-Git project.</p> : <>
       {status?.boardRoot && <p className="hint">Board worktree: <code>{status.boardRoot}</code>{status.lastSync ? ` · last sync ${status.lastSync}` : ""}</p>}
+      {status.handoffPending && <p className="error">{status.handoffPending.warning}</p>}
+      {status.handoffPending && <button className="ghost sm" onClick={() => void window.kanmer.confirmKanmerGitHandoff(client.projectId).then(setStatus)}>Mark hosted handoff complete</button>}
       {status.error && <p className="error">{status.error}</p>}
       {status.boardRoot && <button className="ghost sm" onClick={() => void window.kanmer.syncKanmerNow(client.projectId).then(setStatus)}>{status.paused || !status.available ? "Retry" : "Sync now"}</button>}
     </>}

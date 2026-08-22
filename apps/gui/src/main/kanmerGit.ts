@@ -14,6 +14,12 @@ const execFile = promisify(execFileCallback);
  */
 export const PROTECTED_BOARD_BRANCH = "kanmer-board";
 
+export interface BoardBranchHandoff {
+  from: string;
+  to: string;
+  warning: string;
+}
+
 export interface KanmerGitStatus {
   available: boolean;
   boardRoot: string | null;
@@ -21,6 +27,8 @@ export interface KanmerGitStatus {
   lastSync: string | null;
   error: string | null;
   paused: boolean;
+  /** A hosted Actions-variable handoff remains pending after a custom rename. */
+  handoffPending?: BoardBranchHandoff;
   /** A live worktree was observed on neither the cached nor requested branch. */
   branchMismatch?: boolean;
   /** The mismatch detector supplied the current error rather than preserving one. */
@@ -313,7 +321,15 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
       const renamed = await renameBoardBranch(boardRoot, branch);
       if (!renamed.ok) return { ...empty(branch, renamed.error), boardRoot: resolve(boardRoot) };
       await ensureIgnore(join(repoRoot, ".gitignore"), [".kanmer/", ".worktrees/"]);
-      return { available: true, boardRoot: resolve(boardRoot), branch, lastSync: null, error: renamed.error, paused: false };
+      return {
+        available: true,
+        boardRoot: resolve(boardRoot),
+        branch,
+        lastSync: null,
+        error: renamed.error,
+        paused: false,
+        ...(renamed.error && renamed.from ? { handoffPending: { from: renamed.from, to: branch, warning: renamed.error } } : {}),
+      };
     }
     const remoteExists = await git(repoRoot, ["ls-remote", "--exit-code", "--heads", "origin", `refs/heads/${branch}`]).then(() => true).catch(() => false);
     const localExists = await git(repoRoot, ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`]).then(() => true).catch(() => false);

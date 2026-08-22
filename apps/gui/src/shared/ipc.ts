@@ -87,6 +87,7 @@ export const CH = {
   setKanmerGitPreferences: "kanmer:setKanmerGitPreferences",
   getKanmerGitStatus: "kanmer:getKanmerGitStatus",
   syncKanmerNow: "kanmer:syncKanmerNow",
+  confirmKanmerGitHandoff: "kanmer:confirmKanmerGitHandoff",
   gitStatus: "kanmer:gitStatus",
   connectAgent: "kanmer:connectAgent",
   disconnectAgent: "kanmer:disconnectAgent",
@@ -365,6 +366,7 @@ export interface KanmerGitStatus {
   lastSync: string | null;
   error: string | null;
   paused: boolean;
+  handoffPending?: { from: string; to: string; warning: string };
   boardWorktree: BoardWorktreeHealth | null;
 }
 
@@ -523,6 +525,8 @@ export interface KanmerApi {
   setKanmerGitPreferences(prefs: KanmerGitPreferences): Promise<AppSettings>;
   getKanmerGitStatus(projectId: string): Promise<KanmerGitStatus>;
   syncKanmerNow(projectId: string): Promise<KanmerGitStatus>;
+  /** Acknowledge that the hosted KANMER_BOARD_BRANCH handoff is complete. */
+  confirmKanmerGitHandoff(projectId: string): Promise<KanmerGitStatus>;
   onGitStatus(cb: (status: KanmerGitStatus & { projectId: string }) => void): () => void;
   /** Persist the open-tab session (project roots + the active one). */
   setOpenTabs(openTabs: string[], activeTab: string): Promise<AppSettings>;

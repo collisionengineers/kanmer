@@ -99,6 +99,8 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  const ctx = __kanmerTest.contexts.get(repo) as { syncTimer?: ReturnType<typeof setInterval> } | undefined;
+  if (ctx?.syncTimer) clearInterval(ctx.syncTimer);
   __kanmerTest.contexts.delete(repo);
   rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
 });
@@ -202,6 +204,7 @@ describe("syncProject production Retry caller", () => {
       },
       watch: { close: async () => undefined },
       ownWrites: new Map<string, number>(),
+      syncTimer: undefined as ReturnType<typeof setInterval> | undefined,
       syncStatus: refusal,
     };
     __kanmerTest.contexts.set(repo, ctx as never);
@@ -211,5 +214,40 @@ describe("syncProject production Retry caller", () => {
     expect(result).toMatchObject({ available: true, branch: "team-board", boardRoot: protectedStatus.boardRoot, paused: false });
     expect(electronMocks.syncBoard).toHaveBeenCalledTimes(1);
     expect(await git(protectedStatus.boardRoot!, "symbolic-ref", "--short", "HEAD")).toBe("team-board");
+  }, 30_000);
+
+  it("re-arms automatic sync when Retry repairs an unavailable retained root", async () => {
+    mkdirSync(join(repo, ".kanmer"), { recursive: true });
+    writeFileSync(join(repo, ".kanmer", "version.json"), '{"format":3}\n', "utf8");
+    await git(repo, "add", "--", ".kanmer");
+    await git(repo, "commit", "-m", "board");
+
+    const protectedStatus = await ensureBoardWorktree(repo, "kanmer-board");
+    const refusal = await ensureBoardWorktree(repo, "team-board");
+    await git(protectedStatus.boardRoot!, "branch", "-m", "team-board");
+    await __kanmerTest.applyGitPreferences("team-board", 1);
+    const ctx = {
+      sourceRoot: repo,
+      boardRoot: protectedStatus.boardRoot!,
+      store: {
+        getBoardWithSource: async () => ({ source: "file" }),
+        listItems: async () => [],
+      },
+      watch: { close: async () => undefined },
+      ownWrites: new Map<string, number>(),
+      syncTimer: undefined as ReturnType<typeof setInterval> | undefined,
+      syncStatus: refusal,
+    };
+    __kanmerTest.contexts.set(repo, ctx as never);
+
+    try {
+      const result = await __kanmerTest.syncProject(repo);
+      expect(result).toMatchObject({ available: true, boardRoot: protectedStatus.boardRoot, branch: "team-board", paused: false });
+      expect(ctx.syncTimer).toBeDefined();
+    } finally {
+      if (ctx.syncTimer) clearInterval(ctx.syncTimer);
+      __kanmerTest.contexts.delete(repo);
+      await __kanmerTest.applyGitPreferences("kanmer-board", 0);
+    }
   }, 30_000);
 });

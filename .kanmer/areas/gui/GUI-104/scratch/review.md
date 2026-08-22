@@ -55,3 +55,13 @@ The complete remaining unresolved set is: `PRRT_kwDOT2PEds6bXBB_`, `PRRT_kwDOT2P
 
 - Four additional review findings from the cad3552 re-review were fixed: canonical project-key normalization, custom credential binding via --control-plane-api-key-ref, valid apostrophes/backticks in absolute executable paths, and auto-start error reporting. Regression coverage and manual guidance were updated.
 - Independent final review remains pending; hosted verify/kanmer-gate for this head are pending.
+
+## Independent final review — GUI-104 PR #157
+
+Requested head `37bb6644` was independently checked with focused 10/10 tests, full GUI 41 files/372 tests, GUI and root typechecks, GUI build, manual freshness, diff-check, and hosted verify/kanmer-gate evidence. That head remained NEEDS-CHANGES for five findings.
+
+The branch advanced during review to `561d42f3`. Its follow-up fixes the custom credential reference passed to `init`, canonical project-key queue/record handling on Windows, apostrophe/backtick acceptance in absolute executable paths, and auto-start error propagation. Those four dispositions are fixed and their GitHub threads were resolved.
+
+One blocker remains: persisted identity changes after an app restart are not detected. `register()` only reports `identityConflict` when an old record is already in the in-memory `records` map; after reload, it adds the new fingerprint/default profile while leaving the old persisted profile stranded. The reconcile/remove path therefore does not satisfy the migration-after-restart case (thread `PRRT_kwDOT2PEds6bXFOp`, unresolved).
+
+Verdict: NEEDS-CHANGES pending persisted-registration identity reconciliation/removal. No merge or cleanup performed.

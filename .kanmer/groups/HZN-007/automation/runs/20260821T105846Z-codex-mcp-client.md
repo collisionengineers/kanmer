@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T01:46:56.318Z
+updated_at: 2026-08-22T01:50:10.473Z
 lane_limit: 3
 stop_reason:
 ---
@@ -553,3 +553,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T01:46:13.143Z — CORE-040 independent review by /root/gui099_executor: commit 6f17bccfec7577c4a2645fa1abe2d5251aacb8c4 in .worktrees/core-040 is exactly one test-only ISO cutoff line before CORE-027's documented Done timestamp; canonical PR #96/no-shorthand assertions unchanged. CORE-039 dependency is explicit in packet, PR #148 body, and stack ancestry through 18143045/79c85e07. Focused release-notes 1/1, scripts 80/80, build, all-workspace typecheck, and diff-check exit 0. Verdict PASS; PR #148 remains OPEN, no merge, stage move, or cleanup.
 
 - 2026-08-22T01:46:56.318Z — CORE-040 review status correction: PR #148 closed as superseded at 2026-08-22T01:44:32Z without merge; commit 6f17bccf is stacked in still-open PR #145 (board records merge candidate ad8be25b). PASS verdict and green local rails are unchanged; CORE-040 remains Review/taken with no reviewer merge, stage move, or cleanup.
+
+- 2026-08-22T01:50:10.473Z — CORE-041 assigned from PR #145 hosted run 32544292566: smoke.mjs failed only because the Windows expectation hardcoded c:/ while canonicalProjectPath correctly mapped the POSIX-style fixture to the hosted d:/ drive. A separate test-only remediation is in flight; MCP-041 remains unmerged and blocked on a green stacked rail.

@@ -371,6 +371,7 @@ export interface KanmerGitStatus {
   handoffPending?: { from: string; to: string; warning: string };
   /** User-scoped native plugins whose staged board branch needs an explicit reconnect. */
   nativeReconnectRequired?: NativeReconnectRequirement;
+  providerReconciliationPending?: { providers: string[]; branch: string };
   boardWorktree: BoardWorktreeHealth | null;
 }
 

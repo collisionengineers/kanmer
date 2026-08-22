@@ -143,6 +143,9 @@ interface ProjectContext {
   lifecycle?: Promise<void>;
 }
 const contexts = new Map<string, ProjectContext>();
+let connectAgentOverride: typeof connectAgent | null = null;
+/** Serializes project open/close, Git preference changes and Connect IPC. */
+const appLifecycle: { lifecycle?: Promise<void> } = {};
 let remoteAccess: RemoteAccessManager | null = null;
 let openAITunnel: OpenAITunnelManager | null = null;
 let remoteQuitInProgress = false;
@@ -177,6 +180,49 @@ function requireRemoteAccess(): RemoteAccessManager {
 function requireOpenAITunnel(): OpenAITunnelManager {
   if (!openAITunnel) throw new Error("OPENAI_TUNNEL_MANAGER_NOT_READY");
   return openAITunnel;
+}
+
+const REGISTRATION_PROVIDERS: ConnectTarget[] = ["codex", "claude", "opencode"];
+
+function providerReconciliationMessage(failures: string[]): string {
+  return `Provider registration reconciliation failed — ${failures.join("; ")}`;
+}
+
+/** Retry the provider registrations that failed during a branch lifecycle. */
+async function reconcileProjectProviders(
+  ctx: ProjectContext,
+  providers: readonly string[] = REGISTRATION_PROVIDERS,
+  branch = ctx.syncStatus.branch,
+): Promise<boolean> {
+  if (!ctx.syncStatus.boardRoot) return false;
+  const failures: string[] = [];
+  for (const provider of providers) {
+    if (!REGISTRATION_PROVIDERS.includes(provider as ConnectTarget)) continue;
+    const result = await reconcileProviderRegistration(
+      provider as ConnectTarget,
+      ctx.sourceRoot,
+      ctx.syncStatus.boardRoot,
+      branch,
+    );
+    if (!result.ok) failures.push(`${provider}: ${result.output}`);
+  }
+  const previous = ctx.syncStatus.error;
+  if (failures.length > 0) {
+    ctx.syncStatus = {
+      ...ctx.syncStatus,
+      providerReconciliationPending: { providers: [...providers], branch },
+      error: [...new Set([ctx.syncStatus.error, providerReconciliationMessage(failures)].filter(Boolean))].join(" "),
+      paused: true,
+    };
+    return false;
+  }
+  const providerMarker = previous?.indexOf("Provider registration reconciliation failed —") ?? -1;
+  const preservedError = providerMarker >= 0 ? previous!.slice(0, providerMarker).trim() : previous;
+  const { providerReconciliationPending: _pending, ...withoutPending } = ctx.syncStatus;
+  ctx.syncStatus = providerMarker >= 0
+    ? { ...withoutPending, error: preservedError || null, paused: preservedError ? ctx.syncStatus.paused : false }
+    : withoutPending;
+  return true;
 }
 
 async function openAITunnelIdentity(ctx: ProjectContext) {
@@ -601,6 +647,10 @@ function startWatch(
 
 /** Open a project (or focus it if already open), building a per-project context. */
 async function openProject(root: string): Promise<OpenProjectResult> {
+  return withSyncLifecycles([appLifecycle], () => openProjectLocked(root));
+}
+
+async function openProjectLocked(root: string): Promise<OpenProjectResult> {
   const sourceStore = new KanmerStore(root);
   const projectId = sourceStore.paths.projectRoot; // canonical id (D2): dedups the same folder
   const existing = contexts.get(projectId);
@@ -621,26 +671,13 @@ async function openProject(root: string): Promise<OpenProjectResult> {
   if (syncStatus.available && syncStatus.boardRoot) {
     const nativeReconnectRequired = await observeKanmerBoardBranch(projectId, syncStatus.branch);
     if (nativeReconnectRequired) syncStatus.nativeReconnectRequired = nativeReconnectRequired;
-    const registrationFailures: string[] = [];
-    for (const provider of ["codex", "claude", "opencode"] as const) {
-      const result = await reconcileProviderRegistration(
-        provider,
-        projectId,
-        syncStatus.boardRoot,
-        syncStatus.branch,
-      );
-      if (!result.ok) registrationFailures.push(`${provider}: ${result.output}`);
-    }
-    if (registrationFailures.length > 0) {
-      syncStatus = {
-        ...syncStatus,
-        error: [...new Set([
-          syncStatus.error,
-          `Provider registration reconciliation failed — ${registrationFailures.join("; ")}`,
-        ].filter(Boolean))].join(" "),
-        paused: true,
-      };
-    }
+    const probeContext = {
+      sourceRoot: projectId,
+      boardRoot: syncStatus.boardRoot,
+      syncStatus,
+    } as ProjectContext;
+    await reconcileProjectProviders(probeContext);
+    syncStatus = probeContext.syncStatus;
   }
   // repoRoot is the source checkout: `refs` point at the repo's own /docs/,
   // which does not move into the board worktree. Passed explicitly because we
@@ -698,7 +735,7 @@ async function snapshotOf(ctx: ProjectContext): Promise<OpenProjectResult> {
 async function closeProject(projectId: string): Promise<void> {
   const ctx = contexts.get(projectId);
   if (!ctx) return;
-  await withSyncLifecycles([ctx], async () => {
+  await withSyncLifecycles([appLifecycle, ctx], async () => {
     if (contexts.get(projectId) !== ctx) return;
     if (openAITunnel) await openAITunnel.closeProject(projectId, await openAITunnelIdentity(ctx));
     await ctx.watch.close();
@@ -725,7 +762,7 @@ async function closeProject(projectId: string): Promise<void> {
  */
 async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number): Promise<AppSettings> {
   const projectContexts = [...contexts.values()];
-  return withSyncLifecycles(projectContexts, () => applyGitPreferencesLocked(kanmerBranch, gitSyncMinutes));
+  return withSyncLifecycles([appLifecycle, ...projectContexts], () => applyGitPreferencesLocked(kanmerBranch, gitSyncMinutes));
 }
 
 async function applyGitPreferencesLocked(kanmerBranch: string, gitSyncMinutes: number): Promise<AppSettings> {
@@ -743,11 +780,17 @@ async function applyGitPreferencesLocked(kanmerBranch: string, gitSyncMinutes: n
 async function applyGitPreferencesBody(kanmerBranch: string, gitSyncMinutes: number): Promise<AppSettings> {
   const current = readSettings();
   const requestedBranch = kanmerBranch.trim() || PROTECTED_BOARD_BRANCH;
+  const renameFailures: string[] = [];
+  const handoffReconnects: Array<{ projectId: string; branch: string }> = [];
   // An administrator can retarget and rename an open board worktree while the
   // GUI remains running. Refresh every cached branch before deciding whether
   // the protected-default refusal still applies.
-  await Promise.all([...contexts.values()].map(async (ctx) => {
+  await Promise.all([...contexts.entries()].map(async ([projectId, ctx]) => {
+    const previousBranch = ctx.syncStatus.branch;
     ctx.syncStatus = await refreshBoardBranchForPreference(ctx.syncStatus, requestedBranch);
+    if (!ctx.syncStatus.branchMismatch && previousBranch !== requestedBranch && ctx.syncStatus.branch === requestedBranch) {
+      handoffReconnects.push({ projectId, branch: requestedBranch });
+    }
   }));
   const hasOpenBoard = [...contexts.values()].some((ctx) => ctx.syncStatus.available && Boolean(ctx.syncStatus.boardRoot));
   const blockedBranchRefresh = [...contexts.values()].some((ctx) => ctx.syncStatus.branchMismatch === true);
@@ -765,7 +808,6 @@ async function applyGitPreferencesBody(kanmerBranch: string, gitSyncMinutes: num
   // others on the protected branch when the operator handoff is still needed.
   const guardedBranch = guardGitBranchPreference(current.kanmerBranch, requestedBranch, hasOpenBoard);
   const targetBranch = protectedOpenBoard || blockedBranchRefresh ? current.kanmerBranch : guardedBranch;
-  const settings = await setKanmerGitPreferences(targetBranch, gitSyncMinutes);
   if (protectedOpenBoard) {
     for (const [projectId, ctx] of contexts) {
       if (!ctx.syncStatus.available || !ctx.syncStatus.boardRoot || ctx.syncStatus.branch !== PROTECTED_BOARD_BRANCH) continue;
@@ -779,24 +821,26 @@ async function applyGitPreferencesBody(kanmerBranch: string, gitSyncMinutes: num
       if (ctx.syncStatus.available && boardRoot && shouldAttemptOrdinaryBranchRename(
         blockedBranchRefresh,
         branch,
-        settings.kanmerBranch,
+        targetBranch,
       )) {
-        const renamed = await renameBoardBranch(boardRoot, settings.kanmerBranch);
+        const renamed = await renameBoardBranch(boardRoot, targetBranch);
         // A failed rename leaves the worktree on its old branch, so keep
         // reporting that one — the board still works, it just did not move.
         ctx.syncStatus = renamed.ok
           ? {
               ...ctx.syncStatus,
-              branch: settings.kanmerBranch,
+              branch: targetBranch,
               error: renamed.error,
               paused: false,
               ...(renamed.error && renamed.from
-                ? { handoffPending: { from: renamed.from, to: settings.kanmerBranch, warning: renamed.error } }
+                ? { handoffPending: { from: renamed.from, to: targetBranch, warning: renamed.error } }
                 : {}),
             }
           : { ...ctx.syncStatus, error: renamed.error, paused: true };
+        if (!renamed.ok) renameFailures.push(`${projectId}: ${renamed.error ?? "branch rename failed"}`);
         if (renamed.ok) {
-          const nativeSettings = await markNativeReconnectRequired(projectId, settings.kanmerBranch);
+          handoffReconnects.push({ projectId, branch: targetBranch });
+          const nativeSettings = await markNativeReconnectRequired(projectId, targetBranch);
           ctx.syncStatus = {
             ...ctx.syncStatus,
             nativeReconnectRequired: nativeSettings.pendingNativeReconnects?.[projectId],
@@ -809,7 +853,7 @@ async function applyGitPreferencesBody(kanmerBranch: string, gitSyncMinutes: num
         if (renamed.ok && renamed.error && renamed.from) {
           await setKanmerGitHandoff(projectId, {
             from: renamed.from,
-            to: settings.kanmerBranch,
+            to: targetBranch,
             warning: renamed.error,
           });
         }
@@ -817,29 +861,20 @@ async function applyGitPreferencesBody(kanmerBranch: string, gitSyncMinutes: num
       }
     }
   }
-  if (requestedBranch !== current.kanmerBranch && !protectedOpenBoard && !blockedBranchRefresh) {
-    const registrationProviders: ConnectTarget[] = ["codex", "claude", "opencode"];
+  const persistedBranch = renameFailures.length === 0 ? targetBranch : current.kanmerBranch;
+  const settings = await setKanmerGitPreferences(persistedBranch, gitSyncMinutes);
+  if (requestedBranch !== current.kanmerBranch && !protectedOpenBoard && !blockedBranchRefresh && renameFailures.length === 0) {
     for (const [projectId, ctx] of contexts) {
       if (!ctx.syncStatus.available || !ctx.syncStatus.boardRoot || ctx.syncStatus.branch !== settings.kanmerBranch) continue;
-      const failures: string[] = [];
-      for (const provider of registrationProviders) {
-        const result = await reconcileProviderRegistration(
-          provider,
-          ctx.sourceRoot,
-          ctx.syncStatus.boardRoot,
-          settings.kanmerBranch,
-        );
-        if (!result.ok) failures.push(`${provider}: ${result.output}`);
-      }
-      if (failures.length > 0) {
-        ctx.syncStatus = {
-          ...ctx.syncStatus,
-          error: [...new Set([ctx.syncStatus.error, `Provider registration reconciliation failed — ${failures.join("; ")}`].filter(Boolean))].join(" "),
-          paused: true,
-        };
-      }
+      await reconcileProjectProviders(ctx, REGISTRATION_PROVIDERS, settings.kanmerBranch);
       mainWindow?.webContents.send(CH.gitStatus, { projectId, ...(await gitStatusForRenderer(ctx)) });
     }
+  }
+  for (const { projectId, branch } of handoffReconnects) {
+    const ctx = contexts.get(projectId);
+    if (!ctx) continue;
+    const nativeSettings = await markNativeReconnectRequired(projectId, branch);
+    ctx.syncStatus = { ...ctx.syncStatus, nativeReconnectRequired: nativeSettings.pendingNativeReconnects?.[projectId] };
   }
   return settings;
 }
@@ -911,6 +946,10 @@ async function syncProjectLocked(projectId: string, ctx: ProjectContext, automat
     return blocked;
   }
   ctx.syncStatus = await syncBoard(ctx.syncStatus);
+  const pendingProviders = ctx.syncStatus.providerReconciliationPending;
+  if (pendingProviders && shouldRunAutomaticSync(ctx.syncStatus)) {
+    await reconcileProjectProviders(ctx, pendingProviders.providers, pendingProviders.branch);
+  }
   if (retryRequested && shouldRunAutomaticSync(ctx.syncStatus)) {
     armSyncTimer(projectId, ctx, readSettings().gitSyncMinutes);
   }
@@ -935,8 +974,38 @@ async function confirmKanmerGitHandoff(projectId: string): Promise<KanmerGitIpcS
   });
 }
 
+async function connectProject(projectId: string, target: ConnectTarget) {
+  const ctx = requireCtx(projectId);
+  return withSyncLifecycles([appLifecycle, ctx], async () => {
+    const result = await (connectAgentOverride ?? connectAgent)(target, ctx.sourceRoot, ctx.boardRoot, {}, readSettings().kanmerBranch);
+    if (result.ok && (target === "grok" || target === "antigravity")) {
+      const settings = await clearNativeReconnectRequired(projectId, target);
+      for (const [id, project] of contexts) {
+        const pending = settings.pendingNativeReconnects?.[id];
+        if (pending) project.syncStatus = { ...project.syncStatus, nativeReconnectRequired: pending };
+        else {
+          const { nativeReconnectRequired: _native, ...withoutNative } = project.syncStatus;
+          project.syncStatus = withoutNative;
+        }
+        // Renderer contexts filter these events by projectId, so keep the
+        // loop's id rather than the initiating Connect project's id.
+        mainWindow?.webContents.send(CH.gitStatus, { projectId: id, ...(await gitStatusForRenderer(project)) });
+      }
+    }
+    return result;
+  });
+}
+
+/** Test-only window injection for production-caller broadcast assertions. */
+const setMainWindowForTest = (window: BrowserWindow | null): void => {
+  mainWindow = window;
+};
+const setConnectAgentForTest = (agent: typeof connectAgent | null): void => {
+  connectAgentOverride = agent;
+};
+
 /** Test seam for the production sync caller; not part of the renderer API. */
-export const __kanmerTest = { contexts, openProject, closeProject, syncProject, applyGitPreferences, confirmKanmerGitHandoff };
+export const __kanmerTest = { contexts, openProject, closeProject, syncProject, applyGitPreferences, confirmKanmerGitHandoff, connectProject, setMainWindowForTest, setConnectAgentForTest };
 
 // The card context menu is drawn by the renderer now (FRD-019 R6). A native
 // Menu cannot read the app's CSS variables, so it was always slightly wrong in
@@ -1128,26 +1197,26 @@ function registerIpc(): void {
   ipcMain.handle(CH.setOpenTabs, (_e, openTabs: string[], activeTab: string) =>
     setOpenTabs(openTabs, activeTab),
   );
-  ipcMain.handle(CH.connectAgent, (_e, p: string, target: ConnectTarget) => {
+  ipcMain.handle(CH.connectAgent, (_e, p: string, target: ConnectTarget) => connectProject(p, target));
+  ipcMain.handle(CH.disconnectAgent, (_e, p: string, target: ConnectTarget) => {
     const ctx = requireCtx(p);
-    return connectAgent(target, ctx.sourceRoot, ctx.boardRoot, {}, readSettings().kanmerBranch).then(async (result) => {
+    return withSyncLifecycles([appLifecycle, ctx], async () => {
+      const result = await disconnectAgent(target, ctx.sourceRoot);
       if (result.ok && (target === "grok" || target === "antigravity")) {
         const settings = await clearNativeReconnectRequired(p, target);
-        const pending = settings.pendingNativeReconnects?.[p];
-        ctx.syncStatus = pending
-          ? { ...ctx.syncStatus, nativeReconnectRequired: pending }
-          : (() => {
-              const { nativeReconnectRequired: _native, ...withoutNative } = ctx.syncStatus;
-              return withoutNative;
-            })();
-        mainWindow?.webContents.send(CH.gitStatus, { projectId: p, ...(await gitStatusForRenderer(ctx)) });
+        for (const [projectId, project] of contexts) {
+          const pending = settings.pendingNativeReconnects?.[projectId];
+          if (pending) project.syncStatus = { ...project.syncStatus, nativeReconnectRequired: pending };
+          else {
+            const { nativeReconnectRequired: _native, ...withoutNative } = project.syncStatus;
+            project.syncStatus = withoutNative;
+          }
+          mainWindow?.webContents.send(CH.gitStatus, { projectId, ...(await gitStatusForRenderer(project)) });
+        }
       }
       return result;
     });
   });
-  ipcMain.handle(CH.disconnectAgent, (_e, p: string, target: ConnectTarget) =>
-    disconnectAgent(target, requireCtx(p).sourceRoot),
-  );
   ipcMain.handle(CH.listProviders, () => listProviders());
   // Staleness walks artefacts in the source checkout, so it is deliberately a
   // cold read instead of part of snapshotOf() or watcher-driven board refresh.

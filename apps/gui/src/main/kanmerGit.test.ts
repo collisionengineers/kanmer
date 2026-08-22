@@ -164,6 +164,19 @@ describe("renameBoardBranch", () => {
     expect(result).toEqual({ ok: true, from: "team-board", error: null });
     expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("solo-board");
   });
+
+  realGitTest("keeps a push failure actionable for the hosted handoff", async () => {
+    const created = await ensureBoardWorktree(repo, "team-board");
+    const boardRoot = created.boardRoot!;
+    await git(boardRoot, "remote", "set-url", "origin", join(dir, "missing-origin.git"));
+
+    const result = await renameBoardBranch(boardRoot, "renamed-board");
+
+    expect(result).toMatchObject({ ok: true, from: "team-board" });
+    expect(result.error).toContain("update KANMER_BOARD_BRANCH to renamed-board");
+    expect(result.error).toContain("before deleting retained remote branch team-board");
+    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("renamed-board");
+  });
 });
 
 describe("inspectBoardWorktree", () => {

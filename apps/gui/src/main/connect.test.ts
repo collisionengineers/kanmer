@@ -209,6 +209,9 @@ describe("Grok native plugin lifecycle (MCP-014)", () => {
             board_root: identity.boardRoot,
             repo_root: identity.repoRoot,
             format: identity.format,
+            board_expected_branch: "release-board",
+            board_actual_branch: "release-board",
+            board_on_expected_branch: true,
           }),
           stderr: "",
         };
@@ -296,6 +299,9 @@ describe("Antigravity native plugin lifecycle (MCP-015)", () => {
             board_root: identity.boardRoot,
             repo_root: identity.repoRoot,
             format: identity.format,
+            board_expected_branch: "release-board",
+            board_actual_branch: "release-board",
+            board_on_expected_branch: true,
           }),
           stderr: "",
         };

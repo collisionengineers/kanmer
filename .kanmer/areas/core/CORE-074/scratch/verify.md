@@ -1,0 +1,1 @@
+2026-08-22 verify blocker: origin/main is 34245be039e8fd8395b5e31835602c54e62e98a4. Recorded commits 59e7e0fe/c8ee9a4e are not ancestors of origin/main; PR #193 merged into cumulative feature branches only. No merged-main proof, Done move, or cleanup claimed; retain .worktrees/core-074 / core-074-atomic-ignore-merge.

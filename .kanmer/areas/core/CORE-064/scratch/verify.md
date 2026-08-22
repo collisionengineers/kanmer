@@ -1,0 +1,1 @@
+2026-08-22 verify blocker: origin/main is 34245be039e8fd8395b5e31835602c54e62e98a4. Recorded commits c8efb926/17cdb668 are not ancestors of origin/main; PR #185 merged into core-058-board-ignore-plugin-artifact only. No merged-main proof, Done move, or cleanup claimed; retain .worktrees/core-064 / core-064-preserve-root-rename.

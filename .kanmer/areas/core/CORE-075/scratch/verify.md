@@ -1,0 +1,1 @@
+2026-08-22 verify blocker: ticket is Verifying but has no recorded commits or PR and branch core-075-refresh-071-packet has no shipped merge target. No merged-main proof, Done move, or cleanup claimed; retain .worktrees/core-075 / core-075-refresh-071-packet.

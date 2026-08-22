@@ -1,0 +1,1 @@
+2026-08-22 verify blocker: origin/main is 34245be039e8fd8395b5e31835602c54e62e98a4. Recorded commits 9abfc9f4/ceaab8d4/d4dee4bb/271790e5 are not ancestors of origin/main; PRs #194/#196 merged into cumulative feature branches only. No merged-main proof, Done move, or cleanup claimed; retain .worktrees/core-072 / core-072-resume-orphan-migration.

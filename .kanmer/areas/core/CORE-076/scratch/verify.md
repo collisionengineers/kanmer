@@ -1,0 +1,1 @@
+2026-08-22 verify blocker: origin/main is 34245be039e8fd8395b5e31835602c54e62e98a4. Recorded commits ceaab8d4/d4dee4bb are not ancestors of origin/main; PR #196 merged into core-072-resume-orphan-migration only. No merged-main proof, Done move, or cleanup claimed; retain .worktrees/core-076 / core-076-retry-orphan-cleanup.

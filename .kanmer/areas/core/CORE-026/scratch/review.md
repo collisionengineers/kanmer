@@ -164,3 +164,143 @@ NEEDS-CHANGES. I re-gathered the live PR #163 head, all 21 unresolved Codex revi
 ## Scope and residual risk
 
 The implementation's core/MCP source contract, bounded cache, generated plugin, skills, and governing docs are materially in scope. No merge, move, cleanup, or source changes were performed. The accepted-risk items are explicitly named above; open blocker/major findings remain merge-blocking.
+
+---
+kind: review-attestation
+pr: "163"
+head_sha: "e794cbf742f6103cee015d11ef51b867915445a1"
+base_sha: "84a20f8414264f65f6d851ca51849af89c80acf9"
+verdict: needs-changes
+reviewer: "gui099-executor"
+independent: true
+plan_hash: "9916aa9641b6a15d"
+ticket_updated: "2026-08-22T16:52:34.040Z"
+findings:
+  - id: F-001
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "CORE-044/045/046/047/049/050 redirect validation and DNS-before-every-hop controls are present; source and HTTP regressions pass."
+  - id: F-002
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Board/source configuration concurrency handling is covered by the cumulative remediation and inherited core rails pass."
+  - id: F-003
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Atomic cache writes and cross-process lock/recovery behavior are covered by CORE-044/045/046/047/049/050."
+  - id: F-004
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "AGENTS, skills, tool-reference, generated plugin, and roster were refreshed; docs/skills/plugin rails pass."
+  - id: F-005
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "Aggregate byte enforcement remains covered by source regressions and the 19/19 MCP source suite."
+  - id: F-006
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Root and linked query-credential handling is covered by the cumulative source/HTTP remediation."
+  - id: F-007
+    severity: minor
+    disposition: accepted-risk
+    reason: "Linked-page freshness on a root 304 remains bounded by the documented cache policy and is outside the first-release separate revalidation guarantee."
+  - id: F-008
+    severity: minor
+    disposition: accepted-risk
+    reason: "The bounded project-local source cache is specified by FRD-027/ADR-0020; cumulative board-ignore work now protects its derived files."
+  - id: F-009
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Remote source fetch applies HTTPS destination policy, DNS revalidation, pinned requests, hop limits, and deadlines; source rails pass."
+  - id: F-010
+    severity: minor
+    disposition: fixed-in-cumulative-stack
+    reason: "Empty selector/global semantics are covered by the cumulative source contract and tests."
+  - id: F-011
+    severity: minor
+    disposition: fixed-in-cumulative-stack
+    reason: "Canonical source identity and duplicate handling are covered by the cumulative source contract."
+  - id: F-012
+    severity: minor
+    disposition: fixed-in-cumulative-stack
+    reason: "Redirected-root relative-link resolution is covered by the source fetch remediation."
+  - id: F-013
+    severity: minor
+    disposition: fixed-in-cumulative-stack
+    reason: "Direct documentation-page budgeting and non-document links are covered by source regressions."
+  - id: F-014
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "The MCP source suite is explicitly run and passed 19/19 in this review; the broader local rails also pass."
+  - id: F-015
+    severity: minor
+    disposition: fixed-in-cumulative-stack
+    reason: "Fragment normalization is covered by the source fetch remediation."
+  - id: F-016
+    severity: minor
+    disposition: fixed-in-cumulative-stack
+    reason: "Unavailable declared sources are represented and skipped by the refreshed skill guidance."
+  - id: F-017
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "MCP source inputs reuse the core schema authority; typecheck/source rails pass."
+  - id: F-018
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "Missing/unsupported content types are handled by the bounded fetch contract and 19/19 source tests."
+  - id: F-019
+    severity: minor
+    disposition: accepted-risk
+    reason: "GUI source editing/discovery remains explicitly deferred by the plan; no GUI source editor is claimed in this review."
+  - id: F-020
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Linked query credentials are rejected or stripped by the cumulative source fetch implementation."
+  - id: F-021
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "Failed oversized linked downloads charge aggregate bytes and are covered by source regressions."
+  - id: F-022
+    severity: blocker
+    disposition: needs-changes
+    reason: "Hosted verify run 32585991850/job 97062323619 is red: apps/gui kanmerGit.test.ts reports 409/412 with three failures in orphan cleanup and first-time local/remote attachment tests. Expected paths use the Windows 8.3 spelling C:\Users\RUNNER~1\AppData\Local\Temp\..., while the implementation returns the canonical long spelling C:\Users\runneradmin\AppData\Local\Temp\.... The test file already defines pathIdentity but these assertions compare path spellings directly. This is a deterministic Windows CI portability failure; the authoritative verify rail is not green until the assertions compare filesystem identity or the contract is otherwise made explicit."
+---
+
+# Independent review — CORE-026 cumulative PR #163
+
+## Verdict
+
+NEEDS-CHANGES. The exact cumulative PR head is e794cbf742f6103cee015d11ef51b867915445a1, based on main 84a20f8414264f65f6d851ca51849af89c80acf9. The prior CORE-026 source/security findings are reconciled by the merged CORE-044 remediation and its descendants: no new source trust, redirect/SSRF/DNS, credential, bounded-fetch, cache-lock, schema, or documentation/roster blocker was found. However, the current authoritative hosted verify rail is red on three deterministic Windows path-spelling assertions, so this PR is not review-passable until F-022 is fixed or explicitly remediated and re-verified.
+
+## Exact cumulative scope and lineage
+
+The current tree contains the CORE-026 implementation plus the reachable CORE-044 merge e794cbf742f6103cee015d11ef51b867915445a1. The content tree is unchanged from the independently reviewed CORE-044 cumulative head 5053af23b87fe591015b14042b920c4cf41259b4 except for merge metadata; the generated plugin artifact is unchanged. The cumulative diff is confined to the declared source/MCP/core/GUI synchronization, lock/DNS/HTTP hardening, board-ignore recovery, generated plugin, governing docs, AGENTS/skills/tool-reference, and their tests.
+
+## Hosted evidence
+
+- PR #163 head: e794cbf742f6103cee015d11ef51b867915445a1; base: 84a20f8414264f65f6d851ca51849af89c80acf9.
+- Run 32585991850, kanmer-gate job 97062323501: PASS.
+- Run 32585991850, verify job 97062323619: FAILURE.
+- Failure detail: apps/gui had 46 passed files and 1 failed file, 409 passed tests and 3 failed tests out of 412. The failing tests are retries source cleanup after the orphan board commit succeeds, preserves the root when first-time local attachment ignore fails, and preserves the root when first-time remote attachment ignore fails. Each expected C:\Users\RUNNER~1\AppData\Local\Temp\... and received C:\Users\runneradmin\AppData\Local\Temp\....
+- This is a hosted CI/test portability failure, not evidence of a source-trust bypass; it remains merge-blocking until corrected because npm run verify is the authoritative rail.
+
+## Local exact-head evidence
+
+All commands ran from detached worktree .worktrees/review-core026-e794 at the exact head:
+
+- npm install --ignore-scripts --no-audit --no-fund --prefer-offline: exit 0.
+- npm run build: exit 0.
+- npm run test -w @kanmer/core: exit 0, 303/303.
+- node --test packages/mcp-server/src/sources.test.mjs: exit 0, 19/19.
+- npm run typecheck: exit 0.
+- npm run test:scripts: exit 0, 88/88.
+- npm run verify:docs: exit 0.
+- npm run check:manual: exit 0.
+- git diff --check 84a20f8414264f65f6d851ca51849af89c80acf9..e794cbf742f6103cee015d11ef51b867915445a1: exit 0.
+- Normal non-linked checkout plugin parity at the unchanged CORE-044 content tree: npm install, build, and npm run plugin:check exit 0; 37 tools and generated artifact byte parity verified. The current e794 merge adds no plugin content delta.
+
+No source, ticket stage, merge, or cleanup was performed. Hosted/live external provider, live DNS rebinding, Windows filesystem race timing beyond deterministic fixtures, packaged app, and GUI visual evidence remain INCONCLUSIVE where not directly exercised.
+
+## Disposition
+
+F-001..F-006 and F-009..F-018/F-020/F-021 are fixed in the cumulative CORE-044 remediation chain and are supported by the exact-head source/core/MCP/docs/plugin rails above. F-007, F-008, and F-019 remain explicit accepted scope/cache risks from the prior review. F-022 is the sole current blocker: normalize the three expected board-root assertions through the existing pathIdentity helper (or otherwise assert the product's canonical path contract), then rerun the hosted verify rail and replace this attestation.

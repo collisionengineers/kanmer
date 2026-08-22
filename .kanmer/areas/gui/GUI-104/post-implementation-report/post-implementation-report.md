@@ -29,3 +29,15 @@
 ## Scope and safety
 
 No API-key value is persisted, logged, sent in IPC, or included in board documents. No Cloudflare, MCP-015, GUI-106, or unrelated dispatch/provider source was changed. External/manual packaged update and control-plane evidence remain INCONCLUSIVE.
+
+## Review finding F-001 disposition
+
+The canonical server invocation now propagates its non-secret environment into both tunnel-client `init` and `run` child processes. This preserves `ELECTRON_RUN_AS_NODE=1` for the packaged Electron-as-Node MCP target without persisting or logging the environment. Added a spawn-environment assertion; focused manager + Settings tests remain 6/6 PASS.
+
+Updated source head: `59a2f3b1` (PR #157).
+
+## Review finding F-001 disposition
+
+The canonical server invocation now propagates its non-secret environment into both tunnel-client `init` and `run` child processes. This preserves `ELECTRON_RUN_AS_NODE=1` for the packaged Electron-as-Node MCP target without persisting or logging the environment. Added a spawn-environment assertion; focused manager + Settings tests remain 6/6 PASS.
+
+Updated source head: `59a2f3b1` (PR #157).

@@ -41,3 +41,9 @@
 
 
 2026-08-22T06:21:52Z — GUI-104 Review handoff prepared by gui-104-executor: source a531a7c6ac4e2c00f24828e17fc174fc1af4ca0a, PR #157, branch gui-104-openai-tunnel, worktree .worktrees/gui-104. Existing DOC-010-linked FRD-022/FRD-024 refs satisfy the governing-doc gate; FRD-026 is authored in the PR and docs_todo is cleared. Deterministic focused/renderer/manual rails pass. Full GUI dispatch/provider baseline failures and real OpenAI two-project/listener proof remain explicitly INCONCLUSIVE. Author stops at Review for independent root review; no merge or cleanup.
+
+
+2026-08-22T06:28:58Z — GUI-104 review F-001 fixed: serverInvocation.env is propagated into tunnel-client init/run, preserving packaged ELECTRON_RUN_AS_NODE=1; spawn-env test added. New source head 59a2f3b1, PR #157. Focused 6/6 and renderer/manual/diff rails pass; full GUI baseline dispatch/provider failures and real OpenAI two-project/listener proof remain INCONCLUSIVE. Ticket stays Review for independent re-review; no merge or cleanup.
+
+
+2026-08-22T06:29:10Z — GUI-104 review F-001 fixed: serverInvocation.env is propagated into tunnel-client init/run, preserving packaged ELECTRON_RUN_AS_NODE=1; spawn-env test added. New source head 59a2f3b1, PR #157. Focused 6/6 and renderer/manual/diff rails pass; full GUI baseline dispatch/provider failures and real OpenAI two-project/listener proof remain INCONCLUSIVE. Ticket stays Review for independent re-review; no merge or cleanup.

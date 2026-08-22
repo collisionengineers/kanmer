@@ -1,1 +1,5 @@
 2026-08-22 — Existing DOC-010-linked FRD-022/FRD-024 refs satisfy the governing-doc gate and docs_todo is cleared through local MCP fallback; FRD-026 is authored in source PR #157. Source a531a7c6 / PR #157. Focused 6/6, renderer typecheck, manual freshness and diff checks PASS. Full GUI baseline dispatch/provider failures and external two-project listener/control-plane proof remain INCONCLUSIVE; see checklist/report.
+
+2026-08-22 review F-001 fixed: propagated serverInvocation.env into tunnel-client init/run child environments; added ELECTRON_RUN_AS_NODE spawn assertion. New head 59a2f3b1 pushed to PR #157. Focused 6/6 and renderer typecheck/diff checks pass; ticket remains Review for independent re-review.
+
+2026-08-22 review F-001 fixed: propagated serverInvocation.env into tunnel-client init/run child environments; added ELECTRON_RUN_AS_NODE spawn assertion. New head 59a2f3b1 pushed to PR #157. Focused 6/6 and renderer typecheck/diff checks pass; ticket remains Review for independent re-review.

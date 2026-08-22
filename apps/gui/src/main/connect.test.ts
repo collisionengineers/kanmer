@@ -60,6 +60,11 @@ async function writeTree(root: string, files: Record<string, string>): Promise<v
 const missing = async (...segments: string[]) =>
   expect(readFile(join(...segments), "utf8")).rejects.toThrow();
 
+const antigravityAbsentCommandRunner = async (command: string) => {
+  if (command === "agy plugin list") return { stdout: "No imported plugins.", stderr: "" };
+  throw new Error(`unexpected command: ${command}`);
+};
+
 describe("bundled skill removal", () => {
   it("removes only bundled children and preserves unknown skills and files byte-for-byte", async () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-connect-"));
@@ -154,7 +159,7 @@ describe("registration ownership (GUI-079)", () => {
     );
     await writeFile(join(root, "AGENTS.md"), "# Guide\n");
 
-    const result = await disconnectAgent("antigravity", root);
+    const result = await disconnectAgent("antigravity", root, { commandRunner: antigravityAbsentCommandRunner });
 
     expect(result.ok).toBe(true);
     expect(result.output).toContain("no connected copy-skills host remains");
@@ -304,7 +309,7 @@ describe("disconnect peer safety", () => {
     await mkdir(join(root, ".agents"), { recursive: true });
     await writeFile(join(root, ".agents", "mcp_config.json"), JSON.stringify({ mcpServers: { kanmer: {} } }));
     await writeFile(join(root, "opencode.json"), "{ malformed");
-    const result = await disconnectAgent("antigravity", root);
+    const result = await disconnectAgent("antigravity", root, { commandRunner: antigravityAbsentCommandRunner });
     expect(result.ok).toBe(true);
     expect(result.output).toContain("AGENTS.md block retained for another connected host");
   });
@@ -498,7 +503,7 @@ describe("disconnect and provider-specific project skill directories", () => {
       ".agents/skills/.kanmer-skills-version": roster,
     });
 
-    const result = await disconnectAgent("antigravity", root);
+    const result = await disconnectAgent("antigravity", root, { commandRunner: antigravityAbsentCommandRunner });
 
     expect(result.ok).toBe(true);
     expect(result.output).toContain("bundled copied skills removed");

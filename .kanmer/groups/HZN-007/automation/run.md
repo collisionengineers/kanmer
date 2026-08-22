@@ -60,3 +60,6 @@
 
 
 ## CORE-025 closeout — 2026-08-22T08:56:00Z\n\n- CORE-025 is Done after PR #159 merged to main as c8ea0b778895b0a76d9e32152a1f58c7b3b3d77b.\n- Final independent review PASS at 42f0ace6; all six findings were fixed, including dangling blocker preservation; all review threads resolved.\n- Hosted run 32560430127 verify and kanmer-gate PASS. Merged-main focused rails: core 14/14, check-pr 5/5, typechecks/builds/diff-check PASS.\n- Direct board-push non-trigger observation remains INCONCLUSIVE because workflow is pull_request-only.\n- Worktree .worktrees/core-025 and local/remote branch core-025-phase-2-gate removed after release.\n
+
+
+2026-08-22T08:09:30Z — CORE-042 closed. PR #160 merged as e141dca74bec48e7e8068b767f6db9e7a5c41322 after independent review PASS, hosted verify/kanmer-gate PASS, and merged-main scripts/core build verification PASS. Protected-main release flow now uses --ticket <id>, a standalone Kanmer footer, and a post-merge SHA. Public tag/assets, release visibility, and real two-version updater evidence remain INCONCLUSIVE; no external success claimed. Worktree/branch removed and ticket released.

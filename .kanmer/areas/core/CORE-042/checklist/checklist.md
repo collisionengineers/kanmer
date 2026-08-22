@@ -37,3 +37,14 @@
 - [ ] Live GitHub required-check/authorized-merge, tag upload/visibility, and real
   packaged two-version updater evidence require the human/operator post-merge
   publish phase and are not claimed by this implementation lane.
+
+## Closeout — CORE-042
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; ticket worktree removed
+- [x] branch removed after merged PR
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

@@ -224,6 +224,14 @@ board branch, and MCP is already rooted there — never create, switch or push t
 branch yourself. Your own ticket worktree is a separate thing, recorded by
 `take_ticket`.
 
+The board branch convention is the repository variable `KANMER_BOARD_BRANCH`,
+falling back to `kanmer-board` when it is unset. A branch rename is an
+administrator handoff: retarget branch protection and required checks, update
+the repository variable, and only then reconcile the board worktree and remove
+old refs. Agents must not mutate protected refs, branch protection, or repository
+variables; stop and report when the observed branch and configured convention
+disagree.
+
 - Start every session with `get_status`, then `list_board` / `list_items` to find your ticket.
 - **Which documents a ticket needs depends on its profile, not on a fixed pipeline.** Call `get_doc_gates <id>` before every move. Not `board.yml` — requirements are injected at resolve time, so its `profiles:` block is not the effective set.
 - Stages: backlog → preparing → implementing → review → verifying → done. **A move crosses at most one gated boundary**, so walk the stages one at a time; a jump is refused even when every document exists.

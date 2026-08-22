@@ -104,7 +104,7 @@ for (const p of files) {
     refs.get(name).push(rel(p));
   }
 }
-const dangling = [...refs.keys()].filter((n) => !roster.has(n) && n !== "kanmer-mcp");
+const dangling = [...refs.keys()].filter((n) => !roster.has(n) && n !== "kanmer-mcp" && n !== "kanmer-board");
 dangling.forEach((n) =>
   console.log(`      ${n} referenced by ${[...new Set(refs.get(n))].join(", ")}`),
 );

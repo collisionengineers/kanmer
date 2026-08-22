@@ -28,11 +28,14 @@ refs:
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
 commits:
   - 13b6ce22a8363c0f467e96c775eb9a09891b7bb2
+  - b2c51779a4ee0a5d95c8b3bce51cd4408490dc68
+  - fcd998550714811edac99032ea7118f9b2084d38
 prs:
   - '202'
+  - '204'
 archived: false
 created: '2026-08-22T18:00:07.452Z'
-updated: '2026-08-22T18:16:48.945Z'
+updated: '2026-08-22T18:43:49.116Z'
 ---
 
 Blocking remediation from the current-head audit of PR #163 (3a05ab7a21f55152a4f493169300ac9e622baab7). Resolve the newest valid inline findings #3836536172 (preserve validators across same-origin manifest redirects), #3836536170 (cancel response bodies on every early-abandon path), #3836536166 (wait/reuse an active refresh beyond the 2.1-second lock retry window), #3836536177 (request identity encoding or decode Content-Encoding), #3836612410 (charge partial body-read failures against the aggregate byte budget), #3836612417 (stop collecting Markdown links at the 32-page cap), and #3836612420 (surface uncached linked-page 304 instead of caching an empty document). Add deterministic regressions, preserve exact failed/INCONCLUSIVE evidence, and update the cumulative CORE-026 packet. This ticket is linked to and blocks [[CORE-026]].

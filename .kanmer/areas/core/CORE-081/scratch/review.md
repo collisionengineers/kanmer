@@ -90,3 +90,5 @@ Reviewed exact cumulative target `fcd998550714811edac99032ea7118f9b2084d38` on `
 ### Verdict and state
 
 NEEDS-CHANGES. No traceability update or Review→Verifying move was made for CORE-081; its existing block on CORE-026 remains. CORE-086 is the required artifact remediation. CORE-026 was not merged, verified, or closed.
+
+Correction to the preceding verdict paragraph: after recording NEEDS-CHANGES, CORE-081 traceability was updated via MCP to commits `13b6ce22`, `b2c51779`, `fcd99855` and PRs `202`, `204`. Its `blocks: [CORE-026]` edge and Review stage were intentionally retained because CORE-086 remains blocking; no Review→Verifying move was made.

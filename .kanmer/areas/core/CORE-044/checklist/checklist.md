@@ -29,3 +29,5 @@
 - [x] Proof written and read back for merged origin/main fdaededc.
 - [x] PR #165 confirmed MERGED on 2026-08-22T16:51:48Z.
 - [ ] Worktree and branch cleanup pending; release_ticket follows cleanup.
+
+- [x] Exact .worktrees/core-044 and core-044-source-fetch-remediation removed; git worktree prune completed.

@@ -216,3 +216,16 @@ The remaining live-run boxes are intentionally unticked: this worktree has no Wr
 - [x] Test idempotent fixture close and assert temporary project removal.
 
 Live named-tunnel, DNS/TLS, Worker deployment, token rotation over a hosted route, restart invalidation, GUI multi-project, and provider teardown remain explicitly INCONCLUSIVE without protected environment inputs.
+
+# Closeout checklist
+
+## Closeout — MCP-028
+
+- [x] PR merge verified (PR #154 state MERGED; merge commit 710bddff6d9e1672e8fea38467f3e10848265aad)
+- [x] proof.md finalised (merged-main rails, hosted verify, and external INCONCLUSIVE boundary recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, deterministic proof, protected Cloudflare follow-up)
+- [ ] cd out of worktree; git worktree remove .worktrees/mcp-028
+- [ ] git branch -d mcp-028-remote-access-integration
+- [ ] git fetch --prune + git worktree prune
+- [ ] take_ticket action: release

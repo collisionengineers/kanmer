@@ -10,14 +10,14 @@ import type { McpSessions } from "./ipc.js";
  *       | ? { $_.Path.StartsWith('$INSTDIR') }
  *       | % { Stop-Process -Force }
  *
- * — it kills by PATH PREFIX, not by image name. And `connect.ts` registers the
- * agent's MCP server as `command = process.execPath`, i.e. the installed
- * Kanmer.exe itself, run with ELECTRON_RUN_AS_NODE=1. So the agent's MCP server
- * is a process under the install dir, and an update force-kills it. The
- * updater's `--updated` flag suppresses the installer's prompt, so this happens
- * with no dialog of its own.
+ * — it kills by PATH PREFIX, not by image name. Legacy registrations still
+ * launch `process.execPath` (the installed Kanmer.exe) with
+ * ELECTRON_RUN_AS_NODE=1, so those legacy MCP servers remain in the install
+ * directory's blast radius. GUI-106's fixed launcher provisions new sessions
+ * from the external current runtime instead; those sessions are deliberately
+ * outside this legacy stop predicate.
  *
- * We cannot stop NSIS from killing those processes, so we name them: this
+ * We cannot stop NSIS from killing legacy processes, so we name them: this
  * parser turns the CIM query's JSON into the count, the project paths and the
  * pids, which the renderer shows before "Restart now" and the main process
  * shows before an unattended quit-install.
@@ -66,7 +66,8 @@ function extractRoot(commandLine: string): string | null {
  *
  * `installDir` is `dirname(process.execPath)` of the installed app. Rows whose
  * executable lives elsewhere are excluded — they are not in the installer's
- * blast radius.
+ * legacy blast radius (the GUI-106 external runtime is intentionally outside
+ * it).
  *
  * Fails open: any malformed input yields `{ count: 0, projects: [], unknown:
  * true }`, which callers render as the generic warning. It must never throw and

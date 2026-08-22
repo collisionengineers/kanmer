@@ -309,10 +309,11 @@ export type ExposurePolicy = "local-stdio" | "remote-http-v1";
 
 /**
  * Tool ids that are intentionally unavailable over remote HTTP. The set is
- * empty until MCP-020 lands its background-dispatch tool; keeping the policy
- * named and central now makes that future exclusion a one-place change.
+ * Background agent dispatch is intentionally local-only. Keeping the policy
+ * named and central means remote discovery cannot accidentally grow a second
+ * per-handler exclusion list as dispatch evolves.
  */
-export const REMOTE_HTTP_EXCLUDED_TOOLS = new Set<string>();
+export const REMOTE_HTTP_EXCLUDED_TOOLS = new Set<string>(["dispatch_task", "list_dispatches", "cancel_dispatch"]);
 
 /** Canonical read-only tool policy used by the remote doctor and HTTP smoke. */
 export function remoteHttpToolNames(): readonly string[] {

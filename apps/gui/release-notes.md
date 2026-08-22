@@ -34,6 +34,19 @@ custom installation directory. This is the installer foundation only: portable
 Codex registration arrives separately, so existing provider registrations are
 unchanged in this release.
 
+### Windows MCP runtime is staged outside the install directory
+
+Fresh installs stage the Electron-as-Node MCP runtime in a versioned per-user
+directory behind the stable launcher, with the script at
+`resources\\mcp\\kanmer-mcp.cjs` and bundled skills at
+`resources\\plugins\\kanmer\\skills`. The install-root payload remains a
+legacy-registration fallback. Install roots overlapping the external runtime
+are rejected, and unlocked stale versions are pruned without claiming ownership
+of locked live runtimes. Deterministic package checks cover the boundary; a real
+two-version update with a live agent session, junction behavior, and uninstall
+cleanup still requires a disposable Windows host and is not claimed by these
+notes.
+
 ### A `fix` now goes through Review
 
 A `fix` used to be able to go straight from Implementing to Done in one move,

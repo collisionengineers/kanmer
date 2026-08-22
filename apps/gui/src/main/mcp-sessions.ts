@@ -5,14 +5,16 @@ import { parseSessions } from "../shared/mcp-sessions.js";
 import type { McpSessions, McpStopResult } from "../shared/ipc.js";
 
 /**
- * Which agent MCP servers an update would force-kill — and stopping them.
+ * Which legacy install-root MCP servers an update would force-kill — and
+ * stopping them. GUI-106's fixed launcher provisions new sessions outside the
+ * install directory; those sessions are intentionally not in this predicate.
  *
  * The NSIS installer (`allowOnlyOneInstallerInstance.nsh:104-165`) stops every
  * process whose path is under `$INSTDIR` — by PATH PREFIX, not image name — and
- * `connect.ts` registers `command = process.execPath`, so the agent's MCP
- * server IS the installed Kanmer.exe. An update therefore closes it, silently:
- * electron-updater passes `--updated`, which suppresses the installer's own
- * prompt (`NsisUpdater.js:113`).
+ * Historical `connect.ts` registrations use `command = process.execPath`, so
+ * their MCP server IS the installed Kanmer.exe. An update therefore closes
+ * those legacy sessions, silently: electron-updater passes `--updated`, which
+ * suppresses the installer's own prompt (`NsisUpdater.js:113`).
  *
  * GUI-064: that kill is not reliable enough to build on. It races the
  * uninstaller's own `un.atomicRMDir`, which renames every file out of `$INSTDIR`
@@ -124,8 +126,8 @@ export function setKiller(fn?: Killer): void {
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /**
- * Clear agent MCP servers out of the install directory so an update can rename
- * over it.
+ * Clear legacy agent MCP servers out of the install directory so an update can
+ * rename over it. External-runtime sessions do not require this path cleanup.
  *
  * MUST complete before `quitAndInstall` — that call spawns the installer before
  * `app.quit()`, so anything after it is too late (see `updater.ts`).
@@ -215,7 +217,7 @@ export function refusalMessage(remaining: McpSessions): string {
   }
   const where = remaining.projects.length > 0 ? ` (${remaining.projects.join(", ")})` : "";
   return (
-    `${remaining.count} agent MCP session(s)${where} are still running from the Kanmer ` +
+    `${remaining.count} legacy agent MCP session(s)${where} are still running from the Kanmer ` +
     "install folder and could not be stopped. They hold files the installer must replace, " +
     "so the update was not started. Close those agents, then try again."
   );

@@ -108,3 +108,6 @@
 
 
 09:55 Created CORE-044 as a linked blocker for CORE-026 after independent audit surfaced unresolved source-fetch security/concurrency/rail findings. CORE-026 remains Review and cannot merge until CORE-044 fixes or rejects each finding with evidence and fresh review.
+
+
+10:10 Independent review completed: CORE-026 attestation 2965587e needs-changes with 21-thread audit; CORE-044 is linked blocker. GUI-111 attestation 51ab4112 needs-changes on valid wheel-dismissal P2; author patch requested, no merge.

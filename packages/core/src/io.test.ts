@@ -428,6 +428,91 @@ describe("withExclusiveFileLock", () => {
     }
   });
 
+  it("surfaces the final claim error after stale recovery loses its retry", async () => {
+    const file = path.join(dir, "cache-final-claim-error.lock");
+    await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0 }), "utf8");
+    let recovered = false;
+    const realLink = fs.link.bind(fs);
+    const linkSpy = vi.spyOn(fs, "link").mockImplementation(async (existing, target) => {
+      if (recovered && String(target) === file) throw errno("EACCES");
+      return realLink(existing, target);
+    });
+    try {
+      await expect(withExclusiveFileLock(file, async () => "must not enter", {
+        now: () => 60_000,
+        staleAfterMs: 30_000,
+        processAlive: () => false,
+        retryDelaysMs: [0],
+        renameStaleLock: async (from, to) => {
+          await fs.rename(from, to);
+          recovered = true;
+        },
+      })).rejects.toMatchObject({ code: "EACCES" });
+    } finally {
+      linkSpy.mockRestore();
+    }
+  });
+
+  it("removes the claimant marker when lock cleanup itself fails", async () => {
+    const file = path.join(dir, "cache-marker-cleanup.lock");
+    await fs.writeFile(file, JSON.stringify({ pid: process.pid, createdAt: 60_000 }), "utf8");
+    const realReadFile = fs.readFile.bind(fs);
+    const readSpy = vi.spyOn(fs, "readFile").mockImplementation(async (target, options) => {
+      if (String(target) === file) throw errno("EACCES");
+      return realReadFile(target, options);
+    });
+    try {
+      let failure: unknown;
+      try {
+        await withExclusiveFileLock(file, async () => "must not enter", {
+          now: () => 60_000,
+          processAlive: () => true,
+          retryDelaysMs: [0],
+        });
+      } catch (error) {
+        failure = error;
+      }
+      expect(failure).toBeInstanceOf(AggregateError);
+      expect(((failure as AggregateError).errors as NodeJS.ErrnoException[]).map((error) => error.code)).toEqual(["EEXIST", "EACCES"]);
+      expect((await fs.readdir(dir)).some((entry) => entry.includes(".owner-"))).toBe(false);
+    } finally {
+      readSpy.mockRestore();
+    }
+  });
+
+  it("surfaces both claim and marker-cleanup failures", async () => {
+    const file = path.join(dir, "cache-marker-cleanup-errors.lock");
+    await fs.writeFile(file, JSON.stringify({ pid: process.pid, createdAt: 60_000 }), "utf8");
+    const realReadFile = fs.readFile.bind(fs);
+    const realRm = fs.rm.bind(fs);
+    const readSpy = vi.spyOn(fs, "readFile").mockImplementation(async (target, options) => {
+      if (String(target) === file) throw errno("EACCES");
+      return realReadFile(target, options);
+    });
+    const rmSpy = vi.spyOn(fs, "rm").mockImplementation(async (target, options) => {
+      if (String(target).includes(".owner-") && !String(target).includes(".tmp-")) throw errno("EBUSY");
+      return realRm(target, options);
+    });
+    try {
+      let failure: unknown;
+      try {
+        await withExclusiveFileLock(file, async () => "must not enter", {
+          now: () => 60_000,
+          processAlive: () => true,
+          retryDelaysMs: [0],
+        });
+      } catch (error) {
+        failure = error;
+      }
+      expect(failure).toBeInstanceOf(AggregateError);
+      const errors = (failure as AggregateError).errors as NodeJS.ErrnoException[];
+      expect(errors.map((error) => error.code)).toEqual(["EEXIST", "EACCES", "EBUSY"]);
+    } finally {
+      rmSpy.mockRestore();
+      readSpy.mockRestore();
+    }
+  });
+
   it("revalidates stale ownership before retrying a transient quarantine rename", async () => {
     const file = path.join(dir, "cache-revalidate.lock");
     await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0 }), "utf8");

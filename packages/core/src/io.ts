@@ -296,7 +296,9 @@ async function recoverStaleLock(
     try {
       await fs.link(quarantineFile, lockFile);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "ENOENT") return false;
+      if (code !== "EEXIST") throw error;
       // A concurrent writer owns the path. Keep the active replacement in
       // quarantine; its owner removes it safely during release.
     }
@@ -346,13 +348,19 @@ export async function withExclusiveFileLock<T>(
         `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now(), token: claimToken })}\n`,
       );
     } catch (error) {
+      const cleanupErrors: unknown[] = [];
       try {
         const contents = await fs.readFile(lockFile, "utf8");
         if (parseLockRecord(contents)?.token === claimToken) await fs.rm(lockFile, { force: true });
       } catch (readError) {
-        if ((readError as NodeJS.ErrnoException).code !== "ENOENT") throw readError;
+        if ((readError as NodeJS.ErrnoException).code !== "ENOENT") cleanupErrors.push(readError);
       }
-      await fs.rm(markerFile, { force: true });
+      try {
+        await fs.rm(markerFile, { force: true });
+      } catch (markerError) {
+        cleanupErrors.push(markerError);
+      }
+      if (cleanupErrors.length > 0) throw new AggregateError([error, ...cleanupErrors], "lock claim and cleanup failed");
       throw error;
     }
   };
@@ -374,7 +382,12 @@ export async function withExclusiveFileLock<T>(
           lastError = retryError;
         }
       }
-      if (attempt === delays.length) throw error;
+      if (attempt === delays.length) {
+        // A stale claim can recover successfully and still lose the retry
+        // claim. Surface that final claim error instead of the obsolete
+        // EEXIST from the stale inode, so callers can act on the real cause.
+        throw lastError instanceof Error ? lastError : error;
+      }
       await sleep(delays[attempt]!);
     }
   }

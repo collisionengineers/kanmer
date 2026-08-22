@@ -87,7 +87,7 @@ function canonicalHttpsUrl(value: string): URL {
 function isNonGlobalIpv4(hostname: string): boolean {
   const octets = hostname.split(".").map(Number);
   if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return true;
-  const [a, b, c] = octets;
+  const [a, b, c, d] = octets;
   return (
     a === 0 ||
     a === 10 ||
@@ -95,12 +95,9 @@ function isNonGlobalIpv4(hostname: string): boolean {
     (a === 100 && b >= 64 && b <= 127) ||
     (a === 169 && b === 254) ||
     (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 0) ||
+    (a === 192 && b === 0 && c === 0 && d !== 9 && d !== 10) ||
     (a === 192 && b === 0 && c === 2) ||
-    (a === 192 && b === 31 && c === 196) ||
-    (a === 192 && b === 52 && c === 193) ||
     (a === 192 && b === 88 && c === 99) ||
-    (a === 192 && b === 175 && c === 48) ||
     (a === 192 && b === 168) ||
     (a === 198 && b >= 18 && b <= 19) ||
     (a === 198 && b === 51 && c === 100) ||
@@ -140,6 +137,10 @@ function isPrivateAddress(hostname: string): boolean {
     const mapped = `${(seventh! >> 8) & 0xff}.${seventh! & 0xff}.${(eighth! >> 8) & 0xff}.${eighth! & 0xff}`;
     return isNonGlobalIpv4(mapped);
   }
+  if (first === 0x0064 && second === 0xff9b && third === 0 && fourth === 0 && fifth === 0 && sixth === 0) {
+    const embedded = `${(seventh! >> 8) & 0xff}.${seventh! & 0xff}.${(eighth! >> 8) & 0xff}.${eighth! & 0xff}`;
+    return isNonGlobalIpv4(embedded);
+  }
   return (
     first === 0 ||
     (first === 0x100 && second === 0 && third === 0 && fourth === 0) ||
@@ -148,12 +149,14 @@ function isPrivateAddress(hostname: string): boolean {
     (first === 0x0100 && second === 0 && third === 0 && fourth === 0x0001) ||
     (first >= 0x5f00 && first <= 0x5fff) ||
     (first === 0x2001 && (second! & 0xfff0) === 0x0010) ||
-    (first === 0x2001 && (second! & 0xfff0) === 0x0020) ||
     (first === 0x2001 && second === 0x0db8) ||
     (first >= 0xfc00 && first <= 0xfdff) ||
     (first >= 0xfe80 && first <= 0xfebf) ||
+    (first & 0xffc0) === 0xfec0 ||
     first >= 0xff00 ||
-    first === 0x3fff
+    // 3fff::/20 is 3fff:0000:: through 3fff:0fff::; checking only the
+    // first group would incorrectly reject the public 3fff:1000::/16 tail.
+    (first === 0x3fff && (second! & 0xf000) === 0)
   );
 }
 

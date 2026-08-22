@@ -806,3 +806,6 @@ Removed GUI-115→CORE-043 blocker edge after its non-squash merge; GUI-115 rema
 
 
 2026-08-22T21:35Z — GUI-116 independently reviewed PASS at exact head d863f390; PR #215 merged non-squash into CORE-043 parent as 1126253e. Ticket moved Review→Verifying, released, and GUI-116→CORE-043 block removed. Focused 11/11, workspace typecheck/build/docs/diff PASS; full Windows EPERM timeout and native live-host boundaries remain explicitly INCONCLUSIVE. CORE-043 now has no known child blocker from GUI-116.
+
+
+2026-08-22T21:40Z — CORE-089 implementation reconciled cumulative CORE-026 branch 453a9209 with current origin/main 34245be0 in integration commit dcfe49b5af7d5dad026a8ced4380039df2d7a3cc, restoring GUI-109 group-menu files. Local build/typecheck/scripts rails PASS after build; GUI full suite emitted focused PASS then hung in known Windows cleanup and was interrupted, so no full PASS claimed. PR #216 is open against CORE-026 for independent review; fresh hosted verification waits for CORE-088 source remediation.

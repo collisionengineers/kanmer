@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T19:01:38.547Z
+updated_at: 2026-08-22T20:05:17.039Z
 ---
 
 # Current auto run — HZN-007
@@ -770,3 +770,6 @@ Last handoff: 2026-08-22T19:52Z — GUI-113 implementation complete on `gui-113-
 
 
 19:58 UTC — CORE-082 independently reviewed PASS and merged PR #209 non-squash as a9833df2 into CORE-026; moved to Verifying and released. CORE-083 now moved to Preparing for serial source-board safety remediation; GUI-114 is Implementing on its separate GUI branch.
+
+
+Last handoff: - 2026-08-22T20:05:17.039Z — GUI-114 assigned and handed off Implementing→Review by gui099-executor: argv-safe Claude project registration for finding 3836808787. Branch gui-114-shell-safe-env, commit 55cb058d, PR #210 targeting core-043-protection-retarget; focused 99/99 and full GUI 418/418 PASS, workspace typecheck/build and docs/manual/agents/skills/diff PASS. Initial scripts 87/89 missing fresh core dist was preserved; rerun 89/89 PASS. plugin:check linked-worktree and mcpb CLI failures remain INCONCLUSIVE; hosted protection and real Claude registration remain INCONCLUSIVE. Await independent review; no merge/verify/cleanup.

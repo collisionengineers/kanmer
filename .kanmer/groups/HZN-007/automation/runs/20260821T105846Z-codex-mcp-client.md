@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T18:29:52.268Z
+updated_at: 2026-08-22T20:05:17.039Z
 lane_limit: 3
 stop_reason:
 ---
@@ -858,3 +858,5 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 
 - 2026-08-22T19:57:01.760Z — GUI-114 assigned to gui099-executor after GUI-113 PR #208 merged into CORE-043 as 69e2cc582b7ee8947f0febda6d286c18e21397a7.
   Dedicated branch/worktree: gui-114-shell-safe-env / .worktrees/gui-114. Scope is shell-safe Claude/provider environment serialization for finding 3836808787; no GUI-113, CORE-043, native-plugin, installer, or hosted protection changes.
+
+- 2026-08-22T20:05:17.039Z — GUI-114 assigned and handed off Implementing→Review by gui099-executor: argv-safe Claude project registration for finding 3836808787. Branch gui-114-shell-safe-env, commit 55cb058d, PR #210 targeting core-043-protection-retarget; focused 99/99 and full GUI 418/418 PASS, workspace typecheck/build and docs/manual/agents/skills/diff PASS. Initial scripts 87/89 missing fresh core dist was preserved; rerun 89/89 PASS. plugin:check linked-worktree and mcpb CLI failures remain INCONCLUSIVE; hosted protection and real Claude registration remain INCONCLUSIVE. Await independent review; no merge/verify/cleanup.

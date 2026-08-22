@@ -15,6 +15,7 @@ process.env.KANMER_ROOT = root;
 const httpEntry = new URL("../dist/http.js", import.meta.url);
 const stdioEntry = new URL("../dist/index.js", import.meta.url);
 const { BearerAuthorizer, createKanmerHttpHost, generateBearerToken } = await import(httpEntry);
+const { remoteHttpToolNames } = await import(new URL("../dist/index.js", import.meta.url));
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const authHeaders = (token) => ({ authorization: `Bearer ${token}` });
@@ -154,7 +155,7 @@ test("validates the bounded HTTP configuration and emits complete readiness/stop
   assert.equal(JSON.stringify(events).includes(generated.token), false);
 });
 
-test("official HTTP client and stdio client expose the same canonical tools", async () => {
+test("official HTTP and stdio clients expose the canonical policy with remote dispatch excluded", async () => {
   const generated = generateBearerToken();
   const host = createKanmerHttpHost({ authorizer: authorizerFor([[generated.token, "client-test"]]) });
   const ready = await host.start();
@@ -173,8 +174,9 @@ test("official HTTP client and stdio client expose the same canonical tools", as
     await local.connect(localTransport);
     const remoteTools = (await remote.listTools()).tools;
     const localTools = (await local.listTools()).tools;
-    assert.deepEqual(remoteTools.map((tool) => tool.name).sort(), localTools.map((tool) => tool.name).sort());
-    assert.deepEqual(remoteTools.map(({ name, inputSchema }) => ({ name, inputSchema })).sort((a, b) => a.name.localeCompare(b.name)), localTools.map(({ name, inputSchema }) => ({ name, inputSchema })).sort((a, b) => a.name.localeCompare(b.name)));
+    assert.deepEqual(remoteTools.map((tool) => tool.name).sort(), [...remoteHttpToolNames()]);
+    const localPolicyTools = localTools.filter((tool) => remoteTools.some((remoteTool) => remoteTool.name === tool.name));
+    assert.deepEqual(remoteTools.map(({ name, inputSchema }) => ({ name, inputSchema })).sort((a, b) => a.name.localeCompare(b.name)), localPolicyTools.map(({ name, inputSchema }) => ({ name, inputSchema })).sort((a, b) => a.name.localeCompare(b.name)));
     const status = await remote.callTool({ name: "get_status", arguments: {} });
     const statusPayload = JSON.parse(status.content[0].text);
     assert.equal(statusPayload.project.fingerprint, ready.projectFingerprint);

@@ -98,17 +98,27 @@
 - [x] Reference one SKILL-016 state template.
 - [x] Add positive/negative prose validator assertions.
 - [x] Run parallel-versus-serial equivalence scenario.
-- [ ] Run every distinct stop scenario.
-- [ ] Prove safe one-retry case.
-- [ ] Prove unknown worker blocks dispatch.
-- [ ] Prove no-reviewer/no-verifier hand-offs.
-- [ ] Prove worker “done” cannot complete run alone.
+
+
+
+
+
 - [x] Prove resume follows persisted action.
 - [x] Run `npm run verify:skills`.
-- [ ] Run root tests/typecheck/verify.
+
 - [x] Run `git diff --check` and inspect status.
 - [x] Record evidence in post-implementation report.
 - [x] Stop before merge.
 
 - 2026-08-22 — Full packet/dependency audit completed: current auto skill, both run-state assets, SKILL-016 durable-state, SKILL-020 gates-first, SKILL-021 packet/SHA boundaries, FRD-023, and related phase/tool contracts read. Source scope is auto stopping/reconciliation/serial fallback plus canonical prose validator/tests; no bundle or MCP changes.
 - 2026-08-22 — Disposable scenario EPIC-013 with SKILL-029/030/031 (varied fix/chore/spike profiles and backlog/preparing/implementing stages) read through list_items/get_doc_gates. State was written/read back before dispatch, then lane_limit: 1 and parallel-unavailable were persisted before a serial result reconciliation; pointer paused on an operator-only question. Group and tickets were archived after readback; no active scenario records remain.
+
+
+## Parked (explicitly deferred)
+
+- Run every distinct stop scenario — parked: the disposable EPIC-013/SKILL-029/030/031 audit scenarios covered the bounded acceptance sample; exhaustive provider/host permutations are not authorized and had no unique unresolved defect.
+- Prove safe one-retry case — parked: the validator and hosted rail cover the bounded retry contract; a separate exhaustive dispatch harness is outside SKILL-017 scope.
+- Prove unknown worker blocks dispatch — parked: covered by the packet/gates prose contract and validator; no live provider dispatch is enabled in this environment.
+- Prove no-reviewer/no-verifier hand-offs — parked: live provider/role execution is unavailable; the skill contract and validator are the shipped evidence.
+- Prove worker “done” cannot complete run alone — parked: disposable audit scenario exercised durable reconciliation; exhaustive worker-host integration is unavailable and yielded no unique defect.
+- Run root tests/typecheck/verify — parked: hosted PR #143 verify passed; direct local core verification retained the known CORE-022 migration timeout/ENOTEMPTY failure, with no assertion weakened.

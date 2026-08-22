@@ -12,9 +12,6 @@ stageEntered:
   review: '2026-08-22T00:32:53.346Z'
   verifying: '2026-08-22T02:08:01.563Z'
   done: '2026-08-22T02:08:09.741Z'
-taken_at: '2026-08-22T00:13:04.309Z'
-branch: skill-017-auto-stopping
-worktree: .worktrees/skill-017
 labels:
   - auto
 groups:
@@ -26,12 +23,13 @@ links:
 refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
 commits:
-  - a72ea84f
+  - a72ea84f262dea761814f08d67b352c3a1b2efc4
+  - 33f86dbcc5a9b1fb83b1825b2b8f2eefd5ef20a6
 prs:
   - '143'
 archived: false
 created: '2026-08-16T21:22:59.709Z'
-updated: '2026-08-22T02:08:09.741Z'
+updated: '2026-08-22T02:08:59.479Z'
 ---
 
 ## What

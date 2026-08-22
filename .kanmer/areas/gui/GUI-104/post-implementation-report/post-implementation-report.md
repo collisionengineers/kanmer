@@ -52,3 +52,10 @@ Updated source head: `cad3552a` (PR #157).
 - PASS: root npm run typecheck; GUI typecheck; GUI build; npm run check:manual; npm run dist:check with updater package 8/8; git diff --check.
 - PR #157 final head: 37bb6644. Hosted verify and kanmer-gate from the prior head passed; a fresh hosted run for 37bb6644 is required before merge.
 - Real two-project OpenAI control-plane/listener proof remains INCONCLUSIVE without disposable credentials/projects and a documented listener probe; no live listener claim is made.
+
+
+## Final current head — 2026-08-22
+
+- Commit 561d42f3 is the current PR #157 head. It adds consistent canonical project keys, binds the configured credential environment name with tunnel-client control-plane API-key reference, permits valid apostrophes/backticks in absolute executable paths, and surfaces auto-start credential failures.
+- Focused manager + Settings tests: 12/12 PASS. Root typecheck, GUI typecheck, GUI build, manual freshness, packaged updater 8/8, and diff-check remain PASS.
+- Hosted verification for 561d42f3 is pending; merge remains gated on fresh checks and resolved review conversations.

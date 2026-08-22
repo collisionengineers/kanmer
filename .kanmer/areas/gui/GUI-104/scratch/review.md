@@ -49,3 +49,9 @@ The complete remaining unresolved set is: `PRRT_kwDOT2PEds6bXBB_`, `PRRT_kwDOT2P
 - PR #157 is awaiting fresh hosted verification on 37bb6644; no merge or cleanup yet.
 - The two-project live control-plane/listener acceptance remains INCONCLUSIVE without disposable credentials and listener probes.
 - Verdict: PASS pending hosted checks and fresh conversation resolution.
+
+
+## Final current-head disposition — 561d42f3
+
+- Four additional review findings from the cad3552 re-review were fixed: canonical project-key normalization, custom credential binding via --control-plane-api-key-ref, valid apostrophes/backticks in absolute executable paths, and auto-start error reporting. Regression coverage and manual guidance were updated.
+- Independent final review remains pending; hosted verify/kanmer-gate for this head are pending.

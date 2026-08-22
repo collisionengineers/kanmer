@@ -4,7 +4,7 @@ pr: "216"
 head_sha: "dcfe49b5af7d5dad026a8ced4380039df2d7a3cc"
 base_sha: "453a92091d7a422a237996f024ab6940ea6fccfb"
 verdict: pass
-reviewer: "codex-mcp-client"
+reviewer: "gui082-executor"
 independent: true
 reviewed_at: "2026-08-22T22:42:00Z"
 findings: []

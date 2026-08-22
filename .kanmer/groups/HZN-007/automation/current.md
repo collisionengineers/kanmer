@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T15:03:41.178Z
+updated_at: 2026-08-22T15:05:24.732Z
 ---
 
 # Current auto run — HZN-007
@@ -546,3 +546,6 @@ Cumulative CORE-058 review at b8d8a191 fixed CORE-062–065 but found CORE-066 (
 
 
 CORE-066 implemented at 134cf0b7 with deterministic local/remote attachment regressions and full local rails; PR #187 opened and moved to Review. Independent review requested; CORE-067 remains queued.
+
+
+CORE-066 independently PASSed and merged into CORE-058 as d3eb3728; CORE-066 is Verifying and its block edge is removed. CORE-067 is now the single active implementation lane on core-067-refuse-ignore-symlink.

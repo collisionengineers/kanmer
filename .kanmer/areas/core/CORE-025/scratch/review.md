@@ -19,3 +19,7 @@ No blocking source finding. Verdict: PASS for independent review, with the exact
 ## Review correction
 
 Independent review PASS. The report count is corrected to 14/14 focused core tests; unrelated local test:http contention and direct board-push INCONCLUSIVE evidence remain explicit.
+
+## Additional hosted review findings — 2026-08-22
+
+Five unresolved Codex threads appeared after the bounded independent review (PR #159): validate complete review attestations; resolve abbreviated commit SHAs; fail closed on malformed blocker files; populate legacy finding outcomes; and constrain recorded commits to the PR base..head ancestry range. CORE-025 remains unmerged pending disposition/fix.

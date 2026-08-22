@@ -36,8 +36,24 @@ commits:
   - b1abac871da28522759d4e5582caa69d5cdb5cd5
   - 17cdb6684f204e36cb64668236a4bab0de7e55ac
   - b8d8a191161532e895fa399b6c95bf812dfdb2d0
-  - d3eb3728d6dca7cdeebd72c251f8ee3e1c47934f
+  - d3eb3728d6dca7cdeebd72c251f8ee3e1c47934f9
   - f0de2628b15028b59679f332c09a204f414437f8
+  - c90d056dd5d2b4b20b24ca25f7d6cde9c184f7b7
+  - 14c2d0fd743a62cf20a2c24946954275ceda5c8b
+  - a6231bb09cdc999b3904e703cffebdad3cdad6da
+  - 217eba4515f0b9030d25ed9f0a86a10fd7418d0f
+  - cc1cbf369b6f016ac661f9e32327a8cd4b48fac3
+  - e966509c729194916d24194a87257cc1d39f308b
+  - 37bc2265df46f609d1ddcd94ddf020e5a74941a2
+  - 59e7e0feaf4968b05d3d17df35052c20b6d900cf
+  - c8ee9a4e96c5e9d0268e21c59247db00ed958b0b
+  - cbb152dae4effc6fe0db254a59639818e2915b44
+  - 3b4ef44ace5d077c7e54d5ed289d477fa7f6b529
+  - 9563c122a490f12df056918a4c7074143cfb7b62
+  - 9abfc9f47b8acfa31ef57d5b30071f72de43497c
+  - ceaab8d455fd198a3421fa73bbf361ec33df0bd0
+  - d4dee4bb668d27a1942532d940eb6d4508a224ab
+  - 271790e58c52a14fa4b3cec62f7146b6a67bcdcd
 prs:
   - '180'
   - '183'
@@ -46,9 +62,17 @@ prs:
   - '186'
   - '187'
   - '188'
+  - '189'
+  - '190'
+  - '191'
+  - '192'
+  - '193'
+  - '195'
+  - '194'
+  - '196'
 archived: false
 created: '2026-08-22T13:03:07.157Z'
-updated: '2026-08-22T15:13:37.140Z'
+updated: '2026-08-22T16:25:57.034Z'
 ---
 
 Close CORE-044 review findings for release and board hygiene: add the sources cache rule to canonical board-worktree ignore creation and reconciliation, and rebuild the committed plugin artifact from a normal checkout so plugin:check is reproducible outside nested ticket worktrees. Add regression/evidence for existing and new board worktrees and exact artifact parity. Link [[CORE-044]].

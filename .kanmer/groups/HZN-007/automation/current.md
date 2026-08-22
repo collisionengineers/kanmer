@@ -603,3 +603,6 @@ CORE-073 PASS exact 3b4ef44a, PR #195 merged non-squash as 9563c122; moved Verif
 
 
 CORE-076 PASS exact ceaab8d4, PR #196 merged non-squash into CORE-072 as d4dee4bb; moved Verifying and removed block. CORE-072 cumulative review now pending at d4dee4bb before merging into CORE-058.
+
+
+CORE-072 cumulative PASS exact d4dee4bb after CORE-076, PR #194 merged into CORE-058 as 271790e5; moved Verifying and removed block. CORE-058 cumulative now includes CORE-073 9563c122 and CORE-072 271790e5; fresh parent review pending.

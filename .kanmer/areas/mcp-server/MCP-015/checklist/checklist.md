@@ -177,3 +177,16 @@ Append measured commands and implementation notes here; never flip dispatch befo
 - [x] Local focused rails and plugin/build checks passed.
 - [x] Hosted verify PASS: run 32552010309 / job 96980185214 / verify.
 - [ ] Real authorized agy install/bound tool proof remains INCONCLUSIVE; no claim inferred.
+
+# Closeout checklist
+
+## Closeout — MCP-015
+
+- [x] PR merge verified (PR #152 state MERGED; merge commit 3f4233789363a36631ee0f8e2f60e33fa84e2619)
+- [x] proof.md finalised (PR URL + merge date recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups, external host INCONCLUSIVE)
+- [ ] cd out of worktree; git worktree remove .worktrees/mcp-015
+- [ ] git branch -d mcp-015-antigravity-plugin-dispatch
+- [ ] git fetch --prune + git worktree prune
+- [ ] take_ticket action: release

@@ -4,10 +4,12 @@ type: ticket
 title: >-
   CORE-043 review remediation: keep Actions board branch variable aligned on
   custom rename
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-22T13:31:18.460Z'
 labels:
   - pr-review
   - branch-protection
@@ -23,7 +25,7 @@ refs:
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
 archived: false
 created: '2026-08-22T13:28:04.825Z'
-updated: '2026-08-22T13:28:04.825Z'
+updated: '2026-08-22T13:31:18.460Z'
 ---
 
 Close the current CORE-043 review finding: once KANMER_BOARD_BRANCH is introduced as the hosted gate source, every supported custom-to-custom board rename must preserve or explicitly coordinate that variable before deleting the previous remote ref. Keep the handoff fail-closed and add deterministic workflow/manual/rename regression evidence. Link [[CORE-043]].

@@ -52,3 +52,26 @@ CORE-075 is filed and blocks CORE-071. The CORE-071 research, plan, checklist, a
 ## Verdict
 
 NEEDS-CHANGES. Do not merge PR #192 until CORE-075 refreshes the cumulative packet and traceability, then obtain a fresh review.
+
+# Fresh cumulative independent review — PASS
+
+- Reviewer: codex-mcp-client; independent of CORE-071 and CORE-074 authors.
+- Exact PR: #192 https://github.com/collisionengineers/kanmer/pull/192
+- Exact cumulative head: `c8ee9a4e96c5e9d0268e21c59247db00ed958b0b`
+- Base: `core-058-board-ignore-plugin-artifact` at `e966509c729194916d24194a87257cc1d39f308b`.
+- PR state: OPEN, CLEAN, MERGEABLE; no hosted checks attached.
+- CORE-075 packet refresh is present: research/plan/checklist/report now describe append-only `O_APPEND` reconciliation, preserve the initial stale-test failure and corrected pass, and record `37bc2265`, `59e7e0fe`, `c8ee9a4e`, PRs 192/193.
+
+## Diff and dispositions
+
+The net cumulative diff against CORE-058 is the append-only CORE-074 implementation: `ignoreEntriesToAppend` selects missing/re-invalidated managed rules, `appendFile(..., {flag:"a"})` preserves concurrent lines, static symlink refusal remains, and the effective-ignore regression remains. Prior PR comment 3836395258 is fixed by CORE-074. No new current PR comments were found.
+
+## Evidence
+
+- Exact cumulative tree-equivalent CORE-074 rail: GUI Git 25/25, GUI typecheck PASS, diff check PASS.
+- Child merge evidence: CORE-074 PR #193 merged non-squash as `c8ee9a4e96c5e9d0268e21c59247db00ed958b0b`.
+- Hosted Windows GUI and remote proof remain INCONCLUSIVE as documented.
+
+## Verdict
+
+PASS. CORE-071's final source, packet, traceability, and evidence now align. CORE-075's blocking edge is resolved administratively; PR #192 is ready for non-squash merge.

@@ -58,6 +58,7 @@ export interface OpenAITunnelProjectView {
   identity: RemoteProjectIdentity;
   profile: OpenAITunnelProfile | null;
   status: OpenAITunnelStatus;
+  identityConflict?: boolean;
 }
 
 export interface OpenAITunnelCheck {

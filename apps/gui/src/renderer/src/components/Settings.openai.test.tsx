@@ -13,15 +13,19 @@ describe("OpenAI tunnel settings surface", () => {
 
   it("shows non-secret profile fields and sends lifecycle actions through the typed API", async () => {
     const api = {
-      openAITunnelRegister: vi.fn(async () => project), openAITunnelOverview: vi.fn(async () => [project]), openAITunnelSaveProfile: vi.fn(async () => project), openAITunnelInitialize: vi.fn(async () => ({ ok: true, projectId: "/repo", fingerprint, checks: [], summary: "initialized", severity: "info" as const, generation: project.profile!.generation, at: new Date().toISOString() })), openAITunnelDoctor: vi.fn(), openAITunnelStart: vi.fn(async () => ({ ...status, state: "degraded" as const })), openAITunnelStop: vi.fn(), openAITunnelRestart: vi.fn(), onOpenAITunnelStatus: vi.fn(() => () => undefined),
+      openAITunnelRegister: vi.fn(async () => project), openAITunnelOverview: vi.fn(async () => [project]), openAITunnelSaveProfile: vi.fn(async () => project), openAITunnelInitialize: vi.fn(async () => ({ ok: true, projectId: "/repo", fingerprint, checks: [], summary: "initialized", severity: "info" as const, generation: project.profile!.generation, at: new Date().toISOString() })), openAITunnelDoctor: vi.fn(), openAITunnelStart: vi.fn(async () => ({ ...status, state: "degraded" as const })), openAITunnelStop: vi.fn(), openAITunnelRestart: vi.fn(), openAITunnelReconcile: vi.fn(async () => project), openAITunnelRemove: vi.fn(), onOpenAITunnelStatus: vi.fn(() => () => undefined),
     };
     (window as unknown as { kanmer: typeof api }).kanmer = api;
     render(<OpenAITunnelSection projectId="/repo" />);
     expect(await screen.findByDisplayValue("CONTROL_PLANE_API_KEY")).toBeTruthy();
+    await waitFor(() => expect((screen.getByRole("checkbox", { name: /Enable this project/i }) as HTMLInputElement).checked).toBe(true));
     expect(screen.queryByDisplayValue(/do-not-log|secret|api-key-value/i)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Initialize" }));
     await waitFor(() => expect(api.openAITunnelInitialize).toHaveBeenCalledWith("/repo"));
     fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
     await waitFor(() => expect(api.openAITunnelSaveProfile).toHaveBeenCalledWith("/repo", expect.objectContaining({ credentialEnv: "CONTROL_PLANE_API_KEY" })));
+    fireEvent.change(screen.getByDisplayValue("tunnel-1"), { target: { value: "unsaved-tunnel" } });
+    expect((screen.getByRole("button", { name: "Initialize" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Restart" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

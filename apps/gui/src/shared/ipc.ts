@@ -165,6 +165,8 @@ export const CH = {
   openAITunnelStart: "kanmer:openAITunnelStart",
   openAITunnelStop: "kanmer:openAITunnelStop",
   openAITunnelRestart: "kanmer:openAITunnelRestart",
+  openAITunnelReconcile: "kanmer:openAITunnelReconcile",
+  openAITunnelRemove: "kanmer:openAITunnelRemove",
   openAITunnelStatus: "kanmer:openAITunnelStatus",
 } as const;
 
@@ -681,5 +683,7 @@ export interface KanmerApi {
   openAITunnelStart(projectId: string, expectedGeneration?: string | null): Promise<OpenAITunnelStatus>;
   openAITunnelStop(projectId: string, expectedGeneration?: string | null): Promise<OpenAITunnelStatus>;
   openAITunnelRestart(projectId: string, expectedGeneration?: string | null): Promise<OpenAITunnelStatus>;
+  openAITunnelReconcile(projectId: string, expectedGeneration?: string | null): Promise<OpenAITunnelProjectView>;
+  openAITunnelRemove(projectId: string, expectedGeneration?: string | null): Promise<void>;
   onOpenAITunnelStatus(cb: (status: OpenAITunnelStatus) => void): () => void;
 }

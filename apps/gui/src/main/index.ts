@@ -831,6 +831,16 @@ function registerIpc(): void {
     const ctx = requireCtx(projectId);
     return requireOpenAITunnel().restart(projectId, await openAITunnelIdentity(ctx), openAITunnelRoots(ctx), expectedGeneration ?? null);
   });
+  ipcMain.handle(CH.openAITunnelReconcile, async (e, projectId: string, expectedGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expectedGeneration !== undefined && expectedGeneration !== null && typeof expectedGeneration !== "string") throw new Error("OPENAI_PROFILE_VERSION_INVALID");
+    const ctx = requireCtx(projectId);
+    return requireOpenAITunnel().reconcile(projectId, await openAITunnelIdentity(ctx), expectedGeneration ?? null);
+  });
+  ipcMain.handle(CH.openAITunnelRemove, async (e, projectId: string, expectedGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expectedGeneration !== undefined && expectedGeneration !== null && typeof expectedGeneration !== "string") throw new Error("OPENAI_PROFILE_VERSION_INVALID");
+    const ctx = requireCtx(projectId);
+    await requireOpenAITunnel().remove(projectId, await openAITunnelIdentity(ctx), expectedGeneration ?? null);
+  });
   ipcMain.handle(CH.getBoard, (_e, p: string) => requireStore(p).getBoard());
   ipcMain.handle(CH.setBoard, async (_e, p: string, board: BoardConfig) => {
     markOwnWrite(p, "board");

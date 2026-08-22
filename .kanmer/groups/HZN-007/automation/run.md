@@ -105,3 +105,6 @@
 
 
 09:45 GUI-111 reached Review on stacked PR #164 head f8631395; author rails PASS, hosted workflow unavailable for non-main base, live visual INCONCLUSIVE. Awaiting independent GUI-099 review. CORE-026 remains Review while independent reviewer classifies additional automated security/concurrency findings.
+
+
+09:55 Created CORE-044 as a linked blocker for CORE-026 after independent audit surfaced unresolved source-fetch security/concurrency/rail findings. CORE-026 remains Review and cannot merge until CORE-044 fixes or rejects each finding with evidence and fresh review.

@@ -30,11 +30,11 @@
 
 ## Closeout — GUI-068
 
-- [ ] PR merge verified (N/A — GUI-068 is evidence-only and has no PR; GUI-064 implementation PR #29 is merged.)
-- [ ] proof.md finalised (current merged-main proof and upstream PR reference recorded)
+- [x] PR merge verified (N/A — GUI-068 is evidence-only and has no PR; GUI-064 implementation PR #29 is merged.)
+- [x] proof.md finalised (current merged-main proof and upstream PR reference recorded)
 - [x] Moved to final stage (verifying → done)
-- [ ] Outcome recorded in ticket body (no GUI-068 source commit/PR; external evidence dispositions recorded)
-- [ ] cd out of worktree; recorded .worktrees/gui-068 already absent
-- [ ] recorded branch gui-068-auto-update-verification already absent
-- [ ] git fetch --prune + git worktree prune
-- [ ] take_ticket action: release
+- [x] Outcome recorded in ticket body (no GUI-068 source commit/PR; external evidence dispositions recorded)
+- [x] cd out of worktree; recorded .worktrees/gui-068 already absent
+- [x] recorded branch gui-068-auto-update-verification already absent
+- [x] git fetch --prune + git worktree prune completed
+- [x] take_ticket action: release completed

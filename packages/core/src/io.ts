@@ -193,6 +193,8 @@ async function ownerMarkerActive(
   markerFile: string,
   processAlive: (pid: number) => boolean = defaultProcessAlive,
   processIdentity: (pid: number) => string | undefined = defaultProcessIdentity,
+  now: () => number = Date.now,
+  staleAfterMs: number = DEFAULT_LOCK_STALE_MS,
 ): Promise<boolean> {
   let contents: string;
   try {
@@ -200,19 +202,42 @@ async function ownerMarkerActive(
   } catch (error) {
     return (error as NodeJS.ErrnoException).code !== "ENOENT";
   }
+  let parsed = false;
   try {
     const marker = JSON.parse(contents) as { pid?: unknown; identity?: unknown };
-    if (Number.isInteger(marker.pid) && Number(marker.pid) > 0 && processAlive(Number(marker.pid))) {
-      if (typeof marker.identity !== "string" || marker.identity.length === 0) return true;
+    if (Number.isInteger(marker.pid) && Number(marker.pid) > 0) {
+      // A well-formed lease whose owner has exited is reclaimable now.
+      parsed = true;
+      let alive: boolean;
       try {
-        const currentIdentity = processIdentity(Number(marker.pid));
-        if (currentIdentity === undefined || currentIdentity === marker.identity) return true;
+        alive = processAlive(Number(marker.pid));
       } catch {
         return true;
       }
+      if (alive) {
+        if (typeof marker.identity !== "string" || marker.identity.length === 0) return true;
+        try {
+          const currentIdentity = processIdentity(Number(marker.pid));
+          if (currentIdentity === undefined || currentIdentity === marker.identity) return true;
+        } catch {
+          return true;
+        }
+      }
     }
   } catch {
-    return true;
+    parsed = false;
+  }
+  if (!parsed) {
+    // A crash between O_EXCL creation and writing the lease can leave an
+    // empty/partial owner marker.  It is active while fresh, but must not
+    // become a permanent lock after the bounded stale interval.
+    try {
+      const markerStat = await fs.stat(markerFile);
+      if (now() - markerStat.mtimeMs < staleAfterMs) return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") return true;
+      return false;
+    }
   }
   await fs.rm(markerFile, { force: true });
   return false;
@@ -246,6 +271,8 @@ async function hasActiveOwnerMarker(
   lockFile: string,
   processAlive: (pid: number) => boolean,
   processIdentity: (pid: number) => string | undefined,
+  now: () => number = Date.now,
+  staleAfterMs: number = DEFAULT_LOCK_STALE_MS,
 ): Promise<boolean> {
   let entries: string[];
   try {
@@ -256,7 +283,7 @@ async function hasActiveOwnerMarker(
   }
   const prefix = `${path.basename(lockFile)}.owner-`;
   for (const entry of entries.filter((name) => name.startsWith(prefix))) {
-    if (await ownerMarkerActive(path.join(path.dirname(lockFile), entry), processAlive, processIdentity)) return true;
+    if (await ownerMarkerActive(path.join(path.dirname(lockFile), entry), processAlive, processIdentity, now, staleAfterMs)) return true;
   }
   return false;
 }
@@ -296,10 +323,16 @@ async function recoverStaleLock(
     return (error as NodeJS.ErrnoException).code === "ENOENT";
   }
   const record = parseLockRecord(initialContents);
-  const createdAt = record?.createdAt ?? initialStat.mtimeMs;
-  if (options.now() - createdAt < options.staleAfterMs) return false;
+  const now = options.now();
+  // A caller's clock can be ahead of the persisted timestamp (or the
+  // timestamp can be forged into the future).  Filesystem age is the bounded
+  // fallback that still permits recovery of a dead owner without trusting a
+  // future createdAt forever.
+  const persistedAge = record?.createdAt === undefined ? 0 : now - record.createdAt;
+  const filesystemAge = now - initialStat.mtimeMs;
+  if (Math.max(0, persistedAge, filesystemAge) < options.staleAfterMs) return false;
   if (!record && isUnrecoverableMalformedRecord(initialContents)) return false;
-  if (record?.token && await ownerMarkerActive(ownerMarkerPath(lockFile, record.token), options.processAlive, options.processIdentity)) return false;
+  if (record?.token && await ownerMarkerActive(ownerMarkerPath(lockFile, record.token), options.processAlive, options.processIdentity, options.now, options.staleAfterMs)) return false;
   if (record) {
     let alive: boolean;
     try {
@@ -314,7 +347,7 @@ async function recoverStaleLock(
       return false;
     }
     if (alive) return false;
-  } else if (await hasActiveOwnerMarker(lockFile, options.processAlive, options.processIdentity)) {
+  } else if (await hasActiveOwnerMarker(lockFile, options.processAlive, options.processIdentity, options.now, options.staleAfterMs)) {
     return false;
   }
   // Re-read before quarantining so a concurrent replacement is never treated
@@ -339,7 +372,7 @@ async function recoverStaleLock(
     ) return false;
     const currentRecord = parseLockRecord(currentContents);
     if (!currentRecord) {
-      return !isUnrecoverableMalformedRecord(currentContents) && !(await hasActiveOwnerMarker(lockFile, options.processAlive, options.processIdentity));
+      return !isUnrecoverableMalformedRecord(currentContents) && !(await hasActiveOwnerMarker(lockFile, options.processAlive, options.processIdentity, options.now, options.staleAfterMs));
     }
     let currentAlive: boolean;
     try {
@@ -352,8 +385,8 @@ async function recoverStaleLock(
       return false;
     }
     if (currentAlive) return false;
-    if (currentRecord.token && await ownerMarkerActive(ownerMarkerPath(lockFile, currentRecord.token), options.processAlive, options.processIdentity)) return false;
-    return !(await hasActiveOwnerMarker(lockFile, options.processAlive, options.processIdentity));
+    if (currentRecord.token && await ownerMarkerActive(ownerMarkerPath(lockFile, currentRecord.token), options.processAlive, options.processIdentity, options.now, options.staleAfterMs)) return false;
+    return !(await hasActiveOwnerMarker(lockFile, options.processAlive, options.processIdentity, options.now, options.staleAfterMs));
   };
 
   if (!(await stillOwnsStaleLock())) return false;
@@ -389,7 +422,9 @@ async function recoverStaleLock(
   if (!ownsInspectedInode) {
     const replacementToken = parseLockRecord(quarantinedContents)?.token;
     const replacementMarker = replacementToken ? ownerMarkerPath(lockFile, replacementToken) : null;
-    const replacementActive = replacementMarker ? await ownerMarkerActive(replacementMarker, options.processAlive) : false;
+    const replacementActive = replacementMarker
+      ? await ownerMarkerActive(replacementMarker, options.processAlive, options.processIdentity, options.now, options.staleAfterMs)
+      : false;
     if (!replacementActive) {
       await fs.rm(quarantineFile, { force: true });
       return false;
@@ -444,7 +479,7 @@ export async function withExclusiveFileLock<T>(
   const claim = async (): Promise<void> => {
     // A replacement owner keeps its marker beside the lock while its inode is
     // temporarily quarantined. Do not create a third claimant in that window.
-    if (await hasActiveOwnerMarker(lockFile, lockOptions.processAlive, lockOptions.processIdentity)) {
+    if (await hasActiveOwnerMarker(lockFile, lockOptions.processAlive, lockOptions.processIdentity, lockOptions.now, lockOptions.staleAfterMs)) {
       const error = new Error("active lock owner is quarantined") as NodeJS.ErrnoException;
       error.code = "EEXIST";
       throw error;
@@ -503,11 +538,29 @@ export async function withExclusiveFileLock<T>(
     }
   }
   if (!claimed) throw lastError instanceof Error ? lastError : new Error("unable to claim file lock");
+  let value!: T;
+  let workError: unknown;
+  let worked = false;
   try {
-    return await work();
-  } finally {
-    await releaseOwnedLock(lockFile, claimToken);
+    value = await work();
+    worked = true;
+  } catch (error) {
+    workError = error;
   }
+  let releaseError: unknown;
+  try {
+    await releaseOwnedLock(lockFile, claimToken);
+  } catch (error) {
+    releaseError = error;
+  }
+  if (workError !== undefined || !worked) {
+    if (releaseError !== undefined) {
+      throw new AggregateError([workError, releaseError], "lock callback and release failed");
+    }
+    throw workError;
+  }
+  if (releaseError !== undefined) throw releaseError;
+  return value;
 }
 
 /**

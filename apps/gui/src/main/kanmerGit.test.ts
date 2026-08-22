@@ -1,5 +1,5 @@
 import { execFile as execFileCallback } from "node:child_process";
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync, readFileSync, existsSync, realpathSync } from "node:fs";
+import { mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync, readFileSync, existsSync, realpathSync } from "node:fs";
 import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -322,6 +322,21 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(retried.error).toContain("Source board changed during orphan migration");
     expect(existsSync(join(repo, ".kanmer"))).toBe(true);
     expect(existsSync(join(boardRoot, ".kanmer-orphan-migration.pending"))).toBe(true);
+  });
+
+  realGitTest("serializes concurrent orphan cleanup and leaves no quarantine residue", async () => {
+    const boardRoot = join(repo, ".worktrees", "kanmer");
+    await git(repo, "worktree", "add", "--orphan", "-b", "orphan-concurrent-cleanup", boardRoot);
+    mkdirSync(join(boardRoot, ".kanmer"), { recursive: true });
+    writeFileSync(join(boardRoot, ".kanmer", "version.json"), '{"format":3}\n', "utf8");
+
+    const results = await Promise.all([
+      ensureBoardWorktree(repo, "orphan-concurrent-cleanup"),
+      ensureBoardWorktree(repo, "orphan-concurrent-cleanup"),
+    ]);
+    expect(results.every((result) => result.available)).toBe(true);
+    expect(existsSync(join(repo, ".kanmer"))).toBe(false);
+    expect(readdirSync(repo).filter((entry) => entry.startsWith(".kanmer-orphan-quarantine-")).length).toBe(0);
   });
 
   realGitTest("preserves the root when first-time local attachment ignore fails", async () => {

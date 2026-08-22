@@ -886,3 +886,11 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - CORE-090 fresh independent review: PASS at PR #220 head 75ce9ab11991994bfba46113fe3b79f5cdaaa629; clean detached npm ci, plugin:build, and mcpb:check all exited 0, with committed/generated standalone SHA f52d9c5b3817b12432e211438913146908c32874bf74ac261839a21ee31ea58c. Prior a4204617 NEEDS-CHANGES artifact mismatch is fixed; no merge performed.
 - GUI-120 fresh independent review: PASS at PR #221 head fe4ace066bde9d3ba230b997168802ef9fc8e55f; focused index.sync 11/11, GUI typecheck/build, scripts 89/89, docs, and diff checks passed. Full workspace typecheck retained its inherited dispatch baseline failure; hosted/native evidence remains INCONCLUSIVE.
 - PR #221 was merged non-squash into gui-118-provider-lifecycle as 37740379552e241f200bb181a2ca0e9d3be32ece. GUI-120 traceability now records implementation and merge commits plus PR #221.
+
+
+## 2026-08-23T00:05:00Z — CORE-026 fresh cumulative review
+
+- Exact PR #163 head cbba69d682c448943cce87c9825589a44f4260d4 against main 34245be039e8fd8395b5e31835602c54e62e98a4 reviewed independently after CORE-090 merge.
+- PASS: clean detached npm ci; mcpb:check 3 files / 1,671,293 bytes with committed/generated server SHA f52d9c5b3817b12432e211438913146908c32874bf74ac261839a21ee31ea58c; core 310/310; MCP sources 32/32; GUI 416/416; typecheck; scripts 88/88; protocol 46/46; docs/manual/plugin/diff rails.
+- Hosted run 32603963529 verify PASS (job 97106199221). Its kanmer-gate failed against the pre-refresh snapshot because CORE-090 was still a live blocker and the prior review used invalid aggregated finding ids; current board readback has the CORE-090 edge removed and fresh scratch/review uses canonical F-### ids. A fresh gate rerun remains required before protected merge.
+- No merge, move, or cleanup performed. External provider, live llms/DNS, packaged, and visual evidence remain INCONCLUSIVE.

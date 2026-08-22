@@ -1,6 +1,59 @@
 ---
 kind: review-attestation
 pr: "163"
+head_sha: "cbba69d682c448943cce87c9825589a44f4260d4"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: pass
+reviewer: "codex-gui099-executor"
+independent: true
+plan_hash: "9916aa9641b6a15d"
+ticket_updated: "2026-08-22T23:00:03.328Z"
+findings:
+  - id: F-001
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "The cumulative source/schema, bounded-fetch, redirect/DNS, credential, cache-lock, board-sync, and Windows identity remediations are present at the exact head. Core, MCP source, GUI, typecheck, docs, skills, protocol, and script rails all pass; no new source-trust blocker was found."
+  - id: F-002
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "CORE-090 is merged into this exact head. A clean detached checkout with its own npm ci rebuilt the standalone bundle and npm run mcpb:check passed with 3 files / 1,671,293 bytes and server SHA-256 f52d9c5b3817b12432e211438913146908c32874bf74ac261839a21ee31ea58c, matching the committed plugin artifact."
+  - id: F-003
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "Hosted run 32603963529 verify passed, while its kanmer-gate snapshot failed on the then-live CORE-090 blocker and the preceding malformed aggregated finding ids. The current board readback reports CORE-026 blocked:false after the CORE-090 edge removal, and this fresh attestation uses only canonical F-### ids. A fresh gate rerun is still required as the operational merge check; the old failure is preserved rather than treated as a source failure."
+  - id: F-004
+    severity: minor
+    disposition: accepted-risk
+    reason: "Connected-provider, live external llms.txt/DNS rebinding, packaged app, and visual/manual host evidence remain INCONCLUSIVE because those environments were not available; no such evidence is claimed."
+---
+
+# Fresh independent review — CORE-026 cumulative PR #163
+
+Reviewed exact cumulative head cbba69d682c448943cce87c9825589a44f4260d4 against current main base 34245be039e8fd8395b5e31835602c54e62e98a4. The head is the non-squash CORE-090 artifact merge on top of the previously reviewed source/security and board-sync remediation chain. The diff remains within the declared CORE-026 source contract, its deterministic tests/docs/skills, GUI integration regressions, and generated plugin artifact; no unrelated source scope was introduced.
+
+## Exact-head local evidence
+
+- npm ci --ignore-scripts --no-audit --no-fund --prefer-offline: exit 0 in a clean detached checkout.
+- npm run mcpb:check: exit 0; 3 files / 1,671,293 bytes; generated server SHA-256 f52d9c5b3817b12432e211438913146908c32874bf74ac261839a21ee31ea58c; committed plugin bytes match.
+- npm run test -w @kanmer/core: exit 0, 310/310.
+- node --test packages/mcp-server/src/sources.test.mjs: exit 0, 32/32.
+- npm run test -w @kanmer/gui: exit 0, 416/416.
+- npm run typecheck: exit 0 across core, MCP server, UI, and GUI.
+- npm run test:scripts: exit 0, 88/88.
+- npm run smoke:protocol: exit 0, 46/46.
+- npm run verify:docs: exit 0; npm run check:manual: exit 0; npm run plugin:check: exit 0; git diff --check against main: exit 0.
+
+## Hosted checks and merge disposition
+
+PR #163 current hosted run 32603963529 completed with verify job 97106199221 PASS and kanmer-gate job 97106199315 FAILURE. The gate log records a snapshot taken before the CORE-090 block edge was removed and before this valid exact-head attestation: it reported live blocker CORE-090 and rejected the prior review's non-canonical ids such as F-001..F-006. Current MCP readback reports CORE-026 blocked:false, and the new review frontmatter contains only F-### identifiers. Therefore the old gate failure is stale procedural evidence, not a remaining source or artifact finding, but the PR remains merge-blocked until the hosted gate is rerun and passes against the refreshed board/attestation.
+
+Verdict: PASS for the exact code/artifact head, conditional on the required fresh hosted kanmer-gate rerun. No protected merge, ticket move, or cleanup was performed. Prior 973 NEEDS-CHANGES history and its earlier malformed attestation are preserved below.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "163"
 head_sha: "973bcf9340aa2c627c717a00f1bcf0f6d3fca242"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: needs-changes

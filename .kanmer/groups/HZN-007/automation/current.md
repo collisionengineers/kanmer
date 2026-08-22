@@ -874,3 +874,11 @@ Last handoff: 2026-08-22T22:48Z — CORE-090 artifact remediation pushed as comm
 
 
 Last handoff: 2026-08-23T00:12:00Z — GUI-122 is Review-ready on gui-122-rebase-provider-propagation/.worktrees/gui-122, merge commit 94d9fca2a9aa6e9158f7b230cea4617accb771dd, PR #222 targeting gui-118-provider-lifecycle. The current CORE-043 7654a281 provider propagation is preserved; focused 120/120, GUI typecheck/build, docs, scripts 89/89, and diff PASS. Full workspace typecheck retains inherited mcp-server/core mismatch. Independent review required; no merge or cleanup.
+
+
+## 2026-08-23T00:05:00Z — CORE-026 fresh cumulative review
+
+- Exact PR #163 head cbba69d682c448943cce87c9825589a44f4260d4 against main 34245be039e8fd8395b5e31835602c54e62e98a4 reviewed independently after CORE-090 merge.
+- PASS: clean detached npm ci; mcpb:check 3 files / 1,671,293 bytes with committed/generated server SHA f52d9c5b3817b12432e211438913146908c32874bf74ac261839a21ee31ea58c; core 310/310; MCP sources 32/32; GUI 416/416; typecheck; scripts 88/88; protocol 46/46; docs/manual/plugin/diff rails.
+- Hosted run 32603963529 verify PASS (job 97106199221). Its kanmer-gate failed against the pre-refresh snapshot because CORE-090 was still a live blocker and the prior review used invalid aggregated finding ids; current board readback has the CORE-090 edge removed and fresh scratch/review uses canonical F-### ids. A fresh gate rerun remains required before protected merge.
+- No merge, move, or cleanup performed. External provider, live llms/DNS, packaged, and visual evidence remain INCONCLUSIVE.

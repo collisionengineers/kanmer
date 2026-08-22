@@ -836,3 +836,8 @@ Last handoff: 2026-08-22T18:24:50Z — CORE-084 independent review PASS at exact
 
 
 2026-08-22T19:01:38.547Z — CORE-086 artifact remediation: taken without force on core-086-plugin-artifact-refresh/.worktrees/core-086 from exact CORE-081 cumulative base fcd998550714811edac99032ea7118f9b2084d38. Final commit 4f96ce20c24f63d92268e4a61899a4e6c67b2459 / PR #205 targets core-026-project-declared-sources. Only plugins/kanmer/mcp/kanmer-mcp.cjs changed; final plugin:check and mcpb:check PASS with shared hashes f228352b. Source 26/26, first core 303/303, scripts 88/88, and full verify progress are recorded; later core ENOTEMPTY timeout and initial missing-MCPB-CLI failures remain preserved. Author stops at Review; independent review/merge then fresh CORE-081 cumulative review required.
+
+- 2026-08-22T19:04:09.250Z — MCP-044 implementation handoff prepared on branch mcp-044-board-branch-runtime, commit df78fd9b6ba98b54c2e28ea06dd6fa019f93732b, PR #206.
+  Deterministic rails: focused GUI 96/96 and full GUI 392/392 pass; workspace typecheck, core/server and GUI builds, manual/docs, managed-block, skill, script 88/88 and git diff checks pass.
+  Preserved failures: plugin:check first hit linked-worktree core resolution, then ticket-local install reached committed-plugin-vs-fresh-build mismatch (both exit 1); check:diff is undefined (exit 1). Hosted protection/provider/installer lifecycle evidence is INCONCLUSIVE and no external state was changed.
+  MCP-044 remains scoped to local Invocation-backed provider registration env propagation and canonical managed guidance; Grok/Antigravity native plugin descriptors and CORE-043 are untouched. Author stops at Review for independent review; no merge or cleanup.

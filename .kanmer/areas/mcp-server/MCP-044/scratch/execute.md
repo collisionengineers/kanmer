@@ -1,0 +1,4 @@
+- 2026-08-22T19:04:09.250Z — MCP-044 implementation handoff prepared on branch mcp-044-board-branch-runtime, commit df78fd9b6ba98b54c2e28ea06dd6fa019f93732b, PR #206.
+  Deterministic rails: focused GUI 96/96 and full GUI 392/392 pass; workspace typecheck, core/server and GUI builds, manual/docs, managed-block, skill, script 88/88 and git diff checks pass.
+  Preserved failures: plugin:check first hit linked-worktree core resolution, then ticket-local install reached committed-plugin-vs-fresh-build mismatch (both exit 1); check:diff is undefined (exit 1). Hosted protection/provider/installer lifecycle evidence is INCONCLUSIVE and no external state was changed.
+  MCP-044 remains scoped to local Invocation-backed provider registration env propagation and canonical managed guidance; Grok/Antigravity native plugin descriptors and CORE-043 are untouched. Author stops at Review for independent review; no merge or cleanup.

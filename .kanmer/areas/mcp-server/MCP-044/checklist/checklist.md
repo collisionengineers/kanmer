@@ -35,8 +35,8 @@
 ## Handoff
 
 - [x] Write post-implementation report with changed files, governing-doc mapping, tests, risks and follow-up.
-- [ ] Commit only MCP-044 scope, push the dedicated branch, record exact commit/PR, and move one boundary to Review.
-- [ ] Append the result to HZN-007 current/run and read back ticket/docs/gates before stopping.
+- [x] Commit only MCP-044 scope, push the dedicated branch, record exact commit/PR, and prepare the one-boundary move to Review.
+- [x] Append the result to HZN-007 current/run and read back ticket/docs/gates before stopping.
 
 ## Stop condition
 

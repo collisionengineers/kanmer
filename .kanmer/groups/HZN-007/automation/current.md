@@ -298,3 +298,6 @@ Last handoff: 2026-08-22T08:22:47.548Z — GUI-108 hosted handoff finalized: PR 
 
 
 2026-08-22T08:34:00Z — CORE-035 moved Review→Verifying after independent packet-safety review PASS. Proof written as INCONCLUSIVE against exact source c8ea0b77: deterministic verify and refusal matrix pass, hosted gate pass, but hosted verify has disposable-origin release-notes mismatch and GitHub private branch-protection API returns HTTP 403. Protected merge/exact-SHA/cleanup are not claimed; fixture PRs remain open and ticket stays Verifying.
+
+
+2026-08-22T08:36:00Z — CORE-035 final handoff details: disposable private repo collisionengineers/kanmer-spine-integration-20260822t075446z-78e5ba65, fixture PR #1 head 94f859b5, NO_TICKET probe PR #2, fixture commit f9dcfbb6. Hosted gate 32561867341/97005242239 PASS; verify 97005242134 FAIL 84/85 on disposable-origin release-notes URL mismatch. Private protection 403 remains the sole terminal external capability blocker.

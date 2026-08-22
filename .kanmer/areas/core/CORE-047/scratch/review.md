@@ -69,3 +69,55 @@ The ticket item records commit 47169144e9e6fdd8b215408cbb177657e6c7a0bce, while 
 ## Required remediation
 
 Fix both ownership races without resurrecting released locks or deleting active replacement locks; add the two adversarial regressions; regenerate plugins/kanmer/mcp/kanmer-mcp.cjs and run plugin checks; correct the recorded ticket SHA; then request fresh independent review. No merge, move or cleanup was performed.
+
+---
+kind: review-attestation
+pr: "169"
+head_sha: "47169144c0bd13bd205e42922c0282bfd56c466a"
+verdict: needs-changes
+reviewer: "core041-executor"
+independent: true
+plan_hash: "d4f2e65c2dfe0d08"
+ticket_updated: "2026-08-22T11:05:01.163Z"
+findings:
+  - id: F-001
+    severity: blocker
+    summary: "Replacement lock can be restored after its owner cleanup, leaving an orphaned lock"
+    disposition: open
+    reason: "The post-rename inode check and exclusive hard-link restoration protect an active replacement owner, but not the ordering where that owner finishes before the stale reclaimer validates/restores its quarantine. A deterministic injected run delayed the stale reclaimer after moving the winner lock, released the winner callback, then allowed validation/link restoration: the winner cleanup saw ENOENT, the stale reclaimer restored the winner inode afterward, and the original lock path remained with pid/process metadata after both operations completed. The protocol must coordinate restoration with owner cleanup or use an ownership token/generation that cannot recreate a lock after its owner has released it."
+  - id: F-002
+    severity: major
+    summary: "CORE-047 ticket records a non-existent commit SHA"
+    disposition: open
+    reason: "MCP item commits records 47169144e9e6fdd8b215408cbb177657e6c7a0bce, but git rev-parse rejects that SHA. GitHub PR #169 and the branch resolve to 47169144c0bd13bd205e42922c0282bfd56c466a. Traceability must be corrected to the exact reachable PR head before acceptance."
+---
+# Independent review — CORE-047
+
+## Scope and packet
+
+I read the complete CORE-047 ticket, research/files/plan/checklist/open-questions/post-implementation-report, HZN-007 context, CORE-046 packet, and CORE-046's independent NEEDS-CHANGES review at PR #167. I inspected PR #169's exact two-file diff against CORE-046 head 54651a3c77b8ca8d02d9d309e36baf9b62ebca3c. The diff is scoped to `packages/core/src/io.ts` and `packages/core/src/io.test.ts`; inherited IO assertions remain present.
+
+## F-001 audit
+
+The ordinary reversed-order regression passes and proves that an active replacement lock is not deleted while its callback is held. However, the production protocol still has a cleanup-order race. I ran a deterministic variant of the injected seam in which the replacement owner releases immediately after the stale reclaimer moves its lock into quarantine, before the stale reclaimer reads/restores that quarantine. The result was `staleError=EEXIST`, `winnerResult=winner`, `leftover=true`, with the original lock path containing the winner's pid/createdAt record after both promises completed. This is an orphaned lock: the winner's `finally` observed ENOENT while the stale reclaimer restored afterward. The fix must close this ordering, not only preserve an active callback.
+
+Repeated original regression: 12/12 PASS. The additional cleanup-order stress is a deterministic NEEDS-CHANGES finding.
+
+## F-002 traceability audit
+
+PR #169 reports head `47169144c0bd13bd205e42922c0282bfd56c466a`; `git rev-parse` confirms it and its ancestry from CORE-046. The CORE-047 MCP item records `47169144e9e6fdd8b215408cbb177657e6c7a0bce`, which `git rev-parse` rejects. Correct the recorded commit to the reachable PR head.
+
+## Verification evidence
+
+- PASS exit 0: `npm run test -w @kanmer/core -- src/io.test.ts` — 17/17.
+- PASS exit 0: repeated targeted reversed-order regression — 12/12 iterations.
+- PASS exit 0: `npm run test -w @kanmer/core -- src/io.test.ts src/sources.test.ts src/store.test.ts` — 108/108.
+- PASS exit 0: full `npm run test -w @kanmer/core` — 295/295.
+- PASS exit 0: `npm run typecheck -w @kanmer/core`.
+- PASS exit 0: `npm run build:core`.
+- PASS exit 0: `git diff --check`.
+- No hosted checks are reported for PR #169; live multi-process Windows crash/PID-reuse proof remains INCONCLUSIVE as documented.
+
+## Verdict
+
+NEEDS-CHANGES. The active-owner reversed-order case is covered, but the cleanup-order stress leaves an orphaned replacement lock, and the ticket SHA is unreachable. No merge, move, cleanup, or source change was performed.

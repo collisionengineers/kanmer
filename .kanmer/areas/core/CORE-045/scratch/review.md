@@ -109,3 +109,7 @@ Narrow the over-broad IPv4 and IPv6 predicates, propagate the final recovery cla
 ## Verdict
 
 PASS, SHA-bound to `02389045b7d26ad46e470af1d96a3084b486bf68`. Revalidate PR head/base/mergeability immediately before merge, then merge PR #166 non-squash into CORE-044. Do not move or merge CORE-044; do not verify or clean up.
+
+## Merge result
+
+Final pre-merge state matched PR #166 head `02389045b7d26ad46e470af1d96a3084b486bf68`, base `33f32e3aae9819f1c2344863272dacb5c958fbac`, OPEN/CLEAN/MERGEABLE; all nine inherited review threads were resolved. PR #166 merged non-squash into `core-044-source-fetch-remediation` at merge SHA `142af2f3b105b38b00d659019d1cfe99f3b50844` on 2026-08-22T12:55:09Z. CORE-045 moved Review → Verifying. CORE-044 was not moved or merged; no verification or cleanup performed.

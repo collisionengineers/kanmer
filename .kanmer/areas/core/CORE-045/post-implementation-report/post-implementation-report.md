@@ -26,3 +26,8 @@ Fresh independent review must validate the exact cumulative head and inherited s
 ## CORE-051/053 remediation handoff
 
 CORE-051 PR #173 final head `36b57a93` and child CORE-053 PR #174 merge `36b57a93` are merged into this branch at `02389045`. The chain narrows incorrect globally-reachable special-use predicates, preserves the 192.0.0.9/.10 exceptions, corrects `3fff::/20`, validates NAT64 embedded IPv4, retains public `2001:20::/28`, rejects `fec0::/10`, surfaces final claim errors, and composes claimant-marker cleanup failures. Deterministic IO/source/build/type/plugin/script rails pass; broad HTTP/live Windows-DNS evidence remains INCONCLUSIVE.
+
+
+## Merge result
+
+Independent cumulative review PASS was recorded against exact head `02389045b7d26ad46e470af1d96a3084b486bf68`. PR #166 was independently merged non-squash into CORE-044 at merge SHA `142af2f3b105b38b00d659019d1cfe99f3b50844` on 2026-08-22T12:55:09Z. CORE-045 remains pending the Verifying proof boundary; no live Windows/DNS/HTTP external evidence is claimed.

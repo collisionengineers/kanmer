@@ -71,3 +71,8 @@ No live external llms.txt site, live DNS-rebinding/private-network probe, proces
 Base: b5ae6f36e007a05fffd9bb2f1c6ea4a87a860477 (CORE-026 PR #163).
 Implementation: 33f32e3aae9819f1c2344863272dacb5c958fbac.
 PR: #165, core-044-source-fetch-remediation -> core-026-project-declared-sources.
+
+
+## Cumulative merge result
+
+CORE-045's cumulative PR #166 was independently reviewed PASS and merged non-squash into this branch at `142af2f3b105b38b00d659019d1cfe99f3b50844` on 2026-08-22T12:55:09Z. CORE-044 now represents the exact cumulative CORE-026 remediation plus the CORE-045/051/053 source and lock chain; fresh independent review is required before PR #165 is merged into CORE-026. Live DNS/private-network, process-killed-at-rename, and broad HTTP timing evidence remain INCONCLUSIVE.

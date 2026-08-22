@@ -23,8 +23,7 @@ groups:
   - HZN-007
 links:
   - CORE-044
-blocks:
-  - CORE-044
+blocks: []
 refs:
   - docs/functional/frd/FRD-027-project-declared-sources.md
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
@@ -53,7 +52,7 @@ prs:
   - '174'
 archived: false
 created: '2026-08-22T10:11:05.566Z'
-updated: '2026-08-22T12:55:35.170Z'
+updated: '2026-08-22T12:56:11.022Z'
 ---
 
 Independent review of CORE-044 / PR #165 found two blockers that must be fixed and re-reviewed before CORE-044 can merge:

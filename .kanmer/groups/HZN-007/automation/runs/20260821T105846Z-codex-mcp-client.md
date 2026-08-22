@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T08:19:06.498Z
+updated_at: 2026-08-22T08:22:47.548Z
 lane_limit: 3
 stop_reason:
 ---
@@ -675,3 +675,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T08:01:40.564Z — GUI-108 assigned to gui108-executor after complete recursive ticket/group/governing-doc/gate read. Ticket moved Backlog→Preparing, research/files/plan/checklist/open-questions were written and read back, then take_ticket recorded branch gui-108-actionable-gate-feedback and worktree .worktrees/gui-108 at Implementing. Scope is the renderer-only actionable gate-blocked move UX: preserve CH.getGateStatus, add drop anchoring, direct existing document-tab recovery/create affordance, and deterministic tests; no core/IPC redesign or unrelated GUI work. Independent Review is required; no self-review, merge, or cleanup.
 
 - 2026-08-22T08:19:06.498Z — GUI-108 implementation handoff: ticket is Review on gui-108-actionable-gate-feedback/.worktrees/gui-108, commit 044e0f54c24639fb09554c4489b36166b86a1f66, PR #161. Focused GUI-108 tests pass 25/25, manual freshness and diff-check pass; full GUI/typecheck/standard-build stale shared-core baseline failures and INCONCLUSIVE packaged visual drag/drop evidence are preserved in the report. Independent root review is required; author will not merge, move beyond Review, or clean up.
+
+- 2026-08-22T08:22:47.548Z — GUI-108 hosted handoff finalized: PR #161 commit 044e0f54c24639fb09554c4489b36166b86a1f66 has kanmer-gate PASS (rerun job 97004949721) and verify PASS (job 97004950398). MCP scratch readback contains independent PASS attestation; ticket remains Review, PR open/unmerged, author does not merge or clean up .worktrees/gui-108/branch gui-108-actionable-gate-feedback.

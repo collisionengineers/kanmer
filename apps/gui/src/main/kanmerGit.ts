@@ -162,7 +162,15 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
     const attached = records.find((r) => r.branch === `refs/heads/${branch}`)?.worktree;
     if (attached) {
       const attachedRoot = resolve(attached);
-      await ensureBoardWorktreeIgnore(attachedRoot);
+      try {
+        await ensureBoardWorktreeIgnore(attachedRoot);
+      } catch (error) {
+        // The path is already the canonical board worktree. Keep it visible
+        // while refusing to use it until the derived ignore state is repaired;
+        // returning empty() here would let callers fall back to the source
+        // checkout and mutate the wrong board.
+        return { ...empty(branch, msg(error)), boardRoot: attachedRoot, paused: true };
+      }
       return { available: true, boardRoot: attachedRoot, branch, lastSync: null, error: null, paused: false };
     }
     if (existsSync(boardRoot)) {

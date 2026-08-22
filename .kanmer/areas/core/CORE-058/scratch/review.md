@@ -33,3 +33,18 @@ The exact PR head changes `apps/gui/src/main/kanmerGit.ts` to centralize the boa
 ## Decision
 
 NEEDS-CHANGES. The focused tests and artifact evidence are green, but the two live source defects above are within CORE-058’s board-worktree hygiene scope. PR #180 was not merged and CORE-058 was not moved to Verifying.
+
+## Independent review — NEEDS-CHANGES — b1abac871da28522759d4e5582caa69d5cdb5cd5
+
+Reviewer: codex-core058-review (independent of the implementation author). Exact reviewed head: b1abac871da28522759d4e5582caa69d5cdb5cd5 (PR #180), cumulative CORE-044 base lineage reviewed; current CORE-044 remote base at review time: 7403a7cfb7079fafa88c2d18ec5b33b1a7407013.
+
+Scope reviewed: cumulative CORE-058 board-worktree ignore reconciliation, including inherited CORE-062 attachment paths and CORE-063 board-root preservation. Exact intended diff is apps/gui/src/main/kanmerGit.ts, apps/gui/src/main/kanmerGit.test.ts, and generated plugins/kanmer/mcp/kanmer-mcp.cjs; no unrelated source files were introduced by the cumulative head.
+
+Blocking finding:
+- P2 — ensureBoardWorktreeIgnore adds .kanmer/data/sources/ to .gitignore but does not untrack source-cache paths that were already committed in the board worktree index. Git ignore rules do not affect already tracked paths, so syncBoard's git add -- .kanmer .gitignore can continue staging and committing cache updates after reconciliation. The new test uses git check-ignore --no-index, which explicitly ignores the index and therefore cannot prove this migration case. Add a deterministic fixture with a tracked .kanmer/data/sources/cache.json, reconcile, run syncBoard (or inspect the index), and remove the cache tree from the index while retaining the working copy; preserve failures rather than claiming the existing ignore test covers it.
+
+Positive evidence: exact CORE-058 Git integration suite passed 18/18 (npm run test -w @kanmer/gui -- --run src/main/kanmerGit.test.ts, exit 0). The board-root preservation regression and local/remote attachment reconciliation both passed.
+
+Full GUI rail: exit 1, 39 files, 290/291 tests; four suites failed before collection/expectation because the linked worktree resolves stale shared-core dispatch provider antigravity, and one dispatch assertion received the same stale-provider error. This is an environment/baseline limitation, not evidence for or against the changed Git code.
+
+Disposition: NEEDS-CHANGES. Do not merge or move CORE-058 to Verifying until the tracked-cache migration behavior is fixed and re-tested at a fresh exact head.

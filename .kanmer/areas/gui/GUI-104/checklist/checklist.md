@@ -10,7 +10,7 @@
 - [x] Add the separate OpenAI Secure MCP Tunnel Settings surface and external workspace/app guidance.
 - [x] Update docs/manual/connect.md and regenerate the in-app manual.
 - [x] Add unit coverage for validation, command construction, redaction, failures, concurrency, and lifecycle cleanup.
-- [ ] Run GUI tests, root typecheck, build, manual check, and packaged smoke.
+- [x] Run GUI tests, root typecheck, build, manual check, and packaged smoke.
 - [ ] Prove two concurrent project profiles reach only their intended boards with distinct health ports.
 - [x] Audit repository files, settings, logs, diagnostics, and proof for credential/tunnel-identifier leakage.
 - [x] Summarise exact behavior and residual external prerequisites for the post-implementation report.
@@ -20,10 +20,11 @@
 
 ## Verification disposition
 
-- Full GUI typecheck/build and full GUI vitest retain pre-existing dispatch/provider failures; exact commands, exits, and first failures are in the post-implementation report and scratch.
+- Full GUI vitest: 41 files / 372 tests PASS. Root typecheck, GUI typecheck, GUI build, manual freshness, packaged dist:check/updater package (8/8), and diff-check all PASS on final head 37bb6644.
 - Two-project OpenAI control-plane and live listener proof is **INCONCLUSIVE** without disposable credentials/projects and a documented listener probe. The GUI validates/records loopback health addresses but does not rewrite tunnel-client profile health configuration or claim live listener readiness.
 
 ## F-002 verification note
 
 - Project-close cleanup is wired through the manager and covered by the focused lifecycle test; focused manager + Settings tests: 6/6 PASS.
-- GUI typecheck (`npm run typecheck -w @kanmer/gui`) and `git diff --check`: exit 0.
+- GUI typecheck (npm run typecheck -w @kanmer/gui) and git diff --check: exit 0.
+- Final-head follow-up also passed root npm run typecheck, npm run dist:check (updater package 8/8), and full GUI vitest 41 files / 372 tests.

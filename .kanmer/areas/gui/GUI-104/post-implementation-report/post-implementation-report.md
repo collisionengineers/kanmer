@@ -41,3 +41,14 @@ Updated source head: `fddcd9b4` (PR #157).
 Project close now invokes `OpenAITunnelManager.closeProject` before the watcher closes and the project context is deleted. The manager resolves the current profile generation and stops only the owned child for that project; absent profiles or children are a safe no-op. The focused lifecycle test proves project-close cleanup and stopped state. Focused manager + Settings tests remain 6/6 PASS; GUI typecheck and diff checks pass.
 
 Updated source head: `cad3552a` (PR #157).
+
+
+## Final-head remediation and verification — 2026-08-22
+
+- Independent review of cad3552 identified eleven applicable lifecycle/persistence defects; all were fixed in 37bb6644. The fixes cover empty-generation first save, malformed settings read failures, running-child save protection, in-flight init/doctor tracking and quit cleanup, termination failure surfacing, filesystem-root preservation, incomplete-default uniqueness, dirty-draft action gating, identity reconciliation/removal, and persistence rollback.
+- Added typed reconciliation/removal IPC and regression coverage.
+- PASS: focused manager + Settings tests 10/10.
+- PASS: full GUI vitest 41 files / 372 tests.
+- PASS: root npm run typecheck; GUI typecheck; GUI build; npm run check:manual; npm run dist:check with updater package 8/8; git diff --check.
+- PR #157 final head: 37bb6644. Hosted verify and kanmer-gate from the prior head passed; a fresh hosted run for 37bb6644 is required before merge.
+- Real two-project OpenAI control-plane/listener proof remains INCONCLUSIVE without disposable credentials/projects and a documented listener probe; no live listener claim is made.

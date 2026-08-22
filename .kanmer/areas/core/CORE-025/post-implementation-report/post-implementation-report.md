@@ -42,3 +42,7 @@ Local disposable CLI evidence: absent review warning exits 0 with `::warning [NO
 ## Handoff
 
 Implementation is ready for independent review. The ticket remains pre-merge; no merge, protection change, hosted-result claim, or CORE-035 work was performed.
+
+## Hosted verification
+
+PR #159 at head d338349ea44397887f74ef714563f6bbc880ea79 completed hosted run 32558835415 with kanmer-gate PASS (job 96997133179, 53s) and verify PASS (job 96997133282, 2m28s). The hosted gate and authoritative verify are green for this exact head. PR remains open for independent review; no merge performed.

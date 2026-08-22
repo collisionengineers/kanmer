@@ -41,3 +41,11 @@ The exact identifiers for the two bullets whose display wrapping was ambiguous a
 - Windows process-tree termination finding: `PRRT_kwDOT2PEds6bXBCK`.
 
 The complete remaining unresolved set is: `PRRT_kwDOT2PEds6bXBB_`, `PRRT_kwDOT2PEds6bXBCB`, `PRRT_kwDOT2PEds6bXBCF`, `PRRT_kwDOT2PEds6bXBCH`, `PRRT_kwDOT2PEds6bXBCI`, `PRRT_kwDOT2PEds6bXBCK`, `PRRT_kwDOT2PEds6bXBCL`, `PRRT_kwDOT2PEds6bXFOl`, `PRRT_kwDOT2PEds6bXFOn`, `PRRT_kwDOT2PEds6bXFOp`, and `PRRT_kwDOT2PEds6bXFOr`.
+
+
+## Re-review — final head 37bb6644
+
+- All eleven applicable findings from the cad3552 review were fixed with regression coverage. Focused 10/10, full GUI 41 files / 372 tests, root and GUI typecheck, GUI build, manual freshness, dist:check/updater 8/8, and diff-check PASS.
+- PR #157 is awaiting fresh hosted verification on 37bb6644; no merge or cleanup yet.
+- The two-project live control-plane/listener acceptance remains INCONCLUSIVE without disposable credentials and listener probes.
+- Verdict: PASS pending hosted checks and fresh conversation resolution.

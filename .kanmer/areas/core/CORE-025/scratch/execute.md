@@ -10,3 +10,5 @@
 - No live hosted PR evidence yet; this report records local deterministic rails only. Direct board-push non-trigger observation remains unchecked/inconclusive. No merge performed; PR/review handoff follows after commit.
 
 2026-08-22 final verify rerun (after helper/review fixture additions): npm run verify exited 1 during npm test. Core focused phase-2 tests themselves passed; shared Vitest run timed out unrelated existing src/store.test.ts `blocks / order > orders: position verbs materialise, midpoint-insert, unordered sorts last` at 5323ms, and recorded an unhandled dispatch-supervisor fixture ENOENT for a temporary MCP-024 log. A prior verify run before these final additions passed the complete rail (core 283, GUI 362, MCP 65, scripts 83/83, smokes/protocol/discovery, typechecks/builds, mcpb/plugin/skills/AGENTS). Do not claim final verify PASS; retain this exact failure and require hosted rerun.
+
+Hosted verification complete: PR #159, head d338349ea44397887f74ef714563f6bbc880ea79, run 32558835415. kanmer-gate PASS job 96997133179 (53s); verify PASS job 96997133282 (2m28s). PR remains open; no merge.

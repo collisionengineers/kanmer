@@ -388,7 +388,7 @@ async function fetchText(
 
 async function writeCache(file: string, cache: CacheFile): Promise<void> {
   const content = JSON.stringify(cache, null, 2) + "\n";
-  await withExclusiveFileLock(`${file}.lock`, () => writeFileAtomic(file, content));
+  await writeFileAtomic(file, content);
 }
 
 function asDocument(response: FetchTextResult): LlmsDocument {
@@ -418,18 +418,25 @@ async function revalidateLinkedDocuments(
   if (!root) return [];
   const documents: LlmsDocument[] = [root];
   let bytes = Buffer.byteLength(root.text, "utf8");
-  for (const cachedDocument of cached.documents.slice(1, LLMS_TXT_POLICY.maxLinkedPages + 1)) {
-    if (bytes >= LLMS_TXT_POLICY.maxBytes) {
-      failures.push(`${cachedDocument.url} skipped because the aggregate response limit was reached`);
-      documents.push(cachedDocument);
-      continue;
-    }
+  const cachedByUrl = new Map(cached.documents.slice(1).map((document) => [document.url, document]));
+  const candidates = markdownLinks(root.text, new URL(root.url)).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
+  for (const candidate of candidates) {
+    const cachedDocument = cachedByUrl.get(candidate.toString());
     const requestHeaders: Record<string, string> = {};
-    if (cachedDocument.etag) requestHeaders["if-none-match"] = cachedDocument.etag;
-    if (cachedDocument.lastModified) requestHeaders["if-modified-since"] = cachedDocument.lastModified;
+    if (cachedDocument?.etag) requestHeaders["if-none-match"] = cachedDocument.etag;
+    if (cachedDocument?.lastModified) requestHeaders["if-modified-since"] = cachedDocument.lastModified;
     try {
+      const cachedBytes = cachedDocument ? Buffer.byteLength(cachedDocument.text, "utf8") : 0;
+      if (cachedDocument && bytes + cachedBytes > LLMS_TXT_POLICY.maxBytes) {
+        failures.push(`${candidate} skipped because the aggregate response limit was reached`);
+        continue;
+      }
+      if (bytes >= LLMS_TXT_POLICY.maxBytes) {
+        failures.push(`${candidate} skipped because the aggregate response limit was reached`);
+        continue;
+      }
       const response = await fetchText(
-        new URL(cachedDocument.url),
+        candidate,
         fetchImpl,
         requestHeaders,
         LLMS_TXT_POLICY.timeoutMs,
@@ -437,6 +444,11 @@ async function revalidateLinkedDocuments(
         lookupImpl,
       );
       if (response.status === 304) {
+        if (!cachedDocument) {
+          failures.push(`${candidate} returned HTTP 304 without a cached representation`);
+          continue;
+        }
+        bytes += cachedBytes;
         documents.push(cachedDocument);
       } else {
         bytes += response.bytes;
@@ -445,7 +457,15 @@ async function revalidateLinkedDocuments(
     } catch (error) {
       bytes += consumedBytes(error);
       failures.push(failureText(error));
-      documents.push(cachedDocument);
+      if (cachedDocument) {
+        const cachedBytes = Buffer.byteLength(cachedDocument.text, "utf8");
+        if (bytes + cachedBytes <= LLMS_TXT_POLICY.maxBytes) {
+          bytes += cachedBytes;
+          documents.push(cachedDocument);
+        } else {
+          failures.push(`${candidate} stale cache skipped because the aggregate response limit was reached`);
+        }
+      }
     }
   }
   return documents;
@@ -460,98 +480,99 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
     : undefined);
   const now = options.now ?? Date.now;
   const cacheFile = cachePath(options.cacheDir, root.toString());
-  const cached = await readCache(cacheFile);
-  const nowMs = now();
-  if (!options.force && cached && cached.url === root.toString() && Date.parse(cached.expiresAt) > nowMs) {
-    return {
-      sourceUrl: cached.url,
-      documents: cached.documents,
-      failures: cached.failures,
-      fromCache: true,
-      fetchedAt: cached.fetchedAt,
-    };
-  }
-
-  const headers: Record<string, string> = {};
-  if (cached?.etag) headers["if-none-match"] = cached.etag;
-  if (cached?.lastModified) headers["if-modified-since"] = cached.lastModified;
-  const failures: string[] = [];
-  let rootResponse: FetchTextResult;
-  try {
-    rootResponse = await fetchText(root, fetchImpl, headers, LLMS_TXT_POLICY.timeoutMs, LLMS_TXT_POLICY.maxBytes, lookupImpl);
-  } catch (error) {
-    if (cached) {
-      failures.push(failureText(error));
+  return withExclusiveFileLock(`${cacheFile}.lock`, async () => {
+    const cached = await readCache(cacheFile);
+    const nowMs = now();
+    if (!options.force && cached && cached.url === root.toString() && Date.parse(cached.expiresAt) > nowMs) {
       return {
         sourceUrl: cached.url,
         documents: cached.documents,
-        failures,
+        failures: cached.failures,
         fromCache: true,
         fetchedAt: cached.fetchedAt,
       };
     }
-    throw error;
-  }
-  if (rootResponse.status === 304 && cached) {
-    const documents = await revalidateLinkedDocuments(cached, fetchImpl, failures, lookupImpl);
-    const refreshed: CacheFile = {
-      ...cached,
-      fetchedAt: new Date(nowMs).toISOString(),
+    const headers: Record<string, string> = {};
+    if (cached?.etag) headers["if-none-match"] = cached.etag;
+    if (cached?.lastModified) headers["if-modified-since"] = cached.lastModified;
+    const failures: string[] = [];
+    let rootResponse: FetchTextResult;
+    try {
+      rootResponse = await fetchText(root, fetchImpl, headers, LLMS_TXT_POLICY.timeoutMs, LLMS_TXT_POLICY.maxBytes, lookupImpl);
+    } catch (error) {
+      if (cached) {
+        failures.push(failureText(error));
+        return {
+          sourceUrl: cached.url,
+          documents: cached.documents,
+          failures,
+          fromCache: true,
+          fetchedAt: cached.fetchedAt,
+        };
+      }
+      throw error;
+    }
+    if (rootResponse.status === 304 && cached) {
+      const documents = await revalidateLinkedDocuments(cached, fetchImpl, failures, lookupImpl);
+      const refreshed: CacheFile = {
+        ...cached,
+        fetchedAt: new Date(nowMs).toISOString(),
+        expiresAt: new Date(nowMs + LLMS_TXT_POLICY.cacheTtlMs).toISOString(),
+        sha256: cacheDigest(documents),
+        documents,
+        failures,
+      };
+      await mkdir(options.cacheDir, { recursive: true });
+      await writeCache(cacheFile, refreshed);
+      return {
+        sourceUrl: cached.url,
+        documents,
+        failures,
+        fromCache: true,
+        fetchedAt: refreshed.fetchedAt,
+      };
+    }
+    if (rootResponse.status === 304) {
+      throw new Error(`${root} returned HTTP 304 without a cached representation`);
+    }
+
+    const documents: LlmsDocument[] = [asDocument(rootResponse)];
+    const candidates = markdownLinks(rootResponse.text, new URL(rootResponse.url)).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
+    let bytes = rootResponse.bytes;
+    for (const candidate of candidates) {
+      if (bytes >= LLMS_TXT_POLICY.maxBytes) {
+        failures.push(`${candidate} skipped because the aggregate response limit was reached`);
+        continue;
+      }
+      try {
+        const remaining = LLMS_TXT_POLICY.maxBytes - bytes;
+        const response = await fetchText(candidate, fetchImpl, {}, LLMS_TXT_POLICY.timeoutMs, remaining, lookupImpl);
+        bytes += response.bytes;
+        if (bytes > LLMS_TXT_POLICY.maxBytes) {
+          failures.push(`${candidate} skipped because the aggregate response limit was reached`);
+          continue;
+        }
+        documents.push(asDocument(response));
+      } catch (error) {
+        bytes += consumedBytes(error);
+        failures.push(failureText(error));
+      }
+    }
+    const fetchedAt = new Date(nowMs).toISOString();
+    const cache: CacheFile = {
+      url: root.toString(),
+      fetchedAt,
       expiresAt: new Date(nowMs + LLMS_TXT_POLICY.cacheTtlMs).toISOString(),
+      etag: rootResponse.etag,
+      lastModified: rootResponse.lastModified,
       sha256: cacheDigest(documents),
       documents,
       failures,
     };
     await mkdir(options.cacheDir, { recursive: true });
-    await writeCache(cacheFile, refreshed);
-    return {
-      sourceUrl: cached.url,
-      documents,
-      failures,
-      fromCache: true,
-      fetchedAt: refreshed.fetchedAt,
-    };
-  }
-  if (rootResponse.status === 304) {
-    throw new Error(`${root} returned HTTP 304 without a cached representation`);
-  }
-
-  const documents: LlmsDocument[] = [asDocument(rootResponse)];
-  const candidates = markdownLinks(rootResponse.text, new URL(rootResponse.url)).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
-  let bytes = rootResponse.bytes;
-  for (const candidate of candidates) {
-    if (bytes >= LLMS_TXT_POLICY.maxBytes) {
-      failures.push(`${candidate} skipped because the aggregate response limit was reached`);
-      continue;
-    }
-    try {
-      const remaining = LLMS_TXT_POLICY.maxBytes - bytes;
-      const response = await fetchText(candidate, fetchImpl, {}, LLMS_TXT_POLICY.timeoutMs, remaining, lookupImpl);
-      bytes += response.bytes;
-      if (bytes > LLMS_TXT_POLICY.maxBytes) {
-        failures.push(`${candidate} skipped because the aggregate response limit was reached`);
-        continue;
-      }
-      documents.push(asDocument(response));
-    } catch (error) {
-      bytes += consumedBytes(error);
-      failures.push(failureText(error));
-    }
-  }
-  const fetchedAt = new Date(nowMs).toISOString();
-  const cache: CacheFile = {
-    url: root.toString(),
-    fetchedAt,
-    expiresAt: new Date(nowMs + LLMS_TXT_POLICY.cacheTtlMs).toISOString(),
-    etag: rootResponse.etag,
-    lastModified: rootResponse.lastModified,
-    sha256: cacheDigest(documents),
-    documents,
-    failures,
-  };
-  await mkdir(options.cacheDir, { recursive: true });
-  await writeCache(cacheFile, cache);
-  return { sourceUrl: root.toString(), documents, failures, fromCache: false, fetchedAt };
+    await writeCache(cacheFile, cache);
+    return { sourceUrl: root.toString(), documents, failures, fromCache: false, fetchedAt };
+  });
 }
 
 /** Validate a single declaration at the network boundary as well as at board writes. */

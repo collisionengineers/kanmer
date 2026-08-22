@@ -197,3 +197,6 @@
 2026-08-22T22:13Z — CORE-088 implementation handoff completed: PR #218 remains open at 8d62176216d8c886779217fd846149f0b04b1655, ticket moved Implementing→Review after gates/report/checklist readback. Deterministic source 32/32, core IO 32/32, GUI Git 31/31, typecheck/docs/scripts/build/diff PASS; linked-worktree plugin:check and missing mcpb CLI are INCONCLUSIVE. No merge/self-review/cleanup.
 
 2026-08-22T22:13Z — GUI-119 independent review completed PASS at 0403684bdc448b3aef0ce8f62793525e1ce67619; focused provider 56/56, typecheck/build/docs/scripts/diff PASS, live host evidence INCONCLUSIVE. PR #217 merged non-squash into core-043-protection-retarget as 7654a28104fbc67c58cad61241188d0f3d898c17 and ticket moved Review→Verifying.
+
+
+2026-08-22T22:35Z — GUI-118 independent review NEEDS-CHANGES at exact head e09009b2. Created GUI-120 as blocking PR-review follow-up for the connectProject multi-project status broadcast id bug; PR #219 remains open and unmerged. Focused rerun exit 1 due linked-worktree core resolution after preserving the packet's author-reported PASS rails; no hosted checks/live host claims.

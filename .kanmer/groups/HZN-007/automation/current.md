@@ -633,3 +633,6 @@ CORE-077 PASS exact 517339c9, PR #198 merged non-squash into CORE-060 as 7b0238c
 
 
 CORE-026 review NEEDS-CHANGES at e794cbf7: hosted verify F-022 Windows path spelling failure filed as CORE-079 linked/blocking CORE-026. CORE-077/078 remediation chain for CORE-060 continues.
+
+
+CORE-079 implementing in .worktrees/core-079 on core-079-windows-path-identity from CORE-026 e794cbf; CORE-078 remains Review awaiting independent review.

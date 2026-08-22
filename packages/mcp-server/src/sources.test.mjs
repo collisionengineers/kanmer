@@ -58,6 +58,38 @@ test("fresh cache avoids network and stale cache revalidates with validators", a
   }
 });
 
+test("scopes cached validators to the effective final redirect target", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-redirect-validators-"));
+  const calls = [];
+  const root = "https://docs.example.test/llms.txt";
+  const middle = "https://docs.example.test/redirected/llms.txt";
+  const final = "https://docs.example.test/reference/llms.txt";
+  let finalFetches = 0;
+  const fetchImpl = async (url, init) => {
+    const current = String(url);
+    calls.push({ url: current, validator: init?.headers?.["if-none-match"] });
+    if (current === root) return new Response(null, { status: 302, headers: { location: middle } });
+    if (current === middle) return new Response(null, { status: 302, headers: { location: final } });
+    if (current === final && finalFetches++ === 0) {
+      return fakeResponse("# Final", { etag: '"final-1"' });
+    }
+    return new Response(null, { status: 304 });
+  };
+  try {
+    await fetchLlmsTxt({ url: root, cacheDir, fetchImpl, now: () => 1_000 });
+    calls.length = 0;
+    const refreshed = await fetchLlmsTxt({ url: root, cacheDir, fetchImpl, force: true, now: () => 86_401_000 });
+    assert.equal(refreshed.fromCache, true);
+    assert.deepEqual(calls, [
+      { url: root, validator: undefined },
+      { url: middle, validator: undefined },
+      { url: final, validator: '"final-1"' },
+    ]);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
 test("invalid or unbounded source URLs fail before network access", async () => {
   const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-"));
   try {
@@ -628,6 +660,42 @@ test("serializes concurrent refresh transactions and lets the second caller reus
     assert.equal(calls, 1);
     assert.deepEqual(results.map((result) => result.documents[0].text), ["# Docs", "# Docs"]);
     assert.equal(results.filter((result) => result.fromCache).length, 1);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("a concurrent forced refresh revalidates after the active refresh completes", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-force-refresh-"));
+  let forceCalls = 0;
+  try {
+    await fetchLlmsTxt({
+      url: "https://docs.example.test/llms.txt",
+      cacheDir,
+      fetchImpl: async () => fakeResponse("# Initial"),
+      now: () => 1_000,
+    });
+    const ordinary = fetchLlmsTxt({
+      url: "https://docs.example.test/llms.txt",
+      cacheDir,
+      fetchImpl: async () => { throw new Error("ordinary fresh-cache caller should not fetch"); },
+      now: () => 2_000,
+    });
+    const forced = fetchLlmsTxt({
+      url: "https://docs.example.test/llms.txt",
+      cacheDir,
+      fetchImpl: async () => {
+        forceCalls++;
+        return fakeResponse("# Forced", { etag: '"forced-1"' });
+      },
+      force: true,
+      now: () => 2_000,
+    });
+    const [ordinaryResult, forcedResult] = await Promise.all([ordinary, forced]);
+    assert.equal(forceCalls, 1);
+    assert.equal(ordinaryResult.fromCache, true);
+    assert.equal(forcedResult.documents[0].text, "# Forced");
+    assert.equal(forcedResult.fromCache, false);
   } finally {
     await rm(cacheDir, { recursive: true, force: true });
   }

@@ -388,16 +388,21 @@ async function fetchText(
   maxBytes: number = LLMS_TXT_POLICY.maxBytes,
   lookupImpl?: (hostname: string) => Promise<string[]>,
   boundFetch?: BoundFetch,
+  conditionalUrl?: string,
 ): Promise<FetchTextResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const origin = new URL(url);
   let current = new URL(url);
   let redirects = 0;
-  let requestHeaders = { ...headers, "accept-encoding": "identity" };
+  const conditionalTarget = conditionalUrl ?? url.toString();
+  const conditionalHeaders = { ...headers, "accept-encoding": "identity" };
   try {
     while (true) {
       const addresses = await assertPublicDestination(current, lookupImpl, controller.signal);
+      const requestHeaders = current.toString() === conditionalTarget
+        ? conditionalHeaders
+        : { "accept-encoding": "identity" };
       const requestInit = { headers: requestHeaders, redirect: "manual" as const, signal: controller.signal };
       const response = boundFetch
         ? await boundFetch(current, requestInit, addresses)
@@ -562,6 +567,7 @@ async function revalidateLinkedDocuments(
         LLMS_TXT_POLICY.maxBytes - bytes,
         lookupImpl,
         boundFetch,
+        cachedDocument?.url,
       );
       if (response.status === 304) {
         if (!cachedDocument) {
@@ -607,7 +613,8 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
   const active = activeRefreshes.get(cacheFile);
   if (active) {
     const result = await active;
-    return result.fromCache ? result : { ...result, fromCache: true };
+    if (!options.force) return result.fromCache ? result : { ...result, fromCache: true };
+    return fetchLlmsTxt(options);
   }
   const refresh = withExclusiveFileLock(`${cacheFile}.lock`, async () => {
     const cached = await readCache(cacheFile);
@@ -628,7 +635,16 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
     const failures: string[] = [];
     let rootResponse: FetchTextResult;
     try {
-      rootResponse = await fetchText(root, fetchImpl, headers, timeoutMs, LLMS_TXT_POLICY.maxBytes, lookupImpl, boundFetch);
+      rootResponse = await fetchText(
+        root,
+        fetchImpl,
+        headers,
+        timeoutMs,
+        LLMS_TXT_POLICY.maxBytes,
+        lookupImpl,
+        boundFetch,
+        cached?.documents[0]?.url,
+      );
     } catch (error) {
       if (cached) {
         failures.push(failureText(error));

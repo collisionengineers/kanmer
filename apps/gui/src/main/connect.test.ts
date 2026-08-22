@@ -5,8 +5,9 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyManagedBlock } from "./agentsBlock.js";
 import { remoteProjectIdentity } from "./remoteAccess/identity.js";
+import { q } from "./providers.js";
 
-vi.mock("electron", () => ({ app: { isPackaged: false, getAppPath: () => "/unused" } }));
+vi.mock("electron", () => ({ app: { isPackaged: false, getAppPath: () => process.cwd() } }));
 
 /**
  * A synthetic marketplace provider, resolvable by id, so the install path can be
@@ -588,6 +589,9 @@ describe("portable Codex launcher contract (GUI-100)", () => {
     expect(grok.command).toBe(process.execPath);
     expect(grok.args).toContain("C:/board-a");
     expect(grok.env).toEqual({ ELECTRON_RUN_AS_NODE: "1", KANMER_BOARD_BRANCH: "kanmer-board" });
+
+    const openAi = serverInvocation("claude", "C:/board-a", "C:/source-a", "team&whoami");
+    expect(openAi.env).toEqual({ ELECTRON_RUN_AS_NODE: "1", KANMER_BOARD_BRANCH: "team&whoami" });
   });
 
   it("runs the fixed probe with explicit argv and bounded Windows options", async () => {
@@ -917,4 +921,45 @@ describe("the marketplace command is given the marketplace root (MCP-013)", () =
     expect(seen).toEqual([marketplaceRoot()]);
     expect(seen[0]).not.toBe(pluginRoot());
   });
+
+  it("binds a literal custom branch in the staged Claude marketplace descriptor", async () => {
+    const root = await tempRoot();
+    const script = join(root, "inspect-marketplace.cjs");
+    const observed = join(root, "observed-branch.txt");
+    await writeFile(script, [
+      "const fs = require('node:fs');",
+      "const path = require('node:path');",
+      "const descriptor = JSON.parse(fs.readFileSync(path.join(process.argv[2], 'plugins', 'kanmer', 'mcp', 'claude.mcp.json'), 'utf8'));",
+      "fs.writeFileSync(process.argv[3], descriptor.mcpServers.kanmer.env.KANMER_BOARD_BRANCH);",
+    ].join("\n"));
+    const seen: string[] = [];
+    testProviders.set("claude", {
+      id: "claude" as ProviderId,
+      label: "claude",
+      register: {
+        kind: "configFile",
+        configPath: "test-host.json",
+        merge: () => "{}",
+        unmerge: () => "{}",
+        registrationState: () => "registered",
+      },
+      install: {
+        kind: "marketplace",
+        marketplaceCommands: (dir: string) => {
+          seen.push(dir);
+          return [`node ${q(script)} ${q(dir)} ${q(observed)}`];
+        },
+      },
+      dispatch: false,
+    } as AgentProvider);
+    try {
+      const result = await connectAgent("claude" as ProviderId, root, root, {}, "team&whoami");
+      expect(result.ok).toBe(true);
+      expect(await readFile(observed, "utf8")).toBe("team&whoami");
+      expect(seen).toHaveLength(1);
+      expect(seen[0]).not.toBe(marketplaceRoot());
+    } finally {
+      testProviders.clear();
+    }
+  }, 30_000);
 });

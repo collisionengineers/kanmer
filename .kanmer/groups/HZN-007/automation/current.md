@@ -12,3 +12,6 @@
 
 
 Last handoff: 2026-08-22T18:34:00Z — CORE-085 implementation complete and moved Implementing→Review after gates readback. Dedicated branch/worktree `core-085-redirect-force-refresh`/`.worktrees/core-085` is based on CORE-081 head `13b6ce22a8363c0f467e96c775eb9a09891b7bb2`; commit `b2c51779a4ee0a5d95c8b3bce51cd4408490dc68`, PR #204 targets `core-026-project-declared-sources`. Two mapped findings (#3836700730/#3836700726) are fixed with deterministic source 26/26; core 303/303, MCP typecheck/build, core build, scripts rerun 88/88 after preserved missing-core-dist 86/88, and diff-check pass. CORE-081 seven prior findings and external INCONCLUSIVE boundary remain preserved; independent review required. No merge, verify, closeout, or cleanup.
+
+
+18:43 UTC — independent review of PR #168 at e78323d7 found ten unresolved current-head findings after CI passed. Created GUI-112 for custom-branch handoff/protected-sync lifecycle and MCP-044 for local MCP/managed-instruction branch propagation; both block CORE-043. Protected main merge remains intentionally held pending remediation and authorized review.

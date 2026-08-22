@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T00:09:44.236Z
+updated_at: 2026-08-22T00:11:39.263Z
 lane_limit: 3
 stop_reason:
 ---
@@ -442,3 +442,4 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T00:09:44.236Z — CORE-022 independent merged-main verification by /root/gui099_executor: current main af61144ce743f74b2aba92fb0778588b0b9bedd0 contains implementation d0f927a3f9aab7fa6f4716410138126f3ff1fc35 (merge-base exit 0). Focused IO/migration 28/28, full core 263/263, core typecheck, core build, and diff-check exited 0. The planned 242-ticket fixture and genuine Windows EPERM/file-lock run remain INCONCLUSIVE; checklist is 21/25 and ticket remains Verifying with no move, release, or cleanup.
+\n\nLast handoff: 2026-08-22T00:11:39.263Z — MCP-014 reconciliation complete: merged PR #132 cb8fa1f0a746b2c47722eb0ca644bf4d91599a77 (source ff41f518) is reachable on main; deterministic GUI 352/352, core 263/263, typecheck/build/plugin/manual/skills/diff rails pass; aggregate npm test retained FAIL 351/352 due kanmerGit timeout/Windows EPERM cleanup, standalone GUI 352/352 passes; named Grok clean-project and post-uninstall inspection remain INCONCLUSIVE (no XAI credential and pre-existing user plugin state); ticket remains Verifying at 47/67 with no worktree/branch.\n

@@ -440,3 +440,6 @@ Last handoff: 2026-08-22T10:23:07.811Z — CORE-045 implementation handoff: comm
 
 
 2026-08-22T12:59:20Z — CORE-054 implementation complete on PR #176 head 1ef6852a; checklist/report/gates passed after focused GUI/manual/docs/scripts rails, and ticket is Review. It guards protected rename on branchMismatch and adds real refs/worktree no-mutation regression. Independent core041 review/merge assigned. CORE-052 remains Review; CORE-044 fresh GUI082 review pending.
+
+
+2026-08-22T13:03:30Z — CORE-054 independent review found a second ordinary rename path; CORE-055 created in Preparing to skip all rename paths on branch mismatch and assigned to core041 after packet preparation. CORE-044 cumulative review found cache refresh/304 completeness, DNS binding/timeout, board-worktree ignore, and plugin artifact provenance gaps; CORE-056/057/058 created in Backlog linked to and blocking CORE-044. No parent merge or stage advancement performed.

@@ -32,4 +32,4 @@ The inherited CORE-080 report records the earlier full GUI/provider and GUI type
 
 ## Review and verification hand-off
 
-Review the exact remediation head against CORE-080's `0e1be5f32efad1da57ee27bd2a2fe80033976bd1`. Confirm the production-caller test remains wired to `syncProject`, all inherited helper assertions remain present, and the PR targets `core-043-protection-retarget`. After independent merge, run the focused GUI Git tests, GUI typecheck, scripts rail, and merged-main checks; write proof only on merged main.
+PR #203 is open against `core-043-protection-retarget` at exact remediation head `7cca4bf9e799aa161b6e5da879e6ad942b13154c`, based on CORE-080 head `0e1be5f32efad1da57ee27bd2a2fe80033976bd1`. Review this exact head Confirm the production-caller test remains wired to `syncProject`, all inherited helper assertions remain present, and the PR targets `core-043-protection-retarget`. After independent merge, run the focused GUI Git tests, GUI typecheck, scripts rail, and merged-main checks; write proof only on merged main.

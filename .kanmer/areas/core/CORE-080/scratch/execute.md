@@ -17,3 +17,5 @@ Core rail: `npm test -w @kanmer/core` passed 14 files / 283 tests. Focused GUI 2
 Independent rerun evidence from root: focused GUI Git suite from .worktrees/core-080 passed 26/26, exit 0, 87.48s; git diff --check passed. GUI workspace typecheck baseline exit 1 remains documented.
 
 2026-08-22 — CORE-084 remediation implemented from CORE-080 review finding F-001. New head/PR will add a production `syncProject` Retry regression proving mismatch pause, no `syncBoard` invocation, and no Git mutation; inherited helper assertions remain unchanged. Review scratch F-001 is addressed by this child ticket; external hosted protection remains deferred to CORE-043.
+
+2026-08-22 — CORE-084 remediation PR #203 is open at exact head `7cca4bf9e799aa161b6e5da879e6ad942b13154c`, based on CORE-080 implementation head `0e1be5f32efad1da57ee27bd2a2fe80033976bd1`; it adds the missing production `syncProject` Retry regression and awaits independent review.

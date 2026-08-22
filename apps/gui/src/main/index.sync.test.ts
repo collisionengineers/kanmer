@@ -108,6 +108,40 @@ afterEach(() => {
 });
 
 describe("syncProject production Retry caller", () => {
+  it("broadcasts user-scoped native reconnect updates with each open project id", async () => {
+    const firstProject = "C:/projects/one";
+    const secondProject = "C:/projects/two";
+    const context = (sourceRoot: string) => ({
+      sourceRoot,
+      boardRoot: "",
+      store: {},
+      watch: { close: async () => undefined },
+      ownWrites: new Map<string, number>(),
+      syncStatus: {
+        available: false,
+        boardRoot: "",
+        branch: "kanmer-board",
+        lastSync: null,
+        error: null,
+        paused: false,
+      },
+    });
+    const send = vi.fn();
+    __kanmerTest.contexts.set(firstProject, context(firstProject) as never);
+    __kanmerTest.contexts.set(secondProject, context(secondProject) as never);
+    __kanmerTest.setMainWindowForTest({ webContents: { send } } as never);
+    __kanmerTest.setConnectAgentForTest(async () => ({ ok: true, command: "", output: "connected" }));
+    try {
+      await __kanmerTest.connectProject(firstProject, "grok");
+      expect(send.mock.calls.map(([, payload]) => payload.projectId)).toEqual([firstProject, secondProject]);
+    } finally {
+      __kanmerTest.setMainWindowForTest(null);
+      __kanmerTest.setConnectAgentForTest(null);
+      __kanmerTest.contexts.delete(firstProject);
+      __kanmerTest.contexts.delete(secondProject);
+    }
+  });
+
   it("reconciles provider registrations and retains native reconnect state when a closed project reopens", async () => {
     const first = await __kanmerTest.openProject(repo);
     const firstCtx = __kanmerTest.contexts.get(repo) as { boardRoot: string };

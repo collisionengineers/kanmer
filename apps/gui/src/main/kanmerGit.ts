@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
+import { liveBoardBranchError, liveBoardBranchMatches } from "./syncBranch.js";
 
 const execFile = promisify(execFileCallback);
 
@@ -39,12 +40,12 @@ export interface KanmerGitStatus {
 export async function refreshBoardBranch(
   status: KanmerGitStatus,
   requestedBranch = status.branch,
+  observed?: BoardWorktreeInspection,
 ): Promise<KanmerGitStatus> {
   if (!status.available || !status.boardRoot) return status;
   const destination = requestedBranch.trim() || PROTECTED_BOARD_BRANCH;
-  const inspection = await inspectBoardWorktree(status.boardRoot, destination);
-  if (!inspection.actualBranch) return status;
-  if (inspection.actualBranch !== destination) {
+  const inspection = observed ?? await inspectBoardWorktree(status.boardRoot, destination);
+  if (!liveBoardBranchMatches(destination, inspection)) {
     const mismatchError = status.branchMismatchError ?? status.error === null;
     const mismatchPause = status.branchMismatchPause ?? !status.paused;
     return {
@@ -53,7 +54,7 @@ export async function refreshBoardBranch(
       branchMismatchError: mismatchError,
       branchMismatchPause: mismatchPause,
       error: mismatchError
-        ? `Board worktree is on ${inspection.actualBranch}; expected ${destination}. Complete the administrator handoff before changing Kanmer's branch setting.`
+        ? liveBoardBranchError(destination, inspection)
         : status.error,
       paused: true,
     };
@@ -61,7 +62,7 @@ export async function refreshBoardBranch(
   // The observed branch proves the administrator handoff reached the requested
   // destination. Clear only the error/pause that this detector supplied; a
   // genuine sync failure that was already present must remain visible.
-  const next = { ...status, branch: inspection.actualBranch, branchMismatch: false };
+  const next = { ...status, branch: destination, branchMismatch: false };
   if (status.branchMismatchError) next.error = null;
   if (status.branchMismatchPause) next.paused = false;
   delete next.branchMismatchError;

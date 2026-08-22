@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T11:00:00Z
+updated_at: 2026-08-22T09:48:16.674Z
 ---
 
 # Current auto run — HZN-007
@@ -364,3 +364,6 @@ Last handoff: 2026-08-22T09:19:48.636Z — CORE-026 packet audit: MCP readback c
 
 
 Last handoff: 2026-08-22T09:33:33.636Z — CORE-044 research/plan packet prepared in Preparing: research, files, open-questions (all bounded parked items explicitly checked), plan, and checklist written via MCP. Governing refs FRD-027/ADR-0020, linked CORE-026/PR #163, and all 21 automated review findings are mapped. Leave-Preparing gates passable; no implementation, take, move, source change, or PR action performed.
+
+
+Last handoff: 2026-08-22T09:48:16.674Z — CORE-044 taken for implementation on branch `core-044-source-fetch-remediation`, worktree .worktrees/core-044, exact CORE-026 base `b5ae6f36e007a05fffd9bb2f1c6ea4a87a860477`. Scoped source/schema, board CAS, fetch/cache, test-rail, skill/roster/docs remediation is in progress. Focused core rail corrected to exit 0 (91/91); focused MCP source rail corrected to exit 0 (11/11). First failures preserved in CORE-044 scratch/execute. No PR or review move yet.

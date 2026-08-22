@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T09:33:33.636Z
+updated_at: 2026-08-22T09:48:16.674Z
 lane_limit: 3
 stop_reason:
 ---
@@ -693,3 +693,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T09:19:48.636Z — CORE-026 packet audit: MCP readback confirms files/files.md governing paths are FRD-027/ADR-0020; residual FRD-026 wording is historical/unrelated OpenAI-tunnel context and ADR-0019 is absent. Unresolved automated PR findings were reviewed and recorded in scratch for independent disposition; no source changes in this bounded docs audit. Branch remains b5ae6f36, ticket Review, no self-review/merge/cleanup.
 
 - 2026-08-22T09:33:33.636Z — CORE-044 research/plan packet prepared in Preparing: research, files, open-questions (all bounded parked items explicitly checked), plan, and checklist written via MCP. Governing refs FRD-027/ADR-0020, linked CORE-026/PR #163, and all 21 automated review findings are mapped. Leave-Preparing gates passable; no implementation, take, move, source change, or PR action performed.
+
+- 2026-08-22T09:48:16.674Z — CORE-044 taken for implementation on branch `core-044-source-fetch-remediation`, worktree .worktrees/core-044, exact CORE-026 base `b5ae6f36e007a05fffd9bb2f1c6ea4a87a860477`. Scoped source/schema, board CAS, fetch/cache, test-rail, skill/roster/docs remediation is in progress. Focused core rail corrected to exit 0 (91/91); focused MCP source rail corrected to exit 0 (11/11). First failures preserved in CORE-044 scratch/execute. No PR or review move yet.

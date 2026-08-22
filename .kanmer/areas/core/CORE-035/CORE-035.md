@@ -27,9 +27,14 @@ refs:
   - docs/functional/frd/FRD-022-mcp-server-surface.md
   - docs/functional/frd/FRD-023-agent-skills-system.md
   - docs/functional/frd/FRD-006-typed-proof.md
+prs:
+  - >-
+    https://github.com/collisionengineers/kanmer-spine-integration-20260822t075446z-78e5ba65/pull/1
+  - >-
+    https://github.com/collisionengineers/kanmer-spine-integration-20260822t075446z-78e5ba65/pull/2
 archived: false
 created: '2026-08-20T10:14:42.535Z'
-updated: '2026-08-22T08:22:23.745Z'
+updated: '2026-08-22T08:26:39.097Z'
 ---
 
 ## What

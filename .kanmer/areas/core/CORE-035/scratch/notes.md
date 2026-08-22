@@ -23,3 +23,5 @@ Protected-merge stop condition: remain INCONCLUSIVE and do not merge because the
 ## Final hosted rerun — 2026-08-22T08:26Z
 
 Rerun of hosted run `32561867341` after board review attestation normalization: gate job `97005242239` SUCCESS (no policy findings; only Node 20 deprecation annotation), verify job `97005242134` FAILURE. Verify exact output: `release notes turn shorthand PR refs into repository links` not ok; scripts summary `# tests 85`, `# pass 84`, `# fail 1`; `Error: Command failed: npm test`; process exit 1. The failure is caused by the disposable repository origin URL being substituted into a test that expects canonical `https://github.com/collisionengineers/kanmer/pull/96`; no source behavior was changed to hide it. PR #1 remains OPEN/UNSTABLE at head `94f859b51329f85830d34285ce7fb56bb80f870b`.
+
+Traceability updated: CORE-035 `prs` records disposable PR #1 (fixture gate matrix) and #2 (NO_TICKET probe). No `commits` were recorded on CORE-035 because fixture commit `f9dcfbb6c34a90c0b91be44e5ee50ea5151bb27a` is not reachable from production main; it remains traceable in report/scratch only.

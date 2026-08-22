@@ -20,6 +20,8 @@ export interface KanmerGitStatus {
   lastSync: string | null;
   error: string | null;
   paused: boolean;
+  /** A live worktree was observed on neither the cached nor requested branch. */
+  branchMismatch?: boolean;
 }
 
 /**
@@ -30,11 +32,26 @@ export interface KanmerGitStatus {
  * a hint; the worktree's symbolic ref is the source of truth before applying
  * a protected-branch transition.
  */
-export async function refreshBoardBranch(status: KanmerGitStatus): Promise<KanmerGitStatus> {
+export async function refreshBoardBranch(
+  status: KanmerGitStatus,
+  requestedBranch = status.branch,
+): Promise<KanmerGitStatus> {
   if (!status.available || !status.boardRoot) return status;
-  const inspection = await inspectBoardWorktree(status.boardRoot, status.branch);
-  if (!inspection.actualBranch || inspection.actualBranch === status.branch) return status;
-  return { ...status, branch: inspection.actualBranch, error: null, paused: false };
+  const destination = requestedBranch.trim() || PROTECTED_BOARD_BRANCH;
+  const inspection = await inspectBoardWorktree(status.boardRoot, destination);
+  if (!inspection.actualBranch) return status;
+  if (inspection.actualBranch !== destination) {
+    return {
+      ...status,
+      branchMismatch: true,
+      error: status.error ?? `Board worktree is on ${inspection.actualBranch}; expected ${destination}. Complete the administrator handoff before changing Kanmer's branch setting.`,
+      paused: true,
+    };
+  }
+  // The observed branch proves the administrator handoff reached the requested
+  // destination. Do not clear an existing sync error or paused state merely
+  // because the branch name changed.
+  return { ...status, branch: inspection.actualBranch, branchMismatch: false };
 }
 
 /**

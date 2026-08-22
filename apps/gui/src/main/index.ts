@@ -664,9 +664,10 @@ async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number)
   // GUI remains running. Refresh every cached branch before deciding whether
   // the protected-default refusal still applies.
   await Promise.all([...contexts.values()].map(async (ctx) => {
-    ctx.syncStatus = await refreshBoardBranch(ctx.syncStatus);
+    ctx.syncStatus = await refreshBoardBranch(ctx.syncStatus, requestedBranch);
   }));
   const hasOpenBoard = [...contexts.values()].some((ctx) => ctx.syncStatus.available && Boolean(ctx.syncStatus.boardRoot));
+  const blockedBranchRefresh = [...contexts.values()].some((ctx) => ctx.syncStatus.branchMismatch === true);
   const protectedOpenBoard = branchChanged && current.kanmerBranch === PROTECTED_BOARD_BRANCH &&
     [...contexts.values()].some((ctx) => ctx.syncStatus.available && ctx.syncStatus.boardRoot && ctx.syncStatus.branch === PROTECTED_BOARD_BRANCH);
 
@@ -674,7 +675,7 @@ async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number)
   // is renamed. A global setting must not leave some open boards migrated and
   // others on the protected branch when the operator handoff is still needed.
   const guardedBranch = guardGitBranchPreference(current.kanmerBranch, requestedBranch, hasOpenBoard);
-  const targetBranch = protectedOpenBoard ? current.kanmerBranch : guardedBranch;
+  const targetBranch = protectedOpenBoard || blockedBranchRefresh ? current.kanmerBranch : guardedBranch;
   const settings = await setKanmerGitPreferences(targetBranch, gitSyncMinutes);
   if (protectedOpenBoard) {
     for (const [projectId, ctx] of contexts) {

@@ -56,9 +56,9 @@ jobs:
 
       - name: Fetch the board worktree
         env:
-          # Repository administrators set this variable when the protected
-          # board branch is retargeted. The default preserves existing repos
-          # until that explicit handoff is complete.
+          # Repository administrators must set this variable to the destination
+          # before retargeting the protected board branch. The default preserves
+          # existing repos until that explicit handoff is complete.
           KANMER_BOARD_BRANCH: ${{ vars.KANMER_BOARD_BRANCH || 'kanmer-board' }}
         run: |
           test -n "$KANMER_BOARD_BRANCH"

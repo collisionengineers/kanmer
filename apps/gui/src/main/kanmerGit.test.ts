@@ -213,7 +213,7 @@ describe("inspectBoardWorktree", () => {
 });
 
 describe("board branch preference and cache safety", () => {
-  it("accepts the actual branch after an administrator renames an open worktree", async () => {
+  it("accepts the requested branch after an administrator renames an open worktree", async () => {
     const status = {
       available: true,
       boardRoot: repo,
@@ -223,10 +223,64 @@ describe("board branch preference and cache safety", () => {
       paused: false,
     };
     await git(repo, "checkout", "-b", "retargeted-board");
-    await expect(refreshBoardBranch(status)).resolves.toMatchObject({
+    await expect(refreshBoardBranch(status, "retargeted-board")).resolves.toMatchObject({
       branch: "retargeted-board",
       error: null,
       paused: false,
+      branchMismatch: false,
+    });
+  });
+
+  it("blocks an unexpected branch instead of accepting an arbitrary handoff", async () => {
+    const status = {
+      available: true,
+      boardRoot: repo,
+      branch: "kanmer-board",
+      lastSync: null,
+      error: null,
+      paused: false,
+    };
+    await git(repo, "checkout", "-b", "unexpected-board");
+    await expect(refreshBoardBranch(status, "retargeted-board")).resolves.toMatchObject({
+      branch: "kanmer-board",
+      branchMismatch: true,
+      paused: true,
+      error: expect.stringContaining("unexpected-board"),
+    });
+  });
+
+  it("does not treat the cached branch as a valid handoff when the destination differs", async () => {
+    const status = {
+      available: true,
+      boardRoot: repo,
+      branch: "main",
+      lastSync: null,
+      error: null,
+      paused: false,
+    };
+    await expect(refreshBoardBranch(status, "retargeted-board")).resolves.toMatchObject({
+      branch: "main",
+      branchMismatch: true,
+      paused: true,
+      error: expect.stringContaining("main"),
+    });
+  });
+
+  it("preserves a paused sync error after a valid branch handoff", async () => {
+    const status = {
+      available: true,
+      boardRoot: repo,
+      branch: "kanmer-board",
+      lastSync: null,
+      error: "rebase conflict",
+      paused: true,
+    };
+    await git(repo, "checkout", "-b", "retargeted-board");
+    await expect(refreshBoardBranch(status, "retargeted-board")).resolves.toMatchObject({
+      branch: "retargeted-board",
+      error: "rebase conflict",
+      paused: true,
+      branchMismatch: false,
     });
   });
 

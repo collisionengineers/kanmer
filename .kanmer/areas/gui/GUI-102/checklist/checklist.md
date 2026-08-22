@@ -46,12 +46,12 @@
 
 ## Reconnect, legacy migration and disconnect
 
-- [x] PASS — Seed one eligible old owned machine-specific registration through the controlled fixture. (Evidence: focused GUI Connect/provider fixtures 94/94 PASS cover canonical bytes, legacy drain and surgical/idempotent disconnect; not live packaged-host proof)
-- [x] PASS — Reconnect and assert canonical project bytes remain idempotent. (Evidence: focused GUI Connect/provider fixtures 94/94 PASS cover canonical bytes, legacy drain and surgical/idempotent disconnect; not live packaged-host proof)
-- [x] PASS — Assert eligible legacy entry drains and unrelated registrations remain. (Evidence: focused GUI Connect/provider fixtures 94/94 PASS cover canonical bytes, legacy drain and surgical/idempotent disconnect; not live packaged-host proof)
-- [x] PASS — Disconnect and assert only owned project/legacy state is removed. (Evidence: focused GUI Connect/provider fixtures 94/94 PASS cover canonical bytes, legacy drain and surgical/idempotent disconnect; not live packaged-host proof)
+- [x] INCONCLUSIVE — Seed one eligible old owned machine-specific registration through the controlled fixture. (Evidence: focused GUI Connect/provider fixtures 94/94 PASS cover canonical bytes, legacy drain and surgical/idempotent disconnect; not live packaged-host proof)
+- [x] INCONCLUSIVE — Reconnect and assert canonical project bytes remain idempotent. (Evidence: focused GUI Connect/provider fixtures 94/94 PASS cover canonical bytes, legacy drain and surgical/idempotent disconnect; not live packaged-host proof)
+- [x] INCONCLUSIVE — Assert eligible legacy entry drains and unrelated registrations remain. (Evidence: focused GUI Connect/provider fixtures 94/94 PASS cover canonical bytes, legacy drain and surgical/idempotent disconnect; not live packaged-host proof)
+- [x] INCONCLUSIVE — Disconnect and assert only owned project/legacy state is removed. (Evidence: focused GUI Connect/provider fixtures 94/94 PASS cover canonical bytes, legacy drain and surgical/idempotent disconnect; not live packaged-host proof)
 - [x] INCONCLUSIVE — Disconnect again and assert no collateral change. (Evidence: required real-host or manual evidence is unavailable; no unsupported PASS claim is made)
-- [x] PASS — Connect again and assert exact canonical hash is restored. (Evidence: focused GUI Connect/provider fixtures 94/94 PASS cover canonical bytes, legacy drain and surgical/idempotent disconnect; not live packaged-host proof)
+- [x] INCONCLUSIVE — Connect again and assert exact canonical hash is restored. (Evidence: focused GUI Connect/provider fixtures 94/94 PASS cover canonical bytes, legacy drain and surgical/idempotent disconnect; not live packaged-host proof)
 
 ## Real update
 

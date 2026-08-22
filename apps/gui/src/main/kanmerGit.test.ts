@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureBoardWorktree, inspectBoardWorktree, renameBoardBranch, syncBoard } from "./kanmerGit.js";
+import { ensureBoardWorktree, ignoreEntriesToAppend, inspectBoardWorktree, renameBoardBranch, syncBoard } from "./kanmerGit.js";
 
 // These are deliberately real-Git integration tests: every case initialises a
 // local repository and several create worktrees/remotes. Windows process and
@@ -193,6 +193,12 @@ describe("inspectBoardWorktree", () => {
 });
 
 describe("ensureBoardWorktree reconciliation", () => {
+  it("selects only missing or re-invalidated rules for an append-only merge", () => {
+    const before = "# human rule\n.kanmer/data/sources/\n!.kanmer/data/sources/cache.json\ncustom-human-rule\n";
+    expect(ignoreEntriesToAppend(before, [".kanmer/data/sources/"])).toEqual([".kanmer/data/sources/"]);
+    expect(ignoreEntriesToAppend("# human rule\n.kanmer/data/sources/\n", [".kanmer/data/sources/"])).toEqual([]);
+  });
+
   realGitTest("writes the sources cache rule when creating a board worktree", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     const ignore = readFileSync(join(created.boardRoot!, ".gitignore"), "utf8");
@@ -240,7 +246,7 @@ describe("ensureBoardWorktree reconciliation", () => {
     const lines = readFileSync(join(reopened.boardRoot!, ".gitignore"), "utf8").trim().split("\n");
 
     expect(lines.at(-1)).toBe(".kanmer/**/.*.tmp-*");
-    expect(lines.at(-2)).toBe(".kanmer/data/sources/");
+    expect(lines.lastIndexOf(".kanmer/data/sources/")).toBeLessThan(lines.length - 1);
     expect(await git(reopened.boardRoot!, "check-ignore", "--no-index", ".kanmer/data/sources/cache.json"))
       .toContain(".kanmer/data/sources/");
   });

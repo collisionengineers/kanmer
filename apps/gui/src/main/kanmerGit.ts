@@ -1,6 +1,6 @@
 import { execFile as execFileCallback } from "node:child_process";
 import { existsSync } from "node:fs";
-import { cp, lstat, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, cp, lstat, mkdir, readFile, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -138,6 +138,17 @@ export async function renameBoardBranch(boardRoot: string, to: string): Promise<
   return { ok: true, from, error: null };
 }
 
+export function ignoreEntriesToAppend(before: string, entries: string[]): string[] {
+  const lines = before.replace(/\r\n/g, "\n").split("\n").filter(Boolean);
+  // Append-only is the compare-and-swap boundary: existing lines are never
+  // rewritten from a stale snapshot. A managed rule is needed when absent or
+  // when a later negation may have made its earlier copy ineffective.
+  return entries.filter((entry) => {
+    const last = lines.lastIndexOf(entry);
+    return last < 0 || lines.slice(last + 1).some((line) => line.startsWith("!"));
+  });
+}
+
 async function ensureIgnore(file: string, entries: string[]): Promise<void> {
   let stat;
   try {
@@ -147,14 +158,14 @@ async function ensureIgnore(file: string, entries: string[]): Promise<void> {
   }
   if (stat?.isSymbolicLink()) throw new Error(`Refusing symlinked board ignore path: ${file}`);
   const before = stat ? await readFile(file, "utf8") : "";
-  const lines = before.replace(/\r\n/g, "\n").split("\n").filter(Boolean);
-  // Managed rules must be the last matching rules. Remove stale copies first,
-  // then append one copy of each rule so a later negation cannot make derived
-  // board state trackable again.
-  const managed = new Set(entries);
-  const next = [...lines.filter((line) => !managed.has(line)), ...entries];
-  const changed = next.length !== lines.length || next.some((line, index) => line !== lines[index]);
-  if (changed || !stat) await writeFile(file, `${next.join("\n")}\n`, "utf8");
+  const append = ignoreEntriesToAppend(before, entries);
+  if (append.length === 0) return;
+  // O_APPEND makes the merge one kernel append operation. Any concurrent
+  // human/process lines remain in place, including edits made in the old
+  // compare/write window; the next reconciliation can append again if a new
+  // negation arrives after these managed rules.
+  const prefix = before.length > 0 && !before.endsWith("\n") ? "\n" : "";
+  await appendFile(file, `${prefix}${append.join("\n")}\n`, { encoding: "utf8", flag: "a" });
 }
 
 async function ensureBoardWorktreeIgnore(boardRoot: string): Promise<void> {

@@ -100,17 +100,25 @@ async function phase2Evidence(store, pr, ticketId) {
   const all = listed.items;
   const byId = new Map(all.map((item) => [item.id, item]));
   const graph = buildLinkIndex(all).get(ticketId) ?? { id: ticketId, links: [], backlinks: [], blocks: [], blockedBy: [] };
-  // Only the derived blockedBy direction is used. The target's outgoing
-  // blocks[] is intentionally never treated as its prerequisite list.
+  const item = byId.get(ticketId) ?? await store.getItem(ticketId);
+  if (!item) throw new Error(`Kanmer ticket ${ticketId} disappeared while gathering evidence`);
+  // Valid prerequisites come only from the derived blockedBy direction; the
+  // target's outgoing blocks[] is not treated as a prerequisite list. A
+  // dangling outgoing target is still a board-integrity failure, however.
   const blockerIds = new Set(graph.blockedBy);
+  // buildLinkIndex intentionally omits edges whose target is absent. Keep
+  // dangling targets recorded on this ticket as conservative integrity
+  // blockers so a deleted prerequisite cannot make the gate pass merely
+  // because its target file disappeared.
+  for (const target of item.blocks ?? []) {
+    if (!byId.has(target)) blockerIds.add(target);
+  }
   const blockers = [...blockerIds].sort().map((id) => {
     const blocker = byId.get(id);
     return blocker
       ? { id, exists: true, status: blocker.status, archived: blocker.archived }
       : { id, exists: false };
   });
-  const item = byId.get(ticketId) ?? await store.getItem(ticketId);
-  if (!item) throw new Error(`Kanmer ticket ${ticketId} disappeared while gathering evidence`);
   const review = parseReviewEvidence(await store.getDoc(ticketId, "scratch/review"));
   const commits = item.commits ?? [];
   const commitEvidence = commits.length === 0

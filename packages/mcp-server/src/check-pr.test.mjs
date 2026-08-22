@@ -82,6 +82,21 @@ test("check-pr emits one JSON verdict and uses exit 0/1/2", async () => {
     assert.match(blocked.stderr, /\[DEPENDENCY_BLOCKED\]/);
     assert.equal(JSON.parse(blocked.stdout).checks.find((check) => check.code === "WRONG_STAGE").outcome, "pass");
 
+    const danglingTicket = await store.createItem({ type: "ticket", title: "dangling blocker", status: "review" });
+    await store.updateItem(danglingTicket.id, { blocks: ["MISSING-ID"] });
+    await fs.writeFile(event, JSON.stringify(pullRequestEvent(6, `Kanmer: ${danglingTicket.id}`, "a".repeat(40), "dangling-blocker")));
+    const dangling = run(board, event);
+    assert.equal(dangling.status, 1);
+    assert.match(dangling.stderr, /\[DEPENDENCY_BLOCKED\].*MISSING-ID/);
+    const danglingResult = JSON.parse(dangling.stdout);
+    assert.deepEqual(danglingResult.checks.find((check) => check.code === "DEPENDENCY_BLOCKED"), {
+      code: "DEPENDENCY_BLOCKED",
+      level: "error",
+      outcome: "fail",
+      message: `Kanmer ticket ${danglingTicket.id} has live blockers: MISSING-ID`,
+      details: { blockers: ["MISSING-ID"] },
+    });
+
     const cleanTicket = await store.createItem({ type: "ticket", title: "review record", status: "review" });
     await store.setDoc(cleanTicket.id, "scratch/review", "---\nkind: wrong-record\nhead_sha: abc\n---\n");
     await fs.writeFile(event, JSON.stringify(pullRequestEvent(4, `Kanmer: ${cleanTicket.id}`, "a".repeat(40), "review-record")));

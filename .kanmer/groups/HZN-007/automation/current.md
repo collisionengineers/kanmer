@@ -213,3 +213,6 @@ Last handoff: 2026-08-22T03:12:42.450Z — MCP-015 is the second implementation 
 
 
 - 2026-08-22T04:23:00Z — GUI-106 review remediation: independent review caught the post-rename installer activation probe checking current\Kanmer.exe instead of current\kanmer-mcp.exe. Corrected and amended commit `0cdfafad0c8c9216779ceb442893e2256bdb65fd`; PR #153 force-with-lease pushed. Focused launcher/updater 8/8, scripts 82/82, and dist:check Windows package/updater 8/8 pass. Hosted verify run 32551392188/job 96978620702 is pending; no hosted PASS claimed. Ticket remains Review/taken; no merge or cleanup.
+
+
+- 2026-08-22T04:28:00Z — GUI-106 amended hosted verification PASS: PR #153 head `0cdfafad0c8c9216779ceb442893e2256bdb65fd`, run 32551392188/job 96978620702, verify green in 2m20s. Installer activation probe now checks `current\kanmer-mcp.exe` after rename; local launcher/updater 8/8, scripts 82/82, and dist:check 8/8 also pass. Ticket remains Review/taken; real installed update/live-session/junction/uninstall/AV evidence remains INCONCLUSIVE; no merge or cleanup.

@@ -32,7 +32,7 @@ The deterministic package/launcher rails now assert the external target, runtime
 
 Independent review found that the first amended implementation renamed staged Kanmer.exe to kanmer-mcp.exe but then checked current\Kanmer.exe, which would have aborted activation. The activation probe now checks current\kanmer-mcp.exe, and the launcher contract test asserts the post-rename path and rejects the stale check.
 
-Rerun evidence after the correction: node --test scripts/kanmer-mcp-launcher.test.mjs scripts/check-updater-package.test.mjs exited 0 (8/8); npm run test:scripts exited 0 (82/82); npm run dist:check exited 0 and rebuilt the Windows package with updater package 8/8. The hosted PR verify rerun for head 0cdfafad is pending at handoff (run 32551392188, job 96978620702); no hosted PASS is claimed yet.
+Rerun evidence after the correction: node --test scripts/kanmer-mcp-launcher.test.mjs scripts/check-updater-package.test.mjs exited 0 (8/8); npm run test:scripts exited 0 (82/82); npm run dist:check exited 0 and rebuilt the Windows package with updater package 8/8. Hosted PR verify rerun for head 0cdfafad PASSed: run 32551392188, job 96978620702, verify green in 2m20s. This is hosted deterministic verification only; real installed packaged-update/live-session/junction/uninstall evidence remains INCONCLUSIVE.
 
 ## Evidence boundaries
 

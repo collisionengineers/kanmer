@@ -18,3 +18,15 @@ CORE-074 — the existing-file path is still not atomic. After the second `readF
 ## Verdict
 
 NEEDS-CHANGES. Do not merge PR #192 until CORE-074's atomic compare-and-swap/locking or equivalent race-safe merge is implemented and independently reviewed.
+
+## Independent review — NEEDS-CHANGES — 37bc2265df46f609d1ddcd94ddf020e5a74941a2
+
+Reviewer: codex-core071-review. Exact reviewed head: 37bc2265df46f609d1ddcd94ddf020e5a74941a2 (PR #192), base e966509c729194916d24194a87257cc1d39f308b.
+
+Scope: compare-and-retry preservation for board-worktree .gitignore edits, including the inherited CORE-058 ignore reconciliation.
+
+Focused rail: PASS — npm run test -w @kanmer/gui -- --run src/main/kanmerGit.test.ts, exit 0, 25/25 tests. PR checks report none.
+
+Blocking P1 (GitHub thread 3836395258, current head): ensureIgnore still has a TOCTOU window for existing files. It reads current and confirms it equals before, then calls writeFile; another writer can change the file between that read and write. The write can overwrite that concurrent edit, and the immediate post-write read sees desired, so the function returns without retrying. The deterministic text test composes two sequential snapshots and does not exercise this interleaving. The implementation needs an actual serialized/atomic stale-base update (or a documented OS-level lock with deterministic coverage), not a compare-before-write that can still lose the exact concurrent edit it claims to preserve.
+
+Disposition: NEEDS-CHANGES; do not merge PR #192 or move CORE-071.

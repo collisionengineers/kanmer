@@ -26,12 +26,12 @@ refs:
   - docs/functional/frd/FRD-027-project-declared-sources.md
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
 commits:
-  - a3bd18897a536153050f7196e5b6e1460d946235
+  - 5f63571ecc7d71c102fc134b72d065207b11eae9
 prs:
   - '178'
 archived: false
 created: '2026-08-22T13:03:00.897Z'
-updated: '2026-08-22T13:18:03.398Z'
+updated: '2026-08-22T13:50:17.575Z'
 ---
 
 Close CORE-044 remote-source review findings: ensure the outbound request is bound to the address validated by the public-destination preflight (or implement a governing-document-backed safe equivalent), and enforce the documented fetch deadline across DNS resolution. Add deterministic regression coverage and preserve surfaced errors. Link [[CORE-044]].

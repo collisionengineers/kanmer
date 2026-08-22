@@ -479,3 +479,6 @@ Last handoff: 2026-08-22T13:40:07.153Z — CORE-061 taken for implementation on 
 
 
 Last handoff: 2026-08-22T13:43:38.156Z — CORE-061 Review handoff: final head 216dcdf0, PR #181, base CORE-043 cumulative 4f106865947e556759aeb88363ea9aab7c01beac. Managed-block convention and validator rails pass; test:scripts 88/88 after build, initial missing-core-dist failure preserved. Awaiting independent review; no merge.
+
+
+2026-08-22T13:52:00Z — CORE-061 independently reviewed at 216dcdf0 (managed block 31/31, skills/manual/docs/core/scripts pass), PR #181 merged into CORE-043 as 8c093424, ticket Verifying. CORE-059 Review exact 835f9f51 / PR #182 after cumulative parent handoff. CORE-057 exact 5f63571e and CORE-058 exact d50ddab1 are mergeable conflict-resolved heads awaiting independent reviews.

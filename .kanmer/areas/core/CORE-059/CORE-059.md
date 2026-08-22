@@ -26,9 +26,13 @@ blocks:
 refs:
   - docs/functional/frd/FRD-020-board-git-worktree-sync.md
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
+commits:
+  - 835f9f51cbb786024d8d4523d93332399d769a77
+prs:
+  - '182'
 archived: false
 created: '2026-08-22T13:28:04.825Z'
-updated: '2026-08-22T13:36:49.750Z'
+updated: '2026-08-22T13:47:07.682Z'
 ---
 
 Close the current CORE-043 review finding: once KANMER_BOARD_BRANCH is introduced as the hosted gate source, every supported custom-to-custom board rename must preserve or explicitly coordinate that variable before deleting the previous remote ref. Keep the handoff fail-closed and add deterministic workflow/manual/rename regression evidence. Link [[CORE-043]].

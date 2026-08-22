@@ -794,3 +794,6 @@ GUI-115 review PASS and PR #212 merged non-squash into CORE-043 parent as 69ca88
 
 
 CORE-087 artifact remediation independently reviewed PASS and PR #213 merged non-squash into CORE-026 parent as 453a92091d7a422a237996f024ab6940ea6fccfb. Normal-checkout plugin:check/mcpb:check PASS; artifact SHA 7298b5c268ac5995cadd56f6bbd4bcbe301f97a6a72eddd2f53d64a346158d75; focused IO 29/29, broader core 306/307 with unrelated migration timeout preserved. CORE-087 moved Verifying/released and block edge removed.
+
+
+CORE-026 hosted run 32598710721 after CORE-087 merge: verify failed on 3 Windows CI temp-cleanup/test-timeout failures (304/307 core tests, 12/15 files); kanmer-gate also saw the stale board snapshot with CORE-087 blocker and invalid old review dispositions. Preserve as INCONCLUSIVE/failed evidence; rerun after board-edge removal and fresh valid attestation.

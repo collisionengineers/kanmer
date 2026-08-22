@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:14:35.584Z
+updated_at: 2026-08-22T00:20:23.871Z
 ---
 
 # Current auto run — HZN-007
@@ -68,3 +68,4 @@ Last handoff: 2026-08-22T01:16:42+01:00 — Done-incomplete reconciliation compl
 
 
 Last handoff: 2026-08-22T01:18:20+01:00 — Added and read back explicit `## Parked (explicitly deferred)` checklist dispositions for MCP-008 and GUI-105; original unchecked lines remain honest and unchanged (64/103, 13/14). External Claude Desktop/GUI visual evidence remains INCONCLUSIVE, with no remediation ticket or board move.
+\n\nLast handoff: 2026-08-22T00:20:23.871Z — CORE-037 assigned to /root/mcp017_verifier for research→plan→execute on dedicated core-037 worktree/branch; scope is Windows path identity normalization in kanmerGit.test.ts to clear the shared verify failure without weakening real Git assertions; independent review required.\n

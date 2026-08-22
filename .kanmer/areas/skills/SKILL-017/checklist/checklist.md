@@ -109,3 +109,6 @@
 - [ ] Run `git diff --check` and inspect status.
 - [ ] Record evidence in post-implementation report.
 - [ ] Stop before merge.
+
+- 2026-08-22 — Full packet/dependency audit completed: current auto skill, both run-state assets, SKILL-016 durable-state, SKILL-020 gates-first, SKILL-021 packet/SHA boundaries, FRD-023, and related phase/tool contracts read. Source scope is auto stopping/reconciliation/serial fallback plus canonical prose validator/tests; no bundle or MCP changes.
+- 2026-08-22 — Disposable scenario EPIC-013 with SKILL-029/030/031 (varied fix/chore/spike profiles and backlog/preparing/implementing stages) read through list_items/get_doc_gates. State was written/read back before dispatch, then lane_limit: 1 and parallel-unavailable were persisted before a serial result reconciliation; pointer paused on an operator-only question. Group and tickets were archived after readback; no active scenario records remain.

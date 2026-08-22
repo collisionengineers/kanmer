@@ -52,3 +52,29 @@ PR #159 at head d338349ea44397887f74ef714563f6bbc880ea79 completed hosted run 32
 
 - Corrected focused core evaluator count: 14/14 PASS (the earlier 15/15 line was a stale count; no test assertion was weakened).
 - Independent review PASS: no blocking source finding. Hosted kanmer-gate and verify remain PASS for run 32558835415. The unrelated Windows test:http contention failures and direct-board-push INCONCLUSIVE boundary remain preserved.
+
+## Review remediation follow-up — PR #159 head 65e364ad927ef151ba0cea59b123d20feaf095b4
+
+Five Codex review findings were addressed within CORE-025 scope:
+
+- `3835496375` — fixed complete review-attestation validation in `check-pr.mjs`. The parser now requires the documented kind, non-empty PR/reviewer/plan/ticket fields, exact verdict enum, boolean independent flag, findings array, and finding severity/disposition requirements. Added parser regression coverage.
+- `3835496376` — fixed abbreviated hexadecimal commit ids in `git-reachability.mjs`. Unique 4–40 character hexadecimal abbreviations are passed to Git; ambiguous/missing objects remain indeterminate.
+- `3835496377` — fixed fail-closed dependency evidence. The CLI now consumes `listItemsWithWarnings` and refuses to evaluate a partial link graph when any board item file is malformed. Added malformed-board infrastructure-error coverage.
+- `3835496378` — fixed legacy phase-1 finding runtime shape. `NO_TICKET` and legacy `OPEN_QUESTIONS` findings now carry `outcome: "fail"`; core regression expectations were updated.
+- `3835496381` — fixed PR-range binding. The workflow event base SHA is parsed and passed through; each recorded commit must be an ancestor of PR head and not an ancestor of PR base, i.e. in `base..head`. Added base exclusion and abbreviated-id tests.
+
+Documentation in ADR-0011, ADR-0016, and FRD-009 now states the complete attestation and `base..head` contract.
+
+## Follow-up verification
+
+- Commit: `65e364ad927ef151ba0cea59b123d20feaf095b4`
+- Focused core merge-gate: 14/14 PASS.
+- Focused CLI/helper: 5/5 PASS.
+- `npm run typecheck -w @kanmer/core`: PASS.
+- `npm run typecheck -w @kanmer/mcp-server`: PASS.
+- `npm run build:core`: PASS.
+- `npm run build -w @kanmer/mcp-server`: PASS.
+- `git diff --check`: PASS.
+- `npm run test:http -w @kanmer/mcp-server`: 66/67 PASS; retained exact unrelated Windows readiness failure: `src\\tunnels\\readiness.test.mjs:54`, `TUNNEL_READINESS_TIMEOUT`. No CORE-025 test failed.
+- Prior hosted run for d338349e was PASS (run 32558835415); hosted rerun for 65e364ad is required and not yet claimed.
+- PR #159 remains open; no merge performed.

@@ -126,3 +126,11 @@
 - [x] Run `git diff --check`.
 - [x] Confirm no real board files were changed by test fixtures.
 - [x] Stop before merge or CORE-035.
+
+## Review remediation — PR #159 follow-up — 2026-08-22
+
+- [x] Validate complete `scratch/review.md` attestation schema, including verdict, reviewer, independence, plan/ticket metadata, and finding dispositions.
+- [x] Resolve abbreviated hexadecimal ticket commit ids and constrain reachability to the PR `base..head` ancestry range.
+- [x] Fail closed when board item parsing returns warnings before evaluating dependency evidence.
+- [x] Populate `outcome` on legacy phase-1 findings and add regression coverage.
+- [x] Preserve exact hosted baseline failure evidence; hosted rerun is required for the new head.

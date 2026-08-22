@@ -28,9 +28,13 @@ blocks:
 refs:
   - docs/functional/frd/FRD-020-board-git-worktree-sync.md
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
+commits:
+  - 0e1be5f32efad1da57ee27bd2a2fe80033976bd1
+prs:
+  - '201'
 archived: false
 created: '2026-08-22T17:50:29.988Z'
-updated: '2026-08-22T17:53:55.230Z'
+updated: '2026-08-22T18:01:38.434Z'
 ---
 
 ## What

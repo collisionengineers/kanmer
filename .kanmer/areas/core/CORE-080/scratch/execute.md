@@ -9,3 +9,5 @@ GUI typecheck attempt 1: `npm run typecheck -w @kanmer/gui` exited 2 on inherite
 GUI typecheck attempt 2 after `npm run build:core` still exited 1 with the same inherited core/dispatch declaration mismatch (dispatchDeliverableProven, verifyDeliverable, antigravity provider type). CORE-080 sync changes are not implicated; preserve as baseline INCONCLUSIVE/FAIL.
 
 Full GUI rail: `npm test --workspace @kanmer/gui` exited 1 after 47 files/311 tests: 43 files passed, 310 tests passed; 3 inherited suite-load failures (connect.test.ts, providers.test.ts, skillsVersion.test.ts) due missing shared dispatch provider antigravity, plus inherited dispatch.test.ts assertion mismatch (`"antigravity" doesn't support background dispatch.` vs expected `requires a named task`). The CORE-080 kanmerGit suite passed 26/26 (72.2s in full run). No failures implicated the changed sync path.
+
+Core rail: `npm test -w @kanmer/core` passed 14 files / 283 tests. Focused GUI 26/26, scripts 89/89, verify:skills, verify:docs, check:manual, and diff-check also pass. GUI full/typecheck failures remain inherited and recorded above.

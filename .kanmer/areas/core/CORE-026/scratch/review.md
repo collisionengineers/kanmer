@@ -51,18 +51,22 @@ plan_hash: "9916aa9641b6a15d"
 ticket_updated: "2026-08-22T23:00:03.328Z"
 findings:
   - id: F-001
+    summary: "Cumulative source and security remediation rails pass at the exact head."
     severity: blocker
     disposition: fixed-in-cumulative-stack
     reason: "The cumulative source/schema, bounded-fetch, redirect/DNS, credential, cache-lock, board-sync, and Windows identity remediations are present at the exact head. Core, MCP source, GUI, typecheck, docs, skills, protocol, and script rails all pass; no new source-trust blocker was found."
   - id: F-002
+    summary: "CORE-090 artifact parity is clean in a detached checkout."
     severity: blocker
     disposition: fixed-in-cumulative-stack
     reason: "CORE-090 is merged into this exact head. A clean detached checkout with its own npm ci rebuilt the standalone bundle and npm run mcpb:check passed with 3 files / 1,671,293 bytes and server SHA-256 f52d9c5b3817b12432e211438913146908c32874bf74ac261839a21ee31ea58c, matching the committed plugin artifact."
   - id: F-003
+    summary: "The old gate failure is stale after board-edge and attestation refresh."
     severity: major
     disposition: fixed-in-cumulative-stack
     reason: "Hosted run 32603963529 verify passed, while its kanmer-gate snapshot failed on the then-live CORE-090 blocker and the preceding malformed aggregated finding ids. The current board readback reports CORE-026 blocked:false after the CORE-090 edge removal, and this fresh attestation uses only canonical F-### ids. A fresh gate rerun is still required as the operational merge check; the old failure is preserved rather than treated as a source failure."
   - id: F-004
+    summary: "External provider and live-host evidence remains explicitly unavailable."
     severity: minor
     disposition: accepted-risk
     reason: "Connected-provider, live external llms.txt/DNS rebinding, packaged app, and visual/manual host evidence remain INCONCLUSIVE because those environments were not available; no such evidence is claimed."

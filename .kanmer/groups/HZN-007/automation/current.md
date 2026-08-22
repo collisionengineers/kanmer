@@ -591,3 +591,6 @@ CORE-075 packet refresh completed via MCP; CORE-071 docs now match append-only O
 
 
 CORE-072 implementation 9abfc9f4 / PR #194 moved Implementing -> Review; kanmerGit 26/26, core build/typecheck PASS, scripts 88/88. Independent review/merge pending; CORE-073 remains queued.
+
+
+CORE-073 implementing in .worktrees/core-073 on core-073-bind-open-board-root; CORE-072 review remediation CORE-076 queued after independent review found post-commit cleanup retry gap.

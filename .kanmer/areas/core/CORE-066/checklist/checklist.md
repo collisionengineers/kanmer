@@ -1,4 +1,4 @@
-- [ ] Preserve root after first-time local/remote attachment ignore failure.
-- [ ] Return actionable paused/error status without source fallback.
-- [ ] Add deterministic regression coverage.
-- [ ] Run focused/full verification rails.
+- [x] Preserve root after first-time local/remote attachment ignore failure.
+- [x] Return actionable paused/error status without source fallback.
+- [x] Add deterministic local and remote regressions.
+- [x] Run focused/full verification rails.

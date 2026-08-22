@@ -175,6 +175,7 @@ describe("Grok native plugin lifecycle (MCP-014)", () => {
       "plugin/mcp/kanmer-mcp.cjs": "\n",
     });
     await writeTree(root, {
+      ".kanmer/version.json": JSON.stringify({ format: 2 }),
       ".grok/config.toml":
         "[mcp_servers.kanmer]\ncommand = 'old'\n\n[mcp_servers.linear]\nurl = 'https://mcp.linear.app/mcp'\n",
       ".grok/skills/old-skill/SKILL.md": "old\n",
@@ -191,7 +192,7 @@ describe("Grok native plugin lifecycle (MCP-014)", () => {
       if (command === "grok inspect") return { stdout: "kanmer (user, enabled) 12 skills, 1 MCPs", stderr: "" };
       if (command.startsWith("grok -p ")) {
         expect(await readFile(join(root, ".grok", "config.toml"), "utf8")).not.toContain("mcp_servers.kanmer");
-        const identity = remoteProjectIdentity({ boardRoot: root, repoRoot: root, format: 3, boardSource: "default" });
+        const identity = remoteProjectIdentity({ boardRoot: root, repoRoot: root, format: 2, boardSource: "default" });
         return {
           stdout: JSON.stringify({
             project_fingerprint: identity.fingerprint,

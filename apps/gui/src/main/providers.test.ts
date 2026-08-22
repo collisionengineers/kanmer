@@ -138,6 +138,15 @@ describe("provider registry", () => {
     );
     expect(install.installCommand("C:\\Kanmer\\plugins\\kanmer")).toContain("--trust");
     expect(install.uninstallCommand()).toBe("grok plugin uninstall kanmer --confirm");
+    expect(install.argv?.functional("C:\\hostile root & $(whoami) `tick` ;", "C:\\board root")).toEqual({
+      file: "grok",
+      args: [
+        "-p",
+        expect.stringContaining("Call the Kanmer get_status tool"),
+        "--cwd",
+        "C:\\hostile root & $(whoami) `tick` ;",
+      ],
+    });
   });
 
   it("each config-file provider answers registration from its own file's shape", () => {

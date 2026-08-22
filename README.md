@@ -213,10 +213,13 @@ from Connect** — press **Connect** in the Kanmer desktop app (it writes
 `<your project>/.codex/config.toml` for you), or run `codex mcp add`. Nothing
 else is needed, and nothing is missing: that is the whole codex setup.
 
-**Antigravity** is the same story. `agy plugin install ./plugins/kanmer` gives
-you the twelve skills; the board comes from **Connect**, which writes
-`.agents/mcp_config.json` — and `agy` reads it only in a session bound to the
-folder, so start it with `agy --add-dir /path/to/your/project`.
+**Antigravity** uses its native user-scoped plugin. `agy plugin install
+./plugins/kanmer` gives you the twelve skills and the MCP descriptor; Kanmer
+Connect validates and installs this plugin, proves a bound `get_status` call,
+and retires only old `.agents/mcp_config.json`/`.agents/skills/` residue. New
+Connect runs do not write those legacy paths. `agy` reads the plugin only in a
+session bound to the folder, so start it with `agy --add-dir
+/path/to/your/project`.
 
 The plugin ships twelve skills — ticket management, one skill per phase of a
 ticket's life, an autonomous orchestrator, and board reporting/hygiene:

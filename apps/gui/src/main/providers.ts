@@ -873,6 +873,23 @@ export const PROVIDERS: AgentProvider[] = [
       legacyConfigUnmerge: tomlMcpServersUnmerge,
       legacyRegistrationState: (existing) => tomlRegistrationState(existing),
       legacySkillsDir: STALENESS_PROVIDER_PATHS.grok.skillsDir,
+      argv: {
+        version: () => ({ file: "grok", args: ["--version"] }),
+        help: () => ({ file: "grok", args: ["plugin", "--help"] }),
+        install: (root) => ({ file: "grok", args: ["plugin", "install", root, "--trust"] }),
+        uninstall: () => ({ file: "grok", args: ["plugin", "uninstall", "kanmer", "--confirm"] }),
+        list: () => ({ file: "grok", args: ["plugin", "list"] }),
+        inspect: () => ({ file: "grok", args: ["inspect"] }),
+        functional: (root) => ({
+          file: "grok",
+          args: [
+            "-p",
+            "Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.",
+            "--cwd",
+            root,
+          ],
+        }),
+      },
     },
     dispatch: true,
     ...sharedDispatchSpec("grok"),

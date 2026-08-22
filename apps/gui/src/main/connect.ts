@@ -5,6 +5,7 @@ import { cp, mkdir, readdir, readFile, rename, rm, rmdir, writeFile } from "node
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
+import { CURRENT_FORMAT } from "@kanmer/core";
 import {
   formatSkillsStamp,
   isNewerVersion,
@@ -612,11 +613,11 @@ async function expectedProjectIdentity(boardRoot: string, repoRoot: string) {
   const kanmerRoot = join(boardRoot, ".kanmer");
   const boardFile = join(kanmerRoot, "data", "board.yml");
   const versionFile = join(kanmerRoot, "version.json");
-  let format = 3;
+  let format = CURRENT_FORMAT;
   try {
     const version = JSON.parse(await readFile(versionFile, "utf8")) as { format?: unknown };
     if (typeof version.format === "number" && Number.isInteger(version.format) && version.format > 0) {
-      format = version.format >= 3 ? 3 : version.format;
+      format = Math.min(CURRENT_FORMAT, version.format);
     }
   } catch {
     if (existsSync(join(kanmerRoot, "tickets"))) format = 1;

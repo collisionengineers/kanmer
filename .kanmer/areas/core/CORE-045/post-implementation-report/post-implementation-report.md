@@ -21,3 +21,7 @@ CORE-045 completes the stale-lock and DNS destination-policy remediation for COR
 ## Review hand-off
 
 Fresh independent review must validate the exact cumulative head and inherited source-policy evidence. After PASS, merge PR #166 independently; verify this ticket and its child chain on merged main before proof/closeout.
+
+## CORE-051 remediation handoff
+
+CORE-051 PR #173 (final head `67a066d3`) is stacked on cumulative head `0f9af92b`. It narrows only the incorrect globally-reachable special-use predicates, preserves the 192.0.0.9/.10 exceptions, corrects `3fff::/20`, validates NAT64 embedded IPv4, retains public `2001:20::/28`, rejects `fec0::/10`, surfaces final claim errors, and closes marker/quarantine cleanup races. Deterministic IO/source/build/type/plugin/script rails pass; broad HTTP/live Windows-DNS evidence remains INCONCLUSIVE. Related PR #166 threads are addressed by this stacked remediation and are ready for independent re-review.

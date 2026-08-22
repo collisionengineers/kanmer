@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T12:34:28.717Z
+updated_at: 2026-08-22T12:35:01.216Z
 ---
 
 # Current auto run — HZN-007
@@ -395,3 +395,9 @@ Last handoff: 2026-08-22T10:23:07.811Z — CORE-045 implementation handoff: comm
 
 
 2026-08-22T12:34:20Z — CORE-052 created from independent CORE-043 cumulative review findings (attestation 6e6bbace7c77def8; PR #168 head 119300385; hosted run 32571224767 PASS). Packet docs are written/read back and ticket moved Backlog→Preparing. Findings cover KANMER_BOARD_BRANCH handoff documentation, destination equality/state preservation, and contradictory troubleshooting/manual guidance. CORE-052 blocks CORE-043; implementation assignment pending an available conflict-free lane.
+
+
+2026-08-22T12:35:00Z — CORE-052 packet passed leave-Preparing gates and was moved Preparing→Implementing, taken without force on core-052-board-refresh-state/.worktrees/core-052 by codex-core052-executor. GUI099 assigned as author; scope is branch handoff/equality/state preservation and manual guidance only. CORE-043 remains Review and blocked by child.
+
+
+- 2026-08-22T12:35:22.322Z — CORE-051 Review handoff: taken on core-051-destination-error-remediation/.worktrees/core-051 stacked on CORE-045 cumulative head 0f9af92b; final commits 5cd42532, 6f206ae3, 67a066d3 and PR #173. Deterministic IO 24/24, core 301/301, source 14/14, build/typecheck/plugin parity/scripts pass; first stale-main-core standalone build failure is preserved as INCONCLUSIVE and corrected worktree-local rerun passes. Additional PR #166 findings (globally reachable special-use IPv4, NAT64 /96, 2001:20 exception, fec0::/10, marker cleanup, released-quarantine ENOENT) are covered. CORE-045 report/item traceability was refreshed and related threads are ready for independent re-review. Ticket remains Implementing until final gates/move; author stops at Review with no merge/verify/cleanup.

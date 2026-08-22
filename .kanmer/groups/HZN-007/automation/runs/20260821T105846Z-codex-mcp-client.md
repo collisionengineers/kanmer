@@ -720,3 +720,9 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 2026-08-22T12:34:20Z — CORE-052 review remediation created from fresh independent CORE-043 review. Packet docs written/read back; status Backlog→Preparing. Four findings: Actions-variable handoff documentation, refreshed destination equality, paused/error preservation, and contradictory troubleshooting/manual guidance. Blocks CORE-043; assignment pending.
+
+
+2026-08-22T12:35:00Z — CORE-052 packet passed leave-Preparing gates and was moved Preparing→Implementing, taken without force on core-052-board-refresh-state/.worktrees/core-052 by codex-core052-executor. GUI099 assigned as author; scope is branch handoff/equality/state preservation and manual guidance only. CORE-043 remains Review and blocked by child.
+
+
+- 2026-08-22T12:35:22.322Z — CORE-051 Review handoff: taken on core-051-destination-error-remediation/.worktrees/core-051 stacked on CORE-045 cumulative head 0f9af92b; final commits 5cd42532, 6f206ae3, 67a066d3 and PR #173. Deterministic IO 24/24, core 301/301, source 14/14, build/typecheck/plugin parity/scripts pass; first stale-main-core standalone build failure is preserved as INCONCLUSIVE and corrected worktree-local rerun passes. Additional PR #166 findings (globally reachable special-use IPv4, NAT64 /96, 2001:20 exception, fec0::/10, marker cleanup, released-quarantine ENOENT) are covered. CORE-045 report/item traceability was refreshed and related threads are ready for independent re-review. Ticket remains Implementing until final gates/move; author stops at Review with no merge/verify/cleanup.

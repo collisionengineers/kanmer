@@ -1,27 +1,39 @@
 ---
 kind: proof-record
-merged_sha: "2ba84147"
-environment: "normal merged-main checkout / GitHub Actions windows-latest / Node v20.20.2"
-verified_at: "2026-08-21T22:10:00.000Z"
-result: FAIL
+merged_sha: "4f785781e7f1993fbcde5e474640db509737c0bd"
+environment: "merged main 4f785781; GitHub Actions windows-latest / Node 20.20.2; normal Windows checkout"
+verified_at: "2026-08-22T04:05:00.000Z"
+result: PASS
 attempts:
-  - attempted_at: "2026-08-21T22:02:00.000Z"
-    command: "static workflow contract inspection; git diff --check"
+  - attempted_at: "2026-08-22T03:58:00Z"
+    command: "static .github/workflows/pr.yml contract inspection; git diff --check"
     cwd: "."
     exit_code: 0
     result: PASS
-    summary: "The one-file workflow matches the exact trigger, permissions, Bash, Windows, Node 20, single verify job, and npm ci && npm run verify contract."
-  - attempted_at: "2026-08-21T22:03:54.000Z"
-    command: "GitHub Actions run 32531237498 / job 96923485539"
+    summary: "Merged main contains exactly one verify job on windows-latest, pull_request to main with opened/synchronize/reopened/ready_for_review, contents: read, workflow Bash, Node 20, and npm ci && npm run verify."
+  - attempted_at: "2026-08-21T22:03:54Z"
+    command: "GitHub Actions PR #136 verify run 32531237498 / job 96923485539"
     cwd: "PR #136"
     exit_code: 1
     result: FAIL
-    summary: "The real Windows/Bash/Node 20 check completed in 1:29 but npm run verify failed in the pre-existing kanmerGit.test.ts RUNNER~1 versus runneradmin path expectation."
-  - attempted_at: "2026-08-21T22:04:00.000Z"
+    summary: "The real Windows/Bash/Node 20 check exposed the pre-existing runneradmin versus RUNNER~1 path-alias assertion in apps/gui/src/main/kanmerGit.test.ts. This failure is retained and dispositioned to CORE-037."
+  - attempted_at: "2026-08-22T01:56:29Z"
+    command: "GitHub Actions PR #145 verify run 32544808992 / job 96961421442"
+    cwd: "CORE-037 merged-main stack"
+    exit_code: 0
+    result: PASS
+    summary: "CORE-037 path-identity remediation passed the full Windows verify rail, including the previously failing kanmerGit assertion."
+  - attempted_at: "2026-08-22T02:44:39Z"
+    command: "GitHub Actions PR #142 verify run 32546955237 / job 96967001211"
+    cwd: "final merged-main-equivalent PR stack"
+    exit_code: 0
+    result: PASS
+    summary: "The final Windows verify job passed on the tree now merged to main; the green check proves the workflow's real PR acceptance rail."
+  - attempted_at: "2026-08-22T03:59:00Z"
     command: "npm run verify"
     cwd: "."
     exit_code: 1
     result: FAIL
-    summary: "Normal-main verification also retained the unrelated core migration timeout (258 passed, 1 failed)."
+    summary: "Merged-main local rail built successfully and passed manual freshness, core 266/266, and GUI 355/355, then retained two unrelated MCP HTTP/tunnel timing failures: project-resolution child spawn ETIMEDOUT and readiness TUNNEL_READINESS_TIMEOUT. No workflow or assertion was weakened."
 ---
-PR #136 was independently reviewed and merged as 2ba84147. The scoped CI workflow is present on merged main and correctly exposes the repository verification rail. The requested green-check acceptance is not proven because the existing rail is red; the failure is retained and branch protection remains out of scope pending the rail owner's fix. Post-merge kanmer-board non-trigger evidence is unavailable and remains INCONCLUSIVE.
+CORE-032 merged-main proof: .github/workflows/pr.yml is present exactly as scoped and has produced a green real Windows verify check on the final shipped tree. The original runner path-alias failure is fixed by CORE-037 and remains traceable there. The local verification attempt's two unrelated MCP HTTP/tunnel timing failures are retained as a failed attempt, not misreported as a CORE-032 regression. Post-merge kanmer-board non-trigger evidence was not manufactured and remains INCONCLUSIVE.

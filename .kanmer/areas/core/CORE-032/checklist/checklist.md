@@ -30,3 +30,20 @@
 - 2026-08-21: git diff --check exited 0; git status --short listed only .github/workflows/pr.yml.
 - 2026-08-21: PR #136 opened with Kanmer: CORE-032. Its single verify check ran on windows-latest with Bash and Node v20.20.2. Run 32531237498 / job 96923485539 started 2026-08-21T22:02:25Z and completed 2026-08-21T22:03:54Z; run envelope was 2026-08-21T22:02:20Z to 22:03:55Z. It concluded failure in the shared npm run verify rail at apps/gui/src/main/kanmerGit.test.ts: expected C:UsersRUNNER~1AppDataLocalTemp... but received C:UsersunneradminAppDataLocalTemp.... The workflow setup, checkout, Node setup, and Bash invocation succeeded. This real-PR failure is preserved and not fixed in CORE-032.
 - Real post-merge kanmer-board non-trigger evidence remains unavailable and INCONCLUSIVE until an authorized merge and ordinary board sync.
+
+# Closeout checklist
+
+Append to the ticket's checklist.md when closeout starts (`set_ticket_doc doc: "checklist", append: true`) so cleanup progress is visible on the board.
+
+---
+
+## Closeout — CORE-032
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/CORE-032`
+- [ ] `git branch -d <branch>` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

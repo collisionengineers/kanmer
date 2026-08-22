@@ -245,3 +245,19 @@ Document the KANMER_BOARD_BRANCH repository-variable handoff, require observed b
 ## GitHub review-thread disposition
 
 On 2026-08-22 the eight historical inline threads for findings already marked `fixed` or `accepted-risk` were resolved on PR #168. The four current-head blockers remain unresolved and are deferred to CORE-059, CORE-060, and CORE-061; no unresolved blocker was silenced.
+
+## Fresh cumulative independent review — NEEDS-CHANGES — f63d953fc8467440988c887c62a34ade0c77c96c
+
+Reviewer: codex-core043-cumulative-review, independent of the implementation and remediation authors. Exact reviewed PR #168 head: f63d953fc8467440988c887c62a34ade0c77c96c; base: 34245be039e8fd8395b5e31835602c54e62e98a4.
+
+Code and local evidence: the cumulative branch correctly preserves the protected-default refusal, refreshes branch state before transition decisions, consumes KANMER_BOARD_BRANCH with the documented fallback, retains generated-vs-genuine handoff state, and includes the CORE-060 live-branch/timer remediations. Focused GUI Git/live-branch/timer rail passed 28/28; core passed 283/283; build:core passed; scripts/protection rail passed 89/89; aggregate diff-check passed. Live GitHub protection retargeting remains INCONCLUSIVE as documented.
+
+Blocking gate findings:
+
+1. Hosted run 32587191440 has `kanmer-gate` FAIL with `DEPENDENCY_BLOCKED`: CORE-061 still blocks CORE-043. CORE-061 is Verifying rather than Done, so the cumulative PR is not merge-ready until its proof/closeout removes the live edge.
+
+2. The same hosted gate reports `STALE_REVIEW`: the current machine review attestation is invalid because `findings[5].ticket` is missing for a deferred-to-ticket disposition. The review record must be rewritten/reconciled with a valid ticket field and the exact current head before the gate can approve.
+
+Disposition: defer the dependency finding to existing CORE-061 (no new duplicate ticket); repair the machine review attestation as board-side review metadata. No source finding was identified in the exact cumulative diff.
+
+Verdict: NEEDS-CHANGES. Do not merge PR #168 or move CORE-043 while the authoritative hosted gate is red. No merge or board move performed.

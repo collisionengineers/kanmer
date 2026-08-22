@@ -24,4 +24,4 @@ The full workspace typecheck is INCONCLUSIVE/failed at the inherited mcp-server 
 
 ## Review handoff
 
-The packet is ready for independent review. The PR will target gui-118-provider-lifecycle and the ticket will stop at Review; no self-review, merge, verification, or cleanup.
+Commit fe4ace066bde9d3ba230b997168802ef9fc8e55f is pushed on the dedicated branch. PR #221 targets gui-118-provider-lifecycle. The packet is ready for independent review. The ticket will stop at Review; no self-review, merge, verification, or cleanup.

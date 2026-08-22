@@ -38,6 +38,9 @@ commits:
   - 5cd42532b1ff9514655a5713d69a6507921d1b5f
   - 6f206ae3ae4ef3d7d6bae5106081b1d233e864fb
   - 67a066d351e3f7924f87f7580a74c98e7b94cbb2
+  - 695e12ee659b927513c7e0190a81d5ecb9e8c513
+  - 36b57a93b6b22f10672d571fb68c160d4766cfc5
+  - 02389045b7d26ad46e470af1d96a3084b486bf68
 prs:
   - '166'
   - '167'
@@ -45,9 +48,10 @@ prs:
   - '171'
   - '172'
   - '173'
+  - '174'
 archived: false
 created: '2026-08-22T10:11:05.566Z'
-updated: '2026-08-22T12:35:22.271Z'
+updated: '2026-08-22T12:53:53.400Z'
 ---
 
 Independent review of CORE-044 / PR #165 found two blockers that must be fixed and re-reviewed before CORE-044 can merge:

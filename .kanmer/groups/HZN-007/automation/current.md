@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T03:50:00Z
+updated_at: 2026-08-22T03:52:00Z
 ---
 
 # Current auto run — HZN-007
@@ -186,3 +186,6 @@ Last handoff: 2026-08-22T03:12:42.450Z — MCP-015 is the second implementation 
 
 
 2026-08-22T03:50:00Z — MCP-015 independent review needs-changes on PR #152 head dd83db295b5a836503c894fe4b38ea1ff7639266. Hosted verify run 32549912338/job 96974849841 failed three connect.test.ts assertions (159, 308, 503): legacy disconnectAgent("antigravity") fixtures now route through native plugin disconnect and return ok:false when agy plugin list is unavailable. Finding F-001 major/open recorded in scratch/review; author lane asked to reconcile legacy migration/disconnect safely, rerun focused/full/hosted rails, and return with a new head. No merge or stage move.
+
+
+2026-08-22T03:52:00Z — lane assignment: GUI-106 update-safe MCP runtime delegated to /root/gui082_executor as third conflict-free lane. Scope is updater/runtime boundary only; MCP-015 connect/provider work and GUI-101/102 remain untouched. Agent must research/plan/implement on dedicated worktree, preserve real packaged-update acceptance limits, and stop at Review for independent review.

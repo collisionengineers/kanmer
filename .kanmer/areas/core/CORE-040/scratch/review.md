@@ -51,3 +51,15 @@ No blocking findings; no fix ticket required.
 ### Status correction after review
 
 After the PASS review was recorded, PR #148 was concurrently closed as superseded at 2026-08-22T01:44:32Z without merge. Commit `6f17bccf` is now stacked in the still-open PR #145 (merge candidate `ad8be25b` is recorded by the board/run activity). This does not change the review verdict or local evidence; CORE-040 remains Review/taken and this reviewer performed no merge, stage move, or cleanup.
+
+## Independent review — CORE-040
+
+**PASS** for `6f17bccfec7577c4a2645fa1abe2d5251aacb8c4` in `.worktrees/core-040`; no code, merge, move, or cleanup performed.
+
+- Exactly one test-line change: `--since v0.3.2` → `--since 2026-08-20T00:00:00.000Z`; this cutoff precedes the fixture Done timestamp `2026-08-21T01:04:37.070Z`.
+- Canonical PR-link and no-shorthand assertions are unchanged; production tag resolution and CORE-039 fixture code are untouched.
+- CORE-039 dependency is explicit in the plan/report and PR #148 body, and stack ancestry includes `79c85e07` through merge `18143045561417bed3e817891863bf7e66eeee0c`.
+- Local rails: build 0; focused 1/1; scripts 80/80; typecheck 0; diff-check 0.
+- Hosted PR #148 verify is red only on unrelated GUI Windows path-alias assertion (351/352); release-notes/scripts pass. Pre-fix missing-tag evidence remains recorded as run `32543948316`, job `96959018333`, scripts 79/80.
+
+No blocking findings.

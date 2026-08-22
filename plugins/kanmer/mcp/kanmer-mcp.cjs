@@ -42165,6 +42165,15 @@ var ResponseTooLargeError = class extends Error {
     this.consumedBytes = consumedBytes2;
   }
 };
+var ResponseReadError = class extends Error {
+  consumedBytes;
+  constructor(url, cause, consumedBytes2) {
+    super(`${url} response read failed after ${consumedBytes2} bytes: ${failureText(cause)}`);
+    this.name = "ResponseReadError";
+    this.consumedBytes = consumedBytes2;
+    this.cause = cause;
+  }
+};
 function canonicalHttpsUrl(value) {
   const parsed = new URL(value);
   if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.hash || parsed.search) {
@@ -42262,6 +42271,7 @@ async function pinnedFetch(url, init, addresses) {
   const address = addresses[0];
   if (!address) throw new Error(`${url} destination could not be resolved`);
   const headers = new Headers(init.headers);
+  headers.set("accept-encoding", "identity");
   return new Promise((resolve, reject) => {
     let settled = false;
     const request = (0, import_node_https.request)(
@@ -42345,7 +42355,7 @@ async function readCache(file) {
     throw error2;
   }
 }
-function markdownLinks(text, base) {
+function markdownLinks(text, base, maxLinks = LLMS_TXT_POLICY.maxLinkedPages) {
   const urls = [];
   const seen = /* @__PURE__ */ new Set();
   const pattern = /(?<!\!)\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
@@ -42364,26 +42374,35 @@ function markdownLinks(text, base) {
     if (!seen.has(key)) {
       seen.add(key);
       urls.push(resolved);
+      if (urls.length >= maxLinks) break;
     }
   }
   return urls;
 }
-async function fetchText(url, fetchImpl, headers, timeoutMs, maxBytes = LLMS_TXT_POLICY.maxBytes, lookupImpl, boundFetch) {
+async function fetchText(url, fetchImpl, headers, timeoutMs, maxBytes = LLMS_TXT_POLICY.maxBytes, lookupImpl, boundFetch, conditionalUrl) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const origin = new URL(url);
   let current = new URL(url);
   let redirects = 0;
-  let requestHeaders = headers;
+  const conditionalTarget = conditionalUrl ?? url.toString();
+  const conditionalHeaders = { ...headers, "accept-encoding": "identity" };
   try {
     while (true) {
       const addresses = await assertPublicDestination(current, lookupImpl, controller.signal);
+      const requestHeaders = current.toString() === conditionalTarget ? conditionalHeaders : { "accept-encoding": "identity" };
       const requestInit = { headers: requestHeaders, redirect: "manual", signal: controller.signal };
       const response = boundFetch ? await boundFetch(current, requestInit, addresses) : await fetchImpl(current, requestInit);
       const responseUrl = response.url ? new URL(response.url) : current;
-      assertSafeFetchTarget(origin, responseUrl);
-      await assertPublicDestination(responseUrl, lookupImpl, controller.signal);
+      try {
+        assertSafeFetchTarget(origin, responseUrl);
+        await assertPublicDestination(responseUrl, lookupImpl, controller.signal);
+      } catch (error2) {
+        await response.body?.cancel();
+        throw error2;
+      }
       if (response.status === 304) {
+        await response.body?.cancel();
         return {
           status: 304,
           text: "",
@@ -42396,23 +42415,29 @@ async function fetchText(url, fetchImpl, headers, timeoutMs, maxBytes = LLMS_TXT
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get("location");
         if (!location || redirects >= LLMS_TXT_POLICY.maxRedirects) {
+          await response.body?.cancel();
           throw new Error(`${url} exceeded the redirect limit or returned a redirect without Location`);
         }
+        await response.body?.cancel();
         const next = new URL(location, current);
         assertSafeFetchTarget(origin, next);
         current = next;
         redirects++;
-        requestHeaders = {};
         continue;
       }
-      if (!response.ok) throw new Error(`${url} returned HTTP ${response.status}`);
+      if (!response.ok) {
+        await response.body?.cancel();
+        throw new Error(`${url} returned HTTP ${response.status}`);
+      }
       const rawContentType = response.headers.get("content-type");
       const contentType = rawContentType?.split(";", 1)[0]?.trim().toLowerCase();
       if (!contentType || !contentType.startsWith("text/") && contentType !== "application/json") {
+        await response.body?.cancel();
         throw new Error(`${url} returned unsupported or missing content type`);
       }
       const length = Number(response.headers.get("content-length"));
       if (Number.isFinite(length) && length > maxBytes) {
+        await response.body?.cancel();
         throw new ResponseTooLargeError(url, maxBytes, length);
       }
       if (!response.body) {
@@ -42442,6 +42467,14 @@ async function fetchText(url, fetchImpl, headers, timeoutMs, maxBytes = LLMS_TXT
           }
           chunks.push(Buffer.from(value));
         }
+      } catch (error2) {
+        if (error2 instanceof ResponseTooLargeError) throw error2;
+        try {
+          await reader.cancel(error2);
+        } catch (cancelError) {
+          throw new ResponseReadError(url, new AggregateError([error2, cancelError], "response cancellation failed"), bytes);
+        }
+        throw new ResponseReadError(url, error2, bytes);
       } finally {
         reader.releaseLock();
       }
@@ -42474,7 +42507,7 @@ function failureText(error2) {
   return error2 instanceof Error ? error2.message : String(error2);
 }
 function consumedBytes(error2) {
-  return error2 instanceof ResponseTooLargeError ? error2.consumedBytes : 0;
+  return error2 && typeof error2 === "object" && "consumedBytes" in error2 && typeof error2.consumedBytes === "number" ? error2.consumedBytes : 0;
 }
 async function revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImpl, timeoutMs = LLMS_TXT_POLICY.timeoutMs, boundFetch) {
   const root = cached3.documents[0];
@@ -42482,7 +42515,7 @@ async function revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImp
   const documents = [root];
   let bytes = Buffer.byteLength(root.text, "utf8");
   const cachedByUrl = new Map(cached3.documents.slice(1).map((document) => [document.url, document]));
-  const candidates = markdownLinks(root.text, new URL(root.url)).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
+  const candidates = markdownLinks(root.text, new URL(root.url));
   for (const candidate of candidates) {
     const cachedDocument = cachedByUrl.get(candidate.toString());
     const requestHeaders = {};
@@ -42505,7 +42538,8 @@ async function revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImp
         timeoutMs,
         LLMS_TXT_POLICY.maxBytes - bytes,
         lookupImpl,
-        boundFetch
+        boundFetch,
+        cachedDocument?.url
       );
       if (response.status === 304) {
         if (!cachedDocument) {
@@ -42534,6 +42568,7 @@ async function revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImp
   }
   return documents;
 }
+var activeRefreshes = /* @__PURE__ */ new Map();
 async function fetchLlmsTxt(options2) {
   const root = canonicalHttpsUrl(options2.url);
   const fetchImpl = options2.fetchImpl ?? fetch;
@@ -42542,7 +42577,13 @@ async function fetchLlmsTxt(options2) {
   const lookupImpl = options2.lookupImpl ?? (fetchImpl === fetch ? async (hostname2) => (await (0, import_promises9.lookup)(hostname2, { all: true, verbatim: true })).map(({ address }) => address) : void 0);
   const now = options2.now ?? Date.now;
   const cacheFile = cachePath(options2.cacheDir, root.toString());
-  return withExclusiveFileLock(`${cacheFile}.lock`, async () => {
+  const active = activeRefreshes.get(cacheFile);
+  if (active) {
+    const result = await active;
+    if (!options2.force) return result.fromCache ? result : { ...result, fromCache: true };
+    return fetchLlmsTxt(options2);
+  }
+  const refresh = withExclusiveFileLock(`${cacheFile}.lock`, async () => {
     const cached3 = await readCache(cacheFile);
     const nowMs = now();
     if (!options2.force && cached3 && cached3.url === root.toString() && Date.parse(cached3.expiresAt) > nowMs) {
@@ -42560,7 +42601,16 @@ async function fetchLlmsTxt(options2) {
     const failures = [];
     let rootResponse;
     try {
-      rootResponse = await fetchText(root, fetchImpl, headers, timeoutMs, LLMS_TXT_POLICY.maxBytes, lookupImpl, boundFetch);
+      rootResponse = await fetchText(
+        root,
+        fetchImpl,
+        headers,
+        timeoutMs,
+        LLMS_TXT_POLICY.maxBytes,
+        lookupImpl,
+        boundFetch,
+        cached3?.documents[0]?.url
+      );
     } catch (error2) {
       if (cached3) {
         failures.push(failureText(error2));
@@ -42598,7 +42648,7 @@ async function fetchLlmsTxt(options2) {
       throw new Error(`${root} returned HTTP 304 without a cached representation`);
     }
     const documents = [asDocument(rootResponse)];
-    const candidates = markdownLinks(rootResponse.text, new URL(rootResponse.url)).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
+    const candidates = markdownLinks(rootResponse.text, new URL(rootResponse.url));
     let bytes = rootResponse.bytes;
     for (const candidate of candidates) {
       if (bytes >= LLMS_TXT_POLICY.maxBytes) {
@@ -42608,6 +42658,10 @@ async function fetchLlmsTxt(options2) {
       try {
         const remaining = LLMS_TXT_POLICY.maxBytes - bytes;
         const response = await fetchText(candidate, fetchImpl, {}, timeoutMs, remaining, lookupImpl, boundFetch);
+        if (response.status === 304) {
+          failures.push(`${candidate} returned HTTP 304 without a cached representation`);
+          continue;
+        }
         bytes += response.bytes;
         if (bytes > LLMS_TXT_POLICY.maxBytes) {
           failures.push(`${candidate} skipped because the aggregate response limit was reached`);
@@ -42634,6 +42688,12 @@ async function fetchLlmsTxt(options2) {
     await writeCache(cacheFile, cache);
     return { sourceUrl: root.toString(), documents, failures, fromCache: false, fetchedAt };
   });
+  activeRefreshes.set(cacheFile, refresh);
+  try {
+    return await refresh;
+  } finally {
+    if (activeRefreshes.get(cacheFile) === refresh) activeRefreshes.delete(cacheFile);
+  }
 }
 function validateLlmsSource(source) {
   if (!source || typeof source !== "object") throw new Error("invalid source declaration");

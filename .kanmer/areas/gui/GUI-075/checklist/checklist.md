@@ -35,18 +35,14 @@
 
 ## Bounded deviations / follow-up
 
-- [ ] Positive authenticated dispatch controls were not run: no credential-safe agent session was started. The installed CLI help/version probes are PASS; live provider execution remains INCONCLUSIVE.
 - [x] FRD/manual/release-note prose updates are synchronized with the implemented contract.
-- [ ] Independent visual screenshot/manual evidence remains INCONCLUSIVE in this headless lane.
 
 ## Stop condition
 
 - [x] Post-implementation report and scratch evidence are written; ready for independent review at Review.
 
-## CI reconciliation note — 2026-08-22
+## Parked (explicitly deferred)
 
-The origin/main merge `2c561e02` resolves the earlier hosted path-alias failure. Hosted typecheck then identified the GUI-110-owned demo fixture compatibility gap; attempted commit `566e90ee` was locally green but reverted as `cbb9de90` from the effective GUI-075 diff. The two external evidence boxes above remain intentionally unchecked: live provider execution and visual screenshot proof are INCONCLUSIVE.
-
-## Hosted verification result — GUI-110 stacked (2026-08-22)
-
-GUI-110 commit `8ded235c` is stacked into this branch by merge `c13596fc`; PR #142 remains open. Hosted run `32545782848` / job `96963841700` completed in 2m17s. Core 266/266, GUI 355/355, MCP HTTP 61/61, scripts 80/80, all-workspace typecheck, build, manual freshness, stdio smoke 224/224, and headless smoke passed. The required rail fails only at `npm run mcpb:check`, exit 1: after successful .mcpb build/manifest validation, `scripts/check-mcpb-sync.mjs:44` reports `Error: MCPB server differs from distributed plugin copy`. This shared plugin-artifact mismatch is preserved as the current blocker and is outside GUI-075 scope. No merge performed; live provider and visual evidence remain INCONCLUSIVE.
+- Positive authenticated dispatch controls remain deferred because no credential-safe provider session was authorized; CLI help/version probes are PASS and live provider execution is INCONCLUSIVE.
+- Independent visual screenshot/manual evidence remains deferred in this headless lane; no visual success is claimed.
+- The superseded hosted plugin-byte mismatch is resolved by MCP-042 and PR #142 run 32546955237/job 96967001211 is PASS.

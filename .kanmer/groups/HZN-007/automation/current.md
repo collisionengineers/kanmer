@@ -657,3 +657,6 @@ PR #200 CORE-079 PASS merged into CORE-026 feature branch as 3a05ab7a; CORE-079 
 
 
 Reachability audit corrected CORE-045/047/049 back to Verifying; CORE-044–057 cumulative merges are not reachable from origin/main 34245be, so no proof/closeout accepted. Branch-only proofs preserved with explicit no-origin-mainline notes.
+
+
+PR #163 hosted verify and kanmer-gate run 32587889875 both PASS after CORE-079 merge. Fresh cumulative CORE-026 review/merge on exact updated head is now the next action; no main merge yet.

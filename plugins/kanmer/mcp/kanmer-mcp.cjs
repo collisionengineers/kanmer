@@ -19482,7 +19482,7 @@ var require_readdirp = __commonJS({
     var picomatch = require_picomatch2();
     var readdir = promisify2(fs12.readdir);
     var stat = promisify2(fs12.stat);
-    var lstat = promisify2(fs12.lstat);
+    var lstat2 = promisify2(fs12.lstat);
     var realpath = promisify2(fs12.realpath);
     var BANG = "!";
     var RECURSIVE_ERROR_CODE = "READDIRP_RECURSIVE_ERROR";
@@ -19546,7 +19546,7 @@ var require_readdirp = __commonJS({
         const { root, type } = opts;
         this._fileFilter = normalizeFilter(opts.fileFilter);
         this._directoryFilter = normalizeFilter(opts.directoryFilter);
-        const statMethod = opts.lstat ? lstat : stat;
+        const statMethod = opts.lstat ? lstat2 : stat;
         if (wantBigintFsStats) {
           this._stat = (path18) => statMethod(path18, { bigint: true });
         } else {
@@ -19649,7 +19649,7 @@ var require_readdirp = __commonJS({
           const full = entry.fullPath;
           try {
             const entryRealPath = await realpath(full);
-            const entryRealPathStats = await lstat(entryRealPath);
+            const entryRealPathStats = await lstat2(entryRealPath);
             if (entryRealPathStats.isFile()) {
               return "file";
             }
@@ -21438,10 +21438,10 @@ var require_nodefs_handler = __commonJS({
     var THROTTLE_MODE_WATCH = "watch";
     var open = promisify2(fs12.open);
     var stat = promisify2(fs12.stat);
-    var lstat = promisify2(fs12.lstat);
+    var lstat2 = promisify2(fs12.lstat);
     var close = promisify2(fs12.close);
     var fsrealpath = promisify2(fs12.realpath);
-    var statMethods = { lstat, stat };
+    var statMethods = { lstat: lstat2, stat };
     var foreach = (val, fn) => {
       if (val instanceof Set) {
         val.forEach(fn);
@@ -21950,9 +21950,9 @@ var require_fsevents_handler = __commonJS({
     } = require_constants3();
     var Depth = (value) => isNaN(value) ? {} : { depth: value };
     var stat = promisify2(fs12.stat);
-    var lstat = promisify2(fs12.lstat);
+    var lstat2 = promisify2(fs12.lstat);
     var realpath = promisify2(fs12.realpath);
-    var statMethods = { stat, lstat };
+    var statMethods = { stat, lstat: lstat2 };
     var FSEventsWatchers = /* @__PURE__ */ new Map();
     var consolidateThreshhold = 10;
     var wrongEventFlags = /* @__PURE__ */ new Set([
@@ -23047,6 +23047,7 @@ __export(src_exports, {
   LLMS_TXT_POLICY: () => LLMS_TXT_POLICY,
   REMOTE_HTTP_EXCLUDED_TOOLS: () => REMOTE_HTTP_EXCLUDED_TOOLS,
   createKanmerMcpServer: () => createKanmerMcpServer,
+  createPinnedLookup: () => createPinnedLookup,
   fetchLlmsTxt: () => fetchLlmsTxt,
   projectFingerprint: () => projectFingerprint,
   remoteHttpToolNames: () => remoteHttpToolNames,
@@ -38090,26 +38091,45 @@ function ownerMarkerPath(lockFile, token) {
   if (!isValidLockToken(token)) throw new Error("invalid persisted lock token");
   return `${lockFile}.owner-${token}`;
 }
-async function ownerMarkerActive(markerFile, processAlive = defaultProcessAlive, processIdentity = defaultProcessIdentity) {
+async function ownerMarkerActive(markerFile, processAlive = defaultProcessAlive, processIdentity = defaultProcessIdentity, now = Date.now, staleAfterMs = DEFAULT_LOCK_STALE_MS) {
   let contents;
   try {
     contents = await import_promises.default.readFile(markerFile, "utf8");
   } catch (error2) {
     return error2.code !== "ENOENT";
   }
+  let parsed = false;
   try {
     const marker = JSON.parse(contents);
-    if (Number.isInteger(marker.pid) && Number(marker.pid) > 0 && processAlive(Number(marker.pid))) {
-      if (typeof marker.identity !== "string" || marker.identity.length === 0) return true;
+    if (Number.isInteger(marker.pid) && Number(marker.pid) > 0) {
+      parsed = true;
+      let alive;
       try {
-        const currentIdentity = processIdentity(Number(marker.pid));
-        if (currentIdentity === void 0 || currentIdentity === marker.identity) return true;
+        alive = processAlive(Number(marker.pid));
       } catch {
         return true;
       }
+      if (alive) {
+        if (typeof marker.identity !== "string" || marker.identity.length === 0) return true;
+        try {
+          const currentIdentity = processIdentity(Number(marker.pid));
+          if (currentIdentity === void 0 || currentIdentity === marker.identity) return true;
+        } catch {
+          return true;
+        }
+      }
     }
   } catch {
-    return true;
+    parsed = false;
+  }
+  if (!parsed) {
+    try {
+      const markerStat = await import_promises.default.stat(markerFile);
+      if (now() - markerStat.mtimeMs < staleAfterMs) return true;
+    } catch (error2) {
+      if (error2.code !== "ENOENT") return true;
+      return false;
+    }
   }
   await import_promises.default.rm(markerFile, { force: true });
   return false;
@@ -38134,7 +38154,7 @@ async function cleanupOwnerQuarantines(lockFile, token) {
     }
   }
 }
-async function hasActiveOwnerMarker(lockFile, processAlive, processIdentity) {
+async function hasActiveOwnerMarker(lockFile, processAlive, processIdentity, now = Date.now, staleAfterMs = DEFAULT_LOCK_STALE_MS) {
   let entries;
   try {
     entries = await import_promises.default.readdir(import_path3.default.dirname(lockFile));
@@ -38144,7 +38164,7 @@ async function hasActiveOwnerMarker(lockFile, processAlive, processIdentity) {
   }
   const prefix = `${import_path3.default.basename(lockFile)}.owner-`;
   for (const entry of entries.filter((name) => name.startsWith(prefix))) {
-    if (await ownerMarkerActive(import_path3.default.join(import_path3.default.dirname(lockFile), entry), processAlive, processIdentity)) return true;
+    if (await ownerMarkerActive(import_path3.default.join(import_path3.default.dirname(lockFile), entry), processAlive, processIdentity, now, staleAfterMs)) return true;
   }
   return false;
 }
@@ -38174,10 +38194,12 @@ async function recoverStaleLock(lockFile, options2) {
     return error2.code === "ENOENT";
   }
   const record2 = parseLockRecord(initialContents);
-  const createdAt = record2?.createdAt ?? initialStat.mtimeMs;
-  if (options2.now() - createdAt < options2.staleAfterMs) return false;
+  const now = options2.now();
+  const persistedAge = record2?.createdAt === void 0 ? 0 : now - record2.createdAt;
+  const filesystemAge = now - initialStat.mtimeMs;
+  if (Math.max(0, persistedAge, filesystemAge) < options2.staleAfterMs) return false;
   if (!record2 && isUnrecoverableMalformedRecord(initialContents)) return false;
-  if (record2?.token && await ownerMarkerActive(ownerMarkerPath(lockFile, record2.token), options2.processAlive, options2.processIdentity)) return false;
+  if (record2?.token && await ownerMarkerActive(ownerMarkerPath(lockFile, record2.token), options2.processAlive, options2.processIdentity, options2.now, options2.staleAfterMs)) return false;
   if (record2) {
     let alive;
     try {
@@ -38190,7 +38212,7 @@ async function recoverStaleLock(lockFile, options2) {
       return false;
     }
     if (alive) return false;
-  } else if (await hasActiveOwnerMarker(lockFile, options2.processAlive, options2.processIdentity)) {
+  } else if (await hasActiveOwnerMarker(lockFile, options2.processAlive, options2.processIdentity, options2.now, options2.staleAfterMs)) {
     return false;
   }
   const stillOwnsStaleLock = async () => {
@@ -38205,7 +38227,7 @@ async function recoverStaleLock(lockFile, options2) {
     if (currentContents !== initialContents || currentStat.dev !== initialStat.dev || currentStat.ino !== initialStat.ino || currentStat.mtimeMs !== initialStat.mtimeMs) return false;
     const currentRecord = parseLockRecord(currentContents);
     if (!currentRecord) {
-      return !isUnrecoverableMalformedRecord(currentContents) && !await hasActiveOwnerMarker(lockFile, options2.processAlive, options2.processIdentity);
+      return !isUnrecoverableMalformedRecord(currentContents) && !await hasActiveOwnerMarker(lockFile, options2.processAlive, options2.processIdentity, options2.now, options2.staleAfterMs);
     }
     let currentAlive;
     try {
@@ -38218,8 +38240,8 @@ async function recoverStaleLock(lockFile, options2) {
       return false;
     }
     if (currentAlive) return false;
-    if (currentRecord.token && await ownerMarkerActive(ownerMarkerPath(lockFile, currentRecord.token), options2.processAlive, options2.processIdentity)) return false;
-    return !await hasActiveOwnerMarker(lockFile, options2.processAlive, options2.processIdentity);
+    if (currentRecord.token && await ownerMarkerActive(ownerMarkerPath(lockFile, currentRecord.token), options2.processAlive, options2.processIdentity, options2.now, options2.staleAfterMs)) return false;
+    return !await hasActiveOwnerMarker(lockFile, options2.processAlive, options2.processIdentity, options2.now, options2.staleAfterMs);
   };
   if (!await stillOwnsStaleLock()) return false;
   const quarantineFile = `${lockFile}.stale-${process.pid}-${tmpCounter()}`;
@@ -38243,7 +38265,7 @@ async function recoverStaleLock(lockFile, options2) {
   if (!ownsInspectedInode) {
     const replacementToken = parseLockRecord(quarantinedContents)?.token;
     const replacementMarker = replacementToken ? ownerMarkerPath(lockFile, replacementToken) : null;
-    const replacementActive = replacementMarker ? await ownerMarkerActive(replacementMarker, options2.processAlive) : false;
+    const replacementActive = replacementMarker ? await ownerMarkerActive(replacementMarker, options2.processAlive, options2.processIdentity, options2.now, options2.staleAfterMs) : false;
     if (!replacementActive) {
       await import_promises.default.rm(quarantineFile, { force: true });
       return false;
@@ -38288,7 +38310,7 @@ async function withExclusiveFileLock(lockFile, work, options2 = {}) {
   const markerFile = ownerMarkerPath(lockFile, claimToken);
   let lastError;
   const claim = async () => {
-    if (await hasActiveOwnerMarker(lockFile, lockOptions.processAlive, lockOptions.processIdentity)) {
+    if (await hasActiveOwnerMarker(lockFile, lockOptions.processAlive, lockOptions.processIdentity, lockOptions.now, lockOptions.staleAfterMs)) {
       const error2 = new Error("active lock owner is quarantined");
       error2.code = "EEXIST";
       throw error2;
@@ -38346,11 +38368,29 @@ async function withExclusiveFileLock(lockFile, work, options2 = {}) {
     }
   }
   if (!claimed) throw lastError instanceof Error ? lastError : new Error("unable to claim file lock");
+  let value;
+  let workError;
+  let worked = false;
   try {
-    return await work();
-  } finally {
-    await releaseOwnedLock(lockFile, claimToken);
+    value = await work();
+    worked = true;
+  } catch (error2) {
+    workError = error2;
   }
+  let releaseError;
+  try {
+    await releaseOwnedLock(lockFile, claimToken);
+  } catch (error2) {
+    releaseError = error2;
+  }
+  if (workError !== void 0 || !worked) {
+    if (releaseError !== void 0) {
+      throw new AggregateError([workError, releaseError], "lock callback and release failed");
+    }
+    throw workError;
+  }
+  if (releaseError !== void 0) throw releaseError;
+  return value;
 }
 async function renameWithRetry(from, to, rename = import_promises.default.rename, beforeRetry) {
   for (let attempt = 0; ; attempt++) {
@@ -42238,6 +42278,13 @@ var LLMS_TXT_POLICY = Object.freeze({
   timeoutMs: 1e4,
   cacheTtlMs: 24 * 60 * 60 * 1e3
 });
+function createPinnedLookup(address) {
+  return (_hostname, options2, callback) => {
+    const addressFamily = (0, import_node_net.isIP)(address);
+    if (options2.all) callback(null, [{ address, family: addressFamily }]);
+    else callback(null, address, addressFamily);
+  };
+}
 var ResponseTooLargeError = class extends Error {
   consumedBytes;
   constructor(url, limit, consumedBytes2) {
@@ -42364,7 +42411,11 @@ async function pinnedFetch(url, init, addresses) {
         method: "GET",
         headers: Object.fromEntries(headers.entries()),
         servername: url.hostname,
-        lookup: (_hostname, _options, callback) => callback(null, address, (0, import_node_net.isIP)(address))
+        // Keep the callback compatible with both Node's scalar and `all:true`
+        // lookup contracts. The preflight has already selected this exact
+        // address, so returning any other DNS result would reopen rebinding.
+        family: (0, import_node_net.isIP)(address),
+        lookup: createPinnedLookup(address)
       },
       (response) => {
         settled = true;
@@ -42407,8 +42458,28 @@ function cachePath(cacheDir, url) {
   const key = (0, import_node_crypto3.createHash)("sha256").update(url).digest("hex");
   return import_node_path5.default.join(cacheDir, `${key}.json`);
 }
+var MAX_CACHE_FILE_BYTES = LLMS_TXT_POLICY.maxBytes * 2 + 64 * 1024;
+async function assertSafeCacheDirectory(cacheDir) {
+  const resolved = import_node_path5.default.resolve(cacheDir);
+  const root = import_node_path5.default.parse(resolved).root;
+  const relative = import_node_path5.default.relative(root, resolved);
+  let current = root;
+  for (const segment of relative ? relative.split(import_node_path5.default.sep) : []) {
+    current = import_node_path5.default.join(current, segment);
+    try {
+      const entry = await (0, import_promises10.lstat)(current);
+      if (entry.isSymbolicLink()) throw new Error(`Refusing symlinked source cache path: ${current}`);
+      if (!entry.isDirectory()) throw new Error(`Source cache path is not a directory: ${current}`);
+    } catch (error2) {
+      if (error2.code === "ENOENT") break;
+      throw error2;
+    }
+  }
+}
 async function readCache(file) {
   try {
+    const metadata = await (0, import_promises10.lstat)(file);
+    if (metadata.isSymbolicLink() || !metadata.isFile() || metadata.size > MAX_CACHE_FILE_BYTES) return null;
     const parsed = JSON.parse(await (0, import_promises10.readFile)(file, "utf8"));
     if (!parsed || typeof parsed !== "object") return null;
     const cache = parsed;
@@ -42417,10 +42488,17 @@ async function readCache(file) {
     ) || !Array.isArray(cache.failures) || !cache.failures.every((failure) => typeof failure === "string") || cache.sha256 !== void 0 && !/^[a-f0-9]{64}$/.test(cache.sha256)) {
       return null;
     }
-    const documents = cache.documents;
+    if (cache.documents.length === 0 || cache.documents.length > LLMS_TXT_POLICY.maxLinkedPages + 1) return null;
+    const cacheUrl = canonicalHttpsUrl(cache.url);
+    const documents = cache.documents.map((document) => {
+      const normalized = canonicalHttpsUrl(document.url);
+      assertSafeFetchTarget(cacheUrl, normalized);
+      return { ...document, url: normalized.toString() };
+    });
+    if (Buffer.byteLength(documents.map((document) => document.text).join(""), "utf8") > LLMS_TXT_POLICY.maxBytes) return null;
     if (cache.sha256 && cache.sha256 !== cacheDigest(documents)) return null;
     return {
-      url: canonicalHttpsUrl(cache.url).toString(),
+      url: cacheUrl.toString(),
       fetchedAt: cache.fetchedAt,
       expiresAt: cache.expiresAt,
       etag: cache.etag,
@@ -42657,14 +42735,22 @@ async function fetchLlmsTxt(options2) {
   const boundFetch = options2.requestImpl ?? (options2.fetchImpl ? void 0 : pinnedFetch);
   const lookupImpl = options2.lookupImpl ?? (fetchImpl === fetch ? async (hostname2) => (await (0, import_promises9.lookup)(hostname2, { all: true, verbatim: true })).map(({ address }) => address) : void 0);
   const now = options2.now ?? Date.now;
+  await assertSafeCacheDirectory(options2.cacheDir);
   const cacheFile = cachePath(options2.cacheDir, root.toString());
   const active = activeRefreshes.get(cacheFile);
   if (active) {
-    const result = await active;
+    let result;
+    try {
+      result = await active;
+    } catch (error2) {
+      if (!options2.force) throw error2;
+      return fetchLlmsTxt(options2);
+    }
     if (!options2.force) return result.fromCache ? result : { ...result, fromCache: true };
     return fetchLlmsTxt(options2);
   }
   const refresh = withExclusiveFileLock(`${cacheFile}.lock`, async () => {
+    await assertSafeCacheDirectory(options2.cacheDir);
     const cached3 = await readCache(cacheFile);
     const nowMs = now();
     if (!options2.force && cached3 && cached3.url === root.toString() && Date.parse(cached3.expiresAt) > nowMs) {
@@ -42698,7 +42784,7 @@ async function fetchLlmsTxt(options2) {
         return {
           sourceUrl: cached3.url,
           documents: cached3.documents,
-          failures,
+          failures: [...cached3.failures, ...failures],
           fromCache: true,
           fetchedAt: cached3.fetchedAt
         };
@@ -42713,8 +42799,11 @@ async function fetchLlmsTxt(options2) {
         expiresAt: new Date(nowMs + LLMS_TXT_POLICY.cacheTtlMs).toISOString(),
         sha256: cacheDigest(documents2),
         documents: documents2,
-        failures
+        failures,
+        etag: rootResponse.etag ?? cached3.etag,
+        lastModified: rootResponse.lastModified ?? cached3.lastModified
       };
+      await assertSafeCacheDirectory(options2.cacheDir);
       await (0, import_promises10.mkdir)(options2.cacheDir, { recursive: true });
       await writeCache(cacheFile, refreshed);
       return {
@@ -42765,6 +42854,7 @@ async function fetchLlmsTxt(options2) {
       documents,
       failures
     };
+    await assertSafeCacheDirectory(options2.cacheDir);
     await (0, import_promises10.mkdir)(options2.cacheDir, { recursive: true });
     await writeCache(cacheFile, cache);
     return { sourceUrl: root.toString(), documents, failures, fromCache: false, fetchedAt };
@@ -44040,6 +44130,7 @@ if (invokedName === "index.js" || invokedName === "kanmer-mcp.cjs") main().catch
   LLMS_TXT_POLICY,
   REMOTE_HTTP_EXCLUDED_TOOLS,
   createKanmerMcpServer,
+  createPinnedLookup,
   fetchLlmsTxt,
   projectFingerprint,
   remoteHttpToolNames,

@@ -2,7 +2,7 @@
 
 ## Summary
 
-CORE-049 routes stale-lock quarantine renames through the existing bounded `renameWithRetry` contract, preserving the CORE-047 token/lease ownership protocol while retrying Windows `EPERM`, `EBUSY`, and `EACCES` failures. Deterministic coverage exercises each transient code, the regenerated standalone plugin contains the change, and the implementation is committed as `8edfede9` on `core-049-quarantine-rename-retry`, based on merged CORE-047 `0f7ccc4efad0aeae2295f3ba08e0b6e886356679`.
+CORE-049 routes stale-lock quarantine renames through the existing bounded `renameWithRetry` contract, preserving the CORE-047 token/lease ownership protocol while retrying Windows `EPERM`, `EBUSY`, and `EACCES` failures. Deterministic coverage exercises each transient code, the regenerated standalone plugin contains the change, and the implementation is committed as `8edfede9bdb663171601cb326a67bd03792065e2` on `core-049-quarantine-rename-retry`, based on merged CORE-047 `0f7ccc4efad0aeae2295f3ba08e0b6e886356679`. PR #171 is open against `core-046-lock-reclaim-race-ipv6` for independent review.
 
 ## Changes
 
@@ -36,4 +36,4 @@ On merged main, run:
 - Re-run the broad MCP HTTP rail and preserve the readiness timing boundary if it recurs; the isolated readiness file should remain `7/7`.
 - `git diff --check`.
 
-Traceability: base `core-046-lock-reclaim-race-ipv6` at `0f7ccc4efad0aeae2295f3ba08e0b6e886356679`; implementation `8edfede9`; branch `core-049-quarantine-rename-retry`; worktree `.worktrees/core-049`.
+Traceability: base `core-046-lock-reclaim-race-ipv6` at `0f7ccc4efad0aeae2295f3ba08e0b6e886356679`; implementation `8edfede9bdb663171601cb326a67bd03792065e2`; branch `core-049-quarantine-rename-retry`; worktree `.worktrees/core-049`; PR #171 (open).

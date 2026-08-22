@@ -86,6 +86,12 @@ function MenuPanel({
     ref.current?.focus();
   }, []);
 
+  useEffect(() => {
+    if (active < 0) return;
+    const activeItem = ref.current?.querySelectorAll<HTMLElement>("[role='menuitem']")[active];
+    activeItem?.scrollIntoView?.({ block: "nearest" });
+  }, [active]);
+
   const step = useCallback(
     (dir: 1 | -1) => {
       setActive((cur) => nextEnabledIndex(items, cur, dir));
@@ -215,13 +221,13 @@ export function useDismissOnOutside(onClose: () => void, active: boolean): void 
     window.addEventListener("contextmenu", close, true);
     window.addEventListener("blur", onClose);
     window.addEventListener("resize", onClose);
-    window.addEventListener("wheel", onClose, { passive: true });
+    window.addEventListener("wheel", close, { passive: true });
     return () => {
       window.removeEventListener("mousedown", close, true);
       window.removeEventListener("contextmenu", close, true);
       window.removeEventListener("blur", onClose);
       window.removeEventListener("resize", onClose);
-      window.removeEventListener("wheel", onClose);
+      window.removeEventListener("wheel", close);
     };
   }, [onClose, active]);
 }

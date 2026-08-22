@@ -1,6 +1,7 @@
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyManagedBlock } from "./agentsBlock.js";
 import { remoteProjectIdentity } from "./remoteAccess/identity.js";
@@ -560,6 +561,15 @@ describe("disconnect and provider-specific project skill directories", () => {
 });
 
 describe("portable Codex launcher contract (GUI-100)", () => {
+  it("ships a literal Antigravity board-branch default", async () => {
+    const descriptorPath = join(dirname(fileURLToPath(import.meta.url)), "../../../..", "plugins", "kanmer", "mcp_config.json");
+    const descriptor = JSON.parse(await readFile(descriptorPath, "utf8")) as {
+      mcpServers: { kanmer: { env?: Record<string, string> } };
+    };
+    expect(descriptor.mcpServers.kanmer.env).toEqual({ KANMER_BOARD_BRANCH: "kanmer-board" });
+    expect(JSON.stringify(descriptor)).not.toContain("${KANMER_BOARD_BRANCH");
+  });
+
   it("selects one fresh rootless invocation for Codex and preserves installed Electron for other providers", () => {
     const codex = serverInvocation("codex", "C:/board-a", "C:/source-a");
     expect(codex).toEqual({

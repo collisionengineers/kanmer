@@ -76,8 +76,9 @@ variable, but Actions variables are not inherited by local processes.
 Native Grok and Antigravity plugin descriptors must expose `KANMER_BOARD_BRANCH`
 to the bundled MCP server. GUI Connect installs a disposable branch-bound
 descriptor copy, leaving the shipped plugin bundle and unrelated project state
-unchanged; source descriptors retain the `${KANMER_BOARD_BRANCH:-kanmer-board}`
-default contract.
+unchanged; the shipped Antigravity source descriptor uses the literal
+`kanmer-board` default because the native host does not expand shell-style
+`${...}` defaults. GUI-owned staged copies may inject a saved custom branch.
 
 # AGENTS.md — Contributor & AI-agent guide to Kanmer
 

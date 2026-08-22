@@ -38250,7 +38250,9 @@ async function withExclusiveFileLock(lockFile, work, options2 = {}) {
           lastError = retryError;
         }
       }
-      if (attempt === delays.length) throw error2;
+      if (attempt === delays.length) {
+        throw lastError instanceof Error ? lastError : error2;
+      }
       await sleep(delays[attempt]);
     }
   }
@@ -42166,8 +42168,8 @@ function canonicalHttpsUrl(value) {
 function isNonGlobalIpv4(hostname2) {
   const octets = hostname2.split(".").map(Number);
   if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return true;
-  const [a, b, c] = octets;
-  return a === 0 || a === 10 || a === 127 || a === 100 && b >= 64 && b <= 127 || a === 169 && b === 254 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 0 || a === 192 && b === 0 && c === 2 || a === 192 && b === 31 && c === 196 || a === 192 && b === 52 && c === 193 || a === 192 && b === 88 && c === 99 || a === 192 && b === 175 && c === 48 || a === 192 && b === 168 || a === 198 && b >= 18 && b <= 19 || a === 198 && b === 51 && c === 100 || a === 203 && b === 0 && c === 113 || a >= 224;
+  const [a, b, c, d] = octets;
+  return a === 0 || a === 10 || a === 127 || a === 100 && b >= 64 && b <= 127 || a === 169 && b === 254 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 0 && c === 0 && d !== 9 && d !== 10 || a === 192 && b === 0 && c === 2 || a === 192 && b === 31 && c === 196 || a === 192 && b === 52 && c === 193 || a === 192 && b === 88 && c === 99 || a === 192 && b === 175 && c === 48 || a === 192 && b === 168 || a === 198 && b >= 18 && b <= 19 || a === 198 && b === 51 && c === 100 || a === 203 && b === 0 && c === 113 || a >= 224;
 }
 function parseIpv6Groups(value) {
   let normalized = value.toLowerCase();
@@ -42199,7 +42201,9 @@ function isPrivateAddress(hostname2) {
     const mapped = `${seventh >> 8 & 255}.${seventh & 255}.${eighth >> 8 & 255}.${eighth & 255}`;
     return isNonGlobalIpv4(mapped);
   }
-  return first === 0 || first === 256 && second === 0 && third === 0 && fourth === 0 || first === 8193 && second === 2 && third === 0 || first === 100 && second === 65435 && third === 1 || first === 256 && second === 0 && third === 0 && fourth === 1 || first >= 24320 && first <= 24575 || first === 8193 && (second & 65520) === 16 || first === 8193 && (second & 65520) === 32 || first === 8193 && second === 3512 || first >= 64512 && first <= 65023 || first >= 65152 && first <= 65215 || first >= 65280 || first === 16383;
+  return first === 0 || first === 256 && second === 0 && third === 0 && fourth === 0 || first === 8193 && second === 2 && third === 0 || first === 100 && second === 65435 && third === 1 || first === 256 && second === 0 && third === 0 && fourth === 1 || first >= 24320 && first <= 24575 || first === 8193 && (second & 65520) === 16 || first === 8193 && (second & 65520) === 32 || first === 8193 && second === 3512 || first >= 64512 && first <= 65023 || first >= 65152 && first <= 65215 || first >= 65280 || // 3fff::/20 is 3fff:0000:: through 3fff:0fff::; checking only the
+  // first group would incorrectly reject the public 3fff:1000::/16 tail.
+  first === 16383 && (second & 61440) === 0;
 }
 async function assertPublicDestination(url, lookupImpl) {
   const hostname2 = url.hostname.toLowerCase().replace(/[\[\]]/g, "");

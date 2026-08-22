@@ -428,6 +428,31 @@ describe("withExclusiveFileLock", () => {
     }
   });
 
+  it("surfaces the final claim error after stale recovery loses its retry", async () => {
+    const file = path.join(dir, "cache-final-claim-error.lock");
+    await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0 }), "utf8");
+    let recovered = false;
+    const realLink = fs.link.bind(fs);
+    const linkSpy = vi.spyOn(fs, "link").mockImplementation(async (existing, target) => {
+      if (recovered && String(target) === file) throw errno("EACCES");
+      return realLink(existing, target);
+    });
+    try {
+      await expect(withExclusiveFileLock(file, async () => "must not enter", {
+        now: () => 60_000,
+        staleAfterMs: 30_000,
+        processAlive: () => false,
+        retryDelaysMs: [0],
+        renameStaleLock: async (from, to) => {
+          await fs.rename(from, to);
+          recovered = true;
+        },
+      })).rejects.toMatchObject({ code: "EACCES" });
+    } finally {
+      linkSpy.mockRestore();
+    }
+  });
+
   it("revalidates stale ownership before retrying a transient quarantine rename", async () => {
     const file = path.join(dir, "cache-revalidate.lock");
     await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0 }), "utf8");

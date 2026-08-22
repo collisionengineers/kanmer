@@ -374,7 +374,12 @@ export async function withExclusiveFileLock<T>(
           lastError = retryError;
         }
       }
-      if (attempt === delays.length) throw error;
+      if (attempt === delays.length) {
+        // A stale claim can recover successfully and still lose the retry
+        // claim. Surface that final claim error instead of the obsolete
+        // EEXIST from the stale inode, so callers can act on the real cause.
+        throw lastError instanceof Error ? lastError : error;
+      }
       await sleep(delays[attempt]!);
     }
   }

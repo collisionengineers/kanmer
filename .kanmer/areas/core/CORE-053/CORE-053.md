@@ -2,7 +2,7 @@
 id: CORE-053
 type: ticket
 title: 'CORE-051 review remediation: surface claimant-marker cleanup failures'
-status: review
+status: verifying
 area: core
 assignee: codex-core053-executor
 profile: fix
@@ -10,6 +10,7 @@ stageEntered:
   preparing: '2026-08-22T12:38:42.067Z'
   implementing: '2026-08-22T12:38:50.773Z'
   review: '2026-08-22T12:45:44.063Z'
+  verifying: '2026-08-22T12:48:37.313Z'
 taken_at: '2026-08-22T12:38:55.221Z'
 branch: core-053-marker-cleanup-error
 worktree: .worktrees/core-053
@@ -33,7 +34,7 @@ prs:
   - '174'
 archived: false
 created: '2026-08-22T12:38:15.586Z'
-updated: '2026-08-22T12:48:33.912Z'
+updated: '2026-08-22T12:48:37.313Z'
 ---
 
 Close PR #173 review finding: when lock cleanup read fails and removing the claimant marker also fails, surface or combine the cleanup error instead of discarding it and leaving a marker that blocks later claimants. Add deterministic regression and preserve exact CORE-051/CORE-045 cumulative traceability. Link [[CORE-051]].

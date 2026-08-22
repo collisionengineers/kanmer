@@ -10,13 +10,14 @@
 ## Traceability
 
 - Base: CORE-045 cumulative head `0f9af92ba7bf332a3fffbc49b3273bd71b59c49a`.
-- Implementation commits: `5cd42532`, `6f206ae3`, `67a066d3` (full SHAs recorded on the ticket).
-- PR: #173, stacked on `core-045-lock-dns-remediation`.
+- Implementation commits: `5cd42532`, `6f206ae3`, `67a066d3`, and child `695e12ee` (full SHAs recorded on the ticket).
+- PRs: #173 and child #174. Child #174 was independently reviewed PASS and merged non-squash into this branch at `36b57a93b6b22f10672d571fb68c160d4766cfc5`.
+- The child remediation is complete; CORE-051 now awaits a fresh cumulative review at the merged branch head before its own merge.
 
 ## Verification (exact exits)
 
-- `npm test -w @kanmer/core -- src/io.test.ts`: exit 0, 24/24.
-- `npm test -w @kanmer/core`: exit 0, 301/301.
+- `npm test -w @kanmer/core -- src/io.test.ts`: exit 0, 25/25 after child.
+- `npm test -w @kanmer/core`: exit 0, 303/303 after child.
 - `node --test packages/mcp-server/src/sources.test.mjs`: exit 0, 14/14.
 - `npm run build -w @kanmer/core`: exit 0.
 - `npm run build -w @kanmer/mcp-server`: exit 0 after worktree-local core resolution.
@@ -26,6 +27,7 @@
 - `npm run plugin:check`: exit 0 (37 tools, byte parity).
 - `npm run test:scripts`: exit 0, 88/88.
 - First standalone MCP build attempt exited 1 because linked-worktree resolution used stale main-checkout `@kanmer/core` dist; the corrected worktree-local resolution rerun passed. The first environment-sensitive failure is preserved as INCONCLUSIVE, not erased.
+- CORE-053 independent review evidence: IO 25/25, core 303/303, typecheck/build/plugin parity/diff PASS; live Windows EBUSY remains INCONCLUSIVE.
 
 ## Boundaries
 
@@ -33,8 +35,4 @@ Broad HTTP readiness and live Windows/DNS/provider evidence remain INCONCLUSIVE 
 
 ## Review stop
 
-Implementation is complete and awaiting independent review. The author will not self-review, merge, verify, or clean up the worktree.
-
-## CORE-053 remediation handoff
-
-CORE-053 PR #174 at 695e12ee659b927513c7e0190a81d5ecb9e8c513 is stacked on CORE-051 PR #173. It fixes the remaining marker-cleanup error-composition finding by attempting both cleanup operations and surfacing an AggregateError containing all failures. Focused IO 25/25, full core 303/303, typecheck, build, plugin parity, and diff-check pass. Live Windows EBUSY remains INCONCLUSIVE. CORE-053 is pending independent review; this handoff makes no merge/verification claim.
+The child remediation is merged into the CORE-051 branch. A fresh independent cumulative review is required before CORE-051 itself is merged; the author will not self-review, merge, verify, or clean up.

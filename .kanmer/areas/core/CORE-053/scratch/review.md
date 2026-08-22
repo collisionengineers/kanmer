@@ -24,3 +24,7 @@ No blocking findings. Live Windows EBUSY behavior and packaged runtime evidence 
 ## Verdict
 
 PASS, SHA-bound to `695e12ee659b927513c7e0190a81d5ecb9e8c513`. Merge PR #174 non-squash into its stated CORE-051 base only after final head/base/check validation. Do not merge PR #173 or CORE-051.
+
+## Merge result
+
+Final pre-merge validation still matched head `695e12ee659b927513c7e0190a81d5ecb9e8c513` and base `67a066d351e3f7924f87f7580a74c98e7b94cbb2`; PR #174 was merged non-squash at `36b57a93b6b22f10672d571fb68c160d4766cfc5` on 2026-08-22T12:48:12Z. CORE-053 was moved Review → Verifying. PR #173 and CORE-051 were not merged or moved.

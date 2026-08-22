@@ -6,7 +6,7 @@ verdict: pass
 reviewer: "root"
 independent: true
 plan_hash: "9acd6aaeeab3d865"
-ticket_updated: "2026-08-22T05:28:18.252Z"
+ticket_updated: "2026-08-22T05:28:54.250Z"
 findings:
   - id: F-001
     severity: blocker
@@ -30,30 +30,15 @@ findings:
     disposition: fixed
 ---
 
-## Review scope
+## Current-head independent review
 
-Independently reviewed PR #153 at current head c18b5c046f74102c86ecc5f3bd514f6e687bbeb9 against the GUI-106 plan, FRD-012, FRD-021, ADR-0012, the complete remediation diff from 0cdfafad, and all current GitHub review threads. The implementation commit is bd83b8a531bfa5e69b9879acc2ef51fe9e0b997c; c18b5c is source-free CI-retrigger metadata. The external runtime now retains the recognized packaged resources shape and bundled skills tree, prunes stale unlocked version directories while skipping current/current.next/current-version and tolerating locked live runtimes, updates AGENTS.md and governing updater language, and rejects equal/ancestor/descendant install roots before staging.
+Reviewed PR #153 at head 1c91353b61c55dbf9f57e0bb5f75a7d283abe2ef against the GUI-106 plan, FRD-012, FRD-021, ADR-0012, the full source diff, and the merge reconciliation. The implementation preserves the packaged external runtime shape, bundled skills path, stable launcher and legacy fallback, stale-runtime pruning, installer-root overlap rejection, and update stop/refusal behavior. The final merge reconciliation is limited to AGENTS.md and FRD-012 documentation; it retains both MCP-015 native-plugin requirements and GUI-106 external-runtime requirements. The diff from current origin/main 710bddff contains only GUI-106 files and no MCP-028 or prior-ticket source regression.
 
-## Independent evidence
+## Evidence
 
-- Static launcher and updater package tests passed 8/8.
-- Full GUI suite passed 39 files and 360/360 tests with file-parallelism disabled.
-- All-workspace typecheck passed.
-- Windows dist:check passed and updater package validation reported 8/8.
-- git diff --check passed.
-- The historical hosted PASS for the activation correction (0cdfafad, run 32551392188/job 96978620702) remains recorded. GitHub emitted no check-runs for bd83b8a or c18b5c, and workflow_dispatch is not configured (HTTP 422); this hosted rerun gap is explicitly INCONCLUSIVE and is not represented as a green result.
-- Real packaged two-version update, live MCP session survival, junction/process census, uninstall, and AV/SmartScreen evidence remain INCONCLUSIVE because no disposable Windows host was available. No capability is inferred from static or local package rails.
+- Hosted PR verification PASS: run 32554392300/job 96986192019.
+- Author rerun at the reconciled head: GUI 39 files / 362 tests, focused launcher/updater 8/8, scripts 83/83, all-workspace typecheck, Windows dist:check/updater package 8/8, and git diff checks PASS. The first stale-main-checkout 264/265 attempt remains retained in the ticket report; the rebuilt ticket-local core rerun passed.
+- Independent source inspection confirms activation tests the post-rename kanmer-mcp.exe, the external bundle keeps resources/mcp and resources/plugins/kanmer/skills identity, stale runtime cleanup skips current/current.next/current-version and tolerates locked directories, and installer roots reject equal/ancestor/descendant overlap.
+- Real packaged two-version update with a live MCP session, process/junction census, uninstall, and AV/SmartScreen evidence remains INCONCLUSIVE because no disposable Windows host was available. No capability is inferred from static or local package rails.
 
-All five current review findings are fixed in the implementation commit. The review passes the bounded source change with the hosted and real-host evidence limits explicitly retained for verification.
-
-
-## Merge reconciliation refresh — 1c91353b61c55dbf9f57e0bb5f75a7d283abe2ef
-
-The independent PASS above was recorded before the origin/main reconciliation. This SHA-bound record is refreshed to the pushed head 1c91353b61c55dbf9f57e0bb5f75a7d283abe2ef for traceability; it carries the prior source-review verdict forward but requires root's independent re-review of the merged AGENTS.md and FRD-012 conflict resolution before merge. The merge commit is c422333bd662c92a2ad927b8b0386c0c7509ba3a from origin/main 3f4233789363a36631ee0f8e2f60e33fa84e2619; the only conflicts were those two governing/operating documents, resolved to retain both MCP-015 native-plugin and GUI-106 external-runtime contracts.
-
-Author verification at the refreshed head: first post-merge GUI run exited 1 at 264/265 because the normal-checkout core dist lacked the MCP-015 antigravity provider; after rebuilding/pointing the resolver at the ticket worktree core, GUI passed 362/362. Focused launcher/updater 8/8, scripts 83/83, all-workspace typecheck, dist:check/updater 8/8, and both diff checks exited 0. GitHub reports PR #153 CLEAN with zero new check-runs; historical hosted PASS remains only 0cdfafad. Packaged-host update/session/uninstall/AV evidence remains INCONCLUSIVE.
-
-
-## Hosted verification correction — 1c91353b61c55dbf9f57e0bb5f75a7d283abe2ef
-
-The refreshed head 1c91353b61c55dbf9f57e0bb5f75a7d283abe2ef now has a hosted PASS: PR #153 run 32554392300 / verify job 96986192019 completed successfully at 2026-08-22T05:30:03Z, including the authoritative verification rail. The earlier zero-check observation in this record was captured before GitHub dispatched the run and is retained as history. This does not replace root's required independent re-review of the merged AGENTS.md and FRD-012 conflict resolution, and real packaged-host update/session/uninstall/AV evidence remains INCONCLUSIVE.
+All five review findings are fixed; current head passes independent review. No merge is performed by the author lane.

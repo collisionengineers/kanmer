@@ -4,11 +4,14 @@ type: ticket
 title: 'CORE-058 review: retry the current saved board branch'
 status: implementing
 area: core
-assignee: ''
+assignee: codex-recovery
 profile: fix
 stageEntered:
   preparing: '2026-08-22T15:29:02.242Z'
   implementing: '2026-08-22T15:29:37.661Z'
+taken_at: '2026-08-22T15:29:45.571Z'
+branch: core-069-retry-current-branch
+worktree: .worktrees/core-069
 labels:
   - pr-review
   - core-058
@@ -24,7 +27,7 @@ refs:
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
 archived: false
 created: '2026-08-22T15:15:55.407Z'
-updated: '2026-08-22T15:29:37.661Z'
+updated: '2026-08-22T15:29:45.571Z'
 ---
 
 PR #180 thread 3836307986: when settings change the board branch while the project is paused, retry must use the current saved branch (or explicitly update the paused state) rather than retrying the stale branch; add regression.

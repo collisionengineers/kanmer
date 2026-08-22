@@ -564,3 +564,6 @@ CORE-068 implementation c90d056d pushed as PR #189 against CORE-058. Focused tim
 
 
 CORE-068 review PASS at exact c90d056d by independent reviewer; PR #189 merged non-squash into CORE-058 as 14c2d0fd. Child moved Review -> Verifying, block edge removed; proof deferred until cumulative parent reaches merged main. CORE-069 is now Preparing with all fix docs satisfied; next lane after board branch refresh.
+
+
+CORE-069 active in .worktrees/core-069 on base 14c2d0fd; target is paused-state branch refresh when Git preferences change. CORE-068 is Verifying pending parent/main proof.

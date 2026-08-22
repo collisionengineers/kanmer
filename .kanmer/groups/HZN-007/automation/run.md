@@ -35,3 +35,6 @@
 
 
 ### 2026-08-22T05:51:13Z — GUI-106 verified/done/closeout\n- PR #153 independently reviewed at 1c91353b and merged as b6c8eb02; hosted verify run 32554392300/job 96986192019 PASS.\n- Detached merged-main GUI 39 files/362 tests and focused launcher/updater 8/8 PASS; packaged two-version/live-session/uninstall/AV evidence remains explicitly INCONCLUSIVE.\n- GUI-106 moved Verifying→Done, proof/outcome/closeout finalized, ticket released, implementation/verifier worktrees removed, local branch deleted, fetch --prune/worktree prune completed.
+
+
+- 2026-08-22T06:08:48Z — CORE-024 independent review requested changes then pass on amended head 34044bcc (annotation + infrastructureError contract); hosted kanmer-gate pass, hosted verify retained pre-existing MCPB/plugin parity failure. Created MCP-043 remediation ticket and assigned artifact lane; GUI-104 implementing with governing-doc/readiness-test hold.

@@ -44,3 +44,15 @@ The shared GitHub verify rail remains red on the unrelated MCP tunnel supervisor
 The preceding review block is authoritative: verdict NEEDS-CHANGES (merge held), with no new GUI-075 code finding. Required hosted verify remains red only on the known unrelated Windows RUNNER~1 versus runneradmin path assertion in apps/gui/src/main/kanmerGit.test.ts:93; disposition is deferred to existing CORE-032. Local core 266/266 and GUI 355/355, focused core 7/7 and GUI 5/5, typecheck, core/GUI builds, manual freshness, and diff check all passed. Live provider and visual evidence remain INCONCLUSIVE.
 
 The prior appended block contained escaped line separators due the recovery helper; this correctly formatted block is the readback record for the review.
+
+## Hosted verification reconciliation — 2026-08-22
+
+- Branch update: merged `origin/main` as `2c561e02`; pushed GUI-075.
+- Old path-alias check: run `32538700773` / job `96944276047` is superseded by merged-main remediation; no longer the current failure.
+- Hosted run `32545348530` / job `96962707596`: FAIL at `npm run typecheck` in `packages/ui/src/demo.tsx` lines 726–730 because the five Settings bridge results lack `AppSettings.dispatch`.
+- GUI-110 handoff: `566e90ee` adds `dispatch: { providers: {} }`, and local UI/all-workspace typecheck pass; `cbb9de90` reverts it from GUI-075 so no GUI-110 implementation is absorbed.
+- Current hosted run `32545704625` targets reverted head `cbb9de90` and remains in progress/expected to preserve the same bounded blocker until GUI-110 is stacked.
+- Local `npm run verify`: deterministic rails pass (core 266/266; GUI 355/355; MCP HTTP 61/61; scripts 80/80; smoke 224/224; typecheck); `mcpb:check` fails because `@anthropic-ai/mcpb/dist/cli/cli.js` is absent.
+- Provider authenticated execution and visual screenshot evidence remain INCONCLUSIVE.
+
+Disposition: GUI-075 stays in Review, PR #142 remains open, and the GUI-110 compatibility fix is deferred to its owner.

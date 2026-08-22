@@ -42,3 +42,7 @@
 ## Stop condition
 
 - [x] Post-implementation report and scratch evidence are written; ready for independent review at Review.
+
+## CI reconciliation note — 2026-08-22
+
+The origin/main merge `2c561e02` resolves the earlier hosted path-alias failure. Hosted typecheck then identified the GUI-110-owned demo fixture compatibility gap; attempted commit `566e90ee` was locally green but reverted as `cbb9de90` from the effective GUI-075 diff. The two external evidence boxes above remain intentionally unchecked: live provider execution and visual screenshot proof are INCONCLUSIVE.

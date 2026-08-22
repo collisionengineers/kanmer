@@ -1,1 +1,5 @@
 2026-08-22T02:12:43Z — GUI-110 taken by /root/core041_executor on gui-110-demo-dispatch-settings / .worktrees/gui-110 after full ticket, GUI-075 dependency packet, HZN-007/HZN-005 contexts, research/files/plan/checklist/open-questions and gates were read. Scope is one browser fixture field; independent review/merge required, no self-merge.
+
+Implementation/verification 2026-08-22T02:15Z: commit `8ded235c` adds exactly `dispatch: { providers: {} }` to the demo settings fixture. `npm run typecheck` exit 0 across core, MCP server, UI and GUI; `npm test -w @kanmer/gui -- --run` exit 0 (352/352 across 37 files); `git diff --check` exit 0. The implementation is to be merged into GUI-075 PR #142; no duplicate GUI-110 PR is opened.
+
+Trigger evidence retained from hosted PR #142 run 32545348530: GUI 355/355, MCP HTTP 61/61 and scripts 80/80 passed; root typecheck then failed in `@kanmer/ui` at `packages/ui/src/demo.tsx(726,5)` with TS2322 because required `AppSettings.dispatch` was missing from the fixture and all spread-based settings mutators.

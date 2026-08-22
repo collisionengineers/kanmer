@@ -47,3 +47,11 @@ No provider tunnel, GUI-017, or skills files were touched. Manual visual screens
 - Governing refs: `docs/functional/frd/FRD-010-task-scoped-dispatch.md`, `docs/functional/frd/FRD-012-connect.md`.
 - SSOT context: [[CORE-009]], MCP-020 shared dispatch contract.
 - Related provider boundary: [[GUI-073]].
+
+## CI reconciliation — origin/main update and GUI-110 handoff (2026-08-22)
+
+Origin/main was merged into this branch as `2c561e02` and pushed. The prior hosted Windows path-alias failure (run `32538700773`, RUNNER~1 versus runneradmin) is resolved by that main update. The next hosted run, `32545348530` / job `96962707596`, reached authoritative typecheck and exposed a separate `@kanmer/ui` demo fixture gap: five Settings bridge results lacked the newly required `AppSettings.dispatch` field.
+
+That compatibility fixture belongs to GUI-110. Commit `566e90ee` is the attempted stacked compatibility fix and passes local `@kanmer/ui` and all-workspace typecheck; it was reverted from the effective GUI-075 diff by `cbb9de90` so this ticket stays bounded until GUI-110 provides its authoritative PR/commit. Hosted run `32545704625` for the reverted head is being preserved as the current check. Live provider execution and visual evidence remain INCONCLUSIVE.
+
+The full local verify rail passed build, manual freshness, core 266/266, GUI 355/355, MCP HTTP 61/61, scripts 80/80, typecheck and smoke 224/224 before the environment-only `mcpb:check` failure: `@anthropic-ai/mcpb/dist/cli/cli.js` is absent in this worktree.

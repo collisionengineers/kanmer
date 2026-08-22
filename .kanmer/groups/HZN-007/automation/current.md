@@ -909,3 +909,6 @@ GUI-123 is now Review on gui-123-preserve-gui120 / .worktrees/gui-123. Exact hea
 
 
 Batch milestone: CORE-044 and CORE-045 are verified on origin/main fdaededc, moved Verifying to Done, proofs written via MCP, exact ticket worktrees/branches cleaned, and tickets released. Deterministic core/source rails pass; the shared test:http project-resolution child spawnSync ETIMEDOUT remains INCONCLUSIVE. Next batch ticket: CORE-046.
+
+
+Batch milestone: CORE-046 is verified on origin/main fdaededc, proof written, moved Verifying to Done, exact worktree/branch cleaned, and ticket released. Deterministic IO/source rails pass; shared HTTP child timeout and depth-sensitive plugin comparison remain INCONCLUSIVE. Next batch ticket: CORE-047.

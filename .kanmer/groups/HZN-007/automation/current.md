@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T08:30:00Z
+updated_at: 2026-08-22T08:34:00Z
 ---
 
 # Current auto run — HZN-007
@@ -295,3 +295,6 @@ Last handoff: 2026-08-22T08:22:47.548Z — GUI-108 hosted handoff finalized: PR 
 
 
 2026-08-22T08:30:00Z — CORE-035 moved Implementing→Review after disposable integration execution. Deterministic source verify and local/hosted gate/refusal matrix are recorded; private GitHub protection PUT returned HTTP 403, so protected conversation blocking, protected merge, detached exact-SHA verification, and cleanup are not claimed. Ticket Outcome is INCONCLUSIVE and must remain out of Done; independent review of the evidence packet is required.
+
+
+2026-08-22T08:34:00Z — CORE-035 moved Review→Verifying after independent packet-safety review PASS. Proof written as INCONCLUSIVE against exact source c8ea0b77: deterministic verify and refusal matrix pass, hosted gate pass, but hosted verify has disposable-origin release-notes mismatch and GitHub private branch-protection API returns HTTP 403. Protected merge/exact-SHA/cleanup are not claimed; fixture PRs remain open and ticket stays Verifying.

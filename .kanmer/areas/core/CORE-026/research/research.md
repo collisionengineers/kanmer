@@ -25,3 +25,10 @@ How can Kanmer let a project declare trusted MCPs, plugins, and `llms.txt` refer
 ## Open questions
 
 See `open-questions`; the unresolved trust, applicability, and crawl-budget decisions are product choices rather than implementation gaps.
+
+## 2026-08-22 governing-doc reconciliation
+
+- Created and linked docs/functional/frd/FRD-026-project-declared-sources.md and docs/architecture/adr/ADR-0019-project-declared-source-trust.md. The ticket's docs_todo debt is cleared through the board update; the docs remain draft/proposed until implementation review.
+- Resolved packet questions with product-safe defaults: area/label selectors only, declarations prefer only already-connected/installed sources, and HTTPS same-origin llms.txt retrieval is depth-one/32 pages/2 MiB/10 seconds with 24-hour validator-aware cache.
+- HZN-006 has no context.md document (get_group_doc returned content null); its group body is a short horizon summary. HZN-007/context.md is the binding workflow context and prohibits auto-trust, scope absorption, fabricated evidence, and self-merge.
+- Current code confirms BoardConfigSchema strips unknown sources fields until extended; board.ts/store.ts are the round-trip boundary, and mcp-server/index.ts is the canonical read-tool registration point. Existing provider/connect code owns Kanmer registrations and must not auto-trust unrelated entries.

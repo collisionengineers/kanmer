@@ -11,27 +11,33 @@ findings:
   - id: F-001
     severity: major
     summary: "Group-menu discovery and action are not bound to the project that opened the menu"
-    disposition: open
+    disposition: deferred-to-ticket
+    ticket: "GUI-111"
   - id: F-002
     severity: major
     summary: "listGroups failures are converted into a misleading empty-group state"
-    disposition: open
+    disposition: deferred-to-ticket
+    ticket: "GUI-111"
   - id: F-003
     severity: major
     summary: "A group archived after discovery can still be assigned"
-    disposition: open
+    disposition: deferred-to-ticket
+    ticket: "GUI-111"
   - id: F-004
     severity: minor
     summary: "The group submenu has no bounded scrolling for large active-group sets"
-    disposition: open
+    disposition: deferred-to-ticket
+    ticket: "GUI-111"
   - id: F-005
     severity: minor
     summary: "Manual text incorrectly says archiving remains an agent action"
-    disposition: open
+    disposition: deferred-to-ticket
+    ticket: "GUI-111"
   - id: F-006
     severity: major
     summary: "runCardAction clears assignment conflicts after refresh and hides the failure"
-    disposition: open
+    disposition: deferred-to-ticket
+    ticket: "GUI-111"
 ---
 
 # Independent review — GUI-109 / PR #162
@@ -44,14 +50,14 @@ The ticket is in Review, the implementation worktree is clean at the exact recor
 
 ## Findings and dispositions
 
-- F-001 — major, open — GitHub thread 3835659776. The menu remains mounted while root changes during a project/tab switch. The group-loading effect depends only on cardMenu, while clientRef.current and the action callback follow the newly active project. A late result from project A can populate the menu used in project B, and selecting a matching ticket/group id can mutate project B using stale project-A menu state. Close the menu on project changes or bind the menu's read/write client/project identity.
-- F-002 — major, open — GitHub thread 3835659781. The listGroups rejection handler sets cardMenuGroups([]), so IPC/store failures are presented as “No active groups available” with an instruction to create a group. This violates the packet's stated error-surface expectation and hides operational failure. Preserve an explicit loading/error state or route the error through the existing visible error surface.
-- F-003 — major, open — GitHub thread 3835659784. listGroups excludes archived groups at discovery time, but addCardToGroup only re-reads the ticket. If another actor archives the selected group before the write, core's current membership validator accepts existing archived groups, leaving a membership that disappears from active chips/filter views. Revalidate active group state immediately before assignment and handle the concurrent archive according to the governing semantics.
-- F-004 — minor, open — GitHub thread 3835659786. Every active group is rendered directly into the nested ContextMenu, but the context-menu CSS has no max-height/overflow behavior and keyboard navigation does not scroll the active entry into view. Large boards can render entries outside the viewport and make later groups unreachable. Add bounded scrolling/visibility handling or an equivalent scalable picker.
-- F-005 — minor, open — GitHub thread 3835659787. The updated manual says “creating or archiving a group remains an agent action,” but GroupView already exposes an Archive/Unarchive button through updateGroup. Document only creation as agent-only and describe the existing group-detail archive control accurately.
-- F-006 — major, open — GitHub thread 3835659788. runCardAction sets the assignment error in its catch and then always calls refresh; successful refresh clears error, so an optimistic-concurrency failure from getItem/updateItem is immediately erased after the menu closes. Preserve the failure across refresh or clear the error only after a successful action.
+- F-001 — major, deferred-to-ticket GUI-111 — GitHub thread 3835659776. The menu remains mounted while root changes during a project/tab switch. The group-loading effect depends only on cardMenu, while clientRef.current and the action callback follow the newly active project. A late result from project A can populate the menu used in project B, and selecting a matching ticket/group id can mutate project B using stale project-A menu state. Close the menu on project changes or bind the menu's read/write client/project identity.
+- F-002 — major, deferred-to-ticket GUI-111 — GitHub thread 3835659781. The listGroups rejection handler sets cardMenuGroups([]), so IPC/store failures are presented as “No active groups available” with an instruction to create a group. This violates the packet's stated error-surface expectation and hides operational failure. Preserve an explicit loading/error state or route the error through the existing visible error surface.
+- F-003 — major, deferred-to-ticket GUI-111 — GitHub thread 3835659784. listGroups excludes archived groups at discovery time, but addCardToGroup only re-reads the ticket. If another actor archives the selected group before the write, core's current membership validator accepts existing archived groups, leaving a membership that disappears from active chips/filter views. Revalidate active group state immediately before assignment and handle the concurrent archive according to the governing semantics.
+- F-004 — minor, deferred-to-ticket GUI-111 — GitHub thread 3835659786. Every active group is rendered directly into the nested ContextMenu, but the context-menu CSS has no max-height/overflow behavior and keyboard navigation does not scroll the active entry into view. Large boards can render entries outside the viewport and make later groups unreachable. Add bounded scrolling/visibility handling or an equivalent scalable picker.
+- F-005 — minor, deferred-to-ticket GUI-111 — GitHub thread 3835659787. The updated manual says “creating or archiving a group remains an agent action,” but GroupView already exposes an Archive/Unarchive button through updateGroup. Document only creation as agent-only and describe the existing group-detail archive control accurately.
+- F-006 — major, deferred-to-ticket GUI-111 — GitHub thread 3835659788. runCardAction sets the assignment error in its catch and then always calls refresh; successful refresh clears error, so an optimistic-concurrency failure from getItem/updateItem is immediately erased after the menu closes. Preserve the failure across refresh or clear the error only after a successful action.
 
-No finding is fixed, rejected, accepted as risk, or deferred to a separate ticket in this review; all six remain open against the current head.
+All six review threads are preserved in GUI-111, which blocks GUI-109. None is fixed, rejected, or accepted as risk in this review.
 
 ## Evidence
 

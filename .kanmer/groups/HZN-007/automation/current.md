@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T08:51:53.004Z
+updated_at: 2026-08-22T08:56:00Z
 ---
 
 # Current auto run — HZN-007
@@ -328,3 +328,6 @@ Last handoff: 2026-08-22T08:52:00Z — GUI-109 hosted outcome preserved: PR #162
 
 
 Last handoff: 2026-08-22T08:51:53.004Z — CORE-026 implementation handed to Review: fab7b4994b5b0c4f2eaf07a919cf6b6e06e7e763 pushed as PR #163 on core-026-project-declared-sources/.worktrees/core-026. FRD-027 and ADR-0020 are linked after resolving the pre-existing FRD-026 number collision; report/checklist/gates are complete and final rails pass. External connected-provider and live llms.txt evidence is INCONCLUSIVE. Stop for independent review; no self-review/merge/cleanup.
+
+
+2026-08-22T08:56:00Z — CORE-026 is Review on PR #163 head fab7b4994b5b0c4f2eaf07a919cf6b6e06e7e763; packet/checklist/report/gates pass and source redirect/cache edge cases are covered. Independent review assigned next; no merge/cleanup. GUI-109 awaits independent review on PR #162; CORE-035 stays Verifying INCONCLUSIVE.

@@ -81,3 +81,6 @@
 
 
 2026-08-22T08:52:00Z — GUI-109 Implementing→Review completed by gui109-executor on PR #162 head c259af171a72fa83a9131f4f53a79d0cfd0f05b5. Checklist 17/17, report/gates pass, focused 5/5 + GUI 387/387 + typecheck/build/manual/diff PASS; stale-core first failure and ticket-local recovery preserved. Hosted verify PASS; kanmer-gate failed on event-time stage race/no review record and must be rerun by an independent reviewer. Live Electron visual proof remains INCONCLUSIVE. Author stops; no merge/cleanup.
+
+
+2026-08-22T08:54:00Z — CORE-026 Implementing→Review completed on PR #163 head fab7b4994b5b0c4f2eaf07a919cf6b6e06e7e763. Governing refs are FRD-027/ADR-0020; checklist 10/10, report/gates pass, bounded source resolver/fetch/tool/skill rails recorded, including redirect/cache protections and preserved external-provider/network boundaries. Author stops; independent review/hosted rerun required, no merge/cleanup.

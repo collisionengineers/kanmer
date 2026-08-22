@@ -9,6 +9,6 @@
 - [x] Run mcpb:check: final isolated-worktree rail PASS (3 files, 1,669,418 bytes; 37 tools/2 prompts; server SHA f228352b). Earlier CLI-unavailable and stale-artifact failures are preserved; no assertion was weakened.
 - [x] Relevant rails: plugin:build/build 0; MCP typecheck 0; full verify reached build/manual/core 303/303/GUI 404/404/HTTP 94/94/scripts 88/88/typecheck/smoke rails then exited 1 at mcpb CLI absence; final scripts 88/88 and git diff --check 0.
 - [x] Write post-implementation report mapping scope, SHA, rails, hosted limitations, and external proof boundaries.
-- [ ] Push/open ticket-linked PR against core-026-project-declared-sources and record commit/PR traceability.
+- [x] Push/open ticket-linked PR #205 against core-026-project-declared-sources and record commit 4f96ce20c24f63d92268e4a61899a4e6c67b2459 traceability.
 - [ ] Move Implementing→Review after a fresh get_doc_gates readback.
 - [ ] Post-merge verification and proof remain unchecked for the independent merge/verify lane.

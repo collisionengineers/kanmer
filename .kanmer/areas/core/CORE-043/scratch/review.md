@@ -1,6 +1,92 @@
 ---
 kind: review-attestation
 pr: "168"
+head_sha: "30ed38aa7052ccf01a34d6859e67ba3e5deee6b5"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: pass
+reviewer: "codex-root-independent"
+independent: true
+plan_hash: "2026-08-22T18:39:56.633Z"
+ticket_updated: "2026-08-22T18:39:56.633Z"
+findings:
+  - id: F-015
+    severity: blocker
+    summary: "Custom rename must update the Actions board-branch variable"
+    disposition: fixed-in-ticket
+    ticket: "GUI-112"
+    reason: "GUI-112 merged as 30ed38aa; UI/manual/FRD/workflow wording retains the old ref until KANMER_BOARD_BRANCH is updated."
+  - id: F-016
+    severity: major
+    summary: "Resolved handoff must clear only its generated pause/error"
+    disposition: fixed-in-ticket
+    ticket: "GUI-112"
+    reason: "GUI-112's exact-handoff and genuine-error preservation regressions pass and are merged into this cumulative branch."
+  - id: F-017
+    severity: blocker
+    summary: "Automatic sync must stop while handoff is paused"
+    disposition: fixed-in-ticket
+    ticket: "GUI-112"
+    reason: "The existing pause/timer safety path remains covered by the cumulative GUI rail; GUI-112 changes only the preference/retry seam."
+  - id: F-018
+    severity: blocker
+    summary: "Managed AGENTS instructions must declare the branch convention"
+    disposition: fixed-in-ticket
+    ticket: "MCP-044"
+    reason: "MCP-044 merged as 10c9ad6e and updates AGENTS plus the managed setup skill/source."
+  - id: F-019
+    severity: major
+    summary: "Ordinary custom-to-custom rename must accept the actual current branch"
+    disposition: fixed-in-ticket
+    ticket: "GUI-112"
+    reason: "The cached-current preflight and ordinary-rename regression are merged and pass."
+  - id: F-020
+    severity: blocker
+    summary: "Local MCP processes must receive the configured board branch"
+    disposition: fixed-in-ticket
+    ticket: "MCP-044"
+    reason: "Connect IPC now threads readSettings().kanmerBranch into all local registration paths; focused/full GUI and hosted rails pass."
+  - id: F-021
+    severity: major
+    summary: "Manual Retry must recheck the live branch before syncing"
+    disposition: fixed-in-ticket
+    ticket: "GUI-112"
+    reason: "The production Retry caller test proves reconciliation precedes syncBoard and retains no-mutation safety."
+  - id: F-022
+    severity: major
+    summary: "FRD and manual text must state retained-ref handoff semantics"
+    disposition: fixed-in-ticket
+    ticket: "GUI-112"
+    reason: "FRD-020 R5 and all affected manuals were updated and regenerated."
+  - id: F-023
+    severity: major
+    summary: "Settings must state that the old custom ref is retained"
+    disposition: fixed-in-ticket
+    ticket: "GUI-112"
+    reason: "Settings now describes hosted-variable update and delayed old-ref deletion."
+  - id: F-024
+    severity: major
+    summary: "Settings must surface protected reconciliation failures"
+    disposition: fixed-in-ticket
+    ticket: "GUI-112"
+    reason: "Settings renders retained boardRoot/error and Retry for failed reconciliation."
+  - id: F-025
+    severity: minor
+    summary: "Live GitHub protection and variable mutation"
+    disposition: accepted-risk
+    reason: "No authorized live protection mutation or real multi-machine handoff was available; ADR-0016 keeps this administrator-owned external boundary."
+---
+
+## Final cumulative independent review — PASS — 2026-08-22
+
+Reviewed exact PR #168 cumulative head 30ed38aa7052ccf01a34d6859e67ba3e5deee6b5 against main base 34245be039e8fd8395b5e31835602c54e62e98a4. The cumulative branch includes GUI-112 (30ed38aa merge) and MCP-044 (10c9ad6e merge), and all ten current-head review findings are dispositioned to those independently reviewed child tickets. Hosted verify/kanmer-gate run 32593389394 is running; its gate has no dependency or stale-review error after board reconciliation, and its only annotation is the prior-head warning being superseded by this exact-head attestation. Local cumulative evidence in the child packets passes focused/full GUI, typecheck/build/manual/docs/managed-block/skills/scripts/diff, with hosted protection and multi-machine proof explicitly INCONCLUSIVE.
+
+Verdict: PASS, contingent on hosted run 32593389394 completing green. An authorized independent reviewer may merge PR #168 non-squash into protected main; do not use an admin bypass. Then move CORE-043 Review → Verifying. Do not verify or clean up in this review step.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "168"
 head_sha: "e78323d7fb8ce695e40db80380d189e236726b25"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: needs-changes

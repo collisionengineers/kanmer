@@ -1,7 +1,9 @@
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import path from "node:path";
 import type { Stats } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 
 /**
  * Version token for a document's exact bytes. Content-hashed, not mtime:
@@ -62,6 +64,8 @@ export interface ExclusiveFileLockOptions {
   staleAfterMs?: number;
   now?: () => number;
   processAlive?: (pid: number) => boolean;
+  /** Return an OS process-start identity; undefined means identity is unavailable. */
+  processIdentity?: (pid: number) => string | undefined;
   retryDelaysMs?: readonly number[];
   renameStaleLock?: (from: string, to: string) => Promise<void>;
 }
@@ -73,6 +77,7 @@ interface LockRecord {
   pid: number;
   createdAt?: number;
   token?: string;
+  identity?: string;
 }
 
 const LOCK_TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -81,22 +86,67 @@ function isValidLockToken(value: unknown): value is string {
   return typeof value === "string" && LOCK_TOKEN_RE.test(value);
 }
 
+let cachedSelfProcessIdentity: string | undefined;
+let cachedSelfProcessIdentityReady = false;
+
+function defaultProcessIdentity(pid: number): string | undefined {
+  if (pid === process.pid && cachedSelfProcessIdentityReady) return cachedSelfProcessIdentity;
+  let identity: string | undefined;
+  if (process.platform === "linux") {
+    try {
+      // Linux exposes a monotonic process start tick in /proc/<pid>/stat. The
+      // field remains stable for the lifetime of a process and changes when a
+      // PID is reused, unlike kill(pid, 0) alone.
+      const contents = fsSync.readFileSync(`/proc/${pid}/stat`, "utf8");
+      const close = contents.lastIndexOf(")");
+      const fields = close >= 0 ? contents.slice(close + 2).trim().split(/\s+/) : [];
+      identity = fields[19] ? `linux:${fields[19]}` : undefined;
+    } catch {
+      identity = undefined;
+    }
+  } else if (process.platform === "win32") {
+    try {
+      // PowerShell is part of supported Windows installations and exposes the
+      // kernel creation time without adding a native dependency. The PID is an
+      // integer interpolated into a fixed command, not caller-controlled code.
+      const output = execFileSync(
+        "powershell.exe",
+        ["-NoProfile", "-NonInteractive", "-Command", `$p=Get-Process -Id ${pid} -ErrorAction Stop; [int64]$p.StartTime.ToFileTimeUtc()`],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+      );
+      const value = output.trim();
+      identity = value ? `win32:${value}` : undefined;
+    } catch {
+      identity = undefined;
+    }
+  } else {
+    identity = undefined;
+  }
+  if (pid === process.pid) {
+    cachedSelfProcessIdentity = identity;
+    cachedSelfProcessIdentityReady = true;
+  }
+  return identity;
+}
+
 function parseLockRecord(contents: string): LockRecord | null {
   try {
     const parsed: unknown = JSON.parse(contents);
-    const candidate = parsed as { pid?: unknown; createdAt?: unknown; token?: unknown };
+    const candidate = parsed as { pid?: unknown; createdAt?: unknown; token?: unknown; identity?: unknown };
     if (
       parsed &&
       typeof parsed === "object" &&
       Number.isInteger(candidate.pid) &&
       Number(candidate.pid) > 0 &&
       (candidate.createdAt === undefined || (typeof candidate.createdAt === "number" && Number.isFinite(candidate.createdAt))) &&
-      (candidate.token === undefined || isValidLockToken(candidate.token))
+      (candidate.token === undefined || isValidLockToken(candidate.token)) &&
+      (candidate.identity === undefined || (typeof candidate.identity === "string" && candidate.identity.length > 0))
     ) {
       return {
         pid: Number(candidate.pid),
         ...(candidate.createdAt === undefined ? {} : { createdAt: Number(candidate.createdAt) }),
         ...(candidate.token === undefined ? {} : { token: candidate.token }),
+        ...(candidate.identity === undefined ? {} : { identity: candidate.identity }),
       };
     }
   } catch {
@@ -104,6 +154,24 @@ function parseLockRecord(contents: string): LockRecord | null {
   }
   const pid = Number(contents.trim());
   return Number.isInteger(pid) && pid > 0 ? { pid } : null;
+}
+
+/** Invalid metadata (especially a token) is not safe to reinterpret as a stale PID. */
+function isUnrecoverableMalformedRecord(contents: string): boolean {
+  try {
+    const parsed = JSON.parse(contents) as { token?: unknown; createdAt?: unknown; identity?: unknown };
+    return Boolean(
+      parsed &&
+      typeof parsed === "object" &&
+      (("token" in parsed && !isValidLockToken(parsed.token)) ||
+        ("createdAt" in parsed && !(typeof parsed.createdAt === "number" && Number.isFinite(parsed.createdAt))) ||
+        ("identity" in parsed && !(typeof parsed.identity === "string" && parsed.identity.length > 0))),
+    );
+  } catch {
+    // Empty/partial fallback records are recoverable after the stale interval
+    // when no active owner marker exists. There is no path component to trust.
+    return false;
+  }
 }
 
 function defaultProcessAlive(pid: number): boolean {
@@ -121,7 +189,11 @@ function ownerMarkerPath(lockFile: string, token: string): string {
   return `${lockFile}.owner-${token}`;
 }
 
-async function ownerMarkerActive(markerFile: string, processAlive: (pid: number) => boolean = defaultProcessAlive): Promise<boolean> {
+async function ownerMarkerActive(
+  markerFile: string,
+  processAlive: (pid: number) => boolean = defaultProcessAlive,
+  processIdentity: (pid: number) => string | undefined = defaultProcessIdentity,
+): Promise<boolean> {
   let contents: string;
   try {
     contents = await fs.readFile(markerFile, "utf8");
@@ -129,8 +201,16 @@ async function ownerMarkerActive(markerFile: string, processAlive: (pid: number)
     return (error as NodeJS.ErrnoException).code !== "ENOENT";
   }
   try {
-    const marker = JSON.parse(contents) as { pid?: unknown };
-    if (Number.isInteger(marker.pid) && Number(marker.pid) > 0 && processAlive(Number(marker.pid))) return true;
+    const marker = JSON.parse(contents) as { pid?: unknown; identity?: unknown };
+    if (Number.isInteger(marker.pid) && Number(marker.pid) > 0 && processAlive(Number(marker.pid))) {
+      if (typeof marker.identity !== "string" || marker.identity.length === 0) return true;
+      try {
+        const currentIdentity = processIdentity(Number(marker.pid));
+        if (currentIdentity === undefined || currentIdentity === marker.identity) return true;
+      } catch {
+        return true;
+      }
+    }
   } catch {
     return true;
   }
@@ -162,7 +242,11 @@ async function cleanupOwnerQuarantines(lockFile: string, token: string): Promise
   }
 }
 
-async function hasActiveOwnerMarker(lockFile: string, processAlive: (pid: number) => boolean): Promise<boolean> {
+async function hasActiveOwnerMarker(
+  lockFile: string,
+  processAlive: (pid: number) => boolean,
+  processIdentity: (pid: number) => string | undefined,
+): Promise<boolean> {
   let entries: string[];
   try {
     entries = await fs.readdir(path.dirname(lockFile));
@@ -172,7 +256,7 @@ async function hasActiveOwnerMarker(lockFile: string, processAlive: (pid: number
   }
   const prefix = `${path.basename(lockFile)}.owner-`;
   for (const entry of entries.filter((name) => name.startsWith(prefix))) {
-    if (await ownerMarkerActive(path.join(path.dirname(lockFile), entry), processAlive)) return true;
+    if (await ownerMarkerActive(path.join(path.dirname(lockFile), entry), processAlive, processIdentity)) return true;
   }
   return false;
 }
@@ -202,7 +286,7 @@ async function releaseOwnedLock(lockFile: string, token: string): Promise<void> 
 
 async function recoverStaleLock(
   lockFile: string,
-  options: Required<Pick<ExclusiveFileLockOptions, "staleAfterMs" | "now" | "processAlive" | "renameStaleLock">>,
+  options: Required<Pick<ExclusiveFileLockOptions, "staleAfterMs" | "now" | "processAlive" | "processIdentity" | "renameStaleLock">>,
 ): Promise<boolean> {
   let initialContents: string;
   let initialStat: Stats;
@@ -213,15 +297,26 @@ async function recoverStaleLock(
   }
   const record = parseLockRecord(initialContents);
   const createdAt = record?.createdAt ?? initialStat.mtimeMs;
-  if (!record || options.now() - createdAt < options.staleAfterMs) return false;
-  if (record.token && await ownerMarkerActive(ownerMarkerPath(lockFile, record.token), options.processAlive)) return false;
-  let alive: boolean;
-  try {
-    alive = options.processAlive(record.pid);
-  } catch {
+  if (options.now() - createdAt < options.staleAfterMs) return false;
+  if (!record && isUnrecoverableMalformedRecord(initialContents)) return false;
+  if (record?.token && await ownerMarkerActive(ownerMarkerPath(lockFile, record.token), options.processAlive, options.processIdentity)) return false;
+  if (record) {
+    let alive: boolean;
+    try {
+      alive = options.processAlive(record.pid);
+      if (alive && record.identity) {
+        const currentIdentity = options.processIdentity(record.pid);
+        // An identity mismatch proves PID reuse. An unavailable identity is
+        // deliberately fail-closed rather than treating a live PID as stale.
+        alive = currentIdentity === undefined || currentIdentity === record.identity;
+      }
+    } catch {
+      return false;
+    }
+    if (alive) return false;
+  } else if (await hasActiveOwnerMarker(lockFile, options.processAlive, options.processIdentity)) {
     return false;
   }
-  if (alive) return false;
   // Re-read before quarantining so a concurrent replacement is never treated
   // as the stale record we inspected. The rename below is the ownership
   // transition: exactly one reclaimer can move this inode, and every other
@@ -243,16 +338,22 @@ async function recoverStaleLock(
       currentStat.mtimeMs !== initialStat.mtimeMs
     ) return false;
     const currentRecord = parseLockRecord(currentContents);
-    if (!currentRecord) return false;
+    if (!currentRecord) {
+      return !isUnrecoverableMalformedRecord(currentContents) && !(await hasActiveOwnerMarker(lockFile, options.processAlive, options.processIdentity));
+    }
     let currentAlive: boolean;
     try {
       currentAlive = options.processAlive(currentRecord.pid);
+      if (currentAlive && currentRecord.identity) {
+        const currentIdentity = options.processIdentity(currentRecord.pid);
+        currentAlive = currentIdentity === undefined || currentIdentity === currentRecord.identity;
+      }
     } catch {
       return false;
     }
     if (currentAlive) return false;
-    if (currentRecord.token && await ownerMarkerActive(ownerMarkerPath(lockFile, currentRecord.token), options.processAlive)) return false;
-    return !(await hasActiveOwnerMarker(lockFile, options.processAlive));
+    if (currentRecord.token && await ownerMarkerActive(ownerMarkerPath(lockFile, currentRecord.token), options.processAlive, options.processIdentity)) return false;
+    return !(await hasActiveOwnerMarker(lockFile, options.processAlive, options.processIdentity));
   };
 
   if (!(await stillOwnsStaleLock())) return false;
@@ -323,6 +424,7 @@ export async function withExclusiveFileLock<T>(
     staleAfterMs: options.staleAfterMs ?? DEFAULT_LOCK_STALE_MS,
     now: options.now ?? Date.now,
     processAlive: options.processAlive ?? defaultProcessAlive,
+    processIdentity: options.processIdentity ?? defaultProcessIdentity,
     // Keep the injected seam as a single attempt. recoverStaleLock applies
     // the shared bounded retry helper with ownership revalidation between
     // transient attempts.
@@ -331,21 +433,30 @@ export async function withExclusiveFileLock<T>(
   await ensureDir(path.dirname(lockFile));
   let claimed = false;
   const claimToken = randomUUID();
+  let claimIdentity: string | undefined;
+  try {
+    claimIdentity = lockOptions.processIdentity(process.pid);
+  } catch {
+    claimIdentity = undefined;
+  }
   const markerFile = ownerMarkerPath(lockFile, claimToken);
   let lastError: unknown;
   const claim = async (): Promise<void> => {
     // A replacement owner keeps its marker beside the lock while its inode is
     // temporarily quarantined. Do not create a third claimant in that window.
-    if (await hasActiveOwnerMarker(lockFile, lockOptions.processAlive)) {
+    if (await hasActiveOwnerMarker(lockFile, lockOptions.processAlive, lockOptions.processIdentity)) {
       const error = new Error("active lock owner is quarantined") as NodeJS.ErrnoException;
       error.code = "EEXIST";
       throw error;
     }
     try {
-      await writeFileExclusive(markerFile, `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now(), token: claimToken })}\n`);
+      await writeFileExclusive(
+        markerFile,
+        `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now(), token: claimToken, ...(claimIdentity ? { identity: claimIdentity } : {}) })}\n`,
+      );
       await writeFileExclusive(
         lockFile,
-        `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now(), token: claimToken })}\n`,
+        `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now(), token: claimToken, ...(claimIdentity ? { identity: claimIdentity } : {}) })}\n`,
       );
     } catch (error) {
       const cleanupErrors: unknown[] = [];

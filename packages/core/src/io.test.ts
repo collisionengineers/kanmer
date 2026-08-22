@@ -162,6 +162,62 @@ describe("withExclusiveFileLock", () => {
     await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
+  it("reclaims an old partial lock record when no owner marker is active", async () => {
+    const file = path.join(dir, "partial.lock");
+    await fs.writeFile(file, "{\"pid\":", "utf8");
+    await fs.utimes(file, 0, 0);
+
+    await expect(withExclusiveFileLock(file, async () => "recovered", {
+      now: () => 60_000,
+      staleAfterMs: 30_000,
+      processAlive: () => false,
+      retryDelaysMs: [0],
+    })).resolves.toBe("recovered");
+    await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("keeps an old malformed record while an owner marker is active", async () => {
+    const file = path.join(dir, "partial-active.lock");
+    const token = "123e4567-e89b-12d3-a456-426614174000";
+    await fs.writeFile(file, "{\"pid\":", "utf8");
+    await fs.utimes(file, 0, 0);
+    await fs.writeFile(`${file}.owner-${token}`, JSON.stringify({ pid: process.pid, token }), "utf8");
+
+    await expect(withExclusiveFileLock(file, async () => "must not enter", {
+      now: () => 60_000,
+      staleAfterMs: 30_000,
+      processAlive: (pid) => pid === process.pid,
+      retryDelaysMs: [0],
+    })).rejects.toMatchObject({ code: "EEXIST" });
+  });
+
+  it("reclaims a stale lock when the recorded PID was reused", async () => {
+    const file = path.join(dir, "pid-reuse.lock");
+    await fs.writeFile(file, JSON.stringify({ pid: 42, createdAt: 0, identity: "old-start" }), "utf8");
+
+    await expect(withExclusiveFileLock(file, async () => "recovered", {
+      now: () => 60_000,
+      staleAfterMs: 30_000,
+      processAlive: () => true,
+      processIdentity: () => "new-start",
+      retryDelaysMs: [0],
+    })).resolves.toBe("recovered");
+    await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("fails closed when a live owner's identity cannot be inspected", async () => {
+    const file = path.join(dir, "pid-unknown.lock");
+    await fs.writeFile(file, JSON.stringify({ pid: 42, createdAt: 0, identity: "old-start" }), "utf8");
+
+    await expect(withExclusiveFileLock(file, async () => "must not enter", {
+      now: () => 60_000,
+      staleAfterMs: 30_000,
+      processAlive: () => true,
+      processIdentity: () => undefined,
+      retryDelaysMs: [0],
+    })).rejects.toMatchObject({ code: "EEXIST" });
+  });
+
   it("atomically assigns one stale inode to one concurrent reclaimer", async () => {
     const file = path.join(dir, "cache.lock");
     await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0 }), "utf8");

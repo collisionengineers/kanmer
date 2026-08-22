@@ -413,6 +413,27 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(await git(created.boardRoot!, "ls-files", ".kanmer/data/sources/cache.json")).toBe("");
   });
 
+  realGitTest("keeps board lock ownership and quarantine artifacts out of sync", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const data = join(created.boardRoot!, ".kanmer", "data");
+    mkdirSync(data, { recursive: true });
+    writeFileSync(join(data, "board.yml"), "statuses: []\n", "utf8");
+    const artifacts = [
+      ".kanmer/data/board.yml.lock",
+      ".kanmer/data/board.yml.lock.owner-123e4567-e89b-12d3-a456-426614174000",
+      ".kanmer/data/board.yml.lock.stale-123-1",
+    ];
+    for (const relative of artifacts) writeFileSync(join(created.boardRoot!, relative), "operational\n", "utf8");
+
+    for (const relative of artifacts) {
+      expect(await git(created.boardRoot!, "check-ignore", "--no-index", relative)).toContain(relative);
+    }
+    const synced = await syncBoard(created);
+    expect(synced.paused).toBe(false);
+    expect(await git(created.boardRoot!, "ls-files", "--", ...artifacts)).toBe("");
+    expect(await git(created.boardRoot!, "ls-files", ".kanmer/data/board.yml")).toContain(".kanmer/data/board.yml");
+  });
+
   realGitTest("moves a worktree left on the old branch onto the configured one", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     const boardRoot = created.boardRoot!;

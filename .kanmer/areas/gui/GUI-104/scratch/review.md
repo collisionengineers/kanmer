@@ -123,3 +123,10 @@ Verdict: PASS for the code/review-findings gate, contingent on the hosted verify
 ## Hosted verify completion update
 
 Run `32559337159` completed successfully after the initial note: kanmer-gate job `96998404340` PASS (50s) and verify job `96998404249` PASS (2m37s). The PASS verdict is now fully check-backed.
+
+## Final independent review — 2026-08-22
+
+- Final head a663a62f was independently reviewed PASS. The restart-persisted identity finding is fixed with regression coverage; all review threads are resolved.
+- Hosted run 32559337159: verify PASS (96998404249) and kanmer-gate PASS (96998404340).
+- Root npm run typecheck PASS after a663a62f.
+- External two-project OpenAI control-plane/listener proof remains INCONCLUSIVE without disposable credentials and listener probes, explicitly preserved by FRD-026.

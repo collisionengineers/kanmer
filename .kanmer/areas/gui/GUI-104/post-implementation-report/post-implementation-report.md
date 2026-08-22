@@ -65,3 +65,11 @@ Updated source head: `cad3552a` (PR #157).
 
 - Independent review identified one remaining restart-path defect: persisted identity changes were not detected after manager restart, so reconcile was unavailable. Commit a663a62f detects an old persisted project identity before materializing a new default profile and the regression test proves restart → conflict → reconcile.
 - Final deterministic focused suite: 13/13; GUI typecheck, manual freshness, and diff-check PASS. Fresh hosted verify and kanmer-gate for a663a62f are required before merge.
+
+## Final head correction — a663a62f
+
+- Final commit: a663a62fb79cfec49e284c2f582f137c51cbd991; PR #157.
+- Focused lifecycle + Settings tests: 13/13 PASS. Root npm run typecheck PASS.
+- Hosted run 32559337159: verify PASS (96998404249), kanmer-gate PASS (96998404340).
+- Independent final review PASS; all review threads resolved.
+- Real two-project OpenAI control-plane/listener acceptance remains INCONCLUSIVE without disposable credentials/projects and listener probes; no live-listener claim is made.

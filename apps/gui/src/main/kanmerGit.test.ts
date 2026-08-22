@@ -1,11 +1,11 @@
 import { execFile as execFileCallback } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync, existsSync, realpathSync } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync, readFileSync, existsSync, realpathSync } from "node:fs";
 import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureBoardWorktree, inspectBoardWorktree, renameBoardBranch } from "./kanmerGit.js";
+import { ensureBoardWorktree, ignoreEntriesToAppend, inspectBoardWorktree, renameBoardBranch, syncBoard } from "./kanmerGit.js";
 
 // These are deliberately real-Git integration tests: every case initialises a
 // local repository and several create worktrees/remotes. Windows process and
@@ -193,6 +193,226 @@ describe("inspectBoardWorktree", () => {
 });
 
 describe("ensureBoardWorktree reconciliation", () => {
+  it("selects only missing or re-invalidated rules for an append-only merge", () => {
+    const before = "# human rule\n.kanmer/data/sources/\n!.kanmer/data/sources/cache.json\ncustom-human-rule\n";
+    expect(ignoreEntriesToAppend(before, [".kanmer/data/sources/"])).toEqual([".kanmer/data/sources/"]);
+    expect(ignoreEntriesToAppend("# human rule\n.kanmer/data/sources/\n", [".kanmer/data/sources/"])).toEqual([]);
+  });
+
+  realGitTest("writes the sources cache rule when creating a board worktree", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const ignore = readFileSync(join(created.boardRoot!, ".gitignore"), "utf8");
+
+    expect(ignore).toContain(".kanmer/data/sources/\n");
+    expect(ignore.match(/^\.kanmer\/data\/sources\/$/gm)).toHaveLength(1);
+  });
+
+  realGitTest("refuses a symlinked board ignore path without touching its target", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const boardRoot = created.boardRoot!;
+    const ignorePath = join(boardRoot, ".gitignore");
+    const target = join(repo, "redirect-target.txt");
+    writeFileSync(target, "sentinel\n", "utf8");
+    rmSync(ignorePath);
+    symlinkSync(target, ignorePath, "file");
+
+    const refused = await ensureBoardWorktree(repo, "kanmer-board");
+
+    expect(refused.available).toBe(false);
+    expect(refused.boardRoot).toBe(resolve(boardRoot));
+    expect(refused.paused).toBe(true);
+    expect(refused.error).toContain("Refusing symlinked board ignore path");
+    expect(readFileSync(target, "utf8")).toBe("sentinel\n");
+  });
+
+  realGitTest("reconciles the sources cache rule on an existing board worktree", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const ignorePath = join(created.boardRoot!, ".gitignore");
+    writeFileSync(ignorePath, ".kanmer/data/activity.jsonl\n", "utf8");
+
+    const reopened = await ensureBoardWorktree(repo, "kanmer-board");
+    const ignore = readFileSync(join(reopened.boardRoot!, ".gitignore"), "utf8");
+
+    expect(ignore).toContain(".kanmer/data/sources/\n");
+    expect(ignore.match(/^\.kanmer\/data\/sources\/$/gm)).toHaveLength(1);
+  });
+
+  realGitTest("puts managed cache exclusions after later negations", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const ignorePath = join(created.boardRoot!, ".gitignore");
+    writeFileSync(ignorePath, "!.kanmer/data/sources/cache.json\n.kanmer/data/sources/\n", "utf8");
+
+    const reopened = await ensureBoardWorktree(repo, "kanmer-board");
+    const lines = readFileSync(join(reopened.boardRoot!, ".gitignore"), "utf8").trim().split("\n");
+
+    expect(lines.at(-1)).toBe(".kanmer/**/.*.tmp-*");
+    expect(lines.lastIndexOf(".kanmer/data/sources/")).toBeLessThan(lines.length - 1);
+    expect(await git(reopened.boardRoot!, "check-ignore", "--no-index", ".kanmer/data/sources/cache.json"))
+      .toContain(".kanmer/data/sources/");
+  });
+
+  realGitTest("reconciles the sources cache rule after attaching an existing local branch", async () => {
+    await git(repo, "branch", "local-board");
+
+    const attached = await ensureBoardWorktree(repo, "local-board");
+    expect(attached.available).toBe(true);
+    const ignore = readFileSync(join(attached.boardRoot!, ".gitignore"), "utf8");
+
+    expect(ignore).toContain(".kanmer/data/sources/\n");
+    expect(ignore.match(/^\.kanmer\/data\/sources\/$/gm)).toHaveLength(1);
+    expect(await git(attached.boardRoot!, "check-ignore", "--no-index", ".kanmer/data/sources/cache.json"))
+      .toContain(".kanmer/data/sources/cache.json");
+  });
+
+  realGitTest("resumes orphan migration when an attached orphan has no commit", async () => {
+    const boardRoot = join(repo, ".worktrees", "kanmer");
+    mkdirSync(join(repo, ".worktrees"), { recursive: true });
+    await git(repo, "worktree", "add", "--orphan", "-b", "orphan-board", boardRoot);
+    mkdirSync(join(boardRoot, ".kanmer"), { recursive: true });
+    writeFileSync(join(boardRoot, ".kanmer", "version.json"), '{"format":3}\n', "utf8");
+
+    const resumed = await ensureBoardWorktree(repo, "orphan-board");
+    const head = await git(boardRoot, "rev-parse", "--verify", "HEAD");
+
+    expect(resumed.available).toBe(true);
+    expect(head).toBeTruthy();
+    expect(await git(origin, "rev-parse", "orphan-board")).toBe(head);
+    expect(existsSync(join(repo, ".kanmer"))).toBe(false);
+  });
+
+  realGitTest("retries source cleanup after the orphan board commit succeeds", async () => {
+    const sourceVersion = join(repo, ".kanmer", "version.json");
+    writeFileSync(sourceVersion, '{"format":99}\n', "utf8");
+
+    const first = await ensureBoardWorktree(repo, "orphan-cleanup-retry");
+    const boardRoot = resolve(repo, ".worktrees", "kanmer");
+    expect(first.available).toBe(false);
+    expect(first.boardRoot).toBe(boardRoot);
+    expect(first.paused).toBe(true);
+    expect(await git(boardRoot, "rev-parse", "HEAD")).toBeTruthy();
+    expect(await git(origin, "rev-parse", "orphan-cleanup-retry")).toBeTruthy();
+    expect(existsSync(join(repo, ".kanmer"))).toBe(true);
+
+    // Restore the source file so the previously failed git rm can succeed.
+    writeFileSync(sourceVersion, '{"format":3}\n', "utf8");
+    const retried = await ensureBoardWorktree(repo, "orphan-cleanup-retry");
+    expect(retried).toMatchObject({ available: true, boardRoot: boardRoot, branch: "orphan-cleanup-retry", error: null, paused: false });
+    expect(existsSync(join(repo, ".kanmer"))).toBe(false);
+    expect(existsSync(join(boardRoot, ".kanmer-orphan-migration.pending"))).toBe(false);
+
+    const repeated = await ensureBoardWorktree(repo, "orphan-cleanup-retry");
+    expect(repeated).toMatchObject({ available: true, boardRoot: boardRoot, branch: "orphan-cleanup-retry", error: null, paused: false });
+  });
+
+  realGitTest("preserves the root when first-time local attachment ignore fails", async () => {
+    await git(repo, "checkout", "-b", "local-broken-ignore");
+    mkdirSync(join(repo, ".gitignore"));
+    writeFileSync(join(repo, ".gitignore", "blocked"), "directory", "utf8");
+    await git(repo, "add", "--", ".gitignore/blocked");
+    await git(repo, "commit", "-m", "fixture: broken board ignore path");
+    await git(repo, "checkout", "main");
+
+    const attached = await ensureBoardWorktree(repo, "local-broken-ignore");
+    const expectedRoot = resolve(repo, ".worktrees", "kanmer");
+    expect(attached.available).toBe(false);
+    expect(attached.boardRoot).toBe(expectedRoot);
+    expect(attached.branch).toBe("local-broken-ignore");
+    expect(attached.paused).toBe(true);
+    expect(attached.error).toBeTruthy();
+    expect(await git(expectedRoot, "symbolic-ref", "--short", "HEAD")).toBe("local-broken-ignore");
+  });
+
+  realGitTest("reconciles the sources cache rule after attaching an existing remote branch", async () => {
+    await git(repo, "branch", "remote-board");
+    await git(repo, "push", "origin", "remote-board");
+    await git(repo, "branch", "-D", "remote-board");
+
+    const attached = await ensureBoardWorktree(repo, "remote-board");
+    expect(attached.available).toBe(true);
+    const ignore = readFileSync(join(attached.boardRoot!, ".gitignore"), "utf8");
+
+    expect(ignore).toContain(".kanmer/data/sources/\n");
+    expect(ignore.match(/^\.kanmer\/data\/sources\/$/gm)).toHaveLength(1);
+    expect(await git(attached.boardRoot!, "check-ignore", "--no-index", ".kanmer/data/sources/cache.json"))
+      .toContain(".kanmer/data/sources/cache.json");
+  });
+
+  realGitTest("preserves the root when first-time remote attachment ignore fails", async () => {
+    await git(repo, "checkout", "-b", "remote-broken-ignore");
+    mkdirSync(join(repo, ".gitignore"));
+    writeFileSync(join(repo, ".gitignore", "blocked"), "directory", "utf8");
+    await git(repo, "add", "--", ".gitignore/blocked");
+    await git(repo, "commit", "-m", "fixture: broken remote ignore path");
+    await git(repo, "push", "origin", "remote-broken-ignore");
+    await git(repo, "checkout", "main");
+    await git(repo, "branch", "-D", "remote-broken-ignore");
+
+    const attached = await ensureBoardWorktree(repo, "remote-broken-ignore");
+    const expectedRoot = resolve(repo, ".worktrees", "kanmer");
+    expect(attached.available).toBe(false);
+    expect(attached.boardRoot).toBe(expectedRoot);
+    expect(attached.branch).toBe("remote-broken-ignore");
+    expect(attached.paused).toBe(true);
+    expect(attached.error).toBeTruthy();
+    expect(await git(expectedRoot, "symbolic-ref", "--short", "HEAD")).toBe("remote-broken-ignore");
+  });
+
+  realGitTest("preserves the attached board root when ignore reconciliation fails", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const boardRoot = created.boardRoot!;
+    const ignorePath = join(boardRoot, ".gitignore");
+    rmSync(ignorePath);
+    // A directory at the ignore-file path makes the existing read/write seam
+    // fail deterministically on every supported host without a timing-based
+    // file lock or permission assumption.
+    mkdirSync(ignorePath);
+
+    const reopened = await ensureBoardWorktree(repo, "kanmer-board");
+
+    expect(reopened.available).toBe(false);
+    expect(reopened.boardRoot).toBe(resolve(boardRoot));
+    expect(reopened.paused).toBe(true);
+    expect(reopened.error).toBeTruthy();
+    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("kanmer-board");
+  });
+
+  realGitTest("retries a failed attached reconciliation in place after repair", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const boardRoot = created.boardRoot!;
+    const ignorePath = join(boardRoot, ".gitignore");
+    rmSync(ignorePath);
+    mkdirSync(ignorePath);
+
+    const failed = await ensureBoardWorktree(repo, "kanmer-board");
+    expect(failed.available).toBe(false);
+    expect(failed.boardRoot).toBe(resolve(boardRoot));
+    expect(failed.paused).toBe(true);
+    expect(failed.error).toBeTruthy();
+
+    // Repair the same canonical path; retry must not create or select another
+    // worktree and a repeated retry must remain idempotent.
+    rmSync(ignorePath, { recursive: true, force: true });
+    const retried = await ensureBoardWorktree(repo, "kanmer-board");
+    expect(retried).toMatchObject({ available: true, boardRoot: resolve(boardRoot), branch: "kanmer-board", error: null, paused: false });
+    const repeated = await ensureBoardWorktree(repo, "kanmer-board");
+    expect(repeated).toMatchObject({ available: true, boardRoot: resolve(boardRoot), branch: "kanmer-board", error: null, paused: false });
+    expect(readFileSync(ignorePath, "utf8")).toContain(".kanmer/data/sources/\n");
+  });
+
+  realGitTest("keeps derived source cache out of the board sync", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const cache = join(created.boardRoot!, ".kanmer", "data", "sources", "cache.json");
+    mkdirSync(join(created.boardRoot!, ".kanmer", "data", "sources"), { recursive: true });
+    writeFileSync(cache, "derived", "utf8");
+
+    expect(await git(created.boardRoot!, "check-ignore", "--no-index", ".kanmer/data/sources/cache.json"))
+      .toContain(".kanmer/data/sources/cache.json");
+    const synced = await syncBoard(created);
+
+    expect(synced.paused).toBe(false);
+    expect(await git(created.boardRoot!, "ls-files", ".kanmer/data/sources/cache.json")).toBe("");
+  });
+
   realGitTest("moves a worktree left on the old branch onto the configured one", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     const boardRoot = created.boardRoot!;
@@ -208,6 +428,27 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(reopened.branch).toBe("team-board");
     expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("team-board");
     expect(await git(boardRoot, "rev-parse", "HEAD")).toBe(before);
+    expect(readFileSync(join(boardRoot, ".gitignore"), "utf8")).toContain(".kanmer/data/sources/\n");
+  });
+
+  realGitTest("preserves the board root when rename succeeds before ignore reconciliation fails", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const boardRoot = created.boardRoot!;
+    const ignorePath = join(boardRoot, ".gitignore");
+    rmSync(ignorePath);
+    // A directory at the ignore-file path deterministically fails the
+    // existing read/write reconciliation seam without relying on timing or
+    // host-specific permission/lock behavior.
+    mkdirSync(ignorePath);
+
+    const reopened = await ensureBoardWorktree(repo, "team-board");
+
+    expect(reopened.available).toBe(false);
+    expect(reopened.boardRoot).toBe(resolve(boardRoot));
+    expect(reopened.branch).toBe("team-board");
+    expect(reopened.paused).toBe(true);
+    expect(reopened.error).toBeTruthy();
+    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("team-board");
   });
 
   realGitTest("reports the branch the worktree is really on when reconciling fails", async () => {

@@ -26,8 +26,8 @@ export function validateSourceDeclarations(sources: readonly SourceDeclaration[]
 
 function selectorMatches(selector: SourceSelector | undefined, context: SourceResolutionContext): boolean {
   if (!selector) return true;
-  if (selector.areas && (!context.area || !selector.areas.includes(context.area))) return false;
-  if (selector.labels && !selector.labels.some((label) => context.labels?.includes(label))) return false;
+  if (selector.areas?.length && (!context.area || !selector.areas.includes(context.area))) return false;
+  if (selector.labels?.length && !selector.labels.some((label) => context.labels?.includes(label))) return false;
   return true;
 }
 

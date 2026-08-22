@@ -243,7 +243,7 @@ export type SourceSelector = z.infer<typeof SourceSelectorSchema>;
 function isSafeHttpsUrl(value: string): boolean {
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && !url.username && !url.password && !url.hash;
+    return url.protocol === "https:" && !url.username && !url.password && !url.hash && !url.search;
   } catch {
     return false;
   }
@@ -264,7 +264,7 @@ export const SourceDeclarationSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["id"],
-        message: "llms-txt source id must be an HTTPS URL without credentials or a fragment",
+        message: "llms-txt source id must be an HTTPS URL without credentials, query, or fragment",
       });
     }
   });
@@ -276,7 +276,20 @@ export const SourceDeclarationArraySchema = z
   .superRefine((sources, ctx) => {
     const seen = new Set<string>();
     sources.forEach((source, index) => {
-      const key = `${source.kind}:${source.id}`;
+      let id = source.id;
+      if (source.kind === "llms-txt") {
+        try {
+          const url = new URL(source.id);
+          url.protocol = url.protocol.toLowerCase();
+          url.hostname = url.hostname.toLowerCase();
+          if (url.port === "443") url.port = "";
+          url.hash = "";
+          id = url.toString();
+        } catch {
+          // The declaration schema reports the useful URL error below.
+        }
+      }
+      const key = `${source.kind}:${id}`;
       if (seen.has(key)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

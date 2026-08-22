@@ -3304,8 +3304,8 @@ var require_utils = __commonJS({
     var HOST_DELIMS = { "@": "%40", "/": "%2F", "?": "%3F", "#": "%23", ":": "%3A" };
     var HOST_DELIM_RE = /[@/?#:]/g;
     var HOST_DELIM_NO_COLON_RE = /[@/?#]/g;
-    function reescapeHostDelimiters(host, isIP) {
-      const re = isIP ? HOST_DELIM_NO_COLON_RE : HOST_DELIM_RE;
+    function reescapeHostDelimiters(host, isIP2) {
+      const re = isIP2 ? HOST_DELIM_NO_COLON_RE : HOST_DELIM_RE;
       re.lastIndex = 0;
       return host.replace(re, (ch) => HOST_DELIMS[ch]);
     }
@@ -3794,7 +3794,7 @@ var require_fast_uri = __commonJS({
         fragment: void 0
       };
       let malformedAuthorityOrPort = false;
-      let isIP = false;
+      let isIP2 = false;
       if (options2.reference === "suffix") {
         if (options2.scheme) {
           uri = options2.scheme + ":" + uri;
@@ -3843,9 +3843,9 @@ var require_fast_uri = __commonJS({
           if (ipv4result === false) {
             const ipv6result = normalizeIPv6(parsed.host);
             parsed.host = ipv6result.host.toLowerCase();
-            isIP = ipv6result.isIPV6;
+            isIP2 = ipv6result.isIPV6;
           } else {
-            isIP = true;
+            isIP2 = true;
           }
         }
         if (parsed.scheme === void 0 && parsed.userinfo === void 0 && parsed.host === void 0 && parsed.port === void 0 && parsed.query === void 0 && !parsed.path) {
@@ -3862,7 +3862,7 @@ var require_fast_uri = __commonJS({
         }
         const schemeHandler = getSchemeHandler(options2.scheme || parsed.scheme);
         if (!options2.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport)) {
-          if (parsed.host && (options2.domainHost || schemeHandler && schemeHandler.domainHost) && isIP === false && nonSimpleDomain(parsed.host)) {
+          if (parsed.host && (options2.domainHost || schemeHandler && schemeHandler.domainHost) && isIP2 === false && nonSimpleDomain(parsed.host)) {
             try {
               parsed.host = new URL("http://" + parsed.host).hostname;
             } catch (e) {
@@ -3876,7 +3876,7 @@ var require_fast_uri = __commonJS({
               parsed.scheme = unescape(parsed.scheme);
             }
             if (parsed.host !== void 0) {
-              parsed.host = reescapeHostDelimiters(unescape(parsed.host), isIP);
+              parsed.host = reescapeHostDelimiters(unescape(parsed.host), isIP2);
             }
           }
           if (parsed.path) {
@@ -19476,7 +19476,7 @@ var require_readdirp = __commonJS({
   "../../node_modules/readdirp/index.js"(exports2, module2) {
     "use strict";
     var fs12 = require("fs");
-    var { Readable } = require("stream");
+    var { Readable: Readable2 } = require("stream");
     var sysPath = require("path");
     var { promisify: promisify2 } = require("util");
     var picomatch = require_picomatch2();
@@ -19522,7 +19522,7 @@ var require_readdirp = __commonJS({
         return (entry) => positive.some((f) => f(entry.basename));
       }
     };
-    var ReaddirpStream = class _ReaddirpStream extends Readable {
+    var ReaddirpStream = class _ReaddirpStream extends Readable2 {
       static get defaultOptions() {
         return {
           root: ".",
@@ -37688,7 +37688,7 @@ var SourceSelectorSchema = external_exports.object({
 function isSafeHttpsUrl(value) {
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && !url.username && !url.password && !url.hash;
+    return url.protocol === "https:" && !url.username && !url.password && !url.hash && !url.search;
   } catch {
     return false;
   }
@@ -37705,14 +37705,26 @@ var SourceDeclarationSchema = external_exports.object({
     ctx.addIssue({
       code: external_exports.ZodIssueCode.custom,
       path: ["id"],
-      message: "llms-txt source id must be an HTTPS URL without credentials or a fragment"
+      message: "llms-txt source id must be an HTTPS URL without credentials, query, or fragment"
     });
   }
 });
 var SourceDeclarationArraySchema = external_exports.array(SourceDeclarationSchema).max(128).superRefine((sources, ctx) => {
   const seen = /* @__PURE__ */ new Set();
   sources.forEach((source, index) => {
-    const key = `${source.kind}:${source.id}`;
+    let id = source.id;
+    if (source.kind === "llms-txt") {
+      try {
+        const url = new URL(source.id);
+        url.protocol = url.protocol.toLowerCase();
+        url.hostname = url.hostname.toLowerCase();
+        if (url.port === "443") url.port = "";
+        url.hash = "";
+        id = url.toString();
+      } catch {
+      }
+    }
+    const key = `${source.kind}:${id}`;
     if (seen.has(key)) {
       ctx.addIssue({
         code: external_exports.ZodIssueCode.custom,
@@ -37811,8 +37823,8 @@ function validateSourceDeclarations(sources) {
 }
 function selectorMatches(selector, context) {
   if (!selector) return true;
-  if (selector.areas && (!context.area || !selector.areas.includes(context.area))) return false;
-  if (selector.labels && !selector.labels.some((label) => context.labels?.includes(label))) return false;
+  if (selector.areas?.length && (!context.area || !selector.areas.includes(context.area))) return false;
+  if (selector.labels?.length && !selector.labels.some((label) => context.labels?.includes(label))) return false;
   return true;
 }
 function sourceAvailability(source, context) {
@@ -37996,15 +38008,279 @@ async function statOrNull(p) {
 var RENAME_RETRY_MS = [10, 25, 60, 150, 300];
 var TRANSIENT_RENAME_CODES = /* @__PURE__ */ new Set(["EPERM", "EBUSY", "EACCES"]);
 var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-async function renameWithRetry(from, to, rename = import_promises.default.rename) {
+var DEFAULT_LOCK_STALE_MS = 3e4;
+var DEFAULT_LOCK_RETRY_MS = [10, 25, 60, 150, 300, 600, 1e3];
+var LOCK_TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidLockToken(value) {
+  return typeof value === "string" && LOCK_TOKEN_RE.test(value);
+}
+function parseLockRecord(contents) {
+  try {
+    const parsed = JSON.parse(contents);
+    const candidate = parsed;
+    if (parsed && typeof parsed === "object" && Number.isInteger(candidate.pid) && Number(candidate.pid) > 0 && (candidate.createdAt === void 0 || typeof candidate.createdAt === "number" && Number.isFinite(candidate.createdAt)) && (candidate.token === void 0 || isValidLockToken(candidate.token))) {
+      return {
+        pid: Number(candidate.pid),
+        ...candidate.createdAt === void 0 ? {} : { createdAt: Number(candidate.createdAt) },
+        ...candidate.token === void 0 ? {} : { token: candidate.token }
+      };
+    }
+  } catch {
+  }
+  const pid = Number(contents.trim());
+  return Number.isInteger(pid) && pid > 0 ? { pid } : null;
+}
+function defaultProcessAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error2) {
+    return error2.code !== "ESRCH";
+  }
+}
+function ownerMarkerPath(lockFile, token) {
+  if (!isValidLockToken(token)) throw new Error("invalid persisted lock token");
+  return `${lockFile}.owner-${token}`;
+}
+async function ownerMarkerActive(markerFile, processAlive = defaultProcessAlive) {
+  let contents;
+  try {
+    contents = await import_promises.default.readFile(markerFile, "utf8");
+  } catch (error2) {
+    return error2.code !== "ENOENT";
+  }
+  try {
+    const marker = JSON.parse(contents);
+    if (Number.isInteger(marker.pid) && Number(marker.pid) > 0 && processAlive(Number(marker.pid))) return true;
+  } catch {
+    return true;
+  }
+  await import_promises.default.rm(markerFile, { force: true });
+  return false;
+}
+async function cleanupOwnerQuarantines(lockFile, token) {
+  const dir = import_path3.default.dirname(lockFile);
+  const prefix = `${import_path3.default.basename(lockFile)}.stale-`;
+  let entries;
+  try {
+    entries = await import_promises.default.readdir(dir);
+  } catch (error2) {
+    if (error2.code === "ENOENT") return;
+    throw error2;
+  }
+  for (const entry of entries.filter((name) => name.startsWith(prefix))) {
+    const quarantineFile = import_path3.default.join(dir, entry);
+    try {
+      const contents = await import_promises.default.readFile(quarantineFile, "utf8");
+      if (parseLockRecord(contents)?.token === token) await import_promises.default.rm(quarantineFile, { force: true });
+    } catch (error2) {
+      if (error2.code !== "ENOENT") throw error2;
+    }
+  }
+}
+async function hasActiveOwnerMarker(lockFile, processAlive) {
+  let entries;
+  try {
+    entries = await import_promises.default.readdir(import_path3.default.dirname(lockFile));
+  } catch (error2) {
+    if (error2.code === "ENOENT") return false;
+    throw error2;
+  }
+  const prefix = `${import_path3.default.basename(lockFile)}.owner-`;
+  for (const entry of entries.filter((name) => name.startsWith(prefix))) {
+    if (await ownerMarkerActive(import_path3.default.join(import_path3.default.dirname(lockFile), entry), processAlive)) return true;
+  }
+  return false;
+}
+async function releaseOwnedLock(lockFile, token) {
+  try {
+    const contents = await import_promises.default.readFile(lockFile, "utf8");
+    if (parseLockRecord(contents)?.token === token) await import_promises.default.rm(lockFile, { force: true });
+  } catch (error2) {
+    if (error2.code !== "ENOENT") throw error2;
+  }
+  await import_promises.default.rm(ownerMarkerPath(lockFile, token), { force: true });
+  await cleanupOwnerQuarantines(lockFile, token);
+  try {
+    const contents = await import_promises.default.readFile(lockFile, "utf8");
+    if (parseLockRecord(contents)?.token === token) await import_promises.default.rm(lockFile, { force: true });
+  } catch (error2) {
+    if (error2.code !== "ENOENT") throw error2;
+  }
+  await cleanupOwnerQuarantines(lockFile, token);
+}
+async function recoverStaleLock(lockFile, options2) {
+  let initialContents;
+  let initialStat;
+  try {
+    [initialContents, initialStat] = await Promise.all([import_promises.default.readFile(lockFile, "utf8"), import_promises.default.stat(lockFile)]);
+  } catch (error2) {
+    return error2.code === "ENOENT";
+  }
+  const record2 = parseLockRecord(initialContents);
+  const createdAt = record2?.createdAt ?? initialStat.mtimeMs;
+  if (!record2 || options2.now() - createdAt < options2.staleAfterMs) return false;
+  if (record2.token && await ownerMarkerActive(ownerMarkerPath(lockFile, record2.token), options2.processAlive)) return false;
+  let alive;
+  try {
+    alive = options2.processAlive(record2.pid);
+  } catch {
+    return false;
+  }
+  if (alive) return false;
+  const stillOwnsStaleLock = async () => {
+    let currentContents;
+    let currentStat;
+    try {
+      [currentContents, currentStat] = await Promise.all([import_promises.default.readFile(lockFile, "utf8"), import_promises.default.stat(lockFile)]);
+    } catch (error2) {
+      if (error2.code === "ENOENT") return false;
+      throw error2;
+    }
+    if (currentContents !== initialContents || currentStat.dev !== initialStat.dev || currentStat.ino !== initialStat.ino || currentStat.mtimeMs !== initialStat.mtimeMs) return false;
+    const currentRecord = parseLockRecord(currentContents);
+    if (!currentRecord) return false;
+    let currentAlive;
+    try {
+      currentAlive = options2.processAlive(currentRecord.pid);
+    } catch {
+      return false;
+    }
+    if (currentAlive) return false;
+    if (currentRecord.token && await ownerMarkerActive(ownerMarkerPath(lockFile, currentRecord.token), options2.processAlive)) return false;
+    return !await hasActiveOwnerMarker(lockFile, options2.processAlive);
+  };
+  if (!await stillOwnsStaleLock()) return false;
+  const quarantineFile = `${lockFile}.stale-${process.pid}-${tmpCounter()}`;
+  let renamed;
+  try {
+    renamed = await renameWithRetry(lockFile, quarantineFile, options2.renameStaleLock, stillOwnsStaleLock);
+  } catch (error2) {
+    if (error2.code === "ENOENT") return false;
+    throw error2;
+  }
+  if (!renamed) return false;
+  let quarantinedContents;
+  let quarantinedStat;
+  try {
+    [quarantinedContents, quarantinedStat] = await Promise.all([import_promises.default.readFile(quarantineFile, "utf8"), import_promises.default.stat(quarantineFile)]);
+  } catch (error2) {
+    if (error2.code === "ENOENT") return false;
+    throw error2;
+  }
+  const ownsInspectedInode = quarantinedContents === initialContents && quarantinedStat.dev === initialStat.dev && quarantinedStat.ino === initialStat.ino && quarantinedStat.mtimeMs === initialStat.mtimeMs;
+  if (!ownsInspectedInode) {
+    const replacementToken = parseLockRecord(quarantinedContents)?.token;
+    const replacementMarker = replacementToken ? ownerMarkerPath(lockFile, replacementToken) : null;
+    const replacementActive = replacementMarker ? await ownerMarkerActive(replacementMarker, options2.processAlive) : false;
+    if (!replacementActive) {
+      await import_promises.default.rm(quarantineFile, { force: true });
+      return false;
+    }
+    try {
+      await import_promises.default.link(quarantineFile, lockFile);
+    } catch (error2) {
+      const code = error2.code;
+      if (code === "ENOENT") return false;
+      if (code !== "EEXIST") throw error2;
+    }
+    return false;
+  }
+  try {
+    await import_promises.default.rm(quarantineFile);
+  } catch (error2) {
+    if (error2.code !== "ENOENT") throw error2;
+  }
+  return true;
+}
+async function withExclusiveFileLock(lockFile, work, options2 = {}) {
+  const delays = options2.retryDelaysMs ?? DEFAULT_LOCK_RETRY_MS;
+  const lockOptions = {
+    staleAfterMs: options2.staleAfterMs ?? DEFAULT_LOCK_STALE_MS,
+    now: options2.now ?? Date.now,
+    processAlive: options2.processAlive ?? defaultProcessAlive,
+    // Keep the injected seam as a single attempt. recoverStaleLock applies
+    // the shared bounded retry helper with ownership revalidation between
+    // transient attempts.
+    renameStaleLock: options2.renameStaleLock ?? import_promises.default.rename
+  };
+  await ensureDir(import_path3.default.dirname(lockFile));
+  let claimed = false;
+  const claimToken = (0, import_crypto.randomUUID)();
+  const markerFile = ownerMarkerPath(lockFile, claimToken);
+  let lastError;
+  const claim = async () => {
+    if (await hasActiveOwnerMarker(lockFile, lockOptions.processAlive)) {
+      const error2 = new Error("active lock owner is quarantined");
+      error2.code = "EEXIST";
+      throw error2;
+    }
+    try {
+      await writeFileExclusive(markerFile, `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now(), token: claimToken })}
+`);
+      await writeFileExclusive(
+        lockFile,
+        `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now(), token: claimToken })}
+`
+      );
+    } catch (error2) {
+      const cleanupErrors = [];
+      try {
+        const contents = await import_promises.default.readFile(lockFile, "utf8");
+        if (parseLockRecord(contents)?.token === claimToken) await import_promises.default.rm(lockFile, { force: true });
+      } catch (readError) {
+        if (readError.code !== "ENOENT") cleanupErrors.push(readError);
+      }
+      try {
+        await import_promises.default.rm(markerFile, { force: true });
+      } catch (markerError) {
+        cleanupErrors.push(markerError);
+      }
+      if (cleanupErrors.length > 0) throw new AggregateError([error2, ...cleanupErrors], "lock claim and cleanup failed");
+      throw error2;
+    }
+  };
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      await claim();
+      claimed = true;
+      break;
+    } catch (error2) {
+      lastError = error2;
+      const code = error2.code ?? "";
+      if (code !== "EEXIST") throw error2;
+      if (await recoverStaleLock(lockFile, lockOptions)) {
+        try {
+          await claim();
+          claimed = true;
+          break;
+        } catch (retryError) {
+          lastError = retryError;
+        }
+      }
+      if (attempt === delays.length) {
+        throw lastError instanceof Error ? lastError : error2;
+      }
+      await sleep(delays[attempt]);
+    }
+  }
+  if (!claimed) throw lastError instanceof Error ? lastError : new Error("unable to claim file lock");
+  try {
+    return await work();
+  } finally {
+    await releaseOwnedLock(lockFile, claimToken);
+  }
+}
+async function renameWithRetry(from, to, rename = import_promises.default.rename, beforeRetry) {
   for (let attempt = 0; ; attempt++) {
     try {
       await rename(from, to);
-      return;
+      return true;
     } catch (err) {
       const code = err.code ?? "";
       if (!TRANSIENT_RENAME_CODES.has(code) || attempt >= RENAME_RETRY_MS.length) throw err;
       await sleep(RENAME_RETRY_MS[attempt]);
+      if (beforeRetry && !await beforeRetry()) return false;
     }
   }
 }
@@ -39740,9 +40016,21 @@ var KanmerStore = class {
    * proofless tickets in it.
    */
   async setBoard(board) {
-    const previous = await this.getBoard();
-    await this.assertNoStrandedColumns(previous, board);
-    await writeBoard(this.paths, board);
+    await withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
+      const previous = await this.getBoard();
+      await this.assertNoStrandedColumns(previous, board);
+      await writeBoard(this.paths, board);
+    });
+  }
+  /** Read, mutate, and write the board while holding the cross-process board lock. */
+  async updateBoard(mutator) {
+    return withExclusiveFileLock(`${this.paths.boardFile}.lock`, async () => {
+      const previous = await this.getBoard();
+      const next = await mutator(structuredClone(previous));
+      await this.assertNoStrandedColumns(previous, next);
+      await writeBoard(this.paths, next);
+      return next;
+    });
   }
   /** Reject a board write that removes a column still referenced by an item. */
   async assertNoStrandedColumns(previous, next) {
@@ -41855,22 +42143,174 @@ function dispatchPolicyView(policy) {
 
 // src/sources.ts
 var import_node_crypto3 = require("crypto");
-var import_promises9 = require("fs/promises");
+var import_promises9 = require("dns/promises");
+var import_node_https = require("https");
+var import_node_net = require("net");
+var import_node_stream = require("stream");
+var import_promises10 = require("fs/promises");
 var import_node_path5 = __toESM(require("path"), 1);
 var LLMS_TXT_POLICY = Object.freeze({
   maxLinkedPages: 32,
   maxBytes: 2 * 1024 * 1024,
   maxDepth: 1,
+  maxRedirects: 5,
   timeoutMs: 1e4,
   cacheTtlMs: 24 * 60 * 60 * 1e3
 });
-var cacheWrites = /* @__PURE__ */ new Map();
-function validateUrl(value) {
-  const parsed = new URL(value);
-  if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.hash) {
-    throw new Error("llms-txt source id must be an HTTPS URL without credentials or a fragment");
+var ResponseTooLargeError = class extends Error {
+  consumedBytes;
+  constructor(url, limit, consumedBytes2) {
+    super(`${url} exceeds the ${limit}-byte response limit`);
+    this.name = "ResponseTooLargeError";
+    this.consumedBytes = consumedBytes2;
   }
+};
+function canonicalHttpsUrl(value) {
+  const parsed = new URL(value);
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.hash || parsed.search) {
+    throw new Error("llms-txt source id must be an HTTPS URL without credentials, query, or fragment");
+  }
+  parsed.protocol = "https:";
+  parsed.hostname = parsed.hostname.toLowerCase();
+  if (parsed.port === "443") parsed.port = "";
   return parsed;
+}
+function isNonGlobalIpv4(hostname2) {
+  const octets = hostname2.split(".").map(Number);
+  if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return true;
+  const [a, b, c, d] = octets;
+  return a === 0 || a === 10 || a === 127 || a === 100 && b >= 64 && b <= 127 || a === 169 && b === 254 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 0 && c === 0 && d !== 9 && d !== 10 || a === 192 && b === 0 && c === 2 || a === 192 && b === 88 && c === 99 || a === 192 && b === 168 || a === 198 && b >= 18 && b <= 19 || a === 198 && b === 51 && c === 100 || a === 203 && b === 0 && c === 113 || a >= 224;
+}
+function parseIpv6Groups(value) {
+  let normalized = value.toLowerCase();
+  const lastColon = normalized.lastIndexOf(":");
+  const dotted = normalized.slice(lastColon + 1);
+  if (dotted.includes(".")) {
+    const octets = dotted.split(".").map(Number);
+    if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return null;
+    normalized = `${normalized.slice(0, lastColon + 1)}${(octets[0] << 8 | octets[1]).toString(16)}:${(octets[2] << 8 | octets[3]).toString(16)}`;
+  }
+  const halves = normalized.split("::");
+  if (halves.length > 2) return null;
+  const left = halves[0] ? halves[0].split(":").filter(Boolean).map((group) => Number.parseInt(group, 16)) : [];
+  const right = halves.length === 2 && halves[1] ? halves[1].split(":").filter(Boolean).map((group) => Number.parseInt(group, 16)) : [];
+  if ([...left, ...right].some((group) => !Number.isInteger(group) || group < 0 || group > 65535)) return null;
+  const missing = 8 - left.length - right.length;
+  if (halves.length === 1 && missing !== 0 || missing < 0) return null;
+  return [...left, ...Array.from({ length: missing }, () => 0), ...right];
+}
+function isPrivateAddress(hostname2) {
+  const normalized = hostname2.toLowerCase().replace(/^[\[]|[\]]$/g, "");
+  const version2 = (0, import_node_net.isIP)(normalized);
+  if (version2 === 4) return isNonGlobalIpv4(normalized);
+  if (version2 !== 6) return false;
+  const groups = parseIpv6Groups(normalized);
+  if (!groups) return true;
+  const [first, second, third, fourth, fifth, sixth, seventh, eighth] = groups;
+  if (first === 0 && second === 0 && third === 0 && fourth === 0 && fifth === 0 && sixth === 65535) {
+    const mapped = `${seventh >> 8 & 255}.${seventh & 255}.${eighth >> 8 & 255}.${eighth & 255}`;
+    return isNonGlobalIpv4(mapped);
+  }
+  if (first === 100 && second === 65435 && third === 0 && fourth === 0 && fifth === 0 && sixth === 0) {
+    const embedded = `${seventh >> 8 & 255}.${seventh & 255}.${eighth >> 8 & 255}.${eighth & 255}`;
+    return isNonGlobalIpv4(embedded);
+  }
+  return first === 0 || first === 256 && second === 0 && third === 0 && fourth === 0 || first === 8193 && second === 2 && third === 0 || first === 100 && second === 65435 && third === 1 || first === 256 && second === 0 && third === 0 && fourth === 1 || first >= 24320 && first <= 24575 || first === 8193 && (second & 65520) === 16 || first === 8193 && second === 3512 || first >= 64512 && first <= 65023 || first >= 65152 && first <= 65215 || (first & 65472) === 65216 || first >= 65280 || // 3fff::/20 is 3fff:0000:: through 3fff:0fff::; checking only the
+  // first group would incorrectly reject the public 3fff:1000::/16 tail.
+  first === 16383 && (second & 61440) === 0;
+}
+async function assertPublicDestination(url, lookupImpl, signal) {
+  const hostname2 = url.hostname.toLowerCase().replace(/[\[\]]/g, "");
+  if (hostname2 === "localhost" || hostname2.endsWith(".localhost") || hostname2.endsWith(".local") || hostname2 === "metadata.google.internal" || hostname2 === "metadata.azure.internal") {
+    throw new Error(`${url} targets a private or local destination`);
+  }
+  if (isPrivateAddress(hostname2)) throw new Error(`${url} targets a private or local destination`);
+  if (lookupImpl && !(0, import_node_net.isIP)(hostname2)) {
+    let addresses;
+    try {
+      addresses = await withDeadline(lookupImpl(hostname2), signal);
+    } catch {
+      if (signal?.aborted) throw new Error(`${url} request timed out`);
+      throw new Error(`${url} destination could not be resolved`);
+    }
+    if (addresses.length === 0 || addresses.some((address) => isPrivateAddress(address))) {
+      throw new Error(`${url} targets a private or local destination`);
+    }
+    return addresses;
+  }
+  return [hostname2];
+}
+async function withDeadline(work, signal) {
+  if (!signal) return work;
+  if (signal.aborted) throw new Error("request timed out");
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(new Error("request timed out"));
+    signal.addEventListener("abort", onAbort, { once: true });
+    work.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (error2) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error2);
+      }
+    );
+  });
+}
+async function pinnedFetch(url, init, addresses) {
+  const address = addresses[0];
+  if (!address) throw new Error(`${url} destination could not be resolved`);
+  const headers = new Headers(init.headers);
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const request = (0, import_node_https.request)(
+      {
+        protocol: "https:",
+        hostname: url.hostname,
+        port: url.port || "443",
+        path: `${url.pathname}${url.search}`,
+        method: "GET",
+        headers: Object.fromEntries(headers.entries()),
+        servername: url.hostname,
+        lookup: (_hostname, _options, callback) => callback(null, address, (0, import_node_net.isIP)(address))
+      },
+      (response) => {
+        settled = true;
+        const responseHeaders = new Headers();
+        for (const [key, value] of Object.entries(response.headers)) {
+          if (Array.isArray(value)) responseHeaders.set(key, value.join(", "));
+          else if (value !== void 0) responseHeaders.set(key, value);
+        }
+        const body = import_node_stream.Readable.toWeb(response);
+        resolve(new Response(body, { status: response.statusCode ?? 599, headers: responseHeaders }));
+      }
+    );
+    const onAbort = () => request.destroy(new Error("request timed out"));
+    if (init.signal) {
+      if (init.signal.aborted) onAbort();
+      else init.signal.addEventListener("abort", onAbort, { once: true });
+    }
+    request.once("error", (error2) => {
+      if (!settled) {
+        settled = true;
+        reject(error2);
+      }
+    });
+    request.end();
+  });
+}
+function sameOrigin(a, b) {
+  return a.protocol === b.protocol && a.hostname === b.hostname && a.port === b.port;
+}
+function assertSafeFetchTarget(origin, target) {
+  if (!sameOrigin(origin, target) || target.protocol !== "https:" || target.username || target.password || target.search || target.hash) {
+    throw new Error(`${origin} redirected outside its declared HTTPS origin`);
+  }
+}
+function cacheDigest(documents) {
+  return (0, import_node_crypto3.createHash)("sha256").update(documents.map((document) => `${document.url}
+${document.text}`).join("\n")).digest("hex");
 }
 function cachePath(cacheDir, url) {
   const key = (0, import_node_crypto3.createHash)("sha256").update(url).digest("hex");
@@ -41878,37 +42318,37 @@ function cachePath(cacheDir, url) {
 }
 async function readCache(file) {
   try {
-    const parsed = JSON.parse(await (0, import_promises9.readFile)(file, "utf8"));
+    const parsed = JSON.parse(await (0, import_promises10.readFile)(file, "utf8"));
     if (!parsed || typeof parsed !== "object") return null;
     const cache = parsed;
     if (typeof cache.url !== "string" || typeof cache.fetchedAt !== "string" || typeof cache.expiresAt !== "string" || !Array.isArray(cache.documents) || !cache.documents.every(
-      (document) => !!document && typeof document === "object" && typeof document.url === "string" && typeof document.text === "string"
+      (document) => !!document && typeof document === "object" && typeof document.url === "string" && typeof document.text === "string" && (document.etag === void 0 || typeof document.etag === "string") && (document.lastModified === void 0 || typeof document.lastModified === "string")
     ) || !Array.isArray(cache.failures) || !cache.failures.every((failure) => typeof failure === "string") || cache.sha256 !== void 0 && !/^[a-f0-9]{64}$/.test(cache.sha256)) {
       return null;
     }
+    const documents = cache.documents;
+    if (cache.sha256 && cache.sha256 !== cacheDigest(documents)) return null;
     return {
-      url: cache.url,
+      url: canonicalHttpsUrl(cache.url).toString(),
       fetchedAt: cache.fetchedAt,
       expiresAt: cache.expiresAt,
       etag: cache.etag,
       lastModified: cache.lastModified,
       sha256: cache.sha256,
-      documents: cache.documents,
+      documents,
       failures: cache.failures
     };
   } catch (error2) {
     const code = error2.code;
     if (code === "ENOENT") return null;
+    if (!code) return null;
     throw error2;
   }
-}
-function sameOrigin(a, b) {
-  return a.protocol === b.protocol && a.host === b.host;
 }
 function markdownLinks(text, base) {
   const urls = [];
   const seen = /* @__PURE__ */ new Set();
-  const pattern = /!?\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+  const pattern = /(?<!\!)\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
   for (const match of text.matchAll(pattern)) {
     const href = match[1];
     if (!href) continue;
@@ -41918,8 +42358,8 @@ function markdownLinks(text, base) {
     } catch {
       continue;
     }
-    if (!sameOrigin(base, resolved) || resolved.protocol !== "https:" || resolved.hash) continue;
     resolved.hash = "";
+    if (!sameOrigin(base, resolved) || resolved.protocol !== "https:" || resolved.search) continue;
     const key = resolved.toString();
     if (!seen.has(key)) {
       seen.add(key);
@@ -41928,170 +42368,272 @@ function markdownLinks(text, base) {
   }
   return urls;
 }
-async function fetchText(url, fetchImpl, headers, timeoutMs, maxBytes = LLMS_TXT_POLICY.maxBytes) {
+async function fetchText(url, fetchImpl, headers, timeoutMs, maxBytes = LLMS_TXT_POLICY.maxBytes, lookupImpl, boundFetch) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const origin = new URL(url);
+  let current = new URL(url);
+  let redirects = 0;
+  let requestHeaders = headers;
   try {
-    const response = await fetchImpl(url, { headers, redirect: "follow", signal: controller.signal });
-    const finalUrl = response.url ? new URL(response.url) : url;
-    if (!sameOrigin(url, finalUrl) || finalUrl.protocol !== "https:") {
-      throw new Error(`${url} redirected outside its declared HTTPS origin`);
-    }
-    if (response.status === 304) {
-      return { status: 304, text: "" };
-    }
-    if (!response.ok) throw new Error(`${url} returned HTTP ${response.status}`);
-    const contentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
-    if (contentType && !contentType.startsWith("text/") && contentType !== "application/json") {
-      throw new Error(`${url} returned unsupported content type ${contentType}`);
-    }
-    const length = Number(response.headers.get("content-length"));
-    if (Number.isFinite(length) && length > maxBytes) {
-      throw new Error(`${url} exceeds the ${maxBytes}-byte response limit`);
-    }
-    if (!response.body) {
-      const text2 = await response.text();
-      if (Buffer.byteLength(text2, "utf8") > maxBytes) {
-        throw new Error(`${url} exceeds the ${maxBytes}-byte response limit`);
+    while (true) {
+      const addresses = await assertPublicDestination(current, lookupImpl, controller.signal);
+      const requestInit = { headers: requestHeaders, redirect: "manual", signal: controller.signal };
+      const response = boundFetch ? await boundFetch(current, requestInit, addresses) : await fetchImpl(current, requestInit);
+      const responseUrl = response.url ? new URL(response.url) : current;
+      assertSafeFetchTarget(origin, responseUrl);
+      await assertPublicDestination(responseUrl, lookupImpl, controller.signal);
+      if (response.status === 304) {
+        return {
+          status: 304,
+          text: "",
+          url: current.toString(),
+          etag: response.headers.get("etag") ?? void 0,
+          lastModified: response.headers.get("last-modified") ?? void 0,
+          bytes: 0
+        };
+      }
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get("location");
+        if (!location || redirects >= LLMS_TXT_POLICY.maxRedirects) {
+          throw new Error(`${url} exceeded the redirect limit or returned a redirect without Location`);
+        }
+        const next = new URL(location, current);
+        assertSafeFetchTarget(origin, next);
+        current = next;
+        redirects++;
+        requestHeaders = {};
+        continue;
+      }
+      if (!response.ok) throw new Error(`${url} returned HTTP ${response.status}`);
+      const rawContentType = response.headers.get("content-type");
+      const contentType = rawContentType?.split(";", 1)[0]?.trim().toLowerCase();
+      if (!contentType || !contentType.startsWith("text/") && contentType !== "application/json") {
+        throw new Error(`${url} returned unsupported or missing content type`);
+      }
+      const length = Number(response.headers.get("content-length"));
+      if (Number.isFinite(length) && length > maxBytes) {
+        throw new ResponseTooLargeError(url, maxBytes, length);
+      }
+      if (!response.body) {
+        const text = await response.text();
+        const bytes2 = Buffer.byteLength(text, "utf8");
+        if (bytes2 > maxBytes) throw new ResponseTooLargeError(url, maxBytes, bytes2);
+        return {
+          status: response.status,
+          text,
+          url: current.toString(),
+          etag: response.headers.get("etag") ?? void 0,
+          lastModified: response.headers.get("last-modified") ?? void 0,
+          bytes: bytes2
+        };
+      }
+      const reader = response.body.getReader();
+      const chunks = [];
+      let bytes = 0;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          bytes += value.byteLength;
+          if (bytes > maxBytes) {
+            await reader.cancel();
+            throw new ResponseTooLargeError(url, maxBytes, bytes);
+          }
+          chunks.push(Buffer.from(value));
+        }
+      } finally {
+        reader.releaseLock();
       }
       return {
         status: response.status,
-        text: text2,
+        text: Buffer.concat(chunks).toString("utf8"),
+        url: current.toString(),
         etag: response.headers.get("etag") ?? void 0,
-        lastModified: response.headers.get("last-modified") ?? void 0
+        lastModified: response.headers.get("last-modified") ?? void 0,
+        bytes
       };
     }
-    const reader = response.body.getReader();
-    const chunks = [];
-    let bytes = 0;
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        bytes += value.byteLength;
-        if (bytes > maxBytes) {
-          await reader.cancel();
-          throw new Error(`${url} exceeds the ${maxBytes}-byte response limit`);
-        }
-        chunks.push(Buffer.from(value));
-      }
-    } finally {
-      reader.releaseLock();
-    }
-    const text = Buffer.concat(chunks).toString("utf8");
-    return {
-      status: response.status,
-      text,
-      etag: response.headers.get("etag") ?? void 0,
-      lastModified: response.headers.get("last-modified") ?? void 0
-    };
   } finally {
     clearTimeout(timer);
   }
 }
 async function writeCache(file, cache) {
   const content = JSON.stringify(cache, null, 2) + "\n";
-  const previous = cacheWrites.get(file);
-  const write = () => (0, import_promises9.writeFile)(file, content, "utf8");
-  const next = previous ? previous.then(write, write) : write();
-  cacheWrites.set(file, next);
-  try {
-    await next;
-  } finally {
-    if (cacheWrites.get(file) === next) cacheWrites.delete(file);
+  await writeFileAtomic(file, content);
+}
+function asDocument(response) {
+  return {
+    url: response.url,
+    text: response.text,
+    ...response.etag ? { etag: response.etag } : {},
+    ...response.lastModified ? { lastModified: response.lastModified } : {}
+  };
+}
+function failureText(error2) {
+  return error2 instanceof Error ? error2.message : String(error2);
+}
+function consumedBytes(error2) {
+  return error2 instanceof ResponseTooLargeError ? error2.consumedBytes : 0;
+}
+async function revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImpl, timeoutMs = LLMS_TXT_POLICY.timeoutMs, boundFetch) {
+  const root = cached3.documents[0];
+  if (!root) return [];
+  const documents = [root];
+  let bytes = Buffer.byteLength(root.text, "utf8");
+  const cachedByUrl = new Map(cached3.documents.slice(1).map((document) => [document.url, document]));
+  const candidates = markdownLinks(root.text, new URL(root.url)).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
+  for (const candidate of candidates) {
+    const cachedDocument = cachedByUrl.get(candidate.toString());
+    const requestHeaders = {};
+    if (cachedDocument?.etag) requestHeaders["if-none-match"] = cachedDocument.etag;
+    if (cachedDocument?.lastModified) requestHeaders["if-modified-since"] = cachedDocument.lastModified;
+    try {
+      const cachedBytes = cachedDocument ? Buffer.byteLength(cachedDocument.text, "utf8") : 0;
+      if (cachedDocument && bytes + cachedBytes > LLMS_TXT_POLICY.maxBytes) {
+        failures.push(`${candidate} skipped because the aggregate response limit was reached`);
+        continue;
+      }
+      if (bytes >= LLMS_TXT_POLICY.maxBytes) {
+        failures.push(`${candidate} skipped because the aggregate response limit was reached`);
+        continue;
+      }
+      const response = await fetchText(
+        candidate,
+        fetchImpl,
+        requestHeaders,
+        timeoutMs,
+        LLMS_TXT_POLICY.maxBytes - bytes,
+        lookupImpl,
+        boundFetch
+      );
+      if (response.status === 304) {
+        if (!cachedDocument) {
+          failures.push(`${candidate} returned HTTP 304 without a cached representation`);
+          continue;
+        }
+        bytes += cachedBytes;
+        documents.push(cachedDocument);
+      } else {
+        bytes += response.bytes;
+        documents.push(asDocument(response));
+      }
+    } catch (error2) {
+      bytes += consumedBytes(error2);
+      failures.push(failureText(error2));
+      if (cachedDocument) {
+        const cachedBytes = Buffer.byteLength(cachedDocument.text, "utf8");
+        if (bytes + cachedBytes <= LLMS_TXT_POLICY.maxBytes) {
+          bytes += cachedBytes;
+          documents.push(cachedDocument);
+        } else {
+          failures.push(`${candidate} stale cache skipped because the aggregate response limit was reached`);
+        }
+      }
+    }
   }
+  return documents;
 }
 async function fetchLlmsTxt(options2) {
-  const root = validateUrl(options2.url);
+  const root = canonicalHttpsUrl(options2.url);
   const fetchImpl = options2.fetchImpl ?? fetch;
+  const timeoutMs = options2.timeoutMs ?? LLMS_TXT_POLICY.timeoutMs;
+  const boundFetch = options2.requestImpl ?? (options2.fetchImpl ? void 0 : pinnedFetch);
+  const lookupImpl = options2.lookupImpl ?? (fetchImpl === fetch ? async (hostname2) => (await (0, import_promises9.lookup)(hostname2, { all: true, verbatim: true })).map(({ address }) => address) : void 0);
   const now = options2.now ?? Date.now;
   const cacheFile = cachePath(options2.cacheDir, root.toString());
-  const cached3 = await readCache(cacheFile);
-  const nowMs = now();
-  if (!options2.force && cached3 && cached3.url === root.toString() && Date.parse(cached3.expiresAt) > nowMs) {
-    return {
-      sourceUrl: cached3.url,
-      documents: cached3.documents,
-      failures: cached3.failures,
-      fromCache: true,
-      fetchedAt: cached3.fetchedAt
-    };
-  }
-  const headers = {};
-  if (cached3?.etag) headers["if-none-match"] = cached3.etag;
-  if (cached3?.lastModified) headers["if-modified-since"] = cached3.lastModified;
-  const failures = [];
-  let rootResponse;
-  try {
-    rootResponse = await fetchText(root, fetchImpl, headers, LLMS_TXT_POLICY.timeoutMs, LLMS_TXT_POLICY.maxBytes);
-  } catch (error2) {
-    if (cached3) {
-      failures.push(error2 instanceof Error ? error2.message : String(error2));
+  return withExclusiveFileLock(`${cacheFile}.lock`, async () => {
+    const cached3 = await readCache(cacheFile);
+    const nowMs = now();
+    if (!options2.force && cached3 && cached3.url === root.toString() && Date.parse(cached3.expiresAt) > nowMs) {
       return {
         sourceUrl: cached3.url,
         documents: cached3.documents,
-        failures,
+        failures: cached3.failures,
         fromCache: true,
         fetchedAt: cached3.fetchedAt
       };
     }
-    throw error2;
-  }
-  if (rootResponse.status === 304 && cached3) {
-    const refreshed = {
-      ...cached3,
-      expiresAt: new Date(nowMs + LLMS_TXT_POLICY.cacheTtlMs).toISOString()
-    };
-    await (0, import_promises9.mkdir)(options2.cacheDir, { recursive: true });
-    await writeCache(cacheFile, refreshed);
-    return {
-      sourceUrl: cached3.url,
-      documents: cached3.documents,
-      failures: cached3.failures,
-      fromCache: true,
-      fetchedAt: cached3.fetchedAt
-    };
-  }
-  if (rootResponse.status === 304) {
-    throw new Error(`${root} returned HTTP 304 without a cached representation`);
-  }
-  const documents = [{ url: root.toString(), text: rootResponse.text }];
-  const candidates = markdownLinks(rootResponse.text, root).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
-  let bytes = Buffer.byteLength(rootResponse.text, "utf8");
-  for (const candidate of candidates) {
-    if (bytes >= LLMS_TXT_POLICY.maxBytes) {
-      failures.push(`${candidate} skipped because the aggregate response limit was reached`);
-      continue;
-    }
+    const headers = {};
+    if (cached3?.etag) headers["if-none-match"] = cached3.etag;
+    if (cached3?.lastModified) headers["if-modified-since"] = cached3.lastModified;
+    const failures = [];
+    let rootResponse;
     try {
-      const remaining = LLMS_TXT_POLICY.maxBytes - bytes;
-      const response = await fetchText(candidate, fetchImpl, {}, LLMS_TXT_POLICY.timeoutMs, remaining);
-      const size = Buffer.byteLength(response.text, "utf8");
-      if (bytes + size > LLMS_TXT_POLICY.maxBytes) {
+      rootResponse = await fetchText(root, fetchImpl, headers, timeoutMs, LLMS_TXT_POLICY.maxBytes, lookupImpl, boundFetch);
+    } catch (error2) {
+      if (cached3) {
+        failures.push(failureText(error2));
+        return {
+          sourceUrl: cached3.url,
+          documents: cached3.documents,
+          failures,
+          fromCache: true,
+          fetchedAt: cached3.fetchedAt
+        };
+      }
+      throw error2;
+    }
+    if (rootResponse.status === 304 && cached3) {
+      const documents2 = await revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImpl, timeoutMs, boundFetch);
+      const refreshed = {
+        ...cached3,
+        fetchedAt: new Date(nowMs).toISOString(),
+        expiresAt: new Date(nowMs + LLMS_TXT_POLICY.cacheTtlMs).toISOString(),
+        sha256: cacheDigest(documents2),
+        documents: documents2,
+        failures
+      };
+      await (0, import_promises10.mkdir)(options2.cacheDir, { recursive: true });
+      await writeCache(cacheFile, refreshed);
+      return {
+        sourceUrl: cached3.url,
+        documents: documents2,
+        failures,
+        fromCache: true,
+        fetchedAt: refreshed.fetchedAt
+      };
+    }
+    if (rootResponse.status === 304) {
+      throw new Error(`${root} returned HTTP 304 without a cached representation`);
+    }
+    const documents = [asDocument(rootResponse)];
+    const candidates = markdownLinks(rootResponse.text, new URL(rootResponse.url)).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
+    let bytes = rootResponse.bytes;
+    for (const candidate of candidates) {
+      if (bytes >= LLMS_TXT_POLICY.maxBytes) {
         failures.push(`${candidate} skipped because the aggregate response limit was reached`);
         continue;
       }
-      bytes += size;
-      documents.push({ url: candidate.toString(), text: response.text });
-    } catch (error2) {
-      failures.push(error2 instanceof Error ? error2.message : String(error2));
+      try {
+        const remaining = LLMS_TXT_POLICY.maxBytes - bytes;
+        const response = await fetchText(candidate, fetchImpl, {}, timeoutMs, remaining, lookupImpl, boundFetch);
+        bytes += response.bytes;
+        if (bytes > LLMS_TXT_POLICY.maxBytes) {
+          failures.push(`${candidate} skipped because the aggregate response limit was reached`);
+          continue;
+        }
+        documents.push(asDocument(response));
+      } catch (error2) {
+        bytes += consumedBytes(error2);
+        failures.push(failureText(error2));
+      }
     }
-  }
-  const fetchedAt = new Date(nowMs).toISOString();
-  const cache = {
-    url: root.toString(),
-    fetchedAt,
-    expiresAt: new Date(nowMs + LLMS_TXT_POLICY.cacheTtlMs).toISOString(),
-    etag: rootResponse.etag,
-    lastModified: rootResponse.lastModified,
-    sha256: (0, import_node_crypto3.createHash)("sha256").update(documents.map((document) => `${document.url}
-${document.text}`).join("\n")).digest("hex"),
-    documents,
-    failures
-  };
-  await (0, import_promises9.mkdir)(options2.cacheDir, { recursive: true });
-  await writeCache(cacheFile, cache);
-  return { sourceUrl: root.toString(), documents, failures, fromCache: false, fetchedAt };
+    const fetchedAt = new Date(nowMs).toISOString();
+    const cache = {
+      url: root.toString(),
+      fetchedAt,
+      expiresAt: new Date(nowMs + LLMS_TXT_POLICY.cacheTtlMs).toISOString(),
+      etag: rootResponse.etag,
+      lastModified: rootResponse.lastModified,
+      sha256: cacheDigest(documents),
+      documents,
+      failures
+    };
+    await (0, import_promises10.mkdir)(options2.cacheDir, { recursive: true });
+    await writeCache(cacheFile, cache);
+    return { sourceUrl: root.toString(), documents, failures, fromCache: false, fetchedAt };
+  });
 }
 function validateLlmsSource(source) {
   if (!source || typeof source !== "object") throw new Error("invalid source declaration");
@@ -42860,29 +43402,21 @@ function createKanmerMcpServer(policy = "local-stdio") {
       });
     })
   );
-  const sourceDeclarationInput = external_exports.object({
-    kind: external_exports.enum(["mcp", "plugin", "llms-txt"]),
-    id: external_exports.string().min(1).max(512),
-    appliesTo: external_exports.object({
-      areas: external_exports.array(external_exports.string()).max(32).optional(),
-      labels: external_exports.array(external_exports.string()).max(64).optional()
-    }).strict().optional(),
-    priority: external_exports.number().int().min(-1e3).max(1e3).optional()
-  }).strict();
   server.registerTool(
     "set_sources",
     {
       title: "Set declared project sources",
       description: "Replace the project's declared source preferences in board.yml. This is an explicit, project-owned declaration only: it does not install or enable MCPs/plugins, grant trust, or fetch the network. Use get_sources to resolve the result for an area/label context. The board write is protected by the normal expected_project concurrency guard.",
       inputSchema: {
-        sources: external_exports.array(sourceDeclarationInput).max(128).describe("The complete ordered declaration list; [] clears it")
+        sources: SourceDeclarationArraySchema.describe("The complete ordered declaration list; [] clears it")
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
     },
     write(async ({ sources }) => {
-      const board = await store.getBoard();
-      board.sources = SourceDeclarationArraySchema.parse(sources);
-      await store.setBoard(board);
+      const board = await store.updateBoard((board2) => {
+        board2.sources = SourceDeclarationArraySchema.parse(sources);
+        return board2;
+      });
       return ok({ sources: board.sources });
     })
   );

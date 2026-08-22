@@ -30,6 +30,7 @@ apps/gui/dev-app-update.yml
 .ds-sync/
 ds-bundle/
 .design-sync/.cache/
+.kanmer/data/sources/
 .design-sync/learnings/
 .design-sync/node_modules
 

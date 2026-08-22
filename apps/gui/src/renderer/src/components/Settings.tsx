@@ -732,7 +732,7 @@ function GitTab(): JSX.Element {
     }}>{renaming ? "Renaming…" : "Rename branch"}</button>
     <label className="check"><input type="checkbox" checked={minutes > 0} onChange={(e) => { const next = e.target.checked ? 1 : 0; setMinutes(next); void save({ minutes: next }); }} /> Automatic sync</label>
     {minutes > 0 && <label className="field"><span>Minutes</span><input type="number" min={1} step={1} value={minutes} onChange={(e) => setMinutes(Math.max(1, Math.trunc(Number(e.target.value) || 1)))} onBlur={() => void save()} /></label>}
-    {!status?.available ? <p className="hint">Git sync is unavailable for this non-Git project.</p> : <>
+    {!status?.available && !status?.boardRoot ? <p className="hint">Git sync is unavailable for this non-Git project.</p> : <>
       <p className="hint">Board worktree: <code>{status.boardRoot}</code>{status.lastSync ? ` · last sync ${status.lastSync}` : ""}</p>
       {status.error && <p className="error">{status.error}</p>}
       <button className="ghost sm" onClick={() => void window.kanmer.syncKanmerNow(client.projectId).then(setStatus)}>{status.paused ? "Retry" : "Sync now"}</button>

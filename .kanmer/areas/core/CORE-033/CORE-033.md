@@ -2,13 +2,14 @@
 id: CORE-033
 type: ticket
 title: Protect `main` and `kanmer-board`; write the ops playbook
-status: implementing
+status: review
 area: core
 order: 50
 assignee: codex-take-core033
 profile: chore
 stageEntered:
   preparing: '2026-08-20T12:12:12.995Z'
+  review: '2026-08-22T06:43:55.174Z'
 taken_at: '2026-08-22T06:35:32.959Z'
 branch: core-033-branch-protection
 worktree: .worktrees/core-033
@@ -20,9 +21,12 @@ groups:
 links: []
 blocks:
   - CORE-035
+refs:
+  - docs/functional/frd/FRD-020-board-git-worktree-sync.md
+  - docs/architecture/adr/ADR-0016-compiled-workflow.md
 archived: false
 created: '2026-08-20T10:14:42.512Z'
-updated: '2026-08-22T06:35:32.959Z'
+updated: '2026-08-22T06:44:11.445Z'
 ---
 
 ## What

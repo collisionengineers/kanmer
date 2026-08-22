@@ -1,6 +1,52 @@
 ---
 kind: review-attestation
 pr: "168"
+head_sha: "9371e2b0e8882426d91dbc99553e96853b99197f"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: pass
+reviewer: "codex-root-final-cumulative-audit"
+independent: true
+plan_hash: "2026-08-22T20:07:00Z"
+ticket_updated: "2026-08-22T20:07:00Z"
+findings:
+  - id: F-026
+    severity: blocker
+    summary: "Saved board-branch changes reconcile existing provider registrations"
+    disposition: fixed-in-ticket
+    ticket: "GUI-113"
+    reason: "GUI-113 independently reviewed and merged as 69e2cc58; matching open projects reconcile provider-owned registrations and surface malformed entries without mutation."
+  - id: F-027
+    severity: blocker
+    summary: "Native provider descriptors carry the configured board branch"
+    disposition: fixed-in-ticket
+    ticket: "GUI-113"
+    reason: "GUI-113 independently reviewed and merged as 69e2cc58; Grok/Antigravity use disposable branch-injected descriptor copies."
+  - id: F-028
+    severity: blocker
+    summary: "Board-branch environment serialization is shell-safe"
+    disposition: fixed-in-ticket
+    ticket: "GUI-114"
+    reason: "GUI-114 independently reviewed and merged as 9371e2b0; Claude production registration uses execFile argv and hostile shell-metacharacter coverage passes."
+  - id: F-025
+    severity: minor
+    summary: "Live GitHub protection and variable mutation"
+    disposition: accepted-risk
+    reason: "No authorized live protection mutation or real multi-machine handoff was available; ADR-0016 keeps this administrator-owned external boundary."
+---
+
+## Final cumulative independent review — PASS — 2026-08-22
+
+Reviewed exact cumulative PR #168 head 9371e2b0e8882426d91dbc99553e96853b99197f against main base 34245be039e8fd8395b5e31835602c54e62e98a4. GUI-113 and GUI-114 are independently reviewed and merged into the cumulative branch; all three current-head provider findings are now fixed-in-ticket with reachable merge commits. The remaining live protection/Actions-variable mutation boundary is explicitly accepted risk under ADR-0016; no admin bypass is authorized.
+
+Child evidence: GUI-113 focused 35/35/full GUI 417/417; GUI-114 focused 99/99/full GUI 418/418; all-workspace typecheck/build/manual/docs/managed-block/skills/scripts/diff rails pass in the child packets. Hosted verify and kanmer-gate must be rerun at this exact head before protected merge; no review thread is resolved until that run is green and the exact-head attestation is accepted.
+
+Verdict: PASS contingent on the exact-head hosted run. An authorized independent reviewer may merge PR #168 non-squash into protected main only after CI and conversation-resolution requirements are green. Do not use an admin bypass.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "168"
 head_sha: "69e2cc582b7ee8947f0febda6d286c18e21397a7"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: needs-changes

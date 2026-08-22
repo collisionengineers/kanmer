@@ -256,3 +256,6 @@ Last handoff: 2026-08-22T05:30:03Z — Hosted verification correction for GUI-10
 
 
 - 2026-08-22T06:10:00Z — CORE-024 amended hosted run 32556078470 is final: kanmer-gate PASS, verify FAIL only at out-of-scope MCPB/plugin parity; independent Review remains required.
+
+
+2026-08-22T06:21:52Z — GUI-104 Review handoff prepared by gui-104-executor: source a531a7c6ac4e2c00f24828e17fc174fc1af4ca0a, PR #157, branch gui-104-openai-tunnel, worktree .worktrees/gui-104. Existing DOC-010-linked FRD-022/FRD-024 refs satisfy the governing-doc gate; FRD-026 is authored in the PR and docs_todo is cleared. Deterministic focused/renderer/manual rails pass. Full GUI dispatch/provider baseline failures and real OpenAI two-project/listener proof remain explicitly INCONCLUSIVE. Author stops at Review for independent root review; no merge or cleanup.

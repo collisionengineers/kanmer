@@ -38,3 +38,6 @@
 
 
 - 2026-08-22T06:08:48Z — CORE-024 independent review requested changes then pass on amended head 34044bcc (annotation + infrastructureError contract); hosted kanmer-gate pass, hosted verify retained pre-existing MCPB/plugin parity failure. Created MCP-043 remediation ticket and assigned artifact lane; GUI-104 implementing with governing-doc/readiness-test hold.
+
+
+2026-08-22T06:21:52Z — GUI-104 Review handoff prepared by gui-104-executor: source a531a7c6ac4e2c00f24828e17fc174fc1af4ca0a, PR #157, branch gui-104-openai-tunnel, worktree .worktrees/gui-104. Existing DOC-010-linked FRD-022/FRD-024 refs satisfy the governing-doc gate; FRD-026 is authored in the PR and docs_todo is cleared. Deterministic focused/renderer/manual rails pass. Full GUI dispatch/provider baseline failures and real OpenAI two-project/listener proof remain explicitly INCONCLUSIVE. Author stops at Review for independent root review; no merge or cleanup.

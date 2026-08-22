@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T08:46:00Z
+updated_at: 2026-08-22T08:51:53.004Z
 ---
 
 # Current auto run — HZN-007
@@ -322,3 +322,9 @@ Last handoff: 2026-08-22T08:50:00Z — GUI-109 Review handoff complete. Commit c
 
 
 Last handoff: 2026-08-22T08:52:00Z — GUI-109 hosted outcome preserved: PR #162 run 32563191261 verify 97007849315 PASS; kanmer-gate 97007849283 FAIL because the event-time board snapshot saw Implementing and no review attestation before the MCP Implementing→Review move. Ticket is currently Review with author prohibited from self-attestation; independent reviewer must rerun the gate against current state. No source failure is inferred; visual Electron evidence remains INCONCLUSIVE.
+
+
+2026-08-22T08:53:00Z — GUI-109 is Review on PR #162 head c259af17 after deterministic rails pass; hosted verify PASS, initial kanmer-gate failed only because the event snapshot saw Implementing/no review record before the MCP Review move. Independent rerun/review required; live Electron visual remains INCONCLUSIVE. CORE-026 remains Implementing; CORE-035 Verifying.
+
+
+Last handoff: 2026-08-22T08:51:53.004Z — CORE-026 implementation handed to Review: fab7b4994b5b0c4f2eaf07a919cf6b6e06e7e763 pushed as PR #163 on core-026-project-declared-sources/.worktrees/core-026. FRD-027 and ADR-0020 are linked after resolving the pre-existing FRD-026 number collision; report/checklist/gates are complete and final rails pass. External connected-provider and live llms.txt evidence is INCONCLUSIVE. Stop for independent review; no self-review/merge/cleanup.

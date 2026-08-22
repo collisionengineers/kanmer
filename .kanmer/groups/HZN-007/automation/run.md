@@ -78,3 +78,6 @@
 
 
 2026-08-22T08:45:00Z — CORE-026 governing-doc names were reconciled to non-colliding docs/functional/frd/FRD-027-project-declared-sources.md and docs/architecture/adr/ADR-0020-project-declared-source-trust.md; live refs/gates now read back against those paths. Implementation remains active; no stage/merge claim.
+
+
+2026-08-22T08:52:00Z — GUI-109 Implementing→Review completed by gui109-executor on PR #162 head c259af171a72fa83a9131f4f53a79d0cfd0f05b5. Checklist 17/17, report/gates pass, focused 5/5 + GUI 387/387 + typecheck/build/manual/diff PASS; stale-core first failure and ticket-local recovery preserved. Hosted verify PASS; kanmer-gate failed on event-time stage race/no review record and must be rerun by an independent reviewer. Live Electron visual proof remains INCONCLUSIVE. Author stops; no merge/cleanup.

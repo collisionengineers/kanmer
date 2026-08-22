@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T08:32:34.137Z
+updated_at: 2026-08-22T08:51:53.004Z
 lane_limit: 3
 stop_reason:
 ---
@@ -679,3 +679,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T08:22:47.548Z — GUI-108 hosted handoff finalized: PR #161 commit 044e0f54c24639fb09554c4489b36166b86a1f66 has kanmer-gate PASS (rerun job 97004949721) and verify PASS (job 97004950398). MCP scratch readback contains independent PASS attestation; ticket remains Review, PR open/unmerged, author does not merge or clean up .worktrees/gui-108/branch gui-108-actionable-gate-feedback.
 
 - 2026-08-22T08:32:34.137Z — CORE-026 assigned to core026-executor: ticket is Implementing on core-026-project-declared-sources/.worktrees/core-026 from origin/main 84a20f84. Governing FRD-026 and ADR-0019 are linked, research/files/plan/checklist/questions are complete, and scope is project-declared source preferences only with no external auto-trust or unbounded llms.txt crawl. Stop at Review; no self-review/merge/cleanup.
+
+- 2026-08-22T08:51:53.004Z — CORE-026 implementation handed to Review: fab7b4994b5b0c4f2eaf07a919cf6b6e06e7e763 pushed as PR #163 on core-026-project-declared-sources/.worktrees/core-026. FRD-027 and ADR-0020 are linked after resolving the pre-existing FRD-026 number collision; report/checklist/gates are complete and final rails pass. External connected-provider and live llms.txt evidence is INCONCLUSIVE. Stop for independent review; no self-review/merge/cleanup.

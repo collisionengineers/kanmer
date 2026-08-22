@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T14:46:45.089Z
+updated_at: 2026-08-22T14:52:39.150Z
 ---
 
 # Current auto run — HZN-007
@@ -534,3 +534,6 @@ CORE-064 implemented at c8efb926 with deterministic 19/19 focused GUI rail and f
 
 
 CORE-064 independently PASSed and merged into CORE-058 as 17cdb668; CORE-064 is Verifying with block edge removed. CORE-065 is now the single active implementation lane on core-065-retry-ignore-reconciliation; it owns the retryable failed-Git status/action seam.
+
+
+CORE-065 implemented at 3ffa713f; PR #186 opened against CORE-058 and moved Implementing -> Review after focused 20/20, GUI typecheck, scripts 88/88, manual/docs/diff rails. Independent cumulative review requested before CORE-058 can merge into CORE-044.

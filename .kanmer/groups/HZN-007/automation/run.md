@@ -177,3 +177,6 @@
 
 
 2026-08-22T11:55:31Z — CORE-043 cumulative review found F-001/F-002/F-003 fixed by merged CORE-048, but parent traceability/hosted rerun stale and CORE-048 Verifying blocked parent merge. Removed only circular CORE-048 blocks edge via MCP; retained link and will verify child+parent together on merged main.
+
+
+2026-08-22T12:07:57Z — CORE-050 independently reviewed PASS at fc8e591e (IO22/22, combined core113/113, typecheck/build/plugin parity); PR #172 merged into CORE-049 base as 31e572dc. Removed only circular CORE-050 blocking edges so stacked parents can merge before merged-main verification; retained links and explicit external INCONCLUSIVE limits.

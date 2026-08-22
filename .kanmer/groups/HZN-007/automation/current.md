@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:22:31.489Z
+updated_at: 2026-08-22T00:26:30+01:00
 ---
 
 # Current auto run — HZN-007
@@ -70,3 +70,5 @@ Last handoff: 2026-08-22T01:16:42+01:00 — Done-incomplete reconciliation compl
 Last handoff: 2026-08-22T01:18:20+01:00 — Added and read back explicit `## Parked (explicitly deferred)` checklist dispositions for MCP-008 and GUI-105; original unchecked lines remain honest and unchanged (64/103, 13/14). External Claude Desktop/GUI visual evidence remains INCONCLUSIVE, with no remediation ticket or board move.
 \n\nLast handoff: 2026-08-22T00:20:23.871Z — CORE-037 assigned to /root/mcp017_verifier for research→plan→execute on dedicated core-037 worktree/branch; scope is Windows path identity normalization in kanmerGit.test.ts to clear the shared verify failure without weakening real Git assertions; independent review required.\n
 \n\nLast handoff: 2026-08-22T00:22:31.489Z — SKILL-004 assigned to /root/gui082_executor for bounded merged-main reconciliation of the already-reachable setup-reconciliation implementation ad12740; dedicated packet/gates read required, no cross-ticket changes, stop at Review.\n
+
+- 2026-08-22T00:26:30+01:00 — SKILL-004 assigned to /root/gui082_executor after complete recursive packet (research/files/plan/checklist/open-questions), EPIC-007 and HZN-007 context, FRD-013/ADR-0010 refs, links/activity and gates read. Fresh .worktrees/skill-004 on skill-004-setup-reconciliation is based on origin/main af61144ce743f74b2aba92fb0778588b0b9bedd0; implementation ad127405 is reachable. Scope is merged-main reconciliation only; no new source change unless the bounded audit finds a defect; stop at Review, no self-review/merge/cleanup.

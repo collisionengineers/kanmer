@@ -100,3 +100,7 @@ Checks:
 - `git diff --check` in the clean merged-main verification worktree — exit 0.
 
 Manual GUI group rendering/screenshot evidence is **INCONCLUSIVE**: no GUI launch or screenshot was available during this verification. The underlying group/member/progress numbers are verified through MCP; visual pixels are not claimed.
+
+## Closeout finalisation — 2026-08-22
+
+PR [#20](https://github.com/collisionengineers/kanmer/pull/20) is MERGED (2026-08-16T05:37:08Z) at merge commit `f7a0ca61873398a1ff9e5a93e481acec9374367e`. The visual group-rendering/screenshot gap remains explicitly INCONCLUSIVE; no pixel evidence is claimed.

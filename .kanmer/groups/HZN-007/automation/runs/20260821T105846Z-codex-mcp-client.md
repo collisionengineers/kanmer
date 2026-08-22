@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T00:47:33.284Z
+updated_at: 2026-08-22T00:48:50.442Z
 lane_limit: 3
 stop_reason:
 ---
@@ -491,3 +491,9 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T00:47:33.284Z — SKILL-007 Verifying→Done: fresh enter-done gates passed after proof readback. Active-only MCP label/derived counts match all eight phases; archived GUI-015 was the preserved initial-query mismatch and is correctly excluded from derived progress. Visual group rendering remains INCONCLUSIVE. Ticket is Done; closeout will release and remove only skill-007-phase-groups/.worktrees/skill-007.
+
+
+- 2026-08-22T00:48:35.593Z — DOC-007 assigned to /root/gui082_executor for bounded merged-main manual reconciliation. Full DOC-007 packet (research/files/plan/checklist/open-questions/post-report/proof/scratch), HZN-003 body and HZN-007 context, FRD-024, links/activity and gates were reread. Historical implementation PR #49 merge 19244f6 is reachable from current origin/main af61144c; current main carries later manual chapters/edits that will be audited. Fresh .worktrees/doc-007 is on doc-007-manual-reconcile from origin/main af61144c, recorded by non-forced take_ticket. Scope is current manual pipeline/content evidence only; no GUI-017/GUI-081/README or unrelated changes. Stop at Review; no self-review, merge or cleanup.
+
+
+- 2026-08-22T00:48:50.442Z — SKILL-007 closeout started: gh confirms PR #20 MERGED at f7a0ca6; Done/proof/report/checklist/Outcome read-write evidence is recorded. Exact cleanup target is .worktrees/skill-007 and branch skill-007-phase-groups; no other worktree or board checkout may be touched. Release remains last.

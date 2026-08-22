@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:47:33.284Z
+updated_at: 2026-08-22T00:48:50.442Z
 ---
 
 # Current auto run — HZN-007
@@ -17,7 +17,7 @@ updated_at: 2026-08-22T00:47:33.284Z
 Open `automation/runs/20260821T105846Z-codex-mcp-client.md`, then re-read HZN-007/context.md, the live roster, and get_doc_gates for every ticket before dispatching. This pointer is written only after the complete immutable run record was written and read back.
 
 
-Last handoff: 2026-08-22T00:47:33.284Z — SKILL-007 is Done after merged-main proof and fresh active-only epic/label reconciliation; visual group rendering is INCONCLUSIVE. Closeout may release and remove .worktrees/skill-007 / skill-007-phase-groups.
+Last handoff: 2026-08-22T00:48:50.442Z — SKILL-007 is Done with proof finalised; closeout is cleaning exactly .worktrees/skill-007 / skill-007-phase-groups, then release last. Visual group rendering remains INCONCLUSIVE.
 
 
 Last handoff: CORE-036 merged-main verification recorded at 2026-08-21T22:49:50.557Z; ticket remains Verifying because npm run verify and npm run dist:check each exited 1 on normal main. PR #127 merge 470b2fad is present; no board move, release, or worktree cleanup was performed.
@@ -92,3 +92,6 @@ Last handoff: 2026-08-22T01:39:51+01:00 — CORE-037 is Review on PR #144 (`aac1
 
 
 Last handoff: 2026-08-22T00:44:44.861Z — SKILL-005 is Review-ready after merged-main reconciliation: historical PR #16/merge 5c1bfb5 and commit 21b53a7 are reachable; checklist 9/9, report/scratch read back, and current static rails are recorded. First fresh-worktree scripts failure (missing core dist, 78/80) is preserved; live agent onboarding remains unclaimed. No new source/PR, self-review, merge, verification, or cleanup; independent root review required.
+
+
+Last handoff: 2026-08-22T00:48:35.593Z — DOC-007 is taken on doc-007-manual-reconcile/.worktrees/doc-007 from origin/main af61144c for merged-main manual reconciliation. Historical PR #49/merge 19244f6 is reachable; current main's post-merge manual additions will be audited before any document or stage update. No self-review/merge/cleanup.

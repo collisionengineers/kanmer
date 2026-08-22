@@ -1,3 +1,64 @@
+---
+kind: review-attestation
+pr: "222"
+head_sha: "9519e2e8ad9c0424b63d9b9d8c4e6ef2832a7401"
+base_sha: "7654a28104fbc67c58cad61241188d0f3d898c17"
+verdict: pass
+reviewer: "codex-gui099-executor"
+independent: true
+plan_hash: "a0b32fae7b9b14f9"
+ticket_updated: "2026-08-22T23:20:29.331Z"
+findings:
+  - id: F-001
+    summary: "GUI-118 lifecycle and provider state behavior remains in the cumulative branch."
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "The 9519 tree contains the GUI-118 transactional branch persistence, serialized project/provider lifecycle, Retry reconciliation, durable handoff state, native reconnect marking, and explicit branch-binding probes."
+  - id: F-002
+    summary: "GUI-119 provider branch propagation is retained after the GUI-122 merge."
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "The merged 94d9fca2/1ef324c0 lineage remains in 9519: OpenAI, remote runtime/doctor, and Claude marketplace staging continue to carry KANMER_BOARD_BRANCH with the adversarial shell-safe coverage."
+  - id: F-003
+    summary: "GUI-120 multi-project Connect broadcasts retain each context project id."
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "The GUI-123 merge 5d041af8 is an ancestor of 9519 and retains projectId: id, its test seams, and the two-project production-caller regression."
+  - id: F-004
+    summary: "The exact cumulative focused lifecycle/provider rail passes after the isolated Windows cleanup retry."
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "The first combined local attempt recorded 120/121 with an EPERM teardown timeout; the isolated index.sync suite passed 11/11 and a fresh combined run with hookTimeout 30000 passed 121/121. The first failure remains preserved as environment evidence."
+  - id: F-005
+    summary: "Live provider, protection, packaged, and visual host evidence is unavailable."
+    severity: minor
+    disposition: accepted-risk
+    reason: "No disposable native host, packaged runtime, or live protected-branch mutation was available; no such PASS is claimed."
+---
+
+# Fresh cumulative independent review — GUI-118 at 9519e2e8
+
+Reviewed the exact cumulative mainline head 9519e2e8ad9c0424b63d9b9d8c4e6ef2832a7401 on origin/core-043-protection-retarget, with base GUI-122's 7654a281 parent and the merged PR #222 lineage. PR #222 is merged non-squash as 9519e2e8; its child PR #223/GUI-123 merge 1ef324c0 is also in the ancestry. The 9519 tree retains GUI-118 lifecycle behavior, GUI-119 provider propagation, and GUI-120 multi-project broadcast behavior. Hosted run 32604808898 completed with kanmer-gate job 97108612019 PASS and verify job 97108612103 PASS.
+
+Exact local evidence from a detached 9519 checkout:
+
+- npm ci: exit 0;
+- npm run build:core: exit 0;
+- focused providers/connect/index.sync/remote-manager rail with hookTimeout 30000: exit 0, 121/121;
+- isolated index.sync regression: exit 0, 11/11;
+- GUI typecheck: exit 0;
+- GUI build: exit 0;
+- npm run test:scripts: exit 0, 89/89;
+- npm run verify:docs and npm run check:manual: exit 0;
+- git diff --check 7654a281..9519e2e8: exit 0.
+
+The initial combined focused attempt recorded 120/121 because one Windows temporary-directory cleanup hook timed out with EPERM; that failed attempt is retained in F-004 and was followed by a passing isolated test and passing 121/121 rerun with the bounded hook timeout. The full-workspace dispatch/provider typecheck limitation and live native/protection/packaged evidence remain INCONCLUSIVE as documented by the packet. No source, merge, move, or cleanup was performed by this review.
+
+Verdict: PASS for the exact cumulative GUI-118 behavior at 9519e2e8. This review does not claim protected-main merge or post-merge verification.
+
+
+--- Prior review history ---
+
 # Independent review — NEEDS-CHANGES
 
 Reviewed independently of author codex-recovery. Exact PR #219 head `e09009b2eadfc8a63608307f05ceb4868a5ec273`; the commit's direct parent is the requested CORE-043 head `1126253eed586111db60ed72eccf6754f0f5ef06`. At review time the target branch had advanced to `7654a28104fbc67c58cad61241188d0f3d898c17` through merged GUI-119, so GitHub reports that as PR base; no source from GUI-119 is included in the head commit.

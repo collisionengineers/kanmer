@@ -1,6 +1,63 @@
 ---
 kind: review-attestation
 pr: "168"
+head_sha: "9519e2e8ad9c0424b63d9b9d8c4e6ef2832a7401"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: pass
+reviewer: "codex-gui099-executor"
+independent: true
+plan_hash: "a0b32fae7b9b14f9"
+ticket_updated: "2026-08-22T23:20:40.773Z"
+findings:
+  - id: F-001
+    summary: "The CORE-043 protection-aware rename and lifecycle remediation remains present."
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "The exact 9519 cumulative tree retains fail-closed protected-default rename behavior, transactional preference persistence, serialized lifecycle operations, retained handoff state, and the cumulative CORE-048/052+ board-sync remediations."
+  - id: F-002
+    summary: "GUI-118 lifecycle findings are fixed in the merged cumulative branch."
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "GUI-118's exact 9519 review PASS confirms branch binding, Retry reconciliation, handoff/native state, user-scoped clearing, serialized open/preferences/Connect, and actionable recovery guidance."
+  - id: F-003
+    summary: "GUI-119 provider propagation and GUI-120 multi-project broadcast are retained."
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "PR #222 merged as 9519e2e8, with GUI-123's 1ef324c0/5d041af8 lineage: OpenAI/remote/Claude branch propagation and projectId: id multi-project broadcasts remain in the current parent branch."
+  - id: F-004
+    summary: "The current hosted gate passes while authoritative verification is still running."
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "Run 32604808898 kanmer-gate job 97108612019 is PASS; verify job 97108612103 is still in progress at attestation time. The merge decision must retain this pending verify boundary until the job completes."
+  - id: F-005
+    summary: "Live GitHub protection retargeting and native/provider host behavior remain unproven."
+    severity: minor
+    disposition: accepted-risk
+    reason: "ADR-0016/FRD-020 defer live protection mutation and no disposable native/packaged host was available; no external PASS is fabricated."
+---
+
+# Fresh cumulative independent review — CORE-043 PR #168 at 9519e2e8
+
+Reviewed exact PR #168 head 9519e2e8ad9c0424b63d9b9d8c4e6ef2832a7401 against main 34245be039e8fd8395b5e31835602c54e62e98a4. The head is the current CORE-043 branch after the non-squash GUI-122 merge; PR #222 merge commit 9519e2e8 is reachable and PR #222's GUI-123 remediation lineage is present.
+
+The cumulative source retains the original protection-aware rename path and its CORE-048/052+ remediation chain. The GUI-118 review confirms lifecycle/provider behavior; GUI-119 branch propagation and GUI-120 project-specific broadcasts are proven in the exact tree. No new in-scope source or traceability blocker was found.
+
+Evidence:
+
+- local GUI focused lifecycle/provider rail: 121/121 PASS with hookTimeout 30000; isolated index.sync: 11/11 PASS;
+- GUI typecheck/build: PASS;
+- scripts 89/89, verify:docs, manual, and diff checks: PASS;
+- hosted run 32604808898: kanmer-gate job 97108612019 PASS; verify job 97108612103 pending when this attestation was written;
+- live protection retargeting, installed native providers, packaged runtime, and visual evidence remain INCONCLUSIVE.
+
+Verdict: PASS for exact cumulative code and lineage, subject to the already-running hosted verify job completing successfully. No merge or board move was performed.
+
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "168"
 head_sha: "1126253eed586111db60ed72eccf6754f0f5ef06"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: needs-changes

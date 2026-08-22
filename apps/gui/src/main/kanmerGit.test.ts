@@ -96,7 +96,11 @@ describe("renameBoardBranch", () => {
     expect(await remoteHeads()).toContain("team-board");
 
     const renamed = await renameBoardBranch(boardRoot, "renamed-board");
-    expect(renamed).toEqual({ ok: true, from: "team-board", error: null });
+    expect(renamed).toEqual({
+      ok: true,
+      from: "team-board",
+      error: "Renamed and pushed renamed-board; retained old remote branch team-board. Update KANMER_BOARD_BRANCH to renamed-board, then delete team-board.",
+    });
 
     // The commits moved with the name — this is the actual bug: a fresh branch
     // under the new name would have left `before` unreachable from it.
@@ -109,8 +113,9 @@ describe("renameBoardBranch", () => {
     expect(pathIdentity(boardRoot)).toBe(pathIdentity(join(repo, ".worktrees", "kanmer")));
     expect(existsSync(join(boardRoot, ".kanmer", "version.json"))).toBe(true);
 
-    // Old remote branch is gone, and only after the new one was pushed.
-    expect(await remoteHeads()).not.toContain("team-board");
+    // The old custom ref remains until the hosted gate variable is retargeted.
+    expect(await git(origin, "rev-parse", "team-board")).toBe(before);
+    expect(await remoteHeads()).toEqual(expect.arrayContaining(["team-board", "renamed-board"]));
   });
 
   realGitTest("is a no-op when the name already matches", async () => {
@@ -330,11 +335,13 @@ describe("ensureBoardWorktree reconciliation", () => {
     const reopened = await ensureBoardWorktree(repo, "renamed-board");
 
     expect(reopened.available).toBe(true);
-    expect(reopened.error).toBeNull();
+    expect(reopened.error).toBe("Renamed and pushed renamed-board; retained old remote branch team-board. Update KANMER_BOARD_BRANCH to renamed-board, then delete team-board.");
     expect(pathIdentity(reopened.boardRoot!)).toBe(pathIdentity(boardRoot));
     expect(reopened.branch).toBe("renamed-board");
     expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("renamed-board");
     expect(await git(boardRoot, "rev-parse", "HEAD")).toBe(before);
+    expect(await git(origin, "rev-parse", "team-board")).toBe(before);
+    expect(await git(origin, "rev-parse", "renamed-board")).toBe(before);
   });
 
   realGitTest("refuses closed-project reconciliation from the protected default", async () => {

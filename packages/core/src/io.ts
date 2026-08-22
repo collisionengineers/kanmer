@@ -149,6 +149,36 @@ async function recoverStaleLock(
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
     throw error;
   }
+  // `rename` is atomic, but it cannot compare the inode that was inspected
+  // with the inode that is present at the path when the rename executes. A
+  // second reclaimer may therefore have replaced the stale record between
+  // our identity check and this call. Inspect the quarantine inode before
+  // deleting anything; if it is not the stale inode we examined, restore it
+  // without overwriting a newer lock. `link` is exclusive at the destination,
+  // so a concurrent winner that has already recreated the path is preserved.
+  let quarantinedContents: string;
+  let quarantinedStat: Stats;
+  try {
+    [quarantinedContents, quarantinedStat] = await Promise.all([fs.readFile(quarantineFile, "utf8"), fs.stat(quarantineFile)]);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+  const ownsInspectedInode =
+    quarantinedContents === initialContents &&
+    quarantinedStat.dev === initialStat.dev &&
+    quarantinedStat.ino === initialStat.ino &&
+    quarantinedStat.mtimeMs === initialStat.mtimeMs;
+  if (!ownsInspectedInode) {
+    try {
+      await fs.link(quarantineFile, lockFile);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      // A concurrent writer owns the path. Never replace or remove it.
+    }
+    await fs.rm(quarantineFile, { force: true });
+    return false;
+  }
   try {
     await fs.rm(quarantineFile);
   } catch (error) {

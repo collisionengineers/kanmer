@@ -236,6 +236,54 @@ describe("withExclusiveFileLock", () => {
     await expect(winner).resolves.toBe("winner");
   });
 
+  it("preserves a replacement lock when the stale reclaimer loses the rename race", async () => {
+    const file = path.join(dir, "cache-reversed.lock");
+    await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0 }), "utf8");
+
+    let firstCall = true;
+    let winnerRecreated!: () => void;
+    const winnerLockReady = new Promise<void>((resolve) => { winnerRecreated = resolve; });
+    let releaseWinner!: () => void;
+    const winnerRelease = new Promise<void>((resolve) => { releaseWinner = resolve; });
+    let loser: Promise<unknown> | undefined;
+    const renameStaleLock = async (from: string, to: string): Promise<void> => {
+      if (firstCall) {
+        firstCall = false;
+        loser = withExclusiveFileLock(file, async () => {
+          winnerRecreated();
+          await winnerRelease;
+          return "winner";
+        }, {
+          now: () => 60_000,
+          staleAfterMs: 30_000,
+          processAlive: () => false,
+          retryDelaysMs: [0],
+          renameStaleLock,
+        });
+        await winnerLockReady;
+        // The second reclaimer has claimed and recreated the original path;
+        // this delayed rename is the reversed ordering under test.
+        await fs.rename(from, to);
+        return;
+      }
+      await fs.rename(from, to);
+    };
+
+    const staleReclaimer = withExclusiveFileLock(file, async () => "stale-reclaimer", {
+      now: () => 60_000,
+      staleAfterMs: 30_000,
+      processAlive: () => false,
+      retryDelaysMs: [0],
+      renameStaleLock,
+    });
+    await expect(staleReclaimer).rejects.toMatchObject({ code: "EEXIST" });
+    if (!loser) throw new Error("winner reclaimer was not started");
+    expect(await fs.readFile(file, "utf8")).toContain(`\"pid\":${process.pid}`);
+    releaseWinner();
+    await expect(loser).resolves.toBe("winner");
+    await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("preserves fresh, active, malformed, and uncertain locks", async () => {
     const file = path.join(dir, "cache.lock");
     for (const [contents, processAlive] of [

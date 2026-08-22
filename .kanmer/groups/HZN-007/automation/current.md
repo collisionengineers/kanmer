@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T03:35:16.090Z
+updated_at: 2026-08-22T03:50:00Z
 ---
 
 # Current auto run — HZN-007
@@ -183,3 +183,6 @@ Last handoff: 2026-08-22T03:12:42.450Z — MCP-015 is the second implementation 
 
 
 2026-08-22T03:47:56Z — GUI-107 exact merged-main verification PASS on 241ff13e048e4535a69d7375b9f734d9a4606cf8: final npm test passed (core 266/266, GUI 360/360, HTTP 61/61, scripts 82/82) after build:core; first missing-dist 80/82 attempt preserved. Proof written, Verifying → Done moved, Outcome recorded, ticket checklist closeout finalized. PR #151 merge 241ff13e; ticket worktree .worktrees/gui-107 and branch gui-107-custom-requires removed, detached verifier worktree removed, fetch/worktree prune passed, take_ticket release completed. Manual Electron visual evidence remains parked INCONCLUSIVE.
+
+
+2026-08-22T03:50:00Z — MCP-015 independent review needs-changes on PR #152 head dd83db295b5a836503c894fe4b38ea1ff7639266. Hosted verify run 32549912338/job 96974849841 failed three connect.test.ts assertions (159, 308, 503): legacy disconnectAgent("antigravity") fixtures now route through native plugin disconnect and return ok:false when agy plugin list is unavailable. Finding F-001 major/open recorded in scratch/review; author lane asked to reconcile legacy migration/disconnect safely, rerun focused/full/hosted rails, and return with a new head. No merge or stage move.

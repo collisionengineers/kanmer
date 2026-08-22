@@ -23,3 +23,6 @@
 
 
 2026-08-22T06:20Z — MCP-028 independent review needs changes\n\n- PR #154 head 41ba4e3 local deterministic rails are broadly green and hosted verify run 32553943168/job 96985075079 is pending. Review attestation records F-001..F-004 open: no public-doctor invocation/evidence, incomplete document update/readback/archive lifecycle, unreachable duplicate evidence helpers, and swallowed cleanup/idempotence failures. Author remediation requested; no merge or stage move. Live Cloudflare credentials/tunnel/Worker proof remains INCONCLUSIVE.
+
+
+2026-08-22T05:22Z — run-pointer timestamp correction\n\n- The preceding GUI-106 and MCP-028 event labels were written with a future wall-clock minute while coordinating concurrent lanes. No evidence ordering or board state changes; this correction records the current UTC handoff time and the live statuses (GUI-106 merge-conflict remediation pending push; MCP-028 review needs changes; CORE-024 implementation in progress).

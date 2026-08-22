@@ -630,3 +630,6 @@ CORE-044 Verifying after PASS/merge e794cbf7 into CORE-026. CORE-026 traceabilit
 
 
 CORE-077 PASS exact 517339c9, PR #198 merged non-squash into CORE-060 as 7b0238cf; moved Verifying and removed block. CORE-078 remains Preparing pending next sequential implementation.
+
+
+CORE-026 review NEEDS-CHANGES at e794cbf7: hosted verify F-022 Windows path spelling failure filed as CORE-079 linked/blocking CORE-026. CORE-077/078 remediation chain for CORE-060 continues.

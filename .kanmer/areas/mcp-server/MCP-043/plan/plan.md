@@ -26,3 +26,7 @@ The report will identify the merge-base under test, artifact SHA-256 values, exa
 
 - A linked-worktree dependency resolution or missing MCPB tool may make a rail environment-only; retain the exact failure and rerun only with a documented, non-source setup correction.
 - A diff outside the committed artifact means the scope is not bounded; stop and investigate rather than committing it.
+
+## Dependency addendum
+
+The initial origin/main build was already byte-current, so no useful PR could be opened from that base. The hosted dependent PR #155 run 32556078470/job 96990290597 proves the actionable mismatch: its new check-pr source produces a fresh MCPB server that differs from the distributed plugin at scripts/check-mcpb-sync.mjs:44. To keep MCP-043 artifact-only and avoid changing CORE-024, the dedicated branch fast-forwarded to PR #155 head 34044bccb7861dc81c16add91386b43570fda11c, regenerated only plugins/kanmer/mcp/kanmer-mcp.cjs, and will target the dependent source branch. This records dependency context; no CORE-024 board/document/source mutation is part of MCP-043.

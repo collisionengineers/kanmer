@@ -21,3 +21,7 @@ The implementation is a one-file generated-artifact refresh. The canonical build
 ## Open questions
 
 None for this bounded remediation. The hosted rerun remains an independent CI/review concern and will be recorded without fabrication if unavailable.
+
+## Verification-trigger addendum
+
+The initial canonical build from origin/main was a clean no-op: the origin/main committed plugin and fresh standalone both hashed da83351d64612d365ad3a9a48e2adb4bb43c54e1c0bc905ef75dfd2efcfe9fb1. The dependent PR #155 source adds the check-pr MCP surface after that base; its hosted verify run 32556078470/job 96990290597 failed at scripts/check-mcpb-sync.mjs:44 with the exact error MCPB server differs from distributed plugin copy. The implementation lane therefore fast-forwarded its dedicated branch to PR #155 head 34044bccb7861dc81c16add91386b43570fda11c, regenerated the plugin only, and will open the artifact PR against that source branch. No CORE-024 board/docs/source were edited.

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { renameWithRetry, writeFileAtomic, TMP_FILE_RE } from "./io.js";
+import { renameWithRetry, withExclusiveFileLock, writeFileAtomic, TMP_FILE_RE } from "./io.js";
 
 let dir: string;
 
@@ -145,5 +145,43 @@ describe("TMP_FILE_RE", () => {
     for (const name of ["TICK-162.md", "board.yml", ".gitignore", "notes.tmp"]) {
       expect(TMP_FILE_RE.test(name), name).toBe(false);
     }
+  });
+});
+
+describe("withExclusiveFileLock", () => {
+  it("recovers a stale lock only when the recorded owner is dead", async () => {
+    const file = path.join(dir, "cache.lock");
+    await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0 }), "utf8");
+    const result = await withExclusiveFileLock(file, async () => "recovered", {
+      now: () => 60_000,
+      staleAfterMs: 30_000,
+      processAlive: () => false,
+      retryDelaysMs: [0],
+    });
+    expect(result).toBe("recovered");
+    await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("preserves fresh, active, malformed, and uncertain locks", async () => {
+    const file = path.join(dir, "cache.lock");
+    for (const [contents, processAlive] of [
+      [JSON.stringify({ pid: 12345, createdAt: 59_999 }), () => false],
+      [JSON.stringify({ pid: 12345, createdAt: 0 }), () => true],
+      ["not-json", () => false],
+    ] as const) {
+      await fs.writeFile(file, contents, "utf8");
+      await expect(withExclusiveFileLock(file, async () => undefined, {
+        now: () => 60_000,
+        staleAfterMs: 30_000,
+        processAlive,
+        retryDelaysMs: [0],
+      })).rejects.toMatchObject({ code: "EEXIST" });
+    }
+  });
+
+  it("always releases a claimed lock after callback failure", async () => {
+    const file = path.join(dir, "cache.lock");
+    await expect(withExclusiveFileLock(file, async () => { throw new Error("callback failed"); })).rejects.toThrow("callback failed");
+    await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
   });
 });

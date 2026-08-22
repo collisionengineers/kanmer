@@ -38008,21 +38008,85 @@ async function statOrNull(p) {
 var RENAME_RETRY_MS = [10, 25, 60, 150, 300];
 var TRANSIENT_RENAME_CODES = /* @__PURE__ */ new Set(["EPERM", "EBUSY", "EACCES"]);
 var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-async function withExclusiveFileLock(lockFile, work) {
-  const delays = [10, 25, 60, 150, 300, 600, 1e3];
+var DEFAULT_LOCK_STALE_MS = 3e4;
+var DEFAULT_LOCK_RETRY_MS = [10, 25, 60, 150, 300, 600, 1e3];
+function parseLockRecord(contents) {
+  try {
+    const parsed = JSON.parse(contents);
+    if (parsed && typeof parsed === "object" && Number.isInteger(parsed.pid) && (parsed.createdAt === void 0 || typeof parsed.createdAt === "number")) {
+      return parsed;
+    }
+  } catch {
+  }
+  const pid = Number(contents.trim());
+  return Number.isInteger(pid) && pid > 0 ? { pid } : null;
+}
+function defaultProcessAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error2) {
+    return error2.code !== "ESRCH";
+  }
+}
+async function recoverStaleLock(lockFile, options2) {
+  let initialContents;
+  let initialStat;
+  try {
+    [initialContents, initialStat] = await Promise.all([import_promises.default.readFile(lockFile, "utf8"), import_promises.default.stat(lockFile)]);
+  } catch (error2) {
+    return error2.code === "ENOENT";
+  }
+  const record2 = parseLockRecord(initialContents);
+  const createdAt = record2?.createdAt ?? initialStat.mtimeMs;
+  if (!record2 || options2.now() - createdAt < options2.staleAfterMs) return false;
+  let alive;
+  try {
+    alive = options2.processAlive(record2.pid);
+  } catch {
+    return false;
+  }
+  if (alive) return false;
+  try {
+    const [currentContents, currentStat] = await Promise.all([import_promises.default.readFile(lockFile, "utf8"), import_promises.default.stat(lockFile)]);
+    if (currentContents !== initialContents || currentStat.mtimeMs !== initialStat.mtimeMs) return false;
+    await import_promises.default.rm(lockFile);
+    return true;
+  } catch (error2) {
+    return error2.code === "ENOENT";
+  }
+}
+async function withExclusiveFileLock(lockFile, work, options2 = {}) {
+  const delays = options2.retryDelaysMs ?? DEFAULT_LOCK_RETRY_MS;
+  const lockOptions = {
+    staleAfterMs: options2.staleAfterMs ?? DEFAULT_LOCK_STALE_MS,
+    now: options2.now ?? Date.now,
+    processAlive: options2.processAlive ?? defaultProcessAlive
+  };
   await ensureDir(import_path3.default.dirname(lockFile));
   let claimed = false;
   let lastError;
   for (let attempt = 0; attempt <= delays.length; attempt++) {
     try {
-      await writeFileExclusive(lockFile, `${process.pid}
+      await writeFileExclusive(lockFile, `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now() })}
 `);
       claimed = true;
       break;
     } catch (error2) {
       lastError = error2;
       const code = error2.code ?? "";
-      if (code !== "EEXIST" || attempt === delays.length) throw error2;
+      if (code !== "EEXIST") throw error2;
+      if (await recoverStaleLock(lockFile, lockOptions)) {
+        try {
+          await writeFileExclusive(lockFile, `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now() })}
+`);
+          claimed = true;
+          break;
+        } catch (retryError) {
+          lastError = retryError;
+        }
+      }
+      if (attempt === delays.length) throw error2;
       await sleep(delays[attempt]);
     }
   }
@@ -41934,17 +41998,43 @@ function canonicalHttpsUrl(value) {
   if (parsed.port === "443") parsed.port = "";
   return parsed;
 }
+function isNonGlobalIpv4(hostname2) {
+  const octets = hostname2.split(".").map(Number);
+  if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return true;
+  const [a, b, c] = octets;
+  return a === 0 || a === 10 || a === 127 || a === 100 && b >= 64 && b <= 127 || a === 169 && b === 254 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 0 || a === 192 && b === 0 && c === 2 || a === 192 && b === 31 && c === 196 || a === 192 && b === 52 && c === 193 || a === 192 && b === 88 && c === 99 || a === 192 && b === 168 || a === 198 && b >= 18 && b <= 19 || a === 198 && b === 51 && c === 100 || a === 203 && b === 0 && c === 113 || a >= 224;
+}
+function parseIpv6Groups(value) {
+  let normalized = value.toLowerCase();
+  const lastColon = normalized.lastIndexOf(":");
+  const dotted = normalized.slice(lastColon + 1);
+  if (dotted.includes(".")) {
+    const octets = dotted.split(".").map(Number);
+    if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return null;
+    normalized = `${normalized.slice(0, lastColon + 1)}${(octets[0] << 8 | octets[1]).toString(16)}:${(octets[2] << 8 | octets[3]).toString(16)}`;
+  }
+  const halves = normalized.split("::");
+  if (halves.length > 2) return null;
+  const left = halves[0] ? halves[0].split(":").filter(Boolean).map((group) => Number.parseInt(group, 16)) : [];
+  const right = halves.length === 2 && halves[1] ? halves[1].split(":").filter(Boolean).map((group) => Number.parseInt(group, 16)) : [];
+  if ([...left, ...right].some((group) => !Number.isInteger(group) || group < 0 || group > 65535)) return null;
+  const missing = 8 - left.length - right.length;
+  if (halves.length === 1 && missing !== 0 || missing < 0) return null;
+  return [...left, ...Array.from({ length: missing }, () => 0), ...right];
+}
 function isPrivateAddress(hostname2) {
   const normalized = hostname2.toLowerCase().replace(/^[\[]|[\]]$/g, "");
   const version2 = (0, import_node_net.isIP)(normalized);
-  if (version2 === 4) {
-    const octets = normalized.split(".").map(Number);
-    const [a, b] = octets;
-    return a === 0 || a === 10 || a === 127 || a === 169 && b === 254 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 168 || a === 100 && b >= 64 && b <= 127 || a >= 224;
-  }
+  if (version2 === 4) return isNonGlobalIpv4(normalized);
   if (version2 !== 6) return false;
-  if (normalized.startsWith("::ffff:")) return isPrivateAddress(normalized.slice(7));
-  return normalized === "::1" || normalized === "::" || normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe8") || normalized.startsWith("fe9") || normalized.startsWith("fea") || normalized.startsWith("feb") || normalized.startsWith("ff");
+  const groups = parseIpv6Groups(normalized);
+  if (!groups) return true;
+  const [first, second, third, fourth, fifth, sixth, seventh, eighth] = groups;
+  if (first === 0 && second === 0 && third === 0 && fourth === 0 && fifth === 0 && sixth === 65535) {
+    const mapped = `${seventh >> 8 & 255}.${seventh & 255}.${eighth >> 8 & 255}.${eighth & 255}`;
+    return isNonGlobalIpv4(mapped);
+  }
+  return first === 0 || first === 256 && second === 0 && third === 0 && fourth === 0 || first === 8193 && second === 2 && third === 0 || first === 8193 && (second & 65520) === 16 || first === 8193 && (second & 65520) === 32 || first === 8193 && second === 3512 || first >= 64512 && first <= 65023 || first >= 65152 && first <= 65215 || first >= 65280 || first === 16383;
 }
 async function assertPublicDestination(url, lookupImpl) {
   const hostname2 = url.hostname.toLowerCase().replace(/[\[\]]/g, "");

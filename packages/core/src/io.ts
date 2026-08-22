@@ -58,24 +58,118 @@ const TRANSIENT_RENAME_CODES = new Set(["EPERM", "EBUSY", "EACCES"]);
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+export interface ExclusiveFileLockOptions {
+  staleAfterMs?: number;
+  now?: () => number;
+  processAlive?: (pid: number) => boolean;
+  retryDelaysMs?: readonly number[];
+}
+
+const DEFAULT_LOCK_STALE_MS = 30_000;
+const DEFAULT_LOCK_RETRY_MS = [10, 25, 60, 150, 300, 600, 1_000] as const;
+
+interface LockRecord {
+  pid: number;
+  createdAt?: number;
+}
+
+function parseLockRecord(contents: string): LockRecord | null {
+  try {
+    const parsed: unknown = JSON.parse(contents);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      Number.isInteger((parsed as { pid?: unknown }).pid) &&
+      (parsed as { pid: number }).pid > 0 &&
+      ((parsed as { createdAt?: unknown }).createdAt === undefined || typeof (parsed as { createdAt?: unknown }).createdAt === "number")
+    ) {
+      return parsed as LockRecord;
+    }
+  } catch {
+    // Legacy lock records are just a PID followed by a newline.
+  }
+  const pid = Number(contents.trim());
+  return Number.isInteger(pid) && pid > 0 ? { pid } : null;
+}
+
+function defaultProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM means the process exists but this process cannot inspect it.
+    return (error as NodeJS.ErrnoException).code !== "ESRCH";
+  }
+}
+
+async function recoverStaleLock(
+  lockFile: string,
+  options: Required<Pick<ExclusiveFileLockOptions, "staleAfterMs" | "now" | "processAlive">>,
+): Promise<boolean> {
+  let initialContents: string;
+  let initialStat: Stats;
+  try {
+    [initialContents, initialStat] = await Promise.all([fs.readFile(lockFile, "utf8"), fs.stat(lockFile)]);
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "ENOENT";
+  }
+  const record = parseLockRecord(initialContents);
+  const createdAt = record?.createdAt ?? initialStat.mtimeMs;
+  if (!record || options.now() - createdAt < options.staleAfterMs) return false;
+  let alive: boolean;
+  try {
+    alive = options.processAlive(record.pid);
+  } catch {
+    return false;
+  }
+  if (alive) return false;
+  // Re-read before unlinking so a concurrent replacement is never treated as
+  // the stale record we inspected. A race after this check fails closed via
+  // the next exclusive claim attempt.
+  try {
+    const [currentContents, currentStat] = await Promise.all([fs.readFile(lockFile, "utf8"), fs.stat(lockFile)]);
+    if (currentContents !== initialContents || currentStat.mtimeMs !== initialStat.mtimeMs) return false;
+    await fs.rm(lockFile);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "ENOENT";
+  }
+}
+
 /** Serialize a critical section across processes with an exclusive lock file. */
 export async function withExclusiveFileLock<T>(
   lockFile: string,
   work: () => Promise<T>,
+  options: ExclusiveFileLockOptions = {},
 ): Promise<T> {
-  const delays = [10, 25, 60, 150, 300, 600, 1_000];
+  const delays = options.retryDelaysMs ?? DEFAULT_LOCK_RETRY_MS;
+  const lockOptions = {
+    staleAfterMs: options.staleAfterMs ?? DEFAULT_LOCK_STALE_MS,
+    now: options.now ?? Date.now,
+    processAlive: options.processAlive ?? defaultProcessAlive,
+  };
   await ensureDir(path.dirname(lockFile));
   let claimed = false;
   let lastError: unknown;
   for (let attempt = 0; attempt <= delays.length; attempt++) {
     try {
-      await writeFileExclusive(lockFile, `${process.pid}\n`);
+      await writeFileExclusive(lockFile, `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now() })}\n`);
       claimed = true;
       break;
     } catch (error) {
       lastError = error;
       const code = (error as NodeJS.ErrnoException).code ?? "";
-      if (code !== "EEXIST" || attempt === delays.length) throw error;
+      if (code !== "EEXIST") throw error;
+      if (await recoverStaleLock(lockFile, lockOptions)) {
+        try {
+          await writeFileExclusive(lockFile, `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now() })}\n`);
+          claimed = true;
+          break;
+        } catch (retryError) {
+          lastError = retryError;
+        }
+      }
+      if (attempt === delays.length) throw error;
       await sleep(delays[attempt]!);
     }
   }

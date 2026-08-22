@@ -84,28 +84,72 @@ function canonicalHttpsUrl(value: string): URL {
   return parsed;
 }
 
+function isNonGlobalIpv4(hostname: string): boolean {
+  const octets = hostname.split(".").map(Number);
+  if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return true;
+  const [a, b, c] = octets;
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 0) ||
+    (a === 192 && b === 0 && c === 2) ||
+    (a === 192 && b === 31 && c === 196) ||
+    (a === 192 && b === 52 && c === 193) ||
+    (a === 192 && b === 88 && c === 99) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && b >= 18 && b <= 19) ||
+    (a === 198 && b === 51 && c === 100) ||
+    (a === 203 && b === 0 && c === 113) ||
+    a >= 224
+  );
+}
+
+function parseIpv6Groups(value: string): number[] | null {
+  let normalized = value.toLowerCase();
+  const lastColon = normalized.lastIndexOf(":");
+  const dotted = normalized.slice(lastColon + 1);
+  if (dotted.includes(".")) {
+    const octets = dotted.split(".").map(Number);
+    if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return null;
+    normalized = `${normalized.slice(0, lastColon + 1)}${((octets[0]! << 8) | octets[1]!).toString(16)}:${((octets[2]! << 8) | octets[3]!).toString(16)}`;
+  }
+  const halves = normalized.split("::");
+  if (halves.length > 2) return null;
+  const left = halves[0] ? halves[0].split(":").filter(Boolean).map((group) => Number.parseInt(group, 16)) : [];
+  const right = halves.length === 2 && halves[1] ? halves[1].split(":").filter(Boolean).map((group) => Number.parseInt(group, 16)) : [];
+  if ([...left, ...right].some((group) => !Number.isInteger(group) || group < 0 || group > 0xffff)) return null;
+  const missing = 8 - left.length - right.length;
+  if ((halves.length === 1 && missing !== 0) || missing < 0) return null;
+  return [...left, ...Array.from({ length: missing }, () => 0), ...right];
+}
+
 function isPrivateAddress(hostname: string): boolean {
   const normalized = hostname.toLowerCase().replace(/^[\[]|[\]]$/g, "");
   const version = isIP(normalized);
-  if (version === 4) {
-    const octets = normalized.split(".").map(Number);
-    const [a, b] = octets;
-    return (
-      a === 0 || a === 10 || a === 127 ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      (a === 100 && b >= 64 && b <= 127) || a >= 224
-    );
-  }
+  if (version === 4) return isNonGlobalIpv4(normalized);
   if (version !== 6) return false;
-  if (normalized.startsWith("::ffff:")) return isPrivateAddress(normalized.slice(7));
+  const groups = parseIpv6Groups(normalized);
+  if (!groups) return true;
+  const [first, second, third, fourth, fifth, sixth, seventh, eighth] = groups;
+  if (first === 0 && second === 0 && third === 0 && fourth === 0 && fifth === 0 && sixth === 0xffff) {
+    const mapped = `${(seventh! >> 8) & 0xff}.${seventh! & 0xff}.${(eighth! >> 8) & 0xff}.${eighth! & 0xff}`;
+    return isNonGlobalIpv4(mapped);
+  }
   return (
-    normalized === "::1" || normalized === "::" ||
-    normalized.startsWith("fc") || normalized.startsWith("fd") ||
-    normalized.startsWith("fe8") || normalized.startsWith("fe9") ||
-    normalized.startsWith("fea") || normalized.startsWith("feb") ||
-    normalized.startsWith("ff")
+    first === 0 ||
+    (first === 0x100 && second === 0 && third === 0 && fourth === 0) ||
+    (first === 0x2001 && second === 0x0002 && third === 0) ||
+    (first === 0x2001 && (second! & 0xfff0) === 0x0010) ||
+    (first === 0x2001 && (second! & 0xfff0) === 0x0020) ||
+    (first === 0x2001 && second === 0x0db8) ||
+    (first >= 0xfc00 && first <= 0xfdff) ||
+    (first >= 0xfe80 && first <= 0xfebf) ||
+    first >= 0xff00 ||
+    first === 0x3fff
   );
 }
 

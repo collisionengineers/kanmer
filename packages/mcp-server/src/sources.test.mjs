@@ -87,6 +87,64 @@ test("invalid or unbounded source URLs fail before network access", async () => 
   }
 });
 
+test("fails closed for non-global DNS destinations, including mapped IPv4", async () => {
+  const addresses = [
+    "0.0.0.1",
+    "100.64.0.1",
+    "192.0.0.1",
+    "192.0.2.1",
+    "192.31.196.1",
+    "192.52.193.1",
+    "192.88.99.1",
+    "198.18.0.1",
+    "198.51.100.1",
+    "203.0.113.1",
+    "224.0.0.1",
+    "::ffff:c000:0201",
+    "::ffff:192.0.2.1",
+    "100::1",
+    "2001:2::1",
+    "2001:10::1",
+    "2001:1f::1",
+    "2001:20::1",
+    "2001:2f::1",
+    "2001:db8::1",
+    "3fff::1",
+    "fc00::1",
+    "fe80::1",
+    "ff02::1",
+  ];
+  for (const address of addresses) {
+    const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-dns-"));
+    try {
+      await assert.rejects(
+        () => fetchLlmsTxt({
+          url: "https://docs.example.test/llms.txt",
+          cacheDir,
+          fetchImpl: async () => fakeResponse("# should not fetch"),
+          lookupImpl: async () => [address],
+        }),
+        /private or local destination/,
+        address,
+      );
+    } finally {
+      await rm(cacheDir, { recursive: true, force: true });
+    }
+  }
+  const publicCache = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-dns-public-"));
+  try {
+    const result = await fetchLlmsTxt({
+      url: "https://docs.example.test/llms.txt",
+      cacheDir: publicCache,
+      fetchImpl: async () => fakeResponse("# public"),
+      lookupImpl: async () => ["93.184.216.34"],
+    });
+    assert.equal(result.documents[0].text, "# public");
+  } finally {
+    await rm(publicCache, { recursive: true, force: true });
+  }
+});
+
 test("validates each redirect hop and resolves relative links from the final URL", async () => {
   const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-"));
   try {

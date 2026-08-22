@@ -21,3 +21,7 @@ checks:
 ---
 
 Independent review of PR #149 at head 88ec63078a10f3fbabbb57d1ad2ae451fccf4a06: the nine-line smoke-only change directly addresses the hosted D:-drive mismatch by deriving path.parse(process.cwd()).root on Windows. It preserves the explicit C:-drive canonical-path vectors and exact fingerprint assertion, with no production or unrelated CI scope. Local focused smoke/build/typecheck/scripts/diff rails pass. Merge remains held until the required hosted verify check completes; no findings.
+
+## CI update — 2026-08-22
+
+PR #149 run 32544709172 completed in 1:16 with the smoke fix no longer implicated; the required verify rail reached the existing GUI path-alias assertion and failed 351/352: expected C:\Users\RUNNER~1\AppData\Local\Temp\... but received C:\Users\runneradmin\AppData\Local\Temp\.... This is the pre-existing CORE-032/CORE-037 rail defect, not a finding in CORE-041. The PR is held and will be superseded by stacking 88ec6307 into PR #145 after preserving the exact hosted evidence.

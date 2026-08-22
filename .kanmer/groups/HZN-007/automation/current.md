@@ -887,3 +887,8 @@ Last handoff: 2026-08-23T00:12:00Z — GUI-122 is Review-ready on gui-122-rebase
 ## GUI-123 handoff
 
 GUI-123 is Implementing on gui-123-preserve-gui120 / .worktrees/gui-123. It integrates GUI-120 merge 37740379552e241f200bb181a2ca0e9d3be32ece into GUI-122 head 94d9fca2 as clean head 5d041af8, restoring projectId:id multi-project Connect broadcast coverage while preserving GUI-119 provider propagation. Focused cumulative rail is 121/121; GUI typecheck/build, scripts 89/89, verify:docs and diff-check pass. Full workspace typecheck exits 1 on inherited mcp-server/core dispatch mismatch and is INCONCLUSIVE. PR will target gui-122-rebase-provider-propagation; stop at Review for independent review.
+
+
+## GUI-123 Review handoff
+
+GUI-123 is now Review on gui-123-preserve-gui120 / .worktrees/gui-123. Exact head 5d041af8886a2d307f0830690534a91cb519dc9c is pushed in PR #223 targeting gui-122-rebase-provider-propagation. It integrates GUI-120 37740379552e241f200bb181a2ca0e9d3be32ece into GUI-122 94d9fca2, restoring projectId:id multi-project Connect broadcast coverage while retaining GUI-119 provider propagation. Focused cumulative rail 121/121, GUI typecheck/build, scripts 89/89, verify:docs and diff-check passed. Full workspace typecheck inherited mcp-server/core dispatch mismatch is INCONCLUSIVE. Awaiting independent review; no merge or cleanup.

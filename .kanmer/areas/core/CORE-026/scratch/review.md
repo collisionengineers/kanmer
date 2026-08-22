@@ -1,6 +1,125 @@
 ---
 kind: review-attestation
 pr: "163"
+head_sha: "3a05ab7a21f55152a4f493169300ac9e622baab7"
+base_sha: "84a20f8414264f65f6d851ca51849af89c80acf9"
+verdict: pass
+reviewer: "codex-gui082-executor"
+independent: true
+plan_hash: "9916aa9641b6a15d"
+ticket_updated: "2026-08-22T17:30:26.490Z"
+findings:
+  - id: F-001
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Redirect destination and same-origin controls are present and covered by the cumulative source regressions."
+  - id: F-002
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Board/source concurrency handling is covered by the cumulative remediation and core rails."
+  - id: F-003
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Atomic cache writes and stale-lock recovery are present in the cumulative remediation chain."
+  - id: F-004
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "AGENTS, skills, tool reference, generated plugin, and roster synchronization are green."
+  - id: F-005
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "Streaming aggregate-byte enforcement is covered by the 19/19 MCP source suite."
+  - id: F-006
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Root and linked credential-bearing URLs are rejected or stripped by the cumulative fetch implementation."
+  - id: F-007
+    severity: minor
+    disposition: accepted-risk
+    reason: "Separate linked-page freshness on a root 304 remains the documented bounded first-release risk."
+  - id: F-008
+    severity: minor
+    disposition: accepted-risk
+    reason: "Project-local bounded cache persistence is specified by FRD-027 and ADR-0020."
+  - id: F-009
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "DNS destination checks, request pinning, hop limits, and deadlines are covered by source regressions."
+  - id: F-010
+    severity: minor
+    disposition: fixed-in-cumulative-stack
+    reason: "Empty selector/global semantics are covered by the source contract and tests."
+  - id: F-011
+    severity: minor
+    disposition: fixed-in-cumulative-stack
+    reason: "Canonical source identity and duplicate handling are covered by the source contract."
+  - id: F-012
+    severity: minor
+    disposition: fixed-in-cumulative-stack
+    reason: "Redirected-root relative-link resolution is covered by the fetch regressions."
+  - id: F-013
+    severity: minor
+    disposition: fixed-in-cumulative-stack
+    reason: "Direct documentation-page budgeting and non-document link filtering are covered by source tests."
+  - id: F-014
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "The MCP source suite is explicitly run and passed 19/19."
+  - id: F-015
+    severity: minor
+    disposition: fixed-in-cumulative-stack
+    reason: "Fragment normalization is covered by the fetch remediation."
+  - id: F-016
+    severity: minor
+    disposition: fixed-in-cumulative-stack
+    reason: "Unavailable declared sources are represented and skipped by refreshed guidance."
+  - id: F-017
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "MCP source inputs reuse the core schema authority."
+  - id: F-018
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "Missing and unsupported content types are rejected by the bounded fetch contract."
+  - id: F-019
+    severity: minor
+    disposition: accepted-risk
+    reason: "GUI source editing/discovery is explicitly deferred by the plan; this PR does not claim it."
+  - id: F-020
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Linked query credentials are rejected or stripped by the cumulative source fetch implementation."
+  - id: F-021
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "Failed oversized linked downloads charge aggregate bytes and are covered by source regressions."
+  - id: F-022
+    severity: blocker
+    disposition: fixed-in-PR
+    reason: "PR #200 merged into this head and normalizes the three Windows board-root assertions through the existing pathIdentity helper."
+---
+
+## Independent cumulative review — CORE-026 / PR #163
+
+The exact cumulative head is 3a05ab7a21f55152a4f493169300ac9e622baab7, including the non-squash PR #200 merge 3a05ab7a. The PR #200 diff is limited to the three Windows path-spelling assertions in apps/gui/src/main/kanmerGit.test.ts, all now comparing filesystem identity through the existing helper. The cumulative source/MCP/core remediation remains bounded to the ticket and its linked review remediations; no GUI production behavior or unrelated provider surface was added.
+
+Exact-head evidence:
+
+- focused GUI kanmerGit.test.ts: exit 0, 27/27;
+- core suite: exit 0, 303/303;
+- MCP source suite: first pre-build attempt exit 1 because packages/mcp-server/dist/index.js was absent; after the prescribed build, exit 0, 19/19;
+- npm run build: exit 0 for core/browser and MCP server/standalone;
+- npm run test:scripts: exit 0, 88/88;
+- git diff --check: exit 0;
+- hosted run 32587889875: kanmer-gate and authoritative verify both PASS.
+
+The first pre-build failure is preserved and not erased by the successful rerun. Connected-provider, live external llms.txt, packaged-update, and live DNS/rebinding evidence remain INCONCLUSIVE where not directly exercised. Verdict: PASS; merge PR #163 non-squash into main, then move CORE-026 to Verifying.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "163"
 head_sha: "b5ae6f36e007a05fffd9bb2f1c6ea4a87a860477"
 verdict: needs-changes
 reviewer: "gui099-executor"

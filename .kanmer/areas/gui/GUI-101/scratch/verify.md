@@ -1,3 +1,5 @@
 2026-08-22T03:06:02.231Z — Fresh merged-main shared rail at 4f785781e7f1993fbcde5e474640db509737c0bd: npm run verify exited 0. Build, manual freshness, core 266/266, GUI 355/355, MCP HTTP 61/61, scripts 82/82, all-workspace typecheck, MCP smoke 224/224, mcpb/plugin parity, protocol 46/46, discovery 13/13, skills/AGENTS checks and diff-check all passed. This strengthens deterministic merged-main evidence only; ticket-specific real external acceptance remains unchanged and is not fabricated.
 
 2026-08-22T03:14:30.616Z — Fresh merged-main packaged rail at 4f785781e7f1993fbcde5e474640db509737c0bd: npm run dist:check exited 0; Electron Windows packaging completed and updater package check passed (8/8). This proves deterministic packaged output only; no installed update or external release/tag claim is made.
+
+2026-08-22 final-rule audit: Done proof covers deterministic merged-main/package rails, while the checklist remains 30/75 with real installed NSIS/update/two-location/manual evidence unchecked and explicitly INCONCLUSIVE. No unsupported boxes are ticked; .codex/config.toml remains ignored. This runtime/manual evidence gap requires Done→Verifying.

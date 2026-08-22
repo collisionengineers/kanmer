@@ -16,7 +16,6 @@
 - [x] Record real packaged-update/live-session/junction/uninstall evidence as INCONCLUSIVE where unavailable.
 - [x] Write and read back the post-implementation report, scratch handoff, commit, and PR traceability.
 - [x] Re-read get_doc_gates and move Implementing to Review only; stop for independent review.
-
 # Closeout checklist
 
 ## Closeout — GUI-106
@@ -25,14 +24,9 @@
 - [x] proof.md finalised (merged-main rails and packaged-host INCONCLUSIVE boundary recorded)
 - [x] Moved to final stage
 - [x] Outcome recorded in ticket body (PR link, deterministic proof, packaged-host follow-up)
-- [ ] cd out of worktree; git worktree remove .worktrees/gui-106
-- [ ] git branch -d gui-106-runtime-boundary
-- [ ] git fetch --prune + git worktree prune
-- [ ] take_ticket action: release
-
-## Closeout completion — GUI-106
-
 - [x] Worktree removed: .worktrees/gui-106
 - [x] Branch deleted locally: gui-106-runtime-boundary
 - [x] git fetch --prune origin and git worktree prune completed
-- [x] take_ticket action: release completed
+- [x] take_ticket action: release
+
+Cleanup was already recorded in the prior completion notes and independently confirmed: the exact worktree and local branch are absent.

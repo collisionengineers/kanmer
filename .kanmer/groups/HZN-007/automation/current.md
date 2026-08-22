@@ -660,3 +660,6 @@ Reachability audit corrected CORE-045/047/049 back to Verifying; CORE-044–057 
 
 
 PR #163 hosted verify and kanmer-gate run 32587889875 both PASS after CORE-079 merge. Fresh cumulative CORE-026 review/merge on exact updated head is now the next action; no main merge yet.
+
+
+Awaiting gui082 fresh cumulative CORE-026 review/PR163 merge after all hosted checks passed; GUI099 is auditing Done-but-incomplete integration tickets. No controller merge performed.

@@ -1,0 +1,1 @@
+2026-08-22 final-rule audit: Done proof and merged-main deterministic rails are PASS, but checklist remains 29/32 with two unchecked preparation implementation/evidence items and one explicitly parked external publish/update item. No unsupported boxes are ticked. This is not closeout-only residue; audit requires Done→Verifying.

@@ -1,0 +1,1 @@
+2026-08-22 final-rule audit: Done proof and deterministic merged-main rails are PASS, but the checklist has one unchecked live two-project OpenAI control-plane/listener item. Proof explicitly preserves this as INCONCLUSIVE; no unsupported box is ticked. This is a runtime/manual evidence gap, so audit requires Done→Verifying.

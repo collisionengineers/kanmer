@@ -8,3 +8,7 @@
 - npm run build:core exited 0; npm run build:server exited 1 because the linked worktree's standalone build resolves stale packages/core/dist without dispatchDeliverableProven; exact first failure preserved.
 - npm run typecheck exited 1 on the same baseline core/server and GUI dispatch exports/options mismatch; no CORE-042 source is implicated.
 - Protected release/publisher/hosted tag and real packaged update evidence remain INCONCLUSIVE; no tag, publisher, merge, or direct main push was attempted.
+
+## Review handoff — CORE-042
+
+PR #160 is open at head aa6f9ddefe05aaa208fe2e00b06da019aaccb6d6. Hosted verify was IN_PROGRESS and kanmer-gate QUEUED at handoff; no hosted result is claimed. Deterministic helper 5/5, test:scripts 88/88, skills, AGENTS, and diff-check pass. Build:core passed; build:server and all-workspace typecheck retain the stale dispatchDeliverableProven core-dist baseline failure. Independent review is required; author will not merge, publish, or clean up.

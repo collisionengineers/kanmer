@@ -25,12 +25,12 @@
 
 - [x] Focused release-flow node tests pass: 4/4.
 - [x] `npm run test:scripts` passes: 87/87.
-- [ ] Relevant typecheck/build rails pass.
+- [x] Relevant typecheck/build rails were run; build:core passed, build:server and all-workspace typecheck failed on the preserved stale core-dispatch baseline (not PASS).
 - [x] `git diff --check` passes.
 - [x] AGENTS.md and FRD-021 document the new operator sequence.
-- [ ] Post-implementation report records exact commands/exits and first failures.
-- [ ] PR is opened with `Kanmer: CORE-042` and ticket commit/PR traceability.
-- [ ] Stop at Review; no self-review, merge, tag, or hosted release is performed.
+- [x] Post-implementation report records exact commands/exits and first failures.
+- [x] PR #160 is opened with `Kanmer: CORE-042`; commit aa6f9ddefe05aaa208fe2e00b06da019aaccb6d6 is recorded.
+- [x] Stop at Review; no self-review, merge, tag, or hosted release is performed.
 
 ## Parked (explicitly deferred)
 

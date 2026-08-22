@@ -1,105 +1,75 @@
-# Checklist — DOC-007
+# Checklist — DOC-007 (merged-main reconciliation)
 
-Derived from plan.md. One box per step.
+Historical implementation PR #49 is already merged. This checklist records the current-main audit; the two explicit unchecked dispositions are not claimed as newly proven.
 
 ## Setup
 
-- [ ] Worktree `.worktrees/doc-007` on `doc-007-manual-user-guide` off `origin/main`
-- [ ] Facts gathered against **shipped code**, not the FRDs (stages/profiles/gates; documents/references/proof; groups/backlog/dispatch; connect/sync/updates)
+- [x] Fresh worktree `.worktrees/doc-007` on `doc-007-manual-reconcile` from current `origin/main`.
+- [x] Facts gathered against shipped code and current manual artifact, with FRD-024 and live `get_doc_gates` checked.
 
 ## Pipeline
 
-- [ ] Delete `FROM_FRD`, its loop and `leadProse()` from `scripts/build-manual.mjs`
-- [ ] Extend the hand-written chapter list to all 19 chapters in reading order
-- [ ] Guard rule (a): missing chapter file throws, naming the path
-- [ ] Guard rule (b): reject a top-level `# ` heading in a hand-written body
-- [ ] Guard rule (c): 400-char prose floor after stripping code fences, tables, headings, list/quote markers
-- [ ] Guard rule (d): reject `FRD-`/`ADR-`/`PRD-` in any title or body (all chapters)
-- [ ] Guard rule (e): reject a `docs/…` path in any title or body — and confirm `.kanmer/` / `.worktrees/` still pass
-- [ ] Reject duplicate chapter ids in the generator
-- [ ] Shortcuts pass (3) and `--check` left intact
+- [x] `FROM_FRD`, its loop and `leadProse()` are absent from `scripts/build-manual.mjs`.
+- [x] Current generator registers the hand-written chapters in reading order and inserts generated shortcuts.
+- [x] Guard rule (a): missing chapter file names the path.
+- [x] Guard rule (b): authored top-level `# ` headings are rejected.
+- [x] Guard rule (c): authored prose floor is enforced after structural stripping.
+- [x] Guard rule (d): `FRD-`/`ADR-`/`PRD-` tokens are rejected in title/body.
+- [x] Guard rule (e): `docs/…` paths are rejected while user `.kanmer/` and `.worktrees/` paths remain permitted.
+- [x] Duplicate chapter ids are rejected.
+- [x] The shortcuts pass and `--check` remain intact; current output has 22 chapters.
 
-## Core chapters (the seven a user cannot work without)
+## Core chapters
 
-- [ ] 5 `stages` — The six stages
-- [ ] 6 `profiles` — Profiles: what a ticket owes
-- [ ] 7 `gates` — Why can't I move this?
-- [ ] 8 `documents` — Ticket documents
-- [ ] 9 `references` — Reference files and scratch
-- [ ] 10 `proof` — Proof
-- [ ] 14 `board-sync` — Sharing a board over Git (written from scratch)
+- [x] `stages` — The six stages.
+- [x] `profiles` — Profiles: what a ticket owes.
+- [x] `gates` — Why can't I move this?.
+- [x] `documents` — Ticket documents.
+- [x] `references` — Reference files and scratch.
+- [x] `proof` — Proof.
+- [x] `board-sync` — Sharing a board over Git.
 
 ## Remaining chapters
 
-- [ ] 2 `install` — Install and open a project
-- [ ] 3 `connect` — Connect an agent
-- [ ] 4 `first-ticket` — Your first ticket, end to end
-- [ ] 11 `groups` — Areas, epics and horizons
-- [ ] 12 `backlog` — The backlog
-- [ ] 13 `dispatch` — Dispatching agents
-- [ ] 15 `sync` — Staying in sync
-- [ ] 16 `settings` — Settings, tab by tab
-- [ ] 18 `updates` — Keeping Kanmer up to date
-- [ ] 20 `glossary` — Glossary
+- [x] `install` — Install and open a project.
+- [x] `connect` — Connect an agent.
+- [x] `first-ticket` — Your first ticket, end to end.
+- [ ] `backlog` — The separate Backlog view was withdrawn by GUI-070; Backlog is covered in `stages`, as documented in the plan/report. Parked as an explicit scope disposition.
+- [x] `groups` — Areas, epics and horizons.
+- [x] `dispatch` — Dispatching agents.
+- [x] `sync` — Staying in sync.
+- [x] `settings` — Settings, tab by tab.
+- [x] `updates` — Keeping Kanmer up to date.
+- [x] `glossary` — Glossary.
 
 ## Rewrites
 
-- [ ] 1 `getting-started` — reduced to orientation; stays chapter index 0
-- [ ] 19 `troubleshooting` — two sections graduate out; new entries added
+- [x] `getting-started` — reduced to orientation and remains chapter 0.
+- [x] `troubleshooting` — graduated gate/reference sections and current failure entries retained.
 
 ## Tests, wiring, docs
 
-- [ ] `manual.test.ts`: unpin `troubleshooting` from index 1, keep `getting-started` at 0
-- [ ] `manual.test.ts`: raise the prose floor above 80
-- [ ] `manual.test.ts`: assert no `FRD-`/`ADR-`/`PRD-` token and no `docs/…` path
-- [ ] `manual.test.ts`: assert the expected chapter ids
-- [ ] Wire `check:manual` into the root `test` script
-- [ ] Wire `check:manual` explicitly into the `release.mjs` verification gate
-- [ ] Amend FRD-024: Overview premise, R2 chapter list, R3 pipeline, +1 acceptance criterion (R4 untouched)
-- [ ] `npm run build:manual` and commit `chapters.generated.ts`
+- [x] `manual.test.ts` no longer pins troubleshooting at index 1; getting-started remains pinned at 0.
+- [x] `manual.test.ts` raises the authored prose floor above the old 80-character floor.
+- [x] `manual.test.ts` asserts no spec token, `docs/…` path, or requirement line.
+- [x] `manual.test.ts` asserts the current 22 expected chapter ids and unique ids.
+- [x] `check:manual` is wired into the root `test` script.
+- [x] `check:manual` is named in the release verification gate.
+- [x] FRD-024 Overview/R2/R3 and the guard acceptance criterion are amended; R4 remains owned by GUI-074/GUI-081.
+- [x] `npm run build:manual` regenerates and the committed artifact is current.
 
-## Verification (produces proof.md)
+## Verification
 
-- [ ] `npm test` passes
-- [ ] `npm run typecheck` passes (all workspaces)
-- [ ] `npm run build:manual` then `git diff --exit-code` on the generated file
-- [ ] `npm run check:manual` passes, and is demonstrably reached by `npm test`
-- [ ] Negative test: a stubbed chapter is refused by the guard, with the reason
-- [ ] Chapter body character counts recorded
-- [ ] Rebase onto `origin/main`, re-read `manual.test.ts`, re-run the rail
-- [ ] Post-implementation report written; PR opened
+- [x] Aggregate `npm test` passes after the required fresh-worktree `npm run build:core`; the first bootstrap exit 1 is preserved in the report/scratch.
+- [x] `npm run typecheck` passes across all workspaces.
+- [x] `npm run build:manual` then generated-artifact `git diff --exit-code` passes.
+- [x] `npm run check:manual` passes and is reached first by `npm test`.
+- [ ] Negative guard fixture was not rerun in this reconciliation; the historical merged proof records each rule's execution and current guard source is unchanged. Leave for independent verification.
+- [x] Current generated chapter body counts are recorded: 22 total, 21 authored, shortest authored 2,462 characters, shortest overall 574 generated shortcuts.
+- [x] Worktree starts at current `origin/main`; current manual test was reread and the complete rail was rerun after core build.
+- [x] Post-implementation report reconciled; existing PR #49 remains the traceability record, so no duplicate PR was opened.
 
-## Progress notes
+## Explicit dispositions
 
-### Progress — core seven authored
-
-All seven core chapters written: `stages`, `profiles`, `gates`, `documents`,
-`references`, `proof`, `board-sync`. Pipeline rewritten, `check:manual` wired.
-
-**Facts were gathered against shipped code, and it mattered — four FRD claims
-are stale in the shipped tree and would have put bugs in the manual:**
-
-1. **Board branch rename IS built.** FRD-020 R5 says "Not built"; the control
-   exists (Settings → Git → **Rename branch**), it renames in place, pushes the
-   new name before deleting the old, and closed projects are reconciled on next
-   open. Verified in `kanmerGit.ts:76-102` and `:123-133`. The shipped
-   troubleshooting chapter was right and the FRD was wrong.
-2. **Backlog is BOTH a column and a view.** GUI-069 merged `488797d`, which
-   renders all six stages always, Backlog first. The separate Backlog table view
-   still exists as a top tab. FRD-007 B4 and FRD-011 R5 both say the board drops
-   the Backlog column — false today. **The shipped `getting-started` chapter says
-   "Backlog is a list rather than a column", which is now wrong** and is being
-   fixed as part of this ticket.
-3. **Desktop notifications are on by default and live in Settings → Appearance**,
-   not Git or Connect.
-4. **Dispatch never creates a worktree.** It spawns at the repo root; only the
-   execute task's prompt tells the agent to make one. Research had implied
-   "each ticket gets its own worktree" as a dispatch property.
-
-**New defect found, not fixed here (see open-questions / closeout):**
-`friendlyGateError` (`App.tsx:1704-1712`) is dead code — it early-returns unless
-the message contains `"document gate(s) unmet"`, a phrase that exists nowhere in
-the repo. So the raw agent-facing refusal, including the literal words
-`set_ticket_doc` and `get_doc_gates`, reaches the human error banner. The `gates`
-chapter is written to be **honest about this** rather than describing copy the
-user will not see; the code fix is its own ticket.
+- The missing `backlog` chapter is intentionally parked because GUI-070 withdrew the separate Backlog view; no chapter for a deleted view is authored.
+- The negative guard fixture and live in-app manual reading are left for independent verification. No visual/manual acceptance is claimed from this author reconciliation.

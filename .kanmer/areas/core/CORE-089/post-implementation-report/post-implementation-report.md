@@ -6,24 +6,13 @@ CORE-089 reconciled the CORE-026 cumulative branch with current `origin/main` (`
 - `apps/gui/src/renderer/src/lib/groupMenu.ts`
 - `apps/gui/src/renderer/src/lib/groupMenu.test.ts`
 
-The integration merge commit is recorded locally on branch `core-089-rebase-verify`; no source behavior was changed by this ticket.
-
 ## Evidence
 
-- `npm run build`: PASS (core and MCP server, including standalone bundle).
-- `npm run typecheck`: PASS for all workspaces.
-- `npm run test:scripts`: first concurrent attempt failed because build had not finished and generated core dist was absent; rerun after build PASS 88/88.
-- `npm test -w @kanmer/gui`: focused/group-menu and broader GUI tests emitted PASS through the editor suite, then the Windows cleanup phase hung without a result and was interrupted; no full-suite PASS is claimed. This preserves the known Windows cleanup boundary.
-- `git diff --check origin/main..HEAD`: PASS after reconciliation.
+- Integration commit: `dcfe49b5af7d5dad026a8ced4380039df2d7a3cc`.
+- PR #216 independently reviewed PASS and merged non-squash into `core-026-project-declared-sources` as `f2e694a4f9ce689c0949814ea88c2910ddb93f37`.
+- GUI-109 group-menu files match current `main` byte-for-byte.
+- Focused integration tests: 8/8 PASS.
+- Workspace typecheck, docs verification, and diff-check: PASS.
+- The prior hosted run `32598710721` remains preserved in CORE-026 review evidence as failed. Fresh hosted verification waits for CORE-088 source remediations.
 
-The prior hosted run `32598710721` remains preserved in CORE-026 review evidence as failed (core cleanup races plus stale gate snapshot). Fresh hosted verification is intentionally not claimed until CORE-088 source remediations are merged into the cumulative branch; that is the remaining implementation dependency.
-
-## Traceability
-
-- Ticket: CORE-089
-- Parent: CORE-026
-- Branch: `core-089-rebase-verify`
-- Reconciliation commit: record after commit creation
-- PR/hosted run: pending independent review and CORE-088 completion
-
-Post-merge proof remains unchecked. Live provider/network/package evidence remains INCONCLUSIVE.
+No source behavior was changed by this ticket. Live provider/network/package evidence remains INCONCLUSIVE. Post-merge proof remains unchecked until verification on merged main.

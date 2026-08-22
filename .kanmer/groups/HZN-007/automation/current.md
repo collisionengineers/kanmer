@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T10:46:14.863Z
+updated_at: 2026-08-22T10:51:19.248Z
 ---
 
 # Current auto run — HZN-007
@@ -376,3 +376,11 @@ Last handoff: 2026-08-22T10:20:10.866Z — CORE-045 implementation progress: tak
 
 
 Last handoff: 2026-08-22T10:23:07.811Z — CORE-045 implementation handoff: commit 1234264b292e574d38f276b91592ea0b8bef9361 pushed as PR #166 stacked on CORE-044 33f32e3a; checklist/report complete, get_doc_gates enter-review passable, moved implementing -> review. Stop for independent review; no merge, verify, or cleanup.
+
+
+## CORE-046 implementation handoff (2026-08-22)
+
+- Assignment: CORE-046 taken without force on branch core-046-lock-reclaim-race-ipv6 / worktree .worktrees/core-046, stacked on CORE-045 head 1234264b292e574d38f276b91592ea0b8bef9361.
+- Result: implemented atomic stale-lock quarantine/rename with deterministic concurrent-reclaimer coverage; added fail-closed IPv6 ranges 64:ff9b:1::/48, 100:0:0:1::/64, 5f00::/16, IPv4 192.175.48.0/24, and per-redirect/linked-hop DNS lookup regression.
+- Evidence: core 294/294, IO 16/16, source 14/14, HTTP 82/82, scripts 88/88, protocol 46/46, discovery 13/13; typecheck/build/plugin/docs/skills/agents/diff rails exit 0. First IO timeout and stale-root standalone resolution failure are preserved in ticket scratch/report and passed after correction.
+- Handoff: status moved Implementing→Review after get_doc_gates pass; commit 54651a3c77b8ca8d02d9d309e36baf9b62ebca3c, PR #167 https://github.com/collisionengineers/kanmer/pull/167. Author stops for independent review; no merge/verify/cleanup.

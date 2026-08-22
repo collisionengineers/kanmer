@@ -144,3 +144,6 @@
 
 
 2026-08-22T10:46Z — Second independent CORE-045 review by gui099 recorded NEEDS-CHANGES: F-003 audit PASS on existing paths, but F-009 remains incomplete for IPv4 192.175.48.0/24 plus a missing redirect/linked-hop lookup invocation regression. CORE-046 scope/body updated to include this follow-up; no merge, move, or cleanup.
+
+
+2026-08-22T10:50Z — CORE-046 implementation handoff: PR #167 head 54651a3c77b8ca8d02d9d309e36baf9b62ebca3c, stacked on CORE-045 1234264b, checklist/report/gates complete, moved Implementing→Review. Independent review assigned to gui099-executor; no merge, verification, or cleanup.

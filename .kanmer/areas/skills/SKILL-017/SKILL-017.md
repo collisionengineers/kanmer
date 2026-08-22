@@ -2,7 +2,7 @@
 id: SKILL-017
 type: ticket
 title: Correct kanmer-auto's stopping contract and its serial fallback
-status: review
+status: done
 area: skills
 order: 240
 assignee: codex-recovery
@@ -10,6 +10,8 @@ profile: fix
 stageEntered:
   preparing: '2026-08-20T14:08:58.413Z'
   review: '2026-08-22T00:32:53.346Z'
+  verifying: '2026-08-22T02:08:01.563Z'
+  done: '2026-08-22T02:08:09.741Z'
 taken_at: '2026-08-22T00:13:04.309Z'
 branch: skill-017-auto-stopping
 worktree: .worktrees/skill-017
@@ -29,7 +31,7 @@ prs:
   - '143'
 archived: false
 created: '2026-08-16T21:22:59.709Z'
-updated: '2026-08-22T00:35:01.418Z'
+updated: '2026-08-22T02:08:09.741Z'
 ---
 
 ## What

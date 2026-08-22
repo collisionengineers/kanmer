@@ -879,3 +879,10 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - Independent verdict: NEEDS-CHANGES. Exact source/core rails pass (core 310/310, MCP source 32/32, typecheck/docs/diff), but fresh npm run mcpb:check exits 1 because the committed plugin artifact is stale relative to the generated standalone server.
 - CORE-090 PR #220 is correctly artifact-only but reproduces the same clean-checkout parity failure (committed 7298b5c2 versus fresh f52d9c5); no merge performed.
 - Hosted run 32602154533 failure is preserved: verify failed MCPB parity; kanmer-gate also saw stale CORE-088 blocker/review metadata from before its board move. Protected CORE-026 remains Review and unmerged pending corrected artifact and fresh hosted rails.
+
+
+## 2026-08-22T22:51:50Z — GUI-120 / CORE-090 review handoff
+
+- CORE-090 fresh independent review: PASS at PR #220 head 75ce9ab11991994bfba46113fe3b79f5cdaaa629; clean detached npm ci, plugin:build, and mcpb:check all exited 0, with committed/generated standalone SHA f52d9c5b3817b12432e211438913146908c32874bf74ac261839a21ee31ea58c. Prior a4204617 NEEDS-CHANGES artifact mismatch is fixed; no merge performed.
+- GUI-120 fresh independent review: PASS at PR #221 head fe4ace066bde9d3ba230b997168802ef9fc8e55f; focused index.sync 11/11, GUI typecheck/build, scripts 89/89, docs, and diff checks passed. Full workspace typecheck retained its inherited dispatch baseline failure; hosted/native evidence remains INCONCLUSIVE.
+- PR #221 was merged non-squash into gui-118-provider-lifecycle as 37740379552e241f200bb181a2ca0e9d3be32ece. GUI-120 traceability now records implementation and merge commits plus PR #221.

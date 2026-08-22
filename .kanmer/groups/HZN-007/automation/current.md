@@ -864,3 +864,10 @@ Last handoff: 2026-08-22T23:46:00Z — GUI-120 is Review-ready on gui-120-multip
 
 
 Last handoff: 2026-08-22T22:48Z — CORE-090 artifact remediation pushed as commit 75ce9ab11991994bfba46113fe3b79f5cdaaa629 on PR #220, still Review. Clean detached cumulative checkout at 973bcf93 ran own npm ci/plugin:build/mcpb:check successfully; regenerated MCP server SHA is f52d9c5b. Linked-worktree mcpb exit 1 with stale primary-core exports is preserved. Artifact-only diff; fresh independent review required.
+
+
+## 2026-08-22T22:51:50Z — GUI-120 / CORE-090 review handoff
+
+- CORE-090 fresh independent review: PASS at PR #220 head 75ce9ab11991994bfba46113fe3b79f5cdaaa629; clean detached npm ci, plugin:build, and mcpb:check all exited 0, with committed/generated standalone SHA f52d9c5b3817b12432e211438913146908c32874bf74ac261839a21ee31ea58c. Prior a4204617 NEEDS-CHANGES artifact mismatch is fixed; no merge performed.
+- GUI-120 fresh independent review: PASS at PR #221 head fe4ace066bde9d3ba230b997168802ef9fc8e55f; focused index.sync 11/11, GUI typecheck/build, scripts 89/89, docs, and diff checks passed. Full workspace typecheck retained its inherited dispatch baseline failure; hosted/native evidence remains INCONCLUSIVE.
+- PR #221 was merged non-squash into gui-118-provider-lifecycle as 37740379552e241f200bb181a2ca0e9d3be32ece. GUI-120 traceability now records implementation and merge commits plus PR #221.

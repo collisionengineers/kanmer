@@ -1,0 +1,1 @@
+Taken without force on `core-049-quarantine-rename-retry` / `.worktrees/core-049`, based on merged CORE-046/047 head `0f7ccc4efad0aeae2295f3ba08e0b6e886356679`. Read full CORE-046/047 packets and HZN-007 context. First checklist item complete; next inspect the existing `renameWithRetry` seam and add bounded quarantine-rename coverage.

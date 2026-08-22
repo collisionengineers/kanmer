@@ -1,6 +1,6 @@
 # Checklist — CORE-049
 
-- [ ] Read complete CORE-046/047 packets and identify existing retry helper.
+- [x] Read complete CORE-046/047 packets and identify existing retry helper.
 - [ ] Route stale quarantine rename through bounded retry.
 - [ ] Add EPERM/EBUSY/EACCES deterministic regression coverage.
 - [ ] Preserve ownership/concurrency/source tests.

@@ -1,10 +1,10 @@
 # Checklist — CORE-048
 
-- [ ] Read CORE-043 review attestation and trace current branch-state lifecycle.
-- [ ] Identify and reuse existing GUI state/configuration helpers.
-- [ ] Fix administrator-handoff cache refresh.
-- [ ] Fix no-Git-board preference invalidation.
-- [ ] Remove literal `kanmer-board` workflow assumption.
-- [ ] Add deterministic regressions for all three blockers.
-- [ ] Run focused tests, typecheck/build, and workflow/static checks.
-- [ ] Record report and request independent review.
+- [x] Read CORE-043 review attestation and trace current branch-state lifecycle.
+- [x] Identify and reuse existing GUI state/configuration helpers.
+- [x] Fix administrator-handoff cache refresh.
+- [x] Fix no-Git-board preference invalidation.
+- [x] Remove literal `kanmer-board` workflow assumption.
+- [x] Add deterministic regressions for all three blockers.
+- [x] Run focused tests, typecheck/build, and workflow/static checks.
+- [x] Record report and request independent review (PR #170; stop at Review).

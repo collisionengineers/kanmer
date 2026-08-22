@@ -642,3 +642,6 @@ CORE-078 PASS exact 7b355245, PR #199 merged non-squash into CORE-060 as f44b6fd
 
 
 CORE-060 cumulative branch now f44b6fd8 after CORE-077/078; fresh cumulative review pending before PR #197 can merge into CORE-043.
+
+
+CORE-060 cumulative PASS exact f44b6fd8, PR #197 merged non-squash into CORE-043 as f63d953f; moved Verifying and removed block. CORE-043 cumulative review now pending.

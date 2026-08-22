@@ -21,6 +21,7 @@ groups:
   - HZN-007
 links:
   - CORE-033
+blocks: []
 refs:
   - docs/functional/frd/FRD-020-board-git-worktree-sync.md
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
@@ -38,6 +39,7 @@ commits:
   - 8c093424
   - 835f9f51
   - 94f7094b
+  - f63d953fc8467440988c887c62a34ade0c77c96c
 prs:
   - '168'
   - '170'
@@ -46,9 +48,10 @@ prs:
   - '177'
   - '181'
   - '182'
+  - '197'
 archived: false
 created: '2026-08-22T06:48:09.524Z'
-updated: '2026-08-22T13:55:48.738Z'
+updated: '2026-08-22T17:16:10.646Z'
 ---
 
 Deferred from CORE-033 review finding: GUI board-branch rename pushes the new branch and deletes the old one, while protection targets literal kanmer-board and forbids deletion. Coordinate protection retargeting or explicitly constrain the supported rename flow so the live board branch cannot become unprotected and stale protection is not left behind. Link [[CORE-033]].

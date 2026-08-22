@@ -59,7 +59,7 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
-  check("tools/list returns 34 tools", tools.tools.length === 34, `got ${tools.tools.length}`);
+  check("tools/list returns 37 tools", tools.tools.length === 37, `got ${tools.tools.length}`);
   for (const name of [
     "append_scratch",
     "link_doc",

@@ -157,8 +157,11 @@ for (const proto of PROTOCOLS) {
 
     const tools = await server.send("tools/list", {});
     check(
-      `tools/list returns 34 tools on ${proto}`,
-      tools.result?.tools?.length === 34,
+      `tools/list returns 37 tools on ${proto}`,
+      tools.result?.tools?.length === 37 &&
+        tools.result.tools.some((tool) => tool.name === "get_sources" && tool.annotations?.readOnlyHint === true) &&
+        tools.result.tools.some((tool) => tool.name === "set_sources" && tool.annotations?.readOnlyHint === false) &&
+        tools.result.tools.some((tool) => tool.name === "fetch_source" && tool.annotations?.readOnlyHint === false),
       `got ${tools.result?.tools?.length}`,
     );
     const dispatchTask = tools.result?.tools?.find((tool) => tool.name === "dispatch_task");

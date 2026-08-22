@@ -3,3 +3,5 @@
 2026-08-22 review F-001 fixed: propagated serverInvocation.env into tunnel-client init/run child environments; added ELECTRON_RUN_AS_NODE spawn assertion. New head 59a2f3b1 pushed to PR #157. Focused 6/6 and renderer typecheck/diff checks pass; ticket remains Review for independent re-review.
 
 2026-08-22 review F-001 fixed: propagated serverInvocation.env into tunnel-client init/run child environments; added ELECTRON_RUN_AS_NODE spawn assertion. New head 59a2f3b1 pushed to PR #157. Focused 6/6 and renderer typecheck/diff checks pass; ticket remains Review for independent re-review.
+
+2026-08-22 F-001 follow-up: spawn-environment coverage now asserts ELECTRON_RUN_AS_NODE=1 for both tunnel-client init and run. New head fddcd9b4 pushed to PR #157; focused 6/6, renderer typecheck, and diff checks pass. Ticket remains Review for independent re-review.

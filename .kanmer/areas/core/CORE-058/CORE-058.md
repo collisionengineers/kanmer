@@ -32,12 +32,15 @@ commits:
   - d50ddab1
   - b167b667
   - a0acadee
+  - 5f63636d
+  - b1abac87
 prs:
   - '180'
   - '183'
+  - '184'
 archived: false
 created: '2026-08-22T13:03:07.157Z'
-updated: '2026-08-22T14:07:41.481Z'
+updated: '2026-08-22T14:18:36.115Z'
 ---
 
 Close CORE-044 review findings for release and board hygiene: add the sources cache rule to canonical board-worktree ignore creation and reconciliation, and rebuild the committed plugin artifact from a normal checkout so plugin:check is reproducible outside nested ticket worktrees. Add regression/evidence for existing and new board worktrees and exact artifact parity. Link [[CORE-044]].

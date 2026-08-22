@@ -104,6 +104,42 @@ afterEach(() => {
 });
 
 describe("syncProject production Retry caller", () => {
+  it("reconciles owned project registrations after a successful saved branch change", async () => {
+    await git(repo, "branch", "-m", "release-board");
+    writeFileSync(join(repo, ".mcp.json"), JSON.stringify({
+      mcpServers: { kanmer: { command: "old", args: ["old"] }, other: { command: "keep" } },
+    }, null, 2) + "\n", "utf8");
+    const ctx = {
+      sourceRoot: repo,
+      boardRoot: repo,
+      store: {
+        getBoardWithSource: async () => ({ source: "file" }),
+        listItems: async () => [],
+      },
+      watch: { close: async () => undefined },
+      ownWrites: new Map<string, number>(),
+      syncStatus: {
+        available: true,
+        boardRoot: repo,
+        branch: "release-board",
+        lastSync: null,
+        error: null,
+        paused: false,
+      },
+    };
+    __kanmerTest.contexts.set(repo, ctx as never);
+
+    try {
+      await __kanmerTest.applyGitPreferences(" release-board ", 0);
+      const registration = JSON.parse(readFileSync(join(repo, ".mcp.json"), "utf8")) as { mcpServers: Record<string, any> };
+      expect(registration.mcpServers.kanmer.env).toEqual({ ELECTRON_RUN_AS_NODE: "1", KANMER_BOARD_BRANCH: "release-board" });
+      expect(registration.mcpServers.other).toEqual({ command: "keep" });
+    } finally {
+      __kanmerTest.contexts.delete(repo);
+      await __kanmerTest.applyGitPreferences("kanmer-board", 0);
+    }
+  }, 30_000);
+
   it("returns paused mismatch without invoking syncBoard or mutating refs", async () => {
     const beforeRefs = await git(repo, "show-ref");
     const beforeWorktrees = await git(repo, "worktree", "list", "--porcelain");

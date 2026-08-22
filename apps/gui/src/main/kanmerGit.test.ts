@@ -213,6 +213,34 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(ignore.match(/^\.kanmer\/data\/sources\/$/gm)).toHaveLength(1);
   });
 
+  realGitTest("reconciles the sources cache rule after attaching an existing local branch", async () => {
+    await git(repo, "branch", "local-board");
+
+    const attached = await ensureBoardWorktree(repo, "local-board");
+    expect(attached.available).toBe(true);
+    const ignore = readFileSync(join(attached.boardRoot!, ".gitignore"), "utf8");
+
+    expect(ignore).toContain(".kanmer/data/sources/\n");
+    expect(ignore.match(/^\.kanmer\/data\/sources\/$/gm)).toHaveLength(1);
+    expect(await git(attached.boardRoot!, "check-ignore", "--no-index", ".kanmer/data/sources/cache.json"))
+      .toContain(".kanmer/data/sources/cache.json");
+  });
+
+  realGitTest("reconciles the sources cache rule after attaching an existing remote branch", async () => {
+    await git(repo, "branch", "remote-board");
+    await git(repo, "push", "origin", "remote-board");
+    await git(repo, "branch", "-D", "remote-board");
+
+    const attached = await ensureBoardWorktree(repo, "remote-board");
+    expect(attached.available).toBe(true);
+    const ignore = readFileSync(join(attached.boardRoot!, ".gitignore"), "utf8");
+
+    expect(ignore).toContain(".kanmer/data/sources/\n");
+    expect(ignore.match(/^\.kanmer\/data\/sources\/$/gm)).toHaveLength(1);
+    expect(await git(attached.boardRoot!, "check-ignore", "--no-index", ".kanmer/data/sources/cache.json"))
+      .toContain(".kanmer/data/sources/cache.json");
+  });
+
   realGitTest("keeps derived source cache out of the board sync", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     const cache = join(created.boardRoot!, ".kanmer", "data", "sources", "cache.json");

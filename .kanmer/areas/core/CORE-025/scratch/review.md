@@ -1,39 +1,66 @@
+---
+kind: review-attestation
+pr: "159"
+head_sha: "65e364ad927ef151ba0cea59b123d20feaf095b4"
+verdict: needs-changes
+reviewer: "gui099-independent-reviewer"
+independent: true
+plan_hash: "f648ef2f72477947"
+ticket_updated: "2026-08-22T07:36:10.526Z"
+findings:
+  - id: F-001
+    severity: major
+    summary: "CLI dependency evidence drops dangling blocker references"
+    disposition: open
+  - id: F-002
+    severity: major
+    summary: "Review attestation parser accepted incomplete machine records"
+    disposition: fixed
+  - id: F-003
+    severity: major
+    summary: "Recorded abbreviated commit ids were treated as invalid"
+    disposition: fixed
+  - id: F-004
+    severity: major
+    summary: "Malformed board item files could be evaluated as a partial graph"
+    disposition: fixed
+  - id: F-005
+    severity: minor
+    summary: "Legacy phase-one findings omitted their promised outcome"
+    disposition: fixed
+  - id: F-006
+    severity: major
+    summary: "Commit reachability was not restricted to the PR base..head range"
+    disposition: fixed
+---
+
 ## Independent review — CORE-025 PR #159
 
-Reviewed PR #159 at head `d338349ea44397887f74ef714563f6bbc880ea79` against the full phase-2 plan, ADR-0011/ADR-0016, FRD-009, checklist, report, and workflow diff.
+Reviewed final head `65e364ad927ef151ba0cea59b123d20feaf095b4` against the complete plan, ADR-0011, ADR-0016, FRD-009, checklist, report, and final hosted result.
 
-Scope is coherent: one pure `evaluateMergeGate` expansion, CLI-bound gray-matter/reachability evidence, one existing `kanmer-gate` job, argv-safe Git ancestry, and focused tests/docs. No unrelated CORE-024, GUI, MCP surface, stage/profile, or board-source changes.
+### Fixed prior findings
 
-Evidence:
-- `npm run test -w @kanmer/core -- src/merge-gate.test.ts`: 14/14 PASS (the report's 15/15 count is stale).
-- `node --test packages/mcp-server/src/check-pr.test.mjs`: 2/2 PASS sequentially.
-- `npm run build:core`: PASS.
-- `git diff --check`: PASS.
-- Hosted `kanmer-gate` and authoritative `verify`: PASS, run 32558835415.
-- A concurrent local `test:http` attempt exited 1 with 63/65 PASS; failures were unrelated Windows `http.test.mjs` spawnSync ETIMEDOUT and `readiness.test.mjs` TUNNEL_READINESS_TIMEOUT. Preserve as environment evidence; no CORE-025 focused assertion failed.
-- Direct board-push non-trigger observation remains INCONCLUSIVE; workflow is statically pull_request-only. Checklist remains 96/97 with that item unchecked.
+The five prior review findings are fixed in the final diff and covered by the new tests:
 
-No blocking source finding. Verdict: PASS for independent review, with the exact local rail failures, stale 14-vs-15 report count, and direct-push INCONCLUSIVE boundary retained. No merge performed.
+- Complete review-attestation fields and finding dispositions are validated.
+- Four-to-forty-character hexadecimal commit abbreviations are passed to Git and ambiguous/missing objects remain indeterminate.
+- `listItemsWithWarnings` makes malformed board input fail closed.
+- Legacy phase-one `NO_TICKET` and `OPEN_QUESTIONS` findings now carry runtime `outcome: "fail"`.
+- Recorded commits are constrained to the PR `base..head` range.
 
+### Blocking finding F-001
 
-## Review correction
+`phase2Evidence()` uses `buildLinkIndex(all)` and reads `graph.blockedBy`. The core `buildLinkIndex` implementation only adds a `blockedBy` entry when the referenced target exists in the item set. A live ticket containing `blocks: ["MISSING-ID"]` therefore produces no blocker evidence and can pass `DEPENDENCY_BLOCKED`, although the CORE-025 plan explicitly requires dangling blocker references to fail conservatively and retain their ids.
 
-Independent review PASS. The report count is corrected to 14/14 focused core tests; unrelated local test:http contention and direct board-push INCONCLUSIVE evidence remain explicit.
+Fix by deriving dangling blockers directly from every listed item's `blocks[]` alongside the link index, or by using a graph API that preserves missing target ids; add a CLI fixture asserting exit 1 and the missing id in JSON/annotation output.
 
-## Additional hosted review findings — 2026-08-22
+### Evidence
 
-Five unresolved Codex threads appeared after the bounded independent review (PR #159): validate complete review attestations; resolve abbreviated commit SHAs; fail closed on malformed blocker files; populate legacy finding outcomes; and constrain recorded commits to the PR base..head ancestry range. CORE-025 remains unmerged pending disposition/fix.
+- Hosted `kanmer-gate` and `verify` PASS, run `32560013616`.
+- Final report records focused core 14/14, CLI/helper 5/5, typechecks/builds/diff-check PASS, and `test:http` 66/67 with the unrelated Windows readiness timeout preserved.
+- Checklist is 101/102; direct board-push non-trigger observation remains explicitly unchecked/INCONCLUSIVE.
+- Scope remains limited to phase-two gate core/CLI/GHA/docs.
 
-## Review remediation dispositions — PR #159 follow-up — 2026-08-22
+### Verdict
 
-The five Codex review threads on the phase-two gate are addressed on commit `65e364ad927ef151ba0cea59b123d20feaf095b4` (PR #159 remains open; no merge):
-
-- **3835496375 — fixed:** review-attestation parsing now requires the complete machine-checkable schema: PR, reviewer, plan hash, ticket update, full head SHA, verdict, independent flag, and validated finding records/dispositions.
-- **3835496376 — fixed:** recorded commit ids accept unique hexadecimal abbreviations (minimum four characters) and defer uniqueness/object resolution to Git; malformed identifiers remain indeterminate.
-- **3835496377 — fixed:** phase-two evidence now reads items with warnings and fails closed with an infrastructure error when any board item is malformed or otherwise produces a parse warning; link indexing occurs only after a clean read.
-- **3835496378 — fixed:** legacy two-argument merge-gate paths now return explicit `outcome: "fail"` for NO_TICKET and OPEN_QUESTIONS findings; regression assertions cover both.
-- **3835496381 — fixed:** recorded commits must be ancestors of the PR head and outside the PR base ancestry, proving membership in the base..head range; the check-pr event now requires and passes the full base SHA.
-
-Evidence: focused core merge-gate tests 14/14 PASS; check-pr node tests 5/5 PASS; core and mcp-server typechecks PASS; mcp-server build PASS; diff-check PASS. The broader mcp-server HTTP rail was 66/67 PASS with the exact unrelated existing Windows failure: `packages/mcp-server/src/tunnels/readiness.test.mjs:54` `TUNNEL_READINESS_TIMEOUT`. The prior hosted baseline was PASS (run `32558835415`, jobs `96997133179` and `96997133282`); the pushed head requires a fresh hosted verify rerun.
-
-Hosted rerun completed: PR #159 head `65e364ad927ef151ba0cea59b123d20feaf095b4`, run `32560013616`; `kanmer-gate` PASS job `97000062935` (54s), authoritative `verify` PASS job `97000062846` (2m26s). GitHub annotations preserved: Node.js 20 deprecation notice and existing non-failing `review attestation is invalid: kind must be "review-attestation"` annotation. PR remains open; no merge.
+NEEDS-CHANGES until dangling blocker evidence is fail-closed. No merge performed.

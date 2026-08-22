@@ -40372,6 +40372,27 @@ ${content.trim()}
     };
   }
   /**
+   * Count unresolved open questions without initializing or mutating the
+   * project.  A legacy layout, missing item, or non-ticket is deliberately
+   * reported as null so callers can distinguish an unsupported board from a
+   * ticket with zero questions.
+   */
+  async getOpenQuestionCount(id) {
+    let loc;
+    try {
+      loc = await this.locateItem(id);
+    } catch {
+      return null;
+    }
+    if (!loc || loc.kind !== "v2") return null;
+    const item = parseItem(await readText(loc.file));
+    if (item.type !== "ticket") return null;
+    const { checked, total } = await countCheckboxes(loc.dir, "open-questions", {
+      stopAtParked: true
+    });
+    return { checked, total, open: total - checked };
+  }
+  /**
    * Delete an item, then rewrite the frontmatter links[] of anything that
    * pointed at it. In the v2 layout this removes the whole ticket folder —
    * docs and attachments included. Body [[wiki]] references are prose and

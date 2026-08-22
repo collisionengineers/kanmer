@@ -1,0 +1,1 @@
+Merged-main verification at origin/main fdaededc: core 91/91, sources 32/32, typechecks/core+server, scripts 88/88, docs, skills, agents 31/31 and diff-check passed. Full test:http preserved as INCONCLUSIVE at 99/100 due sole project-resolution child spawnSync ETIMEDOUT; no source change made.

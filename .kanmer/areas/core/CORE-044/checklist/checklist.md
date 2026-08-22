@@ -17,3 +17,9 @@
 - [x] Reconcile FRD-027/ADR-0020 wording only if the final diff requires it; do not add GUI source editing or provider migration.
 - [x] Write the post-implementation report mapping all 21 findings to fixed, rejected, parked, or INCONCLUSIVE evidence.
 - [x] Confirm ticket-linked PR #165, commit reachability, expected-project annotations, hosted-check state, and final get_doc_gates readback before Review handoff.
+
+## Verification / closeout
+
+- [x] Merged-main verification at origin/main fdaededc completed; all recorded commits reachable.
+- [x] Deterministic core/source/type/script/docs/skills/agents/diff rails recorded in proof.md; one HTTP child timeout preserved INCONCLUSIVE.
+- [ ] Independent re-review or new feature work is not part of verification.

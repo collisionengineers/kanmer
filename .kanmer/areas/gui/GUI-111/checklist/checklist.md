@@ -10,13 +10,13 @@
 - [x] Bound context-menu height and scroll the keyboard-active item into view.
 - [x] Correct groups manual archive wording and regenerate the in-app manual.
 - [x] Preserve failed card-action errors across refresh while keeping successful refresh behavior unchanged.
-- [x] Run focused group-menu tests and record exact exit/count.
-- [x] Run full GUI tests and record exact exit/count.
+- [x] Run focused group-menu tests and record exact exit/count: 7/7 passed.
+- [x] Run full GUI tests and record exact exit/count: 45 files / 390 tests passed on the fresh rerun.
 - [x] Run workspace typecheck, GUI build, manual freshness, and diff-check.
 - [x] Attempt relevant hosted verification against the stacked PR; no run was scheduled because the repository PR workflow targets `main` only, and this required stacked PR targets `gui-109-add-to-group`.
 - [x] Write the post-implementation report with scope, residual archive race, visual INCONCLUSIVE boundary, and exact rails.
-- [x] Record GUI-111 commit and stacked PR traceability.
+- [x] Record GUI-111 commit and stacked PR traceability with exact reachable SHAs.
 - [x] Push/open the stacked PR targeting gui-109-add-to-group.
 - [x] Re-read get_doc_gates and move only Implementing → Review.
-- [x] Address PR #164 P2 wheel-dismissal finding with a focused inside/outside wheel regression; fresh head is `51c4a3460f6bb3dfb866c541e1a7d9920394bb34`.
-- [ ] Stop for GUI-099 independent review; do not merge, verify, release, or clean up.
+- [x] Address and record disposition for PR #164 wheel thread 3835707265; fresh head is `51c4a3460f6bb3dfb866c541e1a7d9920394bb34`.
+- [x] Stop for GUI-099 independent review; do not merge, verify, release, or clean up.

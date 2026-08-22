@@ -18,7 +18,7 @@ Changed files are limited to `apps/gui/src/renderer/src/App.tsx`, `apps/gui/src/
 ## Verification evidence
 
 - `npm run test -w @kanmer/gui -- --run src/renderer/src/lib/groupMenu.test.ts` — exit 0, 7/7 passed.
-- `npm run test -w @kanmer/gui` — exit 0, 44 files / 389 tests passed.
+- `npm run test -w @kanmer/gui` — exit 0, 45 files / 390 tests passed (fresh rerun after the wheel-thread fix).
 - `npm run typecheck` — exit 0 for every workspace.
 - `npm run build -w @kanmer/gui` — exit 0; Electron main/preload/renderer bundles produced.
 - `npm run build:manual` — exit 0; 22 chapters generated.
@@ -40,7 +40,7 @@ The first GUI-only typecheck was intentionally preserved as an initial environme
 
 ## Follow-up P2 review thread — wheel dismissal
 
-PR #164 review identified that the `wheel` listener passed `onClose` directly, bypassing the existing `.ctx-menu` target guard. This was valid: scrolling inside the newly bounded menu could close it. The follow-up commit changes only that listener to use the guarded `close` callback and adds `ContextMenu.test.tsx`.
+PR #164 review thread `3835707265` / GraphQL thread `PRRT_kwDOT2PEds6bX3xs` correctly identified that the `wheel` listener passed `onClose` directly, bypassing the existing `.ctx-menu` target guard. This was valid: scrolling inside the newly bounded menu could close it. The follow-up commit changes only that listener to use the guarded `close` callback and adds `ContextMenu.test.tsx`; the thread disposition is fixed and is being resolved after this recorded evidence.
 
 Follow-up evidence:
 

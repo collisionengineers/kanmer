@@ -597,3 +597,6 @@ CORE-073 implementing in .worktrees/core-073 on core-073-bind-open-board-root; C
 
 
 Last handoff: 2026-08-22T16:14:15.504Z — CORE-073 implementation handoff: exact head 3b4ef44ace5d077c7e54d5ed289d477fa7f6b529 on core-073-bind-open-board-root/.worktrees/core-073, based on CORE-058 cumulative cbb152dae4effc6fe0db254a59639818e2915b44 (CORE-072 excluded). PR #195 targets core-058-board-ignore-plugin-artifact; checklist/report/gates read back and ticket moved Implementing→Review. Focused syncBranch 5/5, build:core PASS, scripts 88/88, diff-check PASS; GUI typecheck/full GUI retain stale shared-core antigravity baseline exits documented. Independent review requested; no merge or cleanup.
+
+
+CORE-073 PASS exact 3b4ef44a, PR #195 merged non-squash as 9563c122; moved Verifying and removed child block. CORE-076 remains implementing against CORE-072.

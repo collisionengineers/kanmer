@@ -82,6 +82,7 @@ let repo: string;
 let origin: string;
 
 beforeEach(async () => {
+  rmSync(join(tmpdir(), "kanmer-core084-electron"), { recursive: true, force: true });
   dir = mkdtempSync(join(tmpdir(), "kanmer-core084-sync-"));
   origin = join(dir, "origin.git");
   repo = join(dir, "repo");
@@ -107,6 +108,55 @@ afterEach(() => {
 });
 
 describe("syncProject production Retry caller", () => {
+  it("reconciles provider registrations and retains native reconnect state when a closed project reopens", async () => {
+    const first = await __kanmerTest.openProject(repo);
+    const firstCtx = __kanmerTest.contexts.get(repo) as { boardRoot: string };
+    expect(first.boardRoot).toBe(firstCtx.boardRoot);
+    await __kanmerTest.closeProject(repo);
+
+    // Simulate the authorized hosted branch handoff while the project is
+    // closed. The saved branch changes before reopen, while the native plugin
+    // remains staged with the old branch.
+    await git(firstCtx.boardRoot, "branch", "-m", "team-board");
+    writeFileSync(join(repo, ".mcp.json"), JSON.stringify({
+      mcpServers: { kanmer: { command: "old", args: ["old"], env: { KANMER_BOARD_BRANCH: "kanmer-board" } }, other: { command: "keep" } },
+    }, null, 2) + "\n", "utf8");
+    writeFileSync(join(tmpdir(), "kanmer-core084-electron", "settings.json"), JSON.stringify({
+      ...readSettings(),
+      kanmerBranch: "team-board",
+    }, null, 2) + "\n", "utf8");
+
+    const reopened = await __kanmerTest.openProject(repo);
+    const ctx = __kanmerTest.contexts.get(repo) as { syncStatus: any };
+    expect(reopened.boardRoot).toBe(firstCtx.boardRoot);
+    expect(ctx.syncStatus.nativeReconnectRequired).toEqual({
+      branch: "team-board",
+      providers: ["grok", "antigravity"],
+    });
+    expect(ctx.syncStatus.error).toBeNull();
+    const registration = JSON.parse(readFileSync(join(repo, ".mcp.json"), "utf8")) as { mcpServers: Record<string, any> };
+    expect(registration.mcpServers.kanmer.env.KANMER_BOARD_BRANCH).toBe("team-board");
+    expect(registration.mcpServers.other).toEqual({ command: "keep" });
+  }, 30_000);
+
+  it("surfaces a malformed closed-project registration instead of claiming reopen succeeded", async () => {
+    await __kanmerTest.openProject(repo);
+    const firstCtx = __kanmerTest.contexts.get(repo) as { boardRoot: string };
+    await __kanmerTest.closeProject(repo);
+    await git(firstCtx.boardRoot, "branch", "-m", "team-board");
+    writeFileSync(join(repo, ".mcp.json"), "{ malformed\n", "utf8");
+    writeFileSync(join(tmpdir(), "kanmer-core084-electron", "settings.json"), JSON.stringify({
+      ...readSettings(),
+      kanmerBranch: "team-board",
+    }, null, 2) + "\n", "utf8");
+
+    await __kanmerTest.openProject(repo);
+    const ctx = __kanmerTest.contexts.get(repo) as { syncStatus: any };
+    expect(ctx.syncStatus.paused).toBe(true);
+    expect(ctx.syncStatus.error).toContain("Provider registration reconciliation failed");
+    expect(ctx.syncStatus.error).toContain("claude");
+  }, 30_000);
+
   it("reconciles owned project registrations after a successful saved branch change", async () => {
     await git(repo, "branch", "-m", "release-board");
     writeFileSync(join(repo, ".mcp.json"), JSON.stringify({

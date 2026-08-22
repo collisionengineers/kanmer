@@ -738,6 +738,9 @@ function GitTab(): JSX.Element {
       {status?.boardRoot && <p className="hint">Board worktree: <code>{status.boardRoot}</code>{status.lastSync ? ` · last sync ${status.lastSync}` : ""}</p>}
       {status.handoffPending && <p className="error">{status.handoffPending.warning}</p>}
       {status.handoffPending && <button className="ghost sm" onClick={() => void window.kanmer.confirmKanmerGitHandoff(client.projectId).then(setStatus)}>Mark hosted handoff complete</button>}
+      {status.nativeReconnectRequired && <p className="error">
+        {status.nativeReconnectRequired.providers.map((provider) => provider === "grok" ? "Grok" : "Antigravity").join(" and ")} may have user-scoped native plugin state staged for an older board branch. Reconnect {status.nativeReconnectRequired.providers.length === 1 ? "this provider" : "these providers"} in the Connect section to refresh <code>KANMER_BOARD_BRANCH</code> for <code>{status.nativeReconnectRequired.branch}</code>.
+      </p>}
       {status.error && <p className="error">{status.error}</p>}
       {status.boardRoot && <button className="ghost sm" onClick={() => void window.kanmer.syncKanmerNow(client.projectId).then(setStatus)}>{status.paused || !status.available ? "Retry" : "Sync now"}</button>}
     </>}

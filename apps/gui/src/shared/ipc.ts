@@ -339,6 +339,8 @@ export interface AppSettings extends UiPreferences {
   sessionInitialized: boolean;
   kanmerBranch: string;
   gitSyncMinutes: number;
+  pendingNativeReconnects?: Record<string, NativeReconnectRequirement>;
+  lastKnownBoardBranches?: Record<string, string>;
   dispatch: DispatchSettings;
 }
 
@@ -367,7 +369,16 @@ export interface KanmerGitStatus {
   error: string | null;
   paused: boolean;
   handoffPending?: { from: string; to: string; warning: string };
+  /** User-scoped native plugins whose staged board branch needs an explicit reconnect. */
+  nativeReconnectRequired?: NativeReconnectRequirement;
   boardWorktree: BoardWorktreeHealth | null;
+}
+
+export type NativeReconnectProvider = "grok" | "antigravity";
+
+export interface NativeReconnectRequirement {
+  branch: string;
+  providers: NativeReconnectProvider[];
 }
 
 export interface OpenProjectResult {

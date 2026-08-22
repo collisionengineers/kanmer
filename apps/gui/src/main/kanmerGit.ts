@@ -4,6 +4,7 @@ import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { liveBoardBranchError, liveBoardBranchMatches } from "./syncBranch.js";
+import type { NativeReconnectRequirement } from "../shared/ipc.js";
 
 const execFile = promisify(execFileCallback);
 
@@ -35,6 +36,8 @@ export interface KanmerGitStatus {
   branchMismatchError?: boolean;
   /** The mismatch detector supplied the current pause rather than preserving one. */
   branchMismatchPause?: boolean;
+  /** User-scoped native plugins whose staged board branch needs explicit reconnect. */
+  nativeReconnectRequired?: NativeReconnectRequirement;
 }
 
 /**

@@ -1,3 +1,3 @@
-- [ ] Retry the current saved branch.
-- [ ] Keep paused/error semantics coherent through branch change.
-- [ ] Add deterministic regression and run rails.
+- [x] Refresh paused status to the saved board branch when preferences change.
+- [x] Retry board repair with the current saved branch.
+- [x] Add deterministic stale-branch regression and run focused/full rails.

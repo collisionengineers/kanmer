@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "153"
-head_sha: "c18b5c046f74102c86ecc5f3bd514f6e687bbeb9"
+head_sha: "1c91353b61c55dbf9f57e0bb5f75a7d283abe2ef"
 verdict: pass
 reviewer: "root"
 independent: true
 plan_hash: "9acd6aaeeab3d865"
-ticket_updated: "2026-08-22T05:05:13.472Z"
+ticket_updated: "2026-08-22T05:28:18.252Z"
 findings:
   - id: F-001
     severity: blocker
@@ -45,3 +45,10 @@ Independently reviewed PR #153 at current head c18b5c046f74102c86ecc5f3bd514f6e6
 - Real packaged two-version update, live MCP session survival, junction/process census, uninstall, and AV/SmartScreen evidence remain INCONCLUSIVE because no disposable Windows host was available. No capability is inferred from static or local package rails.
 
 All five current review findings are fixed in the implementation commit. The review passes the bounded source change with the hosted and real-host evidence limits explicitly retained for verification.
+
+
+## Merge reconciliation refresh — 1c91353b61c55dbf9f57e0bb5f75a7d283abe2ef
+
+The independent PASS above was recorded before the origin/main reconciliation. This SHA-bound record is refreshed to the pushed head 1c91353b61c55dbf9f57e0bb5f75a7d283abe2ef for traceability; it carries the prior source-review verdict forward but requires root's independent re-review of the merged AGENTS.md and FRD-012 conflict resolution before merge. The merge commit is c422333bd662c92a2ad927b8b0386c0c7509ba3a from origin/main 3f4233789363a36631ee0f8e2f60e33fa84e2619; the only conflicts were those two governing/operating documents, resolved to retain both MCP-015 native-plugin and GUI-106 external-runtime contracts.
+
+Author verification at the refreshed head: first post-merge GUI run exited 1 at 264/265 because the normal-checkout core dist lacked the MCP-015 antigravity provider; after rebuilding/pointing the resolver at the ticket worktree core, GUI passed 362/362. Focused launcher/updater 8/8, scripts 83/83, all-workspace typecheck, dist:check/updater 8/8, and both diff checks exited 0. GitHub reports PR #153 CLEAN with zero new check-runs; historical hosted PASS remains only 0cdfafad. Packaged-host update/session/uninstall/AV evidence remains INCONCLUSIVE.

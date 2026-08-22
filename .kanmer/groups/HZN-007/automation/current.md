@@ -226,3 +226,15 @@ Last handoff: 2026-08-22T03:12:42.450Z — MCP-015 is the second implementation 
 Last handoff: 2026-08-22T05:23:00Z — CORE-024 assignment. Run ledger and readback now record the dedicated CORE-024 assignment; implementation is bounded to phase 1 and remains on core-024-check-pr/.worktrees/core-024 at Implementing pending deterministic rails and Review handoff.
 
 Last handoff: 2026-08-22T05:24:10Z — CORE-024 Review handoff: PR #155 is open at b041e944ececdf433925b9e4168e003a4623fbce; deterministic packet is Review-ready, hosted verify/kanmer-gate are queued, and no external PASS is claimed. Ticket remains Implementing pending fresh gates and one Implementing→Review move; no merge or cleanup.
+
+
+- 2026-08-22T05:26:00Z — CORE-024 hosted kanmer-gate PASS recorded in the durable run below; sibling verify 96985771083 remains in progress and no overall hosted verify PASS is claimed.
+
+
+Last handoff: 2026-08-22T05:28:18.252Z — GUI-106 conflict-resolved head 1c91353b61c55dbf9f57e0bb5f75a7d283abe2ef is pushed on PR #153 after origin/main 3f4233789363a36631ee0f8e2f60e33fa84e2619 merge c422333bd662c92a2ad927b8b0386c0c7509ba3a. AGENTS.md and FRD-012 conflicts were resolved preserving MCP-015 native plugin wording plus GUI-106 external runtime wording. First stale-core GUI failure (264/265) is retained; rerun with ticket-worktree core passed 362/362. Focused 8/8, scripts 83/83, typecheck, dist:check/updater 8/8 and diff checks pass. PR is CLEAN with zero new check-runs; review attestation refreshed to the new head and root re-review is required. GUI-106 remains Review/taken; no merge or cleanup.
+
+
+- 2026-08-22T05:26:00Z — CORE-024 hosted kanmer-gate PASS recorded in the durable run below; sibling verify 96985771083 remains in progress and no overall hosted verify PASS is claimed.
+
+
+- 2026-08-22T05:26:00Z — CORE-024 hosted kanmer-gate PASS recorded in the durable run below; sibling verify 96985771083 remains in progress and no overall hosted verify PASS is claimed.

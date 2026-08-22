@@ -4,13 +4,14 @@ type: ticket
 title: >-
   CORE-043 review remediation: keep Actions board branch variable aligned on
   custom rename
-status: review
+status: verifying
 area: core
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-22T13:31:18.460Z'
   review: '2026-08-22T13:48:15.255Z'
+  verifying: '2026-08-22T13:53:29.540Z'
 taken_at: '2026-08-22T13:36:49.750Z'
 branch: core-059-gate-ref-retention
 worktree: .worktrees/core-059
@@ -33,7 +34,7 @@ prs:
   - '182'
 archived: false
 created: '2026-08-22T13:28:04.825Z'
-updated: '2026-08-22T13:48:15.255Z'
+updated: '2026-08-22T13:53:29.540Z'
 ---
 
 Close the current CORE-043 review finding: once KANMER_BOARD_BRANCH is introduced as the hosted gate source, every supported custom-to-custom board rename must preserve or explicitly coordinate that variable before deleting the previous remote ref. Keep the handoff fail-closed and add deterministic workflow/manual/rename regression evidence. Link [[CORE-043]].

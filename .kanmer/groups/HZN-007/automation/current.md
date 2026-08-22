@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T13:51:33.161Z
+updated_at: 2026-08-22T13:53:29.552Z
 ---
 
 # Current auto run — HZN-007
@@ -487,3 +487,6 @@ Last handoff: 2026-08-22T13:43:38.156Z — CORE-061 Review handoff: final head 2
 ## CORE-057 conflict-resolved Review handoff — 2026-08-22T13:53Z
 
 CORE-057 PR #178 was updated against cumulative CORE-044 base 3c0706627cc73038d91a624e5d494d0148dce4c4 after the CORE-056 merge conflict in sources.ts. Combined DNS-bound request/deadline behavior with locked cache refresh/304 reconciliation. Final pushed head: 5f63571ecc7d71c102fc134b72d065207b11eae9; PR remains OPEN/MERGEABLE; ticket remains Review. Post-sync rails: source 19/19, MCP HTTP 87/87, scripts 88/88, protocol 46/46, core/server builds, workspace typecheck, docs and diff-check all PASS. Exact normal-checkout plugin parity passed at SHA256 06110A9E0CA2007A51CC2AEDCDD0E2BD353B627484C184AADB709A52AF686878. First mis-scoped normal-checkout attempt preserved Windows EPERM/missing-dependency failures. Live DNS/Windows/hosted/external evidence remains INCONCLUSIVE. Fresh independent review requested; author will not review or merge.
+
+
+Last handoff: 2026-08-22T13:53:29.552Z — CORE-059 independently reviewed exact head 835f9f51cbb786024d8d4523d93332399d769a77 PASS; PR #182 merged non-squash as 94f7094b0b103aecec452f0e58ebaf0ad370f8ff into core-043-protection-retarget. Focused 20/20, build/scripts 89/89, manual/docs/diff pass; inherited GUI typecheck baseline failure preserved. Ticket moved Review→Verifying for merged-main proof.

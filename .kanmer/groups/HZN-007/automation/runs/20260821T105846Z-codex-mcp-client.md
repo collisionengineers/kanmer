@@ -805,3 +805,6 @@ Last handoff: 2026-08-22T15:35Z — Independent CORE-058 review at PR #180 head 
 
 - 2026-08-22T17:52:49.621Z — CORE-080 created from fresh independent CORE-043 review findings on PR #168: manual Retry must recheck the live board branch before sync, and FRD-020 R5 must specify retained old refs until KANMER_BOARD_BRANCH is updated. Packet written/read back; linked and blocking CORE-043; moved Backlog→Preparing. Next assignment is implementation from CORE-043 head f63d953fc8467440988c887c62a34ade0c77c96c; no parent merge until CORE-080 completes.
 \n\n## CORE-080 start — 2026-08-22T17:53:41.775Z\n\nCORE-080 is taken for bounded implementation from CORE-043 cumulative head f63d953fc8467440988c887c62a34ade0c77c96c4. Scope: manual Retry live-branch preflight using existing inspect/refresh helpers, deterministic regression coverage, and FRD-020 R5/manual retained-ref wording alignment. Parent CORE-043 remains open; no merge or independent review by this author.
+
+
+- 2026-08-22T17:59:34.636Z — CORE-026 PR #163 current-head review assigned: audit all 33 GitHub inline comments at head 3a05ab7a21f55152a4f493169300ac9e622baab7 against CORE-044–079 packets and current source. Preserve stale/failed evidence, do not move or merge CORE-026; create/link a blocking remediation ticket only for a residual valid finding.

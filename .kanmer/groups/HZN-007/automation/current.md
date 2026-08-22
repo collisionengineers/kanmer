@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T08:32:34.137Z
+updated_at: 2026-08-22T08:37:00Z
 ---
 
 # Current auto run — HZN-007
@@ -304,3 +304,6 @@ Last handoff: 2026-08-22T08:22:47.548Z — GUI-108 hosted handoff finalized: PR 
 
 
 Last handoff: 2026-08-22T08:32:34.137Z — CORE-026 assigned to core026-executor: ticket is Implementing on core-026-project-declared-sources/.worktrees/core-026 from origin/main 84a20f84. Governing FRD-026 and ADR-0019 are linked, research/files/plan/checklist/questions are complete, and scope is project-declared source preferences only with no external auto-trust or unbounded llms.txt crawl. Stop at Review; no self-review/merge/cleanup.
+
+
+2026-08-22T08:37:00Z — GUI-109 assigned to /root/gui099_executor in Preparing as the third conflict-free lane after governing FRD-001 readback. Scope is Add to group ContextMenu wiring through existing membership semantics; no new group model, no cross-ticket changes, no self-merge.

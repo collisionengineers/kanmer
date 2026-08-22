@@ -66,3 +66,6 @@
 
 
 2026-08-22T08:25:00Z — GUI-108 closed. PR #161 merged as 84a20f8414264f65f6d851ca51849af89c80acf9 after independent review PASS and hosted verify/kanmer-gate PASS. Focused merged-main GUI tests 25/25, manual freshness, core build, and diff-check PASS; stale shared-core GUI build/typecheck failures are preserved. Packaged visual drag/drop remains INCONCLUSIVE. Ticket proof/Outcome/closeout complete; worktree and branch removed; ticket released.
+
+
+2026-08-22T08:33:00Z — GUI-109 moved Backlog→Preparing after governing FRD-001 gate readback. Assigned to /root/gui099_executor as the third conflict-free lane; scope is existing group membership wiring in the ticket ContextMenu only. Full packet/group context and gates are required; dedicated take/worktree, research/plan/execute, independent Review, and no merge/cleanup by author.

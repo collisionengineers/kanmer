@@ -165,3 +165,6 @@
 
 
 2026-08-22T11:30:00Z — CORE-047 independently reviewed PASS at 67e2be792e8480d29df7ff13128fb8c7886056a9; deterministic release-order and third-claimant probes, IO 18/18, focused core 109/109, full core 296/296, plugin parity PASS; PR #169 non-squash merged into CORE-046 base as 0f7ccc4efad0aeae2295f3ba08e0b6e886356679 by independent reviewer. Hosted/real Windows crash stress remains INCONCLUSIVE.
+
+
+2026-08-22T11:26:50Z — CORE-043 independent review NEEDS-CHANGES (F-001 stale handoff cache, F-002 no-board preference persistence, F-003 .github workflow literal kanmer-board). Created linked CORE-048 remediation in Preparing; ADR-0016 conservative protection inference remains accepted bounded risk.

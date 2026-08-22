@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T00:54:10.235Z
+updated_at: 2026-08-22T01:02:46.918Z
 lane_limit: 3
 stop_reason:
 ---
@@ -515,3 +515,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T00:56:33.202Z — DOC-007 Review handoff after current-main reconciliation: historical PR #49 merge 19244f6 is reachable from origin/main af61144c; fresh worktree doc-007-manual-reconcile is clean with no source diff. Current manual emits 22 chapters (21 authored + generated shortcuts), min authored 2462, focused manual 11/11, current aggregate npm test passes after core build (core 263/263, GUI 352/352, HTTP 61/61, scripts 80/80), and check/type/build/diff rails pass. First fresh-worktree aggregate exit 1 from missing core dist (scripts 78/80) is preserved. Checklist/report/scratch were written/read back at 44/46; withdrawn backlog chapter and unrerun negative guard are explicit dispositions; no visual/manual acceptance claimed. Implementing→Review moved through MCP; existing PR #49 remains traceability. Independent review required; no self-review, merge, verification or cleanup.
+
+- 2026-08-22T02:02:15+01:00 — MCP-041 result: research reproduced the CI timing boundary; test-only synchronization now awaits the second child `running` state and terminal `failed` state with bounded timeout. Dedicated branch `mcp-041-supervisor-retry`, commit `99d3f259639a50d0319a136816cd088e3df2da2a`, PR #145 (`https://github.com/collisionengineers/kanmer/pull/145`); checklist 6/6, report/readback complete, Implementing→Review moved one boundary after fresh gates. Focused supervisor 7/7 and 100 repeated runs passed; package `test:http` ultimately 61/61; package typecheck and isolated readiness 7/7 passed. Preserve first package failures 59/61 (HTTP child ETIMEDOUT + readiness timeout), second 60/61 (readiness timeout), shared verify failure at unrelated HTTP child ETIMEDOUT, and triggering GitHub 60/61 evidence. Stop for independent review/merge; retain worktree/branch.

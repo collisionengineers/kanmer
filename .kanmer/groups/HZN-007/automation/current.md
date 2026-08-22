@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:56:33.202Z
+updated_at: 2026-08-22T01:02:46.918Z
 ---
 
 # Current auto run — HZN-007
@@ -98,3 +98,5 @@ Last handoff: 2026-08-22T00:48:35.593Z — DOC-007 is taken on doc-007-manual-re
 
 
 Last handoff: 2026-08-22T00:56:33.202Z — DOC-007 is Review-ready after current-main reconciliation: existing PR #49/merge 19244f6 is reachable, current manual emits 22 chapters, and all deterministic rails are recorded. First missing-core-dist test failure and unrerun negative/visual boundaries remain explicit; no source diff, new PR, self-review, merge or cleanup. Independent root review required.
+
+- Last handoff: 2026-08-22T02:02:15+01:00 — MCP-041 is Review with PR #145 at `99d3f259639a50d0319a136816cd088e3df2da2a`; deterministic supervisor test synchronization is complete, checklist/report/gates pass, and all first failures remain recorded. Independent review/merge required; do not clean up `.worktrees/mcp-041` or its branch.

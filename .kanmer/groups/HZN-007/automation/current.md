@@ -785,3 +785,6 @@ Last handoff: - 2026-08-22T20:05:17.039Z — GUI-114 assigned and handed off Imp
 
 
 GUI-115 implemented on 4ad2c858, PR #212 opened against core-043-protection-retarget; full GUI suite PASS 49 files/421 tests, typecheck/build PASS; moved to Review and awaiting independent review. Timer cleanup regression was fixed after an initial parallel Windows cleanup-hook failure.
+
+
+CORE-083 independently reviewed PASS (PR #211, focused 4/4), merged into core-026 parent as f65ac4178de978a01a44e32235c2cdfacddc6a6f; moved to Verifying and released. CORE-026 parent now needs exact-head refresh/review before merge.

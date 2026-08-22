@@ -176,6 +176,36 @@ describe("withExclusiveFileLock", () => {
     await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
+  it("reclaims a stale empty owner marker left by an interrupted claim", async () => {
+    const file = path.join(dir, "empty-owner.lock");
+    const token = "123e4567-e89b-12d3-a456-426614174000";
+    await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0, token }), "utf8");
+    const marker = `${file}.owner-${token}`;
+    await fs.writeFile(marker, "", "utf8");
+    await fs.utimes(marker, 0, 0);
+
+    await expect(withExclusiveFileLock(file, async () => "recovered", {
+      now: () => 60_000,
+      staleAfterMs: 30_000,
+      processAlive: () => false,
+      retryDelaysMs: [0],
+    })).resolves.toBe("recovered");
+    await expect(fs.readFile(marker)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("uses filesystem age when a persisted createdAt is in the future", async () => {
+    const file = path.join(dir, "future-owner.lock");
+    await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 120_000 }), "utf8");
+    await fs.utimes(file, 0, 0);
+
+    await expect(withExclusiveFileLock(file, async () => "recovered", {
+      now: () => 60_000,
+      staleAfterMs: 30_000,
+      processAlive: () => false,
+      retryDelaysMs: [0],
+    })).resolves.toBe("recovered");
+  });
+
   it("keeps an old malformed record while an owner marker is active", async () => {
     const file = path.join(dir, "partial-active.lock");
     const token = "123e4567-e89b-12d3-a456-426614174000";
@@ -459,6 +489,34 @@ describe("withExclusiveFileLock", () => {
     const file = path.join(dir, "cache.lock");
     await expect(withExclusiveFileLock(file, async () => { throw new Error("callback failed"); })).rejects.toThrow("callback failed");
     await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("preserves both callback and release failures", async () => {
+    const file = path.join(dir, "callback-and-release.lock");
+    const realRm = fs.rm.bind(fs);
+    let releasePhase = false;
+    const rmSpy = vi.spyOn(fs, "rm").mockImplementation(async (target, options) => {
+      if (releasePhase && String(target) === file) throw errno("EACCES");
+      return realRm(target, options);
+    });
+    try {
+      let failure: unknown;
+      try {
+        await withExclusiveFileLock(file, async () => {
+          releasePhase = true;
+          throw new Error("callback failed");
+        }, { retryDelaysMs: [0] });
+      } catch (error) {
+        failure = error;
+      }
+      expect(failure).toBeInstanceOf(AggregateError);
+      expect((failure as AggregateError).errors).toHaveLength(2);
+      expect((failure as AggregateError).errors[0]).toMatchObject({ message: "callback failed" });
+      expect((failure as AggregateError).errors[1]).toMatchObject({ code: "EACCES" });
+    } finally {
+      rmSpy.mockRestore();
+      await realRm(file, { force: true });
+    }
   });
 
   it("retries transient quarantine rename failures", async () => {

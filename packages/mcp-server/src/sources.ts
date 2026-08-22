@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { lookup as dnsLookup } from "node:dns/promises";
 import { request as httpsRequest } from "node:https";
-import { isIP } from "node:net";
+import { isIP, type LookupFunction } from "node:net";
 import { Readable } from "node:stream";
-import { mkdir, readFile } from "node:fs/promises";
+import { lstat, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   SourceDeclarationSchema,
@@ -59,6 +59,15 @@ interface FetchOptions {
 }
 
 type BoundFetch = (url: URL, init: RequestInit, addresses: string[]) => Promise<Response>;
+
+/** Adapt one preflight-approved address to Node's scalar and all-address APIs. */
+export function createPinnedLookup(address: string): LookupFunction {
+  return (_hostname, options, callback) => {
+    const addressFamily = isIP(address);
+    if (options.all) callback(null, [{ address, family: addressFamily }]);
+    else callback(null, address, addressFamily);
+  };
+}
 
 interface FetchTextResult {
   status: number;
@@ -250,7 +259,11 @@ async function pinnedFetch(url: URL, init: RequestInit, addresses: string[]): Pr
         method: "GET",
         headers: Object.fromEntries(headers.entries()),
         servername: url.hostname,
-        lookup: (_hostname, _options, callback) => callback(null, address, isIP(address)),
+        // Keep the callback compatible with both Node's scalar and `all:true`
+        // lookup contracts. The preflight has already selected this exact
+        // address, so returning any other DNS result would reopen rebinding.
+        family: isIP(address),
+        lookup: createPinnedLookup(address),
       },
       (response) => {
         settled = true;
@@ -306,8 +319,31 @@ function cachePath(cacheDir: string, url: string): string {
   return path.join(cacheDir, `${key}.json`);
 }
 
+const MAX_CACHE_FILE_BYTES = LLMS_TXT_POLICY.maxBytes * 2 + 64 * 1024;
+
+/** Reject symlinked cache paths before any lock, read, mkdir, or write. */
+async function assertSafeCacheDirectory(cacheDir: string): Promise<void> {
+  const resolved = path.resolve(cacheDir);
+  const root = path.parse(resolved).root;
+  const relative = path.relative(root, resolved);
+  let current = root;
+  for (const segment of relative ? relative.split(path.sep) : []) {
+    current = path.join(current, segment);
+    try {
+      const entry = await lstat(current);
+      if (entry.isSymbolicLink()) throw new Error(`Refusing symlinked source cache path: ${current}`);
+      if (!entry.isDirectory()) throw new Error(`Source cache path is not a directory: ${current}`);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") break;
+      throw error;
+    }
+  }
+}
+
 async function readCache(file: string): Promise<CacheFile | null> {
   try {
+    const metadata = await lstat(file);
+    if (metadata.isSymbolicLink() || !metadata.isFile() || metadata.size > MAX_CACHE_FILE_BYTES) return null;
     const parsed: unknown = JSON.parse(await readFile(file, "utf8"));
     if (!parsed || typeof parsed !== "object") return null;
     const cache = parsed as Partial<CacheFile>;
@@ -331,10 +367,17 @@ async function readCache(file: string): Promise<CacheFile | null> {
     ) {
       return null;
     }
-    const documents = cache.documents as LlmsDocument[];
+    if (cache.documents.length === 0 || cache.documents.length > LLMS_TXT_POLICY.maxLinkedPages + 1) return null;
+    const cacheUrl = canonicalHttpsUrl(cache.url);
+    const documents = cache.documents.map((document) => {
+      const normalized = canonicalHttpsUrl(document.url);
+      assertSafeFetchTarget(cacheUrl, normalized);
+      return { ...document, url: normalized.toString() };
+    });
+    if (Buffer.byteLength(documents.map((document) => document.text).join(""), "utf8") > LLMS_TXT_POLICY.maxBytes) return null;
     if (cache.sha256 && cache.sha256 !== cacheDigest(documents)) return null;
     return {
-      url: canonicalHttpsUrl(cache.url).toString(),
+      url: cacheUrl.toString(),
       fetchedAt: cache.fetchedAt,
       expiresAt: cache.expiresAt,
       etag: cache.etag,
@@ -609,14 +652,24 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
     ? async (hostname: string) => (await dnsLookup(hostname, { all: true, verbatim: true })).map(({ address }) => address)
     : undefined);
   const now = options.now ?? Date.now;
+  await assertSafeCacheDirectory(options.cacheDir);
   const cacheFile = cachePath(options.cacheDir, root.toString());
   const active = activeRefreshes.get(cacheFile);
   if (active) {
-    const result = await active;
+    let result: LlmsFetchResult;
+    try {
+      result = await active;
+    } catch (error) {
+      // A forced caller must retry after an active refresh rejects; otherwise
+      // it would only re-await the failed promise and never honour `force`.
+      if (!options.force) throw error;
+      return fetchLlmsTxt(options);
+    }
     if (!options.force) return result.fromCache ? result : { ...result, fromCache: true };
     return fetchLlmsTxt(options);
   }
   const refresh = withExclusiveFileLock(`${cacheFile}.lock`, async () => {
+    await assertSafeCacheDirectory(options.cacheDir);
     const cached = await readCache(cacheFile);
     const nowMs = now();
     if (!options.force && cached && cached.url === root.toString() && Date.parse(cached.expiresAt) > nowMs) {
@@ -651,7 +704,7 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
         return {
           sourceUrl: cached.url,
           documents: cached.documents,
-          failures,
+          failures: [...cached.failures, ...failures],
           fromCache: true,
           fetchedAt: cached.fetchedAt,
         };
@@ -667,7 +720,10 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
         sha256: cacheDigest(documents),
         documents,
         failures,
+        etag: rootResponse.etag ?? cached.etag,
+        lastModified: rootResponse.lastModified ?? cached.lastModified,
       };
+      await assertSafeCacheDirectory(options.cacheDir);
       await mkdir(options.cacheDir, { recursive: true });
       await writeCache(cacheFile, refreshed);
       return {
@@ -719,6 +775,7 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
       documents,
       failures,
     };
+    await assertSafeCacheDirectory(options.cacheDir);
     await mkdir(options.cacheDir, { recursive: true });
     await writeCache(cacheFile, cache);
     return { sourceUrl: root.toString(), documents, failures, fromCache: false, fetchedAt };

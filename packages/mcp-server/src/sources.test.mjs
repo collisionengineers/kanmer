@@ -58,6 +58,38 @@ test("fresh cache avoids network and stale cache revalidates with validators", a
   }
 });
 
+test("scopes cached validators to the effective final redirect target", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-redirect-validators-"));
+  const calls = [];
+  const root = "https://docs.example.test/llms.txt";
+  const middle = "https://docs.example.test/redirected/llms.txt";
+  const final = "https://docs.example.test/reference/llms.txt";
+  let finalFetches = 0;
+  const fetchImpl = async (url, init) => {
+    const current = String(url);
+    calls.push({ url: current, validator: init?.headers?.["if-none-match"] });
+    if (current === root) return new Response(null, { status: 302, headers: { location: middle } });
+    if (current === middle) return new Response(null, { status: 302, headers: { location: final } });
+    if (current === final && finalFetches++ === 0) {
+      return fakeResponse("# Final", { etag: '"final-1"' });
+    }
+    return new Response(null, { status: 304 });
+  };
+  try {
+    await fetchLlmsTxt({ url: root, cacheDir, fetchImpl, now: () => 1_000 });
+    calls.length = 0;
+    const refreshed = await fetchLlmsTxt({ url: root, cacheDir, fetchImpl, force: true, now: () => 86_401_000 });
+    assert.equal(refreshed.fromCache, true);
+    assert.deepEqual(calls, [
+      { url: root, validator: undefined },
+      { url: middle, validator: undefined },
+      { url: final, validator: '"final-1"' },
+    ]);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
 test("invalid or unbounded source URLs fail before network access", async () => {
   const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-"));
   try {
@@ -210,6 +242,38 @@ test("validates each redirect hop and resolves relative links from the final URL
   }
 });
 
+test("preserves manifest validators across same-origin redirects", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-redirect-validator-"));
+  let round = 0;
+  const finalHeaders = [];
+  try {
+    const fetchImpl = async (url, init) => {
+      const value = String(url);
+      if (value === "https://docs.example.test/llms.txt") {
+        round++;
+        return { status: 302, ok: false, url: value, headers: new Headers({ location: "/nested/llms.txt" }) };
+      }
+      assert.equal(value, "https://docs.example.test/nested/llms.txt");
+      finalHeaders.push(init?.headers);
+      if (round === 1) return fakeResponse("# Docs", { etag: '"manifest-1"' });
+      assert.equal(init?.headers?.["if-none-match"], '"manifest-1"');
+      return { status: 304, ok: false, url: value, headers: new Headers() };
+    };
+    await fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl, now: () => 1_000 });
+    const revalidated = await fetchLlmsTxt({
+      url: "https://docs.example.test/llms.txt",
+      cacheDir,
+      fetchImpl,
+      force: true,
+      now: () => 86_401_000,
+    });
+    assert.equal(revalidated.fromCache, true);
+    assert.equal(finalHeaders.length, 2);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
 test("rechecks DNS destinations for every redirect and linked request", async () => {
   const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-dns-hop-"));
   const fetches = [];
@@ -256,13 +320,13 @@ test("passes the validated DNS addresses to the outbound request seam", async ()
       url: "https://docs.example.test/llms.txt",
       cacheDir,
       lookupImpl: async () => ["93.184.216.34"],
-      requestImpl: async (url, _init, addresses) => {
-        requests.push({ url: String(url), addresses });
+      requestImpl: async (url, init, addresses) => {
+        requests.push({ url: String(url), addresses, encoding: init.headers?.["accept-encoding"] });
         return fakeResponse("# Docs");
       },
     });
     assert.equal(result.documents[0].text, "# Docs");
-    assert.deepEqual(requests, [{ url: "https://docs.example.test/llms.txt", addresses: ["93.184.216.34"] }]);
+    assert.deepEqual(requests, [{ url: "https://docs.example.test/llms.txt", addresses: ["93.184.216.34"], encoding: "identity" }]);
   } finally {
     await rm(cacheDir, { recursive: true, force: true });
   }
@@ -306,6 +370,23 @@ test("filters images, clears fragments, and rejects credential-bearing linked qu
   }
 });
 
+test("stops collecting linked pages at the hard page budget", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-link-cap-"));
+  const links = Array.from({ length: LLMS_TXT_POLICY.maxLinkedPages + 100 }, (_, index) => `[guide-${index}](guide-${index}.md)`).join("\n");
+  const calls = [];
+  try {
+    const fetchImpl = async (url) => {
+      calls.push(String(url));
+      return String(url).endsWith("llms.txt") ? fakeResponse(links) : fakeResponse("# Guide");
+    };
+    const result = await fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl });
+    assert.equal(calls.length, LLMS_TXT_POLICY.maxLinkedPages + 1);
+    assert.equal(result.documents.length, LLMS_TXT_POLICY.maxLinkedPages + 1);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
 test("requires an explicit supported content type", async () => {
   const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-"));
   try {
@@ -319,6 +400,56 @@ test("requires an explicit supported content type", async () => {
     );
   } finally {
     await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("cancels bodies on every early-abandon response path", async () => {
+  const scenarios = [
+    {
+      name: "redirect",
+      response: () => ({ status: 302, headers: { location: "/next" } }),
+      expected: /redirect limit|without Location/,
+    },
+    {
+      name: "http-error",
+      response: () => ({ status: 503, headers: { "content-type": "text/plain" } }),
+      expected: /HTTP 503/,
+    },
+    {
+      name: "content-type",
+      response: () => ({ status: 200, headers: { "content-type": "application/octet-stream" } }),
+      expected: /unsupported/,
+    },
+    {
+      name: "content-length",
+      response: () => ({ status: 200, headers: { "content-type": "text/plain", "content-length": String(LLMS_TXT_POLICY.maxBytes + 1) } }),
+      expected: /exceeds the .*byte response limit/,
+    },
+  ];
+  for (const scenario of scenarios) {
+    const cacheDir = await mkdtemp(path.join(os.tmpdir(), `kanmer-sources-cancel-${scenario.name}-`));
+    let cancelled = false;
+    try {
+      const fetchImpl = async () => {
+        const details = scenario.response();
+        const body = new ReadableStream({
+          start(controller) {
+            controller.enqueue(new Uint8Array([1]));
+          },
+          cancel() {
+            cancelled = true;
+          },
+        });
+        return new Response(body, { status: details.status, headers: details.headers });
+      };
+      await assert.rejects(
+        () => fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl }),
+        scenario.expected,
+      );
+      assert.equal(cancelled, true, scenario.name);
+    } finally {
+      await rm(cacheDir, { recursive: true, force: true });
+    }
   }
 });
 
@@ -419,6 +550,23 @@ test("a validator response without a cached representation is surfaced", async (
   }
 });
 
+test("surfaces an uncached linked 304 during a fresh root fetch", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-linked-304-"));
+  try {
+    const result = await fetchLlmsTxt({
+      url: "https://docs.example.test/llms.txt",
+      cacheDir,
+      fetchImpl: async (url) => String(url).endsWith("llms.txt")
+        ? fakeResponse("[guide](guide.md)")
+        : { status: 304, ok: false, url: String(url), headers: new Headers() },
+    });
+    assert.deepEqual(result.documents.map((document) => document.url), ["https://docs.example.test/llms.txt"]);
+    assert.match(result.failures.join("\n"), /guide\.md returned HTTP 304 without a cached representation/);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
 test("fetch validation accepts resolver-enriched llms declarations", () => {
   assert.doesNotThrow(() => validateLlmsSource({
     kind: "llms-txt",
@@ -456,6 +604,40 @@ test("aggregate byte budget is enforced while reading linked responses", async (
   }
 });
 
+test("charges partial linked read failures to the aggregate byte budget", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-partial-budget-"));
+  const rootText = "# Docs\n[a](a.md)\n[b](b.md)";
+  const partialBytes = LLMS_TXT_POLICY.maxBytes - Buffer.byteLength(rootText, "utf8");
+  const calls = [];
+  try {
+    const fetchImpl = async (url) => {
+      const value = String(url);
+      calls.push(value);
+      if (value.endsWith("llms.txt")) return fakeResponse(rootText);
+      if (value.endsWith("a.md")) {
+        let delivered = false;
+        const stream = new ReadableStream({
+          pull(controller) {
+            if (delivered) {
+              controller.error(new Error("connection reset"));
+              return;
+            }
+            delivered = true;
+            controller.enqueue(new Uint8Array(partialBytes));
+          },
+        });
+        return new Response(stream, { headers: { "content-type": "text/plain" } });
+      }
+      return fakeResponse("# should not be fetched");
+    };
+    const result = await fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl });
+    assert.deepEqual(calls, ["https://docs.example.test/llms.txt", "https://docs.example.test/a.md"]);
+    assert.match(result.failures.join("\n"), /response read failed after/);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
 test("serializes concurrent refresh transactions and lets the second caller reuse the fresh cache", async () => {
   const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-refresh-lock-"));
   let calls = 0;
@@ -466,7 +648,7 @@ test("serializes concurrent refresh transactions and lets the second caller reus
       calls++;
       active++;
       maximumActive = Math.max(maximumActive, active);
-      await new Promise((resolve) => setTimeout(resolve, 25));
+      await new Promise((resolve) => setTimeout(resolve, 2_200));
       active--;
       return fakeResponse("# Docs", { etag: '"root-1"' });
     };
@@ -478,6 +660,42 @@ test("serializes concurrent refresh transactions and lets the second caller reus
     assert.equal(calls, 1);
     assert.deepEqual(results.map((result) => result.documents[0].text), ["# Docs", "# Docs"]);
     assert.equal(results.filter((result) => result.fromCache).length, 1);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("a concurrent forced refresh revalidates after the active refresh completes", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-force-refresh-"));
+  let forceCalls = 0;
+  try {
+    await fetchLlmsTxt({
+      url: "https://docs.example.test/llms.txt",
+      cacheDir,
+      fetchImpl: async () => fakeResponse("# Initial"),
+      now: () => 1_000,
+    });
+    const ordinary = fetchLlmsTxt({
+      url: "https://docs.example.test/llms.txt",
+      cacheDir,
+      fetchImpl: async () => { throw new Error("ordinary fresh-cache caller should not fetch"); },
+      now: () => 2_000,
+    });
+    const forced = fetchLlmsTxt({
+      url: "https://docs.example.test/llms.txt",
+      cacheDir,
+      fetchImpl: async () => {
+        forceCalls++;
+        return fakeResponse("# Forced", { etag: '"forced-1"' });
+      },
+      force: true,
+      now: () => 2_000,
+    });
+    const [ordinaryResult, forcedResult] = await Promise.all([ordinary, forced]);
+    assert.equal(forceCalls, 1);
+    assert.equal(ordinaryResult.fromCache, true);
+    assert.equal(forcedResult.documents[0].text, "# Forced");
+    assert.equal(forcedResult.fromCache, false);
   } finally {
     await rm(cacheDir, { recursive: true, force: true });
   }

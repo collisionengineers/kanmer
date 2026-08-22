@@ -14,3 +14,8 @@
 - Amendment rails: CLI 1/1, focused merge-gate 10/10, core 279/279, all-workspace typecheck, build:core, build:server, syntax, and diff-check all exit 0. The prior merged-head broad HTTP timeout and MCPB/plugin parity failures remain preserved above.
 - Pushed PR #155 head 34044bccb7861dc81c16add91386b43570fda11c. Hosted run 32556078470 was in progress at this readback (verify job 96990290597; kanmer-gate job 96990290443); no hosted PASS is claimed yet.
 - Ticket remains Review for fresh independent review; no merge or cleanup.
+
+### Final hosted verification — 2026-08-22
+
+- Run 32556078470 completed at amended PR #155 head 34044bccb7861dc81c16add91386b43570fda11c: kanmer-gate job 96990290443 PASS; verify job 96990290597 FAIL/exit 1.
+- Hosted verify passed npm test (core 279/279, GUI 39 files/362 tests, scripts 83/83), typecheck/builds, stdio 224/224, protocol 46/46, discovery 13/13, skills and AGENTS checks, then failed only at scripts/check-mcpb-sync.mjs:44 because the freshly built MCPB server differs from the distributed plugin copy. No hosted verify PASS is claimed.

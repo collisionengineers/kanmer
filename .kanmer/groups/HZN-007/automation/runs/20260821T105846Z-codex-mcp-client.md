@@ -662,3 +662,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T06:07:00Z — CORE-024 review amendment 34044bcc pushed: CLI error annotations now use kanmer/gate [CODE] and exit-2 verdicts include infrastructureError:true, with focused/core/typecheck/build rails green. New hosted run 32556078470 (verify 96990290597, kanmer-gate 96990290443) was pending at readback; no hosted PASS claimed. Ticket remains Review.
+
+
+- 2026-08-22T06:10:00Z — CORE-024 amended hosted result: run 32556078470 / kanmer-gate 96990290443 PASS; verify 96990290597 FAIL after all tests/smokes passed, only at check-mcpb-sync distributed plugin parity. No hosted verify PASS claimed; ticket remains Review.

@@ -253,3 +253,6 @@ Last handoff: 2026-08-22T05:30:03Z — Hosted verification correction for GUI-10
 
 
 - 2026-08-22T06:07:00Z — CORE-024 amended to 34044bcc for the reviewed CLI error-contract fixes; fresh hosted run 32556078470 is pending, and independent Review remains required.
+
+
+- 2026-08-22T06:10:00Z — CORE-024 amended hosted run 32556078470 is final: kanmer-gate PASS, verify FAIL only at out-of-scope MCPB/plugin parity; independent Review remains required.

@@ -39,7 +39,7 @@ test("check-pr emits one JSON verdict and uses exit 0/1/2", async () => {
     await fs.writeFile(path.join(board, ".kanmer", "areas", "_none", ticket.id, "open-questions", "questions.md"), "- [ ] choose", "utf8");
     const fail = run(board, event);
     assert.equal(fail.status, 1);
-    assert.match(fail.stderr, /::error title=kanmer-gate::/);
+    assert.match(fail.stderr, /::error title=kanmer\/gate \[OPEN_QUESTIONS\]::/);
     assert.equal(JSON.parse(fail.stdout).findings[0].code, "OPEN_QUESTIONS");
 
     await fs.writeFile(event, JSON.stringify({ pull_request: { number: 2, body: null, head: { sha: "def", ref: "feature/no-ticket" } } }));
@@ -49,6 +49,7 @@ test("check-pr emits one JSON verdict and uses exit 0/1/2", async () => {
 
     const infra = spawnSync(process.execPath, [cli, "--unknown"], { cwd: repoRoot, encoding: "utf8" });
     assert.equal(infra.status, 2);
+    assert.equal(JSON.parse(infra.stdout).infrastructureError, true);
     assert.doesNotMatch(infra.stderr, /node_modules|[A-Za-z]:\\/);
   } finally {
     await fs.rm(board, { recursive: true, force: true });

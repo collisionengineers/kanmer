@@ -52,7 +52,7 @@ function emitInfra(message) {
   const safe = /^(unknown argument|duplicate argument|--board|event|pull_request)/i.test(raw)
     ? raw
     : "board or event could not be read";
-  process.stdout.write(`${JSON.stringify({ ok: false, error: safe, findings: [] })}\n`);
+  process.stdout.write(`${JSON.stringify({ ok: false, infrastructureError: true, error: safe, findings: [] })}\n`);
   process.stderr.write(`kanmer-gate infrastructure failure: ${safe}\n`);
   process.exitCode = 2;
 }
@@ -70,7 +70,7 @@ async function main() {
     process.stdout.write(`${JSON.stringify(result)}\n`);
     for (const finding of result.findings) {
       if (finding.level === "error") {
-        process.stderr.write(`::error title=kanmer-gate::${escapeCommandData(finding.message)}\n`);
+        process.stderr.write(`::error title=kanmer/gate [${finding.code}]::${escapeCommandData(finding.message)}\n`);
       }
     }
     process.exitCode = result.ok ? 0 : 1;

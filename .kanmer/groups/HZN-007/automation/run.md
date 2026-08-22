@@ -26,3 +26,6 @@
 
 
 2026-08-22T05:22Z — run-pointer timestamp correction\n\n- The preceding GUI-106 and MCP-028 event labels were written with a future wall-clock minute while coordinating concurrent lanes. No evidence ordering or board state changes; this correction records the current UTC handoff time and the live statuses (GUI-106 merge-conflict remediation pending push; MCP-028 review needs changes; CORE-024 implementation in progress).
+
+
+### 2026-08-22T05:33:27Z — MCP-028 merged-main verification audit\n- PR #154 merged as 710bddff after independent PASS review at 45449d0f; hosted verify run 32554249103/job 96985834506 PASS.\n- Scoped HTTP/doctor rail on merged commit: 63/63 PASS; deterministic remote integration 2/2 PASS; real Cloudflare Tunnel/Worker/DNS/TLS/bearer proof remains INCONCLUSIVE.\n- First broad detached rail exposed a main-line ancestry defect: origin/main 710bddff omitted already-merged GUI-107/Antigravity changes from local 241ff13, causing unrelated GUI/typecheck/plugin failures. Recovery PR is required before MCP-028 proof can be finalized.\n- Status: MCP-028 Verifying; no Done claim until recovered main reruns pass.

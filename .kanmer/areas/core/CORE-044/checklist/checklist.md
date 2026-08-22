@@ -1,7 +1,7 @@
 # Checklist — CORE-044 source-fetch remediation
 
 - [x] Derive the MCP source declaration input from the canonical core schema and add canonical HTTPS URL identity, duplicate, empty-selector, and query-bearing URL tests.
-- [x] Add a core/store board content-version CAS and make set_sources refuse stale whole-board writes without overwriting unrelated edits.
+- [x] Add a serialized core/store board update lock and make set_sources patch sources under that lock without overwriting unrelated edits.
 - [x] Replace automatic redirect following with bounded manual same-origin HTTPS redirects and validate every Location/final destination.
 - [x] Add public-destination/SSRF policy checks for local, loopback, link-local, private, and redirected targets with deterministic policy tests.
 - [x] Reject query-bearing linked URLs, redact any remaining diagnostic URL data, and require supported content types before caching.
@@ -13,7 +13,7 @@
 - [x] Update canonical AGENTS/tool-reference source roster and research guidance to consult only available declarations and record skipped unavailable/unknown entries.
 - [x] Register packages/mcp-server/src/sources.test.mjs in test:http/verify and add a regression proving the authoritative rail executes it.
 - [x] Run focused core and source tests with exact exits, preserving prior F-001/F-002 regressions and first failures.
-- [ ] Run full npm test, typecheck, core/server builds, protocol/headless smoke, docs/skills/manual/plugin-sync/diff rails, and record every exit.
+- [x] Run full npm test, typecheck, core/server builds, protocol/headless smoke, docs/skills/manual/plugin-sync/diff rails, and record every exit; npm test's environment-sensitive 78/80 HTTP result is INCONCLUSIVE and its targeted rerun passed.
 - [x] Reconcile FRD-027/ADR-0020 wording only if the final diff requires it; do not add GUI source editing or provider migration.
 - [ ] Write the post-implementation report mapping all 21 findings to fixed, rejected, parked, or INCONCLUSIVE evidence.
 - [ ] Confirm PR #163 or the ticket-linked remediation PR, commit reachability, expected-project annotations, hosted checks, and final get_doc_gates readback before Review handoff.

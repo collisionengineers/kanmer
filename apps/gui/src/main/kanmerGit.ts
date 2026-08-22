@@ -79,6 +79,11 @@ const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 const BOARD_WORKTREE_IGNORE = [
   ".kanmer/data/activity.jsonl",
   ".kanmer/data/sources/",
+  // Lock ownership is process-local. Never commit a live lock, its owner
+  // lease, or a quarantined stale inode into the shared board branch.
+  ".kanmer/**/*.lock",
+  ".kanmer/**/*.lock.owner-*",
+  ".kanmer/**/*.lock.stale-*",
   // Atomic-write residue. An interrupted write leaves one behind, and
   // `git add -- .kanmer` on the sync timer would otherwise commit it.
   ".kanmer/**/.*.tmp-*",

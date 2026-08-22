@@ -13,9 +13,9 @@
 - [x] Run full GUI tests and retain exact counts/exits.
 - [x] Run manual freshness check and retain its exit.
 - [x] Run GUI typecheck and build and retain exits.
-- [ ] Write post-implementation report with exact commands, failures, and boundaries.
-- [ ] Update ticket commits/PR traceability and open the PR.
-- [ ] Move Implementing → Review after a fresh get_doc_gates readback.
+- [x] Write post-implementation report with exact commands, failures, and boundaries.
+- [x] Update ticket commits/PR traceability and open the PR.
+- [x] Move Implementing → Review after a fresh get_doc_gates readback.
 - [x] Record visual Electron card-menu/screenshot evidence as INCONCLUSIVE if no controlled desktop proof is available.
 
 ## Parked (explicitly deferred)

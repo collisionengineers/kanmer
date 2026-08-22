@@ -78,13 +78,15 @@ you retitle it is not a conflict at all.
 
 For a non-protected branch, do it from **Settings → Git**, not from the command
 line. Renaming there keeps the board's history and its working copy, and pushes
-the new name before deleting the old one, so the board never briefly exists
-nowhere. For the protected default, Kanmer deliberately refuses this automatic
-rename. An administrator must push the destination, set the repository Actions
-variable `KANMER_BOARD_BRANCH` to the destination, retarget protection and
-required checks, remove the old rule, and rename each local board worktree.
-Only after that handoff is complete should the Kanmer setting be changed;
-closed projects reconcile when they next open against the exact destination.
+the new name before any cleanup. A custom-to-custom rename retains the old
+remote ref and warns you to update the hosted `KANMER_BOARD_BRANCH` variable
+first; delete the old ref only after that variable points at the new branch.
+For the protected default, Kanmer deliberately refuses this automatic rename.
+An administrator must push the destination, set the repository Actions variable
+`KANMER_BOARD_BRANCH` to the destination, retarget protection and required
+checks, remove the old rule, and rename each local board worktree. Only after
+that handoff is complete should the Kanmer setting be changed; closed projects
+reconcile when they next open against the exact destination.
 
 ## I cannot find the setting for stages, or priorities
 

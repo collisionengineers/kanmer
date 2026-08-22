@@ -55,9 +55,10 @@ visible, and a silently failing one is not.
 For a non-protected board branch, do it from **Settings → Git**, not from the
 command line. Type the new name and press **Rename branch**. Kanmer renames the
 branch in place, so the board keeps its whole history and the worktree path stays
-the same. It pushes the new name first and only then deletes the old one from the
-remote, so there is no window where the board exists nowhere. Projects that were
-closed when you renamed are migrated the next time you open them.
+the same. It pushes the new name before any cleanup. For a custom-to-custom
+rename, Kanmer cannot update the hosted repository's `KANMER_BOARD_BRANCH`
+variable, so it retains the old remote ref and shows a warning. Update that
+variable to the new name first; only then is it safe to delete the old ref.
 
 The default `kanmer-board` branch is protected by the repository's merge gate.
 Kanmer cannot edit GitHub protection, so it refuses to rename away from that
@@ -69,6 +70,9 @@ rule is removed, and rename every local `.worktrees/kanmer` worktree. The bundle
 so update the variable before removing the old branch or protection rule. Then
 change the Kanmer branch setting. Until that handoff is complete, the existing
 board branch and setting are left untouched.
+
+Projects that were closed when you renamed are migrated the next time you open
+them.
 
 ## Picking the board up elsewhere
 

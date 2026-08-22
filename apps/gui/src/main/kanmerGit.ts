@@ -165,9 +165,10 @@ export interface BranchRenameResult {
  * The worktree path never changes either, so MCP servers already registered
  * against `.worktrees/kanmer` keep resolving.
  *
- * Order matters on the remote: the new branch is pushed *before* the old one is
- * deleted, so a failure at any point still leaves the history published under
- * at least one name.
+ * Order matters on the remote: the new branch is pushed *before* any old-ref
+ * cleanup. Custom-to-custom renames retain the old remote ref because this
+ * process cannot update the repository's KANMER_BOARD_BRANCH variable; the
+ * operator warning is the handoff point for that external change.
  *
  * Only the local rename is fatal. Once the worktree is on `to` the board works;
  * a remote that could not be updated is a warning to show, not a reason to
@@ -197,6 +198,13 @@ export async function renameBoardBranch(boardRoot: string, to: string): Promise<
     await git(boardRoot, ["push", "-u", "origin", `HEAD:refs/heads/${to}`]);
   } catch (error) {
     return { ok: true, from, error: `Renamed to ${to} locally, but pushing it failed: ${msg(error)}` };
+  }
+  if (from !== PROTECTED_BOARD_BRANCH) {
+    return {
+      ok: true,
+      from,
+      error: `Renamed and pushed ${to}; retained old remote branch ${from}. Update KANMER_BOARD_BRANCH to ${to}, then delete ${from}.`,
+    };
   }
   if (await onRemote(boardRoot, from)) {
     try {

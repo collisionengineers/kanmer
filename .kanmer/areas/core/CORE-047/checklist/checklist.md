@@ -30,3 +30,11 @@ The prior cumulative-only closeout was reversed after reachability audit. The ex
 - [x] IO/source/core/store/typecheck/scripts/docs/skills/agents/diff rails recorded; HTTP timeout preserved INCONCLUSIVE.
 - [x] PR #169 merge is reachable in the cumulative origin/main lineage.
 - [ ] Exact worktree/branch cleanup and release pending.
+
+## Final closeout
+
+- [x] Proof written against reachable origin/main fdaededc; deterministic rails and external limits read back.
+- [x] PR #169 confirmed MERGED on 2026-08-22T11:25:28Z.
+- [ ] Exact worktree/branch cleanup and release pending.
+
+- [x] Removed .worktrees/core-047 and deleted core-047-replacement-lock-race after merged PR confirmation; pruned worktrees.

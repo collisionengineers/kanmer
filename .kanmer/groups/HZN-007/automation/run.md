@@ -200,3 +200,6 @@
 
 
 2026-08-22T22:35Z — GUI-118 independent review NEEDS-CHANGES at exact head e09009b2. Created GUI-120 as blocking PR-review follow-up for the connectProject multi-project status broadcast id bug; PR #219 remains open and unmerged. Focused rerun exit 1 due linked-worktree core resolution after preserving the packet's author-reported PASS rails; no hosted checks/live host claims.
+
+
+2026-08-22T22:48Z — CORE-090 remediation complete on PR #220: clean detached checkout own npm ci/plugin build/mcpb check PASS, artifact server SHA f52d9c5b and 1,671,293-byte MCPB check; linked worktree mcpb exit 1 with stale primary-core exports preserved. Commit 75ce9ab1 pushed, item traceability refreshed, Review remains for fresh independent review; no merge/verify/cleanup.

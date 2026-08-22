@@ -861,3 +861,6 @@ Last handoff: 2026-08-22T22:35Z — Independent GUI-118 review at exact head e09
 
 
 Last handoff: 2026-08-22T23:46:00Z — GUI-120 is Review-ready on gui-120-multiproject-broadcast/.worktrees/gui-120, commit fe4ace066bde9d3ba230b997168802ef9fc8e55f, PR #221 targeting gui-118-provider-lifecycle. Full index.sync 11/11, GUI typecheck/build, docs/diff, and scripts 89/89 PASS; inherited workspace mcp-server/core typecheck mismatch remains INCONCLUSIVE. Independent review is required; no merge or cleanup.
+
+
+Last handoff: 2026-08-22T22:48Z — CORE-090 artifact remediation pushed as commit 75ce9ab11991994bfba46113fe3b79f5cdaaa629 on PR #220, still Review. Clean detached cumulative checkout at 973bcf93 ran own npm ci/plugin:build/mcpb:check successfully; regenerated MCP server SHA is f52d9c5b. Linked-worktree mcpb exit 1 with stale primary-core exports is preserved. Artifact-only diff; fresh independent review required.

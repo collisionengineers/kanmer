@@ -23,12 +23,13 @@ refs:
   - docs/functional/frd/FRD-027-project-declared-sources.md
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
 commits:
-  - a4204617
+  - a42046176640b575f205f13113b77c4750e23050
+  - 75ce9ab11991994bfba46113fe3b79f5cdaaa629
 prs:
   - '220'
 archived: false
 created: '2026-08-22T22:26:12.855Z'
-updated: '2026-08-22T22:32:48.695Z'
+updated: '2026-08-22T22:47:42.136Z'
 ---
 
 Refresh the committed MCPB/plugin artifact after CORE-088 source-cache hardening so the authoritative mcpb:check compares equal on the cumulative CORE-026 branch. Add the generated artifact only; no source behaviour change. This ticket blocks [[CORE-026]].

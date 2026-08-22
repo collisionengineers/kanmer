@@ -34,3 +34,7 @@ Hosted gate evidence:
 GitHub rejected branch protection for both disposable branches with HTTP 403: `Upgrade to GitHub Pro or make this repository public to enable this feature.` No protection was applied. Therefore protected conversation refusal, protected merge, exact merge SHA, detached merged verification, and proof on merged main were not observed and are explicitly INCONCLUSIVE. No bypass, public fallback, fabricated status, or merge is allowed.
 
 The disposable PR remains open for independent review. CORE-035 stops at Review; it is not Done.
+
+## Final hosted rerun
+
+Rerun `32561867341` completed with gate job `97005242239` SUCCESS (only Node 20 deprecation annotation) and verify job `97005242134` FAILURE. Verify reported `release notes turn shorthand PR refs into repository links` not ok; scripts summary was 85 tests, 84 pass, 1 fail; `Error: Command failed: npm test`, exit 1. This is the disposable-origin URL mismatch described above. PR #1 remains OPEN/UNSTABLE at head `94f859b51329f85830d34285ce7fb56bb80f870b`.

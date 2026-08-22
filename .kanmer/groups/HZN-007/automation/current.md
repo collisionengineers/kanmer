@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T08:25:00Z
+updated_at: 2026-08-22T08:30:00Z
 ---
 
 # Current auto run — HZN-007
@@ -289,3 +289,9 @@ Last handoff: 2026-08-22T08:22:47.548Z — GUI-108 hosted handoff finalized: PR 
 
 
 2026-08-22T08:25:00Z — GUI-108 closeout complete: PR #161 merge 84a20f84, proof PASS with packaged visual interaction INCONCLUSIVE; worktree/branch removed and ticket released. CORE-035 remains Implementing with private protection 403 boundary; no Done claim.
+
+
+2026-08-22T08:28:00Z — CORE-026 assigned to /root/gui082_executor as the second active implementation lane after GUI-108 closeout. Full packet/research/files/open-questions/gates/links read; plan/checklist/questions are not yet satisfied and docs_todo requires a new governing FRD/ADR. Scope is project-declared source preferences with explicit trust/applicability/bounded-llms.txt policy; no auto-install or unbounded crawl. CORE-035 remains the first active lane.
+
+
+2026-08-22T08:30:00Z — CORE-035 moved Implementing→Review after disposable integration execution. Deterministic source verify and local/hosted gate/refusal matrix are recorded; private GitHub protection PUT returned HTTP 403, so protected conversation blocking, protected merge, detached exact-SHA verification, and cleanup are not claimed. Ticket Outcome is INCONCLUSIVE and must remain out of Done; independent review of the evidence packet is required.

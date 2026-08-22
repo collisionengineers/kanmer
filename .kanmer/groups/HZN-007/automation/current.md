@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T01:10:50.386Z
+updated_at: 2026-08-22T01:25:23.084Z
 ---
 
 # Current auto run — HZN-007
@@ -123,3 +123,6 @@ Last handoff: 2026-08-22T01:11:36.922Z — CORE-038 is in Preparing for bounded 
 
 
 Last handoff: 2026-08-22T01:14:53.743Z — CORE-038 is Implementing on core-038-scripts-windows-safe / .worktrees/core-038, taken without force after packet docs passed the Preparing gate. The portable scripts launcher is the only source scope; stop at Review with PR.
+
+
+Last handoff: 2026-08-22T01:25:23.084Z — CORE-038 is in Review with original commit 7919f5eb and PR #146 closed as superseded; its fix is stacked in PR #145 with CORE-037 and MCP-041. Await hosted checks before any merge.

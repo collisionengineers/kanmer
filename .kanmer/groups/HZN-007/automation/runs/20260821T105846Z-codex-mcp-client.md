@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T01:10:50.386Z
+updated_at: 2026-08-22T01:25:23.084Z
 lane_limit: 3
 stop_reason:
 ---
@@ -536,3 +536,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T01:14:53.743Z — CORE-038 taken by /root/gui082_executor on core-038-scripts-windows-safe / .worktrees/core-038 after research/files/plan/checklist/open-questions were written and read back. Scope is dependency-free portable enumeration for npm run test:scripts, with AGENTS/command-reference consistency only; MCP-041, CORE-037 and GUI work remain untouched. Implementation and independent Review are pending; no merge or cleanup.
+
+- 2026-08-22T01:25:23.084Z — CORE-038 implementation reviewed and stacked into MCP-041 PR #145: original commit 7919f5eb and merge 5bd2e4bf are reachable; standalone PR #146 was closed as superseded after hosted verify exposed the CORE-037 path-alias baseline. PR #145 now carries CORE-037, MCP-041, and CORE-038 together; required checks remain pending/failed until rerun.

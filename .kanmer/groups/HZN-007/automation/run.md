@@ -29,3 +29,6 @@
 
 
 ### 2026-08-22T05:33:27Z — MCP-028 merged-main verification audit\n- PR #154 merged as 710bddff after independent PASS review at 45449d0f; hosted verify run 32554249103/job 96985834506 PASS.\n- Scoped HTTP/doctor rail on merged commit: 63/63 PASS; deterministic remote integration 2/2 PASS; real Cloudflare Tunnel/Worker/DNS/TLS/bearer proof remains INCONCLUSIVE.\n- First broad detached rail exposed a main-line ancestry defect: origin/main 710bddff omitted already-merged GUI-107/Antigravity changes from local 241ff13, causing unrelated GUI/typecheck/plugin failures. Recovery PR is required before MCP-028 proof can be finalized.\n- Status: MCP-028 Verifying; no Done claim until recovered main reruns pass.
+
+
+### 2026-08-22T05:44:24Z — MCP-028 verified/done/closeout\n- PR #154 merge 710bddff verified on detached merged main. Full rails PASS with verifier-local package/dependency junctions: core 269, GUI 362, HTTP 63, scripts 83, typecheck, build:server, and deterministic remote/doctor evidence.\n- Proof written with result PASS; protected Cloudflare Tunnel/Worker/DNS/TLS/bearer evidence remains INCONCLUSIVE and is explicitly retained.\n- MCP-028 moved Verifying→Done, outcome and closeout checklist finalized, ticket released, implementation worktree/branch removed, fetch --prune and worktree prune completed.

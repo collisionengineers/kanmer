@@ -229,3 +229,10 @@ Live named-tunnel, DNS/TLS, Worker deployment, token rotation over a hosted rout
 - [ ] git branch -d mcp-028-remote-access-integration
 - [ ] git fetch --prune + git worktree prune
 - [ ] take_ticket action: release
+
+## Closeout completion — MCP-028
+
+- [x] Worktree removed: .worktrees/mcp-028
+- [x] Branch deleted: mcp-028-remote-access-integration
+- [x] git fetch --prune origin and git worktree prune completed
+- [x] take_ticket action: release completed

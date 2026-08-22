@@ -13,7 +13,7 @@
 
 - [x] Reproduce the old quoted literal-glob failure under the Git Bash-compatible invocation and preserve its exit 1 evidence.
 - [x] Run the portable launcher through npm and confirm all existing script tests pass (80/80).
-- [ ] Run focused type/build/diff checks and the shared verification rail, recording exact exits and unrelated first failures.
+- [x] Run focused type/build/diff checks and the shared verification rail, recording exact exits and unrelated first failures.
 - [ ] Write the post-implementation report with scope, governing-doc rationale, risks, and merged-main verification commands.
 - [ ] Record commit and PR traceability, then move Implementing→Review only after gates pass.
 

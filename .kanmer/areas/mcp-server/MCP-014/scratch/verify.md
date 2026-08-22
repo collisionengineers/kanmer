@@ -1,0 +1,1 @@
+2026-08-22 merged-main rerun: core 263/263, standalone GUI 352/352, typecheck/build/plugin/manual/skills/diff PASS. Aggregate npm test retained FAIL at GUI 351/352 from kanmerGit.test.ts Windows timeout/EPERM. Real Grok clean-project get_status and unambiguous post-uninstall inspect remain INCONCLUSIVE; status stays Verifying.

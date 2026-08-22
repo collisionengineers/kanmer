@@ -97,3 +97,13 @@
 ## Progress notes
 
 Append measured CLI outputs and implementation notes here; never delete legacy state before functional proof.
+
+## Verification rerun — 2026-08-22
+
+- PR #132 merge commit cb8fa1f0a746b2c47722eb0ca644bf4d91599a77 is reachable from verified main af61144ce743f74b2aba92fb0778588b0b9bedd0; source commit ff41f518b5805b1c308ab251ab8305e3b1ae1e9d remains recorded.
+- npm test -w @kanmer/gui — PASS, 37 files / 352 tests.
+- npm test -w @kanmer/core -- --testTimeout=30000 — PASS, 12 files / 263 tests.
+- npm run typecheck — PASS; npm run build — PASS.
+- npm run plugin:check — PASS; npm run check:manual — PASS, 22 chapters; npm run verify:skills — PASS; git diff --check — PASS.
+- Aggregate npm test — FAIL, 351/352 GUI tests: kanmerGit.test.ts no-op branch test timed out and cleanup hit Windows EPERM. This is retained as an environment/test-run failure; the standalone GUI rerun passed 352/352.
+- The named-host checklist items remain unchecked: no XAI_API_KEY was available and pre-existing user plugin state makes post-uninstall grok inspect ambiguous. No real get_status success is claimed; MCP-014 remains Verifying.

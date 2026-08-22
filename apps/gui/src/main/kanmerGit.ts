@@ -1,6 +1,6 @@
 import { execFile as execFileCallback } from "node:child_process";
 import { existsSync } from "node:fs";
-import { appendFile, cp, lstat, mkdir, readFile, rm } from "node:fs/promises";
+import { appendFile, cp, lstat, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -172,6 +172,43 @@ async function ensureBoardWorktreeIgnore(boardRoot: string): Promise<void> {
   await ensureIgnore(join(boardRoot, ".gitignore"), BOARD_WORKTREE_IGNORE);
 }
 
+async function hasHead(root: string): Promise<boolean> {
+  return git(root, ["rev-parse", "--verify", "HEAD"]).then(() => true).catch(() => false);
+}
+
+const ORPHAN_MIGRATION_MARKER = ".kanmer-orphan-migration.pending";
+
+async function markOrphanMigration(boardRoot: string): Promise<void> {
+  try {
+    await writeFile(join(boardRoot, ORPHAN_MIGRATION_MARKER), "", { encoding: "utf8", flag: "wx" });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  }
+}
+
+/** Finish an orphan board whose first ignore reconciliation stopped early. */
+async function resumeOrphanMigration(repoRoot: string, boardRoot: string, branch: string): Promise<void> {
+  const sourceBoard = join(repoRoot, ".kanmer");
+  const marker = join(boardRoot, ORPHAN_MIGRATION_MARKER);
+  const head = await hasHead(boardRoot);
+  // A marker identifies a partial migration after a board commit. An unborn
+  // attached worktree is also an orphan migration, including boards created
+  // before the marker was introduced.
+  if (!existsSync(marker) && head) return;
+  if (!existsSync(sourceBoard)) {
+    if (existsSync(marker)) await rm(marker, { force: true });
+    return;
+  }
+  if (!existsSync(join(boardRoot, ".kanmer"))) throw new Error(`Orphan board data is missing: ${boardRoot}`);
+  if (!head) {
+    await git(boardRoot, ["add", "--", ".kanmer", ".gitignore"]);
+    await git(boardRoot, ["commit", "-m", "chore(kanmer): create shared board"]);
+  }
+  await git(boardRoot, ["push", "-u", "origin", `HEAD:refs/heads/${branch}`]);
+  await git(repoRoot, ["rm", "-r", "--ignore-unmatch", "--", ".kanmer"]);
+  await rm(marker, { force: true });
+}
+
 /** Locate or initialise the canonical board worktree for a Git source root. */
 export async function ensureBoardWorktree(sourceRoot: string, branch: string): Promise<KanmerGitStatus> {
   const repoRoot = await isGitRepository(sourceRoot);
@@ -186,6 +223,7 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
       const attachedRoot = resolve(attached);
       try {
         await ensureBoardWorktreeIgnore(attachedRoot);
+        await resumeOrphanMigration(repoRoot, attachedRoot, branch);
       } catch (error) {
         // The path is already the canonical board worktree. Keep it visible
         // while refusing to use it until the derived ignore state is repaired;
@@ -226,7 +264,10 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
       await git(repoRoot, ["worktree", "add", "--track", "-b", branch, boardRoot, `origin/${branch}`]);
     } else {
       await git(repoRoot, ["worktree", "add", "--orphan", "-b", branch, boardRoot]);
-      if (existsSync(sourceBoard)) await cp(sourceBoard, join(boardRoot, ".kanmer"), { recursive: true });
+      if (existsSync(sourceBoard)) {
+        await cp(sourceBoard, join(boardRoot, ".kanmer"), { recursive: true });
+        await markOrphanMigration(boardRoot);
+      }
     }
     // Reconcile after every successful attachment, while keeping orphan
     // creation's ignore file in place before its initial board commit.
@@ -240,12 +281,11 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
       return { ...empty(branch, msg(error)), boardRoot: resolve(boardRoot), paused: true };
     }
     if (!localExists && !remoteExists && existsSync(join(boardRoot, ".kanmer"))) {
-      await git(boardRoot, ["add", "--", ".kanmer", ".gitignore"]);
-      await git(boardRoot, ["commit", "-m", "chore(kanmer): create shared board"]);
-      await git(boardRoot, ["push", "-u", "origin", `HEAD:refs/heads/${branch}`]);
-      // The source cleanup is intentionally staged but never committed here:
-      // its owner reviews it as part of their normal code-branch workflow.
-      if (existsSync(sourceBoard)) await git(repoRoot, ["rm", "-r", "--ignore-unmatch", "--", ".kanmer"]);
+      try {
+        await resumeOrphanMigration(repoRoot, boardRoot, branch);
+      } catch (error) {
+        return { ...empty(branch, msg(error)), boardRoot: resolve(boardRoot), paused: true };
+      }
     }
     await ensureIgnore(join(repoRoot, ".gitignore"), [".kanmer/", ".worktrees/"]);
     return { available: true, boardRoot: resolve(boardRoot), branch, lastSync: null, error: null, paused: false };

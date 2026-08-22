@@ -264,6 +264,46 @@ describe("ensureBoardWorktree reconciliation", () => {
       .toContain(".kanmer/data/sources/cache.json");
   });
 
+  realGitTest("resumes orphan migration when an attached orphan has no commit", async () => {
+    const boardRoot = join(repo, ".worktrees", "kanmer");
+    mkdirSync(join(repo, ".worktrees"), { recursive: true });
+    await git(repo, "worktree", "add", "--orphan", "-b", "orphan-board", boardRoot);
+    mkdirSync(join(boardRoot, ".kanmer"), { recursive: true });
+    writeFileSync(join(boardRoot, ".kanmer", "version.json"), '{"format":3}\n', "utf8");
+
+    const resumed = await ensureBoardWorktree(repo, "orphan-board");
+    const head = await git(boardRoot, "rev-parse", "--verify", "HEAD");
+
+    expect(resumed.available).toBe(true);
+    expect(head).toBeTruthy();
+    expect(await git(origin, "rev-parse", "orphan-board")).toBe(head);
+    expect(existsSync(join(repo, ".kanmer"))).toBe(false);
+  });
+
+  realGitTest("retries source cleanup after the orphan board commit succeeds", async () => {
+    const sourceVersion = join(repo, ".kanmer", "version.json");
+    writeFileSync(sourceVersion, '{"format":99}\n', "utf8");
+
+    const first = await ensureBoardWorktree(repo, "orphan-cleanup-retry");
+    const boardRoot = resolve(repo, ".worktrees", "kanmer");
+    expect(first.available).toBe(false);
+    expect(first.boardRoot).toBe(boardRoot);
+    expect(first.paused).toBe(true);
+    expect(await git(boardRoot, "rev-parse", "HEAD")).toBeTruthy();
+    expect(await git(origin, "rev-parse", "orphan-cleanup-retry")).toBeTruthy();
+    expect(existsSync(join(repo, ".kanmer"))).toBe(true);
+
+    // Restore the source file so the previously failed git rm can succeed.
+    writeFileSync(sourceVersion, '{"format":3}\n', "utf8");
+    const retried = await ensureBoardWorktree(repo, "orphan-cleanup-retry");
+    expect(retried).toMatchObject({ available: true, boardRoot: boardRoot, branch: "orphan-cleanup-retry", error: null, paused: false });
+    expect(existsSync(join(repo, ".kanmer"))).toBe(false);
+    expect(existsSync(join(boardRoot, ".kanmer-orphan-migration.pending"))).toBe(false);
+
+    const repeated = await ensureBoardWorktree(repo, "orphan-cleanup-retry");
+    expect(repeated).toMatchObject({ available: true, boardRoot: boardRoot, branch: "orphan-cleanup-retry", error: null, paused: false });
+  });
+
   realGitTest("preserves the root when first-time local attachment ignore fails", async () => {
     await git(repo, "checkout", "-b", "local-broken-ignore");
     mkdirSync(join(repo, ".gitignore"));

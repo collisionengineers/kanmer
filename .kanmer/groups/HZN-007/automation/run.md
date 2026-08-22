@@ -132,3 +132,6 @@
 
 
 ## 2026-08-22T11:40Z — CORE-045 Review handoff\n\n- CORE-045 fixes both CORE-044 blockers in exact stacked commit 1234264b292e574d38f276b91592ea0b8bef9361, PR #166 targeting core-044-source-fetch-remediation at base 33f32e3aae9819f1c2344863272dacb5c958fbac.\n- Inherited IO assertions were restored; new stale-lock tests and expanded special-use DNS/mapped-range tests pass. Report/checklist 8/8 and Review gates pass; Implementing → Review at 2026-08-22T10:23:07.802Z.\n- Independent reviewer /root/gui099_executor assigned. CORE-044 remains Review/blocked; no merge or verification yet.\n
+
+
+2026-08-22T10:35Z — CORE-045 independent review (core041-executor) recorded NEEDS-CHANGES: stale-lock reclaim TOCTOU and incomplete IPv6 special-range policy. CORE-046 created as the linked blocker, stacked on 1234264b; CORE-045 remains blocked. Author lane handed off; no merge, move, or cleanup.

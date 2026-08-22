@@ -38224,19 +38224,19 @@ async function withExclusiveFileLock(lockFile, work, options2 = {}) {
 `
       );
     } catch (error2) {
+      const cleanupErrors = [];
       try {
         const contents = await import_promises.default.readFile(lockFile, "utf8");
         if (parseLockRecord(contents)?.token === claimToken) await import_promises.default.rm(lockFile, { force: true });
       } catch (readError) {
-        if (readError.code !== "ENOENT") {
-          try {
-            await import_promises.default.rm(markerFile, { force: true });
-          } finally {
-            throw readError;
-          }
-        }
+        if (readError.code !== "ENOENT") cleanupErrors.push(readError);
       }
-      await import_promises.default.rm(markerFile, { force: true });
+      try {
+        await import_promises.default.rm(markerFile, { force: true });
+      } catch (markerError) {
+        cleanupErrors.push(markerError);
+      }
+      if (cleanupErrors.length > 0) throw new AggregateError([error2, ...cleanupErrors], "lock claim and cleanup failed");
       throw error2;
     }
   };

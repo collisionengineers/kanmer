@@ -348,19 +348,19 @@ export async function withExclusiveFileLock<T>(
         `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now(), token: claimToken })}\n`,
       );
     } catch (error) {
+      const cleanupErrors: unknown[] = [];
       try {
         const contents = await fs.readFile(lockFile, "utf8");
         if (parseLockRecord(contents)?.token === claimToken) await fs.rm(lockFile, { force: true });
       } catch (readError) {
-        if ((readError as NodeJS.ErrnoException).code !== "ENOENT") {
-          try {
-            await fs.rm(markerFile, { force: true });
-          } finally {
-            throw readError;
-          }
-        }
+        if ((readError as NodeJS.ErrnoException).code !== "ENOENT") cleanupErrors.push(readError);
       }
-      await fs.rm(markerFile, { force: true });
+      try {
+        await fs.rm(markerFile, { force: true });
+      } catch (markerError) {
+        cleanupErrors.push(markerError);
+      }
+      if (cleanupErrors.length > 0) throw new AggregateError([error, ...cleanupErrors], "lock claim and cleanup failed");
       throw error;
     }
   };

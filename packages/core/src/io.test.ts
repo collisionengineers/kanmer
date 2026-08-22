@@ -462,13 +462,53 @@ describe("withExclusiveFileLock", () => {
       return realReadFile(target, options);
     });
     try {
-      await expect(withExclusiveFileLock(file, async () => "must not enter", {
-        now: () => 60_000,
-        processAlive: () => true,
-        retryDelaysMs: [0],
-      })).rejects.toMatchObject({ code: "EACCES" });
+      let failure: unknown;
+      try {
+        await withExclusiveFileLock(file, async () => "must not enter", {
+          now: () => 60_000,
+          processAlive: () => true,
+          retryDelaysMs: [0],
+        });
+      } catch (error) {
+        failure = error;
+      }
+      expect(failure).toBeInstanceOf(AggregateError);
+      expect(((failure as AggregateError).errors as NodeJS.ErrnoException[]).map((error) => error.code)).toEqual(["EEXIST", "EACCES"]);
       expect((await fs.readdir(dir)).some((entry) => entry.includes(".owner-"))).toBe(false);
     } finally {
+      readSpy.mockRestore();
+    }
+  });
+
+  it("surfaces both claim and marker-cleanup failures", async () => {
+    const file = path.join(dir, "cache-marker-cleanup-errors.lock");
+    await fs.writeFile(file, JSON.stringify({ pid: process.pid, createdAt: 60_000 }), "utf8");
+    const realReadFile = fs.readFile.bind(fs);
+    const realRm = fs.rm.bind(fs);
+    const readSpy = vi.spyOn(fs, "readFile").mockImplementation(async (target, options) => {
+      if (String(target) === file) throw errno("EACCES");
+      return realReadFile(target, options);
+    });
+    const rmSpy = vi.spyOn(fs, "rm").mockImplementation(async (target, options) => {
+      if (String(target).includes(".owner-") && !String(target).includes(".tmp-")) throw errno("EBUSY");
+      return realRm(target, options);
+    });
+    try {
+      let failure: unknown;
+      try {
+        await withExclusiveFileLock(file, async () => "must not enter", {
+          now: () => 60_000,
+          processAlive: () => true,
+          retryDelaysMs: [0],
+        });
+      } catch (error) {
+        failure = error;
+      }
+      expect(failure).toBeInstanceOf(AggregateError);
+      const errors = (failure as AggregateError).errors as NodeJS.ErrnoException[];
+      expect(errors.map((error) => error.code)).toEqual(["EEXIST", "EACCES", "EBUSY"]);
+    } finally {
+      rmSpy.mockRestore();
       readSpy.mockRestore();
     }
   });

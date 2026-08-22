@@ -54,3 +54,6 @@
 
 
 2026-08-22T06:52:55Z — CORE-033 reached Done after merged-main verification and was released. PR #158 merged as 44264b2f; live main/kanmer-board protections, direct-main rejection, pending-check/conversation behavior, and production syncBoard push are recorded in proof.md. Worktree and branch were removed. Review follow-ups CORE-042 (protected release path) and CORE-043 (board-branch rename protection) remain explicitly linked and open.
+
+
+## GUI-104 closeout — 2026-08-22T08:38:00Z\n\n- GUI-104 is Done after PR #157 merged to main as ed4831b302e2310d319815be9c36d6fb34adb2fe.\n- Final independent review PASS at a663a62f; hosted verify and kanmer-gate PASS in run 32559337159.\n- Merged-main proof: GUI 41 files / 375 tests, workspace typecheck, GUI build, manual 22 chapters, dist:check updater 8/8, and diff-check all PASS.\n- External two-project OpenAI control-plane/listener acceptance remains INCONCLUSIVE without disposable credentials and listener probes.\n- Worktree .worktrees/gui-104 and local/remote branch gui-104-openai-tunnel were removed after release.\n

@@ -94,3 +94,13 @@ Independent fresh review of PR 152 at fdeae1b0 found these additional current th
 Disposition: F-011 fixed with Grok's argv-native lifecycle/functional commands and a hostile-root argv regression assertion; injected command runners remain only deterministic test seams. F-012 fixed by importing core CURRENT_FORMAT and clamping version.json values against that source of truth while retaining legacy 1/2 detection, with a format-2 functional identity regression. F-013 fixed by aligning FRD-012's descriptor, launcher matrix, token explanation, and MCP-015 route text with cmd.exe and %LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd. F-014 fixed by documenting that native Antigravity owns skills/MCP and .agents paths are migration residue only. No real host install/tool claim is added; the authorized-host proof remains INCONCLUSIVE.
 
 Fresh commit and hosted verify rerun are pending. PR 152 stays open at Review; no merge.
+
+### 2026-08-22 final remediation head 25c932e7
+
+F-011 through F-014 are fixed in 25c932e7 (PR #152): Grok functional lifecycle commands use argv-native execution; expectedProjectIdentity imports core CURRENT_FORMAT and retains legacy format detection; FRD-012 describes the installer-owned cmd.exe/%LOCALAPPDATA% launcher; and README documents native plugin MCP with .agents paths as migration residue only. The earlier F-001 through F-010 review findings and exact hosted failure remain preserved in the preceding scratch sections.
+
+Local evidence on the final head: focused GUI providers/connect/dispatch 98/98; isolated DispatchSupervisor 6/6; all-workspace typecheck passed; core/server build and plugin build passed; plugin:check passed with 34 tools, byte-current bundle, 12 skill frontmatters and v0.3.3 manifests; git diff --check passed. The prior serialized GUI rail was 38 files/357 tests on the immediately preceding remediation head; the final source changes are limited to the focused provider/connect/docs surface.
+
+Hosted verify PASS for final head: run 32552010309, job 96980185214, verify completed successfully (Pull request verification, PR #152). The prior remediation head also passed as run 32551740679/job 96979506490. The real agy install and bound functional host proof remains explicitly INCONCLUSIVE because no authorized disposable host/credentials were available; no capability is inferred from validation, list, inspect, or fixtures.
+
+PR #152 remains open and unmerged for independent review. MCP-015 remains at Review.

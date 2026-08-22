@@ -167,3 +167,13 @@ Append measured commands and implementation notes here; never flip dispatch befo
 - [x] FRD-012 describes the installer-owned Antigravity launcher and no PLUGIN_ROOT target.
 - [x] README describes native plugin MCP and legacy-only .agents migration paths.
 - [ ] Fresh commit and hosted verify rerun pending; PR remains open for independent review.
+
+### 2026-08-22 final head 25c932e7
+
+- [x] F-011 Grok argv-native functional proof and hostile-root regression.
+- [x] F-012 core-derived project identity format and legacy-format regression.
+- [x] F-013 FRD-012 launcher contract aligned with shipped Antigravity descriptor.
+- [x] F-014 README aligned with native plugin ownership and legacy-only .agents paths.
+- [x] Local focused rails and plugin/build checks passed.
+- [x] Hosted verify PASS: run 32552010309 / job 96980185214 / verify.
+- [ ] Real authorized agy install/bound tool proof remains INCONCLUSIVE; no claim inferred.

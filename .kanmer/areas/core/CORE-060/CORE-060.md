@@ -24,18 +24,21 @@ groups:
   - HZN-007
 links:
   - CORE-043
-blocks:
-  - CORE-043
+blocks: []
 refs:
   - docs/functional/frd/FRD-020-board-git-worktree-sync.md
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
 commits:
   - fbb528734e43d2d86c24359b88395169f197506b
+  - 7b0238cfbd10963f20cb7417459505c86e2ff1b
+  - f44b6fd842488ee363b561fa1bc7e40d7ebcad7b
 prs:
   - '197'
+  - '198'
+  - '199'
 archived: false
 created: '2026-08-22T13:28:04.855Z'
-updated: '2026-08-22T16:36:09.822Z'
+updated: '2026-08-22T17:11:56.339Z'
 ---
 
 Close the current CORE-043 review findings around handoff state: do not schedule or execute automatic sync while branchMismatch/paused handoff state is active, and after the worktree reaches the exact requested destination clear only the generated mismatch pause/error while retaining genuine pre-existing sync failures. Add deterministic timer/state regressions. Link [[CORE-043]].

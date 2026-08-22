@@ -636,3 +636,9 @@ CORE-026 review NEEDS-CHANGES at e794cbf7: hosted verify F-022 Windows path spel
 
 
 CORE-079 implementing in .worktrees/core-079 on core-079-windows-path-identity from CORE-026 e794cbf; CORE-078 remains Review awaiting independent review.
+
+
+CORE-078 PASS exact 7b355245, PR #199 merged non-squash into CORE-060 as f44b6fd8; moved Verifying and removed block. CORE-079 implementing for hosted Windows path assertion blocker.
+
+
+CORE-060 cumulative branch now f44b6fd8 after CORE-077/078; fresh cumulative review pending before PR #197 can merge into CORE-043.

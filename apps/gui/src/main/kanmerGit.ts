@@ -138,23 +138,43 @@ export async function renameBoardBranch(boardRoot: string, to: string): Promise<
   return { ok: true, from, error: null };
 }
 
-async function ensureIgnore(file: string, entries: string[]): Promise<void> {
-  let stat;
-  try {
-    stat = await lstat(file);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-  }
-  if (stat?.isSymbolicLink()) throw new Error(`Refusing symlinked board ignore path: ${file}`);
-  const before = stat ? await readFile(file, "utf8") : "";
+export function reconcileIgnoreText(before: string, entries: string[]): string {
   const lines = before.replace(/\r\n/g, "\n").split("\n").filter(Boolean);
   // Managed rules must be the last matching rules. Remove stale copies first,
   // then append one copy of each rule so a later negation cannot make derived
   // board state trackable again.
   const managed = new Set(entries);
   const next = [...lines.filter((line) => !managed.has(line)), ...entries];
-  const changed = next.length !== lines.length || next.some((line, index) => line !== lines[index]);
-  if (changed || !stat) await writeFile(file, `${next.join("\n")}\n`, "utf8");
+  return `${next.join("\n")}\n`;
+}
+
+async function ensureIgnore(file: string, entries: string[]): Promise<void> {
+  // Optimistically compare the file before writing and verify the result. If a
+  // human or another process edits between those points, retry from its latest
+  // contents so its lines are merged instead of being overwritten by a stale
+  // read. Creation uses exclusive write for the same reason.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    let stat;
+    try {
+      stat = await lstat(file);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    if (stat?.isSymbolicLink()) throw new Error(`Refusing symlinked board ignore path: ${file}`);
+    const before = stat ? await readFile(file, "utf8") : "";
+    const desired = reconcileIgnoreText(before, entries);
+    if (desired === before.replace(/\r\n/g, "\n")) return;
+    try {
+      const current = stat ? await readFile(file, "utf8") : "";
+      if (current !== before) continue;
+      await writeFile(file, desired, stat ? "utf8" : { encoding: "utf8", flag: "wx" });
+      if ((await readFile(file, "utf8")) === desired) return;
+    } catch (error) {
+      if (!stat && (error as NodeJS.ErrnoException).code === "EEXIST") continue;
+      throw error;
+    }
+  }
+  throw new Error(`Board ignore file changed concurrently; retry reconciliation: ${file}`);
 }
 
 async function ensureBoardWorktreeIgnore(boardRoot: string): Promise<void> {

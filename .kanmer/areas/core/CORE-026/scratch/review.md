@@ -304,3 +304,78 @@ No source, ticket stage, merge, or cleanup was performed. Hosted/live external p
 ## Disposition
 
 F-001..F-006 and F-009..F-018/F-020/F-021 are fixed in the cumulative CORE-044 remediation chain and are supported by the exact-head source/core/MCP/docs/plugin rails above. F-007, F-008, and F-019 remain explicit accepted scope/cache risks from the prior review. F-022 is the sole current blocker: normalize the three expected board-root assertions through the existing pathIdentity helper (or otherwise assert the product's canonical path contract), then rerun the hosted verify rail and replace this attestation.
+
+---
+kind: review-attestation
+pr: "163"
+head_sha: "e794cbf742f6103cee015d11ef51b867915445a1"
+base_sha: "84a20f8414264f65f6d851ca51849af89c80acf9"
+verdict: needs-changes
+reviewer: "gui099-executor"
+independent: true
+plan_hash: "9916aa9641b6a15d"
+ticket_updated: "2026-08-22T16:52:34.040Z"
+findings:
+  - id: F-001..F-006
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Prior source trust, concurrency, atomicity, roster, aggregate, and credential findings are fixed by the cumulative CORE-044 remediation chain."
+  - id: F-007
+    severity: minor
+    disposition: accepted-risk
+    reason: "Linked-page freshness on root 304 remains bounded by the documented cache policy."
+  - id: F-008
+    severity: minor
+    disposition: accepted-risk
+    reason: "The bounded project-local source cache is specified by FRD-027 and ADR-0020; cumulative board-ignore work protects derived files."
+  - id: F-009..F-018
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Prior SSRF, selector, canonical identity, redirect-relative, page-budget, fragment, guidance, schema, test-rail, and content-type findings are fixed and covered by current source/core/MCP/docs/plugin rails."
+  - id: F-019
+    severity: minor
+    disposition: accepted-risk
+    reason: "GUI source editing/discovery remains explicitly deferred by the plan; no GUI source editor is claimed."
+  - id: F-020..F-021
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Linked credential persistence and failed oversized-download accounting are fixed and covered by source regressions."
+  - id: F-022
+    severity: blocker
+    disposition: needs-changes
+    reason: 'Hosted verify is red on three Windows GUI assertions comparing path spelling rather than filesystem identity: expected short RUNNER~1 path, received canonical runneradmin path. The authoritative verify rail must be green before merge.'
+---
+
+# Independent review — CORE-026 cumulative PR #163
+
+## Verdict
+
+NEEDS-CHANGES. Exact head e794cbf742f6103cee015d11ef51b867915445a1 is based on main 84a20f8414264f65f6d851ca51849af89c80acf9. The prior CORE-026 source/security findings are reconciled by the merged CORE-044 remediation and descendants; no new source-trust, redirect/SSRF/DNS, credential, bounded-fetch, cache-lock, schema, or documentation/roster blocker was found. The authoritative hosted verify rail is nevertheless red on F-022, so this PR is not review-passable.
+
+## Hosted evidence
+
+- Run 32585991850, kanmer-gate job 97062323501: PASS.
+- Run 32585991850, verify job 97062323619: FAILURE.
+- Verify reports 46 files with 409 passed and 3 failed tests out of 412. Failures: retries source cleanup after the orphan board commit succeeds; preserves root when first-time local attachment ignore fails; preserves root when first-time remote attachment ignore fails.
+- All three compare Windows short-path spelling RUNNER~1 under the expected value with canonical long-path spelling runneradmin in the received value. The test file defines pathIdentity but these assertions compare strings directly. This is a deterministic Windows CI portability failure, not a source-trust bypass, but it blocks the authoritative verify rail.
+
+## Exact-head local evidence
+
+From detached .worktrees/review-core026-e794 at e794cbf742f6103cee015d11ef51b867915445a1:
+
+- npm install --ignore-scripts --no-audit --no-fund --prefer-offline: exit 0.
+- npm run build: exit 0.
+- npm run test -w @kanmer/core: exit 0, 303/303.
+- node --test packages/mcp-server/src/sources.test.mjs: exit 0, 19/19.
+- npm run typecheck: exit 0.
+- npm run test:scripts: exit 0, 88/88.
+- npm run verify:docs: exit 0.
+- npm run check:manual: exit 0.
+- git diff --check against main 84a20f8414264f65f6d851ca51849af89c80acf9: exit 0.
+- Normal non-linked checkout plugin parity on unchanged CORE-044 content tree: install, build, and plugin:check exit 0; 37 tools and generated artifact byte parity verified. The e794 merge adds no plugin content delta.
+
+The prior CORE-044 PASS evidence applies to the current content tree because e794 is the non-content merge of 5053af23. Live provider, DNS rebinding, Windows race timing beyond deterministic fixtures, packaged app, and GUI visual evidence remain INCONCLUSIVE where not exercised. No source, board stage, merge, or ticket cleanup was performed.
+
+## Required disposition
+
+F-022 is the sole current blocker: normalize the three expected board-root assertions through the existing pathIdentity helper, or otherwise assert the product's canonical path contract; rerun hosted verify and replace this attestation. Prior F-001..F-021 dispositions are preserved above and in the preceding attestation.

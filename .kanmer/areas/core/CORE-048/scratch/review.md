@@ -67,3 +67,42 @@ F-004 remains the explicitly accepted ADR-0016 risk: no live protection API, Git
 ## Verdict
 
 NEEDS-CHANGES pending a fresh exit-0 focused GUI Git rail (or an independently reproducible explanation of the harness hang). The three CORE-043 remediation blockers are fixed in code, and the conservative protection boundary is correctly preserved. No merge, stage move, source edit, or cleanup was performed.
+
+## Independent review — PASS (fresh, SHA-bound)
+
+- Ticket: CORE-048 — CORE-043 review remediation: refresh board branch state and hosted gate
+- PR: #170
+- Reviewed head: `8ffff2a0f8848bb42868559641b56148ba893ca6`
+- Base: `core-043-protection-retarget` at `1a06ead17cca8f7a6c715db3a6f6fed6b3de5da6`
+- Plan hash reviewed: `5c1a3b81e2a97f74`
+- Reviewer: independent (not `codex-core048-executor`)
+- Verdict: **PASS** for the bounded CORE-048 scope.
+
+### Diff audit
+
+The exact base-to-head diff is limited to the documented five files:
+
+- `.github/workflows/pr.yml`
+- `apps/gui/src/main/index.ts`
+- `apps/gui/src/main/kanmerGit.test.ts`
+- `apps/gui/src/main/kanmerGit.ts`
+- `scripts/pr-workflow.test.mjs`
+
+The implementation refreshes the actual board worktree branch before preference decisions, retains the protected default when no board is open, refuses unsafe protected-default renames, and routes the workflow through `KANMER_BOARD_BRANCH` with the documented migration fallback. The deterministic regressions cover branch refresh and protected/no-board preference behavior. No unrelated provider, release, `.kanmer`, or GitHub API behavior is changed.
+
+Prior review findings are dispositioned in this head:
+- stale cached branch after admin handoff: **fixed**
+- no-board preference preservation: **fixed**
+- workflow hard-coded branch reference: **fixed**
+- literal protection inference: **accepted bounded risk per ADR-0016**; live protection API/retarget proof remains outside scope.
+
+### Independent evidence
+
+- Focused GUI Git rail: **16/16 PASS** (exact-head run; approximately 41 seconds).
+- Workflow static rail: **1/1 PASS** via `node --test scripts/pr-workflow.test.mjs`.
+- Diff whitespace check: **PASS**.
+- Worktree/head inspection: exact requested head `8ffff2a0f8848bb42868559641b56148ba893ca6`; no source edits made by this review.
+- Hosted GitHub check: **INCONCLUSIVE** — PR has no hosted check result at this review.
+- Live GitHub branch-protection/retarget proof: **INCONCLUSIVE** — requires external protected-repository capability and is explicitly outside the deterministic scope.
+
+The previously reported full-GUI/typecheck/build baseline failures and the initial script dependency-order failure remain preserved in CORE-048's post-implementation report; they are not erased by this focused PASS. No merge, move, cleanup, or source modification was performed.

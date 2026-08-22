@@ -4,10 +4,12 @@ type: ticket
 title: >-
   CORE-043 review remediation: pause sync safely and clear resolved handoff
   mismatch state
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-22T13:34:25.404Z'
 labels:
   - pr-review
   - branch-protection
@@ -24,7 +26,7 @@ refs:
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
 archived: false
 created: '2026-08-22T13:28:04.855Z'
-updated: '2026-08-22T13:28:04.855Z'
+updated: '2026-08-22T13:34:25.404Z'
 ---
 
 Close the current CORE-043 review findings around handoff state: do not schedule or execute automatic sync while branchMismatch/paused handoff state is active, and after the worktree reaches the exact requested destination clear only the generated mismatch pause/error while retaining genuine pre-existing sync failures. Add deterministic timer/state regressions. Link [[CORE-043]].

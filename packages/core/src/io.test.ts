@@ -162,6 +162,80 @@ describe("withExclusiveFileLock", () => {
     await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
+  it("atomically assigns one stale inode to one concurrent reclaimer", async () => {
+    const file = path.join(dir, "cache.lock");
+    await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0 }), "utf8");
+
+    let firstQuarantine = true;
+    let secondStartedResolve!: () => void;
+    const secondStarted = new Promise<void>((resolve) => { secondStartedResolve = resolve; });
+    let firstRenamedResolve!: () => void;
+    const firstRenamed = new Promise<void>((resolve) => { firstRenamedResolve = resolve; });
+    let secondAttemptedResolve!: () => void;
+    const secondAttempted = new Promise<void>((resolve) => { secondAttemptedResolve = resolve; });
+    let winnerClaimedResolve!: () => void;
+    const winnerClaimed = new Promise<void>((resolve) => { winnerClaimedResolve = resolve; });
+    let losingReclaimer: Promise<unknown> | undefined;
+    const renameStaleLock = async (from: string, to: string): Promise<void> => {
+      if (firstQuarantine) {
+        firstQuarantine = false;
+        losingReclaimer = withExclusiveFileLock(file, async () => {
+          throw new Error("the losing reclaimer must not enter the callback");
+        }, {
+          now: () => 60_000,
+          staleAfterMs: 30_000,
+          processAlive: () => {
+            secondStartedResolve();
+            return false;
+          },
+          retryDelaysMs: [0, 0],
+          renameStaleLock,
+        });
+        await secondStarted;
+        await fs.rename(from, to);
+        firstRenamedResolve();
+        await secondAttempted;
+        return;
+      }
+      await firstRenamed;
+      let renameError: unknown;
+      try {
+        await fs.rename(from, to);
+      } catch (error) {
+        renameError = error;
+      } finally {
+        secondAttemptedResolve();
+      }
+      await winnerClaimed;
+      if (renameError) throw renameError;
+    };
+
+    let firstEnteredResolve!: () => void;
+    const firstEntered = new Promise<void>((resolve) => { firstEnteredResolve = resolve; });
+    let releaseFirstResolve!: () => void;
+    const releaseFirst = new Promise<void>((resolve) => { releaseFirstResolve = resolve; });
+    const winner = withExclusiveFileLock(file, async () => {
+      firstEnteredResolve();
+      winnerClaimedResolve();
+      await releaseFirst;
+      return "winner";
+    }, {
+      now: () => 60_000,
+      staleAfterMs: 30_000,
+      processAlive: () => false,
+      retryDelaysMs: [0],
+      renameStaleLock,
+    });
+
+    await firstEntered;
+    const losing = losingReclaimer;
+    if (!losing) throw new Error("concurrent reclaimer was not started");
+    await expect(losing).rejects.toMatchObject({ code: "EEXIST" });
+    expect(await fs.readFile(file, "utf8")).toMatch(/\"pid\":\d+/);
+    releaseFirstResolve();
+    await expect(winner).resolves.toBe("winner");
+  });
+
   it("preserves fresh, active, malformed, and uncertain locks", async () => {
     const file = path.join(dir, "cache.lock");
     for (const [contents, processAlive] of [

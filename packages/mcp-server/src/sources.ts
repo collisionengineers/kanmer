@@ -100,6 +100,7 @@ function isNonGlobalIpv4(hostname: string): boolean {
     (a === 192 && b === 31 && c === 196) ||
     (a === 192 && b === 52 && c === 193) ||
     (a === 192 && b === 88 && c === 99) ||
+    (a === 192 && b === 175 && c === 48) ||
     (a === 192 && b === 168) ||
     (a === 198 && b >= 18 && b <= 19) ||
     (a === 198 && b === 51 && c === 100) ||
@@ -143,6 +144,9 @@ function isPrivateAddress(hostname: string): boolean {
     first === 0 ||
     (first === 0x100 && second === 0 && third === 0 && fourth === 0) ||
     (first === 0x2001 && second === 0x0002 && third === 0) ||
+    (first === 0x0064 && second === 0xff9b && third === 0x0001) ||
+    (first === 0x0100 && second === 0 && third === 0 && fourth === 0x0001) ||
+    (first >= 0x5f00 && first <= 0x5fff) ||
     (first === 0x2001 && (second! & 0xfff0) === 0x0010) ||
     (first === 0x2001 && (second! & 0xfff0) === 0x0020) ||
     (first === 0x2001 && second === 0x0db8) ||

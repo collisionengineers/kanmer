@@ -38013,7 +38013,7 @@ var DEFAULT_LOCK_RETRY_MS = [10, 25, 60, 150, 300, 600, 1e3];
 function parseLockRecord(contents) {
   try {
     const parsed = JSON.parse(contents);
-    if (parsed && typeof parsed === "object" && Number.isInteger(parsed.pid) && (parsed.createdAt === void 0 || typeof parsed.createdAt === "number")) {
+    if (parsed && typeof parsed === "object" && Number.isInteger(parsed.pid) && parsed.pid > 0 && (parsed.createdAt === void 0 || typeof parsed.createdAt === "number")) {
       return parsed;
     }
   } catch {
@@ -38047,21 +38047,35 @@ async function recoverStaleLock(lockFile, options2) {
     return false;
   }
   if (alive) return false;
+  let currentContents;
+  let currentStat;
   try {
-    const [currentContents, currentStat] = await Promise.all([import_promises.default.readFile(lockFile, "utf8"), import_promises.default.stat(lockFile)]);
-    if (currentContents !== initialContents || currentStat.mtimeMs !== initialStat.mtimeMs) return false;
-    await import_promises.default.rm(lockFile);
-    return true;
+    [currentContents, currentStat] = await Promise.all([import_promises.default.readFile(lockFile, "utf8"), import_promises.default.stat(lockFile)]);
   } catch (error2) {
     return error2.code === "ENOENT";
   }
+  if (currentContents !== initialContents || currentStat.dev !== initialStat.dev || currentStat.ino !== initialStat.ino || currentStat.mtimeMs !== initialStat.mtimeMs) return false;
+  const quarantineFile = `${lockFile}.stale-${process.pid}-${tmpCounter()}`;
+  try {
+    await options2.renameStaleLock(lockFile, quarantineFile);
+  } catch (error2) {
+    if (error2.code === "ENOENT") return false;
+    throw error2;
+  }
+  try {
+    await import_promises.default.rm(quarantineFile);
+  } catch (error2) {
+    if (error2.code !== "ENOENT") throw error2;
+  }
+  return true;
 }
 async function withExclusiveFileLock(lockFile, work, options2 = {}) {
   const delays = options2.retryDelaysMs ?? DEFAULT_LOCK_RETRY_MS;
   const lockOptions = {
     staleAfterMs: options2.staleAfterMs ?? DEFAULT_LOCK_STALE_MS,
     now: options2.now ?? Date.now,
-    processAlive: options2.processAlive ?? defaultProcessAlive
+    processAlive: options2.processAlive ?? defaultProcessAlive,
+    renameStaleLock: options2.renameStaleLock ?? import_promises.default.rename
   };
   await ensureDir(import_path3.default.dirname(lockFile));
   let claimed = false;
@@ -42002,7 +42016,7 @@ function isNonGlobalIpv4(hostname2) {
   const octets = hostname2.split(".").map(Number);
   if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return true;
   const [a, b, c] = octets;
-  return a === 0 || a === 10 || a === 127 || a === 100 && b >= 64 && b <= 127 || a === 169 && b === 254 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 0 || a === 192 && b === 0 && c === 2 || a === 192 && b === 31 && c === 196 || a === 192 && b === 52 && c === 193 || a === 192 && b === 88 && c === 99 || a === 192 && b === 168 || a === 198 && b >= 18 && b <= 19 || a === 198 && b === 51 && c === 100 || a === 203 && b === 0 && c === 113 || a >= 224;
+  return a === 0 || a === 10 || a === 127 || a === 100 && b >= 64 && b <= 127 || a === 169 && b === 254 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 0 || a === 192 && b === 0 && c === 2 || a === 192 && b === 31 && c === 196 || a === 192 && b === 52 && c === 193 || a === 192 && b === 88 && c === 99 || a === 192 && b === 175 && c === 48 || a === 192 && b === 168 || a === 198 && b >= 18 && b <= 19 || a === 198 && b === 51 && c === 100 || a === 203 && b === 0 && c === 113 || a >= 224;
 }
 function parseIpv6Groups(value) {
   let normalized = value.toLowerCase();
@@ -42034,7 +42048,7 @@ function isPrivateAddress(hostname2) {
     const mapped = `${seventh >> 8 & 255}.${seventh & 255}.${eighth >> 8 & 255}.${eighth & 255}`;
     return isNonGlobalIpv4(mapped);
   }
-  return first === 0 || first === 256 && second === 0 && third === 0 && fourth === 0 || first === 8193 && second === 2 && third === 0 || first === 8193 && (second & 65520) === 16 || first === 8193 && (second & 65520) === 32 || first === 8193 && second === 3512 || first >= 64512 && first <= 65023 || first >= 65152 && first <= 65215 || first >= 65280 || first === 16383;
+  return first === 0 || first === 256 && second === 0 && third === 0 && fourth === 0 || first === 8193 && second === 2 && third === 0 || first === 100 && second === 65435 && third === 1 || first === 256 && second === 0 && third === 0 && fourth === 1 || first >= 24320 && first <= 24575 || first === 8193 && (second & 65520) === 16 || first === 8193 && (second & 65520) === 32 || first === 8193 && second === 3512 || first >= 64512 && first <= 65023 || first >= 65152 && first <= 65215 || first >= 65280 || first === 16383;
 }
 async function assertPublicDestination(url, lookupImpl) {
   const hostname2 = url.hostname.toLowerCase().replace(/[\[\]]/g, "");

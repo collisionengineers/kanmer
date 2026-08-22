@@ -63,6 +63,7 @@ export interface ExclusiveFileLockOptions {
   now?: () => number;
   processAlive?: (pid: number) => boolean;
   retryDelaysMs?: readonly number[];
+  renameStaleLock?: (from: string, to: string) => Promise<void>;
 }
 
 const DEFAULT_LOCK_STALE_MS = 30_000;
@@ -104,7 +105,7 @@ function defaultProcessAlive(pid: number): boolean {
 
 async function recoverStaleLock(
   lockFile: string,
-  options: Required<Pick<ExclusiveFileLockOptions, "staleAfterMs" | "now" | "processAlive">>,
+  options: Required<Pick<ExclusiveFileLockOptions, "staleAfterMs" | "now" | "processAlive" | "renameStaleLock">>,
 ): Promise<boolean> {
   let initialContents: string;
   let initialStat: Stats;
@@ -123,17 +124,37 @@ async function recoverStaleLock(
     return false;
   }
   if (alive) return false;
-  // Re-read before unlinking so a concurrent replacement is never treated as
-  // the stale record we inspected. A race after this check fails closed via
-  // the next exclusive claim attempt.
+  // Re-read before quarantining so a concurrent replacement is never treated
+  // as the stale record we inspected. The rename below is the ownership
+  // transition: exactly one reclaimer can move this inode, and every other
+  // reclaimer observes ENOENT rather than unlinking a replacement at the
+  // original path.
+  let currentContents: string;
+  let currentStat: Stats;
   try {
-    const [currentContents, currentStat] = await Promise.all([fs.readFile(lockFile, "utf8"), fs.stat(lockFile)]);
-    if (currentContents !== initialContents || currentStat.mtimeMs !== initialStat.mtimeMs) return false;
-    await fs.rm(lockFile);
-    return true;
+    [currentContents, currentStat] = await Promise.all([fs.readFile(lockFile, "utf8"), fs.stat(lockFile)]);
   } catch (error) {
     return (error as NodeJS.ErrnoException).code === "ENOENT";
   }
+  if (
+    currentContents !== initialContents ||
+    currentStat.dev !== initialStat.dev ||
+    currentStat.ino !== initialStat.ino ||
+    currentStat.mtimeMs !== initialStat.mtimeMs
+  ) return false;
+  const quarantineFile = `${lockFile}.stale-${process.pid}-${tmpCounter()}`;
+  try {
+    await options.renameStaleLock(lockFile, quarantineFile);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+  try {
+    await fs.rm(quarantineFile);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  return true;
 }
 
 /** Serialize a critical section across processes with an exclusive lock file. */
@@ -147,6 +168,7 @@ export async function withExclusiveFileLock<T>(
     staleAfterMs: options.staleAfterMs ?? DEFAULT_LOCK_STALE_MS,
     now: options.now ?? Date.now,
     processAlive: options.processAlive ?? defaultProcessAlive,
+    renameStaleLock: options.renameStaleLock ?? fs.rename,
   };
   await ensureDir(path.dirname(lockFile));
   let claimed = false;

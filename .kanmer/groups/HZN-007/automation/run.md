@@ -49,3 +49,5 @@
 
 
 2026-08-22T06:46:34Z — CORE-033 taken as the second active lane; prerequisites CORE-032/GUI-085 confirmed. Playbook committed 89e61bdf before exact main/kanmer-board branch-protection rules were created. Readback matched approved policy; disposable main push 154b6cdb was rejected GH006; production GUI syncBoard pushed legitimate board commit 83cdf801. PR #158 is Review, final head c283f4cc, hosted verify and kanmer-gate PASS, independent re-review requested after stale findings were resolved. CORE-025 docs_todo cleared with ADR-0016/ADR-0011/FRD-009 refs and execution started as third lane. GUI-104 F-002 project-close cleanup fix is in progress; merge held.
+
+2026-08-22T06:47:34Z — GUI-104 F-002 fixed: main closeProject stops the owned OpenAI tunnel child before watcher/context deletion; manager closeProject is generation-safe and no-ops without a profile/child. Source head cad3552a, PR #157. Focused 6/6, GUI typecheck, and diff checks pass; external two-project/listener proof remains INCONCLUSIVE. Ticket stays Review for independent re-review; no merge or cleanup.

@@ -22,3 +22,8 @@
 
 - Full GUI typecheck/build and full GUI vitest retain pre-existing dispatch/provider failures; exact commands, exits, and first failures are in the post-implementation report and scratch.
 - Two-project OpenAI control-plane and live listener proof is **INCONCLUSIVE** without disposable credentials/projects and a documented listener probe. The GUI validates/records loopback health addresses but does not rewrite tunnel-client profile health configuration or claim live listener readiness.
+
+## F-002 verification note
+
+- Project-close cleanup is wired through the manager and covered by the focused lifecycle test; focused manager + Settings tests: 6/6 PASS.
+- GUI typecheck (`npm run typecheck -w @kanmer/gui`) and `git diff --check`: exit 0.

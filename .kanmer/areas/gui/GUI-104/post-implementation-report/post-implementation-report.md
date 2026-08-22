@@ -35,3 +35,9 @@ No API-key value is persisted, logged, sent in IPC, or included in board documen
 The canonical server invocation now propagates its non-secret environment into both tunnel-client `init` and `run` child processes. This preserves `ELECTRON_RUN_AS_NODE=1` for the packaged Electron-as-Node MCP target without persisting or logging the environment. Added spawn-environment assertions for both init and run; focused manager + Settings tests remain 6/6 PASS.
 
 Updated source head: `fddcd9b4` (PR #157).
+
+## Review finding F-002 disposition
+
+Project close now invokes `OpenAITunnelManager.closeProject` before the watcher closes and the project context is deleted. The manager resolves the current profile generation and stops only the owned child for that project; absent profiles or children are a safe no-op. The focused lifecycle test proves project-close cleanup and stopped state. Focused manager + Settings tests remain 6/6 PASS; GUI typecheck and diff checks pass.
+
+Updated source head: `cad3552a` (PR #157).

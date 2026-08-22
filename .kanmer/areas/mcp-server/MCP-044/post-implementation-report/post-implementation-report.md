@@ -51,13 +51,16 @@ correctly classified as a nonexistent skill reference. The wording was
 changed to “the default board branch”; the rerun passed. This failed attempt
 is retained rather than hidden.
 
-Two repository rails were unavailable in this checkout and remain explicit
-boundaries: `npm run plugin:check` exited 1 because `@kanmer/core` resolved to
-the main checkout's `packages/core/dist` instead of this linked worktree; and
-`npm run check:diff` exited 1 because no such npm script exists. The source
-worktree was not mutated to repair either shared setup condition. The
-managed-block, skill, docs, type, build and test evidence above is still
-independent of those failures.
+The first `npm run plugin:check` attempt exited 1 because `@kanmer/core`
+resolved to the main checkout's `packages/core/dist` instead of this linked
+worktree. After a ticket-local `npm install --ignore-scripts --no-audit
+--no-fund` (exit 0, 647 packages added), the rerun reached the next check and
+exited 1 because the committed plugin bundle differs from a fresh build. No
+MCP source change is involved, so the generated bundle was not replaced in
+this scoped PR. `npm run check:diff` also exited 1 because no such npm script
+exists. `git diff --check` exits 0. These setup/artifact boundaries are
+preserved rather than hidden; managed-block, skill, docs, type, build and test
+evidence above remains independent of them.
 
 ## External boundary and risks
 

@@ -5,6 +5,6 @@
 - [x] Add EPERM/EBUSY/EACCES deterministic regression coverage.
 - [x] Preserve ownership/concurrency/source tests.
 - [x] Regenerate plugin artifact and run parity checks if source changes.
-- [ ] Refresh cumulative CORE-046 report and exact traceability.
-- [ ] Disposition fixed PR thread with evidence.
-- [ ] Request independent cumulative review.
+- [x] Refresh cumulative CORE-046 report and exact traceability.
+- [x] Disposition fixed PR thread with evidence.
+- [x] Request independent cumulative review.

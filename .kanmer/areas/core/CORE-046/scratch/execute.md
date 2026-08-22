@@ -8,3 +8,5 @@
 - Live DNS rebinding, PID reuse, and exact process-crash timing remain explicitly INCONCLUSIVE; no external proof is fabricated.
 
 Opened PR #167 at https://github.com/collisionengineers/kanmer/pull/167 with head 54651a3c77b8ca8d02d9d309e36baf9b62ebca3c; waiting at Review for independent review.
+
+Cumulative traceability refreshed after CORE-049 PR creation: PR #171 is open at `8edfede9bdb663171601cb326a67bd03792065e2`, based on merged CORE-047 cumulative head `0f7ccc4efad0aeae2295f3ba08e0b6e886356679`. Parent `commits[]` remains reachable merged commits only; PR #171 is recorded separately until merge.

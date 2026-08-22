@@ -66,3 +66,7 @@ The quarantine rename and deterministic concurrent-reclaimer tests cover the rev
 ## Verify on merged main
 
 Rerun the CORE-049 IO suite including all transient rename cases, the full core/source/HTTP rails, all-workspace typecheck/build/plugin checks, and inspect the merged CORE-046 cumulative head against CORE-045. Preserve the external DNS/PID/crash/Windows-handle boundaries above as INCONCLUSIVE unless real evidence becomes available.
+
+## CORE-049 PR traceability update (2026-08-22)
+
+The pending child remediation is now PR #171: https://github.com/collisionengineers/kanmer/pull/171, head `8edfede9bdb663171601cb326a67bd03792065e2`, based on merged cumulative head `0f7ccc4efad0aeae2295f3ba08e0b6e886356679`. This supersedes the earlier “PR pending” wording above. CORE-049 remains unmerged and requires independent review before it can be added to the merged commit list.

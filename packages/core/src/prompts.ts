@@ -1,3 +1,5 @@
+import type { Item, TicketDocsInfo } from "./types.js";
+
 /**
  * Prompt texts, in core so the MCP prompt and the GUI's dispatch picker share
  * one source and cannot drift (FRD-010 R2, ADR-0009).
@@ -144,6 +146,39 @@ export const DISPATCH_TASKS: readonly DispatchTask[] = Object.freeze([
 
 export function dispatchTaskById(id: string): DispatchTask | undefined {
   return DISPATCH_TASKS.find((t) => t.id === id);
+}
+
+/**
+ * The terminal proof for a dispatched task. Exit 0 is only a process result;
+ * this checks the named deliverable the prompt promised before a supervisor
+ * can report `done` (FRD-010 R5/R10).
+ */
+export function dispatchDeliverableProven(
+  taskId: string | undefined,
+  info: TicketDocsInfo | null,
+  item: Pick<Item, "prs"> | null,
+): boolean {
+  if (!taskId || !info) return false;
+  const has = (type: string) => (info.counts[type] ?? 0) > 0;
+  const hasPath = (path: string) => info.documentPaths.some((candidate) => candidate.replace(/\\/g, "/") === path);
+  switch (taskId) {
+    case "research-quick":
+      return has("research");
+    case "research-deep":
+      return has("research") && hasPath("research/summary.md");
+    case "files":
+      return has("files");
+    case "plan":
+      return has("plan") && has("checklist");
+    case "execute":
+      return has("checklist") && info.checklist !== null && info.checklist.total > 0 &&
+        info.checklist.checked === info.checklist.total && has("post-implementation-report") &&
+        (item?.prs?.length ?? 0) > 0;
+    case "verify":
+      return has("proof");
+    default:
+      return false;
+  }
 }
 
 /** Whether a task is a coherent next step, and why not when it is not. */

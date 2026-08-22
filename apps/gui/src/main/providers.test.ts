@@ -44,13 +44,13 @@ describe("provider registry", () => {
   });
 
   it("uses core's staleness path catalog for every owned provider path", () => {
-    for (const id of ["codex", "opencode", "antigravity"] as const) {
+    for (const id of ["codex", "opencode"] as const) {
       const register = providerById(id)!.register;
       if (register.kind !== "configFile") throw new Error(`expected ${id} config file`);
       expect(register.configPath).toBe(STALENESS_PROVIDER_PATHS[id].registrationFile);
     }
 
-    for (const id of ["opencode", "antigravity"] as const) {
+    for (const id of ["opencode"] as const) {
       const install = providerById(id)!.install;
       if (install.kind !== "copySkills") throw new Error(`expected ${id} copied skills`);
       expect(install.skillsDir).toBe(STALENESS_PROVIDER_PATHS[id].skillsDir);
@@ -94,16 +94,23 @@ describe("provider registry", () => {
     expect(back.theme).toBe("dark");
   });
 
-  it("antigravity uses the mcpServers JSON shape in its own config path", () => {
-    expect((providerById("antigravity")!.register as { configPath: string }).configPath).toBe(
-      ".agents/mcp_config.json",
+  it("antigravity uses the native user-plugin contract and retains legacy paths only for cleanup", () => {
+    const provider = providerById("antigravity")!;
+    expect(provider.register).toEqual({ kind: "none" });
+    const install = provider.install;
+    if (install.kind !== "plugin") throw new Error("expected native plugin");
+    expect(install).toMatchObject({
+      scope: "user",
+      pluginName: "kanmer",
+      cli: "agy",
+      legacyConfigPath: ".agents/mcp_config.json",
+      legacySkillsDir: ".agents/skills",
+    });
+    expect(install.installCommand("C:\\Kanmer\\plugins\\kanmer")).toBe(
+      "agy plugin install C:\\Kanmer\\plugins\\kanmer",
     );
-    const reg = providerById("antigravity")!.register;
-    if (reg.kind !== "configFile") throw new Error("expected configFile");
-    const obj = JSON.parse(reg.merge(null, inv));
-    expect(obj.mcpServers.kanmer.command).toBe(inv.command);
-    expect(obj.mcpServers.kanmer.args).toEqual(inv.args);
-    expect(obj.mcpServers.kanmer.env.ELECTRON_RUN_AS_NODE).toBe("1");
+    expect(install.validateCommand?.("C:\\Kanmer\\plugins\\kanmer")).toContain("agy plugin validate");
+    expect(install.functionalCommand("C:\\My Projects\\kanmer")).toContain("agy --add-dir");
   });
 
   it("no provider writes .mcp.json — it is Claude's, and Claude reaches it through its own CLI", () => {
@@ -131,6 +138,15 @@ describe("provider registry", () => {
     );
     expect(install.installCommand("C:\\Kanmer\\plugins\\kanmer")).toContain("--trust");
     expect(install.uninstallCommand()).toBe("grok plugin uninstall kanmer --confirm");
+    expect(install.argv?.functional("C:\\hostile root & $(whoami) `tick` ;", "C:\\board root")).toEqual({
+      file: "grok",
+      args: [
+        "-p",
+        expect.stringContaining("Call the Kanmer get_status tool"),
+        "--cwd",
+        "C:\\hostile root & $(whoami) `tick` ;",
+      ],
+    });
   });
 
   it("each config-file provider answers registration from its own file's shape", () => {
@@ -141,46 +157,33 @@ describe("provider registry", () => {
     };
     expect(state("opencode", '{"mcp":{"kanmer":{}}}')).toBe("registered");
     expect(state("opencode", '{"mcpServers":{"kanmer":{}}}')).toBe("absent");
-    expect(state("antigravity", '{"mcpServers":{"kanmer":{}}}')).toBe("registered");
-    expect(state("antigravity", '{"mcpServers":{"other":{}}}')).toBe("absent");
     expect(state("codex", "[mcp_servers.other]\ncommand = 'x'\n")).toBe("absent");
     // "Cannot read" is kept distinct from "no": disconnect keeps the shared
     // AGENTS.md block on it, the legacy sweep refuses to drain on it.
     expect(state("codex", "[not valid")).toBe("indeterminate");
-    expect(state("antigravity", "{ malformed")).toBe("indeterminate");
   });
 
-  it("antigravity registers AND installs project skills, and is not dispatchable", () => {
-    // The test this replaces was called "antigravity is register-only (no
-    // dispatch)" and asserted the boolean alone — so the suite looked like it
-    // had verified a claim that was wrong in both directions. Antigravity gets a
-    // project MCP registration *and* a project skills tree (measured: `agy`
-    // 1.1.13 reads both, in a workspace-bound session). What it does not get is
-    // background dispatch, and not because `agy -p` is broken — that was refuted
-    // — but because Kanmer establishes no workspace binding, so a dispatched
-    // agent would not see the board (MCP-015).
+  it("antigravity installs a user plugin and is dispatchable only through binding", () => {
     const antigravity = providerById("antigravity")!;
-    const register = antigravity.register;
-    if (register.kind !== "configFile") throw new Error("expected configFile");
-    expect(register.configPath).toBe(".agents/mcp_config.json");
-    expect(antigravity.install).toEqual({
-      kind: "copySkills",
-      skillsScope: "project",
-      skillsDir: ".agents/skills",
-    });
-    expect(antigravity.dispatch).toBe(false);
-    expect(dispatchableProviders().map((p) => p.id)).not.toContain("antigravity");
+    expect(antigravity.register).toEqual({ kind: "none" });
+    expect(antigravity.install).toMatchObject({ kind: "plugin", scope: "user", pluginName: "kanmer" });
+    expect(antigravity.dispatch).toBe(true);
+    expect(antigravity.dispatchCli).toBe("agy");
+    expect(antigravity.dispatchArgs?.("PROMPT", "C:\\My Projects\\kanmer")).toEqual([
+      "--add-dir",
+      "C:\\My Projects\\kanmer",
+      "-p",
+      "PROMPT",
+    ]);
+    expect(dispatchableProviders().map((p) => p.id)).toContain("antigravity");
     expect(providerById("claude")!.dispatch).toBe(true);
   });
 
   it("antigravity's connect note names the binding, not a capability tier", () => {
-    // The condition Kanmer does not yet satisfy, said where the user is told the
-    // file was written. Unconditional by nature: the binding is a per-session
-    // flag, so there is no on-disk state to check (unlike codex trust).
     const note = antigravityBindingNote("C:\\Users\\Me\\proj");
     expect(note).toContain("--add-dir");
     expect(note).toContain("C:\\Users\\Me\\proj");
-    expect(note).toContain("agy 1.1.13");
+    expect(note).toContain("agy 1.1.14");
     expect(note).toMatch(/IDE was not tested/);
     expect(note).not.toMatch(/register-only/);
     // Paths with spaces stay one argument in the command it suggests.
@@ -197,7 +200,12 @@ describe("provider registry", () => {
       "--cwd",
       ROOT,
     ]);
-    expect(providerById("antigravity")!.dispatchArgs).toBeUndefined();
+    expect(providerById("antigravity")!.dispatchArgs!("PROMPT", ROOT)).toEqual([
+      "--add-dir",
+      ROOT,
+      "-p",
+      "PROMPT",
+    ]);
   });
 
   it("derives the GUI dispatch roster exactly from core's shared registry", () => {
@@ -570,14 +578,14 @@ describe("legacy global codex sweep (GUI-079)", () => {
 });
 
 describe("project skill installs (FRD-012 R2)", () => {
-  it("keeps OpenCode and Antigravity in distinct project skill trees", () => {
+  it("keeps OpenCode project skills while Antigravity delegates to its plugin", () => {
     const opencode = providerById("opencode")!.install;
     const antigravity = providerById("antigravity")!.install;
-    if (opencode.kind !== "copySkills" || antigravity.kind !== "copySkills") {
+    if (opencode.kind !== "copySkills" || antigravity.kind !== "plugin") {
       throw new Error("unreachable");
     }
     expect(opencode).toMatchObject({ skillsScope: "project", skillsDir: ".opencode/skills" });
-    expect(antigravity).toMatchObject({ skillsScope: "project", skillsDir: ".agents/skills" });
+    expect(antigravity).toMatchObject({ scope: "user", legacySkillsDir: ".agents/skills" });
   });
 
   it("Grok no longer copies a project skill tree", () => {

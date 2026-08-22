@@ -22,8 +22,11 @@ availability remain host-specific.
 
 Right-click a card → **Dispatch to agent** → pick the agent → pick the task.
 
-Four hosts can be dispatched to: Codex, Claude Code, opencode and Grok CLI.
-Antigravity can be connected but not dispatched to, so it does not appear here.
+Five hosts can be dispatched to: Codex, Claude Code, opencode, Grok CLI and
+Antigravity. Antigravity is launched with `agy --add-dir <sourceRoot> -p
+<prompt>` so each session is bound to the project; cwd alone is never treated as
+binding. A real Kanmer tool call/deliverable is required for host acceptance;
+process start, PONG and tool listings are not sufficient.
 
 ## One deliverable, not "work on this"
 

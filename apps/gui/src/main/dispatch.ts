@@ -5,6 +5,7 @@ import { app } from "electron";
 import { join } from "node:path";
 import {
   DispatchSupervisor,
+  dispatchDeliverableProven,
   dispatchProviderById,
   dispatchTaskById,
   takeTicketPromptText,
@@ -51,6 +52,11 @@ function getSupervisor(): DispatchSupervisor {
       if (!store) throw new Error(`No open project store for ${status.projectId}`);
       await store.appendScratch(status.ticketId, "dispatch", terminalSummary(status, tail));
     },
+    verifyDeliverable: async (status) => {
+      const store = stores.get(status.projectId);
+      if (!store) return false;
+      return dispatchDeliverableProven(status.task, await store.getTicketDocsInfo(status.ticketId), await store.getItem(status.ticketId));
+    },
   };
   supervisor = new DispatchSupervisor(options);
   return supervisor;
@@ -84,6 +90,7 @@ export async function dispatchTicket(
   if (item.taken_at) throw new Error(`${ticketId} is already taken${item.assignee ? ` by ${item.assignee}` : ""} — release it first.`);
   const task = opts.taskId ? dispatchTaskById(opts.taskId) : undefined;
   if (opts.taskId && !task) throw new Error(`Unknown dispatch task "${opts.taskId}".`);
+  if (!task) throw new Error("Dispatch requires a named task so its Kanmer deliverable can be verified.");
   stores.set(projectId, store);
   const builtInPrompt = task ? task.prompt(ticketId) : takeTicketPromptText(ticketId);
   const config = resolveDispatchSettings(readSettings().dispatch, provider.id, task?.id);

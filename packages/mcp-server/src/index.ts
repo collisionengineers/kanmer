@@ -28,6 +28,7 @@ import {
   resolveProofTypes,
   serialiseItem,
   DispatchSupervisor,
+  dispatchDeliverableProven,
   dispatchTaskById,
   taskFeasibility,
   takeTicketPromptText,
@@ -360,6 +361,8 @@ export function createKanmerMcpServer(policy: ExposurePolicy = "local-stdio"): M
     recordTerminal: async (status, tail) => {
       await store.appendScratch(status.ticketId, "dispatch", dispatchTerminalSummary(status, tail));
     },
+    verifyDeliverable: async (status) =>
+      dispatchDeliverableProven(status.task, await store.getTicketDocsInfo(status.ticketId), await store.getItem(status.ticketId)),
   });
   const registerTool = server.registerTool.bind(server);
   // All mutating tool schemas carry transport metadata at their call boundary.
@@ -633,7 +636,7 @@ server.registerTool(
       "Start one fixed, named core task for one existing ticket through the operator-enabled dispatch policy. The caller chooses only ticket, shared provider id, shared task id and an optional bounded timeout; command, args, prompt, cwd, environment and log path are never accepted. Dispatch is disabled by default, bearer authentication is not authorization, and `get_status.dispatch` explains the local policy. Refusals are normal structured `{ok:false,code,reason}` results and never create a child or log before all checks and approval pass.",
     inputSchema: {
       ticket_id: z.string().describe("Existing non-archived ticket id"),
-      provider: z.string().describe("Operator-allowlisted shared provider id: codex | claude | opencode | grok"),
+      provider: z.string().describe("Operator-allowlisted shared provider id: codex | claude | opencode | grok | antigravity"),
       task: z.string().describe("Operator-allowlisted core task id from DISPATCH_TASKS"),
       timeout_ms: z.number().int().positive().optional().describe("Optional bounded timeout in milliseconds"),
       expected_project: expectedProjectField,

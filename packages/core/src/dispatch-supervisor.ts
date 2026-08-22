@@ -8,12 +8,11 @@ import { dispatchProviderById, type DispatchProviderId } from "./dispatch-provid
 export type DispatchState = "running" | "done" | "failed" | "cancelled" | "timed-out";
 
 /**
- * Provider ids that may appear in a shared status row.  The GUI also carries
- * the register-only Antigravity target in its provider picker; the supervisor
- * never starts it because DispatchStartRequest remains restricted to the
- * dispatch allowlist above.
+ * Provider ids that may appear in a shared status row. Kept as an alias for
+ * compatibility with callers that render historical status records; new
+ * starts are restricted to the shared dispatch registry below.
  */
-export type DispatchStatusProviderId = DispatchProviderId | "antigravity";
+export type DispatchStatusProviderId = DispatchProviderId;
 
 export interface DispatchStatus {
   dispatchId: string;
@@ -73,6 +72,8 @@ export interface DispatchSupervisorOptions {
   now?: () => number;
   statusSink?: (status: DispatchLocalStatus) => void;
   recordTerminal?: (status: DispatchStatus, tail: readonly string[]) => Promise<void> | void;
+  /** Proves a named task's Kanmer deliverable before an exit-0 run is done. */
+  verifyDeliverable?: (status: DispatchStatus, tail: readonly string[]) => Promise<boolean> | boolean;
   env?: NodeJS.ProcessEnv;
 };
 
@@ -117,6 +118,7 @@ export class DispatchSupervisor {
   private readonly now: () => number;
   private readonly sink: (status: DispatchLocalStatus) => void;
   private readonly recorder: (status: DispatchStatus, tail: readonly string[]) => Promise<void> | void;
+  private readonly verifier?: NonNullable<DispatchSupervisorOptions["verifyDeliverable"]>;
   private readonly env: NodeJS.ProcessEnv;
 
   constructor(private readonly options: DispatchSupervisorOptions) {
@@ -128,6 +130,7 @@ export class DispatchSupervisor {
     this.now = options.now ?? Date.now;
     this.sink = options.statusSink ?? (() => undefined);
     this.recorder = options.recordTerminal ?? (() => undefined);
+    this.verifier = options.verifyDeliverable;
     this.env = options.env ?? process.env;
     if (!Number.isInteger(this.maxActive) || this.maxActive < 1) throw new Error("maxActive must be a positive integer");
     if (!Number.isFinite(this.defaultTimeoutMs) || this.defaultTimeoutMs < 1) throw new Error("defaultTimeoutMs must be positive");
@@ -215,9 +218,7 @@ export class DispatchSupervisor {
       if (handle.terminal) return;
       handle.terminal = true;
       clearTimeout(handle.timer);
-      if (handle.status.state === "running") handle.status.state = code === 0 ? "done" : "failed";
-      handle.status.exitCode = code;
-      this.finish(lock, handle);
+      void this.finishClose(lock, handle, code);
     });
     this.emit(handle);
     return { ...status };
@@ -268,6 +269,26 @@ export class DispatchSupervisor {
 
   private emit(handle: Handle): void {
     this.sink({ ...handle.status, tail: handle.tail.slice(-MAX_TAIL_LINES), logPath: handle.logPath });
+  }
+
+  private async finishClose(lock: string, handle: Handle, code: number | null): Promise<void> {
+    if (handle.status.state === "running") {
+      if (code === 0 && handle.status.deliverable) {
+        let proven = false;
+        try {
+          proven = this.verifier ? await this.verifier({ ...handle.status, exitCode: code }, handle.tail.slice(-MAX_TAIL_LINES)) : false;
+        } catch (error) {
+          handle.status.reason = `deliverable-check-failed: ${error instanceof Error ? error.message : String(error)}`;
+        }
+        if (proven) handle.status.state = "done";
+        else if (!handle.status.reason) handle.status.reason = this.verifier ? "deliverable-unproven" : "deliverable-verification-unavailable";
+        if (!proven) handle.status.state = "failed";
+      } else {
+        handle.status.state = code === 0 ? "done" : "failed";
+      }
+    }
+    handle.status.exitCode = code;
+    this.finish(lock, handle);
   }
 
   private finish(lock: string, handle: Handle): void {

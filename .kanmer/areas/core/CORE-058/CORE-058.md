@@ -6,11 +6,14 @@ title: >-
   provenance
 status: implementing
 area: core
-assignee: ''
+assignee: codex-core058-executor
 profile: fix
 stageEntered:
   preparing: '2026-08-22T13:21:11.027Z'
   implementing: '2026-08-22T13:24:34.315Z'
+taken_at: '2026-08-22T13:24:57.195Z'
+branch: core-058-board-ignore-plugin-artifact
+worktree: .worktrees/core-058
 labels:
   - pr-review
   - board-sync
@@ -26,7 +29,7 @@ refs:
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
 archived: false
 created: '2026-08-22T13:03:07.157Z'
-updated: '2026-08-22T13:24:34.315Z'
+updated: '2026-08-22T13:24:57.195Z'
 ---
 
 Close CORE-044 review findings for release and board hygiene: add the sources cache rule to canonical board-worktree ignore creation and reconciliation, and rebuild the committed plugin artifact from a normal checkout so plugin:check is reproducible outside nested ticket worktrees. Add regression/evidence for existing and new board worktrees and exact artifact parity. Link [[CORE-044]].

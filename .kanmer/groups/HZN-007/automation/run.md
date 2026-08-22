@@ -141,3 +141,6 @@
 
 
 2026-08-22T10:44Z — CORE-043 taken by core041-executor on core-043-protection-retarget/.worktrees/core-043 after full packet/context/gate read. Scope is the deferred branch-protection retarget/rename-flow follow-up linked to CORE-033; no source outside that lane.
+
+
+2026-08-22T10:46Z — Second independent CORE-045 review by gui099 recorded NEEDS-CHANGES: F-003 audit PASS on existing paths, but F-009 remains incomplete for IPv4 192.175.48.0/24 plus a missing redirect/linked-hop lookup invocation regression. CORE-046 scope/body updated to include this follow-up; no merge, move, or cleanup.

@@ -726,3 +726,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T12:35:22.322Z — CORE-051 Review handoff: taken on core-051-destination-error-remediation/.worktrees/core-051 stacked on CORE-045 cumulative head 0f9af92b; final commits 5cd42532, 6f206ae3, 67a066d3 and PR #173. Deterministic IO 24/24, core 301/301, source 14/14, build/typecheck/plugin parity/scripts pass; first stale-main-core standalone build failure is preserved as INCONCLUSIVE and corrected worktree-local rerun passes. Additional PR #166 findings (globally reachable special-use IPv4, NAT64 /96, 2001:20 exception, fec0::/10, marker cleanup, released-quarantine ENOENT) are covered. CORE-045 report/item traceability was refreshed and related threads are ready for independent re-review. Ticket remains Implementing until final gates/move; author stops at Review with no merge/verify/cleanup.
+
+
+2026-08-22T13:36:00Z — CORE-051 implementation has PR #173 head 67a066d351e3f7924f87f7580a74c98e7b94cbb2 and checklist/report complete. Independent controller validation on the exact worktree: core build PASS, core tests 302/302 PASS, MCP source tests 14/14 PASS; globally reachable special-use ranges and edge cases are included. Ticket remains Implementing pending author Review handoff.

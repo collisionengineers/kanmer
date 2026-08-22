@@ -11,3 +11,7 @@ GUI typecheck attempt 2 after `npm run build:core` still exited 1 with the same 
 Full GUI rail: `npm test --workspace @kanmer/gui` exited 1 after 47 files/311 tests: 43 files passed, 310 tests passed; 3 inherited suite-load failures (connect.test.ts, providers.test.ts, skillsVersion.test.ts) due missing shared dispatch provider antigravity, plus inherited dispatch.test.ts assertion mismatch (`"antigravity" doesn't support background dispatch.` vs expected `requires a named task`). The CORE-080 kanmerGit suite passed 26/26 (72.2s in full run). No failures implicated the changed sync path.
 
 Core rail: `npm test -w @kanmer/core` passed 14 files / 283 tests. Focused GUI 26/26, scripts 89/89, verify:skills, verify:docs, check:manual, and diff-check also pass. GUI full/typecheck failures remain inherited and recorded above.
+
+2026-08-22T18:02Z — CORE-080 implementation complete at 0e1be5f32efad1da57ee27bd2a2fe80033976bd1. PR #201 is open against core-043-protection-retarget; focused 26/26, core 283/283, scripts 89/89, docs/prose/manual/diff checks pass. Full GUI and GUI typecheck retain exact inherited antigravity/core-dispatch failures in ticket scratch. CORE-080 remains Implementing until gates readback and one-boundary move to Review; independent review/merge required.
+
+Independent rerun evidence from root: focused GUI Git suite from .worktrees/core-080 passed 26/26, exit 0, 87.48s; git diff --check passed. GUI workspace typecheck baseline exit 1 remains documented.

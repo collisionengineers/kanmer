@@ -3,6 +3,168 @@ kind: review-attestation
 pr: "163"
 head_sha: "3a05ab7a21f55152a4f493169300ac9e622baab7"
 base_sha: "84a20f8414264f65f6d851ca51849af89c80acf9"
+verdict: needs-changes
+reviewer: "gui099-executor"
+independent: true
+plan_hash: "9916aa9641b6a15d"
+ticket_updated: "2026-08-22T17:30:26.490Z"
+findings:
+  - id: C-3835667028
+    severity: blocker
+    disposition: fixed-in-current-head
+    reason: "AGENTS.md and the canonical tool reference now describe 37 tools, including get_sources/set_sources/fetch_source; smoke.mjs asserts 37 and the generated/plugin rails were recorded PASS."
+  - id: C-3835667032
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "CORE-058 and CORE-062..076 add .kanmer/data/sources/ to BOARD_WORKTREE_IGNORE and preserve effective ignore reconciliation; the current head contains that rule."
+  - id: C-3835667033
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "CORE-044/057 add public-destination checks, DNS-before-every-hop, pinned HTTPS requests, redirect limits and deadlines; the current source path rejects private/link-local destinations before remote fetch."
+  - id: C-3835667037
+    severity: major
+    disposition: fixed-in-current-head
+    reason: "SourceDeclarationArraySchema canonicalizes HTTPS host/port identities before duplicate detection, and the source cache key uses the canonical URL."
+  - id: C-3835679125
+    severity: major
+    disposition: accepted-risk-out-of-scope
+    reason: "FRD-027/ADR-0020 explicitly choose the shared MCP set_sources declaration surface and forbid a second GUI-only source store/editor; no GUI source editor is claimed by CORE-026."
+  - id: C-3836536186
+    severity: major
+    disposition: needs-remediation-CORE-082
+    reason: "ownerMarkerActive validates only PID liveness; a reused PID is treated as the crashed owner's active process despite the UUID token. CORE-045..050 add token/reclaim races but do not bind the marker to process-start identity."
+  - id: C-3836536184
+    severity: blocker
+    disposition: needs-remediation-CORE-083
+    reason: "ensureIgnore(repoRoot/.gitignore) still runs outside the boardRoot-preserving inner catches; a source-root symlink refusal can fall through the outer catch and return empty() without boardRoot after attachment/rename."
+  - id: C-3836536180
+    severity: blocker
+    disposition: needs-remediation-CORE-083
+    reason: "resumeOrphanMigration removes source .kanmer after pushing the copied board without recording/verifying the copied source version, so newer source-board edits can be deleted on retry. CORE-072/076 only make cleanup retryable/idempotent."
+  - id: C-3836536172
+    severity: major
+    disposition: needs-remediation-CORE-081
+    reason: "fetchText clears validators on a redirect and CacheFile retains the declared URL, so a redirected manifest's final ETag/Last-Modified is not reused on the next refresh."
+  - id: C-3836536170
+    severity: major
+    disposition: needs-remediation-CORE-081
+    reason: "fetchText leaves response bodies unread on redirect, HTTP-error, unsupported-content-type and content-length rejection paths; pinnedFetch wraps live IncomingMessage streams."
+  - id: C-3836536166
+    severity: major
+    disposition: needs-remediation-CORE-081
+    reason: "withExclusiveFileLock retries EEXIST for about 2.1 seconds while a legal source refresh may run for 10 seconds per request and multiple pages; a concurrent fetch can fail instead of waiting/reusing."
+  - id: C-3836536177
+    severity: major
+    disposition: needs-remediation-CORE-081
+    reason: "pinnedFetch does not request identity encoding or decode Content-Encoding, so a compressed text response can be cached as corrupted UTF-8."
+  - id: C-3836612410
+    severity: major
+    disposition: needs-remediation-CORE-081
+    reason: "Only ResponseTooLargeError reports consumedBytes; generic stream reset/timeout after partial reads leaves the aggregate byte counter unchanged and permits another allowance."
+  - id: C-3836612412
+    severity: major
+    disposition: needs-remediation-CORE-082
+    reason: "recoverStaleLock returns false for malformed/empty stale records, so an old fallback O_EXCL record can remain permanently unrecoverable without an active owner."
+  - id: C-3836612414
+    severity: major
+    disposition: needs-remediation-CORE-082
+    reason: "BOARD_WORKTREE_IGNORE excludes activity, sources and temp files but not board.yml.lock, owner markers or stale/quarantine records; syncBoard stages .kanmer and can commit live lock artifacts."
+  - id: C-3836612417
+    severity: major
+    disposition: needs-remediation-CORE-081
+    reason: "markdownLinks collects every valid link before callers apply slice(0, maxLinkedPages), so a huge short-link manifest can exceed the advertised memory/CPU bound."
+  - id: C-3836612420
+    severity: major
+    disposition: needs-remediation-CORE-081
+    reason: "The fresh-root linked-page loop appends asDocument(response) for status 304 without a cached representation, yielding an empty successful document instead of a surfaced failure."
+  - id: C-3835667021
+    severity: blocker
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "CORE-044/057 replaced follow redirects with per-hop same-origin validation and pinned requests."
+  - id: C-3835667024
+    severity: blocker
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "CORE-044 moved set_sources to the core updateBoard lock/re-read mutation path."
+  - id: C-3835667026
+    severity: blocker
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "CORE-044 uses writeFileAtomic under the source cache lock; later CORE-045..050 harden ownership/recovery."
+  - id: C-3835667029
+    severity: major
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "CORE-044 streams with remaining aggregate bytes and charges oversize consumption."
+  - id: C-3835667030
+    severity: blocker
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "Core source schema rejects root query-bearing/credential-bearing/fragment URLs before board persistence."
+  - id: C-3835667031
+    severity: major
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "CORE-056 revalidates retained linked documents on root 304; C-3836612420 records the separate uncached-304 residual."
+  - id: C-3835667035
+    severity: major
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "Core selector matching now treats empty selector arrays as global with regression coverage."
+  - id: C-3835679108
+    severity: major
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "Validated final response URL is used as the redirected-root markdown base."
+  - id: C-3835679111
+    severity: major
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "Markdown image syntax is excluded before the direct-page cap."
+  - id: C-3835679113
+    severity: major
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "The source suite is registered in the authoritative MCP test rail."
+  - id: C-3835679116
+    severity: major
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "Fragments are cleared before same-origin validation and deduplication."
+  - id: C-3835679118
+    severity: major
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "Research skill guidance records unknown/unavailable declarations as skipped."
+  - id: C-3835679120
+    severity: major
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "MCP set_sources uses the exported core SourceDeclarationArraySchema."
+  - id: C-3835696321
+    severity: blocker
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "Linked query-bearing URLs are rejected before fetch/cache persistence."
+  - id: C-3835696322
+    severity: major
+    disposition: stale-fixed-in-cumulative-stack
+    reason: "Oversize linked downloads charge consumed bytes; C-3836612410 covers the distinct generic partial-read failure path."
+---
+
+## Current-head independent audit — CORE-026 / PR #163
+
+Exact PR head is 3a05ab7a21f55152a4f493169300ac9e622baab7; base is 84a20f8414264f65f6d851ca51849af89c80acf9. GitHub reports 33 inline comments: 16 stale/outdated comments from earlier cumulative commits and 17 current-head comments. The current-head review found five already fixed/out-of-scope dispositions, three linked blocking remediation tickets for the twelve residual valid findings, and no source modification, ticket move, or merge.
+
+Blocking remediations created and linked with blocks: [CORE-026]:
+
+- CORE-081 — source transport/cache lifecycle: validators across redirects, response-body cancellation, active-refresh wait, content encoding, generic partial-read byte accounting, bounded link collection, and uncached linked-page 304 handling. Findings: #3836536172, #3836536170, #3836536166, #3836536177, #3836612410, #3836612417, #3836612420.
+- CORE-082 — lock ownership/artifact isolation: PID-reuse identity, malformed stale-lock recovery, and board lock/owner/quarantine ignore rules. Findings: #3836536186, #3836612412, #3836612414.
+- CORE-083 — orphan migration/source-board safety: source-ignore symlink board-root retention and source-version/concurrent-edit verification before cleanup. Findings: #3836536184, #3836536180.
+
+Evidence and boundaries:
+
+- Hosted run 32587889875 reports both verify and kanmer-gate PASS for the exact head.
+- Existing cumulative packets record core 303/303, MCP source 19/19, GUI 404/404, scripts 88/88, build/typecheck/docs/skills/plugin/diff rails PASS, with their earlier failed attempts preserved in the respective scratch/report documents. This audit did not rerun those rails; it inspected the exact current source and packet evidence.
+- The current source inspection confirmed the residual findings above; the prior PASS attestation is superseded by this needs-changes audit. Live DNS rebinding/private-network, Windows race timing, packaged/external fetch, and GUI visual/provider evidence remain INCONCLUSIVE where not directly exercised.
+- CORE-026 remains Review and is now blocked by CORE-081/082/083. No stage transition or merge was performed.
+
+HZN-007 durable run/current were updated before this audit assignment and after the result with the exact head, comment count, and remediation IDs. The prior failed/stale evidence was preserved; no unsupported item was ticked.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "163"
+head_sha: "3a05ab7a21f55152a4f493169300ac9e622baab7"
+base_sha: "84a20f8414264f65f6d851ca51849af89c80acf9"
 verdict: pass
 reviewer: "codex-gui082-executor"
 independent: true

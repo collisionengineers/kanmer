@@ -26,3 +26,16 @@ Stacked dependency verification: `npm run verify` rerun passed core 263/263, GUI
 ## Merged-main verification
 
 Verified after PR #145 merge `8a9eee57e1779f83f30504851e1bff0bf167247a`: build exit 0; focused supervisor 7/7 exit 0; package `npm run test:http -w @kanmer/mcp-server` 61/61 exit 0; package typecheck exit 0; diff-check exit 0. Original 99d3f259 and stacked aac1e252/72da8d076 are reachable from main. Preserved transient hosted attempt 1 npm ci ECONNRESET/EPERM failure (job 96961297681); attempt 2 job 96961421442 passed in 2m17s. No MCPB/provider/remote-host claim made.
+
+# Closeout checklist
+
+## Closeout — MCP-041
+
+- [x] PR merge verified (gh pr view --json state,mergedAt)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; git worktree remove .worktrees/mcp-041
+- [ ] git branch -d mcp-041-supervisor-retry (-D if squash/rebase-merged)
+- [ ] git fetch --prune + git worktree prune
+- [ ] take_ticket action: release

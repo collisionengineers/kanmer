@@ -22,3 +22,7 @@ No MCPB packaging, provider authentication, tunnel-host, or remote-client accept
 ## Outcome
 
 MCP-041's merged test-only retry synchronization is verified green on main and the required hosted rerun is green. No follow-up is required for this ticket; unrelated infrastructure evidence remains historical rather than absorbed into scope.
+
+## Closeout finalization
+
+PR URL: https://github.com/collisionengineers/kanmer/pull/145. Merge date: 2026-08-22T01:59:36Z. Merge commit: 8a9eee57e1779f83f30504851e1bff0bf167247a.

@@ -53,3 +53,7 @@ The deterministic harness now invokes the existing doctor engine through injecte
 The planned helper modules are wired: deterministicChecks drives client checks and inconclusiveProtectedChecks drives protected evidence. Protected Cloudflare/Worker proof remains INCONCLUSIVE because Wrangler/cloudflared/credentials/named tunnel are unavailable.
 
 Post-remediation focused evidence: build PASS; official HTTP + MCP-028 integration tests PASS 7/7; workspace typecheck PASS. One concurrent full HTTP attempt had the known child probe `spawnSync ... ETIMEDOUT`; the focused rerun passed and this timing-sensitive failure remains in scratch.
+
+## Hosted verification addendum
+
+Fresh hosted verification for head `45449d0f4935b8cc1193eeaf7cc4b5227f468f08` passed: run `32554249103`, job `96985834506`, duration 2m16s. The hosted verify covers the authoritative build/test/mcpb rails; it does not constitute live Cloudflare proof. Wrangler/cloudflared/credentials remain unavailable locally, so the protected route/Worker checks remain INCONCLUSIVE.

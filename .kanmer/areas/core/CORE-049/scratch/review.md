@@ -1,74 +1,76 @@
 ---
 kind: review-attestation
 pr: "171"
-head_sha: "8edfede9bdb663171601cb326a67bd03792065e2"
-verdict: needs-changes
+head_sha: "31e572dc54b311164444cd5ee1a6cba225d618f2"
+verdict: pass
 reviewer: "gui099-executor"
 independent: true
 plan_hash: "031022f0c419ab92"
-ticket_updated: "2026-08-22T11:42:42.505Z"
+ticket_updated: "2026-08-22T12:08:30.982Z"
 findings:
   - id: F-049-RETRY-RACE
     severity: blocker
-    summary: "Retrying raw quarantine rename does not repeat ownership validation"
-    disposition: open
-    reason: "The new wrapper applies renameWithRetry around the raw rename seam, but validation occurs only before the retry loop. If the first rename gets EPERM/EBUSY/EACCES, another reclaimer can quarantine the stale inode and claim a replacement before the retry; the retry can then move that active replacement, leaving the path empty for a third claimant. Re-run the complete stale-inode/owner-marker validation for each retry, with an adversarial transient-then-replacement regression."
-  - id: F-049-TRACE
-    severity: major
-    summary: "Cumulative CORE-046 traceability is refreshed"
-    disposition: fixed-in-head
-    reason: "CORE-046 report and item now record CORE-047 source head 67e2be79, merge 0f7ccc4e, and pending CORE-049 8edfede9/PR171 without claiming the child is merged. The exact base/head lineage is reachable."
-  - id: F-167-P2
-    severity: major
-    summary: "Original transient-rename PR thread is resolved"
-    disposition: fixed-in-parent
-    reason: "PR167 thread PRRT_kwDOT2PEds6bYPz8 is resolved with an evidence-backed reply naming PR171, IO19/19, full core297/297, and plugin parity."
+    summary: "Per-attempt quarantine retry revalidation is fixed by CORE-050"
+    disposition: fixed-in-child
+    reason: "CORE-050 revalidates stale contents/stat identity, parsed owner record, liveness, and owner markers before every transient retry; its adversarial replacement regression passes and is independently reviewed PASS."
   - id: F-167-ACTIVE
     severity: blocker
-    summary: "Separate parent thread still permits a claimant while a replacement owner is quarantined"
-    disposition: deferred-to-separate-remediation
-    reason: "PR167 has a new unresolved P1 thread PRRT_kwDOT2PEds6bYZxB. This is outside CORE-049's bounded retry scope, but it still blocks a clean cumulative CORE-046 merge."
+    summary: "Active replacement claimant overlap is fixed by CORE-050"
+    disposition: fixed-in-child
+    reason: "CORE-050 retains active owner markers and rejects a third claimant while a replacement is quarantined; the cumulative IO rail is 22/22."
   - id: F-167-CLEANUP
     severity: major
-    summary: "Separate parent cleanup-error thread remains unresolved"
-    disposition: deferred-to-separate-remediation
-    reason: "PR167 thread PRRT_kwDOT2PEds6bYZxC reports broad suppression in cleanupOwnerQuarantines; CORE-049 does not absorb unrelated parent source changes."
+    summary: "Cleanup-error suppression is fixed by CORE-050"
+    disposition: fixed-in-child
+    reason: "Only expected ENOENT races are suppressed; other quarantine readdir/read/remove errors propagate and the EACCES regression passes."
   - id: F-167-TOKEN
     severity: blocker
-    summary: "Separate parent token-path validation thread remains unresolved"
-    disposition: deferred-to-separate-remediation
-    reason: "PR167 thread PRRT_kwDOT2PEds6bYZxD reports unvalidated persisted tokens before owner-marker path construction; CORE-049 does not absorb this unrelated security remediation."
+    summary: "Persisted token path validation is fixed by CORE-050"
+    disposition: fixed-in-child
+    reason: "UUID-shaped token validation occurs before owner-marker path construction; malformed nested-token coverage leaves the victim path untouched."
+  - id: F-049-TRACE
+    severity: major
+    summary: "Cumulative traceability is refreshed at the merged child head"
+    disposition: fixed-in-head
+    reason: "CORE-049 report, item metadata, and PR body record CORE-049 8edfede9, CORE-050 fc8e591e, child merge 31e572dc, PR171, and the reachable CORE-046 base 0f7ccc4e."
+  - id: F-049-THREAD
+    severity: minor
+    summary: "Original retry thread is outdated and addressed"
+    disposition: fixed-in-child-outdated
+    reason: "The sole PR171 thread is outdated at the old 8edfede9 line; its requested revalidation is implemented and evidenced by CORE-050."
+  - id: F-049-HTTP
+    severity: minor
+    summary: "Broad HTTP readiness timing remains an inherited boundary"
+    disposition: preserved-inconclusive
+    reason: "Broad MCP HTTP remains 81/82 at the unchanged TUNNEL_READINESS_TIMEOUT; isolated readiness is 7/7 and no assertion was weakened."
+  - id: F-049-HOSTED
+    severity: minor
+    summary: "No hosted workflow run is available for the cumulative head"
+    disposition: inconclusive
+    reason: "Exact-head workflow lookup returned no runs. Live Windows handle/crash/PID-reuse/process-termination evidence remains INCONCLUSIVE."
 ---
-# Independent review — CORE-049
-
-## Scope and exact head
-
-I read the complete CORE-049 packet, CORE-046/047 packets and attestations, HZN-007 context, FRD-027, ADR-0020, CORE-046 cumulative report/traceability, PR #171, and the exact one-commit diff from base 0f7ccc4efad0aeae2295f3ba08e0b6e886356679 to head 8edfede9bdb663171601cb326a67bd03792065e2. The diff is scoped to packages/core/src/io.ts, packages/core/src/io.test.ts, and the regenerated standalone plugin artifact. No source changes were made by this review.
-
-## Bounded retry audit
-
-The intended fix is present: withExclusiveFileLock wraps the injected/default quarantine rename with the existing renameWithRetry helper, preserving bounded EPERM/EBUSY/EACCES handling. The deterministic regression covers all three codes and proves recovery/no residue.
-
-However, the retry loop surrounds only the raw rename. The stale content/inode and active owner-marker checks are outside that loop. A transient first rename can give another reclaimer time to move the stale inode and claim a replacement; the retry then acts on the replacement without revalidation. A third claimant can observe the empty path during that transition and enter concurrently. This is a true in-scope concurrency blocker.
-
-## Traceability and inherited acceptance
-
-CORE-046's cumulative report now distinguishes CORE-046, merged CORE-047 (67e2be79 into 0f7ccc4e), and pending CORE-049 (8edfede9/PR171). CORE-047 token/lease behavior, inherited source/DNS policy, and plugin artifact parity remain preserved. The fixed original transient-rename thread on PR167 is resolved with evidence.
-
-Three later PR167 findings remain unresolved and outside CORE-049's bounded scope: active replacement quarantine/third claimant overlap, suppressed non-ENOENT quarantine cleanup failures, and unvalidated token path construction. They must be separately remediated before CORE-046 can claim a clean cumulative merge.
-
-## Evidence
-
-- IO focused rail: 19/19 PASS, exit 0.
-- Focused core IO/source/store rail: 110/110 PASS, exit 0.
-- MCP source rail: 14/14 PASS, exit 0.
-- Plugin check: PASS, 37 tools and bundle bytes synchronized.
-- git diff --check: PASS, exit 0.
-- Isolated readiness fixture: 7/7 PASS.
-- Broad MCP HTTP rail: 81/82 twice, exit 1, unchanged TUNNEL_READINESS_TIMEOUT at src/tunnels/readiness.test.mjs:54; preserved, not weakened.
-- No hosted workflow run is associated with 8edfede9.
-- Live Windows handle contention, crash timing, PID reuse, and process-termination evidence remain explicitly INCONCLUSIVE.
+# Independent review — CORE-049 cumulative head
 
 ## Verdict
 
-NEEDS-CHANGES. The requested transient retry contract and traceability update are present, but retrying without repeating ownership validation leaves an in-scope race. Separate unresolved CORE-046 parent threads also prevent cumulative closure. No merge, move, cleanup, or source edit was performed.
+PASS for PR #171 at exact cumulative head `31e572dc54b311164444cd5ee1a6cba225d618f2`. CORE-050 is merged non-squash into the CORE-049 branch, and all prior in-scope retry, claimant, cleanup, token, and traceability findings are closed with evidence. No source, merge, move, cleanup, or ticket-stage change was performed by this review.
+
+## Lineage and scope
+
+PR #171 is open against `core-046-lock-reclaim-race-ipv6` at base `0f7ccc4efad0aeae2295f3ba08e0b6e886356679`. The cumulative head is `31e572dc54b311164444cd5ee1a6cba225d618f2`, the non-squash merge commit for CORE-050 PR #172 (`fc8e591e344cb7743204f8261eb5186b76f1d3aa`) into CORE-049 (`8edfede9bdb663171601cb326a67bd03792065e2`). The base-to-head comparison is three commits and three changed files: core IO, IO tests, and the regenerated standalone plugin artifact.
+
+The refreshed CORE-049 report and board item now record both implementation commits, the child merge SHA, PR #171/#172, and the reachable CORE-046 base. The current PR body carries the same lineage and evidence.
+
+## Cumulative evidence
+
+- CORE-049 pre-child: IO 19/19, focused core 110/110, source 14/14, plugin parity PASS.
+- CORE-050 child: IO 22/22; combined core IO/source/store 113/113; typecheck/build/plugin parity PASS; independent review PASS; non-squash merge SHA 31e572dc.
+- `git diff --check`: PASS.
+- The regenerated plugin artifact matches the source/tool contract.
+- Broad MCP HTTP: 81/82 twice due unchanged `TUNNEL_READINESS_TIMEOUT`; isolated readiness 7/7. Failure is preserved and no assertion was weakened.
+- No hosted workflow run is claimed for the cumulative head.
+- Live Windows handle contention, crash timing, PID reuse, process termination, and equivalent external stress remain INCONCLUSIVE.
+
+## Governing-doc alignment
+
+FRD-027 bounded HTTPS/same-origin/cache and fail-closed destination behavior remains unchanged. ADR-0020's preference-not-authority boundary remains unchanged. The cumulative source-lock hardening adds no dependency, source capability, resolver, provider, GUI, or board-store behavior.

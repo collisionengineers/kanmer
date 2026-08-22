@@ -4,13 +4,14 @@ type: ticket
 title: >-
   CORE-046 review remediation: bounded quarantine rename retry and cumulative
   traceability
-status: review
+status: verifying
 area: core
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-22T11:33:25.135Z'
   review: '2026-08-22T11:42:42.505Z'
+  verifying: '2026-08-22T12:10:11.762Z'
 taken_at: '2026-08-22T11:34:03.989Z'
 branch: core-049-quarantine-rename-retry
 worktree: .worktrees/core-049
@@ -36,7 +37,7 @@ prs:
   - '172'
 archived: false
 created: '2026-08-22T11:33:00.536Z'
-updated: '2026-08-22T12:08:30.982Z'
+updated: '2026-08-22T12:10:11.762Z'
 ---
 
 Remediate independent CORE-046 review blockers: route stale-lock quarantine renames through the existing bounded Windows retry contract (EPERM/EBUSY/EACCES) with regression coverage; refresh the cumulative post-child report and exact reachable commit metadata; and disposition the fixed original PR thread after evidence is updated. Preserve CORE-047 token/lease behavior, inherited source DNS policy, and explicit live Windows/crash INCONCLUSIVE boundaries. Link [[CORE-046]].

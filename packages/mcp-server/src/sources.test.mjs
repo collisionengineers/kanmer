@@ -455,3 +455,98 @@ test("aggregate byte budget is enforced while reading linked responses", async (
     await rm(cacheDir, { recursive: true, force: true });
   }
 });
+
+test("serializes concurrent refresh transactions and lets the second caller reuse the fresh cache", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-refresh-lock-"));
+  let calls = 0;
+  let active = 0;
+  let maximumActive = 0;
+  try {
+    const fetchImpl = async () => {
+      calls++;
+      active++;
+      maximumActive = Math.max(maximumActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      active--;
+      return fakeResponse("# Docs", { etag: '"root-1"' });
+    };
+    const results = await Promise.all([
+      fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl, now: () => 1_000 }),
+      fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl, now: () => 1_000 }),
+    ]);
+    assert.equal(maximumActive, 1);
+    assert.equal(calls, 1);
+    assert.deepEqual(results.map((result) => result.documents[0].text), ["# Docs", "# Docs"]);
+    assert.equal(results.filter((result) => result.fromCache).length, 1);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("charges retained 304 linked bytes before accepting a changed page", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-304-budget-"));
+  const largeA = "a".repeat(1_500_000);
+  const oldB = "b".repeat(500_000);
+  const newB = "c".repeat(700_000);
+  try {
+    const first = async (url) => {
+      if (String(url).endsWith("llms.txt")) return fakeResponse("[a](a.md)\n[b](b.md)", { etag: '"root-1"' });
+      if (String(url).endsWith("a.md")) return fakeResponse(largeA, { etag: '"a-1"' });
+      return fakeResponse(oldB, { etag: '"b-1"' });
+    };
+    await fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl: first, now: () => 1_000 });
+    const second = async (url) => {
+      if (String(url).endsWith("llms.txt")) return { status: 304, ok: false, url: String(url), headers: new Headers(), text: async () => "" };
+      if (String(url).endsWith("a.md")) return { status: 304, ok: false, url: String(url), headers: new Headers(), text: async () => "" };
+      return fakeResponse(newB, { etag: '"b-2"' });
+    };
+    const refreshed = await fetchLlmsTxt({
+      url: "https://docs.example.test/llms.txt",
+      cacheDir,
+      fetchImpl: second,
+      force: true,
+      now: () => 86_401_000,
+    });
+    const totalBytes = refreshed.documents.reduce((sum, document) => sum + Buffer.byteLength(document.text, "utf8"), 0);
+    assert.ok(totalBytes <= LLMS_TXT_POLICY.maxBytes);
+    assert.deepEqual(refreshed.documents.map((document) => document.url), [
+      "https://docs.example.test/llms.txt",
+      "https://docs.example.test/a.md",
+    ]);
+    assert.match(refreshed.failures.join("\n"), /aggregate response limit/);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("retries a linked page that was missing from the prior cached document set", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-missing-link-"));
+  let recovered = false;
+  try {
+    const first = async (url) => {
+      if (String(url).endsWith("llms.txt")) return fakeResponse("[missing](missing.md)", { etag: '"root-1"' });
+      throw new Error("linked page unavailable");
+    };
+    await fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl: first, now: () => 1_000 });
+    const second = async (url) => {
+      if (String(url).endsWith("llms.txt")) return { status: 304, ok: false, url: String(url), headers: new Headers(), text: async () => "" };
+      recovered = true;
+      return fakeResponse("# Recovered", { etag: '"missing-1"' });
+    };
+    const refreshed = await fetchLlmsTxt({
+      url: "https://docs.example.test/llms.txt",
+      cacheDir,
+      fetchImpl: second,
+      force: true,
+      now: () => 86_401_000,
+    });
+    assert.equal(recovered, true);
+    assert.deepEqual(refreshed.documents.map((document) => document.url), [
+      "https://docs.example.test/llms.txt",
+      "https://docs.example.test/missing.md",
+    ]);
+    assert.equal(refreshed.documents[1].text, "# Recovered");
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});

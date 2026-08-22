@@ -1,0 +1,1 @@
+Implementation resumed in `.worktrees/core-077` on `core-077-live-board-branch`, based exactly on CORE-060 PR head `fbb528734e43d2d86c24359b88395169f197506b`. Packet and HZN-007 context read; checklist authored because the pre-existing ticket had none. Scope remains live-branch inspection immediately before automatic sync, deterministic regression, and stacked Review handoff.

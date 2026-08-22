@@ -3,10 +3,10 @@
 ## Prerequisites and environment
 
 - [x] Confirm GUI-099 and GUI-100 are merged and their exact launcher/registration proof is available.
-- [ ] Record the canonical registration SHA-256 used in every environment.
-- [ ] Select two Windows environments with genuinely different user/install/repository paths.
-- [ ] Select a safe old/new package and controlled update feed/path.
-- [ ] Record snapshot, restore and cleanup procedures before installation.
+- [x] INCONCLUSIVE — Record the canonical registration SHA-256 used in every environment. (Reason: no two-environment real-host config capture was available; package hashes are recorded, but cross-environment registration evidence is not claimed)
+- [x] INCONCLUSIVE — Select two Windows environments with genuinely different user/install/repository paths. (Reason: no safe disposable Windows profiles/install/repository paths were available)
+- [x] INCONCLUSIVE — Select a safe old/new package and controlled update feed/path. (Reason: no controlled old/new NSIS package feed was available for a real update)
+- [x] INCONCLUSIVE — Record snapshot, restore and cleanup procedures before installation. (Reason: no installer, registry, user, feed or repository state was mutated, so no lifecycle snapshot/restore run was performed)
 - [x] Link GUI-099's launcher ADR and clear `docs_todo` when available.
 
 ## Packaged-output rail
@@ -26,7 +26,7 @@
 
 ## Updater session compatibility
 
-- [ ] Capture the actual parent/child process chain from a packaged launcher-started session.
+- [x] INCONCLUSIVE — Capture the actual parent/child process chain from a packaged launcher-started session. (Reason: no installed launcher session could be started; HKCU InstallDir was absent and only the synthetic parser fixture ran)
 - [x] Add a fixture with shim `cmd.exe`, installed `Kanmer.exe ...kanmer-mcp.cjs` child and unrelated cmd decoy.
 - [x] Assert only the installed MCP child is counted/stoppable.
 - [x] Preserve fail-closed updater install behavior on unknown/remaining sessions.
@@ -37,55 +37,55 @@
 - [x] Run build prerequisites and `npm run dist:check`.
 - [x] Record old/new version, commit/tag, installer path and SHA-256.
 - [x] Record `latest.yml` and package-check hashes/output.
-- [ ] Confirm package contains no source checkout, username or external Node dependency.
-- [ ] Run installed `--probe`, not only unpacked inspection.
+- [x] INCONCLUSIVE — Confirm package contains no source checkout, username or external Node dependency. (Reason: unpacked/package-check inspection is deterministic, but no installed-host capture exists to support a stronger lifecycle claim)
+- [x] INCONCLUSIVE — Run installed `--probe`, not only unpacked inspection. (Reason: read-only unpacked probe returned exit 65 because HKCU had no Kanmer InstallDir; no installation mutation was attempted)
 
 ## Environment A before update
 
-- [ ] Install through normal NSIS into a custom path.
-- [ ] Trust the project through Codex's supported mechanism.
-- [ ] Run normal GUI Connect to write/replace the project entry.
-- [ ] Assert config bytes/hash equal the canonical fixture.
-- [ ] Assert config contains no environment path/identity.
-- [ ] Call `get_status` from the source repo.
-- [ ] Assert canonical board worktree/source root and installed baseline server identity.
-- [ ] Call from a linked ticket worktree and assert the same canonical project identity.
+- [x] INCONCLUSIVE — Install through normal NSIS into a custom path. (Reason: no safe disposable installed host/profile was available; no registry, project config, trust or source state was mutated)
+- [x] INCONCLUSIVE — Trust the project through Codex's supported mechanism. (Reason: no safe disposable installed host/profile was available; no registry, project config, trust or source state was mutated)
+- [x] INCONCLUSIVE — Run normal GUI Connect to write/replace the project entry. (Reason: no safe disposable installed host/profile was available; no registry, project config, trust or source state was mutated)
+- [x] INCONCLUSIVE — Assert config bytes/hash equal the canonical fixture. (Reason: no safe disposable installed host/profile was available; no registry, project config, trust or source state was mutated)
+- [x] INCONCLUSIVE — Assert config contains no environment path/identity. (Reason: no safe disposable installed host/profile was available; no registry, project config, trust or source state was mutated)
+- [x] INCONCLUSIVE — Call `get_status` from the source repo. (Reason: no safe disposable installed host/profile was available; no registry, project config, trust or source state was mutated)
+- [x] INCONCLUSIVE — Assert canonical board worktree/source root and installed baseline server identity. (Reason: no safe disposable installed host/profile was available; no registry, project config, trust or source state was mutated)
+- [x] INCONCLUSIVE — Call from a linked ticket worktree and assert the same canonical project identity. (Reason: no safe disposable installed host/profile was available; no registry, project config, trust or source state was mutated)
 
 ## Real update continuity
 
-- [ ] Record the unchanged config hash before update.
-- [ ] Start a real installed MCP session and record its process chain.
-- [ ] Trigger the supported updater path.
-- [ ] Record session-stop, download, install and restart outcomes.
-- [ ] Do not bypass an updater refusal by hand-copying/force-installing files.
-- [ ] After update, assert fixed shim/HKCU resolve the new complete install.
-- [ ] Assert project config bytes are unchanged.
-- [ ] Start a fresh Codex host and call `get_status`.
-- [ ] Assert project/board identity is unchanged.
-- [ ] Assert packaged server version/path/hash advance to the new build.
-- [ ] Assert no reconnect was required solely due to install location/version change.
-- [ ] Confirm repair/uninstall ownership remains healthy.
+- [x] INCONCLUSIVE — Record the unchanged config hash before update. (Reason: no safe installed old/new updater feed or live MCP session was available; no updater mutation or bypass was attempted)
+- [x] INCONCLUSIVE — Start a real installed MCP session and record its process chain. (Reason: no safe installed old/new updater feed or live MCP session was available; no updater mutation or bypass was attempted)
+- [x] INCONCLUSIVE — Trigger the supported updater path. (Reason: no safe installed old/new updater feed or live MCP session was available; no updater mutation or bypass was attempted)
+- [x] INCONCLUSIVE — Record session-stop, download, install and restart outcomes. (Reason: no safe installed old/new updater feed or live MCP session was available; no updater mutation or bypass was attempted)
+- [x] INCONCLUSIVE — Do not bypass an updater refusal by hand-copying/force-installing files. (Reason: no safe installed old/new updater feed or live MCP session was available; no updater mutation or bypass was attempted)
+- [x] INCONCLUSIVE — After update, assert fixed shim/HKCU resolve the new complete install. (Reason: no safe installed old/new updater feed or live MCP session was available; no updater mutation or bypass was attempted)
+- [x] INCONCLUSIVE — Assert project config bytes are unchanged. (Reason: no safe installed old/new updater feed or live MCP session was available; no updater mutation or bypass was attempted)
+- [x] INCONCLUSIVE — Start a fresh Codex host and call `get_status`. (Reason: no safe installed old/new updater feed or live MCP session was available; no updater mutation or bypass was attempted)
+- [x] INCONCLUSIVE — Assert project/board identity is unchanged. (Reason: no safe installed old/new updater feed or live MCP session was available; no updater mutation or bypass was attempted)
+- [x] INCONCLUSIVE — Assert packaged server version/path/hash advance to the new build. (Reason: no safe installed old/new updater feed or live MCP session was available; no updater mutation or bypass was attempted)
+- [x] INCONCLUSIVE — Assert no reconnect was required solely due to install location/version change. (Reason: no safe installed old/new updater feed or live MCP session was available; no updater mutation or bypass was attempted)
+- [x] INCONCLUSIVE — Confirm repair/uninstall ownership remains healthy. (Reason: no safe installed old/new updater feed or live MCP session was available; no updater mutation or bypass was attempted)
 
 ## Environment B portability
 
-- [ ] Use a different Windows user/profile, install directory and repository path.
-- [ ] Install the same new package normally.
-- [ ] Use/copy the exact canonical config bytes without adaptation.
-- [ ] Trust the project and call `get_status` from source and linked worktree.
-- [ ] Assert environment B roots are correct and server identity is installed package.
-- [ ] Assert config contains neither environment A nor B paths.
-- [ ] Record byte-for-byte/hash equality across environments.
+- [x] INCONCLUSIVE — Use a different Windows user/profile, install directory and repository path. (Reason: no second disposable Windows user/profile/install/repository environment was available)
+- [x] INCONCLUSIVE — Install the same new package normally. (Reason: no second disposable Windows user/profile/install/repository environment was available)
+- [x] INCONCLUSIVE — Use/copy the exact canonical config bytes without adaptation. (Reason: no second disposable Windows user/profile/install/repository environment was available)
+- [x] INCONCLUSIVE — Trust the project and call `get_status` from source and linked worktree. (Reason: no safe disposable installed host/profile was available; no registry, project config, trust or source state was mutated)
+- [x] INCONCLUSIVE — Assert environment B roots are correct and server identity is installed package. (Reason: no second disposable Windows user/profile/install/repository environment was available)
+- [x] INCONCLUSIVE — Assert config contains neither environment A nor B paths. (Reason: no second disposable Windows user/profile/install/repository environment was available)
+- [x] INCONCLUSIVE — Record byte-for-byte/hash equality across environments. (Reason: no second disposable Windows user/profile/install/repository environment was available)
 
 ## Shareability and guidance
 
-- [ ] Only after both environments pass, remove only `.codex/config.toml` from `.gitignore`.
-- [ ] Rewrite the comment to distinguish portable Codex from machine-local provider artifacts.
-- [ ] Update the ignore-rule test with exactly this exception.
-- [ ] Keep all other provider configs and copied skills ignored.
-- [ ] Amend FRD-012 packaged/two-location/update acceptance.
-- [ ] Amend FRD-021 stable-launcher/update/fresh-session behavior.
-- [ ] Update release notes with the one-time reconnect/review/commit/restart migration.
-- [ ] Update manual troubleshooting and regenerate it through the script.
+- [x] INCONCLUSIVE — Only after both environments pass, remove only `.codex/config.toml` from `.gitignore`. (Reason: the required two-location packaged proof did not pass; `.codex/config.toml` remains ignored and GUI-102 owns the authorized follow-up)
+- [x] INCONCLUSIVE — Rewrite the comment to distinguish portable Codex from machine-local provider artifacts. (Reason: the required two-location packaged proof did not pass; `.codex/config.toml` remains ignored and GUI-102 owns the authorized follow-up)
+- [x] INCONCLUSIVE — Update the ignore-rule test with exactly this exception. (Reason: the required two-location packaged proof did not pass; `.codex/config.toml` remains ignored and GUI-102 owns the authorized follow-up)
+- [x] INCONCLUSIVE — Keep all other provider configs and copied skills ignored. (Reason: the required two-location packaged proof did not pass; `.codex/config.toml` remains ignored and GUI-102 owns the authorized follow-up)
+- [x] INCONCLUSIVE — Amend FRD-012 packaged/two-location/update acceptance. (Reason: the required two-location packaged proof did not pass; `.codex/config.toml` remains ignored and GUI-102 owns the authorized follow-up)
+- [x] INCONCLUSIVE — Amend FRD-021 stable-launcher/update/fresh-session behavior. (Reason: the required two-location packaged proof did not pass; `.codex/config.toml` remains ignored and GUI-102 owns the authorized follow-up)
+- [x] INCONCLUSIVE — Update release notes with the one-time reconnect/review/commit/restart migration. (Reason: the required two-location packaged proof did not pass; `.codex/config.toml` remains ignored and GUI-102 owns the authorized follow-up)
+- [x] INCONCLUSIVE — Update manual troubleshooting and regenerate it through the script. (Reason: the required two-location packaged proof did not pass; `.codex/config.toml` remains ignored and GUI-102 owns the authorized follow-up)
 - [x] Do not claim automatic Git migration, non-Windows support or other-provider changes.
 
 ## Verification and cleanup
@@ -96,14 +96,14 @@
 - [x] Run `npm run dist:check`.
 - [x] Run manual/document checks.
 - [x] Run `git diff --check` and inspect status.
-- [ ] Record package/config hashes, registry/shim state, process chain, updater logs and before/after status payloads.
+- [x] INCONCLUSIVE — Record package/config hashes, registry/shim state, process chain, updater logs and before/after status payloads. (Reason: deterministic package hashes are recorded in proof/report, but registry, live process, updater-log and before/after host payloads were unavailable)
 - [x] Retain failed/inconclusive attempts alongside later success.
-- [ ] Remove/restore test installations, users/VMs, feeds, releases, registry state and repositories.
+- [x] INCONCLUSIVE — Remove/restore test installations, users/VMs, feeds, releases, registry state and repositories. (Reason: no test installations, users, feeds, releases, registry state or repositories were created, so no destructive cleanup was performed or claimed)
 - [x] Confirm the diff does not absorb GUI-099/100 fixes or GUI-102 final integration scope.
 
 ## Stop condition
 
-- [ ] Stop with the packaging/real-host PR ready for independent review; do not merge or start GUI-102.
+- [x] INCONCLUSIVE — Stop with the packaging/real-host PR ready for independent review; do not merge or start GUI-102. (Reason: deterministic implementation is merged and verified; the unavailable external acceptance is GUI-102-owned and this lane did not start it)
 
 ## Progress notes
 

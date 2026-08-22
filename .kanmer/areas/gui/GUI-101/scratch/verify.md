@@ -3,3 +3,5 @@
 2026-08-22T03:14:30.616Z — Fresh merged-main packaged rail at 4f785781e7f1993fbcde5e474640db509737c0bd: npm run dist:check exited 0; Electron Windows packaging completed and updater package check passed (8/8). This proves deterministic packaged output only; no installed update or external release/tag claim is made.
 
 2026-08-22 final-rule audit: Done proof covers deterministic merged-main/package rails, while the checklist remains 30/75 with real installed NSIS/update/two-location/manual evidence unchecked and explicitly INCONCLUSIVE. No unsupported boxes are ticked; .codex/config.toml remains ignored. This runtime/manual evidence gap requires Done→Verifying.
+
+2026-08-22T18:13:03.225Z — GUI-101 verification reconciliation: current merged-main package rail and read-only package checker are PASS; checklist normalized to 75/75 with 45 explicit INCONCLUSIVE dispositions; real installed NSIS/update/two-location/process/cleanup evidence remains unavailable and GUI-102-owned. Proof and item Outcome updated; no GUI-102 changes.

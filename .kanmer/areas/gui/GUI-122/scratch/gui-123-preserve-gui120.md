@@ -1,0 +1,3 @@
+GUI-123 integrates the exact GUI-120 merge 37740379552e241f200bb181a2ca0e9d3be32ece into GUI-122 head 94d9fca2, producing clean cumulative head 5d041af8. This restores projectId:id multi-project Connect broadcasts and the production-caller regression while retaining GUI-119 provider propagation. Focused cumulative rail 121/121, GUI typecheck/build, scripts 89/89, verify:docs and diff-check passed; full workspace typecheck inherited mcp-server/core dispatch mismatch is INCONCLUSIVE. GUI-123 PR is pending.
+
+GUI-123 PR #223 is open at exact head 5d041af8886a2d307f0830690534a91cb519dc9c, targeting GUI-122. The cumulative focused rail is 121/121 and restores GUI-120 projectId:id coverage; no merge or review is claimed.

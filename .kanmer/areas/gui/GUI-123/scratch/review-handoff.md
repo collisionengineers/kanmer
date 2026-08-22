@@ -1,0 +1,1 @@
+Pushed 5d041af8886a2d307f0830690534a91cb519dc9c and opened PR #223 targeting gui-122-rebase-provider-propagation. Full workspace typecheck remains the inherited mcp-server/core dispatch mismatch (INCONCLUSIVE); GUI typecheck/build and focused 121/121 pass.

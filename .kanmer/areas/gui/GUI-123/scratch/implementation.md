@@ -1,0 +1,1 @@
+Integrated GUI-120 merge 37740379552e241f200bb181a2ca0e9d3be32ece into GUI-122 base 94d9fca2; clean resulting head 5d041af8. Focused cumulative rail passed 121/121; GUI typecheck/build, scripts 89/89, docs and diff checks passed. Full workspace typecheck exited 1 on inherited mcp-server/core dispatch mismatch and is INCONCLUSIVE.

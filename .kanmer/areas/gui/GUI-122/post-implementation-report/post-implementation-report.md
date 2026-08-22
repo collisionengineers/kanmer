@@ -31,3 +31,7 @@ No hosted checks, live native host, packaged runtime, protected mutation, or mer
 ## Review handoff
 
 Merge commit 94d9fca2a9aa6e9158f7b230cea4617accb771dd is pushed on gui-122-rebase-provider-propagation. PR #222 targets gui-118-provider-lifecycle. GUI-118 cumulative report/checklist and scratch were refreshed with this lineage. The ticket stops at Review for independent review; no self-review, merge, verification, or cleanup.
+
+## GUI-123 cumulative remediation
+
+GUI-123 merged GUI-120 37740379552e241f200bb181a2ca0e9d3be32ece into GUI-122 94d9fca2, producing 5d041af8886a2d307f0830690534a91cb519dc9c. This restores projectId:id multi-project Connect broadcast coverage and its production-caller regression while retaining GUI-119 propagation. Focused cumulative rail: 121/121; GUI typecheck/build, scripts 89/89, verify:docs and diff-check passed. Full workspace typecheck inherited mcp-server/core dispatch mismatch is INCONCLUSIVE. PR #223 targets GUI-122 and is ready for independent review.

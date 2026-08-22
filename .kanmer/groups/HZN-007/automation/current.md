@@ -882,3 +882,8 @@ Last handoff: 2026-08-23T00:12:00Z — GUI-122 is Review-ready on gui-122-rebase
 - PASS: clean detached npm ci; mcpb:check 3 files / 1,671,293 bytes with committed/generated server SHA f52d9c5b3817b12432e211438913146908c32874bf74ac261839a21ee31ea58c; core 310/310; MCP sources 32/32; GUI 416/416; typecheck; scripts 88/88; protocol 46/46; docs/manual/plugin/diff rails.
 - Hosted run 32603963529 verify PASS (job 97106199221). Its kanmer-gate failed against the pre-refresh snapshot because CORE-090 was still a live blocker and the prior review used invalid aggregated finding ids; current board readback has the CORE-090 edge removed and fresh scratch/review uses canonical F-### ids. A fresh gate rerun remains required before protected merge.
 - No merge, move, or cleanup performed. External provider, live llms/DNS, packaged, and visual evidence remain INCONCLUSIVE.
+
+
+## GUI-123 handoff
+
+GUI-123 is Implementing on gui-123-preserve-gui120 / .worktrees/gui-123. It integrates GUI-120 merge 37740379552e241f200bb181a2ca0e9d3be32ece into GUI-122 head 94d9fca2 as clean head 5d041af8, restoring projectId:id multi-project Connect broadcast coverage while preserving GUI-119 provider propagation. Focused cumulative rail is 121/121; GUI typecheck/build, scripts 89/89, verify:docs and diff-check pass. Full workspace typecheck exits 1 on inherited mcp-server/core dispatch mismatch and is INCONCLUSIVE. PR will target gui-122-rebase-provider-propagation; stop at Review for independent review.

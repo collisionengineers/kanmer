@@ -2,72 +2,95 @@
 kind: review-attestation
 pr: "168"
 head_sha: "11930038542d402865bb26a23787d7d3cad3e2c5"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: needs-changes
 reviewer: "gui099-executor"
 independent: true
 plan_hash: "a0b32fae7b9b14f9"
-ticket_updated: "2026-08-22T10:53:15.286Z"
+ticket_updated: "2026-08-22T12:04:34.929Z"
 findings:
   - id: F-001
     severity: blocker
-    summary: "Administrator handoff branch refresh is fixed in the cumulative head"
-    disposition: fixed-in-head
-    reason: "CORE-048 refreshBoardBranch inspects the live worktree before protected-transition decisions and the focused regression covers an open handoff."
+    summary: "Completed administrator handoff is recognized"
+    disposition: fixed-in-child
+    reason: "CORE-048 refreshes the open worktree branch before protected-transition decisions; focused regression evidence is present."
   - id: F-002
     severity: major
-    summary: "No-board protected preference guard is fixed in the cumulative head"
-    disposition: fixed-in-head
-    reason: "guardGitBranchPreference retains the protected default without an open board and permits the requested branch once a board is available; the three deterministic cases are covered."
+    summary: "No-board protected preference transition is guarded"
+    disposition: fixed-in-child
+    reason: "guardGitBranchPreference retains the protected default when no Git board is open and allows the requested branch once a board is available."
   - id: F-003
     severity: blocker
-    summary: "Hosted workflow branch source is fixed in the cumulative head"
-    disposition: fixed-in-head
-    reason: "pr.yml reads non-empty KANMER_BOARD_BRANCH with the kanmer-board migration fallback, fetches that ref, and creates the board worktree from it; the 1/1 static regression passes."
+    summary: "Hosted gate consumes the configured board branch"
+    disposition: fixed-in-child
+    reason: "pr.yml reads KANMER_BOARD_BRANCH with the kanmer-board fallback and hosted workflow run 32571224767 completed success."
   - id: F-004
     severity: minor
-    summary: "Protection inference remains a conservative accepted risk"
+    summary: "Protection inference remains a conservative branch-name boundary"
     disposition: accepted-risk
-    reason: "The literal/default protection boundary is explicit in the CORE-043 plan and ADR-0016. No GitHub protection API or live retarget mutation is claimed."
+    reason: "ADR-0016 explicitly excludes a GitHub protection API/App. The literal protected default and retarget-first administrator handoff are an acknowledged bounded risk."
   - id: F-005
     severity: blocker
-    summary: "Merged CORE-048 remains a live board blocker for CORE-043"
+    summary: "Merged CORE-048 dependency is unblocked"
+    disposition: fixed-in-child
+    reason: "CORE-048 is Verifying with blocks empty, and hosted run 32571224767 is successful."
+  - id: F-009
+    severity: blocker
+    summary: "Administrator handoff omits the KANMER_BOARD_BRANCH repository-variable step"
     disposition: open
-    reason: "CORE-048 is merged into this exact head (PR #170 base 1a06ead, merge commit 119300385) but its board item remains Verifying with blocks: [CORE-043]. The current kanmer-gate therefore fails DEPENDENCY_BLOCKED until child verification/closeout updates the board."
-  - id: F-006
-    severity: major
-    summary: "CORE-043 report and item traceability are stale at the cumulative head"
+    reason: "The new workflow reads vars.KANMER_BOARD_BRANCH, but Settings, board-sync manual, and the handoff text do not instruct the administrator to create/update this variable. Without it, the documented rename can leave kanmer-gate on the stale default."
+  - id: F-010
+    severity: blocker
+    summary: "Refresh accepts any branch mismatch as a completed handoff"
     disposition: open
-    reason: "The post-implementation report and item record still name only 1a06ead and the original eight-file implementation; the exact base-to-head comparison is three commits and ten changed files including the CORE-048 workflow/source/test changes. The PR body likewise still names only the original commit."
-  - id: F-007
+    reason: "refreshBoardBranch replaces the cached branch with any observed actual branch and clears state without checking that it equals the requested destination. A typo/intermediate branch can therefore be renamed, pushed, and potentially have its remote ref deleted."
+  - id: F-011
     severity: major
-    summary: "Hosted verification needs a fresh run after board and attestation repair"
-    disposition: rerun-required
-    reason: "Run 32571224767 had verify PASS but kanmer-gate FAIL: DEPENDENCY_BLOCKED CORE-048 and STALE_REVIEW because the prior CORE-043 attestation used invalid findings[4].severity=warning. This fresh attestation removes the schema-invalid severity, but the dependency and rerun remain."
-  - id: F-008
+    summary: "Branch refresh clears paused sync errors"
+    disposition: open
+    reason: "refreshBoardBranch returns error:null and paused:false for any branch mismatch. A conflict-paused project can lose its visible error and resume sync before a successful sync resolves the conflict."
+  - id: F-012
+    severity: major
+    summary: "Troubleshooting manual contradicts the protected-default refusal"
+    disposition: open
+    reason: "docs/manual/troubleshooting.md still instructs users to rename through Settings and says closed projects are migrated automatically, contradicting the retarget-first refusal documented in board-sync and Settings."
+  - id: F-THREADS
+    severity: major
+    summary: "Current PR #168 inline findings remain unresolved"
+    disposition: open
+    reason: "The fresh F-009 through F-012 findings are current-head comments and are not covered by the prior child attestation. They must be fixed or explicitly accepted before merge; the older F-001 through F-004 findings are dispositioned above."
+  - id: F-EXTERNAL
     severity: minor
-    summary: "Original GitHub review threads remain unresolved"
-    disposition: fixed-in-head-awaiting-thread-resolution
-    reason: "The four non-outdated PR #168 threads correspond to F-001, F-002, F-003, and the accepted F-004 risk. Their code dispositions are recorded above, but GitHub resolution is still pending."
+    summary: "Live protection retarget remains unavailable"
+    disposition: inconclusive
+    reason: "No GitHub protection API mutation or real protected-branch handoff was attempted. Local and hosted checks do not prove live protection state."
 ---
-# Independent review — CORE-043 cumulative head
+# Independent review - CORE-043 cumulative head
 
 ## Verdict
 
-NEEDS-CHANGES for packet/board readiness; the original three code blockers are fixed in the cumulative PR head, but the child dependency is still live, the parent report/traceability is stale, and the hosted gate has a recorded failure requiring board reconciliation and rerun. No source, merge, move, or cleanup was performed.
+NEEDS-CHANGES for PR #168 at exact cumulative head 11930038542d402865bb26a23787d7d3cad3e2c5, based on main 34245be039e8fd8395b5e31835602c54e62e98a4. CORE-048 closes the original three code blockers, clears the board dependency, and hosted run 32571224767 is successful. The current head nevertheless has four fresh documentation/state-safety blockers. No source, merge, move, or cleanup was performed.
 
-## Lineage and diff
+## Scope and lineage
 
-PR #168 is open against main `34245be039e8fd8395b5e31835602c54e62e98a4` at exact head `11930038542d402865bb26a23787d7d3cad3e2c5`. PR #170 (CORE-048) is closed/merged, based on `core-043-protection-retarget` at `1a06ead17cca8f7a6c715db3a6f6fed6b3de5da6`, with merge commit `11930038542d402865bb26a23787d7d3cad3e2c5`. The cumulative comparison is three commits and ten changed files. The original F-001/F-002/F-003 findings are fixed by the merged CORE-048 implementation and regressions; F-004 remains the explicitly bounded ADR-0016 risk.
+The cumulative compare is three commits and ten changed files. CORE-048 PR #170 was merged non-squash into CORE-043 at 11930038542d402865bb26a23787d7d3cad3e2c5. The ticket report and item record the cumulative implementation and child merge, while the PR body still carries the original commit-only summary.
+
+## Finding audit
+
+The original F-001 administrator-refresh, F-002 no-board guard, and F-003 workflow source findings are fixed, and CORE-048 has blocks empty. The current refreshBoardBranch implementation still accepts any observed branch as a completed handoff, clears paused/error state unconditionally, and allows later migration to rename an arbitrary typo/intermediate branch. The administrator instructions omit the repository Actions variable consumed by the workflow. The troubleshooting manual still contradicts the retarget-first refusal.
+
+The literal kanmer-board protection inference remains an explicitly accepted ADR-0016 risk, not a new blocker.
 
 ## Evidence
 
-- PASS: focused GUI Git rail, 16/16, exit 0, from the CORE-048 exact-head packet.
-- PASS: configured workflow static rail, 1/1, exit 0.
-- PASS: `npm run build:core`, exit 0; `npm run test:scripts` after build, 89/89, exit 0.
-- PASS: `npm run verify:docs`, `npm run check:manual`, and `git diff --check`.
-- Preserved packet failures: full GUI, GUI typecheck, and GUI build baseline dispatch/provider parity failures.
-- Hosted run 32571224767: `verify` PASS; `kanmer-gate` FAIL with `DEPENDENCY_BLOCKED CORE-048` and invalid prior review severity. No hosted PASS is claimed.
+- Focused GUI Git: 16/16 PASS.
+- Workflow static rail: 1/1 PASS.
+- Scripts after core build: 89/89 PASS.
+- Core build, docs/manual checks, and diff check: PASS.
+- Hosted run 32571224767: verify PASS and kanmer-gate PASS.
+- Full GUI, all-workspace typecheck, and GUI build base dispatch/provider parity failures remain preserved from the packet.
+- Live GitHub protection retargeting remains INCONCLUSIVE.
 
-## External boundary
+## Required disposition
 
-Live GitHub branch-protection state and retarget mutation remain INCONCLUSIVE: no API/App mutation or real protected-branch handoff was available or attempted.
+Document the KANMER_BOARD_BRANCH repository-variable handoff, require observed branch equality with the requested destination, preserve paused/error state during refresh, and update troubleshooting.md plus generated manual. Then refresh the PR body/thread dispositions and request another independent review. No stage move or merge was performed.

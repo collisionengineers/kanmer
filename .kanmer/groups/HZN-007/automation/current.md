@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T01:25:23.084Z
+updated_at: 2026-08-22T01:26:59.149Z
 ---
 
 # Current auto run — HZN-007
@@ -126,3 +126,9 @@ Last handoff: 2026-08-22T01:14:53.743Z — CORE-038 is Implementing on core-038-
 
 
 Last handoff: 2026-08-22T01:25:23.084Z — CORE-038 is in Review with original commit 7919f5eb and PR #146 closed as superseded; its fix is stacked in PR #145 with CORE-037 and MCP-041. Await hosted checks before any merge.
+
+
+Last handoff: 2026-08-22T01:26:59.149Z — CORE-039 is the active CI hermeticity remediation for the clean-checkout release-notes failure (79/80); it is assigned to /root/gui082_executor and must be independently reviewed before stacking into PR #145.
+
+
+Last handoff: 2026-08-22T01:27:27.840Z — CORE-039 is in Preparing for research of the clean-checkout release-notes fixture failure from PR #145; docs and gates are next, with CORE-038 worktree left untouched.

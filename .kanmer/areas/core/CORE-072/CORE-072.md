@@ -2,10 +2,12 @@
 id: CORE-072
 type: ticket
 title: 'CORE-058 review: resume orphan migration after retry'
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-22T15:45:16.135Z'
 labels:
   - pr-review
   - core-058
@@ -21,7 +23,7 @@ refs:
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
 archived: false
 created: '2026-08-22T15:15:55.500Z'
-updated: '2026-08-22T15:18:15.172Z'
+updated: '2026-08-22T15:45:16.135Z'
 ---
 
 PR #180 thread 3836323268: when orphan creation copied the source board and ignore repair failed, a later retry must complete the source-board cleanup/migration rather than only repairing .gitignore; add regression under FRD-020 R2.

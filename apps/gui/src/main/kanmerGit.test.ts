@@ -292,6 +292,26 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(readFileSync(join(boardRoot, ".gitignore"), "utf8")).toContain(".kanmer/data/sources/\n");
   });
 
+  realGitTest("preserves the board root when rename succeeds before ignore reconciliation fails", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const boardRoot = created.boardRoot!;
+    const ignorePath = join(boardRoot, ".gitignore");
+    rmSync(ignorePath);
+    // A directory at the ignore-file path deterministically fails the
+    // existing read/write reconciliation seam without relying on timing or
+    // host-specific permission/lock behavior.
+    mkdirSync(ignorePath);
+
+    const reopened = await ensureBoardWorktree(repo, "team-board");
+
+    expect(reopened.available).toBe(false);
+    expect(reopened.boardRoot).toBe(resolve(boardRoot));
+    expect(reopened.branch).toBe("team-board");
+    expect(reopened.paused).toBe(true);
+    expect(reopened.error).toBeTruthy();
+    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("team-board");
+  });
+
   realGitTest("reports the branch the worktree is really on when reconciling fails", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     await git(repo, "branch", "taken");

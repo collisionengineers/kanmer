@@ -752,3 +752,6 @@ Last handoff: 2026-08-22T19:01:38.547Z — CORE-086 artifact remediation: taken 
 
 
 19:34 UTC — CORE-082 moved to Preparing and assigned to gui082_executor as second conflict-free lane while GUI-113 handles GUI provider registration. CORE-083 remains queued serially behind source changes; GUI-114 remains queued behind GUI-113 due connect.ts overlap.
+
+
+19:38 UTC — CORE-082 now Implementing on core-082-lock-git-isolation (codex-recovery), with 12-step checklist and source/Git lock isolation scope. GUI-113 remains Implementing on the separate GUI lane.

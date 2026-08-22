@@ -2,12 +2,15 @@
 id: CORE-082
 type: ticket
 title: 'CORE-026 review: close lock ownership and Git artifact isolation gaps'
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: codex-recovery
 profile: fix
 stageEntered:
   preparing: '2026-08-22T19:33:34.538Z'
+taken_at: '2026-08-22T19:37:50.975Z'
+branch: core-082-lock-git-isolation
+worktree: .worktrees/core-082
 labels:
   - remediation
   - review
@@ -24,7 +27,7 @@ refs:
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
 archived: false
 created: '2026-08-22T18:00:07.493Z'
-updated: '2026-08-22T19:33:34.538Z'
+updated: '2026-08-22T19:37:50.975Z'
 ---
 
 Blocking remediation from the current-head audit of PR #163 (3a05ab7a21f55152a4f493169300ac9e622baab7). Resolve newest valid inline findings #3836536186 (PID reuse is not distinguished from the crashed owner), #3836612412 (malformed stale lock records never recover), and #3836612414 (board lock/owner/quarantine artifacts are not excluded from Git synchronization). Preserve fail-closed live-owner behavior, add deterministic ownership/recovery and board-sync regressions, and update the cumulative CORE-026 packet. This ticket is linked to and blocks [[CORE-026]].

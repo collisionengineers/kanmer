@@ -800,3 +800,6 @@ CORE-026 hosted run 32598710721 after CORE-087 merge: verify failed on 3 Windows
 
 
 GUI-117 independently re-reviewed PASS at 8537b7a0; PR #214 merged non-squash into CORE-043 parent as aa33ae1aa0d493787d09ff587298274d6523b833. Focused provider/connect 100/100, typecheck, verify-agents-block 31/31, diff-check PASS. Literal shipped descriptor and staged custom branch behavior verified. GUI-117 moved Verifying/released and block edge removed.
+
+
+Removed GUI-115→CORE-043 blocker edge after its non-squash merge; GUI-115 remains Verifying pending merged-main proof.

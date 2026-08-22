@@ -1,0 +1,36 @@
+# Post-implementation report — CORE-026
+
+## Outcome
+
+Implemented project-declared research sources on branch `core-026-project-declared-sources`, commit `fab7b4994b5b0c4f2eaf07a919cf6b6e06e7e763`. Pull request #163 is open: https://github.com/collisionengineers/kanmer/pull/163.
+
+The project board now accepts validated `mcp`, `plugin`, and HTTPS `llms-txt` declarations with area/label selectors and priority ordering. Core resolution is pure and only treats explicitly observed connected/installed MCP/plugin capabilities as available. The MCP surface adds read-only `get_sources`, guarded `set_sources`, and guarded `fetch_source`; the latter writes only bounded cache data under `.kanmer/data/sources`. Retrieval enforces HTTPS, same-origin final redirects, depth one, at most 32 direct pages, 2 MiB aggregate bytes, 10-second request bounds, content checks, validator-aware 24-hour cache, SHA-256 metadata, serialized cache writes, and surfaced failures.
+
+Governing documents are linked as `docs/functional/frd/FRD-027-project-declared-sources.md` and `docs/architecture/adr/ADR-0020-project-declared-source-trust.md`. Research/planning skill guidance and the MCP tool reference describe source provenance and explicitly prohibit installation, authentication, enablement, auto-trust, and implementation-time re-invocation.
+
+## Scope and deviations
+
+- In scope: board schema/resolver, MCP source tools, bounded llms.txt cache, deterministic tests/smokes, governing docs, tool/skill reference updates.
+- Deliberately out of scope: GUI source editor, provider registration scanning/migration, external auto-trust/install/auth, remote transport changes, and arbitrary/unbounded crawling.
+- External connected-provider, installed-plugin, packaged-update, and live external llms.txt evidence is INCONCLUSIVE in this local run; no claim is made for those boundaries.
+
+## Verification (exact commands and exits)
+
+- PASS (exit 0): `npm run typecheck` (core, MCP, UI, GUI).
+- PASS (exit 0): `npm run build:core` including browser check; `npm run build:server`.
+- PASS (exit 0): `npm test` — manual freshness, core 288/288, GUI 382 tests, MCP HTTP 68 tests, scripts 88/88.
+- PASS (exit 0): `node --test packages/mcp-server/src/sources.test.mjs` — 5/5, including same-origin redirect, aggregate/cache bounds, validator handling, concurrent cache writes, and no-cache 304 failure.
+- PASS (exit 0): `npm run smoke:protocol` — 46/46 across protocol versions; new tool annotations/count checked.
+- PASS (exit 0): `npm run smoke:headless`.
+- PASS (exit 0): `npm run verify:docs`, `npm run verify:skills`, `node scripts/check-plugin-sync.mjs`, and `git diff --check`.
+
+## Preserved initial failures and dispositions
+
+- `npm run test:scripts` first returned exit 1 because the new governing document was initially numbered FRD-026 while an existing FRD-026 already existed. The document was renumbered to FRD-027 with ADR-0020, board refs/plan were relinked, and the rerun passed 88/88.
+- The first bounded-source test run returned exit 1 because Node rejects a body-bearing native Response with status 304. The fixture was corrected to a protocol-shaped 304 response; the rerun passed 5/5.
+- `npm run smoke:protocol` first returned exit 1 (42/46) because its legacy assertion expected 34 tools after the three scoped tools were added. The assertion now checks 37 tools and the new annotations; rerun passed 46/46.
+- `node scripts/check-plugin-sync.mjs` first returned exit 1 for the expected stale generated bundle. `npm run plugin:build` regenerated it; the final sync check passed.
+
+## Review handoff
+
+Status should move only one boundary to Review after the final `get_doc_gates CORE-026` readback. Author must not self-review or merge PR #163. Hosted GitHub checks were queued at handoff; their final outcome remains an independent-review/hosted-evidence responsibility.

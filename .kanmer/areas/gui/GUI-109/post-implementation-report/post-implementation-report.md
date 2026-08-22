@@ -26,12 +26,14 @@ All commands below ran in `.worktrees/gui-109` unless noted.
 | `npm run build -w @kanmer/gui` (final code) | 0 | Electron main/preload/renderer bundles built. |
 | `git diff --check` (final code) | 0 | PASS. |
 | `npm test` (before final concurrency assertion) | 0 | Manual PASS; core 14 files / 283 tests PASS; GUI 44 files / 386 tests PASS; MCP HTTP 68/68 PASS; scripts 88/88 PASS. Retained as a complete broader-rail attempt; final code additionally has the 5th focused concurrency test and final GUI/typecheck/build reruns above. |
+| `gh pr checks 162` (hosted event run 32563191261) | 1 | `verify` job 97007849315 PASS; `kanmer-gate` job 97007849283 FAIL because its event-time board snapshot still saw GUI-109 implementing and no review attestation. MCP moved the ticket to Review at 08:48:20, after the gate began at 08:47:58; preserve as a stage-race attempt for independent rerun. |
 
 ## Scope and evidence boundaries
 
 - PASS: existing-group discovery, labels, disabled duplicate entries, empty-group explanation, append-without-duplicates, latest-revision binding, ticket-owned update path, full deterministic GUI suite, manual freshness, typecheck, build, and diff check.
 - INCONCLUSIVE: live Electron card-menu selection after reload and screenshot/visual proof. No controlled interactive desktop session was available; this remains parked in the checklist and is not promoted to PASS.
 - Not claimed: group creation/archiving UI, new storage, provider/dispatch work, CORE-026, CORE-035, or MCP/core contract changes.
+- Hosted gate NO_REVIEW_RECORD is not treated as a source defect: author is not permitted to self-review; independent review must create the attestation and rerun the gate after the current Review state is visible.
 
 ## Traceability
 

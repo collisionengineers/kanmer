@@ -19,9 +19,13 @@ links: []
 refs:
   - docs/functional/frd/FRD-027-project-declared-sources.md
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
+commits:
+  - fab7b4994b5b0c4f2eaf07a919cf6b6e06e7e763
+prs:
+  - '163'
 archived: false
 created: '2026-08-16T18:26:15.208Z'
-updated: '2026-08-22T08:44:53.484Z'
+updated: '2026-08-22T08:51:17.297Z'
 ---
 
 ## What

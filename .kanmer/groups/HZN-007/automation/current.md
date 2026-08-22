@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T02:06:18.080Z
+updated_at: 2026-08-22T02:13:18.293Z
 ---
 
 # Current auto run — HZN-007
@@ -159,3 +159,6 @@ Last handoff: 2026-08-22T01:56:57.081Z — GUI-075 is Review on PR #142 head 1a0
 
 
 Last handoff: 2026-08-22T02:06:18.080Z — MCP-041 is Done/released after merged-main proof and exact worktree/branch cleanup. PR #145 merge 8a9eee57; hosted verify attempt 2 job 96961421442 passed in 2m17s; transient npm ci ECONNRESET/EPERM attempt 1 preserved.
+
+
+Last handoff: 2026-08-22T02:13:18.293Z — PR #145 stack and SKILL-017/#143, SKILL-021/#141 are merged, verified, and cleaned. GUI-075 remains Review pending GUI-110's separate typecheck remediation; provider-neutral MCP-028 remains externally blocked.

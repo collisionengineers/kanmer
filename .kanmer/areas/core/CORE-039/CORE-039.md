@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-22T01:35:10.441Z'
   verifying: '2026-08-22T02:00:10.468Z'
   done: '2026-08-22T02:02:43.862Z'
-taken_at: '2026-08-22T01:29:15.705Z'
-branch: core-039-release-notes-hermetic
-worktree: .worktrees/core-039
 labels:
   - remediation
   - ci
@@ -29,12 +26,13 @@ docs_todo: true
 commits:
   - 79c85e07c977f29270ca84f62b1c729b28fe1d57
   - 3ceaa056f9927778d6e3183a78e78914bbede5bb
+  - 8a9eee57e1779f83f30504851e1bff0bf167247a
 prs:
   - '145'
   - '147'
 archived: false
 created: '2026-08-22T01:26:27.318Z'
-updated: '2026-08-22T02:02:43.862Z'
+updated: '2026-08-22T02:12:40.858Z'
 ---
 
 The authoritative GitHub verify rail now reaches scripts/release-notes.test.mjs and fails in a clean checkout because release-notes.mjs cannot find .worktrees/kanmer. Make the test fixture or command independent of a local Kanmer board while preserving its PR-link assertion and 80-test coverage. Keep this separate from CORE-038 Windows glob enumeration and preserve exact CI evidence.

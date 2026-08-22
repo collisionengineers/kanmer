@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T02:10:21.421Z
+updated_at: 2026-08-22T02:13:18.293Z
 lane_limit: 3
 stop_reason:
 ---
@@ -566,3 +566,7 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T02:06:18.080Z — MCP-041 merged-main verification and closeout complete: PR #145 merge 8a9eee57; original 99d3f259 and stack commits reachable. Main build, supervisor 7/7, package test:http 61/61, package typecheck and diff-check passed. Hosted run 32544808992 attempt 1 npm ci ECONNRESET/EPERM failure preserved; attempt 2 job 96961421442 passed in 2m17s. Proof/checklist/report finalized, Verifying→Done passed, exact .worktrees/mcp-041 and local/remote mcp-041-supervisor-retry removed, fetch/worktree prune passed, and release completed. No MCPB/provider/remote acceptance claim.
 
 - 2026-08-22T02:10:21.421Z — GUI-110 created from PR #142 run 32545348530: GUI/MCP/scripts tests passed (355/355, 61/61, 80/80) but root typecheck failed because packages/ui/src/demo.tsx omitted the new dispatch field from its AppSettings fixture. GUI-110 is a separate typecheck remediation blocking GUI-075; implementation is delegated to a dedicated lane.
+
+- 2026-08-22T02:13:18.293Z — SKILL-017 PR #143 merged as 33f86db after required verify run 32545279635 passed; proof/checklist (with explicitly parked unavailable exhaustive scenarios) finalized, ticket Done, implementation worktree/branch released and removed.
+- 2026-08-22T02:13:18.293Z — SKILL-021 PR #141 merged as 28d525cc after required verify run 32545279359 passed; exact-head review/proof finalized, ticket Done, implementation worktree/branch released and removed.
+- 2026-08-22T02:13:18.293Z — CORE-037/038/039/040/041 stacked PR #145 merged as 8a9eee57 after hosted verify 32544808992 passed; merged-main proof/checklists finalized, tickets Done, traceability updated with reachable stack merge and implementation worktrees/branches released and removed.

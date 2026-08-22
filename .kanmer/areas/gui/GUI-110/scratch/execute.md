@@ -1,0 +1,1 @@
+2026-08-22T02:12:43Z — GUI-110 taken by /root/core041_executor on gui-110-demo-dispatch-settings / .worktrees/gui-110 after full ticket, GUI-075 dependency packet, HZN-007/HZN-005 contexts, research/files/plan/checklist/open-questions and gates were read. Scope is one browser fixture field; independent review/merge required, no self-merge.

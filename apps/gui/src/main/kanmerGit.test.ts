@@ -231,6 +231,20 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(ignore.match(/^\.kanmer\/data\/sources\/$/gm)).toHaveLength(1);
   });
 
+  realGitTest("puts managed cache exclusions after later negations", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const ignorePath = join(created.boardRoot!, ".gitignore");
+    writeFileSync(ignorePath, "!.kanmer/data/sources/cache.json\n.kanmer/data/sources/\n", "utf8");
+
+    const reopened = await ensureBoardWorktree(repo, "kanmer-board");
+    const lines = readFileSync(join(reopened.boardRoot!, ".gitignore"), "utf8").trim().split("\n");
+
+    expect(lines.at(-1)).toBe(".kanmer/**/.*.tmp-*");
+    expect(lines.at(-2)).toBe(".kanmer/data/sources/");
+    expect(await git(reopened.boardRoot!, "check-ignore", "--no-index", ".kanmer/data/sources/cache.json"))
+      .toContain(".kanmer/data/sources/");
+  });
+
   realGitTest("reconciles the sources cache rule after attaching an existing local branch", async () => {
     await git(repo, "branch", "local-board");
 

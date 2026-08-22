@@ -812,3 +812,6 @@ Removed GUI-115→CORE-043 blocker edge after its non-squash merge; GUI-115 rema
 
 
 2026-08-22T21:42Z — CORE-089 PR #216 independently reviewed PASS at exact head dcfe49b5 and merged non-squash into CORE-026 parent as f2e694a4. GUI-109 group-menu files match current main byte-for-byte; focused 8/8, typecheck/docs/diff PASS. Ticket moved Review→Verifying, released, and block edge removed. Fresh hosted verification remains pending CORE-088 source remediation.
+
+
+2026-08-22T21:50Z — Fresh independent CORE-043 review at exact head 1126253e is NEEDS-CHANGES: hosted verify/kanmer-gate and 157/157 focused GUI/provider tests PASS, but 11 current findings remain (provider retry/lifecycle races, OpenAI/remote/Claude branch propagation, native handoff scope, and stale cumulative report). Created GUI-118 for lifecycle/handoff findings and GUI-119 for OpenAI/remote/Claude propagation; GUI-119 is now Implementing on its own lane, GUI-118 queued. No protected merge or thread resolution.

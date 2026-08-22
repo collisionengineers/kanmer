@@ -12,8 +12,8 @@
 - [x] PR merge verified (PR #181 MERGED as 8c09342459a471f5941b014c577d14e6abc0ae56)
 - [x] proof.md finalized with merged-target evidence and external limitations
 - [x] Moved to final stage (Verifying → Done)
-- [ ] Outcome recorded in ticket body
-- [ ] cd out of worktree; remove recorded CORE-061 worktree
-- [ ] Delete merged CORE-061 branch
-- [ ] Fetch/prune worktrees
-- [ ] Release ticket after cleanup
+- [x] Outcome recorded in ticket body
+- [x] cd out of worktree; remove recorded CORE-061 worktree
+- [x] Delete merged CORE-061 branch
+- [x] Fetch/prune worktrees
+- [x] Release ticket after cleanup

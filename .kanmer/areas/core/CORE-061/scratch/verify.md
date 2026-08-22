@@ -1,1 +1,3 @@
 2026-08-22 — Merged-target verification PASS at f63d953fc8467440988c887c62a34ade0c77c96c, containing PR #181 merge 8c09342459a471f5941b014c577d14e6abc0ae56 and implementation 216dcdf0. verify:agents-block 31/31, verify:skills, check:manual, verify:docs, build:core, test:scripts 89/89, and diff-check passed. Live GitHub variable/protection mutation remains INCONCLUSIVE and was not attempted.
+
+2026-08-22 — Closeout: PR #181 merge and proof were confirmed; outcome/traceability are recorded. Clean recorded worktree .worktrees/core-061 was removed, local branch core-061-agents-branch-convention was deleted after remote-ancestry confirmation, remote branch was deleted, fetch --prune and worktree prune completed. Releasing ticket via MCP.

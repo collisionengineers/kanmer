@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T16:14:15.504Z
+updated_at: 2026-08-22T17:45:31.391Z
 ---
 
 # Current auto run — HZN-007
@@ -675,3 +675,8 @@ CORE-026 fresh independent review PASS at exact 3a05ab7a (GUI 27/27, core 303/30
 
 
 Last handoff: 2026-08-22T17:43:22.414Z — Archived-ticket audit re-read CORE-021, CORE-028, GUI-086, GUI-089, GUI-094, GUI-103, MCP-005, MCP-031, MCP-032, and SKILL-028 items, links, bodies, archived proof availability, successor proofs, and the immutable archived-audit dispositions. No new unique unresolved defect was found: CORE-021 remains the parked/superseded timestamp proposal covered by CORE-011/DOC-006; CORE-028 is ownerless shipped work covered by the duplicate-number rail; GUI-086/GUI-089 are GUI-085 duplicates; GUI-094 is superseded by EPIC-011 descendants GUI-099–102 plus GUI-106; GUI-103 is fixed in GUI-096 PR #91/b6ad3da; MCP-005 is superseded after its relocation premise was refuted, with remaining update-boundary scope represented by GUI-106; MCP-031/032 are incorporated by MCP-025/MCP-040; SKILL-028 is resolved by SKILL-016 PR #92/4d963c5. Archived records without proof.md remain historical/audit-only; successor proofs and explicit INCONCLUSIVE host boundaries are not promoted into fabricated archived lifecycle proof. No tickets were unarchived or changed.
+
+
+CORE-043 PR #168 rerun 32587191440 fully PASS after correcting board dependency edge and machine review attestation. Independent reviewer gui082 instructed to append exact-head PASS and merge non-squash; live protection mutation remains accepted-risk.
+
+- 2026-08-22T17:45:31.391Z — CORE-061 verification/closeout: PR #181 MERGED non-squash as 8c09342459a471f5941b014c577d14e6abc0ae56; proof PASS at merged cumulative target f63d953fc8467440988c887c62a34ade0c77c96c; verify:agents-block 31/31, verify:skills, check:manual, verify:docs, build:core, test:scripts 89/89, and diff-check passed. External GitHub variable/protection mutation remains INCONCLUSIVE. Ticket moved Verifying→Done, checklist 12/12, .worktrees/core-061 and local/remote branch cleaned, and MCP release completed.

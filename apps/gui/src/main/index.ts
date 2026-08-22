@@ -75,6 +75,7 @@ import {
   ensureBoardWorktree,
   guardGitBranchPreference,
   inspectBoardWorktree,
+  preflightBoardSync,
   PROTECTED_BOARD_BRANCH,
   refreshBoardBranch,
   renameBoardBranch,
@@ -777,11 +778,10 @@ function boardWorktreeRepair(
 async function syncProject(projectId: string, automatic = false): Promise<KanmerGitIpcStatus> {
   const ctx = requireCtx(projectId);
   const retryingPaused = !automatic && ctx.syncStatus.paused;
-  if (automatic && ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
-    const inspection = await inspectBoardWorktree(ctx.syncStatus.boardRoot, ctx.syncStatus.branch);
-    ctx.syncStatus = await refreshBoardBranch(ctx.syncStatus, ctx.syncStatus.branch, inspection);
+  if (ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
+    ctx.syncStatus = await preflightBoardSync(ctx.syncStatus);
   }
-  if (automatic && !shouldRunAutomaticSync(ctx.syncStatus)) {
+  if ((automatic && !shouldRunAutomaticSync(ctx.syncStatus)) || (!automatic && ctx.syncStatus.branchMismatch === true)) {
     clearSyncTimer(ctx);
     const blocked = await gitStatusForRenderer(ctx);
     mainWindow?.webContents.send(CH.gitStatus, { projectId, ...blocked });
@@ -796,6 +796,9 @@ async function syncProject(projectId: string, automatic = false): Promise<Kanmer
   mainWindow?.webContents.send(CH.gitStatus, { projectId, ...status });
   return status;
 }
+
+/** Test seam for the production sync caller; not part of the renderer API. */
+export const __kanmerTest = { contexts, syncProject };
 
 // The card context menu is drawn by the renderer now (FRD-019 R6). A native
 // Menu cannot read the app's CSS variables, so it was always slightly wrong in

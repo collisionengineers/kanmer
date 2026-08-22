@@ -166,6 +166,19 @@ export async function inspectBoardWorktree(
   };
 }
 
+/**
+ * Re-read the live board branch before any manual or automatic sync attempt.
+ * The cached status branch is only an expectation; a paused handoff may have
+ * changed the worktree while the GUI remained open.  Keep inspection and the
+ * existing mismatch-state transition together so every sync caller shares the
+ * same fail-closed boundary.
+ */
+export async function preflightBoardSync(status: KanmerGitStatus): Promise<KanmerGitStatus> {
+  if (!status.available || !status.boardRoot) return status;
+  const inspection = await inspectBoardWorktree(status.boardRoot, status.branch);
+  return refreshBoardBranch(status, status.branch, inspection);
+}
+
 async function hasOrigin(root: string): Promise<boolean> {
   try { return (await git(root, ["remote"])).split("\n").includes("origin"); } catch { return false; }
 }

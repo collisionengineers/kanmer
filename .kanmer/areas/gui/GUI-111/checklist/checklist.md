@@ -18,5 +18,5 @@
 - [x] Record GUI-111 commit and stacked PR traceability.
 - [x] Push/open the stacked PR targeting gui-109-add-to-group.
 - [x] Re-read get_doc_gates and move only Implementing → Review.
-- [x] Address PR #164 P2 wheel-dismissal finding with a focused inside/outside wheel regression; fresh head is `51c4a346d5e6e7cbca3b1e76ab9c25012edb56c5`.
+- [x] Address PR #164 P2 wheel-dismissal finding with a focused inside/outside wheel regression; fresh head is `51c4a3460f6bb3dfb866c541e1a7d9920394bb34`.
 - [ ] Stop for GUI-099 independent review; do not merge, verify, release, or clean up.

@@ -845,3 +845,6 @@ Last handoff: 2026-08-22T23:24:00Z — GUI-118 is Review-ready on gui-118-provid
 
 
 Last handoff: 2026-08-22T22:35Z — Independent GUI-118 review at exact head e09009b2 is NEEDS-CHANGES. F-001: connectProject emits every user-scoped native status update with the initiating projectId instead of each loop id, so other open project views discard their update. Created blocking GUI-120 in the GUI area with deterministic multi-project regression scope. PR #219 remains open; no merge or stage move. Independent focused rerun preserved exit 1 from linked-worktree @kanmer/core resolution despite worktree core rebuild; author-reported rails remain recorded but not independently reproducible here.
+
+
+2026-08-22T22:37Z: GUI-118 independent review NEEDS-CHANGES at e09009b2; follow-up GUI-120 created/preparing→implementing to fix multi-project Connect status broadcast id, blocks GUI-118. GUI-120 assigned gui082_executor on gui-120-multiproject-broadcast.

@@ -595,3 +595,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 2026-08-22T03:35:16Z — GUI-107 independently reviewed and attested pass at PR #151 head b260b7336ead37a6d552572dafe35a8c8a0005e5; hosted verify green, no review threads/comments, bounded diff matched plan hash 3605cfb41daef200. PR merged with merge commit 241ff13e048e4535a69d7375b9f734d9a4606cf8. GUI-107 moved Review → Verifying exactly one boundary via MCP. Manual Electron visual proof and root npm test Windows EPERM remain explicitly INCONCLUSIVE for verification; no evidence promoted.
+
+
+2026-08-22T03:47:56Z — GUI-107 exact merged-main verification PASS on 241ff13e048e4535a69d7375b9f734d9a4606cf8: final npm test passed (core 266/266, GUI 360/360, HTTP 61/61, scripts 82/82) after build:core; first missing-dist 80/82 attempt preserved. Proof written, Verifying → Done moved, Outcome recorded, ticket checklist closeout finalized. PR #151 merge 241ff13e; ticket worktree .worktrees/gui-107 and branch gui-107-custom-requires removed, detached verifier worktree removed, fetch/worktree prune passed, take_ticket release completed. Manual Electron visual evidence remains parked INCONCLUSIVE.

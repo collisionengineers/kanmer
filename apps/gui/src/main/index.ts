@@ -78,6 +78,8 @@ import {
   PROTECTED_BOARD_BRANCH,
   refreshBoardBranch,
   renameBoardBranch,
+  shouldAttemptOrdinaryBranchRename,
+  shouldAttemptProtectedBranchRename,
   syncBoard,
   type KanmerGitStatus,
 } from "./kanmerGit.js";
@@ -659,22 +661,28 @@ async function closeProject(projectId: string): Promise<void> {
 async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number): Promise<AppSettings> {
   const current = readSettings();
   const requestedBranch = kanmerBranch.trim() || PROTECTED_BOARD_BRANCH;
-  const branchChanged = requestedBranch !== current.kanmerBranch;
   // An administrator can retarget and rename an open board worktree while the
   // GUI remains running. Refresh every cached branch before deciding whether
   // the protected-default refusal still applies.
   await Promise.all([...contexts.values()].map(async (ctx) => {
-    ctx.syncStatus = await refreshBoardBranch(ctx.syncStatus);
+    ctx.syncStatus = await refreshBoardBranch(ctx.syncStatus, requestedBranch);
   }));
   const hasOpenBoard = [...contexts.values()].some((ctx) => ctx.syncStatus.available && Boolean(ctx.syncStatus.boardRoot));
-  const protectedOpenBoard = branchChanged && current.kanmerBranch === PROTECTED_BOARD_BRANCH &&
-    [...contexts.values()].some((ctx) => ctx.syncStatus.available && ctx.syncStatus.boardRoot && ctx.syncStatus.branch === PROTECTED_BOARD_BRANCH);
+  const blockedBranchRefresh = [...contexts.values()].some((ctx) => ctx.syncStatus.branchMismatch === true);
+  const hasProtectedOpenBoard = [...contexts.values()].some((ctx) =>
+    ctx.syncStatus.available && ctx.syncStatus.boardRoot && ctx.syncStatus.branch === PROTECTED_BOARD_BRANCH);
+  const protectedOpenBoard = shouldAttemptProtectedBranchRename(
+    current.kanmerBranch,
+    requestedBranch,
+    hasProtectedOpenBoard,
+    blockedBranchRefresh,
+  );
 
   // The protected-default refusal is deliberately handled before any context
   // is renamed. A global setting must not leave some open boards migrated and
   // others on the protected branch when the operator handoff is still needed.
   const guardedBranch = guardGitBranchPreference(current.kanmerBranch, requestedBranch, hasOpenBoard);
-  const targetBranch = protectedOpenBoard ? current.kanmerBranch : guardedBranch;
+  const targetBranch = protectedOpenBoard || blockedBranchRefresh ? current.kanmerBranch : guardedBranch;
   const settings = await setKanmerGitPreferences(targetBranch, gitSyncMinutes);
   if (protectedOpenBoard) {
     for (const [projectId, ctx] of contexts) {
@@ -686,7 +694,11 @@ async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number)
   } else {
     for (const [projectId, ctx] of contexts) {
       const { boardRoot, branch } = ctx.syncStatus;
-      if (ctx.syncStatus.available && boardRoot && branch !== settings.kanmerBranch) {
+      if (ctx.syncStatus.available && boardRoot && shouldAttemptOrdinaryBranchRename(
+        blockedBranchRefresh,
+        branch,
+        settings.kanmerBranch,
+      )) {
         const renamed = await renameBoardBranch(boardRoot, settings.kanmerBranch);
         // A failed rename leaves the worktree on its old branch, so keep
         // reporting that one — the board still works, it just did not move.

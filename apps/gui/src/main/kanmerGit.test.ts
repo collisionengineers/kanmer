@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureBoardWorktree, guardGitBranchPreference, inspectBoardWorktree, refreshBoardBranch, renameBoardBranch } from "./kanmerGit.js";
+import { ensureBoardWorktree, guardGitBranchPreference, inspectBoardWorktree, refreshBoardBranch, renameBoardBranch, shouldAttemptOrdinaryBranchRename, shouldAttemptProtectedBranchRename } from "./kanmerGit.js";
 
 // These are deliberately real-Git integration tests: every case initialises a
 // local repository and several create worktrees/remotes. Windows process and
@@ -213,7 +213,7 @@ describe("inspectBoardWorktree", () => {
 });
 
 describe("board branch preference and cache safety", () => {
-  it("accepts the actual branch after an administrator renames an open worktree", async () => {
+  it("accepts the requested branch after an administrator renames an open worktree", async () => {
     const status = {
       available: true,
       boardRoot: repo,
@@ -223,10 +223,92 @@ describe("board branch preference and cache safety", () => {
       paused: false,
     };
     await git(repo, "checkout", "-b", "retargeted-board");
-    await expect(refreshBoardBranch(status)).resolves.toMatchObject({
+    await expect(refreshBoardBranch(status, "retargeted-board")).resolves.toMatchObject({
       branch: "retargeted-board",
       error: null,
       paused: false,
+      branchMismatch: false,
+    });
+  });
+
+  it("blocks an unexpected branch instead of accepting an arbitrary handoff", async () => {
+    const status = {
+      available: true,
+      boardRoot: repo,
+      branch: "kanmer-board",
+      lastSync: null,
+      error: null,
+      paused: false,
+    };
+    await git(repo, "checkout", "-b", "unexpected-board");
+    await expect(refreshBoardBranch(status, "retargeted-board")).resolves.toMatchObject({
+      branch: "kanmer-board",
+      branchMismatch: true,
+      paused: true,
+      error: expect.stringContaining("unexpected-board"),
+    });
+  });
+
+  it("does not treat the cached branch as a valid handoff when the destination differs", async () => {
+    const status = {
+      available: true,
+      boardRoot: repo,
+      branch: "main",
+      lastSync: null,
+      error: null,
+      paused: false,
+    };
+    await expect(refreshBoardBranch(status, "retargeted-board")).resolves.toMatchObject({
+      branch: "main",
+      branchMismatch: true,
+      paused: true,
+      error: expect.stringContaining("main"),
+    });
+  });
+
+  it("does not enter protected refusal or mutate refs for an unexpected live branch", async () => {
+    const status = {
+      available: true,
+      boardRoot: repo,
+      branch: "kanmer-board",
+      lastSync: null,
+      error: null,
+      paused: false,
+    };
+    await git(repo, "checkout", "-b", "unexpected-board");
+    const beforeRefs = await git(repo, "show-ref");
+    const beforeWorktrees = await git(repo, "worktree", "list", "--porcelain");
+    const refreshed = await refreshBoardBranch(status, "retargeted-board");
+    expect(shouldAttemptProtectedBranchRename(
+      "kanmer-board",
+      "retargeted-board",
+      true,
+      refreshed.branchMismatch === true,
+    )).toBe(false);
+    expect(shouldAttemptOrdinaryBranchRename(
+      refreshed.branchMismatch === true,
+      "cached-board",
+      "kanmer-board",
+    )).toBe(false);
+    expect(await git(repo, "show-ref")).toBe(beforeRefs);
+    expect(await git(repo, "worktree", "list", "--porcelain")).toBe(beforeWorktrees);
+  });
+
+  it("preserves a paused sync error after a valid branch handoff", async () => {
+    const status = {
+      available: true,
+      boardRoot: repo,
+      branch: "kanmer-board",
+      lastSync: null,
+      error: "rebase conflict",
+      paused: true,
+    };
+    await git(repo, "checkout", "-b", "retargeted-board");
+    await expect(refreshBoardBranch(status, "retargeted-board")).resolves.toMatchObject({
+      branch: "retargeted-board",
+      error: "rebase conflict",
+      paused: true,
+      branchMismatch: false,
     });
   });
 

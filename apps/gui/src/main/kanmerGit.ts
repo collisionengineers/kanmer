@@ -20,6 +20,8 @@ export interface KanmerGitStatus {
   lastSync: string | null;
   error: string | null;
   paused: boolean;
+  /** A live worktree was observed on neither the cached nor requested branch. */
+  branchMismatch?: boolean;
 }
 
 /**
@@ -30,11 +32,26 @@ export interface KanmerGitStatus {
  * a hint; the worktree's symbolic ref is the source of truth before applying
  * a protected-branch transition.
  */
-export async function refreshBoardBranch(status: KanmerGitStatus): Promise<KanmerGitStatus> {
+export async function refreshBoardBranch(
+  status: KanmerGitStatus,
+  requestedBranch = status.branch,
+): Promise<KanmerGitStatus> {
   if (!status.available || !status.boardRoot) return status;
-  const inspection = await inspectBoardWorktree(status.boardRoot, status.branch);
-  if (!inspection.actualBranch || inspection.actualBranch === status.branch) return status;
-  return { ...status, branch: inspection.actualBranch, error: null, paused: false };
+  const destination = requestedBranch.trim() || PROTECTED_BOARD_BRANCH;
+  const inspection = await inspectBoardWorktree(status.boardRoot, destination);
+  if (!inspection.actualBranch) return status;
+  if (inspection.actualBranch !== destination) {
+    return {
+      ...status,
+      branchMismatch: true,
+      error: status.error ?? `Board worktree is on ${inspection.actualBranch}; expected ${destination}. Complete the administrator handoff before changing Kanmer's branch setting.`,
+      paused: true,
+    };
+  }
+  // The observed branch proves the administrator handoff reached the requested
+  // destination. Do not clear an existing sync error or paused state merely
+  // because the branch name changed.
+  return { ...status, branch: inspection.actualBranch, branchMismatch: false };
 }
 
 /**
@@ -47,6 +64,29 @@ export function guardGitBranchPreference(current: string, requested: string, has
   const next = requested.trim() || PROTECTED_BOARD_BRANCH;
   if (!hasOpenBoard && current === PROTECTED_BOARD_BRANCH && next !== PROTECTED_BOARD_BRANCH) return current;
   return next;
+}
+
+/**
+ * A live mismatch is an incomplete administrator handoff, not permission to
+ * run the protected refusal path against whatever branch happens to be live.
+ */
+export function shouldAttemptProtectedBranchRename(
+  current: string,
+  requested: string,
+  hasProtectedOpenBoard: boolean,
+  hasBranchMismatch: boolean,
+): boolean {
+  const next = requested.trim() || PROTECTED_BOARD_BRANCH;
+  return !hasBranchMismatch && next !== current && current === PROTECTED_BOARD_BRANCH && hasProtectedOpenBoard;
+}
+
+/** A live mismatch blocks the ordinary rename path as well as protected refusal. */
+export function shouldAttemptOrdinaryBranchRename(
+  hasBranchMismatch: boolean,
+  currentBranch: string,
+  targetBranch: string,
+): boolean {
+  return !hasBranchMismatch && currentBranch !== targetBranch;
 }
 
 const empty = (branch: string, error: string | null = null): KanmerGitStatus => ({

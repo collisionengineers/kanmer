@@ -1,0 +1,1 @@
+Review-ready: 695e12ee659b927513c7e0190a81d5ecb9e8c513, PR #174 stacked on CORE-051 PR #173. IO 25/25, core 303/303, typecheck/build/plugin parity/diff-check exit 0. Live Windows EBUSY is INCONCLUSIVE. Stop for independent review; no merge or cleanup.

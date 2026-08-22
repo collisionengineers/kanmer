@@ -27,9 +27,13 @@ blocks:
 refs:
   - docs/functional/frd/FRD-020-board-git-worktree-sync.md
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
+commits:
+  - 825fb79d
+prs:
+  - '175'
 archived: false
 created: '2026-08-22T12:33:30.281Z'
-updated: '2026-08-22T12:34:49.490Z'
+updated: '2026-08-22T12:46:20.352Z'
 ---
 
 Close remaining CORE-043 cumulative review findings: document the KANMER_BOARD_BRANCH Actions-variable handoff; refresh and require equality with the requested destination; preserve paused/error state during branch refresh; fix contradictory troubleshooting.md rename guidance and regenerate the manual. Link [[CORE-043]].

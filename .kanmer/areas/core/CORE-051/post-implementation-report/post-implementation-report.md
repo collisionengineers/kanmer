@@ -34,3 +34,7 @@ Broad HTTP readiness and live Windows/DNS/provider evidence remain INCONCLUSIVE 
 ## Review stop
 
 Implementation is complete and awaiting independent review. The author will not self-review, merge, verify, or clean up the worktree.
+
+## CORE-053 remediation handoff
+
+CORE-053 PR #174 at 695e12ee659b927513c7e0190a81d5ecb9e8c513 is stacked on CORE-051 PR #173. It fixes the remaining marker-cleanup error-composition finding by attempting both cleanup operations and surfacing an AggregateError containing all failures. Focused IO 25/25, full core 303/303, typecheck, build, plugin parity, and diff-check pass. Live Windows EBUSY remains INCONCLUSIVE. CORE-053 is pending independent review; this handoff makes no merge/verification claim.

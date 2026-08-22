@@ -111,3 +111,6 @@
 
 
 10:10 Independent review completed: CORE-026 attestation 2965587e needs-changes with 21-thread audit; CORE-044 is linked blocker. GUI-111 attestation 51ab4112 needs-changes on valid wheel-dismissal P2; author patch requested, no merge.
+
+
+10:20 CORE-044 moved Backlog→Preparing with FRD-027/ADR-0020 refs. Research/plan assigned to gui082-executor; no code lane taken yet. GUI-111 wheel fix is awaiting fresh gui099 review.

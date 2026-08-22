@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "164"
-head_sha: "f8631395aa415d4d2ca8142626e54c85f332d841"
+head_sha: "51c4a3460f6bb3dfb866c541e1a7d9920394bb34"
 verdict: needs-changes
 reviewer: "gui099-executor"
 independent: true
 plan_hash: "f4367fbaea22e62e"
-ticket_updated: "2026-08-22T09:21:09.701Z"
+ticket_updated: "2026-08-22T09:27:45.730Z"
 findings:
   - id: F-001
     severity: major
@@ -22,12 +22,12 @@ findings:
     severity: major
     summary: "An archived group could previously be assigned after initial discovery"
     disposition: fixed
-    reason: "addCardToGroup rereads active groups immediately before updateItem and rejects an archived or missing selection while retaining the existing ticket revision check. The unavoidable post-read archive race is explicitly documented as best-effort residual risk; no stronger transaction is claimed."
+    reason: "addCardToGroup rereads active groups immediately before updateItem and rejects an archived or missing selection while retaining the existing ticket revision check. The unavoidable post-read archive race remains documented as best-effort residual risk; no stronger transaction is claimed."
   - id: F-004
     severity: minor
     summary: "Large group submenus previously had no bounded scrolling or keyboard visibility"
     disposition: fixed
-    reason: "The existing context-menu panel now has a bounded max-height/overflow rail and keyboard-active entries call scrollIntoView without changing menu ownership or positioning."
+    reason: "The context-menu panel has a bounded max-height/overflow rail and keyboard-active entries call scrollIntoView. The fresh wheel fix preserves pointer scrolling inside the bounded menu without changing menu ownership or positioning."
   - id: F-005
     severity: minor
     summary: "Groups manual previously misstated archive controls"
@@ -40,38 +40,42 @@ findings:
     reason: "runCardAction preserves the action error through the following refresh only on failure and retains clear-on-success behavior."
   - id: F-007
     severity: minor
-    summary: "Wheel dismissal closes scrollable context menus before pointer scrolling"
+    summary: "Wheel dismissal closed scrollable context menus before pointer scrolling"
+    disposition: fixed
+    reason: "At this head useDismissOnOutside passes its guarded close callback to the window wheel listener; wheel events originating inside .ctx-menu are ignored while outside wheel dismissal remains active. ContextMenu.test.tsx covers both cases. Focused groupMenu plus ContextMenu tests pass 8/8 and the full GUI suite passes. The corresponding GitHub thread PRRT_kwDOT2PEds6bX3xs remains administratively unresolved and must be resolved before merge, but the code finding is fixed."
+  - id: F-008
+    severity: minor
+    summary: "Packet and PR full-GUI test count is stale after adding the regression file"
     disposition: open
-    reason: "The existing useDismissOnOutside hook installs a window wheel listener that calls onClose for every wheel event, including events originating inside .ctx-menu. The new max-height/overflow-y panel is therefore keyboard-scrollable but not pointer-scrollable, leaving large submenu entries inaccessible through normal wheel/trackpad interaction. PR #164 comment 3835706069 / thread PRRT_kwDOT2PEds6bX3xs must be fixed before review can pass."
+    reason: "Fresh exact-head npm run test -w @kanmer/gui passes 45 files / 390 tests, while post-implementation-report and the PR body still state 44 files / 389 tests. Update those verification records and re-read them before a PASS review."
 ---
 # Independent review — GUI-111 / PR #164
 
 ## Verdict
 
-NEEDS-CHANGES. Fresh local rails and source inspection confirm all six original GUI-109 remediation findings are fixed, but the current PR has one new unresolved P2 review thread: the window-level wheel dismissal handler closes the menu even when the wheel originates inside the newly scrollable .ctx-menu. The F-004 acceptance requires large menus to remain reachable; pointer scrolling is currently broken. No merge is authorized until the handler ignores wheel events whose target is inside .ctx-menu (while retaining outside-wheel dismissal), the focused regression is rerun, and the PR receives a fresh independent review.
+NEEDS-CHANGES. The fresh head fixes F-007: the guarded wheel listener preserves pointer scrolling inside the bounded context menu while retaining outside dismissal, and the new regression test passes. All six original GUI-109 remediation findings remain fixed. The packet is not yet review-clear because its report and PR body retain the stale full-suite count of 44 files / 389 tests; the fresh exact-head run is 45 files / 390 tests.
 
-## Original finding dispositions
+The requested SHA 51c4a346d5e6e7cbca3b1e76ab9c25012edb56c5 is not the reachable GitHub/local commit. This attestation is bound to the exact live PR/local head 51c4a3460f6bb3dfb866c541e1a7d9920394bb34, based on c259af171a72fa83a9131f4f53a79d0cfd0f05b5.
 
-- F-001 project binding: fixed in PR. The opening project id and captured client gate asynchronous discovery/rendering/action paths; stale results are cancelled or ignored and an active project switch hides the old menu.
-- F-002 discovery errors: fixed in PR. The helper and renderer distinguish loading, successful empty, and failed listGroups calls; failures remain visible rather than becoming a misleading empty state.
-- F-003 archive race: fixed in PR. The selected group is reread from active listGroups immediately before the ticket-owned updateItem call, with the existing expectedUpdated conflict check preserved. The report/open-questions correctly retain the non-atomic race after that final read as INCONCLUSIVE/best-effort residual, without inventing a core transaction.
-- F-004 scalable menu: partially fixed; CSS bounds and keyboard scroll pass, but F-007 blocks pointer scrolling inside the bounded panel.
-- F-005 manual: fixed in PR. Archive/unarchive is described as a GroupView control; only group creation remains agent-only.
-- F-006 failure visibility: fixed in PR. Failed card actions retain their message through refresh, while successful actions preserve the prior clear-and-refresh path.
-- F-007 wheel handling: open minor, current PR thread 3835706069 / PRRT_kwDOT2PEds6bX3xs. The global wheel dismiss listener must preserve wheel events from .ctx-menu so overflow scrolling works.
+## Finding dispositions
+
+- F-001 through F-006: fixed in the stacked remediation diff, with the original project-binding, error-surfacing, active-group revalidation, bounded-menu, manual, and action-error behaviors preserved.
+- F-007: fixed in code and by the new inside/outside wheel regression. The old GitHub review thread remains unresolved administratively; resolve it before merge.
+- F-008: open minor packet-traceability issue. Refresh the report and PR body to state 45 files / 390 tests, then obtain a fresh readback.
 
 ## Evidence
 
-- PASS (exit 0): focused GUI group-menu test — 7/7.
-- PASS (exit 0): full GUI suite — 44 files / 389 tests.
+- PASS (exit 0): focused GUI group-menu plus ContextMenu tests — 8/8.
+- PASS (exit 0): full GUI suite — 45 files / 390 tests.
 - PASS (exit 0): npm run typecheck — core, MCP server, UI, and GUI workspaces.
 - PASS (exit 0): npm run build -w @kanmer/gui — Electron main/preload/renderer bundles built.
 - PASS (exit 0): npm run check:manual — 22 chapters up to date.
 - PASS (exit 0): git diff --check against the exact GUI-109 base.
-- PASS (exit 0): branch ancestry confirms c259af171a72fa83a9131f4f53a79d0cfd0f05b5 is the base and the worktree is clean.
-- Hosted verify/gate: INCONCLUSIVE/unavailable for this stacked PR because the repository PR workflow targets main and reports no checks for PR #164's gui-109-add-to-group base. This is preserved as unavailable, not promoted to PASS.
-- Live Electron interaction and screenshot: INCONCLUSIVE in this headless lane.
+- PASS (exit 0): local worktree clean at the bound head.
+- INCONCLUSIVE/unavailable: hosted verify/gate for this stacked PR because the repository workflow targets main and reports no checks for the gui-109-add-to-group base.
+- INCONCLUSIVE: live Electron interaction and screenshot evidence in this headless lane.
+- The initial ContextMenu test attempt lacked the jsdom directive and failed with ReferenceError: document is not defined; the corrected rerun and full-suite result are recorded in the implementation report and preserved as a failed attempt.
 
-## Scope
+## Scope and stop condition
 
-The diff remains limited to the seven planned GUI/manual files. No merge, move, verify, release, cleanup, or source changes were performed.
+The diff remains limited to the planned GUI-111 stacked remediation plus its regression test and generated manual output. No merge, move, verify, release, cleanup, or source changes were performed by this review.

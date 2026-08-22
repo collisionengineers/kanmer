@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T15:12:20.798Z
+updated_at: 2026-08-22T15:14:03.931Z
 ---
 
 # Current auto run — HZN-007
@@ -552,3 +552,6 @@ CORE-066 independently PASSed and merged into CORE-058 as d3eb3728; CORE-066 is 
 
 
 CORE-067 implemented at fa628916 with deterministic symlink target-integrity regression and full rails (core build prerequisite recorded); PR #188 opened and moved to Review. Independent review requested; after merge CORE-058 should have no child blockers.
+
+
+CORE-067 independently PASSed and merged into CORE-058 as f0de2628; all CORE-058 child block edges are now removed. Fresh cumulative CORE-058 review requested at f0de2628 before merging parent into CORE-044.

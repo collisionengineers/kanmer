@@ -680,3 +680,9 @@ Last handoff: 2026-08-22T17:43:22.414Z — Archived-ticket audit re-read CORE-02
 CORE-043 PR #168 rerun 32587191440 fully PASS after correcting board dependency edge and machine review attestation. Independent reviewer gui082 instructed to append exact-head PASS and merge non-squash; live protection mutation remains accepted-risk.
 
 - 2026-08-22T17:45:31.391Z — CORE-061 verification/closeout: PR #181 MERGED non-squash as 8c09342459a471f5941b014c577d14e6abc0ae56; proof PASS at merged cumulative target f63d953fc8467440988c887c62a34ade0c77c96c; verify:agents-block 31/31, verify:skills, check:manual, verify:docs, build:core, test:scripts 89/89, and diff-check passed. External GitHub variable/protection mutation remains INCONCLUSIVE. Ticket moved Verifying→Done, checklist 12/12, .worktrees/core-061 and local/remote branch cleaned, and MCP release completed.
+
+
+CORE-043 exact-head review and hosted run 32587191440 are PASS at f63d953fc8467440988c887c62a34ade0c77c96c, but GitHub PR #168 remains OPEN/MERGEABLE/BLOCKED under protected-main policy despite verify and kanmer-gate PASS; required_pull_request_reviews object is present with count 0, enforce_admins and conversation resolution enabled. No --admin bypass used. CORE-043 stays Review; resume with distinct authorized reviewer or repo-owner policy correction, then non-squash merge and merged-main verify/closeout.
+
+
+Current external blocker remains two protected-main PRs: CORE-043 #168 (head f63d953fc8467440988c887c62a34ade0c77c96c) and CORE-026 #163 (head includes 3a05ab7a21f55152a4f493169300ac9e622baab7). Both are MERGEABLE but BLOCKED after verify and kanmer-gate PASS; no distinct approving review is present and no admin bypass is permitted. Board remains 219 Done, 46 Verifying, 2 Review, 1 Preparing; goal not complete until authorized review/policy correction allows merges and merged-main proofs/closeouts.

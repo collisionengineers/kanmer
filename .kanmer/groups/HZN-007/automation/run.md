@@ -2,3 +2,6 @@
 
 
 ### 2026-08-22T04:23Z — GUI-106 fresh review attestation\n\n- PR #153 head 0cdfafad hosted verify passed (run 32551392188/job 96978620702); independent full GUI 39 files/360 tests and launcher rails 8/8 passed.\n- Fresh review records F-001 fixed and F-002..F-005 open: external build/skills identity, stale runtime pruning, AGENTS convention, and selectable install-root overlap. Ticket remains Review; no merge.
+
+
+### 2026-08-22T04:31Z — MCP-015 fresh review after lifecycle remediation\n\n- PR #152 head fdeae1b0 adds deliverable verification, named-task refusal, marketplace-peer retention, and Grok/Antigravity legacy-proof isolation. Hosted verify is still running.\n- Fresh review attestation holds four findings: Grok probe argv safety, storage-format source-of-truth, FRD-012 launcher contract, and README native-plugin guidance. No merge.

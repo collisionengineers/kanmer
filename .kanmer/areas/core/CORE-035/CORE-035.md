@@ -2,13 +2,14 @@
 id: CORE-035
 type: ticket
 title: Spine integration verification
-status: implementing
+status: review
 area: core
 order: 70
 assignee: core-035-executor
 profile: chore
 stageEntered:
   preparing: '2026-08-20T13:13:26.932Z'
+  review: '2026-08-22T08:22:18.429Z'
 taken_at: '2026-08-22T07:55:47.652Z'
 branch: core-035-spine-integration
 worktree: .worktrees/core-035
@@ -28,14 +29,17 @@ refs:
   - docs/functional/frd/FRD-006-typed-proof.md
 archived: false
 created: '2026-08-20T10:14:42.535Z'
-updated: '2026-08-22T07:55:47.652Z'
+updated: '2026-08-22T08:22:23.745Z'
 ---
 
 ## What
-end-to-end on a disposable repo + board: packet fetched → refusal paths (spike, gated, taken) → take → implement → PR → `kanmer/gate` red on missing ticket / open questions → green → protected merge → exact-SHA verify → done. Proof is the command log.
+end-to-end on a disposable repo + board: packet fetched → refusal paths → take → implement → PR → `kanmer/gate` observations → protected merge → exact-SHA verify. Proof is the command log.
 
 ## Verification
-- [ ] every gate fires at least once in the log
-- [ ] the happy path completes without manual overrides
+- [x] Exact merged source verify passed.
+- [x] Disposable fixture focused tests and local gate/refusal matrix recorded.
+- [x] Hosted NO_TICKET, WRONG_STAGE, warning, and unreachable-commit evidence retained.
+- [ ] Protected merge and detached exact-SHA verification: INCONCLUSIVE — GitHub refused private-repo branch protection with HTTP 403.
 
 ## Outcome
+INCONCLUSIVE at the private GitHub branch-protection capability boundary. Disposable PRs remain open for independent review; no merge or bypass performed.

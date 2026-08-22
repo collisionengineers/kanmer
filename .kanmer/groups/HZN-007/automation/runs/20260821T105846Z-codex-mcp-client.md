@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T00:49:46.459Z
+updated_at: 2026-08-22T00:52:13.001Z
 lane_limit: 3
 stop_reason:
 ---
@@ -500,3 +500,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T00:49:46.459Z — SKILL-007 closeout cleanup complete: .worktrees/skill-007 removed from clean state, branch skill-007-phase-groups deleted, fetch --prune and worktree prune completed. Closeout checklist is fully checked; take_ticket release is the final lifecycle action.
+
+
+- 2026-08-22T00:52:13.001Z — SKILL-005 merged-main verification: PR #16 is MERGED at 5c1bfb5; source 21b53a7 is reachable from origin/main. verify:agents-block 31/31, verify:skills all 13 sections, generator first/second exit 0 with clean AGENTS diffs, diff-check 0. Historical 78/80 missing-core-dist first run remains preserved; onboarding/behavioral improvement remains unproven. Proof updated; enter-done gate is passable.

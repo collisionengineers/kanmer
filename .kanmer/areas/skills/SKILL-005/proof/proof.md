@@ -38,3 +38,22 @@ can test, and is the whole point of the change.
 **The skills roster is still a hand-maintained list of names.** It has now been
 wrong twice. Nothing here prevents a third time; a `list_skills` tool would, and
 does not exist.
+
+## Merged-main verification — 2026-08-22
+
+Verification ran against the merged `main` line. Git confirmed implementation commit `21b53a7beb689abca3c7256b557423d014ab7c90` is an ancestor of `origin/main`; `gh pr view 16` confirmed state MERGED, merge commit `5c1bfb5ed5db323dcdb90efa3a5531a5953598a3`, merged 2026-08-16T05:15:03Z. The canonical `BLOCK_BODY`, setup skill fenced copy, and generated `AGENTS.md` are present on merged main.
+
+Fresh merged-main checks:
+
+- `npm run verify:agents-block` — exit 0; 31/31 PASS, including byte identity between `BLOCK_BODY` and the setup skill, current AGENTS block, and canonical GUI import.
+- `npm run verify:skills` — exit 0; all 13 skill-prose sections PASS.
+- `node scripts/agents-block.mjs .` first run — exit 0; generated AGENTS output is current.
+- `git diff -- AGENTS.md` after first run — clean.
+- `node scripts/agents-block.mjs .` second run — exit 0; no-op.
+- `git diff -- AGENTS.md` after second run — clean.
+- `git diff --check` — exit 0.
+- Fresh worktree is clean; no source changes were required for this reconciliation.
+
+The historical first `npm run test:scripts` failure (78/80, missing `packages/core/dist/index.js` for `auto-run-state.test.mjs` and `release-notes.mjs`) remains recorded in the report; its later `npm run build:core` and 80/80 rerun do not erase that first-run limitation. No new full-root-verify claim is made.
+
+No live agent onboarding or behavioral improvement is claimed: the block's static correctness is proven, while whether agents call `get_doc_gates` instead of assuming a pipeline remains untestable here. The roster remains hand-maintained.

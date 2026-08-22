@@ -61,14 +61,14 @@ the filter bar has an **All groups** dropdown and a button to open the group
 itself, which shows its goal, its shared context, its members and a progress
 bar.
 
-Creating a group, and putting tickets into one, is an agent's job today. Ask
-your connected agent — "make an epic for the checkout rewrite and put these
-four in it" — and the group appears on your board with its chips on the cards.
-There is no New group button and no add-to-group control in the app yet.
+Creating a group is still an agent's job today. Ask your connected agent —
+"make an epic for the checkout rewrite" — and the group appears on your board.
+To put an existing ticket into one, open that card's context menu and choose
+**Add to group**, then select an active group. Existing memberships are kept,
+and a ticket already in a group is shown as unavailable rather than duplicated.
 
-That is a real gap and worth saying plainly rather than dressing up: you can
-see, filter by, and open groups in the app, but you cannot currently build one
-in it.
+You can see, filter by, open, and assign tickets to groups in the app; creating
+or archiving a group remains an agent action.
 
 Groups are archived rather than deleted, so a finished epic stops cluttering the
 board without taking its history with it.

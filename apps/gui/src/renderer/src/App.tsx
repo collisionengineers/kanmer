@@ -8,6 +8,7 @@ import {
 import type {
   BoardConfig,
   CreateItemInput,
+  Group,
   Item,
   RepoStaleness,
 } from "@kanmer/core";
@@ -51,6 +52,7 @@ import { UpdateBanner } from "./components/UpdateBanner.js";
 import { BoardWorktreeBanner } from "./components/BoardWorktreeBanner.js";
 import { Welcome } from "./components/Welcome.js";
 import { VIEWS, VIEW_IDS, type View, viewCounts, viewItemsFor } from "./lib/views.js";
+import { groupMembershipPatch, groupMenuItems } from "./lib/groupMenu.js";
 
 const EMPTY_FILTERS: Filters = {};
 
@@ -896,10 +898,13 @@ export function App(): JSX.Element {
   const [cardMenu, setCardMenu] = useState<{ item: Item; x: number; y: number } | null>(null);
   /** Per-stage "why not" for the open menu's ticket, from get_doc_gates. */
   const [cardMenuGates, setCardMenuGates] = useState<Record<string, string[]> | null>(null);
+  /** Active groups for the open card menu; membership remains ticket-owned. */
+  const [cardMenuGroups, setCardMenuGroups] = useState<Group[]>([]);
   const [dispatchTargets, setDispatchTargets] = useState<{ id: ConnectTarget; label: string }[]>([]);
   const closeCardMenu = useCallback(() => {
     setCardMenu(null);
     setCardMenuGates(null);
+    setCardMenuGroups([]);
   }, []);
   useDismissOnOutside(closeCardMenu, cardMenu !== null);
 
@@ -915,6 +920,24 @@ export function App(): JSX.Element {
         if (!cancelled) setCardMenuGates(g);
       })
       .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [cardMenu]);
+
+  // Group discovery is scoped to the one open menu. listGroups excludes
+  // archived groups by default, so the submenu only offers active ids.
+  useEffect(() => {
+    if (!cardMenu) return;
+    let cancelled = false;
+    void clientRef.current
+      ?.listGroups()
+      .then((groups) => {
+        if (!cancelled) setCardMenuGroups(groups);
+      })
+      .catch(() => {
+        if (!cancelled) setCardMenuGroups([]);
+      });
     return () => {
       cancelled = true;
     };
@@ -943,6 +966,14 @@ export function App(): JSX.Element {
     },
     [refresh],
   );
+
+  const addCardToGroup = useCallback(async (item: Item, groupId: string) => {
+    const activeClient = clientRef.current;
+    if (!activeClient) throw new Error("No project is open");
+    const latest = await activeClient.getItem(item.id);
+    if (!latest) throw new Error(`Ticket ${item.id} no longer exists`);
+    return activeClient.updateItem(item.id, groupMembershipPatch(latest, groupId));
+  }, []);
 
   const cardMenuItems = useCallback(
     (item: Item): MenuItem[] => {
@@ -973,8 +1004,15 @@ export function App(): JSX.Element {
                 label: "Release",
                 onSelect: () => void runCardAction(() => client.releaseTicket(item.id)),
               },
-            ]
+              ]
           : []),
+        {
+          id: "add-to-group",
+          label: "Add to group",
+          items: groupMenuItems(cardMenuGroups, item.groups, (groupId) =>
+            void runCardAction(() => addCardToGroup(item, groupId)),
+          ),
+        },
         {
           id: "dispatch",
           label: "Dispatch to agent",
@@ -1030,7 +1068,17 @@ export function App(): JSX.Element {
         },
       ];
     },
-    [trySelect, openEditor, onMove, runCardAction, requestDelete, cardMenuGates, dispatchTargets],
+    [
+      trySelect,
+      openEditor,
+      onMove,
+      runCardAction,
+      requestDelete,
+      cardMenuGates,
+      cardMenuGroups,
+      addCardToGroup,
+      dispatchTargets,
+    ],
   );
 
   // Fetch the task menu as the card menu opens: the submenu is built from it,

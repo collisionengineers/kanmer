@@ -19,3 +19,26 @@ Reviewed exact PR #175 head `825fb79dc3528b1d341f532ce8016aa0006624c8` against b
 ### Verdict
 
 NEEDS-CHANGES. Do not merge PR #175 until the mismatch branch is proven not to be renamed and the regression is added.
+
+## Fresh cumulative independent review — CORE-052 / PR #175
+
+### Exact stack and scope
+
+The exact cumulative head is `f4705d9e87545a7e64ea4aebf9c0a7272eb45d28`, with CORE-054/055 non-squash merges included. I reread the complete CORE-052 packet, prior review findings, child reports/reviews, FRD-020, ADR-0016, and the cumulative diff. The diff is limited to the documented workflow/manual/settings/test surfaces: `pr.yml`, Git preference/refresh logic and tests, Settings guidance, and generated/manual chapters.
+
+### Dispositions
+
+- Actions-variable handoff — fixed: workflow and GUI/manual guidance name `KANMER_BOARD_BRANCH` and preserve the default fallback only when absent.
+- Destination equality and state preservation — fixed: `refreshBoardBranch` validates the requested destination, marks unexpected live branches as paused mismatch, preserves the cached/current preference and prior error, and the CORE-054/055 child guards skip every rename path.
+- Contradictory troubleshooting guidance — fixed and regenerated; manual freshness and link/doctor validation pass.
+- No new out-of-scope provider or GitHub mutation behavior is present. Live branch-protection retargeting and packaged GUI interaction remain explicit INCONCLUSIVE boundaries.
+
+### Evidence at exact cumulative head
+
+- PASS exit 0: `npm run test -w @kanmer/gui -- --run src/main/kanmerGit.test.ts` — 12/12 tests in a detached exact-head worktree.
+- PASS exit 0: `npm run build:core`, `npm run check:manual` (22 chapters), `npm run verify:docs`, `npm run test:scripts` (89/89), and `git diff --check`.
+- The broader GUI/typecheck/build baseline failures and child deterministic rails remain preserved in the packet; no new touched-surface failure was observed.
+
+### Verdict
+
+PASS — independent cumulative review at exact head `f4705d9e`. Merge PR #175 non-squash into `core-043-protection-retarget`, then move CORE-052 to Verifying. Do not verify or clean up in this review step.

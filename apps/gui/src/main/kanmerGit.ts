@@ -208,7 +208,15 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
     }
     // Reconcile after every successful attachment, while keeping orphan
     // creation's ignore file in place before its initial board commit.
-    await ensureBoardWorktreeIgnore(boardRoot);
+    try {
+      await ensureBoardWorktreeIgnore(boardRoot);
+    } catch (error) {
+      // `worktree add` has already established the canonical path. Keep it
+      // visible while refusing to use it until the derived ignore state is
+      // repaired; returning empty() here would let callers fall back to the
+      // source checkout and mutate the wrong board.
+      return { ...empty(branch, msg(error)), boardRoot: resolve(boardRoot), paused: true };
+    }
     if (!localExists && !remoteExists && existsSync(join(boardRoot, ".kanmer"))) {
       await git(boardRoot, ["add", "--", ".kanmer", ".gitignore"]);
       await git(boardRoot, ["commit", "-m", "chore(kanmer): create shared board"]);

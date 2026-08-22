@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureBoardWorktree, inspectBoardWorktree, reconcileIgnoreText, renameBoardBranch, syncBoard } from "./kanmerGit.js";
+import { ensureBoardWorktree, ignoreEntriesToAppend, inspectBoardWorktree, renameBoardBranch, syncBoard } from "./kanmerGit.js";
 
 // These are deliberately real-Git integration tests: every case initialises a
 // local repository and several create worktrees/remotes. Windows process and
@@ -193,15 +193,10 @@ describe("inspectBoardWorktree", () => {
 });
 
 describe("ensureBoardWorktree reconciliation", () => {
-  it("merges a concurrent edit when compare-and-retry rereads the file", () => {
-    const first = reconcileIgnoreText("# human rule\n", [".kanmer/data/sources/"]);
-    const concurrent = `${first}custom-human-rule\n`;
-    const retried = reconcileIgnoreText(concurrent, [".kanmer/data/sources/"]);
-
-    expect(retried).toContain("# human rule\n");
-    expect(retried).toContain("custom-human-rule\n");
-    expect(retried.match(/^\.kanmer\/data\/sources\/$/gm)).toHaveLength(1);
-    expect(retried.trimEnd().endsWith(".kanmer/data/sources/")).toBe(true);
+  it("selects only missing or re-invalidated rules for an append-only merge", () => {
+    const before = "# human rule\n.kanmer/data/sources/\n!.kanmer/data/sources/cache.json\ncustom-human-rule\n";
+    expect(ignoreEntriesToAppend(before, [".kanmer/data/sources/"])).toEqual([".kanmer/data/sources/"]);
+    expect(ignoreEntriesToAppend("# human rule\n.kanmer/data/sources/\n", [".kanmer/data/sources/"])).toEqual([]);
   });
 
   realGitTest("writes the sources cache rule when creating a board worktree", async () => {
@@ -251,7 +246,7 @@ describe("ensureBoardWorktree reconciliation", () => {
     const lines = readFileSync(join(reopened.boardRoot!, ".gitignore"), "utf8").trim().split("\n");
 
     expect(lines.at(-1)).toBe(".kanmer/**/.*.tmp-*");
-    expect(lines.at(-2)).toBe(".kanmer/data/sources/");
+    expect(lines.lastIndexOf(".kanmer/data/sources/")).toBeLessThan(lines.length - 1);
     expect(await git(reopened.boardRoot!, "check-ignore", "--no-index", ".kanmer/data/sources/cache.json"))
       .toContain(".kanmer/data/sources/");
   });

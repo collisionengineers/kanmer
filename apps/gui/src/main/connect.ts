@@ -176,6 +176,47 @@ export function marketplaceRoot(): string {
   return resolve(pluginRoot(), "..", "..");
 }
 
+/**
+ * Stage Claude's marketplace from a temporary copy with the selected board
+ * branch bound into its MCP descriptor. The shipped bundle and the user's
+ * global marketplace remain untouched; the host still owns the install.
+ */
+async function stageClaudeMarketplaceRoot(boardBranch: string): Promise<string> {
+  const bundledRoot = marketplaceRoot();
+  const descriptorPath = join(bundledRoot, "plugins", "kanmer", "mcp", "claude.mcp.json");
+  const descriptor = await readFile(descriptorPath, "utf8");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(descriptor);
+  } catch {
+    throw new Error(`Claude marketplace MCP descriptor is not valid JSON: ${descriptorPath}`);
+  }
+  const entry = (parsed as { mcpServers?: { kanmer?: { env?: unknown } } } | null)?.mcpServers?.kanmer;
+  if (!entry || typeof entry !== "object") {
+    throw new Error(`Claude marketplace MCP descriptor has no mcpServers.kanmer entry: ${descriptorPath}`);
+  }
+  const stagedRoot = await mkdtemp(join(tmpdir(), "kanmer-claude-marketplace-"));
+  try {
+    // Copy only marketplace-owned roots. Copying the repository wholesale can
+    // traverse a developer's node_modules and make Connect wait on unrelated
+    // files; Claude needs the marketplace manifest and the plugin it names.
+    for (const relativeRoot of [".claude-plugin", ".agents", "plugins/kanmer"]) {
+      const source = join(bundledRoot, relativeRoot);
+      if (existsSync(source)) await cp(source, join(stagedRoot, relativeRoot), { recursive: true });
+    }
+    const stagedDescriptor = join(stagedRoot, "plugins", "kanmer", "mcp", "claude.mcp.json");
+    const env = entry.env && typeof entry.env === "object" && !Array.isArray(entry.env)
+      ? entry.env as Record<string, unknown>
+      : {};
+    entry.env = { ...env, KANMER_BOARD_BRANCH: normalizeBoardBranch(boardBranch) };
+    await writeFile(stagedDescriptor, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+    return stagedRoot;
+  } catch (error) {
+    await rm(stagedRoot, { recursive: true, force: true });
+    throw error;
+  }
+}
+
 /** The version of the bundled skill set, read from the plugin manifest. */
 async function bundledSkillsVersion(): Promise<string> {
   try {
@@ -526,25 +567,30 @@ interface SkillsInstallOutcome {
 }
 
 /** Install skills for a provider; reports what ran and what, if anything, failed. */
-async function installSkills(provider: AgentProvider, root: string): Promise<SkillsInstallOutcome> {
+async function installSkills(provider: AgentProvider, root: string, boardBranch = DEFAULT_BOARD_BRANCH): Promise<SkillsInstallOutcome> {
   // FRD-012 R3: this universal orientation layer is independent of how a host
   // receives skills, so marketplace hosts must not bypass it on their early return.
   await ensureAgentsBlock(root);
   if (provider.install.kind === "marketplace") {
     const notes = ["AGENTS.md block ensured"];
-    for (const cmd of provider.install.marketplaceCommands(marketplaceRoot())) {
-      try {
-        await execAsync(cmd, { cwd: root });
-        notes.push("plugin installed");
-      } catch (e) {
-        // Stop at the first failure rather than running the rest. These
-        // commands are ordered — `plugin install <name>@<marketplace>` cannot
-        // succeed when the `marketplace add` before it did not — so continuing
-        // only buys a second error that misdescribes the first one's cause.
-        return { note: notes.join("; "), failure: { command: cmd, output: commandFailureText(e) } };
+    const stagedRoot = provider.id === "claude" ? await stageClaudeMarketplaceRoot(boardBranch) : undefined;
+    try {
+      for (const cmd of provider.install.marketplaceCommands(stagedRoot ?? marketplaceRoot())) {
+        try {
+          await execAsync(cmd, { cwd: root });
+          notes.push("plugin installed");
+        } catch (e) {
+          // Stop at the first failure rather than running the rest. These
+          // commands are ordered — `plugin install <name>@<marketplace>` cannot
+          // succeed when the `marketplace add` before it did not — so continuing
+          // only buys a second error that misdescribes the first one's cause.
+          return { note: notes.join("; "), failure: { command: cmd, output: commandFailureText(e) } };
+        }
       }
+      return { note: notes.join("; "), failure: null };
+    } finally {
+      if (stagedRoot) await rm(stagedRoot, { recursive: true, force: true });
     }
-    return { note: notes.join("; "), failure: null };
   }
   // copySkills: copy skills for a project dir after the universal block is ensured.
   if (provider.install.kind === "copySkills" && provider.install.skillsScope === "project" && provider.install.skillsDir) {
@@ -619,7 +665,7 @@ export async function skillsStatus(id: ProviderId, projectRoot: string): Promise
  * Making `installSkills` reconcile is what fixes it here too — there is nothing
  * for this function to do differently.
  */
-export async function updateSkills(id: ProviderId, projectRoot: string): Promise<ConnectResult> {
+export async function updateSkills(id: ProviderId, projectRoot: string, boardBranch = DEFAULT_BOARD_BRANCH): Promise<ConnectResult> {
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
   if (provider.install.kind === "plugin") {
@@ -631,7 +677,7 @@ export async function updateSkills(id: ProviderId, projectRoot: string): Promise
     };
   }
   try {
-    const { note, failure } = await installSkills(provider, projectRoot);
+    const { note, failure } = await installSkills(provider, projectRoot, boardBranch);
     // Same rule as connectAgent: a failed install command is reported as a
     // failure carrying the command, not as a note on a successful result.
     if (failure) return { ok: false, command: failure.command, output: failure.output };
@@ -1105,7 +1151,7 @@ export async function connectAgent(
     } else {
       throw new Error(`Provider ${id} has no project registration; expected native plugin path.`);
     }
-    const skills = await installSkills(provider, projectRoot).catch(
+    const skills = await installSkills(provider, projectRoot, boardBranch).catch(
       (e): SkillsInstallOutcome => ({
         note: "",
         failure: {

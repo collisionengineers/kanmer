@@ -8,7 +8,7 @@ vi.mock("electron", () => ({
   safeStorage: { isEncryptionAvailable: () => true, getSelectedStorageBackend: () => "dpapi", encryptString: (value: string) => Buffer.from(`enc:${Buffer.from(value).toString("base64")}`), decryptString: (value: Buffer) => Buffer.from(value.toString().slice(4), "base64").toString() },
 }));
 
-const { RemoteAccessManager } = await import("./manager.js");
+const { RemoteAccessManager, remoteBoardBranchEnvironment } = await import("./manager.js");
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
 
@@ -17,6 +17,12 @@ const config = { executable: "cloudflared", tunnelId: "3f9620b4-423e-4f37-a30e-6
 const owner = { webContentsId: 1, frameRoutingId: 1 };
 
 describe("RemoteAccessManager", () => {
+  it("binds the selected board branch for every remote child", () => {
+    expect(remoteBoardBranchEnvironment(" release-board ")).toEqual({ KANMER_BOARD_BRANCH: "release-board" });
+    expect(remoteBoardBranchEnvironment("   ")).toEqual({ KANMER_BOARD_BRANCH: "kanmer-board" });
+    expect(remoteBoardBranchEnvironment()).toEqual({ KANMER_BOARD_BRANCH: "kanmer-board" });
+  });
+
   it("serializes config and persists a bearer before one-time delivery", async () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-remote-manager-")); roots.push(root);
     const manager = new RemoteAccessManager(root);

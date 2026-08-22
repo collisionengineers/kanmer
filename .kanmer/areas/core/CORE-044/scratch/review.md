@@ -204,3 +204,49 @@ NEEDS-CHANGES. I reviewed the complete refreshed CORE-044 packet, HZN-007 contex
 Live external llms.txt retrieval, DNS rebinding/private-network reachability, crash-at-exact-write proof, packaged update/install proof, GUI source-editor interaction, cache history migration, and a complete independent validator model for every linked page remain INCONCLUSIVE or explicitly parked per the packet. These limits are preserved and are not reclassified as PASS.
 
 Do not merge PR #165 until the current findings receive fixes or explicit, governing-document-backed dispositions and fresh exact-head evidence.
+
+---
+kind: review-attestation
+pr: "165"
+head_sha: "5053af23b87fe591015b14042b920c4cf41259b4"
+base_sha: "b5ae6f36e007a05fffd9bb2f1c6ea4a87a860477"
+verdict: pass
+reviewer: "codex-core044-final-review"
+independent: true
+plan_hash: "0054b4cf8d795d56"
+ticket_updated: "2026-08-22T10:05:03.751Z"
+---
+
+# Independent cumulative review — PASS
+
+Exact PR #165 head 5053af23b87fe591015b14042b920c4cf41259b4, base CORE-026 review head b5ae6f36e007a05fffd9bb2f1c6ea4a87a860477. The cumulative first-parent lineage includes CORE-045/051/053, CORE-056/057, and the CORE-058 chain through CORE-062..073 plus CORE-074/076. The cumulative source diff remains within FRD-027/ADR-0020: source declaration/fetch/cache hardening, DNS and lock safety, board cache-ignore reconciliation, generated plugin parity, and their test/docs surfaces. No unrelated provider or GUI feature scope was found.
+
+Prior review dispositions:
+- F-003 stale-lock recovery is FIXED by the CORE-045/046/047/049/050 lineage. The current core IO suite covers dead-owner recovery, concurrent reclaimer ownership, replacement-lock preservation, third-claimant safety, and transient quarantine rename retry.
+- F-009 non-global destination classification and DNS-before-every-hop are FIXED by the CORE-045/046 lineage. The current source tests cover mapped IPv4, IPv4 special-use ranges, IPv6 special-use ranges, redirect hops, and linked requests.
+- F-005/F-008/F-017/F-018/F-019 and the remaining original source findings are fixed or explicitly parked as documented. F-020 GUI source-editor scope remains accepted/out-of-scope with no visual editor claim. Live DNS rebinding/private-network, crash-at-write, packaged update, and complete independent linked-site validator evidence remain INCONCLUSIVE as the packet states.
+- CORE-058 board cache-ignore findings are fixed by the cumulative CORE-062..073/CORE-074/CORE-076 merges; exact GUI Git regressions cover attachment, root preservation, retry/idempotence, branch binding, concurrent/atomic edits, orphan cleanup, and timer re-arm.
+- The parent report's historical narrative predates the latest child merges, but the current ticket item records the reachable child commits/PRs through merge 5053af23, and each child packet carries its own report/checklist/review evidence. No untracked cumulative source scope or unreachable commit was found.
+
+Exact rails:
+- Core focused declaration/io/store: exit 0, 116/116.
+- Core full suite: exit 0, 303/303.
+- MCP source suite: exit 0, 19/19.
+- GUI focused Git/branch/timer: exit 0, 34/34.
+- GUI full suite: exit 0, 404/404.
+- npm run build:core: exit 0.
+- npm run build:server: exit 0.
+- npm run build: exit 0.
+- all-workspace npm run typecheck: exit 0.
+- npm run test:scripts: exit 0, 88/88.
+- npm run smoke:protocol: exit 0, 46/46.
+- npm run smoke:discovery: exit 0, 13/13.
+- npm run smoke:headless: exit 0; all six reported checks passed.
+- npm run verify:docs: exit 0; manual current, 22 chapters.
+- npm run check:manual: exit 0; manual current, 22 chapters.
+- npm run verify:skills: exit 0.
+- npm run verify:agents-block: exit 0, 31/31.
+- git diff check against b5ae6f36 to 5053af23: exit 0.
+- In the exact linked review worktree, the initial plugin:check exit 1 was the expected workspace-layout/path guard/mismatch boundary; after local build-plugin it passed but produced path-comment differences. A separate normal non-linked checkout at this exact head ran npm install, npm run build, and npm run plugin:check successfully: 37 tools, isolated handshake, byte parity. The committed artifact SHA-256 in that normal checkout is 06110A9E0CA2007A51CC2AEDCDD0E2BD353B627484C184AADB709A52AF686878.
+
+PR #165 is OPEN/MERGEABLE with no hosted status rollup; no hosted PASS is claimed. Verdict PASS for the exact cumulative head and declared scope. No merge or ticket move performed by this reviewer.

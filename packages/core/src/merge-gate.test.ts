@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { KanmerStore } from "./store.js";
 import { evaluateMergeGate, mergeGateOk, resolveMergeGateTicket } from "./merge-gate.js";
+import { linkItems } from "./links.js";
 
 let root: string;
 let store: KanmerStore;
@@ -106,6 +107,7 @@ describe("KanmerStore.getOpenQuestionCount and evaluateMergeGate", () => {
       {
         code: "OPEN_QUESTIONS",
         level: "error",
+        outcome: "fail",
         message: `Kanmer ticket ${ticket.id} has 1 open question (1/2 checked)`,
       },
     ]);
@@ -118,7 +120,7 @@ describe("KanmerStore.getOpenQuestionCount and evaluateMergeGate", () => {
       branch: "CORE-404-fix",
       body: "Kanmer: CORE-405",
     });
-    expect(missing.findings[0]).toMatchObject({ code: "NO_TICKET", level: "error" });
+    expect(missing.findings[0]).toMatchObject({ code: "NO_TICKET", level: "error", outcome: "fail" });
 
     const ambiguous = await evaluateMergeGate(store, {
       number: 2,
@@ -156,5 +158,88 @@ describe("KanmerStore.getOpenQuestionCount and evaluateMergeGate", () => {
     expect(await fs.readFile(boardFile, "utf8")).toBe(before.board);
     expect(await fs.readFile(activityFile, "utf8")).toBe(before.activity);
     expect(await store.getItem(ticket.id)).not.toBeNull();
+  });
+});
+
+describe("phase-2 merge-gate evidence", () => {
+  const head = "a".repeat(40);
+  const evidence = (overrides: Record<string, unknown> = {}) => ({
+    reviewStageId: "review",
+    finalStageId: "done",
+    blockers: [],
+    review: { state: "valid", headSha: head, verdict: "pass" },
+    commits: [],
+    ...overrides,
+  });
+
+  it("fails every non-review stage and passes the exact semantic review stage", async () => {
+    for (const status of ["backlog", "preparing", "implementing", "review", "verifying", "done"]) {
+      const ticket = await store.createItem({ type: "ticket", title: status, status });
+      const result = await evaluateMergeGate(store, { number: 20, headSha: head, branch: "x", body: `Kanmer: ${ticket.id}` }, evidence());
+      const check = result.checks?.find((entry) => entry.code === "WRONG_STAGE");
+      expect(check?.outcome, status).toBe(status === "review" ? "pass" : "fail");
+    }
+    const archived = await store.createItem({ type: "ticket", title: "archived", status: "review" });
+    await store.updateItem(archived.id, { archived: true });
+    const archivedResult = await evaluateMergeGate(store, { number: 21, headSha: head, branch: "x", body: `Kanmer: ${archived.id}` }, evidence());
+    expect(archivedResult.checks?.find((entry) => entry.code === "WRONG_STAGE")).toMatchObject({ outcome: "fail", details: { archived: true } });
+  }, 30_000);
+
+  it("filters done and archived blockers, reports all live and dangling blockers, and keeps direction correct", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "target", status: "review" });
+    const live = await store.createItem({ type: "ticket", title: "live", status: "implementing" });
+    const done = await store.createItem({ type: "ticket", title: "done", status: "done" });
+    const archived = await store.createItem({ type: "ticket", title: "archived", status: "implementing" });
+    await store.updateItem(archived.id, { archived: true });
+    await linkItems(store, live.id, ticket.id, "add", "blocks");
+    await linkItems(store, done.id, ticket.id, "add", "blocks");
+    await linkItems(store, archived.id, ticket.id, "add", "blocks");
+
+    const result = await evaluateMergeGate(store, { number: 22, headSha: head, branch: "x", body: `Kanmer: ${ticket.id}` }, evidence({
+      blockers: [
+        { id: live.id, status: live.status, archived: false, exists: true },
+        { id: done.id, status: done.status, archived: false, exists: true },
+        { id: archived.id, status: archived.status, archived: true, exists: true },
+        { id: "TICK-404", exists: false },
+      ],
+    }));
+    expect(result.checks?.find((entry) => entry.code === "DEPENDENCY_BLOCKED")).toMatchObject({
+      outcome: "fail",
+      details: { blockers: [live.id, "TICK-404"] },
+    });
+
+    const noOutgoingPrerequisite = await evaluateMergeGate(store, { number: 23, headSha: head, branch: "x", body: `Kanmer: ${done.id}` }, evidence());
+    expect(noOutgoingPrerequisite.checks?.find((entry) => entry.code === "DEPENDENCY_BLOCKED")).toMatchObject({ outcome: "pass", details: { blockers: [] } });
+  }, 30_000);
+
+  it("returns every check in stable order and distinguishes review/commit warning states", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "evidence", status: "review" });
+    const absent = await evaluateMergeGate(store, { number: 24, headSha: head, branch: "x", body: `Kanmer: ${ticket.id}` }, evidence({ review: { state: "absent" } }));
+    expect(absent.checks?.map((entry) => entry.code)).toEqual([
+      "NO_TICKET", "OPEN_QUESTIONS", "WRONG_STAGE", "DEPENDENCY_BLOCKED", "NO_REVIEW_RECORD", "STALE_REVIEW", "COMMITS_UNREACHABLE",
+    ]);
+    expect(absent.findings.map((entry) => entry.code)).toEqual(["NO_REVIEW_RECORD"]);
+    expect(absent.ok).toBe(true);
+
+    const stale = await evaluateMergeGate(store, { number: 25, headSha: head, branch: "x", body: `Kanmer: ${ticket.id}` }, evidence({
+      review: { state: "valid", headSha: "b".repeat(40), verdict: "needs-changes" },
+      commits: [
+        { sha: "d".repeat(40), state: "unreachable" },
+        { sha: "c".repeat(40), state: "indeterminate", diagnostic: "missing object" },
+        { sha: "d".repeat(40), state: "unreachable" },
+      ],
+    }));
+    expect(stale.findings.map((entry) => entry.code)).toEqual(["STALE_REVIEW", "COMMITS_UNREACHABLE"]);
+    expect(stale.findings.find((entry) => entry.code === "STALE_REVIEW")?.details).toMatchObject({ verdict: "needs-changes" });
+    expect(stale.checks?.find((entry) => entry.code === "COMMITS_UNREACHABLE")).toMatchObject({ outcome: "warn", details: { unreachable: ["d".repeat(40)], indeterminate: ["c".repeat(40)] } });
+
+    const prefix = await evaluateMergeGate(store, { number: 27, headSha: head, branch: "x", body: `Kanmer: ${ticket.id}` }, evidence({ review: { state: "valid", headSha: head.slice(0, 8), verdict: "pass" } }));
+    expect(prefix.checks?.find((entry) => entry.code === "STALE_REVIEW")).toMatchObject({ outcome: "warn" });
+  });
+
+  it("marks ticket-dependent checks skipped when linkage fails", async () => {
+    const result = await evaluateMergeGate(store, { number: 26, headSha: head, branch: "no-ticket", body: null }, evidence());
+    expect(result.checks?.map((entry) => entry.outcome)).toEqual(["fail", "skipped", "skipped", "skipped", "skipped", "skipped", "skipped"]);
+    expect(result.ok).toBe(false);
   });
 });

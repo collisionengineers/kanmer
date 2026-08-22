@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:43:56.922Z
+updated_at: 2026-08-22T00:44:44.861Z
 ---
 
 # Current auto run — HZN-007
@@ -89,3 +89,6 @@ Last handoff: 2026-08-22T01:39:51+01:00 — CORE-037 is Review on PR #144 (`aac1
 - 2026-08-22T00:41:30+01:00 — SKILL-005 assigned to /root/gui082_executor for bounded merged-main reconciliation. Full packet (research/files/plan/checklist/open-questions/report/proof), HZN-007 and EPIC-007 context, FRD-012/ADR-0009 refs, links/activity and gates were reread. Existing implementation commit 21b53a7 is reachable from origin/main via merge 5c1bfb5; fresh .worktrees/skill-005 uses branch skill-005-agents-block-reconcile from origin/main af61144c. Scope is evidence/docs only unless a current-main defect is found; no SKILL-004/017 or CORE-037 work. No self-merge; advance one boundary at a time.
 
 - Last handoff: 2026-08-22T01:43:37+01:00 — CORE-037 PR #144 GitHub verify first run is preserved as FAIL at unrelated MCP supervisor test 60/61 (restart count 1 vs 2); rerun pending. No merge or cleanup.
+
+
+Last handoff: 2026-08-22T00:44:44.861Z — SKILL-005 is Review-ready after merged-main reconciliation: historical PR #16/merge 5c1bfb5 and commit 21b53a7 are reachable; checklist 9/9, report/scratch read back, and current static rails are recorded. First fresh-worktree scripts failure (missing core dist, 78/80) is preserved; live agent onboarding remains unclaimed. No new source/PR, self-review, merge, verification, or cleanup; independent root review required.

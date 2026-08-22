@@ -686,3 +686,6 @@ CORE-043 exact-head review and hosted run 32587191440 are PASS at f63d953fc84674
 
 
 Current external blocker remains two protected-main PRs: CORE-043 #168 (head f63d953fc8467440988c887c62a34ade0c77c96c) and CORE-026 #163 (head includes 3a05ab7a21f55152a4f493169300ac9e622baab7). Both are MERGEABLE but BLOCKED after verify and kanmer-gate PASS; no distinct approving review is present and no admin bypass is permitted. Board remains 219 Done, 46 Verifying, 2 Review, 1 Preparing; goal not complete until authorized review/policy correction allows merges and merged-main proofs/closeouts.
+
+
+New valid independent-review findings on CORE-043 PR #168 (manual Retry must recheck live branch; FRD R5 wording must match retained old-ref handoff) were confirmed against f63d953fc8467440988c887c62a34ade0c77c96c. Created CORE-080, linked/blocking CORE-043, moved Backlog→Preparing, and wrote/read back research, files, plan, checklist, and parked open-questions. Next: independent implementation on CORE-080 from CORE-043 head; do not merge CORE-043 until CORE-080 is complete.

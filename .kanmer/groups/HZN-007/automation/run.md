@@ -57,3 +57,6 @@
 
 
 ## GUI-104 closeout — 2026-08-22T08:38:00Z\n\n- GUI-104 is Done after PR #157 merged to main as ed4831b302e2310d319815be9c36d6fb34adb2fe.\n- Final independent review PASS at a663a62f; hosted verify and kanmer-gate PASS in run 32559337159.\n- Merged-main proof: GUI 41 files / 375 tests, workspace typecheck, GUI build, manual 22 chapters, dist:check updater 8/8, and diff-check all PASS.\n- External two-project OpenAI control-plane/listener acceptance remains INCONCLUSIVE without disposable credentials and listener probes.\n- Worktree .worktrees/gui-104 and local/remote branch gui-104-openai-tunnel were removed after release.\n
+
+
+## CORE-025 closeout — 2026-08-22T08:56:00Z\n\n- CORE-025 is Done after PR #159 merged to main as c8ea0b778895b0a76d9e32152a1f58c7b3b3d77b.\n- Final independent review PASS at 42f0ace6; all six findings were fixed, including dangling blocker preservation; all review threads resolved.\n- Hosted run 32560430127 verify and kanmer-gate PASS. Merged-main focused rails: core 14/14, check-pr 5/5, typechecks/builds/diff-check PASS.\n- Direct board-push non-trigger observation remains INCONCLUSIVE because workflow is pull_request-only.\n- Worktree .worktrees/core-025 and local/remote branch core-025-phase-2-gate removed after release.\n

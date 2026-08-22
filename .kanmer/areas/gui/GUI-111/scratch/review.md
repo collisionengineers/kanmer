@@ -2,7 +2,7 @@
 kind: review-attestation
 pr: "164"
 head_sha: "f8631395aa415d4d2ca8142626e54c85f332d841"
-verdict: pass
+verdict: needs-changes
 reviewer: "gui099-executor"
 independent: true
 plan_hash: "f4367fbaea22e62e"
@@ -38,21 +38,27 @@ findings:
     summary: "Card-action failures previously disappeared during refresh"
     disposition: fixed
     reason: "runCardAction preserves the action error through the following refresh only on failure and retains clear-on-success behavior."
+  - id: F-007
+    severity: minor
+    summary: "Wheel dismissal closes scrollable context menus before pointer scrolling"
+    disposition: open
+    reason: "The existing useDismissOnOutside hook installs a window wheel listener that calls onClose for every wheel event, including events originating inside .ctx-menu. The new max-height/overflow-y panel is therefore keyboard-scrollable but not pointer-scrollable, leaving large submenu entries inaccessible through normal wheel/trackpad interaction. PR #164 comment 3835706069 / thread PRRT_kwDOT2PEds6bX3xs must be fixed before review can pass."
 ---
 # Independent review — GUI-111 / PR #164
 
 ## Verdict
 
-PASS. The stacked remediation is based exactly on GUI-109 head c259af171a72fa83a9131f4f53a79d0cfd0f05b5, targets gui-109-add-to-group, changes only the seven planned GUI/manual files, and addresses all six findings recorded in GUI-109's independent needs-changes attestation. No unresolved PR threads or review submissions are present.
+NEEDS-CHANGES. Fresh local rails and source inspection confirm all six original GUI-109 remediation findings are fixed, but the current PR has one new unresolved P2 review thread: the window-level wheel dismissal handler closes the menu even when the wheel originates inside the newly scrollable .ctx-menu. The F-004 acceptance requires large menus to remain reachable; pointer scrolling is currently broken. No merge is authorized until the handler ignores wheel events whose target is inside .ctx-menu (while retaining outside-wheel dismissal), the focused regression is rerun, and the PR receives a fresh independent review.
 
-## Thread disposition
+## Original finding dispositions
 
 - F-001 project binding: fixed in PR. The opening project id and captured client gate asynchronous discovery/rendering/action paths; stale results are cancelled or ignored and an active project switch hides the old menu.
 - F-002 discovery errors: fixed in PR. The helper and renderer distinguish loading, successful empty, and failed listGroups calls; failures remain visible rather than becoming a misleading empty state.
 - F-003 archive race: fixed in PR. The selected group is reread from active listGroups immediately before the ticket-owned updateItem call, with the existing expectedUpdated conflict check preserved. The report/open-questions correctly retain the non-atomic race after that final read as INCONCLUSIVE/best-effort residual, without inventing a core transaction.
-- F-004 scalable menu: fixed in PR. Context menus are bounded with vertical scrolling and keyboard movement scrolls the active entry into view.
+- F-004 scalable menu: partially fixed; CSS bounds and keyboard scroll pass, but F-007 blocks pointer scrolling inside the bounded panel.
 - F-005 manual: fixed in PR. Archive/unarchive is described as a GroupView control; only group creation remains agent-only.
 - F-006 failure visibility: fixed in PR. Failed card actions retain their message through refresh, while successful actions preserve the prior clear-and-refresh path.
+- F-007 wheel handling: open minor, current PR thread 3835706069 / PRRT_kwDOT2PEds6bX3xs. The global wheel dismiss listener must preserve wheel events from .ctx-menu so overflow scrolling works.
 
 ## Evidence
 
@@ -68,4 +74,4 @@ PASS. The stacked remediation is based exactly on GUI-109 head c259af171a72fa83a
 
 ## Scope
 
-The diff is limited to App project/error/group handling, pure group-menu helper/tests, ContextMenu keyboard scrolling, context-menu CSS, the groups manual, and its generated chapter. It does not change core, MCP, IPC, provider, dispatch, or storage contracts. No merge, move, verify, release, or cleanup was performed.
+The diff remains limited to the seven planned GUI/manual files. No merge, move, verify, release, cleanup, or source changes were performed.

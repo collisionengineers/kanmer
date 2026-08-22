@@ -19,7 +19,8 @@ groups:
   - EPIC-009
   - HZN-004
   - HZN-007
-links: []
+links:
+  - CORE-037
 refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
 commits:
@@ -28,7 +29,7 @@ prs:
   - '143'
 archived: false
 created: '2026-08-16T21:22:59.709Z'
-updated: '2026-08-22T00:32:53.346Z'
+updated: '2026-08-22T00:35:01.418Z'
 ---
 
 ## What

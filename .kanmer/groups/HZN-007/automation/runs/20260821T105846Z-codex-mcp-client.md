@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T00:32:13.362Z
+updated_at: 2026-08-22T00:35:14.663Z
 lane_limit: 3
 stop_reason:
 ---
@@ -466,3 +466,4 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T00:32:13.362Z — SKILL-017 Review handoff: commit a72ea84f pushed on skill-017-auto-stopping and PR #143 opened. Ticket commits/prs traceability was written/read back through MCP. Focused rails remain green; unrelated Windows timeout evidence remains in report. Stop here for independent review; author must not merge.
+\n\nLast handoff: 2026-08-22T00:35:14.663Z — SKILL-017 independent review: PR #143 head a72ea84f local verify:skills 14/14, prose tests 7/7 and diff-check pass; GitHub verify is red solely on shared RUNNER~1 versus runneradmin path assertion. Review scratch is needs-changes with F-001 deferred to CORE-037; F-002 provider/runtime evidence remains accepted INCONCLUSIVE. No merge, Verifying move, or cleanup.\n

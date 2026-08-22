@@ -576,3 +576,6 @@ CORE-069 merged as 217eba45, Verifying with child block removed. CORE-070 implem
 
 
 CORE-070 PASS exact cc1cbf36, merged non-squash as e966509c; moved Verifying and removed child block. CORE-071 remains Preparing; next concurrency-safe ignore reconciliation.
+
+
+CORE-071 implementation 37bc2265 / PR #192 moved Implementing -> Review; focused kanmerGit 25/25, core build/typecheck PASS, scripts 88/88. Independent review/merge pending; CORE-072 and CORE-073 queued.

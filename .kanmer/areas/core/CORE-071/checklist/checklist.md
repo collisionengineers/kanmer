@@ -1,3 +1,3 @@
-- [ ] Preserve concurrent `.gitignore` edits.
-- [ ] Retry or safely merge on a changed read/write window.
-- [ ] Add deterministic regression and run rails.
+- [x] Compare-and-retry ignore writes from a fresh snapshot.
+- [x] Preserve concurrent edits and use exclusive creation for new files.
+- [x] Add deterministic merge regression and run focused/full rails.

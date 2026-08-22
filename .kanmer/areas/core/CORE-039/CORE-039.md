@@ -2,12 +2,13 @@
 id: CORE-039
 type: ticket
 title: Make release-notes script tests hermetic on clean CI
-status: implementing
+status: review
 area: core
 assignee: root
 profile: fix
 stageEntered:
   preparing: '2026-08-22T01:27:27.829Z'
+  review: '2026-08-22T01:35:10.441Z'
 taken_at: '2026-08-22T01:29:15.705Z'
 branch: core-039-release-notes-hermetic
 worktree: .worktrees/core-039
@@ -23,9 +24,13 @@ links: []
 blocks:
   - MCP-041
 docs_todo: true
+commits:
+  - 79c85e07c977f29270ca84f62b1c729b28fe1d57
+prs:
+  - '147'
 archived: false
 created: '2026-08-22T01:26:27.318Z'
-updated: '2026-08-22T01:29:15.705Z'
+updated: '2026-08-22T01:35:10.441Z'
 ---
 
 The authoritative GitHub verify rail now reaches scripts/release-notes.test.mjs and fails in a clean checkout because release-notes.mjs cannot find .worktrees/kanmer. Make the test fixture or command independent of a local Kanmer board while preserving its PR-link assertion and 80-test coverage. Keep this separate from CORE-038 Windows glob enumeration and preserve exact CI evidence.

@@ -10,3 +10,9 @@
 - [x] Record commit/PR traceability, confirm gates, and move to Review.
 
 - [x] Reject IPv4 192.175.48.0/24 and prove DNS lookup on redirect and linked hops.
+
+## Merged-main verification / closeout
+
+- [x] All recorded commits reachable from origin/main fdaededc and merged-main proof written.
+- [x] IO/source/core/store/typecheck/scripts/docs/skills/agents/diff rails recorded; HTTP timeout and depth-sensitive plugin comparison preserved INCONCLUSIVE.
+- [ ] Exact worktree/branch cleanup and release pending.

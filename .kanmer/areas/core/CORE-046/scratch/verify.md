@@ -1,0 +1,1 @@
+Merged-main origin/main fdaededc: IO 32/32, source 32/32, core/store 91/91, typechecks, scripts/docs/skills/agents/diff passed. Full HTTP 99/100 has the inherited child spawnSync timeout (INCONCLUSIVE). plugin:check initially failed on depth-nested artifact mismatch, then passed after local rebuild; committed artifact parity remains INCONCLUSIVE for this path.

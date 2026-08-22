@@ -188,3 +188,33 @@ The cumulative diff changes `apps/gui/src/main/kanmerGit.ts`, `apps/gui/src/main
 ## Verdict
 
 NEEDS-CHANGES. The six current blocking findings are recorded as CORE-068 through CORE-073, each linked to and blocking CORE-058. Do not merge PR #180 or move CORE-058 to Verifying until those findings are fixed or explicitly dispositioned by independent review.
+
+## Independent cumulative review — PASS — 271790e58c52a14fa4b3cec62f7146b6a67bcdcd
+
+reviewer: codex-core058-review
+independent: true
+ticket: CORE-058
+pr: 180
+head: 271790e58c52a14fa4b3cec62f7146b6a67bcdcd
+base: 3c0706627cc73038d91a624e5d494d0148dce4c4
+base_branch: core-044-source-fetch-remediation
+
+Changes reviewed: the cumulative nine-file diff covers the CORE-058 board-worktree ignore/plugin artifact implementation and the merged remediation chain CORE-062 through CORE-073, including CORE-074's atomic ignore child and CORE-072's CORE-076 orphan-recovery child. The cumulative source remains scoped to board ignore reconciliation, canonical-root preservation, retry/error state, timer re-arming, branch selection, concurrent/atomic ignore edits, orphan migration, symlink refusal, and generated plugin artifact parity. No unrelated provider or source-fetch feature changes were found.
+
+Prior findings/dispositions: 3836151012, 3836151017, 3836232925, 3836232929, 3836285519, 3836285521, 3836307985, 3836307986, 3836307987, 3836307988, 3836323268, and 3836323269 are fixed by the cumulative child merges and their regression coverage. Finding 3836151015 (retroactive untracking of already-tracked cache content) remains explicitly accepted/deferred in CORE-058's report and open questions; it is not silently treated as fixed and is not a blocker for this packet's declared reconciliation scope.
+
+Rails:
+- npm run test -w @kanmer/gui -- --run src/main/kanmerGit.test.ts: exit 0, 27/27 PASS, 73.44s.
+- npm run test -w @kanmer/gui -- --run src/main/syncBranch.test.ts src/main/syncTimer.test.ts: exit 0, 7/7 PASS.
+- npm run build:core: exit 0.
+- npm run build:server: initial exit 1 because the linked review worktree resolved a stale shared @kanmer/core; after creating the review-checkout-local core junctions, rerun exit 0 for ESM and standalone CJS. The initial failure is preserved as setup evidence, not erased.
+- npm run typecheck: exit 0 for all workspaces after the local core resolution.
+- npm run test:scripts: exit 0, 88/88 PASS.
+- npm run verify:docs: exit 0, manual current (22 chapters), links/fences/canary/provider-boundary checks PASS.
+- npm run check:manual: exit 0, manual current (22 chapters).
+- git diff --check 3c0706627cc73038d91a624e5d494d0148dce4c4..271790e58c52a14fa4b3cec62f7146b6a67bcdcd: exit 0.
+- The committed normal-checkout plugin artifact hash is 6057648D81FB4CCCAB629A0EE1C05C8716A564400302238857E785C70C485100. In the linked temporary review checkout, plugin:check correctly refused because the workspace dependency resolved outside that checkout; a linked-worktree build-plugin output is path-dependent and is not used as parity evidence. The author packet's normal-checkout build-plugin/plugin:check evidence is retained.
+
+Boundaries: PR #180 has no hosted status attached. Installed/packaged GUI, Windows live worktree protection, remote/host-provider, and retroactive tracked-cache migration evidence remain INCONCLUSIVE or explicitly deferred where the packet says so; no external evidence is fabricated.
+
+Verdict: PASS for the exact cumulative head and declared ticket scope. No merge or ticket move performed by this reviewer.

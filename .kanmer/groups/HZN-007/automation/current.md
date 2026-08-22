@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T20:16:46.238Z
+updated_at: 2026-08-22T22:03:59.590Z
 ---
 
 # Current auto run — HZN-007
@@ -815,3 +815,6 @@ Removed GUI-115→CORE-043 blocker edge after its non-squash merge; GUI-115 rema
 
 
 2026-08-22T21:50Z — Fresh independent CORE-043 review at exact head 1126253e is NEEDS-CHANGES: hosted verify/kanmer-gate and 157/157 focused GUI/provider tests PASS, but 11 current findings remain (provider retry/lifecycle races, OpenAI/remote/Claude branch propagation, native handoff scope, and stale cumulative report). Created GUI-118 for lifecycle/handoff findings and GUI-119 for OpenAI/remote/Claude propagation; GUI-119 is now Implementing on its own lane, GUI-118 queued. No protected merge or thread resolution.
+
+
+Last handoff: 2026-08-22T22:03:59.590Z — GUI-119 is implementation-complete on gui-119-provider-branch-propagation/.worktrees/gui-119 from CORE-043 parent 1126253e. Provider branch propagation deterministic rails pass; full-suite/live-provider limitations remain explicitly INCONCLUSIVE. Await the ticket-linked PR and independent review before any merge.

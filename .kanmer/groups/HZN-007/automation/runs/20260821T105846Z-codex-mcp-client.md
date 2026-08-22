@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T20:05:17.039Z
+updated_at: 2026-08-22T22:03:59.590Z
 lane_limit: 3
 stop_reason:
 ---
@@ -863,3 +863,5 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 
 
 2026-08-22T20:16:46.238Z — CORE-083 Review handoff: taken without force on core-083-orphan-board-state/.worktrees/core-083 from cumulative CORE-026 head a9833df28ddf6f91966be17a4eb7c06265e088ed. Commit ff12510be5608a6b940f15c00e2cb68dc0266267 and PR #211 target core-026-project-declared-sources. The scoped orphan fingerprint/version guard and canonical boardRoot retention fixes are implemented; checklist 10/11 with post-merge proof intentionally unchecked, report and gates read back, and Implementing→Review moved. Targeted regressions 4/4, full kanmerGit real-Git 30/30, GUI typecheck/build, core build, scripts 88/88 after build, and diff-check pass. First scripts missing-core-dist exit 1 and interrupted full GUI suite remain preserved; live multi-process/packaged evidence is INCONCLUSIVE. Author stops at Review; no self-review, merge, verify, or cleanup.
+
+- 2026-08-22T22:03:59.590Z — GUI-119 handoff: implementation completed on gui-119-provider-branch-propagation/.worktrees/gui-119 from CORE-043 parent 1126253eed586111db60ed72eccf6754f0f5ef06. OpenAI, remote runtime/doctor, and Claude marketplace branch propagation are covered; focused provider rail 56/56 and standalone connect 35/35 pass; GUI typecheck/build/manual/docs/scripts/diff pass after worktree-local core build. Full-suite timeout/hang and live provider/host evidence remain INCONCLUSIVE. PR and independent review are pending; author will not self-review or merge.

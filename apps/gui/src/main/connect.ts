@@ -1,9 +1,9 @@
 import { app } from "electron";
 import { exec, execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { cp, mkdir, readdir, readFile, rename, rm, rmdir, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { cp, mkdir, mkdtemp, readdir, readFile, rename, rm, rmdir, writeFile } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
+import { dirname, join, relative, resolve } from "node:path";
 import { promisify } from "node:util";
 import { CURRENT_FORMAT } from "@kanmer/core";
 import {
@@ -20,11 +20,14 @@ import {
   antigravityPortableInvocation,
   codexPortableInvocation,
   codexPortableProbeInvocation,
+  DEFAULT_BOARD_BRANCH,
   codexTrustFromConfig,
   codexTrustNote,
   classifyLegacyCodexEntry,
   legacyCodexEntries,
   q,
+  normalizeBoardBranch,
+  type RegistrationState,
   tomlRegistrationState,
   type LegacyCodexFinding,
   type LegacyCodexProbe,
@@ -93,8 +96,15 @@ export async function probeCodexLauncher(
  * providers: Electron-as-Node, with the selected board and optional source
  * root pinned exactly as before GUI-100.
  */
-function installedElectronInvocation(boardRoot: string, sourceRoot: string): Invocation {
-  const env = { ELECTRON_RUN_AS_NODE: "1" };
+function installedElectronInvocation(
+  boardRoot: string,
+  sourceRoot: string,
+  boardBranch = DEFAULT_BOARD_BRANCH,
+): Invocation {
+  const env = {
+    ELECTRON_RUN_AS_NODE: "1",
+    KANMER_BOARD_BRANCH: boardBranch.trim() || DEFAULT_BOARD_BRANCH,
+  };
   let script: string;
   if (app.isPackaged) {
     script = join(process.resourcesPath, "mcp", "kanmer-mcp.cjs");
@@ -112,8 +122,16 @@ function installedElectronInvocation(boardRoot: string, sourceRoot: string): Inv
 }
 
 /** Select the portable Codex contract without changing any other provider. */
-export function serverInvocation(id: ProviderId, boardRoot: string, sourceRoot: string): Invocation {
-  return id === "codex" ? codexPortableInvocation() : installedElectronInvocation(boardRoot, sourceRoot);
+export function serverInvocation(
+  id: ProviderId,
+  boardRoot: string,
+  sourceRoot: string,
+  boardBranch = DEFAULT_BOARD_BRANCH,
+): Invocation {
+  const normalizedBranch = boardBranch.trim() || DEFAULT_BOARD_BRANCH;
+  return id === "codex"
+    ? codexPortableInvocation(normalizedBranch)
+    : installedElectronInvocation(boardRoot, sourceRoot, normalizedBranch);
 }
 
 /**
@@ -360,6 +378,70 @@ async function isRegistered(provider: AgentProvider, root: string): Promise<bool
     return registrationState(await readFile(file, "utf8")) !== "absent";
   } catch {
     return true;
+  }
+}
+
+/**
+ * Refresh one existing project registration after the board branch changes.
+ *
+ * This deliberately stops at the provider-owned registration file. It does
+ * not reinstall skills, touch a native user plugin, or inspect another
+ * project. A malformed registration is surfaced as indeterminate rather than
+ * overwritten, while an absent registration is a no-op.
+ */
+export async function reconcileProviderRegistration(
+  id: ProviderId,
+  projectRoot: string,
+  boardRoot: string,
+  boardBranch = DEFAULT_BOARD_BRANCH,
+): Promise<ConnectResult> {
+  const provider = providerById(id);
+  const command = `reconcile ${id} registration`;
+  if (!provider) return { ok: false, command, output: `Unknown provider "${id}"` };
+
+  const registration = provider.register;
+  if (registration.kind === "none") {
+    return { ok: true, command, output: `${id} has no project registration to refresh.` };
+  }
+  const configPath = registration.configPath;
+  const registrationState = registration.registrationState;
+  if (!configPath || !registrationState) {
+    return { ok: true, command, output: `${id} has no inspectable project registration.` };
+  }
+
+  const path = resolveConfigPath(configPath, projectRoot);
+  if (!existsSync(path)) {
+    return { ok: true, command, output: `${id} is not registered in this project.` };
+  }
+
+  try {
+    const existing = await readFile(path, "utf8");
+    const state: RegistrationState = registrationState(existing);
+    if (state === "absent") {
+      return { ok: true, command, output: `${id} is not registered in this project.` };
+    }
+    if (state === "indeterminate") {
+      return {
+        ok: false,
+        command,
+        output: `${id} registration at ${configPath} is malformed or unreadable; reconnect it manually. No file was changed.`,
+      };
+    }
+
+    const merge = registration.merge;
+    if (!merge) {
+      return {
+        ok: false,
+        command,
+        output: `${id} registration is present but has no provider-owned refresh path; reconnect it manually. No file was changed.`,
+      };
+    }
+    const invocation = serverInvocation(id, boardRoot, projectRoot, normalizeBoardBranch(boardBranch));
+    const next = merge(existing, invocation);
+    if (next !== existing) await writeAtomic(path, next);
+    return { ok: true, command, output: `${id} registration refreshed for board branch ${normalizeBoardBranch(boardBranch)}.` };
+  } catch (error) {
+    return { ok: false, command, output: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -728,11 +810,52 @@ async function retireLegacyPluginState(
   return notes;
 }
 
+/**
+ * Prepare a branch-bound native plugin descriptor without modifying the
+ * shipped bundle. Native plugins are user-scoped, so the install source must
+ * carry the selected branch while the repository checkout remains pristine.
+ */
+async function stageNativePluginBundle(
+  provider: AgentProvider,
+  bundledRoot: string,
+  boardBranch: string,
+): Promise<string> {
+  if (provider.install.kind !== "plugin") throw new Error("native plugin provider expected");
+  const descriptorPath = provider.install.descriptorPath(bundledRoot);
+  const descriptor = await readFile(descriptorPath, "utf8");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(descriptor);
+  } catch {
+    throw new Error(`Kanmer plugin MCP descriptor is not valid JSON: ${descriptorPath}`);
+  }
+  const entry = (parsed as { mcpServers?: { kanmer?: { env?: unknown } } } | null)?.mcpServers?.kanmer;
+  if (!entry || typeof entry !== "object") {
+    throw new Error(`Kanmer plugin MCP descriptor has no mcpServers.kanmer entry: ${descriptorPath}`);
+  }
+
+  const stagedRoot = await mkdtemp(join(tmpdir(), "kanmer-native-plugin-"));
+  try {
+    await cp(bundledRoot, stagedRoot, { recursive: true });
+    const stagedDescriptor = join(stagedRoot, relative(bundledRoot, descriptorPath));
+    const env = entry.env && typeof entry.env === "object" && !Array.isArray(entry.env)
+      ? entry.env as Record<string, unknown>
+      : {};
+    entry.env = { ...env, KANMER_BOARD_BRANCH: normalizeBoardBranch(boardBranch) };
+    await writeFile(stagedDescriptor, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+    return stagedRoot;
+  } catch (error) {
+    await rm(stagedRoot, { recursive: true, force: true });
+    throw error;
+  }
+}
+
 async function connectNativePlugin(
   provider: AgentProvider,
   projectRoot: string,
   boardRoot: string,
   options: ConnectOptions,
+  boardBranch = DEFAULT_BOARD_BRANCH,
 ): Promise<ConnectResult> {
   if (provider.install.kind !== "plugin") throw new Error("native plugin provider expected");
   const spec = provider.install;
@@ -751,6 +874,7 @@ async function connectNativePlugin(
   const runtimeCommand = `${q(runtime)} --version`;
   const bundledRoot = options.pluginRootPath ?? pluginRoot();
   let lastCommand = spec.installCommand(bundledRoot);
+  let stagedRoot: string | undefined;
   try {
     const version = argv?.version();
     lastCommand = version ? nativeCommandText(version) : `${spec.cli} --version`;
@@ -766,7 +890,8 @@ async function connectNativePlugin(
     if (missing.length > 0) {
       throw new Error(`Kanmer plugin bundle is incomplete; missing ${missing.join(", ")}`);
     }
-    const descriptorPath = spec.descriptorPath(bundledRoot);
+    stagedRoot = await stageNativePluginBundle(provider, bundledRoot, boardBranch);
+    const descriptorPath = spec.descriptorPath(stagedRoot);
     const descriptor = await readFile(descriptorPath, "utf8");
     let parsed: unknown;
     try {
@@ -789,13 +914,13 @@ async function connectNativePlugin(
         );
       }
     }
-    const validate = argv?.validate?.(bundledRoot);
+    const validate = argv?.validate?.(stagedRoot);
     if (validate || spec.validateCommand) {
-      lastCommand = validate ? nativeCommandText(validate) : spec.validateCommand!(bundledRoot);
+      lastCommand = validate ? nativeCommandText(validate) : spec.validateCommand!(stagedRoot);
       await execute(lastCommand, validate);
     }
-    const installArgv = argv?.install(bundledRoot);
-    const install = installArgv ? nativeCommandText(installArgv) : spec.installCommand(bundledRoot);
+    const installArgv = argv?.install(stagedRoot);
+    const install = installArgv ? nativeCommandText(installArgv) : spec.installCommand(stagedRoot);
     lastCommand = install;
     const installed = await execute(install, installArgv);
     const inspectArgv = argv?.inspect();
@@ -853,6 +978,8 @@ async function connectNativePlugin(
       command: lastCommand,
       output: commandFailureText(err),
     };
+  } finally {
+    if (stagedRoot) await rm(stagedRoot, { recursive: true, force: true });
   }
 }
 
@@ -911,11 +1038,12 @@ export async function connectAgent(
   projectRoot: string,
   boardRoot: string,
   options: ConnectOptions = {},
+  boardBranch = DEFAULT_BOARD_BRANCH,
 ): Promise<ConnectResult> {
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
-  if (provider.install.kind === "plugin") return connectNativePlugin(provider, projectRoot, boardRoot, options);
-  const inv = serverInvocation(id, boardRoot, projectRoot);
+  if (provider.install.kind === "plugin") return connectNativePlugin(provider, projectRoot, boardRoot, options, boardBranch);
+  const inv = serverInvocation(id, boardRoot, projectRoot, boardBranch);
   try {
     if (id === "codex") {
       const probe = await probeCodexLauncher(projectRoot, options.probeRunner);

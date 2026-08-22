@@ -29,12 +29,21 @@ export interface Invocation {
  */
 const CODEX_LAUNCHER_PATH = "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd";
 
+/** The local default shared by the GUI registration and MCP runtime. */
+export const DEFAULT_BOARD_BRANCH = "kanmer-board";
+
+/** Keep a malformed/blank preference from creating an unusable registration. */
+export function normalizeBoardBranch(branch: string | undefined): string {
+  const trimmed = branch?.trim();
+  return trimmed || DEFAULT_BOARD_BRANCH;
+}
+
 /** Return a fresh canonical Codex invocation so callers cannot mutate shared state. */
-export function codexPortableInvocation(): Invocation {
+export function codexPortableInvocation(boardBranch?: string): Invocation {
   return {
     command: "cmd.exe",
     args: ["/d", "/s", "/c", `"${CODEX_LAUNCHER_PATH}"`],
-    env: {},
+    env: boardBranch === undefined ? {} : { KANMER_BOARD_BRANCH: normalizeBoardBranch(boardBranch) },
   };
 }
 
@@ -67,6 +76,8 @@ export type RegisterSpec =
       /** Optional project file that proves this CLI host remains connected. */
       configPath?: string;
       registrationState?: (existing: string) => RegistrationState;
+      /** Optional provider-owned merge used to refresh an existing registration without invoking the host CLI. */
+      merge?: (existing: string | null, inv: Invocation) => string;
     }
   | {
       kind: "configFile";
@@ -755,6 +766,21 @@ function mcpServersUnmerge(existing: string): string {
     }
   });
 }
+
+/** Claude's project registration shape, used for safe branch-only refreshes. */
+function mcpServersMerge(existing: string | null, inv: Invocation): string {
+  return editJson(existing, (o) => {
+    const mcpServers = (typeof o.mcpServers === "object" && o.mcpServers !== null
+      ? o.mcpServers
+      : {}) as Record<string, unknown>;
+    mcpServers.kanmer = {
+      command: inv.command,
+      args: inv.args,
+      ...(Object.keys(inv.env).length > 0 ? { env: inv.env } : {}),
+    };
+    o.mcpServers = mcpServers;
+  });
+}
 /** codex/claude `mcp add` command line (shared by both CLI providers). */
 function cliAddCommand(id: "codex" | "claude", inv: Invocation, root: string): string {
   const envFlag = id === "codex" ? "--env" : "-e";
@@ -809,6 +835,7 @@ export const PROVIDERS: AgentProvider[] = [
       ],
       configPath: ".mcp.json",
       registrationState: (existing) => jsonRegistrationState(existing, "mcpServers"),
+      merge: mcpServersMerge,
     },
     install: {
       kind: "marketplace",

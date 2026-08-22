@@ -30,6 +30,7 @@ const {
   marketplaceRoot,
   pluginRoot,
   probeCodexLauncher,
+  reconcileProviderRegistration,
   reconcileSkills,
   removeBundledSkillsOnly,
   serverInvocation,
@@ -188,7 +189,14 @@ describe("Grok native plugin lifecycle (MCP-014)", () => {
       if (command === "grok --version") return { stdout: "grok 1.0.5", stderr: "" };
       if (command === "grok plugin --help") return { stdout: "install uninstall", stderr: "" };
       if (command === "node --version") return { stdout: "v24.15.0", stderr: "" };
-      if (command.startsWith("grok plugin install ")) return { stdout: "Installed 1 plugin(s)", stderr: "" };
+      if (command.startsWith("grok plugin install ")) {
+        const match = command.match(/^grok plugin install (.+) --trust$/);
+        expect(match).not.toBeNull();
+        const stagedRoot = match![1].replace(/^"|"$/g, "");
+        const descriptor = JSON.parse(await readFile(join(stagedRoot, "mcp", "claude.mcp.json"), "utf8")) as { mcpServers: { kanmer: { env?: Record<string, string> } } };
+        expect(descriptor.mcpServers.kanmer.env).toEqual({ KANMER_BOARD_BRANCH: "release-board" });
+        return { stdout: "Installed 1 plugin(s)", stderr: "" };
+      }
       if (command === "grok inspect") return { stdout: "kanmer (user, enabled) 12 skills, 1 MCPs", stderr: "" };
       if (command.startsWith("grok -p ")) {
         expect(await readFile(join(root, ".grok", "config.toml"), "utf8")).not.toContain("mcp_servers.kanmer");
@@ -206,7 +214,7 @@ describe("Grok native plugin lifecycle (MCP-014)", () => {
       throw new Error(`unexpected command: ${command}`);
     };
 
-    const result = await connectAgent("grok", root, root, { commandRunner, pluginRootPath: bundle });
+    const result = await connectAgent("grok", root, root, { commandRunner, pluginRootPath: bundle }, " release-board ");
 
     expect(result.ok).toBe(true);
     expect(seen.slice(0, 3)).toEqual(["grok --version", "grok plugin --help", "node --version"]);
@@ -214,6 +222,7 @@ describe("Grok native plugin lifecycle (MCP-014)", () => {
     expect(seen[3]).toContain("--trust");
     expect(seen[5]).toContain("grok -p");
     expect(result.output).toContain("inspect: kanmer (user, enabled)");
+    await expect(readFile(join(bundle, "mcp", "claude.mcp.json"), "utf8")).resolves.not.toContain("KANMER_BOARD_BRANCH");
     expect(await readFile(join(root, ".grok", "config.toml"), "utf8")).toContain("mcp_servers.linear");
     await missing(root, ".grok", "skills", "old-skill", "SKILL.md");
     expect(await readFile(join(root, "AGENTS.md"), "utf8")).toBe("# user\n");
@@ -268,7 +277,11 @@ describe("Antigravity native plugin lifecycle (MCP-015)", () => {
       if (file === "agy" && args[0] === "--version") return { stdout: "1.1.14", stderr: "" };
       if (file === "agy" && args[0] === "plugin" && args[1] === "--help") return { stdout: "install validate list uninstall", stderr: "" };
       if (file === "cmd.exe") return { stdout: "Kanmer MCP launcher: healthy", stderr: "" };
-      if (file === "agy" && args[0] === "plugin" && args[1] === "validate") return { stdout: "[ok] plugin", stderr: "" };
+      if (file === "agy" && args[0] === "plugin" && args[1] === "validate") {
+        const descriptor = JSON.parse(await readFile(join(args[2], "mcp_config.json"), "utf8")) as { mcpServers: { kanmer: { env?: Record<string, string> } } };
+        expect(descriptor.mcpServers.kanmer.env).toEqual({ KANMER_BOARD_BRANCH: "release-board" });
+        return { stdout: "[ok] plugin", stderr: "" };
+      }
       if (file === "agy" && args[0] === "plugin" && args[1] === "install") return { stdout: "Installed plugin kanmer", stderr: "" };
       if (file === "agy" && args[0] === "plugin" && args[1] === "list") return { stdout: "kanmer", stderr: "" };
       if (file === "agy" && args[0] === "--add-dir") {
@@ -288,21 +301,23 @@ describe("Antigravity native plugin lifecycle (MCP-015)", () => {
       throw new Error(`unexpected command: ${file} ${args.join(" ")}`);
     };
 
-    const result = await connectAgent("antigravity", root, boardRoot, { nativeCommandRunner, pluginRootPath: bundle });
+    const result = await connectAgent("antigravity", root, boardRoot, { nativeCommandRunner, pluginRootPath: bundle }, " release-board ");
 
     expect(result.ok).toBe(true);
     expect(seen.slice(0, 4)).toEqual([
       { file: "agy", args: ["--version"] },
       { file: "agy", args: ["plugin", "--help"] },
       { file: "cmd.exe", args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe'] },
-      { file: "agy", args: ["plugin", "validate", bundle] },
+      { file: "agy", args: ["plugin", "validate", expect.stringContaining("kanmer-native-plugin-")] },
     ]);
-    expect(seen[4]).toEqual({ file: "agy", args: ["plugin", "install", bundle] });
+    expect(seen[4]).toEqual({ file: "agy", args: ["plugin", "install", expect.stringContaining("kanmer-native-plugin-")] });
+    expect(seen[4].args[2]).not.toBe(bundle);
     expect(seen[5]).toEqual({ file: "agy", args: ["plugin", "list"] });
     expect(seen[6].file).toBe("agy");
     expect(seen[6].args.slice(0, 2)).toEqual(["--add-dir", boardRoot]);
     expect(seen[6].args[2]).toBe("-p");
     expect(result.output).toContain("functional get_status");
+    await expect(readFile(join(bundle, "mcp_config.json"), "utf8")).resolves.not.toContain("KANMER_BOARD_BRANCH");
     const legacy = JSON.parse(await readFile(join(root, ".agents", "mcp_config.json"), "utf8"));
     expect(legacy.mcpServers.kanmer).toBeUndefined();
     expect(legacy.mcpServers.other).toBeTruthy();
@@ -550,16 +565,19 @@ describe("portable Codex launcher contract (GUI-100)", () => {
     expect(codex).toEqual({
       command: "cmd.exe",
       args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"'],
-      env: {},
+      env: { KANMER_BOARD_BRANCH: "kanmer-board" },
     });
     const second = serverInvocation("codex", "D:/other-board", "D:/other-source");
     expect(second).toEqual(codex);
     expect(second.args).not.toBe(codex.args);
 
+    const custom = serverInvocation("codex", "C:/board-a", "C:/source-a", " release-board ");
+    expect(custom.env).toEqual({ KANMER_BOARD_BRANCH: "release-board" });
+
     const grok = serverInvocation("grok", "C:/board-a", "C:/source-a");
     expect(grok.command).toBe(process.execPath);
     expect(grok.args).toContain("C:/board-a");
-    expect(grok.env).toEqual({ ELECTRON_RUN_AS_NODE: "1" });
+    expect(grok.env).toEqual({ ELECTRON_RUN_AS_NODE: "1", KANMER_BOARD_BRANCH: "kanmer-board" });
   });
 
   it("runs the fixed probe with explicit argv and bounded Windows options", async () => {
@@ -576,6 +594,70 @@ describe("portable Codex launcher contract (GUI-100)", () => {
       args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe'],
       options: { cwd: "C:/workspace", windowsHide: true, timeout: 10_000, maxBuffer: 32 * 1024 },
     }]);
+  });
+
+  it("threads the saved board branch through a project registration", async () => {
+    const root = await tempRoot();
+    testProviders.set("mcp-044", {
+      id: "mcp-044" as ProviderId,
+      label: "MCP-044 test host",
+      register: {
+        kind: "configFile",
+        configPath: ".mcp-044.json",
+        merge: (existing, invocation) => JSON.stringify({
+          ...(existing ? JSON.parse(existing) : {}),
+          invocation,
+        }),
+        unmerge: (existing) => existing,
+        registrationState: () => "registered",
+      },
+      install: { kind: "copySkills", skillsScope: "agentsOnly" },
+      dispatch: false,
+    } as AgentProvider);
+
+    const result = await connectAgent("mcp-044" as ProviderId, root, root, {}, " release-board ");
+    expect(result.ok).toBe(true);
+    const registration = JSON.parse(await readFile(join(root, ".mcp-044.json"), "utf8"));
+    expect(registration.invocation.env).toEqual({
+      ELECTRON_RUN_AS_NODE: "1",
+      KANMER_BOARD_BRANCH: "release-board",
+    });
+  });
+
+  it("refreshes only an owned existing registration and preserves other hosts", async () => {
+    const root = await tempRoot();
+    const other = await tempRoot();
+    const beforeOther = JSON.stringify({ mcpServers: { other: { command: "keep" } } }, null, 2) + "\n";
+    await writeFile(join(root, ".mcp.json"), JSON.stringify({
+      mcpServers: {
+        kanmer: { command: "old", args: ["old"] },
+        other: { command: "keep" },
+      },
+    }, null, 2) + "\n");
+    await writeFile(join(other, ".mcp.json"), beforeOther);
+
+    const result = await reconcileProviderRegistration("claude", root, root, " release-board ");
+
+    expect(result).toMatchObject({ ok: true });
+    const registration = JSON.parse(await readFile(join(root, ".mcp.json"), "utf8")) as { mcpServers: Record<string, any> };
+    expect(registration.mcpServers.kanmer.env).toEqual({ ELECTRON_RUN_AS_NODE: "1", KANMER_BOARD_BRANCH: "release-board" });
+    expect(registration.mcpServers.other).toEqual({ command: "keep" });
+    await expect(readFile(join(other, ".mcp.json"), "utf8")).resolves.toBe(beforeOther);
+  });
+
+  it("does not overwrite an absent or malformed owned registration", async () => {
+    const root = await tempRoot();
+    const absent = JSON.stringify({ mcpServers: { other: {} } }, null, 2) + "\n";
+    await writeFile(join(root, ".mcp.json"), absent);
+    await expect(reconcileProviderRegistration("claude", root, root, "release-board")).resolves.toMatchObject({ ok: true });
+    await expect(readFile(join(root, ".mcp.json"), "utf8")).resolves.toBe(absent);
+
+    const malformed = "{ not-json\n";
+    await writeFile(join(root, ".mcp.json"), malformed);
+    const result = await reconcileProviderRegistration("claude", root, root, "release-board");
+    expect(result.ok).toBe(false);
+    expect(result.output).toContain("No file was changed");
+    await expect(readFile(join(root, ".mcp.json"), "utf8")).resolves.toBe(malformed);
   });
 
   it("refuses a failed probe before creating or changing project config", async () => {

@@ -9,6 +9,7 @@ import {
   classifyLegacyCodexEntry,
   codexPortableInvocation,
   codexPortableProbeInvocation,
+  normalizeBoardBranch,
   dispatchableProviders,
   codexServerName,
   formatSkillsStamp,
@@ -72,6 +73,8 @@ describe("provider registry", () => {
     const cmd = reg.addCommand(inv, ROOT);
     expect(cmd).toContain("claude mcp add kanmer -s project");
     expect(cmd).toContain("-e ELECTRON_RUN_AS_NODE=1");
+    const configured = reg.addCommand({ ...inv, env: { ...inv.env, KANMER_BOARD_BRANCH: "release-board" } }, ROOT);
+    expect(configured).toContain("-e KANMER_BOARD_BRANCH=release-board");
   });
 
   it("opencode merges an mcp.local entry, preserving unknown keys and idempotent", () => {
@@ -85,6 +88,14 @@ describe("provider registry", () => {
     expect(obj.mcp.kanmer.type).toBe("local");
     expect(obj.mcp.kanmer.command).toEqual([inv.command, ...inv.args]);
     expect(obj.mcp.kanmer.environment.ELECTRON_RUN_AS_NODE).toBe("1");
+    const configured = JSON.parse(reg.merge(null, {
+      ...inv,
+      env: { ...inv.env, KANMER_BOARD_BRANCH: "release-board" },
+    }));
+    expect(configured.mcp.kanmer.environment).toEqual({
+      ELECTRON_RUN_AS_NODE: "1",
+      KANMER_BOARD_BRANCH: "release-board",
+    });
     // Idempotent: re-merging its own output is byte-identical.
     expect(reg.merge(first, inv)).toBe(first);
     // Unmerge removes only kanmer.
@@ -331,6 +342,19 @@ describe("codex project-scoped TOML registration (FRD-012 R1)", () => {
     const fromAnotherMachine = codexPortableInvocation();
     expect(reg.merge(null, fromAnotherMachine)).toBe(reg.merge(null, portable));
     expect(JSON.stringify(parsed)).not.toMatch(/Users|Users|Kanmer\.exe|--root|--repo-root|cwd|ELECTRON_RUN_AS_NODE/);
+  });
+
+  it("adds only the configured board branch to a project-scoped portable entry", () => {
+    expect(normalizeBoardBranch(" release-board ")).toBe("release-board");
+    expect(normalizeBoardBranch("  ")).toBe("kanmer-board");
+    const configured = codexPortableInvocation(" release-board ");
+    const parsed = TOML.parse(reg.merge(null, configured)) as Record<string, any>;
+    expect(parsed.mcp_servers.kanmer).toMatchObject({
+      command: "cmd.exe",
+      env: { KANMER_BOARD_BRANCH: "release-board" },
+    });
+    expect(parsed.mcp_servers.kanmer).not.toHaveProperty("cwd");
+    expect(parsed.mcp_servers.kanmer).not.toHaveProperty("--root");
   });
 
   it("creates a fresh probe descriptor without changing the registration", () => {

@@ -50,16 +50,40 @@ one, in `.worktrees/kanmer`, then press **Retry**.
 Sync stays paused until a sync succeeds, which is deliberate: a paused sync is
 visible, and a silently failing one is not.
 
+During a board-branch handoff, Kanmer also pauses the automatic timer while the
+open worktree is on the wrong branch. It does not push using the cached branch
+in the background. **Retry** re-inspects the live worktree before it can commit,
+rebase, or push; if the branch is still mismatched, it remains paused and makes
+no Git mutation. Once the worktree reaches the exact requested destination,
+Kanmer clears only the handoff-generated pause and message; a real conflict or
+push error remains visible, and **Retry** is still available.
+
 ## Renaming the board branch
 
-Do it from **Settings → Git**, not from the command line. Type the new name and
-press **Rename branch**.
+For a non-protected board branch, do it from **Settings → Git**, not from the
+command line. Type the new name and press **Rename branch**. Kanmer renames the
+branch in place, so the board keeps its whole history and the worktree path stays
+the same. It pushes the new name before any cleanup. For a custom-to-custom
+rename, Kanmer cannot update the hosted repository's `KANMER_BOARD_BRANCH`
+variable, so it retains the old remote ref and shows a warning. Update that
+variable to the new name first; only then is it safe to delete the old ref.
+This applies to every custom-to-custom rename, not just the first handoff. The
+old ref is an intentional handoff record, not a failed cleanup; the Actions
+variable must be updated before an administrator removes it.
 
-Kanmer renames the branch in place, so the board keeps its whole history and the
-worktree path stays the same. It pushes the new name first and only then deletes
-the old one from the remote, so there is no window where the board exists
-nowhere. Projects that were closed when you renamed are migrated the next time
-you open them.
+The default `kanmer-board` branch is protected by the repository's merge gate.
+Kanmer cannot edit GitHub protection, so it refuses to rename away from that
+branch automatically. An authorized repository administrator must first push the
+destination, set the repository Actions variable `KANMER_BOARD_BRANCH` to that
+same destination, retarget protection and required checks to it, confirm the old
+rule is removed, and rename every local `.worktrees/kanmer` worktree. The bundled
+`.github/workflows/pr.yml` uses `kanmer-board` only when that variable is absent,
+so update the variable before removing the old branch or protection rule. Then
+change the Kanmer branch setting. Until that handoff is complete, the existing
+board branch and setting are left untouched.
+
+Projects that were closed when you renamed are migrated the next time you open
+them.
 
 ## Picking the board up elsewhere
 

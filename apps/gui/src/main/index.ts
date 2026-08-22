@@ -91,6 +91,7 @@ import {
   connectAgent,
   disconnectAgent,
   drainLegacyCodexRegistrations,
+  reconcileProviderRegistration,
   scanLegacyCodexRegistrations,
   skillsStatus,
   updateSkills,
@@ -727,6 +728,30 @@ async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number)
       }
     }
   }
+  if (requestedBranch !== current.kanmerBranch && !protectedOpenBoard && !blockedBranchRefresh) {
+    const registrationProviders: ConnectTarget[] = ["codex", "claude", "opencode"];
+    for (const [projectId, ctx] of contexts) {
+      if (!ctx.syncStatus.available || !ctx.syncStatus.boardRoot || ctx.syncStatus.branch !== settings.kanmerBranch) continue;
+      const failures: string[] = [];
+      for (const provider of registrationProviders) {
+        const result = await reconcileProviderRegistration(
+          provider,
+          ctx.sourceRoot,
+          ctx.syncStatus.boardRoot,
+          settings.kanmerBranch,
+        );
+        if (!result.ok) failures.push(`${provider}: ${result.output}`);
+      }
+      if (failures.length > 0) {
+        ctx.syncStatus = {
+          ...ctx.syncStatus,
+          error: [...new Set([ctx.syncStatus.error, `Provider registration reconciliation failed — ${failures.join("; ")}`].filter(Boolean))].join(" "),
+          paused: true,
+        };
+      }
+      mainWindow?.webContents.send(CH.gitStatus, { projectId, ...(await gitStatusForRenderer(ctx)) });
+    }
+  }
   for (const [projectId, ctx] of contexts) armSyncTimer(projectId, ctx, settings.gitSyncMinutes);
   return settings;
 }
@@ -804,7 +829,7 @@ async function syncProject(projectId: string, automatic = false): Promise<Kanmer
 }
 
 /** Test seam for the production sync caller; not part of the renderer API. */
-export const __kanmerTest = { contexts, syncProject };
+export const __kanmerTest = { contexts, syncProject, applyGitPreferences };
 
 // The card context menu is drawn by the renderer now (FRD-019 R6). A native
 // Menu cannot read the app's CSS variables, so it was always slightly wrong in

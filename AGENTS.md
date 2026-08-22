@@ -73,6 +73,12 @@ variable, but Actions variables are not inherited by local processes.
 24. **A PR that changes commands or conventions updates AGENTS.md in the same PR.**
 <!-- kanmer:instructions:end -->
 
+Native Grok and Antigravity plugin descriptors must expose `KANMER_BOARD_BRANCH`
+to the bundled MCP server. GUI Connect installs a disposable branch-bound
+descriptor copy, leaving the shipped plugin bundle and unrelated project state
+unchanged; source descriptors retain the `${KANMER_BOARD_BRANCH:-kanmer-board}`
+default contract.
+
 # AGENTS.md — Contributor & AI-agent guide to Kanmer
 
 This file is the single source of truth for **how to work on Kanmer**. It's written for an AI coding agent (codex, Claude Code, etc.) or a new human contributor who needs to be productive without reading every file first. `CLAUDE.md` points here.

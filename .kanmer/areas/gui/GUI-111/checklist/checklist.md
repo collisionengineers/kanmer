@@ -17,5 +17,6 @@
 - [x] Write the post-implementation report with scope, residual archive race, visual INCONCLUSIVE boundary, and exact rails.
 - [x] Record GUI-111 commit and stacked PR traceability.
 - [x] Push/open the stacked PR targeting gui-109-add-to-group.
-- [ ] Re-read get_doc_gates and move only Implementing → Review.
+- [x] Re-read get_doc_gates and move only Implementing → Review.
+- [x] Address PR #164 P2 wheel-dismissal finding with a focused inside/outside wheel regression; fresh head is `51c4a346d5e6e7cbca3b1e76ab9c25012edb56c5`.
 - [ ] Stop for GUI-099 independent review; do not merge, verify, release, or clean up.

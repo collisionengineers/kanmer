@@ -13,7 +13,7 @@ Implemented the six bounded GUI-109 review remediations on a dedicated stacked l
 - F-005: `docs/manual/groups.md` and the generated in-app manual now state that creation remains agent-only while GroupView supports archive/unarchive and memberships are retained.
 - F-006: failed card actions preserve their error through the following refresh; successful actions retain the existing clear-on-success behavior.
 
-Changed files are limited to `apps/gui/src/renderer/src/App.tsx`, `apps/gui/src/renderer/src/components/ContextMenu.tsx`, `apps/gui/src/renderer/src/lib/groupMenu.ts`, its tests, context-menu CSS, and the groups manual/source-generated chapter. No core, MCP, IPC, provider, dispatch, or storage behavior changed.
+Changed files are limited to `apps/gui/src/renderer/src/App.tsx`, `apps/gui/src/renderer/src/components/ContextMenu.tsx`, `apps/gui/src/renderer/src/components/ContextMenu.test.tsx`, `apps/gui/src/renderer/src/lib/groupMenu.ts`, its tests, context-menu CSS, and the groups manual/source-generated chapter. No core, MCP, IPC, provider, dispatch, or storage behavior changed.
 
 ## Verification evidence
 
@@ -34,5 +34,19 @@ The first GUI-only typecheck was intentionally preserved as an initial environme
 - Ticket: GUI-111, branch `gui-111-review-remediation`, worktree `.worktrees/gui-111`.
 - Base: GUI-109 PR #162 head `c259af171a72fa83a9131f4f53a79d0cfd0f05b5`.
 - Commit: `f8631395c8d078165bc353cf694ab3ea0f08a30f`.
+- Follow-up commit: `51c4a3460f6bb3dfb866c541e1a7d9920394bb34`.
 - PR: #164, base `gui-109-add-to-group`, open for independent review.
 - Independent review owner: GUI-099; author will not self-review, merge, verify, release, or clean up.
+
+## Follow-up P2 review thread — wheel dismissal
+
+PR #164 review identified that the `wheel` listener passed `onClose` directly, bypassing the existing `.ctx-menu` target guard. This was valid: scrolling inside the newly bounded menu could close it. The follow-up commit changes only that listener to use the guarded `close` callback and adds `ContextMenu.test.tsx`.
+
+Follow-up evidence:
+
+- `npm run test -w @kanmer/gui -- --run src/renderer/src/components/ContextMenu.test.tsx` — initial attempt failed because the new DOM test omitted the jsdom directive (`ReferenceError: document is not defined`); the directive was added and the rerun passed 1/1.
+- `npm run test -w @kanmer/gui -- --run src/renderer/src/components/ContextMenu.test.tsx src/renderer/src/lib/groupMenu.test.ts` — exit 0, 8/8 passed.
+- `npm run typecheck -w @kanmer/gui` — exit 0.
+- `git diff --check` — exit 0.
+
+The fresh head is pushed to PR #164, which remains open and stacked on `gui-109-add-to-group`; no merge was performed.

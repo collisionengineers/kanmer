@@ -52,14 +52,20 @@ visible, and a silently failing one is not.
 
 ## Renaming the board branch
 
-Do it from **Settings → Git**, not from the command line. Type the new name and
-press **Rename branch**.
+For a non-protected board branch, do it from **Settings → Git**, not from the
+command line. Type the new name and press **Rename branch**. Kanmer renames the
+branch in place, so the board keeps its whole history and the worktree path stays
+the same. It pushes the new name first and only then deletes the old one from the
+remote, so there is no window where the board exists nowhere. Projects that were
+closed when you renamed are migrated the next time you open them.
 
-Kanmer renames the branch in place, so the board keeps its whole history and the
-worktree path stays the same. It pushes the new name first and only then deletes
-the old one from the remote, so there is no window where the board exists
-nowhere. Projects that were closed when you renamed are migrated the next time
-you open them.
+The default `kanmer-board` branch is protected by the repository's merge gate.
+Kanmer cannot edit GitHub protection, so it refuses to rename away from that
+branch automatically. An authorized repository administrator must first push the
+destination, retarget protection and required checks to it, confirm the old rule
+is removed, and rename every local `.worktrees/kanmer` worktree. Then change the
+Kanmer branch setting. Until that handoff is complete, the existing board branch
+and setting are left untouched.
 
 ## Picking the board up elsewhere
 

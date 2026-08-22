@@ -87,20 +87,22 @@ const remoteHeads = async (): Promise<string[]> =>
 
 describe("renameBoardBranch", () => {
   realGitTest("keeps the history, the path and the remote consistent", async () => {
-    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    // A custom source branch represents the state after an administrator has
+    // already retargeted protection away from the protected default.
+    const created = await ensureBoardWorktree(repo, "team-board");
     expect(created.available).toBe(true);
     const boardRoot = created.boardRoot!;
     const before = await git(boardRoot, "rev-parse", "HEAD");
-    expect(await remoteHeads()).toContain("kanmer-board");
+    expect(await remoteHeads()).toContain("team-board");
 
-    const renamed = await renameBoardBranch(boardRoot, "team-board");
-    expect(renamed).toEqual({ ok: true, from: "kanmer-board", error: null });
+    const renamed = await renameBoardBranch(boardRoot, "renamed-board");
+    expect(renamed).toEqual({ ok: true, from: "team-board", error: null });
 
     // The commits moved with the name — this is the actual bug: a fresh branch
     // under the new name would have left `before` unreachable from it.
     expect(await git(boardRoot, "rev-parse", "HEAD")).toBe(before);
-    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("team-board");
-    expect(await git(origin, "rev-parse", "team-board")).toBe(before);
+    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("renamed-board");
+    expect(await git(origin, "rev-parse", "renamed-board")).toBe(before);
 
     // Path unchanged, so an already-registered MCP server still resolves.
     // Hosted Windows Git may spell the same temp root with an 8.3 alias.
@@ -108,7 +110,7 @@ describe("renameBoardBranch", () => {
     expect(existsSync(join(boardRoot, ".kanmer", "version.json"))).toBe(true);
 
     // Old remote branch is gone, and only after the new one was pushed.
-    expect(await remoteHeads()).not.toContain("kanmer-board");
+    expect(await remoteHeads()).not.toContain("team-board");
   });
 
   realGitTest("is a no-op when the name already matches", async () => {
@@ -118,25 +120,43 @@ describe("renameBoardBranch", () => {
     expect(await remoteHeads()).toContain("kanmer-board");
   });
 
-  realGitTest("refuses a name that is already taken instead of clobbering it", async () => {
+  realGitTest("refuses to move the protected default before any Git mutation", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const boardRoot = created.boardRoot!;
+    const beforeHead = await git(boardRoot, "rev-parse", "HEAD");
+    const beforeRefs = await git(repo, "show-ref");
+    const beforeRemote = await remoteHeads();
+
+    const result = await renameBoardBranch(boardRoot, "team-board");
+
+    expect(result.ok).toBe(false);
+    expect(result.from).toBe("kanmer-board");
+    expect(result.error).toMatch(/Cannot rename protected board branch kanmer-board automatically/);
+    expect(await git(boardRoot, "rev-parse", "HEAD")).toBe(beforeHead);
+    expect(await git(repo, "show-ref")).toBe(beforeRefs);
+    expect(await remoteHeads()).toEqual(beforeRemote);
+    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("kanmer-board");
+  });
+
+  realGitTest("refuses a name that is already taken instead of clobbering it", async () => {
+    const created = await ensureBoardWorktree(repo, "team-board");
     const boardRoot = created.boardRoot!;
     await git(repo, "branch", "taken");
 
     const result = await renameBoardBranch(boardRoot, "taken");
     expect(result.ok).toBe(false);
-    expect(result.from).toBe("kanmer-board");
+    expect(result.from).toBe("team-board");
     // Still on the old branch: a refused rename must not strand the board.
-    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("kanmer-board");
+    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("team-board");
   });
 
   realGitTest("renames locally even with no remote to push to", async () => {
-    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const created = await ensureBoardWorktree(repo, "team-board");
     const boardRoot = created.boardRoot!;
     await git(repo, "remote", "remove", "origin");
 
     const result = await renameBoardBranch(boardRoot, "solo-board");
-    expect(result).toEqual({ ok: true, from: "kanmer-board", error: null });
+    expect(result).toEqual({ ok: true, from: "team-board", error: null });
     expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("solo-board");
   });
 });
@@ -194,31 +214,43 @@ describe("inspectBoardWorktree", () => {
 
 describe("ensureBoardWorktree reconciliation", () => {
   realGitTest("moves a worktree left on the old branch onto the configured one", async () => {
-    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const created = await ensureBoardWorktree(repo, "team-board");
     const boardRoot = created.boardRoot!;
     const before = await git(boardRoot, "rev-parse", "HEAD");
 
     // The project was closed when the branch was renamed in Settings, so the
     // worktree never heard about it. Next open asks for the new name.
-    const reopened = await ensureBoardWorktree(repo, "team-board");
+    const reopened = await ensureBoardWorktree(repo, "renamed-board");
 
     expect(reopened.available).toBe(true);
     expect(reopened.error).toBeNull();
     expect(pathIdentity(reopened.boardRoot!)).toBe(pathIdentity(boardRoot));
-    expect(reopened.branch).toBe("team-board");
-    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("team-board");
+    expect(reopened.branch).toBe("renamed-board");
+    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("renamed-board");
     expect(await git(boardRoot, "rev-parse", "HEAD")).toBe(before);
   });
 
-  realGitTest("reports the branch the worktree is really on when reconciling fails", async () => {
+  realGitTest("refuses closed-project reconciliation from the protected default", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const reopened = await ensureBoardWorktree(repo, "team-board");
+
+    expect(reopened.available).toBe(false);
+    expect(reopened.error).toMatch(/Cannot rename protected board branch kanmer-board automatically/);
+    expect(reopened.boardRoot).toBe(resolve(created.boardRoot!));
+    expect(await git(created.boardRoot!, "symbolic-ref", "--short", "HEAD")).toBe("kanmer-board");
+    expect(await remoteHeads()).toContain("kanmer-board");
+    expect(await remoteHeads()).not.toContain("team-board");
+  });
+
+  realGitTest("reports the branch the worktree is really on when reconciling fails", async () => {
+    const created = await ensureBoardWorktree(repo, "team-board");
     await git(repo, "branch", "taken");
 
     const reopened = await ensureBoardWorktree(repo, "taken");
 
     expect(reopened.available).toBe(false);
     expect(reopened.error).toBeTruthy();
-    expect(await git(created.boardRoot!, "symbolic-ref", "--short", "HEAD")).toBe("kanmer-board");
+    expect(await git(created.boardRoot!, "symbolic-ref", "--short", "HEAD")).toBe("team-board");
   });
 
   realGitTest("is idempotent once the worktree is on the branch", async () => {

@@ -48,8 +48,10 @@ Only useful when the project is a Git repository; Kanmer says so plainly when it
 is not, rather than showing controls that cannot do anything.
 
 - **Kanmer branch** — the name of the branch your board lives on, with a
-  **Rename branch** button. Renaming happens in place and keeps the board's
-  history.
+  **Rename branch** button. Non-protected branch renames happen in place and
+  keep the board's history. The protected default `kanmer-board` requires an
+  administrator to retarget GitHub protection and required checks before the
+  setting can change; Kanmer refuses that automatic rename.
 - **Automatic sync** — off until you turn it on, then every N **minutes**.
 - **Sync now** — sync immediately. It becomes **Retry** if a sync has paused on
   a conflict.

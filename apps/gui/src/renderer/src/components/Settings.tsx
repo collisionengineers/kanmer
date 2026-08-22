@@ -723,7 +723,9 @@ function GitTab(): JSX.Element {
     */}
     <label className="field"><span>Kanmer branch</span><input value={branch} onChange={(e) => setBranch(e.target.value)} /></label>
     {pending && <p className="hint">
-      Renames <code>{saved}</code> to <code>{pending}</code> in place, keeping the board&rsquo;s history and worktree path. The new branch is pushed first, then <code>{saved}</code> is deleted from <code>origin</code>.
+      {saved === "kanmer-board"
+        ? <>The default <code>kanmer-board</code> branch is protected by the repository&rsquo;s merge gate. Before changing it, an authorized administrator must push <code>{pending}</code>, retarget branch protection and required checks, remove the old rule, and rename each local board worktree. Kanmer will refuse this automatic rename until that handoff is complete.</>
+        : <>Renames <code>{saved}</code> to <code>{pending}</code> in place, keeping the board&rsquo;s history and worktree path. The new branch is pushed first, then <code>{saved}</code> is deleted from <code>origin</code>.</>}
     </p>}
     <button className="ghost sm" disabled={!pending || renaming} onClick={() => {
       if (!pending) return;

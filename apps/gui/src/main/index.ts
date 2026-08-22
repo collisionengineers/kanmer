@@ -74,6 +74,7 @@ import {
 import {
   ensureBoardWorktree,
   inspectBoardWorktree,
+  PROTECTED_BOARD_BRANCH,
   renameBoardBranch,
   syncBoard,
   type KanmerGitStatus,
@@ -638,7 +639,9 @@ async function closeProject(projectId: string): Promise<void> {
 }
 
 /**
- * Persist the Git board preferences, then apply them to projects already open.
+ * Apply a changed Git board branch to projects already open, then persist the
+ * preference. Sync interval changes are persisted even when a protected branch
+ * handoff refuses the branch migration.
  *
  * Persisting alone was not enough for either field, and both gaps were silent.
  *
@@ -652,18 +655,39 @@ async function closeProject(projectId: string): Promise<void> {
  * until the project was closed and reopened.
  */
 async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number): Promise<AppSettings> {
-  const settings = await setKanmerGitPreferences(kanmerBranch, gitSyncMinutes);
-  for (const [projectId, ctx] of contexts) {
-    const { boardRoot, branch } = ctx.syncStatus;
-    if (ctx.syncStatus.available && boardRoot && branch !== settings.kanmerBranch) {
-      const renamed = await renameBoardBranch(boardRoot, settings.kanmerBranch);
-      // A failed rename leaves the worktree on its old branch, so keep
-      // reporting that one — the board still works, it just did not move.
-      ctx.syncStatus = renamed.ok
-        ? { ...ctx.syncStatus, branch: settings.kanmerBranch, error: renamed.error, paused: false }
-        : { ...ctx.syncStatus, error: renamed.error, paused: true };
+  const current = readSettings();
+  const requestedBranch = kanmerBranch.trim() || PROTECTED_BOARD_BRANCH;
+  const branchChanged = requestedBranch !== current.kanmerBranch;
+  const protectedOpenBoard = branchChanged && current.kanmerBranch === PROTECTED_BOARD_BRANCH &&
+    [...contexts.values()].some((ctx) => ctx.syncStatus.available && ctx.syncStatus.boardRoot && ctx.syncStatus.branch === PROTECTED_BOARD_BRANCH);
+
+  // The protected-default refusal is deliberately handled before any context
+  // is renamed. A global setting must not leave some open boards migrated and
+  // others on the protected branch when the operator handoff is still needed.
+  const targetBranch = protectedOpenBoard ? current.kanmerBranch : requestedBranch;
+  const settings = await setKanmerGitPreferences(targetBranch, gitSyncMinutes);
+  if (protectedOpenBoard) {
+    for (const [projectId, ctx] of contexts) {
+      if (!ctx.syncStatus.available || !ctx.syncStatus.boardRoot || ctx.syncStatus.branch !== PROTECTED_BOARD_BRANCH) continue;
+      const refused = await renameBoardBranch(ctx.syncStatus.boardRoot, requestedBranch);
+      ctx.syncStatus = { ...ctx.syncStatus, error: refused.error, paused: true };
       mainWindow?.webContents.send(CH.gitStatus, { projectId, ...(await gitStatusForRenderer(ctx)) });
     }
+  } else {
+    for (const [projectId, ctx] of contexts) {
+      const { boardRoot, branch } = ctx.syncStatus;
+      if (ctx.syncStatus.available && boardRoot && branch !== settings.kanmerBranch) {
+        const renamed = await renameBoardBranch(boardRoot, settings.kanmerBranch);
+        // A failed rename leaves the worktree on its old branch, so keep
+        // reporting that one — the board still works, it just did not move.
+        ctx.syncStatus = renamed.ok
+          ? { ...ctx.syncStatus, branch: settings.kanmerBranch, error: renamed.error, paused: false }
+          : { ...ctx.syncStatus, error: renamed.error, paused: true };
+        mainWindow?.webContents.send(CH.gitStatus, { projectId, ...(await gitStatusForRenderer(ctx)) });
+      }
+    }
+  }
+  for (const [projectId, ctx] of contexts) {
     if (ctx.syncTimer) clearInterval(ctx.syncTimer);
     ctx.syncTimer = undefined;
     if (ctx.syncStatus.available && settings.gitSyncMinutes > 0) {

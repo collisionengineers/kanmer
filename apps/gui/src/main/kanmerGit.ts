@@ -6,6 +6,13 @@ import { promisify } from "node:util";
 
 const execFile = promisify(execFileCallback);
 
+/**
+ * The repository's merge gate protects this literal branch name.  Kanmer has
+ * no authenticated GitHub protection API, so moving away from it must be an
+ * explicit operator migration rather than an automatic Settings operation.
+ */
+export const PROTECTED_BOARD_BRANCH = "kanmer-board";
+
 export interface KanmerGitStatus {
   available: boolean;
   boardRoot: string | null;
@@ -51,9 +58,9 @@ export interface BoardWorktreeInspection {
  */
 export async function inspectBoardWorktree(
   boardRoot: string,
-  expectedBranch = process.env.KANMER_BOARD_BRANCH?.trim() || "kanmer-board",
+  expectedBranch = process.env.KANMER_BOARD_BRANCH?.trim() || PROTECTED_BOARD_BRANCH,
 ): Promise<BoardWorktreeInspection> {
-  const expected = expectedBranch.trim() || "kanmer-board";
+  const expected = expectedBranch.trim() || PROTECTED_BOARD_BRANCH;
   const actualBranch = await currentBranch(boardRoot);
   return {
     path: resolve(boardRoot),
@@ -105,6 +112,13 @@ export async function renameBoardBranch(boardRoot: string, to: string): Promise<
     return { ok: false, from: null, error: `${boardRoot} is not on a branch; rename the board branch by hand.` };
   }
   if (from === to) return { ok: true, from, error: null };
+  if (from === PROTECTED_BOARD_BRANCH) {
+    return {
+      ok: false,
+      from,
+      error: `Cannot rename protected board branch ${PROTECTED_BOARD_BRANCH} automatically. An authorized repository administrator must push ${to}, retarget branch protection and required checks to ${to}, confirm the old rule is removed, and rename each local board worktree before changing Kanmer's branch setting.`,
+    };
+  }
   try {
     await validBranch(boardRoot, to);
     await git(boardRoot, ["branch", "-m", to]);

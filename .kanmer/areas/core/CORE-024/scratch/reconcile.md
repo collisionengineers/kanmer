@@ -1,0 +1,1 @@
+Done-incomplete reconciliation 2026-08-22: four required merged-main/protection items remain unchecked. The proof preserves hosted kanmer-gate PASS but hosted verify was red at plugin parity and the direct-push/non-trigger observation remains INCONCLUSIVE. Returning to Verifying; no item is ticked without evidence.

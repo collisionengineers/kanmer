@@ -1,0 +1,1 @@
+Done-incomplete reconciliation 2026-08-22: the protected Cloudflare Worker/named-tunnel run remains unavailable; the checklist explicitly retains live boxes unticked and proof says INCONCLUSIVE. Returning to Verifying; no external pass is inferred.

@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Expand kanmer/gate — stage, dependency, review-SHA and commit-reachability
   checks (phase 2)
-status: review
+status: done
 area: core
 order: 20
 assignee: core-025-gate
@@ -12,9 +12,8 @@ profile: fix
 stageEntered:
   preparing: '2026-08-20T13:27:40.811Z'
   review: '2026-08-22T07:09:20.666Z'
-taken_at: '2026-08-22T06:47:30.209Z'
-branch: core-025-phase-2-gate
-worktree: .worktrees/core-025
+  verifying: '2026-08-22T07:51:14.827Z'
+  done: '2026-08-22T07:51:19.224Z'
 labels: []
 groups:
   - EPIC-009
@@ -28,14 +27,15 @@ refs:
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
   - docs/functional/frd/FRD-009-interrogative-workflow.md
 commits:
-  - d338349ea44397887f74ef714563f6bbc880ea79
-  - 65e364ad927ef151ba0cea59b123d20feaf095b4
-  - 42f0ace65f8aaa7d4e4f95f516df823c0f14da7a
+  - d338349e
+  - 65e364ad
+  - 42f0ace6
+  - c8ea0b77
 prs:
   - '159'
 archived: false
 created: '2026-08-16T18:26:15.191Z'
-updated: '2026-08-22T07:45:04.662Z'
+updated: '2026-08-22T07:51:32.577Z'
 ---
 
 ## What
@@ -56,3 +56,5 @@ Phase 1 only proves linkage. Pegasus merged work whose ticket never reached revi
 - [ ] Warnings are annotations; failures exit 1; the JSON verdict lists every check with its status
 
 ## Outcome
+
+PR #159 (https://github.com/collisionengineers/kanmer/pull/159) merged to origin/main as c8ea0b778895b0a76d9e32152a1f58c7b3b3d77b. Phase-two kanmer-gate checks now fail closed for wrong stage, live and dangling blockers, validate complete review attestations, and warn on stale/unreachable records while preserving the phase-one exit contract. Merged-main proof records the final hosted and detached rails; the direct board-push non-trigger observation remains INCONCLUSIVE because the workflow is pull_request-only.

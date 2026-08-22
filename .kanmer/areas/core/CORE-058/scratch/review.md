@@ -149,3 +149,42 @@ The cumulative tree includes CORE-062, CORE-063, CORE-064, and CORE-065 merges. 
 ## Decision
 
 NEEDS-CHANGES. Leave PR #180 open and CORE-058 in Review; do not merge or move it. CORE-066 and CORE-067 must be independently implemented/reviewed before the cumulative parent can pass.
+
+# Fresh cumulative independent review — NEEDS-CHANGES
+
+- Reviewer: codex-mcp-client; independent review (I did not author CORE-058 or its parent implementation; CORE-062–067 were reviewed as child merges, and this is a fresh cumulative review).
+- Exact PR: #180 https://github.com/collisionengineers/kanmer/pull/180
+- Exact head: `f0de2628b15028b59679f332c09a204f414437f8`
+- Base: `core-044-source-fetch-remediation` at `3c0706627cc73038d91a624e5d494d0148dce4c4`
+- PR state at review: OPEN, CLEAN, MERGEABLE; no hosted checks attached.
+- Governing docs checked: `docs/functional/frd/FRD-027-project-declared-sources.md`, `docs/architecture/adr/ADR-0020-project-declared-source-trust.md`; plan/report/open-questions were read and the report's scope matches the five changed files.
+
+## Changes inspected
+
+The cumulative diff changes `apps/gui/src/main/kanmerGit.ts`, `apps/gui/src/main/kanmerGit.test.ts`, `apps/gui/src/main/index.ts`, `apps/gui/src/renderer/src/components/Settings.tsx`, and the generated `plugins/kanmer/mcp/kanmer-mcp.cjs`. It centralizes board-worktree ignore entries, reconciles them on attached/created/renamed paths, preserves a known boardRoot on reconciliation failures, adds retry plumbing and symlink refusal, adds real-Git regressions, and carries the generated plugin artifact. No unrelated provider/source-fetch behavior was observed.
+
+## Evidence
+
+- Child cumulative evidence carried into this exact tree: focused GUI Git 19/19 (CORE-064), 20/20 (CORE-065), 22/22 (CORE-066), and 23/23 (CORE-067); GUI typecheck, core build, scripts 88/88 after the documented prerequisite core build, manual/docs/diff rails all passed.
+- Normal-checkout plugin parity evidence: build:core, build:server, build-plugin, plugin:check passed; fresh/committed artifact SHA-256 `6057648D81FB4CCCAB629A0EE1C05C8716A564400302238857E785C70C485100`; isolated handshake listed 37 tools.
+- The linked-worktree plugin:check refusal and live packaged/host evidence remain INCONCLUSIVE as reported; no hosted checks were attached to PR #180.
+
+## Review comments and dispositions
+
+- 3836151012 — fixed in cumulative PR/CORE-058.
+- 3836151015 — non-blocking accepted/deferred: retroactive untracking/history cleanup remains explicitly parked in CORE-058 open-questions/report; no merge claim is made for it.
+- 3836151017 — fixed by CORE-063 merge `5f63636d64fa92b4dc682d910255e0552d4da35e`.
+- 3836232925 — fixed by CORE-064 merge `17cdb6684f204e36cb64668236a4bab0de7e55ac`.
+- 3836232929 — fixed by CORE-065 merge `b8d8a191161532e895fa399b6c95bf812dfdb2d0`.
+- 3836285519 — fixed by CORE-066 merge `d3eb3728d6dca7cdeebd72c251f8ee3e1c47934f`.
+- 3836285521 — fixed by CORE-067 merge `f0de2628b15028b59679f332c09a204f414437f8`.
+- 3836307985 — blocking P2, filed as [[CORE-068]]: retry repair can restore availability without re-arming the already-enabled automatic-sync timer.
+- 3836307986 — blocking P2, filed as [[CORE-069]]: retry uses stale `syncStatus.branch` after a saved branch change.
+- 3836307987 — blocking P2, filed as [[CORE-070]]: an existing later negation can override the managed cache exclusion.
+- 3836307988 — blocking P2, filed as [[CORE-071]]: read-then-write ignore reconciliation can overwrite a concurrent edit.
+- 3836323268 — blocking P2, filed as [[CORE-072]]: a failed orphan migration retry repairs ignore state but does not resume source-board cleanup.
+- 3836323269 — blocking P2, filed as [[CORE-073]]: retry can replace the open context's boardRoot with another attached worktree.
+
+## Verdict
+
+NEEDS-CHANGES. The six current blocking findings are recorded as CORE-068 through CORE-073, each linked to and blocking CORE-058. Do not merge PR #180 or move CORE-058 to Verifying until those findings are fixed or explicitly dispositioned by independent review.

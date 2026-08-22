@@ -150,3 +150,6 @@
 
 
 2026-08-22T10:53Z — CORE-043 implementation handoff: PR #168 head 1a06ead17cca8f7a6c715db3a6f6fed6b3de5da6, focused GUI Git 14/14 plus core/scripts/manual/docs/diff rails PASS, baseline full GUI/typecheck/build provider-dispatch failures preserved, live GitHub protection retargeting INCONCLUSIVE. Ticket moved Implementing→Review; independent review required, no merge or cleanup.
+
+
+2026-08-22T10:55Z — CORE-046 independent review by gui099 recorded NEEDS-CHANGES: F-009 PASS, but F-003 reversed-order stale-lock ownership race remains. CORE-047 created and moved to Preparing as the linked blocker, stacked on CORE-046 54651a3c; CORE-046 and CORE-045 remain blocked. Author handoff pending; no merge, move, or cleanup beyond the required board transition.

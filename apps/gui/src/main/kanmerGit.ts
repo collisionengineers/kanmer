@@ -181,7 +181,15 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
       // push the board somewhere nobody was looking.
       const renamed = await renameBoardBranch(boardRoot, branch);
       if (!renamed.ok) return { ...empty(branch, renamed.error), boardRoot: resolve(boardRoot) };
-      await ensureBoardWorktreeIgnore(boardRoot);
+      try {
+        await ensureBoardWorktreeIgnore(boardRoot);
+      } catch (error) {
+        // The rename already put the canonical worktree on the requested
+        // branch. Keep its location visible while refusing to use it until
+        // the derived ignore state is repaired; otherwise callers can fall
+        // back to the source checkout and mutate the wrong board.
+        return { ...empty(branch, msg(error)), boardRoot: resolve(boardRoot), paused: true };
+      }
       await ensureIgnore(join(repoRoot, ".gitignore"), [".kanmer/", ".worktrees/"]);
       return { available: true, boardRoot: resolve(boardRoot), branch, lastSync: null, error: renamed.error, paused: false };
     }

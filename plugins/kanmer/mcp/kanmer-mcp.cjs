@@ -41884,7 +41884,7 @@ var expectedProjectField = external_exports.string().optional().describe("Option
 function withProject(shape) {
   return { ...shape, expected_project: expectedProjectField };
 }
-var REMOTE_HTTP_EXCLUDED_TOOLS = /* @__PURE__ */ new Set();
+var REMOTE_HTTP_EXCLUDED_TOOLS = /* @__PURE__ */ new Set(["dispatch_task", "list_dispatches", "cancel_dispatch"]);
 function remoteHttpToolNames() {
   const server = createKanmerMcpServer("remote-http-v1");
   const registered = server._registeredTools ?? {};

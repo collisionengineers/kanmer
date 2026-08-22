@@ -842,3 +842,6 @@ Last handoff: 2026-08-22T23:24:00Z — GUI-118 is Review-ready on gui-118-provid
 
 
 2026-08-22T22:33Z: CORE-090 explicit blocks edge added to CORE-026; review remains pending on PR #220.
+
+
+Last handoff: 2026-08-22T22:35Z — Independent GUI-118 review at exact head e09009b2 is NEEDS-CHANGES. F-001: connectProject emits every user-scoped native status update with the initiating projectId instead of each loop id, so other open project views discard their update. Created blocking GUI-120 in the GUI area with deterministic multi-project regression scope. PR #219 remains open; no merge or stage move. Independent focused rerun preserved exit 1 from linked-worktree @kanmer/core resolution despite worktree core rebuild; author-reported rails remain recorded but not independently reproducible here.

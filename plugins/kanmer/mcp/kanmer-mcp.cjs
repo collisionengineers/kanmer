@@ -7182,9 +7182,9 @@ var require_section_matter = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/common.js
+// ../../node_modules/js-yaml/lib/js-yaml/common.js
 var require_common = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/common.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/common.js"(exports2, module2) {
     "use strict";
     function isNothing(subject) {
       return typeof subject === "undefined" || subject === null;
@@ -7227,9 +7227,9 @@ var require_common = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/exception.js
+// ../../node_modules/js-yaml/lib/js-yaml/exception.js
 var require_exception = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/exception.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/exception.js"(exports2, module2) {
     "use strict";
     function YAMLException(reason, mark) {
       Error.call(this);
@@ -7257,9 +7257,9 @@ var require_exception = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/mark.js
+// ../../node_modules/js-yaml/lib/js-yaml/mark.js
 var require_mark = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/mark.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/mark.js"(exports2, module2) {
     "use strict";
     var common = require_common();
     function Mark(name, buffer, position, line, column) {
@@ -7315,9 +7315,9 @@ var require_mark = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type.js
+// ../../node_modules/js-yaml/lib/js-yaml/type.js
 var require_type = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type.js"(exports2, module2) {
     "use strict";
     var YAMLException = require_exception();
     var TYPE_CONSTRUCTOR_OPTIONS = [
@@ -7374,9 +7374,9 @@ var require_type = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema.js
+// ../../node_modules/js-yaml/lib/js-yaml/schema.js
 var require_schema = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/schema.js"(exports2, module2) {
     "use strict";
     var common = require_common();
     var YAMLException = require_exception();
@@ -7462,9 +7462,9 @@ var require_schema = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/str.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/str.js
 var require_str = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/str.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/str.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     module2.exports = new Type("tag:yaml.org,2002:str", {
@@ -7476,9 +7476,9 @@ var require_str = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/seq.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/seq.js
 var require_seq = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/seq.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/seq.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     module2.exports = new Type("tag:yaml.org,2002:seq", {
@@ -7490,9 +7490,9 @@ var require_seq = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/map.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/map.js
 var require_map = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/map.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/map.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     module2.exports = new Type("tag:yaml.org,2002:map", {
@@ -7504,9 +7504,9 @@ var require_map = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/failsafe.js
+// ../../node_modules/js-yaml/lib/js-yaml/schema/failsafe.js
 var require_failsafe = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/failsafe.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/schema/failsafe.js"(exports2, module2) {
     "use strict";
     var Schema = require_schema();
     module2.exports = new Schema({
@@ -7519,9 +7519,9 @@ var require_failsafe = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/null.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/null.js
 var require_null = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/null.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/null.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     function resolveYamlNull(data) {
@@ -7559,9 +7559,9 @@ var require_null = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/bool.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/bool.js
 var require_bool = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/bool.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/bool.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     function resolveYamlBoolean(data) {
@@ -7596,9 +7596,9 @@ var require_bool = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/int.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/int.js
 var require_int = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/int.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/int.js"(exports2, module2) {
     "use strict";
     var common = require_common();
     var Type = require_type();
@@ -7729,9 +7729,9 @@ var require_int = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/float.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/float.js
 var require_float = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/float.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/float.js"(exports2, module2) {
     "use strict";
     var common = require_common();
     var Type = require_type();
@@ -7824,9 +7824,9 @@ var require_float = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/json.js
+// ../../node_modules/js-yaml/lib/js-yaml/schema/json.js
 var require_json = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/json.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/schema/json.js"(exports2, module2) {
     "use strict";
     var Schema = require_schema();
     module2.exports = new Schema({
@@ -7843,9 +7843,9 @@ var require_json = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/core.js
+// ../../node_modules/js-yaml/lib/js-yaml/schema/core.js
 var require_core3 = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/core.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/schema/core.js"(exports2, module2) {
     "use strict";
     var Schema = require_schema();
     module2.exports = new Schema({
@@ -7856,9 +7856,9 @@ var require_core3 = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/timestamp.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/timestamp.js
 var require_timestamp = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/timestamp.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/timestamp.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     var YAML_DATE_REGEXP = new RegExp(
@@ -7917,9 +7917,9 @@ var require_timestamp = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/merge.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/merge.js
 var require_merge = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/merge.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/merge.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     function resolveYamlMerge(data) {
@@ -7932,9 +7932,9 @@ var require_merge = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/binary.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/binary.js
 var require_binary = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/binary.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/binary.js"(exports2, module2) {
     "use strict";
     var NodeBuffer;
     try {
@@ -8025,9 +8025,9 @@ var require_binary = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/omap.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/omap.js
 var require_omap = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/omap.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/omap.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     var _hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -8062,9 +8062,9 @@ var require_omap = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/pairs.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/pairs.js
 var require_pairs = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/pairs.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/pairs.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     var _toString = Object.prototype.toString;
@@ -8100,9 +8100,9 @@ var require_pairs = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/set.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/set.js
 var require_set = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/set.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/set.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     var _hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -8127,9 +8127,9 @@ var require_set = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/default_safe.js
+// ../../node_modules/js-yaml/lib/js-yaml/schema/default_safe.js
 var require_default_safe = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/default_safe.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/schema/default_safe.js"(exports2, module2) {
     "use strict";
     var Schema = require_schema();
     module2.exports = new Schema({
@@ -8150,9 +8150,9 @@ var require_default_safe = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/undefined.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/js/undefined.js
 var require_undefined = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/undefined.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/js/undefined.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     function resolveJavascriptUndefined() {
@@ -8177,9 +8177,9 @@ var require_undefined = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/regexp.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/js/regexp.js
 var require_regexp = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/regexp.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/js/regexp.js"(exports2, module2) {
     "use strict";
     var Type = require_type();
     function resolveJavascriptRegExp(data) {
@@ -8221,9 +8221,9 @@ var require_regexp = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/function.js
+// ../../node_modules/js-yaml/lib/js-yaml/type/js/function.js
 var require_function = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/type/js/function.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/type/js/function.js"(exports2, module2) {
     "use strict";
     var esprima;
     try {
@@ -8276,9 +8276,9 @@ var require_function = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/default_full.js
+// ../../node_modules/js-yaml/lib/js-yaml/schema/default_full.js
 var require_default_full = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/schema/default_full.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/schema/default_full.js"(exports2, module2) {
     "use strict";
     var Schema = require_schema();
     module2.exports = Schema.DEFAULT = new Schema({
@@ -8294,9 +8294,9 @@ var require_default_full = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/loader.js
+// ../../node_modules/js-yaml/lib/js-yaml/loader.js
 var require_loader = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/loader.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/loader.js"(exports2, module2) {
     "use strict";
     var common = require_common();
     var YAMLException = require_exception();
@@ -9418,9 +9418,9 @@ var require_loader = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/dumper.js
+// ../../node_modules/js-yaml/lib/js-yaml/dumper.js
 var require_dumper = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml/dumper.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml/dumper.js"(exports2, module2) {
     "use strict";
     var common = require_common();
     var YAMLException = require_exception();
@@ -9966,9 +9966,9 @@ var require_dumper = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml.js
+// ../../node_modules/js-yaml/lib/js-yaml.js
 var require_js_yaml = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/lib/js-yaml.js"(exports2, module2) {
+  "../../node_modules/js-yaml/lib/js-yaml.js"(exports2, module2) {
     "use strict";
     var loader = require_loader();
     var dumper = require_dumper();
@@ -10001,9 +10001,9 @@ var require_js_yaml = __commonJS({
   }
 });
 
-// ../../node_modules/gray-matter/node_modules/js-yaml/index.js
+// ../../node_modules/js-yaml/index.js
 var require_js_yaml2 = __commonJS({
-  "../../node_modules/gray-matter/node_modules/js-yaml/index.js"(exports2, module2) {
+  "../../node_modules/js-yaml/index.js"(exports2, module2) {
     "use strict";
     var yaml2 = require_js_yaml();
     module2.exports = yaml2;
@@ -19476,7 +19476,7 @@ var require_readdirp = __commonJS({
   "../../node_modules/readdirp/index.js"(exports2, module2) {
     "use strict";
     var fs12 = require("fs");
-    var { Readable } = require("stream");
+    var { Readable: Readable2 } = require("stream");
     var sysPath = require("path");
     var { promisify: promisify2 } = require("util");
     var picomatch = require_picomatch2();
@@ -19522,7 +19522,7 @@ var require_readdirp = __commonJS({
         return (entry) => positive.some((f) => f(entry.basename));
       }
     };
-    var ReaddirpStream = class _ReaddirpStream extends Readable {
+    var ReaddirpStream = class _ReaddirpStream extends Readable2 {
       static get defaultOptions() {
         return {
           root: ".",
@@ -42144,7 +42144,9 @@ function dispatchPolicyView(policy) {
 // src/sources.ts
 var import_node_crypto3 = require("crypto");
 var import_promises9 = require("dns/promises");
+var import_node_https = require("https");
 var import_node_net = require("net");
+var import_node_stream = require("stream");
 var import_promises10 = require("fs/promises");
 var import_node_path5 = __toESM(require("path"), 1);
 var LLMS_TXT_POLICY = Object.freeze({
@@ -42217,7 +42219,7 @@ function isPrivateAddress(hostname2) {
   // first group would incorrectly reject the public 3fff:1000::/16 tail.
   first === 16383 && (second & 61440) === 0;
 }
-async function assertPublicDestination(url, lookupImpl) {
+async function assertPublicDestination(url, lookupImpl, signal) {
   const hostname2 = url.hostname.toLowerCase().replace(/[\[\]]/g, "");
   if (hostname2 === "localhost" || hostname2.endsWith(".localhost") || hostname2.endsWith(".local") || hostname2 === "metadata.google.internal" || hostname2 === "metadata.azure.internal") {
     throw new Error(`${url} targets a private or local destination`);
@@ -42226,14 +42228,77 @@ async function assertPublicDestination(url, lookupImpl) {
   if (lookupImpl && !(0, import_node_net.isIP)(hostname2)) {
     let addresses;
     try {
-      addresses = await lookupImpl(hostname2);
+      addresses = await withDeadline(lookupImpl(hostname2), signal);
     } catch {
+      if (signal?.aborted) throw new Error(`${url} request timed out`);
       throw new Error(`${url} destination could not be resolved`);
     }
     if (addresses.length === 0 || addresses.some((address) => isPrivateAddress(address))) {
       throw new Error(`${url} targets a private or local destination`);
     }
+    return addresses;
   }
+  return [hostname2];
+}
+async function withDeadline(work, signal) {
+  if (!signal) return work;
+  if (signal.aborted) throw new Error("request timed out");
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(new Error("request timed out"));
+    signal.addEventListener("abort", onAbort, { once: true });
+    work.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (error2) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error2);
+      }
+    );
+  });
+}
+async function pinnedFetch(url, init, addresses) {
+  const address = addresses[0];
+  if (!address) throw new Error(`${url} destination could not be resolved`);
+  const headers = new Headers(init.headers);
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const request = (0, import_node_https.request)(
+      {
+        protocol: "https:",
+        hostname: url.hostname,
+        port: url.port || "443",
+        path: `${url.pathname}${url.search}`,
+        method: "GET",
+        headers: Object.fromEntries(headers.entries()),
+        servername: url.hostname,
+        lookup: (_hostname, _options, callback) => callback(null, address, (0, import_node_net.isIP)(address))
+      },
+      (response) => {
+        settled = true;
+        const responseHeaders = new Headers();
+        for (const [key, value] of Object.entries(response.headers)) {
+          if (Array.isArray(value)) responseHeaders.set(key, value.join(", "));
+          else if (value !== void 0) responseHeaders.set(key, value);
+        }
+        const body = import_node_stream.Readable.toWeb(response);
+        resolve(new Response(body, { status: response.statusCode ?? 599, headers: responseHeaders }));
+      }
+    );
+    const onAbort = () => request.destroy(new Error("request timed out"));
+    if (init.signal) {
+      if (init.signal.aborted) onAbort();
+      else init.signal.addEventListener("abort", onAbort, { once: true });
+    }
+    request.once("error", (error2) => {
+      if (!settled) {
+        settled = true;
+        reject(error2);
+      }
+    });
+    request.end();
+  });
 }
 function sameOrigin(a, b) {
   return a.protocol === b.protocol && a.hostname === b.hostname && a.port === b.port;
@@ -42303,7 +42368,7 @@ function markdownLinks(text, base) {
   }
   return urls;
 }
-async function fetchText(url, fetchImpl, headers, timeoutMs, maxBytes = LLMS_TXT_POLICY.maxBytes, lookupImpl) {
+async function fetchText(url, fetchImpl, headers, timeoutMs, maxBytes = LLMS_TXT_POLICY.maxBytes, lookupImpl, boundFetch) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const origin = new URL(url);
@@ -42312,11 +42377,12 @@ async function fetchText(url, fetchImpl, headers, timeoutMs, maxBytes = LLMS_TXT
   let requestHeaders = headers;
   try {
     while (true) {
-      await assertPublicDestination(current, lookupImpl);
-      const response = await fetchImpl(current, { headers: requestHeaders, redirect: "manual", signal: controller.signal });
+      const addresses = await assertPublicDestination(current, lookupImpl, controller.signal);
+      const requestInit = { headers: requestHeaders, redirect: "manual", signal: controller.signal };
+      const response = boundFetch ? await boundFetch(current, requestInit, addresses) : await fetchImpl(current, requestInit);
       const responseUrl = response.url ? new URL(response.url) : current;
       assertSafeFetchTarget(origin, responseUrl);
-      await assertPublicDestination(responseUrl, lookupImpl);
+      await assertPublicDestination(responseUrl, lookupImpl, controller.signal);
       if (response.status === 304) {
         return {
           status: 304,
@@ -42334,7 +42400,6 @@ async function fetchText(url, fetchImpl, headers, timeoutMs, maxBytes = LLMS_TXT
         }
         const next = new URL(location, current);
         assertSafeFetchTarget(origin, next);
-        await assertPublicDestination(next, lookupImpl);
         current = next;
         redirects++;
         requestHeaders = {};
@@ -42411,7 +42476,7 @@ function failureText(error2) {
 function consumedBytes(error2) {
   return error2 instanceof ResponseTooLargeError ? error2.consumedBytes : 0;
 }
-async function revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImpl) {
+async function revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImpl, timeoutMs = LLMS_TXT_POLICY.timeoutMs, boundFetch) {
   const root = cached3.documents[0];
   if (!root) return [];
   const documents = [root];
@@ -42437,9 +42502,10 @@ async function revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImp
         candidate,
         fetchImpl,
         requestHeaders,
-        LLMS_TXT_POLICY.timeoutMs,
+        timeoutMs,
         LLMS_TXT_POLICY.maxBytes - bytes,
-        lookupImpl
+        lookupImpl,
+        boundFetch
       );
       if (response.status === 304) {
         if (!cachedDocument) {
@@ -42471,6 +42537,8 @@ async function revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImp
 async function fetchLlmsTxt(options2) {
   const root = canonicalHttpsUrl(options2.url);
   const fetchImpl = options2.fetchImpl ?? fetch;
+  const timeoutMs = options2.timeoutMs ?? LLMS_TXT_POLICY.timeoutMs;
+  const boundFetch = options2.requestImpl ?? (options2.fetchImpl ? void 0 : pinnedFetch);
   const lookupImpl = options2.lookupImpl ?? (fetchImpl === fetch ? async (hostname2) => (await (0, import_promises9.lookup)(hostname2, { all: true, verbatim: true })).map(({ address }) => address) : void 0);
   const now = options2.now ?? Date.now;
   const cacheFile = cachePath(options2.cacheDir, root.toString());
@@ -42492,7 +42560,7 @@ async function fetchLlmsTxt(options2) {
     const failures = [];
     let rootResponse;
     try {
-      rootResponse = await fetchText(root, fetchImpl, headers, LLMS_TXT_POLICY.timeoutMs, LLMS_TXT_POLICY.maxBytes, lookupImpl);
+      rootResponse = await fetchText(root, fetchImpl, headers, timeoutMs, LLMS_TXT_POLICY.maxBytes, lookupImpl, boundFetch);
     } catch (error2) {
       if (cached3) {
         failures.push(failureText(error2));
@@ -42507,7 +42575,7 @@ async function fetchLlmsTxt(options2) {
       throw error2;
     }
     if (rootResponse.status === 304 && cached3) {
-      const documents2 = await revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImpl);
+      const documents2 = await revalidateLinkedDocuments(cached3, fetchImpl, failures, lookupImpl, timeoutMs, boundFetch);
       const refreshed = {
         ...cached3,
         fetchedAt: new Date(nowMs).toISOString(),
@@ -42539,7 +42607,7 @@ async function fetchLlmsTxt(options2) {
       }
       try {
         const remaining = LLMS_TXT_POLICY.maxBytes - bytes;
-        const response = await fetchText(candidate, fetchImpl, {}, LLMS_TXT_POLICY.timeoutMs, remaining, lookupImpl);
+        const response = await fetchText(candidate, fetchImpl, {}, timeoutMs, remaining, lookupImpl, boundFetch);
         bytes += response.bytes;
         if (bytes > LLMS_TXT_POLICY.maxBytes) {
           failures.push(`${candidate} skipped because the aggregate response limit was reached`);

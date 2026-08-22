@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T13:53:29.552Z
+updated_at: 2026-08-22T13:58:39.390Z
 lane_limit: 3
 stop_reason:
 ---
@@ -792,3 +792,5 @@ CORE-057 PR #178 was updated against cumulative CORE-044 base 3c0706627cc73038d9
 ## CORE-062 assignment — 2026-08-22T13:56Z
 
 Prepared packet/gates and CORE-058 linked context read. Took CORE-062 without force on branch core-062-attachment-ignore / worktree .worktrees/core-062, based on cumulative CORE-044 head 3c0706627cc73038d91a624e5d494d0148dce4c4. Scope is limited to local/remote attachment-path board-worktree ignore reconciliation and real-Git regressions; no source-fetch, artifact, provider, or historical cleanup changes.
+
+- 2026-08-22T13:58:39.390Z — CORE-057 fresh independent review exact head 5f63571ecc7d71c102fc134b72d065207b11eae9 PASS; PR #178 merged non-squash as 7403a7cfb7079fafa88c2d18ec5b33b1a7407013 into core-044-source-fetch-remediation. Source 19/19, typecheck, scripts 88/88, smoke 46/46, docs/diff pass; first HTTP 86/87 readiness timeout preserved and isolated readiness 7/7. Ticket moved Review→Verifying for merged-main proof.

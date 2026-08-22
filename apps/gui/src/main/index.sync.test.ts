@@ -67,6 +67,7 @@ vi.mock("./kanmerGit.js", async () => {
 
 import { __kanmerTest } from "./index.js";
 import { ensureBoardWorktree } from "./kanmerGit.js";
+import { readSettings, setKanmerGitHandoff } from "./settings.js";
 
 const execFile = promisify(execFileCallback);
 const git = async (cwd: string, ...args: string[]): Promise<string> =>
@@ -247,6 +248,40 @@ describe("syncProject production Retry caller", () => {
     } finally {
       if (ctx.syncTimer) clearInterval(ctx.syncTimer);
       __kanmerTest.contexts.delete(repo);
+      await __kanmerTest.applyGitPreferences("kanmer-board", 0);
+    }
+  }, 30_000);
+
+  it("does not clear a durable handoff warning during a later clean preference rename", async () => {
+    await git(repo, "branch", "-m", "release-board");
+    const ctx = {
+      sourceRoot: repo,
+      boardRoot: repo,
+      store: {
+        getBoardWithSource: async () => ({ source: "file" }),
+        listItems: async () => [],
+      },
+      watch: { close: async () => undefined },
+      ownWrites: new Map<string, number>(),
+      syncStatus: {
+        available: true,
+        boardRoot: repo,
+        branch: "release-board",
+        lastSync: null,
+        error: null,
+        paused: false,
+        handoffPending: { from: "kanmer-board", to: "release-board", warning: "ack required" },
+      },
+    };
+    __kanmerTest.contexts.set(repo, ctx as never);
+    await setKanmerGitHandoff(repo, ctx.syncStatus.handoffPending);
+
+    try {
+      await __kanmerTest.applyGitPreferences("next-board", 0);
+      expect(readSettings().pendingBoardHandoffs?.[repo]).toEqual(ctx.syncStatus.handoffPending);
+    } finally {
+      __kanmerTest.contexts.delete(repo);
+      await setKanmerGitHandoff(repo, null);
       await __kanmerTest.applyGitPreferences("kanmer-board", 0);
     }
   }, 30_000);

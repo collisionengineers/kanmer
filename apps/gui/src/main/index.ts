@@ -768,12 +768,17 @@ async function applyGitPreferencesBody(kanmerBranch: string, gitSyncMinutes: num
                 : {}),
             }
           : { ...ctx.syncStatus, error: renamed.error, paused: true };
-        await setKanmerGitHandoff(
-          projectId,
-          renamed.ok && renamed.error && renamed.from
-            ? { from: renamed.from, to: settings.kanmerBranch, warning: renamed.error }
-            : null,
-        );
+        // A previously surfaced handoff warning is durable until the operator
+        // explicitly acknowledges it through confirmKanmerGitHandoff. A
+        // later preference rename must not silently erase that acknowledgement
+        // requirement merely because the rename itself is clean (or failed).
+        if (renamed.ok && renamed.error && renamed.from) {
+          await setKanmerGitHandoff(projectId, {
+            from: renamed.from,
+            to: settings.kanmerBranch,
+            warning: renamed.error,
+          });
+        }
         mainWindow?.webContents.send(CH.gitStatus, { projectId, ...(await gitStatusForRenderer(ctx)) });
       }
     }

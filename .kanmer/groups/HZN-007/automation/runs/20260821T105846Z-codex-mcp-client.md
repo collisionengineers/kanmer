@@ -653,3 +653,9 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T05:30:00Z — CORE-024 hosted verify completion: run 32554223189 / Windows verify job 96985771083 exited 1 at scripts/check-mcpb-sync.mjs:44 because the freshly built MCPB server differed from the distributed plugin copy. All preceding suites, typechecks, builds, MCP smokes, and MCPB manifest validation passed; this parity failure is outside CORE-024 and remains preserved. No overall hosted verify PASS is claimed.
+
+
+- 2026-08-22T06:02:00Z — CORE-024 refreshed after origin/main b6c8eb02: merged into check-pr as 9e7ab629 and pushed. Local focused/core/GUI/typecheck/build/smoke/manual/scripts rails pass; broad HTTP retry retains Windows ETIMEDOUT/readiness timeout attempts, and mcpb/plugin parity checks fail outside scope. Hosted kanmer-gate PASS run 32555645841/job 96989232191; hosted verify FAIL same run/job 96989232096 at check-mcpb-sync parity. Ticket remains Review; no merge or cleanup.
+
+
+- 2026-08-22T06:02:00Z — CORE-024 refreshed after origin/main b6c8eb02: merged into check-pr as 9e7ab629 and pushed. Local focused/core/GUI/typecheck/build/smoke/manual/scripts rails pass; broad HTTP retry retains Windows ETIMEDOUT/readiness timeout attempts, and mcpb/plugin parity checks fail outside scope. Hosted kanmer-gate PASS run 32555645841/job 96989232191; hosted verify FAIL same run/job 96989232096 at check-mcpb-sync parity. Ticket remains Review; no merge or cleanup.

@@ -244,3 +244,9 @@ Last handoff: 2026-08-22T05:30:03Z — Hosted verification correction for GUI-10
 
 
 - 2026-08-22T05:30:00Z — CORE-024 hosted kanmer-gate PASS and hosted verify FAIL are recorded in the durable run; verify failed only at out-of-scope distributed MCPB plugin parity, so no overall hosted verify PASS is claimed.
+
+
+- 2026-08-22T06:02:00Z — CORE-024 refreshed head 9e7ab629 after origin/main b6c8eb02; hosted kanmer-gate PASS and hosted verify FAIL at out-of-scope plugin parity are recorded in the durable run. Independent Review remains required.
+
+
+- 2026-08-22T06:02:00Z — CORE-024 refreshed head 9e7ab629 after origin/main b6c8eb02; hosted kanmer-gate PASS and hosted verify FAIL at out-of-scope plugin parity are recorded in the durable run. Independent Review remains required.

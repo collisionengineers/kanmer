@@ -76,3 +76,13 @@ Append test fixture IDs/counts, before/after board hashes, CLI JSON/exit example
 - Green: focused merge-gate tests 10/10; core suite 14 files / 278 tests; CLI integration 1/1; build:core; workflow YAML parse and diff-check.
 - CLI local controls: compliant JSON verdict exit 0; open-question verdict exit 1 with one escaped `::error` annotation; invalid board/event and unknown argument exit 2 with sanitized diagnostics.
 - Full workspace typecheck and mcp-server build pass with a temporary ticket-local @kanmer/core junction; the first shared-root failure is preserved above. Full verify reaches check-mcpb-sync then exits 1 because the distributed plugin artifact is stale, outside CORE-024. Hosted kanmer-gate PASS and hosted verify FAIL at the same parity check are recorded above; no overall hosted verify PASS is claimed.
+
+
+### Rebase and fresh verification — 2026-08-22
+
+- Rebased the CORE-024 branch by merging origin/main b6c8eb02 (GUI-106 recovery/main update) into the original implementation b041e944; merge commit is 9e7ab6299314cb3a7a9b0eb66ea70af630bf5b2c.
+- The post-merge diff against origin/main remains exactly the eight CORE-024 files (484 added lines); no GUI-106/MCP-028 source is part of the ticket diff.
+- Local PASS: focused merge-gate 10/10; CLI 1/1; core 279/279; all-workspace typecheck; build:core; build:server; GUI 39 files/362 tests; scripts 83/83; manual freshness; stdio 224/224; headless; protocol 46/46; discovery 13/13; skills; AGENTS block; diff-check; focused HTTP 5/5 and readiness 7/7.
+- Preserved local failures: first npm run verify exited 1 in npm test at HTTP project-resolution spawnSync node.exe ETIMEDOUT; a broad npm run test:http -w @kanmer/mcp-server retry exited 1 with 61/63 (the same ETIMEDOUT plus readiness TUNNEL_READINESS_TIMEOUT), while both focused retries passed. With the temporary verifier-local mcpb package junction, npm run mcpb:check exited 1 at scripts/check-mcpb-sync.mjs:44 because the distributed plugin copy differs; npm run plugin:check exited 1 for the same committed-plugin parity drift.
+- Hosted kanmer-gate PASS: run 32555645841 / Windows job 96989232191, PR #155 head 9e7ab6299314cb3a7a9b0eb66ea70af630bf5b2c, exit 0. Hosted verify FAIL: run 32555645841 / Windows job 96989232096, exit 1 at scripts/check-mcpb-sync.mjs:44 with MCPB server differs from distributed plugin copy; all preceding hosted suites/builds/package validation passed.
+- The hosted gate JSON and full verify failure are external evidence for this head; no overall hosted verify PASS is claimed. No merge or cleanup is performed; independent Review remains required.

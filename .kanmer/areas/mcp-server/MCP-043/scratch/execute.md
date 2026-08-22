@@ -1,0 +1,1 @@
+Taken in .worktrees/mcp-043 on branch mcp-043-plugin-artifact at origin/main b6c8eb02. Research/files/plan/checklist/open-questions authored via MCP. Scope is generated plugin artifact only; CORE-024 and GUI-104 are explicitly out of scope.

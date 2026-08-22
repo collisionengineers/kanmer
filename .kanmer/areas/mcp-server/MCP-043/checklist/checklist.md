@@ -1,6 +1,6 @@
 # Checklist — MCP-043
 
-- [ ] Take MCP-043 in .worktrees/mcp-043 on branch mcp-043-plugin-artifact.
+- [x] Take MCP-043 in .worktrees/mcp-043 on branch mcp-043-plugin-artifact.
 - [ ] Run the canonical npm run plugin:build and refresh only plugins/kanmer/mcp/kanmer-mcp.cjs.
 - [ ] Confirm artifact-only diff, fresh/committed SHA-256 parity, and git diff --check.
 - [ ] Run npm run plugin:check and npm run mcpb:check.

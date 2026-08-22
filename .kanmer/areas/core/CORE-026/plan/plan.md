@@ -10,8 +10,8 @@ The ticket is Preparing with research/files and all three product questions reso
 
 ## Governing docs
 
-- docs/functional/frd/FRD-026-project-declared-sources.md — meet the declaration, resolution, provenance, bounded llms.txt, removal, and verification criteria through the core schema, MCP tools, fetch helper, and skill instructions.
-- docs/architecture/adr/ADR-0019-project-declared-source-trust.md — meet the preference-not-authority decision, connected/installed availability boundary, explicit confirmation, and bounded same-origin fetch policy.
+- docs/functional/frd/FRD-027-project-declared-sources.md — meet the declaration, resolution, provenance, bounded llms.txt, removal, and verification criteria through the core schema, MCP tools, fetch helper, and skill instructions.
+- docs/architecture/adr/ADR-0020-project-declared-source-trust.md — meet the preference-not-authority decision, connected/installed availability boundary, explicit confirmation, and bounded same-origin fetch policy.
 - docs/functional/frd/FRD-005-deep-research.md — preserve read-only research and source citation by making get_sources/fetch_source explicit inputs to research rather than implementation-time ceremony.
 - docs/functional/frd/FRD-013-setup-as-reconciliation.md and docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md — preserve board declaration bytes through existing reconciliation and keep runtime/tool rules out of duplicated skill prose.
 

@@ -17,11 +17,11 @@ groups:
   - HZN-007
 links: []
 refs:
-  - docs/functional/frd/FRD-026-project-declared-sources.md
-  - docs/architecture/adr/ADR-0019-project-declared-source-trust.md
+  - docs/functional/frd/FRD-027-project-declared-sources.md
+  - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
 archived: false
 created: '2026-08-16T18:26:15.208Z'
-updated: '2026-08-22T08:32:18.405Z'
+updated: '2026-08-22T08:44:53.484Z'
 ---
 
 ## What

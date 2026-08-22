@@ -38,8 +38,9 @@ generation and requires explicit confirmation before a declaration is persisted.
 Treat `llms.txt` as bounded documentation retrieval, not authority or a crawler:
 HTTPS-only origin, same-origin redirects, depth one, at most 32 direct linked
 pages, a 2 MiB total response budget, bounded timeouts, and validator/hash/timestamp
-metadata under the project's `.kanmer/data/` cache. Removed declarations are
-excluded immediately even if bounded cache bytes remain.
+metadata under the project's `.kanmer/data/` cache. A `304 Not Modified` without
+a cached representation is an error, and same-URL cache writes are serialized.
+Removed declarations are excluded immediately even if bounded cache bytes remain.
 
 Research records the source actually consulted and planning consumes that cited
 context. Implementation does not repeatedly invoke the resolver. Skills remain

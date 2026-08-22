@@ -48,8 +48,11 @@ They do not become a per-edit ceremony and do not alter implementation work.
    Fetched text and URL/validator/hash/timestamp metadata may be cached below
    `.kanmer/data/`; credentials and arbitrary page contents are not persisted.
 6. Cache revalidation uses a bounded retention window and HTTP validators when
-   available. Removing or changing a declaration immediately removes it from
-   resolution; old cache files are not treated as an active preference.
+   available. A `304 Not Modified` without a cached representation is surfaced
+   as a failure, and concurrent writes for one URL are serialized so cache JSON
+   cannot be partially replaced. Removing or changing a declaration immediately
+   removes it from resolution; old cache files are not treated as an active
+   preference.
 7. Setup and GUI configuration preserve declared entries, present discovered
    candidates only for explicit user confirmation, and never rewrite unrelated
    provider registrations.

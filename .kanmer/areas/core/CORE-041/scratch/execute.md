@@ -1,0 +1,1 @@
+2026-08-22T01:51:05Z — CORE-041 taken by /root/core041_executor on core-041-project-identity-drive-neutral / .worktrees/core-041 after research/files/plan/checklist/open-questions and HZN-007 context readback. Scope is one test-only Windows drive-neutral smoke expectation; independent review/merge required, no self-merge.

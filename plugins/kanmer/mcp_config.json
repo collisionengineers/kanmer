@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "kanmer": {
-      "command": "node",
-      "args": ["${PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"]
+      "command": "cmd.exe",
+      "args": ["/d", "/s", "/c", "\"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd\""]
     }
   }
 }

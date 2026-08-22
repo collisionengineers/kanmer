@@ -41,7 +41,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const guiDir = join(root, "apps", "gui");
 const guiPkgPath = join(guiDir, "package.json");
 const rootPkgPath = join(root, "package.json");
-// The two plugin manifests carry a version too, and it is not decoration:
+// The three plugin manifests carry a version too, and it is not decoration:
 // bundledSkillsVersion() reads .claude-plugin/plugin.json, and codex keys its
 // plugin cache directory by the version. Left out of the bump they froze at
 // 0.1.0 across three releases and killed the "Update skills" affordance
@@ -50,6 +50,9 @@ const rootPkgPath = join(root, "package.json");
 const pluginManifestPaths = [
   join(root, "plugins", "kanmer", ".claude-plugin", "plugin.json"),
   join(root, "plugins", "kanmer", ".codex-plugin", "plugin.json"),
+  // Antigravity reads this root manifest directly rather than through a
+  // marketplace manifest; it must move with the same release version.
+  join(root, "plugins", "kanmer", "plugin.json"),
 ];
 const mcpbManifestPath = join(root, "mcpb", "manifest.json");
 const notesPath = join(guiDir, "release-notes.md");

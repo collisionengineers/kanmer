@@ -185,9 +185,9 @@ const skillCount = checkSkillFrontmatter();
 //     (MCP-016) — see below.
 //
 // MCP-016 kept codex skills-only, while MCP-015 adds Antigravity's measured
-// native `mcp_config.json` route. The descriptor uses only the runtime and
-// plugin-root token accepted by the current CLI; it never pins cwd, a board
-// root, or a machine path. The old root `.mcp.json` remains forbidden because
+// native `mcp_config.json` route. The descriptor uses only the installer-owned
+// Windows launcher; it never pins cwd, a board root, or a machine path. The
+// old root `.mcp.json` remains forbidden because
 // agy reads that compatibility file independently of the native manifest.
 // ---------------------------------------------------------------------------
 function checkPluginManifests() {
@@ -279,9 +279,9 @@ function checkPluginManifests() {
   } else {
     const entry = serverEntry(agyMcp);
     const args = entry.args ?? [];
-    if (entry.command !== "node") problems.push(`mcp_config.json: command is "${entry.command}", expected "node"`);
-    if (JSON.stringify(args) !== JSON.stringify(["${PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"])) {
-      problems.push(`mcp_config.json: args must be ["${PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"]`);
+    if (entry.command !== "cmd.exe") problems.push(`mcp_config.json: command is "${entry.command}", expected "cmd.exe"`);
+    if (JSON.stringify(args) !== JSON.stringify(["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"'])) {
+      problems.push('mcp_config.json: args must be ["/d", "/s", "/c", "\\\"%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd\\\""]');
     }
     if (entry.cwd !== undefined) problems.push("mcp_config.json: must not set cwd");
     if (args.some((a) => typeof a === "string" && /(?:^|[\\/])(?:Users|home|tmp)[\\/]|^[A-Za-z]:[\\/]|--(?:root|repo-root)\b/i.test(a))) {

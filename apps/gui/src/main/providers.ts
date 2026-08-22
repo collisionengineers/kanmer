@@ -45,6 +45,16 @@ export function codexPortableProbeInvocation(): Invocation {
   return invocation;
 }
 
+/** The installer-owned Windows runtime used by native plugin MCP configs. */
+export function antigravityPortableInvocation(probe = false): Invocation {
+  const launcher = '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"';
+  return {
+    command: "cmd.exe",
+    args: ["/d", "/s", "/c", `${launcher}${probe ? " --probe" : ""}`],
+    env: {},
+  };
+}
+
 /** Whether a config registers Kanmer — with "unreadable" kept distinct from "no". */
 export type RegistrationState = "registered" | "absent" | "indeterminate";
 
@@ -128,7 +138,32 @@ export type InstallSpec =
        legacyConfigPath: string;
        legacyConfigUnmerge: (existing: string) => string;
        legacySkillsDir: string;
+       /**
+        * Optional argv-native lifecycle. Providers with user-controlled paths
+        * use this seam so connect never interpolates those paths into a shell
+        * command. The string commands remain the copy/paste compatibility
+        * surface for providers that do not need it.
+        */
+       argv?: NativePluginArgvCommands;
      };
+
+export interface NativePluginCommand {
+  file: string;
+  args: string[];
+}
+
+export interface NativePluginArgvCommands {
+  version: () => NativePluginCommand;
+  help: () => NativePluginCommand;
+  /** Runtime that the plugin's MCP descriptor launches, when not `node`. */
+  runtime?: () => NativePluginCommand;
+  install: (pluginRoot: string) => NativePluginCommand;
+  uninstall: () => NativePluginCommand;
+  list: () => NativePluginCommand;
+  inspect: () => NativePluginCommand;
+  validate?: (pluginRoot: string) => NativePluginCommand;
+  functional: (projectRoot: string, boardRoot: string) => NativePluginCommand;
+}
 
 export interface AgentProvider {
   id: ProviderId;
@@ -819,7 +854,7 @@ export const PROVIDERS: AgentProvider[] = [
       uninstallCommand: () => "grok plugin uninstall kanmer --confirm",
       listCommand: () => "grok plugin list",
       inspectCommand: () => "grok inspect",
-      functionalCommand: (root) => `grok -p ${q("Call the Kanmer get_status tool for this project and return exactly KANMER_GET_STATUS_OK.")} --cwd ${q(root)}`,
+      functionalCommand: (root) => `grok -p ${q("Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.")} --cwd ${q(root)}`,
       requiredFiles: (root) => [
         join(root, ".claude-plugin", "plugin.json"),
         join(root, "skills"),
@@ -855,7 +890,7 @@ export const PROVIDERS: AgentProvider[] = [
       inspectCommand: () => "agy plugin list",
       validateCommand: (root) => `agy plugin validate ${q(root)}`,
       functionalCommand: (root) =>
-        `agy --add-dir ${q(root)} -p ${q("Call the Kanmer get_status tool for this project and return exactly KANMER_GET_STATUS_OK.")}`,
+        `agy --add-dir ${q(root)} -p ${q("Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.")}`,
       requiredFiles: (root) => [
         join(root, "plugin.json"),
         join(root, "mcp_config.json"),
@@ -867,6 +902,29 @@ export const PROVIDERS: AgentProvider[] = [
       legacyConfigPath: STALENESS_PROVIDER_PATHS.antigravity.registrationFile,
       legacyConfigUnmerge: mcpServersUnmerge,
       legacySkillsDir: STALENESS_PROVIDER_PATHS.antigravity.skillsDir,
+      argv: {
+        version: () => ({ file: "agy", args: ["--version"] }),
+        help: () => ({ file: "agy", args: ["plugin", "--help"] }),
+        runtime: () => {
+          const invocation = antigravityPortableInvocation(true);
+          return { file: invocation.command, args: invocation.args };
+        },
+        install: (root) => ({ file: "agy", args: ["plugin", "install", root] }),
+        uninstall: () => ({ file: "agy", args: ["plugin", "uninstall", "kanmer"] }),
+        list: () => ({ file: "agy", args: ["plugin", "list"] }),
+        // agy 1.1.14 has no inspect subcommand; list is the supported oracle.
+        inspect: () => ({ file: "agy", args: ["plugin", "list"] }),
+        validate: (root) => ({ file: "agy", args: ["plugin", "validate", root] }),
+        functional: (_projectRoot, boardRoot) => ({
+          file: "agy",
+          args: [
+            "--add-dir",
+            boardRoot,
+            "-p",
+            "Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.",
+          ],
+        }),
+      },
     },
     dispatch: true,
     ...sharedDispatchSpec("antigravity"),

@@ -16,6 +16,7 @@ import {
   type Invocation,
   type ProviderId,
   antigravityBindingNote,
+  antigravityPortableInvocation,
   codexPortableInvocation,
   codexPortableProbeInvocation,
   codexTrustFromConfig,
@@ -26,8 +27,10 @@ import {
   tomlRegistrationState,
   type LegacyCodexFinding,
   type LegacyCodexProbe,
+  type NativePluginCommand,
 } from "./providers.js";
 import { applyManagedBlock, removeManagedBlock } from "./agentsBlock.js";
+import { remoteProjectIdentity } from "./remoteAccess/identity.js";
 
 const execAsync = promisify(exec);
 
@@ -546,6 +549,8 @@ export interface ConnectOptions {
   probeRunner?: CodexProbeRunner;
   /** Test-only seam for provider commands; production uses the host shell. */
   commandRunner?: ConnectCommandRunner;
+  /** Test-only argv seam for native plugin commands. */
+  nativeCommandRunner?: NativeCommandRunner;
   /** Test-only plugin root seam; production resolves the packaged/dev bundle. */
   pluginRootPath?: string;
 }
@@ -555,10 +560,88 @@ export type ConnectCommandRunner = (
   cwd: string,
 ) => Promise<{ stdout: string; stderr: string }>;
 
+export type NativeCommandRunner = (
+  file: string,
+  args: string[],
+  cwd: string,
+) => Promise<{ stdout: string; stderr: string }>;
+
 const defaultCommandRunner: ConnectCommandRunner = async (command, cwd) => {
   const result = await execAsync(command, { cwd, timeout: 60_000, maxBuffer: 256 * 1024 });
   return { stdout: String(result.stdout ?? ""), stderr: String(result.stderr ?? "") };
 };
+
+const defaultNativeCommandRunner: NativeCommandRunner = async (file, args, cwd) => {
+  const result = await execFileAsync(file, args, {
+    cwd,
+    windowsHide: true,
+    timeout: 60_000,
+    maxBuffer: 256 * 1024,
+  });
+  return { stdout: String(result.stdout ?? ""), stderr: String(result.stderr ?? "") };
+};
+
+function nativeCommandText(command: NativePluginCommand): string {
+  return [command.file, ...command.args].map(q).join(" ");
+}
+
+async function expectedProjectIdentity(boardRoot: string, repoRoot: string) {
+  const kanmerRoot = join(boardRoot, ".kanmer");
+  const boardFile = join(kanmerRoot, "data", "board.yml");
+  const versionFile = join(kanmerRoot, "version.json");
+  let format = 3;
+  try {
+    const version = JSON.parse(await readFile(versionFile, "utf8")) as { format?: unknown };
+    if (typeof version.format === "number" && Number.isInteger(version.format) && version.format > 0) {
+      format = version.format >= 3 ? 3 : version.format;
+    }
+  } catch {
+    if (existsSync(join(kanmerRoot, "tickets"))) format = 1;
+    else if (existsSync(join(kanmerRoot, "areas"))) format = 2;
+  }
+  return remoteProjectIdentity({
+    boardRoot,
+    repoRoot,
+    format,
+    boardSource: existsSync(boardFile) ? "file" : "default",
+  });
+}
+
+function parseFunctionalIdentity(output: string): {
+  fingerprint?: unknown;
+  boardRoot?: unknown;
+  repoRoot?: unknown;
+  format?: unknown;
+} | null {
+  // Hosts commonly wrap JSON in a sentence or a fenced block. Try the whole
+  // payload and one outer object (so nested `project` data is not truncated),
+  // but never treat a literal marker as proof.
+  const fenced = output.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
+  const outer = output.match(/\{[\s\S]*\}/)?.[0];
+  const candidates = [fenced, output.trim(), outer].filter((candidate, index, all): candidate is string =>
+    typeof candidate === "string" && candidate.trim() !== "" && all.indexOf(candidate) === index,
+  );
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) continue;
+      const value = parsed as Record<string, unknown>;
+      const project = value.project && typeof value.project === "object"
+        ? value.project as Record<string, unknown>
+        : value;
+      const fingerprint = value.project_fingerprint ?? project.fingerprint;
+      const boardRoot = value.board_root ?? project.boardRoot;
+      const repoRoot = value.repo_root ?? project.repoRoot;
+      const format = value.format ?? project.format;
+      if (fingerprint !== undefined || boardRoot !== undefined || repoRoot !== undefined || format !== undefined) {
+        return { fingerprint, boardRoot, repoRoot, format };
+      }
+    } catch {
+      // Keep scanning output for the one JSON object the prompt requested.
+    }
+  }
+  return null;
+}
 
 function commandText(result: { stdout: string; stderr: string }): string {
   return (result.stdout || result.stderr || "").trim();
@@ -597,22 +680,36 @@ async function retireLegacyPluginState(
 async function connectNativePlugin(
   provider: AgentProvider,
   projectRoot: string,
+  boardRoot: string,
   options: ConnectOptions,
 ): Promise<ConnectResult> {
   if (provider.install.kind !== "plugin") throw new Error("native plugin provider expected");
   const spec = provider.install;
   const run = options.commandRunner ?? defaultCommandRunner;
+  const argv = spec.argv;
+  const runArgv = options.nativeCommandRunner ?? defaultNativeCommandRunner;
+  const execute = async (command: string, native?: NativePluginCommand) => {
+    if (!native) return run(command, projectRoot);
+    // The string seam remains useful to existing unit fixtures; production
+    // never supplies commandRunner and therefore always takes execFile argv.
+    if (options.nativeCommandRunner) return runArgv(native.file, native.args, projectRoot);
+    if (options.commandRunner) return run(command, projectRoot);
+    return defaultNativeCommandRunner(native.file, native.args, projectRoot);
+  };
   const runtime = process.env.KANMER_NODE?.trim() || "node";
   const runtimeCommand = `${q(runtime)} --version`;
   const bundledRoot = options.pluginRootPath ?? pluginRoot();
   let lastCommand = spec.installCommand(bundledRoot);
   try {
-    lastCommand = `${spec.cli} --version`;
-    const cli = await run(lastCommand, projectRoot);
-    lastCommand = spec.helpCommand();
-    const pluginHelp = await run(lastCommand, projectRoot);
-    lastCommand = runtimeCommand;
-    const runtimeResult = await run(runtimeCommand, projectRoot);
+    const version = argv?.version();
+    lastCommand = version ? nativeCommandText(version) : `${spec.cli} --version`;
+    const cli = await execute(lastCommand, version);
+    const help = argv?.help();
+    lastCommand = help ? nativeCommandText(help) : spec.helpCommand();
+    const pluginHelp = await execute(lastCommand, help);
+    const runtimeInvocation = argv?.runtime?.();
+    lastCommand = runtimeInvocation ? nativeCommandText(runtimeInvocation) : runtimeCommand;
+    const runtimeResult = await execute(lastCommand, runtimeInvocation);
     const required = spec.requiredFiles(bundledRoot);
     const missing = required.filter((path) => !existsSync(path));
     if (missing.length > 0) {
@@ -633,39 +730,56 @@ async function connectNativePlugin(
     if (entry.cwd !== undefined || entry.args.some((arg) => typeof arg === "string" && /^(--root|--repo-root|cwd)$/i.test(arg))) {
       throw new Error("Kanmer plugin MCP descriptor must not pin cwd, --root or --repo-root");
     }
-    if (spec.cli === "agy" && (entry.command !== "node" || JSON.stringify(entry.args) !== JSON.stringify(["${PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"]))) {
-      throw new Error("Antigravity plugin MCP descriptor must use node ${PLUGIN_ROOT}/mcp/kanmer-mcp.cjs");
+    if (spec.cli === "agy") {
+      const launcher = antigravityPortableInvocation();
+      if (entry.command !== launcher.command || JSON.stringify(entry.args) !== JSON.stringify(launcher.args)) {
+        throw new Error(
+          "Antigravity plugin MCP descriptor must use the installer-owned %LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd launcher",
+        );
+      }
     }
-    if (spec.validateCommand) {
-      lastCommand = spec.validateCommand(bundledRoot);
-      await run(lastCommand, projectRoot);
+    const validate = argv?.validate?.(bundledRoot);
+    if (validate || spec.validateCommand) {
+      lastCommand = validate ? nativeCommandText(validate) : spec.validateCommand!(bundledRoot);
+      await execute(lastCommand, validate);
     }
-    const install = spec.installCommand(bundledRoot);
+    const installArgv = argv?.install(bundledRoot);
+    const install = installArgv ? nativeCommandText(installArgv) : spec.installCommand(bundledRoot);
     lastCommand = install;
-    const installed = await run(install, projectRoot);
-    lastCommand = spec.inspectCommand();
-    const inspect = await run(spec.inspectCommand(), projectRoot);
+    const installed = await execute(install, installArgv);
+    const inspectArgv = argv?.inspect();
+    const inspectCommand = inspectArgv ? nativeCommandText(inspectArgv) : spec.inspectCommand();
+    lastCommand = inspectCommand;
+    const inspect = await execute(inspectCommand, inspectArgv);
     const inspected = commandText(inspect);
     if (!spec.capabilityPresent(inspected)) {
       return {
         ok: false,
-        command: spec.inspectCommand(),
+        command: inspectCommand,
         output:
-          `${spec.cli} plugin install returned success, but ${spec.inspectCommand()} did not report ` +
+          `${spec.cli} plugin install returned success, but ${inspectCommand} did not report ` +
           `${spec.pluginName}. No legacy project state was changed.`,
       };
     }
-    const functionalCommand = spec.functionalCommand(projectRoot);
+    const functionalArgv = argv?.functional(projectRoot, boardRoot);
+    const functionalCommand = functionalArgv ? nativeCommandText(functionalArgv) : spec.functionalCommand(projectRoot);
     lastCommand = functionalCommand;
-    const functional = await run(functionalCommand, projectRoot);
-    const functionalOutput = commandText(functional);
-    if (!functionalOutput.includes("KANMER_GET_STATUS_OK")) {
+    const functional = await execute(functionalCommand, functionalArgv);
+    const functionalOutput = `${functional.stdout}\n${functional.stderr}`.trim();
+    const expected = await expectedProjectIdentity(boardRoot, projectRoot);
+    const proof = parseFunctionalIdentity(functionalOutput);
+    const proofOk = proof !== null &&
+      proof.fingerprint === expected.fingerprint &&
+      proof.boardRoot === expected.boardRoot &&
+      proof.repoRoot === expected.repoRoot &&
+      proof.format === expected.format;
+    if (!proofOk) {
       return {
         ok: false,
         command: functionalCommand,
         output:
           `${spec.cli} plugin inspect passed, but the fresh functional get_status probe did not return ` +
-          "KANMER_GET_STATUS_OK. No legacy project state was changed.",
+          "the expected project fingerprint, board root, repo root and format. No legacy project state was changed.",
       };
     }
     const cleanup = await retireLegacyPluginState(provider, projectRoot);
@@ -699,31 +813,45 @@ async function disconnectNativePlugin(
   if (provider.install.kind !== "plugin") throw new Error("native plugin provider expected");
   const spec = provider.install;
   const run = options.commandRunner ?? defaultCommandRunner;
+  const argv = spec.argv;
+  const runArgv = options.nativeCommandRunner ?? defaultNativeCommandRunner;
+  const execute = async (command: string, native?: NativePluginCommand) => {
+    if (!native) return run(command, projectRoot);
+    if (options.nativeCommandRunner) return runArgv(native.file, native.args, projectRoot);
+    if (options.commandRunner) return run(command, projectRoot);
+    return defaultNativeCommandRunner(native.file, native.args, projectRoot);
+  };
+  const listArgv = argv?.list();
+  const listCommand = listArgv ? nativeCommandText(listArgv) : spec.listCommand();
+  const uninstallArgv = argv?.uninstall();
+  const uninstallCommand = uninstallArgv ? nativeCommandText(uninstallArgv) : spec.uninstallCommand();
+  const inspectArgv = argv?.inspect();
+  const inspectCommand = inspectArgv ? nativeCommandText(inspectArgv) : spec.inspectCommand();
   try {
-    const before = await run(spec.listCommand(), projectRoot);
+    const before = await execute(listCommand, listArgv);
     const beforeText = commandText(before);
     let uninstall = "plugin already absent";
     if (pluginPresent(spec.pluginName, beforeText)) {
-      const result = await run(spec.uninstallCommand(), projectRoot);
+      const result = await execute(uninstallCommand, uninstallArgv);
       uninstall = commandText(result) || "plugin uninstalled";
     }
-    const after = await run(spec.listCommand(), projectRoot);
-    const inspected = await run(spec.inspectCommand(), projectRoot);
+    const after = await execute(listCommand, listArgv);
+    const inspected = await execute(inspectCommand, inspectArgv);
     if (pluginPresent(spec.pluginName, commandText(after)) || pluginPresent(spec.pluginName, commandText(inspected))) {
       return {
         ok: false,
-        command: spec.uninstallCommand(),
+        command: uninstallCommand,
         output: `${spec.cli} still reports ${spec.pluginName} after uninstall; no legacy project state was changed.`,
       };
     }
     const cleanup = await retireLegacyPluginState(provider, projectRoot);
     return {
       ok: true,
-      command: spec.uninstallCommand(),
+      command: uninstallCommand,
       output: [uninstall, "plugin absent from list and inspect", ...cleanup].join("; "),
     };
   } catch (err) {
-    return { ok: false, command: spec.uninstallCommand(), output: commandFailureText(err) };
+    return { ok: false, command: uninstallCommand, output: commandFailureText(err) };
   }
 }
 
@@ -735,7 +863,7 @@ export async function connectAgent(
 ): Promise<ConnectResult> {
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
-  if (provider.install.kind === "plugin") return connectNativePlugin(provider, projectRoot, options);
+  if (provider.install.kind === "plugin") return connectNativePlugin(provider, projectRoot, boardRoot, options);
   const inv = serverInvocation(id, boardRoot, projectRoot);
   try {
     if (id === "codex") {

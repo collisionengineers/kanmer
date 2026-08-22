@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyManagedBlock } from "./agentsBlock.js";
-import { q } from "./providers.js";
+import { remoteProjectIdentity } from "./remoteAccess/identity.js";
 
 vi.mock("electron", () => ({ app: { isPackaged: false, getAppPath: () => "/unused" } }));
 
@@ -191,7 +191,18 @@ describe("Grok native plugin lifecycle (MCP-014)", () => {
       if (command === "node --version") return { stdout: "v24.15.0", stderr: "" };
       if (command.startsWith("grok plugin install ")) return { stdout: "Installed 1 plugin(s)", stderr: "" };
       if (command === "grok inspect") return { stdout: "kanmer (user, enabled) 12 skills, 1 MCPs", stderr: "" };
-      if (command.startsWith("grok -p ")) return { stdout: "KANMER_GET_STATUS_OK", stderr: "" };
+      if (command.startsWith("grok -p ")) {
+        const identity = remoteProjectIdentity({ boardRoot: root, repoRoot: root, format: 3, boardSource: "default" });
+        return {
+          stdout: JSON.stringify({
+            project_fingerprint: identity.fingerprint,
+            board_root: identity.boardRoot,
+            repo_root: identity.repoRoot,
+            format: identity.format,
+          }),
+          stderr: "",
+        };
+      }
       throw new Error(`unexpected command: ${command}`);
     };
 
@@ -237,10 +248,11 @@ describe("Grok native plugin lifecycle (MCP-014)", () => {
 describe("Antigravity native plugin lifecycle (MCP-015)", () => {
   it("preflights, validates, installs, proves a bound tool call, then retires legacy state", async () => {
     const root = await tempRoot();
+    const boardRoot = join(root, "safe & hostile $(whoami) `tick` ;");
     const bundle = join(root, "plugin");
     await writeTree(root, {
       "plugin/plugin.json": '{"name":"kanmer","version":"0.3.3","skills":"./skills/"}\n',
-      "plugin/mcp_config.json": '{"mcpServers":{"kanmer":{"command":"node","args":["${PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"]}}}\n',
+      "plugin/mcp_config.json": '{"mcpServers":{"kanmer":{"command":"cmd.exe","args":["/d","/s","/c","\\\"%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd\\\""]}}}\n',
       "plugin/skills/kanmer-plan/SKILL.md": "skill\n",
       "plugin/mcp/kanmer-mcp.cjs": "\n",
     });
@@ -250,28 +262,44 @@ describe("Antigravity native plugin lifecycle (MCP-015)", () => {
       ".agents/skills/.kanmer-skills-version": "0.2.0\nskills:\nold-skill\n",
       "AGENTS.md": applyManagedBlock("# user\n"),
     });
-    const seen: string[] = [];
-    const commandRunner = async (command: string) => {
-      seen.push(command);
-      if (command === "agy --version") return { stdout: "1.1.14", stderr: "" };
-      if (command === "agy plugin --help") return { stdout: "install validate list uninstall", stderr: "" };
-      if (command === "node --version") return { stdout: "v24.15.0", stderr: "" };
-      if (command.startsWith("agy plugin validate ")) return { stdout: "[ok] plugin", stderr: "" };
-      if (command.startsWith("agy plugin install ")) return { stdout: "Installed plugin kanmer", stderr: "" };
-      if (command === "agy plugin list") return { stdout: "kanmer", stderr: "" };
-      if (command.startsWith("agy --add-dir ")) return { stdout: "KANMER_GET_STATUS_OK", stderr: "" };
-      throw new Error(`unexpected command: ${command}`);
+    const seen: { file: string; args: string[] }[] = [];
+    const nativeCommandRunner = async (file: string, args: string[]) => {
+      seen.push({ file, args });
+      if (file === "agy" && args[0] === "--version") return { stdout: "1.1.14", stderr: "" };
+      if (file === "agy" && args[0] === "plugin" && args[1] === "--help") return { stdout: "install validate list uninstall", stderr: "" };
+      if (file === "cmd.exe") return { stdout: "Kanmer MCP launcher: healthy", stderr: "" };
+      if (file === "agy" && args[0] === "plugin" && args[1] === "validate") return { stdout: "[ok] plugin", stderr: "" };
+      if (file === "agy" && args[0] === "plugin" && args[1] === "install") return { stdout: "Installed plugin kanmer", stderr: "" };
+      if (file === "agy" && args[0] === "plugin" && args[1] === "list") return { stdout: "kanmer", stderr: "" };
+      if (file === "agy" && args[0] === "--add-dir") {
+        const identity = remoteProjectIdentity({ boardRoot, repoRoot: root, format: 3, boardSource: "default" });
+        return {
+          stdout: JSON.stringify({
+            project_fingerprint: identity.fingerprint,
+            board_root: identity.boardRoot,
+            repo_root: identity.repoRoot,
+            format: identity.format,
+          }),
+          stderr: "",
+        };
+      }
+      throw new Error(`unexpected command: ${file} ${args.join(" ")}`);
     };
 
-    const result = await connectAgent("antigravity", root, root, { commandRunner, pluginRootPath: bundle });
+    const result = await connectAgent("antigravity", root, boardRoot, { nativeCommandRunner, pluginRootPath: bundle });
 
     expect(result.ok).toBe(true);
-    expect(seen.slice(0, 4)).toEqual(["agy --version", "agy plugin --help", "node --version", `agy plugin validate ${q(bundle)}`]);
-    expect(seen[4]).toContain("agy plugin install");
-    expect(seen[5]).toBe("agy plugin list");
-    expect(seen[6]).toContain("agy --add-dir");
-    expect(seen[6]).not.toContain("--new-project");
-    expect(seen[6]).not.toContain("--project");
+    expect(seen.slice(0, 4)).toEqual([
+      { file: "agy", args: ["--version"] },
+      { file: "agy", args: ["plugin", "--help"] },
+      { file: "cmd.exe", args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe'] },
+      { file: "agy", args: ["plugin", "validate", bundle] },
+    ]);
+    expect(seen[4]).toEqual({ file: "agy", args: ["plugin", "install", bundle] });
+    expect(seen[5]).toEqual({ file: "agy", args: ["plugin", "list"] });
+    expect(seen[6].file).toBe("agy");
+    expect(seen[6].args.slice(0, 2)).toEqual(["--add-dir", boardRoot]);
+    expect(seen[6].args[2]).toBe("-p");
     expect(result.output).toContain("functional get_status");
     const legacy = JSON.parse(await readFile(join(root, ".agents", "mcp_config.json"), "utf8"));
     expect(legacy.mcpServers.kanmer).toBeUndefined();
@@ -285,17 +313,17 @@ describe("Antigravity native plugin lifecycle (MCP-015)", () => {
     const bundle = join(root, "plugin");
     await writeTree(root, {
       "plugin/plugin.json": '{"name":"kanmer","version":"0.3.3","skills":"./skills/"}\n',
-      "plugin/mcp_config.json": '{"mcpServers":{"kanmer":{"command":"node","args":["${PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"]}}}\n',
+      "plugin/mcp_config.json": '{"mcpServers":{"kanmer":{"command":"cmd.exe","args":["/d","/s","/c","\\\"%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd\\\""]}}}\n',
       "plugin/skills/kanmer-plan/SKILL.md": "skill\n",
       "plugin/mcp/kanmer-mcp.cjs": "\n",
       ".agents/mcp_config.json": JSON.stringify({ mcpServers: { kanmer: { command: "old" } } }),
     });
-    const commandRunner = async (command: string) => {
-      if (command === "agy plugin list") return { stdout: "kanmer", stderr: "" };
-      if (command.startsWith("agy --add-dir ")) return { stdout: "PONG", stderr: "" };
+    const nativeCommandRunner = async (file: string, args: string[]) => {
+      if (file === "agy" && args[0] === "plugin" && args[1] === "list") return { stdout: "kanmer", stderr: "" };
+      if (file === "agy" && args[0] === "--add-dir") return { stdout: "I could not call the tool, but KANMER_GET_STATUS_OK", stderr: "" };
       return { stdout: "ok", stderr: "" };
     };
-    const result = await connectAgent("antigravity", root, root, { commandRunner, pluginRootPath: bundle });
+    const result = await connectAgent("antigravity", root, root, { nativeCommandRunner, pluginRootPath: bundle });
     expect(result.ok).toBe(false);
     expect(result.output).toContain("No legacy project state was changed");
     expect(await readFile(join(root, ".agents", "mcp_config.json"), "utf8")).toContain("kanmer");

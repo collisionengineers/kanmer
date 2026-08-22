@@ -8,5 +8,5 @@
 - [x] Add deterministic regressions for every scoped finding.
 - [x] Run focused and workspace rails; preserve first failures and INCONCLUSIVE boundaries. (Sources 32/32, core IO 32/32, GUI Git 31/31, full typecheck exit 0, docs exit 0; plugin:check and mcpb:check preserved as linked-worktree/dependency INCONCLUSIVE.)
 - [x] Update post-implementation report and cumulative CORE-026 packet.
-- [ ] Open linked PR and hand off at Review; leave merged-main proof unchecked.
+- [x] Open linked PR #218 and hand off at Review; leave merged-main proof unchecked.
 - [ ] Verify merged-main proof after independent review and merge.

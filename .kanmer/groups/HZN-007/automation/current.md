@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:11:39.263Z
+updated_at: 2026-08-22T00:13:30.433Z
 ---
 
 # Current auto run — HZN-007
@@ -58,3 +58,6 @@ Last handoff: 2026-08-22T00:00:13.385Z — GUI-075 is Review on PR #142 head 1a0
 
 Last handoff: 2026-08-22T00:09:44.236Z — CORE-022 independent merged-main verification is complete at af61144ce743f74b2aba92fb0778588b0b9bedd0; deterministic core evidence is PASS, the 242-ticket fixture and genuine Windows EPERM/file-lock evidence remain INCONCLUSIVE, and the ticket remains Verifying at 21/25. No release or cleanup performed.
 \n\nLast handoff: 2026-08-22T00:11:39.263Z — MCP-014 reconciliation complete: merged PR #132 cb8fa1f0a746b2c47722eb0ca644bf4d91599a77 (source ff41f518) is reachable on main; deterministic GUI 352/352, core 263/263, typecheck/build/plugin/manual/skills/diff rails pass; aggregate npm test retained FAIL 351/352 due kanmerGit timeout/Windows EPERM cleanup, standalone GUI 352/352 passes; named Grok clean-project and post-uninstall inspection remain INCONCLUSIVE (no XAI credential and pre-existing user plugin state); ticket remains Verifying at 47/67 with no worktree/branch.\n
+
+
+Last handoff: 2026-08-22T00:13:30.433Z — SKILL-017 is implementing on skill-017-auto-stopping/.worktrees/skill-017 from origin/main af61144c; scope is kanmer-auto stop/serial-fallback contract and validator/scenario evidence, with independent Review required and no merge or cross-ticket changes.

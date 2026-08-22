@@ -33,6 +33,16 @@ if "%INSTALL_DIR:~-1%"==" " goto :invalid_install
 if "%INSTALL_DIR:~-1%"=="." goto :invalid_install
 set "KANMER_EXE=%INSTALL_DIR%\Kanmer.exe"
 set "MCP_BUNDLE=%INSTALL_DIR%\resources\mcp\kanmer-mcp.cjs"
+set "EXTERNAL_DIR=%LOCALAPPDATA%\Kanmer\mcp\current"
+set "EXTERNAL_EXE=%EXTERNAL_DIR%\kanmer-mcp.exe"
+set "EXTERNAL_BUNDLE=%EXTERNAL_DIR%\kanmer-mcp.cjs"
+set "EXTERNAL_ICU=%EXTERNAL_DIR%\icudtl.dat"
+set "EXTERNAL_V8=%EXTERNAL_DIR%\v8_context_snapshot.bin"
+if exist "%EXTERNAL_EXE%" if exist "%EXTERNAL_BUNDLE%" if exist "%EXTERNAL_ICU%" if exist "%EXTERNAL_V8%" (
+  set "KANMER_EXE=%EXTERNAL_EXE%"
+  set "MCP_BUNDLE=%EXTERNAL_BUNDLE%"
+  goto runtime_ready
+)
 if not exist "%KANMER_EXE%" (
   >&2 echo Kanmer MCP launcher: Kanmer.exe is missing. Repair or reinstall Kanmer.
   exit /b 66
@@ -41,6 +51,12 @@ if not exist "%MCP_BUNDLE%" (
   >&2 echo Kanmer MCP launcher: the bundled MCP server is missing. Repair or reinstall Kanmer.
   exit /b 67
 )
+set "EXTERNAL_DIR="
+set "EXTERNAL_EXE="
+set "EXTERNAL_BUNDLE="
+set "EXTERNAL_ICU="
+set "EXTERNAL_V8="
+:runtime_ready
 exit /b 0
 
 :invalid_install

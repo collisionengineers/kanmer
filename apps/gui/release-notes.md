@@ -24,6 +24,16 @@ custom installation directory. This is the installer foundation only: portable
 Codex registration arrives separately, so existing provider registrations are
 unchanged in this release.
 
+### Windows MCP runtime is staged outside the install directory
+
+Fresh installs stage the Electron-as-Node MCP runtime and standalone bundle in a
+versioned per-user directory behind the stable launcher, while retaining the
+install-root payload for legacy registrations. This keeps the launcher and
+provider configuration portable across installation paths. Deterministic package
+checks cover the boundary; a real two-version update with a live agent session,
+junction behavior, and uninstall cleanup still requires a disposable Windows host
+and is not claimed by these notes.
+
 ### A `fix` now goes through Review
 
 A `fix` used to be able to go straight from Implementing to Done in one move,

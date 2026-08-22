@@ -43,6 +43,10 @@ async function fixture() {
     "%SystemRoot%\\System32\\reg.exe",
     '"--probe"',
     "resources\\mcp\\kanmer-mcp.cjs",
+    "%LOCALAPPDATA%\\Kanmer\\mcp\\current",
+    "kanmer-mcp.exe",
+    "icudtl.dat",
+    "v8_context_snapshot.bin",
     "ELECTRON_RUN_AS_NODE=1",
   ].join("\n"));
   return out;

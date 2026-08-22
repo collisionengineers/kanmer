@@ -34,15 +34,18 @@ commits:
   - b7957214
   - f4705d9e
   - 4f106865
+  - 216dcdf0
+  - 8c093424
 prs:
   - '168'
   - '170'
   - '175'
   - '176'
   - '177'
+  - '181'
 archived: false
 created: '2026-08-22T06:48:09.524Z'
-updated: '2026-08-22T13:20:30.915Z'
+updated: '2026-08-22T13:48:26.492Z'
 ---
 
 Deferred from CORE-033 review finding: GUI board-branch rename pushes the new branch and deletes the old one, while protection targets literal kanmer-board and forbids deletion. Coordinate protection retargeting or explicitly constrain the supported rename flow so the live board branch cannot become unprotected and stale protection is not left behind. Link [[CORE-033]].

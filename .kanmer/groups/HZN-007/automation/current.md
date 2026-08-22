@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T14:38:04.348Z
+updated_at: 2026-08-22T14:43:01.797Z
 ---
 
 # Current auto run — HZN-007
@@ -528,3 +528,6 @@ Last handoff: 2026-08-22T15:35Z — Independent CORE-058 review at PR #180 head 
 
 
 CORE-058 review produced two valid blockers: CORE-064 (rename-path boardRoot loss) and CORE-065 (failed-Git state not retryable). Both are prepared with research/plan/checklists. CORE-064 is now Implementing on core-064-preserve-root-rename; CORE-065 remains queued to avoid overlap on kanmerGit/index state.
+
+
+CORE-064 implemented at c8efb926 with deterministic 19/19 focused GUI rail and full local rails; PR #185 opened against CORE-058 and moved Implementing -> Review. Independent review requested; CORE-065 remains queued.

@@ -114,3 +114,6 @@
 
 
 10:20 CORE-044 moved Backlog→Preparing with FRD-027/ADR-0020 refs. Research/plan assigned to gui082-executor; no code lane taken yet. GUI-111 wheel fix is awaiting fresh gui099 review.
+
+
+10:45 CORE-044 taken into Implementing by codex-core044-execute on branch core-044-source-fetch-remediation stacked from CORE-026 head b5ae6f36. GUI-111 remains Review awaiting final independent PASS; no merges.

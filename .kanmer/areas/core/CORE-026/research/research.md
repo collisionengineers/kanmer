@@ -20,7 +20,7 @@ How can Kanmer let a project declare trusted MCPs, plugins, and `llms.txt` refer
 - Keep the contract in core plus an MCP read surface. Skills should ask that surface before open-web fallback and record which declared source they consulted in their research findings, satisfying FRD-005's citation rule.
 - Separate declaration from discovery: discovery may offer candidates extracted from the connected-provider configuration, but only a confirmed declaration becomes preferred.
 - Treat `llms.txt` as a constrained document fetch, not a crawler. The plan must specify cache location/lifecycle and deterministic limits, then test removal/revalidation so stale preferences cannot remain active.
-- This is a new capability with no governing FRD/ADR. The existing `docs_todo: true` is correct; planning must first create/link the governing document(s) through `kanmer-docs`.
+- This was a new capability with no governing FRD/ADR at research start. FRD-026 and ADR-0019 are now authored, linked, and recorded; the board docs_todo debt is cleared. The FRD remains draft and ADR proposed until implementation review.
 
 ## Open questions
 

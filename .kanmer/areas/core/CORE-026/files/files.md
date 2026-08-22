@@ -4,45 +4,35 @@
 
 | Path | Why |
 |---|---|
-| `packages/core/src/types.ts` | Add the typed, validated `sources` board-config schema and exported source types; prevent unknown declaration data being stripped on a board write. |
-| `packages/core/src/board.ts` | Ensure fresh boards receive the intended default and existing source declarations round-trip through YAML reads/writes. |
-| `packages/core/src/store.ts` | Add any source-resolution/cache lifecycle APIs while preserving atomic board writes and source-root versus board-root semantics. |
-| `packages/core/src/paths.ts` | Define an owned location for any persisted `llms.txt` cache/metadata below `.kanmer/data/`, rather than placing mutable cache in a source checkout or skill folder. |
-| `packages/mcp-server/src/index.ts` | Expose declared/effective sources through a read-only MCP tool or deliberate `get_status` extension; preserve the tool annotations and update the tool surface consistently. |
-| `apps/gui/src/main/providers.ts` | Supply read-only provider-registration discovery candidates, if the approved design includes provider-config discovery. |
-| `apps/gui/src/main/connect.ts` | Keep setup/Connect reconciliation from overwriting source declarations; optionally integrate confirmed candidate discovery without granting new MCP access. |
-| `apps/gui/src/shared/ipc.ts`, `apps/gui/src/preload/index.ts`, `apps/gui/src/main/index.ts` | Carry any GUI-facing sources management/discovery API across the typed IPC boundary. |
-| `apps/gui/src/renderer/src/components/Settings.tsx` (and its focused tests/styles) | Provide a project-scoped declaration/review UI if source management is part of the GUI deliverable. |
-| `plugins/kanmer/skills/kanmer-research/SKILL.md` | Consult declared sources before general search and cite the call/fetch in research findings. |
-| `plugins/kanmer/skills/kanmer-plan/SKILL.md` | Consume the sourced research context when deciding the plan; do not re-invoke external sources during implementation. |
-| `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md` | Document any new MCP source tool; `plugin:check` enforces this reference stays in sync with registered tool names. |
-| `packages/core/src/*.test.ts`, `packages/mcp-server/src/smoke.mjs`, GUI/provider tests, and skill-sync tests | Cover schema validation/round-trip, no-stale-preference removal, discovery confirmation, bounded `llms.txt` fetching/cache behaviour, and the published MCP/skill surface. |
-| `docs/functional/frd/` and `docs/architecture/adr/` | New governing capability specification and decisions required by the ticket's existing `docs_todo` marker. |
+| packages/core/src/types.ts | Add validated project source declaration/selector schemas and the optional BoardConfig.sources field so board YAML round-trips without stripping declarations. |
+| packages/core/src/sources.ts | Pure selector matching, declaration validation, deterministic ordering, and available/unknown/unavailable resolution; no network or host authority. |
+| packages/core/src/index.ts | Export the source contract for MCP and browser-safe consumers. |
+| packages/core/src/board.test.ts and packages/core/src/sources.test.ts | Prove board round-trip, malformed/duplicate rejection, global/area/label applicability, ordering, and host availability semantics. |
+| packages/mcp-server/src/sources.ts | Node-only bounded HTTPS llms.txt fetch/cache helper with same-origin depth-one/32-page/2 MiB/timeout/validator policy and injectable fetch for deterministic tests. |
+| packages/mcp-server/src/index.ts | Add read-only get_sources and explicit set_sources/fetch_source surfaces; keep expected-project annotations, actor/write guard, and tool registration single-sourced. |
+| packages/mcp-server/src/sources.test.ts and smoke/protocol checks | Prove bounded fetch/cache, removal/no stale effective preference, tool annotations, and the published MCP surface. |
+| plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md | Document the new source tools so plugin synchronization remains exact. |
+| plugins/kanmer/skills/kanmer-research/SKILL.md | Tell research to call get_sources first, consult available declared sources, and record provenance before general search. |
+| plugins/kanmer/skills/kanmer-plan/SKILL.md | Tell planning to consume cited source context without re-invoking sources during implementation. |
+| docs/functional/frd/FRD-026-project-declared-sources.md and docs/architecture/adr/ADR-0019-project-declared-source-trust.md | Governing feature contract and trust/fetch decision linked to the ticket. |
 
 ## Context files
 
 | Path | What it tells the implementer |
 |---|---|
-| `docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md` | The server/tool contract is authoritative; skills derive behaviour and must not become the source-preference rulebook. |
-| `docs/functional/frd/FRD-005-deep-research.md` | Research is source-agnostic today, must remain read-only, and every finding must carry a source; it already names vendor MCPs, web, live estate, and references. |
-| `docs/functional/frd/FRD-009-interrogative-workflow.md` | Product-owned uncertainty must surface now and unticked questions gate further work. |
-| `docs/functional/frd/FRD-013-setup-as-reconciliation.md` | Setup is idempotent reconciliation; it must not silently invent trusted external sources or erase declared ones. |
-| `docs/functional/frd/FRD-023-agent-skills-system.md` | Skills are a roster of task choreography; tool-surface changes require reference, build, sync, smoke, and typecheck updates. |
-| `packages/core/src/board.ts` and `packages/core/src/store.ts` | Board configuration is parsed/written as a whole and source data must survive every existing board mutation. |
-| `apps/gui/src/main/providers.ts` and `apps/gui/src/main/connect.ts` | Provider config is host-specific registration state; current code is intentionally surgical about Kanmer's own entries, so scanning it must never rewrite or auto-trust unrelated MCPs. |
-| `plugins/kanmer/skills/kanmer-research/SKILL.md` and `kanmer-plan/SKILL.md` | These are the only consumption points requested by the ticket; execution must not turn source use into per-edit ceremony. |
+| packages/core/src/types.ts, board.ts, store.ts | BoardConfig is the whole YAML contract; setBoard already preserves validated optional fields and must remain atomic. |
+| packages/mcp-server/src/index.ts and tool reference | Read/write annotations and expected_project are enforced centrally; every new write must use the guard and every tool name must stay synchronized. |
+| apps/gui/src/main/providers.ts, connect.ts | Host registrations are owned by providers; do not scan or rewrite unrelated MCPs or turn discovery into trust. |
+| docs/functional/frd/FRD-005-deep-research.md, docs/functional/frd/FRD-013-setup-as-reconciliation.md, docs/architecture/adr/ADR-0009-skills-are-not-the-contract.md | Research needs source provenance, setup must reconcile without inventing/erasing declarations, and the MCP/config contract must not be duplicated in skill prose. |
 
 ## Ripple effects
 
-- A `BoardConfig` addition changes core exports and every TypeScript fixture that constructs/configures boards.
-- An MCP tool change affects `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md`, the committed plugin bundle, `plugin:check`, smoke tests, and release artefacts.
-- A GUI configuration workflow crosses main/preload/shared/renderer and needs manual/documentation coverage.
-- Network retrieval needs deterministic test fixtures; tests must not depend on external `llms.txt` sites or real provider configurations.
-- The governing FRD/ADR must settle trust and bounded-crawl policy before implementation claims to meet the ticket's verification list.
+- BoardConfig and core exports affect all board fixtures and the browser-safe build.
+- MCP tools affect tool-reference synchronization, standalone bundle, protocol/smoke rails, and expected-project annotations.
+- Skill wording affects packaged plugin synchronization but does not change runtime authority.
+- The Node-only fetch/cache helper needs deterministic local fixtures and must never depend on a live documentation site.
 
 ## Out of scope
 
-- Automatically installing, enabling, authenticating to, or changing any third-party MCP/plugin.
-- Replacing a provider's native MCP configuration with Kanmer-managed configuration.
-- Consulting sources during code implementation rather than research/planning.
-- Unbounded website crawling, arbitrary filesystem reads, or treating `llms.txt` as access permission.
+- GUI settings, automatic provider registration migration, external auto-trust, installation/authentication/enabling, OAuth, per-user source scopes, or arbitrary filesystem reads.
+- Cross-origin or unbounded llms.txt crawling, implementation-time source calls, or changes to core gate/profile semantics.

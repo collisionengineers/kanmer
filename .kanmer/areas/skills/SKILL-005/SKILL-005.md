@@ -2,7 +2,7 @@
 id: SKILL-005
 type: ticket
 title: 6.5 AGENTS block rewrite
-status: review
+status: verifying
 area: skills
 order: 180
 assignee: skill005-take
@@ -30,7 +30,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/16'
 archived: false
 created: '2026-08-16T00:31:38.813Z'
-updated: '2026-08-22T00:44:44.702Z'
+updated: '2026-08-22T00:46:06.181Z'
 ---
 
 Orientation essentials only: profiles exist; call `get_doc_gates` before any move; read the whole ticket folder and group context; six stages; where the docs live.

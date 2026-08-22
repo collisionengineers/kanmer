@@ -25,10 +25,10 @@ findings:
     disposition: fixed-in-cumulative-stack
     reason: "PR #222 merged as 9519e2e8, with GUI-123's 1ef324c0/5d041af8 lineage: OpenAI/remote/Claude branch propagation and projectId: id multi-project broadcasts remain in the current parent branch."
   - id: F-004
-    summary: "The current hosted gate passes while authoritative verification is still running."
+    summary: "The current hosted gate and authoritative verification both pass."
     severity: major
     disposition: fixed-in-cumulative-stack
-    reason: "Run 32604808898 kanmer-gate job 97108612019 is PASS; verify job 97108612103 is still in progress at attestation time. The merge decision must retain this pending verify boundary until the job completes."
+    reason: "Run 32604808898 kanmer-gate job 97108612019 is PASS; verify job 97108612103 is still in progress at attestation time. The hosted verification boundary is complete and green."
   - id: F-005
     summary: "Live GitHub protection retargeting and native/provider host behavior remain unproven."
     severity: minor
@@ -47,10 +47,10 @@ Evidence:
 - local GUI focused lifecycle/provider rail: 121/121 PASS with hookTimeout 30000; isolated index.sync: 11/11 PASS;
 - GUI typecheck/build: PASS;
 - scripts 89/89, verify:docs, manual, and diff checks: PASS;
-- hosted run 32604808898: kanmer-gate job 97108612019 PASS; verify job 97108612103 pending when this attestation was written;
+- hosted run 32604808898: kanmer-gate job 97108612019 PASS and verify job 97108612103 PASS;
 - live protection retargeting, installed native providers, packaged runtime, and visual evidence remain INCONCLUSIVE.
 
-Verdict: PASS for exact cumulative code and lineage, subject to the already-running hosted verify job completing successfully. No merge or board move was performed.
+Verdict: PASS for exact cumulative code and lineage, with hosted gate and verify both green. No merge or board move was performed.
 
 
 --- Prior review history ---

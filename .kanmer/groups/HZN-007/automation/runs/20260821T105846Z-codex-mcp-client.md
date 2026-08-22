@@ -894,3 +894,11 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - PASS: clean detached npm ci; mcpb:check 3 files / 1,671,293 bytes with committed/generated server SHA f52d9c5b3817b12432e211438913146908c32874bf74ac261839a21ee31ea58c; core 310/310; MCP sources 32/32; GUI 416/416; typecheck; scripts 88/88; protocol 46/46; docs/manual/plugin/diff rails.
 - Hosted run 32603963529 verify PASS (job 97106199221). Its kanmer-gate failed against the pre-refresh snapshot because CORE-090 was still a live blocker and the prior review used invalid aggregated finding ids; current board readback has the CORE-090 edge removed and fresh scratch/review uses canonical F-### ids. A fresh gate rerun remains required before protected merge.
 - No merge, move, or cleanup performed. External provider, live llms/DNS, packaged, and visual evidence remain INCONCLUSIVE.
+
+
+## 2026-08-23T00:24:00Z — GUI-118 / CORE-043 cumulative review
+
+- GUI-118 reviewed at exact cumulative head 9519e2e8ad9c0424b63d9b9d8c4e6ef2832a7401 after PR #222's non-squash merge and GUI-123 lineage. GUI-119 OpenAI/remote/Claude KANMER_BOARD_BRANCH propagation, GUI-120 projectId:id multi-project broadcast, and GUI-118 lifecycle behavior are retained.
+- Local exact-tree focused rail passed 121/121 with hookTimeout 30000; isolated index.sync passed 11/11. GUI typecheck/build, scripts 89/89, docs/manual, and diff checks passed. The earlier 120/121 EPERM teardown attempt is preserved as environment evidence.
+- CORE-043 PR #168 exact head 9519e2e8 independently reviewed PASS; hosted run 32604808898 kanmer-gate job 97108612019 and verify job 97108612103 both PASS. Live protection/native/provider/packaged evidence remains INCONCLUSIVE.
+- GUI-118 and CORE-043 scratch/review attestations were replaced with canonical F-### summaries and exact-head readback. No merge, move, or cleanup performed.

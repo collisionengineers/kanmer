@@ -892,3 +892,11 @@ GUI-123 is Implementing on gui-123-preserve-gui120 / .worktrees/gui-123. It inte
 ## GUI-123 Review handoff
 
 GUI-123 is now Review on gui-123-preserve-gui120 / .worktrees/gui-123. Exact head 5d041af8886a2d307f0830690534a91cb519dc9c is pushed in PR #223 targeting gui-122-rebase-provider-propagation. It integrates GUI-120 37740379552e241f200bb181a2ca0e9d3be32ece into GUI-122 94d9fca2, restoring projectId:id multi-project Connect broadcast coverage while retaining GUI-119 provider propagation. Focused cumulative rail 121/121, GUI typecheck/build, scripts 89/89, verify:docs and diff-check passed. Full workspace typecheck inherited mcp-server/core dispatch mismatch is INCONCLUSIVE. Awaiting independent review; no merge or cleanup.
+
+
+## 2026-08-23T00:24:00Z — GUI-118 / CORE-043 cumulative review
+
+- GUI-118 reviewed at exact cumulative head 9519e2e8ad9c0424b63d9b9d8c4e6ef2832a7401 after PR #222's non-squash merge and GUI-123 lineage. GUI-119 OpenAI/remote/Claude KANMER_BOARD_BRANCH propagation, GUI-120 projectId:id multi-project broadcast, and GUI-118 lifecycle behavior are retained.
+- Local exact-tree focused rail passed 121/121 with hookTimeout 30000; isolated index.sync passed 11/11. GUI typecheck/build, scripts 89/89, docs/manual, and diff checks passed. The earlier 120/121 EPERM teardown attempt is preserved as environment evidence.
+- CORE-043 PR #168 exact head 9519e2e8 independently reviewed PASS; hosted run 32604808898 kanmer-gate job 97108612019 and verify job 97108612103 both PASS. Live protection/native/provider/packaged evidence remains INCONCLUSIVE.
+- GUI-118 and CORE-043 scratch/review attestations were replaced with canonical F-### summaries and exact-head readback. No merge, move, or cleanup performed.

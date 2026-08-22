@@ -2,7 +2,7 @@
 id: CORE-047
 type: ticket
 title: 'CORE-046 review remediation: close replacement-lock quarantine race'
-status: done
+status: verifying
 area: core
 assignee: codex-core047-root
 profile: fix
@@ -31,7 +31,7 @@ prs:
   - '169'
 archived: false
 created: '2026-08-22T10:55:20.407Z'
-updated: '2026-08-22T17:28:37.327Z'
+updated: '2026-08-22T17:29:50.059Z'
 ---
 
 Independent review of CORE-046 / PR #167 found one remaining blocker before CORE-046 can merge:\n\n- F-003: recoverStaleLock rechecks the stale inode and then calls fs.rename separately. In the reversed ordering, reclaimer B can quarantine/remove the stale inode, claim and recreate the original path, and reclaimer A can then rename B's fresh replacement into A's quarantine. Add an ownership-safe atomic quarantine protocol that cannot move a replacement lock after the inspected identity changes, plus a deterministic reversed-order concurrent regression. Preserve all inherited IO assertions and the existing forward-order race test.\n\nStack on CORE-046 head 54651a3c77b8ca8d02d9d309e36baf9b62ebca3c. CORE-046 and CORE-045 remain blocked until this ticket is independently reviewed and dispositioned. No unrelated source/editor/provider work.\n\n## Outcome\n\nPR #169 merged at `0f7ccc4efad0aeae2295f3ba08e0b6e886356679`. Verification on the exact cumulative CORE-044 branch passed IO 25/25, source 14/14, core typecheck/build, and diff-check. Hosted proof and genuine multi-process Windows crash/PID evidence remain INCONCLUSIVE.

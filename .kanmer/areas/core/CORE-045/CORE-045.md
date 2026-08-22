@@ -4,7 +4,7 @@ type: ticket
 title: >-
   CORE-044 review remediation: stale-lock recovery and complete DNS destination
   policy
-status: done
+status: verifying
 area: core
 assignee: codex-core045-execute
 profile: fix
@@ -50,7 +50,7 @@ prs:
   - '174'
 archived: false
 created: '2026-08-22T10:11:05.566Z'
-updated: '2026-08-22T17:27:23.929Z'
+updated: '2026-08-22T17:29:50.035Z'
 ---
 
 Independent review of CORE-044 / PR #165 found two blockers that must be fixed and re-reviewed before CORE-044 can merge:

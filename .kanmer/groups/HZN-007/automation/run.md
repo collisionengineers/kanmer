@@ -171,3 +171,6 @@
 
 
 2026-08-22T11:33:25Z — CORE-046 cumulative review NEEDS-CHANGES: code race/DNS blockers fixed by CORE-047, but bounded Windows transient rename retry and cumulative report/traceability remain open. Created linked CORE-049 in Preparing; original PR thread remains unresolved until evidence.
+
+
+2026-08-22T11:50:45Z — CORE-049 independent review NEEDS-CHANGES: retry contract lacked per-attempt ownership revalidation; cumulative parent has unresolved claimant-overlap, cleanup-error, and token-path security threads. Created linked CORE-050 in Preparing to close all four before CORE-046/049 merge.

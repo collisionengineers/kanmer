@@ -669,3 +669,6 @@ Done-incomplete audit reconciled: CORE-024, CORE-025, MCP-028 returned Done→Ve
 
 
 Done-incomplete audit: MCP-015, GUI-104, CORE-042, GUI-101 returned to Verifying with explicit INCONCLUSIVE external/live evidence; GUI-106 normalized to 24/24 and remains Done with clean closeout.
+
+
+CORE-026 fresh independent review PASS at exact 3a05ab7a (GUI 27/27, core 303/303, MCP 19/19, scripts 88/88, hosted verify+kanmer-gate PASS). PR #163 remains OPEN because protected main's review object rejects the available connector identity's self-approval; no --admin bypass. Required external action: approval by a distinct authorized GitHub reviewer or policy correction by repository owner.

@@ -71,3 +71,28 @@ F-004 (close/Retry/timer lifecycle race): fixed structurally by putting close un
 - `npm run typecheck -w @kanmer/gui`: **exit 0**.
 - `git diff --check 9371e2b0e8882426d91dbc99553e96853b99197f 8f3f346dc810d27428f119ba1f94cb5b300040cb`: **exit 0**.
 - PR status checks were absent in the inspected GitHub response; hosted packaging/Actions-variable/protected-main evidence remains outside this local review boundary.
+
+## Fresh exact-head cumulative review — PR #212
+
+- Exact reviewed head: `d79f5f610b4c1dee5b2707f8a3e0b1807c771da1`
+- Exact base: `9371e2b0e8882426d91dbc99553e96853b99197f`
+- Reviewer: core041-executor, independent of the implementation author; no source edits, merge, or GitHub-thread actions taken.
+- Verdict: **NEEDS-CHANGES** (code findings F-001..F-005 are resolved; packet evidence needs refresh).
+
+### Finding dispositions
+
+- F-001 durable pending handoff across reopen/restart: **FIXED** by the settings-backed per-project map, restoration in `openProject`, and persistence coverage.
+- F-002 acknowledgement clears only its matching warning: **FIXED** by exact warning comparison in `confirmKanmerGitHandoff`.
+- F-003 preference failure restores timers: **FIXED** by lifecycle-locked cleanup and `finally` rearming from effective settings.
+- F-004 close/Retry/timer lifecycle serialization: **FIXED** by the shared lifecycle lock and context-identity timer guard.
+- F-005 durable handoff is not erased by later clean/failed preference rename: **FIXED** by only writing a new durable marker when a new warning is produced; the new regression confirms an existing marker survives a later clean rename.
+
+- **F-006 (P2, evidence-blocking): the ticket post-implementation report and PR body are stale at this exact head.** They still state the post-remediation focused suite as 9/9, but `d79f5f61` adds the fifth `index.sync.test.ts` case, making the requested focused set 10/10. Update the report and PR verification text to the exact new evidence (and retain the broader suite result); no code change is required.
+
+### Fresh evidence
+
+- `npm run test -w @kanmer/gui -- --run src/main/settings.test.ts src/main/kanmerGit.test.ts src/main/index.sync.test.ts src/main/syncLifecycle.test.ts`: **exit 0**, 38/38 total; settings 3/3, lifecycle 2/2, index/sync 5/5, Git integration 28/28.
+- Requested focused subset (settings/lifecycle/index): **10/10 PASS**.
+- `npm run typecheck -w @kanmer/gui`: **exit 0**.
+- `git diff --check 9371e2b0e8882426d91dbc99553e96853b99197f d79f5f610b4c1dee5b2707f8a3e0b1807c771da1`: **exit 0**.
+- PR #212 remains open at the exact head with base `9371e2b0`; GitHub reported no status-check rollup in this inspection. Hosted packaging/Actions-variable/protected-main evidence remains outside local proof.

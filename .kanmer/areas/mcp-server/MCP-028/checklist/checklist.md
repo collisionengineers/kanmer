@@ -182,3 +182,27 @@
 - [ ] Deploy a disposable Worker client with bearer in a secret binding only.
 - [ ] Prove initialize, expected-project/tool verification, disposable create/update/archive, session close and public doctor health.
 - [ ] Prove no Access/redirect/proxy path was used and delete Worker, secret, runtime config and temporary board record.
+
+## Deterministic harness completion (implemented in this lane)
+
+- [x] Define schema-v1 ordered checks/status/aggregation and bounded safe reasons.
+- [x] Prohibit inline bearer/provider credential material in descriptor and CLI arguments.
+- [x] Register reverse-order cleanup for the disposable fixture and make it idempotent.
+- [x] Create a unique disposable project fixture outside the source board.
+- [x] Capture the expected project fingerprint and prove wrong-project rejection.
+- [x] Create a deliberate workflow gate-blocked action.
+- [x] Guarantee HTTP/session/temp-project cleanup after the client run.
+- [x] Generate an ephemeral bearer through the shipped MCP-026 path.
+- [x] Prove missing and independent wrong bearer rejection.
+- [x] Complete official SDK MCP initialization and list exact remote policy tools.
+- [x] Prove dispatch tools are unavailable through the central remote exposure policy.
+- [x] Prove one bounded remote mutation and read the resulting fixture id.
+- [x] Close the official SDK session cleanly.
+- [x] Validate the focused JSON client/evidence path locally.
+- [x] Keep live public DNS/TLS/tunnel/Worker/GUI/rotation/restart evidence explicitly INCONCLUSIVE when the protected environment is unavailable.
+- [x] Keep the manual protected verifier out of ordinary root verify and CI.
+- [x] Run `git diff --check` and record no secret-bearing output.
+
+## Protected environment disposition
+
+The remaining live-run boxes are intentionally unticked: this worktree has no Wrangler, cloudflared, Cloudflare credentials, named tunnel, protected bearer reference, or disposable Worker environment. The canonical operator script returns exit code 2 with an INCONCLUSIVE result until those protected inputs exist; no absent environment is accepted as a pass.

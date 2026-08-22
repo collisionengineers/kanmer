@@ -320,3 +320,7 @@ Stop when one complete real named-tunnel run for the exact reviewed commit passe
 ## Roadmap amendment — Cloudflare Worker remote-client proof
 
 Use a disposable Worker as an external MCP client only. Store the bearer in a Worker secret binding; initialize the public endpoint, verify project/tools, perform a disposable ticket lifecycle, close the session, capture redacted results, then delete the Worker and secret. Require no Access headers, cookies, redirects, proxy behavior or hosted Kanmer state.
+
+## Execution decision
+
+Implemented the deterministic fake public-boundary and separate official SDK client portions of this plan. The protected named-tunnel/Worker run remains an operator-only step; missing Wrangler/cloudflared/auth is classified INCONCLUSIVE and does not block local harness proof from being reviewed.

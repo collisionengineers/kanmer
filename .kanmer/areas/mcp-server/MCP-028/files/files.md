@@ -110,3 +110,7 @@ No raw bearer/provider credential may be accepted as a command argument, checked
 - Upload raw stdout/stderr/environment/config/doctor/provider logs as artifacts.
 - Allow cleanup failure to pass.
 - Hand-edit generated plugin bytes or merge the integration PR.
+
+## Implemented file mapping
+
+The planned integration surfaces are present as `src/integration/remote-public-types.ts`, `remote-public.ts`, `remote-public-client.mjs`, `remote-public-fixture.ts`, `remote-public-evidence.ts`, `remote-public-cleanup.ts`, and `remote-public.test.mjs`, plus the manual `scripts/verify-remote-public.mjs`. No protected workflow was added because no protected environment was confirmed.

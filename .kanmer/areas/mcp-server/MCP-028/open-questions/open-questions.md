@@ -36,3 +36,7 @@
 - `[deferred]` Automatic provider resource provisioning/deletion.
 
 No unresolved implementation questions remain.
+
+## Execution disposition
+
+No new implementation question remains. The protected Cloudflare/Worker run is explicitly deferred to the existing parked environment question and is not represented as a local PASS.

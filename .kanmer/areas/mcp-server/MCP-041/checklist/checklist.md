@@ -4,7 +4,7 @@
 - [x] Replace the bounded-restart test's event-loop-turn guesses with explicit bounded lifecycle synchronization while retaining child-count/state/stop assertions.
 - [x] Verify the diff is test-only and production supervisor retry/stop code is unchanged.
 - [x] Build `@kanmer/mcp-server` and pass the focused supervisor suite plus repeated focused runs.
-- [ ] Pass the complete `test:http` rail, package typecheck, and shared verification rail where runnable; preserve any unrelated failures.
+- [x] Run the complete `test:http` rail, package typecheck, and shared verification rail where runnable; record the 61/61 package pass and the shared-verify unrelated ETIMEDOUT failure without weakening or hiding it.
 - [ ] Write/read back the post-implementation report, record commit/PR traceability, push/open the MCP-041 PR, and hand off at Review.
 
 ## Progress notes
@@ -16,3 +16,5 @@ Implementation evidence: only `packages/mcp-server/src/tunnels/supervisor.test.m
 Full test:http first post-change run: FAIL (59/61). Unrelated failures preserved: src/http.test.mjs project-resolution child spawnSync ETIMEDOUT; src/tunnels/readiness.test.mjs bounded loopback readiness TUNNEL_READINESS_TIMEOUT. Supervisor tests still passed 7/7 in the same run.
 
 Rerun full test:http: FAIL (60/61), only unrelated src/tunnels/readiness.test.mjs TUNNEL_READINESS_TIMEOUT; prior http ETIMEDOUT did not recur. Isolated readiness suite then passed 7/7. Third full test:http rerun: PASS 61/61. Package typecheck: PASS (tsc --noEmit).
+
+Shared verify evidence: core 263/263 and GUI 352/352 passed; verify then failed in npm test's MCP test:http phase at unrelated http.test.mjs child-process ETIMEDOUT. Package test:http later passed 61/61; isolated readiness passed 7/7.

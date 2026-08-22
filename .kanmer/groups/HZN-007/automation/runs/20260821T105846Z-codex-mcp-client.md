@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T02:57:37.512Z
+updated_at: 2026-08-22T03:11:16.002Z
 lane_limit: 3
 stop_reason:
 ---
@@ -579,3 +579,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 - 2026-08-22T02:57:37.512Z — GUI-075/GUI-110 stacked PR #142 merged as 4f785781 after hosted verify 32546955237 / job 96967001211 passed; MCP-042 artifact-refresh PR #150 merged into the stack as a174ce96 and resolved the committed-plugin parity failure. Proof/checklists finalized with live-provider/visual evidence explicitly parked where unavailable; tickets Done, released, and exact implementation worktrees/branches removed.
 - 2026-08-22T02:57:37.512Z — MCP-042 proof records mcpb/plugin parity SHA ae7a3c11, MCP smoke 224/224, protocol 46/46, scripts 82/82, typecheck and diff-check pass; GUI-075 merged-main local verify retained two transient HTTP failures (focused retry 12/12 passed) alongside hosted PASS; no assertion was weakened.
+
+- 2026-08-22T03:11:16.002Z — fresh merged-main shared verification at 4f785781e7f1993fbcde5e474640db509737c0bd passed via npm run verify: build/manual, core 266/266, GUI 355/355, HTTP 61/61, scripts 82/82, typecheck, MCP smoke 224/224, mcpb/plugin parity, protocol 46/46, discovery 13/13, skills/AGENTS checks and diff-check.

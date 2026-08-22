@@ -168,3 +168,6 @@
 
 
 2026-08-22T11:26:50Z — CORE-043 independent review NEEDS-CHANGES (F-001 stale handoff cache, F-002 no-board preference persistence, F-003 .github workflow literal kanmer-board). Created linked CORE-048 remediation in Preparing; ADR-0016 conservative protection inference remains accepted bounded risk.
+
+
+2026-08-22T11:33:25Z — CORE-046 cumulative review NEEDS-CHANGES: code race/DNS blockers fixed by CORE-047, but bounded Windows transient rename retry and cumulative report/traceability remain open. Created linked CORE-049 in Preparing; original PR thread remains unresolved until evidence.

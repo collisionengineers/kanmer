@@ -42,3 +42,8 @@ All commands below ran in `.worktrees/gui-109` unless noted.
 - Commit: `c259af171a72fa83a9131f4f53a79d0cfd0f05b5`
 - PR: #162 (`https://github.com/collisionengineers/kanmer/pull/162`)
 - PR remains open and unmerged; author stops at Review for independent review.
+
+
+## Post-child remediation update — 2026-08-22
+
+GUI-111 PR #164 was independently reviewed PASS at child head 51c4a3460f6bb3dfb866c541e1a7d9920394bb34 and squash-merged into this branch as 72e80fc8c45672fd13907d9741900848ce06b109. The merged tree is the current parent PR #162 head. The child focused rail is 8/8 and the authoritative GUI suite is 45 files / 390 tests; workspace typecheck, GUI build, manual freshness, and diff-check PASS. The hosted parent rerun 32565459884 is recorded separately; kanmer-gate passed after the child dependency was dispositioned, while verify remains the required hosted check. Live Electron interaction remains INCONCLUSIVE. GUI-111 is in Verifying pending merged-main proof; its blocker relation was cleared after the child PR disposition/review so this parent can pass the merge gate.

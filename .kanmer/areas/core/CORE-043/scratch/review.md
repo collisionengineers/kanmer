@@ -3,6 +3,79 @@ kind: review-attestation
 pr: "168"
 head_sha: "4f106865947e556759aeb88363ea9aab7c01beac"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: needs-changes
+reviewer: "codex-root"
+independent: true
+plan_hash: "a0b32fae7b9b14f9"
+ticket_updated: "2026-08-22T13:20:30.915Z"
+findings:
+  - id: F-001
+    severity: blocker
+    summary: "Completed administrator handoff is recognized"
+    disposition: fixed
+    reason: "CORE-048 and CORE-052 refresh the requested destination and preserve mismatch state."
+  - id: F-002
+    severity: major
+    summary: "No-board protected preference transition is guarded"
+    disposition: fixed
+    reason: "The guard retains the protected default when no Git board is open."
+  - id: F-003
+    severity: blocker
+    summary: "Hosted gate consumes configured board branch"
+    disposition: fixed
+    reason: "The workflow reads KANMER_BOARD_BRANCH with the documented fallback; rerun 32575453101 passed kanmer-gate."
+  - id: F-004
+    severity: minor
+    summary: "Protection inference is conservative"
+    disposition: accepted-risk
+    reason: "ADR-0016 excludes a GitHub protection API/App; literal protected-default inference is the documented boundary."
+  - id: F-005
+    severity: blocker
+    summary: "Merged child dependency is unblocked"
+    disposition: fixed
+    reason: "CORE-048 and CORE-052 child edges are removed after their non-squash merges."
+  - id: F-009
+    severity: blocker
+    summary: "Custom rename leaves KANMER_BOARD_BRANCH stale"
+    disposition: deferred-to-ticket
+    reason: "CORE-059 owns the required repository-variable update ordering and regression; CORE-043 remains blocked until it is merged and re-reviewed."
+  - id: F-010
+    severity: major
+    summary: "Resolved handoff retains a generated pause/error"
+    disposition: deferred-to-ticket
+    reason: "CORE-060 owns clearing only generated mismatch state while preserving genuine errors; CORE-043 remains blocked until it is merged and re-reviewed."
+  - id: F-011
+    severity: blocker
+    summary: "Automatic sync can run while branch handoff is paused"
+    disposition: deferred-to-ticket
+    reason: "CORE-060 owns the timer and execution guards that stop sync while paused; CORE-043 remains blocked until it is merged and re-reviewed."
+  - id: F-012
+    severity: blocker
+    summary: "KANMER_BOARD_BRANCH convention is missing from AGENTS.md"
+    disposition: deferred-to-ticket
+    reason: "CORE-061 owns the required same-change AGENTS.md update and documentation proof; CORE-043 remains blocked until it is merged and re-reviewed."
+  - id: F-EXTERNAL
+    severity: minor
+    summary: "Live protection retarget proof"
+    disposition: accepted-risk
+    reason: "No authorized GitHub protection mutation or real protected-branch handoff was available; deterministic and hosted gate evidence is recorded, but live protection remains INCONCLUSIVE."
+---
+
+## Fresh cumulative independent review — CORE-043 / PR #168
+
+The exact cumulative head is 4f106865947e556759aeb88363ea9aab7c01beac, containing the original implementation plus CORE-048 and CORE-052/054/055 non-squash merges. Local rails and hosted rerun 32575453101 pass, but current-head review surfaced four real blockers: custom-to-custom renames can leave KANMER_BOARD_BRANCH stale, resolved handoffs can retain a generated pause/error, the timer can execute automatic sync while paused, and the new Actions-variable convention is absent from AGENTS.md.
+
+These findings are linked to CORE-059, CORE-060, and CORE-061 with blocking edges. The parent remains in Review and must not merge until each child is independently reviewed and merged, then the cumulative head is reviewed again. The live GitHub protection mutation boundary remains explicitly accepted risk.
+
+Verdict: NEEDS-CHANGES. No merge or stage move was performed.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "168"
+head_sha: "4f106865947e556759aeb88363ea9aab7c01beac"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: pass
 reviewer: "codex-root"
 independent: true

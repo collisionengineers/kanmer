@@ -1,3 +1,3 @@
-- [ ] Enforce effective cache exclusion despite later negations.
-- [ ] Add deterministic `check-ignore` regression.
-- [ ] Run focused/full rails.
+- [x] Reconcile managed ignore rules after existing later negations.
+- [x] Preserve one canonical copy of each managed rule.
+- [x] Add effective-ignore regression and run focused/full rails.

@@ -570,3 +570,6 @@ CORE-069 active in .worktrees/core-069 on base 14c2d0fd; target is paused-state 
 
 
 CORE-069 implementation a6231bb0 / PR #190 moved Implementing -> Review. Focused 4/4, kanmerGit 23/23, core build PASS, scripts 88/88, GUI typecheck PASS after workspace install. Independent exact-SHA review/merge requested; CORE-070..073 queued.
+
+
+CORE-069 merged as 217eba45, Verifying with child block removed. CORE-070 implementation cc1cbf36 / PR #191 moved Implementing -> Review; kanmerGit 24/24, core build and GUI typecheck PASS, scripts 88/88. Independent review/merge pending.

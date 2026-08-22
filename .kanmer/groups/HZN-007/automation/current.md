@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T14:07:52.825Z
+updated_at: 2026-08-22T14:15:48.497Z
 ---
 
 # Current auto run — HZN-007
@@ -516,3 +516,6 @@ Last handoff: 2026-08-22T13:58:39.390Z — CORE-057 fresh independent review exa
 
 
 Last handoff: 2026-08-22T14:09Z — CORE-063 assigned to codex-recovery after packet/context/gates read and non-forced take on core-063-preserve-board-root/.worktrees/core-063 from CORE-058 cumulative a0acadee. Scope is attached board-root preservation when ignore reconciliation fails, with deterministic regression; implementation and independent Review handoff pending.
+
+
+CORE-063 implementation complete at 5f63636d; PR #184 opened against CORE-058 and moved Implementing -> Review after focused 18/18 GUI Git, GUI typecheck, core build, scripts 88/88, manual/docs and diff rails. Independent CORE-041 review requested; CORE-058 remains blocked by CORE-063.

@@ -69,7 +69,7 @@ findings:
     disposition: deferred-to-ticket
     ticket: "GUI-112"
     reason: "Current PR #168 thread 3836720320 remains unresolved; GUI-112 owns the failed-Git status surface."
-  - id: F-EXTERNAL
+  - id: F-025
     severity: minor
     summary: "Live GitHub protection and variable mutation"
     disposition: accepted-risk

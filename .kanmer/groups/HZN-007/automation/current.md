@@ -836,3 +836,6 @@ Last handoff: 2026-08-22T22:13Z — GUI-119 independently reviewed PASS at exact
 
 
 Last handoff: 2026-08-22T23:24:00Z — GUI-118 is Review-ready on gui-118-provider-lifecycle/.worktrees/gui-118, commit e09009b2, PR #219 targeting core-043-protection-retarget. Focused settings 4/4, providers 66/66, connect 34/34, index.sync 10/10; reduced GUI 47 files/392 tests; typecheck, GUI build, docs, scripts 89/89 after build, and diff check PASS. The full Git-heavy GUI rail and live native/packaged/protected-host/hosted evidence remain INCONCLUSIVE. Independent review is required; no merge or cleanup.
+
+
+2026-08-22T22:30Z: CORE-090 created for cumulative CORE-026 MCPB artifact parity after hosted run 32602154533 failed check-mcpb-sync. Implementing commit a4204617 is Review on PR #220; CORE-090 blocks CORE-026. GUI-118 is Review on PR #219 at e09009b2, awaiting independent review.

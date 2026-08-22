@@ -12,9 +12,6 @@ stageEntered:
   preparing: '2026-08-22T17:50:45.742Z'
   review: '2026-08-22T18:02:12.922Z'
   verifying: '2026-08-22T18:38:30.956Z'
-taken_at: '2026-08-22T17:53:55.230Z'
-branch: core-080-manual-retry-preflight
-worktree: .worktrees/core-080
 labels:
   - pr-review
   - branch-protection
@@ -25,8 +22,7 @@ groups:
   - EPIC-009
 links:
   - CORE-043
-blocks:
-  - CORE-043
+blocks: []
 refs:
   - docs/functional/frd/FRD-020-board-git-worktree-sync.md
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
@@ -39,7 +35,7 @@ prs:
   - '203'
 archived: false
 created: '2026-08-22T17:50:29.988Z'
-updated: '2026-08-22T18:38:37.506Z'
+updated: '2026-08-22T18:39:08.638Z'
 ---
 
 ## What

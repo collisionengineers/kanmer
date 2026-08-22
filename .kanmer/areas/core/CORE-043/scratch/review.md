@@ -1,30 +1,38 @@
 ---
 kind: review-attestation
 pr: "168"
-head_sha: "f63d953fc8467440988c887c62a34ade0c77c96c"
+head_sha: "e78323d7fb8ce695e40db80380d189e236726b25"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
-verdict: needs-changes
+verdict: pass
 reviewer: "codex-recovery"
 independent: true
-plan_hash: "2026-08-22T17:16:10.646Z"
-ticket_updated: "2026-08-22T17:54:02.677Z"
+plan_hash: "2026-08-22T18:39:38.518Z"
+ticket_updated: "2026-08-22T18:39:38.518Z"
 findings:
   - id: F-013
     severity: blocker
-    disposition: deferred-to-ticket
-    ticket: "CORE-080"
-    reason: "Fresh independent review found that manual Retry can call syncBoard using a stale cached branch without rechecking the live board worktree; CORE-080 is the linked remediation and blocks CORE-043."
+    summary: "Manual Retry production-caller mismatch safety"
+    disposition: fixed-in-ticket
+    ticket: "CORE-084"
+    reason: "CORE-084 was independently reviewed and merged as e78323d7; its exact production syncProject regression proves mismatch pause before syncBoard with no ref/worktree/content mutation."
   - id: F-014
     severity: major
-    disposition: deferred-to-ticket
+    summary: "Retained custom-ref contract wording"
+    disposition: fixed-in-ticket
     ticket: "CORE-080"
-    reason: "Fresh independent review found FRD-020 R5 acceptance wording still describes deleting the old custom ref while the safe retained-ref handoff requires updating KANMER_BOARD_BRANCH first; CORE-080 aligns the governing/manual contract."
+    reason: "CORE-080's merged implementation and docs align FRD-020/manual wording with retaining the old ref until KANMER_BOARD_BRANCH is updated."
   - id: F-EXTERNAL
     severity: minor
+    summary: "Live GitHub protection and variable mutation"
     disposition: accepted-risk
-    reason: "Live GitHub protection and repository-variable mutation remains an administrator-owned external boundary under ADR-0016; no admin bypass is used."
+    reason: "Live protection/Actions-variable mutation remains an administrator-owned ADR-0016 boundary; no admin bypass or fabricated hosted proof is used."
 ---
 
+## Fresh cumulative independent re-review — PASS — 2026-08-22T18:39:38.518Z
+
+Reviewed exact cumulative head `e78323d7fb8ce695e40db80380d189e236726b25` on PR #168 after CORE-080/CORE-084 child merges. The production Retry-caller finding is fixed and independently merged; retained-ref contract wording is fixed. Hosted verify is PASS; the remaining gate reconciliation is board-side dependency/review metadata only. The exact merged child commits are reachable from the cumulative branch, and the external protection mutation boundary remains accepted risk under ADR-0016.
+
+Verdict: PASS for the cumulative CORE-043 implementation. An independent reviewer may merge PR #168 into protected main only after the hosted kanmer-gate rerun is green; do not use an admin bypass.
 ## Independent cumulative review — CORE-043 / PR #168
 
 Reviewed exact head f63d953fc8467440988c887c62a34ade0c77c96c against main base 34245be039e8fd8395b5e31835602c54e62e98a4. The cumulative tree contains the original branch-protection retarget implementation and the reviewed non-squash child merges through CORE-061, including merge 8c093424. The child remediations preserve configured branch handoff, pause/error state, effective cache reconciliation, and managed AGENTS convention without adding a GitHub API or protected-ref bypass.

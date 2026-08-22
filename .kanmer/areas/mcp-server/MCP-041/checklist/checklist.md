@@ -22,3 +22,7 @@ Shared verify evidence: core 263/263 and GUI 352/352 passed; verify then failed 
 Review handoff: post-implementation report read back; commit `99d3f259639a50d0319a136816cd088e3df2da2a` recorded; PR #145 opened at https://github.com/collisionengineers/kanmer/pull/145. Stop for independent review; do not merge or clean up.
 
 Stacked dependency verification: `npm run verify` rerun passed core 263/263, GUI 352/352, MCP `test:http` 61/61, scripts 80/80, stdio smoke 224/224, and headless smoke; it failed at `mcpb:check` with missing `@anthropic-ai/mcpb/dist/cli/cli.js` (`MODULE_NOT_FOUND`). Preserved as an environment/dependency failure; no ticket scope absorbed.
+
+## Merged-main verification
+
+Verified after PR #145 merge `8a9eee57e1779f83f30504851e1bff0bf167247a`: build exit 0; focused supervisor 7/7 exit 0; package `npm run test:http -w @kanmer/mcp-server` 61/61 exit 0; package typecheck exit 0; diff-check exit 0. Original 99d3f259 and stacked aac1e252/72da8d076 are reachable from main. Preserved transient hosted attempt 1 npm ci ECONNRESET/EPERM failure (job 96961297681); attempt 2 job 96961421442 passed in 2m17s. No MCPB/provider/remote-host claim made.

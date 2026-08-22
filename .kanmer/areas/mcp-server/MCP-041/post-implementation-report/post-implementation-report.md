@@ -77,3 +77,7 @@ the worktree lacks `node_modules/@anthropic-ai/mcpb/dist/cli/cli.js`
 (`MODULE_NOT_FOUND`). This is an environment/dependency packaging failure
 outside MCP-041; the earlier shared-verify HTTP `ETIMEDOUT` and package
 transient failures remain preserved above.
+
+## Merged-main verification
+
+Proof was written after PR #145 merged at 8a9eee57. On merged main, the MCP server build, focused supervisor suite (7/7), complete package test:http rail (61/61), package typecheck, and diff-check all exited 0. Original MCP-041 99d3f259 and stack commits aac1e252/72da8d076 are reachable. Hosted run 32544808992 attempt 1's npm ci ECONNRESET/EPERM cleanup failure is retained as transient infrastructure evidence; attempt 2 job 96961421442 passed the authoritative verify rail in 2m17s. No MCPB/provider/remote acceptance is claimed.

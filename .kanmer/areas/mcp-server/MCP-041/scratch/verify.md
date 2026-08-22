@@ -1,0 +1,1 @@
+Merged-main verification complete. PR #145 merge 8a9eee57 is on main; original 99d3f259 and stack commits are reachable. Build, supervisor 7/7, test:http 61/61, typecheck and diff-check passed. Hosted attempt 1 npm ci ECONNRESET/EPERM failure remains preserved; attempt 2 job 96961421442 passed in 2m17s. No MCPB/provider/remote acceptance claim.

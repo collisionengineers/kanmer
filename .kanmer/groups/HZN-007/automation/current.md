@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:54:10.235Z
+updated_at: 2026-08-22T00:56:33.202Z
 ---
 
 # Current auto run — HZN-007
@@ -95,3 +95,6 @@ Last handoff: 2026-08-22T00:44:44.861Z — SKILL-005 is Review-ready after merge
 
 
 Last handoff: 2026-08-22T00:48:35.593Z — DOC-007 is taken on doc-007-manual-reconcile/.worktrees/doc-007 from origin/main af61144c for merged-main manual reconciliation. Historical PR #49/merge 19244f6 is reachable; current main's post-merge manual additions will be audited before any document or stage update. No self-review/merge/cleanup.
+
+
+Last handoff: 2026-08-22T00:56:33.202Z — DOC-007 is Review-ready after current-main reconciliation: existing PR #49/merge 19244f6 is reachable, current manual emits 22 chapters, and all deterministic rails are recorded. First missing-core-dist test failure and unrerun negative/visual boundaries remain explicit; no source diff, new PR, self-review, merge or cleanup. Independent root review required.

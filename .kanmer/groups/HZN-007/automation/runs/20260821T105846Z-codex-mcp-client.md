@@ -512,3 +512,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T00:54:10.235Z — SKILL-005 closeout cleanup complete: .worktrees/skill-005 removed from clean state, branch skill-005-agents-block-reconcile deleted, fetch --prune and worktree prune completed. Closeout checklist is fully checked; take_ticket release is the final lifecycle action.
+
+
+- 2026-08-22T00:56:33.202Z — DOC-007 Review handoff after current-main reconciliation: historical PR #49 merge 19244f6 is reachable from origin/main af61144c; fresh worktree doc-007-manual-reconcile is clean with no source diff. Current manual emits 22 chapters (21 authored + generated shortcuts), min authored 2462, focused manual 11/11, current aggregate npm test passes after core build (core 263/263, GUI 352/352, HTTP 61/61, scripts 80/80), and check/type/build/diff rails pass. First fresh-worktree aggregate exit 1 from missing core dist (scripts 78/80) is preserved. Checklist/report/scratch were written/read back at 44/46; withdrawn backlog chapter and unrerun negative guard are explicit dispositions; no visual/manual acceptance claimed. Implementing→Review moved through MCP; existing PR #49 remains traceability. Independent review required; no self-review, merge, verification or cleanup.

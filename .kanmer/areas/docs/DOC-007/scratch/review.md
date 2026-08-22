@@ -104,3 +104,18 @@ test; `check:manual` passes and is now actually reached; and the chapters answer
 their own titles for a reader without the repo.
 
 Merging under the operator's standing delegation.
+
+# Independent review — DOC-007
+
+## Verdict
+PASS WITH ACCEPTED RISK. Historical PR #49 merge `19244f6` and source are reachable from current main. The reconciled packet accurately describes the shipped manual: 22 chapters (21 authored plus generated shortcuts), substantive user-facing content, removal of FRD derivation, and guard tests against internal-doc residue.
+
+## Checks
+- Full packet, FRD-024, HZN-003/HZN-007 context and linked GUI-017 read.
+- Focused manual tests 11/11, aggregate core 263/263, GUI 352/352, HTTP 61/61, scripts 80/80 after build, typecheck/build/check-manual/generated diff/diff-check PASS.
+- Initial fresh-worktree 78/80 missing-core-dist failure preserved.
+
+## Accepted limits
+Two checklist items remain intentionally unchecked: negative guard fixture rerun and visual/manual acceptance. Withdrawn Backlog chapter and stale follow-ups are explicitly dispositioned; no proof is inflated.
+
+Proceed Review → Verifying; independent verifier should refresh proof on merged main before Done.

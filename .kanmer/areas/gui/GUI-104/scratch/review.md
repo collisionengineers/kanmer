@@ -71,3 +71,11 @@ Verdict: NEEDS-CHANGES pending persisted-registration identity reconciliation/re
 
 - Fixed the restart-persisted-identity finding by detecting old project entries before register creates a new profile; added restart/reconcile regression coverage.
 - Independent reviewer verdict was NEEDS-CHANGES only for this finding; it is now fixed. Await fresh hosted checks and final re-review.
+
+## Independent final review — GUI-104 PR #157 head a663a62f
+
+The single remaining finding `PRRT_kwDOT2PEds6bXFOp` is fixed. `register()` now canonicalizes the project path and checks persisted project entries for the same path under a different fingerprint before creating a new record. It returns `identityConflict`, preserving the explicit Settings reconcile/remove path. The added regression test creates a profile, instantiates a fresh manager (restart), detects the migrated identity, and successfully reconciles the profile.
+
+All prior review threads are resolved. No additional source finding was identified in this bounded diff. Hosted verify and kanmer-gate for `a663a62f` were still in progress at review time; prior recorded local/hosted rails for the stack were green. Ticket frontmatter still records `cad3552a` rather than the final head and should be refreshed as bookkeeping.
+
+Verdict: PASS for independent source review, pending hosted checks and commit traceability refresh. No merge or cleanup performed.

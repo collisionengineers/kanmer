@@ -14,3 +14,8 @@ Evidence:
 - Direct board-push non-trigger observation remains INCONCLUSIVE; workflow is statically pull_request-only. Checklist remains 96/97 with that item unchecked.
 
 No blocking source finding. Verdict: PASS for independent review, with the exact local rail failures, stale 14-vs-15 report count, and direct-push INCONCLUSIVE boundary retained. No merge performed.
+
+
+## Review correction
+
+Independent review PASS. The report count is corrected to 14/14 focused core tests; unrelated local test:http contention and direct board-push INCONCLUSIVE evidence remain explicit.

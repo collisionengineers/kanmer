@@ -46,3 +46,9 @@ Implementation is ready for independent review. The ticket remains pre-merge; no
 ## Hosted verification
 
 PR #159 at head d338349ea44397887f74ef714563f6bbc880ea79 completed hosted run 32558835415 with kanmer-gate PASS (job 96997133179, 53s) and verify PASS (job 96997133282, 2m28s). The hosted gate and authoritative verify are green for this exact head. PR remains open for independent review; no merge performed.
+
+
+## Independent review correction — 2026-08-22
+
+- Corrected focused core evaluator count: 14/14 PASS (the earlier 15/15 line was a stale count; no test assertion was weakened).
+- Independent review PASS: no blocking source finding. Hosted kanmer-gate and verify remain PASS for run 32558835415. The unrelated Windows test:http contention failures and direct-board-push INCONCLUSIVE boundary remain preserved.

@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T01:08:53.560Z
+updated_at: 2026-08-22T01:09:45.163Z
 ---
 
 # Current auto run — HZN-007
@@ -112,3 +112,6 @@ Last handoff: 2026-08-22T01:08:08.843Z — DOC-007 moved Verifying→Done after 
 
 
 Last handoff: 2026-08-22T01:08:53.560Z — DOC-007 closeout started after Done/proof/Outcome readback. Exact cleanup is limited to .worktrees/doc-007 and doc-007-manual-reconcile; release remains last. Negative-fixture/visual INCONCLUSIVE and broad red rails remain preserved.
+
+
+Last handoff: 2026-08-22T01:09:45.163Z — DOC-007 cleanup complete: PR #49 merged/proof final, checklist closeout checked, exact worktree/branch removed and refs pruned. Release is the final action; negative-fixture/visual acceptance remains INCONCLUSIVE.

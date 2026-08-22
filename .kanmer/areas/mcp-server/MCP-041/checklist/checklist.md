@@ -20,3 +20,5 @@ Rerun full test:http: FAIL (60/61), only unrelated src/tunnels/readiness.test.mj
 Shared verify evidence: core 263/263 and GUI 352/352 passed; verify then failed in npm test's MCP test:http phase at unrelated http.test.mjs child-process ETIMEDOUT. Package test:http later passed 61/61; isolated readiness passed 7/7.
 
 Review handoff: post-implementation report read back; commit `99d3f259639a50d0319a136816cd088e3df2da2a` recorded; PR #145 opened at https://github.com/collisionengineers/kanmer/pull/145. Stop for independent review; do not merge or clean up.
+
+Stacked dependency verification: `npm run verify` rerun passed core 263/263, GUI 352/352, MCP `test:http` 61/61, scripts 80/80, stdio smoke 224/224, and headless smoke; it failed at `mcpb:check` with missing `@anthropic-ai/mcpb/dist/cli/cli.js` (`MODULE_NOT_FOUND`). Preserved as an environment/dependency failure; no ticket scope absorbed.

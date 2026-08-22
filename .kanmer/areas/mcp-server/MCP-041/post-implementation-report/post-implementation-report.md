@@ -62,3 +62,18 @@ Expected focused and package outcomes are 7/7 and 61/61 respectively, with
 the supervisor test passing inside the package rail. Preserve any unrelated
 HTTP/readiness or shared-verify infrastructure failure with its exit code;
 proof belongs to `kanmer-verify` after merge.
+
+## Stacked dependency and verification rerun
+
+After independent review identified that PR #145 needed CORE-037's already
+reviewed path assertion to evaluate cleanly, the branch was updated with an
+explicit merge commit `72da8d0769af830480e06d719c3081671dcd0be9` from
+`origin/core-037-windows-path-identity`; original commit
+`aac1e25243fe200cc936b31a1fe78e7d041cd08b` remains reachable as its ancestor.
+No edits were made to the dependency. The stacked `npm run verify` rerun
+passed core 263/263, GUI 352/352, MCP `test:http` 61/61, scripts 80/80, MCP
+stdio smoke 224/224, and headless smoke. It then failed at `mcpb:check` because
+the worktree lacks `node_modules/@anthropic-ai/mcpb/dist/cli/cli.js`
+(`MODULE_NOT_FOUND`). This is an environment/dependency packaging failure
+outside MCP-041; the earlier shared-verify HTTP `ETIMEDOUT` and package
+transient failures remain preserved above.

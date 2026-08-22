@@ -76,13 +76,15 @@ Historical implementation PR #49 is already merged. This checklist records the c
 
 ---
 
+---
+
 ## Closeout — DOC-007
 
-- [ ] PR merge verified (`gh pr view 49 --json state,mergedAt`): MERGED at 2026-08-16T23:24:57Z, merge `19244f62d05ddf64ff7aa52ea4cf34342798013f`.
-- [ ] proof.md finalised (PR URL + merge date appended): current-main verification and exact red/inconclusive boundaries appended at 2026-08-22T01:08:53.560Z.
-- [x] Moved to final stage: Verifying→Done passed with fresh enter-done gates at 2026-08-22.
-- [ ] Outcome recorded in ticket body (PR link, follow-ups): PR #49, follow-ups [[DOC-008]]/[[GUI-087]], broad environmental failures and visual/negative-fixture limits retained.
-- [ ] cd out of worktree; `git worktree remove .worktrees/doc-007`.
-- [ ] `git branch -d doc-007-manual-reconcile` (or `-D` only if squash merge requires it).
-- [ ] `git fetch --prune` + `git worktree prune`.
-- [ ] `take_ticket action: "release"` (last lifecycle action).
+- [x] PR merge verified (`gh pr view 49 --json state,mergedAt`): MERGED at 2026-08-16T23:24:57Z, merge `19244f62d05ddf64ff7aa52ea4cf34342798013f`.
+- [x] proof.md finalised (PR URL + merge date appended): current-main verification and exact red/inconclusive boundaries appended.
+- [x] Moved to final stage: Verifying→Done passed with fresh enter-done gates.
+- [x] Outcome recorded in ticket body (PR link, follow-ups): PR #49, [[DOC-008]] and [[GUI-087]], broad failures and visual/negative-fixture limits retained.
+- [x] cd out of worktree; `git worktree remove .worktrees/doc-007` (exit 0).
+- [x] `git branch -d doc-007-manual-reconcile` (exit 0; deleted at af61144c).
+- [x] `git fetch --prune origin` + `git worktree prune` (exit 0).
+- [x] `take_ticket action: "release"` (last lifecycle action).

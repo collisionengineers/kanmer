@@ -30,3 +30,11 @@ The prior cumulative-only closeout was reversed after reachability audit. The ex
 - [x] IO 32/32, source 32/32, core/store 91/91, typecheck, scripts/docs/skills/agents/diff rails recorded; HTTP child timeout remains INCONCLUSIVE.
 - [x] PR #166 was already merged into the reachable cumulative lineage.
 - [ ] Worktree/branch cleanup and release pending.
+
+## Final closeout
+
+- [x] Proof rewritten against reachable origin/main fdaededc and merged-main deterministic rails read back.
+- [x] PR #166 confirmed MERGED on 2026-08-22T12:55:09Z.
+- [ ] Exact worktree/branch cleanup and release pending.
+
+- [x] Removed .worktrees/core-045 and deleted core-045-lock-dns-remediation after merged PR confirmation; pruned worktrees.

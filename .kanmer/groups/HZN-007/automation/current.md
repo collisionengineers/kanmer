@@ -903,3 +903,9 @@ GUI-123 is now Review on gui-123-preserve-gui120 / .worktrees/gui-123. Exact hea
 
 
 2026-08-23T23:35Z — CORE-026 PR #163 independently merged into main as fdaededcf8bff0c5d5867e386782d8bdc32324e9 after all 93 review threads received explicit disposition replies and were resolved. PR #168 remains open; its cumulative branch is being refreshed onto fdaededc with conflict-safe preservation of both source/board-sync and provider lifecycle changes before fresh hosted evidence and independent merge.
+
+
+2026-08-23T23:46Z — PR #168 refresh head 3957a1e6 passed local GUI typecheck after preserving CORE-026 and CORE-043 behavior, but hosted run 32605945580 failed: verify 309/310 timed out in a Windows core store test and kanmer-gate rejected the stale Verifying stage plus invalid prior review disposition. CORE-043 was moved back to Review and its exact-head attestation replaced with valid fixed/accepted-risk dispositions; fresh hosted rerun is required before merge.
+
+
+Batch milestone: CORE-044 and CORE-045 are verified on origin/main fdaededc, moved Verifying to Done, proofs written via MCP, exact ticket worktrees/branches cleaned, and tickets released. Deterministic core/source rails pass; the shared test:http project-resolution child spawnSync ETIMEDOUT remains INCONCLUSIVE. Next batch ticket: CORE-046.

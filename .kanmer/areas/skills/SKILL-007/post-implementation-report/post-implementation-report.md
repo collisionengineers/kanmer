@@ -51,3 +51,11 @@ week should know it means "nobody re-groomed", not "nothing is in flight".
 Each epic's derived `complete`/`total` against a direct label count; `NOW`'s
 members against the open Phase 4–5 tickets; a re-run reporting zero patches; and
 confirm no file on disk stores a member list.
+
+## Reconciliation audit — 2026-08-22
+
+This ticket was found in Implementing with historical implementation, review, merge and proof already recorded. The merged PR is [#20](https://github.com/collisionengineers/kanmer/pull/20), merge commit `f7a0ca61873398a1ff9e5a93e481acec9374367e`, and source commit `73e2e9cfa59af4488d539a2a7813a3317b1f5dd0` is reachable from current main. The current `kanmer-groom` source still contains the documented preview/confirm, ticket-owned membership, no-member-list, re-read-before-patch, source-count verification, idempotence, and roadmap-derived horizon procedure.
+
+Fresh live MCP reads matched each phase label to its derived epic progress: Phase 0 4/4, Phase 1 3/3, Phase 2 8/8, Phase 3 3/3, Phase 4 8/8, Phase 5 4/5, Phase 6 4/5, Phase 7 3/4. Every EPIC-001 through EPIC-008 context was read; each names its plan and governing FRDs and states that membership/progress are derived from ticket groups. The `bug` and `v3-blocker` labels remain properties rather than conversion candidates.
+
+The original NOW/NEXT proof was accurate at conversion time. It is intentionally a static horizon lens: HZN-001 now contains GUI-007/010/016/017 after they closed plus GUI-015 in Review; HZN-002 contains DOC-005 and SKILL-006 done plus SKILL-007 implementing. This current drift is documented by the existing proof and is not reported as a present-tense open-ticket match. No new code or dependency was needed, and no proof was fabricated.

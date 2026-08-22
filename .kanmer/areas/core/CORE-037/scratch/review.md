@@ -10,3 +10,6 @@ PASS pending required CI confirmation. The one-file diff is test-only and direct
 
 ## Disposition
 No findings in the patch. If the required check is green, advance Review → Verifying; if it remains red, preserve the exact failure and do not merge.
+
+## CI update — 2026-08-22
+The GitHub verify attempt was rerun once (same workflow, attempt 2) and deterministically failed at the unrelated MCP tunnel supervisor test: 60/61, `supervisor restarts only a bounded number of unexpected exits...`, expected starts 2, observed 1. This is not caused by the one-file GUI test patch. MCP-041 was created as a separate remediation and linked as blocking CORE-037. PR #144 remains unmergeable while required verify is red.

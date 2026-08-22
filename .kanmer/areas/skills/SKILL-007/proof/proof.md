@@ -67,3 +67,9 @@ underlying numbers are verified; the pixels are not.
 **Horizons will go stale silently.** `NOW` was seeded from what is open today
 and nothing re-seeds it. As those five tickets close it reads `0/5`, which means
 "not re-groomed", not "nothing in flight". By design in v3, but a real trap.
+
+## Current reconciliation — 2026-08-22
+
+The merged source and live board were re-read. PR #20 merge `f7a0ca61873398a1ff9e5a93e481acec9374367e` and source `73e2e9cfa59af4488d539a2a7813a3317b1f5dd0` are recorded above and reachable from main. Direct MCP label counts still equal each epic's derived progress: 4/4, 3/3, 8/8, 3/3, 8/8, 4/5, 4/5, and 3/4 for phases 0–7. The phase group contexts and ticket-owned memberships remain present.
+
+HZN-001 and HZN-002 are intentionally static seeded lenses, not auto-maintained open-only filters. Current members therefore include completed tickets; the live state is recorded rather than incorrectly claiming the historical NOW/NEXT open roster still holds. This is consistent with the proof's existing “horizons will go stale silently” warning. No unavailable visual/manual evidence is upgraded to PASS.

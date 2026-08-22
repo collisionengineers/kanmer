@@ -33,3 +33,11 @@ The plan and acceptance checks explicitly require tests to prove the named produ
 - External GitHub protection/hosted-variable mutation remains INCONCLUSIVE by scope and is correctly deferred.
 
 Do not merge or move CORE-080 until F-001 is addressed and re-reviewed at a new exact head.
+
+
+## Independent re-review — PASS after CORE-084
+
+- Reviewed remediation head: `7cca4bf9e799aa161b6e5da879e6ad942b13154c` (CORE-084), merged into `core-043-protection-retarget` as `e78323d7fb8ce695e40db80380d189e236726b25` via PR #203.
+- The production-caller gap F-001 is fixed by the exact `syncProject` regression: live mismatch returns paused before `syncBoard`, with no ref/worktree/content mutation; focused GUI 27/27, GUI typecheck, scripts 89/89 and diff-check pass.
+- Prior helper assertions, retained-ref docs, and external protection INCONCLUSIVE boundary remain preserved.
+- Verdict: **PASS** for CORE-080 implementation and CORE-084 remediation; parent CORE-043 remains separate and must be reviewed on its updated cumulative head before merge.

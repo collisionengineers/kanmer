@@ -4,13 +4,14 @@ type: ticket
 title: >-
   CORE-043 review remediation: recheck live branch on manual retry and align
   retained-ref contract
-status: review
+status: verifying
 area: core
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-22T17:50:45.742Z'
   review: '2026-08-22T18:02:12.922Z'
+  verifying: '2026-08-22T18:38:30.956Z'
 taken_at: '2026-08-22T17:53:55.230Z'
 branch: core-080-manual-retry-preflight
 worktree: .worktrees/core-080
@@ -31,11 +32,14 @@ refs:
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
 commits:
   - 0e1be5f32efad1da57ee27bd2a2fe80033976bd1
+  - 7cca4bf9e799aa161b6e5da879e6ad942b13154c
+  - e78323d7fb8ce695e40db80380d189e236726b25
 prs:
   - '201'
+  - '203'
 archived: false
 created: '2026-08-22T17:50:29.988Z'
-updated: '2026-08-22T18:02:12.922Z'
+updated: '2026-08-22T18:38:37.506Z'
 ---
 
 ## What

@@ -689,3 +689,9 @@ Current external blocker remains two protected-main PRs: CORE-043 #168 (head f63
 
 
 New valid independent-review findings on CORE-043 PR #168 (manual Retry must recheck live branch; FRD R5 wording must match retained old-ref handoff) were confirmed against f63d953fc8467440988c887c62a34ade0c77c96c. Created CORE-080, linked/blocking CORE-043, moved Backlog→Preparing, and wrote/read back research, files, plan, checklist, and parked open-questions. Next: independent implementation on CORE-080 from CORE-043 head; do not merge CORE-043 until CORE-080 is complete.
+
+
+CORE-080 assigned to core041 author lane from CORE-043 head f63d953fc8467440988c887c62a34ade0c77c96c. Scope: manual Retry live-branch preflight plus FRD/manual retained-ref contract; no parent merge until child completes. Author must stop at Review; independent reviewer/merge still required.
+
+
+CORE-026 PR #163 has fresh independent review comments after the prior PASS attestation at 3a05ab7a. Assigned gui099 as independent audit lane to map all newest findings against CORE-044–079 cumulative remediation, create/link only genuinely unresolved tickets, and preserve dispositions; no merge or stage move until refreshed review is valid.

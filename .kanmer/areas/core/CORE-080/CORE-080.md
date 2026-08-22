@@ -4,10 +4,12 @@ type: ticket
 title: >-
   CORE-043 review remediation: recheck live branch on manual retry and align
   retained-ref contract
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-22T17:50:45.742Z'
 labels:
   - pr-review
   - branch-protection
@@ -25,7 +27,7 @@ refs:
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
 archived: false
 created: '2026-08-22T17:50:29.988Z'
-updated: '2026-08-22T17:50:29.988Z'
+updated: '2026-08-22T17:50:45.742Z'
 ---
 
 ## What

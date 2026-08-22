@@ -48,3 +48,43 @@ Positive evidence: exact CORE-058 Git integration suite passed 18/18 (npm run te
 Full GUI rail: exit 1, 39 files, 290/291 tests; four suites failed before collection/expectation because the linked worktree resolves stale shared-core dispatch provider antigravity, and one dispatch assertion received the same stale-provider error. This is an environment/baseline limitation, not evidence for or against the changed Git code.
 
 Disposition: NEEDS-CHANGES. Do not merge or move CORE-058 to Verifying until the tracked-cache migration behavior is fixed and re-tested at a fresh exact head.
+
+# Independent cumulative review — NEEDS-CHANGES
+
+- Reviewer: codex-mcp-client
+- Independent: true
+- Scope boundary: CORE-058 parent implementation was authored by `codex-core058-executor`; this reviewer authored CORE-062 and reviewed CORE-063, but did not author CORE-058 or its parent source changes.
+- PR: #180
+- Exact head: `b1abac871da28522759d4e5582caa69d5cdb5cd5`
+- Base branch: `core-044-source-fetch-remediation`
+- Exact base: `3c0706627cc73038d91a624e5d494d0148dce4c4`
+- PR state at review: OPEN, CLEAN, MERGEABLE; hosted status rollup empty (hosted verification INCONCLUSIVE).
+
+## Diff and governing scope
+
+Inspected the cumulative three-file diff against the CORE-044 base: `apps/gui/src/main/kanmerGit.ts`, `apps/gui/src/main/kanmerGit.test.ts`, and regenerated `plugins/kanmer/mcp/kanmer-mcp.cjs`. The source remains scoped to board-worktree ignore reconciliation, the child fixes, regression coverage, and artifact parity. FRD-027 and ADR-0020 are the recorded governing references.
+
+## Rails
+
+- Focused GUI Git rail at the exact head: PASS, 18/18 (`src/main/kanmerGit.test.ts`, 55.86s).
+- Core build: PASS (`npm run build:core`).
+- Scripts rail: PASS, 88/88, after the core build (`npm run test:scripts`).
+- Manual freshness: PASS (`npm run check:manual`).
+- Governing docs: PASS (`npm run verify:docs`).
+- Diff whitespace: PASS (`git diff --check 3c0706627cc73038d91a624e5d494d0148dce4c4...b1abac871da28522759d4e5582caa69d5cdb5cd5`).
+- GUI typecheck: FAIL on inherited CORE-044 lineage API mismatch, not changed by this PR: `dispatchDeliverableProven` and `DispatchSupervisorOptions.verifyDeliverable` are absent from the exact-head core build, and `antigravity` is not in the exact-head `DispatchProviderId`.
+- MCP server build: ESM phase passed, standalone phase FAIL on the same inherited exact-head core API mismatch (`SourceDeclarationSchema`, `SourceDeclarationArraySchema`, `withExclusiveFileLock`, `resolveSources`, `dispatchDeliverableProven` absent from core dist).
+- Artifact: committed plugin hash at exact head is `6057648d81fb4cccab629a0ee1c05c8716a564400302238857e785c70c485100`; author’s normal-checkout parity evidence is retained. Linked-worktree plugin:check is intentionally refused by the repository guard, so independent normal-checkout byte rebuild is INCONCLUSIVE here.
+- Live/hosted/packaged evidence: INCONCLUSIVE; PR has no hosted check rollup and no credentials/runtime evidence was supplied.
+
+## Review-thread dispositions
+
+- Thread 3836151012 (P2, local/remote attachment ignore reconciliation): FIXED in cumulative head by CORE-062 merge `a0acadee972d3359738d9cd4390098794f7d3b4d`; exact-head focused rail covers local and remote paths.
+- Thread 3836151015 (P2, retroactive untracking of already tracked caches): ACCEPTED/DEFERRED. CORE-058’s open-questions document explicitly parks retroactive index cleanup as outside this bounded ignore-rule/artifact scope; no silent disposition.
+- Thread 3836151017 (P1, attached-worktree board-root preservation): FIXED in cumulative head by CORE-063 merge `b1abac871da28522759d4e5582caa69d5cdb5cd5`; exact-head focused rail includes the attached failure regression.
+- Thread 3836232925 (P1, rename-path board-root loss): NEEDS-CHANGES. The mismatch path calls `renameBoardBranch`, then awaits `ensureBoardWorktreeIgnore` without a local guard; the outer catch returns `empty()` with `boardRoot: null`. `openProject` can therefore fall back to the source checkout after a successful rename followed by ignore failure. Disposition: linked child CORE-064, which blocks CORE-058.
+- Thread 3836232929 (P2, attached ignore failure is not retryable): NEEDS-CHANGES. The catch returns `available:false` with `boardRoot` and `paused`; Settings renders “Git sync is unavailable for this non-Git project,” and `syncBoard` returns immediately when unavailable, so repairing the file cannot retry in the open project. Disposition: linked child CORE-065, which blocks CORE-058.
+
+## Decision
+
+NEEDS-CHANGES. The two current threads are actionable and are now recorded as CORE-064 and CORE-065, both linked to and blocking CORE-058 in HZN-007. Leave PR #180 open; do not merge or move CORE-058.

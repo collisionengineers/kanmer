@@ -29,18 +29,18 @@ refs:
   - docs/functional/frd/FRD-027-project-declared-sources.md
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
 commits:
-  - d50ddab1
-  - b167b667
-  - a0acadee
-  - 5f63636d
-  - b1abac87
+  - d50ddab17c33fcdc645f9c777a635cc2d72f26ee
+  - b167b667c8aa1ee488cf239d7121a4584f86d2f4
+  - a0acadee972d3359738d9cd4390098794f7d3b4d
+  - 5f63636d64fa92b4dc682d910255e0552d4da35e
+  - b1abac871da28522759d4e5582caa69d5cdb5cd5
 prs:
   - '180'
   - '183'
   - '184'
 archived: false
 created: '2026-08-22T13:03:07.157Z'
-updated: '2026-08-22T14:18:36.115Z'
+updated: '2026-08-22T14:31:04.731Z'
 ---
 
 Close CORE-044 review findings for release and board hygiene: add the sources cache rule to canonical board-worktree ignore creation and reconciliation, and rebuild the committed plugin artifact from a normal checkout so plugin:check is reproducible outside nested ticket worktrees. Add regression/evidence for existing and new board worktrees and exact artifact parity. Link [[CORE-044]].

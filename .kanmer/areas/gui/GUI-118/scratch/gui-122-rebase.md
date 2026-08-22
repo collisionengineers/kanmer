@@ -1,0 +1,1 @@
+2026-08-23T00:05:00Z GUI-122 is the linked rebase remediation for GUI-118: merge 94d9fca2 integrates CORE-043 current 7654a281 and preserves GUI-119 provider propagation. GUI-122 remains separate and requires independent Review before GUI-118 PR #219 can merge.

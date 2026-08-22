@@ -9,3 +9,5 @@
 - [x] Run focused/full GUI, typecheck/build/docs/scripts/diff rails; preserve first failures.
 - [x] Update CORE-043 packet and post-implementation report.
 - [x] Open linked PR #219 and hand off at Review; proof remains unwritten until merged-main verification.
+
+- [x] GUI-122 rebase integrated CORE-043 current provider propagation and refreshed this cumulative packet; GUI-122 review remains a separate gated handoff.

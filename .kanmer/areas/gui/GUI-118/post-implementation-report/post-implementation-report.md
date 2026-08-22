@@ -35,3 +35,6 @@ No live packaged-update, real native-host, protected-branch mutation, or hosted 
 ## Review handoff
 
 The source and deterministic packet are ready for independent review. The PR/base/head and final traceability are recorded after commit below; the ticket must stop at Review and must not be self-merged or self-verified.
+
+
+2026-08-23T00:05:00Z GUI-122 cumulative rebase: merge commit 94d9fca2 integrates origin/core-043-protection-retarget head 7654a281 into the GUI-118 branch without conflicts. GUI-119 OpenAI, remote-access, and Claude KANMER_BOARD_BRANCH propagation remains present in connect.ts, index.ts, and remoteAccess/manager.ts; GUI-118 lifecycle changes remain present. GUI-122 focused provider/connect/index-sync rail passed 120/120, GUI typecheck/build, scripts 89/89, docs, and diff checks passed. Full workspace typecheck retains the inherited mcp-server/core dispatchDeliverableProven and verifyDeliverable mismatch. GUI-122 implementation branch is ready for its own Review PR targeting gui-118-provider-lifecycle.

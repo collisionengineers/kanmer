@@ -2,13 +2,16 @@
 id: CORE-033
 type: ticket
 title: Protect `main` and `kanmer-board`; write the ops playbook
-status: preparing
+status: implementing
 area: core
 order: 50
-assignee: ''
+assignee: codex-take-core033
 profile: chore
 stageEntered:
   preparing: '2026-08-20T12:12:12.995Z'
+taken_at: '2026-08-22T06:35:32.959Z'
+branch: core-033-branch-protection
+worktree: .worktrees/core-033
 labels: []
 groups:
   - EPIC-009
@@ -19,7 +22,7 @@ blocks:
   - CORE-035
 archived: false
 created: '2026-08-20T10:14:42.512Z'
-updated: '2026-08-21T10:57:10.149Z'
+updated: '2026-08-22T06:35:32.959Z'
 ---
 
 ## What

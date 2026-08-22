@@ -45,3 +45,11 @@ The client descriptor contains only endpoint/project/reference metadata; the bea
 ## Final clean rail addendum
 
 After the timing-sensitive first full HTTP attempt, the final `npm test` exited 0: manual freshness PASS; core 269/269; GUI 362/362; mcp-server HTTP/remote/doctor/tunnel rail 63/63; scripts 83/83. This includes the MCP-028 deterministic client/evidence tests. The earlier 61/63 timing failure is retained in scratch as an attempted failure, not silently replaced.
+
+## Review remediation addendum
+
+The deterministic harness now invokes the existing doctor engine through injected fixture seams and returns a sanitized public-doctor status/count/exit code. It performs the bounded remote lifecycle `create_item → set_ticket_doc(research) → get_ticket_doc version/content predicate → update_item title → get_item → gate-blocked move → update_item archived → get_item → get_activity`. Only fixture ids, versions/predicates, archived state, and activity count are returned; the canary content is never emitted. SDK close errors become explicit cleanup errors, and the test calls fixture close twice and asserts the temporary root is gone.
+
+The planned helper modules are wired: deterministicChecks drives client checks and inconclusiveProtectedChecks drives protected evidence. Protected Cloudflare/Worker proof remains INCONCLUSIVE because Wrangler/cloudflared/credentials/named tunnel are unavailable.
+
+Post-remediation focused evidence: build PASS; official HTTP + MCP-028 integration tests PASS 7/7; workspace typecheck PASS. One concurrent full HTTP attempt had the known child probe `spawnSync ... ETIMEDOUT`; the focused rerun passed and this timing-sensitive failure remains in scratch.

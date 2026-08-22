@@ -206,3 +206,13 @@
 ## Protected environment disposition
 
 The remaining live-run boxes are intentionally unticked: this worktree has no Wrangler, cloudflared, Cloudflare credentials, named tunnel, protected bearer reference, or disposable Worker environment. The canonical operator script returns exit code 2 with an INCONCLUSIVE result until those protected inputs exist; no absent environment is accepted as a pass.
+
+## Independent review remediation (deterministic)
+
+- [x] Invoke public doctor through the existing doctor engine and retain only sanitized status/count/exit evidence.
+- [x] Complete create/document write/readback/version predicate/update/readback/archive/activity lifecycle on the disposable fixture.
+- [x] Wire the deterministic check and protected INCONCLUSIVE helpers into the executable client/evidence path.
+- [x] Surface SDK session-close errors as cleanup errors instead of swallowing them.
+- [x] Test idempotent fixture close and assert temporary project removal.
+
+Live named-tunnel, DNS/TLS, Worker deployment, token rotation over a hosted route, restart invalidation, GUI multi-project, and provider teardown remain explicitly INCONCLUSIVE without protected environment inputs.

@@ -180,6 +180,7 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
     const remoteExists = await git(repoRoot, ["ls-remote", "--exit-code", "--heads", "origin", `refs/heads/${branch}`]).then(() => true).catch(() => false);
     const localExists = await git(repoRoot, ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`]).then(() => true).catch(() => false);
     await mkdir(join(repoRoot, ".worktrees"), { recursive: true });
+    const sourceBoard = join(repoRoot, ".kanmer");
     if (localExists) {
       await git(repoRoot, ["worktree", "add", boardRoot, branch]);
     } else if (remoteExists) {
@@ -187,17 +188,18 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
       await git(repoRoot, ["worktree", "add", "--track", "-b", branch, boardRoot, `origin/${branch}`]);
     } else {
       await git(repoRoot, ["worktree", "add", "--orphan", "-b", branch, boardRoot]);
-      const sourceBoard = join(repoRoot, ".kanmer");
       if (existsSync(sourceBoard)) await cp(sourceBoard, join(boardRoot, ".kanmer"), { recursive: true });
-      await ensureBoardWorktreeIgnore(boardRoot);
-      if (existsSync(join(boardRoot, ".kanmer"))) {
-        await git(boardRoot, ["add", "--", ".kanmer", ".gitignore"]);
-        await git(boardRoot, ["commit", "-m", "chore(kanmer): create shared board"]);
-        await git(boardRoot, ["push", "-u", "origin", `HEAD:refs/heads/${branch}`]);
-        // The source cleanup is intentionally staged but never committed here:
-        // its owner reviews it as part of their normal code-branch workflow.
-        if (existsSync(sourceBoard)) await git(repoRoot, ["rm", "-r", "--ignore-unmatch", "--", ".kanmer"]);
-      }
+    }
+    // Reconcile after every successful attachment, while keeping orphan
+    // creation's ignore file in place before its initial board commit.
+    await ensureBoardWorktreeIgnore(boardRoot);
+    if (!localExists && !remoteExists && existsSync(join(boardRoot, ".kanmer"))) {
+      await git(boardRoot, ["add", "--", ".kanmer", ".gitignore"]);
+      await git(boardRoot, ["commit", "-m", "chore(kanmer): create shared board"]);
+      await git(boardRoot, ["push", "-u", "origin", `HEAD:refs/heads/${branch}`]);
+      // The source cleanup is intentionally staged but never committed here:
+      // its owner reviews it as part of their normal code-branch workflow.
+      if (existsSync(sourceBoard)) await git(repoRoot, ["rm", "-r", "--ignore-unmatch", "--", ".kanmer"]);
     }
     await ensureIgnore(join(repoRoot, ".gitignore"), [".kanmer/", ".worktrees/"]);
     return { available: true, boardRoot: resolve(boardRoot), branch, lastSync: null, error: null, paused: false };

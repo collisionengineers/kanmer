@@ -1165,7 +1165,7 @@ function registerIpc(): void {
     skillsStatus(target, requireCtx(p).sourceRoot),
   );
   ipcMain.handle(CH.updateSkills, (_e, p: string, target: ConnectTarget) =>
-    updateSkills(target, requireCtx(p).sourceRoot),
+    updateSkills(target, requireCtx(p).sourceRoot, readSettings().kanmerBranch),
   );
   ipcMain.handle(
     CH.dispatchAgent,
@@ -1389,12 +1389,12 @@ app.whenReady().then(async () => {
   // Must equal electron-builder's appId: it's stamped on the Start-Menu
   // shortcut and is what makes Windows toasts + taskbar grouping work.
   app.setAppUserModelId("com.kanmer.app");
-  remoteAccess = new RemoteAccessManager(app.getPath("userData"));
+  remoteAccess = new RemoteAccessManager(app.getPath("userData"), undefined, undefined, undefined, () => readSettings().kanmerBranch);
   remoteAccess.subscribe((status) => mainWindow?.webContents.send(CH.remoteStatus, status));
   openAITunnel = new OpenAITunnelManager(
     app.getPath("userData"),
     undefined,
-    (roots) => serverInvocation("claude", roots.boardRoot, roots.repoRoot),
+    (roots) => serverInvocation("claude", roots.boardRoot, roots.repoRoot, readSettings().kanmerBranch),
   );
   openAITunnel.subscribe((status) => mainWindow?.webContents.send(CH.openAITunnelStatus, status));
   registerIpc();

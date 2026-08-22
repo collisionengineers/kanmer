@@ -709,3 +709,11 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - Result: implemented atomic stale-lock quarantine/rename with deterministic concurrent-reclaimer coverage; added fail-closed IPv6 ranges 64:ff9b:1::/48, 100:0:0:1::/64, 5f00::/16, IPv4 192.175.48.0/24, and per-redirect/linked-hop DNS lookup regression.
 - Evidence: core 294/294, IO 16/16, source 14/14, HTTP 82/82, scripts 88/88, protocol 46/46, discovery 13/13; typecheck/build/plugin/docs/skills/agents/diff rails exit 0. First IO timeout and stale-root standalone resolution failure are preserved in ticket scratch/report and passed after correction.
 - Handoff: status moved Implementing→Review after get_doc_gates pass; commit 54651a3c77b8ca8d02d9d309e36baf9b62ebca3c, PR #167 https://github.com/collisionengineers/kanmer/pull/167. Author stops for independent review; no merge/verify/cleanup.
+
+
+## CORE-048 implementation handoff (2026-08-22)
+
+- Assignment: CORE-048 taken through MCP without force on branch core-048-board-sync-gate / worktree .worktrees/core-048, stacked on CORE-043 PR #168 head 1a06ead17cca8f7a6c715db3a6f6fed6b3de5da6.
+- Result: refreshed cached open-project branch state from the live worktree, retained the protected preference when no Git board is open, and changed kanmer-gate to use the configured KANMER_BOARD_BRANCH repository variable with the existing default fallback. Added deterministic GUI/workflow regressions; ADR-0016 protection inference remains accepted risk.
+- Evidence: focused GUI Git 16/16, workflow static 1/1, build:core 0, post-build scripts 89/89, verify:docs/check:manual/diff-check 0. Full GUI, GUI typecheck, and GUI build retain unrelated dispatch/provider baseline failures; first pre-build scripts failure is preserved in the ticket report.
+- Handoff: post-implementation report/checklist complete, commit 8ffff2a0f8848bb42868559641b56148ba893ca6, PR #170 https://github.com/collisionengineers/kanmer/pull/170, status moved Implementing→Review after get_doc_gates pass. Author stops for independent review; no merge/verify/cleanup.

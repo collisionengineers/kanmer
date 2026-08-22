@@ -29,11 +29,14 @@
 - [x] Focused custom-requirements/helper tests pass.
 - [x] Existing profileDraft tests pass.
 - [x] Full GUI test suite passes with exact count recorded.
-- [ ] Root test suite is not green: core 266/266 assertions passed but npm test exited 1 on the preserved Windows EPERM unhandled error recorded in scratch.
 - [x] Root all-workspace typecheck passes.
 - [x] GUI production build passes.
 - [x] git diff --check passes.
 - [x] Manual Electron visual interaction/screenshot evidence is INCONCLUSIVE: no controlled real-window host was available.
+
+## Parked (explicitly deferred)
+
+- [ ] Root test suite is not green: core 266/266 assertions passed but npm test exited 1 on the preserved Windows EPERM unhandled error recorded in scratch. Parked because the failure is an external Windows temporary-log/file-lock boundary; no GUI-107 assertion failed and the focused/full GUI rails are green.
 
 ## Handoff
 

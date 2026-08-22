@@ -4,12 +4,13 @@ type: ticket
 title: >-
   Harden source cache refresh, DNS resolution, and orphan cleanup after CORE-026
   review
-status: implementing
+status: review
 area: core
 assignee: core041_executor
 profile: fix
 stageEntered:
   preparing: '2026-08-22T21:38:45.507Z'
+  review: '2026-08-22T22:08:20.428Z'
 taken_at: '2026-08-22T21:38:46.404Z'
 branch: core-088-source-cache-atomicity
 worktree: .worktrees/core-088
@@ -32,7 +33,7 @@ prs:
   - '218'
 archived: false
 created: '2026-08-22T21:33:17.326Z'
-updated: '2026-08-22T22:06:33.258Z'
+updated: '2026-08-22T22:08:20.428Z'
 ---
 
 Resolve the fresh independent CORE-026 review findings F-006 through F-009: cache directory symlink refusal and empty/no-root representation validation; preserve stale fallback failures and forced refresh after active rejection; bound cache reads and validate cached document origins; persist replacement validators from 304; handle Node lookup all:true callback shape with identity-family controls; make orphan source cleanup a locked fingerprint-and-delete transaction. Add deterministic regressions and update the cumulative CORE-026 packet. This ticket blocks [[CORE-026]].

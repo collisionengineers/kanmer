@@ -51,3 +51,7 @@ The first combined rail was mistakenly run with `packages/mcp-server` as its wor
 ### Decision
 
 PASS. Both automated findings are fixed with production-path regressions, inherited CORE-081 source/cache behavior remains covered, and no new review blocker was found. Merge PR #204 non-squash into `core-026-project-declared-sources`, then move CORE-085 Review→Verifying only; do not verify/close CORE-081 or CORE-026.
+
+### Merge handoff
+
+After the PASS attestation, PR #204 was merged non-squash into `core-026-project-declared-sources` with merge commit `fcd998550714811edac99032ea7118f9b2084d38`. CORE-085 traceability now records implementation `b2c51779a4ee0a5d95c8b3bce51cd4408490dc68` plus merge `fcd998550714811edac99032ea7118f9b2084d38`, its block edge to CORE-081 is cleared, and it moved Review→Verifying after a fresh gates readback. CORE-081 and CORE-026 were not moved or merged.

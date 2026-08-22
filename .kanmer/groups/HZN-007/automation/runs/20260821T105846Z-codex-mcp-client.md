@@ -665,3 +665,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T06:10:00Z — CORE-024 amended hosted result: run 32556078470 / kanmer-gate 96990290443 PASS; verify 96990290597 FAIL after all tests/smokes passed, only at check-mcpb-sync distributed plugin parity. No hosted verify PASS claimed; ticket remains Review.
+
+- 2026-08-22T07:36:50.256Z — CORE-042 assigned to /root/gui082_executor: ticket moved Backlog→Preparing after full item/link/gate read. Research, files, plan, checklist, and open-questions were written via MCP; existing ADR-0016 plus FRD-021 refs satisfy governing-doc traceability and docs_todo was cleared. Scope is the protected-main release path only: prepare branch/PR, post-merge publish/tag, and retained hosted/e2e INCONCLUSIVE boundaries. Dedicated worktree/take and implementation are next; no release, tag, merge, or source change claimed.

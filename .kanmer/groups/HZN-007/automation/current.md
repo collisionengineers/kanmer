@@ -263,3 +263,6 @@ Last handoff: 2026-08-22T05:30:03Z — Hosted verification correction for GUI-10
 2026-08-22T06:30:56Z — GUI-104 F-001 follow-up fixed: serverInvocation.env is propagated into tunnel-client init/run, preserving packaged ELECTRON_RUN_AS_NODE=1; spawn-env assertions cover both commands. New source head fddcd9b4, PR #157. Focused 6/6 and renderer/manual/diff rails pass; full GUI baseline dispatch/provider failures and real OpenAI two-project/listener proof remain INCONCLUSIVE. Ticket stays Review for independent re-review; no merge or cleanup.
 
 2026-08-22T06:47:34Z — GUI-104 F-002 fixed: main closeProject stops the owned OpenAI tunnel child before watcher/context deletion; manager closeProject is generation-safe and no-ops without a profile/child. Source head cad3552a, PR #157. Focused 6/6, GUI typecheck, and diff checks pass; external two-project/listener proof remains INCONCLUSIVE. Ticket stays Review for independent re-review; no merge or cleanup.
+
+
+Last handoff: 2026-08-22T07:36:50.256Z — CORE-042 is Preparing under /root/gui082_executor after packet/gates/context reconciliation. Its two-phase protected-main release design is documented via MCP; dedicated take/worktree and implementation are next. No release/tag/merge claim; hosted PR, publisher, latest-release, and real updater evidence remain INCONCLUSIVE until an authorized post-merge publish.

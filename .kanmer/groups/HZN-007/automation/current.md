@@ -579,3 +579,6 @@ CORE-070 PASS exact cc1cbf36, merged non-squash as e966509c; moved Verifying and
 
 
 CORE-071 implementation 37bc2265 / PR #192 moved Implementing -> Review; focused kanmerGit 25/25, core build/typecheck PASS, scripts 88/88. Independent review/merge pending; CORE-072 and CORE-073 queued.
+
+
+CORE-071 remains Review with blocker CORE-074. CORE-074 implementation 59e7e0fe / PR #193 moved Implementing -> Review; append-only merge closes TOCTOU and rails pass (kanmerGit 25/25, scripts 88/88, typecheck PASS). Independent review/merge pending.

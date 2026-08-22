@@ -1,3 +1,3 @@
-- [ ] Replace stale snapshot write with append-only managed-rule merge.
-- [ ] Preserve symlink refusal and newline correctness.
-- [ ] Add deterministic concurrent-edit regression and run required rails.
+- [x] Replace stale snapshot writes with append-only managed-rule merging.
+- [x] Preserve symlink refusal and newline correctness.
+- [x] Add deterministic append/race regression and run required rails.

@@ -513,3 +513,6 @@ Last handoff: 2026-08-22T13:58:39.390Z — CORE-057 fresh independent review exa
 
 
 2026-08-22T14:08:00Z — CORE-062 independently PASS at b167b667; PR #183 merged into CORE-058 as a0acadee, ticket Verifying, block edge removed. CORE-058 traceability refreshed; CORE-063 is now the only remaining CORE-058 child and is assigned for implementation.
+
+
+Last handoff: 2026-08-22T14:09Z — CORE-063 assigned to codex-recovery after packet/context/gates read and non-forced take on core-063-preserve-board-root/.worktrees/core-063 from CORE-058 cumulative a0acadee. Scope is attached board-root preservation when ignore reconciliation fails, with deterministic regression; implementation and independent Review handoff pending.

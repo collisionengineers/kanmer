@@ -73,3 +73,16 @@ Historical implementation PR #49 is already merged. This checklist records the c
 
 - The missing `backlog` chapter is intentionally parked because GUI-070 withdrew the separate Backlog view; no chapter for a deleted view is authored.
 - The negative guard fixture and live in-app manual reading are left for independent verification. No visual/manual acceptance is claimed from this author reconciliation.
+
+---
+
+## Closeout — DOC-007
+
+- [ ] PR merge verified (`gh pr view 49 --json state,mergedAt`): MERGED at 2026-08-16T23:24:57Z, merge `19244f62d05ddf64ff7aa52ea4cf34342798013f`.
+- [ ] proof.md finalised (PR URL + merge date appended): current-main verification and exact red/inconclusive boundaries appended at 2026-08-22T01:08:53.560Z.
+- [x] Moved to final stage: Verifying→Done passed with fresh enter-done gates at 2026-08-22.
+- [ ] Outcome recorded in ticket body (PR link, follow-ups): PR #49, follow-ups [[DOC-008]]/[[GUI-087]], broad environmental failures and visual/negative-fixture limits retained.
+- [ ] cd out of worktree; `git worktree remove .worktrees/doc-007`.
+- [ ] `git branch -d doc-007-manual-reconcile` (or `-D` only if squash merge requires it).
+- [ ] `git fetch --prune` + `git worktree prune`.
+- [ ] `take_ticket action: "release"` (last lifecycle action).

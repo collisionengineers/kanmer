@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T01:08:08.843Z
+updated_at: 2026-08-22T01:08:53.560Z
 lane_limit: 3
 stop_reason:
 ---
@@ -524,3 +524,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T01:06:18.550Z — MCP-014 merged-main verification rerun completed. Main HEAD af61144ce743f74b2aba92fb0778588b0b9bedd0 contains PR #132 merge cb8fa1f0a746b2c47722eb0ca644bf4d91599a77 (ancestor exit 0); source ff41f518 remains reachable. Build, extended core 263/263, typecheck, plugin:check, manual freshness, verify:skills and diff-check exited 0. Preserve fresh first core default 262/263 timeout and GUI 349/352 with three kanmerGit Windows hook timeout/EPERM failures; prior standalone GUI 352/352 remains recorded and no assertions changed. Named Grok clean-project/authenticated get_status/unambiguous post-uninstall evidence remains INCONCLUSIVE due no XAI_API_KEY and pre-existing user plugin state. MCP-014 stays Verifying at 47/67; mechanical enter-done gates pass but acceptance is unresolved, so no board move, release, or cleanup.
 
 - 2026-08-22T01:08:08.843Z — DOC-007 Verifying→Done: fresh get_doc_gates passed after merged-main proof readback. PR #49 merge 19244f62 is reachable; manual deterministic rails PASS, exact broad-rail failures are preserved, and negative-fixture/visual evidence remain INCONCLUSIVE. Closeout now records proof/Outcome, removes only doc-007-manual-reconcile/.worktrees/doc-007, deletes the local branch, prunes refs, then releases last.
+
+- 2026-08-22T01:08:53.560Z — DOC-007 closeout started after Done/proof/traceability readback. PR #49 MERGED at 19244f62; checklist closeout section appended with release last. Exact cleanup target is .worktrees/doc-007 and branch doc-007-manual-reconcile; no other worktree or board checkout may be touched.

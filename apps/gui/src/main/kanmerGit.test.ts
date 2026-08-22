@@ -1,5 +1,5 @@
 import { execFile as execFileCallback } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, realpathSync } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync, readFileSync, existsSync, realpathSync } from "node:fs";
 import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -199,6 +199,24 @@ describe("ensureBoardWorktree reconciliation", () => {
 
     expect(ignore).toContain(".kanmer/data/sources/\n");
     expect(ignore.match(/^\.kanmer\/data\/sources\/$/gm)).toHaveLength(1);
+  });
+
+  realGitTest("refuses a symlinked board ignore path without touching its target", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const boardRoot = created.boardRoot!;
+    const ignorePath = join(boardRoot, ".gitignore");
+    const target = join(repo, "redirect-target.txt");
+    writeFileSync(target, "sentinel\n", "utf8");
+    rmSync(ignorePath);
+    symlinkSync(target, ignorePath, "file");
+
+    const refused = await ensureBoardWorktree(repo, "kanmer-board");
+
+    expect(refused.available).toBe(false);
+    expect(refused.boardRoot).toBe(resolve(boardRoot));
+    expect(refused.paused).toBe(true);
+    expect(refused.error).toContain("Refusing symlinked board ignore path");
+    expect(readFileSync(target, "utf8")).toBe("sentinel\n");
   });
 
   realGitTest("reconciles the sources cache rule on an existing board worktree", async () => {

@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T00:00:13.385Z
+updated_at: 2026-08-22T00:03:26.241Z
 lane_limit: 3
 stop_reason:
 ---
@@ -219,6 +219,7 @@ stop_reason:
 - 2026-08-21T23:49:13.227Z — GUI-075 review follow-up committed 9cdaa68b after independent findings: core-level suffix validation, IPC-owned preview, capability-gated task model controls, and cli-default status metadata. Focused core 7/7, GUI 5/5, typecheck/build/diff-check exit 0; full prior rails remain core 266 and GUI 354 pass. Traceability now records 52c04c0e + 9cdaa68b, PR #142; stage remains Review.
 
 - 2026-08-21T23:52:59.561Z — GUI-075 final rails complete: core 266/266 PASS, GUI 355/355 PASS, focused core 7/7 and GUI 5/5 PASS, typechecks/builds/diff-check/check:manual PASS. Generated manual commit fcec021d pushed to PR #142; traceability now records all three commits. Live authenticated provider and visual screenshot evidence remain INCONCLUSIVE; stage remains Review.
+- 2026-08-22T00:03:26.241Z — GUI-075 final amendment 1a04be90 pushed to PR #142; model-control validation now strict while suffix newlines remain allowed. Full core 266/266 and GUI 355/355 PASS, builds/typechecks/check:manual PASS; traceability records all four commits. Stage remains Review.
 ## Resume instruction
 
 Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's complete document inventory, links, taken state and get_doc_gates before dispatching. Reconcile the ledger against live state and do not replay a completed action solely because this run was interrupted. Before every assignment/result/stage transition, update and read this history record and automation/current.md.

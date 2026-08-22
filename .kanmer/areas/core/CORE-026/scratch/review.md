@@ -1,6 +1,44 @@
 ---
 kind: review-attestation
 pr: "163"
+head_sha: "a9833df28ddf6f91966be17a4eb7c06265e088ed"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: needs-changes
+reviewer: "codex-root-current-cumulative-audit"
+independent: true
+plan_hash: "2026-08-22T19:58:00Z"
+ticket_updated: "2026-08-22T19:58:00Z"
+findings:
+  - id: F-029
+    severity: blocker
+    summary: "Lock ownership and board-artifact isolation"
+    disposition: fixed-in-ticket
+    ticket: "CORE-082"
+    reason: "CORE-082 independently reviewed and merged as a9833df2; PID-reuse identity, malformed-lock recovery, and board lock/owner/quarantine ignore protections are present."
+  - id: F-030
+    severity: blocker
+    summary: "Orphan migration preserves newer source-board state"
+    disposition: deferred-to-ticket
+    ticket: "CORE-083"
+    reason: "CORE-083 remains the live blocker for source-version conflict protection and canonical board-root retention when source ignore reconciliation refuses."
+  - id: F-031
+    severity: minor
+    summary: "Live external source/provider and packaged evidence"
+    disposition: accepted-risk
+    reason: "Live provider, network/DNS rebinding, packaged Windows, and external estate evidence remain explicitly INCONCLUSIVE; no external state was changed."
+---
+
+## Current cumulative review — NEEDS-CHANGES — 2026-08-22
+
+Reviewed exact PR #163 cumulative head a9833df28ddf6f91966be17a4eb7c06265e088ed against main base 34245be039e8fd8395b5e31835602c54e62e98a4. CORE-081/085/086 and CORE-082 are independently reviewed and merged into the cumulative branch; their source/cache/artifact/lock rails pass. CORE-083 remains the only live blocking dependency. The machine attestation uses valid F-### identifiers and records that blocker explicitly.
+
+Verdict: NEEDS-CHANGES. Do not merge or move CORE-026 while CORE-083 remains incomplete.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "163"
 head_sha: "a1a4fe629d71d149b64fd3e57979a196176b875a"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: needs-changes

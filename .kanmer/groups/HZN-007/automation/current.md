@@ -767,3 +767,6 @@ Last handoff: 2026-08-22T19:52Z — GUI-113 implementation complete on `gui-113-
 
 - 2026-08-22T19:57:01.760Z — GUI-114 assigned to gui099-executor after GUI-113 PR #208 merged into CORE-043 as 69e2cc582b7ee8947f0febda6d286c18e21397a7.
   Dedicated branch/worktree: gui-114-shell-safe-env / .worktrees/gui-114. Scope is shell-safe Claude/provider environment serialization for finding 3836808787; no GUI-113, CORE-043, native-plugin, installer, or hosted protection changes.
+
+
+19:58 UTC — CORE-082 independently reviewed PASS and merged PR #209 non-squash as a9833df2 into CORE-026; moved to Verifying and released. CORE-083 now moved to Preparing for serial source-board safety remediation; GUI-114 is Implementing on its separate GUI branch.

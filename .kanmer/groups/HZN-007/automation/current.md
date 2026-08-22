@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T14:58:22.059Z
+updated_at: 2026-08-22T15:03:41.178Z
 ---
 
 # Current auto run — HZN-007
@@ -543,3 +543,6 @@ CORE-065 independently PASSed and merged into CORE-058 as b8d8a191; CORE-065 is 
 
 
 Cumulative CORE-058 review at b8d8a191 fixed CORE-062–065 but found CORE-066 (first-time attachment root loss, P1) and CORE-067 (symlinked ignore path, P2). Both are documented; CORE-066 is Implementing on core-066-first-attachment-root, CORE-067 queued to avoid overlap.
+
+
+CORE-066 implemented at 134cf0b7 with deterministic local/remote attachment regressions and full local rails; PR #187 opened and moved to Review. Independent review requested; CORE-067 remains queued.

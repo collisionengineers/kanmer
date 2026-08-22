@@ -558,3 +558,6 @@ CORE-067 independently PASSed and merged into CORE-058 as f0de2628; all CORE-058
 
 
 Fresh CORE-058 review at f0de2628 found six blockers CORE-068–073 around retry/timer/branch/ignore/migration/root. CORE-068 is now Implementing on core-068-rearm-sync-retry; CORE-069–073 remain queued to serialize the shared seam.
+
+
+CORE-068 implementation c90d056d pushed as PR #189 against CORE-058. Focused timer regression 2/2, kanmerGit 23/23, core build PASS, scripts 88/88, final GUI typecheck PASS; full GUI suite retains four pre-existing provider/dispatch failures. CORE-068 moved Implementing -> Review; independent exact-SHA review required before merge. CORE-069..073 remain queued.

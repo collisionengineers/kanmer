@@ -1,3 +1,3 @@
-- [ ] Re-arm the saved automatic sync interval after successful retry.
-- [ ] Preserve paused state on failed retry.
-- [ ] Add deterministic regression and run rails.
+- [x] Reuse one automatic-sync timer lifecycle for open and preference paths.
+- [x] Re-arm the saved interval after a successful ignore-repair retry.
+- [x] Add deterministic fake-timer regression coverage and run the required rails.

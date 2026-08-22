@@ -720,6 +720,9 @@ function parseFunctionalIdentity(output: string): {
   boardRoot?: unknown;
   repoRoot?: unknown;
   format?: unknown;
+  boardExpectedBranch?: unknown;
+  boardActualBranch?: unknown;
+  boardOnExpectedBranch?: unknown;
 } | null {
   // Hosts commonly wrap JSON in a sentence or a fenced block. Try the whole
   // payload and one outer object (so nested `project` data is not truncated),
@@ -741,8 +744,11 @@ function parseFunctionalIdentity(output: string): {
       const boardRoot = value.board_root ?? project.boardRoot;
       const repoRoot = value.repo_root ?? project.repoRoot;
       const format = value.format ?? project.format;
-      if (fingerprint !== undefined || boardRoot !== undefined || repoRoot !== undefined || format !== undefined) {
-        return { fingerprint, boardRoot, repoRoot, format };
+      const boardExpectedBranch = value.board_expected_branch ?? project.board_expected_branch ?? project.boardExpectedBranch;
+      const boardActualBranch = value.board_actual_branch ?? project.board_actual_branch ?? project.boardActualBranch;
+      const boardOnExpectedBranch = value.board_on_expected_branch ?? project.board_on_expected_branch ?? project.boardOnExpectedBranch;
+      if (fingerprint !== undefined || boardRoot !== undefined || repoRoot !== undefined || format !== undefined || boardExpectedBranch !== undefined) {
+        return { fingerprint, boardRoot, repoRoot, format, boardExpectedBranch, boardActualBranch, boardOnExpectedBranch };
       }
     } catch {
       // Keep scanning output for the one JSON object the prompt requested.
@@ -939,8 +945,9 @@ async function connectNativePlugin(
           `${spec.pluginName}. No legacy project state was changed.`,
       };
     }
-    const functionalArgv = argv?.functional(projectRoot, boardRoot);
-    const functionalCommand = functionalArgv ? nativeCommandText(functionalArgv) : spec.functionalCommand(projectRoot);
+    const normalizedBranch = normalizeBoardBranch(boardBranch);
+    const functionalArgv = argv?.functional(projectRoot, boardRoot, normalizedBranch);
+    const functionalCommand = functionalArgv ? nativeCommandText(functionalArgv) : spec.functionalCommand(projectRoot, boardRoot, normalizedBranch);
     lastCommand = functionalCommand;
     const functional = await withLegacyRegistrationDisabled(provider, projectRoot, () => execute(functionalCommand, functionalArgv));
     const functionalOutput = `${functional.stdout}\n${functional.stderr}`.trim();
@@ -950,14 +957,17 @@ async function connectNativePlugin(
       proof.fingerprint === expected.fingerprint &&
       proof.boardRoot === expected.boardRoot &&
       proof.repoRoot === expected.repoRoot &&
-      proof.format === expected.format;
+      proof.format === expected.format &&
+      proof.boardExpectedBranch === normalizedBranch &&
+      proof.boardActualBranch === normalizedBranch &&
+      proof.boardOnExpectedBranch === true;
     if (!proofOk) {
       return {
         ok: false,
         command: functionalCommand,
         output:
           `${spec.cli} plugin inspect passed, but the fresh functional get_status probe did not return ` +
-          "the expected project fingerprint, board root, repo root and format. No legacy project state was changed.",
+          "the expected project identity, format and configured board branch. No legacy project state was changed.",
       };
     }
     const cleanup = await retireLegacyPluginState(provider, projectRoot);

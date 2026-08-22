@@ -279,16 +279,23 @@ export function markNativeReconnectRequired(projectId: string, branch: string): 
   });
 }
 
-/** Clear only the native provider that successfully completed explicit Connect. */
-export function clearNativeReconnectRequired(projectId: string, provider: NativeReconnectProvider): Promise<AppSettings> {
+/**
+ * Clear a user-scoped native provider after explicit Connect or Disconnect.
+ *
+ * The project id remains in the API for compatibility with the renderer, but
+ * Grok and Antigravity are user-scoped installs: one successful lifecycle
+ * operation reconciles the provider for every project that was waiting on it.
+ */
+export function clearNativeReconnectRequired(_projectId: string, provider: NativeReconnectProvider): Promise<AppSettings> {
   return withSettingsFileLock(async () => {
     const settings = readSettings();
-    const existing = settings.pendingNativeReconnects?.[projectId];
-    if (!existing) return settings;
-    writeNativeReconnectState(settings, projectId, {
-      branch: existing.branch,
-      providers: existing.providers.filter((candidate) => candidate !== provider),
-    });
+    const pending = { ...(settings.pendingNativeReconnects ?? {}) };
+    for (const [projectId, existing] of Object.entries(pending)) {
+      writeNativeReconnectState(settings, projectId, {
+        branch: existing.branch,
+        providers: existing.providers.filter((candidate) => candidate !== provider),
+      });
+    }
     writeSettings(settings);
     return settings;
   });

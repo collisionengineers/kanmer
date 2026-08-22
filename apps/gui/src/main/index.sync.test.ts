@@ -193,6 +193,87 @@ describe("syncProject production Retry caller", () => {
     }
   }, 30_000);
 
+  it("does not persist a requested branch when the production rename is refused", async () => {
+    await git(repo, "branch", "release-board");
+    await git(repo, "checkout", "release-board");
+    await git(repo, "branch", "taken");
+    const ctx = {
+      sourceRoot: repo,
+      boardRoot: repo,
+      store: {
+        getBoardWithSource: async () => ({ source: "file" }),
+        listItems: async () => [],
+      },
+      watch: { close: async () => undefined },
+      ownWrites: new Map<string, number>(),
+      syncStatus: {
+        available: true,
+        boardRoot: repo,
+        branch: "release-board",
+        lastSync: null,
+        error: null,
+        paused: false,
+      },
+    };
+    __kanmerTest.contexts.set(repo, ctx as never);
+    const before = readSettings().kanmerBranch;
+    try {
+      await __kanmerTest.applyGitPreferences("taken", 0);
+      expect(readSettings().kanmerBranch).toBe(before);
+      expect(ctx.syncStatus.branch).toBe("release-board");
+      expect(ctx.syncStatus.error).toMatch(/already exists|taken|rename/i);
+    } finally {
+      __kanmerTest.contexts.delete(repo);
+      await __kanmerTest.applyGitPreferences("kanmer-board", 0);
+    }
+  }, 30_000);
+
+  it("retries provider reconciliation after Git Retry clears a branch error", async () => {
+    electronMocks.syncBoard.mockImplementation(async (status) => ({ ...status, error: null, paused: false }));
+    await git(repo, "branch", "release-board");
+    await git(repo, "checkout", "release-board");
+    writeFileSync(join(repo, ".mcp.json"), "{ malformed\n", "utf8");
+    const ctx = {
+      sourceRoot: repo,
+      boardRoot: repo,
+      store: {
+        getBoardWithSource: async () => ({ source: "file" }),
+        listItems: async () => [],
+      },
+      watch: { close: async () => undefined },
+      ownWrites: new Map<string, number>(),
+      syncStatus: {
+        available: true,
+        boardRoot: repo,
+        branch: "release-board",
+        lastSync: null,
+        error: null,
+        paused: false,
+      },
+    };
+    __kanmerTest.contexts.set(repo, ctx as never);
+    try {
+      await __kanmerTest.applyGitPreferences("retry-board", 0);
+      expect((ctx.syncStatus as any).providerReconciliationPending).toEqual({
+        providers: ["codex", "claude", "opencode"],
+        branch: "retry-board",
+      });
+      expect(ctx.syncStatus.paused).toBe(true);
+
+      writeFileSync(join(repo, ".mcp.json"), JSON.stringify({ mcpServers: { kanmer: { command: "old" } } }) + "\n", "utf8");
+      const result = await __kanmerTest.syncProject(repo);
+
+      expect(result.providerReconciliationPending).toBeUndefined();
+      expect(result.error).toBeNull();
+      expect(result.paused).toBe(false);
+      expect(JSON.parse(readFileSync(join(repo, ".mcp.json"), "utf8")).mcpServers.kanmer.env.KANMER_BOARD_BRANCH).toBe("retry-board");
+    } finally {
+      __kanmerTest.contexts.delete(repo);
+      electronMocks.syncBoard.mockImplementation(async (status) => status);
+      await __kanmerTest.applyGitPreferences("kanmer-board", 0);
+    }
+  }, 30_000);
+
   it("returns paused mismatch without invoking syncBoard or mutating refs", async () => {
     const beforeRefs = await git(repo, "show-ref");
     const beforeWorktrees = await git(repo, "worktree", "list", "--porcelain");
@@ -265,6 +346,42 @@ describe("syncProject production Retry caller", () => {
     expect(result).toMatchObject({ available: true, branch: "team-board", boardRoot: protectedStatus.boardRoot, paused: false });
     expect(electronMocks.syncBoard).toHaveBeenCalledTimes(1);
     expect(await git(protectedStatus.boardRoot!, "symbolic-ref", "--short", "HEAD")).toBe("team-board");
+  }, 30_000);
+
+  it("marks native providers stale when Retry observes an administrator handoff", async () => {
+    await git(repo, "branch", "retargeted-board");
+    await git(repo, "checkout", "retargeted-board");
+    const ctx = {
+      sourceRoot: repo,
+      boardRoot: repo,
+      store: {
+        getBoardWithSource: async () => ({ source: "file" }),
+        listItems: async () => [],
+      },
+      watch: { close: async () => undefined },
+      ownWrites: new Map<string, number>(),
+      syncStatus: {
+        available: true,
+        boardRoot: repo,
+        branch: "kanmer-board",
+        lastSync: null,
+        error: null,
+        paused: false,
+      },
+    };
+    __kanmerTest.contexts.set(repo, ctx as never);
+
+    try {
+      await __kanmerTest.applyGitPreferences("retargeted-board", 0);
+      expect(ctx.syncStatus.branch).toBe("retargeted-board");
+      expect((ctx.syncStatus as any).nativeReconnectRequired).toEqual({
+        branch: "retargeted-board",
+        providers: ["grok", "antigravity"],
+      });
+    } finally {
+      __kanmerTest.contexts.delete(repo);
+      await __kanmerTest.applyGitPreferences("kanmer-board", 0);
+    }
   }, 30_000);
 
   it("re-arms automatic sync when Retry repairs an unavailable retained root", async () => {

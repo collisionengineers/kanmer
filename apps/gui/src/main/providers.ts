@@ -38,6 +38,12 @@ export function normalizeBoardBranch(branch: string | undefined): string {
   return trimmed || DEFAULT_BOARD_BRANCH;
 }
 
+/** The functional native-plugin probe must prove the staged branch, not only project identity. */
+export function nativeFunctionalPrompt(boardBranch: string | undefined): string {
+  const expected = JSON.stringify(normalizeBoardBranch(boardBranch));
+  return `Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format, board_expected_branch, board_actual_branch, board_on_expected_branch copied from that tool response. The expected board branch is ${expected}; copy boardWorktree.expectedBranch, boardWorktree.actualBranch, and boardWorktree.onBoardBranch. Do not invent values or return a marker.`;
+}
+
 /** Return a fresh canonical Codex invocation so callers cannot mutate shared state. */
 export function codexPortableInvocation(boardBranch?: string): Invocation {
   return {
@@ -146,7 +152,7 @@ export type InstallSpec =
        listCommand: () => string;
        inspectCommand: () => string;
        validateCommand?: (pluginRoot: string) => string;
-       functionalCommand: (projectRoot: string) => string;
+       functionalCommand: (projectRoot: string, boardRoot?: string, boardBranch?: string) => string;
        requiredFiles: (pluginRoot: string) => string[];
        capabilityPresent: (output: string) => boolean;
        descriptorPath: (pluginRoot: string) => string;
@@ -179,7 +185,7 @@ export interface NativePluginArgvCommands {
   list: () => NativePluginCommand;
   inspect: () => NativePluginCommand;
   validate?: (pluginRoot: string) => NativePluginCommand;
-  functional: (projectRoot: string, boardRoot: string) => NativePluginCommand;
+  functional: (projectRoot: string, boardRoot: string, boardBranch?: string) => NativePluginCommand;
 }
 
 export interface AgentProvider {
@@ -895,7 +901,7 @@ export const PROVIDERS: AgentProvider[] = [
       uninstallCommand: () => "grok plugin uninstall kanmer --confirm",
       listCommand: () => "grok plugin list",
       inspectCommand: () => "grok inspect",
-      functionalCommand: (root) => `grok -p ${q("Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.")} --cwd ${q(root)}`,
+      functionalCommand: (root, _boardRoot, boardBranch) => `grok -p ${q(nativeFunctionalPrompt(boardBranch))} --cwd ${q(root)}`,
       requiredFiles: (root) => [
         join(root, ".claude-plugin", "plugin.json"),
         join(root, "skills"),
@@ -915,11 +921,11 @@ export const PROVIDERS: AgentProvider[] = [
         uninstall: () => ({ file: "grok", args: ["plugin", "uninstall", "kanmer", "--confirm"] }),
         list: () => ({ file: "grok", args: ["plugin", "list"] }),
         inspect: () => ({ file: "grok", args: ["inspect"] }),
-        functional: (root) => ({
+        functional: (root, _boardRoot, boardBranch) => ({
           file: "grok",
           args: [
             "-p",
-            "Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.",
+            nativeFunctionalPrompt(boardBranch),
             "--cwd",
             root,
           ],
@@ -948,8 +954,8 @@ export const PROVIDERS: AgentProvider[] = [
       // oracle. Functional capability still requires a bound real tool call.
       inspectCommand: () => "agy plugin list",
       validateCommand: (root) => `agy plugin validate ${q(root)}`,
-      functionalCommand: (root) =>
-        `agy --add-dir ${q(root)} -p ${q("Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.")}`,
+      functionalCommand: (root, _boardRoot, boardBranch) =>
+        `agy --add-dir ${q(root)} -p ${q(nativeFunctionalPrompt(boardBranch))}`,
       requiredFiles: (root) => [
         join(root, "plugin.json"),
         join(root, "mcp_config.json"),
@@ -975,13 +981,13 @@ export const PROVIDERS: AgentProvider[] = [
         // agy 1.1.14 has no inspect subcommand; list is the supported oracle.
         inspect: () => ({ file: "agy", args: ["plugin", "list"] }),
         validate: (root) => ({ file: "agy", args: ["plugin", "validate", root] }),
-        functional: (_projectRoot, boardRoot) => ({
+        functional: (_projectRoot, boardRoot, boardBranch) => ({
           file: "agy",
           args: [
             "--add-dir",
             boardRoot,
             "-p",
-            "Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.",
+            nativeFunctionalPrompt(boardBranch),
           ],
         }),
       },

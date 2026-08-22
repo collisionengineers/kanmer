@@ -47,15 +47,25 @@ describe("board-branch handoff settings", () => {
     expect(readSettings().pendingBoardHandoffs).toEqual({ "C:\\repo-b": { ...handoff, from: "old-board" } });
   });
 
-  it("retains native reconnect requirements when a closed project's branch changes", async () => {
+  it("treats native reconnect as user-scoped across closed projects", async () => {
     const project = "C:\\repo-closed";
+    const other = "C:\\repo-other";
     expect(await observeKanmerBoardBranch(project, "release-board")).toBeNull();
     expect(await observeKanmerBoardBranch(project, "team-board")).toEqual({
       branch: "team-board",
       providers: ["grok", "antigravity"],
     });
+    expect(await observeKanmerBoardBranch(other, "release-board")).toBeNull();
+    expect(await observeKanmerBoardBranch(other, "other-board")).toEqual({
+      branch: "other-board",
+      providers: ["grok", "antigravity"],
+    });
     expect(readSettings().pendingNativeReconnects?.[project]).toEqual({
       branch: "team-board",
+      providers: ["grok", "antigravity"],
+    });
+    expect(readSettings().pendingNativeReconnects?.[other]).toEqual({
+      branch: "other-board",
       providers: ["grok", "antigravity"],
     });
 
@@ -64,7 +74,12 @@ describe("board-branch handoff settings", () => {
       branch: "team-board",
       providers: ["antigravity"],
     });
+    expect(readSettings().pendingNativeReconnects?.[other]).toEqual({
+      branch: "other-board",
+      providers: ["antigravity"],
+    });
     await clearNativeReconnectRequired(project, "antigravity");
     expect(readSettings().pendingNativeReconnects?.[project]).toBeUndefined();
+    expect(readSettings().pendingNativeReconnects?.[other]).toBeUndefined();
   });
 });

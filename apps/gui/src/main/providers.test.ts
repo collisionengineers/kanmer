@@ -133,7 +133,7 @@ describe("provider registry", () => {
       "agy plugin install C:\\Kanmer\\plugins\\kanmer",
     );
     expect(install.validateCommand?.("C:\\Kanmer\\plugins\\kanmer")).toContain("agy plugin validate");
-    expect(install.functionalCommand("C:\\My Projects\\kanmer")).toContain("agy --add-dir");
+    expect(install.functionalCommand("C:\\My Projects\\kanmer", "C:\\My Projects\\kanmer", "release-board")).toContain("board_expected_branch");
   });
 
   it("no provider writes .mcp.json — it is Claude's, and Claude reaches it through its own CLI", () => {
@@ -161,7 +161,7 @@ describe("provider registry", () => {
     );
     expect(install.installCommand("C:\\Kanmer\\plugins\\kanmer")).toContain("--trust");
     expect(install.uninstallCommand()).toBe("grok plugin uninstall kanmer --confirm");
-    expect(install.argv?.functional("C:\\hostile root & $(whoami) `tick` ;", "C:\\board root")).toEqual({
+    expect(install.argv?.functional("C:\\hostile root & $(whoami) `tick` ;", "C:\\board root", "release-board")).toEqual({
       file: "grok",
       args: [
         "-p",
@@ -170,6 +170,7 @@ describe("provider registry", () => {
         "C:\\hostile root & $(whoami) `tick` ;",
       ],
     });
+    expect(install.argv?.functional("C:\\hostile root & $(whoami) `tick` ;", "C:\\board root", "release-board")?.args[1]).toContain("release-board");
   });
 
   it("each config-file provider answers registration from its own file's shape", () => {

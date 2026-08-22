@@ -38,6 +38,8 @@ export interface KanmerGitStatus {
   branchMismatchPause?: boolean;
   /** User-scoped native plugins whose staged board branch needs explicit reconnect. */
   nativeReconnectRequired?: NativeReconnectRequirement;
+  /** Provider registrations that failed after a branch was reconciled and must be retried. */
+  providerReconciliationPending?: { providers: string[]; branch: string };
 }
 
 /**
@@ -277,7 +279,13 @@ export async function renameBoardBranch(boardRoot: string, to: string): Promise<
   try {
     await git(boardRoot, ["push", "-u", "origin", `HEAD:refs/heads/${to}`]);
   } catch (error) {
-    return { ok: true, from, error: `Renamed to ${to} locally, but pushing it failed: ${msg(error)}` };
+    return {
+      ok: true,
+      from,
+      error:
+        `Renamed to ${to} locally, but pushing it failed: ${msg(error)}. ` +
+        `After the remote handoff succeeds, update KANMER_BOARD_BRANCH to ${to} before deleting retained remote branch ${from}.`,
+    };
   }
   if (from !== PROTECTED_BOARD_BRANCH) {
     return {

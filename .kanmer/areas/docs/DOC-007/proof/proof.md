@@ -188,3 +188,58 @@ A user opening **Help → Manual → Proof** used to see the words
 `# FRD-006 — Typed proof` and a pointer to a file not on their computer. They
 now see 2969 characters explaining that proof is evidence rather than
 description, what the three kinds want, and why the last gate is the strict one.
+
+## 6. Independent verification on current merged main — 2026-08-22T01:07:24.053Z
+
+This verification was run from the recorded `.worktrees/doc-007` checkout. Its
+HEAD was `af61144ce743f74b2aba92fb0778588b0b9bedd0`, equal to `origin/main`, and
+`19244f62d05ddf64ff7aa52ea4cf34342798013f` (PR #49's merge commit) was an
+ancestor (exit 0). `gh pr view 49` reported `state=MERGED`,
+`mergedAt=2026-08-16T23:24:57Z`, and that exact merge SHA.
+
+### Deterministic manual and build rails
+
+| Command | Result |
+|---|---|
+| `npm run build:manual` | **PASS** — wrote 22 chapters |
+| generated-artifact `git diff --exit-code --stat apps/gui/src/renderer/src/manual/chapters.generated.ts` | **PASS** — exit 0 |
+| `npm run check:manual` | **PASS** — manual up to date (22 chapters) |
+| focused `manual.test.ts` | **PASS** — 11/11 |
+| `npm run typecheck` | **PASS** — all workspaces |
+| `npm run build -w @kanmer/gui` | **PASS** — 422 main modules, preload and renderer bundles built |
+| `npm run test:scripts` | **PASS** — 80/80 |
+| `git diff --check` | **PASS** — exit 0 |
+
+### Full-rail failures preserved
+
+The current broad rails were run and their failures are retained rather than
+silently replaced by historical green evidence:
+
+- Root `npm test`: **FAIL**, core `src/store.test.ts` 261/263; two tests timed
+  out at 5 seconds, including an `ENOTEMPTY` cleanup error for a temporary
+  `.kanmer` directory.
+- `npm run test -w @kanmer/gui`: **FAIL**, 350/352; the two failures were
+  `src/main/kanmerGit.test.ts` hook timeouts with Windows `EPERM` cleanup.
+- `npm run test:http -w @kanmer/mcp-server`: **FAIL**, 59/61; the two failures
+  were project-resolution child-process `ETIMEDOUT` and tunnel readiness
+  `TUNNEL_READINESS_TIMEOUT`.
+
+These failures are outside DOC-007's manual source and the focused manual suite
+remains green. The historical report's successful reruns remain preserved as
+historical evidence, while this current verification records the exact red
+outcomes above.
+
+### Explicitly inconclusive evidence
+
+- **INCONCLUSIVE — negative guard fixture:** the disposable heading-only fixture
+  was not rerun during this independent pass. The historical merged proof records
+  each guard rule and the current focused 11/11 suite exercises the shipped guard,
+  but this pass makes no new claim for that disposable fixture.
+- **INCONCLUSIVE — visual/manual acceptance:** no interactive packaged Electron
+  session was available for an independent stranger-read of every chapter.
+  Render-path assertions and deterministic chapter checks are not a substitute
+  for visual acceptance.
+
+Current artifact facts from the generated output are 22 chapters, 21 authored,
+shortest authored body 2,462 characters, and shortest overall 574 characters for
+the generated shortcuts table.

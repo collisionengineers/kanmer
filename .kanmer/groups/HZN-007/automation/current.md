@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T12:57:05.629Z
+updated_at: 2026-08-22T12:59:07.340Z
 ---
 
 # Current auto run — HZN-007
@@ -437,3 +437,6 @@ Last handoff: 2026-08-22T10:23:07.811Z — CORE-045 implementation handoff: comm
 
 
 2026-08-22T12:57:20Z — CORE-045 PR #166 merge 142af2f3 is recorded; CORE-045 is Verifying with its former block edge removed. CORE-044 report/item refreshed to exact cumulative head 142af2f3 and full CORE-045/051/053 lineage. Fresh independent GUI082 review/merge of PR #165 assigned; CORE-054 remains the active GUI mismatch remediation.
+
+
+2026-08-22T12:59:20Z — CORE-054 implementation complete on PR #176 head 1ef6852a; checklist/report/gates passed after focused GUI/manual/docs/scripts rails, and ticket is Review. It guards protected rename on branchMismatch and adds real refs/worktree no-mutation regression. Independent core041 review/merge assigned. CORE-052 remains Review; CORE-044 fresh GUI082 review pending.

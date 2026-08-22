@@ -10,5 +10,5 @@
 - [x] Relevant rails: plugin:build/build 0; MCP typecheck 0; full verify reached build/manual/core 303/303/GUI 404/404/HTTP 94/94/scripts 88/88/typecheck/smoke rails then exited 1 at mcpb CLI absence; final scripts 88/88 and git diff --check 0.
 - [x] Write post-implementation report mapping scope, SHA, rails, hosted limitations, and external proof boundaries.
 - [x] Push/open ticket-linked PR #205 against core-026-project-declared-sources and record commit 4f96ce20c24f63d92268e4a61899a4e6c67b2459 traceability.
-- [ ] Move Implementing→Review after a fresh get_doc_gates readback.
+- [x] Move Implementing→Review after a fresh get_doc_gates readback; enter-review gates were passable and move completed at 2026-08-22T19:01:20.463Z.
 - [ ] Post-merge verification and proof remain unchecked for the independent merge/verify lane.

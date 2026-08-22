@@ -11,7 +11,7 @@
 - [x] Add a normalized optional board-branch parameter to provider invocation construction with `kanmer-board` default behavior for direct callers.
 - [x] Add `KANMER_BOARD_BRANCH` to Electron-as-Node provider environments without removing `ELECTRON_RUN_AS_NODE`.
 - [x] Add `KANMER_BOARD_BRANCH` to the project-scoped portable Codex registration while preserving its exact rootless launcher command and args.
-- [x] Verify Claude CLI, OpenCode JSON and Antigravity JSON receive the same branch value through the shared `Invocation.env` serialization.
+- [x] Verify Claude CLI and OpenCode JSON receive the same branch value through the shared `Invocation.env` serialization; Grok/Antigravity native user plugins remain unchanged by this project-registration remediation.
 - [x] Thread the current saved GUI setting through the Connect IPC → `connectAgent` → `serverInvocation` seam.
 - [x] Preserve Grok native-plugin behavior and all existing provider ownership/unmerge/idempotence rules.
 
@@ -34,7 +34,7 @@
 
 ## Handoff
 
-- [ ] Write post-implementation report with changed files, governing-doc mapping, tests, risks and follow-up.
+- [x] Write post-implementation report with changed files, governing-doc mapping, tests, risks and follow-up.
 - [ ] Commit only MCP-044 scope, push the dedicated branch, record exact commit/PR, and move one boundary to Review.
 - [ ] Append the result to HZN-007 current/run and read back ticket/docs/gates before stopping.
 

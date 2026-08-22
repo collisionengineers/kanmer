@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T18:29:52.268Z
+updated_at: 2026-08-22T19:01:38.547Z
 ---
 
 # Current auto run — HZN-007
@@ -726,3 +726,9 @@ Last handoff: 2026-08-22T18:29:52.268Z — CORE-085 is implementing the two auto
 
 
 - 2026-08-22T18:50:55.434Z — GUI-112 is taken for bounded implementation from CORE-043 PR #168 current head `e78323d7fb8ce695e40db80380d189e236726b25` on `gui-112-branch-handoff-sync` / `.worktrees/gui-112`. Scope is custom-to-custom live preflight, failed reconciliation visibility/retry, retained-ref Actions-variable wording, workflow/manual consistency, and deterministic GUI tests. Findings 3836130705/3836189723 are linked to MCP-044 and explicitly excluded. CORE-043 branch remains untouched; author stops at Review with no self-merge/verify/cleanup.
+
+
+Last handoff: 2026-08-22T19:01:03.469Z — CORE-086 artifact remediation: taken without force on core-086-plugin-artifact-refresh/.worktrees/core-086 from exact CORE-081 cumulative base fcd998550714811edac99032ea7118f9b2084d38. Final commit 4f96ce20c24f63d92268e4a61899a4e6c67b2459 / PR #205 targets core-026-project-declared-sources. Only plugins/kanmer/mcp/kanmer-mcp.cjs changed; final plugin:check and mcpb:check PASS with shared hashes f228352b. Source 26/26, first core 303/303, scripts 88/88, and full verify progress are recorded; later core ENOTEMPTY timeout and initial missing-MCPB-CLI failures remain preserved. Author stops at Review; independent review/merge then fresh CORE-081 cumulative review required.
+
+
+Last handoff: 2026-08-22T19:01:38.547Z — CORE-086 artifact remediation: taken without force on core-086-plugin-artifact-refresh/.worktrees/core-086 from exact CORE-081 cumulative base fcd998550714811edac99032ea7118f9b2084d38. Final commit 4f96ce20c24f63d92268e4a61899a4e6c67b2459 / PR #205 targets core-026-project-declared-sources. Only plugins/kanmer/mcp/kanmer-mcp.cjs changed; final plugin:check and mcpb:check PASS with shared hashes f228352b. Source 26/26, first core 303/303, scripts 88/88, and full verify progress are recorded; later core ENOTEMPTY timeout and initial missing-MCPB-CLI failures remain preserved. Author stops at Review; independent review/merge then fresh CORE-081 cumulative review required.

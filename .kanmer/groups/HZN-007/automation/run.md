@@ -135,3 +135,6 @@
 
 
 2026-08-22T10:35Z — CORE-045 independent review (core041-executor) recorded NEEDS-CHANGES: stale-lock reclaim TOCTOU and incomplete IPv6 special-range policy. CORE-046 created as the linked blocker, stacked on 1234264b; CORE-045 remains blocked. Author lane handed off; no merge, move, or cleanup.
+
+
+2026-08-22T10:39Z — CORE-046 taken by codex-core046-execute on core-046-lock-reclaim-race-ipv6/.worktrees/core-046. Packet docs exist; implementation is limited to the CORE-045 F-003 stale-lock reclaim race and F-009 IPv6 special ranges. CORE-045 remains blocked; independent review required after Review handoff.

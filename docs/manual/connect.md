@@ -88,7 +88,10 @@ In the GUI, open **Settings → OpenAI tunnel**, enter the profile name, tunnel 
 address, then save. The address is a validated, non-secret expectation; the GUI
 does not rewrite `tunnel-client`'s profile file or claim a live listener, so
 distinct ports must still be configured in the client profile by the operator.
-**Initialize** and **Run doctor** execute the same commands;
+**Initialize** and **Run doctor** execute the same commands. Initialize binds
+the selected credential name with tunnel-client's
+`--control-plane-api-key-ref env:<NAME>` option, so a custom environment
+variable is honored without putting its value in the profile;
 **Start**, **Stop**, and **Restart** supervise the owned `run` process. The GUI
 never asks for or persists the API-key value. A downloaded app update marks a
 running tunnel for restart, and quitting Kanmer stops its owned process tree.
@@ -97,8 +100,8 @@ Cloudflare settings are a different provider path and are not used here.
 Use forward slashes inside `$mcpCommand`, including on Windows. Version 0.0.11's
 command parser treats backslashes as escapes; a normal Windows path such as
 `C:\Users\...` becomes invalid during its executable preflight. The profile
-it creates under `%APPDATA%\tunnel-client` refers to the API key as
-`env:CONTROL_PLANE_API_KEY`; it does not need the key written into YAML.
+it creates under `%APPDATA%\tunnel-client` refers to the API key as an
+`env:<NAME>` reference; it does not need the key written into YAML.
 
 Keep `tunnel-client run` alive while creating the ChatGPT app and whenever the
 app uses Kanmer. In ChatGPT's developer-mode app settings, choose **Tunnel** and

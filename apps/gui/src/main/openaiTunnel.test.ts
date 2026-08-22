@@ -46,6 +46,25 @@ describe("OpenAITunnelManager", () => {
     await expect(readOpenAITunnelSettings(root)).rejects.toThrow("OPENAI_TUNNEL_SETTINGS_READ_FAILED");
   });
 
+  it("canonicalizes Windows project keys and binds a custom credential name", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
+    const children: Array<ChildProcess & { finish(code?: number): void }> = [];
+    const environments: NodeJS.ProcessEnv[] = [];
+    const manager = new OpenAITunnelManager(root, spawnFake(children, [0], environments));
+    await manager.register("C:\\\\repo\\", identity);
+    const profile = await manager.saveProfile("C:/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "MY_TUNNEL_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: null });
+    const previous = process.env.MY_TUNNEL_KEY;
+    process.env.MY_TUNNEL_KEY = "test-key";
+    try {
+      await manager.initialize("C:\\\\repo\\", identity, { boardRoot: identity.boardRoot, repoRoot: identity.repoRoot });
+      expect(environments[0]?.MY_TUNNEL_KEY).toBe("test-key");
+      expect((await manager.overview())[0]?.projectId).toBe("C:/repo");
+      expect(profile.profile?.generation).toMatch(/^[0-9a-f-]{36}$/i);
+    } finally {
+      if (previous === undefined) delete process.env.MY_TUNNEL_KEY; else process.env.MY_TUNNEL_KEY = previous;
+    }
+  });
+
   it("validates loopback health and safe executable inputs", () => {
     expect(isLoopbackHealthAddress("127.0.0.1:8765")).toBe(true);
     expect(isLoopbackHealthAddress("[::1]:8765")).toBe(true);
@@ -163,6 +182,22 @@ describe("OpenAITunnelManager", () => {
       expect(status.lastError).toContain("OPENAI_TUNNEL_TEST_MISSING");
     } finally {
       if (previous !== undefined) process.env.OPENAI_TUNNEL_TEST_MISSING = previous;
+    }
+  });
+
+  it("reports credential failures from auto-start", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
+    const manager = new OpenAITunnelManager(root, spawnFake([], []));
+    await manager.register("/repo", identity);
+    const profile = await manager.saveProfile("/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "OPENAI_TUNNEL_TEST_MISSING", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: true, expectedGeneration: null });
+    const previous = process.env.OPENAI_TUNNEL_TEST_MISSING;
+    delete process.env.OPENAI_TUNNEL_TEST_MISSING;
+    try {
+      const result = await manager.autoStart([{ projectId: "/repo", identity }], () => ({ boardRoot: identity.boardRoot, repoRoot: identity.repoRoot }));
+      expect(profile.profile?.generation).toBeTruthy();
+      expect(result).toEqual([{ projectId: "/repo", ok: false, error: expect.stringContaining("OPENAI_TUNNEL_TEST_MISSING") }]);
+    } finally {
+      if (previous === undefined) delete process.env.OPENAI_TUNNEL_TEST_MISSING; else process.env.OPENAI_TUNNEL_TEST_MISSING = previous;
     }
   });
 });

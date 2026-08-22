@@ -50,6 +50,12 @@ one, in `.worktrees/kanmer`, then press **Retry**.
 Sync stays paused until a sync succeeds, which is deliberate: a paused sync is
 visible, and a silently failing one is not.
 
+During a board-branch handoff, Kanmer also pauses the automatic timer while the
+open worktree is on the wrong branch. It does not push using the cached branch
+in the background. Once the worktree reaches the exact requested destination,
+Kanmer clears only the handoff-generated pause and message; a real conflict or
+push error remains visible, and **Retry** is still available.
+
 ## Renaming the board branch
 
 For a non-protected board branch, do it from **Settings → Git**, not from the

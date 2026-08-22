@@ -62,6 +62,11 @@ paused. Nothing is lost — your work is committed on the board branch — but i
 will stay paused until you resolve the conflict and retry. See **Sharing a board
 over Git**.
 
+If the board branch is being handed off, the timer also stays stopped while the
+open worktree is on the wrong branch. Kanmer never uses the cached branch for an
+automatic push; after the exact destination is observed, only the generated
+handoff pause is cleared. A genuine sync error remains, with **Retry** available.
+
 ## Two people edited the same thing
 
 Kanmer tells you rather than picking a winner.

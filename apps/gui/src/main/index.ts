@@ -78,11 +78,14 @@ import {
   PROTECTED_BOARD_BRANCH,
   refreshBoardBranch,
   renameBoardBranch,
+  shouldRunAutomaticSync,
+  shouldScheduleAutomaticSync,
   shouldAttemptOrdinaryBranchRename,
   shouldAttemptProtectedBranchRename,
   syncBoard,
   type KanmerGitStatus,
 } from "./kanmerGit.js";
+import { armAutomaticSync } from "./syncTimer.js";
 import {
   connectAgent,
   disconnectAgent,
@@ -135,6 +138,20 @@ const contexts = new Map<string, ProjectContext>();
 let remoteAccess: RemoteAccessManager | null = null;
 let openAITunnel: OpenAITunnelManager | null = null;
 let remoteQuitInProgress = false;
+
+function clearSyncTimer(ctx: ProjectContext): void {
+  if (ctx.syncTimer) clearInterval(ctx.syncTimer);
+  ctx.syncTimer = undefined;
+}
+
+function armSyncTimer(projectId: string, ctx: ProjectContext, minutes: number): void {
+  armAutomaticSync(
+    ctx,
+    shouldScheduleAutomaticSync(ctx.syncStatus, minutes),
+    minutes,
+    () => void syncProject(projectId, true),
+  );
+}
 
 async function remoteIdentity(ctx: ProjectContext) {
   const [{ source }, format] = await Promise.all([ctx.store.getBoardWithSource(), ctx.store.detectFormat()]);
@@ -596,7 +613,7 @@ async function openProject(root: string): Promise<OpenProjectResult> {
   const watch = startWatch(projectId, boardRoot, ownWrites);
   const ctx: ProjectContext = { sourceRoot: projectId, boardRoot, store, watch, ownWrites, syncStatus };
   const minutes = readSettings().gitSyncMinutes;
-  if (syncStatus.available && minutes > 0) ctx.syncTimer = setInterval(() => void syncProject(projectId), minutes * 60_000);
+  armSyncTimer(projectId, ctx, minutes);
   contexts.set(projectId, ctx);
   buildMenu(); // refresh the Open Recent submenu
   return snapshotOf(ctx);
@@ -638,7 +655,7 @@ async function closeProject(projectId: string): Promise<void> {
   if (!ctx) return;
   if (openAITunnel) await openAITunnel.closeProject(projectId, await openAITunnelIdentity(ctx));
   await ctx.watch.close();
-  if (ctx.syncTimer) clearInterval(ctx.syncTimer);
+  clearSyncTimer(ctx);
   contexts.delete(projectId);
 }
 
@@ -709,13 +726,7 @@ async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number)
       }
     }
   }
-  for (const [projectId, ctx] of contexts) {
-    if (ctx.syncTimer) clearInterval(ctx.syncTimer);
-    ctx.syncTimer = undefined;
-    if (ctx.syncStatus.available && settings.gitSyncMinutes > 0) {
-      ctx.syncTimer = setInterval(() => void syncProject(projectId), settings.gitSyncMinutes * 60_000);
-    }
-  }
+  for (const [projectId, ctx] of contexts) armSyncTimer(projectId, ctx, settings.gitSyncMinutes);
   return settings;
 }
 
@@ -763,9 +774,24 @@ function boardWorktreeRepair(
   return "No repair required.";
 }
 
-async function syncProject(projectId: string): Promise<KanmerGitIpcStatus> {
+async function syncProject(projectId: string, automatic = false): Promise<KanmerGitIpcStatus> {
   const ctx = requireCtx(projectId);
+  const retryingPaused = !automatic && ctx.syncStatus.paused;
+  if (automatic && ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
+    const inspection = await inspectBoardWorktree(ctx.syncStatus.boardRoot, ctx.syncStatus.branch);
+    ctx.syncStatus = await refreshBoardBranch(ctx.syncStatus, ctx.syncStatus.branch, inspection);
+  }
+  if (automatic && !shouldRunAutomaticSync(ctx.syncStatus)) {
+    clearSyncTimer(ctx);
+    const blocked = await gitStatusForRenderer(ctx);
+    mainWindow?.webContents.send(CH.gitStatus, { projectId, ...blocked });
+    return blocked;
+  }
   ctx.syncStatus = await syncBoard(ctx.syncStatus);
+  if (retryingPaused && shouldRunAutomaticSync(ctx.syncStatus)) {
+    armSyncTimer(projectId, ctx, readSettings().gitSyncMinutes);
+  }
+  if (!shouldRunAutomaticSync(ctx.syncStatus)) clearSyncTimer(ctx);
   const status = await gitStatusForRenderer(ctx);
   mainWindow?.webContents.send(CH.gitStatus, { projectId, ...status });
   return status;
@@ -1040,16 +1066,13 @@ function registerIpc(): void {
     if (dryRun) return migrateBoard(ctx.store, { dryRun });
 
     await ctx.watch.close();
-    if (ctx.syncTimer) clearInterval(ctx.syncTimer);
-    ctx.syncTimer = undefined;
+    clearSyncTimer(ctx);
     try {
       return await migrateBoard(ctx.store, { dryRun });
     } finally {
       ctx.watch = startWatch(p, ctx.boardRoot, ctx.ownWrites);
       const minutes = readSettings().gitSyncMinutes;
-      if (ctx.syncStatus.available && minutes > 0) {
-        ctx.syncTimer = setInterval(() => void syncProject(p), minutes * 60_000);
-      }
+      armSyncTimer(p, ctx, minutes);
     }
   });
   ipcMain.handle(CH.backfillBoard, async (_e, p: string, dryRun: boolean) => {

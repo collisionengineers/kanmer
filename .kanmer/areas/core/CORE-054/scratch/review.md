@@ -1,0 +1,21 @@
+# Independent review — CORE-054 / PR #176
+
+- Reviewer: independent reviewer.
+- Exact head: `1ef6852a676266e1760f61a328e00a7be67fdcb0` (supplied prefix `1ef6852a`).
+- Exact base: CORE-052 head `825fb79dc3528b1d341f532ce8016aa0006624c8`, branch `core-052-board-refresh-state`.
+- PR #176 is OPEN, CLEAN, MERGEABLE with no hosted checks reported.
+- Diff scope is limited to `apps/gui/src/main/index.ts`, `apps/gui/src/main/kanmerGit.ts`, and `apps/gui/src/main/kanmerGit.test.ts`.
+
+## Positive evidence
+
+The new `shouldAttemptProtectedBranchRename` predicate correctly returns false for a live `branchMismatch`, and the real-Git regression proves an unexpected branch does not change refs/worktree porcelain through that predicate path. Focused GUI Git rail passes 20/20. The report's manual/docs/core/scripts/diff results are consistent; scripts are 89/89. The documented typecheck and GUI-build failures are pre-existing shared-dispatch diagnostics and not introduced by this diff. Live GitHub protection remains INCONCLUSIVE.
+
+## Blocking finding
+
+`applyGitPreferences` sets `blockedBranchRefresh` and suppresses the protected refusal branch, but its `else` ordinary rename loop still calls `renameBoardBranch` when the cached `ctx.syncStatus.branch` differs from `settings.kanmerBranch` (index.ts lines 693-697). `refreshBoardBranch` preserves the cached branch on mismatch. After a prior failed rename or stale cached preference, a live worktree on an unexpected branch can therefore still be renamed, mutating refs/worktree state despite `branchMismatch`. The current regression keeps cached branch `kanmer-board` equal to the saved setting and only exercises the pure predicate; it does not cover this stale-cache mismatch through `applyGitPreferences`.
+
+This violates the ticket/report claim that any mismatch blocks both protected and ordinary rename paths. CORE-055 was created and linked as a blocking remediation: “skip all rename paths on branch mismatch,” with a cached-branch-different-from-saved-preference integration regression.
+
+## Verdict
+
+NEEDS-CHANGES. PR #176 is not merge-ready. No merge, move, verification, or cleanup performed. Re-review after CORE-055 lands with the exact mismatch integration path and preserved refs/worktree assertions.

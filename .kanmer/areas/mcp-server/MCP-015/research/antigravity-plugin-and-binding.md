@@ -91,3 +91,31 @@ Starting a process or printing PONG is insufficient for final dispatch acceptanc
 ## Open questions
 
 None. CLI spellings/variable support are measurements to pin, not unresolved design choices.
+
+## Current supported-host probe (2026-08-22)
+
+Read-only checks were run against the installed Windows CLI before any plugin/project mutation:
+
+\`\`\`
+$ Get-Command agy
+Source : C:\\Users\\Alex\\AppData\\Local\\agy\\bin\\agy.exe
+
+$ agy --version
+1.1.14
+
+$ agy --help
+exit 0; help exposes --add-dir (repeatable), --new-project, --project and -p/--print.
+
+$ agy plugin --help
+exit 0; commands: list, import, install <target>, uninstall <name>, enable <name>, disable <name>, validate [path], link <mp> <target>.
+
+$ agy plugin list
+No imported plugins.
+
+$ agy plugin validate plugins/kanmer
+Error: missing plugin.json: ...\\\\plugins\\\\kanmer\\\\plugin.json
+\`\`\`
+
+The last result is expected against the current pre-MCP-015 tree: the repository plugin uses host-specific manifests and does not yet ship the Antigravity root descriptor. \`agy plugin inspect\` is not a supported command in 1.1.14 (\`unknown command inspect\`), so the lifecycle must use only measured commands. \`agy plugin validate --help\` and \`agy plugin install --help\` are not help forms: the CLI treats them as a path/target and fails; no plugin was installed. A mistaken read-only probe of \`agy plugin uninstall --help\` was treated by the CLI as the literal plugin name \`--help\` and returned \`Uninstalled plugin "--help"\`; \`agy plugin list\` remained \`No imported plugins.\` before and after, and no real plugin identifier was supplied. This behavior is retained as exact evidence and is not used as a lifecycle success signal.
+
+Node is available in the current shell (\`v24.15.0\`), but no Antigravity credentials or disposable host project were authorized for mutation. Real plugin install, bound \`get_status\`, unbound control, and uninstall therefore remain INCONCLUSIVE; they must not be claimed from PONG/process or parser output. Deterministic descriptor/command/lifecycle rails will cover the implementation, with the external host lane recorded as INCONCLUSIVE.

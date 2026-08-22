@@ -839,3 +839,6 @@ Last handoff: 2026-08-22T23:24:00Z — GUI-118 is Review-ready on gui-118-provid
 
 
 2026-08-22T22:30Z: CORE-090 created for cumulative CORE-026 MCPB artifact parity after hosted run 32602154533 failed check-mcpb-sync. Implementing commit a4204617 is Review on PR #220; CORE-090 blocks CORE-026. GUI-118 is Review on PR #219 at e09009b2, awaiting independent review.
+
+
+2026-08-22T22:33Z: CORE-090 explicit blocks edge added to CORE-026; review remains pending on PR #220.

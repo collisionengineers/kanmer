@@ -25,3 +25,22 @@
 ## Verdict
 
 NEEDS-CHANGES until B-001 and B-002 are resolved or explicitly dispositioned as INCONCLUSIVE in the ticket packet. No merge performed per review instruction.
+
+## Re-review — final PR head c283f4cc
+
+Re-reviewed against the complete current CORE-033 packet, EPIC-009 and HZN-007 context, plan, checklist, report, governing refs, and live GitHub state.
+
+- PR #158 head is c283f4cc44f9c4ad765cf2ea6da34eda849b01f9 on main base 0c5ed84ed0128aed6c8a60bec265a8dcb589061a. The source diff remains exactly one file: docs/plans/compiled-workflow/playbook.md. The amendment adds the production board-sync evidence without broadening scope.
+- Hosted checks pass: verify run 32557665583 job 96994318125 and kanmer-gate job 96994318266. kanmer-gate remains informational and is not required by the main protection readback. PR mergeStateStatus is CLEAN and mergeable; no merge was performed.
+- Independent live readback still matches the playbook: main requires only verify with strict=false, PRs, zero approvals, conversation resolution, admin enforcement, and no force pushes/deletion; kanmer-board has no PR/check/conversation requirement and has no-force/no-delete protection.
+- The board-sync evidence is reachable: 83cdf8014d607f09b745325ec6822c871adc7cd2 exists remotely, and current refs/heads/kanmer-board is 87e546cb8709f280cf30d2a72fb68f1d722eb573, a single later child sync commit. This is consistent with the recorded successful historical sync, not a lost or fabricated SHA.
+- The unresolved-thread evidence is independently readable: GraphQL thread PRRT_kwDOT2PEds6bXFpb isResolved=true and resolvedBy=collisionengineers. The current report/checklist record the initial pending-check BLOCKED state and subsequent BLOCKED to CLEAN transition.
+
+### Prior findings disposition
+
+- B-001 fixed. MCP readback reports CORE-033 checklist 50/50, with exact run, settings, direct-push, conversation, board-sync, scope, and handoff evidence; the post-implementation report is present and consistent with the one-file diff.
+- B-002 fixed. The updated ticket packet records the pending verify observation, unresolved-thread BLOCKED to CLEAN transition, direct main refusal, and production syncBoard push. The playbook now carries the board-push command/result and the packet report/checklist carry the controlled PR/conversation results required by the plan.
+
+### Verdict
+
+PASS — no unresolved review findings. The PR is independent-review-ready at c283f4cc. Do not merge as part of this review; merge remains an explicit parent/operator action.

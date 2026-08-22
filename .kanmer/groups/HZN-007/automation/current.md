@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T12:37:35.264Z
+updated_at: 2026-08-22T12:39:05.979Z
 ---
 
 # Current auto run — HZN-007
@@ -410,3 +410,6 @@ Last handoff: 2026-08-22T10:23:07.811Z — CORE-045 implementation handoff: comm
 
 
 2026-08-22T12:37:10Z — CORE-051 moved Implementing→Review on PR #173 head 67a066d351e3f7924f87f7580a74c98e7b94cbb2 after 8/8 checklist/report and local core302/source14 PASS. Author stopped; independent core041 review/merge assigned. GUI099 is implementing CORE-052; no self-review or cleanup.
+
+
+2026-08-22T12:39:10Z — CORE-053 created from PR #173 thread PRRT_kwDOT2PEds6bYwu4 (claimant-marker cleanup error), packet docs written/read back, and moved through Preparing→Implementing. Taken without force on core-053-marker-cleanup-error/.worktrees/core-053 by codex-core053-executor; implementation waits for an available lane while CORE-051 independent review and CORE-052 implementation continue.

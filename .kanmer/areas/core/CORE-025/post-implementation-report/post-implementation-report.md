@@ -82,3 +82,19 @@ Documentation in ADR-0011, ADR-0016, and FRD-009 now states the complete attesta
 ## Hosted follow-up verification — 2026-08-22
 
 PR #159 head `65e364ad927ef151ba0cea59b123d20feaf095b4` completed hosted run `32560013616`: `kanmer-gate` PASS (job `97000062935`, 54s) and authoritative `verify` PASS (job `97000062846`, 2m26s). GitHub annotations retain the expected Node.js 20 deprecation notice and the gate's existing review-attestation warning (`review attestation is invalid: kind must be "review-attestation"`) without failing the run. PR #159 remains open; no merge performed.
+
+## Independent re-review remediation — F-001 — 2026-08-22
+
+The independent re-review identified one remaining major issue: `buildLinkIndex(all)` omits dangling block targets, so a Review ticket with `blocks: [MISSING-ID]` could receive an empty `DEPENDENCY_BLOCKED` evidence set. The CLI now preserves missing targets recorded on the evaluated ticket as `{ exists: false }` blocker evidence; valid outgoing block edges remain excluded from prerequisite derivation. This keeps dependency direction intact while failing closed on dangling board-integrity references.
+
+Regression: `packages/mcp-server/src/check-pr.test.mjs` creates a Review ticket with `blocks: ["MISSING-ID"]` and asserts exit 1, a `DEPENDENCY_BLOCKED` JSON failure naming `MISSING-ID`, and the matching stderr annotation.
+
+Follow-up verification on the working head:
+- `node --test packages/mcp-server/src/check-pr.test.mjs`: 5/5 PASS.
+- `npm run test -w @kanmer/core -- src/merge-gate.test.ts --run`: 14/14 PASS.
+- `npm run typecheck -w @kanmer/mcp-server`: PASS.
+- `npm run build:core`: PASS.
+- `npm run build -w @kanmer/mcp-server`: PASS.
+- `npm run test:http -w @kanmer/mcp-server`: 68/68 PASS.
+- `git diff --check`: PASS.
+- No merge performed; fresh hosted verification is required after pushing the remediation commit.

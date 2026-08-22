@@ -134,3 +134,9 @@
 - [x] Fail closed when board item parsing returns warnings before evaluating dependency evidence.
 - [x] Populate `outcome` on legacy phase-1 findings and add regression coverage.
 - [x] Preserve exact hosted baseline failure evidence; hosted rerun is required for the new head.
+
+## Independent re-review remediation — F-001 — 2026-08-22
+
+- [x] Preserve dangling block targets recorded on the evaluated ticket as conservative dependency-integrity blockers in CLI evidence.
+- [x] Add CLI regression asserting exit 1 plus the missing id in `DEPENDENCY_BLOCKED` JSON and stderr annotation.
+- [x] Rerun focused, core, typecheck, build, HTTP, and diff-check rails; retain exact results in the report.

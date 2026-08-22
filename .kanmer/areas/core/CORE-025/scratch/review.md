@@ -64,3 +64,9 @@ Fix by deriving dangling blockers directly from every listed item's `blocks[]` a
 ### Verdict
 
 NEEDS-CHANGES until dangling blocker evidence is fail-closed. No merge performed.
+
+## F-001 remediation implementation — 2026-08-22
+
+F-001 is fixed in the pending follow-up commit: `phase2Evidence` preserves dangling targets recorded on the evaluated ticket as `exists: false` dependency evidence while retaining derived `blockedBy` direction for valid edges. The CLI regression proves Review ticket `blocks: ["MISSING-ID"]` exits 1 and includes `MISSING-ID` in the `DEPENDENCY_BLOCKED` JSON check and stderr annotation.
+
+Rails: check-pr 5/5, core merge-gate 14/14, mcp-server typecheck PASS, core/mcp builds PASS, HTTP rail 68/68 PASS, diff-check PASS. Existing attestation above remains the independent reviewer’s NEEDS-CHANGES record pending fresh re-review; no merge.

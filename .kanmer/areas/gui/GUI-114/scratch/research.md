@@ -1,0 +1,1 @@
+GUI-114 packet written after GUI-113 merge 69e2cc58. Finding 3836808787 is scoped to shell-safe Claude CLI registration; production fix will use argv execution and retain a safe display fallback. No native plugin, GUI-113, installer, or parent branch changes are planned.

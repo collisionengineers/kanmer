@@ -627,3 +627,6 @@ CORE-044 cumulative PASS exact 5053af23, PR #165 merged non-squash into CORE-026
 
 
 CORE-044 Verifying after PASS/merge e794cbf7 into CORE-026. CORE-026 traceability refreshed; fresh cumulative CORE-026 review pending. CORE-077 implementing against CORE-060.
+
+
+CORE-077 PASS exact 517339c9, PR #198 merged non-squash into CORE-060 as 7b0238cf; moved Verifying and removed block. CORE-078 remains Preparing pending next sequential implementation.

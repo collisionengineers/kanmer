@@ -156,3 +156,6 @@
 
 
 2026-08-22T10:59Z — CORE-047 packet prepared via MCP and taken by codex-core047-root on core-047-replacement-lock-race/.worktrees/core-047 after the CORE-046 reversed-order TOCTOU attestation. Scope is stale-lock ownership only; CORE-046/045 remain blocked. Independent review will be delegated after Review.
+
+
+2026-08-22T11:05Z — CORE-047 implementation handoff: PR #169 head 47169144e9e6fdd8b215408cbb177657e6c7a0bce stacked on CORE-046 54651a3c. Atomic quarantine now verifies the moved inode and restores replacements via exclusive hard link; reversed-order regression plus IO/core/typecheck/build/source rails recorded PASS. Ticket moved Implementing→Review; independent gui099 review assigned, no merge/cleanup.

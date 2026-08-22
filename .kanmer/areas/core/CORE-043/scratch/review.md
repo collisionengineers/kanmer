@@ -241,3 +241,37 @@ Evidence:
 - Live GitHub protection retargeting, installed provider/runtime behavior, and live remote/provider hosts remain INCONCLUSIVE; no external state was mutated.
 
 Thirty current PR threads were audited: the 19 earlier remediation threads are fixed in the current tree, while the 11 current runtime/traceability findings remain open. Because P1 findings remain, this is NEEDS-CHANGES. No GitHub review thread was resolved, and no merge or board move was performed.
+
+---
+kind: review-attestation
+pr: "168"
+head_sha: "9519e2e8ad9c0424b63d9b9d8c4e6ef2832a7401"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: pass
+reviewer: "core041_executor"
+independent: true
+findings:
+  - id: F-001
+    summary: "CORE-043 protection-aware rename/lifecycle remediation is present in the exact cumulative tree."
+    disposition: fixed-in-cumulative-stack
+  - id: F-002
+    summary: "GUI-118 lifecycle findings are fixed."
+    disposition: fixed-in-cumulative-stack
+  - id: F-003
+    summary: "GUI-119 provider propagation and GUI-120 project-scoped Connect broadcasts are retained."
+    disposition: fixed-in-cumulative-stack
+  - id: F-004
+    summary: "Hosted gate and verify pass at the current head."
+    disposition: fixed-in-cumulative-stack
+  - id: F-005
+    summary: "Live protection retargeting/native-provider host proof remains unavailable."
+    disposition: accepted-risk
+---
+
+# Canonical current-head PASS — CORE-043
+
+Independent review of exact PR #168 head `9519e2e8ad9c0424b63d9b9d8c4e6ef2832a7401` against main `34245be039e8fd8395b5e31835602c54e62e98a4`.
+
+Evidence reused and independently checked from the GUI-118 cumulative mainline review: GUI focused lifecycle/provider rail 121/121 PASS, GUI typecheck/build PASS, scripts 89/89 PASS, verify:docs/manual/diff PASS, and the exact merged tree retains GUI-118 lifecycle behavior, GUI-119 OpenAI/remote/Claude `KANMER_BOARD_BRANCH` propagation, and GUI-120 `projectId: id` broadcasts. Hosted run `32604808898`: kanmer-gate job `97108612019` PASS and verify job `97108612103` PASS. Live GitHub protection mutation, installed native/packaged provider behavior, and visual evidence remain INCONCLUSIVE under the documented accepted-risk boundary.
+
+Verdict: PASS for the exact current cumulative head. No merge or board move performed.

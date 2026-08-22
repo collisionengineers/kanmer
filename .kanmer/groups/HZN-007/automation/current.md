@@ -803,3 +803,6 @@ GUI-117 independently re-reviewed PASS at 8537b7a0; PR #214 merged non-squash in
 
 
 Removed GUI-115→CORE-043 blocker edge after its non-squash merge; GUI-115 remains Verifying pending merged-main proof.
+
+
+2026-08-22T21:35Z — GUI-116 independently reviewed PASS at exact head d863f390; PR #215 merged non-squash into CORE-043 parent as 1126253e. Ticket moved Review→Verifying, released, and GUI-116→CORE-043 block removed. Focused 11/11, workspace typecheck/build/docs/diff PASS; full Windows EPERM timeout and native live-host boundaries remain explicitly INCONCLUSIVE. CORE-043 now has no known child blocker from GUI-116.

@@ -20,6 +20,12 @@ branch yourself. Your own ticket worktree is a separate thing, recorded by
 - Skills run in this order: kanmer-tickets → -research → -plan → -execute → -review → -verify → -closeout. How far a ticket walks it depends on its profile, so ask `get_doc_gates` rather than assuming every step. Off to the side: -auto (drives that order over many tickets), -docs (governing docs), -groom (fix the board), -report (read-only), -setup (reconcile after a Kanmer update).
 - Each skill ends by naming what comes next — read that line before improvising a hand-off.
 
+The local MCP convention is `KANMER_BOARD_BRANCH` in each project-scoped
+provider registration or exported local runtime, falling back to the default
+board branch when unset. GUI Connect writes the saved board-branch setting into local
+registrations. Hosted Actions should mirror the same value in the repository
+variable, but Actions variables are not inherited by local processes.
+
 ## Agent conduct
 
 **Scope**

@@ -914,9 +914,10 @@ function registerIpc(): void {
   ipcMain.handle(CH.setOpenTabs, (_e, openTabs: string[], activeTab: string) =>
     setOpenTabs(openTabs, activeTab),
   );
-  ipcMain.handle(CH.connectAgent, (_e, p: string, target: ConnectTarget) =>
-    connectAgent(target, requireCtx(p).sourceRoot, requireCtx(p).boardRoot),
-  );
+  ipcMain.handle(CH.connectAgent, (_e, p: string, target: ConnectTarget) => {
+    const ctx = requireCtx(p);
+    return connectAgent(target, ctx.sourceRoot, ctx.boardRoot, {}, readSettings().kanmerBranch);
+  });
   ipcMain.handle(CH.disconnectAgent, (_e, p: string, target: ConnectTarget) =>
     disconnectAgent(target, requireCtx(p).sourceRoot),
   );

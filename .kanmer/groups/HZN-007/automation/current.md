@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T15:05:24.732Z
+updated_at: 2026-08-22T15:12:20.798Z
 ---
 
 # Current auto run — HZN-007
@@ -549,3 +549,6 @@ CORE-066 implemented at 134cf0b7 with deterministic local/remote attachment regr
 
 
 CORE-066 independently PASSed and merged into CORE-058 as d3eb3728; CORE-066 is Verifying and its block edge is removed. CORE-067 is now the single active implementation lane on core-067-refuse-ignore-symlink.
+
+
+CORE-067 implemented at fa628916 with deterministic symlink target-integrity regression and full rails (core build prerequisite recorded); PR #188 opened and moved to Review. Independent review requested; after merge CORE-058 should have no child blockers.

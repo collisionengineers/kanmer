@@ -78,6 +78,7 @@ import {
   syncBoard,
   type KanmerGitStatus,
 } from "./kanmerGit.js";
+import { armAutomaticSync } from "./syncTimer.js";
 import {
   connectAgent,
   disconnectAgent,
@@ -591,7 +592,7 @@ async function openProject(root: string): Promise<OpenProjectResult> {
   const watch = startWatch(projectId, boardRoot, ownWrites);
   const ctx: ProjectContext = { sourceRoot: projectId, boardRoot, store, watch, ownWrites, syncStatus };
   const minutes = readSettings().gitSyncMinutes;
-  if (syncStatus.available && minutes > 0) ctx.syncTimer = setInterval(() => void syncProject(projectId), minutes * 60_000);
+  armAutomaticSync(ctx, syncStatus.available, minutes, () => void syncProject(projectId));
   contexts.set(projectId, ctx);
   buildMenu(); // refresh the Open Recent submenu
   return snapshotOf(ctx);
@@ -664,11 +665,7 @@ async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number)
         : { ...ctx.syncStatus, error: renamed.error, paused: true };
       mainWindow?.webContents.send(CH.gitStatus, { projectId, ...(await gitStatusForRenderer(ctx)) });
     }
-    if (ctx.syncTimer) clearInterval(ctx.syncTimer);
-    ctx.syncTimer = undefined;
-    if (ctx.syncStatus.available && settings.gitSyncMinutes > 0) {
-      ctx.syncTimer = setInterval(() => void syncProject(projectId), settings.gitSyncMinutes * 60_000);
-    }
+    armAutomaticSync(ctx, ctx.syncStatus.available, settings.gitSyncMinutes, () => void syncProject(projectId));
   }
   return settings;
 }
@@ -724,6 +721,9 @@ async function syncProject(projectId: string): Promise<KanmerGitIpcStatus> {
   // refuses unavailable statuses so a repair cannot be discovered otherwise.
   if (!ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
     ctx.syncStatus = await ensureBoardWorktree(ctx.sourceRoot, ctx.syncStatus.branch);
+    if (ctx.syncStatus.available) {
+      armAutomaticSync(ctx, true, readSettings().gitSyncMinutes, () => void syncProject(projectId));
+    }
   }
   ctx.syncStatus = await syncBoard(ctx.syncStatus);
   const status = await gitStatusForRenderer(ctx);
@@ -1000,16 +1000,14 @@ function registerIpc(): void {
     if (dryRun) return migrateBoard(ctx.store, { dryRun });
 
     await ctx.watch.close();
-    if (ctx.syncTimer) clearInterval(ctx.syncTimer);
+    if (ctx.syncTimer !== undefined) clearInterval(ctx.syncTimer);
     ctx.syncTimer = undefined;
     try {
       return await migrateBoard(ctx.store, { dryRun });
     } finally {
       ctx.watch = startWatch(p, ctx.boardRoot, ctx.ownWrites);
       const minutes = readSettings().gitSyncMinutes;
-      if (ctx.syncStatus.available && minutes > 0) {
-        ctx.syncTimer = setInterval(() => void syncProject(p), minutes * 60_000);
-      }
+      armAutomaticSync(ctx, ctx.syncStatus.available, minutes, () => void syncProject(p));
     }
   });
   ipcMain.handle(CH.backfillBoard, async (_e, p: string, dryRun: boolean) => {

@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:53:23.475Z
+updated_at: 2026-08-22T00:54:10.235Z
 ---
 
 # Current auto run — HZN-007
@@ -17,7 +17,7 @@ updated_at: 2026-08-22T00:53:23.475Z
 Open `automation/runs/20260821T105846Z-codex-mcp-client.md`, then re-read HZN-007/context.md, the live roster, and get_doc_gates for every ticket before dispatching. This pointer is written only after the complete immutable run record was written and read back.
 
 
-Last handoff: 2026-08-22T00:53:23.475Z — SKILL-005 is Done with proof finalised; closeout is cleaning exactly .worktrees/skill-005 / skill-005-agents-block-reconcile, then release last. Historical limits remain explicit.
+Last handoff: 2026-08-22T00:54:10.235Z — SKILL-005 closeout cleanup is complete; exact worktree/branch are gone and the final lifecycle action is releasing the ticket. Historical missing-dist and live-onboarding limits remain explicit.
 
 
 Last handoff: CORE-036 merged-main verification recorded at 2026-08-21T22:49:50.557Z; ticket remains Verifying because npm run verify and npm run dist:check each exited 1 on normal main. PR #127 merge 470b2fad is present; no board move, release, or worktree cleanup was performed.

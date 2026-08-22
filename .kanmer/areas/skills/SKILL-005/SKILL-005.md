@@ -12,9 +12,6 @@ stageEntered:
   done: '2026-08-16T05:15:47.510Z'
   review: '2026-08-21T08:55:15.302Z'
   implementing: '2026-08-21T08:55:15.489Z'
-taken_at: '2026-08-22T00:40:40.988Z'
-branch: skill-005-agents-block-reconcile
-worktree: .worktrees/skill-005
 labels:
   - v3-phase-6
 groups:
@@ -30,7 +27,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/16'
 archived: false
 created: '2026-08-16T00:31:38.813Z'
-updated: '2026-08-22T00:53:23.432Z'
+updated: '2026-08-22T00:54:10.283Z'
 ---
 
 Orientation essentials only: profiles exist; call `get_doc_gates` before any move; read the whole ticket folder and group context; six stages; where the docs live.

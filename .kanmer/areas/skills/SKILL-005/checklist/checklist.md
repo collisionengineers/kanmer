@@ -14,11 +14,11 @@
 
 ## Closeout — SKILL-005
 
-- [ ] PR merge verified (`gh pr view 16 --json state,mergedAt`: MERGED, 2026-08-16T05:15:03Z)
-- [ ] proof.md finalised (PR URL + merge date appended)
+- [x] PR merge verified (`gh pr view 16 --json state,mergedAt`: MERGED, 2026-08-16T05:15:03Z)
+- [x] proof.md finalised (PR URL + merge date appended)
 - [x] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/skill-005`
-- [ ] `git branch -d skill-005-agents-block-reconcile`
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: \"release\"`
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/skill-005`
+- [x] `git branch -d skill-005-agents-block-reconcile`
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: \"release\"`

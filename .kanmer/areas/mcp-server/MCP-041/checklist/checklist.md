@@ -12,3 +12,5 @@
 Baseline on main: focused supervisor 7/7, package `test:http` 61/61, and 100 repeated focused runs passed locally; the recorded GitHub 60/61 failure remains preserved as the triggering evidence.
 
 Implementation evidence: only `packages/mcp-server/src/tunnels/supervisor.test.mjs` changed; supervisor production sources are unchanged. Worktree build passed, focused supervisor suite passed 7/7, and 100 repeated focused runs passed.
+
+Full test:http first post-change run: FAIL (59/61). Unrelated failures preserved: src/http.test.mjs project-resolution child spawnSync ETIMEDOUT; src/tunnels/readiness.test.mjs bounded loopback readiness TUNNEL_READINESS_TIMEOUT. Supervisor tests still passed 7/7 in the same run.

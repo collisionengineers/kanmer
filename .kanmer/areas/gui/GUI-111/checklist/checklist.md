@@ -13,9 +13,9 @@
 - [x] Run focused group-menu tests and record exact exit/count.
 - [x] Run full GUI tests and record exact exit/count.
 - [x] Run workspace typecheck, GUI build, manual freshness, and diff-check.
-- [ ] Re-run relevant hosted verification against the stacked PR and preserve any failure.
-- [ ] Write the post-implementation report with scope, residual archive race, visual INCONCLUSIVE boundary, and exact rails.
-- [ ] Record GUI-111 commit and stacked PR traceability.
-- [ ] Push/open or update the stacked PR targeting gui-109-add-to-group.
+- [x] Attempt relevant hosted verification against the stacked PR; no run was scheduled because the repository PR workflow targets `main` only, and this required stacked PR targets `gui-109-add-to-group`.
+- [x] Write the post-implementation report with scope, residual archive race, visual INCONCLUSIVE boundary, and exact rails.
+- [x] Record GUI-111 commit and stacked PR traceability.
+- [x] Push/open the stacked PR targeting gui-109-add-to-group.
 - [ ] Re-read get_doc_gates and move only Implementing → Review.
 - [ ] Stop for GUI-099 independent review; do not merge, verify, release, or clean up.

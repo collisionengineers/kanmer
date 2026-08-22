@@ -73,6 +73,17 @@ async function onRemote(root: string, branch: string): Promise<boolean> {
 
 const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
+// These files are derived board state, not ticket/source history. Keep one
+// list for every board-worktree lifecycle path so a board that already exists
+// gets the same protection as one created by this process.
+const BOARD_WORKTREE_IGNORE = [
+  ".kanmer/data/activity.jsonl",
+  ".kanmer/data/sources/",
+  // Atomic-write residue. An interrupted write leaves one behind, and
+  // `git add -- .kanmer` on the sync timer would otherwise commit it.
+  ".kanmer/**/.*.tmp-*",
+];
+
 export interface BranchRenameResult {
   /** Whether the worktree is now on `to`. */
   ok: boolean;
@@ -135,6 +146,10 @@ async function ensureIgnore(file: string, entries: string[]): Promise<void> {
   if (changed || !existsSync(file)) await writeFile(file, `${lines.join("\n")}\n`, "utf8");
 }
 
+async function ensureBoardWorktreeIgnore(boardRoot: string): Promise<void> {
+  await ensureIgnore(join(boardRoot, ".gitignore"), BOARD_WORKTREE_IGNORE);
+}
+
 /** Locate or initialise the canonical board worktree for a Git source root. */
 export async function ensureBoardWorktree(sourceRoot: string, branch: string): Promise<KanmerGitStatus> {
   const repoRoot = await isGitRepository(sourceRoot);
@@ -145,7 +160,11 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
     const porcelain = await git(repoRoot, ["worktree", "list", "--porcelain"]);
     const records = porcelain.split("\n\n").map((r) => Object.fromEntries(r.split("\n").map((l) => { const [k, ...v] = l.split(" "); return [k, v.join(" ")]; })));
     const attached = records.find((r) => r.branch === `refs/heads/${branch}`)?.worktree;
-    if (attached) return { available: true, boardRoot: resolve(attached), branch, lastSync: null, error: null, paused: false };
+    if (attached) {
+      const attachedRoot = resolve(attached);
+      await ensureBoardWorktreeIgnore(attachedRoot);
+      return { available: true, boardRoot: attachedRoot, branch, lastSync: null, error: null, paused: false };
+    }
     if (existsSync(boardRoot)) {
       // The worktree is here but not on `branch`. Almost always: the board
       // branch was renamed in Settings while this project was closed, so the
@@ -154,6 +173,7 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
       // push the board somewhere nobody was looking.
       const renamed = await renameBoardBranch(boardRoot, branch);
       if (!renamed.ok) return { ...empty(branch, renamed.error), boardRoot: resolve(boardRoot) };
+      await ensureBoardWorktreeIgnore(boardRoot);
       await ensureIgnore(join(repoRoot, ".gitignore"), [".kanmer/", ".worktrees/"]);
       return { available: true, boardRoot: resolve(boardRoot), branch, lastSync: null, error: renamed.error, paused: false };
     }
@@ -169,12 +189,7 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
       await git(repoRoot, ["worktree", "add", "--orphan", "-b", branch, boardRoot]);
       const sourceBoard = join(repoRoot, ".kanmer");
       if (existsSync(sourceBoard)) await cp(sourceBoard, join(boardRoot, ".kanmer"), { recursive: true });
-      await ensureIgnore(join(boardRoot, ".gitignore"), [
-          ".kanmer/data/activity.jsonl",
-          // Atomic-write residue. An interrupted write leaves one behind, and
-          // `git add -- .kanmer` on the sync timer would otherwise commit it.
-          ".kanmer/**/.*.tmp-*",
-        ]);
+      await ensureBoardWorktreeIgnore(boardRoot);
       if (existsSync(join(boardRoot, ".kanmer"))) {
         await git(boardRoot, ["add", "--", ".kanmer", ".gitignore"]);
         await git(boardRoot, ["commit", "-m", "chore(kanmer): create shared board"]);

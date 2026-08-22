@@ -1,11 +1,11 @@
 import { execFile as execFileCallback } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync, existsSync, realpathSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, realpathSync } from "node:fs";
 import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureBoardWorktree, inspectBoardWorktree, renameBoardBranch } from "./kanmerGit.js";
+import { ensureBoardWorktree, inspectBoardWorktree, renameBoardBranch, syncBoard } from "./kanmerGit.js";
 
 // These are deliberately real-Git integration tests: every case initialises a
 // local repository and several create worktrees/remotes. Windows process and
@@ -193,6 +193,40 @@ describe("inspectBoardWorktree", () => {
 });
 
 describe("ensureBoardWorktree reconciliation", () => {
+  realGitTest("writes the sources cache rule when creating a board worktree", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const ignore = readFileSync(join(created.boardRoot!, ".gitignore"), "utf8");
+
+    expect(ignore).toContain(".kanmer/data/sources/\n");
+    expect(ignore.match(/^\.kanmer\/data\/sources\/$/gm)).toHaveLength(1);
+  });
+
+  realGitTest("reconciles the sources cache rule on an existing board worktree", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const ignorePath = join(created.boardRoot!, ".gitignore");
+    writeFileSync(ignorePath, ".kanmer/data/activity.jsonl\n", "utf8");
+
+    const reopened = await ensureBoardWorktree(repo, "kanmer-board");
+    const ignore = readFileSync(join(reopened.boardRoot!, ".gitignore"), "utf8");
+
+    expect(ignore).toContain(".kanmer/data/sources/\n");
+    expect(ignore.match(/^\.kanmer\/data\/sources\/$/gm)).toHaveLength(1);
+  });
+
+  realGitTest("keeps derived source cache out of the board sync", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const cache = join(created.boardRoot!, ".kanmer", "data", "sources", "cache.json");
+    mkdirSync(join(created.boardRoot!, ".kanmer", "data", "sources"), { recursive: true });
+    writeFileSync(cache, "derived", "utf8");
+
+    expect(await git(created.boardRoot!, "check-ignore", "--no-index", ".kanmer/data/sources/cache.json"))
+      .toContain(".kanmer/data/sources/cache.json");
+    const synced = await syncBoard(created);
+
+    expect(synced.paused).toBe(false);
+    expect(await git(created.boardRoot!, "ls-files", ".kanmer/data/sources/cache.json")).toBe("");
+  });
+
   realGitTest("moves a worktree left on the old branch onto the configured one", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     const boardRoot = created.boardRoot!;
@@ -208,6 +242,7 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(reopened.branch).toBe("team-board");
     expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("team-board");
     expect(await git(boardRoot, "rev-parse", "HEAD")).toBe(before);
+    expect(readFileSync(join(boardRoot, ".gitignore"), "utf8")).toContain(".kanmer/data/sources/\n");
   });
 
   realGitTest("reports the branch the worktree is really on when reconciling fails", async () => {

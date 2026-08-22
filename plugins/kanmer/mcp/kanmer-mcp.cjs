@@ -38763,11 +38763,16 @@ function taskFeasibility(taskId, ctx) {
       return { ok: true };
   }
 }
+var MODEL = (evidence) => ({
+  flag: "--model",
+  evidence,
+  buildArgs: (model) => ["--model", model]
+});
 var PROVIDERS = Object.freeze([
-  Object.freeze({ id: "codex", label: "Codex", cli: "codex", args: (prompt) => ["exec", prompt] }),
-  Object.freeze({ id: "claude", label: "Claude Code", cli: "claude", args: (prompt) => ["-p", prompt] }),
-  Object.freeze({ id: "opencode", label: "opencode", cli: "opencode", args: (prompt) => ["run", prompt] }),
-  Object.freeze({ id: "grok", label: "Grok CLI", cli: "grok", args: (prompt, sourceRoot) => ["-p", prompt, "--cwd", sourceRoot] })
+  Object.freeze({ id: "codex", label: "Codex", cli: "codex", buildDispatchArgs: ({ prompt, model }) => ["exec", ...model ? ["--model", model] : [], prompt], modelOption: MODEL("codex exec --help: -m, --model <MODEL>") }),
+  Object.freeze({ id: "claude", label: "Claude Code", cli: "claude", buildDispatchArgs: ({ prompt, model }) => ["-p", prompt, ...model ? ["--model", model] : []], modelOption: MODEL("claude --help: --model <model>") }),
+  Object.freeze({ id: "opencode", label: "opencode", cli: "opencode", buildDispatchArgs: ({ prompt, model }) => ["run", ...model ? ["--model", model] : [], prompt], modelOption: MODEL("opencode run --help: -m, --model <string>") }),
+  Object.freeze({ id: "grok", label: "Grok CLI", cli: "grok", buildDispatchArgs: ({ prompt, sourceRoot, model }) => ["-p", prompt, ...model ? ["--model", model] : [], "--cwd", sourceRoot], modelOption: MODEL("grok --help: -m, --model <MODEL>") })
 ]);
 function dispatchProviderById(id) {
   return PROVIDERS.find((provider) => provider.id === id);
@@ -38834,6 +38839,8 @@ var DispatchSupervisor = class {
       ticketId: request.ticketId,
       provider: request.provider,
       ...request.task ? { task: request.task.id, taskLabel: request.task.label, deliverable: request.task.deliverable } : {},
+      model: request.model ?? "cli-default",
+      ...request.promptCustomized ? { promptCustomized: true } : {},
       requestedBy: request.requestedBy,
       state: "running",
       startedAt
@@ -38843,7 +38850,11 @@ var DispatchSupervisor = class {
     const log = (0, import_fs2.createWriteStream)(logPath, { flags: "a" });
     let child;
     try {
-      child = this.spawnFn(provider.cli, provider.args(request.prompt ?? request.task?.prompt ?? "", request.sourceRoot), {
+      child = this.spawnFn(provider.cli, provider.buildDispatchArgs({
+        prompt: request.prompt ?? request.task?.prompt ?? "",
+        sourceRoot: request.sourceRoot,
+        ...request.model ? { model: request.model } : {}
+      }), {
         cwd: request.sourceRoot,
         env: this.env,
         windowsHide: true,

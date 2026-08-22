@@ -211,7 +211,7 @@ kanmer/
     build-plugin.mjs      # copy standalone MCP bundle into plugins/kanmer/mcp/
     check-plugin-sync.mjs # fail if tool names drift from the skill's tool reference
     check-updater-package.mjs # fail if the PACKAGED app can't auto-update (6 checks)
-    release.mjs           # one-command release: verify, bump, pack, tag, publish, prove
+    release.mjs           # protected-main release: verify, prepare PR, publish after merge, prove
 
   apps/
     gui/                  # @kanmer/gui — Electron + React desktop app
@@ -436,7 +436,8 @@ Run from the repo root unless noted.
 | `npm run dev:gui` | GUI with hot reload |
 | `npm run dist` | build everything **and** produce `apps/gui/release/Kanmer Setup <v>.exe` |
 | `npm run dist:check` | `dist`, then `check-updater-package.mjs` — the eight things that must be true for the **packaged** app to auto-update |
-| `npm run release <version>` | the same shared `npm run verify` rail, then version bump, pack twice, tag, publish, and proof that clients can see every published asset. Extend `VERIFY_STEPS`, never a third verification pyramid. Needs `GH_TOKEN` (or `GITHUB_RELEASE_TOKEN`/`GITHUB_TOKEN`). `--dry-run` stops after the verification gate |
+| `npm run release -- <version>` | the protected-main preparation phase: run the shared `npm run verify` rail, bump/package deterministic artifacts on `release/v<version>`, push only that branch, and open a PR targeting exact `main`. It stops before tag/publisher calls. |
+| `npm run release -- <version> --publish --release-commit <full-sha>` | the post-merge publication phase: from clean merged `main`, require matching manifests and prove the supplied preparation commit is reachable, then push only `refs/tags/v<version>`, publish once, and verify visibility/updater/every asset. Extend `VERIFY_STEPS`, never a third verification pyramid. Needs `GH_TOKEN` (or `GITHUB_RELEASE_TOKEN`/`GITHUB_TOKEN`). `--dry-run` is a no-write preview of either phase. |
 | `npm run mcpb:check` | build and deterministically validate the Windows Claude Desktop MCPB from the standalone server; generated output is under `dist/mcpb/` and is not committed |
 | `npm run smoke:headless` | run the standalone MCP server from a temporary host with no repository `node_modules`, using an explicit board root |
 | `node scripts/verify-release-assets.mjs <version>` | re-check **any** published release read-only, without cutting a new one: every expected asset present, `state: uploaded`, size and sha256 matching the local build in `apps/gui/release/`. Exit 0 = pass, 1 = the release is incomplete, 2 = the *check* could not run (rate limit, bad token, API drift) — the two are never conflated |
@@ -598,3 +599,15 @@ way, so it could not fail.
   plugin *and* registers the server manually (GUI "Connect" or `mcp add`), the
   agent lists all the tools twice under different server names. Both work; the
   README tells users to pick one.
+
+## Protected-main release operation
+
+`npm run release -- <version>` prepares the bump and deterministic artifacts on
+`release/v<version>`, pushes only that branch, and opens a PR targeting exact
+`main`. It never pushes `main`, creates a tag, or publishes. After the authorized
+PR merge and required `verify`, run
+`npm run release -- <version> --publish --release-commit <full-sha>` from clean
+local `main`; the full preparation SHA must be an ancestor before the script
+creates/pushes only `refs/tags/v<version>` and publishes. The tag workflow stays
+read-only verification. Live PR/merge, publisher, latest-release, and real
+two-version updater evidence are external until recorded.

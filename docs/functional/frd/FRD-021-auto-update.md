@@ -7,7 +7,7 @@ covers: shipped updater (backfill)
 
 - R1. The packaged app checks GitHub Releases; an available update surfaces as a non-blocking banner/toast reusing the in-app toast stack — **on every screen, including with no project open**; "Later" is free (the update installs on the next normal quit anyway); dismissal is per-session.
 - R2. **Restart is gated** on unsaved editor work and live agent MCP sessions — the app never yanks the floor out from under a working agent or an unsaved edit.
-- R3. Release discipline: `release.mjs` refuses to publish unless `release-notes.md` names the version (the guard against shipping stale notes); `dist:check` verifies the packaged app can actually self-update.
+- R3. Release discipline: `release.mjs` prepares a version change through the protected-main PR/check boundary, refuses to publish unless `release-notes.md` names the version (the guard against shipping stale notes), and `dist:check` verifies the packaged app can actually self-update.
 - R4. MCP registrations point at the installed executable path; updates preserve that path's validity.
 
 **Acceptance (as-built):** the updater research/plan verification list; a packaged build with a newer release shows the banner, defers restart while an agent session is live, and installs on quit.
@@ -191,3 +191,21 @@ The R1 line above still cites `App.tsx:915-931` for the banner; since GUI-065 th
 banner is `renderer/src/components/UpdateBanner.tsx`, rendered from a JSX value
 bound above `App.tsx`'s `if (!root || !board)`. The R2 line's "exactly two
 `installUpdate()` call sites" has been **one** since GUI-064.
+
+## Amended — CORE-042 protected-main release boundary
+
+R3's release owner remains `scripts/release.mjs`, but the command now has two
+explicit phases. `npm run release -- <version>` runs the shared verification
+rail, writes the version and deterministic artifacts on `release/v<version>`,
+pushes only that branch, and opens a PR targeting exact protected `main`; it
+stops before creating a tag or publishing. After an authorized PR merge and
+local `main` update, `npm run release -- <version> --publish --release-commit
+<full-sha>` requires matching merged manifests and proves the preparation SHA is
+reachable before pushing only `refs/tags/v<version>` and running the existing
+single-package publisher, visibility check, updater-package check, and complete
+asset-digest verifier. `.github/workflows/release.yml` remains a tag-triggered,
+contents-read-only verifier and never publishes or repairs a release.
+
+Live PR/check enforcement, authorized merge, public tag/assets, and a real
+two-version packaged updater cycle are external evidence boundaries; they must
+remain INCONCLUSIVE until an operator records them.

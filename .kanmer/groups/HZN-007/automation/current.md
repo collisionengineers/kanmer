@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T02:13:18.293Z
+updated_at: 2026-08-22T02:17:14.128Z
 ---
 
 # Current auto run — HZN-007
@@ -162,3 +162,6 @@ Last handoff: 2026-08-22T02:06:18.080Z — MCP-041 is Done/released after merged
 
 
 Last handoff: 2026-08-22T02:13:18.293Z — PR #145 stack and SKILL-017/#143, SKILL-021/#141 are merged, verified, and cleaned. GUI-075 remains Review pending GUI-110's separate typecheck remediation; provider-neutral MCP-028 remains externally blocked.
+
+
+- 2026-08-22T02:17:00.545Z — GUI-075 branch update and hosted verification reconciliation: origin/main merged as 2c561e02 and pushed to gui-075-dispatch-settings; PR #142 remains OPEN on head cbb9de90 after temporary GUI-110 compatibility commit 566e90ee was reverted by cbb9de90 to keep GUI-075 bounded. Previous path-alias failure run 32538700773/job 96944276047 is superseded by main merge. Run 32545348530/job 96962707596 reached typecheck and failed in packages/ui/src/demo.tsx because five AppSettings fixtures omit dispatch; GUI-110 owns the fix. Local 566e90ee UI/all-workspace typecheck passed, but it is not effective GUI-075 code. Current reverted-head run 32545704625 is retained as pending/blocked until GUI-110 is stacked. Local verify deterministic rails pass (core 266/266, GUI 355/355, MCP HTTP 61/61, scripts 80/80, typecheck and smoke 224/224); mcpb:check remains environment FAIL because @anthropic-ai/mcpb/dist/cli/cli.js is absent. Live provider and visual evidence remain INCONCLUSIVE. GUI-075 stays Review for independent review; no merge or cleanup.

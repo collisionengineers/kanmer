@@ -1,6 +1,6 @@
 import { execFile as execFileCallback } from "node:child_process";
 import { existsSync } from "node:fs";
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -139,11 +139,18 @@ export async function renameBoardBranch(boardRoot: string, to: string): Promise<
 }
 
 async function ensureIgnore(file: string, entries: string[]): Promise<void> {
-  const before = existsSync(file) ? await readFile(file, "utf8") : "";
+  let stat;
+  try {
+    stat = await lstat(file);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  if (stat?.isSymbolicLink()) throw new Error(`Refusing symlinked board ignore path: ${file}`);
+  const before = stat ? await readFile(file, "utf8") : "";
   const lines = before.replace(/\r\n/g, "\n").split("\n").filter(Boolean);
   let changed = false;
   for (const entry of entries) if (!lines.includes(entry)) { lines.push(entry); changed = true; }
-  if (changed || !existsSync(file)) await writeFile(file, `${lines.join("\n")}\n`, "utf8");
+  if (changed || !stat) await writeFile(file, `${lines.join("\n")}\n`, "utf8");
 }
 
 async function ensureBoardWorktreeIgnore(boardRoot: string): Promise<void> {

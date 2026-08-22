@@ -33,3 +33,6 @@ github:
 ---
 
 Independent review of PR #142 at head 1a04be90: the implementation is bounded to GUI-075, the final model-control amendment is covered, and deterministic local rails pass. Merge is held because the required GitHub verify check is red on the known pre-existing runner path-alias assertion; this is deferred to [[CORE-032]]. External provider execution and visual proof remain explicitly INCONCLUSIVE, not claimed as success.
+
+## CI update — 2026-08-22
+The shared GitHub verify rail remains red on the unrelated MCP tunnel supervisor test (60/61; expected retry starts 2, observed 1), repeated across two attempts. MCP-041 tracks the separate remediation; this ticket remains held and no scope is absorbed.

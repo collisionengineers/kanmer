@@ -40,3 +40,6 @@ No MCP/core/GUI/tool-reference/schema/profile/old-review-asset changes are prese
 GitHub Actions verify is required and remains FAIL: 351/352 GUI tests pass, with the sole failure in the pre-existing src/main/kanmerGit.test.ts Windows path-alias assertion (expected C:\Users\RUNNER~1\..., received C:\Users\runneradmin\...). A rerun reproduced the same failure. CORE-032 already tracks this environment-specific test defect; this review links SKILL-021 to CORE-032 and defers the blocker there.
 
 Because a required check is red, the review verdict is needs-changes; PR #141 must not be merged and SKILL-021 remains in Review. This is not a defect in the three skill files, but it is a merge-blocking repository condition under the packet's review contract.
+
+## CI update — 2026-08-22
+The shared GitHub verify rail remains red on the unrelated MCP tunnel supervisor test (60/61; expected retry starts 2, observed 1), repeated across two attempts. MCP-041 tracks the separate remediation; this ticket remains held and no scope is absorbed.

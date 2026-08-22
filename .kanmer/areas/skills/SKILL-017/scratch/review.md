@@ -21,3 +21,6 @@ Runtime/provider-host scenarios remain INCONCLUSIVE as recorded by the author; t
 ## Verdict
 
 needs-changes — implementation and local rails are sound, but required GitHub verify is red. Re-review after CORE-037 clears the shared CI failure; retain branch/worktree and no merge or verification move now.
+
+## CI update — 2026-08-22
+CORE-037 removed the prior Windows path-alias failure from the shared rail, but GitHub verify now fails deterministically in the unrelated MCP tunnel supervisor test (60/61; expected retry starts 2, observed 1) on two attempts. MCP-041 tracks that separate remediation and blocks CORE-037; PR #143 remains held with no merge or scope absorption.

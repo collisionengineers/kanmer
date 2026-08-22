@@ -4,13 +4,14 @@ type: ticket
 title: >-
   Implement kanmer check-pr — ticket linkage and open-questions merge gate
   (phase 1)
-status: implementing
+status: review
 area: core
 order: 10
 assignee: core024-executor
 profile: fix
 stageEntered:
   preparing: '2026-08-20T13:20:46.901Z'
+  review: '2026-08-22T05:24:33.751Z'
 taken_at: '2026-08-22T04:57:09.506Z'
 branch: core-024-check-pr
 worktree: .worktrees/core-024
@@ -25,9 +26,13 @@ blocks:
 refs:
   - docs/functional/frd/FRD-009-interrogative-workflow.md
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
+commits:
+  - b041e944ececdf433925b9e4168e003a4623fbce
+prs:
+  - '155'
 archived: false
 created: '2026-08-16T18:26:15.167Z'
-updated: '2026-08-22T04:57:09.506Z'
+updated: '2026-08-22T05:24:33.751Z'
 ---
 
 ## What

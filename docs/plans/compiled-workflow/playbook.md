@@ -78,6 +78,14 @@ through a pull request` / `Required status check "verify" is expected`. The
 remote `main` ref was unchanged; the disposable worktree and local branch were
 removed.
 
+Board direct-push test: after the rule readback, the production GUI
+`syncBoard` helper was run against the existing board worktree after a real
+MCP scratch update. It committed `83cdf8014d607f09b745325ec6822c871adc7cd2`
+(`chore(kanmer): sync board 2026-08-22T06:38:34.767Z`) and returned
+`available=true`, `lastSync=2026-08-22T06:41:58.989Z`, `error=null`,
+`paused=false`. `git ls-remote` confirmed the same SHA on
+`refs/heads/kanmer-board`; the worktree is clean and on the expected branch.
+
 ## Exact `main` policy
 
 Target the exact branch name `main` (never a wildcard that also matches the

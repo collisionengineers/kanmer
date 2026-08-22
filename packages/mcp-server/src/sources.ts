@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { lookup as dnsLookup } from "node:dns/promises";
+import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
+import { Readable } from "node:stream";
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import {
@@ -50,9 +52,13 @@ interface FetchOptions {
   cacheDir: string;
   fetchImpl?: typeof fetch;
   lookupImpl?: (hostname: string) => Promise<string[]>;
+  requestImpl?: BoundFetch;
+  timeoutMs?: number;
   now?: () => number;
   force?: boolean;
 }
+
+type BoundFetch = (url: URL, init: RequestInit, addresses: string[]) => Promise<Response>;
 
 interface FetchTextResult {
   status: number;
@@ -164,7 +170,8 @@ function isPrivateAddress(hostname: string): boolean {
 async function assertPublicDestination(
   url: URL,
   lookupImpl?: (hostname: string) => Promise<string[]>,
-): Promise<void> {
+  signal?: AbortSignal,
+): Promise<string[]> {
   const hostname = url.hostname.toLowerCase().replace(/[\[\]]/g, "");
   if (
     hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local") ||
@@ -176,14 +183,84 @@ async function assertPublicDestination(
   if (lookupImpl && !isIP(hostname)) {
     let addresses: string[];
     try {
-      addresses = await lookupImpl(hostname);
+      addresses = await withDeadline(lookupImpl(hostname), signal);
     } catch {
+      if (signal?.aborted) throw new Error(`${url} request timed out`);
       throw new Error(`${url} destination could not be resolved`);
     }
     if (addresses.length === 0 || addresses.some((address) => isPrivateAddress(address))) {
       throw new Error(`${url} targets a private or local destination`);
     }
+    return addresses;
   }
+  return [hostname];
+}
+
+async function withDeadline<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return work;
+  if (signal.aborted) throw new Error("request timed out");
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new Error("request timed out"));
+    signal.addEventListener("abort", onAbort, { once: true });
+    work.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
+/**
+ * Issue the production request with the exact addresses accepted by the
+ * preflight. Native fetch performs its own DNS lookup, so it cannot be used at
+ * this boundary without reopening the rebinding gap.
+ */
+async function pinnedFetch(url: URL, init: RequestInit, addresses: string[]): Promise<Response> {
+  const address = addresses[0];
+  if (!address) throw new Error(`${url} destination could not be resolved`);
+  const headers = new Headers(init.headers);
+  return new Promise<Response>((resolve, reject) => {
+    let settled = false;
+    const request = httpsRequest(
+      {
+        protocol: "https:",
+        hostname: url.hostname,
+        port: url.port || "443",
+        path: `${url.pathname}${url.search}`,
+        method: "GET",
+        headers: Object.fromEntries(headers.entries()),
+        servername: url.hostname,
+        lookup: (_hostname, _options, callback) => callback(null, address, isIP(address)),
+      },
+      (response) => {
+        settled = true;
+        const responseHeaders = new Headers();
+        for (const [key, value] of Object.entries(response.headers)) {
+          if (Array.isArray(value)) responseHeaders.set(key, value.join(", "));
+          else if (value !== undefined) responseHeaders.set(key, value);
+        }
+        const body = Readable.toWeb(response) as ReadableStream<Uint8Array>;
+        resolve(new Response(body, { status: response.statusCode ?? 599, headers: responseHeaders }));
+      },
+    );
+    const onAbort = () => request.destroy(new Error("request timed out"));
+    if (init.signal) {
+      if (init.signal.aborted) onAbort();
+      else init.signal.addEventListener("abort", onAbort, { once: true });
+    }
+    request.once("error", (error) => {
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+    });
+    request.end();
+  });
 }
 
 function sameOrigin(a: URL, b: URL): boolean {
@@ -294,6 +371,7 @@ async function fetchText(
   timeoutMs: number,
   maxBytes: number = LLMS_TXT_POLICY.maxBytes,
   lookupImpl?: (hostname: string) => Promise<string[]>,
+  boundFetch?: BoundFetch,
 ): Promise<FetchTextResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -303,11 +381,14 @@ async function fetchText(
   let requestHeaders = headers;
   try {
     while (true) {
-      await assertPublicDestination(current, lookupImpl);
-      const response = await fetchImpl(current, { headers: requestHeaders, redirect: "manual", signal: controller.signal });
+      const addresses = await assertPublicDestination(current, lookupImpl, controller.signal);
+      const requestInit = { headers: requestHeaders, redirect: "manual" as const, signal: controller.signal };
+      const response = boundFetch
+        ? await boundFetch(current, requestInit, addresses)
+        : await fetchImpl(current, requestInit);
       const responseUrl = response.url ? new URL(response.url) : current;
       assertSafeFetchTarget(origin, responseUrl);
-      await assertPublicDestination(responseUrl, lookupImpl);
+      await assertPublicDestination(responseUrl, lookupImpl, controller.signal);
       if (response.status === 304) {
         return {
           status: 304,
@@ -325,7 +406,6 @@ async function fetchText(
         }
         const next = new URL(location, current);
         assertSafeFetchTarget(origin, next);
-        await assertPublicDestination(next, lookupImpl);
         current = next;
         redirects++;
         // Validators belong to the origin representation, not an arbitrary hop.
@@ -413,6 +493,8 @@ async function revalidateLinkedDocuments(
   fetchImpl: typeof fetch,
   failures: string[],
   lookupImpl?: (hostname: string) => Promise<string[]>,
+  timeoutMs: number = LLMS_TXT_POLICY.timeoutMs,
+  boundFetch?: BoundFetch,
 ): Promise<LlmsDocument[]> {
   const root = cached.documents[0];
   if (!root) return [];
@@ -432,9 +514,10 @@ async function revalidateLinkedDocuments(
         new URL(cachedDocument.url),
         fetchImpl,
         requestHeaders,
-        LLMS_TXT_POLICY.timeoutMs,
+        timeoutMs,
         LLMS_TXT_POLICY.maxBytes - bytes,
         lookupImpl,
+        boundFetch,
       );
       if (response.status === 304) {
         documents.push(cachedDocument);
@@ -455,6 +538,8 @@ async function revalidateLinkedDocuments(
 export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResult> {
   const root = canonicalHttpsUrl(options.url);
   const fetchImpl = options.fetchImpl ?? fetch;
+  const timeoutMs = options.timeoutMs ?? LLMS_TXT_POLICY.timeoutMs;
+  const boundFetch = options.requestImpl ?? (options.fetchImpl ? undefined : pinnedFetch);
   const lookupImpl = options.lookupImpl ?? (fetchImpl === fetch
     ? async (hostname: string) => (await dnsLookup(hostname, { all: true, verbatim: true })).map(({ address }) => address)
     : undefined);
@@ -478,7 +563,7 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
   const failures: string[] = [];
   let rootResponse: FetchTextResult;
   try {
-    rootResponse = await fetchText(root, fetchImpl, headers, LLMS_TXT_POLICY.timeoutMs, LLMS_TXT_POLICY.maxBytes, lookupImpl);
+    rootResponse = await fetchText(root, fetchImpl, headers, timeoutMs, LLMS_TXT_POLICY.maxBytes, lookupImpl, boundFetch);
   } catch (error) {
     if (cached) {
       failures.push(failureText(error));
@@ -493,7 +578,7 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
     throw error;
   }
   if (rootResponse.status === 304 && cached) {
-    const documents = await revalidateLinkedDocuments(cached, fetchImpl, failures, lookupImpl);
+    const documents = await revalidateLinkedDocuments(cached, fetchImpl, failures, lookupImpl, timeoutMs, boundFetch);
     const refreshed: CacheFile = {
       ...cached,
       fetchedAt: new Date(nowMs).toISOString(),
@@ -526,7 +611,7 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
     }
     try {
       const remaining = LLMS_TXT_POLICY.maxBytes - bytes;
-      const response = await fetchText(candidate, fetchImpl, {}, LLMS_TXT_POLICY.timeoutMs, remaining, lookupImpl);
+      const response = await fetchText(candidate, fetchImpl, {}, timeoutMs, remaining, lookupImpl, boundFetch);
       bytes += response.bytes;
       if (bytes > LLMS_TXT_POLICY.maxBytes) {
         failures.push(`${candidate} skipped because the aggregate response limit was reached`);

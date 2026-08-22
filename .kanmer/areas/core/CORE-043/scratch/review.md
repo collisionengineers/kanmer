@@ -3,6 +3,68 @@ kind: review-attestation
 pr: "168"
 head_sha: "9371e2b0e8882426d91dbc99553e96853b99197f"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: needs-changes
+reviewer: "codex-root-current-head-audit"
+independent: true
+plan_hash: "2026-08-22T20:09:00Z"
+ticket_updated: "2026-08-22T20:09:00Z"
+findings:
+  - id: F-032
+    severity: blocker
+    summary: "Hosted handoff state remains visible until Actions configuration is confirmed"
+    disposition: deferred-to-ticket
+    ticket: "GUI-115"
+    reason: "Current PR #168 thread 3836827896 shows the required KANMER_BOARD_BRANCH handoff is stored as a transient sync error and can disappear after a successful sync; GUI-115 owns persistent state."
+  - id: F-033
+    severity: major
+    summary: "Retry re-arms automatic sync after an unavailable worktree is repaired"
+    disposition: deferred-to-ticket
+    ticket: "GUI-115"
+    reason: "Current PR #168 thread 3836827899 shows retrying a project that began unavailable skips timer re-arm; GUI-115 owns the production lifecycle fix."
+  - id: F-034
+    severity: blocker
+    summary: "Rename and sync operations are serialized"
+    disposition: deferred-to-ticket
+    ticket: "GUI-115"
+    reason: "Current PR #168 thread 3836827900 shows an existing interval/Sync now can race branch rename and push; GUI-115 owns suspension/serialization regressions."
+  - id: F-035
+    severity: blocker
+    summary: "Closed-project registrations reconcile when the project reopens"
+    disposition: deferred-to-ticket
+    ticket: "GUI-116"
+    reason: "Current PR #168 thread 3836890756 shows reconciliation only visits open contexts; GUI-116 owns the open-project production caller after worktree reconciliation."
+  - id: F-036
+    severity: blocker
+    summary: "Existing native provider installations refresh after branch changes"
+    disposition: deferred-to-ticket
+    ticket: "GUI-116"
+    reason: "Current PR #168 thread 3836890758 shows Grok/Antigravity installed runtimes retain the old staged branch; GUI-116 owns refresh or an explicit reconnect contract."
+  - id: F-037
+    severity: blocker
+    summary: "Shipped Antigravity descriptor uses a literal default branch"
+    disposition: deferred-to-ticket
+    ticket: "GUI-117"
+    reason: "Current PR #168 thread 3836890759 shows direct Antigravity installs do not expand shell-style defaults; GUI-117 owns the literal descriptor and guide correction."
+  - id: F-025
+    severity: minor
+    summary: "Live GitHub protection and variable mutation"
+    disposition: accepted-risk
+    reason: "No authorized live protection mutation or real multi-machine handoff was available; ADR-0016 keeps this administrator-owned external boundary."
+---
+
+## Current-head independent review — NEEDS-CHANGES — 2026-08-22
+
+The exact PR #168 head remains 9371e2b0e8882426d91dbc99553e96853b99197f. GUI-113 and GUI-114 fixed the prior provider-registration and shell-interpolation findings, but the fresh automated review at this exact head surfaced six additional valid findings covering persistent handoff state, retry/timer/rename serialization, closed-project/native registration refresh, and the shipped Antigravity descriptor default. They are recorded above and linked to GUI-115, GUI-116, and GUI-117. No protected merge or conversation resolution is authorized until these remediations are independently reviewed and merged, followed by another exact-head review.
+
+Verdict: NEEDS-CHANGES. CORE-043 remains held in Review.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "168"
+head_sha: "9371e2b0e8882426d91dbc99553e96853b99197f"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: pass
 reviewer: "codex-root-final-cumulative-audit"
 independent: true

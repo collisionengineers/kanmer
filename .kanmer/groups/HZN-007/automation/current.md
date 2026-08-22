@@ -773,3 +773,6 @@ Last handoff: 2026-08-22T19:52Z — GUI-113 implementation complete on `gui-113-
 
 
 Last handoff: - 2026-08-22T20:05:17.039Z — GUI-114 assigned and handed off Implementing→Review by gui099-executor: argv-safe Claude project registration for finding 3836808787. Branch gui-114-shell-safe-env, commit 55cb058d, PR #210 targeting core-043-protection-retarget; focused 99/99 and full GUI 418/418 PASS, workspace typecheck/build and docs/manual/agents/skills/diff PASS. Initial scripts 87/89 missing fresh core dist was preserved; rerun 89/89 PASS. plugin:check linked-worktree and mcpb CLI failures remain INCONCLUSIVE; hosted protection and real Claude registration remain INCONCLUSIVE. Await independent review; no merge/verify/cleanup.
+
+
+20:10 UTC — exact PR #168 review at 9371e2b0 surfaced six new valid findings 3836827896/7899/7900 and 3836890756/758/759. Created GUI-115 (handoff state/timer/rename serialization), GUI-116 (closed/native provider refresh), GUI-117 (literal Antigravity default). CORE-043 remains held; no threads resolved.

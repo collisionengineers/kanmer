@@ -36,4 +36,7 @@ attempts:
     result: FAIL
     summary: "Merged-main local rail built successfully and passed manual freshness, core 266/266, and GUI 355/355, then retained two unrelated MCP HTTP/tunnel timing failures: project-resolution child spawn ETIMEDOUT and readiness TUNNEL_READINESS_TIMEOUT. No workflow or assertion was weakened."
 ---
+PR #136: https://github.com/collisionengineers/kanmer/pull/136
+Merged at: 2026-08-21T22:08:21Z (merge commit 2ba84147cc513ad23e2811e09c005772cb259cfb).
+
 CORE-032 merged-main proof: .github/workflows/pr.yml is present exactly as scoped and has produced a green real Windows verify check on the final shipped tree. The original runner path-alias failure is fixed by CORE-037 and remains traceable there. The local verification attempt's two unrelated MCP HTTP/tunnel timing failures are retained as a failed attempt, not misreported as a CORE-032 regression. Post-merge kanmer-board non-trigger evidence was not manufactured and remains INCONCLUSIVE.

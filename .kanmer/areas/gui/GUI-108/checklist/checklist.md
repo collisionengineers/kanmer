@@ -18,3 +18,14 @@
 ## Parked (explicitly deferred)
 
 - [x] Packaged Electron visual drag/drop inspection and real pointer/manual evidence are unavailable in this environment; marked INCONCLUSIVE rather than claimed as PASS.
+
+## Closeout — GUI-108
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; ticket worktree removed
+- [x] branch removed after merged PR
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

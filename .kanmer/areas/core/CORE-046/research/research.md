@@ -17,3 +17,7 @@ How should the two independent CORE-045 review blockers be remediated without we
 - Use an atomic quarantine/rename as the only stale-inode removal path; never unlink the original lock path after another claimant can recreate it.
 - Add deterministic destination tests for every newly rejected IPv6 prefix and retain the inherited mapped IPv4 and special-use fixtures.
 - Stack implementation on CORE-045 head '1234264b292e574d38f276b91592ea0b8bef9361' in '.worktrees/core-046' on branch 'core-046-lock-reclaim-race-ipv6'.
+
+## Additional review scope
+
+The current CORE-045 review also identified IPv4 192.175.48.0/24 as non-global and requested regression evidence that DNS classification runs before every redirect and linked-page request. CORE-046 therefore adds that IPv4 range and a deterministic redirect-plus-linked-hop lookup-count test; no broader resolver or network authority is introduced.

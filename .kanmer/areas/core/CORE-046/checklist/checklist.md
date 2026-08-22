@@ -8,3 +8,5 @@
 - [ ] Run focused/shared rails and record exact exit codes.
 - [ ] Write post-implementation report and Review scratch handoff.
 - [ ] Record commit/PR traceability, confirm gates, and move to Review.
+
+- [ ] Reject IPv4 192.175.48.0/24 and prove DNS lookup on redirect and linked hops.

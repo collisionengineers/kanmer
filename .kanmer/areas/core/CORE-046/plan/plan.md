@@ -27,3 +27,7 @@ The IO focused suite proves the atomic quarantine race and inherited assertions;
 - Filesystem rename behavior varies by platform: use a same-directory unique quarantine name, preserve errors, and make the deterministic test assert the losing reclaimer never touches the winner's path.
 - IPv6 textual forms are easy to misclassify: route all addresses through the existing eight-group parser and test compressed forms and exact prefix boundaries.
 - Artifact drift can hide source changes: run plugin build/check and record whether the committed bundle changed.
+
+## Review-scope extension
+
+The implementation checklist also covers the newly reported non-global IPv4 range 192.175.48.0/24 and a deterministic test that the existing lookup seam is invoked for each redirect and linked request. This remains within F-009 destination-policy hardening.

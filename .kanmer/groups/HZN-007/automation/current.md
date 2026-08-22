@@ -743,3 +743,9 @@ Last handoff: 2026-08-22T19:01:38.547Z — CORE-086 artifact remediation: taken 
 
 
 19:26 UTC — fresh PR #168 review at 30ed38aa surfaced new valid findings 3836808784/3836808786/3836808787. Created blocking GUI-113 (existing/native provider registration reconciliation) and GUI-114 (shell-safe branch env serialization). CORE-043 remains held; no threads resolved.
+
+
+19:33 UTC — CORE-081 cumulative review PASS at exact CORE-026 head a1a4fe62 after CORE-086 artifact merge; source 26/26, core 303/303, typechecks, scripts 88/88, build and diff checks pass. CORE-081 moved Review→Verifying and released; CORE-082/083 remain blockers for CORE-026.
+
+
+2026-08-22T19:35Z — GUI-113 implementation started by core041-executor after full ticket/EPIC-009/HZN-007 context, PR #168 findings 3836808784/3836808786, and FRD-020/FRD-012/ADR-0016 gate read. Dedicated `.worktrees/gui-113` / `gui-113-provider-registration-reconcile` is based on CORE-043 cumulative origin head 30ed38aa. Scope is provider-owned reconciliation for saved branch changes plus disposable branch-aware Grok/Antigravity descriptors and adversarial tests; no unrelated project mutation, no parent merge, and hosted/provider credential evidence remains INCONCLUSIVE. Stop at Review.

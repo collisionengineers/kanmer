@@ -1,0 +1,4 @@
+- [ ] Preserve a distinct failed-Git status with the canonical board root.
+- [ ] Surface the error and provide retry/reconciliation without reopening.
+- [ ] Add deterministic failure/retry/idempotence coverage.
+- [ ] Run and record focused/full verification rails.

@@ -3,56 +3,26 @@ kind: review-attestation
 pr: "168"
 head_sha: "f63d953fc8467440988c887c62a34ade0c77c96c"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
-verdict: pass
-reviewer: "codex-gui082-executor"
+verdict: needs-changes
+reviewer: "codex-recovery"
 independent: true
 plan_hash: "2026-08-22T17:16:10.646Z"
-ticket_updated: "2026-08-22T17:16:10.646Z"
+ticket_updated: "2026-08-22T17:54:02.677Z"
 findings:
-  - id: F-001
+  - id: F-013
     severity: blocker
-    disposition: fixed-in-cumulative-stack
-    reason: "The completed handoff is recognized and cumulative child remediations preserve requested destination and mismatch state."
-  - id: F-002
+    disposition: deferred-to-ticket
+    ticket: "CORE-080"
+    reason: "Fresh independent review found that manual Retry can call syncBoard using a stale cached branch without rechecking the live board worktree; CORE-080 is the linked remediation and blocks CORE-043."
+  - id: F-014
     severity: major
-    disposition: fixed-in-cumulative-stack
-    reason: "No-board protected preference transition remains guarded by the cumulative CORE-048/052 chain."
-  - id: F-003
-    severity: blocker
-    disposition: fixed-in-cumulative-stack
-    reason: "The hosted workflow reads KANMER_BOARD_BRANCH with its documented fallback and the hosted gate passes."
-  - id: F-004
-    severity: minor
-    disposition: accepted-risk
-    reason: "ADR-0016 intentionally leaves live GitHub protection API/App mutation administrator-owned."
-  - id: F-005
-    severity: blocker
-    disposition: fixed-in-cumulative-stack
-    reason: "Merged CORE-048/052 child edges and branch handoff state are reconciled in the cumulative target."
-  - id: F-009
-    severity: blocker
-    disposition: fixed-in-cumulative-stack
-    ticket: "CORE-059"
-    reason: "CORE-059 retained the custom remote-ref behavior and aligns the Actions board branch variable."
-  - id: F-010
-    severity: blocker
-    disposition: fixed-in-cumulative-stack
-    ticket: "CORE-060"
-    reason: "CORE-060 pauses sync safely and clears resolved handoff mismatch state."
-  - id: F-011
-    severity: major
-    disposition: fixed-in-cumulative-stack
-    ticket: "CORE-060"
-    reason: "CORE-060 preserves paused/error state and retries only after safe reconciliation."
-  - id: F-012
-    severity: major
-    disposition: fixed-in-cumulative-stack
-    ticket: "CORE-061"
-    reason: "CORE-061 records the KANMER_BOARD_BRANCH convention and administrator handoff in the managed guide."
+    disposition: deferred-to-ticket
+    ticket: "CORE-080"
+    reason: "Fresh independent review found FRD-020 R5 acceptance wording still describes deleting the old custom ref while the safe retained-ref handoff requires updating KANMER_BOARD_BRANCH first; CORE-080 aligns the governing/manual contract."
   - id: F-EXTERNAL
     severity: minor
     disposition: accepted-risk
-    reason: "No authorized live branch-protection or repository-variable mutation was available; deterministic and hosted evidence is present, live admin effects remain INCONCLUSIVE."
+    reason: "Live GitHub protection and repository-variable mutation remains an administrator-owned external boundary under ADR-0016; no admin bypass is used."
 ---
 
 ## Independent cumulative review — CORE-043 / PR #168

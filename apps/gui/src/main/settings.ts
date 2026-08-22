@@ -45,6 +45,8 @@ export interface AppSettings extends UiPreferences {
   sessionInitialized: boolean;
   kanmerBranch: string;
   gitSyncMinutes: number;
+  /** Hosted board-branch handoffs awaiting explicit operator acknowledgement. */
+  pendingBoardHandoffs?: Record<string, { from: string; to: string; warning: string }>;
   /** GUI remote-access registry; owned by the remote-access store but preserved by settings writes. */
   remoteAccess?: Record<string, unknown>;
   dispatch: DispatchSettings;
@@ -154,6 +156,9 @@ export function readSettings(): AppSettings {
       defaultArea: typeof parsed.defaultArea === "string" ? parsed.defaultArea : "",
       kanmerBranch: typeof parsed.kanmerBranch === "string" && parsed.kanmerBranch.trim() ? parsed.kanmerBranch.trim() : "kanmer-board",
       gitSyncMinutes: Number.isInteger(parsed.gitSyncMinutes) && (parsed.gitSyncMinutes ?? 0) > 0 ? parsed.gitSyncMinutes! : 0,
+      ...(parsed.pendingBoardHandoffs && typeof parsed.pendingBoardHandoffs === "object" && !Array.isArray(parsed.pendingBoardHandoffs)
+        ? { pendingBoardHandoffs: parsed.pendingBoardHandoffs as AppSettings["pendingBoardHandoffs"] }
+        : {}),
       ...(parsed.remoteAccess && typeof parsed.remoteAccess === "object" ? { remoteAccess: parsed.remoteAccess as Record<string, unknown> } : {}),
       dispatch: normalizeDispatchSettings(parsed.dispatch),
       ...(bounds && typeof bounds.width === "number" && typeof bounds.height === "number"
@@ -171,6 +176,23 @@ export function setKanmerGitPreferences(kanmerBranch: string, gitSyncMinutes: nu
     const settings = readSettings();
     settings.kanmerBranch = kanmerBranch.trim() || "kanmer-board";
     settings.gitSyncMinutes = Number.isInteger(gitSyncMinutes) && gitSyncMinutes > 0 ? gitSyncMinutes : 0;
+    writeSettings(settings);
+    return settings;
+  });
+}
+
+/** Persist the hosted handoff state independently of a project's open context. */
+export function setKanmerGitHandoff(
+  projectId: string,
+  handoff: { from: string; to: string; warning: string } | null,
+): Promise<AppSettings> {
+  return withSettingsFileLock(async () => {
+    const settings = readSettings();
+    const pending = { ...(settings.pendingBoardHandoffs ?? {}) };
+    if (handoff) pending[projectId] = handoff;
+    else delete pending[projectId];
+    if (Object.keys(pending).length > 0) settings.pendingBoardHandoffs = pending;
+    else delete settings.pendingBoardHandoffs;
     writeSettings(settings);
     return settings;
   });

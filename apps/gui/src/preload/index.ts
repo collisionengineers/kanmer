@@ -40,6 +40,7 @@ const api: KanmerApi = {
   setKanmerGitPreferences: (prefs) => ipcRenderer.invoke(CH.setKanmerGitPreferences, prefs),
   getKanmerGitStatus: (p) => ipcRenderer.invoke(CH.getKanmerGitStatus, p),
   syncKanmerNow: (p) => ipcRenderer.invoke(CH.syncKanmerNow, p),
+  confirmKanmerGitHandoff: (p) => ipcRenderer.invoke(CH.confirmKanmerGitHandoff, p),
   onGitStatus: (cb) => {
     const listener = (_e: unknown, status: Parameters<typeof cb>[0]) => cb(status);
     ipcRenderer.on(CH.gitStatus, listener);

@@ -60,6 +60,7 @@ import {
   setDispatchSettings,
   setTheme,
   setKanmerGitPreferences,
+  setKanmerGitHandoff,
   setWindowBounds,
   type AppSettings,
   type Theme,
@@ -87,6 +88,7 @@ import {
   type KanmerGitStatus,
 } from "./kanmerGit.js";
 import { armAutomaticSync } from "./syncTimer.js";
+import { withSyncLifecycles } from "./syncLifecycle.js";
 import {
   connectAgent,
   disconnectAgent,
@@ -135,6 +137,7 @@ interface ProjectContext {
   ownWrites: Map<string, number>;
   syncTimer?: NodeJS.Timeout;
   syncStatus: KanmerGitStatus;
+  lifecycle?: Promise<void>;
 }
 const contexts = new Map<string, ProjectContext>();
 let remoteAccess: RemoteAccessManager | null = null;
@@ -151,7 +154,10 @@ function armSyncTimer(projectId: string, ctx: ProjectContext, minutes: number): 
     ctx,
     shouldScheduleAutomaticSync(ctx.syncStatus, minutes),
     minutes,
-    () => void syncProject(projectId, true),
+    () => {
+      if (contexts.get(projectId) !== ctx) return;
+      void syncProject(projectId, true).catch((error) => console.error(`[git-sync] automatic sync failed for ${projectId}: ${error instanceof Error ? error.message : String(error)}`));
+    },
   );
 }
 
@@ -597,7 +603,17 @@ async function openProject(root: string): Promise<OpenProjectResult> {
   const existing = contexts.get(projectId);
   if (existing) return snapshotOf(existing);
 
-  const syncStatus = await ensureBoardWorktree(projectId, readSettings().kanmerBranch);
+  const savedSettings = readSettings();
+  const initialSyncStatus = await ensureBoardWorktree(projectId, savedSettings.kanmerBranch);
+  const savedHandoff = savedSettings.pendingBoardHandoffs?.[projectId];
+  const syncStatus = initialSyncStatus.handoffPending || !savedHandoff
+    ? initialSyncStatus
+    : {
+        ...initialSyncStatus,
+        handoffPending: savedHandoff,
+        error: initialSyncStatus.error ?? savedHandoff.warning,
+      };
+  if (initialSyncStatus.handoffPending) await setKanmerGitHandoff(projectId, initialSyncStatus.handoffPending);
   const boardRoot = syncStatus.boardRoot ?? projectId;
   // repoRoot is the source checkout: `refs` point at the repo's own /docs/,
   // which does not move into the board worktree. Passed explicitly because we
@@ -613,7 +629,7 @@ async function openProject(root: string): Promise<OpenProjectResult> {
   // exists, so no agent write ever reaches the renderer. Without git, `boardRoot`
   // falls back to `projectId` and this is the old behaviour.
   const watch = startWatch(projectId, boardRoot, ownWrites);
-  const ctx: ProjectContext = { sourceRoot: projectId, boardRoot, store, watch, ownWrites, syncStatus };
+  const ctx: ProjectContext = { sourceRoot: projectId, boardRoot, store, watch, ownWrites, syncStatus, lifecycle: Promise.resolve() };
   const minutes = readSettings().gitSyncMinutes;
   armSyncTimer(projectId, ctx, minutes);
   contexts.set(projectId, ctx);
@@ -655,10 +671,13 @@ async function snapshotOf(ctx: ProjectContext): Promise<OpenProjectResult> {
 async function closeProject(projectId: string): Promise<void> {
   const ctx = contexts.get(projectId);
   if (!ctx) return;
-  if (openAITunnel) await openAITunnel.closeProject(projectId, await openAITunnelIdentity(ctx));
-  await ctx.watch.close();
-  clearSyncTimer(ctx);
-  contexts.delete(projectId);
+  await withSyncLifecycles([ctx], async () => {
+    if (contexts.get(projectId) !== ctx) return;
+    if (openAITunnel) await openAITunnel.closeProject(projectId, await openAITunnelIdentity(ctx));
+    await ctx.watch.close();
+    clearSyncTimer(ctx);
+    contexts.delete(projectId);
+  });
 }
 
 /**
@@ -678,6 +697,23 @@ async function closeProject(projectId: string): Promise<void> {
  * until the project was closed and reopened.
  */
 async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number): Promise<AppSettings> {
+  const projectContexts = [...contexts.values()];
+  return withSyncLifecycles(projectContexts, () => applyGitPreferencesLocked(kanmerBranch, gitSyncMinutes));
+}
+
+async function applyGitPreferencesLocked(kanmerBranch: string, gitSyncMinutes: number): Promise<AppSettings> {
+  // A queued timer callback or a manual Retry waits on these same locks. Once
+  // acquired, clear every interval before changing HEAD or remote refs.
+  for (const ctx of contexts.values()) clearSyncTimer(ctx);
+  try {
+    return await applyGitPreferencesBody(kanmerBranch, gitSyncMinutes);
+  } finally {
+    const effective = readSettings();
+    for (const [projectId, ctx] of contexts) armSyncTimer(projectId, ctx, effective.gitSyncMinutes);
+  }
+}
+
+async function applyGitPreferencesBody(kanmerBranch: string, gitSyncMinutes: number): Promise<AppSettings> {
   const current = readSettings();
   const requestedBranch = kanmerBranch.trim() || PROTECTED_BOARD_BRANCH;
   // An administrator can retarget and rename an open board worktree while the
@@ -722,8 +758,27 @@ async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number)
         // A failed rename leaves the worktree on its old branch, so keep
         // reporting that one — the board still works, it just did not move.
         ctx.syncStatus = renamed.ok
-          ? { ...ctx.syncStatus, branch: settings.kanmerBranch, error: renamed.error, paused: false }
+          ? {
+              ...ctx.syncStatus,
+              branch: settings.kanmerBranch,
+              error: renamed.error,
+              paused: false,
+              ...(renamed.error && renamed.from
+                ? { handoffPending: { from: renamed.from, to: settings.kanmerBranch, warning: renamed.error } }
+                : {}),
+            }
           : { ...ctx.syncStatus, error: renamed.error, paused: true };
+        // A previously surfaced handoff warning is durable until the operator
+        // explicitly acknowledges it through confirmKanmerGitHandoff. A
+        // later preference rename must not silently erase that acknowledgement
+        // requirement merely because the rename itself is clean (or failed).
+        if (renamed.ok && renamed.error && renamed.from) {
+          await setKanmerGitHandoff(projectId, {
+            from: renamed.from,
+            to: settings.kanmerBranch,
+            warning: renamed.error,
+          });
+        }
         mainWindow?.webContents.send(CH.gitStatus, { projectId, ...(await gitStatusForRenderer(ctx)) });
       }
     }
@@ -752,7 +807,6 @@ async function applyGitPreferences(kanmerBranch: string, gitSyncMinutes: number)
       mainWindow?.webContents.send(CH.gitStatus, { projectId, ...(await gitStatusForRenderer(ctx)) });
     }
   }
-  for (const [projectId, ctx] of contexts) armSyncTimer(projectId, ctx, settings.gitSyncMinutes);
   return settings;
 }
 
@@ -802,7 +856,11 @@ function boardWorktreeRepair(
 
 async function syncProject(projectId: string, automatic = false): Promise<KanmerGitIpcStatus> {
   const ctx = requireCtx(projectId);
-  const retryingPaused = !automatic && ctx.syncStatus.paused;
+  return withSyncLifecycles([ctx], async () => syncProjectLocked(projectId, ctx, automatic));
+}
+
+async function syncProjectLocked(projectId: string, ctx: ProjectContext, automatic: boolean): Promise<KanmerGitIpcStatus> {
+  const retryRequested = !automatic;
   // A closed-project protected-branch refusal retains the board root so the
   // operator can complete the handoff outside Kanmer. Retry reconciliation
   // before treating that state as a non-Git project or attempting any sync.
@@ -819,7 +877,7 @@ async function syncProject(projectId: string, automatic = false): Promise<Kanmer
     return blocked;
   }
   ctx.syncStatus = await syncBoard(ctx.syncStatus);
-  if (retryingPaused && shouldRunAutomaticSync(ctx.syncStatus)) {
+  if (retryRequested && shouldRunAutomaticSync(ctx.syncStatus)) {
     armSyncTimer(projectId, ctx, readSettings().gitSyncMinutes);
   }
   if (!shouldRunAutomaticSync(ctx.syncStatus)) clearSyncTimer(ctx);
@@ -828,8 +886,23 @@ async function syncProject(projectId: string, automatic = false): Promise<Kanmer
   return status;
 }
 
+async function confirmKanmerGitHandoff(projectId: string): Promise<KanmerGitIpcStatus> {
+  const ctx = requireCtx(projectId);
+  return withSyncLifecycles([ctx], async () => {
+    if (ctx.syncStatus.handoffPending) {
+      const warning = ctx.syncStatus.handoffPending.warning;
+      const { handoffPending: _pending, ...withoutHandoff } = ctx.syncStatus;
+      ctx.syncStatus = { ...withoutHandoff, error: ctx.syncStatus.error === warning ? null : ctx.syncStatus.error };
+      await setKanmerGitHandoff(projectId, null);
+    }
+    const status = await gitStatusForRenderer(ctx);
+    mainWindow?.webContents.send(CH.gitStatus, { projectId, ...status });
+    return status;
+  });
+}
+
 /** Test seam for the production sync caller; not part of the renderer API. */
-export const __kanmerTest = { contexts, syncProject, applyGitPreferences };
+export const __kanmerTest = { contexts, syncProject, applyGitPreferences, confirmKanmerGitHandoff };
 
 // The card context menu is drawn by the renderer now (FRD-019 R6). A native
 // Menu cannot read the app's CSS variables, so it was always slightly wrong in
@@ -1017,6 +1090,7 @@ function registerIpc(): void {
   );
   ipcMain.handle(CH.getKanmerGitStatus, (_e, p: string) => gitStatusForRenderer(requireCtx(p)));
   ipcMain.handle(CH.syncKanmerNow, (_e, p: string) => syncProject(p));
+  ipcMain.handle(CH.confirmKanmerGitHandoff, (_e, p: string) => confirmKanmerGitHandoff(p));
   ipcMain.handle(CH.setOpenTabs, (_e, openTabs: string[], activeTab: string) =>
     setOpenTabs(openTabs, activeTab),
   );

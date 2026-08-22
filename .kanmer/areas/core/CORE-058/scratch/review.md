@@ -119,3 +119,33 @@ Reviewed the cumulative three-file diff: apps/gui/src/main/kanmerGit.ts, apps/gu
 ## Verdict
 
 NEEDS-CHANGES. Leave PR #180 open and CORE-058 in Review; do not merge or move to Verifying until CORE-064 and CORE-065 land and a fresh cumulative review resolves their threads.
+
+# Fresh cumulative review — NEEDS-CHANGES
+
+- Reviewer: codex-mcp-client
+- Independent: true; this is a fresh cumulative review, superseding the earlier b1ab/b8 pre-child review notes.
+- PR: #180
+- Exact head: `b8d8a191161532e895fa399b6c95bf812dfdb2d0`
+- Base: `core-044-source-fetch-remediation` at `3c0706627cc73038d91a624e5d494d0148dce4c4`
+- PR state: OPEN, CLEAN, MERGEABLE; hosted check rollup empty (hosted/Windows evidence INCONCLUSIVE).
+
+## Cumulative scope and evidence
+
+The cumulative tree includes CORE-062, CORE-063, CORE-064, and CORE-065 merges. The child rails are green on the equivalent cumulative source tree: focused GUI Git 20/20, GUI typecheck PASS, scripts 88/88, manual/docs/diff PASS. The committed plugin artifact remains unchanged by the GUI-only child remediations; inherited hash is `6057648d81fb4cccab629a0ee1c05c8716a564400302238857e785c70c485100`. External hosted/Windows lock and packaged proof remain INCONCLUSIVE.
+
+## Prior finding dispositions
+
+- 3836151012 local/remote attachment ignore reconciliation: fixed by CORE-062.
+- 3836151017 attached-worktree board-root preservation: fixed by CORE-063.
+- 3836232925 rename-path board-root preservation: fixed by CORE-064; merged in `17cdb6684f204e36cb64668236a4bab0de7e55ac`.
+- 3836232929 retryable failed-Git state: fixed by CORE-065; merged in `b8d8a191161532e895fa399b6c95bf812dfdb2d0`.
+- 3836151015 retroactive untracking of already tracked caches: explicitly accepted/deferred in CORE-058 open questions; not silently dropped.
+
+## New blocking findings at final head
+
+- 3836285519 (P1): first-time local/remote attachment calls `ensureBoardWorktreeIgnore(boardRoot)` outside a guarded path after creating the canonical worktree. A deterministic `.gitignore` failure falls through to the outer `catch`, returns `empty()` with `boardRoot: null`, and can make callers fall back to the source checkout. Disposition: CORE-066 created in HZN-007, linked to and blocking CORE-058.
+- 3836285521 (P2): `ensureIgnore` follows a symlink at `boardRoot/.gitignore`; a tracked link can redirect writes into board data such as `.kanmer/data/board.yml`. Disposition: CORE-067 created in HZN-007, linked to and blocking CORE-058.
+
+## Decision
+
+NEEDS-CHANGES. Leave PR #180 open and CORE-058 in Review; do not merge or move it. CORE-066 and CORE-067 must be independently implemented/reviewed before the cumulative parent can pass.

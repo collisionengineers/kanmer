@@ -1,0 +1,1 @@
+2026-08-22 — Taken on core-086-plugin-artifact-refresh at .worktrees/core-086 from exact cumulative base fcd998550714811edac99032ea7118f9b2084d38; proceeding with artifact-only regeneration and parity rails.

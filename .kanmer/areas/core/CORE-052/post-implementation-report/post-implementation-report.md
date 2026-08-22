@@ -38,3 +38,6 @@ CORE-052 implements the four bounded remediation findings from the cumulative CO
 ## Review handoff
 
 The implementation is ready for independent review on the dedicated branch. The reviewer must assess the stacked child against CORE-043, then merge only through the independent review path.
+
+
+2026-08-22T13:16:20Z cumulative stack update: CORE-054 PR #176 independently passed fresh cumulative review at b7957214 and merged non-squash into CORE-052 branch as f4705d9e87545a7e64ea4aebf9c0a7272eb45d28. CORE-052 now contains the original handoff/state fix plus both mismatch-safe rename guards. Fresh cumulative review of PR #175 is required before merging into CORE-043. Live GitHub protection and packaged GUI evidence remain INCONCLUSIVE.

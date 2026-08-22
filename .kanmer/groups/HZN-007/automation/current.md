@@ -797,3 +797,6 @@ CORE-087 artifact remediation independently reviewed PASS and PR #213 merged non
 
 
 CORE-026 hosted run 32598710721 after CORE-087 merge: verify failed on 3 Windows CI temp-cleanup/test-timeout failures (304/307 core tests, 12/15 files); kanmer-gate also saw the stale board snapshot with CORE-087 blocker and invalid old review dispositions. Preserve as INCONCLUSIVE/failed evidence; rerun after board-edge removal and fresh valid attestation.
+
+
+GUI-117 independently re-reviewed PASS at 8537b7a0; PR #214 merged non-squash into CORE-043 parent as aa33ae1aa0d493787d09ff587298274d6523b833. Focused provider/connect 100/100, typecheck, verify-agents-block 31/31, diff-check PASS. Literal shipped descriptor and staged custom branch behavior verified. GUI-117 moved Verifying/released and block edge removed.

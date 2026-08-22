@@ -285,16 +285,14 @@ function assertReleaseCommitReachable() {
 // 3. A publisher token is needed only after the protected PR merge. The
 // preparation phase deliberately uses the operator's normal `gh auth`
 // session for branch/PR operations and must not require a second token.
-if (publishMode) {
-  const tokenVar = ["GITHUB_RELEASE_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"].find(
-    (v) => (process.env[v] ?? "").length > 0,
+const tokenVar = ["GITHUB_RELEASE_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"].find(
+  (v) => (process.env[v] ?? "").length > 0,
+);
+if (publishMode && !tokenVar) {
+  refuse(
+    "no GitHub token in the environment",
+    "set GH_TOKEN (or GITHUB_RELEASE_TOKEN / GITHUB_TOKEN) to a PAT with repo scope",
   );
-  if (!tokenVar) {
-    refuse(
-      "no GitHub token in the environment",
-      "set GH_TOKEN (or GITHUB_RELEASE_TOKEN / GITHUB_TOKEN) to a PAT with repo scope",
-    );
-  }
 }
 
 // 4. Release notes that mention THIS version.
@@ -309,7 +307,7 @@ if (!readFileSync(notesPath, "utf8").includes(version)) {
 }
 
 console.log(`release ${current} -> ${version}`);
-console.log(`token: ${tokenVar} (set)`);
+console.log(publishMode ? `token: ${tokenVar} (set)` : "token: gh auth session (publisher token not required)");
 console.log(`notes: ${notesPath}`);
 
 // ---------------------------------------------------------------------------

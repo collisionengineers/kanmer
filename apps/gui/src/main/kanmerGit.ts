@@ -148,9 +148,13 @@ async function ensureIgnore(file: string, entries: string[]): Promise<void> {
   if (stat?.isSymbolicLink()) throw new Error(`Refusing symlinked board ignore path: ${file}`);
   const before = stat ? await readFile(file, "utf8") : "";
   const lines = before.replace(/\r\n/g, "\n").split("\n").filter(Boolean);
-  let changed = false;
-  for (const entry of entries) if (!lines.includes(entry)) { lines.push(entry); changed = true; }
-  if (changed || !stat) await writeFile(file, `${lines.join("\n")}\n`, "utf8");
+  // Managed rules must be the last matching rules. Remove stale copies first,
+  // then append one copy of each rule so a later negation cannot make derived
+  // board state trackable again.
+  const managed = new Set(entries);
+  const next = [...lines.filter((line) => !managed.has(line)), ...entries];
+  const changed = next.length !== lines.length || next.some((line, index) => line !== lines[index]);
+  if (changed || !stat) await writeFile(file, `${next.join("\n")}\n`, "utf8");
 }
 
 async function ensureBoardWorktreeIgnore(boardRoot: string): Promise<void> {

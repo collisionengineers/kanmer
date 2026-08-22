@@ -383,4 +383,27 @@ describe("withExclusiveFileLock", () => {
     await expect(withExclusiveFileLock(file, async () => { throw new Error("callback failed"); })).rejects.toThrow("callback failed");
     await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
   });
+
+  it("retries transient quarantine rename failures", async () => {
+    for (const code of ["EPERM", "EBUSY", "EACCES"]) {
+      const file = path.join(dir, `cache-${code}.lock`);
+      await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0 }), "utf8");
+      let calls = 0;
+      const renameStaleLock = async (from: string, to: string): Promise<void> => {
+        calls++;
+        if (calls === 1) throw errno(code);
+        await fs.rename(from, to);
+      };
+
+      await expect(withExclusiveFileLock(file, async () => "recovered", {
+        now: () => 60_000,
+        staleAfterMs: 30_000,
+        processAlive: () => false,
+        retryDelaysMs: [0],
+        renameStaleLock,
+      })).resolves.toBe("recovered");
+      expect(calls, code).toBe(2);
+      await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
+    }
+  });
 });

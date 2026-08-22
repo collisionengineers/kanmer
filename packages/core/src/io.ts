@@ -286,7 +286,11 @@ export async function withExclusiveFileLock<T>(
     staleAfterMs: options.staleAfterMs ?? DEFAULT_LOCK_STALE_MS,
     now: options.now ?? Date.now,
     processAlive: options.processAlive ?? defaultProcessAlive,
-    renameStaleLock: options.renameStaleLock ?? fs.rename,
+    // Keep the injected seam for deterministic coordination, but apply the
+    // same bounded Windows retry contract used by atomic writes to every
+    // quarantine rename.
+    renameStaleLock: (from: string, to: string): Promise<void> =>
+      renameWithRetry(from, to, options.renameStaleLock ?? fs.rename),
   };
   await ensureDir(path.dirname(lockFile));
   let claimed = false;

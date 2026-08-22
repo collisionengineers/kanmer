@@ -3,3 +3,7 @@
 Focused attempt 1: `npm test --workspace @kanmer/gui -- --run apps/gui/src/main/kanmerGit.test.ts` exited 1 because the workspace Vitest cwd is apps/gui and the repo-relative filter matched no files. Failure preserved; rerun with workspace-relative `src/main/kanmerGit.test.ts`.
 
 Manual freshness attempt 1: `npm run check:manual` exited 1 because docs/manual/board-sync.md changed and chapters.generated.ts was stale, exactly as the checker reported. Regenerating the committed manual artifact is in scope.
+
+GUI typecheck attempt 1: `npm run typecheck -w @kanmer/gui` exited 2 on inherited stale @kanmer/core declarations: missing dispatchDeliverableProven export, DispatchSupervisorOptions.verifyDeliverable mismatch, implicit status any, and antigravity DispatchProviderId mismatch. No CORE-080 files were implicated; rebuild core before rerunning.
+
+GUI typecheck attempt 2 after `npm run build:core` still exited 1 with the same inherited core/dispatch declaration mismatch (dispatchDeliverableProven, verifyDeliverable, antigravity provider type). CORE-080 sync changes are not implicated; preserve as baseline INCONCLUSIVE/FAIL.

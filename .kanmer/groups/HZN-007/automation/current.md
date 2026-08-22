@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:31:30+01:00
+updated_at: 2026-08-22T00:32:13.362Z
 ---
 
 # Current auto run — HZN-007
@@ -17,7 +17,7 @@ updated_at: 2026-08-22T00:31:30+01:00
 Open `automation/runs/20260821T105846Z-codex-mcp-client.md`, then re-read HZN-007/context.md, the live roster, and get_doc_gates for every ticket before dispatching. This pointer is written only after the complete immutable run record was written and read back.
 
 
-Last handoff: 2026-08-22T00:30:47.776Z — SKILL-017 implementation packet is report/checklist ready on skill-017-auto-stopping/.worktrees/skill-017. Focused contract rails are green; unrelated Windows full-rail timeouts are preserved in the report. Independent Review is required; no merge or cross-ticket changes.
+Last handoff: 2026-08-22T00:32:13.362Z — SKILL-017 is Review-ready on skill-017-auto-stopping/.worktrees/skill-017, commit a72ea84f, PR #143. Independent review/merge is required; this author must not merge.
 
 
 Last handoff: CORE-036 merged-main verification recorded at 2026-08-21T22:49:50.557Z; ticket remains Verifying because npm run verify and npm run dist:check each exited 1 on normal main. PR #127 merge 470b2fad is present; no board move, release, or worktree cleanup was performed.

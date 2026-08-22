@@ -21,9 +21,13 @@ groups:
 links: []
 refs:
   - docs/functional/frd/FRD-023-agent-skills-system.md
+commits:
+  - a72ea84f
+prs:
+  - '143'
 archived: false
 created: '2026-08-16T21:22:59.709Z'
-updated: '2026-08-22T00:13:04.309Z'
+updated: '2026-08-22T00:32:13.310Z'
 ---
 
 ## What

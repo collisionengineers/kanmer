@@ -776,3 +776,6 @@ Last handoff: - 2026-08-22T20:05:17.039Z — GUI-114 assigned and handed off Imp
 
 
 20:10 UTC — exact PR #168 review at 9371e2b0 surfaced six new valid findings 3836827896/7899/7900 and 3836890756/758/759. Created GUI-115 (handoff state/timer/rename serialization), GUI-116 (closed/native provider refresh), GUI-117 (literal Antigravity default). CORE-043 remains held; no threads resolved.
+
+
+20:10 UTC — Created GUI-115/116/117 for six new exact-head PR #168 findings. GUI-115 is the active GUI lane; GUI-116 and GUI-117 are queued serially to avoid connect/index and descriptor/doc overlap. CORE-083 remains the active core lane.

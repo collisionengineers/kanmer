@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:03:26.241Z
+updated_at: 2026-08-22T00:09:44.236Z
 ---
 
 # Current auto run — HZN-007
@@ -54,3 +54,6 @@ Last handoff: 2026-08-21T23:46:29.717Z — stale Done-state GUI-007 take metadat
 
 
 Last handoff: 2026-08-22T00:00:13.385Z — GUI-075 is Review on PR #142 head 1a04be90 with deterministic local rails PASS; independent review holds merge on the pre-existing GitHub Windows path-alias failure deferred to CORE-032. Live provider and visual evidence are INCONCLUSIVE.
+
+
+Last handoff: 2026-08-22T00:09:44.236Z — CORE-022 independent merged-main verification is complete at af61144ce743f74b2aba92fb0778588b0b9bedd0; deterministic core evidence is PASS, the 242-ticket fixture and genuine Windows EPERM/file-lock evidence remain INCONCLUSIVE, and the ticket remains Verifying at 21/25. No release or cleanup performed.

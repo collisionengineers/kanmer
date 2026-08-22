@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T00:03:26.241Z
+updated_at: 2026-08-22T00:09:44.236Z
 lane_limit: 3
 stop_reason:
 ---
@@ -439,3 +439,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-21T23:46:29.717Z — stale taken-state cleanup: GUI-007 was Done with no matching worktree or branch (confirmed from the live worktree list), so take_ticket(action=release) cleared its old assignee/taken metadata without touching source or proof.
 
 - 2026-08-22T00:00:13.385Z — GUI-075 implementation reached Review on PR #142 at head 1a04be90 (commits 52c04c0e, 9cdaa68b, fcec021d, 1a04be90). Independent local review rails pass: core 266/266, GUI 355/355, focused core 7/7, focused GUI 5/5, typecheck/build/manual/diff-check PASS; provider help/version probes are recorded. Final review scratch records needs-changes only because GitHub verify run 32538700773 is red on the pre-existing runneradmin vs RUNNER~1 path assertion (deferred to CORE-032); live authenticated provider execution and visual proof remain INCONCLUSIVE. No merge, verification, or cleanup performed.
+
+
+- 2026-08-22T00:09:44.236Z — CORE-022 independent merged-main verification by /root/gui099_executor: current main af61144ce743f74b2aba92fb0778588b0b9bedd0 contains implementation d0f927a3f9aab7fa6f4716410138126f3ff1fc35 (merge-base exit 0). Focused IO/migration 28/28, full core 263/263, core typecheck, core build, and diff-check exited 0. The planned 242-ticket fixture and genuine Windows EPERM/file-lock run remain INCONCLUSIVE; checklist is 21/25 and ticket remains Verifying with no move, release, or cleanup.

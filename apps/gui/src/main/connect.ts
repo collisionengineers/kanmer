@@ -20,6 +20,7 @@ import {
   antigravityPortableInvocation,
   codexPortableInvocation,
   codexPortableProbeInvocation,
+  DEFAULT_BOARD_BRANCH,
   codexTrustFromConfig,
   codexTrustNote,
   classifyLegacyCodexEntry,
@@ -93,8 +94,15 @@ export async function probeCodexLauncher(
  * providers: Electron-as-Node, with the selected board and optional source
  * root pinned exactly as before GUI-100.
  */
-function installedElectronInvocation(boardRoot: string, sourceRoot: string): Invocation {
-  const env = { ELECTRON_RUN_AS_NODE: "1" };
+function installedElectronInvocation(
+  boardRoot: string,
+  sourceRoot: string,
+  boardBranch = DEFAULT_BOARD_BRANCH,
+): Invocation {
+  const env = {
+    ELECTRON_RUN_AS_NODE: "1",
+    KANMER_BOARD_BRANCH: boardBranch.trim() || DEFAULT_BOARD_BRANCH,
+  };
   let script: string;
   if (app.isPackaged) {
     script = join(process.resourcesPath, "mcp", "kanmer-mcp.cjs");
@@ -112,8 +120,16 @@ function installedElectronInvocation(boardRoot: string, sourceRoot: string): Inv
 }
 
 /** Select the portable Codex contract without changing any other provider. */
-export function serverInvocation(id: ProviderId, boardRoot: string, sourceRoot: string): Invocation {
-  return id === "codex" ? codexPortableInvocation() : installedElectronInvocation(boardRoot, sourceRoot);
+export function serverInvocation(
+  id: ProviderId,
+  boardRoot: string,
+  sourceRoot: string,
+  boardBranch = DEFAULT_BOARD_BRANCH,
+): Invocation {
+  const normalizedBranch = boardBranch.trim() || DEFAULT_BOARD_BRANCH;
+  return id === "codex"
+    ? codexPortableInvocation(normalizedBranch)
+    : installedElectronInvocation(boardRoot, sourceRoot, normalizedBranch);
 }
 
 /**
@@ -911,11 +927,12 @@ export async function connectAgent(
   projectRoot: string,
   boardRoot: string,
   options: ConnectOptions = {},
+  boardBranch = DEFAULT_BOARD_BRANCH,
 ): Promise<ConnectResult> {
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
   if (provider.install.kind === "plugin") return connectNativePlugin(provider, projectRoot, boardRoot, options);
-  const inv = serverInvocation(id, boardRoot, projectRoot);
+  const inv = serverInvocation(id, boardRoot, projectRoot, boardBranch);
   try {
     if (id === "codex") {
       const probe = await probeCodexLauncher(projectRoot, options.probeRunner);

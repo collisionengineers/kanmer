@@ -550,16 +550,19 @@ describe("portable Codex launcher contract (GUI-100)", () => {
     expect(codex).toEqual({
       command: "cmd.exe",
       args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"'],
-      env: {},
+      env: { KANMER_BOARD_BRANCH: "kanmer-board" },
     });
     const second = serverInvocation("codex", "D:/other-board", "D:/other-source");
     expect(second).toEqual(codex);
     expect(second.args).not.toBe(codex.args);
 
+    const custom = serverInvocation("codex", "C:/board-a", "C:/source-a", " release-board ");
+    expect(custom.env).toEqual({ KANMER_BOARD_BRANCH: "release-board" });
+
     const grok = serverInvocation("grok", "C:/board-a", "C:/source-a");
     expect(grok.command).toBe(process.execPath);
     expect(grok.args).toContain("C:/board-a");
-    expect(grok.env).toEqual({ ELECTRON_RUN_AS_NODE: "1" });
+    expect(grok.env).toEqual({ ELECTRON_RUN_AS_NODE: "1", KANMER_BOARD_BRANCH: "kanmer-board" });
   });
 
   it("runs the fixed probe with explicit argv and bounded Windows options", async () => {
@@ -576,6 +579,34 @@ describe("portable Codex launcher contract (GUI-100)", () => {
       args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe'],
       options: { cwd: "C:/workspace", windowsHide: true, timeout: 10_000, maxBuffer: 32 * 1024 },
     }]);
+  });
+
+  it("threads the saved board branch through a project registration", async () => {
+    const root = await tempRoot();
+    testProviders.set("mcp-044", {
+      id: "mcp-044" as ProviderId,
+      label: "MCP-044 test host",
+      register: {
+        kind: "configFile",
+        configPath: ".mcp-044.json",
+        merge: (existing, invocation) => JSON.stringify({
+          ...(existing ? JSON.parse(existing) : {}),
+          invocation,
+        }),
+        unmerge: (existing) => existing,
+        registrationState: () => "registered",
+      },
+      install: { kind: "copySkills", skillsScope: "agentsOnly" },
+      dispatch: false,
+    } as AgentProvider);
+
+    const result = await connectAgent("mcp-044" as ProviderId, root, root, {}, " release-board ");
+    expect(result.ok).toBe(true);
+    const registration = JSON.parse(await readFile(join(root, ".mcp-044.json"), "utf8"));
+    expect(registration.invocation.env).toEqual({
+      ELECTRON_RUN_AS_NODE: "1",
+      KANMER_BOARD_BRANCH: "release-board",
+    });
   });
 
   it("refuses a failed probe before creating or changing project config", async () => {

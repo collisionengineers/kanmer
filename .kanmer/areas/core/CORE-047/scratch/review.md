@@ -121,3 +121,72 @@ PR #169 reports head `47169144c0bd13bd205e42922c0282bfd56c466a`; `git rev-parse`
 ## Verdict
 
 NEEDS-CHANGES. The active-owner reversed-order case is covered, but the cleanup-order stress leaves an orphaned replacement lock, and the ticket SHA is unreachable. No merge, move, cleanup, or source change was performed.
+
+# Independent review — CORE-047 — LATEST SHA-BOUND ATTESTATION
+
+This entry supersedes the prior review entries for old head `47169144c0bd13bd205e42922c0282bfd56c466a`. It reviews only the current PR head.
+
+- independent: true
+- verdict: PASS
+- ticket: CORE-047
+- PR: #169 (open; not merged)
+- reviewed_head: `67e2be792e8480d29df7ff13128fb8c7886056a`
+- base: `core-046-lock-reclaim-race-ipv6` / `54651a3c77b8ca8d02d9d309e36baf9b62ebca3c`
+- branch: `core-047-replacement-lock-race`
+- plan_version/hash: `d4f2e65c2dfe0d08`
+- review_date: 2026-08-22
+
+## Scope and diff audit
+
+The exact head contains only the bounded CORE-047 implementation and proof changes:
+- `packages/core/src/io.ts`
+- `packages/core/src/io.test.ts`
+- `plugins/kanmer/mcp/kanmer-mcp.cjs`
+
+The implementation uses unique owner tokens and owner-marker leases, token-aware release with a double sweep, and active-owner quarantine retention. The tests add deterministic release-order and third-claimant coverage while preserving inherited IO assertions. The committed standalone plugin bundle contains the same token/lease/release logic; `npm run plugin:check` confirms source/bundle byte parity.
+
+Prior findings are dispositioned:
+- Release-order orphan race: FIXED by token-aware owner release and the second token sweep.
+- Third-claimant deletion race: FIXED by active-owner marker detection and retaining a quarantined active replacement for its owner to clean up.
+- Stale plugin artifact: FIXED; regenerated artifact is present and plugin parity passes.
+- Commit traceability: FIXED for this review; ticket and PR record exact reachable head `67e2be792e8480d29df7ff13128fb8c7886056a9`.
+
+## Exact verification evidence
+
+- `npm run test -w @kanmer/core -- src/io.test.ts` — PASS, 18/18.
+- `npm run test -w @kanmer/core -- src/io.test.ts src/sources.test.ts src/store.test.ts` — PASS, 109/109.
+- `npm run test -w @kanmer/core` — PASS, 296/296.
+- `npm run typecheck -w @kanmer/core` — PASS.
+- `npm run build:core` — PASS.
+- `node --test packages/mcp-server/src/sources.test.mjs` — PASS, 14/14.
+- `npm run plugin:check` — PASS: 37 tools match, bundle bytes match, 12 skill frontmatters parse, manifests at v0.3.3, isolated MCP handshake lists 37 tools.
+- `git diff --check` — PASS.
+- Worktree at review time was clean at the reviewed head.
+
+## Adversarial release-order probe
+
+Against the freshly built `packages/core/dist/index.js`, the deterministic reversed-order probe produced exactly:
+
+```json
+{"winnerResult":"winner","staleResult":"stale-reclaimer","leftover":false,"leftoverContents":null,"entries":[]}
+```
+
+The winner released while its tokenized lock was quarantined; the stale reclaimer then completed, and no lock or quarantine entry remained.
+
+## Adversarial third-claimant probe
+
+Against the same freshly built artifact, the deterministic third-claimant probe produced exactly:
+
+```json
+{"staleError":"EEXIST","winnerResult":"winner","thirdResult":"third","thirdLockBefore":"{\"pid\":29596,\"createdAt\":1787397763859,\"token\":\"5fe8d12b-3f8e-4dbe-9dbf-57d7b61dd6f2\"}\n","quarantineBeforeWinnerRelease":["cache.lock.stale-29596-3"],"thirdLockAfterWinner":"{\"pid\":29596,\"createdAt\":1787397763859,\"token\":\"5fe8d12b-3f8e-4dbe-9dbf-57d7b61dd6f2\"}\n","finalPath":false,"finalEntries":[]}
+```
+
+The third claimant remained owner of the original path after the winner released, and all lock/quarantine entries were gone only after the third claimant released.
+
+## Boundaries
+
+No hosted workflow, genuine multi-process Windows crash/PID-reuse stress, process termination between inspection/reclaim, or crash-timing evidence is claimed. Those remain explicitly INCONCLUSIVE per the ticket's parked questions. No merge, move, cleanup, or source changes were performed by this reviewer.
+
+## Review conclusion
+
+PASS for `67e2be792e8480d29df7ff13128fb8c7886056a9`. Independent review is complete; leave PR #169 and CORE-047 at Review for the authorized next step.

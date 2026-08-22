@@ -1,6 +1,44 @@
 ---
 kind: review-attestation
 pr: "163"
+head_sha: "a1a4fe629d71d149b64fd3e57979a196176b875a"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: needs-changes
+reviewer: "codex-root-current-cumulative-audit"
+independent: true
+plan_hash: "2026-08-22T19:35:00Z"
+ticket_updated: "2026-08-22T19:35:00Z"
+findings:
+  - id: F-029
+    severity: blocker
+    summary: "Lock ownership and board-artifact isolation remediation"
+    disposition: deferred-to-ticket
+    ticket: "CORE-082"
+    reason: "CORE-082 remains a live blocker for CORE-026 and owns PID-reuse-safe ownership, malformed stale-lock recovery, and board lock/owner/quarantine ignore rules."
+  - id: F-030
+    severity: blocker
+    summary: "Orphan migration preserves newer source-board state"
+    disposition: deferred-to-ticket
+    ticket: "CORE-083"
+    reason: "CORE-083 remains a live blocker for CORE-026 and owns source-version conflict protection plus canonical board-root retention when source ignore reconciliation refuses."
+  - id: F-031
+    severity: minor
+    summary: "Live external source/provider and packaged evidence"
+    disposition: accepted-risk
+    reason: "Live provider, network/DNS rebinding, packaged MCPB CLI, and external estate evidence remain explicitly INCONCLUSIVE; no external state was changed."
+---
+
+## Current cumulative review — NEEDS-CHANGES — 2026-08-22
+
+Reviewed exact PR #163 cumulative head a1a4fe629d71d149b64fd3e57979a196176b875a against main base 34245be039e8fd8395b5e31835602c54e62e98a4. CORE-081/085 source lifecycle fixes and CORE-086 artifact refresh are present and independently reviewed; the authoritative source/core/typecheck/build/scripts rails pass in the cumulative packet and exact rebuild. CORE-082 and CORE-083 remain live blocking dependencies. The machine attestation now uses valid F-### identifiers and records those blockers explicitly; no source finding is silently accepted.
+
+Verdict: NEEDS-CHANGES. Do not merge or move CORE-026 while CORE-082 and CORE-083 remain incomplete. Live provider/network/packaged boundaries remain accepted INCONCLUSIVE risk only.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "163"
 head_sha: "3a05ab7a21f55152a4f493169300ac9e622baab7"
 base_sha: "84a20f8414264f65f6d851ca51849af89c80acf9"
 verdict: needs-changes

@@ -2,18 +2,23 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import matter from "gray-matter";
 // The workflow builds core immediately before invoking this source-level CLI.
-// A relative dist import keeps the check pinned to the checkout being tested,
-// rather than whatever workspace symlink a developer happens to have.
-import { KanmerStore, evaluateMergeGate } from "../../core/dist/index.js";
+import {
+  KanmerStore,
+  boardStages,
+  getLinkGraph,
+  lastStageId,
+  evaluateMergeGate,
+  resolveMergeGateTicket,
+} from "../../core/dist/index.js";
+import { assertGitRepository, collectCommitReachability, isFullGitSha } from "./git-reachability.mjs";
 
 function parseArgs(argv) {
   const values = {};
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i];
-    if (flag !== "--board" && flag !== "--event") {
-      throw new Error(`unknown argument ${flag}`);
-    }
+    if (flag !== "--board" && flag !== "--event") throw new Error(`unknown argument ${flag}`);
     if (values[flag]) throw new Error(`duplicate argument ${flag}`);
     const value = argv[++i];
     if (!value || value.startsWith("--")) throw new Error(`${flag} requires a value`);
@@ -26,15 +31,9 @@ function parseArgs(argv) {
 function readPrEvent(value) {
   const pr = value?.pull_request;
   const head = pr?.head;
-  if (!pr || !head || !Number.isInteger(pr.number) || pr.number < 1) {
-    throw new Error("event is missing pull_request.number");
-  }
-  if (typeof head.sha !== "string" || !head.sha || typeof head.ref !== "string" || !head.ref) {
-    throw new Error("event is missing pull_request.head.sha or head.ref");
-  }
-  if (pr.body !== null && pr.body !== undefined && typeof pr.body !== "string") {
-    throw new Error("pull_request.body must be a string or null");
-  }
+  if (!pr || !head || !Number.isInteger(pr.number) || pr.number < 1) throw new Error("event is missing pull_request.number");
+  if (typeof head.sha !== "string" || !head.sha || typeof head.ref !== "string" || !head.ref) throw new Error("event is missing pull_request.head.sha or head.ref");
+  if (pr.body !== null && pr.body !== undefined && typeof pr.body !== "string") throw new Error("pull_request.body must be a string or null");
   return { number: pr.number, headSha: head.sha, branch: head.ref, body: pr.body ?? null };
 }
 
@@ -47,9 +46,63 @@ function escapeCommandData(value) {
     .replaceAll(",", "%2C");
 }
 
+function parseReviewEvidence(raw) {
+  if (raw === null) return { state: "absent" };
+  try {
+    const parsed = matter(raw);
+    const data = parsed.data;
+    if (!data || typeof data !== "object") return { state: "invalid", reason: "frontmatter is not an object" };
+    if (data.kind !== "review-attestation") return { state: "invalid", reason: 'kind must be "review-attestation"' };
+    if (typeof data.head_sha !== "string" || !isFullGitSha(data.head_sha)) return { state: "invalid", reason: "head_sha must be a full hexadecimal Git object id" };
+    return {
+      state: "valid",
+      headSha: data.head_sha,
+      verdict: typeof data.verdict === "string" ? data.verdict : undefined,
+      details: data,
+    };
+  } catch (error) {
+    const reason = String(error instanceof Error ? error.message : error).replace(/[\r\n]+/g, " ").slice(0, 240);
+    return { state: "invalid", reason: `frontmatter could not be parsed: ${reason}` };
+  }
+}
+
+async function phase2Evidence(store, pr, ticketId) {
+  const board = await store.getBoard();
+  const reviewStageId = boardStages().find((stage) => stage.name.toLowerCase() === "review")?.id;
+  if (!reviewStageId) throw new Error("board has no semantic review stage");
+  const finalStageId = lastStageId(board);
+  const graph = await getLinkGraph(store, ticketId);
+  const all = await store.listItems({ includeArchived: true });
+  const byId = new Map(all.map((item) => [item.id, item]));
+  // Only the derived blockedBy direction is used. The target's outgoing
+  // blocks[] is intentionally never treated as its prerequisite list.
+  const blockerIds = new Set(graph.blockedBy);
+  const blockers = [...blockerIds].sort().map((id) => {
+    const blocker = byId.get(id);
+    return blocker
+      ? { id, exists: true, status: blocker.status, archived: blocker.archived }
+      : { id, exists: false };
+  });
+  const item = byId.get(ticketId) ?? await store.getItem(ticketId);
+  if (!item) throw new Error(`Kanmer ticket ${ticketId} disappeared while gathering evidence`);
+  const review = parseReviewEvidence(await store.getDoc(ticketId, "scratch/review"));
+  const commits = item.commits ?? [];
+  const commitEvidence = commits.length === 0
+    ? []
+    : (await assertGitRepository({ cwd: process.cwd() }), await collectCommitReachability({ commits, headSha: pr.headSha, cwd: process.cwd() }));
+  return { reviewStageId, finalStageId, blockers, review, commits: commitEvidence };
+}
+
+async function emptyPhase2Evidence(store) {
+  const board = await store.getBoard();
+  const reviewStageId = boardStages().find((stage) => stage.name.toLowerCase() === "review")?.id;
+  if (!reviewStageId) throw new Error("board has no semantic review stage");
+  return { reviewStageId, finalStageId: lastStageId(board), blockers: [], review: { state: "absent" }, commits: [] };
+}
+
 function emitInfra(message) {
-  const raw = String(message).replaceAll(/[\r\n]+/g, " ").replaceAll(/["'`]/g, "");
-  const safe = /^(unknown argument|duplicate argument|--board|event|pull_request)/i.test(raw)
+  const raw = String(message).replace(/[\r\n]+/g, " ").replace(/["'`]/g, "");
+  const safe = /^(unknown argument|duplicate argument|--board|event|pull_request|board has|Kanmer ticket|pull request head SHA)/i.test(raw)
     ? raw
     : "board or event could not be read";
   process.stdout.write(`${JSON.stringify({ ok: false, infrastructureError: true, error: safe, findings: [] })}\n`);
@@ -66,12 +119,17 @@ async function main() {
       fs.access(path.resolve(args.board)),
     ]);
     const pr = readPrEvent(JSON.parse(eventText));
-    const result = await evaluateMergeGate(new KanmerStore(path.resolve(args.board)), pr);
+    const store = new KanmerStore(path.resolve(args.board));
+    const resolved = resolveMergeGateTicket(pr.body, pr.branch);
+    const resolvedItem = resolved.ticketId ? await store.getItem(resolved.ticketId) : null;
+    const evidence = resolvedItem
+      ? await phase2Evidence(store, pr, resolved.ticketId)
+      : await emptyPhase2Evidence(store);
+    const result = await evaluateMergeGate(store, pr, evidence);
     process.stdout.write(`${JSON.stringify(result)}\n`);
     for (const finding of result.findings) {
-      if (finding.level === "error") {
-        process.stderr.write(`::error title=kanmer/gate [${finding.code}]::${escapeCommandData(finding.message)}\n`);
-      }
+      const command = finding.level === "error" ? "error" : "warning";
+      process.stderr.write(`::${command} title=kanmer/gate [${finding.code}]::${escapeCommandData(finding.message)}\n`);
     }
     process.exitCode = result.ok ? 0 : 1;
   } catch (error) {
@@ -80,3 +138,5 @@ async function main() {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+
+export { escapeCommandData, parseArgs, parseReviewEvidence, readPrEvent };

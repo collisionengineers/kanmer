@@ -24,6 +24,12 @@ Readiness is expressed as four profile-resolved predicates at existing boundarie
 
 GitHub required checks and branch protection remain merge physics. Kanmer records intent, readiness, and evidence; it does not become a merge queue.
 
+The sole `kanmer-gate` check compiles those records into one read-only verdict:
+stage and live dependency findings fail, while missing/stale review attestations
+and unreachable historical commits remain explicit warnings during the
+compatibility period. Its JSON/annotation/0-1-2 contract is stable so branch
+protection can consume the check without a second workflow or evaluator.
+
 `expected_project` is optional during the compatibility window. Clients first inspect `get_status.compat.expectedProject`, send it only when supported, and it cannot become mandatory before the release after compatible clients and skills ship. `custom` remains supported for import/backfill; policy directs new ordinary work to feature, fix, chore, or spike without removing ungated creation.
 
 Groups plus `blocks` remain the only settled structure. This decision adds no hierarchy, stages, gated document types, leases/heartbeats, overlay engine, role-specific servers, metrics/golden board, GitHub App, format 4, profile materialization, prose-scored gates, merge queue, or automatic merge.

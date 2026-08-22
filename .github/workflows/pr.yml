@@ -34,6 +34,8 @@ jobs:
     steps:
       - name: Check out the pull request
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -46,6 +48,12 @@ jobs:
       - name: Build the read-only core
         run: npm run build:core
 
+      - name: Fetch the exact PR ancestry
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: git fetch --no-tags origin "$PR_HEAD_SHA" "$PR_BASE_SHA"
+
       - name: Fetch the board worktree
         run: |
           git fetch origin kanmer-board
@@ -57,5 +65,5 @@ jobs:
           workspace_path="$(pwd -P)"
           test "$board_path" != "$workspace_path"
 
-      - name: Run the phase-1 merge gate
+      - name: Run the phase-2 merge gate
         run: node packages/mcp-server/src/check-pr.mjs --board "$RUNNER_TEMP/kanmer-board" --event "$GITHUB_EVENT_PATH"

@@ -26,6 +26,21 @@ It applies at `leave-preparing`, `enter-review` and `enter-done`, on **every** p
 
 A ticked box is the whole mechanism. Nothing records **who** answered: Kanmer is a solo-developer tool, and where more than one person is involved the commit that ticks the box already carries the author.
 
+### Merge-gate read boundary (CORE-025)
+
+The profile-resolved movement gates remain governed by the decision above: their
+only content reader is the `questions-resolved` parser. The separate, read-only
+CI merge predicate `kanmer-gate` is allowed to inspect the machine record
+`scratch/review.md` and Git ancestry evidence at its package boundary. That is
+not a new document requirement and it never mutates a ticket or makes core
+spawn a subprocess. The gate parses review frontmatter structurally, compares a
+full attested `head_sha` with the exact PR head, and passes typed reachability
+evidence into the pure evaluator. Missing, malformed, or stale review evidence
+and unreachable historical commits are compatibility-period warnings; stage and
+live-dependency failures remain errors. This keeps the movement-gate contract
+and the GitHub merge contract explicit instead of silently broadening the
+`questions-resolved` parser.
+
 `## Parked (explicitly deferred)` is promoted from a suggested heading to the **normative** escape. A question moved beneath it with a reason clears the gate, which is what makes kanmer-research's "answered or explicitly parked" mechanically true rather than aspirational.
 
 ## Alternatives considered

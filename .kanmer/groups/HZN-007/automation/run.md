@@ -129,3 +129,6 @@
 
 
 ## 2026-08-22T11:30Z — CORE-044 independent review disposition\n\n- Independent review attestation 750e6351642a8bd3 on PR #165/head 33f32e3aae9819f1c2344863272dacb5c958fbac is NEEDS-CHANGES. Focused rails pass (core 91/91, source 12/12); no hosted checks reported for stacked PR.\n- Blocking findings: F-003 stale-lock recovery after crash; F-009 incomplete DNS public-destination classification.\n- Linked blocker CORE-045 created in HZN-007, moved Backlog → Preparing, blocks CORE-044, and is assigned to the original author for a fresh stacked fix/review. CORE-044 remains Review and cannot merge.\n
+
+
+## 2026-08-22T11:40Z — CORE-045 Review handoff\n\n- CORE-045 fixes both CORE-044 blockers in exact stacked commit 1234264b292e574d38f276b91592ea0b8bef9361, PR #166 targeting core-044-source-fetch-remediation at base 33f32e3aae9819f1c2344863272dacb5c958fbac.\n- Inherited IO assertions were restored; new stale-lock tests and expanded special-use DNS/mapped-range tests pass. Report/checklist 8/8 and Review gates pass; Implementing → Review at 2026-08-22T10:23:07.802Z.\n- Independent reviewer /root/gui099_executor assigned. CORE-044 remains Review/blocked; no merge or verification yet.\n

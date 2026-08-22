@@ -4,12 +4,13 @@ type: ticket
 title: >-
   CORE-044 review remediation: stale-lock recovery and complete DNS destination
   policy
-status: implementing
+status: review
 area: core
 assignee: codex-core045-execute
 profile: fix
 stageEntered:
   preparing: '2026-08-22T10:11:15.070Z'
+  review: '2026-08-22T10:23:07.802Z'
 taken_at: '2026-08-22T10:13:53.002Z'
 branch: core-045-lock-dns-remediation
 worktree: .worktrees/core-045
@@ -26,9 +27,13 @@ blocks:
 refs:
   - docs/functional/frd/FRD-027-project-declared-sources.md
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
+commits:
+  - 1234264b292e574d38f276b91592ea0b8bef9361
+prs:
+  - '166'
 archived: false
 created: '2026-08-22T10:11:05.566Z'
-updated: '2026-08-22T10:13:53.002Z'
+updated: '2026-08-22T10:23:07.802Z'
 ---
 
 Independent review of CORE-044 / PR #165 found two blockers that must be fixed and re-reviewed before CORE-044 can merge:

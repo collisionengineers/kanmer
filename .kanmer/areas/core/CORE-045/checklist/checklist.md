@@ -5,6 +5,6 @@
 - [x] Add deterministic core lock tests for stale recovery, active protection, callback cleanup, and bounded retries.
 - [x] Complete non-global IPv4/IPv6 and IPv4-mapped destination classification without dependencies.
 - [x] Add deterministic source lookup tests for special-use/documentation/benchmark/reserved/mapped/public ranges and redirect reuse.
-- [ ] Run focused source/core tests, typecheck/build, authoritative HTTP/source rail, and proportionate docs/plugin/diff checks; preserve first failures.
-- [ ] Write the post-implementation report mapping F-003/F-009, record commit/PR/base and evidence limits, and update scratch.
-- [ ] Re-read get_doc_gates, record traceability, push the stacked PR, move Implementing → Review one boundary, and stop for independent review.
+- [x] Run focused source/core tests, typecheck/build, authoritative HTTP/source rail, and proportionate docs/plugin/diff checks; preserve first failures. Core 106/106, source 13/13, HTTP 81/81, scripts 88/88, protocol 46/46, discovery 13/13, typecheck/build/plugin/docs rails pass.
+- [x] Write the post-implementation report mapping F-003/F-009, record commit/PR/base and evidence limits, and update scratch.
+- [x] Re-read get_doc_gates, record traceability, push stacked PR #166, move Implementing → Review one boundary, and stop for independent review.

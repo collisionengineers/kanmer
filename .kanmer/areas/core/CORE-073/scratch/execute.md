@@ -1,0 +1,1 @@
+Implemented root-bound retry guard in syncBranch.ts and index.ts. Focused syncBranch tests 5/5; core build and scripts 88/88 pass. Full GUI and GUI typecheck preserve known stale shared-core antigravity baseline failures.

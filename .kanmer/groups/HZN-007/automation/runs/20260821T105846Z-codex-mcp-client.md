@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T01:45:05.809Z
+updated_at: 2026-08-22T01:46:13.143Z
 lane_limit: 3
 stop_reason:
 ---
@@ -549,3 +549,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T01:42:27.643Z — CORE-040 created from PR #145 hosted run 32543948316: after CORE-039, clean shallow CI lacked tag v0.3.2 and release-notes scripts fell to 79/80. Root implemented one-line ISO cutoff commit 6f17bccf on a CORE-039 dependency stack; ticket is Review on PR #148 awaiting independent review before stacking into PR #145.
 
 - 2026-08-22T01:45:05.809Z — independent review PASS for CORE-040 commit 6f17bccf by /root/gui099_executor: one-line ISO cutoff precedes documented CORE-027 Done, assertions and production tag resolution are unchanged, and local build/focused/scripts/typecheck/diff rails pass. PR #148 is superseded; CORE-040 is stacked into PR #145 as merge ad8be25b. Shared hosted verify remains pending.
+
+- 2026-08-22T01:46:13.143Z — CORE-040 independent review by /root/gui099_executor: commit 6f17bccfec7577c4a2645fa1abe2d5251aacb8c4 in .worktrees/core-040 is exactly one test-only ISO cutoff line before CORE-027's documented Done timestamp; canonical PR #96/no-shorthand assertions unchanged. CORE-039 dependency is explicit in packet, PR #148 body, and stack ancestry through 18143045/79c85e07. Focused release-notes 1/1, scripts 80/80, build, all-workspace typecheck, and diff-check exit 0. Verdict PASS; PR #148 remains OPEN, no merge, stage move, or cleanup.

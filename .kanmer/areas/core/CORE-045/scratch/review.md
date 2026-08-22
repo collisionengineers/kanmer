@@ -2,50 +2,53 @@
 kind: review-attestation
 pr: "166"
 head_sha: "1234264b292e574d38f276b91592ea0b8bef9361"
-base_sha: "33f32e3aae9819f1c2344863272dacb5c958fbac"
 verdict: needs-changes
-reviewer: "core041-executor"
+reviewer: "gui099-executor"
 independent: true
 plan_hash: "0b7d3955fc42a058"
+ticket_updated: "2026-08-22T10:23:07.802Z"
+findings:
+  - id: F-003
+    severity: blocker
+    summary: "Stale-lock recovery"
+    disposition: fixed
+    reason: "Valid JSON dead/stale locks recover only after age and liveness checks; fresh, active, malformed, uncertain and racing records remain protected. Legacy PID-only records use mtime and recover only when stale/dead. Callback failure releases the claim. The inherited renameWithRetry/writeFileAtomic/TMP_FILE_RE tests remain unchanged and the IO suite is 15/15."
+  - id: F-009
+    severity: blocker
+    summary: "Complete non-global IPv4/IPv6 destination policy"
+    disposition: open
+    reason: "The classifier still omits registered non-global special-use blocks, including IPv4 192.175.48.0/24 and IPv6 100:0:0:1::/64, 64:ff9b:1::/48, and 5f00::/16. The IANA registries mark these special-purpose ranges non-globally reachable; the plan requires complete known non-global coverage. DNS is called before current, response and redirect targets, but the new tests do not exercise lookup invocation on a redirect/linked hop."
 ---
 # Independent review — CORE-045
 
 ## Verdict
 
-NEEDS-CHANGES. The stacked scope is correct and the author preserved the inherited IO assertions, but stale-lock recovery still has a concurrent reclaim race and the IPv6 policy omits documented non-global ranges. CORE-044 remains blocked. No merge, move, or cleanup was performed.
+NEEDS-CHANGES. CORE-045 correctly remediates stale-lock recovery for the requested valid, legacy, fresh, active, malformed-text, uncertain, callback-cleanup and race-recheck paths, but F-009 is not complete. The classifier and deterministic fixture list omit known non-global special-purpose ranges, so the remote SSRF boundary remains incomplete.
 
-## Packet and diff read
+## Packet and stacked diff
 
-I read the complete CORE-045 item and research, files, plan, checklist, open-questions, post-implementation-report, and `scratch/execute.md`; HZN-007 `context.md`; the linked CORE-044 review attestation; FRD-027; ADR-0020; and PR #166's diff at `1234264b292e574d38f276b91592ea0b8bef9361`, based exactly on CORE-044 head `33f32e3aae9819f1c2344863272dacb5c958fbac`. The diff is limited to `packages/core/src/io.ts`, its tests, `packages/mcp-server/src/sources.ts`, its tests, and the regenerated plugin bundle. Governing-doc intent remains preference-only, bounded HTTPS/same-origin retrieval, and fail-closed cache/destination boundaries.
+I read the complete CORE-045 research, files, plan, checklist, open-questions, post-implementation report and execution scratch; HZN-007 context; FRD-027; ADR-0020; the linked CORE-044 review attestation; and the exact diff from CORE-044 head 33f32e3aae9819f1c2344863272dacb5c958fbac to 1234264b292e574d38f276b91592ea0b8bef9361. The five-file diff is scoped to core IO/tests, MCP source classifier/tests and the regenerated plugin bundle. Inherited IO tests are preserved unchanged; three lock tests bring that file to 15 tests.
 
-## Findings
+## F-003 audit
 
-### F-001 — blocking: stale-lock recovery is not atomic against concurrent reclaimers
+- PASS: dead/stale JSON lock recovery requires both age and a demonstrably dead PID.
+- PASS: fresh, active, malformed text, and liveness-uncertain records remain protected and surface bounded EEXIST.
+- PASS: legacy PID-only records use mtime as the age source and recover only when stale/dead.
+- PASS: callback failures unlink the claimed lock.
+- PASS: the implementation re-reads contents and mtime before unlinking; a race after inspection must re-claim exclusively or surface contention.
+- INCONCLUSIVE by design: PID reuse and exact process termination between inspection and unlink require an OS stress harness and remain parked as the ticket states.
 
-`recoverStaleLock` reads/stat-checks the stale record, rereads it, then calls `fs.rm(lockFile)`. The second read closes neither the TOCTOU gap nor the multi-reclaimer case: reclaimer A can finish its reread, reclaimer B can remove the old lock and claim a new lock, and A can then remove B's newly claimed lock before claiming it itself. The comment that a race after the check fails closed is not true for replacement between the reread and `fs.rm`; the next exclusive claim cannot detect that A already deleted B's lock. This can permit concurrent cache/board writers.
+## F-009 audit
 
-Disposition: open / blocking. Use an atomic compare-and-reclaim mechanism (for example, atomically rename the inspected stale lock to a unique tombstone before deleting it, with ownership of the tombstone determining who may remove it) or an equivalent OS-safe claim, and add a deterministic two-reclaimer race regression while retaining the inherited `renameWithRetry`, `writeFileAtomic`, and `TMP_FILE_RE` assertions.
+The source code calls the destination check before each current request, after each response URL, and before each redirect target; lookup errors and empty results fail closed. The classifier covers the ranges exercised by the 13-test source suite and mapped IPv4 in dotted and hexadecimal forms. However, the complete special-use contract is not met: IANA IPv4 Special-Purpose Registry (https://www.iana.org/assignments/iana-ipv4-special-registry) includes 192.175.48.0/24, and IANA IPv6 Special-Purpose Registry (https://www.iana.org/assignments/iana-ipv6-special-registry) includes non-globally-reachable 100:0:0:1::/64, 64:ff9b:1::/48 and 5f00::/16, none of which the classifier rejects. The redirect/linked-hop lookup seam is present in code but is not directly asserted by the new fixture.
 
-### F-002 — blocking: IPv6 classifier misses documented non-global ranges
+## Verification evidence
 
-The new parser correctly handles hexadecimal and dotted IPv4-mapped forms and rejects the listed IPv6 examples, but `isPrivateAddress` still allows these current special-purpose non-global destinations:
+- PASS exit 0: npm run test -w @kanmer/core -- src/io.test.ts src/sources.test.ts src/store.test.ts — 106/106, including IO 15/15.
+- PASS exit 0: node --test packages/mcp-server/src/sources.test.mjs — 13/13.
+- PASS exit 0: npm run test:http -w @kanmer/mcp-server — 81/81.
+- The report records PASS for typecheck/build/plugin/smoke/docs/skills/managed-block/diff rails; no associated hosted workflow runs were returned for head 1234264b292e574d38f276b91592ea0b8bef9361, and PR #166 has no review threads/comments. Live DNS rebinding, PID reuse and exact crash timing remain INCONCLUSIVE.
 
-- `64:ff9b:1::/48` (IPv4-IPv6 translation prefix with Globally Reachable false),
-- `100:0:0:1::/64` (dummy IPv6 prefix), and
-- `5f00::/16` (SRv6 SID space with Globally Reachable false).
+## Required remediation
 
-Direct probes against the built head reached the injected fetch seam for representative addresses `64:ff9b:1::1`, `100:0:0:1::1`, and `5f00::1`, so this is not merely a missing assertion. Add these ranges (and any equivalent mapped representation required by the policy) and deterministic rejection tests. The authoritative IANA IPv6 registry records these non-global entries: https://www.iana.org/assignments/iana-ipv6-special-registry.
-
-Disposition: open / blocking. Do not weaken the existing mapped/private checks; retain DNS lookup before every root, redirect, response hop, and linked request.
-
-### Non-blocking verification note — DNS-before-every-hop
-
-The control flow in `fetchText` calls `assertPublicDestination` before each request and again for response/redirect targets, so the code path retains the required per-hop preflight. The existing redirect test does not inject/count `lookupImpl`, so it does not independently prove that call ordering; add that regression with the range fixes rather than claiming an extra hosted proof.
-
-## Evidence
-
-- Independently rerun: `npm run test -w @kanmer/core -- src/io.test.ts` — exit 0, 15/15.
-- Independently rerun: `node --test packages/mcp-server/src/sources.test.mjs` — exit 0, 13/13.
-- Author-reported and packet-recorded: core focused 106/106; IO 15/15; source 13/13; HTTP 81/81; scripts 88/88; protocol 46/46; discovery 13/13; workspace typecheck/build/plugin/docs/skills/managed-block/diff rails pass.
-- PR #166 is open at the exact head above with no hosted check rollup; no hosted PASS is claimed.
-- Live DNS rebinding, PID reuse, exact crash timing, and packaged proof remain INCONCLUSIVE as the ticket states.
+Add the omitted non-global special-use ranges and deterministic tests, plus a redirect/linked-hop lookup invocation regression if the “before every hop” claim is retained. Re-run the source/HTTP and relevant workspace rails, update the report/checklist and this SHA-bound attestation, and request fresh independent review. No merge, move or cleanup was performed.

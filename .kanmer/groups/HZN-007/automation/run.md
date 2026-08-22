@@ -138,3 +138,6 @@
 
 
 2026-08-22T10:39Z — CORE-046 taken by codex-core046-execute on core-046-lock-reclaim-race-ipv6/.worktrees/core-046. Packet docs exist; implementation is limited to the CORE-045 F-003 stale-lock reclaim race and F-009 IPv6 special ranges. CORE-045 remains blocked; independent review required after Review handoff.
+
+
+2026-08-22T10:44Z — CORE-043 taken by core041-executor on core-043-protection-retarget/.worktrees/core-043 after full packet/context/gate read. Scope is the deferred branch-protection retarget/rename-flow follow-up linked to CORE-033; no source outside that lane.

@@ -1,678 +1,186 @@
 ---
 kind: review-attestation
 pr: "168"
-head_sha: "9371e2b0e8882426d91dbc99553e96853b99197f"
-base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
-verdict: needs-changes
-reviewer: "codex-root-current-head-audit"
-independent: true
-plan_hash: "2026-08-22T20:09:00Z"
-ticket_updated: "2026-08-22T20:09:00Z"
-findings:
-  - id: F-032
-    severity: blocker
-    summary: "Hosted handoff state remains visible until Actions configuration is confirmed"
-    disposition: deferred-to-ticket
-    ticket: "GUI-115"
-    reason: "Current PR #168 thread 3836827896 shows the required KANMER_BOARD_BRANCH handoff is stored as a transient sync error and can disappear after a successful sync; GUI-115 owns persistent state."
-  - id: F-033
-    severity: major
-    summary: "Retry re-arms automatic sync after an unavailable worktree is repaired"
-    disposition: deferred-to-ticket
-    ticket: "GUI-115"
-    reason: "Current PR #168 thread 3836827899 shows retrying a project that began unavailable skips timer re-arm; GUI-115 owns the production lifecycle fix."
-  - id: F-034
-    severity: blocker
-    summary: "Rename and sync operations are serialized"
-    disposition: deferred-to-ticket
-    ticket: "GUI-115"
-    reason: "Current PR #168 thread 3836827900 shows an existing interval/Sync now can race branch rename and push; GUI-115 owns suspension/serialization regressions."
-  - id: F-035
-    severity: blocker
-    summary: "Closed-project registrations reconcile when the project reopens"
-    disposition: deferred-to-ticket
-    ticket: "GUI-116"
-    reason: "Current PR #168 thread 3836890756 shows reconciliation only visits open contexts; GUI-116 owns the open-project production caller after worktree reconciliation."
-  - id: F-036
-    severity: blocker
-    summary: "Existing native provider installations refresh after branch changes"
-    disposition: deferred-to-ticket
-    ticket: "GUI-116"
-    reason: "Current PR #168 thread 3836890758 shows Grok/Antigravity installed runtimes retain the old staged branch; GUI-116 owns refresh or an explicit reconnect contract."
-  - id: F-037
-    severity: blocker
-    summary: "Shipped Antigravity descriptor uses a literal default branch"
-    disposition: deferred-to-ticket
-    ticket: "GUI-117"
-    reason: "Current PR #168 thread 3836890759 shows direct Antigravity installs do not expand shell-style defaults; GUI-117 owns the literal descriptor and guide correction."
-  - id: F-025
-    severity: minor
-    summary: "Live GitHub protection and variable mutation"
-    disposition: accepted-risk
-    reason: "No authorized live protection mutation or real multi-machine handoff was available; ADR-0016 keeps this administrator-owned external boundary."
----
-
-## Current-head independent review — NEEDS-CHANGES — 2026-08-22
-
-The exact PR #168 head remains 9371e2b0e8882426d91dbc99553e96853b99197f. GUI-113 and GUI-114 fixed the prior provider-registration and shell-interpolation findings, but the fresh automated review at this exact head surfaced six additional valid findings covering persistent handoff state, retry/timer/rename serialization, closed-project/native registration refresh, and the shipped Antigravity descriptor default. They are recorded above and linked to GUI-115, GUI-116, and GUI-117. No protected merge or conversation resolution is authorized until these remediations are independently reviewed and merged, followed by another exact-head review.
-
-Verdict: NEEDS-CHANGES. CORE-043 remains held in Review.
-
---- Prior review history ---
-
----
-kind: review-attestation
-pr: "168"
-head_sha: "9371e2b0e8882426d91dbc99553e96853b99197f"
-base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
-verdict: pass
-reviewer: "codex-root-final-cumulative-audit"
-independent: true
-plan_hash: "2026-08-22T20:07:00Z"
-ticket_updated: "2026-08-22T20:07:00Z"
-findings:
-  - id: F-026
-    severity: blocker
-    summary: "Saved board-branch changes reconcile existing provider registrations"
-    disposition: fixed-in-ticket
-    ticket: "GUI-113"
-    reason: "GUI-113 independently reviewed and merged as 69e2cc58; matching open projects reconcile provider-owned registrations and surface malformed entries without mutation."
-  - id: F-027
-    severity: blocker
-    summary: "Native provider descriptors carry the configured board branch"
-    disposition: fixed-in-ticket
-    ticket: "GUI-113"
-    reason: "GUI-113 independently reviewed and merged as 69e2cc58; Grok/Antigravity use disposable branch-injected descriptor copies."
-  - id: F-028
-    severity: blocker
-    summary: "Board-branch environment serialization is shell-safe"
-    disposition: fixed-in-ticket
-    ticket: "GUI-114"
-    reason: "GUI-114 independently reviewed and merged as 9371e2b0; Claude production registration uses execFile argv and hostile shell-metacharacter coverage passes."
-  - id: F-025
-    severity: minor
-    summary: "Live GitHub protection and variable mutation"
-    disposition: accepted-risk
-    reason: "No authorized live protection mutation or real multi-machine handoff was available; ADR-0016 keeps this administrator-owned external boundary."
----
-
-## Final cumulative independent review — PASS — 2026-08-22
-
-Reviewed exact cumulative PR #168 head 9371e2b0e8882426d91dbc99553e96853b99197f against main base 34245be039e8fd8395b5e31835602c54e62e98a4. GUI-113 and GUI-114 are independently reviewed and merged into the cumulative branch; all three current-head provider findings are now fixed-in-ticket with reachable merge commits. The remaining live protection/Actions-variable mutation boundary is explicitly accepted risk under ADR-0016; no admin bypass is authorized.
-
-Child evidence: GUI-113 focused 35/35/full GUI 417/417; GUI-114 focused 99/99/full GUI 418/418; all-workspace typecheck/build/manual/docs/managed-block/skills/scripts/diff rails pass in the child packets. Hosted verify and kanmer-gate must be rerun at this exact head before protected merge; no review thread is resolved until that run is green and the exact-head attestation is accepted.
-
-Verdict: PASS contingent on the exact-head hosted run. An authorized independent reviewer may merge PR #168 non-squash into protected main only after CI and conversation-resolution requirements are green. Do not use an admin bypass.
-
---- Prior review history ---
-
----
-kind: review-attestation
-pr: "168"
-head_sha: "69e2cc582b7ee8947f0febda6d286c18e21397a7"
-base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
-verdict: needs-changes
-reviewer: "codex-root-current-head-audit"
-independent: true
-plan_hash: "2026-08-22T19:54:00Z"
-ticket_updated: "2026-08-22T19:54:00Z"
-findings:
-  - id: F-026
-    severity: blocker
-    summary: "Saved board-branch changes reconcile existing provider registrations"
-    disposition: fixed-in-ticket
-    ticket: "GUI-113"
-    reason: "GUI-113 was independently reviewed and merged as 69e2cc58; production applyGitPreferences now reconciles matching open projects and surfaces malformed provider registrations without mutation."
-  - id: F-027
-    severity: blocker
-    summary: "Native provider descriptors carry the configured board branch"
-    disposition: fixed-in-ticket
-    ticket: "GUI-113"
-    reason: "GUI-113 was independently reviewed and merged as 69e2cc58; Grok/Antigravity install from disposable branch-injected descriptor copies and retain a pristine source bundle."
-  - id: F-028
-    severity: blocker
-    summary: "Board-branch environment serialization is shell-safe"
-    disposition: deferred-to-ticket
-    ticket: "GUI-114"
-    reason: "Current PR #168 thread 3836808787 remains open; GUI-114 owns argv-safe Claude/provider serialization and adversarial shell-metacharacter coverage."
-  - id: F-025
-    severity: minor
-    summary: "Live GitHub protection and variable mutation"
-    disposition: accepted-risk
-    reason: "No authorized live protection mutation or real multi-machine handoff was available; ADR-0016 keeps this administrator-owned external boundary."
----
-
-## Current-head independent review — NEEDS-CHANGES — 2026-08-22
-
-Reviewed exact cumulative PR #168 head 69e2cc582b7ee8947f0febda6d286c18e21397a7 against main base 34245be039e8fd8395b5e31835602c54e62e98a4. GUI-113 fixes the two prior provider-registration findings and is independently reviewed/merged. The shell-interpolation finding 3836808787 remains unresolved and is deferred to GUI-114; no protected merge or thread resolution is authorized until GUI-114 is independently reviewed and merged into this cumulative branch, followed by another exact-head review.
-
-Verdict: NEEDS-CHANGES. CORE-043 remains in Review and held.
-
---- Prior review history ---
-
----
-kind: review-attestation
-pr: "168"
-head_sha: "30ed38aa7052ccf01a34d6859e67ba3e5deee6b5"
-base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
-verdict: needs-changes
-reviewer: "codex-root-current-head-audit"
-independent: true
-plan_hash: "2026-08-22T19:30:00Z"
-ticket_updated: "2026-08-22T19:30:00Z"
-findings:
-  - id: F-026
-    severity: blocker
-    summary: "Saved board-branch changes reconcile existing provider registrations"
-    disposition: deferred-to-ticket
-    ticket: "GUI-113"
-    reason: "Current PR #168 thread 3836808784 shows that changing the saved branch leaves existing Codex/Claude/OpenCode registrations stale; GUI-113 owns reconciliation or an explicit reconnect contract."
-  - id: F-027
-    severity: blocker
-    summary: "Native provider plugin descriptors carry the configured board branch"
-    disposition: deferred-to-ticket
-    ticket: "GUI-113"
-    reason: "Current PR #168 thread 3836808786 shows connectNativePlugin returns before applying boardBranch, so Grok/Antigravity descriptors omit KANMER_BOARD_BRANCH; GUI-113 owns the fix."
-  - id: F-028
-    severity: blocker
-    summary: "Board-branch environment serialization is shell-safe"
-    disposition: deferred-to-ticket
-    ticket: "GUI-114"
-    reason: "Current PR #168 thread 3836808787 shows the Claude registration command interpolates raw branch text into cmd.exe; GUI-114 owns argv-safe serialization or complete escaping."
-  - id: F-025
-    severity: minor
-    summary: "Live GitHub protection and variable mutation"
-    disposition: accepted-risk
-    reason: "No authorized live protection mutation or real multi-machine handoff was available; ADR-0016 keeps this administrator-owned external boundary."
----
-
-## Current-head independent review — NEEDS-CHANGES — 2026-08-22
-
-Reviewed exact cumulative PR #168 head 30ed38aa7052ccf01a34d6859e67ba3e5deee6b5 against main base 34245be039e8fd8395b5e31835602c54e62e98a4. The previous ten findings are covered by independently merged GUI-112 and MCP-044, but a fresh automated review at this exact head found three new blocking provider-registration/shell-safety issues. They are recorded above and linked to GUI-113 and GUI-114. No PR thread is resolved and no protected merge is authorized until those tickets are independently reviewed, merged into the cumulative branch, and the exact head is re-reviewed.
-
-Verdict: NEEDS-CHANGES. CORE-043 remains in Review and held.
-
---- Prior review history ---
-
----
-kind: review-attestation
-pr: "168"
-head_sha: "30ed38aa7052ccf01a34d6859e67ba3e5deee6b5"
-base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
-verdict: pass
-reviewer: "codex-root-independent"
-independent: true
-plan_hash: "2026-08-22T18:39:56.633Z"
-ticket_updated: "2026-08-22T18:39:56.633Z"
-findings:
-  - id: F-015
-    severity: blocker
-    summary: "Custom rename must update the Actions board-branch variable"
-    disposition: fixed-in-ticket
-    ticket: "GUI-112"
-    reason: "GUI-112 merged as 30ed38aa; UI/manual/FRD/workflow wording retains the old ref until KANMER_BOARD_BRANCH is updated."
-  - id: F-016
-    severity: major
-    summary: "Resolved handoff must clear only its generated pause/error"
-    disposition: fixed-in-ticket
-    ticket: "GUI-112"
-    reason: "GUI-112's exact-handoff and genuine-error preservation regressions pass and are merged into this cumulative branch."
-  - id: F-017
-    severity: blocker
-    summary: "Automatic sync must stop while handoff is paused"
-    disposition: fixed-in-ticket
-    ticket: "GUI-112"
-    reason: "The existing pause/timer safety path remains covered by the cumulative GUI rail; GUI-112 changes only the preference/retry seam."
-  - id: F-018
-    severity: blocker
-    summary: "Managed AGENTS instructions must declare the branch convention"
-    disposition: fixed-in-ticket
-    ticket: "MCP-044"
-    reason: "MCP-044 merged as 10c9ad6e and updates AGENTS plus the managed setup skill/source."
-  - id: F-019
-    severity: major
-    summary: "Ordinary custom-to-custom rename must accept the actual current branch"
-    disposition: fixed-in-ticket
-    ticket: "GUI-112"
-    reason: "The cached-current preflight and ordinary-rename regression are merged and pass."
-  - id: F-020
-    severity: blocker
-    summary: "Local MCP processes must receive the configured board branch"
-    disposition: fixed-in-ticket
-    ticket: "MCP-044"
-    reason: "Connect IPC now threads readSettings().kanmerBranch into all local registration paths; focused/full GUI and hosted rails pass."
-  - id: F-021
-    severity: major
-    summary: "Manual Retry must recheck the live branch before syncing"
-    disposition: fixed-in-ticket
-    ticket: "GUI-112"
-    reason: "The production Retry caller test proves reconciliation precedes syncBoard and retains no-mutation safety."
-  - id: F-022
-    severity: major
-    summary: "FRD and manual text must state retained-ref handoff semantics"
-    disposition: fixed-in-ticket
-    ticket: "GUI-112"
-    reason: "FRD-020 R5 and all affected manuals were updated and regenerated."
-  - id: F-023
-    severity: major
-    summary: "Settings must state that the old custom ref is retained"
-    disposition: fixed-in-ticket
-    ticket: "GUI-112"
-    reason: "Settings now describes hosted-variable update and delayed old-ref deletion."
-  - id: F-024
-    severity: major
-    summary: "Settings must surface protected reconciliation failures"
-    disposition: fixed-in-ticket
-    ticket: "GUI-112"
-    reason: "Settings renders retained boardRoot/error and Retry for failed reconciliation."
-  - id: F-025
-    severity: minor
-    summary: "Live GitHub protection and variable mutation"
-    disposition: accepted-risk
-    reason: "No authorized live protection mutation or real multi-machine handoff was available; ADR-0016 keeps this administrator-owned external boundary."
----
-
-## Final cumulative independent review — PASS — 2026-08-22
-
-Reviewed exact PR #168 cumulative head 30ed38aa7052ccf01a34d6859e67ba3e5deee6b5 against main base 34245be039e8fd8395b5e31835602c54e62e98a4. The cumulative branch includes GUI-112 (30ed38aa merge) and MCP-044 (10c9ad6e merge), and all ten current-head review findings are dispositioned to those independently reviewed child tickets. Hosted verify/kanmer-gate run 32593389394 is running; its gate has no dependency or stale-review error after board reconciliation, and its only annotation is the prior-head warning being superseded by this exact-head attestation. Local cumulative evidence in the child packets passes focused/full GUI, typecheck/build/manual/docs/managed-block/skills/scripts/diff, with hosted protection and multi-machine proof explicitly INCONCLUSIVE.
-
-Verdict: PASS, contingent on hosted run 32593389394 completing green. An authorized independent reviewer may merge PR #168 non-squash into protected main; do not use an admin bypass. Then move CORE-043 Review → Verifying. Do not verify or clean up in this review step.
-
---- Prior review history ---
-
----
-kind: review-attestation
-pr: "168"
-head_sha: "e78323d7fb8ce695e40db80380d189e236726b25"
-base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
-verdict: needs-changes
-reviewer: "codex-current-head-audit"
-independent: true
-plan_hash: "2026-08-22T18:39:56.633Z"
-ticket_updated: "2026-08-22T18:39:56.633Z"
-findings:
-  - id: F-015
-    severity: blocker
-    summary: "Custom rename must update the Actions board-branch variable"
-    disposition: deferred-to-ticket
-    ticket: "GUI-112"
-    reason: "Current PR #168 thread 3836130697 remains unresolved; GUI-112 owns the lifecycle and workflow handoff fix."
-  - id: F-016
-    severity: major
-    summary: "Resolved handoff must clear only its generated pause/error"
-    disposition: deferred-to-ticket
-    ticket: "GUI-112"
-    reason: "Current PR #168 thread 3836130700 remains unresolved; GUI-112 owns the state-lifecycle fix."
-  - id: F-017
-    severity: blocker
-    summary: "Automatic sync must stop while handoff is paused"
-    disposition: deferred-to-ticket
-    ticket: "GUI-112"
-    reason: "Current PR #168 thread 3836130702 remains unresolved; GUI-112 owns the timer and pause guard."
-  - id: F-018
-    severity: blocker
-    summary: "Managed AGENTS instructions must declare the branch convention"
-    disposition: deferred-to-ticket
-    ticket: "GUI-112"
-    reason: "Current PR #168 thread 3836130705 remains unresolved; GUI-112 includes the required managed-guide update."
-  - id: F-019
-    severity: major
-    summary: "Ordinary custom-to-custom rename must accept the actual current branch"
-    disposition: deferred-to-ticket
-    ticket: "GUI-112"
-    reason: "Current PR #168 thread 3836189719 remains unresolved; GUI-112 owns the ordinary rename path."
-  - id: F-020
-    severity: blocker
-    summary: "Local MCP processes must receive the configured board branch"
-    disposition: deferred-to-ticket
-    ticket: "MCP-044"
-    reason: "Current PR #168 thread 3836189723 remains unresolved; MCP-044 owns provider/runtime propagation."
-  - id: F-021
-    severity: major
-    summary: "Manual Retry must recheck the live branch before syncing"
-    disposition: deferred-to-ticket
-    ticket: "GUI-112"
-    reason: "Current PR #168 thread 3836579174 remains unresolved; GUI-112 owns the manual retry guard."
-  - id: F-022
-    severity: major
-    summary: "FRD and manual text must state retained-ref handoff semantics"
-    disposition: deferred-to-ticket
-    ticket: "GUI-112"
-    reason: "Current PR #168 thread 3836579176 remains unresolved; GUI-112 owns durable contract wording."
-  - id: F-023
-    severity: major
-    summary: "Settings must state that the old custom ref is retained"
-    disposition: deferred-to-ticket
-    ticket: "GUI-112"
-    reason: "Current PR #168 thread 3836720318 remains unresolved; GUI-112 owns the user-facing Settings text."
-  - id: F-024
-    severity: major
-    summary: "Settings must surface protected reconciliation failures"
-    disposition: deferred-to-ticket
-    ticket: "GUI-112"
-    reason: "Current PR #168 thread 3836720320 remains unresolved; GUI-112 owns the failed-Git status surface."
-  - id: F-025
-    severity: minor
-    summary: "Live GitHub protection and variable mutation"
-    disposition: accepted-risk
-    reason: "No authorized live protection mutation or real protected-branch handoff is available; no admin bypass is used."
----
-
-## Current-head independent review — NEEDS-CHANGES — 2026-08-22
-
-Reviewed exact cumulative PR #168 head e78323d7fb8ce695e40db80380d189e236726b25 against main base 34245be039e8fd8395b5e31835602c54e62e98a4. CI rerun 32590637669 is green (verify and kanmer-gate), but current-head inline review has ten unresolved findings. Each is dispositioned to a blocking remediation ticket above; no unresolved blocker is silenced and the protected merge remains held until those tickets are independently reviewed and merged, followed by a fresh cumulative review.
-
----
-kind: review-attestation
-pr: "168"
-head_sha: "e78323d7fb8ce695e40db80380d189e236726b25"
-base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
-verdict: pass
-reviewer: "codex-recovery"
-independent: true
-plan_hash: "2026-08-22T18:39:38.518Z"
-ticket_updated: "2026-08-22T18:39:38.518Z"
-findings:
-  - id: F-013
-    severity: blocker
-    summary: "Manual Retry production-caller mismatch safety"
-    disposition: fixed-in-ticket
-    ticket: "CORE-084"
-    reason: "CORE-084 was independently reviewed and merged as e78323d7; its exact production syncProject regression proves mismatch pause before syncBoard with no ref/worktree/content mutation."
-  - id: F-014
-    severity: major
-    summary: "Retained custom-ref contract wording"
-    disposition: fixed-in-ticket
-    ticket: "CORE-080"
-    reason: "CORE-080's merged implementation and docs align FRD-020/manual wording with retaining the old ref until KANMER_BOARD_BRANCH is updated."
-  - id: F-EXTERNAL
-    severity: minor
-    summary: "Live GitHub protection and variable mutation"
-    disposition: accepted-risk
-    reason: "Live protection/Actions-variable mutation remains an administrator-owned ADR-0016 boundary; no admin bypass or fabricated hosted proof is used."
----
-
-## Fresh cumulative independent re-review — PASS — 2026-08-22T18:39:38.518Z
-
-Reviewed exact cumulative head `e78323d7fb8ce695e40db80380d189e236726b25` on PR #168 after CORE-080/CORE-084 child merges. The production Retry-caller finding is fixed and independently merged; retained-ref contract wording is fixed. Hosted verify is PASS; the remaining gate reconciliation is board-side dependency/review metadata only. The exact merged child commits are reachable from the cumulative branch, and the external protection mutation boundary remains accepted risk under ADR-0016.
-
-Verdict: PASS for the cumulative CORE-043 implementation. An independent reviewer may merge PR #168 into protected main only after the hosted kanmer-gate rerun is green; do not use an admin bypass.
-## Independent cumulative review — CORE-043 / PR #168
-
-Reviewed exact head f63d953fc8467440988c887c62a34ade0c77c96c against main base 34245be039e8fd8395b5e31835602c54e62e98a4. The cumulative tree contains the original branch-protection retarget implementation and the reviewed non-squash child merges through CORE-061, including merge 8c093424. The child remediations preserve configured branch handoff, pause/error state, effective cache reconciliation, and managed AGENTS convention without adding a GitHub API or protected-ref bypass.
-
-Exact evidence: cumulative GUI Git/sync rails 28/28 PASS; core suite 283/283 PASS; build:core PASS; scripts/protection rail 89/89 PASS; git diff-check PASS; hosted run 32587191440 verify PASS (97068601836) and kanmer-gate PASS (97068601416). CORE-061's merged-target proof separately records verify:agents-block 31/31, verify:skills, manual/docs, build:core, and scripts 89/89 on the 8c093424 cumulative line.
-
-Live GitHub repository-variable and branch-protection mutation remains explicitly INCONCLUSIVE and accepted as the ADR-0016 external boundary. No source changes were made during this review.
-
-Verdict: PASS. Merge PR #168 non-squash into main, then move CORE-043 Review → Verifying. Do not verify or clean up in this review step.
-
---- Prior review history ---
-
----
-kind: review-attestation
-pr: "168"
-head_sha: "f63d953fc8467440988c887c62a34ade0c77c96c"
-base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
-verdict: needs-changes
-reviewer: "codex-core043-cumulative-review"
-independent: true
-plan_hash: "a0b32fae7b9b14f9"
-ticket_updated: "2026-08-22T17:42:00Z"
-findings:
-  - id: F-001
-    severity: blocker
-    summary: "Completed administrator handoff is recognized"
-    disposition: fixed
-    reason: "Cumulative CORE-048/052/059/060 changes cover handoff state."
-  - id: F-002
-    severity: major
-    summary: "No-board protected preference transition is guarded"
-    disposition: fixed
-    reason: "The protected default remains guarded when no board is open."
-  - id: F-003
-    severity: blocker
-    summary: "Hosted gate consumes configured board branch"
-    disposition: fixed
-    reason: "The workflow reads KANMER_BOARD_BRANCH with the documented fallback."
-  - id: F-004
-    severity: minor
-    summary: "Protection inference is conservative"
-    disposition: accepted-risk
-    reason: "ADR-0016 excludes a GitHub protection API/App; live protection proof remains unavailable."
-  - id: F-005
-    severity: blocker
-    summary: "Merged child dependency is unblocked"
-    disposition: fixed
-    reason: "All child block edges are cleared in the board."
-  - id: F-009
-    severity: blocker
-    summary: "Custom rename leaves KANMER_BOARD_BRANCH stale"
-    disposition: deferred-to-ticket
-    ticket: "CORE-059"
-    reason: "The remediation is merged into the cumulative parent branch."
-  - id: F-010
-    severity: major
-    summary: "Resolved handoff retains a generated pause/error"
-    disposition: deferred-to-ticket
-    ticket: "CORE-060"
-    reason: "The remediation is merged into the cumulative parent branch."
-  - id: F-011
-    severity: blocker
-    summary: "Automatic sync can run while branch handoff is paused"
-    disposition: deferred-to-ticket
-    ticket: "CORE-060"
-    reason: "The remediation is merged into the cumulative parent branch."
-  - id: F-012
-    severity: blocker
-    summary: "KANMER_BOARD_BRANCH convention is missing from AGENTS.md"
-    disposition: deferred-to-ticket
-    ticket: "CORE-061"
-    reason: "The remediation is merged into the cumulative parent branch."
-  - id: F-EXTERNAL
-    severity: minor
-    summary: "Live protection retarget proof"
-    disposition: accepted-risk
-    reason: "No authorized GitHub protection mutation or real protected-branch handoff was available."
----
-
-## Fresh cumulative independent review — CORE-043 / PR #168
-
-The exact cumulative head is 4f106865947e556759aeb88363ea9aab7c01beac, containing the original implementation plus CORE-048 and CORE-052/054/055 non-squash merges. Local rails and hosted rerun 32575453101 pass, but current-head review surfaced four real blockers: custom-to-custom renames can leave KANMER_BOARD_BRANCH stale, resolved handoffs can retain a generated pause/error, the timer can execute automatic sync while paused, and the new Actions-variable convention is absent from AGENTS.md.
-
-These findings are linked to CORE-059, CORE-060, and CORE-061 with blocking edges. The parent remains in Review and must not merge until each child is independently reviewed and merged, then the cumulative head is reviewed again. The live GitHub protection mutation boundary remains explicitly accepted risk.
-
-Verdict: NEEDS-CHANGES. No merge or stage move was performed.
-
---- Prior review history ---
-
----
-kind: review-attestation
-pr: "168"
-head_sha: "4f106865947e556759aeb88363ea9aab7c01beac"
-base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
-verdict: pass
-reviewer: "codex-root"
-independent: true
-plan_hash: "a0b32fae7b9b14f9"
-ticket_updated: "2026-08-22T13:20:30.915Z"
-findings:
-  - id: F-001
-    severity: blocker
-    summary: "Completed administrator handoff is recognized"
-    disposition: fixed
-    reason: "CORE-048 and CORE-052 refresh the requested destination and preserve mismatch state."
-  - id: F-002
-    severity: major
-    summary: "No-board protected preference transition is guarded"
-    disposition: fixed
-    reason: "The guard retains the protected default when no Git board is open."
-  - id: F-003
-    severity: blocker
-    summary: "Hosted gate consumes configured board branch"
-    disposition: fixed
-    reason: "The workflow reads KANMER_BOARD_BRANCH with the documented fallback; rerun 32575453101 passed kanmer-gate."
-  - id: F-004
-    severity: minor
-    summary: "Protection inference is conservative"
-    disposition: accepted-risk
-    reason: "ADR-0016 excludes a GitHub protection API/App; literal protected-default inference is the documented boundary."
-  - id: F-005
-    severity: blocker
-    summary: "Merged child dependency is unblocked"
-    disposition: fixed
-    reason: "CORE-048 and CORE-052 child edges are removed after their non-squash merges."
-  - id: F-009
-    severity: blocker
-    summary: "Actions-variable handoff documentation"
-    disposition: fixed
-    reason: "Workflow comment, Settings, board-sync/settings manuals, troubleshooting, and generated guidance name KANMER_BOARD_BRANCH."
-  - id: F-010
-    severity: blocker
-    summary: "Requested destination equality"
-    disposition: fixed
-    reason: "refreshBoardBranch marks any non-destination live branch as mismatch and paused; child guards skip all rename paths."
-  - id: F-011
-    severity: major
-    summary: "Paused/error state preservation"
-    disposition: fixed
-    reason: "Refresh retains existing error/paused state on a valid handoff and surfaces mismatch state otherwise."
-  - id: F-012
-    severity: major
-    summary: "Troubleshooting guidance contradiction"
-    disposition: fixed
-    reason: "The protected-default refusal and retarget-first sequence are documented and the manual is regenerated."
-  - id: F-EXTERNAL
-    severity: minor
-    summary: "Live protection retarget proof"
-    disposition: accepted-risk
-    reason: "No authorized GitHub protection mutation or real protected-branch handoff was available; deterministic and hosted gate evidence is recorded, but live protection remains INCONCLUSIVE."
----
-
-## Fresh cumulative independent review — CORE-043 / PR #168
-
-The exact cumulative head is 4f106865947e556759aeb88363ea9aab7c01beac, containing the original implementation plus CORE-048 and CORE-052/054/055 non-squash merges. I reread the full packet, all prior findings, FRD-020, ADR-0016, and the exact diff. The implementation now documents KANMER_BOARD_BRANCH, validates branch equality before accepting a handoff, preserves paused/error state, and blocks both rename paths on mismatch. The generated/manual surfaces agree with the workflow.
-
-Evidence: exact detached-head GUI Git 12/12 PASS; build:core, manual 22 chapters, verify-docs, scripts 89/89, and diff-check PASS; hosted rerun 32575453101 passed both kanmer-gate and verify. Broad dispatch/provider typecheck/build and live GitHub protection mutation remain explicitly preserved boundaries.
-
-Verdict: PASS. Merge non-squash into main, then move CORE-043 to Verifying. Do not verify or clean up in this review step.
-
---- Prior review history ---
-
----
-kind: review-attestation
-pr: "168"
-head_sha: "11930038542d402865bb26a23787d7d3cad3e2c5"
+head_sha: "1126253eed586111db60ed72eccf6754f0f5ef06"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: needs-changes
 reviewer: "gui099-executor"
 independent: true
 plan_hash: "a0b32fae7b9b14f9"
-ticket_updated: "2026-08-22T12:04:34.929Z"
+ticket_updated: "2026-08-22T21:39:09.943Z"
 findings:
-  - id: F-001
+  - id: F-3836130697
     severity: blocker
-    summary: "Completed administrator handoff is recognized"
-    disposition: fixed-in-child
-    reason: "CORE-048 refreshes the open worktree branch before protected-transition decisions; focused regression evidence is present."
-  - id: F-002
+    summary: "Custom rename preserves the hosted-variable handoff"
+    disposition: fixed
+    reason: "renameBoardBranch pushes the new custom ref and deliberately retains the old remote ref until KANMER_BOARD_BRANCH is updated; FRD-020 R5 and Settings document the handoff."
+  - id: F-3836130700
     severity: major
-    summary: "No-board protected preference transition is guarded"
-    disposition: fixed-in-child
-    reason: "guardGitBranchPreference retains the protected default when no Git board is open and allows the requested branch once a board is available."
-  - id: F-003
+    summary: "Exact handoff clears only generated mismatch state"
+    disposition: fixed
+    reason: "refreshBoardBranch tracks branchMismatchError and branchMismatchPause separately and clears only detector-generated state; the focused rail covers genuine-error preservation."
+  - id: F-3836130702
     severity: blocker
-    summary: "Hosted gate consumes the configured board branch"
-    disposition: fixed-in-child
-    reason: "pr.yml reads KANMER_BOARD_BRANCH with the kanmer-board fallback and hosted workflow run 32571224767 completed success."
-  - id: F-004
-    severity: minor
-    summary: "Protection inference remains a conservative branch-name boundary"
-    disposition: accepted-risk
-    reason: "ADR-0016 explicitly excludes a GitHub protection API/App. The literal protected default and retarget-first administrator handoff are an acknowledged bounded risk."
-  - id: F-005
+    summary: "Paused handoff blocks automatic sync"
+    disposition: fixed
+    reason: "syncProjectLocked checks shouldRunAutomaticSync and clears the timer before returning a paused/mismatch status; syncBoard is not called."
+  - id: F-3836130705
     severity: blocker
-    summary: "Merged CORE-048 dependency is unblocked"
-    disposition: fixed-in-child
-    reason: "CORE-048 is Verifying with blocks empty, and hosted run 32571224767 is successful."
-  - id: F-009
-    severity: blocker
-    summary: "Administrator handoff omits the KANMER_BOARD_BRANCH repository-variable step"
-    disposition: open
-    reason: "The new workflow reads vars.KANMER_BOARD_BRANCH, but Settings, board-sync manual, and the handoff text do not instruct the administrator to create/update this variable. Without it, the documented rename can leave kanmer-gate on the stale default."
-  - id: F-010
-    severity: blocker
-    summary: "Refresh accepts any branch mismatch as a completed handoff"
-    disposition: open
-    reason: "refreshBoardBranch replaces the cached branch with any observed actual branch and clears state without checking that it equals the requested destination. A typo/intermediate branch can therefore be renamed, pushed, and potentially have its remote ref deleted."
-  - id: F-011
+    summary: "Managed instructions declare KANMER_BOARD_BRANCH"
+    disposition: fixed
+    reason: "AGENTS.md and the managed agents-block source describe the repository variable, fallback, administrator handoff, and local runtime convention."
+  - id: F-3836189719
     severity: major
-    summary: "Branch refresh clears paused sync errors"
-    disposition: open
-    reason: "refreshBoardBranch returns error:null and paused:false for any branch mismatch. A conflict-paused project can lose its visible error and resume sync before a successful sync resolves the conflict."
-  - id: F-012
+    summary: "Ordinary custom rename accepts the saved current branch"
+    disposition: fixed
+    reason: "refreshBoardBranchForPreference inspects against the cached current branch unless the requested destination is observed, preserving the ordinary rename path."
+  - id: F-3836189723
+    severity: blocker
+    summary: "Local MCP invocations receive the configured branch"
+    disposition: fixed
+    reason: "Connect IPC passes readSettings().kanmerBranch through serverInvocation and installed Electron invocations serialize KANMER_BOARD_BRANCH."
+  - id: F-3836579174
     severity: major
-    summary: "Troubleshooting manual contradicts the protected-default refusal"
-    disposition: open
-    reason: "docs/manual/troubleshooting.md still instructs users to rename through Settings and says closed projects are migrated automatically, contradicting the retarget-first refusal documented in board-sync and Settings."
-  - id: F-THREADS
+    summary: "Manual Retry rechecks the live branch"
+    disposition: fixed
+    reason: "syncProjectLocked performs ensureBoardWorktree/preflightBoardSync before syncBoard and returns a paused mismatch without mutating refs."
+  - id: F-3836579176
     severity: major
-    summary: "Current PR #168 inline findings remain unresolved"
+    summary: "FRD-020 specifies retained custom refs"
+    disposition: fixed
+    reason: "FRD-020 R5 and its as-built section now require retaining the old custom ref until the hosted variable handoff is complete."
+  - id: F-3836720318
+    severity: major
+    summary: "Settings explains retained custom refs"
+    disposition: fixed
+    reason: "Settings names the repository variable update and delayed manual deletion of the old remote ref."
+  - id: F-3836720320
+    severity: major
+    summary: "Protected reconciliation failures remain visible"
+    disposition: fixed
+    reason: "A retained boardRoot with an error renders as failed Git state with the error and Retry action rather than as a non-Git project."
+  - id: F-3836808784
+    severity: blocker
+    summary: "Open provider registrations reconcile after branch save"
+    disposition: fixed
+    reason: "applyGitPreferencesBody reconciles Codex, Claude, and OpenCode registrations for each open context after a successful branch change and pauses on failure."
+  - id: F-3836808786
+    severity: blocker
+    summary: "Native plugin descriptors carry the configured branch"
+    disposition: fixed
+    reason: "connectNativePlugin stages a disposable descriptor with KANMER_BOARD_BRANCH before install while preserving the bundled descriptor."
+  - id: F-3836808787
+    severity: blocker
+    summary: "Branch serialization is shell-safe"
+    disposition: fixed
+    reason: "Provider registration uses argv-native execution for production and the GUI-114 adversarial metacharacter rail covers hostile branch names."
+  - id: F-3836827896
+    severity: blocker
+    summary: "Hosted handoff warning is durable"
+    disposition: fixed
+    reason: "setKanmerGitHandoff stores pending handoff state independently of transient sync error state; Settings retains it until acknowledgement."
+  - id: F-3836827899
+    severity: major
+    summary: "Retry re-arms automatic sync after worktree recovery"
+    disposition: fixed
+    reason: "The production Retry caller re-arms the timer after a retained-root repair; the cumulative focused rail covers this case."
+  - id: F-3836827900
+    severity: major
+    summary: "Rename and sync lifecycle operations serialize"
+    disposition: fixed
+    reason: "applyGitPreferencesLocked clears timers and uses withSyncLifecycles around branch mutation; Sync now and automatic callbacks share the project lifecycle lock."
+  - id: F-3836890756
+    severity: blocker
+    summary: "Closed-project registrations reconcile on reopen"
+    disposition: fixed
+    reason: "openProject reconciles Codex, Claude, and OpenCode registrations after ensureBoardWorktree establishes the current branch."
+  - id: F-3836890758
+    severity: blocker
+    summary: "Native providers receive explicit reconnect state"
+    disposition: fixed
+    reason: "Branch changes mark nativeReconnectRequired and Settings names Grok/Antigravity plus the branch and explicit Connect action; implicit user-global mutation is avoided."
+  - id: F-3836890759
+    severity: blocker
+    summary: "Antigravity shipped descriptor uses a literal default"
+    disposition: fixed
+    reason: "The committed descriptor uses the literal default and GUI Connect injects custom values only into a disposable staged copy."
+  - id: F-3836911554
+    severity: major
+    summary: "Native plugin functional proof does not verify branch binding"
     disposition: open
-    reason: "The fresh F-009 through F-012 findings are current-head comments and are not covered by the prior child attestation. They must be fixed or explicitly accepted before merge; the older F-001 through F-004 findings are dispositioned above."
+    reason: "connectNativePlugin compares fingerprint, roots, and format but not expected/actual board branch; a host dropping the staged environment can therefore pass the probe while retaining the wrong convention."
+  - id: F-3837018843
+    severity: blocker
+    summary: "Provider reconciliation failures survive Git Retry"
+    disposition: open
+    reason: "Branch-save reconciliation records provider failure in ordinary error/paused fields, while a later successful syncBoard clears those fields without retrying provider reconciliation."
+  - id: F-3837018844
+    severity: major
+    summary: "Project open serializes with preference changes"
+    disposition: open
+    reason: "openProject is not in the lifecycle lock or an equivalent open-operation registry; a preference save can race ensureBoardWorktree before the context is inserted."
+  - id: F-3837052513
+    severity: blocker
+    summary: "OpenAI tunnel invocation carries the saved branch"
+    disposition: open
+    reason: "app.whenReady constructs OpenAITunnelManager with serverInvocation(claude, boardRoot, repoRoot) and omits readSettings().kanmerBranch, so custom projects receive the default branch."
+  - id: F-3837052514
+    severity: blocker
+    summary: "Failed rename does not persist the requested branch"
+    disposition: open
+    reason: "applyGitPreferencesBody calls setKanmerGitPreferences(targetBranch, ...) before renameBoardBranch completes; an invalid or conflicting destination can persist while the worktree remains on the old branch."
+  - id: F-3837052515
+    severity: blocker
+    summary: "Connect serializes with branch reconciliation"
+    disposition: open
+    reason: "CH.connectAgent calls connectAgent directly rather than through withSyncLifecycles or an expected-version registration write, so a slower Connect can restore an old branch after reconciliation."
+  - id: F-3837084778
+    severity: blocker
+    summary: "Observed administrator handoff marks native providers stale"
+    disposition: open
+    reason: "When refreshBoardBranchForPreference observes the requested destination, ordinary rename is skipped and markNativeReconnectRequired is not called, leaving existing native descriptors without a reconnect prompt."
+  - id: F-3837084780
+    severity: major
+    summary: "Native reconnect state is user-scoped"
+    disposition: open
+    reason: "clearNativeReconnectRequired removes the provider only for the current project even though Grok/Antigravity are user-scoped; other project warnings remain after one successful Connect or Disconnect."
+  - id: F-3837084781
+    severity: blocker
+    summary: "Remote-access runtime receives the saved branch"
+    disposition: open
+    reason: "remoteAccess/manager.ts childEnvironment includes KANMER_ROOT and KANMER_REPO_ROOT but no KANMER_BOARD_BRANCH, so remote MCP sessions fall back to kanmer-board on custom branches."
+  - id: F-3837084783
+    severity: blocker
+    summary: "Push-recovery handoff warning remains actionable"
+    disposition: open
+    reason: "A successful local rename with an initial push failure stores that transient push error as handoffPending.warning; later recovery can leave no instruction to update KANMER_BOARD_BRANCH before deleting the retained ref."
+  - id: F-3837084786
+    severity: blocker
+    summary: "Claude marketplace MCP is branch-bound"
+    disposition: open
+    reason: "Claude Connect installs the bundled marketplace descriptor through installSkills without staging KANMER_BOARD_BRANCH, while only the project registration receives the selected branch."
+  - id: F-REPORT-1126253
+    severity: major
+    summary: "Cumulative report and PR body match the reviewed head"
+    disposition: open
+    reason: "post-implementation-report still identifies 11930038542 and the older hosted run, and the PR body still describes only the original implementation; the ticket's current 1126253 cumulative child lineage and green run are not traceable in the report."
   - id: F-EXTERNAL
     severity: minor
-    summary: "Live protection retarget remains unavailable"
-    disposition: inconclusive
-    reason: "No GitHub protection API mutation or real protected-branch handoff was attempted. Local and hosted checks do not prove live protection state."
+    summary: "Live protection and provider-host proof"
+    disposition: accepted-risk
+    reason: "Hosted run 32599958132 proves repository checks, not live GitHub protection retargeting, installed native-plugin behavior, or a live remote/provider host. Those boundaries remain INCONCLUSIVE under ADR-0016/FRD-020."
 ---
-# Independent review - CORE-043 cumulative head
 
-## Verdict
+## CORE-043 independent review — NEEDS-CHANGES
 
-NEEDS-CHANGES for PR #168 at exact cumulative head 11930038542d402865bb26a23787d7d3cad3e2c5, based on main 34245be039e8fd8395b5e31835602c54e62e98a4. CORE-048 closes the original three code blockers, clears the board dependency, and hosted run 32571224767 is successful. The current head nevertheless has four fresh documentation/state-safety blockers. No source, merge, move, or cleanup was performed.
+Reviewed PR #168 at exact head `1126253eed586111db60ed72eccf6754f0f5ef06` against main `34245be039e8fd8395b5e31835602c54e62e98a4`. The cumulative compare includes the original CORE-043 implementation plus the non-squash GUI-112 through GUI-117/MCP-044 lineage. The current code fixes the earlier branch-refresh, pause/timer, retained-ref, local-provider, native-descriptor, shell-safety, reopen, and literal-descriptor findings, but the open findings above include multiple current P1/P2 runtime/concurrency/provider gaps. The stale cumulative report is also not sufficient traceability for this exact head.
 
-## Scope and lineage
+Evidence:
 
-The cumulative compare is three commits and ten changed files. CORE-048 PR #170 was merged non-squash into CORE-043 at 11930038542d402865bb26a23787d7d3cad3e2c5. The ticket report and item record the cumulative implementation and child merge, while the PR body still carries the original commit-only summary.
+- Hosted PR run `32599958132`: `verify` job `97096637353` PASS; `kanmer-gate` job `97096637280` PASS.
+- Exact detached-head focused GUI branch/protection/provider rail: `npm run test -w @kanmer/gui -- --run src/main/kanmerGit.test.ts src/main/index.sync.test.ts src/main/connect.test.ts src/main/providers.test.ts src/main/openaiTunnel.test.ts src/main/settings.test.ts src/main/syncBranch.test.ts src/main/syncLifecycle.test.ts src/main/syncTimer.test.ts` — exit 0, 9 files / 157 tests PASS.
+- Exact-head GUI typecheck — exit 0.
+- `git diff --check 34245be039e8fd8395b5e31835602c54e62e98a4..1126253eed586111db60ed72eccf6754f0f5ef06` — exit 0.
+- Live GitHub protection retargeting, installed provider/runtime behavior, and live remote/provider hosts remain INCONCLUSIVE; no external state was mutated.
 
-## Finding audit
-
-The original F-001 administrator-refresh, F-002 no-board guard, and F-003 workflow source findings are fixed, and CORE-048 has blocks empty. The current refreshBoardBranch implementation still accepts any observed branch as a completed handoff, clears paused/error state unconditionally, and allows later migration to rename an arbitrary typo/intermediate branch. The administrator instructions omit the repository Actions variable consumed by the workflow. The troubleshooting manual still contradicts the retarget-first refusal.
-
-The literal kanmer-board protection inference remains an explicitly accepted ADR-0016 risk, not a new blocker.
-
-## Evidence
-
-- Focused GUI Git: 16/16 PASS.
-- Workflow static rail: 1/1 PASS.
-- Scripts after core build: 89/89 PASS.
-- Core build, docs/manual checks, and diff check: PASS.
-- Hosted run 32571224767: verify PASS and kanmer-gate PASS.
-- Full GUI, all-workspace typecheck, and GUI build base dispatch/provider parity failures remain preserved from the packet.
-- Live GitHub protection retargeting remains INCONCLUSIVE.
-
-## Required disposition
-
-Document the KANMER_BOARD_BRANCH repository-variable handoff, require observed branch equality with the requested destination, preserve paused/error state during refresh, and update troubleshooting.md plus generated manual. Then refresh the PR body/thread dispositions and request another independent review. No stage move or merge was performed.
-
-
-## GitHub review-thread disposition
-
-On 2026-08-22 the eight historical inline threads for findings already marked `fixed` or `accepted-risk` were resolved on PR #168. The four current-head blockers remain unresolved and are deferred to CORE-059, CORE-060, and CORE-061; no unresolved blocker was silenced.
-
-## Fresh cumulative independent review — NEEDS-CHANGES — f63d953fc8467440988c887c62a34ade0c77c96c
-
-Reviewer: codex-core043-cumulative-review, independent of the implementation and remediation authors. Exact reviewed PR #168 head: f63d953fc8467440988c887c62a34ade0c77c96c; base: 34245be039e8fd8395b5e31835602c54e62e98a4.
-
-Code and local evidence: the cumulative branch correctly preserves the protected-default refusal, refreshes branch state before transition decisions, consumes KANMER_BOARD_BRANCH with the documented fallback, retains generated-vs-genuine handoff state, and includes the CORE-060 live-branch/timer remediations. Focused GUI Git/live-branch/timer rail passed 28/28; core passed 283/283; build:core passed; scripts/protection rail passed 89/89; aggregate diff-check passed. Live GitHub protection retargeting remains INCONCLUSIVE as documented.
-
-Blocking gate findings:
-
-1. Hosted run 32587191440 has `kanmer-gate` FAIL with `DEPENDENCY_BLOCKED`: CORE-061 still blocks CORE-043. CORE-061 is Verifying rather than Done, so the cumulative PR is not merge-ready until its proof/closeout removes the live edge.
-
-2. The same hosted gate reports `STALE_REVIEW`: the current machine review attestation is invalid because `findings[5].ticket` is missing for a deferred-to-ticket disposition. The review record must be rewritten/reconciled with a valid ticket field and the exact current head before the gate can approve.
-
-Disposition: defer the dependency finding to existing CORE-061 (no new duplicate ticket); repair the machine review attestation as board-side review metadata. No source finding was identified in the exact cumulative diff.
-
-Verdict: NEEDS-CHANGES. Do not merge PR #168 or move CORE-043 while the authoritative hosted gate is red. No merge or board move performed.
+Thirty current PR threads were audited: the 19 earlier remediation threads are fixed in the current tree, while the 11 current runtime/traceability findings remain open. Because P1 findings remain, this is NEEDS-CHANGES. No GitHub review thread was resolved, and no merge or board move was performed.

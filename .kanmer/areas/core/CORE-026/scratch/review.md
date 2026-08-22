@@ -1,6 +1,115 @@
 ---
 kind: review-attestation
 pr: "163"
+head_sha: "453a92091d7a422a237996f024ab6940ea6fccfb"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: needs-changes
+reviewer: "gui099-executor"
+independent: true
+plan_hash: "9916aa9641b6a15d"
+ticket_updated: "2026-08-22T21:09:59.820Z"
+findings:
+  - id: F-001
+    severity: blocker
+    summary: "Prior redirect, credential, and destination safety findings"
+    disposition: fixed
+    reason: "Current head and exact-head source rails cover comments 3835667021, 3835667030, 3835667033, 3835696321, 3835679108, 3836536172, and 3836536177: per-hop same-origin/DNS checks, HTTPS pinning, credential rejection, redirected-root resolution, and identity encoding are present."
+  - id: F-002
+    severity: major
+    summary: "Prior source schema, cache budget, validator, and mandatory-rail findings"
+    disposition: fixed
+    reason: "Current source/core implementation and 26/26 source tests cover comments 3835667024, 3835667026, 3835667029, 3835667031, 3835667035, 3835667037, 3835679111, 3835679113, 3835679116, 3835679120, 3835679122, 3835696322, 3836536166, 3836536170, 3836612410, 3836612417, 3836612420, 3836750326, and 3836804555."
+  - id: F-003
+    severity: major
+    summary: "Prior lock ownership, stale recovery, and board-artifact isolation findings"
+    disposition: fixed
+    reason: "Current exact-head core IO tests pass 29/29 and the cumulative GUI ignore rules cover comments 3836536180, 3836536184, 3836536186, 3836612412, and 3836612414, including PID identity, malformed main records, orphan source-version checks, and lock/owner/quarantine ignores."
+  - id: F-004
+    severity: major
+    summary: "Tool roster, cache-ignore, and unavailable-source guidance"
+    disposition: fixed
+    reason: "Comments 3835667028, 3835667032, and 3835679118 are covered by the current AGENTS/tool reference/skills and exact-head plugin check: 37 tools match and bundle bytes match."
+  - id: F-005
+    severity: minor
+    summary: "GUI source editor wording"
+    disposition: accepted-risk
+    reason: "Comment 3835679125 is an explicit scope boundary: CORE-026 provides the shared MCP set_sources/fetch_source surface and does not claim a second GUI source editor. The FRD wording remains a follow-up concern, not evidence of an implemented GUI feature."
+  - id: F-006
+    severity: major
+    summary: "Unresolved source-cache validation and refresh diagnostics"
+    disposition: open
+    reason: "Comments 3836750332, 3836804549, 3836804550, 3836804554, 3836901609, 3836901612, and 3836982836 remain valid on 453a9209: cache directories are not symlink-refused; empty/no-root cache representations are accepted; stale fallback drops prior linked failures; forced refresh does not recover after an active rejection; cache reads are unbounded; cached document origins are not validated; and replacement validators from 304 responses are not persisted."
+  - id: F-007
+    severity: major
+    summary: "Unresolved lock-marker and error-preservation edges"
+    disposition: open
+    reason: "Comments 3836901611, 3836901614, and 3836982837 remain valid: malformed owner markers are treated as permanently active, callback errors can be masked by release failure, and dead locks with future timestamps can remain blocked until wall-clock catch-up."
+  - id: F-008
+    severity: blocker
+    summary: "Pinned DNS lookup does not honor Node all-mode callback shape"
+    disposition: open
+    reason: "Comment 3836750328 remains valid at packages/mcp-server/src/sources.ts: pinnedFetch supplies a single-address callback but does not handle a Node all:true lookup request or disable automatic family selection. The source suite uses injected request seams and does not prove the real Node 24 hostname path."
+  - id: F-009
+    severity: blocker
+    summary: "Orphan source cleanup is not an atomic fingerprint-and-delete operation"
+    disposition: open
+    reason: "Comment 3836982834 remains valid: resumeOrphanMigration fingerprints source .kanmer, then separately invokes git rm without a lock/quarantine transaction, leaving a race in which a concurrent source edit can be deleted."
+  - id: F-010
+    severity: blocker
+    summary: "Cumulative branch is stale against requested main"
+    disposition: open
+    reason: "Against requested main 34245be039e8fd8395b5e31835602c54e62e98a4 (GUI-109), the exact diff deletes apps/gui/src/renderer/src/components/ContextMenu.test.tsx and apps/gui/src/renderer/src/lib/groupMenu.ts plus groupMenu.test.ts. This would regress the already-merged group-assignment surface; PR metadata still reports base 84a20f8414264f65f6d851ca51849af89c80acf9."
+  - id: F-011
+    severity: blocker
+    summary: "Authoritative hosted verification is red"
+    disposition: open
+    reason: "Run 32598710721 is failed. Verify job 97093585268 reports core 304/307 with three Windows cleanup timeouts/ENOTEMPTY failures in io/docs/store temp data cleanup; kanmer-gate job 97093585402 reports the live CORE-087 dependency and the previously invalid review disposition. This failed evidence is preserved and prevents PASS."
+  - id: F-012
+    severity: blocker
+    summary: "Generated plugin artifact dependency is not closed"
+    disposition: deferred-to-ticket
+    ticket: "CORE-087"
+    reason: "CORE-087 is still Verifying with checklist 0/5 and remains the live dependency reported by kanmer-gate. The artifact itself is locally coherent: commit 4fee55cd is in 453a9209, plugin:check passes 37 tools/byte parity, and mcpb:check passes 3 files/1670291 bytes; the ticket still needs its own review/verification closeout."
+  - id: F-013
+    severity: major
+    summary: "Prior review record syntax"
+    disposition: fixed
+    reason: "The stale prior attestation used non-canonical dispositions such as fixed-in-ticket/fixed-in-cumulative-stack. This replacement is the current SHA-bound attestation and uses only valid dispositions: fixed, open, accepted-risk, and deferred-to-ticket."
+  - id: F-014
+    severity: minor
+    summary: "Local GUI focused rail did not complete in this audit"
+    disposition: accepted-risk
+    reason: "The exact-head kanmerGit focused process was bounded and interrupted with exit 1 after no result; no PASS is claimed. Hosted verify independently records the concrete Windows cleanup failure. Core/MCP/plugin/typecheck/scripts/diff evidence above is complete."
+  - id: F-015
+    severity: minor
+    summary: "External/live evidence boundaries"
+    disposition: accepted-risk
+    reason: "Live DNS rebinding, external llms.txt, connected-provider, packaged Windows, and GUI visual evidence remain INCONCLUSIVE because no authorized external host/feed was exercised; no unsupported PASS is claimed."
+---
+
+## Fresh independent review — CORE-026 / PR #163
+
+Reviewed exact cumulative head `453a92091d7a422a237996f024ab6940ea6fccfb` against requested main `34245be039e8fd8395b5e31835602c54e62e98a4`. The PR's GitHub base metadata is older (`84a20f8414264f65f6d851ca51849af89c80acf9`), so the deletion of GUI-109 group-menu files is a merge-blocking stale-base regression.
+
+The cumulative source/cache/lock/orphan code was inspected. The exact-head local evidence is:
+
+- PASS: core source/lock/store focus, 120/120.
+- PASS: `npm run build`, exit 0.
+- PASS: MCP source suite, 26/26 after build. The pre-build attempt exited 1 because `packages/mcp-server/dist/index.js` was absent; that failure is preserved.
+- PASS: `npm run typecheck`, exit 0.
+- PASS: `npm run test:scripts`, 88/88.
+- PASS: `npm run plugin:check`, 37 tools and generated bundle bytes match.
+- PASS: `npm run mcpb:check`, 3 files / 1,670,291 bytes; generated standalone SHA-256 `7298b5c268ac5995cadd56f6bbd4bcbe301f97a6a72eddd2f53d64a346158d75`.
+- PASS: `git diff --check 34245be039e8fd8395b5e31835602c54e62e98a4..453a92091d7a422a237996f024ab6940ea6fccfb`, exit 0.
+- INCONCLUSIVE/failed bounded attempt: exact-head GUI `kanmerGit.test.ts` process was interrupted with exit 1 without a result; no GUI PASS is claimed.
+
+The hosted authoritative evidence remains failed: run `32598710721` verify job `97093585268` recorded 304/307 core tests with three Windows `ENOTEMPTY`/timeout cleanup failures, and kanmer-gate job `97093585402` rejected the live CORE-087 dependency plus the stale invalid review attestation. Therefore verdict is NEEDS-CHANGES. No source change, merge, board move, or ticket cleanup was performed.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "163"
 head_sha: "a9833df28ddf6f91966be17a4eb7c06265e088ed"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: needs-changes

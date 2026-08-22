@@ -30,3 +30,7 @@ Changed only GUI reopen/provider status behavior, its production-caller regressi
 ## Post-merge proof
 
 Intentionally not supplied in this author lane.
+
+## PR handoff
+
+PR #215 is open at `d863f390cabf385e6a6889b3cfc0d0ba3edb3792`, targeting `core-043-protection-retarget` (remote base observed as `aa33ae1aa0d493787d09ff587298274d6523b833` at handoff). The branch is clean and pushed. No merge or self-review was performed.

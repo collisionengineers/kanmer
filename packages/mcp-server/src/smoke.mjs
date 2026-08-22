@@ -142,8 +142,15 @@ try {
     repoRoot: "C:\\Kanmer\\Repo\\",
     boardSource: "file",
   });
-  const expectedPosixBoardRoot = process.platform === "win32" ? "c:/srv/kanmer-board" : "/srv/kanmer-board";
-  const expectedPosixRepoRoot = process.platform === "win32" ? "c:/srv/kanmer-repo" : "/srv/kanmer-repo";
+  const expectedWindowsDrive = process.platform === "win32"
+    ? path.parse(process.cwd()).root.replace(/[\\/]+$/, "").toLowerCase()
+    : "";
+  const expectedPosixBoardRoot = process.platform === "win32"
+    ? `${expectedWindowsDrive}/srv/kanmer-board`
+    : "/srv/kanmer-board";
+  const expectedPosixRepoRoot = process.platform === "win32"
+    ? `${expectedWindowsDrive}/srv/kanmer-repo`
+    : "/srv/kanmer-repo";
   check(
     "project identity canonicalizes POSIX and Windows roots without changing path case",
     posixIdentity.boardRoot === expectedPosixBoardRoot &&

@@ -14,7 +14,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { existsSync } from "node:fs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -74,7 +74,12 @@ function mainCheckout() {
   return common ? dirname(common) : root;
 }
 
-const boardRoot = join(mainCheckout(), ".worktrees", "kanmer");
+// Tests and other isolated callers can provide a disposable board without
+// changing the normal main-checkout discovery used by release operators.
+const configuredBoardRoot = process.env.KANMER_BOARD_ROOT?.trim();
+const boardRoot = configuredBoardRoot
+  ? resolve(root, configuredBoardRoot)
+  : join(mainCheckout(), ".worktrees", "kanmer");
 if (!existsSync(join(boardRoot, ".kanmer"))) {
   console.error(`No board at ${boardRoot} — nothing to draft from.`);
   process.exit(1);

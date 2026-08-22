@@ -42,3 +42,10 @@
 - [ ] Commit is pushed and recorded on GUI-107; PR is opened and recorded.
 - [ ] Fresh gates pass and ticket moves only Implementing → Review.
 - [ ] Independent-review handoff sent; author does not review or merge.
+
+## Rail readback
+
+- GUI focused 21/21 (TicketCreate 3 + Editor 18), exit 0; full GUI 39 files / 360 tests, exit 0.
+- Root typecheck exit 0; GUI build exit 0; core build exit 0; scripts rerun 82/82 exit 0.
+- HTTP rail first run 60/61 with controlled Windows spawnSync ETIMEDOUT, then rerun 61/61 exit 0; both outcomes are preserved in scratch.
+- Root npm test remains non-green only because core's 266/266 assertions were followed by one unhandled Windows EPERM opening a temp dispatch log; this is preserved in scratch and the unchecked root-test line above.

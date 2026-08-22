@@ -788,3 +788,6 @@ GUI-115 implemented on 4ad2c858, PR #212 opened against core-043-protection-reta
 
 
 CORE-083 independently reviewed PASS (PR #211, focused 4/4), merged into core-026 parent as f65ac4178de978a01a44e32235c2cdfacddc6a6f; moved to Verifying and released. CORE-026 parent now needs exact-head refresh/review before merge.
+
+
+GUI-115 review PASS and PR #212 merged non-squash into CORE-043 parent as 69ca8883. Exact d79f5f61 review fixed F-001..F-005; focused 10/10, broader 38/38, typecheck/diff-check PASS. Supplementary full GUI run after final fix was interrupted after tests emitted (INCONCLUSIVE), preserved in GUI-115 scratch; prior full 49-file/421-test PASS remains recorded. GUI-115 moved to Verifying and released; parent CORE-043 must be refreshed after GUI-116/117.

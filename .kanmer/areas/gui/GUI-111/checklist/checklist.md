@@ -3,16 +3,16 @@
 - [x] Re-read GUI-111, GUI-109, HZN-007 context, FRD-001, current PR threads, and live gates.
 - [x] Record the six bounded findings and stacked-branch decision in research/files/open-questions.
 - [x] Create the GUI-111 stacked worktree/branch from GUI-109 head and take the ticket via MCP.
-- [ ] Bind card-menu state, async discovery, and assignment to the opening project; cancel/hide stale menus on project switches.
-- [ ] Distinguish group discovery loading, successful-empty, and error states in the helper and renderer.
-- [ ] Add deterministic tests for loading/error menu entries and active-group eligibility/revalidation.
-- [ ] Revalidate that the selected group is still active before updateItem and preserve ticket revision/append semantics.
-- [ ] Bound context-menu height and scroll the keyboard-active item into view.
-- [ ] Correct groups manual archive wording and regenerate the in-app manual.
-- [ ] Preserve failed card-action errors across refresh while keeping successful refresh behavior unchanged.
-- [ ] Run focused group-menu tests and record exact exit/count.
-- [ ] Run full GUI tests and record exact exit/count.
-- [ ] Run workspace typecheck, GUI build, manual freshness, and diff-check.
+- [x] Bind card-menu state, async discovery, and assignment to the opening project; cancel/hide stale menus on project switches.
+- [x] Distinguish group discovery loading, successful-empty, and error states in the helper and renderer.
+- [x] Add deterministic tests for loading/error menu entries and active-group eligibility/revalidation.
+- [x] Revalidate that the selected group is still active before updateItem and preserve ticket revision/append semantics.
+- [x] Bound context-menu height and scroll the keyboard-active item into view.
+- [x] Correct groups manual archive wording and regenerate the in-app manual.
+- [x] Preserve failed card-action errors across refresh while keeping successful refresh behavior unchanged.
+- [x] Run focused group-menu tests and record exact exit/count.
+- [x] Run full GUI tests and record exact exit/count.
+- [x] Run workspace typecheck, GUI build, manual freshness, and diff-check.
 - [ ] Re-run relevant hosted verification against the stacked PR and preserve any failure.
 - [ ] Write the post-implementation report with scope, residual archive race, visual INCONCLUSIVE boundary, and exact rails.
 - [ ] Record GUI-111 commit and stacked PR traceability.

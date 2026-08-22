@@ -37,3 +37,8 @@
 ## Hosted remediation verified — 2026-08-22
 
 - Fresh run 32564155523 on b5ae6f36: kanmer-gate PASS (97010200239, 50s); verify PASS (97010200322, 2m22s). Gate warns the prior independent review attestation still names 8eff8482; preserve as stale until root re-review refreshes it. Remain Review; no self-review/merge/cleanup.
+
+## Packet/document audit — 2026-08-22
+
+- Confirmed via MCP that files/files.md governing paths now use FRD-027 and ADR-0020; remaining FRD-026 wording is historical numbering or the unrelated OpenAI Secure MCP Tunnel document, and no ADR-0019 remains.
+- Reviewed unresolved automated PR comments. Clearly source-fetch security/correctness candidates remain for independent disposition: per-hop redirect validation, private-network/SSRF destination policy, query-bearing linked-URL redaction, failed-download aggregate accounting, and test-rail registration. Other comments cover cache/board CAS, canonicalization, selectors, content types, linked 304 freshness, images/fragments, skill wording, tool-schema reuse, and GUI acceptance scope. No source changes were made in this docs-only audit; branch remains b5ae6f36 and ticket remains Review.

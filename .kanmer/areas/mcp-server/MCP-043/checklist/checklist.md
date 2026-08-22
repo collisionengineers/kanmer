@@ -5,8 +5,8 @@
 - [x] Confirm artifact-only diff, fresh/committed SHA-256 parity, and git diff --check.
 - [x] Run npm run plugin:check and npm run mcpb:check.
 - [x] Run MCP smoke/protocol, MCP-server typecheck/build, and scripts rails; preserve exact failures.
-- [ ] Write the post-implementation report and record commit/PR traceability.
-- [ ] Push, open the MCP-043 PR, and move the ticket to Review for independent review.
+- [x] Write the post-implementation report and record commit/PR traceability.
+- [x] Push, open the MCP-043 PR, and move the ticket to Review for independent review.
 
 ## Progress notes
 
@@ -14,3 +14,4 @@
 - npm run plugin:build passed; generated plugin and fresh standalone both SHA-256 0fc8d93e7af9fd30cd42d886cd92ab9ec9bfed12b4f9b6a034d9f6ef9cd617ad, 1,543,241 bytes. Diff is 21 insertions in plugins/kanmer/mcp/kanmer-mcp.cjs only; git diff --check passed.
 - npm run plugin:check passed: 34 tools, bundle bytes, 12 skill frontmatters, manifests v0.3.3, isolated handshake 34 tools. npm run mcpb:check passed: 3 files / 1,658,100 bytes, MCPB server SHA 0fc8d93e7af9fd30cd42d886cd92ab9ec9bfed12b4f9b6a034d9f6ef9cd617ad.
 - node packages/mcp-server/src/smoke.mjs passed 224/224; npm run smoke:protocol passed 46/46; npm run typecheck -w @kanmer/mcp-server passed; node --test packages/mcp-server/src/check-pr.test.mjs passed 1/1; npm run test:scripts passed 83/83.
+- Commit d50e69288832ce6b2334d0b20d2e1e901004feef pushed to mcp-043-plugin-artifact. PR #156 opened against core-024-check-pr for artifact-only comparison; independent review is required and no merge was performed.

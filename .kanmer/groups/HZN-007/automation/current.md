@@ -62,3 +62,6 @@ Last handoff: 2026-08-22T00:09:44.236Z — CORE-022 independent merged-main veri
 
 Last handoff: 2026-08-22T00:13:30.433Z — SKILL-017 is implementing on skill-017-auto-stopping/.worktrees/skill-017 from origin/main af61144c; scope is kanmer-auto stop/serial-fallback contract and validator/scenario evidence, with independent Review required and no merge or cross-ticket changes.
 \n\nLast handoff: 2026-08-22T00:14:35.584Z — CORE-037 remediation created in Backlog: normalize equivalent Windows user-path spellings in apps/gui/src/main/kanmerGit.test.ts without weakening real Git/worktree assertions; linked to CORE-032, GUI-075, SKILL-021 and HZN-007/HZN-004; implementation pending dedicated packet/research/plan.\n
+
+
+Last handoff: 2026-08-22T01:16:42+01:00 — Done-incomplete reconciliation completed for MCP-008 and GUI-105. MCP-008 remains Done at 64/103 with named Claude Desktop acceptance explicitly INCONCLUSIVE and other unclaimed checklist residue preserved; GUI-105 remains Done at 13/14 with manual GUI-102 visual proof explicitly INCONCLUSIVE. Ticket checklist/proof/scratch dispositions and GUI-105 Outcome were read back; no remediation ticket, source change, stage move, taken worktree, or branch cleanup was needed.

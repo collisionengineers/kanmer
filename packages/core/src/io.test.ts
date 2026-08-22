@@ -300,6 +300,8 @@ describe("withExclusiveFileLock", () => {
     const winnerLockReady = new Promise<void>((resolve) => { winnerReady = resolve; });
     let releaseWinner!: () => void;
     const winnerRelease = new Promise<void>((resolve) => { releaseWinner = resolve; });
+    let winnerActive = false;
+    let thirdSawWinnerActive = false;
     let staleMoved!: () => void;
     const staleMovedPromise = new Promise<void>((resolve) => { staleMoved = resolve; });
     let releaseStale!: () => void;
@@ -309,8 +311,10 @@ describe("withExclusiveFileLock", () => {
       if (firstCall) {
         firstCall = false;
         winner = withExclusiveFileLock(file, async () => {
+          winnerActive = true;
           winnerReady();
           await winnerRelease;
+          winnerActive = false;
           return "winner";
         }, {
           now: () => 60_000,
@@ -343,18 +347,18 @@ describe("withExclusiveFileLock", () => {
     let thirdReady!: () => void;
     const thirdLockReady = new Promise<void>((resolve) => { thirdReady = resolve; });
     const third = withExclusiveFileLock(file, async () => {
+      thirdSawWinnerActive = winnerActive;
       thirdReady();
       await thirdRelease;
       return "third";
-    }, { retryDelaysMs: [0], processAlive: (pid) => pid === process.pid });
-    await thirdLockReady;
-    expect(await fs.readFile(file, "utf8")).toContain(`\"pid\":${process.pid}`);
+    }, { retryDelaysMs: [0, 50, 100, 200, 400], processAlive: (pid) => pid === process.pid });
+    // The third claimant must wait while the replacement owner is active.
     releaseStale();
     await expect(staleReclaimer).rejects.toMatchObject({ code: "EEXIST" });
-    const quarantinesBeforeWinnerRelease = (await fs.readdir(dir)).filter((entry) => entry.startsWith("cache-third.lock.stale-"));
-    expect(quarantinesBeforeWinnerRelease.length).toBeGreaterThan(0);
     releaseWinner();
     await expect(winner).resolves.toBe("winner");
+    await thirdLockReady;
+    expect(thirdSawWinnerActive).toBe(false);
     expect(await fs.readFile(file, "utf8")).toContain(`\"pid\":${process.pid}`);
     releaseThird();
     await expect(third).resolves.toBe("third");
@@ -378,9 +382,95 @@ describe("withExclusiveFileLock", () => {
     }
   });
 
+  it("rejects malformed persisted tokens before constructing owner marker paths", async () => {
+    const file = path.join(dir, "cache-token.lock");
+    const markerDir = `${file}.owner-nested`;
+    const victim = path.join(markerDir, "victim.json");
+    await fs.mkdir(markerDir);
+    await fs.writeFile(victim, JSON.stringify({ pid: 12345 }), "utf8");
+    await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0, token: "nested/victim.json" }), "utf8");
+
+    await expect(withExclusiveFileLock(file, async () => "must not recover", {
+      now: () => 60_000,
+      staleAfterMs: 30_000,
+      processAlive: () => false,
+      retryDelaysMs: [0],
+    })).rejects.toMatchObject({ code: "EEXIST" });
+    await expect(fs.readFile(victim, "utf8")).resolves.toBe(JSON.stringify({ pid: 12345 }));
+  });
+
   it("always releases a claimed lock after callback failure", async () => {
     const file = path.join(dir, "cache.lock");
     await expect(withExclusiveFileLock(file, async () => { throw new Error("callback failed"); })).rejects.toThrow("callback failed");
     await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("retries transient quarantine rename failures", async () => {
+    for (const code of ["EPERM", "EBUSY", "EACCES"]) {
+      const file = path.join(dir, `cache-${code}.lock`);
+      await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0 }), "utf8");
+      let calls = 0;
+      const renameStaleLock = async (from: string, to: string): Promise<void> => {
+        calls++;
+        if (calls === 1) throw errno(code);
+        await fs.rename(from, to);
+      };
+
+      await expect(withExclusiveFileLock(file, async () => "recovered", {
+        now: () => 60_000,
+        staleAfterMs: 30_000,
+        processAlive: () => false,
+        retryDelaysMs: [0],
+        renameStaleLock,
+      })).resolves.toBe("recovered");
+      expect(calls, code).toBe(2);
+      await expect(fs.readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
+    }
+  });
+
+  it("revalidates stale ownership before retrying a transient quarantine rename", async () => {
+    const file = path.join(dir, "cache-revalidate.lock");
+    await fs.writeFile(file, JSON.stringify({ pid: 12345, createdAt: 0 }), "utf8");
+    const replacementToken = "123e4567-e89b-12d3-a456-426614174000";
+    const replacementMarker = `${file}.owner-${replacementToken}`;
+    let calls = 0;
+    const renameStaleLock = async (from: string): Promise<void> => {
+      calls++;
+      await fs.rm(from, { force: true });
+      await fs.writeFile(replacementMarker, JSON.stringify({ pid: process.pid, token: replacementToken }), "utf8");
+      await fs.writeFile(from, JSON.stringify({ pid: process.pid, createdAt: 60_000, token: replacementToken }), "utf8");
+      throw errno("EPERM");
+    };
+
+    await expect(withExclusiveFileLock(file, async () => "must not recover", {
+      now: () => 60_000,
+      staleAfterMs: 30_000,
+      processAlive: (pid) => pid === process.pid,
+      retryDelaysMs: [0],
+      renameStaleLock,
+    })).rejects.toMatchObject({ code: "EEXIST" });
+    expect(calls).toBe(1);
+    await fs.rm(file, { force: true });
+    await fs.rm(replacementMarker, { force: true });
+  });
+
+  it("surfaces quarantine cleanup errors during lock release", async () => {
+    const file = path.join(dir, "cache-cleanup.lock");
+    let quarantineFile = "";
+    const realRm = fs.rm.bind(fs);
+    const rmSpy = vi.spyOn(fs, "rm").mockImplementation(async (target, options) => {
+      if (quarantineFile && String(target) === quarantineFile) throw errno("EACCES");
+      return realRm(target, options);
+    });
+    try {
+      await expect(withExclusiveFileLock(file, async () => {
+        const record = JSON.parse(await fs.readFile(file, "utf8")) as { token: string };
+        quarantineFile = path.join(dir, "cache-cleanup.lock.stale-test");
+        await fs.writeFile(quarantineFile, JSON.stringify({ pid: 12345, createdAt: 0, token: record.token }), "utf8");
+        return "done";
+      })).rejects.toMatchObject({ code: "EACCES" });
+    } finally {
+      rmSpy.mockRestore();
+    }
   });
 });

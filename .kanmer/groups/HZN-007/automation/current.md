@@ -791,3 +791,6 @@ CORE-083 independently reviewed PASS (PR #211, focused 4/4), merged into core-02
 
 
 GUI-115 review PASS and PR #212 merged non-squash into CORE-043 parent as 69ca8883. Exact d79f5f61 review fixed F-001..F-005; focused 10/10, broader 38/38, typecheck/diff-check PASS. Supplementary full GUI run after final fix was interrupted after tests emitted (INCONCLUSIVE), preserved in GUI-115 scratch; prior full 49-file/421-test PASS remains recorded. GUI-115 moved to Verifying and released; parent CORE-043 must be refreshed after GUI-116/117.
+
+
+CORE-087 artifact remediation independently reviewed PASS and PR #213 merged non-squash into CORE-026 parent as 453a92091d7a422a237996f024ab6940ea6fccfb. Normal-checkout plugin:check/mcpb:check PASS; artifact SHA 7298b5c268ac5995cadd56f6bbd4bcbe301f97a6a72eddd2f53d64a346158d75; focused IO 29/29, broader core 306/307 with unrelated migration timeout preserved. CORE-087 moved Verifying/released and block edge removed.

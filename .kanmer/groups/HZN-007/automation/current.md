@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T03:12:15.086Z
+updated_at: 2026-08-22T03:12:42.450Z
 ---
 
 # Current auto run — HZN-007
@@ -174,3 +174,6 @@ Last handoff: 2026-08-22T02:57:37.512Z — GUI-075/GUI-110 and MCP-042 are merge
 
 
 Last handoff: 2026-08-22T03:12:15.086Z — GUI-107 is the next implementation lane, delegated to /root/gui099_executor; remaining verifying blockers are CORE-022, CORE-036, GUI-101, and MCP-014.
+
+
+Last handoff: 2026-08-22T03:12:42.450Z — MCP-015 is the second implementation lane, delegated to /root/core041_executor; GUI-107 is delegated to /root/gui099_executor; verifying blockers remain explicitly external-evidence-bound.

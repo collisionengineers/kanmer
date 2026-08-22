@@ -56,3 +56,11 @@ The prior appended block contained escaped line separators due the recovery help
 - Provider authenticated execution and visual screenshot evidence remain INCONCLUSIVE.
 
 Disposition: GUI-075 stays in Review, PR #142 remains open, and the GUI-110 compatibility fix is deferred to its owner.
+
+## Hosted verify result after GUI-110 stack — 2026-08-22
+
+- GUI-110 authoritative commit `8ded235c` is stacked into GUI-075 by merge `c13596fc`; PR #142 remains OPEN.
+- Run `32545782848` / job `96963841700` completed in 2m17s.
+- PASS: build, manual freshness, core 266/266, GUI 355/355, MCP HTTP 61/61, scripts 80/80, all-workspace typecheck, stdio smoke 224/224, headless smoke.
+- FAIL exit 1: `npm run mcpb:check`; .mcpb build and manifest validation succeed, then `scripts/check-mcpb-sync.mjs:44` reports `MCPB server differs from distributed plugin copy`.
+- Disposition: preserve this shared plugin-artifact mismatch as the current blocker; do not absorb unrelated MCPB remediation into GUI-075. No merge or cleanup. Live provider and visual evidence remain INCONCLUSIVE.

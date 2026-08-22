@@ -24,3 +24,7 @@ The source change carries the public-destination lookup result into the producti
 ### Verdict
 
 PASS — independent review at exact SHA. Merge PR #178 non-squash into core-044-source-fetch-remediation, then move CORE-057 Review -> Verifying. Do not verify or clean up in this review step.
+
+## Merge handoff blocker
+
+PASS review was recorded at exact head a3bd18897a536153050f7196e5b6e1460d946235, but `gh pr merge 178 --merge --delete-branch=false` exited 1: `GraphQL: Pull Request has merge conflicts (mergePullRequest)`. The base core-044-source-fetch-remediation advanced to 3c070662 (CORE-056 non-squash merge), and merge-tree reports a content conflict in packages/mcp-server/src/sources.ts. No branch, source, board stage, or block edge was changed; a new conflict-resolved PR head requires fresh review before merge.

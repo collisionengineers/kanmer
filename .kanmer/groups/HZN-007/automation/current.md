@@ -663,3 +663,9 @@ PR #163 hosted verify and kanmer-gate run 32587889875 both PASS after CORE-079 m
 
 
 Awaiting gui082 fresh cumulative CORE-026 review/PR163 merge after all hosted checks passed; GUI099 is auditing Done-but-incomplete integration tickets. No controller merge performed.
+
+
+Done-incomplete audit reconciled: CORE-024, CORE-025, MCP-028 returned Done→Verifying with explicit scratch notes. Unchecked merged-main/direct-push/protected Cloudflare evidence remains honest and INCONCLUSIVE; no unsupported checklist ticks.
+
+
+Done-incomplete audit: MCP-015, GUI-104, CORE-042, GUI-101 returned to Verifying with explicit INCONCLUSIVE external/live evidence; GUI-106 normalized to 24/24 and remains Done with clean closeout.

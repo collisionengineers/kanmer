@@ -43,3 +43,31 @@ PR thread `3836967495`: `closeProject` does not share the lifecycle lock. If a m
 ## Verdict
 
 NEEDS-CHANGES. The focused rails and typecheck pass, and the diff is otherwise scoped and wired through production IPC/UI paths, but F-001 through F-004 leave the requested lifecycle semantics incomplete. PR #212 should remain open for remediation and fresh exact-head review.
+
+## Independent cumulative review — PR #212
+
+- Exact reviewed head: `8f3f346dc810d27428f119ba1f94cb5b300040cb`
+- Exact base: `9371e2b0e8882426d91dbc99553e96853b99197f`
+- Reviewer: codex-recovery (independent of author `gui-115-executor`); no source, merge, or GitHub-thread actions taken.
+- Verdict: **NEEDS-CHANGES**
+
+### Prior findings
+
+F-001 (durable `pendingBoardHandoffs` across reopen/restart): fixed by the settings-backed per-project map, restoration in `openProject`, and persistence regression.
+
+F-002 (acknowledgement must clear only its matching warning): fixed by `confirmKanmerGitHandoff` removing the pending marker and clearing `error` only when it equals that marker's warning.
+
+F-003 (preference-apply failure must restore timers): fixed structurally by `applyGitPreferencesLocked` clearing timers after lifecycle acquisition and rearming from effective settings in `finally`.
+
+F-004 (close/Retry/timer lifecycle race): fixed structurally by putting close under `withSyncLifecycles` and checking context identity in the timer callback; the same lifecycle lock covers sync and preference mutation.
+
+### New finding
+
+- **F-005 (P1, merge-blocking): the durable handoff can still be erased without explicit Actions-variable confirmation.** In `apps/gui/src/main/index.ts`, the ordinary-rename path calls `setKanmerGitHandoff(projectId, ... ? handoff : null)`. A failed rename (`renamed.ok === false`) therefore deletes any existing durable marker, even though the in-memory status is spread forward and still shows the warning. A successful rename with no warning also deletes the marker without the explicit `confirmKanmerGitHandoff` action. Closing/reopening after either path loses the pending warning, contrary to the plan's “clears only after ... positively confirmed” acceptance and the report's explicit-acknowledgement contract. Preserve the existing durable marker on failure/no-new-warning, or update it only when a new warning is produced; clear it only through the acknowledgement path. Add a regression covering an existing marker followed by failed/non-warning preference application and a subsequent settings read/reopen.
+
+### Evidence
+
+- `npm run test -w @kanmer/gui -- --run src/main/settings.test.ts src/main/kanmerGit.test.ts src/main/index.sync.test.ts src/main/syncLifecycle.test.ts`: **exit 0**, 37/37 (settings 3/3, lifecycle 2/2, index/sync 4/4, Git integration 28/28).
+- `npm run typecheck -w @kanmer/gui`: **exit 0**.
+- `git diff --check 9371e2b0e8882426d91dbc99553e96853b99197f 8f3f346dc810d27428f119ba1f94cb5b300040cb`: **exit 0**.
+- PR status checks were absent in the inspected GitHub response; hosted packaging/Actions-variable/protected-main evidence remains outside this local review boundary.

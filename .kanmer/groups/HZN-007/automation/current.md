@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:40:16.082Z
+updated_at: 2026-08-22T00:41:12.563Z
 ---
 
 # Current auto run — HZN-007
@@ -17,7 +17,7 @@ updated_at: 2026-08-22T00:40:16.082Z
 Open `automation/runs/20260821T105846Z-codex-mcp-client.md`, then re-read HZN-007/context.md, the live roster, and get_doc_gates for every ticket before dispatching. This pointer is written only after the complete immutable run record was written and read back.
 
 
-Last handoff: 2026-08-22T00:32:13.362Z — SKILL-017 is Review-ready on skill-017-auto-stopping/.worktrees/skill-017, commit a72ea84f, PR #143. Independent review/merge is required; this author must not merge.
+Last handoff: 2026-08-22T00:41:12.563Z — SKILL-007 is assigned for bounded reconciliation on skill-007-phase-groups/.worktrees/skill-007 from origin/main af61144c; merged PR #20 and live group/label evidence are under audit. No self-review/merge.
 
 
 Last handoff: CORE-036 merged-main verification recorded at 2026-08-21T22:49:50.557Z; ticket remains Verifying because npm run verify and npm run dist:check each exited 1 on normal main. PR #127 merge 470b2fad is present; no board move, release, or worktree cleanup was performed.
@@ -85,3 +85,5 @@ Last handoff: 2026-08-22T01:30:00+01:00 — CORE-037 is Implementing on `core-03
 
 
 Last handoff: 2026-08-22T01:39:51+01:00 — CORE-037 is Review on PR #144 (`aac1e25243fe200cc936b31a1fe78e7d041cd08b`), branch `core-037-windows-path-identity`, worktree `.worktrees/core-037`. Test-only Windows path identity remediation is complete; focused/full GUI rails and GUI typecheck/build pass, shared verify's missing mcpb CLI failure and baseline cleanup EPERM are preserved. Independent root review/merge required; do not clean up yet.
+
+- 2026-08-22T00:41:30+01:00 — SKILL-005 assigned to /root/gui082_executor for bounded merged-main reconciliation. Full packet (research/files/plan/checklist/open-questions/report/proof), HZN-007 and EPIC-007 context, FRD-012/ADR-0009 refs, links/activity and gates were reread. Existing implementation commit 21b53a7 is reachable from origin/main via merge 5c1bfb5; fresh .worktrees/skill-005 uses branch skill-005-agents-block-reconcile from origin/main af61144c. Scope is evidence/docs only unless a current-main defect is found; no SKILL-004/017 or CORE-037 work. No self-merge; advance one boundary at a time.

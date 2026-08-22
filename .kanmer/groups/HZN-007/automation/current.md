@@ -818,3 +818,8 @@ Removed GUI-115→CORE-043 blocker edge after its non-squash merge; GUI-115 rema
 
 
 Last handoff: 2026-08-22T22:03:59.590Z — GUI-119 is implementation-complete on gui-119-provider-branch-propagation/.worktrees/gui-119 from CORE-043 parent 1126253e. Provider branch propagation deterministic rails pass; full-suite/live-provider limitations remain explicitly INCONCLUSIVE. Await the ticket-linked PR and independent review before any merge.
+
+
+Last handoff: 2026-08-22T22:13Z — CORE-088 is in Review on PR #218 at 8d62176216d8c886779217fd846149f0b04b1655, targeting core-026-project-declared-sources. Source 32/32, core IO 32/32, GUI kanmerGit 31/31, all-workspace typecheck, docs, scripts, build, and diff rails pass; linked-worktree plugin:check and missing mcpb CLI remain explicit INCONCLUSIVE boundaries. Merged-main proof remains unchecked; author stops for independent review.
+
+Last handoff: 2026-08-22T22:13Z — GUI-119 independently reviewed PASS at exact head 0403684bdc448b3aef0ce8f62793525e1ce67619 against base 1126253eed586111db60ed72eccf6754f0f5ef06. Focused provider rail 56/56, GUI typecheck/build, verify:docs, scripts 89/89, and diff-check pass; live provider/host evidence remains INCONCLUSIVE. PR #217 merged non-squash as 7654a28104fbc67c58cad61241188d0f3d898c17 into core-043-protection-retarget; GUI-119 moved Review→Verifying. CORE-088 remains the active independent-review lane.

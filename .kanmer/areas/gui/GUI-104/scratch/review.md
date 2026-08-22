@@ -79,3 +79,47 @@ The single remaining finding `PRRT_kwDOT2PEds6bXFOp` is fixed. `register()` now 
 All prior review threads are resolved. No additional source finding was identified in this bounded diff. Hosted verify and kanmer-gate for `a663a62f` were still in progress at review time; prior recorded local/hosted rails for the stack were green. Ticket frontmatter still records `cad3552a` rather than the final head and should be refreshed as bookkeeping.
 
 Verdict: PASS for independent source review, pending hosted checks and commit traceability refresh. No merge or cleanup performed.
+
+# Independent review — PR #157 final head 561d42f3
+
+## Changes checked
+
+The final PR changes the OpenAI tunnel manager/tests plus the generated/manual connect chapter. The implementation keeps the OpenAI Secure MCP Tunnel path separate from Cloudflare, persists non-secret profile metadata, carries the packaged invocation environment, supervises owned children, and preserves the explicit external two-project/control-plane acceptance boundary as INCONCLUSIVE.
+
+## Prior review dispositions
+
+GitHub exposes 16 inline findings: F-001 was the first environment-propagation finding; F-002–F-016 are the later 15 findings referred to by the final-head review request.
+
+- F-001 Electron-as-Node environment: fixed in the prior follow-up; `init` and `run` merge invocation env and regression coverage asserts `ELECTRON_RUN_AS_NODE`.
+- F-002 initial generation: fixed; empty default generation is compared as null and first save succeeds.
+- F-003 running child on save: fixed; save rejects while an owned child is live.
+- F-004 unreadable settings: fixed; only ENOENT creates empty state; malformed/other read errors surface.
+- F-005 executable readiness: fixed; successful init emits EXECUTABLE_PRESENT=pass.
+- F-006 init/doctor quit cleanup: fixed; command children are tracked and awaited by closeAll.
+- F-007 Windows termination failures: fixed; taskkill/fallback and exit confirmation preserve/report failure.
+- F-008 filesystem roots: fixed; POSIX and drive-root separators are preserved.
+- F-009 incomplete defaults: fixed; only configured profiles reserve name/address resources.
+- F-010 dirty drafts: fixed; Initialize/Doctor/Restart/Start are disabled until edits are saved.
+- F-011 identity changes: fixed; explicit reconcile/remove path migrates or retires the old registration.
+- F-012 persistence rollback: fixed; project/profile/status state is restored if writing fails.
+- F-013 Windows project keys: fixed; canonical slash-normalized keys are used for persistence, queues, records, and views.
+- F-014 custom credential name: fixed; init passes `--control-plane-api-key-ref env:<NAME>` and manual text matches.
+- F-015 apostrophe/backtick executable paths: fixed; absolute argv paths permit these characters while rejecting controls/quotes/traversal.
+- F-016 auto-start error status: fixed; resolved error statuses produce `ok:false`, retain diagnostics, and are logged.
+
+All 16 GitHub review threads are resolved. No additional blocking finding was identified in the final diff.
+
+## Evidence and verdict
+
+- Final head: `561d42f3b0b987a156f409e987384d501d5e98ea`
+- `git diff --check main...561d42f3`: PASS
+- Focused manager + Settings tests: 12/12 PASS (ticket report)
+- Ticket report also records full GUI 41 files/372 tests, root+GUI typecheck, GUI build, manual freshness, packaged updater 8/8, and diff-check PASS.
+- Current hosted run `32559337159`: kanmer-gate PASS (job `96998404340`); verify was still RUNNING at review time (job `96998404249`).
+- Real two-project OpenAI control-plane/listener proof remains INCONCLUSIVE as explicitly allowed by FRD-026 without disposable credentials/projects and a documented listener probe.
+
+Verdict: PASS for the code/review-findings gate, contingent on the hosted verify job completing successfully. No merge performed.
+
+## Hosted verify completion update
+
+Run `32559337159` completed successfully after the initial note: kanmer-gate job `96998404340` PASS (50s) and verify job `96998404249` PASS (2m37s). The PASS verdict is now fully check-backed.

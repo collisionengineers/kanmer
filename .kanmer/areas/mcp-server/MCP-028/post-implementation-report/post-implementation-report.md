@@ -41,3 +41,7 @@ Read-only probes from this worktree returned exactly: `wrangler: unavailable` an
 ## Security and cleanup notes
 
 The client descriptor contains only endpoint/project/reference metadata; the bearer is loaded from a protected file at runtime. Inline credential-shaped descriptor keys and secret-bearing CLI arguments are rejected. Evidence uses allowlisted fields and bounded reasons. The fixture closes the SDK session, HTTP listener, and temporary board root even on test failure. The protected verifier never creates a tunnel or cloud resource.
+
+## Final clean rail addendum
+
+After the timing-sensitive first full HTTP attempt, the final `npm test` exited 0: manual freshness PASS; core 269/269; GUI 362/362; mcp-server HTTP/remote/doctor/tunnel rail 63/63; scripts 83/83. This includes the MCP-028 deterministic client/evidence tests. The earlier 61/63 timing failure is retained in scratch as an attempted failure, not silently replaced.

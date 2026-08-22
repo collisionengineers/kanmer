@@ -264,6 +264,22 @@ describe("ensureBoardWorktree reconciliation", () => {
       .toContain(".kanmer/data/sources/cache.json");
   });
 
+  realGitTest("resumes orphan migration when an attached orphan has no commit", async () => {
+    const boardRoot = join(repo, ".worktrees", "kanmer");
+    mkdirSync(join(repo, ".worktrees"), { recursive: true });
+    await git(repo, "worktree", "add", "--orphan", "-b", "orphan-board", boardRoot);
+    mkdirSync(join(boardRoot, ".kanmer"), { recursive: true });
+    writeFileSync(join(boardRoot, ".kanmer", "version.json"), '{"format":3}\n', "utf8");
+
+    const resumed = await ensureBoardWorktree(repo, "orphan-board");
+    const head = await git(boardRoot, "rev-parse", "--verify", "HEAD");
+
+    expect(resumed.available).toBe(true);
+    expect(head).toBeTruthy();
+    expect(await git(origin, "rev-parse", "orphan-board")).toBe(head);
+    expect(existsSync(join(repo, ".kanmer"))).toBe(false);
+  });
+
   realGitTest("preserves the root when first-time local attachment ignore fails", async () => {
     await git(repo, "checkout", "-b", "local-broken-ignore");
     mkdirSync(join(repo, ".gitignore"));

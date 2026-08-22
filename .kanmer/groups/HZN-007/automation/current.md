@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T09:11:57.972Z
+updated_at: 2026-08-22T09:19:00Z
 ---
 
 # Current auto run — HZN-007
@@ -355,3 +355,6 @@ Last handoff: 2026-08-22T09:09:30.685Z — CORE-026 review remediation handed ba
 
 
 Last handoff: 2026-08-22T09:11:57.972Z — CORE-026 remediation hosted verification complete: PR #163 head b5ae6f36e007a05fffd9bb2f1c6ea4a87a860477 passed kanmer-gate job 97010200239 and verify job 97010200322. Gate reports the prior review attestation still names 8eff8482; preserve as stale until independent re-review refreshes it. Ticket remains Review; no self-review/merge/cleanup.
+
+
+2026-08-22T09:19:00Z — GUI-111 Implementing on stacked branch gui-111-review-remediation/.worktrees/gui-111 from c259af17; scope is exactly GUI-109 review F-001..F-006. Parent GUI-109 remains blocked in Review. CORE-026 fresh re-review still pending; CORE-035 Verifying INCONCLUSIVE.

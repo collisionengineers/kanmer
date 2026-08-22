@@ -96,3 +96,6 @@
 
 
 2026-08-22T09:15:00Z — Independent review of CORE-026 PR #163 head 8eff8482926d29f7c80211b768fcffbb22d399d5 returned NEEDS-CHANGES. F-001 blocker: fetch_source passes enriched ResolvedSource into strict declaration validation, so valid fetches fail; F-002 major: linked response bytes are downloaded beyond aggregate 2 MiB before discard; F-003 minor: research still names superseded FRD-026/ADR-0019. All remain open in scratch/review; no merge/move/cleanup. Hosted verify/gate PASS on this head; external provider/live llms.txt/update boundaries remain INCONCLUSIVE.
+
+
+2026-08-22T09:16:00Z — GUI-111 taken into Implementing by core041-executor on dedicated .worktrees/gui-111 / gui-111-review-remediation, stacked from GUI-109 head c259af17 (merge-base verified) to address F-001..F-006. Packet docs/research/plan/checklist/questions present; author stops at Review, no self-review/merge/cleanup. GUI-109 remains Review/blocked; CORE-026 awaits fresh independent attestation.

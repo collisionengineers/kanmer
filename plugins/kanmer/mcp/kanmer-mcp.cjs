@@ -38029,6 +38029,73 @@ function defaultProcessAlive(pid) {
     return error2.code !== "ESRCH";
   }
 }
+function ownerMarkerPath(lockFile, token) {
+  return `${lockFile}.owner-${token}`;
+}
+async function ownerMarkerActive(markerFile, processAlive = defaultProcessAlive) {
+  let contents;
+  try {
+    contents = await import_promises.default.readFile(markerFile, "utf8");
+  } catch (error2) {
+    return error2.code !== "ENOENT";
+  }
+  try {
+    const marker = JSON.parse(contents);
+    if (Number.isInteger(marker.pid) && Number(marker.pid) > 0 && processAlive(Number(marker.pid))) return true;
+  } catch {
+    return true;
+  }
+  await import_promises.default.rm(markerFile, { force: true });
+  return false;
+}
+async function cleanupOwnerQuarantines(lockFile, token) {
+  const dir = import_path3.default.dirname(lockFile);
+  const prefix = `${import_path3.default.basename(lockFile)}.stale-`;
+  let entries;
+  try {
+    entries = await import_promises.default.readdir(dir);
+  } catch {
+    return;
+  }
+  for (const entry of entries.filter((name) => name.startsWith(prefix))) {
+    const quarantineFile = import_path3.default.join(dir, entry);
+    try {
+      const contents = await import_promises.default.readFile(quarantineFile, "utf8");
+      if (parseLockRecord(contents)?.token === token) await import_promises.default.rm(quarantineFile, { force: true });
+    } catch {
+    }
+  }
+}
+async function hasActiveOwnerMarker(lockFile, processAlive) {
+  let entries;
+  try {
+    entries = await import_promises.default.readdir(import_path3.default.dirname(lockFile));
+  } catch {
+    return false;
+  }
+  const prefix = `${import_path3.default.basename(lockFile)}.owner-`;
+  for (const entry of entries.filter((name) => name.startsWith(prefix))) {
+    if (await ownerMarkerActive(import_path3.default.join(import_path3.default.dirname(lockFile), entry), processAlive)) return true;
+  }
+  return false;
+}
+async function releaseOwnedLock(lockFile, token) {
+  try {
+    const contents = await import_promises.default.readFile(lockFile, "utf8");
+    if (parseLockRecord(contents)?.token === token) await import_promises.default.rm(lockFile, { force: true });
+  } catch (error2) {
+    if (error2.code !== "ENOENT") throw error2;
+  }
+  await import_promises.default.rm(ownerMarkerPath(lockFile, token), { force: true });
+  await cleanupOwnerQuarantines(lockFile, token);
+  try {
+    const contents = await import_promises.default.readFile(lockFile, "utf8");
+    if (parseLockRecord(contents)?.token === token) await import_promises.default.rm(lockFile, { force: true });
+  } catch (error2) {
+    if (error2.code !== "ENOENT") throw error2;
+  }
+  await cleanupOwnerQuarantines(lockFile, token);
+}
 async function recoverStaleLock(lockFile, options2) {
   let initialContents;
   let initialStat;
@@ -38040,6 +38107,7 @@ async function recoverStaleLock(lockFile, options2) {
   const record2 = parseLockRecord(initialContents);
   const createdAt = record2?.createdAt ?? initialStat.mtimeMs;
   if (!record2 || options2.now() - createdAt < options2.staleAfterMs) return false;
+  if (record2.token && await ownerMarkerActive(ownerMarkerPath(lockFile, record2.token), options2.processAlive)) return false;
   let alive;
   try {
     alive = options2.processAlive(record2.pid);
@@ -38055,12 +38123,37 @@ async function recoverStaleLock(lockFile, options2) {
     return error2.code === "ENOENT";
   }
   if (currentContents !== initialContents || currentStat.dev !== initialStat.dev || currentStat.ino !== initialStat.ino || currentStat.mtimeMs !== initialStat.mtimeMs) return false;
+  if (await hasActiveOwnerMarker(lockFile, options2.processAlive)) return false;
   const quarantineFile = `${lockFile}.stale-${process.pid}-${tmpCounter()}`;
   try {
     await options2.renameStaleLock(lockFile, quarantineFile);
   } catch (error2) {
     if (error2.code === "ENOENT") return false;
     throw error2;
+  }
+  let quarantinedContents;
+  let quarantinedStat;
+  try {
+    [quarantinedContents, quarantinedStat] = await Promise.all([import_promises.default.readFile(quarantineFile, "utf8"), import_promises.default.stat(quarantineFile)]);
+  } catch (error2) {
+    if (error2.code === "ENOENT") return false;
+    throw error2;
+  }
+  const ownsInspectedInode = quarantinedContents === initialContents && quarantinedStat.dev === initialStat.dev && quarantinedStat.ino === initialStat.ino && quarantinedStat.mtimeMs === initialStat.mtimeMs;
+  if (!ownsInspectedInode) {
+    const replacementToken = parseLockRecord(quarantinedContents)?.token;
+    const replacementMarker = replacementToken ? ownerMarkerPath(lockFile, replacementToken) : null;
+    const replacementActive = replacementMarker ? await ownerMarkerActive(replacementMarker, options2.processAlive) : false;
+    if (!replacementActive) {
+      await import_promises.default.rm(quarantineFile, { force: true });
+      return false;
+    }
+    try {
+      await import_promises.default.link(quarantineFile, lockFile);
+    } catch (error2) {
+      if (error2.code !== "EEXIST") throw error2;
+    }
+    return false;
   }
   try {
     await import_promises.default.rm(quarantineFile);
@@ -38079,11 +38172,32 @@ async function withExclusiveFileLock(lockFile, work, options2 = {}) {
   };
   await ensureDir(import_path3.default.dirname(lockFile));
   let claimed = false;
+  const claimToken = (0, import_crypto.randomUUID)();
+  const markerFile = ownerMarkerPath(lockFile, claimToken);
   let lastError;
+  const claim = async () => {
+    try {
+      await writeFileExclusive(markerFile, `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now(), token: claimToken })}
+`);
+      await writeFileExclusive(
+        lockFile,
+        `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now(), token: claimToken })}
+`
+      );
+    } catch (error2) {
+      try {
+        const contents = await import_promises.default.readFile(lockFile, "utf8");
+        if (parseLockRecord(contents)?.token === claimToken) await import_promises.default.rm(lockFile, { force: true });
+      } catch (readError) {
+        if (readError.code !== "ENOENT") throw readError;
+      }
+      await import_promises.default.rm(markerFile, { force: true });
+      throw error2;
+    }
+  };
   for (let attempt = 0; attempt <= delays.length; attempt++) {
     try {
-      await writeFileExclusive(lockFile, `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now() })}
-`);
+      await claim();
       claimed = true;
       break;
     } catch (error2) {
@@ -38092,8 +38206,7 @@ async function withExclusiveFileLock(lockFile, work, options2 = {}) {
       if (code !== "EEXIST") throw error2;
       if (await recoverStaleLock(lockFile, lockOptions)) {
         try {
-          await writeFileExclusive(lockFile, `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now() })}
-`);
+          await claim();
           claimed = true;
           break;
         } catch (retryError) {
@@ -38108,7 +38221,7 @@ async function withExclusiveFileLock(lockFile, work, options2 = {}) {
   try {
     return await work();
   } finally {
-    await import_promises.default.rm(lockFile, { force: true });
+    await releaseOwnedLock(lockFile, claimToken);
   }
 }
 async function renameWithRetry(from, to, rename = import_promises.default.rename) {

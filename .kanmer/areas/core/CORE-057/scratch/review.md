@@ -28,3 +28,7 @@ PASS — independent review at exact SHA. Merge PR #178 non-squash into core-044
 ## Merge handoff blocker
 
 PASS review was recorded at exact head a3bd18897a536153050f7196e5b6e1460d946235, but `gh pr merge 178 --merge --delete-branch=false` exited 1: `GraphQL: Pull Request has merge conflicts (mergePullRequest)`. The base core-044-source-fetch-remediation advanced to 3c070662 (CORE-056 non-squash merge), and merge-tree reports a content conflict in packages/mcp-server/src/sources.ts. No branch, source, board stage, or block edge was changed; a new conflict-resolved PR head requires fresh review before merge.
+
+## Fresh-review requirement — 2026-08-22
+
+The prior independent PASS was bound to a3bd1889 and is superseded for merge purposes by the conflict-resolved head 5f63571ecc7d71c102fc134b72d065207b11eae9. No author review or merge was performed; a fresh independent review must inspect the cumulative CORE-056 + CORE-057 diff and the post-sync rails above.

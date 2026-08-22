@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T13:43:38.156Z
+updated_at: 2026-08-22T13:51:33.161Z
 ---
 
 # Current auto run — HZN-007
@@ -482,3 +482,8 @@ Last handoff: 2026-08-22T13:43:38.156Z — CORE-061 Review handoff: final head 2
 
 
 2026-08-22T13:52:00Z — CORE-061 independently reviewed at 216dcdf0 (managed block 31/31, skills/manual/docs/core/scripts pass), PR #181 merged into CORE-043 as 8c093424, ticket Verifying. CORE-059 Review exact 835f9f51 / PR #182 after cumulative parent handoff. CORE-057 exact 5f63571e and CORE-058 exact d50ddab1 are mergeable conflict-resolved heads awaiting independent reviews.
+
+
+## CORE-057 conflict-resolved Review handoff — 2026-08-22T13:53Z
+
+CORE-057 PR #178 was updated against cumulative CORE-044 base 3c0706627cc73038d91a624e5d494d0148dce4c4 after the CORE-056 merge conflict in sources.ts. Combined DNS-bound request/deadline behavior with locked cache refresh/304 reconciliation. Final pushed head: 5f63571ecc7d71c102fc134b72d065207b11eae9; PR remains OPEN/MERGEABLE; ticket remains Review. Post-sync rails: source 19/19, MCP HTTP 87/87, scripts 88/88, protocol 46/46, core/server builds, workspace typecheck, docs and diff-check all PASS. Exact normal-checkout plugin parity passed at SHA256 06110A9E0CA2007A51CC2AEDCDD0E2BD353B627484C184AADB709A52AF686878. First mis-scoped normal-checkout attempt preserved Windows EPERM/missing-dependency failures. Live DNS/Windows/hosted/external evidence remains INCONCLUSIVE. Fresh independent review requested; author will not review or merge.

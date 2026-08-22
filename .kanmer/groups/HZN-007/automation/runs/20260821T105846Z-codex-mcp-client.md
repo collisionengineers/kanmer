@@ -780,3 +780,8 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T13:40:07.153Z — CORE-061 taken for implementation on branch core-061-agents-branch-convention, worktree .worktrees/core-061, base origin/main 34245be0. Scoped canonical managed-block, setup fence, and generated AGENTS.md convention update is in progress. verify:agents-block 31/31, manual/docs/diff pass; initial script-dist failure and corrected 88/88 rerun recorded in ticket scratch.
 
 - 2026-08-22T13:43:38.156Z — CORE-061 Review handoff: final head 216dcdf0, PR #181, base CORE-043 cumulative 4f106865947e556759aeb88363ea9aab7c01beac. Managed-block convention and validator rails pass; test:scripts 88/88 after build, initial missing-core-dist failure preserved. Awaiting independent review; no merge.
+
+
+## CORE-057 conflict-resolved Review handoff — 2026-08-22T13:53Z
+
+CORE-057 PR #178 was updated against cumulative CORE-044 base 3c0706627cc73038d91a624e5d494d0148dce4c4 after the CORE-056 merge conflict in sources.ts. Combined DNS-bound request/deadline behavior with locked cache refresh/304 reconciliation. Final pushed head: 5f63571ecc7d71c102fc134b72d065207b11eae9; PR remains OPEN/MERGEABLE; ticket remains Review. Post-sync rails: source 19/19, MCP HTTP 87/87, scripts 88/88, protocol 46/46, core/server builds, workspace typecheck, docs and diff-check all PASS. Exact normal-checkout plugin parity passed at SHA256 06110A9E0CA2007A51CC2AEDCDD0E2BD353B627484C184AADB709A52AF686878. First mis-scoped normal-checkout attempt preserved Windows EPERM/missing-dependency failures. Live DNS/Windows/hosted/external evidence remains INCONCLUSIVE. Fresh independent review requested; author will not review or merge.

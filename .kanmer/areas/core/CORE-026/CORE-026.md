@@ -13,10 +13,12 @@ groups:
   - HZN-006
   - HZN-007
 links: []
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-026-project-declared-sources.md
+  - docs/architecture/adr/ADR-0019-project-declared-source-trust.md
 archived: false
 created: '2026-08-16T18:26:15.208Z'
-updated: '2026-08-21T10:57:25.227Z'
+updated: '2026-08-22T08:28:00.609Z'
 ---
 
 ## What

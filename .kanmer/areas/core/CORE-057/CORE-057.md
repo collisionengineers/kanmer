@@ -2,12 +2,13 @@
 id: CORE-057
 type: ticket
 title: 'CORE-044 review remediation: pin DNS validation and bound resolver timeout'
-status: implementing
+status: review
 area: core
 assignee: codex-core057-executor
 profile: fix
 stageEntered:
   preparing: '2026-08-22T13:05:54.403Z'
+  review: '2026-08-22T13:18:03.398Z'
 taken_at: '2026-08-22T13:06:05.181Z'
 branch: core-057-dns-bound-resolver
 worktree: .worktrees/core-057
@@ -24,9 +25,13 @@ blocks:
 refs:
   - docs/functional/frd/FRD-027-project-declared-sources.md
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
+commits:
+  - a3bd18897a536153050f7196e5b6e1460d946235
+prs:
+  - '178'
 archived: false
 created: '2026-08-22T13:03:00.897Z'
-updated: '2026-08-22T13:06:05.181Z'
+updated: '2026-08-22T13:18:03.398Z'
 ---
 
 Close CORE-044 remote-source review findings: ensure the outbound request is bound to the address validated by the public-destination preflight (or implement a governing-document-backed safe equivalent), and enforce the documented fetch deadline across DNS resolution. Add deterministic regression coverage and preserve surfaced errors. Link [[CORE-044]].

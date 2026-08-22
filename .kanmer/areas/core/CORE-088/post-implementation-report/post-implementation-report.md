@@ -28,3 +28,9 @@ Implemented only the four mapped CORE-026 review findings F-006 through F-009. T
 ## Handoff state
 
 The merged-main proof item remains unchecked. This report is implementation evidence for independent review; the PR is to remain open and the ticket should stop at Review.
+
+## Commit and PR handoff
+
+- Implementation commit: `8d62176216d8c886779217fd846149f0b04b1655`.
+- Branch: `core-088-source-cache-atomicity`; target branch: `core-026-project-declared-sources`.
+- The generated plugin artifact is included in the commit. The PR remains open for independent review; no merge, verification, or cleanup was performed.

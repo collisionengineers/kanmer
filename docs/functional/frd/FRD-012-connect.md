@@ -82,3 +82,11 @@ Open work against this matrix, so a reader who spots the gap between R2 and `pro
 **MCP-013** closed R2's two marketplace bullets and AC-4 for the marketplace hosts: the command is given the marketplace root, codex gets its missing second command, the packaged app carries both manifests, and a failed install command is reported rather than relabelled.
 
 **MCP-011** closed R6, R7 and the version freeze: both `plugin.json` manifests are bumped by `release.mjs` and pinned by `plugin:check`, so `bundledSkillsVersion()` tracks the repo again and the "Update skills" affordance — the reconciliation GUI-080 shipped — can fire.
+
+## GUI-075 dispatch capability boundary
+
+Connect and Dispatch remain separate provider capabilities. The Dispatch
+Settings tab renders only hosts whose dispatch registry entry is dispatchable,
+and model controls only when that entry carries measured model-flag evidence.
+Connecting a host does not imply background dispatch or model availability;
+Antigravity remains absent until its own binding/dispatch work lands.

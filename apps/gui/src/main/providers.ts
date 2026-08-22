@@ -154,7 +154,7 @@ function sharedDispatchSpec(id: DispatchProviderId): Pick<AgentProvider, "dispat
   if (!provider) throw new Error(`Missing shared dispatch provider ${id}`);
   return {
     dispatchCli: provider.cli,
-    dispatchArgs: (prompt, root) => [...provider.args(prompt, root)],
+    dispatchArgs: (prompt, root) => [...provider.buildDispatchArgs({ prompt, sourceRoot: root })],
   };
 }
 
@@ -880,8 +880,11 @@ export function providerById(id: string): AgentProvider | undefined {
 }
 
 /** The provider list the Connect UI renders from (no hardcoded host names). */
-export function listProviders(): { id: ProviderId; label: string; dispatch: boolean }[] {
-  return PROVIDERS.map((p) => ({ id: p.id, label: p.label, dispatch: p.dispatch }));
+export function listProviders(): { id: ProviderId; label: string; dispatch: boolean; model?: { flag: string; evidence: string } }[] {
+  return PROVIDERS.map((p) => {
+    const shared = p.dispatch ? dispatchProviderById(p.id) : undefined;
+    return { id: p.id, label: p.label, dispatch: p.dispatch, ...(shared?.modelOption ? { model: { flag: shared.modelOption.flag, evidence: shared.modelOption.evidence } } : {}) };
+  });
 }
 
 /** Providers that support a background dispatch (for the "Dispatch to agent →" menu). */

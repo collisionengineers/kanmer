@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { rm } from "node:fs/promises";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Item, KanmerStore } from "@kanmer/core";
 
@@ -8,6 +9,7 @@ vi.mock("electron", () => ({ app: { getPath: () => join(tmpdir(), "kanmer-dispat
 
 const { __setSpawnForTests, dispatchTicket, killAllDispatches, listDispatches } =
   await import("./dispatch.js");
+const { setDispatchSettings } = await import("./settings.js");
 
 function child(pid: number) {
   const proc = new EventEmitter() as EventEmitter & {
@@ -61,6 +63,18 @@ describe("project-scoped dispatches", () => {
     const project = store("/one");
     await dispatchTicket(project, "claude", "/one", "TICK-1", {}, "/one");
     await expect(dispatchTicket(project, "claude", "/one", "TICK-1", {}, "/one")).rejects.toThrow(/in flight/);
+    proc.emit("close", 0);
+  });
+
+  it("passes effective model and append-only suffix to the provider argv", async () => {
+    await rm(join(tmpdir(), "kanmer-dispatch-test"), { recursive: true, force: true });
+    await setDispatchSettings({ providers: { claude: { defaultModel: "sonnet", promptSuffix: "run lint" } } });
+    const proc = child(104);
+    let invocation: { command: string; args: readonly string[] } | undefined;
+    __setSpawnForTests((command, args) => { invocation = { command, args }; return proc as never; });
+    const status = await dispatchTicket(store("/one"), "claude", "/one", "TICK-2", {}, "/one");
+    expect(invocation).toEqual({ command: "claude", args: ["-p", expect.stringContaining("Additional operator instructions for this provider:"), "--model", "sonnet"] });
+    expect(status).toMatchObject({ model: "sonnet", promptCustomized: true });
     proc.emit("close", 0);
   });
 });

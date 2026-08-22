@@ -40,6 +40,17 @@ Related: D5/D11 · FRD-009 · FRD-002 · FRD-016 (worktrees).
 
 The MCP start/list/cancel surface is a controlled extension of the GUI drawer, not a remote shell. `KANMER_DISPATCH_ENABLED=true` is necessary but insufficient: `KANMER_DISPATCH_PROVIDERS`, `KANMER_DISPATCH_TASKS`, bounded `KANMER_DISPATCH_MAX_ACTIVE`/timeout values and `KANMER_DISPATCH_APPROVAL=elicit|preapproved` must all be valid. Missing or malformed policy is disabled. The process supervisor keeps only active and bounded recent metadata in memory; full output remains local, while one bounded terminal summary is recorded to the ticket scratch. Live provider credentials and remote-host acceptance are operator evidence, not fabricated by repository tests.
 
+## GUI-075 configurable dispatch end state
+
+The desktop Settings → Dispatch surface may configure machine-local provider
+defaults and provider/task model overrides, plus an append-only operator
+instruction suffix. Empty settings preserve the built-in prompt and provider
+argv exactly. Model flags are emitted only for providers whose installed CLI
+help has been measured; a configured value never triggers a silent retry using
+the CLI default. The built-in task prompt remains the core SSOT and the suffix
+is bounded, normalized, and clearly delimited. Settings are not board data,
+per-ticket policy, remote MCP policy, or a model catalogue.
+
 ## MCP-020 shared dispatch end state
 
 The MCP start/list/cancel surface is a controlled extension of the GUI drawer, not a remote shell. `KANMER_DISPATCH_ENABLED=true` is necessary but insufficient: `KANMER_DISPATCH_PROVIDERS`, `KANMER_DISPATCH_TASKS`, bounded `KANMER_DISPATCH_MAX_ACTIVE`/timeout values and `KANMER_DISPATCH_APPROVAL=elicit|preapproved` must all be valid. Missing or malformed policy is disabled. The process supervisor keeps only active and bounded recent metadata in memory; full output remains local, while one bounded terminal summary is recorded to the ticket scratch. Live provider credentials and remote-host acceptance are operator evidence, not fabricated by repository tests.

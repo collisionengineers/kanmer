@@ -8,6 +8,7 @@ import {
   dispatchProviderById,
   dispatchTaskById,
   takeTicketPromptText,
+  composeDispatchPrompt,
   type DispatchLocalStatus,
   type DispatchStatus as CoreDispatchStatus,
   type DispatchSupervisorOptions,
@@ -15,6 +16,7 @@ import {
 } from "@kanmer/core";
 import type { DispatchStatus } from "../shared/ipc.js";
 import type { ProviderId } from "./providers.js";
+import { readSettings, resolveDispatchSettings } from "./settings.js";
 
 let emit: (status: DispatchStatus) => void = () => {};
 const stores = new Map<string, KanmerStore>();
@@ -83,7 +85,10 @@ export async function dispatchTicket(
   const task = opts.taskId ? dispatchTaskById(opts.taskId) : undefined;
   if (opts.taskId && !task) throw new Error(`Unknown dispatch task "${opts.taskId}".`);
   stores.set(projectId, store);
-  const prompt = task ? task.prompt(ticketId) : takeTicketPromptText(ticketId);
+  const builtInPrompt = task ? task.prompt(ticketId) : takeTicketPromptText(ticketId);
+  const config = resolveDispatchSettings(readSettings().dispatch, provider.id, task?.id);
+  if (config.model && !provider.modelOption) throw new Error(`Provider "${provider.label}" has no verified model override.`);
+  const prompt = composeDispatchPrompt(builtInPrompt, config.promptSuffix);
   const status = await getSupervisor().start({
     projectId,
     sourceRoot,
@@ -91,6 +96,8 @@ export async function dispatchTicket(
     provider: provider.id,
     requestedBy: "gui",
     prompt,
+    ...(config.model ? { model: config.model } : {}),
+    ...(config.promptCustomized ? { promptCustomized: true } : {}),
     ...(opts.timeoutMs === undefined ? {} : { timeoutMs: opts.timeoutMs }),
     ...(task ? { task: { id: task.id, label: task.label, deliverable: task.deliverable, prompt } } : {}),
   });

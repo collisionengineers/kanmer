@@ -21,6 +21,8 @@ import type {
   V3Report,
   RepoStaleness,
   DispatchStatus as CoreDispatchStatus,
+  DispatchProviderId,
+  DispatchTaskId,
 } from "@kanmer/core";
 import type {
   RemoteDoctorResult,
@@ -74,6 +76,7 @@ export const CH = {
   setTheme: "kanmer:setTheme",
   setNotifications: "kanmer:setNotifications",
   setPreferences: "kanmer:setPreferences",
+  setDispatchSettings: "kanmer:setDispatchSettings",
   setKanmerGitPreferences: "kanmer:setKanmerGitPreferences",
   getKanmerGitStatus: "kanmer:getKanmerGitStatus",
   syncKanmerNow: "kanmer:syncKanmerNow",
@@ -88,6 +91,8 @@ export const CH = {
   updateSkills: "kanmer:updateSkills",
   dispatchAgent: "kanmer:dispatchAgent",
   dispatchOptions: "kanmer:dispatchOptions",
+  dispatchTasks: "kanmer:dispatchTasks",
+  dispatchPromptPreview: "kanmer:dispatchPromptPreview",
   cancelDispatch: "kanmer:cancelDispatch",
   listDispatches: "kanmer:listDispatches",
   /** Main → renderer: a background dispatch's status changed. */
@@ -190,6 +195,16 @@ export interface UiPreferences {
   defaultArea: string;
 }
 
+export interface DispatchProviderSettings {
+  defaultModel?: string;
+  taskModels?: Partial<Record<DispatchTaskId, string>>;
+  promptSuffix?: string;
+}
+
+export interface DispatchSettings {
+  providers: Partial<Record<DispatchProviderId, DispatchProviderSettings>>;
+}
+
 /** The agent hosts Connect supports (mirrors main/providers.ts ProviderId). */
 export type ConnectTarget = "codex" | "claude" | "opencode" | "grok" | "antigravity";
 
@@ -204,6 +219,7 @@ export interface ProviderInfo {
   id: ConnectTarget;
   label: string;
   dispatch: boolean;
+  model?: { flag: string; evidence: string };
 }
 
 /**
@@ -279,6 +295,13 @@ export interface DispatchOption {
   warning?: string;
 }
 
+export interface DispatchTaskInfo {
+  id: string;
+  label: string;
+  deliverable: string;
+  prompt: string;
+}
+
 export interface DispatchStatus extends CoreDispatchStatus {
   /** Bounded local diagnostics; MCP status deliberately omits this field. */
   tail?: string[];
@@ -296,6 +319,7 @@ export interface AppSettings extends UiPreferences {
   sessionInitialized: boolean;
   kanmerBranch: string;
   gitSyncMinutes: number;
+  dispatch: DispatchSettings;
 }
 
 export interface KanmerGitPreferences { kanmerBranch: string; gitSyncMinutes: number; }
@@ -476,6 +500,7 @@ export interface KanmerApi {
   setNotifications(on: boolean): Promise<AppSettings>;
   /** Merge a partial UI-preferences patch (Phase 4.4). */
   setPreferences(patch: Partial<UiPreferences>): Promise<AppSettings>;
+  setDispatchSettings(settings: DispatchSettings): Promise<AppSettings>;
   setKanmerGitPreferences(prefs: KanmerGitPreferences): Promise<AppSettings>;
   getKanmerGitStatus(projectId: string): Promise<KanmerGitStatus>;
   syncKanmerNow(projectId: string): Promise<KanmerGitStatus>;
@@ -507,6 +532,8 @@ export interface KanmerApi {
   dispatchAgent(projectId: string, ticketId: string, target: ConnectTarget, taskId?: string): Promise<DispatchStatus>;
   /** The task menu for one ticket, feasibility resolved by core. */
   dispatchOptions(projectId: string, ticketId: string): Promise<DispatchOption[]>;
+  listDispatchTasks(): Promise<DispatchTaskInfo[]>;
+  dispatchPromptPreview(taskId: string, suffix?: string): Promise<string>;
   /** Cancel a dispatch by its globally unique dispatch id (tree-kills the child). */
   cancelDispatch(dispatchId: string): Promise<boolean>;
   /** Current in-flight dispatches for a project. */

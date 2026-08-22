@@ -24,6 +24,8 @@ export interface DispatchStatus {
   task?: string;
   taskLabel?: string;
   deliverable?: string;
+  model?: string;
+  promptCustomized?: boolean;
   requestedBy: string;
   state: DispatchState;
   startedAt: number;
@@ -55,6 +57,8 @@ export interface DispatchStartRequest {
   provider: DispatchProviderId;
   requestedBy: string;
   prompt?: string;
+  model?: string;
+  promptCustomized?: boolean;
   task?: DispatchTaskDescriptor;
   timeoutMs?: number;
 }
@@ -148,6 +152,8 @@ export class DispatchSupervisor {
       ticketId: request.ticketId,
       provider: request.provider,
       ...(request.task ? { task: request.task.id, taskLabel: request.task.label, deliverable: request.task.deliverable } : {}),
+      model: request.model ?? "cli-default",
+      ...(request.promptCustomized ? { promptCustomized: true } : {}),
       requestedBy: request.requestedBy,
       state: "running",
       startedAt,
@@ -157,7 +163,11 @@ export class DispatchSupervisor {
     const log = createWriteStream(logPath, { flags: "a" });
     let child: ChildProcess;
     try {
-      child = this.spawnFn(provider.cli, provider.args(request.prompt ?? request.task?.prompt ?? "", request.sourceRoot), {
+      child = this.spawnFn(provider.cli, provider.buildDispatchArgs({
+        prompt: request.prompt ?? request.task?.prompt ?? "",
+        sourceRoot: request.sourceRoot,
+        ...(request.model ? { model: request.model } : {}),
+      }), {
         cwd: request.sourceRoot,
         env: this.env,
         windowsHide: true,

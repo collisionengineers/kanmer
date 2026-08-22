@@ -265,6 +265,10 @@ updating. It holds the version it started with.
 
 ## 0.2.0
 
+- Added **Settings → Dispatch** for machine-local provider model defaults,
+  per-task overrides, and append-only operator instructions. Empty settings
+  preserve existing provider commands and built-in task prompts.
+
 First published release. `0.1.0` was built and packaged but never actually
 published to GitHub Releases — this is the first version any installed client
 can see. Includes the Kanban board, the MCP server shipped inside the app for

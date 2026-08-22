@@ -17,3 +17,6 @@
 
 
 2026-08-22T04:57Z — CORE-024 implementation lane assigned\n\n- CORE-024 moved Preparing to Implementing through MCP on dedicated core-024-check-pr/.worktrees/core-024, assigned to core024-executor. Scope is phase-1 check-pr merge gate and kanmer-gate only; CORE-025/033/035 remain untouched. Independent review required; no merge.
+
+
+2026-08-22T06:14Z — GUI-106 independent re-review PASS\n\n- PR #153 current head c18b5c046f74102c86ecc5f3bd514f6e687bbeb9 (implementation bd83b8a531bfa5e69b9879acc2ef51fe9e0b997c plus source-free CI retrigger) re-reviewed independently. F-001..F-005 are fixed: packaged external identity/skills shape, stale-runtime pruning, AGENTS/updater convention, and install-root overlap rejection. Static/package 8/8, full GUI 360/360, typecheck, dist:check 8/8, and diff-check pass. GitHub emitted no checks for the new head and workflow_dispatch is absent (422); historical hosted PASS and real packaged-host evidence remain explicitly INCONCLUSIVE. Review attestation replaced with pass; merge is authorized subject to normal PR state.

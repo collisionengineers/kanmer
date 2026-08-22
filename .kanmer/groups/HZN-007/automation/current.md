@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T09:07:00Z
+updated_at: 2026-08-22T09:17:00Z
 ---
 
 # Current auto run — HZN-007
@@ -340,3 +340,12 @@ Last handoff: 2026-08-22T09:00:43.617Z — CORE-026 hosted smoke remediation: PR
 
 
 2026-08-22T09:07:00Z — GUI-109 independent review NEEDS-CHANGES on PR #162; six findings are preserved in blocking follow-up GUI-111 (linked/blocks GUI-109). No merge/advance; deterministic rails pass, Electron visual remains INCONCLUSIVE. CORE-026 awaits fresh smoke fix + independent review; CORE-035 remains Verifying.
+
+
+2026-08-22T09:12:00Z — GUI-111 entered Preparing as the blocking remediation for GUI-109 F-001..F-006. Planned stacked branch from parent c259af17 targeting gui-109-add-to-group; original PR #162 stays Review/blocked. CORE-026 has stale smoke verify repair pending; CORE-035 remains Verifying.
+
+
+2026-08-22T09:17:00Z — CORE-026 independent review NEEDS-CHANGES on PR #163 head 8eff8482 despite hosted/local rails PASS: fetch_source strict-shape blocker, aggregate-byte over-download, and stale research refs remain open. No merge/advance; author remediation required. GUI-111 is Preparing for stacked GUI-109 findings; CORE-035 Verifying INCONCLUSIVE.
+
+
+Last handoff: 2026-08-22T09:03:10.197Z — CORE-026 hosted verification complete: PR #163 head 8eff8482926d29f7c80211b768fcffbb22d399d5. Fresh run 32563742650 passed kanmer-gate job 97009200164 and verify job 97009200250; the gate's no scratch/review.md warning is expected for an author handoff. Ticket remains Review for independent review; no self-review/merge/cleanup.

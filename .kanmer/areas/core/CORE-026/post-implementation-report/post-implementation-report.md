@@ -47,3 +47,9 @@ Status should move only one boundary to Review after the final `get_doc_gates CO
 - Hosted run 32563585675 initially failed in the authoritative verify job because packages/mcp-server/src/smoke.mjs still asserted the pre-source-tools count of 34 while tools/list correctly returned 37. This was a stale smoke assertion, not a source behavior failure.
 - Fixed the assertion in commit 8eff8482 (tools/list returns 37), pushed to PR #163, and reran the focused smoke/prose/plugin rails locally: smoke:protocol 46/46, smoke:headless PASS, verify:docs PASS, verify:skills PASS, plugin-sync PASS, git diff --check PASS.
 - Hosted kanmer-gate passes on the corrected PR body with standalone Kanmer: CORE-026; its no-scratch/review warning is expected because the author must not self-review. Hosted verify is awaiting the new head's result; no merge/self-review/cleanup is authorized.
+
+
+## Hosted verification result — 2026-08-22
+
+- Fresh hosted run 32563742650 for head 8eff8482926d29f7c80211b768fcffbb22d399d5 passed both jobs: kanmer-gate job 97009200164 PASS and verify job 97009200250 PASS (authoritative verification rail, 2m26s). The gate warning that no scratch/review.md attestation exists is expected because the author must not self-review.
+- PR #163 is Review-ready at 8eff8482. CORE-026 remains Review-only for independent review; no merge, self-review, or cleanup performed.

@@ -28,3 +28,5 @@ Research and governing-doc decisions are recorded in research/research.md and op
 - Hosted follow-up: e0a046be documents the bounded cache edge cases; PR #163 remains at Review while the corrected footer event is checked.
 
 - Hosted verify remediation: corrected packages/mcp-server/src/smoke.mjs tool-count assertion from 34 to 37 in 8eff8482; focused local rails pass; hosted rerun pending.
+
+- Hosted rerun 32563742650: kanmer-gate PASS (97009200164); verify PASS (97009200250); no scratch/review.md warning is expected for an author handoff.

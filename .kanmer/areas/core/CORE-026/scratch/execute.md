@@ -18,3 +18,7 @@
 ## Hosted verify remediation — 2026-08-22
 
 - Hosted verify exposed stale packages/mcp-server/src/smoke.mjs assertion (34 vs actual 37 tools after CORE-026). Fixed and pushed 8eff8482. Local smoke:protocol 46/46, smoke:headless, docs, skills, plugin-sync and diff-check pass. Await fresh hosted result; remain Review, no self-review/merge/cleanup.
+
+## Hosted verification passed — 2026-08-22
+
+- Fresh run 32563742650 on 8eff8482: kanmer-gate PASS (job 97009200164) and verify PASS (job 97009200250, 2m26s). Gate's no scratch/review.md warning is expected; author does not self-review. Remain Review for root independent review; no merge/cleanup.

@@ -90,3 +90,9 @@
 
 
 2026-08-22T09:05:00Z — Independent review of GUI-109 PR #162 head c259af171a72fa83a9131f4f53a79d0cfd0f05b5 returned NEEDS-CHANGES. Six findings (cross-project menu binding, listGroups error surfacing, archive race, submenu bounds, manual archive wording, and refresh-cleared assignment conflicts) were dispositioned deferred-to-ticket GUI-111; GUI-111 is linked/blocks GUI-109. Deterministic rails remain PASS, live Electron visual INCONCLUSIVE; no merge or stage advance.
+
+
+2026-08-22T09:10:00Z — GUI-111 moved Backlog→Preparing after FRD-001 gate readback. It is the blocking follow-up for GUI-109 review findings F-001..F-006. Assigned to /root/gui099_executor for packet/research/plan and a dedicated stacked remediation branch based on GUI-109 head c259af17, targeting the parent branch; original GUI-109 remains Review/blocked and unmerged.
+
+
+2026-08-22T09:15:00Z — Independent review of CORE-026 PR #163 head 8eff8482926d29f7c80211b768fcffbb22d399d5 returned NEEDS-CHANGES. F-001 blocker: fetch_source passes enriched ResolvedSource into strict declaration validation, so valid fetches fail; F-002 major: linked response bytes are downloaded beyond aggregate 2 MiB before discard; F-003 minor: research still names superseded FRD-026/ADR-0019. All remain open in scratch/review; no merge/move/cleanup. Hosted verify/gate PASS on this head; external provider/live llms.txt/update boundaries remain INCONCLUSIVE.

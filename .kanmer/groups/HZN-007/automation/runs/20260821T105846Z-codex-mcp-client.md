@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T09:00:43.617Z
+updated_at: 2026-08-22T09:03:10.197Z
 lane_limit: 3
 stop_reason:
 ---
@@ -683,3 +683,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T08:51:53.004Z — CORE-026 implementation handed to Review: fab7b4994b5b0c4f2eaf07a919cf6b6e06e7e763 pushed as PR #163 on core-026-project-declared-sources/.worktrees/core-026. FRD-027 and ADR-0020 are linked after resolving the pre-existing FRD-026 number collision; report/checklist/gates are complete and final rails pass. External connected-provider and live llms.txt evidence is INCONCLUSIVE. Stop for independent review; no self-review/merge/cleanup.
 
 - 2026-08-22T09:00:43.617Z — CORE-026 hosted smoke remediation: PR #163 head 8eff8482 updates packages/mcp-server/src/smoke.mjs from the stale 34-tool assertion to 37. Local smoke/prose/plugin rails pass; hosted kanmer-gate passed on the corrected standalone footer and the fresh verify run is pending. Ticket remains Review; stop for independent review, no self-review/merge/cleanup.
+
+- 2026-08-22T09:03:10.197Z — CORE-026 hosted verification complete: PR #163 head 8eff8482926d29f7c80211b768fcffbb22d399d5. Fresh run 32563742650 passed kanmer-gate job 97009200164 and verify job 97009200250; the gate's no scratch/review.md warning is expected for an author handoff. Ticket remains Review for independent review; no self-review/merge/cleanup.

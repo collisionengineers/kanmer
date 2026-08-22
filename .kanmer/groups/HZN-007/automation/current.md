@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T13:19:49.820Z
+updated_at: 2026-08-22T13:40:07.153Z
 ---
 
 # Current auto run — HZN-007
@@ -473,3 +473,6 @@ Last handoff: 2026-08-22T13:19:49.820Z — CORE-056 implementation handoff: comm
 
 
 2026-08-22T13:39:00Z — CORE-058 base-conflict remediation complete. PR #180's generated-plugin-only conflict against the advanced CORE-044 base was resolved by merge commit `3218bc79`; the artifact was rebuilt from a separate normal checkout of that merged head and committed as `d50ddab17c33fcdc645f9c777a635cc2d72f26ee`. PR #180 is OPEN/MERGEABLE at the updated head; post-sync source 17/17, focused GUI Git 15/15, workspace build/typecheck and merged-base normal plugin parity/check pass. Report/checklist/scratch/item traceability and gates were refreshed/read back. CORE-058 remains Review for fresh independent review; no merge/verify/cleanup.
+
+
+Last handoff: 2026-08-22T13:40:07.153Z — CORE-061 taken for implementation on branch core-061-agents-branch-convention, worktree .worktrees/core-061, base origin/main 34245be0. Scoped canonical managed-block, setup fence, and generated AGENTS.md convention update is in progress. verify:agents-block 31/31, manual/docs/diff pass; initial script-dist failure and corrected 88/88 rerun recorded in ticket scratch.

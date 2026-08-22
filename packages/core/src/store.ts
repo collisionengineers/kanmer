@@ -96,6 +96,7 @@ import {
   type ItemType,
   type ItemWarning,
   type MovePosition,
+  type OpenQuestionCount,
   type SetDocOptions,
   type TakeTicketInput,
   type TicketDoc,
@@ -1146,6 +1147,28 @@ export class KanmerStore {
       references: await listReferences(loc.dir),
       scratch: await this.listScratch(id),
     };
+  }
+
+  /**
+   * Count unresolved open questions without initializing or mutating the
+   * project.  A legacy layout, missing item, or non-ticket is deliberately
+   * reported as null so callers can distinguish an unsupported board from a
+   * ticket with zero questions.
+   */
+  async getOpenQuestionCount(id: string): Promise<OpenQuestionCount | null> {
+    let loc: ItemLocation | null;
+    try {
+      loc = await this.locateItem(id);
+    } catch {
+      return null;
+    }
+    if (!loc || loc.kind !== "v2") return null;
+    const item = parseItem(await readText(loc.file));
+    if (item.type !== "ticket") return null;
+    const { checked, total } = await countCheckboxes(loc.dir, "open-questions", {
+      stopAtParked: true,
+    });
+    return { checked, total, open: total - checked };
   }
 
   /**

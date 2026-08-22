@@ -27,3 +27,35 @@ jobs:
 
       - name: Run the authoritative verification rail
         run: npm ci && npm run verify
+
+  kanmer-gate:
+    name: kanmer-gate
+    runs-on: windows-latest
+    steps:
+      - name: Check out the pull request
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the read-only core
+        run: npm run build:core
+
+      - name: Fetch the board worktree
+        run: |
+          git fetch origin kanmer-board
+          git worktree add "$RUNNER_TEMP/kanmer-board" origin/kanmer-board
+
+      - name: Assert fetched board is separate from the pull request checkout
+        run: |
+          board_path="$(cd "$RUNNER_TEMP/kanmer-board" && pwd -P)"
+          workspace_path="$(pwd -P)"
+          test "$board_path" != "$workspace_path"
+
+      - name: Run the phase-1 merge gate
+        run: node packages/mcp-server/src/check-pr.mjs --board "$RUNNER_TEMP/kanmer-board" --event "$GITHUB_EVENT_PATH"

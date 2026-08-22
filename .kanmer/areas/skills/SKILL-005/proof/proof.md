@@ -57,3 +57,7 @@ Fresh merged-main checks:
 The historical first `npm run test:scripts` failure (78/80, missing `packages/core/dist/index.js` for `auto-run-state.test.mjs` and `release-notes.mjs`) remains recorded in the report; its later `npm run build:core` and 80/80 rerun do not erase that first-run limitation. No new full-root-verify claim is made.
 
 No live agent onboarding or behavioral improvement is claimed: the block's static correctness is proven, while whether agents call `get_doc_gates` instead of assuming a pipeline remains untestable here. The roster remains hand-maintained.
+
+## Closeout finalisation — 2026-08-22
+
+PR [#16](https://github.com/collisionengineers/kanmer/pull/16) is MERGED (2026-08-16T05:15:03Z) at merge commit `5c1bfb5ed5db323dcdb90efa3a5531a5953598a3`. The historical first-run missing-dist failure and unproven live onboarding limits remain explicit; no stronger claim is made.

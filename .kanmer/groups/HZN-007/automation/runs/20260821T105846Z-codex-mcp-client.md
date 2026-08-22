@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T00:52:13.001Z
+updated_at: 2026-08-22T00:53:23.475Z
 lane_limit: 3
 stop_reason:
 ---
@@ -503,3 +503,9 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T00:52:13.001Z — SKILL-005 merged-main verification: PR #16 is MERGED at 5c1bfb5; source 21b53a7 is reachable from origin/main. verify:agents-block 31/31, verify:skills all 13 sections, generator first/second exit 0 with clean AGENTS diffs, diff-check 0. Historical 78/80 missing-core-dist first run remains preserved; onboarding/behavioral improvement remains unproven. Proof updated; enter-done gate is passable.
+
+
+- 2026-08-22T00:52:38.223Z — SKILL-005 Verifying→Done: fresh enter-done gates passed after merged-main proof readback. verify:agents-block 31/31 and applicable generator/skills rails are green; historical 78/80 missing-dist first-run and unproven live onboarding remain explicit. Ticket is Done; closeout will release and remove only skill-005-agents-block-reconcile/.worktrees/skill-005.
+
+
+- 2026-08-22T00:53:23.475Z — SKILL-005 closeout started: gh confirms PR #16 MERGED at 5c1bfb5; Done/proof/report/checklist/Outcome read-write evidence is recorded. Exact cleanup target is .worktrees/skill-005 and branch skill-005-agents-block-reconcile; no other worktree or board checkout may be touched. Release remains last.

@@ -2,7 +2,7 @@
 id: SKILL-005
 type: ticket
 title: 6.5 AGENTS block rewrite
-status: verifying
+status: done
 area: skills
 order: 180
 assignee: skill005-take
@@ -30,7 +30,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/16'
 archived: false
 created: '2026-08-16T00:31:38.813Z'
-updated: '2026-08-22T00:46:06.181Z'
+updated: '2026-08-22T00:53:23.432Z'
 ---
 
 Orientation essentials only: profiles exist; call `get_doc_gates` before any move; read the whole ticket folder and group context; six stages; where the docs live.
@@ -41,3 +41,8 @@ Orientation essentials only: profiles exist; call `get_doc_gates` before any mov
 **Depends:** 6.1
 
 **Gotcha:** `BLOCK_BODY` is a literal in `agents-block.mjs` that is duplicated by hand into kanmer-setup's SKILL.md, and `verify-agents-block.mjs:146-154` asserts the two stay byte-identical. Change both or the check fails.
+
+
+## Outcome
+
+The AGENTS managed-block rewrite shipped in PR [#16](https://github.com/collisionengineers/kanmer/pull/16), merged 2026-08-16 at `5c1bfb5ed5db323dcdb90efa3a5531a5953598a3`. Merged-main verification confirms canonical BLOCK_BODY, setup copy and generated AGENTS.md remain synchronized. The first-run missing-dist limitation and unproven live onboarding behavior remain documented; no follow-up code defect was identified.

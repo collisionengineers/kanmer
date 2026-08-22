@@ -1,0 +1,1 @@
+2026-08-22 — Closeout started after gh confirmed PR #16 MERGED at 5c1bfb5. Proof finalisation and Outcome recorded; historical missing-dist and live-onboarding limits remain explicit. Recorded cleanup target is exactly .worktrees/skill-005 / skill-005-agents-block-reconcile; release is last after cleanup.

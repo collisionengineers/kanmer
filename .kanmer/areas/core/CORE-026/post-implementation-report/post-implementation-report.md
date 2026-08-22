@@ -67,3 +67,9 @@ Status should move only one boundary to Review after the final `get_doc_gates CO
 
 - New head b5ae6f36e007a05fffd9bb2f1c6ea4a87a860477 (PR #163) fixes review findings F-001/F-002: strict validation now projects declaration fields from resolver-enriched results, and fetch response chunks are bounded by the remaining aggregate byte budget. New focused source coverage is 7/7 PASS.
 - F-003 research traceability is corrected to FRD-027/ADR-0020 via MCP. Final board gates remain passable for Review; hosted checks for b5ae6f36 are pending. Stop for independent re-review; no self-review/merge/cleanup.
+
+
+## Hosted remediation verification — 2026-08-22
+
+- Fresh run 32564155523 on b5ae6f36 passed kanmer-gate job 97010200239 (50s) and verify job 97010200322 (2m22s). The gate reported the prior independent review attestation head 8eff8482 did not match the remediation head; this is an expected stale-attestation warning until independent re-review refreshes it, not a source-rail failure.
+- PR #163 remains Review-only for independent re-review. No self-review, merge, or cleanup performed.

@@ -33,3 +33,7 @@
 ## Review remediation handoff — 2026-08-22
 
 - Pushed b5ae6f36e007a05fffd9bb2f1c6ea4a87a860477 to PR #163. F-001 strict enriched-resolver validation and F-002 streaming aggregate budget are fixed with 7/7 source tests; F-003 research refs now use FRD-027/ADR-0020. Hosted checks pending; remain Review for independent re-review, no self-review/merge/cleanup.
+
+## Hosted remediation verified — 2026-08-22
+
+- Fresh run 32564155523 on b5ae6f36: kanmer-gate PASS (97010200239, 50s); verify PASS (97010200322, 2m22s). Gate warns the prior independent review attestation still names 8eff8482; preserve as stale until root re-review refreshes it. Remain Review; no self-review/merge/cleanup.

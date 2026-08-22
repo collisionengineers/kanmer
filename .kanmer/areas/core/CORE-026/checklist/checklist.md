@@ -34,3 +34,5 @@ Research and governing-doc decisions are recorded in research/research.md and op
 - Review remediation: F-001 enriched-resolver validation and F-002 streaming aggregate-budget regressions pass; F-003 research refs reconciled to FRD-027/ADR-0020.
 
 - Review remediation handoff b5ae6f36: F-001/F-002 source regressions pass; F-003 governing refs reconciled; hosted rerun pending.
+
+- Hosted remediation run 32564155523: kanmer-gate PASS (97010200239); verify PASS (97010200322); stale prior review-head warning preserved for independent re-review.

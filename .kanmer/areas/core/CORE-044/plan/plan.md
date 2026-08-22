@@ -47,3 +47,7 @@ This plan changes only the existing CORE-026 source contract, its board/cache pe
 ## Stop condition
 
 Stop after the packet is complete and the implementation PR is Review-ready with independent review required. Do not self-review, merge, move to Verifying/Done, clean up, or start another ticket.
+
+## Execution base
+
+The implementation worktree is based exactly on CORE-026 review head `b5ae6f36e007a05fffd9bb2f1c6ea4a87a860477` (PR #163), not bare origin/main. The remediation branch is `core-044-source-fetch-remediation` in .worktrees/core-044. This keeps the remediation diff reviewable against the still-unmerged CORE-026 implementation.

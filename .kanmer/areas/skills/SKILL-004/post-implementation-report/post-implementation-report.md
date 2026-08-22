@@ -1,56 +1,31 @@
 # Post-implementation report
 
-PR [#17](https://github.com/collisionengineers/kanmer/pull/17). One file,
-`plugins/kanmer/skills/kanmer-setup/SKILL.md` — a rewrite, because the mode
-table *was* the structure.
+## Reconciliation outcome
 
-## Against the governing docs
+This is a merged-main reconciliation of the existing SKILL-004 implementation, not a duplicate implementation. A fresh branch skill-004-setup-reconciliation and worktree .worktrees/skill-004 were created from origin/main at af61144ce743f74b2aba92fb0778588b0b9bedd0. The original implementation commit ad127405437f9a93eef5e86d697ccaadf0ebc8af9 is an ancestor of that base (merge-base check exit 0), and the fresh branch has no source delta for SKILL-004. Existing PR #17 remains the traceable delivery.
 
-**ADR-0010** — all four reconcile responsibilities present (version steps,
-AGENTS block, migration, ingest); per-**item** plan mining; `custom` + empty
-requires for historical tickets; list-then-confirm on issue closing;
-idempotency by construction.
+Scope was limited to plugins/kanmer/skills/kanmer-setup/SKILL.md and its current-main reconciliation evidence. SKILL-005 managed-block prose, SKILL-003 decision-table prose, and unrelated source were not changed.
 
-**FRD-013** — setup is re-runnable and reports what it did.
+## Governing-doc alignment
 
-## What changed structurally
+FRD-013 R1-R6 and ADR-0010 are represented in the current setup skill: one repeatable reconcile loop; version-step and migration guidance; managed AGENTS refresh; one-source ingest order; explicit issue list/confirm/close/comment/report sequence; source markers and duplicate checks; per-plan-item historical Done tickets with custom and empty requires; plan/proof placement; and fixed stages with areas/profiles for greenfield work. This statement is a static prose/source audit, not an end-to-end behavior claim.
 
-Three modes → six ordered steps, each a no-op when there is nothing to do.
-Greenfield stops being a mode and becomes the branch taken at step 5 when there
-is nothing to ingest.
+## Checks and exact outcomes
 
-Ingest picks **one** source (issues → plans → commits) rather than running all
-three, because each is a different answer to "what is the record of intent
-here" and combining them duplicates work.
+- npm run verify:skills — exit 0; all 13 semantic skill-prose sections passed.
+- npm run verify:agents-block — exit 0; 31/31 checks passed.
+- First npm run test:scripts on the fresh worktree — exit 1; packages/core/dist/index.js was absent, causing auto-run-state.test.mjs and release-notes.test.mjs module-resolution failures. This first failure is retained.
+- npm run build:core — exit 0.
+- Rerun npm run test:scripts after build:core — exit 0; 80/80 passed.
+- npm run typecheck — exit 0 across core, MCP server, UI, and GUI.
+- git diff --check — exit 0.
+- git merge-base --is-ancestor ad127405437f9a93eef5e86d697ccaadf0ebc8af9 HEAD — exit 0.
+- git diff origin/main...HEAD for the scoped setup path — empty; no duplicate source implementation.
 
-## Interaction with two changes from this session
+## Evidence boundaries
 
-- **CORE-012** made `migrate_board` a genuine no-op on a current board, so step
-  3 can call it unconditionally. Before that fix, an unconditional call would
-  have flapped `version.json` on every setup run.
-- **CORE-011** does not affect backfill: it constrains `move_item`, and
-  historical tickets are *created* in Done. Verified against `createItem`'s
-  documented ungated behaviour rather than assumed.
+The static checks re-prove the wording and managed-block contract. They do not exercise an actual setup session. Live format-3 migration dry-run/apply, second-run idempotency, plan/history ingestion, issue-source ingestion, destructive issue close/comment flow, and greenfield interview/board creation are INCONCLUSIVE. No GitHub issue was closed and no external state was changed. Existing historical proof also records that prose behavior and issue ingestion were not exercised; those limits remain explicit rather than being upgraded to PASS.
 
-## For review
+## What verify should run after any future merge
 
-**This is prose; the real test is an agent following it, and that cannot be
-automated here.** The residue grep and `verify:agents-block` prove it says
-nothing false. They cannot prove it produces the right behaviour.
-
-**Step 5b is the risky one.** "One ticket per plan item" is a judgement against
-documents whose structure varies. The preview (`N documents → M items → K
-tickets`) is the only thing between a misread and a hundred spurious tickets,
-and a preview is only a safeguard if the agent actually stops at it.
-
-**Version steps (step 2) are specified but empty.** No Kanmer version currently
-declares any, so the step is a placeholder with no mechanism behind it — there
-is no manifest of per-version actions to read. It is written as an instruction
-to a reader rather than something the skill can execute. Worth its own ticket
-when the first real version step exists.
-
-## What kanmer-verify should run
-
-`verify:agents-block` (26/26); the residue grep at zero; confirm the AGENTS.md
-section is byte-identical to its pre-change state; read step 5a and confirm the
-close sequence has no discretionary language.
+Re-run verify:skills, verify:agents-block, test:scripts, and a disposable setup fixture covering format-3 orientation/migration, a second-run no-op, one-source ingestion with Source markers, and the list-then-confirm issue-close path. Keep the issue-close fixture mocked or explicitly authorized; do not claim live external closure without confirmation.

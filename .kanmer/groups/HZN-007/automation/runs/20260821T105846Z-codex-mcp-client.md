@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T00:26:34.690Z
+updated_at: 2026-08-22T00:30:10.265Z
 lane_limit: 3
 stop_reason:
 ---
@@ -456,3 +456,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 - 2026-08-22T00:26:30+01:00 — SKILL-004 assigned to /root/gui082_executor after complete recursive packet (research/files/plan/checklist/open-questions), EPIC-007 and HZN-007 context, FRD-013/ADR-0010 refs, links/activity and gates read. Fresh .worktrees/skill-004 on skill-004-setup-reconciliation is based on origin/main af61144ce743f74b2aba92fb0778588b0b9bedd0; implementation ad127405 is reachable. Scope is merged-main reconciliation only; no new source change unless the bounded audit finds a defect; stop at Review, no self-review/merge/cleanup.
 \n\nLast handoff: 2026-08-22T00:26:34.690Z — SKILL-017 created and archived disposable validation group EPIC-013 with SKILL-029/030/031 scenario tickets (label skill017-disposable); all are archived, outside HZN-007 roster, have no source/doc claims, and are retained only as explicit scenario audit fixtures.\n
+
+- 2026-08-22T01:30:00+01:00 — CORE-037 assigned to `codex-mcp-client` after complete packet, CORE-032/GUI-075/SKILL-021 dependency evidence, HZN-007 context, HZN-004 group body, links and gates were reread. The fix-only scope is `apps/gui/src/main/kanmerGit.test.ts` path-identity assertions; baseline focused GUI evidence (11/12 with cleanup EPERM/hook-timeout) is preserved. Dedicated branch `core-037-windows-path-identity` and worktree `.worktrees/core-037` were created from `origin/main` and recorded via `take_ticket`; implementation will stop at Review with no self-review or merge.

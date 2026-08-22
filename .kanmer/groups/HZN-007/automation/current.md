@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:26:34.690Z
+updated_at: 2026-08-22T00:30:10.265Z
 ---
 
 # Current auto run — HZN-007
@@ -73,3 +73,6 @@ Last handoff: 2026-08-22T01:18:20+01:00 — Added and read back explicit `## Par
 
 - 2026-08-22T00:26:30+01:00 — SKILL-004 assigned to /root/gui082_executor after complete recursive packet (research/files/plan/checklist/open-questions), EPIC-007 and HZN-007 context, FRD-013/ADR-0010 refs, links/activity and gates read. Fresh .worktrees/skill-004 on skill-004-setup-reconciliation is based on origin/main af61144ce743f74b2aba92fb0778588b0b9bedd0; implementation ad127405 is reachable. Scope is merged-main reconciliation only; no new source change unless the bounded audit finds a defect; stop at Review, no self-review/merge/cleanup.
 \n\nLast handoff: 2026-08-22T00:26:34.690Z — SKILL-017 created and archived disposable validation group EPIC-013 with SKILL-029/030/031 scenario tickets (label skill017-disposable); all are archived, outside HZN-007 roster, have no source/doc claims, and are retained only as explicit scenario audit fixtures.\n
+
+
+Last handoff: 2026-08-22T01:30:00+01:00 — CORE-037 is Implementing on `core-037-windows-path-identity` / `.worktrees/core-037`, owned by `codex-mcp-client`; scope is test-only Windows path identity normalization. Packet/gates/dependency evidence were reread, baseline 11/12 focused GUI result with cleanup EPERM/hook-timeout retained, and independent Review/merge is required.

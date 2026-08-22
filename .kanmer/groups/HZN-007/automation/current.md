@@ -522,3 +522,6 @@ CORE-063 implementation complete at 5f63636d; PR #184 opened against CORE-058 an
 
 
 CORE-063 independently PASSed at exact 5f63636d and merged into CORE-058 as b1abac87; CORE-063 is Verifying with block edge removed. CORE-058 traceability now includes 063 implementation/merge and PR #184; cumulative fresh review requested at b1abac87 before merging CORE-058 into CORE-044.
+
+
+Last handoff: 2026-08-22T15:35Z — Independent CORE-058 review at PR #180 head b1abac871da28522759d4e5582caa69d5cdb5cd5 is NEEDS-CHANGES. Focused GUI Git 18/18 and artifact hash 6057648D81FB4CCCAB629A0EE1C05C8716A564400302238857E785C70C485100 pass; full GUI is 290/291 with inherited antigravity provider failures. CORE-062 and CORE-063 are fixed; unresolved P1 rename-path root loss and P2 non-retryable failed-Git state remain open as CORE-064/CORE-065, both blocking CORE-058. Review scratch read back; PR remains open, no merge or stage move.

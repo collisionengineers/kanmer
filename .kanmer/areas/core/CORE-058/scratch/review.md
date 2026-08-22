@@ -88,3 +88,34 @@ Inspected the cumulative three-file diff against the CORE-044 base: `apps/gui/sr
 ## Decision
 
 NEEDS-CHANGES. The two current threads are actionable and are now recorded as CORE-064 and CORE-065, both linked to and blocking CORE-058 in HZN-007. Leave PR #180 open; do not merge or move CORE-058.
+
+# Independent cumulative review — NEEDS-CHANGES — b1abac871da28522759d4e5582caa69d5cdb5cd5
+
+Reviewer: codex-recovery (independent of CORE-058 author codex-core058-executor).
+PR #180: https://github.com/collisionengineers/kanmer/pull/180
+Exact head: b1abac871da28522759d4e5582caa69d5cdb5cd5
+Base: core-044-source-fetch-remediation; hosted status rollup is empty (hosted verification INCONCLUSIVE).
+
+## Scope and lineage
+
+Reviewed the cumulative three-file diff: apps/gui/src/main/kanmerGit.ts, apps/gui/src/main/kanmerGit.test.ts, and generated plugins/kanmer/mcp/kanmer-mcp.cjs. The diff is scoped to CORE-058 board-worktree ignore/artifact provenance. CORE-062 a0acadee, CORE-063 5f63636, and the generated cumulative merge are reachable from b1abac87. FRD-027, ADR-0020, and the plan/report scope match the intended board/cache boundary.
+
+## Evidence
+
+- Exact focused GUI Git rail: PASS, 18/18 (npm run test -w @kanmer/gui -- --run src/main/kanmerGit.test.ts, exit 0).
+- Full GUI rail: FAIL, 4 suites failed during collection plus 1 failed dispatch assertion; 39 files passed, 290/291 tests. Failures are inherited stale shared-core antigravity provider resolution and the resulting dispatch expectation; no changed Git test failed.
+- Artifact committed SHA-256: 6057648D81FB4CCCAB629A0EE1C05C8716A564400302238857E785C70C485100, matching the author’s normal-checkout parity report.
+- git diff --check: PASS (exit 0).
+- Hosted/packaged/live Windows lock evidence: INCONCLUSIVE; PR has no hosted checks and no controlled external host was exercised.
+
+## Thread dispositions
+
+- 3836151012 (P2 local/remote attachment ignore): FIXED by CORE-062 merge a0acadee; exact 18/18 rail covers both paths.
+- 3836151015 (P2 already tracked cache history): ACCEPTED/DEFERRED per CORE-058 open-questions; the bounded rule/artifact ticket does not rewrite history.
+- 3836151017 (P1 attached-path board-root loss): FIXED by CORE-063 merge b1abac87; exact regression proves root/error/paused preservation.
+- 3836232925 (P1 rename-path board-root loss): OPEN/BLOCKING. After renameBoardBranch succeeds, ensureBoardWorktreeIgnore can still throw through the outer catch, returning empty() with boardRoot null; openProject may fall back to the source checkout. Disposition: CORE-064, which blocks CORE-058.
+- 3836232929 (P2 retryability): OPEN/BLOCKING. The failed attached state has available:false and boardRoot, but syncBoard short-circuits and the renderer path classifies it as unavailable, so repairing .gitignore cannot retry while the project remains open. Disposition: CORE-065, which blocks CORE-058.
+
+## Verdict
+
+NEEDS-CHANGES. Leave PR #180 open and CORE-058 in Review; do not merge or move to Verifying until CORE-064 and CORE-065 land and a fresh cumulative review resolves their threads.

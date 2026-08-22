@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T12:19:27.014Z
+updated_at: 2026-08-22T12:34:28.717Z
 ---
 
 # Current auto run — HZN-007
@@ -392,3 +392,6 @@ Last handoff: 2026-08-22T10:23:07.811Z — CORE-045 implementation handoff: comm
 - Result: refreshed cached open-project branch state from the live worktree, retained the protected preference when no Git board is open, and changed kanmer-gate to use the configured KANMER_BOARD_BRANCH repository variable with the existing default fallback. Added deterministic GUI/workflow regressions; ADR-0016 protection inference remains accepted risk.
 - Evidence: focused GUI Git 16/16, workflow static 1/1, build:core 0, post-build scripts 89/89, verify:docs/check:manual/diff-check 0. Full GUI, GUI typecheck, and GUI build retain unrelated dispatch/provider baseline failures; first pre-build scripts failure is preserved in the ticket report.
 - Handoff: post-implementation report/checklist complete, commit 8ffff2a0f8848bb42868559641b56148ba893ca6, PR #170 https://github.com/collisionengineers/kanmer/pull/170, status moved Implementing→Review after get_doc_gates pass. Author stops for independent review; no merge/verify/cleanup.
+
+
+2026-08-22T12:34:20Z — CORE-052 created from independent CORE-043 cumulative review findings (attestation 6e6bbace7c77def8; PR #168 head 119300385; hosted run 32571224767 PASS). Packet docs are written/read back and ticket moved Backlog→Preparing. Findings cover KANMER_BOARD_BRANCH handoff documentation, destination equality/state preservation, and contradictory troubleshooting/manual guidance. CORE-052 blocks CORE-043; implementation assignment pending an available conflict-free lane.

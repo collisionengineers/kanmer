@@ -4,10 +4,12 @@ type: ticket
 title: >-
   CORE-043 review remediation: preserve branch handoff state and regenerate
   manual guidance
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-22T12:34:05.081Z'
 labels:
   - pr-review
   - branch-protection
@@ -23,7 +25,7 @@ refs:
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
 archived: false
 created: '2026-08-22T12:33:30.281Z'
-updated: '2026-08-22T12:33:30.281Z'
+updated: '2026-08-22T12:34:05.081Z'
 ---
 
 Close remaining CORE-043 cumulative review findings: document the KANMER_BOARD_BRANCH Actions-variable handoff; refresh and require equality with the requested destination; preserve paused/error state during branch refresh; fix contradictory troubleshooting.md rename guidance and regenerate the manual. Link [[CORE-043]].

@@ -855,3 +855,6 @@ Last handoff: 2026-08-22T22:35Z — Independent GUI-118 review at exact head e09
 - Independent verdict: NEEDS-CHANGES. Exact source/core rails pass (core 310/310, MCP source 32/32, typecheck/docs/diff), but fresh npm run mcpb:check exits 1 because the committed plugin artifact is stale relative to the generated standalone server.
 - CORE-090 PR #220 is correctly artifact-only but reproduces the same clean-checkout parity failure (committed 7298b5c2 versus fresh f52d9c5); no merge performed.
 - Hosted run 32602154533 failure is preserved: verify failed MCPB parity; kanmer-gate also saw stale CORE-088 blocker/review metadata from before its board move. Protected CORE-026 remains Review and unmerged pending corrected artifact and fresh hosted rails.
+
+
+2026-08-22T23:45Z: CORE-090 independent review NEEDS-CHANGES: clean exact-head mcpb:check generated f52d9c5b vs committed 7298b5c. Linked-worktree pass rejected; CORE-090 remains Review/blocking CORE-026. CORE-026 exact cumulative attestation refreshed NEEDS-CHANGES at 973bcf93.

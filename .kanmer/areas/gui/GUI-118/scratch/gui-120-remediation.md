@@ -1,0 +1,1 @@
+2026-08-22T23:45:00Z GUI-120 is the linked remediation for the multi-project Connect status broadcast finding on GUI-118 e09009b2. GUI-120 adds a two-project production-caller regression proving each broadcast carries its own projectId; it remains separate and will be independently reviewed before GUI-118 can merge.

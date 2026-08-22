@@ -66,6 +66,20 @@ export function guardGitBranchPreference(current: string, requested: string, has
   return next;
 }
 
+/**
+ * A live mismatch is an incomplete administrator handoff, not permission to
+ * run the protected refusal path against whatever branch happens to be live.
+ */
+export function shouldAttemptProtectedBranchRename(
+  current: string,
+  requested: string,
+  hasProtectedOpenBoard: boolean,
+  hasBranchMismatch: boolean,
+): boolean {
+  const next = requested.trim() || PROTECTED_BOARD_BRANCH;
+  return !hasBranchMismatch && next !== current && current === PROTECTED_BOARD_BRANCH && hasProtectedOpenBoard;
+}
+
 const empty = (branch: string, error: string | null = null): KanmerGitStatus => ({
   available: false, boardRoot: null, branch, lastSync: null, error, paused: false,
 });

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureBoardWorktree, guardGitBranchPreference, inspectBoardWorktree, refreshBoardBranch, renameBoardBranch } from "./kanmerGit.js";
+import { ensureBoardWorktree, guardGitBranchPreference, inspectBoardWorktree, refreshBoardBranch, renameBoardBranch, shouldAttemptProtectedBranchRename } from "./kanmerGit.js";
 
 // These are deliberately real-Git integration tests: every case initialises a
 // local repository and several create worktrees/remotes. Windows process and
@@ -264,6 +264,29 @@ describe("board branch preference and cache safety", () => {
       paused: true,
       error: expect.stringContaining("main"),
     });
+  });
+
+  it("does not enter protected refusal or mutate refs for an unexpected live branch", async () => {
+    const status = {
+      available: true,
+      boardRoot: repo,
+      branch: "kanmer-board",
+      lastSync: null,
+      error: null,
+      paused: false,
+    };
+    await git(repo, "checkout", "-b", "unexpected-board");
+    const beforeRefs = await git(repo, "show-ref");
+    const beforeWorktrees = await git(repo, "worktree", "list", "--porcelain");
+    const refreshed = await refreshBoardBranch(status, "retargeted-board");
+    expect(shouldAttemptProtectedBranchRename(
+      "kanmer-board",
+      "retargeted-board",
+      true,
+      refreshed.branchMismatch === true,
+    )).toBe(false);
+    expect(await git(repo, "show-ref")).toBe(beforeRefs);
+    expect(await git(repo, "worktree", "list", "--porcelain")).toBe(beforeWorktrees);
   });
 
   it("preserves a paused sync error after a valid branch handoff", async () => {

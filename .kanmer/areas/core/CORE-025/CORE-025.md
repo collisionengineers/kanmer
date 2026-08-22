@@ -19,10 +19,13 @@ groups:
 links: []
 blocks:
   - CORE-035
-docs_todo: true
+refs:
+  - docs/architecture/adr/ADR-0016-compiled-workflow.md
+  - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
+  - docs/functional/frd/FRD-009-interrogative-workflow.md
 archived: false
 created: '2026-08-16T18:26:15.191Z'
-updated: '2026-08-21T10:57:09.092Z'
+updated: '2026-08-22T06:45:23.057Z'
 ---
 
 ## What

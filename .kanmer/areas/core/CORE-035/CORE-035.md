@@ -2,13 +2,16 @@
 id: CORE-035
 type: ticket
 title: Spine integration verification
-status: preparing
+status: implementing
 area: core
 order: 70
-assignee: ''
+assignee: core-035-executor
 profile: chore
 stageEntered:
   preparing: '2026-08-20T13:13:26.932Z'
+taken_at: '2026-08-22T07:55:47.652Z'
+branch: core-035-spine-integration
+worktree: .worktrees/core-035
 labels:
   - integration
 groups:
@@ -16,9 +19,16 @@ groups:
   - HZN-004
   - HZN-007
 links: []
+refs:
+  - docs/architecture/adr/ADR-0016-compiled-workflow.md
+  - docs/functional/frd/FRD-020-board-git-worktree-sync.md
+  - docs/functional/frd/FRD-010-task-scoped-dispatch.md
+  - docs/functional/frd/FRD-022-mcp-server-surface.md
+  - docs/functional/frd/FRD-023-agent-skills-system.md
+  - docs/functional/frd/FRD-006-typed-proof.md
 archived: false
 created: '2026-08-20T10:14:42.535Z'
-updated: '2026-08-21T10:57:10.552Z'
+updated: '2026-08-22T07:55:47.652Z'
 ---
 
 ## What

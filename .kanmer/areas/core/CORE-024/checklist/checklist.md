@@ -58,7 +58,7 @@
 - [x] Prove unparked question `OPEN_QUESTIONS` red.
 - [x] Prove parked-only questions pass.
 - [x] Prove board fetch/path/event failure exits 2 and fails closed.
-- [x] Prove a compliant current-head PR is green. (Hosted `kanmer-gate` PASS at current PR head; sibling `verify` was still running.)
+- [ ] Prove a compliant current-head PR is green. Hosted kanmer-gate passed, but sibling verify failed at check-mcpb-sync (run 32554223189/job 96985771083); overall hosted PR is not green.
 - [ ] Follow CORE-033’s observed-once authorized procedure before requiring the check.
 - [ ] Confirm direct `kanmer-board` pushes create no PR workflow run.
 - [ ] Run focused core tests, typecheck, build, CLI fixtures, full `npm run verify`, and `git diff --check`.
@@ -75,4 +75,4 @@ Append test fixture IDs/counts, before/after board hashes, CLI JSON/exit example
 - Implemented the phase-1 read-only count, evaluator, source CLI, CLI integration test, and independent Windows `kanmer-gate` job on `core-024-check-pr`.
 - Green: focused merge-gate tests 10/10; core suite 14 files / 278 tests; CLI integration 1/1; build:core; workflow YAML parse and diff-check.
 - CLI local controls: compliant JSON verdict exit 0; open-question verdict exit 1 with one escaped `::error` annotation; invalid board/event and unknown argument exit 2 with sanitized diagnostics.
-- Full workspace typecheck and mcp-server build pass with a temporary ticket-local @kanmer/core junction; the first shared-root failure is preserved above. Full verify reaches check-mcpb-sync then exits 1 because the distributed plugin artifact is stale, outside CORE-024. Hosted `kanmer-gate` PASS is recorded above; sibling `verify` job 96985771083 remained in progress, so no overall hosted verify PASS is claimed.
+- Full workspace typecheck and mcp-server build pass with a temporary ticket-local @kanmer/core junction; the first shared-root failure is preserved above. Full verify reaches check-mcpb-sync then exits 1 because the distributed plugin artifact is stale, outside CORE-024. Hosted kanmer-gate PASS and hosted verify FAIL at the same parity check are recorded above; no overall hosted verify PASS is claimed.

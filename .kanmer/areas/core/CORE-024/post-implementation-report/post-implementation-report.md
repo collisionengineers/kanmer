@@ -44,3 +44,10 @@ A hosted GitHub run is now recorded below. Direct board-push behavior, protectio
 ## Review handoff
 
 The PR footer will carry `Kanmer: CORE-024`. This lane stops at Review for independent review; it does not merge, start CORE-025, or clean the ticket worktree/branch.
+
+
+### Hosted verify completion — 2026-08-22
+
+- GitHub Actions run 32554223189, Windows verify job 96985771083, completed with exit 1 at PR #155 head b041e944ececdf433925b9e4168e003a4623fbce.
+- The authoritative rail reached all suites, typechecks, builds, MCP smokes and MCPB packaging/manifest validation. It failed only at scripts/check-mcpb-sync.mjs:44 / npm run mcpb:check: MCPB server differs from distributed plugin copy.
+- This is the same pre-existing distributed-plugin parity failure seen in the local full-verify attempt and is outside CORE-024's eight-file scope. It is preserved as a hosted FAIL; no overall hosted verify PASS is claimed.

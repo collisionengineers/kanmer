@@ -238,3 +238,9 @@ Last handoff: 2026-08-22T05:28:18.252Z — GUI-106 conflict-resolved head 1c9135
 
 
 - 2026-08-22T05:26:00Z — CORE-024 hosted kanmer-gate PASS recorded in the durable run below; sibling verify 96985771083 remains in progress and no overall hosted verify PASS is claimed.
+
+
+Last handoff: 2026-08-22T05:30:03Z — Hosted verification correction for GUI-106 head 1c91353b61c55dbf9f57e0bb5f75a7d283abe2ef: PR #153 run 32554392300 / verify job 96986192019 completed PASS. The earlier zero-check snapshot was pre-dispatch and remains historical; current hosted verification is green. Review attestation and merge conflict dispositions are read back; root independent re-review is still required. Ticket remains Review/taken; no merge or cleanup.
+
+
+- 2026-08-22T05:30:00Z — CORE-024 hosted kanmer-gate PASS and hosted verify FAIL are recorded in the durable run; verify failed only at out-of-scope distributed MCPB plugin parity, so no overall hosted verify PASS is claimed.

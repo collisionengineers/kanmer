@@ -647,3 +647,9 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T05:26:00Z — CORE-024 hosted kanmer-gate PASS: PR #155 head b041e944ececdf433925b9e4168e003a4623fbce, GitHub run 32554223189 / Windows job 96985770996. The job fetched board commit a02554cd into a separate RUNNER_TEMP worktree, passed the path-separation assertion, and emitted the exact compliant JSON with questions checked=16,total=16,open=0, findings=[]; job exit 0 and no annotation. Sibling verify job 96985771083 remained in progress at readback, so no overall hosted verify PASS is claimed.
+
+
+- 2026-08-22T05:30:03Z — GUI-106 hosted verification correction: PR #153 head 1c91353b61c55dbf9f57e0bb5f75a7d283abe2ef, run 32554392300 / verify job 96986192019 completed successfully; authoritative verification and setup/teardown steps are green. Earlier zero-check observation was pre-dispatch and is retained. Review remains pending root independent re-review of merged AGENTS.md/FRD-012; real packaged-host evidence remains INCONCLUSIVE; no merge or cleanup.
+
+
+- 2026-08-22T05:30:00Z — CORE-024 hosted verify completion: run 32554223189 / Windows verify job 96985771083 exited 1 at scripts/check-mcpb-sync.mjs:44 because the freshly built MCPB server differed from the distributed plugin copy. All preceding suites, typechecks, builds, MCP smokes, and MCPB manifest validation passed; this parity failure is outside CORE-024 and remains preserved. No overall hosted verify PASS is claimed.

@@ -124,6 +124,37 @@ describe("Editor scratch and group context", () => {
   });
 });
 
+describe("Editor gate-document recovery", () => {
+  it("opens the requested missing document and exposes Create", async () => {
+    const client = clientFor({
+      getDocsInfo: vi.fn().mockResolvedValue({
+        docs: {}, counts: {}, documentPaths: [], checklist: null,
+        references: [], scratch: [],
+      }),
+      getDocTypes: vi.fn().mockResolvedValue([{ id: "proof", name: "Proof" }]),
+      getDoc: vi.fn().mockResolvedValue({ content: null, version: null }),
+    });
+    render(
+      <ClientContext.Provider value={client}>
+        <Editor
+          item={item}
+          board={board}
+          items={[item]}
+          knownIds={new Set([item.id])}
+          changeSignal={0}
+          initialDoc="proof"
+          onClose={vi.fn()}
+          onNavigate={vi.fn()}
+          onSave={vi.fn()}
+        />
+      </ClientContext.Provider>,
+    );
+
+    expect(await screen.findByText("No proof/proof.md yet.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create proof/proof.md" })).toBeTruthy();
+  });
+});
+
 describe("Editor document path inventory", () => {
   it("shows and opens a named-only research document through its exact path", async () => {
     const client = documentClient(["research/portable-connect-integration.md"]);

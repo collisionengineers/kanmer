@@ -3,6 +3,75 @@ kind: review-attestation
 pr: "168"
 head_sha: "f63d953fc8467440988c887c62a34ade0c77c96c"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: pass
+reviewer: "codex-gui082-executor"
+independent: true
+plan_hash: "2026-08-22T17:16:10.646Z"
+ticket_updated: "2026-08-22T17:16:10.646Z"
+findings:
+  - id: F-001
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "The completed handoff is recognized and cumulative child remediations preserve requested destination and mismatch state."
+  - id: F-002
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "No-board protected preference transition remains guarded by the cumulative CORE-048/052 chain."
+  - id: F-003
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "The hosted workflow reads KANMER_BOARD_BRANCH with its documented fallback and the hosted gate passes."
+  - id: F-004
+    severity: minor
+    disposition: accepted-risk
+    reason: "ADR-0016 intentionally leaves live GitHub protection API/App mutation administrator-owned."
+  - id: F-005
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Merged CORE-048/052 child edges and branch handoff state are reconciled in the cumulative target."
+  - id: F-009
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    ticket: "CORE-059"
+    reason: "CORE-059 retained the custom remote-ref behavior and aligns the Actions board branch variable."
+  - id: F-010
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    ticket: "CORE-060"
+    reason: "CORE-060 pauses sync safely and clears resolved handoff mismatch state."
+  - id: F-011
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    ticket: "CORE-060"
+    reason: "CORE-060 preserves paused/error state and retries only after safe reconciliation."
+  - id: F-012
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    ticket: "CORE-061"
+    reason: "CORE-061 records the KANMER_BOARD_BRANCH convention and administrator handoff in the managed guide."
+  - id: F-EXTERNAL
+    severity: minor
+    disposition: accepted-risk
+    reason: "No authorized live branch-protection or repository-variable mutation was available; deterministic and hosted evidence is present, live admin effects remain INCONCLUSIVE."
+---
+
+## Independent cumulative review — CORE-043 / PR #168
+
+Reviewed exact head f63d953fc8467440988c887c62a34ade0c77c96c against main base 34245be039e8fd8395b5e31835602c54e62e98a4. The cumulative tree contains the original branch-protection retarget implementation and the reviewed non-squash child merges through CORE-061, including merge 8c093424. The child remediations preserve configured branch handoff, pause/error state, effective cache reconciliation, and managed AGENTS convention without adding a GitHub API or protected-ref bypass.
+
+Exact evidence: cumulative GUI Git/sync rails 28/28 PASS; core suite 283/283 PASS; build:core PASS; scripts/protection rail 89/89 PASS; git diff-check PASS; hosted run 32587191440 verify PASS (97068601836) and kanmer-gate PASS (97068601416). CORE-061's merged-target proof separately records verify:agents-block 31/31, verify:skills, manual/docs, build:core, and scripts 89/89 on the 8c093424 cumulative line.
+
+Live GitHub repository-variable and branch-protection mutation remains explicitly INCONCLUSIVE and accepted as the ADR-0016 external boundary. No source changes were made during this review.
+
+Verdict: PASS. Merge PR #168 non-squash into main, then move CORE-043 Review → Verifying. Do not verify or clean up in this review step.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "168"
+head_sha: "f63d953fc8467440988c887c62a34ade0c77c96c"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: needs-changes
 reviewer: "codex-core043-cumulative-review"
 independent: true

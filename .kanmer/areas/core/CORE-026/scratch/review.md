@@ -7,6 +7,47 @@ verdict: pass
 reviewer: "codex-gui099-executor"
 independent: true
 plan_hash: "9916aa9641b6a15d"
+ticket_updated: "2026-08-22T23:11:43.718Z"
+findings:
+  - id: F-001
+    summary: "Cumulative source and security rails"
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Exact-head core, MCP source, GUI, typecheck, protocol, script, docs, and diff rails pass."
+  - id: F-002
+    summary: "Generated MCPB artifact parity"
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Clean detached npm ci and mcpb:check pass at 3 files / 1,671,293 bytes with matching generated server SHA f52d9c5b3817b12432e211438913146908c32874bf74ac261839a21ee31ea58c."
+  - id: F-003
+    summary: "Hosted gate freshness"
+    severity: major
+    disposition: fixed-in-cumulative-stack
+    reason: "The refreshed board has CORE-090 removed and CORE-026 unblocked; the rerun is required to prove the current hosted gate."
+  - id: F-004
+    summary: "Unavailable external environments"
+    severity: minor
+    disposition: accepted-risk
+    reason: "Connected providers, live external feeds/DNS, packaged Windows, and visual host evidence remain INCONCLUSIVE and are not claimed as PASS."
+---
+
+## Fresh independent review — CORE-026 cumulative PR #163
+
+Exact cumulative head cbba69d682c448943cce87c9825589a44f4260d4 was reviewed against main 34245be039e8fd8395b5e31835602c54e62e98a4. Clean detached npm ci, mcpb:check, core 310/310, MCP source 32/32, GUI 416/416, typecheck, scripts 88/88, protocol 46/46, docs/manual/plugin, and diff checks pass. The prior CORE-090 artifact mismatch is fixed and its merge is reachable. The hosted verify job passed; the prior gate failure was a stale board/attestation snapshot. This current attestation uses canonical F-### identifiers and the board now reports CORE-026 unblocked.
+
+Verdict: PASS, pending the fresh hosted gate rerun completing green.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "163"
+head_sha: "cbba69d682c448943cce87c9825589a44f4260d4"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: pass
+reviewer: "codex-gui099-executor"
+independent: true
+plan_hash: "9916aa9641b6a15d"
 ticket_updated: "2026-08-22T23:00:03.328Z"
 findings:
   - id: F-001

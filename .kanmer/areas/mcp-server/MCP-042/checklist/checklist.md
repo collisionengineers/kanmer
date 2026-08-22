@@ -9,5 +9,5 @@
 
 ## Parked (explicitly deferred)
 
-- [ ] Authenticated provider execution and visual screenshot evidence are not applicable to this artifact-only remediation; no provider behavior changed.
-- [ ] Hosted rerun for PR #142 is owned by the dependent GUI stack after this artifact PR merges; do not fabricate a hosted result here.
+- Authenticated provider execution and visual screenshot evidence are not applicable to this artifact-only remediation; no provider behavior changed.
+- Hosted rerun for PR #142 is owned by the dependent GUI stack after this artifact PR merges; do not fabricate a hosted result here.

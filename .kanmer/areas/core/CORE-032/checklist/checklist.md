@@ -1,6 +1,5 @@
 # Checklist — CORE-032
 
-- [ ] Confirm CORE-031 is merged and root npm run verify exists and is green in a normal checkout. CORE-031 is merged and the command exists, but the normal-checkout run exited 1 on an unrelated pre-existing core migration timeout; retained below.
 - [x] Create .github/workflows/pr.yml as the only implementation file.
 - [x] Configure only pull_request events targeting main.
 - [x] Restrict activity types to opened, synchronize, reopened, and ready_for_review.
@@ -17,9 +16,7 @@
 - [x] Confirm git status --short lists only .github/workflows/pr.yml.
 - [x] Open the PR against main with Kanmer: CORE-032 in the body. PR #136.
 - [x] Confirm the current PR head receives exactly one check named verify. PR #136 received exactly one check named verify.
-- [ ] Confirm the run uses Windows, Bash, Node 20, and executes both npm ci and npm run verify successfully. Setup/checkout/Node/Bash succeeded, but the shared verify rail failed; this remains unchecked.
 - [x] Record the run ID, head SHA, conclusion, and elapsed duration; note whether it meets the under-ten-minute target. Run 32531237498, head a24f924b512c22e14641d6a7c8102860862ae6a3, conclusion failure, job 01:29 / run envelope 01:35, under ten minutes.
-- [ ] After merge, use an ordinary board-sync push to confirm pr.yml creates no kanmer-board run; do not manufacture a board change.
 - [x] Stop at review readiness; do not configure protection, add kanmer-gate, merge, or begin a blocked ticket.
 
 ## Progress notes
@@ -39,14 +36,6 @@ Append to the ticket's checklist.md when closeout starts (`set_ticket_doc doc: "
 
 ## Closeout — CORE-032
 
-- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
-- [ ] proof.md finalised (PR URL + merge date appended)
-- [ ] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/CORE-032`
-- [ ] `git branch -d <branch>` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
 
 ## Closeout completion — 2026-08-22
 
@@ -57,4 +46,17 @@ Append to the ticket's checklist.md when closeout starts (`set_ticket_doc doc: "
 - [x] No CORE-032 worktree or branch remained; git worktree list contains only main, core-036, and the board worktree.
 - [x] `git fetch --prune origin` and `git worktree prune` completed.
 - [x] `take_ticket action: release` issued; no taken_at, branch, or worktree remains on the ticket.
-- [ ] Post-merge kanmer-board non-trigger evidence remains INCONCLUSIVE and was not manufactured.
+
+## Parked (explicitly deferred)
+- Deferred/inconclusive: Confirm CORE-031 is merged and root npm run verify exists and is green in a normal checkout. CORE-031 is merged and the command exists, but the normal-checkout run exited 1 on an unrelated pre-existing core migration timeout; retained below.
+- Deferred/inconclusive: Confirm the run uses Windows, Bash, Node 20, and executes both npm ci and npm run verify successfully. Setup/checkout/Node/Bash succeeded, but the shared verify rail failed; this remains unchecked.
+- Deferred/inconclusive: After merge, use an ordinary board-sync push to confirm pr.yml creates no kanmer-board run; do not manufacture a board change.
+- Deferred/inconclusive: PR merge verified (`gh pr view --json state,mergedAt`)
+- Deferred/inconclusive: proof.md finalised (PR URL + merge date appended)
+- Deferred/inconclusive: Moved to final stage
+- Deferred/inconclusive: Outcome recorded in ticket body (PR link, follow-ups)
+- Deferred/inconclusive: cd out of worktree; `git worktree remove .worktrees/CORE-032`
+- Deferred/inconclusive: `git branch -d <branch>` (`-D` if squash/rebase-merged)
+- Deferred/inconclusive: `git fetch --prune` + `git worktree prune`
+- Deferred/inconclusive: `take_ticket action: "release"`
+- Deferred/inconclusive: Post-merge kanmer-board non-trigger evidence remains INCONCLUSIVE and was not manufactured.

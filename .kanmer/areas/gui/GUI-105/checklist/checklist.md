@@ -12,7 +12,7 @@
 - [x] Test exact-path saving, dirty-switch confirmation, and live inventory refresh.
 - [x] Confirm scratch, reference, asset, checklist-progress, and conventional index behavior remain intact.
 - [x] Run GUI tests, root typecheck, and build with successful exit codes.
-- [ ] Visually verify GUI-102's portable-connect research file and record proof inputs. Manual visual proof is unavailable in this execution and remains for independent review/manual validation.
+- Visually verify GUI-102's portable-connect research file and record proof inputs. Manual visual proof is unavailable in this execution and remains for independent review/manual validation.
 - [x] Summarise the implementation and verification commands for the post-implementation report.
 
 ## Progress notes

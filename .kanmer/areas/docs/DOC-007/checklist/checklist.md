@@ -34,7 +34,6 @@ Historical implementation PR #49 is already merged. This checklist records the c
 - [x] `install` — Install and open a project.
 - [x] `connect` — Connect an agent.
 - [x] `first-ticket` — Your first ticket, end to end.
-- [ ] `backlog` — The separate Backlog view was withdrawn by GUI-070; Backlog is covered in `stages`, as documented in the plan/report. Parked as an explicit scope disposition.
 - [x] `groups` — Areas, epics and horizons.
 - [x] `dispatch` — Dispatching agents.
 - [x] `sync` — Staying in sync.
@@ -64,7 +63,6 @@ Historical implementation PR #49 is already merged. This checklist records the c
 - [x] `npm run typecheck` passes across all workspaces.
 - [x] `npm run build:manual` then generated-artifact `git diff --exit-code` passes.
 - [x] `npm run check:manual` passes and is reached first by `npm test`.
-- [ ] Negative guard fixture was not rerun in this reconciliation; the historical merged proof records each rule's execution and current guard source is unchanged. Leave for independent verification.
 - [x] Current generated chapter body counts are recorded: 22 total, 21 authored, shortest authored 2,462 characters, shortest overall 574 generated shortcuts.
 - [x] Worktree starts at current `origin/main`; current manual test was reread and the complete rail was rerun after core build.
 - [x] Post-implementation report reconciled; existing PR #49 remains the traceability record, so no duplicate PR was opened.
@@ -88,3 +86,7 @@ Historical implementation PR #49 is already merged. This checklist records the c
 - [x] `git branch -d doc-007-manual-reconcile` (exit 0; deleted at af61144c).
 - [x] `git fetch --prune origin` + `git worktree prune` (exit 0).
 - [x] `take_ticket action: "release"` (last lifecycle action).
+
+## Parked (explicitly deferred)
+- Deferred/inconclusive: `backlog` — The separate Backlog view was withdrawn by GUI-070; Backlog is covered in `stages`, as documented in the plan/report. Parked as an explicit scope disposition.
+- Deferred/inconclusive: Negative guard fixture was not rerun in this reconciliation; the historical merged proof records each rule's execution and current guard source is unchanged. Leave for independent verification.

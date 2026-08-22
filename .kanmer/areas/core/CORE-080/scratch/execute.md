@@ -15,3 +15,5 @@ Core rail: `npm test -w @kanmer/core` passed 14 files / 283 tests. Focused GUI 2
 2026-08-22T18:02Z — CORE-080 implementation complete at 0e1be5f32efad1da57ee27bd2a2fe80033976bd1. PR #201 is open against core-043-protection-retarget; focused 26/26, core 283/283, scripts 89/89, docs/prose/manual/diff checks pass. Full GUI and GUI typecheck retain exact inherited antigravity/core-dispatch failures in ticket scratch. CORE-080 remains Implementing until gates readback and one-boundary move to Review; independent review/merge required.
 
 Independent rerun evidence from root: focused GUI Git suite from .worktrees/core-080 passed 26/26, exit 0, 87.48s; git diff --check passed. GUI workspace typecheck baseline exit 1 remains documented.
+
+2026-08-22 — CORE-084 remediation implemented from CORE-080 review finding F-001. New head/PR will add a production `syncProject` Retry regression proving mismatch pause, no `syncBoard` invocation, and no Git mutation; inherited helper assertions remain unchanged. Review scratch F-001 is addressed by this child ticket; external hosted protection remains deferred to CORE-043.

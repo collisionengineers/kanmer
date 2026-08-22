@@ -31,3 +31,5 @@ No GitHub credentials/API/App or live branch-protection mutation was available o
 - Opened PR #168: https://github.com/collisionengineers/kanmer/pull/168, base `main`.
 - MCP item traceability records the full commit SHA and PR `168`.
 - No merge, review, worktree cleanup, or CORE-046 change performed.
+
+2026-08-22 — CORE-084 is the linked remediation for CORE-080 review finding F-001. It is based on CORE-080 head `0e1be5f32efad1da57ee27bd2a2fe80033976bd1` and adds only the missing production `syncProject` manual-Retry regression; it must be independently reviewed/merged into this cumulative branch before CORE-043 proceeds.

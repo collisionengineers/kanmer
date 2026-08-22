@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T03:11:16.002Z
+updated_at: 2026-08-22T03:12:15.086Z
 lane_limit: 3
 stop_reason:
 ---
@@ -581,3 +581,8 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T02:57:37.512Z — MCP-042 proof records mcpb/plugin parity SHA ae7a3c11, MCP smoke 224/224, protocol 46/46, scripts 82/82, typecheck and diff-check pass; GUI-075 merged-main local verify retained two transient HTTP failures (focused retry 12/12 passed) alongside hosted PASS; no assertion was weakened.
 
 - 2026-08-22T03:11:16.002Z — fresh merged-main shared verification at 4f785781e7f1993fbcde5e474640db509737c0bd passed via npm run verify: build/manual, core 266/266, GUI 355/355, HTTP 61/61, scripts 82/82, typecheck, MCP smoke 224/224, mcpb/plugin parity, protocol 46/46, discovery 13/13, skills/AGENTS checks and diff-check.
+
+- 2026-08-22T03:11:35.735Z — CORE-032 PR #136 merged as 2ba84147; merged-main proof at 4f785781 and green Windows verify 32546955237/96967001211 recorded. Original runner alias failure is preserved and dispositioned to CORE-037; board-sync trigger proof remains INCONCLUSIVE. Ticket Done, released, and no worktree/branch remains.
+- 2026-08-22T03:11:35.735Z — GUI-068 merged-main proof 03f81b7d at 4f785781: focused updater/session 40/40, GUI 355/355, typecheck, dist:check, diff-check passed. Live refusal/screenshot/respawn evidence remains explicitly INCONCLUSIVE. Ticket Done, released, and no worktree/branch remains.
+
+- 2026-08-22T03:12:15.086Z — lane assignment: GUI-107 custom-profile requires editor delegated to /root/gui099_executor. It must research the current ticket-form/profile model, prepare/implement only GUI-107 on its own worktree, independently review-ready with exact tests, and stop before merge. No scope absorption into GUI-007 or core profile semantics.

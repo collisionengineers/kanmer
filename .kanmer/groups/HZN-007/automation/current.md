@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T03:58:00Z
+updated_at: 2026-08-22T04:01:00Z
 ---
 
 # Current auto run — HZN-007
@@ -195,3 +195,12 @@ Last handoff: 2026-08-22T03:12:42.450Z — MCP-015 is the second implementation 
 
 
 2026-08-22T03:58:00Z — GUI-106 preparation started by /root/gui082_executor: research/files/open-questions now present and ticket is Preparing. Dedicated updater/runtime worktree is pending plan/take; no source or cross-ticket changes claimed.
+
+
+- 2026-08-22T03:59:30Z — GUI-106 is Implementing on `gui-106-runtime-boundary` / `.worktrees/gui-106`, taken without force after complete packet/context/gates readback. Research, files, plan, checklist, and open-questions are present; scope is the external update-safe MCP runtime boundary, fixed launcher compatibility fallback, installer ownership, and deterministic rails only. Real packaged update/live-session/junction/uninstall evidence remains INCONCLUSIVE; MCP-015, provider serialization, GUI-101/102 integration, and remote/tunnel work are explicitly untouched. Independent Review is required; no merge or cleanup.
+
+
+2026-08-22T04:00:00Z — Done checklist re-audit after GUI-107 closeout found one parked failed-test line still encoded as a checkbox (38/39); normalized only that parked evidence to prose via MCP, preserving the INCONCLUSIVE root-test failure. Re-audit now totalDone=212, incomplete=0, all Done gates passable.
+
+
+2026-08-22T04:01:00Z — GUI-106 moved Preparing → Implementing through MCP after research/files/plan/checklist gates passed. Dedicated branch/worktree gui-106-runtime-boundary/.worktrees/gui-106 now owns updater runtime-boundary implementation; no MCP-015/connect/provider files touched.

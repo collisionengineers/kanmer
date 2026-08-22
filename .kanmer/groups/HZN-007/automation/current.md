@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T01:38:30.699Z
+updated_at: 2026-08-22T01:42:27.643Z
 ---
 
 # Current auto run — HZN-007
@@ -135,3 +135,6 @@ Last handoff: 2026-08-22T01:27:27.840Z — CORE-039 is in Preparing for research
 
 
 Last handoff: 2026-08-22T01:38:30.699Z — CORE-039 independently reviewed PASS; PR #147 is superseded by stacked PR #145 (merge 3ceaa056). Await required PR #145 checks before merge.
+
+
+Last handoff: 2026-08-22T01:42:27.643Z — CORE-040 is Review on PR #148 with commit 6f17bccf; it addresses the missing-tag clean-CI failure and awaits independent review before stacking into PR #145.

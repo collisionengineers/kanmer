@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T01:38:30.699Z
+updated_at: 2026-08-22T01:42:27.643Z
 lane_limit: 3
 stop_reason:
 ---
@@ -545,3 +545,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T01:27:27.840Z — CORE-039 assigned to /root/gui082_executor for bounded clean-checkout hermeticity remediation from PR #145. Full body, HZN-007/HZN-004 group context, links and gates were read. Ticket moved Backlog→Preparing (fix profile has no leave-Backlog gate); exact hosted release-notes.test.mjs failure will be reproduced and scoped without touching CORE-038 implementation or MCP-041 source.
 
 - 2026-08-22T01:38:30.699Z — independent review PASS for CORE-039 commit 79c85e07 by /root/gui082_executor: fixture fidelity, opt-in board override/default discovery, cleanup, scope, and local rails all pass. PR #147 hosted red is the pre-existing GUI Windows path-alias failure; CORE-039 is stacked into PR #145 as merge 3ceaa056. No merge yet.
+
+- 2026-08-22T01:42:27.643Z — CORE-040 created from PR #145 hosted run 32543948316: after CORE-039, clean shallow CI lacked tag v0.3.2 and release-notes scripts fell to 79/80. Root implemented one-line ISO cutoff commit 6f17bccf on a CORE-039 dependency stack; ticket is Review on PR #148 awaiting independent review before stacking into PR #145.

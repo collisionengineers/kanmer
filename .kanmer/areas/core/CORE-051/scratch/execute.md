@@ -1,1 +1,3 @@
 Review-ready handoff: final head 67a066d3 (full SHA recorded in report), PR #173 stacked on CORE-045 cumulative head 0f9af92b. Focused IO 24/24, core 301/301, source 14/14, builds/typechecks/plugin parity/scripts all exit 0. First stale-main-core standalone build exit 1 is retained as INCONCLUSIVE; corrected worktree-local rerun exit 0. Additional PR #166 edge findings (NAT64 /96, 2001:20 public exception, site-local fec0, marker cleanup, released-quarantine ENOENT, and globally reachable special-use IPv4 ranges) are covered by the final head/tests.
+
+MCP move readback 2026-08-22T12:37:17.871Z: status Review, enter-review gates passable, checklist 8/8, report present, PR #173 head 67a066d351e3f7924f87f7580a74c98e7b94cbb2. Stop for independent review; no merge or cleanup.

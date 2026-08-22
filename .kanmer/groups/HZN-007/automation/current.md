@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T12:36:36.484Z
+updated_at: 2026-08-22T12:37:35.264Z
 ---
 
 # Current auto run — HZN-007
@@ -404,3 +404,9 @@ Last handoff: 2026-08-22T10:23:07.811Z — CORE-045 implementation handoff: comm
 
 
 2026-08-22T13:36:00Z — CORE-051 implementation has PR #173 head 67a066d351e3f7924f87f7580a74c98e7b94cbb2 and checklist/report complete. Independent controller validation on the exact worktree: core build PASS, core tests 302/302 PASS, MCP source tests 14/14 PASS; globally reachable special-use ranges and edge cases are included. Ticket remains Implementing pending author Review handoff.
+
+
+- 2026-08-22T12:37:17.871Z — CORE-051 status update: MCP Implementing→Review completed after fresh get_item/get_doc_gates readback. Ticket is Review/taken on core-051-destination-error-remediation/.worktrees/core-051 with checklist 8/8, final implementation head 67a066d351e3f7924f87f7580a74c98e7b94cbb2, PR #173 stacked on CORE-045 cumulative head 0f9af92ba7bf332a3fffbc49b3273bd71b59c49a. Independent review/merge is required; author will not self-review, merge, verify, or clean up.
+
+
+2026-08-22T12:37:10Z — CORE-051 moved Implementing→Review on PR #173 head 67a066d351e3f7924f87f7580a74c98e7b94cbb2 after 8/8 checklist/report and local core302/source14 PASS. Author stopped; independent core041 review/merge assigned. GUI099 is implementing CORE-052; no self-review or cleanup.

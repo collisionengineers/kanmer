@@ -645,3 +645,6 @@ CORE-060 cumulative branch now f44b6fd8 after CORE-077/078; fresh cumulative rev
 
 
 CORE-060 cumulative PASS exact f44b6fd8, PR #197 merged non-squash into CORE-043 as f63d953f; moved Verifying and removed block. CORE-043 cumulative review now pending.
+
+
+CORE-061 dependency relation cleared after Verifying handoff; CORE-043 is unblocked pending fresh cumulative review at f63d953.

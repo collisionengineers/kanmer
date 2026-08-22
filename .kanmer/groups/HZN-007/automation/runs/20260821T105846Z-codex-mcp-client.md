@@ -872,3 +872,10 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - Exact independent review: PASS for PR #218 head 8d62176216d8c886779217fd846149f0b04b1655 against base f2e694a4f9ce689c0949814ea88c2910ddb93f37; review attestation is SHA-bound in CORE-088 scratch/review.md with plan hash 1a709b066d0678b1.
 - Evidence: core IO 32/32, MCP source 32/32, GUI Git 31/31, typecheck, docs verification, diff-check, and plugin build all exited 0. PR #218 had no hosted checks; live DNS/rebinding, Windows cross-device/EPERM, packaged MCPB/provider, and installed-host evidence remain explicitly INCONCLUSIVE.
 - Merge: PR #218 merged non-squash into core-026-project-declared-sources as 973bcf9340aa2c627c717a00f1bcf0f6d3fca242; implementation head 8d62176216d8c886779217fd846149f0b04b1655 is recorded and reachable. CORE-088 moved Review -> Verifying after fresh get_doc_gates pass.
+
+
+## CORE-026 cumulative review at 973bcf93 (2026-08-22T22:42:40.439Z)
+
+- Independent verdict: NEEDS-CHANGES. Exact source/core rails pass (core 310/310, MCP source 32/32, typecheck/docs/diff), but fresh npm run mcpb:check exits 1 because the committed plugin artifact is stale relative to the generated standalone server.
+- CORE-090 PR #220 is correctly artifact-only but reproduces the same clean-checkout parity failure (committed 7298b5c2 versus fresh f52d9c5); no merge performed.
+- Hosted run 32602154533 failure is preserved: verify failed MCPB parity; kanmer-gate also saw stale CORE-088 blocker/review metadata from before its board move. Protected CORE-026 remains Review and unmerged pending corrected artifact and fresh hosted rails.

@@ -848,3 +848,10 @@ Last handoff: 2026-08-22T22:35Z — Independent GUI-118 review at exact head e09
 
 
 2026-08-22T22:37Z: GUI-118 independent review NEEDS-CHANGES at e09009b2; follow-up GUI-120 created/preparing→implementing to fix multi-project Connect status broadcast id, blocks GUI-118. GUI-120 assigned gui082_executor on gui-120-multiproject-broadcast.
+
+
+## CORE-026 cumulative review at 973bcf93 (2026-08-22T22:42:40.439Z)
+
+- Independent verdict: NEEDS-CHANGES. Exact source/core rails pass (core 310/310, MCP source 32/32, typecheck/docs/diff), but fresh npm run mcpb:check exits 1 because the committed plugin artifact is stale relative to the generated standalone server.
+- CORE-090 PR #220 is correctly artifact-only but reproduces the same clean-checkout parity failure (committed 7298b5c2 versus fresh f52d9c5); no merge performed.
+- Hosted run 32602154533 failure is preserved: verify failed MCPB parity; kanmer-gate also saw stale CORE-088 blocker/review metadata from before its board move. Protected CORE-026 remains Review and unmerged pending corrected artifact and fresh hosted rails.

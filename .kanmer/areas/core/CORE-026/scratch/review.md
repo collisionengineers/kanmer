@@ -1,6 +1,74 @@
 ---
 kind: review-attestation
 pr: "163"
+head_sha: "973bcf9340aa2c627c717a00f1bcf0f6d3fca242"
+base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
+verdict: needs-changes
+reviewer: "codex-gui099-executor"
+independent: true
+plan_hash: "9916aa9641b6a15d"
+ticket_updated: "2026-08-22T22:23:23.193Z"
+findings:
+  - id: F-001..F-006
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "The prior source trust, board concurrency, atomicity, roster, aggregate, and credential findings are fixed by the cumulative CORE-044 and descendant remediation chain."
+  - id: F-007
+    severity: minor
+    disposition: accepted-risk
+    reason: "Linked-page freshness on root 304 remains bounded by the documented first-release cache policy."
+  - id: F-008
+    severity: minor
+    disposition: accepted-risk
+    reason: "The bounded project-local source cache is explicitly specified by FRD-027 and ADR-0020."
+  - id: F-009..F-018
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Prior SSRF/DNS, selector, canonical identity, redirect-relative, page-budget, fragment, guidance, schema, test-rail, and content-type findings are covered by the cumulative source/core/MCP/docs/plugin implementation and passing exact-head rails."
+  - id: F-019
+    severity: minor
+    disposition: accepted-risk
+    reason: "GUI source editing/discovery remains explicitly deferred by the plan; no GUI source editor is claimed."
+  - id: F-020..F-021
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "Linked credential persistence and failed oversized-download accounting are fixed and covered by the 32/32 source suite."
+  - id: F-022
+    severity: blocker
+    disposition: fixed-in-cumulative-stack
+    reason: "The Windows path-spelling regression was normalized through pathIdentity in the cumulative ancestry before this exact head."
+  - id: F-023
+    severity: blocker
+    disposition: needs-changes
+    reason: "CORE-090 PR #220 is the live artifact remediation dependency, but its exact clean-checkout npm run mcpb:check fails because the committed artifact hash 7298b5c2 differs from the freshly generated server hash f52d9c5b; the cumulative parent cannot receive a PASS or protected merge approval until the artifact is regenerated and parity/hosted rails are green."
+  - id: hosted-run-32602154533
+    severity: major
+    disposition: accepted-risk
+    reason: "The hosted run at head 973 recorded verify failure on mcpb parity and kanmer-gate failure on stale CORE-088 blocker/review metadata; CORE-088 has since moved to Verifying, but the mcpb failure remains reproduced by the clean exact-head check."
+---
+
+## Independent cumulative review — CORE-026 / PR #163
+
+Reviewed exact cumulative head 973bcf9340aa2c627c717a00f1bcf0f6d3fca242 against main 34245be039e8fd8395b5e31835602c54e62e98a4. The cumulative source/cache/DNS/orphan implementation is bounded and the prior findings are fixed or explicitly accepted risks. CORE-088 is merged and recorded, but CORE-090 remains an active Review dependency for the committed MCPB artifact.
+
+Exact-head local evidence from a clean detached 973 checkout:
+
+- npm test -w @kanmer/core -- --run: exit 0, 15 files / 310 tests;
+- node --test packages/mcp-server/src/sources.test.mjs: exit 0, 32/32;
+- npm run typecheck: exit 0;
+- npm run verify:docs: exit 0, manual current at 22 chapters;
+- git diff --check against main: exit 0;
+- npm run mcpb:check: exit 1 because the current committed plugin is stale relative to the freshly generated standalone bundle.
+
+Hosted run 32602154533 is preserved as failed evidence. Its kanmer-gate snapshot was taken before the CORE-088 Review→Verifying board update and reported stale blocker CORE-088 plus stale review metadata; its verify job independently failed at check-mcpb-sync with MCPB server differs from distributed plugin copy. The first gate failure is now stale board state, while the artifact parity failure remains current and is the reason CORE-090 exists.
+
+CORE-090 PR #220 is artifact-only and correctly scoped, but its clean exact-head parity check also fails, so it does not yet remediate F-023. Hosted checks for PR #220 are absent. Live provider, external DNS/rebinding, Windows race timing beyond deterministic fixtures, packaged app, and GUI visual evidence remain INCONCLUSIVE where not directly exercised. Verdict: NEEDS-CHANGES; do not merge protected PR #163.
+
+--- Prior review history ---
+
+---
+kind: review-attestation
+pr: "163"
 head_sha: "453a92091d7a422a237996f024ab6940ea6fccfb"
 base_sha: "34245be039e8fd8395b5e31835602c54e62e98a4"
 verdict: needs-changes

@@ -58,7 +58,8 @@ jobs:
         env:
           # Repository administrators must set this variable to the destination
           # before retargeting the protected board branch. The default preserves
-          # existing repos until that explicit handoff is complete.
+          # existing repos until that explicit handoff is complete. The GUI
+          # retains the old custom remote ref until this hosted handoff too.
           KANMER_BOARD_BRANCH: ${{ vars.KANMER_BOARD_BRANCH || 'kanmer-board' }}
         run: |
           test -n "$KANMER_BOARD_BRANCH"

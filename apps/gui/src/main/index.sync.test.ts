@@ -66,6 +66,7 @@ vi.mock("./kanmerGit.js", async () => {
 });
 
 import { __kanmerTest } from "./index.js";
+import { ensureBoardWorktree } from "./kanmerGit.js";
 
 const execFile = promisify(execFileCallback);
 const git = async (cwd: string, ...args: string[]): Promise<string> =>
@@ -77,17 +78,22 @@ const git = async (cwd: string, ...args: string[]): Promise<string> =>
 
 let dir: string;
 let repo: string;
+let origin: string;
 
 beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), "kanmer-core084-sync-"));
+  origin = join(dir, "origin.git");
   repo = join(dir, "repo");
   mkdirSync(repo, { recursive: true });
+  await git(dir, "init", "--bare", "--initial-branch=main", origin);
   await git(dir, "init", "--initial-branch=main", repo);
   await git(repo, "config", "user.email", "test@example.com");
   await git(repo, "config", "user.name", "Test");
+  await git(repo, "remote", "add", "origin", origin);
   writeFileSync(join(repo, "README.md"), "fixture\n", "utf8");
   await git(repo, "add", "--", "README.md");
   await git(repo, "commit", "-m", "fixture");
+  await git(repo, "push", "-u", "origin", "main");
   electronMocks.syncBoard.mockReset();
   electronMocks.syncBoard.mockImplementation(async (status) => status);
 });
@@ -133,5 +139,41 @@ describe("syncProject production Retry caller", () => {
     expect(await git(repo, "show-ref")).toBe(beforeRefs);
     expect(await git(repo, "worktree", "list", "--porcelain")).toBe(beforeWorktrees);
     expect(readFileSync(join(repo, "README.md"), "utf8")).toBe("fixture\n");
+  }, 30_000);
+
+  it("retries a retained board root after a closed-project protected refusal", async () => {
+    mkdirSync(join(repo, ".kanmer"), { recursive: true });
+    writeFileSync(join(repo, ".kanmer", "version.json"), '{"format":3}\n', "utf8");
+    await git(repo, "add", "--", ".kanmer");
+    await git(repo, "commit", "-m", "board");
+
+    const protectedStatus = await ensureBoardWorktree(repo, "kanmer-board");
+    expect(protectedStatus.available).toBe(true);
+    const refusal = await ensureBoardWorktree(repo, "team-board");
+    expect(refusal).toMatchObject({ available: false, boardRoot: protectedStatus.boardRoot, branch: "team-board" });
+    expect(refusal.error).toMatch(/Cannot rename protected board branch kanmer-board automatically/);
+
+    // The administrator completes the protected handoff while the project is
+    // closed. Retry must re-run reconciliation against the retained root and
+    // only then enter the normal sync path.
+    await git(protectedStatus.boardRoot!, "branch", "-m", "team-board");
+    const ctx = {
+      sourceRoot: repo,
+      boardRoot: protectedStatus.boardRoot!,
+      store: {
+        getBoardWithSource: async () => ({ source: "file" }),
+        listItems: async () => [],
+      },
+      watch: { close: async () => undefined },
+      ownWrites: new Map<string, number>(),
+      syncStatus: refusal,
+    };
+    __kanmerTest.contexts.set(repo, ctx as never);
+
+    const result = await __kanmerTest.syncProject(repo);
+
+    expect(result).toMatchObject({ available: true, branch: "team-board", boardRoot: protectedStatus.boardRoot, paused: false });
+    expect(electronMocks.syncBoard).toHaveBeenCalledTimes(1);
+    expect(await git(protectedStatus.boardRoot!, "symbolic-ref", "--short", "HEAD")).toBe("team-board");
   }, 30_000);
 });

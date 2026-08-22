@@ -1,3 +1,3 @@
-- [ ] Resume orphan migration after ignore repair.
-- [ ] Avoid duplicate commit/cleanup on repeated retry.
-- [ ] Add deterministic regression and run rails.
+- [x] Detect and resume attached orphan migration after ignore repair.
+- [x] Reuse one idempotent finalization helper for first-time and retry paths.
+- [x] Add deterministic orphan-resume regression and run required rails.

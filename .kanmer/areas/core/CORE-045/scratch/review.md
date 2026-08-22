@@ -85,3 +85,27 @@ The exact PR compare is ten commits and five planned files: packages/core/src/io
 ## Required disposition
 
 Narrow the over-broad IPv4 and IPv6 predicates, propagate the final recovery claim error, refresh CORE-045 report/item traceability to the cumulative head and child lineage, then request fresh independent review. No merge or cleanup was performed.
+
+# Fresh cumulative independent review — CORE-045 / PR #166
+
+- Reviewer: independent reviewer.
+- Exact reviewed head: `02389045b7d26ad46e470af1d96a3084b486bf68`.
+- Exact base: CORE-044 head `33f32e3aae9819f1c2344863272dacb5c958fbac`.
+- Refreshed CORE-045 report/item records the complete CORE-046/047/049/050 and CORE-051/053 lineage, current PR #166 head, cumulative evidence, and live-evidence boundaries.
+- The cumulative head tree matches the independently tested CORE-053 child tree `d50ee8c194c8b635c4f9fb2a37a086b26f0b78c2`; CORE-051 merge `36b57a93` is an ancestor.
+- All inherited PR166 review threads (3835806972, 3835806975, 3835806976, 3835806978, 3835806979, 3836028223, 3836028224, 3836028225, 3836028226) are resolved. Their stacked dispositions cover atomic ownership, public IPv4 exceptions, `3fff::/20`, actionable recovery errors, IPv6 local ranges, ENOENT quarantine races, `2001:20::/28`, NAT64 embedded IPv4, and claimant-marker cleanup. The PR173/CORE-053 marker-cleanup finding is fixed and merged.
+- Scope remains the intended core lock/source policy plus regenerated plugin artifact; no unrelated provider/editor/source-kind changes.
+
+## Evidence
+
+- `npm test -w @kanmer/core -- src/io.test.ts`: exit 0, 25/25.
+- `npm test -w @kanmer/core`: exit 0, 303/303 (fresh prior run on the identical cumulative tree).
+- `node --test packages/mcp-server/src/sources.test.mjs`: exit 0, 14/14.
+- Core typecheck/build: PASS (fresh prior run on identical tree).
+- `npm run plugin:check`: exit 0; 37 tools, byte parity, isolated handshake.
+- `git diff --check`: exit 0.
+- Live DNS rebinding, Windows handle/crash/PID behavior, broad HTTP readiness, and hosted checks remain explicitly INCONCLUSIVE; no external claim is fabricated.
+
+## Verdict
+
+PASS, SHA-bound to `02389045b7d26ad46e470af1d96a3084b486bf68`. Revalidate PR head/base/mergeability immediately before merge, then merge PR #166 non-squash into CORE-044. Do not move or merge CORE-044; do not verify or clean up.

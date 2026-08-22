@@ -14,3 +14,7 @@
 
 - First PR #163 gate failure was footer payload formatting (literal \n characters), not source behavior. Corrected PR body now ends with standalone Kanmer: CORE-026.
 - Edge-case documentation commit e0a046be pushed; board remains Review and no merge/self-review/cleanup.
+
+## Hosted verify remediation — 2026-08-22
+
+- Hosted verify exposed stale packages/mcp-server/src/smoke.mjs assertion (34 vs actual 37 tools after CORE-026). Fixed and pushed 8eff8482. Local smoke:protocol 46/46, smoke:headless, docs, skills, plugin-sync and diff-check pass. Await fresh hosted result; remain Review, no self-review/merge/cleanup.

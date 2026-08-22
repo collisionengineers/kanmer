@@ -45,7 +45,9 @@ without a public MCP endpoint or an inbound firewall rule. The separate
 `tunnel-client` process connects
 outbound to OpenAI and starts Kanmer's existing stdio server as its private MCP
 target. Kanmer does not store the tunnel id or API key and does not supervise
-the tunnel process.
+the tunnel process when you use the manual commands below. The GUI also has a
+separate **Settings → OpenAI tunnel** surface that stores non-secret profile
+metadata, runs `init`/`doctor`, and owns the local `run` process when enabled.
 
 You need an OpenAI tunnel associated with the intended Platform organization
 and ChatGPT workspace, a runtime API key whose principal has **Tunnels Read +
@@ -80,6 +82,17 @@ $mcpCommand = '"C:/Users/<you>/AppData/Local/Programs/Kanmer/Kanmer.exe" "C:/Use
 & $tunnelClient doctor --profile kanmer-local --explain
 & $tunnelClient run --profile kanmer-local
 ```
+
+In the GUI, open **Settings → OpenAI tunnel**, enter the profile name, tunnel id,
+`tunnel-client` path, credential environment-variable name, and loopback health
+address, then save. The address is a validated, non-secret expectation; the GUI
+does not rewrite `tunnel-client`'s profile file or claim a live listener, so
+distinct ports must still be configured in the client profile by the operator.
+**Initialize** and **Run doctor** execute the same commands;
+**Start**, **Stop**, and **Restart** supervise the owned `run` process. The GUI
+never asks for or persists the API-key value. A downloaded app update marks a
+running tunnel for restart, and quitting Kanmer stops its owned process tree.
+Cloudflare settings are a different provider path and are not used here.
 
 Use forward slashes inside `$mcpCommand`, including on Windows. Version 0.0.11's
 command parser treats backslashes as escapes; a normal Windows path such as

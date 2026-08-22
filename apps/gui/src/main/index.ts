@@ -86,6 +86,7 @@ import {
   skillsStatus,
   updateSkills,
   bundledSkillsRoot,
+  serverInvocation,
   type ConnectTarget,
 } from "./connect.js";
 import { listProviders } from "./providers.js";
@@ -109,7 +110,8 @@ import { mcpSessions } from "./mcp-sessions.js";
 import { captureSmokePage, requestedSmokeCapturePath, writeSmokeCapture } from "./smokeCapture.js";
 import { remoteProjectIdentity } from "./remoteAccess/identity.js";
 import { RemoteAccessManager } from "./remoteAccess/manager.js";
-import type { RemoteConfigInput } from "../shared/ipc.js";
+import { OpenAITunnelManager, type OpenAITunnelRoots } from "./openaiTunnel.js";
+import type { OpenAITunnelConfigInput, RemoteConfigInput } from "../shared/ipc.js";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -126,6 +128,7 @@ interface ProjectContext {
 }
 const contexts = new Map<string, ProjectContext>();
 let remoteAccess: RemoteAccessManager | null = null;
+let openAITunnel: OpenAITunnelManager | null = null;
 let remoteQuitInProgress = false;
 
 async function remoteIdentity(ctx: ProjectContext) {
@@ -136,6 +139,19 @@ async function remoteIdentity(ctx: ProjectContext) {
 function requireRemoteAccess(): RemoteAccessManager {
   if (!remoteAccess) throw new Error("REMOTE_MANAGER_NOT_READY");
   return remoteAccess;
+}
+
+function requireOpenAITunnel(): OpenAITunnelManager {
+  if (!openAITunnel) throw new Error("OPENAI_TUNNEL_MANAGER_NOT_READY");
+  return openAITunnel;
+}
+
+async function openAITunnelIdentity(ctx: ProjectContext) {
+  return remoteIdentity(ctx);
+}
+
+function openAITunnelRoots(ctx: ProjectContext): OpenAITunnelRoots {
+  return { boardRoot: ctx.boardRoot, repoRoot: ctx.sourceRoot };
 }
 
 function assertTrustedRemoteSender(event: IpcMainInvokeEvent): void {
@@ -164,6 +180,14 @@ function assertRemoteConfig(value: unknown): asserts value is RemoteConfigInput 
   if (keys !== "autoStart,credentialsFile,enabled,executable,expectedConfigGeneration,hostname,tunnelId") throw new Error("REMOTE_CONFIG_UNKNOWN_FIELD");
   const config = value as Partial<RemoteConfigInput>;
   if (![config.executable, config.tunnelId, config.credentialsFile, config.hostname].every((part) => typeof part === "string") || typeof config.enabled !== "boolean" || typeof config.autoStart !== "boolean" || (config.expectedConfigGeneration !== null && typeof config.expectedConfigGeneration !== "string")) throw new Error("REMOTE_CONFIG_INVALID");
+}
+
+function assertOpenAITunnelConfig(value: unknown): asserts value is OpenAITunnelConfigInput {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("OPENAI_PROFILE_INVALID");
+  const keys = Object.keys(value).sort().join(",");
+  if (keys !== "autoStart,credentialEnv,enabled,executable,expectedGeneration,healthAddress,profileName,tunnelId") throw new Error("OPENAI_PROFILE_UNKNOWN_FIELD");
+  const config = value as Partial<OpenAITunnelConfigInput>;
+  if (![config.profileName, config.tunnelId, config.executable, config.credentialEnv, config.healthAddress].every((part) => typeof part === "string") || typeof config.enabled !== "boolean" || typeof config.autoStart !== "boolean" || (config.expectedGeneration !== null && typeof config.expectedGeneration !== "string")) throw new Error("OPENAI_PROFILE_INVALID");
 }
 
 function remoteOwner(event: IpcMainInvokeEvent): { webContentsId: number; frameRoutingId: number } {
@@ -574,10 +598,22 @@ async function openProject(root: string): Promise<OpenProjectResult> {
 }
 
 async function autoStartRegisteredProjects(): Promise<void> {
-  if (!remoteAccess) return;
-  const registrations = await remoteAccess.autoStartRegistrations();
-  const results = await remoteAccess.autoStart(registrations);
-  for (const result of results) if (!result.ok) console.error(`[remote-access] auto-start failed for ${result.projectId}: ${result.error ?? "REMOTE_AUTOSTART_FAILED"}`);
+  if (remoteAccess) {
+    const registrations = await remoteAccess.autoStartRegistrations();
+    const results = await remoteAccess.autoStart(registrations);
+    for (const result of results) if (!result.ok) console.error(`[remote-access] auto-start failed for ${result.projectId}: ${result.error ?? "REMOTE_AUTOSTART_FAILED"}`);
+  }
+  if (openAITunnel) {
+    const registrations = await openAITunnel.autoStartRegistrations();
+    const results = await openAITunnel.autoStart(registrations, (projectId) => {
+      const context = contexts.get(projectId);
+      if (context) return openAITunnelRoots(context);
+      const registration = registrations.find((candidate) => candidate.projectId === projectId);
+      if (!registration) throw new Error("OPENAI_PROJECT_NOT_REGISTERED");
+      return { boardRoot: registration.identity.boardRoot, repoRoot: registration.identity.repoRoot };
+    });
+    for (const result of results) if (!result.ok) console.error(`[openai-tunnel] auto-start failed for ${result.projectId}: ${result.error ?? "OPENAI_AUTOSTART_FAILED"}`);
+  }
 }
 
 async function snapshotOf(ctx: ProjectContext): Promise<OpenProjectResult> {
@@ -591,10 +627,11 @@ async function snapshotOf(ctx: ProjectContext): Promise<OpenProjectResult> {
   };
 }
 
-/** Close a project's watcher and drop its context. */
+/** Stop owned project processes, close the watcher, and drop the context. */
 async function closeProject(projectId: string): Promise<void> {
   const ctx = contexts.get(projectId);
   if (!ctx) return;
+  if (openAITunnel) await openAITunnel.closeProject(projectId, await openAITunnelIdentity(ctx));
   await ctx.watch.close();
   if (ctx.syncTimer) clearInterval(ctx.syncTimer);
   contexts.delete(projectId);
@@ -752,6 +789,47 @@ function registerIpc(): void {
     assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expected !== undefined && (!expected || typeof expected !== "object" || (expected.configGeneration !== undefined && expected.configGeneration !== null && typeof expected.configGeneration !== "string") || (expected.runtimeGeneration !== undefined && expected.runtimeGeneration !== null && typeof expected.runtimeGeneration !== "string"))) throw new Error("REMOTE_VERSION_INVALID");
     const ctx = requireCtx(projectId);
     return requireRemoteAccess().doctor(projectId, await remoteIdentity(ctx), { root: ctx.boardRoot, repoRoot: ctx.sourceRoot }, expected?.configGeneration ?? null, expected?.runtimeGeneration ?? null);
+  });
+  ipcMain.handle(CH.openAITunnelRegister, async (e, projectId: string) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId);
+    const ctx = requireCtx(projectId);
+    return requireOpenAITunnel().register(projectId, await openAITunnelIdentity(ctx));
+  });
+  ipcMain.handle(CH.openAITunnelView, async (e, projectId: string) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId);
+    const ctx = requireCtx(projectId);
+    return requireOpenAITunnel().viewFor(projectId, await openAITunnelIdentity(ctx));
+  });
+  ipcMain.handle(CH.openAITunnelOverview, async (e) => { assertTrustedRemoteSender(e); return requireOpenAITunnel().overview(); });
+  ipcMain.handle(CH.openAITunnelSaveProfile, async (e, projectId: string, config: OpenAITunnelConfigInput) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); assertOpenAITunnelConfig(config);
+    const ctx = requireCtx(projectId);
+    return requireOpenAITunnel().saveProfile(projectId, await openAITunnelIdentity(ctx), config);
+  });
+  ipcMain.handle(CH.openAITunnelInitialize, async (e, projectId: string) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId);
+    const ctx = requireCtx(projectId);
+    return requireOpenAITunnel().initialize(projectId, await openAITunnelIdentity(ctx), openAITunnelRoots(ctx));
+  });
+  ipcMain.handle(CH.openAITunnelDoctor, async (e, projectId: string) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId);
+    const ctx = requireCtx(projectId);
+    return requireOpenAITunnel().doctor(projectId, await openAITunnelIdentity(ctx), openAITunnelRoots(ctx));
+  });
+  ipcMain.handle(CH.openAITunnelStart, async (e, projectId: string, expectedGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expectedGeneration !== undefined && expectedGeneration !== null && typeof expectedGeneration !== "string") throw new Error("OPENAI_PROFILE_VERSION_INVALID");
+    const ctx = requireCtx(projectId);
+    return requireOpenAITunnel().start(projectId, await openAITunnelIdentity(ctx), openAITunnelRoots(ctx), expectedGeneration ?? null);
+  });
+  ipcMain.handle(CH.openAITunnelStop, async (e, projectId: string, expectedGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expectedGeneration !== undefined && expectedGeneration !== null && typeof expectedGeneration !== "string") throw new Error("OPENAI_PROFILE_VERSION_INVALID");
+    const ctx = requireCtx(projectId);
+    return requireOpenAITunnel().stop(projectId, await openAITunnelIdentity(ctx), expectedGeneration ?? null);
+  });
+  ipcMain.handle(CH.openAITunnelRestart, async (e, projectId: string, expectedGeneration?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expectedGeneration !== undefined && expectedGeneration !== null && typeof expectedGeneration !== "string") throw new Error("OPENAI_PROFILE_VERSION_INVALID");
+    const ctx = requireCtx(projectId);
+    return requireOpenAITunnel().restart(projectId, await openAITunnelIdentity(ctx), openAITunnelRoots(ctx), expectedGeneration ?? null);
   });
   ipcMain.handle(CH.getBoard, (_e, p: string) => requireStore(p).getBoard());
   ipcMain.handle(CH.setBoard, async (_e, p: string, board: BoardConfig) => {
@@ -1078,6 +1156,12 @@ app.whenReady().then(async () => {
   app.setAppUserModelId("com.kanmer.app");
   remoteAccess = new RemoteAccessManager(app.getPath("userData"));
   remoteAccess.subscribe((status) => mainWindow?.webContents.send(CH.remoteStatus, status));
+  openAITunnel = new OpenAITunnelManager(
+    app.getPath("userData"),
+    undefined,
+    (roots) => serverInvocation("claude", roots.boardRoot, roots.repoRoot),
+  );
+  openAITunnel.subscribe((status) => mainWindow?.webContents.send(CH.openAITunnelStatus, status));
   registerIpc();
   buildMenu();
   // Auto-open a project on launch: explicit env override, else the most
@@ -1095,7 +1179,10 @@ app.whenReady().then(async () => {
   // After createWindow, and wrapped: a failing updater must never be the reason
   // the app does not start.
   try {
-    initUpdater((payload) => mainWindow?.webContents.send(CH.updateStatus, payload));
+    initUpdater((payload) => {
+      if (payload.status.phase === "downloaded") void openAITunnel?.markRestartRequired();
+      mainWindow?.webContents.send(CH.updateStatus, payload);
+    });
   } catch (err) {
     console.error("[updater] init failed:", err);
   }
@@ -1117,10 +1204,10 @@ app.on("window-all-closed", () => {
 // electron-updater's autoInstallOnAppQuit installs) fires after it.
 app.on("before-quit", (e) => {
   maybeBlockQuitForUpdate(e);
-  if (e.defaultPrevented || !remoteAccess || remoteQuitInProgress) return;
+  if (e.defaultPrevented || (!remoteAccess && !openAITunnel) || remoteQuitInProgress) return;
   remoteQuitInProgress = true;
   e.preventDefault();
-  void remoteAccess.closeAll().then(
+  void Promise.all([remoteAccess?.closeAll(), openAITunnel?.closeAll()]).then(
     () => { remoteQuitInProgress = false; app.quit(); },
     (error) => { console.error(`[remote-access] quit cleanup failed: ${error instanceof Error ? error.message : String(error)}`); remoteQuitInProgress = false; app.quit(); },
   );

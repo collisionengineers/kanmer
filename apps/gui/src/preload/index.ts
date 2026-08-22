@@ -9,6 +9,7 @@ import {
   type RevealPayload,
   type UpdateStatusEvent,
   type RemoteStatus,
+  type OpenAITunnelStatus,
 } from "../shared/ipc.js";
 
 const api: KanmerApi = {
@@ -133,6 +134,20 @@ const api: KanmerApi = {
     const listener = (_e: unknown, status: RemoteStatus) => cb(status);
     ipcRenderer.on(CH.remoteStatus, listener);
     return () => ipcRenderer.removeListener(CH.remoteStatus, listener);
+  },
+  openAITunnelRegister: (p) => ipcRenderer.invoke(CH.openAITunnelRegister, p),
+  openAITunnelView: (p) => ipcRenderer.invoke(CH.openAITunnelView, p),
+  openAITunnelOverview: () => ipcRenderer.invoke(CH.openAITunnelOverview),
+  openAITunnelSaveProfile: (p, config) => ipcRenderer.invoke(CH.openAITunnelSaveProfile, p, config),
+  openAITunnelInitialize: (p) => ipcRenderer.invoke(CH.openAITunnelInitialize, p),
+  openAITunnelDoctor: (p) => ipcRenderer.invoke(CH.openAITunnelDoctor, p),
+  openAITunnelStart: (p, expectedGeneration) => ipcRenderer.invoke(CH.openAITunnelStart, p, expectedGeneration),
+  openAITunnelStop: (p, expectedGeneration) => ipcRenderer.invoke(CH.openAITunnelStop, p, expectedGeneration),
+  openAITunnelRestart: (p, expectedGeneration) => ipcRenderer.invoke(CH.openAITunnelRestart, p, expectedGeneration),
+  onOpenAITunnelStatus: (cb) => {
+    const listener = (_e: unknown, status: OpenAITunnelStatus) => cb(status);
+    ipcRenderer.on(CH.openAITunnelStatus, listener);
+    return () => ipcRenderer.removeListener(CH.openAITunnelStatus, listener);
   },
 };
 

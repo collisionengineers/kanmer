@@ -31,8 +31,15 @@ import type {
   RemoteSecretDelivery,
   RemoteStatus,
 } from "./remote.js";
+import type {
+  OpenAITunnelConfigInput,
+  OpenAITunnelDoctorResult,
+  OpenAITunnelProjectView,
+  OpenAITunnelStatus,
+} from "./openaiTunnel.js";
 
 export type { RemoteDoctorResult, RemoteProjectIdentity, RemoteProjectView, RemoteSecretDelivery, RemoteStatus };
+export type { OpenAITunnelConfigInput, OpenAITunnelDoctorResult, OpenAITunnelProjectView, OpenAITunnelStatus };
 
   export interface RemoteConfigInput {
     executable: string;
@@ -149,6 +156,16 @@ export const CH = {
   remoteOverview: "kanmer:remoteOverview",
   remoteReconcile: "kanmer:remoteReconcile",
   remoteRemove: "kanmer:remoteRemove",
+  openAITunnelRegister: "kanmer:openAITunnelRegister",
+  openAITunnelView: "kanmer:openAITunnelView",
+  openAITunnelOverview: "kanmer:openAITunnelOverview",
+  openAITunnelSaveProfile: "kanmer:openAITunnelSaveProfile",
+  openAITunnelInitialize: "kanmer:openAITunnelInitialize",
+  openAITunnelDoctor: "kanmer:openAITunnelDoctor",
+  openAITunnelStart: "kanmer:openAITunnelStart",
+  openAITunnelStop: "kanmer:openAITunnelStop",
+  openAITunnelRestart: "kanmer:openAITunnelRestart",
+  openAITunnelStatus: "kanmer:openAITunnelStatus",
 } as const;
 
 /**
@@ -654,4 +671,15 @@ export interface KanmerApi {
   remoteStop(projectId: string, expectedRuntimeGeneration?: string | null): Promise<RemoteStatus>;
   remoteDoctor(projectId: string, expected?: { configGeneration?: string | null; runtimeGeneration?: string | null }): Promise<RemoteDoctorResult>;
   onRemoteStatus(cb: (status: RemoteStatus) => void): () => void;
+  /** OpenAI Secure MCP Tunnel, deliberately separate from Cloudflare remote access. */
+  openAITunnelRegister(projectId: string): Promise<OpenAITunnelProjectView>;
+  openAITunnelView(projectId: string): Promise<OpenAITunnelProjectView>;
+  openAITunnelOverview(): Promise<OpenAITunnelProjectView[]>;
+  openAITunnelSaveProfile(projectId: string, config: OpenAITunnelConfigInput): Promise<OpenAITunnelProjectView>;
+  openAITunnelInitialize(projectId: string): Promise<OpenAITunnelDoctorResult>;
+  openAITunnelDoctor(projectId: string): Promise<OpenAITunnelDoctorResult>;
+  openAITunnelStart(projectId: string, expectedGeneration?: string | null): Promise<OpenAITunnelStatus>;
+  openAITunnelStop(projectId: string, expectedGeneration?: string | null): Promise<OpenAITunnelStatus>;
+  openAITunnelRestart(projectId: string, expectedGeneration?: string | null): Promise<OpenAITunnelStatus>;
+  onOpenAITunnelStatus(cb: (status: OpenAITunnelStatus) => void): () => void;
 }

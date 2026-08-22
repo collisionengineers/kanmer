@@ -847,3 +847,8 @@ Last handoff: 2026-08-22T18:24:50Z — CORE-084 independent review PASS at exact
 
 
 2026-08-22T19:35Z — GUI-113 implementation started by core041-executor after full ticket/EPIC-009/HZN-007 context, PR #168 findings 3836808784/3836808786, and FRD-020/FRD-012/ADR-0016 gate read. Dedicated `.worktrees/gui-113` / `gui-113-provider-registration-reconcile` is based on CORE-043 cumulative origin head 30ed38aa. Scope is provider-owned reconciliation for saved branch changes plus disposable branch-aware Grok/Antigravity descriptors and adversarial tests; no unrelated project mutation, no parent merge, and hosted/provider credential evidence remains INCONCLUSIVE. Stop at Review.
+
+
+## GUI-113 Review handoff — 2026-08-22T19:52Z
+
+GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/gui-113`, commit `8fdececeb6a71ddc0b457b02750a0ac14b938496`, PR #208 targeting `core-043-protection-retarget`. The bounded scope covers provider-owned registration reconciliation after saved board-branch changes, disposable branch-aware Grok/Antigravity descriptors, and adversarial no-unrelated-project-mutation tests for PR #168 findings 3836808784/3836808786. Focused GUI is 35/35 PASS (also independently rerun), full GUI 48 files/417 tests PASS, core 14 files/283 tests PASS, all-workspace typecheck/builds, scripts 89/89, manual/docs/managed-block/skills/diff rails PASS. Linked-worktree `plugin:check` and missing optional `@anthropic-ai/mcpb` CLI `mcpb:check` remain explicit INCONCLUSIVE/exit 1 limitations; hosted branch protection and real provider-host lifecycle evidence remain INCONCLUSIVE. GUI-113 is in Review with post-merge proof unchecked; no merge, verification, or cleanup.

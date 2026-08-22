@@ -755,3 +755,6 @@ Last handoff: 2026-08-22T19:01:38.547Z — CORE-086 artifact remediation: taken 
 
 
 19:38 UTC — CORE-082 now Implementing on core-082-lock-git-isolation (codex-recovery), with 12-step checklist and source/Git lock isolation scope. GUI-113 remains Implementing on the separate GUI lane.
+
+
+Last handoff: 2026-08-22T19:52Z — GUI-113 implementation complete on `gui-113-provider-registration-reconcile` / `.worktrees/gui-113`, commit `8fdececeb6a71ddc0b457b02750a0ac14b938496`, PR #208 targeting `core-043-protection-retarget`. Focused GUI 35/35, full GUI 48 files/417 tests, core 14 files/283 tests, all-workspace typecheck/builds, scripts 89/89, manual/docs/agents/skills/diff rails pass. Linked-worktree plugin:check and missing optional mcpb CLI failures remain INCONCLUSIVE. Ticket packet/traceability/gates are read back; GUI-113 is ready for independent review and no merge/verify/cleanup was performed.

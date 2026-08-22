@@ -25,3 +25,16 @@
 - Visual refusal and numerical respawn evidence remain explicitly INCONCLUSIVE; no unavailable host proof is claimed.
 
 **2 of 13 executed checklist items are closed; the remaining live/manual items are intentionally not ticked.**
+
+---
+
+## Closeout — GUI-068
+
+- [ ] PR merge verified (N/A — GUI-068 is evidence-only and has no PR; GUI-064 implementation PR #29 is merged.)
+- [ ] proof.md finalised (current merged-main proof and upstream PR reference recorded)
+- [x] Moved to final stage (verifying → done)
+- [ ] Outcome recorded in ticket body (no GUI-068 source commit/PR; external evidence dispositions recorded)
+- [ ] cd out of worktree; recorded .worktrees/gui-068 already absent
+- [ ] recorded branch gui-068-auto-update-verification already absent
+- [ ] git fetch --prune + git worktree prune
+- [ ] take_ticket action: release

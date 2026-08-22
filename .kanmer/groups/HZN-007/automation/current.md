@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T13:40:07.153Z
+updated_at: 2026-08-22T13:43:38.156Z
 ---
 
 # Current auto run — HZN-007
@@ -476,3 +476,6 @@ Last handoff: 2026-08-22T13:19:49.820Z — CORE-056 implementation handoff: comm
 
 
 Last handoff: 2026-08-22T13:40:07.153Z — CORE-061 taken for implementation on branch core-061-agents-branch-convention, worktree .worktrees/core-061, base origin/main 34245be0. Scoped canonical managed-block, setup fence, and generated AGENTS.md convention update is in progress. verify:agents-block 31/31, manual/docs/diff pass; initial script-dist failure and corrected 88/88 rerun recorded in ticket scratch.
+
+
+Last handoff: 2026-08-22T13:43:38.156Z — CORE-061 Review handoff: final head 216dcdf0, PR #181, base CORE-043 cumulative 4f106865947e556759aeb88363ea9aab7c01beac. Managed-block convention and validator rails pass; test:scripts 88/88 after build, initial missing-core-dist failure preserved. Awaiting independent review; no merge.

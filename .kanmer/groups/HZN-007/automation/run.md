@@ -11,3 +11,6 @@
 
 
 2026-08-22T04:54Z — MCP-015 closeout correction\n\n- Proof record path corrected to the actual disposable verifier .worktrees/verify-mcp-015-3f423378 (exact merged SHA retained); duplicate Outcome heading removed through MCP. Ticket remains Done/released with implementation and verifier worktrees absent and branch deleted.
+
+
+2026-08-22T04:55Z — MCP-028 implementation lane assigned\n\n- MCP-028 moved Preparing to Implementing through MCP on dedicated mcp-028-remote-access-integration/.worktrees/mcp-028, assigned to codex-recovery. Scope is disposable Cloudflare Worker-client integration harness and deterministic proof only; no cloudflared binary, Wrangler installation, Cloudflare credentials, tunnel, or external proof is fabricated. Independent review required; no merge.

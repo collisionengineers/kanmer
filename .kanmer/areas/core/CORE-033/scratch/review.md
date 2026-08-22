@@ -1,0 +1,27 @@
+# Independent review — CORE-033 / PR #158
+
+## Review basis
+
+- PR: https://github.com/collisionengineers/kanmer/pull/158
+- Base: main at 0c5ed84ed0128aed6c8a60bec265a8dcb589061a
+- Head: 9bf60372147123199876b623aefe9cb222b60668
+- Diff scope: exactly one added file, docs/plans/compiled-workflow/playbook.md, 176 lines.
+- Hosted checks: verify PASS in run 32557510255 job 96993932885; kanmer-gate PASS in the same run but correctly not listed as a required CORE-033 check.
+- Independent API readback matches the playbook: main has exact required check verify, strict false, PR requirement with zero approvals, conversation resolution, enforce_admins true, allow_force_pushes false, allow_deletions false; kanmer-board has no required checks or PR review requirement, conversation resolution false, enforce_admins true, allow_force_pushes false, and allow_deletions false.
+- The two prerequisite verify runs and distinct heads are independently confirmed: run 32546955237/job 96967001211 on a174ce9645e0bcc276a45b993c35710e62e43316, and run 32557139544/job 96993014805 on fddcd9b4c900b5f597f26b805300ff629e60a747. CORE-032 and GUI-085 are Done on the board.
+- The direct main push evidence is concrete and independently reachable: commit 154b6cdb exists with parent main 0c5ed84; the playbook records exit 1 and GH006 protected-branch refusal.
+
+## Blocking findings
+
+- [blocking] B-001 — CORE-033 checklist/checklist.md is still 0/50 checked, including all preconditions, both live-policy sections, readback, behavioural proof, scope, and handoff. The implementation packet is not review-ready and its board record does not attest which claims were actually completed. Disposition: fix by updating the checklist with exact evidence and leaving only genuinely unavailable items unchecked.
+- [blocking] B-002 — The playbook supplies procedures but not results for three required behavioural checks: pending or unchecked PR blocked by verify, unresolved conversation blocks a green PR, and ordinary Kanmer board sync/direct push succeeds. Only the direct main push refusal is recorded. The plan acceptance and checklist explicitly require these results, so the playbook cannot yet claim complete evidence. Disposition: run and record these tests, or mark them INCONCLUSIVE with exact reason and retain the gap in the packet.
+
+## Non-blocking observations
+
+- The current PR is mergeable with both hosted checks green, but GitHub reports mergeStateStatus BLOCKED pending independent review, which is consistent with the requested review stop.
+- The playbook correctly keeps kanmer-gate future-only and does not introduce workflow, board-sync, or unrelated policy changes.
+- Numeric rule IDs are unavailable from this personal-repository branch-protection API; the branch-specific protection URLs are a reasonable durable identifier.
+
+## Verdict
+
+NEEDS-CHANGES until B-001 and B-002 are resolved or explicitly dispositioned as INCONCLUSIVE in the ticket packet. No merge performed per review instruction.

@@ -38008,21 +38008,259 @@ async function statOrNull(p) {
 var RENAME_RETRY_MS = [10, 25, 60, 150, 300];
 var TRANSIENT_RENAME_CODES = /* @__PURE__ */ new Set(["EPERM", "EBUSY", "EACCES"]);
 var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-async function withExclusiveFileLock(lockFile, work) {
-  const delays = [10, 25, 60, 150, 300, 600, 1e3];
+var DEFAULT_LOCK_STALE_MS = 3e4;
+var DEFAULT_LOCK_RETRY_MS = [10, 25, 60, 150, 300, 600, 1e3];
+var LOCK_TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidLockToken(value) {
+  return typeof value === "string" && LOCK_TOKEN_RE.test(value);
+}
+function parseLockRecord(contents) {
+  try {
+    const parsed = JSON.parse(contents);
+    const candidate = parsed;
+    if (parsed && typeof parsed === "object" && Number.isInteger(candidate.pid) && Number(candidate.pid) > 0 && (candidate.createdAt === void 0 || typeof candidate.createdAt === "number" && Number.isFinite(candidate.createdAt)) && (candidate.token === void 0 || isValidLockToken(candidate.token))) {
+      return {
+        pid: Number(candidate.pid),
+        ...candidate.createdAt === void 0 ? {} : { createdAt: Number(candidate.createdAt) },
+        ...candidate.token === void 0 ? {} : { token: candidate.token }
+      };
+    }
+  } catch {
+  }
+  const pid = Number(contents.trim());
+  return Number.isInteger(pid) && pid > 0 ? { pid } : null;
+}
+function defaultProcessAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error2) {
+    return error2.code !== "ESRCH";
+  }
+}
+function ownerMarkerPath(lockFile, token) {
+  if (!isValidLockToken(token)) throw new Error("invalid persisted lock token");
+  return `${lockFile}.owner-${token}`;
+}
+async function ownerMarkerActive(markerFile, processAlive = defaultProcessAlive) {
+  let contents;
+  try {
+    contents = await import_promises.default.readFile(markerFile, "utf8");
+  } catch (error2) {
+    return error2.code !== "ENOENT";
+  }
+  try {
+    const marker = JSON.parse(contents);
+    if (Number.isInteger(marker.pid) && Number(marker.pid) > 0 && processAlive(Number(marker.pid))) return true;
+  } catch {
+    return true;
+  }
+  await import_promises.default.rm(markerFile, { force: true });
+  return false;
+}
+async function cleanupOwnerQuarantines(lockFile, token) {
+  const dir = import_path3.default.dirname(lockFile);
+  const prefix = `${import_path3.default.basename(lockFile)}.stale-`;
+  let entries;
+  try {
+    entries = await import_promises.default.readdir(dir);
+  } catch (error2) {
+    if (error2.code === "ENOENT") return;
+    throw error2;
+  }
+  for (const entry of entries.filter((name) => name.startsWith(prefix))) {
+    const quarantineFile = import_path3.default.join(dir, entry);
+    try {
+      const contents = await import_promises.default.readFile(quarantineFile, "utf8");
+      if (parseLockRecord(contents)?.token === token) await import_promises.default.rm(quarantineFile, { force: true });
+    } catch (error2) {
+      if (error2.code !== "ENOENT") throw error2;
+    }
+  }
+}
+async function hasActiveOwnerMarker(lockFile, processAlive) {
+  let entries;
+  try {
+    entries = await import_promises.default.readdir(import_path3.default.dirname(lockFile));
+  } catch (error2) {
+    if (error2.code === "ENOENT") return false;
+    throw error2;
+  }
+  const prefix = `${import_path3.default.basename(lockFile)}.owner-`;
+  for (const entry of entries.filter((name) => name.startsWith(prefix))) {
+    if (await ownerMarkerActive(import_path3.default.join(import_path3.default.dirname(lockFile), entry), processAlive)) return true;
+  }
+  return false;
+}
+async function releaseOwnedLock(lockFile, token) {
+  try {
+    const contents = await import_promises.default.readFile(lockFile, "utf8");
+    if (parseLockRecord(contents)?.token === token) await import_promises.default.rm(lockFile, { force: true });
+  } catch (error2) {
+    if (error2.code !== "ENOENT") throw error2;
+  }
+  await import_promises.default.rm(ownerMarkerPath(lockFile, token), { force: true });
+  await cleanupOwnerQuarantines(lockFile, token);
+  try {
+    const contents = await import_promises.default.readFile(lockFile, "utf8");
+    if (parseLockRecord(contents)?.token === token) await import_promises.default.rm(lockFile, { force: true });
+  } catch (error2) {
+    if (error2.code !== "ENOENT") throw error2;
+  }
+  await cleanupOwnerQuarantines(lockFile, token);
+}
+async function recoverStaleLock(lockFile, options2) {
+  let initialContents;
+  let initialStat;
+  try {
+    [initialContents, initialStat] = await Promise.all([import_promises.default.readFile(lockFile, "utf8"), import_promises.default.stat(lockFile)]);
+  } catch (error2) {
+    return error2.code === "ENOENT";
+  }
+  const record2 = parseLockRecord(initialContents);
+  const createdAt = record2?.createdAt ?? initialStat.mtimeMs;
+  if (!record2 || options2.now() - createdAt < options2.staleAfterMs) return false;
+  if (record2.token && await ownerMarkerActive(ownerMarkerPath(lockFile, record2.token), options2.processAlive)) return false;
+  let alive;
+  try {
+    alive = options2.processAlive(record2.pid);
+  } catch {
+    return false;
+  }
+  if (alive) return false;
+  const stillOwnsStaleLock = async () => {
+    let currentContents;
+    let currentStat;
+    try {
+      [currentContents, currentStat] = await Promise.all([import_promises.default.readFile(lockFile, "utf8"), import_promises.default.stat(lockFile)]);
+    } catch (error2) {
+      if (error2.code === "ENOENT") return false;
+      throw error2;
+    }
+    if (currentContents !== initialContents || currentStat.dev !== initialStat.dev || currentStat.ino !== initialStat.ino || currentStat.mtimeMs !== initialStat.mtimeMs) return false;
+    const currentRecord = parseLockRecord(currentContents);
+    if (!currentRecord) return false;
+    let currentAlive;
+    try {
+      currentAlive = options2.processAlive(currentRecord.pid);
+    } catch {
+      return false;
+    }
+    if (currentAlive) return false;
+    if (currentRecord.token && await ownerMarkerActive(ownerMarkerPath(lockFile, currentRecord.token), options2.processAlive)) return false;
+    return !await hasActiveOwnerMarker(lockFile, options2.processAlive);
+  };
+  if (!await stillOwnsStaleLock()) return false;
+  const quarantineFile = `${lockFile}.stale-${process.pid}-${tmpCounter()}`;
+  let renamed;
+  try {
+    renamed = await renameWithRetry(lockFile, quarantineFile, options2.renameStaleLock, stillOwnsStaleLock);
+  } catch (error2) {
+    if (error2.code === "ENOENT") return false;
+    throw error2;
+  }
+  if (!renamed) return false;
+  let quarantinedContents;
+  let quarantinedStat;
+  try {
+    [quarantinedContents, quarantinedStat] = await Promise.all([import_promises.default.readFile(quarantineFile, "utf8"), import_promises.default.stat(quarantineFile)]);
+  } catch (error2) {
+    if (error2.code === "ENOENT") return false;
+    throw error2;
+  }
+  const ownsInspectedInode = quarantinedContents === initialContents && quarantinedStat.dev === initialStat.dev && quarantinedStat.ino === initialStat.ino && quarantinedStat.mtimeMs === initialStat.mtimeMs;
+  if (!ownsInspectedInode) {
+    const replacementToken = parseLockRecord(quarantinedContents)?.token;
+    const replacementMarker = replacementToken ? ownerMarkerPath(lockFile, replacementToken) : null;
+    const replacementActive = replacementMarker ? await ownerMarkerActive(replacementMarker, options2.processAlive) : false;
+    if (!replacementActive) {
+      await import_promises.default.rm(quarantineFile, { force: true });
+      return false;
+    }
+    try {
+      await import_promises.default.link(quarantineFile, lockFile);
+    } catch (error2) {
+      const code = error2.code;
+      if (code === "ENOENT") return false;
+      if (code !== "EEXIST") throw error2;
+    }
+    return false;
+  }
+  try {
+    await import_promises.default.rm(quarantineFile);
+  } catch (error2) {
+    if (error2.code !== "ENOENT") throw error2;
+  }
+  return true;
+}
+async function withExclusiveFileLock(lockFile, work, options2 = {}) {
+  const delays = options2.retryDelaysMs ?? DEFAULT_LOCK_RETRY_MS;
+  const lockOptions = {
+    staleAfterMs: options2.staleAfterMs ?? DEFAULT_LOCK_STALE_MS,
+    now: options2.now ?? Date.now,
+    processAlive: options2.processAlive ?? defaultProcessAlive,
+    // Keep the injected seam as a single attempt. recoverStaleLock applies
+    // the shared bounded retry helper with ownership revalidation between
+    // transient attempts.
+    renameStaleLock: options2.renameStaleLock ?? import_promises.default.rename
+  };
   await ensureDir(import_path3.default.dirname(lockFile));
   let claimed = false;
+  const claimToken = (0, import_crypto.randomUUID)();
+  const markerFile = ownerMarkerPath(lockFile, claimToken);
   let lastError;
+  const claim = async () => {
+    if (await hasActiveOwnerMarker(lockFile, lockOptions.processAlive)) {
+      const error2 = new Error("active lock owner is quarantined");
+      error2.code = "EEXIST";
+      throw error2;
+    }
+    try {
+      await writeFileExclusive(markerFile, `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now(), token: claimToken })}
+`);
+      await writeFileExclusive(
+        lockFile,
+        `${JSON.stringify({ pid: process.pid, createdAt: lockOptions.now(), token: claimToken })}
+`
+      );
+    } catch (error2) {
+      const cleanupErrors = [];
+      try {
+        const contents = await import_promises.default.readFile(lockFile, "utf8");
+        if (parseLockRecord(contents)?.token === claimToken) await import_promises.default.rm(lockFile, { force: true });
+      } catch (readError) {
+        if (readError.code !== "ENOENT") cleanupErrors.push(readError);
+      }
+      try {
+        await import_promises.default.rm(markerFile, { force: true });
+      } catch (markerError) {
+        cleanupErrors.push(markerError);
+      }
+      if (cleanupErrors.length > 0) throw new AggregateError([error2, ...cleanupErrors], "lock claim and cleanup failed");
+      throw error2;
+    }
+  };
   for (let attempt = 0; attempt <= delays.length; attempt++) {
     try {
-      await writeFileExclusive(lockFile, `${process.pid}
-`);
+      await claim();
       claimed = true;
       break;
     } catch (error2) {
       lastError = error2;
       const code = error2.code ?? "";
-      if (code !== "EEXIST" || attempt === delays.length) throw error2;
+      if (code !== "EEXIST") throw error2;
+      if (await recoverStaleLock(lockFile, lockOptions)) {
+        try {
+          await claim();
+          claimed = true;
+          break;
+        } catch (retryError) {
+          lastError = retryError;
+        }
+      }
+      if (attempt === delays.length) {
+        throw lastError instanceof Error ? lastError : error2;
+      }
       await sleep(delays[attempt]);
     }
   }
@@ -38030,18 +38268,19 @@ async function withExclusiveFileLock(lockFile, work) {
   try {
     return await work();
   } finally {
-    await import_promises.default.rm(lockFile, { force: true });
+    await releaseOwnedLock(lockFile, claimToken);
   }
 }
-async function renameWithRetry(from, to, rename = import_promises.default.rename) {
+async function renameWithRetry(from, to, rename = import_promises.default.rename, beforeRetry) {
   for (let attempt = 0; ; attempt++) {
     try {
       await rename(from, to);
-      return;
+      return true;
     } catch (err) {
       const code = err.code ?? "";
       if (!TRANSIENT_RENAME_CODES.has(code) || attempt >= RENAME_RETRY_MS.length) throw err;
       await sleep(RENAME_RETRY_MS[attempt]);
+      if (beforeRetry && !await beforeRetry()) return false;
     }
   }
 }
@@ -41934,17 +42173,49 @@ function canonicalHttpsUrl(value) {
   if (parsed.port === "443") parsed.port = "";
   return parsed;
 }
+function isNonGlobalIpv4(hostname2) {
+  const octets = hostname2.split(".").map(Number);
+  if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return true;
+  const [a, b, c, d] = octets;
+  return a === 0 || a === 10 || a === 127 || a === 100 && b >= 64 && b <= 127 || a === 169 && b === 254 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 0 && c === 0 && d !== 9 && d !== 10 || a === 192 && b === 0 && c === 2 || a === 192 && b === 88 && c === 99 || a === 192 && b === 168 || a === 198 && b >= 18 && b <= 19 || a === 198 && b === 51 && c === 100 || a === 203 && b === 0 && c === 113 || a >= 224;
+}
+function parseIpv6Groups(value) {
+  let normalized = value.toLowerCase();
+  const lastColon = normalized.lastIndexOf(":");
+  const dotted = normalized.slice(lastColon + 1);
+  if (dotted.includes(".")) {
+    const octets = dotted.split(".").map(Number);
+    if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return null;
+    normalized = `${normalized.slice(0, lastColon + 1)}${(octets[0] << 8 | octets[1]).toString(16)}:${(octets[2] << 8 | octets[3]).toString(16)}`;
+  }
+  const halves = normalized.split("::");
+  if (halves.length > 2) return null;
+  const left = halves[0] ? halves[0].split(":").filter(Boolean).map((group) => Number.parseInt(group, 16)) : [];
+  const right = halves.length === 2 && halves[1] ? halves[1].split(":").filter(Boolean).map((group) => Number.parseInt(group, 16)) : [];
+  if ([...left, ...right].some((group) => !Number.isInteger(group) || group < 0 || group > 65535)) return null;
+  const missing = 8 - left.length - right.length;
+  if (halves.length === 1 && missing !== 0 || missing < 0) return null;
+  return [...left, ...Array.from({ length: missing }, () => 0), ...right];
+}
 function isPrivateAddress(hostname2) {
   const normalized = hostname2.toLowerCase().replace(/^[\[]|[\]]$/g, "");
   const version2 = (0, import_node_net.isIP)(normalized);
-  if (version2 === 4) {
-    const octets = normalized.split(".").map(Number);
-    const [a, b] = octets;
-    return a === 0 || a === 10 || a === 127 || a === 169 && b === 254 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 168 || a === 100 && b >= 64 && b <= 127 || a >= 224;
-  }
+  if (version2 === 4) return isNonGlobalIpv4(normalized);
   if (version2 !== 6) return false;
-  if (normalized.startsWith("::ffff:")) return isPrivateAddress(normalized.slice(7));
-  return normalized === "::1" || normalized === "::" || normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe8") || normalized.startsWith("fe9") || normalized.startsWith("fea") || normalized.startsWith("feb") || normalized.startsWith("ff");
+  const groups = parseIpv6Groups(normalized);
+  if (!groups) return true;
+  const [first, second, third, fourth, fifth, sixth, seventh, eighth] = groups;
+  if (first === 0 && second === 0 && third === 0 && fourth === 0 && fifth === 0 && sixth === 65535) {
+    const mapped = `${seventh >> 8 & 255}.${seventh & 255}.${eighth >> 8 & 255}.${eighth & 255}`;
+    return isNonGlobalIpv4(mapped);
+  }
+  if (first === 100 && second === 65435 && third === 0 && fourth === 0 && fifth === 0 && sixth === 0) {
+    const embedded = `${seventh >> 8 & 255}.${seventh & 255}.${eighth >> 8 & 255}.${eighth & 255}`;
+    return isNonGlobalIpv4(embedded);
+  }
+  return first === 0 || first === 256 && second === 0 && third === 0 && fourth === 0 || first === 8193 && second === 2 && third === 0 || first === 100 && second === 65435 && third === 1 || first === 256 && second === 0 && third === 0 && fourth === 1 || first >= 24320 && first <= 24575 || first === 8193 && (second & 65520) === 16 || first === 8193 && second === 3512 || first >= 64512 && first <= 65023 || first >= 65152 && first <= 65215 || (first & 65472) === 65216 || first >= 65280 || // 3fff::/20 is 3fff:0000:: through 3fff:0fff::; checking only the
+  // first group would incorrectly reject the public 3fff:1000::/16 tail.
+  first === 16383 && (second & 61440) === 0;
 }
 async function assertPublicDestination(url, lookupImpl) {
   const hostname2 = url.hostname.toLowerCase().replace(/[\[\]]/g, "");

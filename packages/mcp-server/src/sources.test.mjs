@@ -87,6 +87,80 @@ test("invalid or unbounded source URLs fail before network access", async () => 
   }
 });
 
+test("fails closed for non-global DNS destinations, including mapped IPv4", async () => {
+  const addresses = [
+    "0.0.0.1",
+    "100.64.0.1",
+    "192.0.0.1",
+    "192.0.2.1",
+    "192.88.99.1",
+    "198.18.0.1",
+    "198.51.100.1",
+    "203.0.113.1",
+    "224.0.0.1",
+    "::ffff:c000:0201",
+    "::ffff:192.0.2.1",
+    "100::1",
+    "2001:2::1",
+    "64:ff9b:1::1",
+    "64:ff9b::a00:1",
+    "100:0:0:1::1",
+    "5f00::1",
+    "5fff::1",
+    "2001:10::1",
+    "2001:1f::1",
+    "2001:db8::1",
+    "3fff::1",
+    "3fff:0fff::1",
+    "fc00::1",
+    "fe80::1",
+    "fec0::1",
+    "ff02::1",
+  ];
+  for (const address of addresses) {
+    const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-dns-"));
+    try {
+      await assert.rejects(
+        () => fetchLlmsTxt({
+          url: "https://docs.example.test/llms.txt",
+          cacheDir,
+          fetchImpl: async () => fakeResponse("# should not fetch"),
+          lookupImpl: async () => [address],
+        }),
+        /private or local destination/,
+        address,
+      );
+    } finally {
+      await rm(cacheDir, { recursive: true, force: true });
+    }
+  }
+  const publicCache = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-dns-public-"));
+  try {
+    for (const address of [
+      "93.184.216.34",
+      "192.0.0.9",
+      "192.0.0.10",
+      "192.31.196.1",
+      "192.52.193.1",
+      "192.175.48.1",
+      "3fff:1000::1",
+      "2001:20::1",
+      "2001:2f::1",
+      "64:ff9b::5db8:d822",
+    ]) {
+      const result = await fetchLlmsTxt({
+        url: "https://docs.example.test/llms.txt",
+        cacheDir: path.join(publicCache, address.replaceAll(":", "-")),
+        fetchImpl: async () => fakeResponse("# public"),
+        lookupImpl: async () => [address],
+      });
+      assert.equal(result.documents[0].text, "# public", address);
+    }
+  } finally {
+    await rm(publicCache, { recursive: true, force: true });
+  }
+});
+
 test("validates each redirect hop and resolves relative links from the final URL", async () => {
   const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-"));
   try {
@@ -131,6 +205,44 @@ test("validates each redirect hop and resolves relative links from the final URL
       /redirected outside/,
     );
     await rm(redirectCache, { recursive: true, force: true });
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("rechecks DNS destinations for every redirect and linked request", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-dns-hop-"));
+  const fetches = [];
+  let lookups = 0;
+  try {
+    const fetchImpl = async (url) => {
+      fetches.push(String(url));
+      if (String(url) === "https://docs.example.test/llms.txt") {
+        return { status: 302, ok: false, url: String(url), headers: new Headers({ location: "/nested/llms.txt" }) };
+      }
+      if (String(url) === "https://docs.example.test/nested/llms.txt") return fakeResponse("[guide](guide.md)");
+      return fakeResponse("# Guide");
+    };
+    const result = await fetchLlmsTxt({
+      url: "https://docs.example.test/llms.txt",
+      cacheDir,
+      fetchImpl,
+      lookupImpl: async (hostname) => {
+        lookups++;
+        assert.equal(hostname, "docs.example.test");
+        return ["93.184.216.34"];
+      },
+    });
+    assert.deepEqual(result.documents.map((document) => document.url), [
+      "https://docs.example.test/nested/llms.txt",
+      "https://docs.example.test/nested/guide.md",
+    ]);
+    assert.deepEqual(fetches, [
+      "https://docs.example.test/llms.txt",
+      "https://docs.example.test/nested/llms.txt",
+      "https://docs.example.test/nested/guide.md",
+    ]);
+    assert.equal(lookups, 7);
   } finally {
     await rm(cacheDir, { recursive: true, force: true });
   }

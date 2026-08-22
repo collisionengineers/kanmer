@@ -280,7 +280,28 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(existsSync(join(repo, ".kanmer"))).toBe(false);
   });
 
-  realGitTest("retries source cleanup after the orphan board commit succeeds", async () => {
+  realGitTest("preserves source edits when an orphan version conflicts before cleanup", async () => {
+    const boardRoot = join(repo, ".worktrees", "kanmer");
+    await git(repo, "worktree", "add", "--orphan", "-b", "orphan-version-conflict", boardRoot);
+    mkdirSync(join(boardRoot, ".kanmer"), { recursive: true });
+    writeFileSync(join(boardRoot, ".kanmer", "version.json"), '{"format":3}\n', "utf8");
+
+    const sourceVersion = join(repo, ".kanmer", "version.json");
+    writeFileSync(sourceVersion, '{"format":99}\n', "utf8");
+
+    const refused = await ensureBoardWorktree(repo, "orphan-version-conflict");
+    const expectedRoot = pathIdentity(resolve(repo, ".worktrees", "kanmer"));
+
+    expect(refused.available).toBe(false);
+    expect(refused.boardRoot).toBe(expectedRoot);
+    expect(refused.paused).toBe(true);
+    expect(refused.error).toContain("Source board changed during orphan migration");
+    expect(readFileSync(sourceVersion, "utf8")).toBe('{"format":99}\n');
+    expect(readFileSync(join(boardRoot, ".kanmer", "version.json"), "utf8")).toBe('{"format":3}\n');
+    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("orphan-version-conflict");
+  });
+
+  realGitTest("preserves source after an orphan cleanup retry sees a changed version", async () => {
     const sourceVersion = join(repo, ".kanmer", "version.json");
     writeFileSync(sourceVersion, '{"format":99}\n', "utf8");
 
@@ -293,15 +314,14 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(await git(origin, "rev-parse", "orphan-cleanup-retry")).toBeTruthy();
     expect(existsSync(join(repo, ".kanmer"))).toBe(true);
 
-    // Restore the source file so the previously failed git rm can succeed.
+    // Restoring a different source version must not allow the retry to delete
+    // source state that no longer matches the copied board snapshot.
     writeFileSync(sourceVersion, '{"format":3}\n', "utf8");
     const retried = await ensureBoardWorktree(repo, "orphan-cleanup-retry");
-    expect(retried).toMatchObject({ available: true, boardRoot: boardRoot, branch: "orphan-cleanup-retry", error: null, paused: false });
-    expect(existsSync(join(repo, ".kanmer"))).toBe(false);
-    expect(existsSync(join(boardRoot, ".kanmer-orphan-migration.pending"))).toBe(false);
-
-    const repeated = await ensureBoardWorktree(repo, "orphan-cleanup-retry");
-    expect(repeated).toMatchObject({ available: true, boardRoot: boardRoot, branch: "orphan-cleanup-retry", error: null, paused: false });
+    expect(retried).toMatchObject({ available: false, boardRoot: boardRoot, branch: "orphan-cleanup-retry", paused: true });
+    expect(retried.error).toContain("Source board changed during orphan migration");
+    expect(existsSync(join(repo, ".kanmer"))).toBe(true);
+    expect(existsSync(join(boardRoot, ".kanmer-orphan-migration.pending"))).toBe(true);
   });
 
   realGitTest("preserves the root when first-time local attachment ignore fails", async () => {
@@ -320,6 +340,22 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(attached.paused).toBe(true);
     expect(attached.error).toBeTruthy();
     expect(await git(expectedRoot, "symbolic-ref", "--short", "HEAD")).toBe("local-broken-ignore");
+  });
+
+  realGitTest("retains the canonical root when source ignore reconciliation refuses", async () => {
+    const target = join(dir, "source-ignore-target.txt");
+    writeFileSync(target, "sentinel\n", "utf8");
+    symlinkSync(target, join(repo, ".gitignore"), "file");
+
+    const attached = await ensureBoardWorktree(repo, "source-ignore-symlink");
+    const expectedRoot = pathIdentity(resolve(repo, ".worktrees", "kanmer"));
+
+    expect(attached.available).toBe(false);
+    expect(attached.boardRoot).toBe(expectedRoot);
+    expect(attached.branch).toBe("source-ignore-symlink");
+    expect(attached.paused).toBe(true);
+    expect(attached.error).toContain("Refusing symlinked board ignore path");
+    expect(await git(expectedRoot, "symbolic-ref", "--short", "HEAD")).toBe("source-ignore-symlink");
   });
 
   realGitTest("reconciles the sources cache rule after attaching an existing remote branch", async () => {

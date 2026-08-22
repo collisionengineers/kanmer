@@ -2,25 +2,27 @@
 
 ## Change
 
-Ignore reconciliation now uses optimistic compare-and-retry. It rereads the
-file before writing, writes only from an unchanged snapshot, verifies the
-result, and retries from the latest content when a concurrent edit wins. New
-files use exclusive creation, and retry exhaustion surfaces an error instead
-of silently overwriting edits.
+The cumulative CORE-071 implementation preserves concurrent `.gitignore`
+edits by using append-only `O_APPEND` reconciliation. It appends only missing
+or re-invalidated managed rules, never rewrites a stale snapshot, and retains
+the symlink refusal.
 
 ## Verification
 
-- GUI Git integration rail: `npm test -w @kanmer/gui -- --run src/main/kanmerGit.test.ts` — PASS, 25/25.
-- GUI typecheck: after `npm install --ignore-scripts --no-audit --no-fund` and `npm run build:core`, `npm run typecheck -w @kanmer/gui` — PASS.
-- Core build prerequisite: `npm run build:core` — PASS.
+- Initial full GUI Git rail after the first compare-and-retry implementation:
+  FAIL, one stale assertion expected the old canonical line position.
+- Corrected cumulative GUI Git rail after CORE-074: `npm test -w @kanmer/gui
+  -- --run src/main/kanmerGit.test.ts` — PASS, 25/25.
+- GUI typecheck after clean worktree install and core build — PASS.
+- Core build: `npm run build:core` — PASS.
 - Script suite: `npm run test:scripts` — PASS, 88/88.
 - `git diff --check` — PASS.
 
-## Regression
+## Traceability
 
-The deterministic regression composes a first reconciliation with an injected
-concurrent human rule, reruns from that latest content, and proves both human
-lines survive while the managed rule remains unique and effective at the end.
+- CORE-071 implementation: `37bc2265` / PR #192.
+- CORE-074 remediation: `59e7e0fe` / PR #193, merged as `c8ee9a4e`.
+- Cumulative review head: `c8ee9a4e96c5e9d0268e21c59247db00ed958b0b`.
 
 ## Limitations
 

@@ -585,3 +585,6 @@ CORE-071 remains Review with blocker CORE-074. CORE-074 implementation 59e7e0fe 
 
 
 CORE-074 PASS exact 59e7e0fe, merged non-squash into CORE-071 as c8ee9a4e; child moved Verifying and block edge removed. Fresh cumulative CORE-071 review at c8ee9a4e is now required before parent merge. CORE-072 remains Preparing.
+
+
+CORE-075 packet refresh completed via MCP; CORE-071 docs now match append-only O_APPEND implementation and traceability includes CORE-074 59e7e0fe/PR193/cumulative c8ee9a4e. CORE-075 moved Review; fresh cumulative CORE-071 review/merge pending.

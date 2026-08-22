@@ -1,3 +1,4 @@
-- [x] Compare-and-retry ignore writes from a fresh snapshot.
-- [x] Preserve concurrent edits and use exclusive creation for new files.
-- [x] Add deterministic merge regression and run focused/full rails.
+- [x] Replace stale snapshot rewrite with append-only managed-rule merge.
+- [x] Preserve concurrent edits, symlink refusal, and newline correctness.
+- [x] Add deterministic append-selection regression.
+- [x] CORE-074 merged at `c8ee9a4e`; cumulative packet refreshed.

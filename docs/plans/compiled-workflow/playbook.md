@@ -55,6 +55,29 @@ GET branches/kanmer-board/protection -> 404 Branch not protected
 The authenticated operator has repository `admin` permission. No rule change
 is attempted until this playbook is committed on the ticket branch.
 
+## Post-save readback — 2026-08-22
+
+The rules were created only after the playbook commit `89e61bdf`.
+
+| target | readback |
+|---|---|
+| `main` | `required_status_checks.contexts=["verify"]`, `strict=false`, `required_pull_request_reviews.required_approving_review_count=0`, `require_code_owner_reviews=false`, `dismiss_stale_reviews=false`, `require_last_push_approval=false`, `required_conversation_resolution=true`, `enforce_admins=true`, `allow_force_pushes=false`, `allow_deletions=false`, `required_linear_history=false`, `lock_branch=false`, `restrictions=null`; API URL `https://api.github.com/repos/collisionengineers/kanmer/branches/main/protection`. |
+| `kanmer-board` | `required_status_checks=null`, `required_pull_request_reviews=null`, `required_conversation_resolution=false`, `enforce_admins=true`, `allow_force_pushes=false`, `allow_deletions=false`, `required_linear_history=false`, `lock_branch=false`, `restrictions=null`; API URL `https://api.github.com/repos/collisionengineers/kanmer/branches/kanmer-board/protection`. |
+
+Both readbacks match the approved tables. GitHub's personal repository API
+does not expose numeric rule IDs for this branch-protection endpoint; the
+branch-specific protection URLs above are the durable identifiers. No bypass
+user/team restrictions were configured (the endpoint rejects those fields for
+this personal repository); the authenticated owner is the unavoidable owner
+exception.
+
+Direct `main` push negative test: a disposable empty commit `154b6cdb` was
+attempted with `git push origin HEAD:refs/heads/main`. GitHub rejected it with
+exit 1 and `GH006: Protected branch update failed` / `Changes must be made
+through a pull request` / `Required status check "verify" is expected`. The
+remote `main` ref was unchanged; the disposable worktree and local branch were
+removed.
+
 ## Exact `main` policy
 
 Target the exact branch name `main` (never a wildcard that also matches the

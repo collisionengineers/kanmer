@@ -27,12 +27,37 @@ export function groupMembershipPatch(
   };
 }
 
+/** Return whether a discovered group is still eligible for a new membership. */
+export function isActiveGroup(groups: readonly Group[], groupId: string): boolean {
+  return groups.some((group) => group.id === groupId && !group.archived);
+}
+
 /** Build the Add to group submenu from the active groups returned by core. */
 export function groupMenuItems(
   groups: readonly Group[],
   currentMembership: readonly string[] | undefined,
   onSelect: (groupId: string) => void,
+  options: { loading?: boolean; error?: string } = {},
 ): MenuItem[] {
+  if (options.loading) {
+    return [
+      {
+        id: "groups-loading",
+        label: "Loading active groups…",
+        disabled: true,
+      },
+    ];
+  }
+  if (options.error) {
+    return [
+      {
+        id: "groups-error",
+        label: "Unable to load active groups",
+        disabled: true,
+        disabledReason: options.error,
+      },
+    ];
+  }
   if (groups.length === 0) {
     return [
       {

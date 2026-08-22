@@ -1785,6 +1785,9 @@ button.danger {
   z-index: 61;
   min-width: 180px;
   max-width: 320px;
+  max-height: min(70vh, 480px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 4px;
   background: var(--bg-2);
   border: 1px solid var(--line-2);

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Group } from "@kanmer/core";
-import { appendGroupMembership, groupMembershipPatch, groupMenuItems } from "./groupMenu.js";
+import { appendGroupMembership, groupMembershipPatch, groupMenuItems, isActiveGroup } from "./groupMenu.js";
 
 const group = (id: string, title: string): Group => ({
   id,
@@ -57,5 +57,27 @@ describe("group menu", () => {
         disabled: true,
       }),
     ]);
+  });
+
+  it("distinguishes loading and discovery-error states from an empty board", () => {
+    const onSelect = vi.fn();
+    expect(groupMenuItems([], [], onSelect, { loading: true })).toEqual([
+      expect.objectContaining({ id: "groups-loading", label: "Loading active groups…", disabled: true }),
+    ]);
+    expect(groupMenuItems([], [], onSelect, { error: "IPC unavailable" })).toEqual([
+      expect.objectContaining({
+        id: "groups-error",
+        label: "Unable to load active groups",
+        disabled: true,
+        disabledReason: "IPC unavailable",
+      }),
+    ]);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("accepts only a currently active group during the final revalidation", () => {
+    expect(isActiveGroup([group("HZN-001", "Now")], "HZN-001")).toBe(true);
+    expect(isActiveGroup([{ ...group("HZN-001", "Now"), archived: true }], "HZN-001")).toBe(false);
+    expect(isActiveGroup([group("HZN-001", "Now")], "HZN-002")).toBe(false);
   });
 });

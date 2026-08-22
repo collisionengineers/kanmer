@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T09:30:00Z
+updated_at: 2026-08-22T09:19:48.636Z
 ---
 
 # Current auto run — HZN-007
@@ -358,3 +358,6 @@ Last handoff: 2026-08-22T09:11:57.972Z — CORE-026 remediation hosted verificat
 
 
 2026-08-22T09:19:00Z — GUI-111 Implementing on stacked branch gui-111-review-remediation/.worktrees/gui-111 from c259af17; scope is exactly GUI-109 review F-001..F-006. Parent GUI-109 remains blocked in Review. CORE-026 fresh re-review still pending; CORE-035 Verifying INCONCLUSIVE.
+
+
+Last handoff: 2026-08-22T09:19:48.636Z — CORE-026 packet audit: MCP readback confirms files/files.md governing paths are FRD-027/ADR-0020; residual FRD-026 wording is historical/unrelated OpenAI-tunnel context and ADR-0019 is absent. Unresolved automated PR findings were reviewed and recorded in scratch for independent disposition; no source changes in this bounded docs audit. Branch remains b5ae6f36, ticket Review, no self-review/merge/cleanup.

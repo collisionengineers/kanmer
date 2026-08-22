@@ -3,3 +3,5 @@
 2026-08-22 — CORE-079 source fix committed as fdecc533 (test(gui): compare board roots by filesystem identity). Final worktree-local evidence: focused Git 27/27, full GUI 404/404, core 303/303, scripts 88/88, build/typecheck/docs/manual/diff PASS. Preserved setup failures and one authoritative-wrapper transient dispatch-supervisor ENOENT in post-implementation-report. Preparing push/PR against core-026-project-declared-sources; no merge.
 
 2026-08-22 — Opened PR #200 https://github.com/collisionengineers/kanmer/pull/200 from core-079-windows-path-identity at fdecc533 against core-026-project-declared-sources. Ticket traceability now records commit fdecc533 and PR 200. Stop at Review for independent gui082 review; no merge or cleanup.
+
+PR #200 readback: base core-026-project-declared-sources at e794cbf742f6103cee015d11ef51b867915445a1; head core-079-windows-path-identity at fdecc533e4548472bbf1e959f5bae9b5b4c215f2; state OPEN, merge state CLEAN, hosted checks pending. Ticket status is Review with commits/prs traceability and enter-review gates passable. Stop for gui082 independent review; no merge or cleanup.

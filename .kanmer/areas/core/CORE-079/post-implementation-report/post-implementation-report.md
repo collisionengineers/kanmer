@@ -40,3 +40,7 @@ All final checks ran from .worktrees/core-079 after installing worktree-local de
 ## Handoff
 
 The next verifier should rerun the focused and full GUI rails from merged main, then the authoritative npm run verify wrapper. No source or generated artifact changes are expected beyond this test file.
+
+## Traceability
+
+Commit fdecc533 is pushed on core-079-windows-path-identity. PR #200 targets core-026-project-declared-sources at https://github.com/collisionengineers/kanmer/pull/200. CORE-079 is now in Review; independent review/merge is assigned to gui082. No merge or cleanup was performed by the author.

@@ -1,0 +1,3 @@
+- [ ] Make orphan source cleanup retryable after a committed board.
+- [ ] Add deterministic post-commit cleanup failure/retry coverage without weakening existing assertions.
+- [ ] Run focused/full relevant rails, write the report, open the PR, and hand off at Review.

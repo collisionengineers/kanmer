@@ -272,6 +272,8 @@ export class OpenAITunnelManager {
     projectId = canonicalOpenAITunnelPath(projectId);
     const existing = this.records.get(projectId);
     if (existing && existing.identity.fingerprint !== identity.fingerprint) return { projectId, identity, profile: null, identityConflict: true, status: statusFor(projectId, identity, null, "error", { lastError: "OPENAI_PROJECT_IDENTITY_CHANGED" }) };
+    const persistedConflict = Object.entries(this.data.projects).find(([fingerprint, entry]) => entry.projectId === projectId && fingerprint !== identity.fingerprint);
+    if (persistedConflict) return { projectId, identity, profile: null, identityConflict: true, status: statusFor(projectId, identity, null, "error", { lastError: "OPENAI_PROJECT_IDENTITY_CHANGED" }) };
     const record = this.record(projectId, identity); this.data.projects[identity.fingerprint] = { projectId: record.projectId, identity }; if (!this.data.profiles[identity.fingerprint]) this.data.profiles[identity.fingerprint] = defaultProfile(record.projectId); const profile = this.data.profiles[identity.fingerprint]; if (record.status.state !== "error") record.status = statusFor(record.projectId, identity, profile, profile.enabled ? "stopped" : "disabled"); await this.persist(); return this.view(record);
   }
 

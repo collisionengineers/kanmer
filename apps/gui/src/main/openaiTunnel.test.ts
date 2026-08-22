@@ -116,6 +116,19 @@ describe("OpenAITunnelManager", () => {
     expect(stored.profiles[migratedIdentity.fingerprint]).toBeDefined();
   });
 
+  it("detects a persisted identity change after manager restart", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
+    const first = new OpenAITunnelManager(root);
+    await first.register("/repo", identity);
+    const saved = await first.saveProfile("/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: null });
+    const restarted = new OpenAITunnelManager(root);
+    const conflict = await restarted.register("/repo", migratedIdentity);
+    expect(conflict.identityConflict).toBe(true);
+    expect(conflict.profile).toBeNull();
+    const reconciled = await restarted.reconcile("/repo", migratedIdentity, saved.profile!.generation);
+    expect(reconciled.profile?.profileName).toBe("first");
+  });
+
   it("does not leak credentials, starts an owned child, and cleans it up", async () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
     const children: Array<ChildProcess & { finish(code?: number): void }> = [];

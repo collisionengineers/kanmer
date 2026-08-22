@@ -132,3 +132,5 @@ Append measured commands and implementation notes here; never flip dispatch befo
 - [x] Injected the existing command-runner seam into all three legacy Antigravity disconnect fixtures; production unavailable-CLI behavior remains fail-closed.
 - [x] Focused connect 29/29, standard full GUI 38/356, serialized full GUI 38/356, and all-workspace typecheck passed after commit 16f91003.
 - [ ] Hosted verify rerun is pending on PR #152; no merge performed.
+
+- [x] Hosted verify rerun passed: run 32550191640, job 96975552621, verify, 2m27s; PR #152 remains open and unmerged.

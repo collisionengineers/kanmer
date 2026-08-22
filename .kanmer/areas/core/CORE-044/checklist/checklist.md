@@ -1,0 +1,19 @@
+# Checklist — CORE-044 source-fetch remediation
+
+- [ ] Derive the MCP source declaration input from the canonical core schema and add canonical HTTPS URL identity, duplicate, empty-selector, and query-bearing URL tests.
+- [ ] Add a core/store board content-version CAS and make set_sources refuse stale whole-board writes without overwriting unrelated edits.
+- [ ] Replace automatic redirect following with bounded manual same-origin HTTPS redirects and validate every Location/final destination.
+- [ ] Add public-destination/SSRF policy checks for local, loopback, link-local, private, and redirected targets with deterministic injected resolver tests.
+- [ ] Reject query-bearing linked URLs, redact any remaining diagnostic URL data, and require supported content types before caching.
+- [ ] Resolve links against the validated final root URL, strip fragments before dedupe, filter image destinations before the page cap, and test all cases.
+- [ ] Enforce one aggregate byte budget while reading and charge failed/aborted response bytes so oversized candidates cannot restart the budget.
+- [ ] Revalidate bounded linked documents after root 304 and preserve explicit stale/failure/sha256 metadata.
+- [ ] Replace process-local cache-only writes with the core atomic writer and cross-process coordination; add concurrent writer, malformed JSON, and cleanup tests.
+- [ ] Exclude .kanmer/data/sources from board Git synchronization and reconcile bounded retired-cache cleanup without deleting declarations.
+- [ ] Update canonical AGENTS/tool-reference source roster and research guidance to consult only available declarations and record skipped unavailable/unknown entries.
+- [ ] Register packages/mcp-server/src/sources.test.mjs in test:http/verify and add a regression proving the authoritative rail executes it.
+- [ ] Run focused core and source tests with exact exits, preserving prior F-001/F-002 regressions and first failures.
+- [ ] Run full npm test, typecheck, core/server builds, protocol/headless smoke, docs/skills/manual/plugin-sync/diff rails, and record every exit.
+- [ ] Reconcile FRD-027/ADR-0020 wording only if the final diff requires it; do not add GUI source editing or provider migration.
+- [ ] Write the post-implementation report mapping all 21 findings to fixed, rejected, parked, or INCONCLUSIVE evidence.
+- [ ] Confirm PR #163 or the ticket-linked remediation PR, commit reachability, expected-project annotations, hosted checks, and final get_doc_gates readback before Review handoff.

@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T10:20:00Z
+updated_at: 2026-08-22T09:33:33.636Z
 ---
 
 # Current auto run — HZN-007
@@ -361,3 +361,6 @@ Last handoff: 2026-08-22T09:11:57.972Z — CORE-026 remediation hosted verificat
 
 
 Last handoff: 2026-08-22T09:19:48.636Z — CORE-026 packet audit: MCP readback confirms files/files.md governing paths are FRD-027/ADR-0020; residual FRD-026 wording is historical/unrelated OpenAI-tunnel context and ADR-0019 is absent. Unresolved automated PR findings were reviewed and recorded in scratch for independent disposition; no source changes in this bounded docs audit. Branch remains b5ae6f36, ticket Review, no self-review/merge/cleanup.
+
+
+Last handoff: 2026-08-22T09:33:33.636Z — CORE-044 research/plan packet prepared in Preparing: research, files, open-questions (all bounded parked items explicitly checked), plan, and checklist written via MCP. Governing refs FRD-027/ADR-0020, linked CORE-026/PR #163, and all 21 automated review findings are mapped. Leave-Preparing gates passable; no implementation, take, move, source change, or PR action performed.

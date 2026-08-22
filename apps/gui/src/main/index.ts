@@ -79,7 +79,7 @@ import {
   type KanmerGitStatus,
 } from "./kanmerGit.js";
 import { armAutomaticSync } from "./syncTimer.js";
-import { retryBoardBranch } from "./syncBranch.js";
+import { bindRetryBoardStatus, retryBoardBranch } from "./syncBranch.js";
 import {
   connectAgent,
   disconnectAgent,
@@ -729,7 +729,8 @@ async function syncProject(projectId: string): Promise<KanmerGitIpcStatus> {
   // refuses unavailable statuses so a repair cannot be discovered otherwise.
   if (!ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
     const branch = retryBoardBranch(ctx.syncStatus.branch, readSettings().kanmerBranch);
-    ctx.syncStatus = await ensureBoardWorktree(ctx.sourceRoot, branch);
+    const retried = await ensureBoardWorktree(ctx.sourceRoot, branch);
+    ctx.syncStatus = bindRetryBoardStatus(ctx.boardRoot, ctx.syncStatus, retried);
     if (ctx.syncStatus.available) {
       armAutomaticSync(ctx, true, readSettings().gitSyncMinutes, () => void syncProject(projectId));
     }

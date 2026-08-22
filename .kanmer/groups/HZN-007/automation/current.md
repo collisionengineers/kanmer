@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T14:55:32.519Z
+updated_at: 2026-08-22T14:58:22.059Z
 ---
 
 # Current auto run — HZN-007
@@ -540,3 +540,6 @@ CORE-065 implemented at 3ffa713f; PR #186 opened against CORE-058 and moved Impl
 
 
 CORE-065 independently PASSed and merged into CORE-058 as b8d8a191; CORE-065 is Verifying and CORE-058 is now unblocked in Review. Fresh cumulative CORE-058 review requested at b8d8a191 before parent merge into CORE-044.
+
+
+Cumulative CORE-058 review at b8d8a191 fixed CORE-062–065 but found CORE-066 (first-time attachment root loss, P1) and CORE-067 (symlinked ignore path, P2). Both are documented; CORE-066 is Implementing on core-066-first-attachment-root, CORE-067 queued to avoid overlap.

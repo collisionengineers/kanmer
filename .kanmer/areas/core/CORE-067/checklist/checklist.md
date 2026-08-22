@@ -1,0 +1,4 @@
+- [ ] Refuse symlinked board ignore paths before writes.
+- [ ] Preserve canonical root/error state through refusal.
+- [ ] Add deterministic target-integrity regression.
+- [ ] Run focused/full verification rails.

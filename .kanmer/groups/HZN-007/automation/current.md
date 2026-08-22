@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T12:50:31.763Z
+updated_at: 2026-08-22T12:53:05.922Z
 ---
 
 # Current auto run — HZN-007
@@ -428,3 +428,6 @@ Last handoff: 2026-08-22T10:23:07.811Z — CORE-045 implementation handoff: comm
 
 
 2026-08-22T12:51:00Z — CORE-053 child merge 36b57a93b6b22f10672d571fb68c160d4766cfc5 is recorded; its blocks edge to CORE-051 was removed after merged child review. CORE-051 post-implementation report/item refreshed with child lineage and commits/PRs; current parent PR #173 head is 36b57a93. Fresh cumulative core041 review/merge assigned. Live Windows EBUSY remains INCONCLUSIVE.
+
+
+2026-08-22T12:53:10Z — CORE-052 independent review NEEDS-CHANGES on PR #175 head 825fb79: unexpected live branch mismatch still enters protected refusal loop and may auto-rename. CORE-054 created, packet written, moved through Preparing→Implementing, taken without force on core-054-no-rename-mismatch/.worktrees/core-054 by codex-core054-executor; GUI099 assigned. CORE-052/CORE-043 remain unmerged.

@@ -2,12 +2,16 @@
 id: CORE-054
 type: ticket
 title: 'CORE-052 review remediation: refuse unexpected branch without auto-rename'
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: codex-core054-executor
 profile: fix
 stageEntered:
   preparing: '2026-08-22T12:52:23.815Z'
+  implementing: '2026-08-22T12:52:44.944Z'
+taken_at: '2026-08-22T12:52:51.051Z'
+branch: core-054-no-rename-mismatch
+worktree: .worktrees/core-054
 labels:
   - pr-review
   - branch-protection
@@ -23,7 +27,7 @@ refs:
   - docs/architecture/adr/ADR-0016-compiled-workflow.md
 archived: false
 created: '2026-08-22T12:51:54.808Z'
-updated: '2026-08-22T12:52:23.815Z'
+updated: '2026-08-22T12:52:51.051Z'
 ---
 
 Close CORE-052 review P1: when refresh observes a live board worktree on an unexpected branch, the protected refusal path must not call renameBoardBranch or alter refs/worktree. Preserve the current preference, surface mismatch/paused state, and add an integration regression proving no automatic rename. Link [[CORE-052]].

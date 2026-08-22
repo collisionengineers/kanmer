@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T11:30:00Z
+updated_at: 2026-08-22T10:20:10.866Z
 ---
 
 # Current auto run — HZN-007
@@ -370,3 +370,6 @@ Last handoff: 2026-08-22T09:48:16.674Z — CORE-044 taken for implementation on 
 
 
 Last handoff: 2026-08-22T10:05:03.758Z — CORE-044 implementation handoff: commit 33f32e3aae9819f1c2344863272dacb5c958fbac pushed as PR #165 stacked on CORE-026 b5ae6f36; report/checklist complete, get_doc_gates enter-review passable, moved implementing -> review. Stop for independent review; no merge, verify, or cleanup.
+
+
+Last handoff: 2026-08-22T10:20:10.866Z — CORE-045 implementation progress: taken on core-045-lock-dns-remediation/.worktrees/core-045 stacked on CORE-044 33f32e3a; stale-lock recovery and complete DNS destination classification implemented, deterministic core/source rails pass, report/PR pending.

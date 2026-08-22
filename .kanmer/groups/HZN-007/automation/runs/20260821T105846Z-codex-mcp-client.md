@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T10:05:03.758Z
+updated_at: 2026-08-22T10:20:10.866Z
 lane_limit: 3
 stop_reason:
 ---
@@ -697,3 +697,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T09:48:16.674Z — CORE-044 taken for implementation on branch `core-044-source-fetch-remediation`, worktree .worktrees/core-044, exact CORE-026 base `b5ae6f36e007a05fffd9bb2f1c6ea4a87a860477`. Scoped source/schema, board CAS, fetch/cache, test-rail, skill/roster/docs remediation is in progress. Focused core rail corrected to exit 0 (91/91); focused MCP source rail corrected to exit 0 (11/11). First failures preserved in CORE-044 scratch/execute. No PR or review move yet.
 
 - 2026-08-22T10:05:03.758Z — CORE-044 implementation handoff: commit 33f32e3aae9819f1c2344863272dacb5c958fbac pushed as PR #165 stacked on CORE-026 b5ae6f36; report/checklist complete, get_doc_gates enter-review passable, moved implementing -> review. Stop for independent review; no merge, verify, or cleanup.
+
+- 2026-08-22T10:20:10.866Z — CORE-045 implementation progress: taken on core-045-lock-dns-remediation/.worktrees/core-045 stacked on CORE-044 33f32e3a; stale-lock recovery and complete DNS destination classification implemented, deterministic core/source rails pass, report/PR pending.

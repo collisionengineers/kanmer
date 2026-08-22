@@ -31,9 +31,14 @@ describe("project-declared source schema and resolver", () => {
 
   it("rejects unsafe manifests, duplicates, and unknown selector fields", () => {
     expect(() => validateSourceDeclarations([{ kind: "llms-txt", id: "http://docs.example.test/llms.txt" }])).toThrow(/HTTPS/);
+    expect(() => validateSourceDeclarations([{ kind: "llms-txt", id: "https://docs.example.test/llms.txt?token=secret" }])).toThrow(/query/);
     expect(() => validateSourceDeclarations([
       { kind: "mcp", id: "same" },
       { kind: "mcp", id: "same" },
+    ])).toThrow(/duplicate source declaration/);
+    expect(() => validateSourceDeclarations([
+      { kind: "llms-txt", id: "https://DOCS.example.test:443/llms.txt" },
+      { kind: "llms-txt", id: "https://docs.example.test/llms.txt" },
     ])).toThrow(/duplicate source declaration/);
     expect(() => validateSourceDeclarations([
       { kind: "plugin", id: "p", appliesTo: { areas: ["api"], extra: ["bad"] } as never },
@@ -71,5 +76,11 @@ describe("project-declared source schema and resolver", () => {
     const before = [{ kind: "llms-txt" as const, id: "https://docs.example.test/llms.txt" }];
     expect(resolveSources(before, { area: "api" })).toHaveLength(1);
     expect(resolveSources([], { area: "api" })).toHaveLength(0);
+  });
+
+  it("treats explicitly empty selectors as global", () => {
+    const source = { kind: "mcp" as const, id: "global", appliesTo: { areas: [], labels: [] } };
+    expect(resolveSources([source], { area: "api", labels: ["azure"] })).toHaveLength(1);
+    expect(resolveSources([source])).toHaveLength(1);
   });
 });

@@ -1028,19 +1028,6 @@ server.registerTool(
 // Write tools
 // ---------------------------------------------------------------------------
 
-const sourceDeclarationInput = z.object({
-  kind: z.enum(["mcp", "plugin", "llms-txt"]),
-  id: z.string().min(1).max(512),
-  appliesTo: z
-    .object({
-      areas: z.array(z.string()).max(32).optional(),
-      labels: z.array(z.string()).max(64).optional(),
-    })
-    .strict()
-    .optional(),
-  priority: z.number().int().min(-1000).max(1000).optional(),
-}).strict();
-
 server.registerTool(
   "set_sources",
   {
@@ -1048,14 +1035,15 @@ server.registerTool(
     description:
       "Replace the project's declared source preferences in board.yml. This is an explicit, project-owned declaration only: it does not install or enable MCPs/plugins, grant trust, or fetch the network. Use get_sources to resolve the result for an area/label context. The board write is protected by the normal expected_project concurrency guard.",
     inputSchema: {
-      sources: z.array(sourceDeclarationInput).max(128).describe("The complete ordered declaration list; [] clears it"),
+      sources: SourceDeclarationArraySchema.describe("The complete ordered declaration list; [] clears it"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
   write(async ({ sources }) => {
-    const board = await store.getBoard();
-    board.sources = SourceDeclarationArraySchema.parse(sources);
-    await store.setBoard(board);
+    const board = await store.updateBoard((board) => {
+      board.sources = SourceDeclarationArraySchema.parse(sources);
+      return board;
+    });
     return ok({ sources: board.sources });
   }),
 );

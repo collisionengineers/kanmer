@@ -55,7 +55,9 @@ They do not become a per-edit ceremony and do not alter implementation work.
    preference.
 7. Setup and GUI configuration preserve declared entries, present discovered
    candidates only for explicit user confirmation, and never rewrite unrelated
-   provider registrations.
+   provider registrations. The shared MCP `set_sources` surface is the
+   declaration editor for this contract; GUI preservation does not imply a
+   second GUI-only source store or an unbounded source editor.
 
 ## Acceptance criteria
 

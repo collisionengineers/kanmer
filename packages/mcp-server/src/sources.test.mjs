@@ -65,6 +65,152 @@ test("invalid or unbounded source URLs fail before network access", async () => 
       () => fetchLlmsTxt({ url: "http://docs.example.test/llms.txt", cacheDir, fetchImpl: async () => { throw new Error("network"); } }),
       /HTTPS URL/,
     );
+    await assert.rejects(
+      () => fetchLlmsTxt({ url: "https://127.0.0.1/llms.txt", cacheDir, fetchImpl: async () => { throw new Error("network"); } }),
+      /private or local destination/,
+    );
+    await assert.rejects(
+      () => fetchLlmsTxt({ url: "https://docs.example.test/llms.txt?token=secret", cacheDir, fetchImpl: async () => { throw new Error("network"); } }),
+      /query/,
+    );
+    await assert.rejects(
+      () => fetchLlmsTxt({
+        url: "https://docs.example.test/llms.txt",
+        cacheDir,
+        fetchImpl: async () => { throw new Error("network"); },
+        lookupImpl: async () => ["10.0.0.8"],
+      }),
+      /private or local destination/,
+    );
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("validates each redirect hop and resolves relative links from the final URL", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-"));
+  try {
+    let calls = 0;
+    const fetchImpl = async (url) => {
+      calls++;
+      if (String(url) === "https://docs.example.test/llms.txt") {
+        return { status: 302, ok: false, url: String(url), headers: new Headers({ location: "/nested/llms.txt" }) };
+      }
+      if (String(url) === "https://docs.example.test/nested/llms.txt") {
+        return { status: 200, ok: true, url: String(url), headers: new Headers({ "content-type": "text/plain" }), text: async () => "[guide](guide.md)" };
+      }
+      return fakeResponse("# Guide");
+    };
+    const result = await fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl });
+    assert.deepEqual(result.documents.map((document) => document.url), [
+      "https://docs.example.test/nested/llms.txt",
+      "https://docs.example.test/nested/guide.md",
+    ]);
+    assert.equal(calls, 3);
+
+    const redirectCache = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-"));
+    await assert.rejects(
+      () => fetchLlmsTxt({
+        url: "https://docs.example.test/llms.txt",
+        cacheDir: redirectCache,
+        fetchImpl: async (url) => String(url) === "https://docs.example.test/llms.txt"
+          ? { status: 302, ok: false, url: String(url), headers: new Headers({ location: "https://evil.example.test/nope" }) }
+          : fakeResponse("never"),
+      }),
+      /redirected outside/,
+    );
+
+    await assert.rejects(
+      () => fetchLlmsTxt({
+        url: "https://docs.example.test/llms.txt",
+        cacheDir: redirectCache,
+        fetchImpl: async (url) => String(url) === "https://docs.example.test/llms.txt"
+          ? { status: 302, ok: false, url: String(url), headers: new Headers({ location: "/nested/llms.txt?token=secret" }) }
+          : fakeResponse("never"),
+      }),
+      /redirected outside/,
+    );
+    await rm(redirectCache, { recursive: true, force: true });
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("filters images, clears fragments, and rejects credential-bearing linked queries", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-"));
+  const calls = [];
+  try {
+    const fetchImpl = async (url) => {
+      calls.push(String(url));
+      if (calls.length === 1) return fakeResponse("![image](image.png)\n[guide](guide.md#section)\n[secret](guide.md?token=secret)");
+      return fakeResponse("# Guide");
+    };
+    const result = await fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl });
+    assert.deepEqual(result.documents.map((document) => document.url), [
+      "https://docs.example.test/llms.txt",
+      "https://docs.example.test/guide.md",
+    ]);
+    assert.deepEqual(calls, ["https://docs.example.test/llms.txt", "https://docs.example.test/guide.md"]);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("requires an explicit supported content type", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-"));
+  try {
+    await assert.rejects(
+      () => fetchLlmsTxt({
+        url: "https://docs.example.test/llms.txt",
+        cacheDir,
+        fetchImpl: async () => ({ status: 200, ok: true, url: "https://docs.example.test/llms.txt", headers: new Headers(), text: async () => "# Docs" }),
+      }),
+      /missing content type/,
+    );
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("root 304 revalidates cached linked documents and keeps cache digest", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-"));
+  try {
+    const first = async (url) => {
+      if (String(url).endsWith("llms.txt")) return fakeResponse("[guide](guide.md)", { etag: '"root-1"' });
+      return fakeResponse("old", { etag: '"guide-1"' });
+    };
+    await fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl: first, now: () => 1_000 });
+    const calls = [];
+    const second = async (url, init) => {
+      calls.push(String(url));
+      if (String(url).endsWith("llms.txt")) return { status: 304, ok: false, url: String(url), headers: new Headers(), text: async () => "" };
+      assert.equal(init?.headers?.["if-none-match"], '"guide-1"');
+      return fakeResponse("new", { etag: '"guide-2"' });
+    };
+    const refreshed = await fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl: second, force: true, now: () => 86_401_000 });
+    assert.deepEqual(calls, ["https://docs.example.test/llms.txt", "https://docs.example.test/guide.md"]);
+    assert.equal(refreshed.documents[1].text, "new");
+    const cacheFile = (await readdir(cacheDir)).find((name) => name.endsWith(".json"));
+    assert.match(JSON.parse(await readFile(path.join(cacheDir, cacheFile), "utf8")).sha256, /^[a-f0-9]{64}$/);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("ignores malformed or tampered cache JSON and rebuilds it atomically", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-"));
+  try {
+    let calls = 0;
+    const fetchImpl = async () => {
+      calls++;
+      return fakeResponse("# Docs");
+    };
+    await fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl, now: () => 1_000 });
+    const cacheFile = (await readdir(cacheDir)).find((name) => name.endsWith(".json"));
+    await (await import("node:fs/promises")).writeFile(path.join(cacheDir, cacheFile), "{not-json", "utf8");
+    const rebuilt = await fetchLlmsTxt({ url: "https://docs.example.test/llms.txt", cacheDir, fetchImpl, now: () => 2_000 });
+    assert.equal(rebuilt.fromCache, false);
+    assert.equal(calls, 2);
   } finally {
     await rm(cacheDir, { recursive: true, force: true });
   }

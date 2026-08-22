@@ -58,6 +58,35 @@ const TRANSIENT_RENAME_CODES = new Set(["EPERM", "EBUSY", "EACCES"]);
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+/** Serialize a critical section across processes with an exclusive lock file. */
+export async function withExclusiveFileLock<T>(
+  lockFile: string,
+  work: () => Promise<T>,
+): Promise<T> {
+  const delays = [10, 25, 60, 150, 300, 600, 1_000];
+  await ensureDir(path.dirname(lockFile));
+  let claimed = false;
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      await writeFileExclusive(lockFile, `${process.pid}\n`);
+      claimed = true;
+      break;
+    } catch (error) {
+      lastError = error;
+      const code = (error as NodeJS.ErrnoException).code ?? "";
+      if (code !== "EEXIST" || attempt === delays.length) throw error;
+      await sleep(delays[attempt]!);
+    }
+  }
+  if (!claimed) throw lastError instanceof Error ? lastError : new Error("unable to claim file lock");
+  try {
+    return await work();
+  } finally {
+    await fs.rm(lockFile, { force: true });
+  }
+}
+
 /**
  * `fs.rename`, retried while the destination is momentarily unopenable.
  *

@@ -1,0 +1,3 @@
+- [ ] Refresh CORE-071 research/plan/checklist/report for append-only behavior.
+- [ ] Record CORE-074 commit/PR and cumulative head on CORE-071.
+- [ ] Run the packet gate and fresh review.

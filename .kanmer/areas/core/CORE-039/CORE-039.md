@@ -26,11 +26,13 @@ blocks:
 docs_todo: true
 commits:
   - 79c85e07c977f29270ca84f62b1c729b28fe1d57
+  - 3ceaa056f9927778d6e3183a78e78914bbede5bb
 prs:
+  - '145'
   - '147'
 archived: false
 created: '2026-08-22T01:26:27.318Z'
-updated: '2026-08-22T01:35:10.441Z'
+updated: '2026-08-22T01:37:15.625Z'
 ---
 
 The authoritative GitHub verify rail now reaches scripts/release-notes.test.mjs and fails in a clean checkout because release-notes.mjs cannot find .worktrees/kanmer. Make the test fixture or command independent of a local Kanmer board while preserving its PR-link assertion and 80-test coverage. Keep this separate from CORE-038 Windows glob enumeration and preserve exact CI evidence.

@@ -588,3 +588,6 @@ CORE-074 PASS exact 59e7e0fe, merged non-squash into CORE-071 as c8ee9a4e; child
 
 
 CORE-075 packet refresh completed via MCP; CORE-071 docs now match append-only O_APPEND implementation and traceability includes CORE-074 59e7e0fe/PR193/cumulative c8ee9a4e. CORE-075 moved Review; fresh cumulative CORE-071 review/merge pending.
+
+
+CORE-072 implementation 9abfc9f4 / PR #194 moved Implementing -> Review; kanmerGit 26/26, core build/typecheck PASS, scripts 88/88. Independent review/merge pending; CORE-073 remains queued.

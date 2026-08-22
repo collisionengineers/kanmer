@@ -660,6 +660,44 @@ describe("portable Codex launcher contract (GUI-100)", () => {
     await expect(readFile(join(root, ".mcp.json"), "utf8")).resolves.toBe(malformed);
   });
 
+  it("executes hostile branch text as one argv value, never through the shell (GUI-114)", async () => {
+    const root = await tempRoot();
+    const seen: { file: string; args: string[]; cwd: string }[] = [];
+    let shellCalled = false;
+    testProviders.set("mcp-114", {
+      id: "mcp-114" as ProviderId,
+      label: "MCP-114 test CLI",
+      register: {
+        kind: "cli",
+        addCommand: (inv, projectRoot) => `claude mcp add ${projectRoot} ${inv.env.KANMER_BOARD_BRANCH}`,
+        addArgv: (inv) => ({ file: "claude", args: ["mcp", "add", "kanmer", "-e", `KANMER_BOARD_BRANCH=${inv.env.KANMER_BOARD_BRANCH}`] }),
+        removeCommands: () => [],
+      },
+      install: { kind: "copySkills", skillsScope: "agentsOnly" },
+      dispatch: false,
+    } as AgentProvider);
+
+    const result = await connectAgent("mcp-114" as ProviderId, root, root, {
+      commandRunner: async () => {
+        shellCalled = true;
+        return { stdout: "shell", stderr: "" };
+      },
+      argvCommandRunner: async (file, args, cwd) => {
+        seen.push({ file, args, cwd });
+        return { stdout: "registered", stderr: "" };
+      },
+    }, "team&whoami");
+
+    expect(result.ok).toBe(true);
+    expect(shellCalled).toBe(false);
+    expect(seen).toEqual([{
+      file: "claude",
+      args: ["mcp", "add", "kanmer", "-e", "KANMER_BOARD_BRANCH=team&whoami"],
+      cwd: root,
+    }]);
+    testProviders.delete("mcp-114");
+  });
+
   it("refuses a failed probe before creating or changing project config", async () => {
     const root = await tempRoot();
     const result = await connectAgent("codex", root, root, {

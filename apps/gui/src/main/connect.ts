@@ -655,6 +655,8 @@ export interface ConnectOptions {
   probeRunner?: CodexProbeRunner;
   /** Test-only seam for provider commands; production uses the host shell. */
   commandRunner?: ConnectCommandRunner;
+  /** Test-only seam for provider argv commands; production uses execFile. */
+  argvCommandRunner?: NativeCommandRunner;
   /** Test-only argv seam for native plugin commands. */
   nativeCommandRunner?: NativeCommandRunner;
   /** Test-only plugin root seam; production resolves the packaged/dev bundle. */
@@ -1056,7 +1058,10 @@ export async function connectAgent(
       for (const cmd of provider.register.removeCommands(projectRoot)) {
         await execAsync(cmd, { cwd: projectRoot }).catch(() => undefined); // ignore "not found"
       }
-      const { stdout, stderr } = await execAsync(command, { cwd: projectRoot });
+      const argv = provider.register.addArgv?.(inv, projectRoot);
+      const { stdout, stderr } = argv
+        ? await (options.argvCommandRunner ?? defaultNativeCommandRunner)(argv.file, argv.args, projectRoot)
+        : await execAsync(command, { cwd: projectRoot });
       output = (stdout || stderr || "Registered.").trim();
     } else if (provider.register.kind === "configFile") {
       const path = resolveConfigPath(provider.register.configPath, projectRoot);

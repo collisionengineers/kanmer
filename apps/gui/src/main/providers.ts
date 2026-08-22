@@ -72,6 +72,8 @@ export type RegisterSpec =
   | {
       kind: "cli";
       addCommand: (inv: Invocation, root: string) => string;
+      /** Optional production-safe argv form; addCommand remains copy/paste text. */
+      addArgv?: (inv: Invocation, root: string) => NativePluginCommand;
       removeCommands: (root: string) => string[];
       /** Optional project file that proves this CLI host remains connected. */
       configPath?: string;
@@ -217,7 +219,7 @@ function sharedDispatchSpec(id: DispatchProviderId): Pick<AgentProvider, "dispat
 
 /** Quote a shell argument for the copy-paste fallback command line. */
 export function q(s: string): string {
-  return /[\s"]/.test(s) ? `"${s.replace(/"/g, '\\"')}"` : s;
+  return /[\s"&|<>^();`$%@!]/.test(s) ? `"${s.replace(/"/g, '\\"')}"` : s;
 }
 
 function nativePluginPresent(pluginName: string, output: string): boolean {
@@ -782,13 +784,18 @@ function mcpServersMerge(existing: string | null, inv: Invocation): string {
   });
 }
 /** codex/claude `mcp add` command line (shared by both CLI providers). */
-function cliAddCommand(id: "codex" | "claude", inv: Invocation, root: string): string {
+function cliAddArgv(id: "codex" | "claude", inv: Invocation, root: string): NativePluginCommand {
   const envFlag = id === "codex" ? "--env" : "-e";
   const envParts = Object.entries(inv.env).flatMap(([k, v]) => [envFlag, `${k}=${v}`]);
   const name = id === "claude" ? "kanmer" : codexServerName(root);
   const scope = id === "claude" ? ["-s", "project"] : [];
   const server = [inv.command, ...inv.args];
-  return [id, "mcp", "add", name, ...scope, ...envParts, "--", ...server].map(q).join(" ");
+  return { file: id, args: ["mcp", "add", name, ...scope, ...envParts, "--", ...server] };
+}
+
+function cliAddCommand(id: "codex" | "claude", inv: Invocation, root: string): string {
+  const command = cliAddArgv(id, inv, root);
+  return [command.file, ...command.args].map(q).join(" ");
 }
 
 export const PROVIDERS: AgentProvider[] = [
@@ -829,6 +836,7 @@ export const PROVIDERS: AgentProvider[] = [
     register: {
       kind: "cli",
       addCommand: (inv, root) => cliAddCommand("claude", inv, root),
+      addArgv: (inv, root) => cliAddArgv("claude", inv, root),
       removeCommands: () => [
         "claude mcp remove kanmer -s project",
         "claude mcp remove kanmer -s user", // stale user-scope entry older versions wrote

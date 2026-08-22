@@ -19,6 +19,7 @@ import {
   providerById,
   codexTrustFromConfig,
   codexTrustNote,
+  q,
   type Invocation,
 } from "./providers.js";
 import * as TOML from "smol-toml";
@@ -75,6 +76,17 @@ describe("provider registry", () => {
     expect(cmd).toContain("-e ELECTRON_RUN_AS_NODE=1");
     const configured = reg.addCommand({ ...inv, env: { ...inv.env, KANMER_BOARD_BRANCH: "release-board" } }, ROOT);
     expect(configured).toContain("-e KANMER_BOARD_BRANCH=release-board");
+    expect(reg.addArgv?.({ ...inv, env: { ...inv.env, KANMER_BOARD_BRANCH: "release-board" } }, ROOT)).toEqual({
+      file: "claude",
+      args: [
+        "mcp", "add", "kanmer", "-s", "project",
+        "-e", "ELECTRON_RUN_AS_NODE=1", "-e", "KANMER_BOARD_BRANCH=release-board",
+        "--", inv.command, ...inv.args,
+      ],
+    });
+    expect(q("team&whoami")).toBe('"team&whoami"');
+    expect(reg.addCommand({ ...inv, env: { KANMER_BOARD_BRANCH: "team&whoami" } }, ROOT))
+      .toContain('"KANMER_BOARD_BRANCH=team&whoami"');
   });
 
   it("opencode merges an mcp.local entry, preserving unknown keys and idempotent", () => {

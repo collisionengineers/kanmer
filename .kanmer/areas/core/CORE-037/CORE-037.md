@@ -2,10 +2,12 @@
 id: CORE-037
 type: ticket
 title: Normalize Windows temporary-path assertions in Git integration tests
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-22T00:23:31.774Z'
 labels:
   - remediation
   - ci
@@ -22,7 +24,7 @@ refs:
   - docs/functional/frd/FRD-020-board-git-worktree-sync.md
 archived: false
 created: '2026-08-22T00:14:25.688Z'
-updated: '2026-08-22T00:14:25.688Z'
+updated: '2026-08-22T00:23:31.774Z'
 ---
 
 The shared Windows verify rail is red because apps/gui/src/main/kanmerGit.test.ts compares resolve(boardRoot) against the expected repo worktree path and Git/Node return different equivalent user-path spellings (RUNNER~1 versus runneradmin) on GitHub-hosted Windows. Normalize or compare path identity in a Windows-stable way without weakening the real Git/worktree assertions. Keep the test exercising the actual path/refs and preserve failure behavior for genuinely different locations. This remediation unblocks the required verify check used by CORE-032 and dependent review packets.

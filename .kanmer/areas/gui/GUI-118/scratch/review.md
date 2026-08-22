@@ -20,3 +20,34 @@ Reviewed independently of author codex-recovery. Exact PR #219 head `e09009b2ead
 - No hosted checks were reported. Live native-provider, packaged, protected-branch, and hosted evidence remain INCONCLUSIVE as documented.
 
 Verdict: NEEDS-CHANGES. Do not merge PR #219 until GUI-120 fixes the broadcast project id and adds the multi-project regression; no source or review-thread edits were made.
+
+# Independent cumulative review — NEEDS-CHANGES
+
+- Exact PR: #219
+- Exact head: `37740379552e241f200bb181a2ca0e9d3be32ece`
+- Exact current CORE-043 base: `7654a28104fbc67c58cad61241188d0f3d898c17`
+- Author: `codex-recovery`; reviewer: independent `core041_executor`
+- Review boundary: GUI-118 source and GUI-120 remediation only; no merge performed.
+
+## Prior finding disposition
+
+GUI-118 F-001 (multi-project Connect status broadcast) is fixed at this head. `connectProject` now emits `projectId: id` for every open context, and the added production-caller regression asserts both open project ids are broadcast. GUI-120 is recorded as merged into this head at `37740379552e241f200bb181a2ca0e9d3be32ece`.
+
+## New finding — GUI-121
+
+The cumulative PR head is based on `1126253e`, but current CORE-043 is `7654a281` after GUI-119 merged. Comparing current base to this head shows the PR would remove/revert GUI-119 behavior:
+
+- `apps/gui/src/main/remoteAccess/manager.ts`: removes `remoteBoardBranchEnvironment`, the board-branch constructor seam, and `KANMER_BOARD_BRANCH` propagation to remote runtime and doctor children.
+- `apps/gui/src/main/remoteAccess/manager.test.ts`: removes the corresponding branch-binding regression.
+- `apps/gui/src/main/connect.ts` and `connect.test.ts`: removes GUI-119 marketplace staging/branch propagation behavior and its regression, while retaining older code around the new GUI-118 changes.
+- The resulting merge would therefore regress the already-merged GUI-119 contract even though GitHub reports the PR mergeable.
+
+GUI-121 was created, linked to GUI-118, and blocks GUI-118. Required disposition: rebase/merge current CORE-043 into GUI-118, preserve GUI-119 behavior, rerun cumulative GUI/typecheck/build/scripts/docs/diff rails, and refresh exact traceability.
+
+## Evidence
+
+- `gh pr view 219`: OPEN, MERGEABLE, base `core-043-protection-retarget` at `7654a281`, head as above; no hosted checks reported.
+- `git diff --check 7654a281..37740379`: PASS (exit 0).
+- Current-base diff is 13 files / 397 insertions / 217 deletions; the two remote-access files are unrelated regressions introduced solely by the stale base.
+- Existing author packet evidence remains: settings 4/4, providers 66/66, connect 34/34, index.sync 10/10; reduced GUI 47 files/392 tests; typecheck/build/docs/scripts/diff PASS. Full Git-heavy GUI, live native/protected-host, and hosted evidence remain INCONCLUSIVE as reported.
+- Verdict: NEEDS-CHANGES. Do not merge PR #219 until GUI-121 is resolved and a fresh exact-head cumulative review is recorded.

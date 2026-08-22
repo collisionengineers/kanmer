@@ -15,3 +15,7 @@
 ## Explicitly out of scope
 
 No changes to `packages/core`, MCP server root discovery, GitHub Actions/protection, unrelated project contexts, provider install/uninstall semantics, or user-global settings beyond the existing saved branch preference.
+
+## Convention documentation
+
+- `AGENTS.md` — documents the native descriptor `KANMER_BOARD_BRANCH` contract and disposable branch-bound staging; this update is outside the kanmer-setup managed block.

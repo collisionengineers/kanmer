@@ -8,14 +8,32 @@ function deferred() {
   return { promise, resolve };
 }
 
+async function waitFor(promise, label, timeoutMs = 1_000) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`timed out waiting for ${label}`)), timeoutMs); }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 test("supervisor restarts only a bounded number of unexpected exits and stops its current child", async () => {
   const exits = [];
   const states = [];
+  const secondChildRunning = deferred();
+  const failed = deferred();
   const supervisor = new TunnelSupervisor({
     maxRestarts: 1,
     restartPolicy: { baseDelayMs: 0, maxDelayMs: 0 },
     random: () => 0.5,
-    onState: (state) => states.push(state),
+    onState: (state) => {
+      states.push(state);
+      if (state === "running" && exits.length === 2) secondChildRunning.resolve();
+      if (state === "failed") failed.resolve();
+    },
     start: async () => {
       const exit = deferred(); exits.push(exit);
       return { exited: exit.promise, stop: async () => exit.resolve({ code: 0, signal: null }) };
@@ -23,10 +41,10 @@ test("supervisor restarts only a bounded number of unexpected exits and stops it
   });
   await supervisor.start();
   exits[0].resolve({ code: 1, signal: null });
-  await new Promise(setImmediate);
+  await waitFor(secondChildRunning.promise, "second child to reach running");
   assert.equal(exits.length, 2);
   exits[1].resolve({ code: 1, signal: null });
-  await new Promise(setImmediate);
+  await waitFor(failed.promise, "bounded retry failure");
   assert.deepEqual(states, ["starting", "running", "restarting", "running", "failed"]);
   await supervisor.stop();
   assert.equal(states.at(-1), "stopped");

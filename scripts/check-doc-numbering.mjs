@@ -24,7 +24,7 @@
 // tool-name drift instead of preventing it structurally.
 //
 // Wired into `npm run test:scripts` via check-doc-numbering.test.mjs (that
-// runner is `node --test scripts/*.test.mjs` — dependency-free, no root
+// runner is `node scripts/test-scripts.mjs` — dependency-free, no root
 // devDependency, matches how GUI-066 already wired scripts/ checks into a
 // rail). Deliberately NOT folded into check-plugin-sync.mjs: that script's
 // whole subject is the MCP plugin (tool names, bundle bytes, plugin

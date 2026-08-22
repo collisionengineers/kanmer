@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T20:05:17.039Z
+updated_at: 2026-08-22T20:16:46.238Z
 ---
 
 # Current auto run — HZN-007
@@ -779,3 +779,6 @@ Last handoff: - 2026-08-22T20:05:17.039Z — GUI-114 assigned and handed off Imp
 
 
 20:10 UTC — Created GUI-115/116/117 for six new exact-head PR #168 findings. GUI-115 is the active GUI lane; GUI-116 and GUI-117 are queued serially to avoid connect/index and descriptor/doc overlap. CORE-083 remains the active core lane.
+
+
+2026-08-22T20:16:46.238Z — CORE-083 Review handoff: taken without force on core-083-orphan-board-state/.worktrees/core-083 from cumulative CORE-026 head a9833df28ddf6f91966be17a4eb7c06265e088ed. Commit ff12510be5608a6b940f15c00e2cb68dc0266267 and PR #211 target core-026-project-declared-sources. The scoped orphan fingerprint/version guard and canonical boardRoot retention fixes are implemented; checklist 10/11 with post-merge proof intentionally unchecked, report and gates read back, and Implementing→Review moved. Targeted regressions 4/4, full kanmerGit real-Git 30/30, GUI typecheck/build, core build, scripts 88/88 after build, and diff-check pass. First scripts missing-core-dist exit 1 and interrupted full GUI suite remain preserved; live multi-process/packaged evidence is INCONCLUSIVE. Author stops at Review; no self-review, merge, verify, or cleanup.

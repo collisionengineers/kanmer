@@ -79,3 +79,8 @@ aa6f9ddefe05aaa208fe2e00b06da019aaccb6d6. Independent review must verify the
 two-phase ref policy, full-SHA ancestry guard, staging of new files, dry-run
 non-mutation, and preservation of existing publication/verification checks.
 Author stops at Review and will not self-review, merge, publish, or clean up.
+
+
+## Hosted readback — 2026-08-22T07:49:26.925Z
+
+PR #160 head aa6f9ddefe05aaa208fe2e00b06da019aaccb6d6 remains OPEN/BLOCKED. Run 32560533408 kanmer-gate job 97001287878 is SUCCESS; authoritative verify job 97001287963 remains IN_PROGRESS. This is not a full hosted verify PASS and no merge/release/tag/publisher result is claimed.

@@ -266,3 +266,9 @@ Last handoff: 2026-08-22T05:30:03Z — Hosted verification correction for GUI-10
 
 
 Last handoff: 2026-08-22T07:36:50.256Z — CORE-042 is Preparing under /root/gui082_executor after packet/gates/context reconciliation. Its two-phase protected-main release design is documented via MCP; dedicated take/worktree and implementation are next. No release/tag/merge claim; hosted PR, publisher, latest-release, and real updater evidence remain INCONCLUSIVE until an authorized post-merge publish.
+
+
+Last handoff: 2026-08-22T07:48:37.899Z — CORE-042 is Review on PR #160/head aa6f9ddefe05aaa208fe2e00b06da019aaccb6d6, branch core-042-protected-release, worktree .worktrees/core-042. Prepare-only branch/PR and explicit post-merge publish/tag guards are implemented; deterministic helper 5/5 and scripts 88/88 pass. Build:server/typecheck stale dispatchDeliverableProven baseline failures remain explicit; hosted verify/kanmer-gate were pending and no release/tag/merge was performed. Independent review is required; do not self-review, merge, publish, or clean up.
+
+
+Hosted update: 2026-08-22T07:49:26.925Z — CORE-042 PR #160 kanmer-gate SUCCESS (run 32560533408/job 97001287878); verify remains IN_PROGRESS (job 97001287963). Ticket stays Review; no overall hosted PASS, merge, release, tag, publisher, or cleanup claim.

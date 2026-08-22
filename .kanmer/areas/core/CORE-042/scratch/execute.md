@@ -12,3 +12,5 @@
 ## Review handoff — CORE-042
 
 PR #160 is open at head aa6f9ddefe05aaa208fe2e00b06da019aaccb6d6. Hosted verify was IN_PROGRESS and kanmer-gate QUEUED at handoff; no hosted result is claimed. Deterministic helper 5/5, test:scripts 88/88, skills, AGENTS, and diff-check pass. Build:core passed; build:server and all-workspace typecheck retain the stale dispatchDeliverableProven core-dist baseline failure. Independent review is required; author will not merge, publish, or clean up.
+
+Hosted readback 2026-08-22T07:49:26.925Z: PR #160 run 32560533408 kanmer-gate job 97001287878 SUCCESS; verify job 97001287963 IN_PROGRESS. No overall hosted PASS or merge/release claim.

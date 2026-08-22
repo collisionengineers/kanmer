@@ -146,3 +146,13 @@ Real Claude Desktop installation/read/write/restart/uninstall and host cleanup r
 
 - [x] `git fetch --prune origin` and `git worktree prune` completed; no `mcp-008-headless-mcpb` worktree or local branch exists.
 - [x] Ticket has no taken worktree fields; release is safe after this final board record.
+
+## Done-incomplete audit disposition — 2026-08-22
+
+This audit compared the complete ticket packet, the HZN-005/HZN-007 context, current document gates, merged-main proof, checklist, and activity. The ticket remains `Done` with no recorded worktree or branch.
+
+- The 39 unchecked checklist lines are not being silently treated as PASS. The Claude Desktop install/read/write/restart/uninstall/cleanup and screenshot/version lines are an explicit external-host boundary and remain `INCONCLUSIVE`: no authorized Claude Desktop host was available. The existing parked open questions already defer signing/directory submission, macOS, multi-board support, and Claude Desktop skill installation.
+- The remaining unchecked source/release/fixture/verification lines are retained as historical checklist residue or distinct release-rail/harness claims not independently established by this audit. The merged-main proof records the deterministic build, MCPB/package checks, headless smoke, tests, typecheck, manual checks, and plugin checks that it actually ran; this audit does not promote any other unchecked line to PASS.
+- No merged-main product failure or missing in-scope implementation was demonstrated, so no remediation ticket is justified by this evidence. Any future authorized-host validation or separately owned release-rail work should be recorded on its owning ticket rather than fabricated here.
+
+The existing initial `npm ci` EPERM failure and HTTP-suite environment-sensitive failures remain preserved in the report/proof. No source files, checklist checkboxes, or board stage were changed by this audit.

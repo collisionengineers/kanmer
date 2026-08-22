@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T00:13:30.433Z
+updated_at: 2026-08-22T00:14:35.584Z
 lane_limit: 3
 stop_reason:
 ---
@@ -446,3 +446,4 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T00:13:30.433Z — SKILL-017 assigned to /root/gui099_executor on skill-017-auto-stopping/.worktrees/skill-017 from origin/main af61144ce743f74b2aba92fb0778588b0b9bedd0 after full packet, HZN-007/EPIC-009 context, SKILL-016 durable-state, SKILL-020 gates-first, SKILL-021 SHA-bound workflow, FRD-023, links, activity and live gates were read. Scope is only kanmer-auto stopping predicates, controller reconciliation, persisted hand-off, serial lane_limit: 1 fallback and validators/scenario evidence; stop at Review, no merge or unrelated ticket changes.
+\n\nLast handoff: 2026-08-22T00:14:35.584Z — CORE-037 remediation created in Backlog: normalize equivalent Windows user-path spellings in apps/gui/src/main/kanmerGit.test.ts without weakening real Git/worktree assertions; linked to CORE-032, GUI-075, SKILL-021 and HZN-007/HZN-004; implementation pending dedicated packet/research/plan.\n

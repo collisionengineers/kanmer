@@ -30,3 +30,7 @@ The shipped result is a Windows-only local stdio MCPB with one required explicit
 ## Result
 
 The merged implementation passes all deterministic/package/headless rails. The only preserved deterministic failure is the initial `npm ci` EPERM dependency-lock failure, repaired before the rails were rerun. The ticket may proceed to Done because proof exists and the remaining real-host acceptance is explicitly recorded as INCONCLUSIVE rather than fabricated; follow-up real-host validation remains visible in the checklist/open questions.
+
+## Done-incomplete audit disposition — 2026-08-22
+
+The merged-main proof remains the boundary of what is claimed. Deterministic/package/headless evidence is recorded there; real Claude Desktop acceptance is explicitly `INCONCLUSIVE` because no authorized host was available. The remaining unchecked checklist lines are preserved rather than converted to PASS: host-install/GUI lifecycle lines require that external host, while other release/fixture/verification lines are distinct or historical claims not independently established by this audit. No product defect was demonstrated and no remediation ticket is opened. The ticket remains `Done`; any authorized-host or separately owned release-rail follow-up belongs on its owning record.

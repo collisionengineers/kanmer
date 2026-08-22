@@ -44,3 +44,13 @@ Re-reviewed against the complete current CORE-033 packet, EPIC-009 and HZN-007 c
 ### Verdict
 
 PASS — no unresolved review findings. The PR is independent-review-ready at c283f4cc. Do not merge as part of this review; merge remains an explicit parent/operator action.
+
+
+## Final review dispositions — 2026-08-22
+
+- B-003 (pre-squash SHA): **rejected with evidence**. The PR is being merged with the regular merge strategy, not squash; 89e61bdf is an ancestor of c283f4cc (merge-base --is-ancestor exit 0), so it remains reachable from the merge target.
+- B-004 (missing behavior outcomes): **fixed** in c283f4cc. The playbook and report record the queued-check BLOCKED observation, unresolved-thread false→true transition to CLEAN, and production syncBoard board push 83cdf801.
+- B-005 (release command direct push): **deferred to CORE-042**, linked on the board and in the PR thread. CORE-033 is explicitly source-free beyond the playbook; no bypass is accepted.
+- B-006 (board-branch rename leaves protection stale): **deferred to CORE-043**, linked on the board and in the PR thread. The live exact-branch policy is retained; board-sync code is not silently changed here.
+
+Independent verdict remains PASS for CORE-033’s scoped playbook and live branch rules, with CORE-042/043 carrying the two compatibility follow-ups.

@@ -35,13 +35,22 @@ All in `apps/gui/src/` unless noted.
 - R3 — `release.mjs:132-134` refuses with no `release-notes.md`, and `:135-140` refuses when the
   notes do not mention the version being released ("the guard against shipping last release's
   text"). `dist:check` → `scripts/check-updater-package.mjs`, wired at `package.json`.
-- R4 — `connect.ts:45` registers `command = process.execPath` with
-  `ELECTRON_RUN_AS_NODE=1`; `electron-builder.yml` sets `releaseType: release` (drafts reach zero
-  clients) and ships the bundle via `extraResources`.
+- R4 — the fixed installer-owned launcher remains the registered command. Fresh installs provision
+  a complete Electron-as-Node runtime under `%LOCALAPPDATA%\\Kanmer\\mcp\\<version>` and expose it
+  through the stable `current` boundary. The script is kept at
+  `<runtime>\\resources\\mcp\\kanmer-mcp.cjs` beside `<runtime>\\resources\\plugins\\kanmer\\skills`
+  so packaged identity and staleness discovery remain truthful. The launcher retains the
+  install-root `process.execPath`/`extraResources` payload as a compatibility fallback for legacy
+  registrations.
+  `electron-builder.yml` sets `releaseType: release` (drafts reach zero clients) and ships the
+  install-root bundle via `extraResources`.
 
-Two limits worth carrying forward, both already recorded in AGENTS.md §11: an update force-kills
-live agent MCP servers because the server *is* a process under `$INSTDIR` (gotcha 10), and the
-end-to-end two-version install cycle has not yet been run on a real build.
+Two limits worth carrying forward, both already recorded in AGENTS.md §11: an update can still
+force-kill legacy live agent MCP servers because those servers remain processes under `$INSTDIR`
+(gotcha 10), and the end-to-end two-version install cycle has not yet been run on a real build.
+The external runtime boundary is covered by deterministic package/static rails here; packaged
+update, active-session survival, junction behavior, and uninstall cleanup remain INCONCLUSIVE
+until a disposable Windows host runs the integration cycle.
 
 ## Amended — GUI-064
 
@@ -59,10 +68,12 @@ rename and can lose, and it already retries 5×1 s, so no amount of waiting fixe
 **This did not change any requirement — it restored R4.** "Updates preserve that path's validity"
 was simply not true while the update could not apply at all. What changed is a claim in the prose
 above and in `shared/mcp-sessions.ts`: *"We cannot prevent it."* We cannot prevent NSIS killing
-processes under `$INSTDIR`; we **can** prevent the install failing because of one. `installUpdateNow`
-now clears agent MCP servers itself and verifies before `quitAndInstall`, and refuses with a named
-reason rather than starting an install that will abort — R2's gate is unchanged and still runs in
-the renderer, before the IPC call.
+legacy processes under `$INSTDIR`; we **can** prevent the install failing because of one.
+`installUpdateNow` now clears legacy agent MCP servers itself and verifies before `quitAndInstall`,
+and refuses with a named reason rather than starting an install that will abort — R2's gate is
+unchanged and still runs in the renderer, before the IPC call. Fresh launcher sessions use the
+external runtime boundary, but their packaged update survival is an INCONCLUSIVE integration claim
+until the required Windows cycle is run.
 
 That refusal path fails **closed** (a probe that cannot confirm is not a clearance), which is the
 opposite direction from the warning path's deliberate fail-open. Both are correct; they answer

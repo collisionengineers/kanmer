@@ -205,6 +205,11 @@ if (!existsSync(launcher)) {
     '"InstallDir"',
     "%SystemRoot%\\System32\\reg.exe",
     "resources\\mcp\\kanmer-mcp.cjs",
+    "EXTERNAL_BUNDLE=%EXTERNAL_DIR%\\resources\\mcp\\kanmer-mcp.cjs",
+    "%LOCALAPPDATA%\\Kanmer\\mcp\\current",
+    "kanmer-mcp.exe",
+    "icudtl.dat",
+    "v8_context_snapshot.bin",
     "ELECTRON_RUN_AS_NODE=1",
     '"--probe"',
   ];
@@ -244,6 +249,14 @@ const installerMarkers = [
   'HKCU "Software\\Kanmer" "InstallDir"',
   "${isUpdated}",
   "lstrcmpi",
+  "mklink /J",
+  "${VERSION}",
+  "kanmer-mcp.exe",
+  "xcopy /E /I /Q /Y",
+  "resources\\plugins\\kanmer\\skills",
+  "FindFirst",
+  "overlaps the external MCP runtime",
+  'RMDir /r "$LOCALAPPDATA\\Kanmer\\mcp"',
   'DeleteRegValue HKCU "Software\\Kanmer" "InstallDir"',
 ];
 const missingInstallerMarkers = installerMarkers.filter((marker) => !installer.includes(marker));

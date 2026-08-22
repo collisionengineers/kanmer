@@ -126,3 +126,9 @@ Append measured commands and implementation notes here; never flip dispatch befo
 - [x] Native Antigravity plugin descriptor, provider lifecycle, bound dispatch argv, docs, and synchronization checks implemented in commit dd83db29.
 - [x] Deterministic unit, focused GUI, full core, serialized full GUI, typecheck, HTTP, scripts, plugin, docs, skills, and smoke rails recorded in post-implementation-report.md.
 - [ ] Real Antigravity install, bound tool call, unbound control, and uninstall remain explicitly INCONCLUSIVE because no disposable authorized host/credentials were available; this is not inferred from proxy output.
+
+### 2026-08-22 hosted remediation
+
+- [x] Injected the existing command-runner seam into all three legacy Antigravity disconnect fixtures; production unavailable-CLI behavior remains fail-closed.
+- [x] Focused connect 29/29, standard full GUI 38/356, serialized full GUI 38/356, and all-workspace typecheck passed after commit 16f91003.
+- [ ] Hosted verify rerun is pending on PR #152; no merge performed.

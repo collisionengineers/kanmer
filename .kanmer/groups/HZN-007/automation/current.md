@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T15:14:03.931Z
+updated_at: 2026-08-22T15:18:39.583Z
 ---
 
 # Current auto run — HZN-007
@@ -555,3 +555,6 @@ CORE-067 implemented at fa628916 with deterministic symlink target-integrity reg
 
 
 CORE-067 independently PASSed and merged into CORE-058 as f0de2628; all CORE-058 child block edges are now removed. Fresh cumulative CORE-058 review requested at f0de2628 before merging parent into CORE-044.
+
+
+Fresh CORE-058 review at f0de2628 found six blockers CORE-068–073 around retry/timer/branch/ignore/migration/root. CORE-068 is now Implementing on core-068-rearm-sync-retry; CORE-069–073 remain queued to serialize the shared seam.

@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Implement kanmer check-pr — ticket linkage and open-questions merge gate
   (phase 1)
-status: verifying
+status: done
 area: core
 order: 10
 assignee: core024-executor
@@ -13,9 +13,7 @@ stageEntered:
   preparing: '2026-08-20T13:20:46.901Z'
   review: '2026-08-22T05:24:33.751Z'
   verifying: '2026-08-22T06:19:57.925Z'
-taken_at: '2026-08-22T04:57:09.506Z'
-branch: core-024-check-pr
-worktree: .worktrees/core-024
+  done: '2026-08-22T06:29:45.412Z'
 labels: []
 groups:
   - EPIC-009
@@ -31,11 +29,12 @@ commits:
   - b041e944ececdf433925b9e4168e003a4623fbce
   - 9e7ab6299314cb3a7a9b0eb66ea70af630bf5b2c
   - 34044bccb7861dc81c16add91386b43570fda11c
+  - 0c5ed84ed0128aed6c8a60bec265a8dcb589061a
 prs:
   - '155'
 archived: false
 created: '2026-08-16T18:26:15.167Z'
-updated: '2026-08-22T06:19:57.925Z'
+updated: '2026-08-22T06:30:06.474Z'
 ---
 
 ## What
@@ -59,3 +58,5 @@ GitHub is the merge boundary, and today nothing ties a PR to its board record �
 - [ ] `kanmer-gate` green on a compliant PR
 
 ## Outcome
+
+PR #155 (https://github.com/collisionengineers/kanmer/pull/155) merged to origin/main as 0c5ed84ed0128aed6c8a60bec265a8dcb589061a. The phase-1 read-only merge gate is live in the production chain `kanmer-gate → check-pr.mjs → evaluateMergeGate → KanmerStore`. Merged-main proof is recorded in `proof/proof.md`; hosted verify passed after MCP-043 repaired the generated plugin artifact. Local stale-resolution and generated-byte parity failures, plus live GitHub/protection evidence, remain explicitly preserved as environment-sensitive or INCONCLUSIVE boundaries.

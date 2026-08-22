@@ -1,0 +1,1 @@
+Implementation started in `.worktrees/core-076` on `core-076-retry-orphan-cleanup` from CORE-072 PR head `9abfc9f47b8acfa31ef57d5b30071f72de43497c`. Added a non-versioned orphan migration marker, retryable push/cleanup finalization, paused boardRoot preservation on first-time cleanup errors, and a deterministic post-commit cleanup retry regression.

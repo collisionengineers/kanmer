@@ -285,7 +285,7 @@ describe("ensureBoardWorktree reconciliation", () => {
     writeFileSync(sourceVersion, '{"format":99}\n', "utf8");
 
     const first = await ensureBoardWorktree(repo, "orphan-cleanup-retry");
-    const boardRoot = resolve(repo, ".worktrees", "kanmer");
+    const boardRoot = pathIdentity(resolve(repo, ".worktrees", "kanmer"));
     expect(first.available).toBe(false);
     expect(first.boardRoot).toBe(boardRoot);
     expect(first.paused).toBe(true);
@@ -313,7 +313,7 @@ describe("ensureBoardWorktree reconciliation", () => {
     await git(repo, "checkout", "main");
 
     const attached = await ensureBoardWorktree(repo, "local-broken-ignore");
-    const expectedRoot = resolve(repo, ".worktrees", "kanmer");
+    const expectedRoot = pathIdentity(resolve(repo, ".worktrees", "kanmer"));
     expect(attached.available).toBe(false);
     expect(attached.boardRoot).toBe(expectedRoot);
     expect(attached.branch).toBe("local-broken-ignore");
@@ -348,7 +348,7 @@ describe("ensureBoardWorktree reconciliation", () => {
     await git(repo, "branch", "-D", "remote-broken-ignore");
 
     const attached = await ensureBoardWorktree(repo, "remote-broken-ignore");
-    const expectedRoot = resolve(repo, ".worktrees", "kanmer");
+    const expectedRoot = pathIdentity(resolve(repo, ".worktrees", "kanmer"));
     expect(attached.available).toBe(false);
     expect(attached.boardRoot).toBe(expectedRoot);
     expect(attached.branch).toBe("remote-broken-ignore");

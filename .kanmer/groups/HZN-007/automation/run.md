@@ -189,3 +189,6 @@
 
 
 2026-08-22T12:16:00Z — CORE-046 cumulative PASS at 311c6eef (IO22/22, core113/113, source14/14, typecheck/build/plugin parity); stale PR167 threads resolved; PR #167 independently merged into CORE-045 branch as 0f9af92ba. Hosted run for exact stacked head absent and remains INCONCLUSIVE.
+
+
+2026-08-22T12:19:13Z — CORE-045 cumulative review NEEDS-CHANGES: child lock stack PASS, but parent retains over-broad IPv4/IPv6 predicates and stale recovery error propagation; parent traceability/threads stale. Created linked CORE-051 in Preparing.

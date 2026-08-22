@@ -19,10 +19,9 @@ blocks:
 refs:
   - docs/functional/frd/FRD-027-project-declared-sources.md
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
-docs_todo: true
 archived: false
 created: '2026-08-22T15:15:55.434Z'
-updated: '2026-08-22T15:15:55.434Z'
+updated: '2026-08-22T15:18:13.569Z'
 ---
 
 PR #180 thread 3836307987: reconcile managed cache exclusions after later negations or verify effective ignore behavior, so an existing exception cannot make the sources cache trackable; add regression.

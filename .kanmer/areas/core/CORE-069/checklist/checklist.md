@@ -1,0 +1,3 @@
+- [ ] Retry the current saved branch.
+- [ ] Keep paused/error semantics coherent through branch change.
+- [ ] Add deterministic regression and run rails.

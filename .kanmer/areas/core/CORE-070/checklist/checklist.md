@@ -1,0 +1,3 @@
+- [ ] Enforce effective cache exclusion despite later negations.
+- [ ] Add deterministic `check-ignore` regression.
+- [ ] Run focused/full rails.

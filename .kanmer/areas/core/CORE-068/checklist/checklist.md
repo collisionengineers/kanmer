@@ -1,0 +1,3 @@
+- [ ] Re-arm the saved automatic sync interval after successful retry.
+- [ ] Preserve paused state on failed retry.
+- [ ] Add deterministic regression and run rails.

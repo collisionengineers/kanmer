@@ -1,0 +1,3 @@
+- [ ] Resume orphan migration after ignore repair.
+- [ ] Avoid duplicate commit/cleanup on repeated retry.
+- [ ] Add deterministic regression and run rails.

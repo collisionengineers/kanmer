@@ -1,0 +1,3 @@
+- [ ] Bind retry to the open board root.
+- [ ] Refuse mismatched roots without mutating store/watcher state.
+- [ ] Add deterministic regression and run rails.

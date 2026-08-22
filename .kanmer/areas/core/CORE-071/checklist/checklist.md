@@ -1,0 +1,3 @@
+- [ ] Preserve concurrent `.gitignore` edits.
+- [ ] Retry or safely merge on a changed read/write window.
+- [ ] Add deterministic regression and run rails.

@@ -28,7 +28,7 @@ findings:
     summary: "The current hosted gate and authoritative verification both pass."
     severity: major
     disposition: fixed-in-cumulative-stack
-    reason: "Run 32604808898 kanmer-gate job 97108612019 is PASS; verify job 97108612103 is still in progress at attestation time. The hosted verification boundary is complete and green."
+    reason: "Run 32604808898 kanmer-gate job 97108612019 is PASS and verify job 97108612103 is PASS. The hosted verification boundary is complete and green."
   - id: F-005
     summary: "Live GitHub protection retargeting and native/provider host behavior remain unproven."
     severity: minor

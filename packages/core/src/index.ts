@@ -1,4 +1,5 @@
 export * from "./types.js";
+export * from "./sources.js";
 export * from "./paths.js";
 export * from "./discover.js";
 export * from "./io.js";

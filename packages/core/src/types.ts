@@ -211,6 +211,84 @@ export const DocsConfigSchema = z.object({
 });
 export type DocsConfig = z.infer<typeof DocsConfigSchema>;
 
+// ---------------------------------------------------------------------------
+// Project-declared research sources (FRD-027 / ADR-0020).
+// These are preferences, never authority grants. Host availability is supplied
+// by the caller at resolution time; the core schema only validates declarations.
+// ---------------------------------------------------------------------------
+
+export const SourceKindSchema = z.enum(["mcp", "plugin", "llms-txt"]);
+export type SourceKind = z.infer<typeof SourceKindSchema>;
+
+export const SourceSelectorSchema = z
+  .object({
+    areas: z.array(z.string().min(1).max(80)).max(32).optional(),
+    labels: z.array(z.string().min(1).max(80)).max(64).optional(),
+  })
+  .strict()
+  .superRefine((selector, ctx) => {
+    for (const [key, values] of Object.entries(selector)) {
+      if (!values) continue;
+      if (new Set(values).size !== values.length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `${key} selector values must be unique`,
+        });
+      }
+    }
+  });
+export type SourceSelector = z.infer<typeof SourceSelectorSchema>;
+
+function isSafeHttpsUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password && !url.hash;
+  } catch {
+    return false;
+  }
+}
+
+export const SourceDeclarationSchema = z
+  .object({
+    kind: SourceKindSchema,
+    /** MCP/plugin namespace or the canonical HTTPS llms.txt URL. */
+    id: z.string().min(1).max(512),
+    appliesTo: SourceSelectorSchema.optional(),
+    /** Higher values win; declaration order breaks ties. */
+    priority: z.number().int().min(-1000).max(1000).optional(),
+  })
+  .strict()
+  .superRefine((source, ctx) => {
+    if (source.kind === "llms-txt" && !isSafeHttpsUrl(source.id)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["id"],
+        message: "llms-txt source id must be an HTTPS URL without credentials or a fragment",
+      });
+    }
+  });
+export type SourceDeclaration = z.infer<typeof SourceDeclarationSchema>;
+
+export const SourceDeclarationArraySchema = z
+  .array(SourceDeclarationSchema)
+  .max(128)
+  .superRefine((sources, ctx) => {
+    const seen = new Set<string>();
+    sources.forEach((source, index) => {
+      const key = `${source.kind}:${source.id}`;
+      if (seen.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [index],
+          message: `duplicate source declaration "${key}"`,
+        });
+      }
+      seen.add(key);
+    });
+  });
+export type SourceDeclarations = z.infer<typeof SourceDeclarationArraySchema>;
+
 /** The `deployment` block on board.yml — absent for non-cloud projects. */
 export const DeploymentConfigSchema = z.object({
   /** Ordered environments; the last one is "live". */
@@ -260,6 +338,8 @@ export const BoardConfigSchema = z.object({
   repoDocs: z.record(z.string()).optional(),
   /** Deployment tracking. Absent ⇒ no per-ticket deployment field at all. */
   deployment: DeploymentConfigSchema.optional(),
+  /** Project-declared research sources (FRD-027 / ADR-0020). */
+  sources: SourceDeclarationArraySchema.optional(),
   /** Legacy, read-only: present on format ≤2 boards, dropped on migration. */
   statuses: z.array(BoardColumnSchema).optional(),
   priorities: z.array(BoardColumnSchema).optional(),

@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T14:18:54.409Z
+updated_at: 2026-08-22T14:38:04.348Z
 ---
 
 # Current auto run — HZN-007
@@ -525,3 +525,6 @@ CORE-063 independently PASSed at exact 5f63636d and merged into CORE-058 as b1ab
 
 
 Last handoff: 2026-08-22T15:35Z — Independent CORE-058 review at PR #180 head b1abac871da28522759d4e5582caa69d5cdb5cd5 is NEEDS-CHANGES. Focused GUI Git 18/18 and artifact hash 6057648D81FB4CCCAB629A0EE1C05C8716A564400302238857E785C70C485100 pass; full GUI is 290/291 with inherited antigravity provider failures. CORE-062 and CORE-063 are fixed; unresolved P1 rename-path root loss and P2 non-retryable failed-Git state remain open as CORE-064/CORE-065, both blocking CORE-058. Review scratch read back; PR remains open, no merge or stage move.
+
+
+CORE-058 review produced two valid blockers: CORE-064 (rename-path boardRoot loss) and CORE-065 (failed-Git state not retryable). Both are prepared with research/plan/checklists. CORE-064 is now Implementing on core-064-preserve-root-rename; CORE-065 remains queued to avoid overlap on kanmerGit/index state.

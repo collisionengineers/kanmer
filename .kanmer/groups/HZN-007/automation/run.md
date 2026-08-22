@@ -126,3 +126,6 @@
 
 
 ## 2026-08-22T11:20Z — CORE-044 Review handoff\n\n- CORE-044 implementation commit 33f32e3aae9819f1c2344863272dacb5c958fbac is stacked on CORE-026 PR #163 head 5ae6f36e007a05fffd9bb2f1c6ea4a87a860477; PR #165 targets core-026-project-declared-sources.\n- Checklist 17/17, post-implementation report and traceability read back; Implementing → Review moved at 2026-08-22T10:05:03.751Z.\n- Independent reviewer /root/gui099_executor assigned to audit all 21 findings and exact stacked diff. No merge, verification, or cleanup yet.\n
+
+
+## 2026-08-22T11:30Z — CORE-044 independent review disposition\n\n- Independent review attestation 750e6351642a8bd3 on PR #165/head 33f32e3aae9819f1c2344863272dacb5c958fbac is NEEDS-CHANGES. Focused rails pass (core 91/91, source 12/12); no hosted checks reported for stacked PR.\n- Blocking findings: F-003 stale-lock recovery after crash; F-009 incomplete DNS public-destination classification.\n- Linked blocker CORE-045 created in HZN-007, moved Backlog → Preparing, blocks CORE-044, and is assigned to the original author for a fresh stacked fix/review. CORE-044 remains Review and cannot merge.\n

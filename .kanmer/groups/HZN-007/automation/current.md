@@ -624,3 +624,6 @@ CORE-060 review NEEDS-CHANGES at fbb52873: blockers CORE-077 (validate live bran
 
 
 CORE-044 cumulative PASS exact 5053af23, PR #165 merged non-squash into CORE-026 as e794cbf7; moved Verifying and removed block. CORE-026 cumulative review now pending.
+
+
+CORE-044 Verifying after PASS/merge e794cbf7 into CORE-026. CORE-026 traceability refreshed; fresh cumulative CORE-026 review pending. CORE-077 implementing against CORE-060.

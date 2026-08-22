@@ -242,7 +242,45 @@ test("rechecks DNS destinations for every redirect and linked request", async ()
       "https://docs.example.test/nested/llms.txt",
       "https://docs.example.test/nested/guide.md",
     ]);
-    assert.equal(lookups, 7);
+    assert.equal(lookups, 6);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("passes the validated DNS addresses to the outbound request seam", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-bound-"));
+  const requests = [];
+  try {
+    const result = await fetchLlmsTxt({
+      url: "https://docs.example.test/llms.txt",
+      cacheDir,
+      lookupImpl: async () => ["93.184.216.34"],
+      requestImpl: async (url, _init, addresses) => {
+        requests.push({ url: String(url), addresses });
+        return fakeResponse("# Docs");
+      },
+    });
+    assert.equal(result.documents[0].text, "# Docs");
+    assert.deepEqual(requests, [{ url: "https://docs.example.test/llms.txt", addresses: ["93.184.216.34"] }]);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("bounds DNS resolution with the same request deadline", async () => {
+  const cacheDir = await mkdtemp(path.join(os.tmpdir(), "kanmer-sources-dns-timeout-"));
+  try {
+    await assert.rejects(
+      () => fetchLlmsTxt({
+        url: "https://docs.example.test/llms.txt",
+        cacheDir,
+        timeoutMs: 25,
+        fetchImpl: async () => fakeResponse("unexpected"),
+        lookupImpl: async () => new Promise(() => {}),
+      }),
+      /request timed out/,
+    );
   } finally {
     await rm(cacheDir, { recursive: true, force: true });
   }

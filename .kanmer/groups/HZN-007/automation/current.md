@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T00:35:14.663Z
+updated_at: 2026-08-22T00:36:05.137Z
 ---
 
 # Current auto run — HZN-007
@@ -79,3 +79,4 @@ Last handoff: 2026-08-22T01:30:00+01:00 — CORE-037 is Implementing on `core-03
 
 - 2026-08-22T00:31:30+01:00 — SKILL-004 Review handoff: existing implementation ad127405 is reachable from origin/main af61144c; no source delta was introduced on skill-004-setup-reconciliation/.worktrees/skill-004. Checklist/report were reconciled via MCP; checklist is 13/18 with the issue-close line and four parked live-behavior lines intentionally unchecked/INCONCLUSIVE. verify:skills 0, verify:agents-block 0 (31/31), build:core 0, test:scripts first 1 from missing core dist then 80/80 after build, typecheck 0, diff/ancestor 0. Enter-review gates pass and Implementing→Review moved. Existing PR #17/commit ad12740 remain traceability; no new PR/source change. Stop for independent review; no self-review, merge, verification, release, or cleanup.
 \n\nLast handoff: 2026-08-22T00:35:14.663Z — SKILL-017 independent review: PR #143 head a72ea84f local verify:skills 14/14, prose tests 7/7 and diff-check pass; GitHub verify is red solely on shared RUNNER~1 versus runneradmin path assertion. Review scratch is needs-changes with F-001 deferred to CORE-037; F-002 provider/runtime evidence remains accepted INCONCLUSIVE. No merge, Verifying move, or cleanup.\n
+\n\nLast handoff: 2026-08-22T00:36:05.137Z — SKILL-004 independent review PASS WITH ACCEPTED RISK: existing PR #17 implementation ad127405 is reachable on main; static/reconciliation rails pass, live setup/ingestion/issue-close behavior remains explicitly INCONCLUSIVE and parked. Review scratch read back; Review→Verifying moved with expected revision. No merge or source changes.\n

@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-22T01:46:13.143Z
+updated_at: 2026-08-22T01:46:56.318Z
 ---
 
 # Current auto run — HZN-007
@@ -144,3 +144,6 @@ Last handoff: 2026-08-22T01:45:05.809Z — CORE-040 independently reviewed PASS;
 
 
 Last handoff: 2026-08-22T01:46:13.143Z — CORE-040 independent review PASS on PR #148/commit 6f17bccf; one-line deterministic cutoff and unchanged assertions verified, CORE-039 stack dependency explicit, local rails green. Ticket remains Review and OPEN for independent merge; no cleanup performed.
+
+
+Last handoff: 2026-08-22T01:46:56.318Z — CORE-040 review PASS remains valid; PR #148 is now CLOSED/superseded (unmerged) and 6f17bccf is stacked in still-open PR #145. Ticket remains Review/taken; no reviewer merge, stage move, or cleanup.

@@ -47,3 +47,7 @@ No blocking findings; no fix ticket required.
 - `git diff --check`: exit 0.
 
 **Verdict: PASS.** This reviewer made no code changes, merge, stage move, or cleanup.
+
+### Status correction after review
+
+After the PASS review was recorded, PR #148 was concurrently closed as superseded at 2026-08-22T01:44:32Z without merge. Commit `6f17bccf` is now stacked in the still-open PR #145 (merge candidate `ad8be25b` is recorded by the board/run activity). This does not change the review verdict or local evidence; CORE-040 remains Review/taken and this reviewer performed no merge, stage move, or cleanup.

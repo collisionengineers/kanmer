@@ -533,3 +533,6 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 
 
 - 2026-08-22T01:11:36.922Z — CORE-038 assigned to /root/gui082_executor for bounded scripts-rail Windows portability remediation. Full ticket body, HZN-007/HZN-004 context and live gates/links were read. Ticket moved Backlog→Preparing (fix profile has no leave-Backlog gate); research will reproduce the literal-glob failure and document exact files/rails. Scope excludes unrelated GUI/Git temp-path and MCP supervisor changes; no worktree/take yet.
+
+
+- 2026-08-22T01:14:53.743Z — CORE-038 taken by /root/gui082_executor on core-038-scripts-windows-safe / .worktrees/core-038 after research/files/plan/checklist/open-questions were written and read back. Scope is dependency-free portable enumeration for npm run test:scripts, with AGENTS/command-reference consistency only; MCP-041, CORE-037 and GUI work remain untouched. Implementation and independent Review are pending; no merge or cleanup.

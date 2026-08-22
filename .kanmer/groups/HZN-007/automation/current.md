@@ -120,3 +120,6 @@ Last handoff: 2026-08-22T01:09:45.163Z — DOC-007 cleanup complete: PR #49 merg
 
 
 Last handoff: 2026-08-22T01:11:36.922Z — CORE-038 is in Preparing for bounded research of the Windows npm test:scripts literal-glob failure from PR #145. No source worktree/take yet; docs and gates are next.
+
+
+Last handoff: 2026-08-22T01:14:53.743Z — CORE-038 is Implementing on core-038-scripts-windows-safe / .worktrees/core-038, taken without force after packet docs passed the Preparing gate. The portable scripts launcher is the only source scope; stop at Review with PR.

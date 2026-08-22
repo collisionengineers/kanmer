@@ -1,0 +1,1 @@
+Prepared packet from PR #168 findings 3836890756/3836890758. Existing provider-owned reconciliation is safe for Codex/Claude/OpenCode; Grok/Antigravity are user-scoped native plugins, so the bounded design persists an explicit reconnect requirement instead of mutating user state during reopen.

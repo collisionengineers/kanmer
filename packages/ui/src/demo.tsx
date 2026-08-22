@@ -706,6 +706,7 @@ function installDemoBridge(): void {
     sessionInitialized: true,
     kanmerBranch: "kanmer",
     gitSyncMinutes: 0,
+    dispatch: { providers: {} },
     cardDensity: "comfortable" as const,
     confirmOnDelete: true,
     defaultPriority: "medium",

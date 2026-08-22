@@ -51,3 +51,26 @@ GUI-121 was created, linked to GUI-118, and blocks GUI-118. Required disposition
 - Current-base diff is 13 files / 397 insertions / 217 deletions; the two remote-access files are unrelated regressions introduced solely by the stale base.
 - Existing author packet evidence remains: settings 4/4, providers 66/66, connect 34/34, index.sync 10/10; reduced GUI 47 files/392 tests; typecheck/build/docs/scripts/diff PASS. Full Git-heavy GUI, live native/protected-host, and hosted evidence remain INCONCLUSIVE as reported.
 - Verdict: NEEDS-CHANGES. Do not merge PR #219 until GUI-121 is resolved and a fresh exact-head cumulative review is recorded.
+
+# Canonical independent mainline review — PASS
+
+- Ticket: GUI-118
+- Merged CORE-043 mainline commit: `9519e2e8ad9c0424b63d9b9d8c4e6ef2832a7401`
+- Parent CORE-043 commit: `7654a28104fbc67c58cad61241188d0f3d898c17`
+- Final tree: `c58434556512262b972385b32bbf7d2ad88442f0`
+- Reviewer: independent `core041_executor`; no merge or board move performed.
+
+## Cumulative behavior confirmed
+
+- GUI-118 lifecycle fixes remain present: serialized project/provider operations, transactional branch persistence, Retry provider reconciliation, native reconnect state, user-scoped clearing, and actionable handoff warnings.
+- GUI-119 propagation remains present: OpenAI branch-aware invocation, Claude staged marketplace branch binding, and remote runtime/doctor `KANMER_BOARD_BRANCH` propagation.
+- GUI-120/F-001 remains present: `connectProject` broadcasts each context with `projectId: id`, and the two-project production-caller regression remains in `index.sync.test.ts`.
+
+## Evidence and dispositions
+
+- The merged mainline tree exactly matches the independently tested cumulative tree from GUI-123.
+- Focused providers/connect/index.sync/remote-manager rail: 121/121 passed, exit 0, including the GUI-120 broadcast regression.
+- `git diff --check` from CORE-043 parent to merged mainline: PASS, exit 0.
+- All prior GUI-121 and GUI-123 review findings are fixed in the cumulative lineage; no new findings.
+- GUI-118 packet's GUI typecheck/build, scripts 89/89, docs, and prior deterministic evidence remain consistent. Full workspace typecheck and hosted/live native/protected/packaged evidence remain INCONCLUSIVE as explicitly recorded.
+- Verdict: PASS for the merged mainline state.

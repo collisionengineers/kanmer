@@ -23,8 +23,7 @@ groups:
   - HZN-007
 links:
   - CORE-046
-blocks:
-  - CORE-046
+blocks: []
 refs:
   - docs/functional/frd/FRD-027-project-declared-sources.md
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
@@ -37,7 +36,7 @@ prs:
   - '172'
 archived: false
 created: '2026-08-22T11:33:00.536Z'
-updated: '2026-08-22T12:10:11.762Z'
+updated: '2026-08-22T12:11:05.747Z'
 ---
 
 Remediate independent CORE-046 review blockers: route stale-lock quarantine renames through the existing bounded Windows retry contract (EPERM/EBUSY/EACCES) with regression coverage; refresh the cumulative post-child report and exact reachable commit metadata; and disposition the fixed original PR thread after evidence is updated. Preserve CORE-047 token/lease behavior, inherited source DNS policy, and explicit live Windows/crash INCONCLUSIVE boundaries. Link [[CORE-046]].

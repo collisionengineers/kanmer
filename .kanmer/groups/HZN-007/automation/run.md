@@ -183,3 +183,6 @@
 
 
 2026-08-22T12:10:00Z — CORE-043 cumulative hosted rerun 32571224767 completed PASS: kanmer-gate and verify both success after removing circular CORE-048 block and refreshing parent traceability. Fresh review attestation still needs to supersede prior NEEDS-CHANGES; live protection mutation remains INCONCLUSIVE.
+
+
+2026-08-22T12:10:43Z — CORE-049 cumulative PR #171 independently reviewed PASS at 31e572dc; non-squash merged into CORE-046 branch as 311c6eef4d6b5c1e6acea1b7e6d779660f792cea. Child CORE-050 merge lineage retained; merged-main verification still pending.

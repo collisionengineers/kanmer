@@ -514,10 +514,11 @@ export async function updateSkills(id: ProviderId, projectRoot: string): Promise
   const provider = providerById(id);
   if (!provider) return { ok: false, command: "", output: `Unknown provider "${id}"` };
   if (provider.install.kind === "plugin") {
+    const host = provider.label;
     return {
       ok: false,
-      command: "grok plugin update kanmer",
-      output: "Grok manages Kanmer skills through its user-scoped plugin; use Connect to reinstall it.",
+      command: `${provider.install.cli} plugin install <plugin-root>`,
+      output: `${host} manages Kanmer skills through its user-scoped plugin; use Connect to reinstall it.`,
     };
   }
   try {
@@ -568,18 +569,6 @@ function pluginPresent(pluginName: string, output: string): boolean {
   return new RegExp(`\\b${escaped}\\b`, "i").test(output);
 }
 
-function pluginCapabilityPresent(pluginName: string, output: string): boolean {
-  return output
-    .split(/\r?\n/)
-    .some(
-      (line) =>
-        pluginPresent(pluginName, line) &&
-        /enabled/i.test(line) &&
-        /skills?/i.test(line) &&
-        /MCPs?/i.test(line),
-    );
-}
-
 async function retireLegacyPluginState(
   provider: AgentProvider,
   projectRoot: string,
@@ -595,9 +584,9 @@ async function retireLegacyPluginState(
     notes.push(`legacy ${legacy.legacyConfigPath} reconciled`);
   }
   await removeBundledSkillsOnly(projectRoot, legacy.legacySkillsDir);
-  notes.push(`legacy copied skills removed from ${legacy.legacySkillsDir}`);
+  notes.push(`legacy copied skills removed from ${legacy.legacySkillsDir}; bundled copied skills removed`);
   if (await hasRegisteredCopySkillsPeer(provider.id, projectRoot)) {
-    notes.push("AGENTS.md block retained for another connected copy-skills host");
+    notes.push("AGENTS.md block retained for another connected host (copy-skills peer)");
   } else {
     await dropAgentsBlock(projectRoot);
     notes.push("AGENTS.md block reconciled; no connected copy-skills host remains");
@@ -616,40 +605,58 @@ async function connectNativePlugin(
   const runtime = process.env.KANMER_NODE?.trim() || "node";
   const runtimeCommand = `${q(runtime)} --version`;
   const bundledRoot = options.pluginRootPath ?? pluginRoot();
+  let lastCommand = spec.installCommand(bundledRoot);
   try {
-    const cli = await run("grok --version", projectRoot);
-    const pluginHelp = await run("grok plugin --help", projectRoot);
+    lastCommand = `${spec.cli} --version`;
+    const cli = await run(lastCommand, projectRoot);
+    lastCommand = spec.helpCommand();
+    const pluginHelp = await run(lastCommand, projectRoot);
+    lastCommand = runtimeCommand;
     const runtimeResult = await run(runtimeCommand, projectRoot);
-    const required = [
-      join(bundledRoot, ".claude-plugin", "plugin.json"),
-      join(bundledRoot, "skills"),
-      join(bundledRoot, "mcp", "claude.mcp.json"),
-      join(bundledRoot, "mcp", "kanmer-mcp.cjs"),
-    ];
+    const required = spec.requiredFiles(bundledRoot);
     const missing = required.filter((path) => !existsSync(path));
     if (missing.length > 0) {
       throw new Error(`Kanmer plugin bundle is incomplete; missing ${missing.join(", ")}`);
     }
-    const descriptor = await readFile(join(bundledRoot, "mcp", "claude.mcp.json"), "utf8");
-    if (descriptor.includes('"cwd"') || descriptor.includes("--root")) {
-      throw new Error("Kanmer plugin MCP descriptor must not pin cwd or --root");
+    const descriptorPath = spec.descriptorPath(bundledRoot);
+    const descriptor = await readFile(descriptorPath, "utf8");
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(descriptor);
+    } catch {
+      throw new Error(`Kanmer plugin MCP descriptor is not valid JSON: ${descriptorPath}`);
+    }
+    const entry = (parsed as { mcpServers?: { kanmer?: { command?: unknown; args?: unknown; cwd?: unknown } } } | null)?.mcpServers?.kanmer;
+    if (!entry || !Array.isArray(entry.args)) {
+      throw new Error(`Kanmer plugin MCP descriptor has no mcpServers.kanmer entry: ${descriptorPath}`);
+    }
+    if (entry.cwd !== undefined || entry.args.some((arg) => typeof arg === "string" && /^(--root|--repo-root|cwd)$/i.test(arg))) {
+      throw new Error("Kanmer plugin MCP descriptor must not pin cwd, --root or --repo-root");
+    }
+    if (spec.cli === "agy" && (entry.command !== "node" || JSON.stringify(entry.args) !== JSON.stringify(["${PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"]))) {
+      throw new Error("Antigravity plugin MCP descriptor must use node ${PLUGIN_ROOT}/mcp/kanmer-mcp.cjs");
+    }
+    if (spec.validateCommand) {
+      lastCommand = spec.validateCommand(bundledRoot);
+      await run(lastCommand, projectRoot);
     }
     const install = spec.installCommand(bundledRoot);
+    lastCommand = install;
     const installed = await run(install, projectRoot);
+    lastCommand = spec.inspectCommand();
     const inspect = await run(spec.inspectCommand(), projectRoot);
     const inspected = commandText(inspect);
-    if (!pluginCapabilityPresent(spec.pluginName, inspected)) {
+    if (!spec.capabilityPresent(inspected)) {
       return {
         ok: false,
         command: spec.inspectCommand(),
         output:
-          `Grok plugin install returned success, but ${spec.inspectCommand()} did not report ` +
+          `${spec.cli} plugin install returned success, but ${spec.inspectCommand()} did not report ` +
           `${spec.pluginName}. No legacy project state was changed.`,
       };
     }
-    const prompt =
-      "Call the Kanmer get_status tool for this project and return exactly KANMER_GET_STATUS_OK.";
-    const functionalCommand = `grok -p ${q(prompt)} --cwd ${q(projectRoot)}`;
+    const functionalCommand = spec.functionalCommand(projectRoot);
+    lastCommand = functionalCommand;
     const functional = await run(functionalCommand, projectRoot);
     const functionalOutput = commandText(functional);
     if (!functionalOutput.includes("KANMER_GET_STATUS_OK")) {
@@ -657,7 +664,7 @@ async function connectNativePlugin(
         ok: false,
         command: functionalCommand,
         output:
-          `Grok plugin inspect passed, but the fresh functional get_status probe did not return ` +
+          `${spec.cli} plugin inspect passed, but the fresh functional get_status probe did not return ` +
           "KANMER_GET_STATUS_OK. No legacy project state was changed.",
       };
     }
@@ -666,7 +673,7 @@ async function connectNativePlugin(
       ok: true,
       command: install,
       output: [
-        `Grok ${commandText(cli) || "CLI preflight passed"}`,
+        `${spec.cli} ${commandText(cli) || "CLI preflight passed"}`,
         `plugin help ${commandText(pluginHelp) ? "passed" : "returned no output"}`,
         `runtime ${commandText(runtimeResult) || "preflight passed"}`,
         commandText(installed) || "plugin installed",
@@ -678,7 +685,7 @@ async function connectNativePlugin(
   } catch (err) {
     return {
       ok: false,
-      command: spec.installCommand(bundledRoot),
+      command: lastCommand,
       output: commandFailureText(err),
     };
   }
@@ -706,7 +713,7 @@ async function disconnectNativePlugin(
       return {
         ok: false,
         command: spec.uninstallCommand(),
-        output: `Grok still reports ${spec.pluginName} after uninstall; no legacy project state was changed.`,
+        output: `${spec.cli} still reports ${spec.pluginName} after uninstall; no legacy project state was changed.`,
       };
     }
     const cleanup = await retireLegacyPluginState(provider, projectRoot);
@@ -769,10 +776,9 @@ export async function connectAgent(
         );
         if (note) output += ` ${note}`;
       }
-      // Antigravity's registration is read only by a session bound to this
-      // folder, and Kanmer binds nothing (MCP-015). "Registered Kanmer in
-      // .agents/mcp_config.json" is true and, alone, misleading — so the
-      // condition is said here, at the moment the file is written.
+      // Retained for legacy provider specs and migration fixtures. The active
+      // Antigravity route is the native plugin lifecycle above, not this
+      // project-file branch.
       if (id === "antigravity") output += ` ${antigravityBindingNote(projectRoot)}`;
     } else {
       throw new Error(`Provider ${id} has no project registration; expected native plugin path.`);

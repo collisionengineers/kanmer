@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyManagedBlock } from "./agentsBlock.js";
+import { q } from "./providers.js";
 
 vi.mock("electron", () => ({ app: { isPackaged: false, getAppPath: () => "/unused" } }));
 
@@ -225,6 +226,74 @@ describe("Grok native plugin lifecycle (MCP-014)", () => {
     expect(result.output).toContain("No legacy project state was changed");
     expect(await readFile(join(root, ".grok", "config.toml"), "utf8")).toContain("mcp_servers.kanmer");
     await expect(readFile(join(root, ".grok", "skills", "old-skill", "SKILL.md"), "utf8")).resolves.toBe("old\n");
+  });
+});
+
+describe("Antigravity native plugin lifecycle (MCP-015)", () => {
+  it("preflights, validates, installs, proves a bound tool call, then retires legacy state", async () => {
+    const root = await tempRoot();
+    const bundle = join(root, "plugin");
+    await writeTree(root, {
+      "plugin/plugin.json": '{"name":"kanmer","version":"0.3.3","skills":"./skills/"}\n',
+      "plugin/mcp_config.json": '{"mcpServers":{"kanmer":{"command":"node","args":["${PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"]}}}\n',
+      "plugin/skills/kanmer-plan/SKILL.md": "skill\n",
+      "plugin/mcp/kanmer-mcp.cjs": "\n",
+    });
+    await writeTree(root, {
+      ".agents/mcp_config.json": JSON.stringify({ mcpServers: { kanmer: { command: "old" }, other: {} } }),
+      ".agents/skills/old-skill/SKILL.md": "old\n",
+      ".agents/skills/.kanmer-skills-version": "0.2.0\nskills:\nold-skill\n",
+      "AGENTS.md": applyManagedBlock("# user\n"),
+    });
+    const seen: string[] = [];
+    const commandRunner = async (command: string) => {
+      seen.push(command);
+      if (command === "agy --version") return { stdout: "1.1.14", stderr: "" };
+      if (command === "agy plugin --help") return { stdout: "install validate list uninstall", stderr: "" };
+      if (command === "node --version") return { stdout: "v24.15.0", stderr: "" };
+      if (command.startsWith("agy plugin validate ")) return { stdout: "[ok] plugin", stderr: "" };
+      if (command.startsWith("agy plugin install ")) return { stdout: "Installed plugin kanmer", stderr: "" };
+      if (command === "agy plugin list") return { stdout: "kanmer", stderr: "" };
+      if (command.startsWith("agy --add-dir ")) return { stdout: "KANMER_GET_STATUS_OK", stderr: "" };
+      throw new Error(`unexpected command: ${command}`);
+    };
+
+    const result = await connectAgent("antigravity", root, root, { commandRunner, pluginRootPath: bundle });
+
+    expect(result.ok).toBe(true);
+    expect(seen.slice(0, 4)).toEqual(["agy --version", "agy plugin --help", "node --version", `agy plugin validate ${q(bundle)}`]);
+    expect(seen[4]).toContain("agy plugin install");
+    expect(seen[5]).toBe("agy plugin list");
+    expect(seen[6]).toContain("agy --add-dir");
+    expect(seen[6]).not.toContain("--new-project");
+    expect(seen[6]).not.toContain("--project");
+    expect(result.output).toContain("functional get_status");
+    const legacy = JSON.parse(await readFile(join(root, ".agents", "mcp_config.json"), "utf8"));
+    expect(legacy.mcpServers.kanmer).toBeUndefined();
+    expect(legacy.mcpServers.other).toBeTruthy();
+    await missing(root, ".agents", "skills", "old-skill", "SKILL.md");
+    await expect(readFile(join(root, "AGENTS.md"), "utf8")).resolves.toBe("# user\n");
+  });
+
+  it("does not retire legacy project state when the bound tool call cannot be proven", async () => {
+    const root = await tempRoot();
+    const bundle = join(root, "plugin");
+    await writeTree(root, {
+      "plugin/plugin.json": '{"name":"kanmer","version":"0.3.3","skills":"./skills/"}\n',
+      "plugin/mcp_config.json": '{"mcpServers":{"kanmer":{"command":"node","args":["${PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"]}}}\n',
+      "plugin/skills/kanmer-plan/SKILL.md": "skill\n",
+      "plugin/mcp/kanmer-mcp.cjs": "\n",
+      ".agents/mcp_config.json": JSON.stringify({ mcpServers: { kanmer: { command: "old" } } }),
+    });
+    const commandRunner = async (command: string) => {
+      if (command === "agy plugin list") return { stdout: "kanmer", stderr: "" };
+      if (command.startsWith("agy --add-dir ")) return { stdout: "PONG", stderr: "" };
+      return { stdout: "ok", stderr: "" };
+    };
+    const result = await connectAgent("antigravity", root, root, { commandRunner, pluginRootPath: bundle });
+    expect(result.ok).toBe(false);
+    expect(result.output).toContain("No legacy project state was changed");
+    expect(await readFile(join(root, ".agents", "mcp_config.json"), "utf8")).toContain("kanmer");
   });
 });
 

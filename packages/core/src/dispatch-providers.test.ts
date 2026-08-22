@@ -8,6 +8,7 @@ describe("dispatch provider SSOT", () => {
     expect(dispatchProviderById("claude")?.buildDispatchArgs({ prompt: "P", sourceRoot: "R" })).toEqual(["-p", "P"]);
     expect(dispatchProviderById("opencode")?.buildDispatchArgs({ prompt: "P", sourceRoot: "R" })).toEqual(["run", "P"]);
     expect(dispatchProviderById("grok")?.buildDispatchArgs({ prompt: "P", sourceRoot: "R" })).toEqual(["-p", "P", "--cwd", "R"]);
+    expect(dispatchProviderById("antigravity")?.buildDispatchArgs({ prompt: "P", sourceRoot: "R" })).toEqual(["--add-dir", "R", "-p", "P"]);
   });
 
   it("adds measured model flags without changing prompt ordering", () => {
@@ -15,6 +16,18 @@ describe("dispatch provider SSOT", () => {
     expect(dispatchProviderById("claude")?.buildDispatchArgs({ prompt: "P", sourceRoot: "R", model: "m" })).toEqual(["-p", "P", "--model", "m"]);
     expect(dispatchProviderById("opencode")?.buildDispatchArgs({ prompt: "P", sourceRoot: "R", model: "m" })).toEqual(["run", "--model", "m", "P"]);
     expect(dispatchProviderById("grok")?.buildDispatchArgs({ prompt: "P", sourceRoot: "R", model: "m" })).toEqual(["-p", "P", "--model", "m", "--cwd", "R"]);
+    expect(dispatchProviderById("antigravity")?.buildDispatchArgs({ prompt: "P", sourceRoot: "R", model: "m" })).toEqual(["--add-dir", "R", "-p", "P"]);
+  });
+
+  it("keeps Antigravity binding exact for hostile Windows roots", () => {
+    const root = String.raw`C:\\Users\\Me\\Projects\\Kanmer & Tools\\日本語`;
+    expect(dispatchProviderById("antigravity")?.buildDispatchArgs({ prompt: "P & Q", sourceRoot: root })).toEqual([
+      "--add-dir",
+      root,
+      "-p",
+      "P & Q",
+    ]);
+    expect(dispatchProviderById("antigravity")?.modelOption).toBeUndefined();
   });
 
   it("preserves the built-in prompt when suffix is empty and appends otherwise", () => {

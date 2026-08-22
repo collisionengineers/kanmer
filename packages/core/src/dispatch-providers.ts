@@ -4,7 +4,7 @@
  * headless provider ids, labels and fixed CLI arguments (FRD-010/MCP-020).
  */
 
-export type DispatchProviderId = "codex" | "claude" | "opencode" | "grok";
+export type DispatchProviderId = "codex" | "claude" | "opencode" | "grok" | "antigravity";
 
 export interface DispatchArgsInput {
   prompt: string;
@@ -38,6 +38,10 @@ const PROVIDERS: readonly DispatchProvider[] = Object.freeze([
   Object.freeze({ id: "claude", label: "Claude Code", cli: "claude", buildDispatchArgs: ({ prompt, model }: DispatchArgsInput) => ["-p", prompt, ...(model ? ["--model", model] : [])], modelOption: MODEL("claude --help: --model <model>") }),
   Object.freeze({ id: "opencode", label: "opencode", cli: "opencode", buildDispatchArgs: ({ prompt, model }: DispatchArgsInput) => ["run", ...(model ? ["--model", model] : []), prompt], modelOption: MODEL("opencode run --help: -m, --model <string>") }),
   Object.freeze({ id: "grok", label: "Grok CLI", cli: "grok", buildDispatchArgs: ({ prompt, sourceRoot, model }: DispatchArgsInput) => ["-p", prompt, ...(model ? ["--model", model] : []), "--cwd", sourceRoot], modelOption: MODEL("grok --help: -m, --model <MODEL>") }),
+  // Antigravity does not bind a project from cwd. The source root is therefore
+  // an argv value, not spawn's cwd alone: every dispatch is session-bound and
+  // persistent project ids are deliberately out of scope (GUI-073/MCP-015).
+  Object.freeze({ id: "antigravity", label: "Antigravity", cli: "agy", buildDispatchArgs: ({ prompt, sourceRoot }: DispatchArgsInput) => ["--add-dir", sourceRoot, "-p", prompt] }),
 ]);
 
 export const listDispatchProviders = (): DispatchProvider[] => PROVIDERS.map((provider) => ({ ...provider }));

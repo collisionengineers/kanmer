@@ -163,7 +163,10 @@ function checkSkillFrontmatter() {
 const skillCount = checkSkillFrontmatter();
 
 // ---------------------------------------------------------------------------
-// The two plugin manifests, and the ONE MCP config that is still shipped.
+// The three host manifests, and the two host-specific MCP configs that are
+// shipped. Claude/grok use their own `${CLAUDE_PLUGIN_ROOT}` file; Antigravity
+// uses its native root `plugin.json` + `mcp_config.json` pair. Codex remains
+// skills-only and must not gain a server advertisement by accident.
 // Three failures this catches, all three of which shipped:
 //
 //   - the plugin.json versions drifting from the repo version (MCP-011). Not
@@ -181,22 +184,11 @@ const skillCount = checkSkillFrontmatter();
 //   - the plugin advertising an MCP server to a host that cannot run one
 //     (MCP-016) — see below.
 //
-// MCP-016: the plugin is SKILLS-ONLY for codex and antigravity/agy, and the
-// assertions here are deliberately about ABSENCE. Neither host expands any
-// ${…} token in a plugin's MCP config or passes the child a PLUGIN_ROOT, so a
-// plugin-supplied server cannot locate its own script; codex's relative `cwd`
-// fixes that only by moving board discovery into the plugin cache, where there
-// is no board. Locating the script and finding the board need different working
-// directories and neither host expresses both. It is also redundant — Connect
-// writes the working codex registration at <repo>/.codex/config.toml with
-// absolute paths — so nothing a user relies on depends on it. Two files, not
-// one, because the two hosts reach the advertisement by different routes:
-// codex follows .codex-plugin/plugin.json's mcpServers key, while agy reads
-// plugins/kanmer/.mcp.json at the plugin root REGARDLESS of any manifest
-// (measured: it reported source "claude-code" while copying the root .mcp.json
-// verbatim). Removing only one leaves the other host still advertising it.
-// Claude Code and grok are unaffected: mcp/claude.mcp.json is untouched, works,
-// and keeps every rule it had.
+// MCP-016 kept codex skills-only, while MCP-015 adds Antigravity's measured
+// native `mcp_config.json` route. The descriptor uses only the runtime and
+// plugin-root token accepted by the current CLI; it never pins cwd, a board
+// root, or a machine path. The old root `.mcp.json` remains forbidden because
+// agy reads that compatibility file independently of the native manifest.
 // ---------------------------------------------------------------------------
 function checkPluginManifests() {
   const pluginDir = join(root, "plugins/kanmer");
@@ -251,6 +243,22 @@ function checkPluginManifests() {
     }
   }
 
+  const agyManifestPath = join(pluginDir, "plugin.json");
+  if (!existsSync(agyManifestPath)) {
+    problems.push("missing plugins/kanmer/plugin.json for Antigravity");
+  } else {
+    const parsed = read(agyManifestPath);
+    if (parsed.version !== repoVersion) {
+      problems.push(`plugin.json: version "${parsed.version}" != package.json "${repoVersion}"`);
+    }
+    if (parsed.skills !== "./skills/") {
+      problems.push(`plugin.json: skills is "${parsed.skills}", expected "./skills/"`);
+    }
+    if (parsed.mcpServers !== undefined) {
+      problems.push("plugin.json: must not advertise mcpServers; Antigravity reads root mcp_config.json");
+    }
+  }
+
   // No .mcp.json at the plugin root. This is a SEPARATE assertion from the
   // manifest key above and is not redundant with it: agy never consults a
   // manifest for MCP, so the file's mere presence re-advertises the server on
@@ -263,6 +271,25 @@ function checkPluginManifests() {
         "SESSION cwd (`Cannot find module '<cwd>\\mcp\\kanmer-mcp.cjs'`). Deleting the " +
         "manifest key alone does not stop that host; the file has to be absent (MCP-016)",
     );
+  }
+
+  const agyMcp = join(pluginDir, "mcp_config.json");
+  if (!existsSync(agyMcp)) {
+    problems.push("missing plugins/kanmer/mcp_config.json — Antigravity native plugin route is absent");
+  } else {
+    const entry = serverEntry(agyMcp);
+    const args = entry.args ?? [];
+    if (entry.command !== "node") problems.push(`mcp_config.json: command is "${entry.command}", expected "node"`);
+    if (JSON.stringify(args) !== JSON.stringify(["${PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"])) {
+      problems.push(`mcp_config.json: args must be ["${PLUGIN_ROOT}/mcp/kanmer-mcp.cjs"]`);
+    }
+    if (entry.cwd !== undefined) problems.push("mcp_config.json: must not set cwd");
+    if (args.some((a) => typeof a === "string" && /(?:^|[\\/])(?:Users|home|tmp)[\\/]|^[A-Za-z]:[\\/]|--(?:root|repo-root)\b/i.test(a))) {
+      problems.push("mcp_config.json: must not contain a machine path or root flag");
+    }
+    if (!existsSync(join(pluginDir, "mcp", "kanmer-mcp.cjs"))) {
+      problems.push("mcp_config.json: bundled MCP target is missing");
+    }
   }
 
   // mcp/claude.mcp.json — Claude Code and grok. Both expand ${CLAUDE_PLUGIN_ROOT}

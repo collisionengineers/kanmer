@@ -16,6 +16,16 @@ Kanmer state under `.grok/`. It no longer copies skills or writes a project MCP
 registration. Connect and Disconnect warn that this plugin scope affects all
 Grok workspaces for the current user.
 
+### Antigravity Connect uses the native Kanmer plugin
+
+Antigravity Connect now validates and installs the user-scoped native plugin
+(`plugin.json` plus `mcp_config.json`), verifies a bound `get_status` call before
+retiring legacy `.agents` state, and warns that uninstall affects every
+Antigravity workspace for the user. Background dispatch uses the shared
+`agy --add-dir <sourceRoot> -p <prompt>` contract; bare cwd and persistent
+project ids are not used. The CLI proof lane remains explicit and the IDE is
+not claimed.
+
 ### Windows repairs restore Kanmer's stable MCP launcher
 
 The Windows installer now owns a stable per-user MCP launcher. Repairing or

@@ -8,12 +8,11 @@ import { dispatchProviderById, type DispatchProviderId } from "./dispatch-provid
 export type DispatchState = "running" | "done" | "failed" | "cancelled" | "timed-out";
 
 /**
- * Provider ids that may appear in a shared status row.  The GUI also carries
- * the register-only Antigravity target in its provider picker; the supervisor
- * never starts it because DispatchStartRequest remains restricted to the
- * dispatch allowlist above.
+ * Provider ids that may appear in a shared status row. Kept as an alias for
+ * compatibility with callers that render historical status records; new
+ * starts are restricted to the shared dispatch registry below.
  */
-export type DispatchStatusProviderId = DispatchProviderId | "antigravity";
+export type DispatchStatusProviderId = DispatchProviderId;
 
 export interface DispatchStatus {
   dispatchId: string;

@@ -40,9 +40,9 @@ ds-bundle/
 # Kanmer install and board worktree via the shared Invocation shape —
 # committing one would be as inert to anyone else as a checked-in `.mcp.json`
 # pointing at someone else's machine. `.claude/skills/`, `.opencode/skills/`,
-# `.agents/skills/` and `.grok/skills/` are local copies of the plugin skills
-# for their respective hosts (the canonical ones are plugins/kanmer/skills/); `.agents/mcp_config.json`
-# is Antigravity's registration file, the same kind of machine-local artifact.
+# `.grok/skills/` is a legacy local copy of the plugin skills (the canonical
+# ones are plugins/kanmer/skills/). Antigravity now owns skills/MCP in its user
+# plugin; its old `.agents` paths are migration inputs, not active writers.
 # Note `.agents/plugins/marketplace.json` is NOT here — it's a real repo file,
 # not a Connect-written artifact, so `.agents/` itself is never blanket-ignored.
 # All of the below are untracked deliberately — and `scripts/release.mjs`
@@ -55,6 +55,4 @@ ds-bundle/
 opencode.json
 .claude/skills/
 .opencode/skills/
-.agents/skills/
-.agents/mcp_config.json
 .grok/skills/

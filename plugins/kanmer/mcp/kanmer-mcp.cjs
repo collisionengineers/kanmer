@@ -38772,7 +38772,11 @@ var PROVIDERS = Object.freeze([
   Object.freeze({ id: "codex", label: "Codex", cli: "codex", buildDispatchArgs: ({ prompt, model }) => ["exec", ...model ? ["--model", model] : [], prompt], modelOption: MODEL("codex exec --help: -m, --model <MODEL>") }),
   Object.freeze({ id: "claude", label: "Claude Code", cli: "claude", buildDispatchArgs: ({ prompt, model }) => ["-p", prompt, ...model ? ["--model", model] : []], modelOption: MODEL("claude --help: --model <model>") }),
   Object.freeze({ id: "opencode", label: "opencode", cli: "opencode", buildDispatchArgs: ({ prompt, model }) => ["run", ...model ? ["--model", model] : [], prompt], modelOption: MODEL("opencode run --help: -m, --model <string>") }),
-  Object.freeze({ id: "grok", label: "Grok CLI", cli: "grok", buildDispatchArgs: ({ prompt, sourceRoot, model }) => ["-p", prompt, ...model ? ["--model", model] : [], "--cwd", sourceRoot], modelOption: MODEL("grok --help: -m, --model <MODEL>") })
+  Object.freeze({ id: "grok", label: "Grok CLI", cli: "grok", buildDispatchArgs: ({ prompt, sourceRoot, model }) => ["-p", prompt, ...model ? ["--model", model] : [], "--cwd", sourceRoot], modelOption: MODEL("grok --help: -m, --model <MODEL>") }),
+  // Antigravity does not bind a project from cwd. The source root is therefore
+  // an argv value, not spawn's cwd alone: every dispatch is session-bound and
+  // persistent project ids are deliberately out of scope (GUI-073/MCP-015).
+  Object.freeze({ id: "antigravity", label: "Antigravity", cli: "agy", buildDispatchArgs: ({ prompt, sourceRoot }) => ["--add-dir", sourceRoot, "-p", prompt] })
 ]);
 function dispatchProviderById(id) {
   return PROVIDERS.find((provider) => provider.id === id);
@@ -42107,7 +42111,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
       description: "Start one fixed, named core task for one existing ticket through the operator-enabled dispatch policy. The caller chooses only ticket, shared provider id, shared task id and an optional bounded timeout; command, args, prompt, cwd, environment and log path are never accepted. Dispatch is disabled by default, bearer authentication is not authorization, and `get_status.dispatch` explains the local policy. Refusals are normal structured `{ok:false,code,reason}` results and never create a child or log before all checks and approval pass.",
       inputSchema: {
         ticket_id: external_exports.string().describe("Existing non-archived ticket id"),
-        provider: external_exports.string().describe("Operator-allowlisted shared provider id: codex | claude | opencode | grok"),
+        provider: external_exports.string().describe("Operator-allowlisted shared provider id: codex | claude | opencode | grok | antigravity"),
         task: external_exports.string().describe("Operator-allowlisted core task id from DISPATCH_TASKS"),
         timeout_ms: external_exports.number().int().positive().optional().describe("Optional bounded timeout in milliseconds"),
         expected_project: expectedProjectField

@@ -19,7 +19,7 @@ import type {
   DispatchProviderSettings,
   DispatchTaskInfo,
 } from "../../../shared/ipc.js";
-import type { RemoteConfigInput, RemoteDoctorResult, RemoteProjectView, RemoteStatus } from "../../../shared/ipc.js";
+import type { OpenAITunnelConfigInput, OpenAITunnelDoctorResult, OpenAITunnelProjectView, OpenAITunnelStatus, RemoteConfigInput, RemoteDoctorResult, RemoteProjectView, RemoteStatus } from "../../../shared/ipc.js";
 import { useClient } from "../lib/client.js";
 import { boardDraftModified } from "../lib/settingsDraft.js";
 import {
@@ -31,7 +31,7 @@ import {
   type Vocabulary,
 } from "../lib/profileDraft.js";
 
-type SettingsTab = "board" | "profiles" | "appearance" | "git" | "connect" | "dispatch" | "remote";
+type SettingsTab = "board" | "profiles" | "appearance" | "git" | "connect" | "dispatch" | "remote" | "openai";
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: "board", label: "Board" },
   { id: "profiles", label: "Profiles" },
@@ -40,6 +40,7 @@ const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: "connect", label: "Connect" },
   { id: "dispatch", label: "Dispatch" },
   { id: "remote", label: "Remote access" },
+  { id: "openai", label: "OpenAI tunnel" },
 ];
 
 interface SettingsProps {
@@ -242,6 +243,8 @@ export function Settings({
             )}
 
             {tab === "remote" && <RemoteSection projectId={projectId} />}
+
+            {tab === "openai" && <OpenAITunnelSection projectId={projectId} />}
 
             {tab === "profiles" && <ProfilesTab />}
 
@@ -1245,6 +1248,81 @@ export function RemoteSection({ projectId }: { projectId: string }): JSX.Element
       {doctor && <div className={`banner ${doctor.ok ? "success" : "error"}`} aria-live="polite"><strong>{doctor.summary}</strong>{doctor.repair && <p><strong>{doctor.repair.section}</strong> · {doctor.repair.code}: {doctor.repair.actions[0] ?? "Follow the repair guidance."}</p>}<div>{Object.entries(checksByGroup).map(([group, checks]) => <section key={group}><h5>{group}</h5><ul>{checks.map((check) => <li key={check.id}>{check.id}: {check.status} — {check.detail}{check.repair && ` (${check.repair.actions[0] ?? check.repair.code})`}</li>)}</ul></section>)}</div></div>}
     </div>
   );
+}
+
+export function OpenAITunnelSection({ projectId }: { projectId: string }): JSX.Element {
+  const [view, setView] = useState<OpenAITunnelProjectView | null>(null);
+  const [overview, setOverview] = useState<OpenAITunnelProjectView[]>([]);
+  const [status, setStatus] = useState<OpenAITunnelStatus | null>(null);
+  const [doctor, setDoctor] = useState<OpenAITunnelDoctorResult | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [draft, setDraft] = useState<OpenAITunnelConfigInput>({ profileName: "", tunnelId: "", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: false, autoStart: false, expectedGeneration: null });
+
+  const load = useCallback(async () => {
+    try {
+      const next = await window.kanmer.openAITunnelRegister(projectId);
+      setView(next); setStatus(next.status);
+      if (next.profile) setDraft({ profileName: next.profile.profileName, tunnelId: next.profile.tunnelId, executable: next.profile.executable, credentialEnv: next.profile.credentialEnv, healthAddress: next.profile.healthAddress, enabled: next.profile.enabled, autoStart: next.profile.autoStart, expectedGeneration: next.profile.generation || null });
+      setOverview(await window.kanmer.openAITunnelOverview()); setError(null);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+  }, [projectId]);
+
+  useEffect(() => {
+    void load();
+    const remove = window.kanmer.onOpenAITunnelStatus((next) => {
+      if (next.projectId === projectId) setStatus(next);
+      setOverview((current) => current.map((project) => project.projectId === next.projectId ? { ...project, status: next } : project));
+    });
+    return remove;
+  }, [load, projectId]);
+
+  const run = async (operation: string, action: () => Promise<void>) => {
+    setBusy(operation); setError(null); setMessage(null);
+    try { await action(); } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    finally { setBusy(null); }
+  };
+  const save = () => run("save", async () => {
+    const next = await window.kanmer.openAITunnelSaveProfile(projectId, draft);
+    setView(next); setStatus(next.status); setDraft({ ...draft, expectedGeneration: next.profile?.generation ?? null }); setOverview(await window.kanmer.openAITunnelOverview()); setMessage("OpenAI Secure MCP Tunnel profile saved. The API key remains in the named environment variable.");
+  });
+  const initialize = () => run("initialize", async () => { setDoctor(await window.kanmer.openAITunnelInitialize(projectId)); });
+  const runDoctor = () => run("doctor", async () => { setDoctor(await window.kanmer.openAITunnelDoctor(projectId)); });
+  const start = () => run("start", async () => { const next = await window.kanmer.openAITunnelStart(projectId, view?.profile?.generation ?? null); setStatus(next); });
+  const stop = () => run("stop", async () => { const next = await window.kanmer.openAITunnelStop(projectId, view?.profile?.generation ?? null); setStatus(next); });
+  const restart = () => run("restart", async () => { const next = await window.kanmer.openAITunnelRestart(projectId, view?.profile?.generation ?? null); setStatus(next); });
+  const reconcile = () => run("reconcile", async () => { const next = await window.kanmer.openAITunnelReconcile(projectId, null); setView(next); setStatus(next.status); if (next.profile) setDraft({ profileName: next.profile.profileName, tunnelId: next.profile.tunnelId, executable: next.profile.executable, credentialEnv: next.profile.credentialEnv, healthAddress: next.profile.healthAddress, enabled: next.profile.enabled, autoStart: next.profile.autoStart, expectedGeneration: next.profile.generation || null }); setOverview(await window.kanmer.openAITunnelOverview()); });
+  const remove = () => run("remove", async () => { await window.kanmer.openAITunnelRemove(projectId, view?.profile?.generation ?? null); setView(null); setStatus(null); setOverview(await window.kanmer.openAITunnelOverview()); setMessage("OpenAI Secure MCP Tunnel profile removed."); });
+  const active = status?.state === "ready" || status?.state === "starting" || status?.state === "degraded";
+  const draftDirty = Boolean(view?.profile && (draft.profileName !== view.profile.profileName || draft.tunnelId !== view.profile.tunnelId || draft.executable !== view.profile.executable || draft.credentialEnv !== view.profile.credentialEnv || draft.healthAddress !== view.profile.healthAddress || draft.enabled !== view.profile.enabled || draft.autoStart !== view.profile.autoStart));
+
+  return <div className="settings-section" aria-label="OpenAI Secure MCP Tunnel">
+    <h3>OpenAI Secure MCP Tunnel</h3>
+    <p className="hint">This is a separate OpenAI-managed stdio tunnel path; it does not use Cloudflare, Access, or an HTTP relay. Kanmer stores profile metadata only, never the API key.</p>
+    <p className="hint">Install <code>tunnel-client</code>, export the named credential variable in your environment, then initialize and run doctor before starting. Real control-plane connectivity needs a disposable project and credential.</p>
+    {overview.length > 0 && <div className="remote-project-grid" aria-label="Registered OpenAI tunnel projects">{overview.map((project) => <article className="card" key={project.identity.fingerprint}><strong>{project.profile?.profileName ?? project.projectId}</strong><span className="hint">{project.projectId === projectId ? "Selected project" : project.projectId} · {project.status.state}</span></article>)}</div>}
+    {error && <div className="banner error">{error}</div>}
+    {message && <div className="banner success">{message}</div>}
+    <div className="field-row">
+      <label className="field"><span>Profile name</span><input value={draft.profileName} onChange={(e) => setDraft({ ...draft, profileName: e.target.value })} placeholder="my-kanmer" /></label>
+      <label className="field"><span>Tunnel id</span><input value={draft.tunnelId} onChange={(e) => setDraft({ ...draft, tunnelId: e.target.value })} placeholder="tunnel-id" /></label>
+    </div>
+    <div className="field-row">
+      <label className="field"><span>tunnel-client executable</span><input value={draft.executable} onChange={(e) => setDraft({ ...draft, executable: e.target.value })} placeholder="tunnel-client" /></label>
+      <label className="field"><span>Credential environment variable</span><input value={draft.credentialEnv} onChange={(e) => setDraft({ ...draft, credentialEnv: e.target.value })} placeholder="CONTROL_PLANE_API_KEY" /></label>
+    </div>
+    <label className="field"><span>Health address (loopback)</span><input value={draft.healthAddress} onChange={(e) => setDraft({ ...draft, healthAddress: e.target.value })} placeholder="127.0.0.1:8765" /></label>
+    <label className="checkbox"><input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} /> Enable this project’s OpenAI tunnel</label>
+    <label className="checkbox"><input type="checkbox" checked={draft.autoStart} onChange={(e) => setDraft({ ...draft, autoStart: e.target.checked })} /> Start automatically when Kanmer opens</label>
+    <div className="button-row">
+      <button className="primary sm" disabled={busy !== null} onClick={() => void save()}>{busy === "save" ? "Saving…" : "Save profile"}</button>
+      {view?.identityConflict ? <button className="ghost sm" disabled={busy !== null} onClick={() => void reconcile()}>{busy === "reconcile" ? "Reconciling…" : "Reconcile identity"}</button> : <><button className="ghost sm" disabled={busy !== null || !view?.profile || draftDirty} onClick={() => void initialize()}>{busy === "initialize" ? "Initializing…" : "Initialize"}</button>
+      <button className="ghost sm" disabled={busy !== null || !view?.profile || draftDirty} onClick={() => void runDoctor()}>{busy === "doctor" ? "Checking…" : "Run doctor"}</button></>}
+    </div>
+    <div className="settings-section"><h4>Status: {status?.state ?? "disabled"}</h4>{status && <p className="hint">Action <strong>{status.action}</strong> · Severity <strong>{status.severity}</strong> · Executable {status.health.executable} · Credential {status.health.credential} · Listener {status.health.listener} · MCP {status.health.mcp}</p>}{status?.restartRequired && <p className="banner warn">This tunnel must restart after the downloaded update is installed.</p>}{status?.lastSummary && <p className="hint">{status.lastSummary}</p>}{status?.lastError && <p className="error-text">{status.lastError}</p>}<div className="button-row"><button className="primary sm" disabled={busy !== null || active || !draft.enabled || draftDirty || view?.identityConflict === true} onClick={() => void start()}>{busy === "start" ? "Starting…" : "Start"}</button><button className="ghost sm" disabled={busy !== null || !active} onClick={() => void stop()}>{busy === "stop" ? "Stopping…" : "Stop"}</button><button className="ghost sm" disabled={busy !== null || !view?.profile || draftDirty || view.identityConflict === true} onClick={() => void restart()}>{busy === "restart" ? "Restarting…" : "Restart"}</button>{view?.profile && !active && !view.identityConflict && <button className="ghost sm" disabled={busy !== null} onClick={() => void remove()}>{busy === "remove" ? "Removing…" : "Remove"}</button>}</div></div>
+    {doctor && <div className={`banner ${doctor.ok ? "success" : "error"}`} aria-live="polite"><strong>{doctor.summary}</strong><ul>{doctor.checks.map((check) => <li key={check.id}>{check.id}: {check.status} — {check.detail}</li>)}</ul></div>}
+  </div>;
 }
 
 function slug(name: string): string {

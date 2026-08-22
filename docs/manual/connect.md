@@ -45,7 +45,9 @@ without a public MCP endpoint or an inbound firewall rule. The separate
 `tunnel-client` process connects
 outbound to OpenAI and starts Kanmer's existing stdio server as its private MCP
 target. Kanmer does not store the tunnel id or API key and does not supervise
-the tunnel process.
+the tunnel process when you use the manual commands below. The GUI also has a
+separate **Settings → OpenAI tunnel** surface that stores non-secret profile
+metadata, runs `init`/`doctor`, and owns the local `run` process when enabled.
 
 You need an OpenAI tunnel associated with the intended Platform organization
 and ChatGPT workspace, a runtime API key whose principal has **Tunnels Read +
@@ -81,11 +83,25 @@ $mcpCommand = '"C:/Users/<you>/AppData/Local/Programs/Kanmer/Kanmer.exe" "C:/Use
 & $tunnelClient run --profile kanmer-local
 ```
 
+In the GUI, open **Settings → OpenAI tunnel**, enter the profile name, tunnel id,
+`tunnel-client` path, credential environment-variable name, and loopback health
+address, then save. The address is a validated, non-secret expectation; the GUI
+does not rewrite `tunnel-client`'s profile file or claim a live listener, so
+distinct ports must still be configured in the client profile by the operator.
+**Initialize** and **Run doctor** execute the same commands. Initialize binds
+the selected credential name with tunnel-client's
+`--control-plane-api-key-ref env:<NAME>` option, so a custom environment
+variable is honored without putting its value in the profile;
+**Start**, **Stop**, and **Restart** supervise the owned `run` process. The GUI
+never asks for or persists the API-key value. A downloaded app update marks a
+running tunnel for restart, and quitting Kanmer stops its owned process tree.
+Cloudflare settings are a different provider path and are not used here.
+
 Use forward slashes inside `$mcpCommand`, including on Windows. Version 0.0.11's
 command parser treats backslashes as escapes; a normal Windows path such as
 `C:\Users\...` becomes invalid during its executable preflight. The profile
-it creates under `%APPDATA%\tunnel-client` refers to the API key as
-`env:CONTROL_PLANE_API_KEY`; it does not need the key written into YAML.
+it creates under `%APPDATA%\tunnel-client` refers to the API key as an
+`env:<NAME>` reference; it does not need the key written into YAML.
 
 Keep `tunnel-client run` alive while creating the ChatGPT app and whenever the
 app uses Kanmer. In ChatGPT's developer-mode app settings, choose **Tunnel** and

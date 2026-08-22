@@ -48,6 +48,7 @@ commits:
   - 5f63571e
   - c53c1d13
   - 7403a7cf
+  - 5053af23b87fe591015b14042b920c4cf41259b4
 prs:
   - '165'
   - '166'
@@ -59,9 +60,10 @@ prs:
   - '174'
   - '179'
   - '178'
+  - '180'
 archived: false
 created: '2026-08-22T09:23:34.607Z'
-updated: '2026-08-22T13:59:04.695Z'
+updated: '2026-08-22T16:35:47.012Z'
 ---
 
 Review follow-up for CORE-026 / PR #163. Independent automated review identified unresolved in-scope correctness and security gaps that must be fixed before CORE-026 can merge: validate every redirect hop before issuing the next request; reject private/loopback/link-local destinations for remote HTTP exposure or keep fetch_source local-only; reject or safely redact query-bearing credential URLs; use atomic core-backed cache writes with cross-process safety; preserve board edits with a content/version CAS or retry; register the source test suite in the authoritative rail; and reconcile any remaining selector, URL canonicalization, content-type, redirect-relative-link, fragment/image parsing, 304 freshness, schema reuse, and unavailable-source skill gaps against FRD-027/ADR-0020. Keep GUI source editing either implemented or explicitly reconciled with the governing acceptance contract. This ticket blocks CORE-026 until each finding is fixed or explicitly rejected with evidence and re-reviewed.

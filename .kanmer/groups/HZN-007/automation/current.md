@@ -612,3 +612,9 @@ CORE-060 implementing in .worktrees/core-060 on core-060-pause-handoff-sync whil
 
 
 CORE-058 cumulative PASS exact 271790e5, PR #180 merged non-squash into CORE-044 as 5053af23; moved Verifying and removed block. CORE-060 remains implementing.
+
+
+CORE-058 Verifying after cumulative PASS/merge 5053af23 into CORE-044. CORE-044 traceability refreshed; fresh cumulative CORE-044 review pending. CORE-060 implementing.
+
+
+CORE-060 implementation fbb52873 / PR #197 moved Implementing -> Review; focused 23/23, core 283/283, scripts 89/89, manual/build/diff PASS; independent review pending.

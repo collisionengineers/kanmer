@@ -6,11 +6,11 @@ Add a dedicated OpenAI Secure MCP Tunnel service in the Electron main process an
 
 ## Governing docs
 
-No governing repository document is currently linked; `docs_todo: true` correctly records that gap. Before implementation, use `kanmer-docs` with explicit approval to define the GUI-owned profile/process lifecycle, environment-reference credential rule, per-project isolation, and update/quit behavior. FRD-012 and FRD-024 are likely affected context, while EPIC-010 remains the boundary contract. This plan does not itself authorize modifying them.
+FRD-026, `docs/functional/frd/FRD-026-openai-secure-tunnel-gui.md`, is the accepted governing document for the GUI-owned OpenAI tunnel profile/process lifecycle, environment-reference credential rule, per-project isolation, and update/quit behavior. The existing DOC-010-linked FRD-022 and FRD-024 remain adjacent MCP-surface and manual context; the ticket links all three refs and `docs_todo` is false.
 
 ## Steps
 
-1. Complete and link the governing document, then clear `docs_todo`; do not begin source changes first.
+1. Keep FRD-026 linked as the governing contract while implementing and reviewing the bounded GUI lifecycle.
 2. Define typed IPC models for non-secret profile configuration and lifecycle status: project identity, profile name, tunnel id, executable path, health address, state, redacted diagnosis, and last error.
 3. Add app-global persistence keyed by canonical project root. Reject duplicate profile names/health addresses and never accept or serialize an API-key value; launches require the configured environment-variable name to be present in the main process environment.
 4. Build the main-process tunnel service around argument-array process spawning: generate the canonical stdio command from the existing invocation helper, normalize Windows command paths as DOC-010 requires, run `init`/doctor, start `run`, stream redacted status, and stop only owned process trees.
@@ -26,4 +26,4 @@ Unit-test configuration validation, canonical command construction, Windows slas
 ## Risks / open questions
 
 - External tunnel-client and ChatGPT beta behavior may change. Keep CLI-specific logic isolated and report the detected client version.
-- A governing-document approval is required before implementation; this remains the only intentional hold.
+- FRD-026 is accepted and linked; external tunnel-client, ChatGPT beta, and real two-project listener behavior remain explicit verification boundaries.

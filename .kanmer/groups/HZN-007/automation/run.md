@@ -46,3 +46,6 @@
 
 
 2026-08-22T06:31:25Z — CORE-024 PR #155 merged to origin/main as 0c5ed84e after MCP-043 artifact remediation; merged-main proof recorded and CORE-024 moved Verifying→Done, outcome/trace written, worktree and branch removed. MCP-043 PR #156 artifact-only fix independently reviewed, merged through CORE-024 parent, verified, moved Verifying→Done, proof/outcome/trace written, worktree and branch removed. Local detached mcpb byte mismatches remain explicitly preserved as environment-sensitive; hosted verify 32556559732 passed.
+
+
+2026-08-22T06:46:34Z — CORE-033 taken as the second active lane; prerequisites CORE-032/GUI-085 confirmed. Playbook committed 89e61bdf before exact main/kanmer-board branch-protection rules were created. Readback matched approved policy; disposable main push 154b6cdb was rejected GH006; production GUI syncBoard pushed legitimate board commit 83cdf801. PR #158 is Review, final head c283f4cc, hosted verify and kanmer-gate PASS, independent re-review requested after stale findings were resolved. CORE-025 docs_todo cleared with ADR-0016/ADR-0011/FRD-009 refs and execution started as third lane. GUI-104 F-002 project-close cleanup fix is in progress; merge held.

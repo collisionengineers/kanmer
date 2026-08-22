@@ -4,13 +4,16 @@ type: ticket
 title: >-
   Expand kanmer/gate — stage, dependency, review-SHA and commit-reachability
   checks (phase 2)
-status: preparing
+status: implementing
 area: core
 order: 20
-assignee: ''
+assignee: core-025-gate
 profile: fix
 stageEntered:
   preparing: '2026-08-20T13:27:40.811Z'
+taken_at: '2026-08-22T06:47:30.209Z'
+branch: core-025-phase-2-gate
+worktree: .worktrees/core-025
 labels: []
 groups:
   - EPIC-009
@@ -25,7 +28,7 @@ refs:
   - docs/functional/frd/FRD-009-interrogative-workflow.md
 archived: false
 created: '2026-08-16T18:26:15.191Z'
-updated: '2026-08-22T06:45:23.057Z'
+updated: '2026-08-22T06:47:30.209Z'
 ---
 
 ## What

@@ -1,0 +1,7 @@
+CORE-024 execution update (2026-08-22): ticket taken through MCP as core024-executor on branch core-024-check-pr, worktree .worktrees/core-024, status Implementing. Implemented read-only KanmerStore.getOpenQuestionCount, pure evaluateMergeGate/ticket resolution, source-level check-pr.mjs, CLI integration test, and independent Windows kanmer-gate workflow job. Scope excludes CORE-025/033/035.
+
+Green: npx vitest run packages/core/src/merge-gate.test.ts exit 0, 9/9; npm run test -w @kanmer/core exit 0, 14 files / 278 tests; node --test packages/mcp-server/src/check-pr.test.mjs exit 0, 1/1; npm run build:core exit 0; workflow YAML parse/diff-check exit 0; CLI compliant fixture exit 0 with one JSON verdict; CLI open-question fixture exit 1 with escaped ::error annotation; unknown-argument control exit 2 with sanitized infrastructure diagnostic.
+
+Preserved failure: npm run typecheck exit 1 on pre-existing cross-workspace dispatch symbols (dispatchDeliverableProven, verifyDeliverable, and GUI antigravity provider type) in mcp-server/apps/gui; core typecheck itself passed. Preserved failure: npm run build:server exit 1 during standalone tsup for the same missing core export. No fix made because this is outside CORE-024 scope.
+
+External evidence: hosted GitHub kanmer-gate run and real PR no-ticket/open-question observations are INCONCLUSIVE until this PR is opened and CI executes; no claim made. No board writes/init/mutation occur in evaluator/CLI.

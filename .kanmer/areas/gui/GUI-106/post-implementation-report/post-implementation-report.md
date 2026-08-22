@@ -12,7 +12,7 @@ The deterministic package/launcher rails now assert the external target, runtime
 
 - Branch/worktree: gui-106-runtime-boundary / .worktrees/gui-106
 - Base: origin/main 241ff13e
-- Commit: 0cdfafad0c8c9216779ceb442893e2256bdb65fd
+- Commit: bd83b8a531bfa5e69b9879acc2ef51fe9e0b997c
 - PR: #153 (https://github.com/collisionengineers/kanmer/pull/153)
 
 ## Checks and exact outcomes
@@ -41,3 +41,15 @@ Deterministic source, static, build, package, focused, GUI, and type rails are P
 ## Handoff
 
 Checklist/report are complete for the author lane. After commit/PR traceability and a fresh gate readback, the ticket will move Implementing to Review only. Author will stop for independent review and will not merge, verify, or clean up the worktree.
+
+
+## Review remediation F-002..F-005
+
+The current head bd83b8a531bfa5e69b9879acc2ef51fe9e0b997c addresses the four substantive review findings without changing provider registration bytes or the existing legacy fallback:
+
+- F-002 fixed pending independent re-review: the external runtime now preserves the packaged resource shape, with the script at <runtime>/resources/mcp/kanmer-mcp.cjs and skills at <runtime>/resources/plugins/kanmer/skills. This is the shape recognized by classifyBuild() and bundledSkillsDir().
+- F-003 fixed pending independent re-review: post-activation pruning skips current, current.next, and the current version; stale version directories are removed best-effort, and locked live runtimes remain when Windows refuses recursive removal.
+- F-004 fixed pending independent re-review: AGENTS.md gotchas 4 and 10 plus the updater/release wording now distinguish external-runtime sessions from legacy install-root sessions.
+- F-005 fixed pending independent re-review: custom installer roots are rejected before staging when they equal, contain, or are contained by %LOCALAPPDATA%\Kanmer\mcp.
+
+Additional verification after these changes: npm test exited 0 (core 266/266, GUI 360/360, MCP HTTP 61/61, scripts 82/82); npm run typecheck exited 0; npm run dist:check exited 0 (Windows package and updater package 8/8); focused launcher/package tests exited 0 (8/8). Hosted verification for this new head is recorded when the PR rerun completes.

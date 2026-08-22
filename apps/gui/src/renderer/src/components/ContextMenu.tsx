@@ -86,6 +86,12 @@ function MenuPanel({
     ref.current?.focus();
   }, []);
 
+  useEffect(() => {
+    if (active < 0) return;
+    const activeItem = ref.current?.querySelectorAll<HTMLElement>("[role='menuitem']")[active];
+    activeItem?.scrollIntoView?.({ block: "nearest" });
+  }, [active]);
+
   const step = useCallback(
     (dir: 1 | -1) => {
       setActive((cur) => nextEnabledIndex(items, cur, dir));

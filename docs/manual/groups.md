@@ -67,8 +67,9 @@ To put an existing ticket into one, open that card's context menu and choose
 **Add to group**, then select an active group. Existing memberships are kept,
 and a ticket already in a group is shown as unavailable rather than duplicated.
 
-You can see, filter by, open, and assign tickets to groups in the app; creating
-or archiving a group remains an agent action.
+You can see, filter by, and assign tickets to groups in the app; creating a
+group remains an agent action. Open a group’s detail view to archive or
+unarchive it — its ticket memberships are kept when it is archived.
 
 Groups are archived rather than deleted, so a finished epic stops cluttering the
 board without taking its history with it.

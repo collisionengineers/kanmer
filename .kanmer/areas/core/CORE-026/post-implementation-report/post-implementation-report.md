@@ -34,3 +34,9 @@ Governing documents are linked as `docs/functional/frd/FRD-027-project-declared-
 ## Review handoff
 
 Status should move only one boundary to Review after the final `get_doc_gates CORE-026` readback. Author must not self-review or merge PR #163. Hosted GitHub checks were queued at handoff; their final outcome remains an independent-review/hosted-evidence responsibility.
+
+
+## Hosted gate follow-up
+
+- The first hosted run for PR #163 failed before source evaluation because the PR body sent literal backslash-n characters, so the event payload did not contain a standalone footer. The body was corrected to real newlines with a final standalone Kanmer: CORE-026 line; the existing event was retriggered, and the subsequent edge-case documentation commit e0a046be records the 304-without-cache and serialized-cache-write contract.
+- New head: e0a046be; the PR remains Review-only and no merge/self-review/cleanup is authorized. Hosted verify/gate outcome is being observed after the fresh synchronize event.

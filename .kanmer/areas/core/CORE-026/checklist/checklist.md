@@ -24,3 +24,5 @@ Research and governing-doc decisions are recorded in research/research.md and op
 - PASS: core and MCP typechecks, core/browser and MCP builds, protocol smoke 46/46, headless smoke, verify-docs, verify-skills, plugin-sync, and git diff --check.
 - Initial failures were retained and corrected: duplicate FRD-026 numbering (test:scripts exit 1, fixed with FRD-027/ADR-0020); invalid 304 fixture (source tests exit 1, fixed); stale bundle/plugin sync (exit 1, regenerated); protocol smoke expected 34 instead of 37 tools (42/46, assertion corrected).
 - External connected-provider, installed-plugin, packaged-update, and live external llms.txt evidence are INCONCLUSIVE; no auto-trust, installation, authentication, or unbounded crawl is claimed.
+
+- Hosted follow-up: e0a046be documents the bounded cache edge cases; PR #163 remains at Review while the corrected footer event is checked.

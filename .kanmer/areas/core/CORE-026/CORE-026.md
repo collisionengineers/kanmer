@@ -22,11 +22,12 @@ refs:
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
 commits:
   - fab7b4994b5b0c4f2eaf07a919cf6b6e06e7e763
+  - e0a046be
 prs:
   - '163'
 archived: false
 created: '2026-08-16T18:26:15.208Z'
-updated: '2026-08-22T08:51:37.124Z'
+updated: '2026-08-22T08:56:38.514Z'
 ---
 
 ## What

@@ -120,3 +120,9 @@
 ## Progress notes
 
 Append measured commands and implementation notes here; never flip dispatch before bound tool proof.
+
+## 2026-08-22 implementation evidence
+
+- [x] Native Antigravity plugin descriptor, provider lifecycle, bound dispatch argv, docs, and synchronization checks implemented in commit dd83db29.
+- [x] Deterministic unit, focused GUI, full core, serialized full GUI, typecheck, HTTP, scripts, plugin, docs, skills, and smoke rails recorded in post-implementation-report.md.
+- [ ] Real Antigravity install, bound tool call, unbound control, and uninstall remain explicitly INCONCLUSIVE because no disposable authorized host/credentials were available; this is not inferred from proxy output.

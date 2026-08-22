@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-22T01:56:57.081Z
+updated_at: 2026-08-22T01:58:21.117Z
 lane_limit: 3
 stop_reason:
 ---
@@ -557,3 +557,5 @@ Re-read this record, HZN-007 context.md, the live HZN-007 roster, each ticket's 
 - 2026-08-22T01:50:10.473Z — CORE-041 assigned from PR #145 hosted run 32544292566: smoke.mjs failed only because the Windows expectation hardcoded c:/ while canonicalProjectPath correctly mapped the POSIX-style fixture to the hosted d:/ drive. A separate test-only remediation is in flight; MCP-041 remains unmerged and blocked on a green stacked rail.
 
 - 2026-08-22T01:55:42.594Z — CORE-041 independently reviewed PASS and stacked into MCP-041 PR #145 as merge 849d912b; superseded PR #149 was closed with its hosted runneradmin vs RUNNER~1 failure preserved. PR #145 now carries CORE-037, MCP-041, CORE-038, CORE-039, CORE-040, and CORE-041 and remains open for the next hosted verify result.
+
+- 2026-08-22T01:58:21.117Z — PR #145 stacked run 32544808992 initially failed before verification during npm ci: Electron install hit ECONNRESET and npm cleanup reported EPERM. This is an external dependency-download failure, not a code result; the failed run is retained and the failed job was rerun in place.

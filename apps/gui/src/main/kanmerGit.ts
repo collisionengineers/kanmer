@@ -1,6 +1,7 @@
 import { execFile as execFileCallback } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { appendFile, cp, lstat, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, cp, lstat, mkdir, readFile, readlink, readdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -182,10 +183,36 @@ async function hasHead(root: string): Promise<boolean> {
 }
 
 const ORPHAN_MIGRATION_MARKER = ".kanmer-orphan-migration.pending";
+const ORPHAN_MARKER_VERSION = 1;
 
-async function markOrphanMigration(boardRoot: string): Promise<void> {
+/** Fingerprint the copied board tree without following symlinks. */
+async function directoryFingerprint(root: string): Promise<string> {
+  const hash = createHash("sha256");
+  const visit = async (current: string, relative: string): Promise<void> => {
+    const entries = await readdir(current, { withFileTypes: true });
+    entries.sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of entries) {
+      const entryRelative = (relative ? `${relative}/` : "") + entry.name;
+      const normalized = entryRelative.replaceAll("\\", "/");
+      const kind = entry.isDirectory() ? "directory" : entry.isFile() ? "file" : entry.isSymbolicLink() ? "symlink" : "other";
+      hash.update(`${kind}:${normalized}\0`);
+      const entryPath = join(current, entry.name);
+      if (entry.isDirectory()) await visit(entryPath, entryRelative);
+      else if (entry.isFile()) hash.update(await readFile(entryPath));
+      else if (entry.isSymbolicLink()) hash.update(await readlink(entryPath));
+    }
+  };
+  await visit(root, "");
+  return hash.digest("hex");
+}
+
+async function markOrphanMigration(boardRoot: string, sourceFingerprint: string): Promise<void> {
   try {
-    await writeFile(join(boardRoot, ORPHAN_MIGRATION_MARKER), "", { encoding: "utf8", flag: "wx" });
+    await writeFile(
+      join(boardRoot, ORPHAN_MIGRATION_MARKER),
+      `${JSON.stringify({ version: ORPHAN_MARKER_VERSION, sourceFingerprint })}\n`,
+      { encoding: "utf8", flag: "wx" },
+    );
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
   }
@@ -205,11 +232,43 @@ async function resumeOrphanMigration(repoRoot: string, boardRoot: string, branch
     return;
   }
   if (!existsSync(join(boardRoot, ".kanmer"))) throw new Error(`Orphan board data is missing: ${boardRoot}`);
+  let expectedFingerprint: string;
+  if (existsSync(marker)) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await readFile(marker, "utf8"));
+    } catch (error) {
+      throw new Error(`Orphan migration marker is invalid: ${msg(error)}`);
+    }
+    if (
+      !parsed || typeof parsed !== "object" ||
+      (parsed as { version?: unknown }).version !== ORPHAN_MARKER_VERSION ||
+      typeof (parsed as { sourceFingerprint?: unknown }).sourceFingerprint !== "string"
+    ) {
+      throw new Error(`Orphan migration marker is invalid: ${marker}`);
+    }
+    expectedFingerprint = (parsed as { sourceFingerprint: string }).sourceFingerprint;
+  } else if (!head) {
+    // Older unborn orphan worktrees did not have a marker. Treat the copied
+    // board tree as their recorded version, but still fail closed if source
+    // state changed before cleanup.
+    expectedFingerprint = await directoryFingerprint(join(boardRoot, ".kanmer"));
+  } else {
+    throw new Error(`Orphan migration marker is missing: ${marker}`);
+  }
+  const copiedFingerprint = await directoryFingerprint(join(boardRoot, ".kanmer"));
+  if (copiedFingerprint !== expectedFingerprint) {
+    throw new Error("Copied board version is not the recorded orphan source; refusing cleanup.");
+  }
   if (!head) {
     await git(boardRoot, ["add", "--", ".kanmer", ".gitignore"]);
     await git(boardRoot, ["commit", "-m", "chore(kanmer): create shared board"]);
   }
   await git(boardRoot, ["push", "-u", "origin", `HEAD:refs/heads/${branch}`]);
+  const currentFingerprint = await directoryFingerprint(sourceBoard);
+  if (currentFingerprint !== expectedFingerprint) {
+    throw new Error("Source board changed during orphan migration; refusing cleanup.");
+  }
   await git(repoRoot, ["rm", "-r", "--ignore-unmatch", "--", ".kanmer"]);
   await rm(marker, { force: true });
 }
@@ -255,7 +314,11 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
         // back to the source checkout and mutate the wrong board.
         return { ...empty(branch, msg(error)), boardRoot: resolve(boardRoot), paused: true };
       }
-      await ensureIgnore(join(repoRoot, ".gitignore"), [".kanmer/", ".worktrees/"]);
+      try {
+        await ensureIgnore(join(repoRoot, ".gitignore"), [".kanmer/", ".worktrees/"]);
+      } catch (error) {
+        return { ...empty(branch, msg(error)), boardRoot: resolve(boardRoot), paused: true };
+      }
       return { available: true, boardRoot: resolve(boardRoot), branch, lastSync: null, error: renamed.error, paused: false };
     }
     const remoteExists = await git(repoRoot, ["ls-remote", "--exit-code", "--heads", "origin", `refs/heads/${branch}`]).then(() => true).catch(() => false);
@@ -270,8 +333,9 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
     } else {
       await git(repoRoot, ["worktree", "add", "--orphan", "-b", branch, boardRoot]);
       if (existsSync(sourceBoard)) {
+        const sourceFingerprint = await directoryFingerprint(sourceBoard);
         await cp(sourceBoard, join(boardRoot, ".kanmer"), { recursive: true });
-        await markOrphanMigration(boardRoot);
+        await markOrphanMigration(boardRoot, sourceFingerprint);
       }
     }
     // Reconcile after every successful attachment, while keeping orphan
@@ -292,7 +356,11 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
         return { ...empty(branch, msg(error)), boardRoot: resolve(boardRoot), paused: true };
       }
     }
-    await ensureIgnore(join(repoRoot, ".gitignore"), [".kanmer/", ".worktrees/"]);
+    try {
+      await ensureIgnore(join(repoRoot, ".gitignore"), [".kanmer/", ".worktrees/"]);
+    } catch (error) {
+      return { ...empty(branch, msg(error)), boardRoot: resolve(boardRoot), paused: true };
+    }
     return { available: true, boardRoot: resolve(boardRoot), branch, lastSync: null, error: null, paused: false };
   } catch (error) {
     return empty(branch, error instanceof Error ? error.message : String(error));

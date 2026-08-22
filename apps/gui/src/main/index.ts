@@ -143,6 +143,7 @@ interface ProjectContext {
   lifecycle?: Promise<void>;
 }
 const contexts = new Map<string, ProjectContext>();
+let connectAgentOverride: typeof connectAgent | null = null;
 /** Serializes project open/close, Git preference changes and Connect IPC. */
 const appLifecycle: { lifecycle?: Promise<void> } = {};
 let remoteAccess: RemoteAccessManager | null = null;
@@ -976,7 +977,7 @@ async function confirmKanmerGitHandoff(projectId: string): Promise<KanmerGitIpcS
 async function connectProject(projectId: string, target: ConnectTarget) {
   const ctx = requireCtx(projectId);
   return withSyncLifecycles([appLifecycle, ctx], async () => {
-    const result = await connectAgent(target, ctx.sourceRoot, ctx.boardRoot, {}, readSettings().kanmerBranch);
+    const result = await (connectAgentOverride ?? connectAgent)(target, ctx.sourceRoot, ctx.boardRoot, {}, readSettings().kanmerBranch);
     if (result.ok && (target === "grok" || target === "antigravity")) {
       const settings = await clearNativeReconnectRequired(projectId, target);
       for (const [id, project] of contexts) {
@@ -986,6 +987,8 @@ async function connectProject(projectId: string, target: ConnectTarget) {
           const { nativeReconnectRequired: _native, ...withoutNative } = project.syncStatus;
           project.syncStatus = withoutNative;
         }
+        // Renderer contexts filter these events by projectId, so keep the
+        // loop's id rather than the initiating Connect project's id.
         mainWindow?.webContents.send(CH.gitStatus, { projectId: id, ...(await gitStatusForRenderer(project)) });
       }
     }
@@ -993,8 +996,16 @@ async function connectProject(projectId: string, target: ConnectTarget) {
   });
 }
 
+/** Test-only window injection for production-caller broadcast assertions. */
+const setMainWindowForTest = (window: BrowserWindow | null): void => {
+  mainWindow = window;
+};
+const setConnectAgentForTest = (agent: typeof connectAgent | null): void => {
+  connectAgentOverride = agent;
+};
+
 /** Test seam for the production sync caller; not part of the renderer API. */
-export const __kanmerTest = { contexts, openProject, closeProject, syncProject, applyGitPreferences, confirmKanmerGitHandoff, connectProject };
+export const __kanmerTest = { contexts, openProject, closeProject, syncProject, applyGitPreferences, confirmKanmerGitHandoff, connectProject, setMainWindowForTest, setConnectAgentForTest };
 
 // The card context menu is drawn by the renderer now (FRD-019 R6). A native
 // Menu cannot read the app's CSS variables, so it was always slightly wrong in

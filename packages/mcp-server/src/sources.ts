@@ -79,6 +79,17 @@ class ResponseTooLargeError extends Error {
   }
 }
 
+class ResponseReadError extends Error {
+  readonly consumedBytes: number;
+
+  constructor(url: URL, cause: unknown, consumedBytes: number) {
+    super(`${url} response read failed after ${consumedBytes} bytes: ${failureText(cause)}`);
+    this.name = "ResponseReadError";
+    this.consumedBytes = consumedBytes;
+    this.cause = cause;
+  }
+}
+
 function canonicalHttpsUrl(value: string): URL {
   const parsed = new URL(value);
   if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.hash || parsed.search) {
@@ -224,6 +235,10 @@ async function pinnedFetch(url: URL, init: RequestInit, addresses: string[]): Pr
   const address = addresses[0];
   if (!address) throw new Error(`${url} destination could not be resolved`);
   const headers = new Headers(init.headers);
+  // The raw https.request seam does not transparently decode compressed
+  // responses like fetch does. Keep the byte limit and UTF-8 conversion about
+  // the representation we actually receive.
+  headers.set("accept-encoding", "identity");
   return new Promise<Response>((resolve, reject) => {
     let settled = false;
     const request = httpsRequest(
@@ -338,7 +353,7 @@ async function readCache(file: string): Promise<CacheFile | null> {
   }
 }
 
-function markdownLinks(text: string, base: URL): URL[] {
+function markdownLinks(text: string, base: URL, maxLinks: number = LLMS_TXT_POLICY.maxLinkedPages): URL[] {
   const urls: URL[] = [];
   const seen = new Set<string>();
   // Images are content, not documentation pages, and must not consume the cap.
@@ -359,6 +374,7 @@ function markdownLinks(text: string, base: URL): URL[] {
     if (!seen.has(key)) {
       seen.add(key);
       urls.push(resolved);
+      if (urls.length >= maxLinks) break;
     }
   }
   return urls;
@@ -378,7 +394,7 @@ async function fetchText(
   const origin = new URL(url);
   let current = new URL(url);
   let redirects = 0;
-  let requestHeaders = headers;
+  let requestHeaders = { ...headers, "accept-encoding": "identity" };
   try {
     while (true) {
       const addresses = await assertPublicDestination(current, lookupImpl, controller.signal);
@@ -387,9 +403,15 @@ async function fetchText(
         ? await boundFetch(current, requestInit, addresses)
         : await fetchImpl(current, requestInit);
       const responseUrl = response.url ? new URL(response.url) : current;
-      assertSafeFetchTarget(origin, responseUrl);
-      await assertPublicDestination(responseUrl, lookupImpl, controller.signal);
+      try {
+        assertSafeFetchTarget(origin, responseUrl);
+        await assertPublicDestination(responseUrl, lookupImpl, controller.signal);
+      } catch (error) {
+        await response.body?.cancel();
+        throw error;
+      }
       if (response.status === 304) {
+        await response.body?.cancel();
         return {
           status: 304,
           text: "",
@@ -402,24 +424,29 @@ async function fetchText(
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get("location");
         if (!location || redirects >= LLMS_TXT_POLICY.maxRedirects) {
+          await response.body?.cancel();
           throw new Error(`${url} exceeded the redirect limit or returned a redirect without Location`);
         }
+        await response.body?.cancel();
         const next = new URL(location, current);
         assertSafeFetchTarget(origin, next);
         current = next;
         redirects++;
-        // Validators belong to the origin representation, not an arbitrary hop.
-        requestHeaders = {};
         continue;
       }
-      if (!response.ok) throw new Error(`${url} returned HTTP ${response.status}`);
+      if (!response.ok) {
+        await response.body?.cancel();
+        throw new Error(`${url} returned HTTP ${response.status}`);
+      }
       const rawContentType = response.headers.get("content-type");
       const contentType = rawContentType?.split(";", 1)[0]?.trim().toLowerCase();
       if (!contentType || (!contentType.startsWith("text/") && contentType !== "application/json")) {
+        await response.body?.cancel();
         throw new Error(`${url} returned unsupported or missing content type`);
       }
       const length = Number(response.headers.get("content-length"));
       if (Number.isFinite(length) && length > maxBytes) {
+        await response.body?.cancel();
         throw new ResponseTooLargeError(url, maxBytes, length);
       }
       if (!response.body) {
@@ -449,6 +476,14 @@ async function fetchText(
           }
           chunks.push(Buffer.from(value));
         }
+      } catch (error) {
+        if (error instanceof ResponseTooLargeError) throw error;
+        try {
+          await reader.cancel(error);
+        } catch (cancelError) {
+          throw new ResponseReadError(url, new AggregateError([error, cancelError], "response cancellation failed"), bytes);
+        }
+        throw new ResponseReadError(url, error, bytes);
       } finally {
         reader.releaseLock();
       }
@@ -485,7 +520,9 @@ function failureText(error: unknown): string {
 }
 
 function consumedBytes(error: unknown): number {
-  return error instanceof ResponseTooLargeError ? error.consumedBytes : 0;
+  return error && typeof error === "object" && "consumedBytes" in error && typeof error.consumedBytes === "number"
+    ? error.consumedBytes
+    : 0;
 }
 
 async function revalidateLinkedDocuments(
@@ -501,7 +538,7 @@ async function revalidateLinkedDocuments(
   const documents: LlmsDocument[] = [root];
   let bytes = Buffer.byteLength(root.text, "utf8");
   const cachedByUrl = new Map(cached.documents.slice(1).map((document) => [document.url, document]));
-  const candidates = markdownLinks(root.text, new URL(root.url)).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
+  const candidates = markdownLinks(root.text, new URL(root.url));
   for (const candidate of candidates) {
     const cachedDocument = cachedByUrl.get(candidate.toString());
     const requestHeaders: Record<string, string> = {};
@@ -554,6 +591,8 @@ async function revalidateLinkedDocuments(
   return documents;
 }
 
+const activeRefreshes = new Map<string, Promise<LlmsFetchResult>>();
+
 /** Fetch a declared llms.txt root and bounded same-origin direct links. */
 export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResult> {
   const root = canonicalHttpsUrl(options.url);
@@ -565,7 +604,12 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
     : undefined);
   const now = options.now ?? Date.now;
   const cacheFile = cachePath(options.cacheDir, root.toString());
-  return withExclusiveFileLock(`${cacheFile}.lock`, async () => {
+  const active = activeRefreshes.get(cacheFile);
+  if (active) {
+    const result = await active;
+    return result.fromCache ? result : { ...result, fromCache: true };
+  }
+  const refresh = withExclusiveFileLock(`${cacheFile}.lock`, async () => {
     const cached = await readCache(cacheFile);
     const nowMs = now();
     if (!options.force && cached && cached.url === root.toString() && Date.parse(cached.expiresAt) > nowMs) {
@@ -623,7 +667,7 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
     }
 
     const documents: LlmsDocument[] = [asDocument(rootResponse)];
-    const candidates = markdownLinks(rootResponse.text, new URL(rootResponse.url)).slice(0, LLMS_TXT_POLICY.maxLinkedPages);
+    const candidates = markdownLinks(rootResponse.text, new URL(rootResponse.url));
     let bytes = rootResponse.bytes;
     for (const candidate of candidates) {
       if (bytes >= LLMS_TXT_POLICY.maxBytes) {
@@ -633,6 +677,10 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
       try {
         const remaining = LLMS_TXT_POLICY.maxBytes - bytes;
         const response = await fetchText(candidate, fetchImpl, {}, timeoutMs, remaining, lookupImpl, boundFetch);
+        if (response.status === 304) {
+          failures.push(`${candidate} returned HTTP 304 without a cached representation`);
+          continue;
+        }
         bytes += response.bytes;
         if (bytes > LLMS_TXT_POLICY.maxBytes) {
           failures.push(`${candidate} skipped because the aggregate response limit was reached`);
@@ -659,6 +707,12 @@ export async function fetchLlmsTxt(options: FetchOptions): Promise<LlmsFetchResu
     await writeCache(cacheFile, cache);
     return { sourceUrl: root.toString(), documents, failures, fromCache: false, fetchedAt };
   });
+  activeRefreshes.set(cacheFile, refresh);
+  try {
+    return await refresh;
+  } finally {
+    if (activeRefreshes.get(cacheFile) === refresh) activeRefreshes.delete(cacheFile);
+  }
 }
 
 /** Validate a single declaration at the network boundary as well as at board writes. */

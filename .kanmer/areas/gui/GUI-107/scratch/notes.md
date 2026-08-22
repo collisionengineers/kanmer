@@ -7,3 +7,5 @@ Additional root rails preserved: npm run test:http -w @kanmer/mcp-server built t
 After npm run build:core (exit 0), reran npm run test:scripts: exit 0, 82/82 pass. Initial fresh-worktree 80/82 missing-dist failure remains preserved above.
 
 Reran npm run test:http -w @kanmer/mcp-server after the first transient ETIMEDOUT: exit 0, 61/61 pass. The initial 60/61 + spawnSync ETIMEDOUT remains preserved as a controlled-host transient failure.
+
+Review-ready: commit b260b7336ead37a6d552572dafe35a8c8a0005e5 pushed as PR #151; post-implementation report read back. Fresh enter-review gates pass; moving exactly one boundary to Review and stopping for independent review.

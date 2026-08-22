@@ -40,8 +40,8 @@
 - [x] Post-implementation report is written and read back via MCP.
 - [x] Checklist/report/scratch preserve exact failures and evidence gaps.
 - [x] Commit is pushed and recorded on GUI-107; PR is opened and recorded.
-- [ ] Fresh gates pass and ticket moves only Implementing → Review.
-- [ ] Independent-review handoff sent; author does not review or merge.
+- [x] Fresh gates pass and ticket moved only Implementing → Review.
+- [x] Independent-review handoff sent; author does not review or merge.
 
 ## Rail readback
 

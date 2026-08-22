@@ -4,6 +4,13 @@ import { z } from "zod";
 export const ItemTypeSchema = z.enum(["ticket", "plan", "research"]);
 export type ItemType = z.infer<typeof ItemTypeSchema>;
 
+/** Read-only open-question totals used by the phase-1 merge gate. */
+export interface OpenQuestionCount {
+  checked: number;
+  total: number;
+  open: number;
+}
+
 /**
  * Priority is a string id into `board.priorities` (configurable). The default
  * board seeds low/medium/high/urgent, but users can rename/add their own.

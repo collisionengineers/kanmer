@@ -32,3 +32,17 @@ PASS review was recorded at exact head a3bd18897a536153050f7196e5b6e1460d946235,
 ## Fresh-review requirement — 2026-08-22
 
 The prior independent PASS was bound to a3bd1889 and is superseded for merge purposes by the conflict-resolved head 5f63571ecc7d71c102fc134b72d065207b11eae9. No author review or merge was performed; a fresh independent review must inspect the cumulative CORE-056 + CORE-057 diff and the post-sync rails above.
+
+2026-08-22 — Independent review of exact PR #178 head 5f63571ecc7d71c102fc134b72d065207b11eae9 (base CORE-044 cumulative 3c0706627cc73038d91a624e5d494d0148dce4c4; reviewer codex-core057-review, not the author; stale a3bd1889 attestation superseded).
+
+Changes checked: packages/mcp-server/src/sources.ts binds production HTTPS requests to the address list returned by the public-destination preflight, preserves original hostname/SNI, and applies one AbortSignal deadline across lookup, redirects, and body reads. The merged cumulative cache-refresh behavior remains intact. sources.test.mjs adds deterministic bound-address and resolver-timeout regressions while retaining redirect, SSRF, byte, cache-lock/304, and missing-link coverage. plugins/kanmer/mcp/kanmer-mcp.cjs is refreshed from the cumulative server build. No unrelated files changed.
+
+Comments and dispositions:
+- Blocking: none. The request transport uses the validated address callback rather than native DNS, resolver timeout is surfaced, and redirect/linked requests revalidate within the same deadline.
+- Non-blocking: live DNS rebinding/private-network, packaged/Windows, hosted CI, and external-network proof remain INCONCLUSIVE as the packet honestly states.
+- Non-blocking traceability nit: PR #178's body says Kanmer ticket: CORE-057 rather than the canonical Kanmer: CORE-057; the branch fallback resolves CORE-057 and the board item records the PR, so no gate blocker is created here.
+- No unresolved substantive PR review threads were present; the prior a3bd1889 review is stale and this attestation is bound to 5f63571e.
+
+Checks: exact head fetched and verified; node --test packages/mcp-server/src/sources.test.mjs passed 19/19 (exit 0); npm run test:http -w @kanmer/mcp-server reached 86/87 before the inherited/intermittent src/tunnels/readiness.test.mjs TUNNEL_READINESS_TIMEOUT failure (exit 1, first failure preserved), then isolated node --test src/tunnels/readiness.test.mjs passed 7/7 (exit 0). npm run typecheck passed all workspaces (exit 0), npm run test:scripts passed 88/88, npm run smoke:protocol passed 46/46, npm run verify:docs passed, and git diff --check passed. The linked-worktree npm run plugin:check exited 1 because its fresh standalone bundle SHA differed from the committed artifact; the ticket's exact normal-checkout rebuild/parity proof is recorded as 06110A9E0CA2007A51CC2AEDCDD0E2BD353B627484C184AADB709A52AF686878, so local linked-worktree plugin parity remains INCONCLUSIVE rather than PASS. PR #178 is OPEN, MERGEABLE, and CLEAN.
+
+Disposition: PASS. The exact-head implementation meets FRD-027 and ADR-0020's fail-closed remote-fetch boundary, preserves the cumulative CORE-044/CORE-056 behavior, and has deterministic focused evidence. Ready to merge non-squash and move CORE-057 Review→Verifying; merged-main verification must rerun source/HTTP rails and preserve external boundaries.

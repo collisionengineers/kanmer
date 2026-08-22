@@ -117,3 +117,6 @@ Last handoff: 2026-08-22T01:08:53.560Z — DOC-007 closeout started after Done/p
 Last handoff: 2026-08-22T01:09:45.163Z — DOC-007 cleanup complete: PR #49 merged/proof final, checklist closeout checked, exact worktree/branch removed and refs pruned. Release is the final action; negative-fixture/visual acceptance remains INCONCLUSIVE.
 
 - Last handoff: 2026-08-22T02:10:28+01:00 — MCP-041 PR #145 is pushed with implementation `99d3f259`, explicit CORE-037 ancestor `aac1e252`, and merge `72da8d07`; verify rerun reaches all tests/smokes green and is blocked only by missing mcpb CLI dependency. Remains Review; independent merge required; retain worktree/branch.
+
+
+Last handoff: 2026-08-22T01:11:36.922Z — CORE-038 is in Preparing for bounded research of the Windows npm test:scripts literal-glob failure from PR #145. No source worktree/take yet; docs and gates are next.

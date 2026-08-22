@@ -23,3 +23,5 @@
 - 2026-08-22: Hosted PR #145 run 32543323809 failed release-notes.test.mjs 79/80 because clean CI had no .worktrees/kanmer board.
 - 2026-08-22: Disposable documented CORE-027/PR #96 fixture plus opt-in KANMER_BOARD_ROOT seam passes focused 1/1 and scripts 80/80; shared verify reaches and preserves unavailable mcpb CLI failure.
 - 2026-08-22: Commit 79c85e07 and PR #147 opened; awaiting independent review and hosted checks before any stack/merge.
+
+- [x] Verify merged main: the hermetic board fixture is present in PR #145 and the final Windows rail passed 80/80 scripts.

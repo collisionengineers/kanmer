@@ -22,3 +22,5 @@
 - 2026-08-22: PR #145 verify log reproduced the Windows Node 20 Git Bash literal-glob failure after core/GUI/HTTP rails; scope is limited to portable test-file enumeration.
 - 2026-08-22: Implementation commit 7919f5eb; local build, typecheck, launcher and scripts rail pass; shared verify stops at missing optional mcpb CLI (MODULE_NOT_FOUND), preserved in post-implementation report.
 - 2026-08-22: PR #146 opened from core-038-scripts-windows-safe; awaiting required GitHub verify checks before independent review.
+
+- [x] Verify merged main: PR #145 run 32544808992/job 96961421442 passed the full Windows rail; scripts 80/80 and smoke 224/224 also pass locally.

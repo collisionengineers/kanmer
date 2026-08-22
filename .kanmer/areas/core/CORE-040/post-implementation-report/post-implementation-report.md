@@ -31,3 +31,8 @@ The date is deliberately before the documented fixture's Done timestamp and does
 ## Merged-main verification
 
 After merge, rerun npm run test:scripts, npm run typecheck, git diff --check, and npm run verify on a clean shallow Windows checkout. Confirm the canonical PR link and 80/80 script rail.
+
+
+## Merged-main verification addendum
+
+PR #145 merged as 8a9eee57 after hosted run 32544808992/job 96961421442 passed the authoritative Windows verify rail in 2m17s. Local merged-main scripts 80/80, MCP smoke 224/224, and MCP server typecheck passed. A direct core suite retained the known CORE-022 migration timeout/ENOTEMPTY failure; it is preserved as a separate verification boundary.

@@ -38,3 +38,8 @@ The launcher intentionally includes only direct regular files whose names end in
 ## Merged-main verification
 
 After merge, rerun npm run build, npm run test:scripts under Windows npm and Git Bash, npm run typecheck, git diff --check, and npm run verify. Confirm the scripts step remains 80/80 and preserve any independent mcpb or hosted-runner evidence exactly.
+
+
+## Merged-main verification addendum
+
+PR #145 merged as 8a9eee57 after hosted run 32544808992/job 96961421442 passed the authoritative Windows verify rail in 2m17s. Local merged-main scripts 80/80, MCP smoke 224/224, and MCP server typecheck passed. A direct core suite retained the known CORE-022 migration timeout/ENOTEMPTY failure; it is preserved as a separate verification boundary.

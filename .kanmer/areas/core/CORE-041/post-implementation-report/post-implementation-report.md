@@ -29,3 +29,8 @@ On merged `main`, rerun the authoritative verify rail on the hosted Windows runn
 - `npm run build:core` followed by `npm run test:scripts` — exit 0, 80/80 tests passed.
 - `git diff --check` — exit 0.
 - The first fresh-worktree `npm run test:scripts` attempt exited 1 (78/80) because core dist was absent; the setup failure is preserved in checklist/scratch and was cleared by the documented core build.
+
+
+## Merged-main verification addendum
+
+PR #145 merged as 8a9eee57 after hosted run 32544808992/job 96961421442 passed the authoritative Windows verify rail in 2m17s. Local merged-main scripts 80/80, MCP smoke 224/224, and MCP server typecheck passed. A direct core suite retained the known CORE-022 migration timeout/ENOTEMPTY failure; it is preserved as a separate verification boundary.

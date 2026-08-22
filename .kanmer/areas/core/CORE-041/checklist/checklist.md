@@ -12,3 +12,5 @@
 - `npm run build:server` exited 0; `node packages/mcp-server/src/smoke.mjs` exited 0 with 224/224 checks passing, including project identity canonicalization and exact fingerprint checks.
 - `npm run typecheck -w @kanmer/mcp-server` exited 0 and `git diff --check` exited 0.
 - Commit `88ec6307` is pushed on `core-041-project-identity-drive-neutral`; PR #149 is open for independent review.
+
+- [x] Verify merged main: PR #145 run 32544808992/job 96961421442 passed after the drive-neutral smoke fix; superseded PR #149's unrelated path-alias failure is retained.

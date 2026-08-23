@@ -73,9 +73,13 @@ Renderer paths relative to `apps/gui/src/`.
   currently renders Backlog→Done (seven stages) and the Settings tabs are Board/Documents/
   Appearance/Git/Connect** — the Preparing→Done range, the Profiles tab and the Backlog view are
   v3 (Phases 4–5), not yet built.
-- R6 — **not built.** Card right-click is still the native Electron `Menu`
-  (`Board.tsx:323-326` → `App.tsx:644-675` → `main/index.ts:467-528`). This is the v3 delta;
-  Phase 4.8 replaces it with a renderer `ContextMenu`.
+- R6 — the card menu is renderer-drawn and wired through `Board.tsx:349-351`,
+  `App.tsx:926,1973-1984`, and `components/ContextMenu.tsx`; it uses the shared
+  theme tokens, portal rendering, viewport-aware placement, `role=menu`/
+  `role=menuitem` semantics, keyboard navigation, submenu flipping, and
+  Escape/click-away dismissal. `components/ContextMenu.test.tsx` covers root
+  Escape/click-away behavior and proves ArrowLeft closes only the active
+  submenu and restores focus to its parent item.
 - R7 — single-instance lock `main/index.ts:105-125` (with the deliberate smoke-mode failure exit),
   window bounds `settings.ts:136`, app menu with DevTools gated to dev `main/index.ts:274-333`,
   `Welcome.tsx`.

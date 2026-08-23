@@ -5,11 +5,11 @@ run_id: 20260821T105846Z-codex-mcp-client
 group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
-status: running
+status: blocked
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-23T03:01:27.671Z
+updated_at: 2026-08-23T03:15:01.931Z
 lane_limit: 3
-stop_reason:
+stop_reason: external-evidence-exhausted: MCP-028 needs a real Cloudflare Worker/tunnel proof but cloudflared is absent and Wrangler 4.125.0 reports expired/non-interactive auth; MCP-014 needs a fresh Grok get_status call but no XAI_API_KEY; MCP-015 needs an Antigravity host; GUI-104 needs OpenAI control-plane/tunnel access; CORE-022 needs a genuine Windows EPERM/antivirus run; CORE-035 needs a protected disposable integration repo; CORE-036 needs tag-triggered/negative disposable release proof; CORE-042 needs protected two-version updater proof. No safe in-repo action remains that can produce these claims.
 ---
 
 # Auto run — 20260821T105846Z-codex-mcp-client
@@ -967,3 +967,13 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - 2026-08-23T02:41:27.406Z — DOC-019 closed out: PR #227 merged as ac0b19199cbb4d75ad9b7358adc3f46c971121be; merged-main proof PASS (dynamic docs/release rails, hosted 32613165379); exact ticket worktrees and local/remote branch removed; take_ticket release completed. GUI-126 remains the explicit follow-up for parent-focus restoration.
 
 - 2026-08-23T03:01:27.671Z — GUI-126 closed out: PR #229 merged as 694558dd1625456419aa25eb11c1fe4937cebc10; hosted gate and verify PASS; clean detached merged-main proof PASS (ContextMenu 3/3, renderer 28 files / 207 tests, renderer typecheck); exact ticket worktrees and local/remote branch removed; take_ticket release completed.
+
+
+## 2026-08-23 final reconciliation / blocked handoff
+
+- 2026-08-23T03:15:01.931Z — Clean merged-main `694558dd1625456419aa25eb11c1fe4937cebc10` matrix PASS: npm run verify; npm run dist:check (8/8 updater checks); npm run test:scripts (94/94); npm run typecheck; npm run verify:docs; npm run verify:skills; npm run plugin:check; npm run mcpb:check; MCP smoke (224/224); protocol smoke (46/46); discovery smoke (13/13); and published v0.3.3 asset verification (3/3 byte-identical).
+- Live board: format 3, 296 tickets, 286 Done, 10 Verifying, 0 Backlog/Preparing/Implementing/Review, 0 taken, 0 warnings, 16 archived; only main and the canonical board worktree remain registered. No open PRs remain.
+- Historical 75-ticket audit and archived-ticket audit are recorded; Done-incomplete remediations DOC-019, SKILL-032, GUI-124, GUI-125, and GUI-126 are closed out with merged-main proof and cleanup.
+- Remaining Verifying records are not promoted: CORE-022, CORE-024, CORE-025, CORE-035, CORE-036, CORE-042, GUI-104, MCP-014, MCP-015, and MCP-028 retain explicit external/operator evidence gaps and their existing INCONCLUSIVE records.
+- Exact stop predicate: external-evidence-exhausted: MCP-028 needs a real Cloudflare Worker/tunnel proof but cloudflared is absent and Wrangler 4.125.0 reports expired/non-interactive auth; MCP-014 needs a fresh Grok get_status call but no XAI_API_KEY; MCP-015 needs an Antigravity host; GUI-104 needs OpenAI control-plane/tunnel access; CORE-022 needs a genuine Windows EPERM/antivirus run; CORE-035 needs a protected disposable integration repo; CORE-036 needs tag-triggered/negative disposable release proof; CORE-042 needs protected two-version updater proof. No safe in-repo action remains that can produce these claims.
+- Resume action: obtain the named external credentials/hosts or disposable resources, then re-read get_status, HZN-007 context/current/run, every affected ticket's item/gates/docs, and resume only the corresponding Verifying proof/closeout lanes.

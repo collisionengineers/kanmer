@@ -69,13 +69,18 @@ Renderer paths relative to `apps/gui/src/`.
   `viewItemsFor`, `viewCount`, `viewCounts`) and `lib/views.test.ts` asserts the
   badge/rows equality across every view; `App.tsx` derives the tab strip, Ctrl+1…3,
   `allViewItems` and the FilterBar's facet set from it (GUI-071).
-- R5 — views listed match `App.tsx`; Settings' five tabs are in `Settings.tsx:22-23`. **Board
-  currently renders Backlog→Done (seven stages) and the Settings tabs are Board/Documents/
-  Appearance/Git/Connect** — the Preparing→Done range, the Profiles tab and the Backlog view are
-  v3 (Phases 4–5), not yet built.
-- R6 — **not built.** Card right-click is still the native Electron `Menu`
-  (`Board.tsx:323-326` → `App.tsx:644-675` → `main/index.ts:467-528`). This is the v3 delta;
-  Phase 4.8 replaces it with a renderer `ContextMenu`.
+- R5 — views listed match `App.tsx`; `Settings.tsx:35-43` currently exposes Board,
+  Profiles, Appearance, Git, Connect, Dispatch, Remote access, and OpenAI tunnel.
+  `Board.tsx:122-125` renders the six fixed stages Backlog→Done, and the withdrawn
+  separate Backlog view is not present.
+- R6 — `ContextMenu.tsx` is a renderer-drawn menu mounted by `App.tsx:1965-1973`.
+  It uses theme tokens, a portal, viewport-clamped root/submenu placement,
+  Escape/click-away dismissal, and `role=menu` keyboard handling; placement
+  helpers are covered by `lib/menu.test.ts` and outside-dismissal behavior by
+  `components/ContextMenu.test.tsx`. Full submenu keyboard navigation is not
+  yet proven: the current implementation closes the entire menu when
+  `ArrowLeft` is pressed in a submenu instead of returning focus to its parent.
+  Restoring that focus is tracked separately from this documentation refresh.
 - R7 — single-instance lock `main/index.ts:105-125` (with the deliberate smoke-mode failure exit),
   window bounds `settings.ts:136`, app menu with DevTools gated to dev `main/index.ts:274-333`,
   `Welcome.tsx`.

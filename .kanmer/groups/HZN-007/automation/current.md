@@ -957,3 +957,6 @@ CORE-091 closed Done after merged-main proof PASS at 30c99ffa; exact ticket/veri
 
 
 Final clean verification evidence: hosted PR run 32609479149 passed the authoritative npm run verify (build, npm test, typecheck, MCP/HTTP smokes, MCPB parity, protocol/discovery, skills/agents, plugin checks) on clean npm ci/Node20. A local detached worktree attempt with npm ci could not retain workspace symlinks and failed during standalone build on missing @kanmer/core exports; the same exact merged SHA built and passed in hosted CI. This environment-specific local failure is preserved, not promoted to PASS. No board/worktree/ticket claims were changed.
+
+
+Packaged rail in isolated normal clone at origin/main 30c99ffa: npm run dist:check PASS (electron-vite build, electron-builder Windows NSIS package, updater package 8 checks). No source/repo user files were touched; temp clone is disposable and will be removed.

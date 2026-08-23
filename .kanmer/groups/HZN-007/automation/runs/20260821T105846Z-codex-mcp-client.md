@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-23T00:10:00Z
+updated_at: 2026-08-23T00:46:43.613Z
 lane_limit: 3
 stop_reason:
 ---
@@ -909,3 +909,6 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - 2026-08-23 verification lane — CORE-049–CORE-060 closeout audit: all recorded implementation/merge SHAs are reachable from current origin/main a8cc6b01; PRs #171–#182 and #197–#199 confirmed MERGED. Proofs refreshed on detached merged-main with Core IO/source/store 123/123, source 32/32, scripts 89/89, core/server builds/typecheck, and plugin artifact hash parity PASS. GUI kanmerGit 48/48 PASS; production sync-caller index.sync is 3/11 PASS and 8/11 explicit INCONCLUSIVE from Windows temp EPERM/fixed-timeout failures under shared concurrent workspace. CORE-060 has no remaining unreachable-stack condition on current origin/main; hosted/live Windows/external network boundaries remain INCONCLUSIVE.
 
 - 2026-08-23 final closeout — CORE-049–CORE-060 are Done/released. All proofs and checklist closeout boxes are complete; exact ticket worktrees and local/remote branches are removed; no taken state remains. CORE-060 is reachable on current origin/main, so no unreachable-stack blocker remains; explicit hosted/live/operator INCONCLUSIVE boundaries remain recorded.
+
+
+- 2026-08-23T00:46:43.613Z — GUI closeout lane: GUI-112, GUI-113, GUI-114, GUI-115, GUI-116, GUI-117, GUI-118, GUI-119, GUI-120, GUI-122, and GUI-123 proofs finalized on merged `origin/main` `a8cc6b01ca95340f1186bccc9770238036d080d8`; target PRs verified MERGED; Verifying→Done passed with proof/questions gates; outcomes and PR URLs/merge dates recorded; exact ticket worktrees and local/remote branches removed; taken tickets released. Hosted PR #168 verify/kanmer-gate run 32607472961 passed. Deterministic provider/connect rails passed; live native/packaged/visual/protected/multi-machine and interrupted Git-heavy/full-workspace limits remain explicitly INCONCLUSIVE in proofs.

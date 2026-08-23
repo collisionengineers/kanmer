@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-23T01:47:18.614Z
+updated_at: 2026-08-23T01:48:06.684Z
 lane_limit: 3
 stop_reason:
 ---
@@ -929,3 +929,5 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - 2026-08-23T01:46:01.856Z — DOC-019, SKILL-032, and GUI-124 each passed the backlog→preparing move after their profile gates were re-read; no ticket is taken yet. Dispatch is now authorized as three conflict-free implementation lanes. Authors must use their recorded worktrees/branches, write post-implementation reports, and stop at Review for root's independent review; no self-merge or cross-lane edits.
 
 - 2026-08-23T01:47:18.614Z — follow-up queued from GUI historical audit: GUI-125 will remove the unused priority filter field/active-state residue from FilterBar and focused tests, matching FRD-008's zero-priority-surface contract. The old GUI-031 tab drag/PageUp plan remains explicitly not ticketed because current FRD-019 does not require it. GUI-125 stays Backlog until one of the three active remediation lanes frees a conflict-free slot.
+
+- 2026-08-23T01:48:06.684Z — approved public release repair completed for exact tag v0.3.3 (240e269d5ce1ac05c4e74ac30cc45eeb75968151): clean exact-tag npm run dist:check passed; the three expected hyphenated assets were uploaded with clobber, temporary dotted duplicate assets were removed, and `node scripts/verify-release-assets.mjs 0.3.3 --dir apps/gui/release` exited 0 with all published bytes uploaded and matching. CORE-036/CORE-042 proof retains the earlier verifier failure and the remaining missing tag-workflow/negative-disposable/two-version-updater boundaries; no unsupported Done claim was made.

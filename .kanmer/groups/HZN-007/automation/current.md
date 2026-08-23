@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-23T01:47:18.614Z
+updated_at: 2026-08-23T01:48:06.684Z
 ---
 
 # Current auto run — HZN-007
@@ -981,3 +981,6 @@ Dispatch: 2026-08-23T01:46:01.856Z — DOC-019, SKILL-032, and GUI-124 are in Pr
 
 
 Queued follow-up: 2026-08-23T01:47:18.614Z — GUI-125 is a bounded priority-surface cleanup in Backlog, waiting for a free implementation lane.
+
+
+Release boundary: 2026-08-23T01:48:06.684Z — exact-tag v0.3.3 public assets now pass the standalone verifier after approved repair; CORE-036/CORE-042 remain Verifying for the unperformed tag-triggered/negative disposable and two-version updater boundaries.

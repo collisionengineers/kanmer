@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-23T02:30:25.313Z
+updated_at: 2026-08-23T02:31:19.726Z
 ---
 
 # Current auto run — HZN-007
@@ -1020,3 +1020,5 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 - 2026-08-23T02:29:59.465Z — GUI-125 closed out: PR #228 merged as 6abe8abae7e5e533032a30cc2c175fb38ba7403c; clean detached merged-main renderer proof PASS; exact ticket worktrees and local/remote branch removed; take_ticket release completed.
 
 - 2026-08-23T02:30:25.313Z — GUI-126 prepared from DOC-019 review follow-up: files/plan written, backlog→preparing passed, and one free GUI lane is authorized. The child author must implement only submenu ArrowLeft parent-focus restoration, update FRD-019 evidence, stop at Review, and leave root to independently review/merge.
+
+- 2026-08-23T02:31:19.726Z — independent re-review of DOC-019 head d640899edb764679d1669921e1bbb2b3b132d670 found four additional actionable findings (dynamic repoDocs resolution, release manifest edge case, target-appropriate generated footer, and dry-run local-write wording). Author replied with fixes in scope; PR remains Review and merge is held until a new exact-head review and hosted run pass.

@@ -18,3 +18,5 @@ The canonical/mirror validator and tests were updated for target-neutral source 
 - README and AGENTS clarify dry-run skips Git/remote publication but verification may write local dist/release/mcpb artifacts.
 
 Focused mirror tests now pass 3/3 and verify:docs passes. Ticket remains Review.
+
+Also aligned `scripts/release.mjs` dry-run output/comment: no Git or remote release state is written, but verification may create local build outputs; the message no longer claims the entire tree is untouched.

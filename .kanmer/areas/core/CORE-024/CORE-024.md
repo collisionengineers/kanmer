@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Implement kanmer check-pr — ticket linkage and open-questions merge gate
   (phase 1)
-status: verifying
+status: done
 area: core
 order: 10
 assignee: core024-executor
@@ -34,7 +34,7 @@ prs:
   - '155'
 archived: false
 created: '2026-08-16T18:26:15.167Z'
-updated: '2026-08-22T17:38:53.157Z'
+updated: '2026-08-23T00:28:44.609Z'
 ---
 
 ## What

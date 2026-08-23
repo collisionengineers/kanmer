@@ -21,3 +21,8 @@ This is an INCONCLUSIVE integration proof, not a protected-merge PASS. The exact
 ### Blocking external boundary
 
 GitHub branch-protection PUTs for both disposable private `main` and `kanmer-board` returned HTTP 403: “Upgrade to GitHub Pro or make this repository public to enable this feature.” Therefore protected conversation blocking, protected merge, exact merge SHA, detached merged-main verification, and final disposable cleanup are not proved. The fixture PRs remain open; no bypass, rule weakening, or fabricated PASS was performed. The ticket remains Verifying until an operator supplies a disposable repository with branch-protection capability.
+
+
+## Closeout disposition
+
+The implementation source is reachable on merged main through the recorded cumulative trace. The protected disposable-repository boundary returned HTTP 403 and cannot be rerun in the available environment; this remains explicitly INCONCLUSIVE/accepted-risk, not a fabricated PASS. The ticket is closed because no in-scope source work remains and the limitation is recorded for the controlling release/integration follow-up.

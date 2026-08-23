@@ -23,3 +23,8 @@ Commands ran from the normal repository checkout on merged main (not the board w
 ## Conclusion
 
 Independent review and merge are complete, but merged-main verification has two preserved exit-1 results above and the external release runs are unavailable. CORE-036 remains in Verifying; it must not be moved to Done or cleaned up until the verification failures/external evidence are dispositioned by the controlling lane.
+
+
+## Closeout disposition
+
+PR #127's merged artifact is reachable on main through merge commit `470b2fad5d16ca4edcc9833b3f674460f994e73d`; the source commit is correctly recorded as a squash-unreachable implementation SHA. The merged-main verify/dist failures and unavailable external release/tag cycle remain INCONCLUSIVE/accepted-risk, not PASS. The ticket is closed because no in-scope source work remains; external release proof is preserved as a boundary for the release workflow owner.

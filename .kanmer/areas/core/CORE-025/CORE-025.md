@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Expand kanmer/gate — stage, dependency, review-SHA and commit-reachability
   checks (phase 2)
-status: verifying
+status: done
 area: core
 order: 20
 assignee: core-025-gate
@@ -35,7 +35,7 @@ prs:
   - '159'
 archived: false
 created: '2026-08-16T18:26:15.191Z'
-updated: '2026-08-22T17:38:55.354Z'
+updated: '2026-08-23T00:28:45.113Z'
 ---
 
 ## What

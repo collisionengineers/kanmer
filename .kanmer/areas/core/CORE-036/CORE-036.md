@@ -2,7 +2,7 @@
 id: CORE-036
 type: ticket
 title: Tag-push release verification workflow
-status: verifying
+status: done
 area: core
 order: 200
 assignee: core036-take
@@ -11,6 +11,7 @@ stageEntered:
   preparing: '2026-08-20T16:03:18.784Z'
   review: '2026-08-21T19:27:49.096Z'
   verifying: '2026-08-21T19:29:46.294Z'
+  done: '2026-08-23T00:28:46.198Z'
 taken_at: '2026-08-21T19:04:23.566Z'
 branch: core-036-tag-push-release-verification
 worktree: .worktrees/core-036
@@ -27,7 +28,7 @@ prs:
   - '127'
 archived: false
 created: '2026-08-20T10:14:42.545Z'
-updated: '2026-08-21T22:51:23.448Z'
+updated: '2026-08-23T00:28:46.198Z'
 ---
 
 ## What

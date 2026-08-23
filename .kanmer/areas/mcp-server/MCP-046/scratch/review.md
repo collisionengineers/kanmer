@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "231"
-head_sha: "ba8e11db230f14d52cdcba69ffd3d5837fecb922"
-verdict: needs-changes
+head_sha: "49612bfb10a81656c36617b9ca7d1573f49f7f78"
+verdict: pass
 reviewer: "doc019_executor"
 independent: true
 plan_hash: "08d18d9d435084fe"
-ticket_updated: "2026-08-23T13:25:01.212Z"
+ticket_updated: "2026-08-23T13:31:19.524Z"
 findings:
   - id: F-001
     severity: blocker
@@ -26,13 +26,13 @@ findings:
     disposition: fixed
   - id: F-005
     severity: major
-    summary: "ADR-0012's later GUI-106 consequence still says neither launcher path adds cd, contradicting the explicit cd /d KANMER_PROVIDER_CWD restoration exception and implementation."
-    disposition: open
+    summary: "ADR-0012 contained a contradictory no-cd statement after adding the explicit cwd-restoration exception."
+    disposition: fixed
 ---
 
 ## Review scope
 
-This independent review binds PR #231 to exact head `ba8e11db230f14d52cdcba69ffd3d5837fecb922`. The remediation now uses the quote-free delayed-expansion descriptor, captures `KANMER_PROVIDER_CWD`, and restores that directory before launching MCP. The Windows regression executes the shipped shim logic and proves both final CWD and provider marker remain the workspace. Codex remains on its separate quoted launcher contract.
+This independent review binds PR #231 to exact head `49612bfb10a81656c36617b9ca7d1573f49f7f78`. The implementation uses the quote-free delayed-expansion descriptor, captures `KANMER_PROVIDER_CWD`, and restores that directory before launching MCP. The Windows regression executes the shipped shim logic and proves both final CWD and provider marker remain the workspace. Codex remains on its separate quoted launcher contract.
 
 ## Checks and evidence
 
@@ -40,8 +40,8 @@ This independent review binds PR #231 to exact head `ba8e11db230f14d52cdcba69ffd
 - `node --test scripts/kanmer-mcp-launcher.test.mjs`: PASS, 4/4.
 - GUI `connect.test.ts`: PASS, 35/35; providers tests: PASS, 66/66.
 - `npm run plugin:check`: PASS; GUI typecheck: PASS; `git diff --check`: PASS.
-- Hosted `kanmer-gate`: PASS. Hosted required `verify` on run 32642245657: PASS.
-- The packet's real installed Antigravity proof is bounded and explicit: `KANMER_AGY_FINAL_PUSHDCALL_OK`; `--dangerously-skip-permissions` was used only to bypass the non-interactive permission prompt. The packet retains the unrelated full GUI Vitest EPERM/timeouts rather than hiding them.
+- Hosted `kanmer-gate`: PASS; hosted required `verify`: PASS on run 32642585777.
+- The packet's real installed Antigravity proof is bounded and explicit: `KANMER_AGY_FINAL_PUSHDCALL_OK`; `--dangerously-skip-permissions` was used only to bypass the non-interactive permission prompt. The packet retains unrelated full GUI Vitest EPERM/timeouts rather than hiding them.
 
 ## Findings and dispositions
 
@@ -49,8 +49,8 @@ This independent review binds PR #231 to exact head `ba8e11db230f14d52cdcba69ffd
 - **F-002 — major, fixed (PR thread 3838509510).** AGENTS.md and FRD-012 document the host-specific quote-free form.
 - **F-003 — blocker, fixed (PR thread 3838526763).** The spaced-LOCALAPPDATA regression passes using the quote-free pushd/call path.
 - **F-004 — blocker, fixed.** The shipped shim restores `KANMER_PROVIDER_CWD` before Electron-as-Node, and the 4/4 Windows regression proves the final provider workspace CWD.
-- **F-005 — major, open.** The new ADR-0012 consumer paragraph correctly allows only `cd /d` restoration of the captured provider cwd, but the later GUI-106 consequence still says “neither path adds ... `cd`.” Reconcile or remove that stale sentence so the governing ADR has one contract.
+- **F-005 — major, fixed (commit 49612bfb).** ADR-0012 now states the only permitted `cd /d` is restoration of the captured provider cwd after Antigravity's temporary `pushd`; the later consequence text repeats that exception and forbids other cwd changes.
 
 ## Verdict
 
-Needs changes. Runtime behavior, focused checks, governing references, and both hosted checks pass at this head, but ADR-0012 still contains one contradictory no-`cd` statement. The ticket remains in Review; no merge or move was performed.
+Pass. The diff is scoped, the governing launcher contract is consistent, focused and hosted checks are green, and every prior review finding/thread has a disposition. The ticket remains in Review; no merge or move was performed.

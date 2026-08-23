@@ -3,3 +3,5 @@
 2026-08-23T14:26:00Z — Reviewer F-004 fixed and shipped-shim regression passes, but re-review identified stale ADR-0012 prohibition on cd and hosted verify red. ba8e11db reconciles ADR-0012 to allow only explicit cd /d restoration of KANMER_PROVIDER_CWD. Hosted failure evidence: unrelated core docs.test.ts and store.test.ts 5s timeouts; kanmer-gate passed. Re-review requested at ba8e11db; do not merge until attestation and required checks are green.
 
 2026-08-23T14:31:00Z — Reviewer found a second ADR-0012 sentence claiming neither launcher adds cd. Commit 49612bfb clarifies the explicit cd /d KANMER_PROVIDER_CWD restoration exception in that later paragraph. Independent re-review requested at 49612bfb; hosted checks rerun.
+
+2026-08-23T14:37:00Z — Independent re-review PASS at exact head 49612bfb; attestation version 0aa23eef0da80443. F-001–F-005 fixed, ADR-0012 wording consistent. Hosted kanmer-gate+verify PASS on run 32642585777. Ready for authorized merge; ticket remains Review until merge.

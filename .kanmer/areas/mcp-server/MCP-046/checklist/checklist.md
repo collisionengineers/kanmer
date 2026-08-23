@@ -18,4 +18,4 @@
 - Final installed plugin plus bound agy get_status: exact KANMER_AGY_FINAL_PUSHDCALL_OK, with --dangerously-skip-permissions used only to avoid the non-interactive permission prompt.
 - Focused config regression: 4/4; installer launcher tests: 4/4; GUI connect.test.ts: 35/35; script rail: 98/98; plugin:check: PASS; GUI typecheck: PASS; git diff --check: PASS.
 - Full GUI Vitest attempted; unrelated Windows EPERM cleanup/timeouts in index.sync.test.ts and kanmerGit.test.ts are retained as a failed rail.
-- Hosted kanmer-gate passed. Hosted verify later failed only on unrelated core Vitest 5-second timeouts in docs.test.ts and store.test.ts; the next push reruns the required rail.
+- Hosted kanmer-gate and verify both pass on run 32642585777.

@@ -14,8 +14,8 @@ Why does the canonical protected remote-public verifier reject the documented to
 
 ## Implications
 
-The verifier needs an allowlisted descriptor schema with `tokenFile` and an optional `localEndpoint` reference; unknown/inline credential keys remain unsafe. The client should pass the separate loopback endpoint to the fixture doctor and derive a top-level outcome from all boundary checks. The CLI wrapper should preserve explicit PASS, FAIL, and INCONCLUSIVE states. Tests must cover the safe reference path and retain the existing unsafe inline-credential assertion.
+The verifier will use an allowlisted descriptor schema containing `endpoint`, `tokenFile`, `expectedProject`, `localEndpoint`, and `mutate`; unknown/inline credential keys remain unsafe. Requiring `localEndpoint` makes the public proof's local-doctor claim explicit rather than silently binding the public URL. The client will pass that loopback endpoint to the fixture doctor and derive a top-level outcome from all boundary checks. The CLI wrapper will preserve explicit PASS, FAIL, and INCONCLUSIVE states. Tests will cover the safe reference path and retain the existing unsafe inline-credential assertion.
 
 ## Open questions
 
-- The operator must supply the protected local loopback endpoint in the descriptor when running the public proof; if it is absent, the run should remain explicit about the resulting doctor limitation rather than silently claiming local readiness.
+- None. The operator-run descriptor will carry the protected local loopback endpoint reference as a non-secret URL.

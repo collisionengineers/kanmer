@@ -34,9 +34,14 @@ Refreshed the canonical `kanmer-docs` document-model asset and its repository mi
 
 On merged `main`, run:
 
+- `npm run verify:skills` — expect the skill-prose rail to pass with zero legacy `impact` hits.
 - `npm run verify:docs` — expect the manual check and mirror freshness check to pass.
 - `node --test scripts/check-doc-structure.test.mjs` — expect 2/2 pass, including the stale-fixture rejection.
 - `npm run test:scripts` — expect the full dependency-free scripts suite to pass.
-- `git diff --check` and inspect the merged diff for only the listed documentation/verification files.
+- `npm run build:core` and `git diff --check` — expect both to pass.
 
 No GUI screenshot is required; FRD-019 changes are source-backed prose only.
+
+## Review remediation — F-001
+
+The independent review found that the canonical skill asset still contained the literal legacy term `impact`, which caused hosted `verify:skills` to fail. The asset and generated mirror now describe `files` as the current v3 location without naming that retired term. Fresh local `verify:skills`, `verify:docs`, the focused mirror tests (2/2), `test:scripts` (91/91), `build:core`, and `git diff --check` all pass. The ticket remains in Review for fresh independent review; no merge was performed.

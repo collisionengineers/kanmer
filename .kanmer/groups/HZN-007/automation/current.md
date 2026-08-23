@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-23T02:01:30.035Z
+updated_at: 2026-08-23T02:03:01.192Z
 ---
 
 # Current auto run — HZN-007
@@ -1002,3 +1002,6 @@ Hosted result: 2026-08-23T02:00:33.535Z — SKILL-032 PR #225 gate and verify bo
 
 
 Review blocker: 2026-08-23T02:01:30.035Z — DOC-019 PR #227 needs changes: verify:skills rejects the legacy term in the new skill asset. F-001 is open; no merge.
+
+
+Review metadata correction: 2026-08-23T02:03:01.192Z — GUI-124 and SKILL-032 attestations now carry plan_hash and ticket_updated; rerun any failed hosted gate before merge.

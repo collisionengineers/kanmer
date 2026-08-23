@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-23T02:01:30.035Z
+updated_at: 2026-08-23T02:03:01.192Z
 lane_limit: 3
 stop_reason:
 ---
@@ -943,3 +943,5 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - 2026-08-23T02:00:33.535Z — SKILL-032 PR #225 hosted rerun 32611381353 completed PASS: kanmer-gate and authoritative verify both succeeded at exact head 31a7504e. Review attestation now records the hosted PASS; merge is still held until the independent review/merge sequence is explicitly executed.
 
 - 2026-08-23T02:01:30.035Z — independent DOC-019 review changed to NEEDS-CHANGES at PR #227 head e1d86926 after hosted verify 32611615139 failed verify:skills on the literal legacy term in the canonical skill asset. One blocker F-001 is open; author must reword/regenerate and return with a fresh head/attestation.
+
+- 2026-08-23T02:03:01.192Z — corrected GUI-124 and SKILL-032 review attestations with required plan_hash and ticket_updated metadata after the hosted gate schema rejected the earlier shorthand. No source or stage changes; existing review verdicts/check evidence remain unchanged.

@@ -14,7 +14,7 @@ checks:
   prose_validator: "PASS — node scripts/verify-skill-prose.mjs, all 15 sections"
   build: "PASS — npm run build"
   diff_check: "PASS — git diff --check"
-  hosted_gate: "PASS — rerun required after this corrected attestation"
+  hosted_gate: "PASS — rerun 32611381353 gate and verify completed at exact head"
 ---
 
-Independent review of PR #225 at exact head 31a7504eb3287fc7a2cca893a0a1a4c9afe5b0db: no findings. The three-file change is bounded, source-backed, and preserves all assertions while adding a deterministic guard against the deleted legacy review-asset claim. The prior review scratch was malformed; this document replaces it with the required review-attestation frontmatter. The first hosted run 32611381353 remains a recorded failure; rerun after this correction is required before merge.
+Independent review of PR #225 at exact head 31a7504eb3287fc7a2cca893a0a1a4c9afe5b0db: no findings. The three-file change is bounded, source-backed, and preserves all assertions while adding a deterministic guard against the deleted legacy review-asset claim. The prior review scratch was malformed; this document replaces it with the required review-attestation frontmatter. Hosted rerun 32611381353 completed PASS after the corrected attestation; no merge performed in this review action.

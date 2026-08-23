@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-23T01:59:20.160Z
+updated_at: 2026-08-23T02:00:33.535Z
 lane_limit: 3
 stop_reason:
 ---
@@ -937,3 +937,7 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - 2026-08-23T01:57:54.413Z — corrected SKILL-032 review scratch via MCP to the required kind: review-attestation frontmatter after hosted gate rejected the initial narrative-only scratch. Review verdict remains PASS with no findings; hosted run 32611381353 must be rerun and pass before merge.
 
 - 2026-08-23T01:59:20.160Z — independent review of GUI-124 PR #226 at exact head e11c0f28 found no findings; focused test/diff and hosted verify PASS. Review attestation was written via MCP; the first hosted gate remains FAIL from pre-review timing and must be rerun before merge.
+
+- 2026-08-23T02:00:02.072Z — independent review of DOC-019 PR #227 at exact head e1d86926 found no findings; mirror/docs/scripts/diff checks PASS and kanmer-gate PASS. Hosted verify remains IN_PROGRESS; no merge performed.
+
+- 2026-08-23T02:00:33.535Z — SKILL-032 PR #225 hosted rerun 32611381353 completed PASS: kanmer-gate and authoritative verify both succeeded at exact head 31a7504e. Review attestation now records the hosted PASS; merge is still held until the independent review/merge sequence is explicitly executed.

@@ -11,3 +11,16 @@
 Execution packet omitted checklist; this checklist mirrors the approved plan, files scope, and verification points.
 
 Focused ContextMenu tests passed 3/3; renderer suite passed 28 files / 207 tests; renderer-only web typecheck passed. GUI node typecheck/build limitations are recorded in scratch. FRD-019 R6 now cites the renderer implementation and keyboard evidence.
+
+---
+
+## Closeout — GUI-126
+
+- [x] PR merge verified (PR #229 MERGED as 694558dd1625456419aa25eb11c1fe4937cebc10)
+- [x] proof.md finalised (merged-main checks recorded)
+- [x] Moved to final stage (Verifying → Done)
+- [x] Outcome recorded in ticket body (PR link and verification evidence)
+- [x] cd out of worktree; remove recorded GUI-126 worktree
+- [x] Delete merged GUI-126 branch
+- [x] Fetch/prune worktrees
+- [x] take_ticket action: release

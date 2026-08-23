@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-23T02:41:27.406Z
+updated_at: 2026-08-23T03:01:27.671Z
 lane_limit: 3
 stop_reason:
 ---
@@ -965,3 +965,5 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - 2026-08-23T02:38:05.572Z — DOC-019 exact-head re-review PASS at f9449c488f8b535a8e382783b30848c16a5a60c3: all ten findings fixed, four review threads resolved after author replies, hosted run 32613165379 verify/gate PASS, and PR #227 is clean/mergeable. Root may merge after final preflight; no self-review or author merge.
 
 - 2026-08-23T02:41:27.406Z — DOC-019 closed out: PR #227 merged as ac0b19199cbb4d75ad9b7358adc3f46c971121be; merged-main proof PASS (dynamic docs/release rails, hosted 32613165379); exact ticket worktrees and local/remote branch removed; take_ticket release completed. GUI-126 remains the explicit follow-up for parent-focus restoration.
+
+- 2026-08-23T03:01:27.671Z — GUI-126 closed out: PR #229 merged as 694558dd1625456419aa25eb11c1fe4937cebc10; hosted gate and verify PASS; clean detached merged-main proof PASS (ContextMenu 3/3, renderer 28 files / 207 tests, renderer typecheck); exact ticket worktrees and local/remote branch removed; take_ticket release completed.

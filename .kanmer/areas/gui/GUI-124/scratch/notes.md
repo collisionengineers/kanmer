@@ -11,3 +11,5 @@ GUI build `npm run build -w @kanmer/gui` failed in existing main integration: Ro
 Implementation committed on `gui-124-surface-restore-failures`: e11c0f286ab231e0d8201ca102558663694db19a. Diff check passed; 3 files changed. Focused session test passed 3/3. Full GUI tests/typecheck/build remain recorded baseline failures.
 
 Opened PR https://github.com/collisionengineers/kanmer/pull/226 from `gui-124-surface-restore-failures`; commit e11c0f286ab231e0d8201ca102558663694db19a recorded on the ticket.
+
+PR workflow 32611494789 kanmer-gate failed because it started before the MCP move reached Review: it observed stage implementing and no review attestation. Ticket is now in Review; this gate failure is a board/PR timing race, not an implementation result. Verify job was still pending when execution stopped; independent reviewer should rerun/recheck after the Review stage is visible.

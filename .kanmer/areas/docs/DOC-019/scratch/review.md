@@ -1,13 +1,13 @@
 ---
 kind: review-attestation
 pr: "227"
-head_sha: "d640899edb764679d1669921e1bbb2b3b132d670"
+head_sha: "f9449c488f8b535a8e382783b30848c16a5a60c3"
 verdict: pass
 reviewer: "codex-root"
 independent: true
-reviewed_at: "2026-08-23T02:22:00Z"
+reviewed_at: "2026-08-23T03:36:00Z"
 plan_hash: "4ddbb871b1818857"
-ticket_updated: "2026-08-23T02:16:05.542Z"
+ticket_updated: "2026-08-23T02:33:48.647Z"
 findings:
   - id: F-001
     severity: blocker
@@ -29,21 +29,37 @@ findings:
     severity: major
     summary: "FRD-019 overstated submenu keyboard-navigation verification."
     disposition: fixed
-    follow_up: "GUI-126 owns restoring parent focus for ArrowLeft; this documentation ticket now records the current limitation."
+    follow_up: "GUI-126 owns restoring parent focus for ArrowLeft; this documentation ticket records the current limitation."
   - id: F-006
     severity: minor
     summary: "Release re-check guidance omitted retained local artifact and --dir requirements."
     disposition: fixed
+  - id: F-007
+    severity: major
+    summary: "Freshness checker hard-coded repoDocs globs instead of resolving effective board configuration."
+    disposition: fixed
+  - id: F-008
+    severity: major
+    summary: "Release guidance overstated the requirement for a matching local latest.yml."
+    disposition: fixed
+  - id: F-009
+    severity: minor
+    summary: "Generated mirror retained Kanmer-source-only maintenance instructions."
+    disposition: fixed
+  - id: F-010
+    severity: minor
+    summary: "Dry-run guidance omitted that verification builds may write local artifacts."
+    disposition: fixed
 checks:
   scope: "PASS — canonical/mirror docs, README/AGENTS release and verification guidance, FRD-019 freshness, and deterministic mirror rail"
-  source_backing: "PASS — generated mirror and target-neutral asset match current format-3 source; FRD-019 now records the real ContextMenu limitation"
-  mirror_test: "PASS — node --test scripts/check-doc-structure.test.mjs, 2/2"
+  source_backing: "PASS — generated mirror and target-neutral asset match current format-3 source; release guidance matches verifier fallback; FRD-019 records the real ContextMenu limitation"
+  mirror_test: "PASS — node --test scripts/check-doc-structure.test.mjs, 4/4"
   docs_rail: "PASS — npm run verify:docs"
   skills_rail: "PASS — npm run verify:skills"
-  scripts: "PASS — npm run test:scripts, 91/91"
+  scripts: "PASS — npm run test:scripts, 93/93"
   diff_check: "PASS — git diff --check"
-  hosted_gate: "PASS — PR run 32612436698 kanmer-gate"
-  hosted_verify: "PASS — PR run 32612436698 verify"
+  hosted_gate: "PENDING — exact-head rerun required after this attestation; prior run 32613085883 gate passed but verify was an unrelated Windows temp-lock timeout"
+  hosted_verify: "PENDING — exact-head rerun required; run 32613085883 failed on three environment-sensitive Windows temp-lock/cleanup timeouts, not changed files"
 ---
 
-Independent re-review of PR #227 at exact head d640899edb764679d1669921e1bbb2b3b132d670: the original stale-term defect and all five automated review findings are dispositioned. The canonical asset is target-neutral, the board mirror resolves this repository's globs, unsupported configurability is removed, AGENTS documents verify:docs, FRD-019 records the current submenu limitation and links GUI-126, and README/AGENTS explain retained release artifacts and --dir. The focused rails and hosted checks are green at this exact head. No merge performed in this review action.
+Independent re-review of PR #227 at exact head f9449c488f8b535a8e382783b30848c16a5a60c3: all ten review findings are dispositioned. The checker now resolves effective repoDocs from the board or injected configuration, release guidance documents installer/blockmap plus latest.yml presence-only fallback accurately, the generated mirror is consumer-safe, and dry-run wording distinguishes local build writes from Git/remote writes. The four-test freshness suite, docs/skills rails, 93 script tests, and diff check pass. A fresh exact-head hosted run is required before merge; no merge performed in this review action.

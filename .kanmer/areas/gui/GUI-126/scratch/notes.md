@@ -3,3 +3,5 @@ Checks: focused ContextMenu suite passed 3/3 after adding cleanup and DOM attrib
 Additional renderer-only typecheck `npx tsc --noEmit -p tsconfig.web.json` passed with no output. The workspace typecheck remains INCONCLUSIVE only because its node project hits pre-existing dispatch/core/provider errors before the web project.
 
 Implementation committed on `gui-126-parent-focus`: 893907828f9cbfe72b67b3931352891f1d899897. Diff check passed; source/test/FRD files are the only changes.
+
+Opened PR https://github.com/collisionengineers/kanmer/pull/229 from `gui-126-parent-focus`; commit 893907828f9cbfe72b67b3931352891f1d899897 recorded on the ticket.

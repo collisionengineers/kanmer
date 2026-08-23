@@ -5,7 +5,6 @@ export interface Filters {
   /** A group id — the cross-cutting lens (FRD-001 G8). */
   group?: string;
   area?: string; // undefined = all, "" = no area, else area id
-  priority?: string;
   assignee?: string;
   label?: string;
 }
@@ -41,7 +40,6 @@ export function FilterBar({
   const active =
     !!search ||
     filters.area !== undefined ||
-    !!filters.priority ||
     !!filters.assignee ||
     !!filters.label;
 

@@ -942,3 +942,6 @@ Batch blocker: CORE-048 packet was read and verification reached the merged-main
 
 
 CORE-091 entered Preparing after the mcpb:check parity failure; research and plan are now being written against the current merged source and committed plugin artifact.
+
+
+CORE-091 assigned to worktree .worktrees/core-091 on core-091-refresh-current-mcp-artifact; dependency installation completed without package changes, implementation is artifact-only.

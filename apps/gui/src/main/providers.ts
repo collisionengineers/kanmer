@@ -62,7 +62,10 @@ export function codexPortableProbeInvocation(): Invocation {
 
 /** The installer-owned Windows runtime used by native plugin MCP configs. */
 export function antigravityPortableInvocation(probe = false): Invocation {
-  const launcher = '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"';
+  // Antigravity forwards an embedded quote in the final `/c` argv token
+  // literally. Keep the launcher token unquoted so cmd.exe can expand and
+  // execute the installer-owned path.
+  const launcher = "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd";
   return {
     command: "cmd.exe",
     args: ["/d", "/s", "/c", `${launcher}${probe ? " --probe" : ""}`],

@@ -6,6 +6,8 @@ status: backlog
 area: core
 assignee: ''
 profile: feature
+stageEntered:
+  preparing: '2026-08-16T07:30:47.409Z'
 labels:
   - gates
   - parked
@@ -16,9 +18,7 @@ refs:
   - docs/product/prd/PRD-001-kanmer-v3.md
 archived: true
 created: '2026-08-16T07:20:34.432Z'
-updated: '2026-08-16T07:42:13.930Z'
-stageEntered:
-  preparing: '2026-08-16T07:30:47.409Z'
+updated: '2026-08-23T01:02:19.516Z'
 ---
 
 A ticket may not leave Preparing once its branch has commits. If there is no
@@ -102,3 +102,8 @@ in the plan rather than slipping in.
 `leave-preparing`; the same ticket with an empty branch passes; no branch, a
 missing branch and a non-git project are all no-ops; and the re-opened case
 behaves however the plan decides, asserted either way.
+
+
+## 2026-08-23 archived audit
+
+Disposition: archived design correction, not an unresolved defect. Its timestamp/branch-order proposal is explicitly refuted by the ticket itself and superseded by the CORE-011 gate model; no unique current behavior is claimed from this packet. The active pipeline and per-stage gate behavior are audited separately in the HZN-007 run.

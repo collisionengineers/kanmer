@@ -14,7 +14,7 @@ links:
 docs_todo: true
 archived: true
 created: '2026-08-17T00:09:22.013Z'
-updated: '2026-08-20T10:23:56.496Z'
+updated: '2026-08-23T01:02:20.049Z'
 ---
 
 ## What
@@ -67,3 +67,8 @@ just-merged ADR — `refs` on closed tickets point at those paths.
 
 ## Outcome
 Shipped ownerless via PRs #57/#59 while this ticket sat in backlog — the rail is scripts/check-doc-numbering.mjs, on main with tests. Archived 2026-08-20 as a board-vs-reality correction; the groom sweep that should have caught this is [[SKILL-027]].
+
+
+## 2026-08-23 archived audit
+
+Disposition: resolved and still green. `scripts/check-doc-numbering.mjs` is present and the current `npm run test:scripts` rail passes 89/89, including duplicate ADR fixture coverage. No unique unresolved defect remains.

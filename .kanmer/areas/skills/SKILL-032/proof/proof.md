@@ -22,4 +22,7 @@ attempts:
     result: PASS
     summary: "7/7 regression tests passed on the merged tree."
 ---
+PR: "https://github.com/collisionengineers/kanmer/pull/225"
+merged_at: "2026-08-23T02:11:53Z"
+---
 Merged-main verification PASS for SKILL-032. The stale review-asset guidance is removed, the deterministic guard remains wired, and the focused validator/test suite passes at the reachable merge commit.

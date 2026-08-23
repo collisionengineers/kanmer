@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-23T01:52:13.081Z'
   verifying: '2026-08-23T02:12:04.055Z'
   done: '2026-08-23T02:12:30.788Z'
-taken_at: '2026-08-23T01:47:00.010Z'
-branch: skill-032-remove-stale-review-prose
-worktree: .worktrees/skill-032
 labels:
   - remediation
   - skills
@@ -28,11 +25,17 @@ refs:
 docs_todo: true
 commits:
   - 31a7504eb3287fc7a2cca893a0a1a4c9afe5b0db
+  - 3862f2c7a8fa9fee8ce041c60364c7f90fb973ce
 prs:
   - '225'
 archived: false
 created: '2026-08-23T01:44:25.447Z'
-updated: '2026-08-23T02:12:30.788Z'
+updated: '2026-08-23T02:13:38.443Z'
 ---
 
 The historical SKILL-009 audit found `plugins/kanmer/skills/kanmer-review/SKILL.md` still says the deleted `pr-*` review assets remain untouched and SKILL-015 owns their deletion. Update the skill prose and its verification coverage to describe the current whole-file scratch/review flow and absent legacy assets. Search the bundled skill tree for the same stale claim and change only the contradictory guidance. Link [[SKILL-009]].
+
+
+## Outcome
+
+PR #225 (https://github.com/collisionengineers/kanmer/pull/225) merged on 2026-08-23 as 3862f2c7a8fa9fee8ce041c60364c7f90fb973ce. Merged-main proof passes the skill validator and focused regression tests; no follow-up ticket was created.

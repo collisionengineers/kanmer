@@ -1,1 +1,5 @@
 Taken in .worktrees/skill-032 on skill-032-remove-stale-review-prose. Updated only plugins/kanmer/skills/kanmer-review/SKILL.md to describe the current whole-file scratch/review.md attestation and state deleted pr-* assets are outside the workflow. Added verify-skill-prose checks and a regression fixture for the stale claim. Focused node --test scripts/verify-skill-prose.test.mjs: PASS (8/8); node scripts/verify-skill-prose.mjs: PASS (15 sections); npm ci completed; npm run build completed; npm run plugin:check: PASS (37 tools, bundle parity, 12 frontmatters, isolated handshake).
+
+Opened PR #225: https://github.com/collisionengineers/kanmer/pull/225. Commit 31a7504eb3287fc7a2cca893a0a1a4c9afe5b0db recorded on the ticket. Ready for independent review; author will not review or merge.
+
+Moved implementing → review after re-reading get_doc_gates: post-implementation-report and questions-resolved satisfied. Stop condition reached: PR #225 is open and ready for independent kanmer-review; author will not review or merge.

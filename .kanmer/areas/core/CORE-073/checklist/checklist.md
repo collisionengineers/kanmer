@@ -8,11 +8,11 @@ Implementation notes: added bindRetryBoardStatus in apps/gui/src/main/syncBranch
 
 ## Closeout — CORE-073
 
-- [ ] PR merge verified
-- [ ] proof.md finalised with PR URL and merge date
-- [ ] Moved to final stage
-- [ ] Outcome recorded in ticket body
-- [ ] Recorded worktree removed
-- [ ] Recorded branch deleted
-- [ ] git fetch --prune and worktree prune
-- [ ] take_ticket release
+- [x] PR merge verified
+- [x] proof.md finalised with PR URL and merge date
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body
+- [x] Recorded worktree removed
+- [x] Recorded branch deleted
+- [x] git fetch --prune and worktree prune
+- [x] take_ticket release

@@ -12,9 +12,6 @@ stageEntered:
   review: '2026-08-22T15:53:08.008Z'
   verifying: '2026-08-22T15:55:52.294Z'
   done: '2026-08-23T00:03:55.533Z'
-taken_at: '2026-08-22T15:47:52.691Z'
-branch: core-074-atomic-ignore-merge
-worktree: .worktrees/core-074
 labels:
   - pr-review
   - core-071
@@ -34,7 +31,7 @@ prs:
   - '193'
 archived: false
 created: '2026-08-22T15:46:18.818Z'
-updated: '2026-08-23T00:03:55.543Z'
+updated: '2026-08-23T00:08:43.920Z'
 ---
 
 PR #192 review finding: ensureIgnore performs a second read and then an ordinary writeFile, leaving a TOCTOU window where a concurrent edit between the compare and write is overwritten; post-write verification cannot detect an edit lost before the write. Replace this with a lock/atomic compare-and-swap or other race-safe merge, and add a deterministic regression that exercises the write-window boundary.

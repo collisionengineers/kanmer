@@ -12,9 +12,6 @@ stageEntered:
   review: '2026-08-22T16:13:56.692Z'
   verifying: '2026-08-22T16:17:07.559Z'
   done: '2026-08-23T00:03:54.771Z'
-taken_at: '2026-08-22T16:07:37.658Z'
-branch: core-073-bind-open-board-root
-worktree: .worktrees/core-073
 labels:
   - pr-review
   - core-058
@@ -34,7 +31,7 @@ prs:
   - '195'
 archived: false
 created: '2026-08-22T15:15:55.538Z'
-updated: '2026-08-23T00:03:54.782Z'
+updated: '2026-08-23T00:08:42.894Z'
 ---
 
 PR #180 thread 3836323269: reject a retry result whose boardRoot differs from the open context (or rebuild the whole context) so sync/store/watcher cannot operate on another worktree; add regression.

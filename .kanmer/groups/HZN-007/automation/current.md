@@ -915,3 +915,6 @@ Batch milestone: CORE-046 is verified on origin/main fdaededc, proof written, mo
 
 
 Batch blocker: CORE-048 packet was read and verification reached the merged-main reachability gate. Its recorded commit 8ffff2a0f8848bb42868559641b56148ba893ca6 is not reachable from origin/main fdaededc, so no proof/Done/cleanup/release was performed; CORE-048 remains Verifying and taken with .worktrees/core-048. CORE-044–047 are Done/released. Parent promotion is required before continuing CORE-048 onward.
+
+
+2026-08-23T00:06:00Z — Verification/closeout batch CORE-062..079 on merged origin/main fdaededc: CORE-062..074, CORE-076 and CORE-079 proved on clean merged-main rails (core 310/310, GUI Git 31/31 serialized, scripts 88/88, typecheck/build/manual/docs/diff PASS), moved Verifying→Done, and released/cleaned exact worktrees/branches/remotes. Preserved initial parallel/setup failures and INCONCLUSIVE live Windows/hosted/packaged/visual limits in each proof. CORE-075 remains Verifying: no commits/PR or recorded branch/worktree exists. CORE-077/078 remain Verifying: PR #198/#199 commits are only on unmerged CORE-060 stack and are not reachable from origin/main. Scratch blockers written; resume after mainline reaches those commits.

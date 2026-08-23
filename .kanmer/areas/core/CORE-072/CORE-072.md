@@ -12,9 +12,6 @@ stageEntered:
   review: '2026-08-22T16:03:57.101Z'
   verifying: '2026-08-22T16:25:37.312Z'
   done: '2026-08-23T00:03:54.260Z'
-taken_at: '2026-08-22T15:59:40.487Z'
-branch: core-072-resume-orphan-migration
-worktree: .worktrees/core-072
 labels:
   - pr-review
   - core-058
@@ -37,7 +34,7 @@ prs:
   - '196'
 archived: false
 created: '2026-08-22T15:15:55.500Z'
-updated: '2026-08-23T00:03:54.273Z'
+updated: '2026-08-23T00:08:42.017Z'
 ---
 
 PR #180 thread 3836323268: when orphan creation copied the source board and ignore repair failed, a later retry must complete the source-board cleanup/migration rather than only repairing .gitignore; add regression under FRD-020 R2.

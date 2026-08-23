@@ -11,3 +11,16 @@
 Execution packet omitted checklist/files documents; these documents mirror the approved plan scope and verification points.
 
 Focused board/view tests passed 38/38. Full GUI/typecheck/build limitations are recorded in scratch. `rg` returned exit 1 with no `Filters.priority`/`priority?:` matches in renderer source; `defaultPriority` remains in settings IPC/main/App paths. Diff is two deletions in `FilterBar.tsx` only.
+
+---
+
+## Closeout — GUI-125
+
+- [x] PR merge verified (PR #228 MERGED as 6abe8abae7e5e533032a30cc2c175fb38ba7403c)
+- [x] proof.md finalised (merged-main checks recorded)
+- [x] Moved to final stage (Verifying → Done)
+- [x] Outcome recorded in ticket body (PR link, no follow-ups)
+- [ ] cd out of worktree; remove recorded GUI-125 worktree
+- [ ] Delete merged GUI-125 branch
+- [ ] Fetch/prune worktrees
+- [ ] take_ticket action: release

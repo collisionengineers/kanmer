@@ -29,7 +29,7 @@ async function callTool(client, request) {
   catch { return { value: undefined, failed: true }; }
 }
 
-async function runFixtureDoctor({ endpoint, token, expectedProject, tools }) {
+async function runFixtureDoctor({ endpoint, localEndpoint = endpoint, token, expectedProject, tools }) {
   const publicHostname = "fixture.invalid";
   const publicEndpoint = `https://${publicHostname}/mcp`;
   const fixtureCheck = () => ({ status: "pass", details: { reason: "deterministic fixture provider seam" } });
@@ -50,7 +50,7 @@ async function runFixtureDoctor({ endpoint, token, expectedProject, tools }) {
       expectedTools: async () => tools,
       canonicalTools: async () => tools,
       tunnelStatus: async () => ({ state: "connected", provider: "fixture", publicEndpoint, projectFingerprint: expectedProject, attempt: 1, changedAt: new Date().toISOString() }),
-      localStatus: async () => ({ state: "ready", endpoint, authRequired: true, projectFingerprint: expectedProject, tools }),
+      localStatus: async () => ({ state: "ready", endpoint: localEndpoint, authRequired: true, projectFingerprint: expectedProject, tools }),
       resolveDns: async () => ["127.0.0.1"],
       tls: async () => ({ protocol: "TLSv1.3", issuer: "deterministic fixture", sanMatch: true, valid: true }),
       probe: async ({ endpoint: requested, authorization }) => {
@@ -71,14 +71,14 @@ async function runFixtureDoctor({ endpoint, token, expectedProject, tools }) {
       expectedProject,
       remoteHostname: publicHostname,
       secretReference: "protected-token-reference",
-      localEndpoint: endpoint,
+      localEndpoint,
       expectedTools: tools,
       tunnel: { executable: "fixture-cloudflared", tunnelId: "fixture-tunnel", hostname: publicHostname, credentialsFile: "protected-credential-reference", endpoint },
     },
   });
 }
 
-export async function runRemotePublicClient({ endpoint, token, expectedProject, mutate = false }) {
+export async function runRemotePublicClient({ endpoint, localEndpoint = endpoint, token, expectedProject, mutate = false }) {
   assert.equal(typeof endpoint, "string");
   assert.equal(typeof token, "string");
   const headers = { authorization: `Bearer ${token}` };
@@ -135,7 +135,7 @@ export async function runRemotePublicClient({ endpoint, token, expectedProject, 
         activityEntries = Array.isArray(activityPayload) ? activityPayload.length : Array.isArray(activityPayload?.entries) ? activityPayload.entries.length : 0;
         mutation = !created.failed && !hasToolError(created.value) && documentReadback && itemReadback && archived && activityEntries >= 4;
       }
-      doctorReport = await runFixtureDoctor({ endpoint, token, expectedProject, tools });
+      doctorReport = await runFixtureDoctor({ endpoint, localEndpoint, token, expectedProject, tools });
     }
     result = {
       initialized,
@@ -160,6 +160,7 @@ export async function runRemotePublicClient({ endpoint, token, expectedProject, 
         cleanup: true,
       }),
     };
+    result.outcome = result.boundaryChecks.every((item) => item.status === "pass") ? "pass" : "fail";
   } catch (error) {
     runError = error;
   } finally {
@@ -175,20 +176,22 @@ export async function runRemotePublicClient({ endpoint, token, expectedProject, 
       localDoctor: false, authNegative: false, initialized, expectedProject: false, toolsMatch: false, dispatchExcluded: false,
       wrongProjectBlocked: false, mutation: false, gateBlocked: false, lifecycle: false, cleanup: false,
     }) };
+    result.outcome = "fail";
   }
   return result;
 }
 
 export async function runRemotePublicDescriptor(descriptorPath) {
   const raw = JSON.parse(await readFile(descriptorPath, "utf8"));
-  if (!raw || typeof raw !== "object" || Array.isArray(raw) || Object.keys(raw).some((key) => /token|bearer|authorization|secret/i.test(key))) {
+  const allowedKeys = new Set(["endpoint", "tokenFile", "expectedProject", "localEndpoint", "mutate"]);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw) || Object.keys(raw).some((key) => !allowedKeys.has(key))) {
     throw new Error("REMOTE_PUBLIC_DESCRIPTOR_UNSAFE");
   }
-  if (typeof raw.endpoint !== "string" || typeof raw.tokenFile !== "string" || typeof raw.expectedProject !== "string") {
+  if (typeof raw.endpoint !== "string" || typeof raw.tokenFile !== "string" || typeof raw.expectedProject !== "string" || typeof raw.localEndpoint !== "string" || (raw.mutate !== undefined && typeof raw.mutate !== "boolean")) {
     throw new Error("REMOTE_PUBLIC_DESCRIPTOR_INVALID");
   }
   const material = await loadTokenMaterial(raw.tokenFile);
-  return runRemotePublicClient({ endpoint: raw.endpoint, token: material.token, expectedProject: raw.expectedProject, mutate: raw.mutate === true });
+  return runRemotePublicClient({ endpoint: raw.endpoint, localEndpoint: raw.localEndpoint, token: material.token, expectedProject: raw.expectedProject, mutate: raw.mutate === true });
 }
 
 if (process.argv[1]?.endsWith("remote-public-client.mjs")) {
@@ -200,7 +203,7 @@ if (process.argv[1]?.endsWith("remote-public-client.mjs")) {
     try {
       const result = await runRemotePublicDescriptor(process.argv[3]);
       process.stdout.write(`${JSON.stringify(result)}\n`);
-      process.exitCode = result.boundaryChecks.some((item) => item.status === "fail") ? 1 : 0;
+      process.exitCode = result.outcome === "pass" ? 0 : result.outcome === "fail" ? 1 : 2;
     } catch {
       process.stdout.write(`${JSON.stringify({ outcome: "inconclusive", reason: "protected remote client run unavailable" })}\n`);
       process.exitCode = 2;

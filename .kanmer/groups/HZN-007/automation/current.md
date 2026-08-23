@@ -948,3 +948,6 @@ CORE-091 assigned to worktree .worktrees/core-091 on core-091-refresh-current-mc
 
 
 CORE-091 moved to Review with PR #224 and commit ed7d8a98; generated-only diff, plugin:check, mcpb:check, and scripts 89/89 passed. Independent review assigned before merge.
+
+
+CORE-091 PR #224 merged at 2026-08-23T01:08:38Z as 30c99ffa; hosted verify and kanmer-gate run 32609479149 passed after clean npm ci artifact correction. Independent reviewer PASS at ddf05569; moving to Verifying for exact merged-main proof.

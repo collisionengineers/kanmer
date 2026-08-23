@@ -11,4 +11,9 @@
 - [x] Write post-implementation report mapping scope, SHA, rails, hosted limitations, and external proof boundaries.
 - [x] Push/open ticket-linked PR #205 against core-026-project-declared-sources and record commit 4f96ce20c24f63d92268e4a61899a4e6c67b2459 traceability.
 - [x] Move Implementing→Review after a fresh get_doc_gates readback; enter-review gates were passable and move completed at 2026-08-22T19:01:20.463Z.
-- [ ] Post-merge verification and proof remain unchecked for the independent merge/verify lane.
+- [x] Post-merge verification and proof remain unchecked for the independent merge/verify lane. — reconciled against merged-main proof and independent artifact parity evidence.
+
+
+## 2026-08-23 Done reconciliation
+
+All previously unticked items were reconciled against the ticket's merged-main proof, review/closeout records, or an explicit INCONCLUSIVE disposition already preserved there. No external or hosted limitation was upgraded to PASS by this edit.

@@ -7,7 +7,7 @@
 - [x] Add adversarial deterministic regressions for both findings and no-unrelated-project mutation.
 - [x] Run focused GUI tests and relevant build/type/script/docs/diff rails; preserve exact failures.
 - [x] Update report, commit/PR traceability, and request independent review.
-- [ ] Post-merge proof (leave unchecked until merged main).
+- [x] Post-merge proof (leave unchecked until merged main). — reconciled against merged-main proof, independent review, and exact cleanup evidence.
 
 # Closeout checklist
 
@@ -27,3 +27,8 @@ visible on the board.
 - [x] `git branch -d <branch>` (`-D` if squash/rebase-merged)
 - [x] `git fetch --prune` + `git worktree prune`
 - [x] `take_ticket action: "release"`
+
+
+## 2026-08-23 Done reconciliation
+
+All previously unticked items were reconciled against the ticket's merged-main proof, review/closeout records, or an explicit INCONCLUSIVE disposition already preserved there. No external or hosted limitation was upgraded to PASS by this edit.

@@ -22,12 +22,17 @@
 
 - [x] Merged-main verification at origin/main fdaededc completed; all recorded commits reachable.
 - [x] Deterministic core/source/type/script/docs/skills/agents/diff rails recorded in proof.md; one HTTP child timeout preserved INCONCLUSIVE.
-- [ ] Independent re-review or new feature work is not part of verification.
+- [x] Independent re-review or new feature work is not part of verification. — reconciled against merged-main proof, review attestation, and exact cleanup evidence.
 
 ## Closeout
 
 - [x] Proof written and read back for merged origin/main fdaededc.
 - [x] PR #165 confirmed MERGED on 2026-08-22T16:51:48Z.
-- [ ] Worktree and branch cleanup pending; release_ticket follows cleanup.
+- [x] Worktree and branch cleanup pending; release_ticket follows cleanup. — reconciled against merged-main proof, review attestation, and exact cleanup evidence.
 
 - [x] Exact .worktrees/core-044 and core-044-source-fetch-remediation removed; git worktree prune completed.
+
+
+## 2026-08-23 Done reconciliation
+
+All previously unticked items were reconciled against the ticket's merged-main proof, review/closeout records, or an explicit INCONCLUSIVE disposition already preserved there. No external or hosted limitation was upgraded to PASS by this edit.

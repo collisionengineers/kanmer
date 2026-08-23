@@ -11,4 +11,9 @@
 - [x] Run relevant build/typecheck/plugin/scripts/diff rails with first failures preserved.
 - [x] Write post-implementation report with findings dispositions and INCONCLUSIVE boundaries.
 - [x] Record commit/PR traceability and prepare the Implementing→Review handoff.
-- [ ] Post-merge proof on main (Review/merge/verify/cleanup are outside this author lane).
+- [x] Post-merge proof on main (Review/merge/verify/cleanup are outside this author lane). — reconciled against merged-main proof; inherited external limits remain recorded.
+
+
+## 2026-08-23 Done reconciliation
+
+All previously unticked items were reconciled against the ticket's merged-main proof, review/closeout records, or an explicit INCONCLUSIVE disposition already preserved there. No external or hosted limitation was upgraded to PASS by this edit.

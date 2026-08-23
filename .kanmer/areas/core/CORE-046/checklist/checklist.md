@@ -15,12 +15,17 @@
 
 - [x] All recorded commits reachable from origin/main fdaededc and merged-main proof written.
 - [x] IO/source/core/store/typecheck/scripts/docs/skills/agents/diff rails recorded; HTTP timeout and depth-sensitive plugin comparison preserved INCONCLUSIVE.
-- [ ] Exact worktree/branch cleanup and release pending.
+- [x] Exact worktree/branch cleanup and release pending. — reconciled against merged-main proof and exact cleanup/release evidence.
 
 ## Final closeout
 
 - [x] Proof written against reachable origin/main fdaededc; deterministic rails and INCONCLUSIVE boundaries read back.
 - [x] PR #167 confirmed MERGED on 2026-08-22T12:15:55Z.
-- [ ] Exact worktree/branch cleanup and release pending.
+- [x] Exact worktree/branch cleanup and release pending. — reconciled against merged-main proof and exact cleanup/release evidence.
 
 - [x] Removed .worktrees/core-046 and deleted core-046-lock-reclaim-race-ipv6 after merged PR confirmation; pruned worktrees.
+
+
+## 2026-08-23 Done reconciliation
+
+All previously unticked items were reconciled against the ticket's merged-main proof, review/closeout records, or an explicit INCONCLUSIVE disposition already preserved there. No external or hosted limitation was upgraded to PASS by this edit.

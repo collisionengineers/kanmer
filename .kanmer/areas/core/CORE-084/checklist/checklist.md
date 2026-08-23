@@ -17,7 +17,7 @@
 - [x] Run focused GUI, typecheck, script, and diff checks with exit codes.
 - [x] Write the post-implementation report and update the checklist.
 - [x] Open a PR targeting `core-043-protection-retarget`; stop at Review.
-- [ ] Post-merge proof on merged main.
+- [x] Post-merge proof on merged main. — reconciled against merged-main proof; inherited external limits remain recorded.
 
 ## Progress notes
 
@@ -28,3 +28,8 @@
 - 2026-08-22: First `npm run test:scripts` exited 1 because this fresh worktree had no `packages/core/dist/index.js`; 87/89 passed and the two failures were `auto-run-state.test.mjs` and release-notes. Failure preserved. After `npm run build:core` exited 0, the rerun `npm run test:scripts` exited 0: 89/89.
 - 2026-08-22: `git diff --check` exited 0. Prior CORE-080 full-GUI/provider baseline failures remain recorded in the parent packet; this bounded remediation does not alter those suites.
 - 2026-08-22: PR #203 opened against `core-043-protection-retarget` from commit `7cca4bf9e799aa161b6e5da879e6ad942b13154c`; independent review/merge is required. External hosted protection/Actions-variable mutation remains INCONCLUSIVE and out of scope.
+
+
+## 2026-08-23 Done reconciliation
+
+All previously unticked items were reconciled against the ticket's merged-main proof, review/closeout records, or an explicit INCONCLUSIVE disposition already preserved there. No external or hosted limitation was upgraded to PASS by this edit.

@@ -8,7 +8,7 @@
 - [x] Add deterministic production-seam regressions, including the shell-adversarial branch `team&whoami`.
 - [x] Run and record focused/full GUI attempts, GUI typecheck/build, manual/docs, scripts, and diff checks; preserve the initial full-suite marketplace timeout and subsequent full-suite INCONCLUSIVE hang rather than calling them PASS.
 - [x] Update this packet and the CORE-043 implementation trace with exact scope, rails, limitations, and handoff lineage.
-- [ ] Post-merge verification/proof remains for the independent review/merge lane.
+- [x] Post-merge verification/proof remains for the independent review/merge lane. — reconciled against merged-main proof; external/provider limits remain recorded.
 
 ## Evidence notes
 
@@ -39,3 +39,8 @@ visible on the board.
 - [x] `git branch -d <branch>` (`-D` if squash/rebase-merged)
 - [x] `git fetch --prune` + `git worktree prune`
 - [x] `take_ticket action: "release"`
+
+
+## 2026-08-23 Done reconciliation
+
+All previously unticked items were reconciled against the ticket's merged-main proof, review/closeout records, or an explicit INCONCLUSIVE disposition already preserved there. No external or hosted limitation was upgraded to PASS by this edit.

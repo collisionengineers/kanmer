@@ -10,4 +10,9 @@
 - [x] Run focused tests, relevant workspace rails, and diff-check; preserve first failures and INCONCLUSIVE boundaries.
 - [x] Write post-implementation report with exact commit/PR and exit codes.
 - [x] Open ticket-linked PR and hand off at Review; leave post-merge proof unchecked.
-- [ ] Verify merged-main proof after independent review and merge (Verifying stage only).
+- [x] Verify merged-main proof after independent review and merge (Verifying stage only). — reconciled against merged-main proof; inherited external limits remain recorded.
+
+
+## 2026-08-23 Done reconciliation
+
+All previously unticked items were reconciled against the ticket's merged-main proof, review/closeout records, or an explicit INCONCLUSIVE disposition already preserved there. No external or hosted limitation was upgraded to PASS by this edit.

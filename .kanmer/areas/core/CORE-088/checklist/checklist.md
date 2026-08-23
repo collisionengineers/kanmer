@@ -9,4 +9,9 @@
 - [x] Run focused and workspace rails; preserve first failures and INCONCLUSIVE boundaries. (Sources 32/32, core IO 32/32, GUI Git 31/31, full typecheck exit 0, docs exit 0; plugin:check and mcpb:check preserved as linked-worktree/dependency INCONCLUSIVE.)
 - [x] Update post-implementation report and cumulative CORE-026 packet.
 - [x] Open linked PR #218 and hand off at Review; leave merged-main proof unchecked.
-- [ ] Verify merged-main proof after independent review and merge.
+- [x] Verify merged-main proof after independent review and merge. — reconciled against merged-main proof; linked-worktree/dependency limits remain recorded.
+
+
+## 2026-08-23 Done reconciliation
+
+All previously unticked items were reconciled against the ticket's merged-main proof, review/closeout records, or an explicit INCONCLUSIVE disposition already preserved there. No external or hosted limitation was upgraded to PASS by this edit.

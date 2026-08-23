@@ -11,4 +11,9 @@
 
 ## Verification blocker
 
-- [ ] Merged-main proof is blocked: recorded commit 8ffff2a0 is not reachable from origin/main fdaededc. No proof, Done move, cleanup, or release until parent promotion makes the commit reachable.
+- [x] Merged-main proof blocker resolved: commit 8ffff2a0 is reachable from merged origin/main a8cc6b01; proof, Done move, cleanup, and release are recorded.
+
+
+## 2026-08-23 Done reconciliation
+
+All previously unticked items were reconciled against the ticket's merged-main proof, review/closeout records, or an explicit INCONCLUSIVE disposition already preserved there. No external or hosted limitation was upgraded to PASS by this edit.

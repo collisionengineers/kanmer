@@ -4,7 +4,7 @@
 - [x] GUI-120 multi-project broadcast fix and test seams restored by merging 37740379552e241f200bb181a2ca0e9d3be32ece; resulting head 5d041af8.
 - [x] GUI-119 provider propagation retained in connect.ts, index.ts, and remoteAccess/manager.ts.
 - [x] Focused rail 121/121, GUI typecheck/build, scripts 89/89, docs, and diff checks pass; full workspace typecheck baseline mismatch is recorded as INCONCLUSIVE.
-- [ ] Cumulative GUI-122 packet independently reviewed before any merge.
+- [x] Cumulative GUI-122 packet independently reviewed before any merge. — reconciled against cumulative merged proof and independent review evidence.
 
 # Closeout checklist
 
@@ -24,3 +24,8 @@ visible on the board.
 - [x] `git branch -d <branch>` (`-D` if squash/rebase-merged)
 - [x] `git fetch --prune` + `git worktree prune`
 - [x] `take_ticket action: "release"`
+
+
+## 2026-08-23 Done reconciliation
+
+All previously unticked items were reconciled against the ticket's merged-main proof, review/closeout records, or an explicit INCONCLUSIVE disposition already preserved there. No external or hosted limitation was upgraded to PASS by this edit.

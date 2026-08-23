@@ -4,7 +4,7 @@ type: ticket
 title: >-
   CORE-045 review remediation: narrow destination predicates and propagate
   recovery errors
-status: verifying
+status: done
 area: core
 assignee: codex-core051-executor
 profile: fix
@@ -12,6 +12,7 @@ stageEntered:
   preparing: '2026-08-22T12:19:13.064Z'
   review: '2026-08-22T12:36:53.591Z'
   verifying: '2026-08-22T12:52:16.445Z'
+  done: '2026-08-23T00:42:02.436Z'
 taken_at: '2026-08-22T12:23:15.192Z'
 branch: core-051-destination-error-remediation
 worktree: .worktrees/core-051
@@ -40,7 +41,12 @@ prs:
   - '174'
 archived: false
 created: '2026-08-22T12:18:46.999Z'
-updated: '2026-08-22T12:52:35.452Z'
+updated: '2026-08-23T00:42:34.197Z'
 ---
 
 Close remaining CORE-045 cumulative review blockers: narrow IPv4 special-use predicates to only non-global subranges while retaining public exceptions; match 3fff::/20 rather than 3fff::/16; propagate the actionable final claim error after stale recovery instead of the original EEXIST. Add deterministic regressions, refresh CORE-045 cumulative report/item traceability to head 0f9af92b and child lineage, and resolve the related PR #166 threads with evidence. Link [[CORE-045]].
+
+
+## Closeout outcome
+
+PR #173 (https://github.com/collisionengineers/kanmer/pull/173) merged 2026-08-22T12:51:54Z; child PR #174 (https://github.com/collisionengineers/kanmer/pull/174) merged 2026-08-22T12:48:12Z. Recorded merged-main proof on origin/main a8cc6b01; deterministic evidence and explicit INCONCLUSIVE boundaries are in proof.md.

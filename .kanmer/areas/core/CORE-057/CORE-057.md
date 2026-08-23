@@ -2,7 +2,7 @@
 id: CORE-057
 type: ticket
 title: 'CORE-044 review remediation: pin DNS validation and bound resolver timeout'
-status: verifying
+status: done
 area: core
 assignee: codex-core057-executor
 profile: fix
@@ -10,6 +10,7 @@ stageEntered:
   preparing: '2026-08-22T13:05:54.403Z'
   review: '2026-08-22T13:18:03.398Z'
   verifying: '2026-08-22T13:58:39.370Z'
+  done: '2026-08-23T00:42:04.184Z'
 taken_at: '2026-08-22T13:06:05.181Z'
 branch: core-057-dns-bound-resolver
 worktree: .worktrees/core-057
@@ -33,7 +34,12 @@ prs:
   - '178'
 archived: false
 created: '2026-08-22T13:03:00.897Z'
-updated: '2026-08-22T13:58:58.663Z'
+updated: '2026-08-23T00:42:35.951Z'
 ---
 
 Close CORE-044 remote-source review findings: ensure the outbound request is bound to the address validated by the public-destination preflight (or implement a governing-document-backed safe equivalent), and enforce the documented fetch deadline across DNS resolution. Add deterministic regression coverage and preserve surfaced errors. Link [[CORE-044]].
+
+
+## Closeout outcome
+
+PR #178 (https://github.com/collisionengineers/kanmer/pull/178) merged 2026-08-22T13:58:08Z. Recorded merged-main proof on origin/main a8cc6b01; deterministic evidence and explicit INCONCLUSIVE boundaries are in proof.md.

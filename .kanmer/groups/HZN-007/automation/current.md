@@ -924,3 +924,6 @@ Batch blocker: CORE-048 packet was read and verification reached the merged-main
 
 
 2026-08-23T01:24Z — CORE-043 final head b59fad2f hosted run 32607472961 PASS (verify 97114733014; kanmer-gate 97114733111). Independent reviewer PASS exact head with F-001/F-002/F-003 fixed and F-004 accepted-risk; unresolved GitHub thread for first-observation custom branch was replied fixed and resolved. PR #168 is merge-ready; live protection/native/packaged proof remains INCONCLUSIVE.
+
+
+2026-08-23T01:30Z — CORE-043 closed out: proof/proof.md written on merged main a8cc6b01 (PR #168), move Verifying→Done passed all gates, ticket trace includes final b59fad2f and merge a8cc6b01, assignee released, local/remote branch and .worktrees/core-043 removed. Final hosted and merged-main evidence PASS; live protection/native/packaged boundaries remain INCONCLUSIVE.

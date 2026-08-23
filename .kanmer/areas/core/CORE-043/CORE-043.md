@@ -2,7 +2,7 @@
 id: CORE-043
 type: ticket
 title: Retarget branch protection when the Kanmer board branch is renamed
-status: verifying
+status: done
 area: core
 assignee: core041-executor
 profile: fix
@@ -10,9 +10,7 @@ stageEntered:
   preparing: '2026-08-22T10:43:27.609Z'
   review: '2026-08-22T10:53:15.286Z'
   verifying: '2026-08-22T23:24:37.632Z'
-taken_at: '2026-08-22T10:44:37.700Z'
-branch: core-043-protection-retarget
-worktree: .worktrees/core-043
+  done: '2026-08-23T00:26:13.229Z'
 labels:
   - follow-up
   - branch-protection
@@ -73,7 +71,7 @@ prs:
   - '223'
 archived: false
 created: '2026-08-22T06:48:09.524Z'
-updated: '2026-08-23T00:23:51.462Z'
+updated: '2026-08-23T00:26:17.753Z'
 ---
 
 Deferred from CORE-033 review finding: GUI board-branch rename pushes the new branch and deletes the old one, while protection targets literal kanmer-board and forbids deletion. Coordinate protection retargeting or explicitly constrain the supported rename flow so the live board branch cannot become unprotected and stale protection is not left behind. Link [[CORE-033]].

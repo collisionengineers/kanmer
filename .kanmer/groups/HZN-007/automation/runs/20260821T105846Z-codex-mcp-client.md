@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-23T02:16:30.954Z
+updated_at: 2026-08-23T02:17:06.543Z
 lane_limit: 3
 stop_reason:
 ---
@@ -953,3 +953,5 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - 2026-08-23T02:13:48.789Z — SKILL-032 closed out: PR #225 merged as 3862f2c7a8fa9fee8ce041c60364c7f90fb973ce; merged-main proof PASS; exact ticket worktree and local/remote branch removed; take_ticket release completed.
 
 - 2026-08-23T02:16:30.954Z — GUI-124 closed out: PR #226 merged as 181b6475208a2f18eaeeaa0a9beb44c0c786ae4f; clean detached merged-main focused test proof PASS; exact ticket worktrees and local/remote branch removed; take_ticket release completed.
+
+- 2026-08-23T02:17:06.543Z — GUI-125 prepared from the queued historical-audit remediation: plan written, backlog→preparing passed, and one free conflict-free lane is authorized. The child author must take the recorded ticket, implement only priority-filter state removal while preserving defaultPriority persistence, stop at Review, and leave root to independently review/merge.

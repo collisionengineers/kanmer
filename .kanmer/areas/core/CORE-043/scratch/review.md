@@ -79,3 +79,50 @@ Exact evidence:
 - Live GitHub protection retargeting, native/packaged host behavior, and visual evidence remain INCONCLUSIVE under ADR-0016/FRD-020.
 
 Verdict: PASS. No merge, board move, source edit, or thread resolution performed.
+
+---
+kind: review-attestation
+pr: "168"
+head_sha: "b59fad2f819e38b686df439362a93d6bee588839"
+base_sha: "fdaededcf8bff0c5d5867e386782d8bdc32324e9"
+verdict: pass
+reviewer: "codex-core041-executor"
+independent: true
+plan_hash: "a0b32fae7b9b14f9"
+ticket_updated: "2026-08-23T00:21:39Z"
+findings:
+  - id: F-001
+    summary: "Retry preserves the retained board root's handoff branch."
+    severity: blocker
+    disposition: fixed
+    reason: "The inherited production retry fix uses the retained paused status branch before the saved setting, and its production-caller regressions pass."
+  - id: F-002
+    summary: "Protected closed-project refusal is represented as paused."
+    severity: major
+    disposition: fixed
+    reason: "The inherited ensureBoardWorktree fix retains the canonical boardRoot with paused:true on protected refusal; refusal and no-mutation regressions pass."
+  - id: F-003
+    summary: "First observation of an existing custom branch prompts legacy native reconnect."
+    severity: major
+    disposition: fixed
+    reason: "The final settings.ts change marks both user-scoped native providers when a custom branch is first observed without a prior branch record, with a focused settings regression."
+  - id: F-004
+    summary: "Live protection/native/packaged proof remains unavailable."
+    severity: minor
+    disposition: accepted-risk
+    reason: "No authorized live GitHub protection mutation or installed native/packaged host was available; no external PASS is claimed."
+---
+
+# Fresh independent cumulative review — CORE-043 PR #168
+
+Reviewed exact final head `b59fad2f819e38b686df439362a93d6bee588839` against base `fdaededcf8bff0c5d5867e386782d8bdc32324e9`. The final commit is limited to `settings.ts` and `settings.test.ts`, adding first-observation custom-branch native reconnect detection while preserving the inherited protected-branch, source/board-sync, and provider lifecycle behavior.
+
+Final hosted evidence:
+- Run `32607472961` is successful at the exact head.
+- kanmer-gate job `97114733111`: PASS.
+- verify job `97114733014`: PASS.
+- Hosted GUI: 49 files / 459 tests PASS; core: 15 files / 310 tests PASS; scripts: 89 PASS; all-workspace typecheck PASS; 224/224 checks PASS; mcpb, docs, manual, skills, and plugin rails PASS.
+- `git diff --check fdaededc..b59fad2f`: PASS (exit 0).
+- Live GitHub protection retargeting, native/packaged host behavior, and visual evidence remain INCONCLUSIVE under ADR-0016/FRD-020.
+
+Verdict: PASS. No merge, board move, source edit, or thread resolution performed.

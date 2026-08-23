@@ -921,3 +921,6 @@ Batch blocker: CORE-048 packet was read and verification reached the merged-main
 
 
 2026-08-23T01:18Z — CORE-043 PR #168 head 654da59a fixed independent-review F-001/F-002: retained paused retry now honors team-board; protected rename refusal is paused; stale custom-branch ignore fixture corrected. Clean GUI typecheck and full GUI suite PASS (49 files / 458 tests). Review attestation replaced with exact-head independent PASS (valid fixed/accepted-risk dispositions). Fresh hosted workflow event required before merge; live protection/native/packaged evidence remains INCONCLUSIVE.
+
+
+2026-08-23T01:24Z — CORE-043 final head b59fad2f hosted run 32607472961 PASS (verify 97114733014; kanmer-gate 97114733111). Independent reviewer PASS exact head with F-001/F-002/F-003 fixed and F-004 accepted-risk; unresolved GitHub thread for first-observation custom branch was replied fixed and resolved. PR #168 is merge-ready; live protection/native/packaged proof remains INCONCLUSIVE.

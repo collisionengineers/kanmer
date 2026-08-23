@@ -960,3 +960,6 @@ Final clean verification evidence: hosted PR run 32609479149 passed the authorit
 
 
 Packaged rail in isolated normal clone at origin/main 30c99ffa: npm run dist:check PASS (electron-vite build, electron-builder Windows NSIS package, updater package 8 checks). No source/repo user files were touched; temp clone is disposable and will be removed.
+
+
+• 2026-08-23 final cleanup — validated only the board worktree remains registered and preserved .worktrees/kanmer; removed 59 unregistered stale ticket/review/verification directories under .worktrees. Local root main remains user-owned/behind origin with existing .github/workflows/pr.yml, skills-lock.json, evidence scripts, and FRD/ADR changes preserved. Final board status: 291 tickets, 281 Done, 10 Verifying, 0 taken, 0 warnings; Done-checklist and active open-question audits have no findings.

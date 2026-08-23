@@ -1,7 +1,7 @@
 ---
 kind: review-attestation
 pr: "231"
-head_sha: "5fe1a0f5c3a6cf589af6a9f7f2b36477b7864899"
+head_sha: "fde73d67691f7b240b09dbb2958bd6defded4194"
 verdict: needs-changes
 reviewer: "doc019_executor"
 independent: true
@@ -18,31 +18,37 @@ findings:
     disposition: fixed
   - id: F-003
     severity: blocker
-    summary: "The unquoted launcher token is not safe when LOCALAPPDATA expands to a path containing whitespace."
+    summary: "The unquoted launcher token was not safe when LOCALAPPDATA expanded to a path containing whitespace."
+    disposition: fixed
+  - id: F-004
+    severity: blocker
+    summary: "The quote-free pushd/call command changes the launcher's inherited working directory to the installer bin, breaking board discovery from the provider workspace."
     disposition: open
 ---
 
 ## Changes reviewed
 
-Remediation commit `5fe1a0f5` updates the GUI Antigravity invocation and its lifecycle fixtures to the unquoted argv, while leaving the Codex invocation and Codex tests quoted. It also documents the Antigravity-specific convention in `AGENTS.md` and FRD-012. The original descriptor, plugin-sync assertion, and two-case dependency-free regression remain in scope.
+Final remediation `fde73d67` replaces the direct unquoted launcher with the quote-free `pushd %LOCALAPPDATA%\\Kanmer\\bin && call kanmer-mcp.cmd` form, updates the GUI Antigravity helper and lifecycle fixtures, retains Codex's separate quoted invocation, and updates the native descriptor, plugin-sync assertion, FRD-012, and AGENTS.md. It adds a Windows spaced-path regression and records the final bound agy proof.
 
 ## Acceptance and checks
 
-- Antigravity Connect now validates, probes, and stages the unquoted launcher through `antigravityPortableInvocation()`; Codex remains quoted through `codexPortableInvocation()`.
-- `node --test scripts/antigravity-plugin-config.test.mjs`: PASS, 2/2.
-- GUI `connect.test.ts`: PASS, 35/35; GUI `providers.test.ts`: PASS, 66/66.
+- Antigravity Connect and the native descriptor use the quote-free pushd/call form; Codex remains quoted.
+- `node --test scripts/antigravity-plugin-config.test.mjs`: PASS, 3/3, including the spaced-`LOCALAPPDATA` shim test.
+- GUI `connect.test.ts`: PASS, 35/35; GUI typecheck: PASS.
 - `npm run plugin:check`: PASS; `git diff --check`: PASS.
-- `kanmer-gate`: PASS. Hosted `verify` is currently FAIL on run 32640132767 because the Windows core suite hit unrelated Vitest timeouts/ENOTEMPTY cleanup errors; it is not claimed green.
-- The real-host evidence remains honestly bounded to the disposable corrected descriptor and bound agy `get_status` result; it does not claim packaged or IDE proof.
+- Hosted checks are being rerun for this exact head; the current `verify` is pending and `kanmer-gate` is green, so no hosted full-rail PASS is claimed yet.
+- The final real-host evidence is bounded and explicit: the bound agy run returned `KANMER_AGY_FINAL_PUSHDCALL_OK`; `--dangerously-skip-permissions` was used only for the non-interactive permission prompt, not to bypass the MCP/board assertion. The report honestly retains the failed full GUI rail.
 
 ## Findings and dispositions
 
-- **F-001 — blocker, fixed (PR thread 3838509508).** The helper, Connect validation path, and GUI fixtures now use the unquoted Antigravity form; the direct Codex contract remains unchanged.
+- **F-001 — blocker, fixed (PR thread 3838509508).** The Antigravity helper, Connect validation path, and GUI fixtures now use the native descriptor form; Codex remains on its quoted contract.
 
-- **F-002 — major, fixed (PR thread 3838509510).** `AGENTS.md` now records the unquoted native Antigravity token, and FRD-012 distinguishes it from Codex's quoted project registration.
+- **F-002 — major, fixed (PR thread 3838509510).** `AGENTS.md` and FRD-012 now document the Antigravity-specific quote-free convention while preserving Codex's quoted registration.
 
-- **F-003 — blocker, open (PR thread 3838526763).** If `%LOCALAPPDATA%` expands to a Windows path containing whitespace, `cmd.exe /c` receives an unquoted command path and can parse only the prefix before the first space. The PR's own research lists path-with-spaces shell safety as a risk, but the remediation removed quotes from both the plugin launch and Connect's local `--probe`. Resolve this while retaining Antigravity's requirement that embedded quote characters not be forwarded literally, and add regression/evidence for the spaced-path case.
+- **F-003 — blocker, fixed (PR thread 3838526763).** The pushd/call command reaches a disposable shim under a spaced `LOCALAPPDATA` path, and the 3/3 regression covers that case.
+
+- **F-004 — blocker, open.** `pushd %LOCALAPPDATA%\\Kanmer\\bin` changes `cmd.exe`'s current directory before calling the installer shim. The shim explicitly promises to inherit the caller's cwd, and the MCP server discovers the board by walking from `process.cwd()`; after pushd it will start from the installer bin rather than the provider workspace. The spaced-path shim regression only echoes a marker and does not test cwd or board discovery. Preserve both quote-free spaced-path safety and the original workspace cwd/std-stream contract, then add a regression proving `get_status` resolves the bound board.
 
 ## Verdict
 
-Needs changes. The GUI/Codex split and documentation remediation are correct, but the remaining path-with-spaces launch failure is a production blocker, and the hosted authoritative verify is not green.
+Needs changes. The final remediation fixes the prior argv, documentation, and spaced-path findings, but the pushd workaround appears to break the load-bearing provider-cwd board-discovery contract.

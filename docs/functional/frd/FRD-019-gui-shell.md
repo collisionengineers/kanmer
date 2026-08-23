@@ -69,17 +69,16 @@ Renderer paths relative to `apps/gui/src/`.
   `viewItemsFor`, `viewCount`, `viewCounts`) and `lib/views.test.ts` asserts the
   badge/rows equality across every view; `App.tsx` derives the tab strip, Ctrl+1…3,
   `allViewItems` and the FilterBar's facet set from it (GUI-071).
-- R5 — views listed match `App.tsx`; Settings' five tabs are in `Settings.tsx:22-23`. **Board
-  currently renders Backlog→Done (seven stages) and the Settings tabs are Board/Documents/
-  Appearance/Git/Connect** — the Preparing→Done range, the Profiles tab and the Backlog view are
-  v3 (Phases 4–5), not yet built.
-- R6 — the card menu is renderer-drawn and wired through `Board.tsx:349-351`,
-  `App.tsx:926,1973-1984`, and `components/ContextMenu.tsx`; it uses the shared
-  theme tokens, portal rendering, viewport-aware placement, `role=menu`/
-  `role=menuitem` semantics, keyboard navigation, submenu flipping, and
-  Escape/click-away dismissal. `components/ContextMenu.test.tsx` covers root
-  Escape/click-away behavior and proves ArrowLeft closes only the active
-  submenu and restores focus to its parent item.
+- R5 — views listed match `App.tsx`; `Settings.tsx:35-43` currently exposes Board,
+  Profiles, Appearance, Git, Connect, Dispatch, Remote access, and OpenAI tunnel.
+  `Board.tsx:122-125` renders the six fixed stages Backlog→Done, and the withdrawn
+  separate Backlog view is not present.
+- R6 — `ContextMenu.tsx` is a renderer-drawn menu mounted by `App.tsx:1965-1973`.
+  It uses theme tokens, a portal, viewport-clamped root/submenu placement,
+  Escape/click-away dismissal, and `role=menu` keyboard handling. Placement helpers
+  are covered by `lib/menu.test.ts`, outside-dismissal behavior by
+  `components/ContextMenu.test.tsx`, and the submenu keyboard path now proves that
+  `ArrowLeft` closes only the active submenu and restores focus to its parent item.
 - R7 — single-instance lock `main/index.ts:105-125` (with the deliberate smoke-mode failure exit),
   window bounds `settings.ts:136`, app menu with DevTools gated to dev `main/index.ts:274-333`,
   `Welcome.tsx`.

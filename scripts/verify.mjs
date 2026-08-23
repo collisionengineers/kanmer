@@ -15,6 +15,7 @@ export const VERIFY_STEPS = Object.freeze([
   // has no generated dist yet, so build the workspace artifacts before tests.
   "npm test",
   "npm run typecheck",
+  "npm run verify:docs",
   "node packages/mcp-server/src/smoke.mjs",
   "npm run smoke:headless",
   "npm run mcpb:check",

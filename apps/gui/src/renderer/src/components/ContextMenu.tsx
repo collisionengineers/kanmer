@@ -60,8 +60,10 @@ function MenuPanel({
   onClose,
   label,
   depth,
-}: ContextMenuProps & { depth: number }): JSX.Element {
+  onBack,
+}: ContextMenuProps & { depth: number; onBack?: () => void }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
+  const parentItemRef = useRef<HTMLButtonElement | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number }>({ left: -9999, top: -9999 });
   const [active, setActive] = useState(-1);
   const [openSub, setOpenSub] = useState<{ index: number; x: number; y: number } | null>(null);
@@ -99,11 +101,12 @@ function MenuPanel({
     [items],
   );
 
-  const choose = (item: MenuItem, index: number, rect?: DOMRect) => {
+  const choose = (item: MenuItem, index: number, button?: HTMLButtonElement) => {
     if (item.disabled) return;
     if (item.items?.length) {
-      const r = rect ?? { right: pos.left + 180, top: pos.top };
-      setOpenSub({ index, x: (r as DOMRect).right ?? pos.left + 180, y: (r as DOMRect).top ?? pos.top });
+      parentItemRef.current = button ?? null;
+      const rect = button?.getBoundingClientRect();
+      setOpenSub({ index, x: rect?.right ?? pos.left + 180, y: rect?.top ?? pos.top });
       return;
     }
     item.onSelect?.();
@@ -139,19 +142,20 @@ function MenuPanel({
             e.preventDefault();
             const item = items[active];
             if (item) {
-              const el = ref.current?.querySelectorAll("[role='menuitem']")[active];
-              choose(item, active, el?.getBoundingClientRect());
+              const el = ref.current?.querySelectorAll<HTMLButtonElement>("[role='menuitem']")[active];
+              choose(item, active, el);
             }
           } else if (e.key === "ArrowRight") {
             const item = items[active];
             if (item?.items?.length) {
               e.preventDefault();
-              const el = ref.current?.querySelectorAll("[role='menuitem']")[active];
-              choose(item, active, el?.getBoundingClientRect());
+              const el = ref.current?.querySelectorAll<HTMLButtonElement>("[role='menuitem']")[active];
+              choose(item, active, el);
             }
           } else if (e.key === "ArrowLeft" && depth > 0) {
             e.preventDefault();
-            onClose();
+            e.stopPropagation();
+            onBack?.();
           }
         }}
       >
@@ -176,12 +180,12 @@ function MenuPanel({
               onMouseEnter={(e) => {
                 setActive(i);
                 if (item.items?.length && !item.disabled) {
-                  choose(item, i, e.currentTarget.getBoundingClientRect());
+                  choose(item, i, e.currentTarget);
                 } else {
                   setOpenSub(null);
                 }
               }}
-              onClick={(e) => choose(item, i, e.currentTarget.getBoundingClientRect())}
+              onClick={(e) => choose(item, i, e.currentTarget)}
             >
               <span>{item.label}</span>
               {item.items?.length ? <span className="ctx-arrow">›</span> : null}
@@ -197,6 +201,10 @@ function MenuPanel({
           onClose={onClose}
           label={items[openSub.index].label}
           depth={depth + 1}
+          onBack={() => {
+            setOpenSub(null);
+            parentItemRef.current?.focus();
+          }}
         />
       ) : null}
     </>

@@ -1,7 +1,7 @@
 ---
 kind: review-attestation
 pr: "231"
-head_sha: "d63495a1ed80d0e5b258fbe46b126ca4e2b63b9a"
+head_sha: "5fe1a0f5c3a6cf589af6a9f7f2b36477b7864899"
 verdict: needs-changes
 reviewer: "doc019_executor"
 independent: true
@@ -10,33 +10,39 @@ ticket_updated: "2026-08-23T12:32:45.051Z"
 findings:
   - id: F-001
     severity: blocker
-    summary: "GUI Connect still expects the old quoted Antigravity launcher argv and rejects the shipped unquoted descriptor."
-    disposition: open
+    summary: "GUI Connect rejected the shipped unquoted descriptor because its Antigravity helper still emitted the old quoted argv."
+    disposition: fixed
   - id: F-002
     severity: major
-    summary: "The changed launcher convention is not recorded in AGENTS.md, and FRD-012 still specifies the old quoted Antigravity argv."
+    summary: "The changed launcher convention was undocumented in AGENTS.md and FRD-012 still specified the quoted Antigravity argv."
+    disposition: fixed
+  - id: F-003
+    severity: blocker
+    summary: "The unquoted launcher token is not safe when LOCALAPPDATA expands to a path containing whitespace."
     disposition: open
 ---
 
 ## Changes reviewed
 
-PR #231 changes the native `plugins/kanmer/mcp_config.json` launcher argument to the unquoted `%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd` form, adds a two-case dependency-free regression, and updates `scripts/check-plugin-sync.mjs` to pin the command, argv, environment-key, cwd, and root/path constraints.
+Remediation commit `5fe1a0f5` updates the GUI Antigravity invocation and its lifecycle fixtures to the unquoted argv, while leaving the Codex invocation and Codex tests quoted. It also documents the Antigravity-specific convention in `AGENTS.md` and FRD-012. The original descriptor, plugin-sync assertion, and two-case dependency-free regression remain in scope.
 
-## Checks and acceptance
+## Acceptance and checks
 
+- Antigravity Connect now validates, probes, and stages the unquoted launcher through `antigravityPortableInvocation()`; Codex remains quoted through `codexPortableInvocation()`.
 - `node --test scripts/antigravity-plugin-config.test.mjs`: PASS, 2/2.
-- `npm run plugin:check`: PASS.
-- GUI `connect.test.ts` and `providers.test.ts`: PASS, 101/101, but their fixtures retain the old quoted form and therefore do not exercise the shipped unquoted descriptor against Connect's validator.
-- Hosted PR `verify` and `kanmer-gate`: PASS.
-- `git diff --check`: PASS.
-- The report's real-host evidence is honestly bounded: it describes a disposable corrected descriptor and bound agy `get_status` result, without claiming packaged/IDE proof; cleanup and remaining post-merge proof are retained as residual work.
+- GUI `connect.test.ts`: PASS, 35/35; GUI `providers.test.ts`: PASS, 66/66.
+- `npm run plugin:check`: PASS; `git diff --check`: PASS.
+- `kanmer-gate`: PASS. Hosted `verify` is currently FAIL on run 32640132767 because the Windows core suite hit unrelated Vitest timeouts/ENOTEMPTY cleanup errors; it is not claimed green.
+- The real-host evidence remains honestly bounded to the disposable corrected descriptor and bound agy `get_status` result; it does not claim packaged or IDE proof.
 
 ## Findings and dispositions
 
-- **F-001 — blocker, open (PR thread 3838509508).** `apps/gui/src/main/connect.ts` exact-compares the staged descriptor against `antigravityPortableInvocation()` from `apps/gui/src/main/providers.ts`, which still returns the embedded-quoted launcher. With this PR's source descriptor, GUI Connect throws before `agy plugin validate` or installation. Update the consumer/helper contract and its GUI fixtures/regression, or introduce a distinct descriptor-shape contract while preserving the direct local probe semantics as appropriate.
+- **F-001 — blocker, fixed (PR thread 3838509508).** The helper, Connect validation path, and GUI fixtures now use the unquoted Antigravity form; the direct Codex contract remains unchanged.
 
-- **F-002 — major, open (PR thread 3838509510).** This PR changes a shipped command convention, but the managed operating guidance has not been updated despite the repository rule requiring command/convention changes to update `AGENTS.md`. The governing FRD-012 Antigravity row also still documents the embedded-quoted argv. Update the durable guidance and governing contract, or provide an explicit authorized disposition for each discrepancy.
+- **F-002 — major, fixed (PR thread 3838509510).** `AGENTS.md` now records the unquoted native Antigravity token, and FRD-012 distinguishes it from Codex's quoted project registration.
+
+- **F-003 — blocker, open (PR thread 3838526763).** If `%LOCALAPPDATA%` expands to a Windows path containing whitespace, `cmd.exe /c` receives an unquoted command path and can parse only the prefix before the first space. The PR's own research lists path-with-spaces shell safety as a risk, but the remediation removed quotes from both the plugin launch and Connect's local `--probe`. Resolve this while retaining Antigravity's requirement that embedded quote characters not be forwarded literally, and add regression/evidence for the spaced-path case.
 
 ## Verdict
 
-Needs changes. The unquoted form is supported by the bounded real-host evidence and is the smallest descriptor-only agy fix, but the current head is not wired through GUI Connect and leaves governing guidance inconsistent.
+Needs changes. The GUI/Codex split and documentation remediation are correct, but the remaining path-with-spaces launch failure is a production blocker, and the hosted authoritative verify is not green.

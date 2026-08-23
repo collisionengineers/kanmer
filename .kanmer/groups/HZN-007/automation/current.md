@@ -954,3 +954,6 @@ CORE-091 PR #224 merged at 2026-08-23T01:08:38Z as 30c99ffa; hosted verify and k
 
 
 CORE-091 closed Done after merged-main proof PASS at 30c99ffa; exact ticket/verification worktrees and branch were removed, remote branch deleted, and take_ticket release completed. Clean npm ci/plugin/mcpb parity and hosted run 32609479149 are recorded.
+
+
+Final clean verification evidence: hosted PR run 32609479149 passed the authoritative npm run verify (build, npm test, typecheck, MCP/HTTP smokes, MCPB parity, protocol/discovery, skills/agents, plugin checks) on clean npm ci/Node20. A local detached worktree attempt with npm ci could not retain workspace symlinks and failed during standalone build on missing @kanmer/core exports; the same exact merged SHA built and passed in hosted CI. This environment-specific local failure is preserved, not promoted to PASS. No board/worktree/ticket claims were changed.

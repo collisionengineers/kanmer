@@ -912,3 +912,6 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 
 
 - 2026-08-23T00:46:43.613Z — GUI closeout lane: GUI-112, GUI-113, GUI-114, GUI-115, GUI-116, GUI-117, GUI-118, GUI-119, GUI-120, GUI-122, and GUI-123 proofs finalized on merged `origin/main` `a8cc6b01ca95340f1186bccc9770238036d080d8`; target PRs verified MERGED; Verifying→Done passed with proof/questions gates; outcomes and PR URLs/merge dates recorded; exact ticket worktrees and local/remote branches removed; taken tickets released. Hosted PR #168 verify/kanmer-gate run 32607472961 passed. Deterministic provider/connect rails passed; live native/packaged/visual/protected/multi-machine and interrupted Git-heavy/full-workspace limits remain explicitly INCONCLUSIVE in proofs.
+
+
+- 2026-08-23T01:17:37.387Z — CORE-091 artifact remediation completed through independent review, hosted verification, merged-main proof, and exact cleanup. PR #224 merged as 30c99ffa; clean-lockfile plugin/MCPB SHA f52d9c5b; hosted run 32609479149 PASS. Done checklist/open-question/archived audits are reconciled. Ten tickets remain Verifying with explicit external/provider/protection/tunnel INCONCLUSIVE boundaries; durable run is not terminal while those proofs remain unavailable.

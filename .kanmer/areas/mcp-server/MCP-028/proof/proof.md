@@ -32,3 +32,9 @@ MCP-028 is verified on merged main commit 710bddff. The provider-neutral remote-
 ## Review disposition
 
 Independent review at 45449d0f was PASS after fixing F-001 through F-004. The reviewed remediation is in merge commit 710bddff. No external Cloudflare evidence was inferred from local fixtures.
+
+## Protected public evidence — 2026-08-23
+
+The canonical protected verifier was run from a detached clean worktree at merged SHA 85ace9d16abac4d578f5d16bfd2c6b27e7742783 with a protected token-file descriptor, a disposable named Cloudflare tunnel, and the exact merged HTTP host. The verifier exited 0 with overall outcome pass. Safe boundary results: local doctor 26/26, missing/wrong bearer rejection, official SDK public initialize, expected-project match, exact remote tool policy, dispatch exclusion, wrong-project rejection, bounded mutation/readback, gate refusal, session close, and fixture cleanup all passed. The official SDK client ran as a separate process; same-runner origin/client limitation is retained. Cloudflare DNS/tunnel resources, host, connector, token file, descriptor, and logs were removed after the run. No raw bearer, provider credential, canary content, endpoint, account data, or tunnel identifier is retained.
+
+The Worker-client, token-rotation, host-restart/session-invalidation, bounded-concurrency, tunnel-degradation/recovery, and GUI two-project boundaries remain INCONCLUSIVE and are not promoted to PASS.

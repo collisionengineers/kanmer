@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-23T01:44:46.861Z
+updated_at: 2026-08-23T01:46:01.856Z
 ---
 
 # Current auto run — HZN-007
@@ -975,3 +975,6 @@ Last audit: 2026-08-23T01:43:40.711Z — the 75-ticket historical Done baseline 
 
 
 Next dispatch: 2026-08-23T01:44:46.861Z — prepare and then run the three bounded lanes DOC-019, SKILL-032, GUI-124. No author may review or merge its own PR; root performs independent review and stops on any red check.
+
+
+Dispatch: 2026-08-23T01:46:01.856Z — DOC-019, SKILL-032, and GUI-124 are in Preparing with files/plan docs and are the only active remediation lanes. Root reviews and merges only after independent review; all other verifying tickets remain held on their external evidence boundaries.

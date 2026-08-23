@@ -3,6 +3,7 @@
 - [x] Update the native Antigravity descriptor to the exact agy-compatible launcher argv.
 - [x] Add plugin-sync validation and regression coverage for accepted and rejected quoting forms, including a spaced LOCALAPPDATA command test.
 - [x] Preserve the provider workspace cwd across the quote-free temporary pushd and prove the shipped installer shim restores it before MCP launch.
+- [x] Reconcile ADR-0012/ADR-0018/FRD-012/AGENTS.md with the explicit cwd-restoration contract.
 - [x] Run the real agy bound get_status probe with the final installed plugin and launcher/runtime; retain safe output.
 - [x] Run plugin:check, focused script tests, typecheck/build, and git diff --check.
 - [x] Write the post-implementation report and link the exact evidence.
@@ -17,3 +18,4 @@
 - Final installed plugin plus bound agy get_status: exact KANMER_AGY_FINAL_PUSHDCALL_OK, with --dangerously-skip-permissions used only to avoid the non-interactive permission prompt.
 - Focused config regression: 4/4; installer launcher tests: 4/4; GUI connect.test.ts: 35/35; script rail: 98/98; plugin:check: PASS; GUI typecheck: PASS; git diff --check: PASS.
 - Full GUI Vitest attempted; unrelated Windows EPERM cleanup/timeouts in index.sync.test.ts and kanmerGit.test.ts are retained as a failed rail.
+- Hosted kanmer-gate passed. Hosted verify later failed only on unrelated core Vitest 5-second timeouts in docs.test.ts and store.test.ts; the next push reruns the required rail.

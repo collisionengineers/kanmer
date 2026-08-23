@@ -5,6 +5,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { checkDocStructureFiles } from "./check-doc-structure.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manual = join(root, "docs", "manual");
@@ -23,6 +24,7 @@ const ids = [
   "DIAGNOSTIC_REDACTION", "NO_BOARD_MUTATION",
 ];
 const failures = [];
+for (const problem of checkDocStructureFiles({ root })) failures.push(problem);
 const tick = String.fromCharCode(96);
 function fail(message) { failures.push(message); }
 function headingSlugs(markdown) {
@@ -140,5 +142,5 @@ if (failures.length) {
   for (const failure of failures) console.error("verify-docs: " + failure);
   process.exitCode = 1;
 } else {
-  console.log("verify-docs: PASS — 3 remote chapters, 26 doctor ids, links/fences/canary/provider boundaries, generated manual current");
+  console.log("verify-docs: PASS — document mirror, 3 remote chapters, 26 doctor ids, links/fences/canary/provider boundaries, generated manual current");
 }

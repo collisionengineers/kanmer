@@ -133,12 +133,15 @@ npm run app              # build + launch the GUI
 npm run dev:gui
 ```
 
-> **Windows, from source:** Electron derives its user-data folder from the
-> workspace package name (`@kanmer/gui`), and on that path the single-instance
-> lock can fail, so the app quits immediately without a window. If that happens,
-> launch it with its own folder instead:
-> `cd apps/gui && npx electron . --user-data-dir=<a fresh dir>`. Installed
-> builds are unaffected.
+> **Windows, from source and installed:** Electron derives its app name from the
+> workspace package (`@kanmer/gui`). From source, that can make the
+> single-instance lock fail and the app quit before showing a window; launch it
+> with a fresh user-data folder instead:
+> `cd apps/gui && npx electron . --user-data-dir=<a fresh dir>`. The packaged
+> app uses the same name for its user-data and updater-cache paths
+> (`%APPDATA%\@kanmer\gui\` and `%LOCALAPPDATA%\@kanmergui-updater`),
+> although the source-only single-instance-lock failure does not apply to the
+> packaged executable.
 
 Click **Open project folder…** and pick any project (recently opened folders are listed, and the last one re-opens on launch). Kanmer creates/loads its `.kanmer/` folder there.
 
@@ -347,16 +350,30 @@ cd apps/gui && KANMER_SMOKE=1 KANMER_OPEN="C:/path/to/project" \
 ### Release (maintainers)
 
 ```bash
-# edit apps/gui/release-notes.md first — the script refuses stale notes
-GH_TOKEN=<pat with repo scope> npm run release 0.2.0
+# Preparation: edit apps/gui/release-notes.md, then run the protected-main PR flow.
+npm run release -- 0.3.4 --ticket DOC-019 --dry-run
+npm run release -- 0.3.4 --ticket DOC-019
+
+# After that PR is reviewed and merged, publish only from clean merged main.
+GH_TOKEN=<pat with repo scope> npm run release -- 0.3.4 --publish --release-commit <full-sha>
 ```
 
-It verifies everything (tests, both smokes, the agents-block check, the plugin
-bundle's bytes, GUI typecheck), bumps `apps/gui/package.json`, builds, packs
-once **without** publishing and checks the package, tags `v0.2.0`, publishes a
-**non-draft** GitHub release with the installer + blockmap + `latest.yml`, then
-re-fetches `/releases/latest` to prove installed clients can actually see it.
-Add `--dry-run` to stop after the verification gate without writing anything.
+The preparation phase runs the shared `npm run verify` rail, bumps the release
+manifests and deterministic artifacts on an isolated `release/v<version>`
+branch, pushes only that branch, and opens a PR targeting protected `main` with
+the ticket id in its body. It stops before creating a tag or publishing an
+asset. `--dry-run` previews either phase without writing anything.
+
+After the PR merges, the publication phase must run from clean merged `main`.
+It proves the supplied full release commit is reachable, pushes only
+`refs/tags/v<version>`, publishes the non-draft release, and verifies that the
+updater can see it and every installer, blockmap, and `latest.yml` asset is
+present, uploaded, and byte-identical to the package just built. Publisher exit
+status alone is not evidence of an uploaded asset; re-check any release with:
+
+```bash
+node scripts/verify-release-assets.mjs <version>
+```
 
 Never delete assets from an old release: a missing old `.blockmap` silently
 costs every client on that version a full ~77 MB download instead of a

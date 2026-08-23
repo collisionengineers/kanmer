@@ -1,28 +1,76 @@
-# Documentation structure
+# Document structure
 
-A descriptive mirror of this repo's document model. **Not authoritative** — the
-board's `board.docs` (in `.kanmer/data/board.yml`) is the source of truth; this
-file just tells a human where things live.
+**Descriptive mirror — never authoritative.** The board's `board.yml` is the
+source of truth. This file is the canonical `kanmer-docs` asset copied into a
+repo's `docs/contributing/doc-structure.md`; the mirror is checked for byte
+equality so a prose-only update cannot leave the shipped template stale.
 
-## The /docs/ tree
+## The `/docs/` tree
+
+The repository's governing documents live under the configured paths:
+
 ```
 docs/
-  product/        vision.md, open-questions.md
-  prd/            NNNN-<slug>.md   product requirements
-  frd/            NNNN-<slug>.md   functional requirements (behaviour + acceptance criteria)
-  adr/            NNNN-<slug>.md   architecture decisions (one per file)
-  api/            interface/contract docs
-  operations/     runbooks, deploy notes
-  contributing/   doc-structure.md (this file)
+  product/                    vision and product context
+  functional/frd/             functional requirements
+  architecture/adr/           architecture decisions
+  contributing/doc-structure.md  this generated mirror
 ```
 
-## Conventions
-- Numbering is zero-padded and monotonic per kind (`0001`, `0002`, …).
-- A ticket references the docs it implements via `refs` (`link_doc`).
-- `board.docs.repoDocs` classifies a path's governing-doc kind by glob
-  (default `docs/prd/**`, `docs/frd/**`, `docs/adr/**`).
+This board classifies governing documents with these `repoDocs` globs:
 
-## Per-ticket pipeline docs (not here)
-research / files / open-questions / plan / checklist / post-implementation-report
-/ proof live *inside* each ticket's folder under `.kanmer/`, not in `/docs/`.
-Which of them a ticket owes depends on its profile — ask `get_doc_gates`.
+| Kind | Glob |
+|---|---|
+| `prd` | `docs/product/prd/**` |
+| `frd` | `docs/functional/frd/**` |
+| `adr` | `docs/architecture/adr/**` |
+
+A ticket links a governing document through `refs`. Whether that link is
+required at a stage boundary is profile-resolved; call `get_doc_gates` for the
+ticket instead of relying on a fixed table.
+
+## Ticket documents
+
+Ticket pipeline documents live inside the ticket folder under
+`.kanmer/areas/<area>/<ID>/`. Format 3 uses one folder per document type, and
+the folder may contain more than one Markdown document:
+
+| Type | Current path | Purpose |
+|---|---|---|
+| `research` | `research/*.md` | findings and sources |
+| `files` | `files/*.md` | paths changed and implementation context; this replaces v2 `impact` |
+| `open-questions` | `open-questions/*.md` | questions only the user can answer |
+| `plan` | `plan/*.md` | approach and governing-document mapping |
+| `checklist` | `checklist/*.md` | executable progress (`- [ ]` / `- [x]`) |
+| `post-implementation-report` | `post-implementation-report/*.md` | reviewers' brief |
+| `proof` | `proof/*.md` | evidence gathered on merged `main` |
+
+Running notes are `scratch/<slug>.md`. Human-supplied inputs belong in
+`reference/`; binary evidence belongs in `assets/`. Neither is a pipeline
+document or a gate by itself.
+
+## Workflow model
+
+The board has six fixed stages:
+
+`backlog → preparing → implementing → review → verifying → done`
+
+Document requirements are resolved from the ticket's profile and board/area
+configuration. A move crosses one gated boundary at a time; use
+`get_doc_gates <id>` immediately before every move to see the effective
+requirements and what is already satisfied. Creation is ungated, so historical
+backfill can create a ticket directly in any stage.
+
+The board's `profiles` and `defaultProfile` fields, plus any area overrides,
+define the effective requirements. The shipped default document types are the
+seven types listed above; the board may configure a different set. This mirror
+describes the live format-3 defaults, not an independent policy.
+
+## Generation and freshness
+
+`plugins/kanmer/skills/kanmer-docs/assets/doc-structure.md` is the canonical
+skill asset. `docs/contributing/doc-structure.md` is its repository mirror.
+Run `npm run verify:docs` to validate the manual and assert that the mirror is
+byte-identical to this asset; the check also rejects the retired format-2
+wording and legacy loose-file paths. Update the asset first when the board model changes, then
+regenerate the repository mirror through `kanmer-docs`.

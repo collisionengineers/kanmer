@@ -1,0 +1,1 @@
+Preparation note: initial get_execution_packet before files/plan returned ready:false GATE_BLOCKED (leave-preparing requires files and plan). Wrote research, files, plan, checklist, and resolved open-questions via MCP after confirming current source/artifact hashes and script contracts.

@@ -2,10 +2,12 @@
 id: CORE-091
 type: ticket
 title: Refresh committed MCP artifact after current main source merge
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-23T00:55:53.925Z'
 labels:
   - remediation
   - artifact
@@ -19,7 +21,7 @@ refs:
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
 archived: false
 created: '2026-08-23T00:53:27.109Z'
-updated: '2026-08-23T00:53:27.109Z'
+updated: '2026-08-23T00:55:53.925Z'
 ---
 
 The current merged main source builds a standalone MCP server whose bytes differ from plugins/kanmer/mcp/kanmer-mcp.cjs, so npm run verify stops at mcpb:check. Refresh the committed artifact from a normal checkout at the exact current source, preserve byte-parity assertions, run plugin:check and mcpb:check in a clean checkout, obtain independent review, merge, and verify the exact merged artifact on main. No source behavior or assertion weakening is in scope.

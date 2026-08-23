@@ -939,3 +939,6 @@ Batch blocker: CORE-048 packet was read and verification reached the merged-main
 
 
 2026-08-23 reconciliation: corrected ten tickets whose proofs/checklists explicitly retained INCONCLUSIVE external or merged-main evidence (CORE-022/024/025/035/036/042, GUI-104, MCP-014/015/028) back to Verifying; no claims were upgraded. Current full verify on origin/main reached 266 core, 360 GUI, 61 HTTP, 82 scripts, typecheck, smoke 224/224, then failed at mcpb:check because the freshly built server differs from plugins/kanmer/mcp/kanmer-mcp.cjs; artifact refresh is now a required remediation before final rails.
+
+
+CORE-091 entered Preparing after the mcpb:check parity failure; research and plan are now being written against the current merged source and committed plugin artifact.

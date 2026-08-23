@@ -10,4 +10,4 @@
 
 Execution packet omitted checklist; this checklist mirrors the approved plan, files scope, and verification points.
 
-Focused ContextMenu tests passed 3/3; renderer suite passed 28 files / 207 tests. GUI typecheck/build limitations are recorded in scratch. FRD-019 R6 now cites the renderer implementation and keyboard evidence.
+Focused ContextMenu tests passed 3/3; renderer suite passed 28 files / 207 tests; renderer-only web typecheck passed. GUI node typecheck/build limitations are recorded in scratch. FRD-019 R6 now cites the renderer implementation and keyboard evidence.

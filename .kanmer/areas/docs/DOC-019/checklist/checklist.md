@@ -7,3 +7,4 @@
 - [x] Add or extend a deterministic dependency-free freshness check that fails on stale generated documentation/operator guidance and passes for current files.
 - [x] Run focused documentation/freshness checks and inspect the diff for scope and traceability.
 - [x] Write the post-implementation report with governing-doc mapping, risks, and merged-main verification commands.
+- [x] Resolve independent review findings: target-neutral asset globs, fixed document-type wording, AGENTS verification documentation, FRD-019 keyboard caveat, and release artifact retention guidance; record GUI-126 as the source-code follow-up.

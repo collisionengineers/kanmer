@@ -38,7 +38,7 @@ the folder may contain more than one Markdown document:
 | Type | Current path | Purpose |
 |---|---|---|
 | `research` | `research/*.md` | findings and sources |
-| `files` | `files/*.md` | paths changed and implementation context; this replaces v2 `impact` |
+| `files` | `files/*.md` | current v3 location for paths changed and implementation context |
 | `open-questions` | `open-questions/*.md` | questions only the user can answer |
 | `plan` | `plan/*.md` | approach and governing-document mapping |
 | `checklist` | `checklist/*.md` | executable progress (`- [ ]` / `- [x]`) |

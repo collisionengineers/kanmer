@@ -4,6 +4,7 @@ ticket: "GUI-126"
 reviewer: codex-root
 independent: true
 verdict: pass
+pr: "229"
 head: 893907828f9cbfe72b67b3931352891f1d899897
 plan_hash: 0207fa59c97f3272
 ticket_updated: 2026-08-23T02:35:10.190Z

@@ -2,7 +2,7 @@
 id: CORE-036
 type: ticket
 title: Tag-push release verification workflow
-status: done
+status: verifying
 area: core
 order: 200
 assignee: core036-take
@@ -25,7 +25,7 @@ prs:
   - '127'
 archived: false
 created: '2026-08-20T10:14:42.545Z'
-updated: '2026-08-23T00:45:21.976Z'
+updated: '2026-08-23T00:50:03.691Z'
 ---
 
 ## What

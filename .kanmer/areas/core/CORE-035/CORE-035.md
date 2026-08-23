@@ -2,7 +2,7 @@
 id: CORE-035
 type: ticket
 title: Spine integration verification
-status: done
+status: verifying
 area: core
 order: 70
 assignee: core-035-executor
@@ -33,7 +33,7 @@ prs:
     https://github.com/collisionengineers/kanmer-spine-integration-20260822t075446z-78e5ba65/pull/2
 archived: false
 created: '2026-08-20T10:14:42.535Z'
-updated: '2026-08-23T00:45:21.922Z'
+updated: '2026-08-23T00:50:03.326Z'
 ---
 
 ## What

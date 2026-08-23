@@ -1,24 +1,103 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 
 /**
  * The skill asset is the target-neutral source for the repository's descriptive
  * document-model mirror. The mirror resolves repoDocs for its own board, so
- * this check validates the shared model plus each side's expected path shape.
- * Keep it pure so stale-fixture tests do not touch a checkout.
+ * this check validates the shared model plus the effective board map when one
+ * is available. Keep it pure so stale-fixture tests do not touch a checkout.
  */
-export function checkDocStructure({ canonical, mirror }) {
+export function parseRepoDocs(text) {
+  const lines = text.split(/\r?\n/);
+  const result = {};
+  let inRepoDocs = false;
+  for (const line of lines) {
+    if (/^repoDocs:\s*$/.test(line)) {
+      inRepoDocs = true;
+      continue;
+    }
+    if (inRepoDocs && /^\S/.test(line)) break;
+    if (!inRepoDocs) continue;
+    const match = line.match(/^\s+([A-Za-z0-9_-]+):\s*(\S.*)\s*$/);
+    if (!match) continue;
+    result[match[1]] = match[2].replace(/^['"]|['"]$/g, "");
+  }
+  return Object.keys(result).length ? result : null;
+}
+
+function boardCandidates(root) {
+  const candidates = [];
+  const add = (candidate) => {
+    const boardFile = join(candidate, ".kanmer", "data", "board.yml");
+    if (existsSync(boardFile)) candidates.push(resolve(boardFile));
+  };
+  for (const envName of ["KANMER_BOARD_ROOT", "KANMER_ROOT"]) {
+    if (process.env[envName]) add(resolve(process.env[envName]));
+  }
+  add(root);
+  const parent = dirname(root);
+  if (existsSync(parent)) {
+    for (const name of readdirSync(parent)) {
+      const candidate = join(parent, name);
+      try {
+        if (statSync(candidate).isDirectory()) add(candidate);
+      } catch {
+        // A concurrently removed worktree is simply not a candidate.
+      }
+    }
+  }
+  const worktrees = join(root, ".worktrees");
+  if (existsSync(worktrees)) {
+    for (const name of readdirSync(worktrees)) {
+      const candidate = join(worktrees, name);
+      try {
+        if (statSync(candidate).isDirectory()) add(candidate);
+      } catch {
+        // A concurrently removed worktree is simply not a candidate.
+      }
+    }
+  }
+  return [...new Set(candidates)];
+}
+
+export function resolveRepoDocs({ root }) {
+  const candidates = boardCandidates(root);
+  if (candidates.length !== 1) return null;
+  return parseRepoDocs(readFileSync(candidates[0], "utf8"));
+}
+
+function mirrorRepoDocs(mirror) {
+  const result = {};
+  const row = /^\|\s*`([^`]+)`\s*\|\s*`([^`]+)`\s*\|/gm;
+  for (const match of mirror.matchAll(row)) result[match[1]] = match[2];
+  return result;
+}
+
+export function checkDocStructure({ canonical, mirror, repoDocs = null }) {
   const problems = [];
   for (const marker of ["six fixed stages", "files/*.md", "scratch/<slug>.md", "profile-resolved"]) {
     if (!canonical.includes(marker)) problems.push(`canonical document model is missing ${marker}`);
     if (!mirror.includes(marker)) problems.push(`repository mirror is missing ${marker}`);
   }
-  for (const marker of ["<board repoDocs.prd>", "<board repoDocs.frd>", "<board repoDocs.adr>"]) {
-    if (!canonical.includes(marker)) problems.push(`canonical asset is missing target-neutral ${marker}`);
+  const kinds = [...canonical.matchAll(/<board repoDocs\.([A-Za-z0-9_-]+)>/g)].map((match) => match[1]);
+  const mirrorDocs = mirrorRepoDocs(mirror);
+  for (const kind of kinds) {
+    if (!canonical.includes(`<board repoDocs.${kind}>`)) {
+      problems.push(`canonical asset is missing target-neutral repoDocs.${kind}`);
+    }
+    if (!mirrorDocs[kind] || mirrorDocs[kind].startsWith("<board repoDocs.")) {
+      problems.push(`repository mirror is missing resolved repoDocs.${kind}`);
+    }
   }
-  for (const marker of ["docs/product/prd/**", "docs/functional/frd/**", "docs/architecture/adr/**"]) {
-    if (!mirror.includes(marker)) problems.push(`repository mirror is missing resolved ${marker}`);
-    if (canonical.includes(marker)) problems.push(`canonical asset contains target-specific ${marker}`);
+  if (repoDocs) {
+    for (const [kind, glob] of Object.entries(repoDocs)) {
+      if (mirrorDocs[kind] !== glob) {
+        problems.push(`repository mirror repoDocs.${kind} is ${mirrorDocs[kind] ?? "missing"}; expected ${glob}`);
+      }
+    }
+  }
+  for (const sourceOnly of ["plugins/kanmer/skills/kanmer-docs/assets/doc-structure.md", "npm run verify:docs"]) {
+    if (mirror.includes(sourceOnly)) problems.push(`repository mirror contains source-only instruction ${sourceOnly}`);
   }
 
   for (const retired of [
@@ -40,5 +119,5 @@ export function checkDocStructureFiles({ root }) {
     "utf8",
   );
   const mirror = readFileSync(join(root, "docs", "contributing", "doc-structure.md"), "utf8");
-  return checkDocStructure({ canonical, mirror });
+  return checkDocStructure({ canonical, mirror, repoDocs: resolveRepoDocs({ root }) });
 }

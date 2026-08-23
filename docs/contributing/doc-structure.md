@@ -70,10 +70,10 @@ This mirror describes the live format-3 model, not an independent policy.
 
 ## Generation and freshness
 
-`plugins/kanmer/skills/kanmer-docs/assets/doc-structure.md` is the canonical
-skill asset. This file is the generated mirror for this board, with its
-resolved `repoDocs` globs. Run `npm run verify:docs` to validate the manual,
-the resolved mirror, and the canonical asset; the check also rejects retired
-format-2 wording and legacy loose-file paths. Update the asset first when the
-board model changes, then regenerate this repository mirror through
-`kanmer-docs`.
+The canonical `kanmer-docs` skill asset supplies this model. This file is the
+generated mirror for this board, with its
+resolved `repoDocs` globs. When this board's document model changes, rerun
+`kanmer-setup` from this repository so it regenerates the mirror; do not edit
+Kanmer's source asset path from a materialized repository. Run this
+repository's configured documentation verification rail after regeneration;
+the rail rejects retired format-2 wording and legacy loose-file paths.

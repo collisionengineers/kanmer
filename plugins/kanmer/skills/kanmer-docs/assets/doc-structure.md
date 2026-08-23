@@ -79,3 +79,9 @@ manual, the resolved mirror, and the canonical asset; the check also rejects
 retired format-2 wording and legacy loose-file paths. Update the asset first
 when the board model changes, then regenerate the repository mirror through
 `kanmer-docs`.
+
+When maintaining the Kanmer source repository, edit this canonical asset and
+run `npm run verify:docs`. When `kanmer-setup` materializes the mirror in a
+different repository, it resolves that repository's board globs and emits
+target-appropriate regeneration guidance instead; consumer maintainers should
+rerun their setup/documentation rail rather than edit this source-only path.

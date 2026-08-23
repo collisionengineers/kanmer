@@ -26,3 +26,21 @@ test("the freshness check rejects a stale format-2 mirror fixture", () => {
   const problems = checkDocStructure({ canonical, mirror: stale });
   assert.ok(problems.some((problem) => problem.includes("retired marker")));
 });
+
+test("the freshness check uses injected effective board globs", () => {
+  const mirror = readFileSync(join(root, "docs/contributing/doc-structure.md"), "utf8")
+    .replaceAll("docs/product/prd/**", "docs/custom/prd/**")
+    .replaceAll("docs/functional/frd/**", "docs/custom/frd/**")
+    .replaceAll("docs/architecture/adr/**", "docs/custom/adr/**");
+  const repoDocs = {
+    prd: "docs/custom/prd/**",
+    frd: "docs/custom/frd/**",
+    adr: "docs/custom/adr/**",
+  };
+  assert.deepEqual(checkDocStructure({ canonical, mirror, repoDocs }), []);
+  assert.ok(checkDocStructure({
+    canonical,
+    mirror,
+    repoDocs: { ...repoDocs, frd: "docs/other/frd/**" },
+  }).some((problem) => problem.includes("repoDocs.frd")));
+});

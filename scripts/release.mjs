@@ -231,7 +231,8 @@ if (publishMode ? cmp(version, current) !== 0 : cmp(version, current) <= 0) {
 // creates an isolated release branch before it writes anything.
 //
 // These checks are hard refusals for a real release and advisory for --dry-run:
-// a dry run makes no commit, branch, tag, or push.
+// a dry run makes no commit, branch, tag, push, or publication. The verification
+// rail still runs and may create ignored local build outputs.
 function requireOrWarn(bad, why, fix) {
   if (!bad) return;
   if (dryRun) console.warn(`warning (a real release would refuse): ${why}`);
@@ -330,7 +331,7 @@ if (dryRun) {
     console.log("Would stop before creating a tag or publishing any release asset");
     console.log(`After the PR merges, rerun: npm run release -- ${version} --publish --release-commit <full-sha>`);
   }
-  console.log("\nNothing was written. The tree is untouched.");
+  console.log("\nNo Git or remote release state was written. Verification may have created local build outputs; release manifests and the Git tree remain untouched.");
   process.exit(0);
 }
 

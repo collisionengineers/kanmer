@@ -362,7 +362,9 @@ The preparation phase runs the shared `npm run verify` rail, bumps the release
 manifests and deterministic artifacts on an isolated `release/v<version>`
 branch, pushes only that branch, and opens a PR targeting protected `main` with
 the ticket id in its body. It stops before creating a tag or publishing an
-asset. `--dry-run` previews either phase without writing anything.
+asset. `--dry-run` previews either phase without creating Git commits, branches,
+tags, pushes, or published releases; verification still runs and may create or
+replace local build outputs such as `dist/`, `apps/gui/release/`, or `dist/mcpb/`.
 
 After the PR merges, the publication phase must run from clean merged `main`.
 It proves the supplied full release commit is reachable, pushes only
@@ -375,17 +377,20 @@ status alone is not evidence of an uploaded asset; re-check any release with:
 node scripts/verify-release-assets.mjs <version>
 ```
 
-The verifier is a byte comparison, so it needs the matching installer,
-blockmap, and `latest.yml` in a local package directory. Retain the package
-for each release you may need to re-check, or provide an archived package
-explicitly:
+The verifier derives the expected installer and blockmap from local artifacts.
+A matching local `latest.yml` enables the full manifest byte comparison; when
+that manifest is absent or describes another version, the verifier still
+requires the remote `latest.yml` to be present and uploaded but checks it only
+for presence/state. Retain the package for each release you may need to
+re-check, or provide an archived package explicitly:
 
 ```bash
 node scripts/verify-release-assets.mjs <version> --dir path/to/release-artifacts
 ```
 
-Without matching local artifacts the command exits 1 because it cannot derive
-the expected asset set; that is not a verdict about the remote release.
+Without matching local installer/blockmap artifacts the command exits 1 because
+it cannot derive the expected asset set; a presence-only manifest check is not
+the same as a full byte comparison.
 
 Never delete assets from an old release: a missing old `.blockmap` silently
 costs every client on that version a full ~77 MB download instead of a

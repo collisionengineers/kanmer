@@ -190,3 +190,20 @@ Append measured commands and implementation notes here; never flip dispatch befo
 - [ ] git branch -d mcp-015-antigravity-plugin-dispatch
 - [ ] git fetch --prune + git worktree prune
 - [ ] take_ticket action: release
+
+
+### 2026-08-23 OAuth-backed final verification
+
+- [x] Native plugin install on Agy 1.1.19 reported 12 skills and 1 MCP server.
+- [x] Plugin validation and installed-plugin listing passed.
+- [x] Fresh OAuth-backed `agy --add-dir <sourceRoot>` process called Kanmer `get_status` and returned `KANMER_AGY_MCP015_FINAL_OK` with exit 0.
+- [ ] IDE dispatch, unbound negative control, and post-uninstall absence/idempotence remain explicitly untested; no capability claim is made for them.
+
+The earlier unchecked external-host line is superseded for the bound CLI lane by the proof above; historical attempts remain retained.
+
+
+### Closeout execution — 2026-08-23
+
+- [x] Removed disposable `.worktrees/prove-mcp015` and ran `git worktree prune`.
+- [x] No MCP-015 worktree or branch was present to remove.
+- [x] `take_ticket action: release` completed; no ticket is taken.

@@ -107,3 +107,19 @@ Append measured CLI outputs and implementation notes here; never delete legacy s
 - npm run plugin:check — PASS; npm run check:manual — PASS, 22 chapters; npm run verify:skills — PASS; git diff --check — PASS.
 - Aggregate npm test — FAIL, 351/352 GUI tests: kanmerGit.test.ts no-op branch test timed out and cleanup hit Windows EPERM. This is retained as an environment/test-run failure; the standalone GUI rerun passed 352/352.
 - The named-host checklist items remain unchecked: no XAI_API_KEY was available and pre-existing user plugin state makes post-uninstall grok inspect ambiguous. No real get_status success is claimed; MCP-014 remains Verifying.
+
+
+## Final OAuth-backed acceptance — 2026-08-23
+
+- [x] Grok 1.0.5 OAuth session installed and trusted the native Kanmer plugin.
+- [x] Fresh project-bound process made a real Kanmer `get_status` call and returned `KANMER_GET_STATUS_OK` with exit 0.
+- [x] Plugin uninstall completed; no project `.grok` registration or Kanmer-owned copied skills remained.
+- [ ] Global stale user-level enablement, disconnect-idempotence, and malformed-fixture variants remain explicit untested boundaries.
+
+
+## Closeout execution — 2026-08-23
+
+- [x] OAuth-backed functional proof and cleanup evidence recorded in `proof.md`.
+- [x] Moved to Done after `get_doc_gates` reported proof/questions-resolved PASS.
+- [x] `take_ticket action: release` completed; no ticket is taken.
+- [x] No MCP-014 ticket worktree was present to remove; shared user Grok state was preserved.

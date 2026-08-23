@@ -53,3 +53,14 @@ The named Grok clean-project install, authenticated functional `get_status`, and
 ## OAuth-backed Grok operator evidence — 2026-08-23
 
 Grok CLI v1.0.5 was run with its existing OAuth session. After installing the shipped Kanmer plugin with the native trust flow, a fresh non-interactive Grok process in the project invoked the real Kanmer get_status tool and returned the exact marker KANMER_GET_STATUS_OK with exit 0. The plugin was then uninstalled; no project .grok registration or Kanmer-owned copied skills remained. User-authored/global Grok state was not overwritten, and the remaining stale user-level enablement entry is retained as an explicit migration-boundary note. This proves the functional OAuth tool path but does not fabricate absent/malformed fixture files or unexecuted disconnect-idempotence variants.
+
+
+## Final OAuth-backed acceptance evidence — 2026-08-23
+
+- Grok CLI `grok` 1.0.5 used its existing OAuth login; no API key was used.
+- Native trust-flow plugin install completed, followed by a fresh non-interactive project-bound Grok process.
+- The process invoked the real Kanmer MCP `get_status` tool and returned exactly `KANMER_GET_STATUS_OK`; exit code 0.
+- The plugin was uninstalled after the call. No project `.grok` registration or Kanmer-owned copied skills remained.
+- User-authored/global Grok state was preserved. A stale user-level enablement entry remains as a migration-boundary note; disconnect-idempotence and malformed-fixture variants were not exercised and are not claimed.
+
+This closes the real OAuth-backed functional tool-call lane while retaining the explicit cleanup boundary above.

@@ -6,4 +6,4 @@
 - [x] Correct only source-backed stale FRD prose identified by the audit; record any intentionally retained legacy wording in the report.
 - [x] Add or extend a deterministic dependency-free freshness check that fails on stale generated documentation/operator guidance and passes for current files.
 - [x] Run focused documentation/freshness checks and inspect the diff for scope and traceability.
-- [ ] Write the post-implementation report with governing-doc mapping, risks, and merged-main verification commands.
+- [x] Write the post-implementation report with governing-doc mapping, risks, and merged-main verification commands.

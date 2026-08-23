@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-23T01:48:06.684Z
+updated_at: 2026-08-23T01:56:14.396Z
 ---
 
 # Current auto run — HZN-007
@@ -984,3 +984,6 @@ Queued follow-up: 2026-08-23T01:47:18.614Z — GUI-125 is a bounded priority-sur
 
 
 Release boundary: 2026-08-23T01:48:06.684Z — exact-tag v0.3.3 public assets now pass the standalone verifier after approved repair; CORE-036/CORE-042 remain Verifying for the unperformed tag-triggered/negative disposable and two-version updater boundaries.
+
+
+Review handoff: 2026-08-23T01:56:14.396Z — SKILL-032 exact-head review PASS with no findings; hosted run 32611381353 remains FAIL from pre-review race, so rerun is required before merge.

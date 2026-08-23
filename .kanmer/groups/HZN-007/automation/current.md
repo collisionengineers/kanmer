@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-23T01:43:40.711Z
+updated_at: 2026-08-23T01:44:46.861Z
 ---
 
 # Current auto run — HZN-007
@@ -972,3 +972,6 @@ Packaged rail in isolated normal clone at origin/main 30c99ffa: npm run dist:che
 
 
 Last audit: 2026-08-23T01:43:40.711Z — the 75-ticket historical Done baseline is reconciled. No Done-incomplete or active open-question findings remain. Remediation candidates are DOC-004 mirror freshness, SKILL-009 stale review prose, GUI-033 swallowed restored-tab failures, and GUI-061/063 README release/Windows prose; GUI-011/031 remain evidence-gated candidates.
+
+
+Next dispatch: 2026-08-23T01:44:46.861Z — prepare and then run the three bounded lanes DOC-019, SKILL-032, GUI-124. No author may review or merge its own PR; root performs independent review and stops on any red check.

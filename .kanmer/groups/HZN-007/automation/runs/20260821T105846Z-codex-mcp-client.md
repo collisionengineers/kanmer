@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-23T01:43:40.711Z
+updated_at: 2026-08-23T01:44:46.861Z
 lane_limit: 3
 stop_reason:
 ---
@@ -923,3 +923,5 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 2026-08-23 release-integrity audit — exact tag v0.3.3 at 240e269d was rebuilt in an isolated clean checkout. npm run dist:check passed (updater package 7 checks), but node scripts/verify-release-assets.mjs 0.3.3 --dir apps/gui/release exited 1: published installer SHA 68e656c9… differs from fresh 727d6fa6…, published blockmap size/SHA 82113/933db1a1… differs from fresh 82083/b30eaa32…, and latest.yml SHA 100a8068… differs from fresh 7ba17dbf…. Existing public assets were recorded before the approved exact-file repair; no source or board stage claim is made by this event.
 
 - 2026-08-23T01:43:40.711Z — historical Done backfill audit complete across the 75-ticket baseline. All 15 Done-incomplete candidates were live-checked with status done and complete checklists; no active non-parked open questions or unchecked Done checklist items remain. Read-only source/history audits found no unique implementation defect in CORE-009, CORE-012..020, DOC-001..003/DOC-006/DOC-016, MCP-002..004, SKILL-008/010, or GUI-004/006/008/009/013/018..060/062/067. Concrete stale/defective findings are recorded for remediation: DOC-004 generated doc-structure mirror is materially stale; SKILL-009 review prose still claims deleted pr-* assets remain; GUI-033 swallows restored-tab openProject failures; GUI-061/063 README repeats stale Windows and one-phase release instructions. GUI-011 unused priority filter state and GUI-031 absent planned tab reorder/PageUp controls remain candidates pending governing-doc confirmation, not asserted defects. Release v0.3.3 exact-tag assets were separately repaired and final verifier PASS is recorded in CORE-036/CORE-042 proof.
+
+- 2026-08-23T01:44:46.861Z — three bounded remediation lanes created from the historical audit and held in Backlog pending their own pipeline documents: DOC-019 (generated documentation mirror plus README release/Windows guidance; links DOC-004/DOC-002/GUI-061/GUI-063), SKILL-032 (stale deleted pr-* review-asset prose; links SKILL-009), and GUI-124 (surface restored-project tab failures without dropping other tabs; links GUI-033). No GUI-011/GUI-031 ticket was created because their current requirement status remains evidence-gated. Controller will prepare docs, then dispatch at most these three conflict-free lanes; each author stops at Review for independent review.

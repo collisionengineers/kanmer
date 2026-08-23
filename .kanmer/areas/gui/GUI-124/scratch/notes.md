@@ -7,3 +7,5 @@ Focused GUI session test passed: `npx vitest run src/renderer/src/lib/session.te
 GUI workspace typecheck `npm run typecheck -w @kanmer/gui` failed before renderer checks on existing main/core integration: missing @kanmer/core exports `dispatchDeliverableProven` and `withExclusiveFileLock`, missing `verifyDeliverable` option, implicit any in dispatch.ts, and antigravity provider type mismatch. No ticket files overlap; retained as INCONCLUSIVE.
 
 GUI build `npm run build -w @kanmer/gui` failed in existing main integration: Rollup reports `withExclusiveFileLock` is not exported by packages/core/dist/index.js from src/main/kanmerGit.ts. Renderer session change was not implicated; retained as INCONCLUSIVE.
+
+Implementation committed on `gui-124-surface-restore-failures`: e11c0f286ab231e0d8201ca102558663694db19a. Diff check passed; 3 files changed. Focused session test passed 3/3. Full GUI tests/typecheck/build remain recorded baseline failures.

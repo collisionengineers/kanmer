@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-23T02:31:19.726Z
+updated_at: 2026-08-23T02:38:05.572Z
 lane_limit: 3
 stop_reason:
 ---
@@ -961,3 +961,5 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - 2026-08-23T02:30:25.313Z — GUI-126 prepared from DOC-019 review follow-up: files/plan written, backlog→preparing passed, and one free GUI lane is authorized. The child author must implement only submenu ArrowLeft parent-focus restoration, update FRD-019 evidence, stop at Review, and leave root to independently review/merge.
 
 - 2026-08-23T02:31:19.726Z — independent re-review of DOC-019 head d640899edb764679d1669921e1bbb2b3b132d670 found four additional actionable findings (dynamic repoDocs resolution, release manifest edge case, target-appropriate generated footer, and dry-run local-write wording). Author replied with fixes in scope; PR remains Review and merge is held until a new exact-head review and hosted run pass.
+
+- 2026-08-23T02:38:05.572Z — DOC-019 exact-head re-review PASS at f9449c488f8b535a8e382783b30848c16a5a60c3: all ten findings fixed, four review threads resolved after author replies, hosted run 32613165379 verify/gate PASS, and PR #227 is clean/mergeable. Root may merge after final preflight; no self-review or author merge.

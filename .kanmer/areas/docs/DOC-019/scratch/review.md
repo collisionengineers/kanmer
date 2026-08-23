@@ -58,8 +58,8 @@ checks:
   skills_rail: "PASS — npm run verify:skills"
   scripts: "PASS — npm run test:scripts, 93/93"
   diff_check: "PASS — git diff --check"
-  hosted_gate: "PENDING — exact-head rerun required after this attestation; prior run 32613085883 gate passed but verify was an unrelated Windows temp-lock timeout"
-  hosted_verify: "PENDING — exact-head rerun required; run 32613085883 failed on three environment-sensitive Windows temp-lock/cleanup timeouts, not changed files"
+  hosted_gate: "PASS — exact-head PR run 32613165379 kanmer-gate"
+  hosted_verify: "PASS — exact-head PR run 32613165379 verify"
 ---
 
-Independent re-review of PR #227 at exact head f9449c488f8b535a8e382783b30848c16a5a60c3: all ten review findings are dispositioned. The checker now resolves effective repoDocs from the board or injected configuration, release guidance documents installer/blockmap plus latest.yml presence-only fallback accurately, the generated mirror is consumer-safe, and dry-run wording distinguishes local build writes from Git/remote writes. The four-test freshness suite, docs/skills rails, 93 script tests, and diff check pass. A fresh exact-head hosted run is required before merge; no merge performed in this review action.
+Independent re-review of PR #227 at exact head f9449c488f8b535a8e382783b30848c16a5a60c3: all ten review findings are dispositioned. The checker now resolves effective repoDocs from the board or injected configuration, release guidance documents installer/blockmap plus latest.yml presence-only fallback accurately, the generated mirror is consumer-safe, and dry-run wording distinguishes local build writes from Git/remote writes. The four-test freshness suite, docs/skills rails, 93 script tests, diff check, and exact-head hosted run 32613165379 all pass. No merge performed in this review action.

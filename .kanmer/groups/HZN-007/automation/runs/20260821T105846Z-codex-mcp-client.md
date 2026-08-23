@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-23T02:11:40.128Z
+updated_at: 2026-08-23T02:13:48.789Z
 lane_limit: 3
 stop_reason:
 ---
@@ -949,3 +949,5 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed and independently re-reviewed at new PR #227 head 1064b448d; verify:skills/docs/scripts/mirror/diff PASS, kanmer-gate PASS, hosted verify IN_PROGRESS. Review attestation replaced with exact new head and finding disposition fixed; merge remains held.
 
 - 2026-08-23T02:11:40.128Z — hosted PR verification completed PASS at exact heads for SKILL-032 (#225, 31a7504eb3287fc7a2cca893a0a1a4c9afe5b0db, run 32611381353) and GUI-124 (#226, e11c0f286ab231e0d8201ca102558663694db19a, run 32611494789). Independent review attestations are complete; both remain in Review pending root merge. DOC-019 (#227, 1064b448d45126ec8d2c422886f0c937521661a8, run 32611872842) also has hosted verify/gate PASS, but GitHub reports merge blocked by unresolved automated review conversations; the author was asked to disposition every finding before any merge.
+
+- 2026-08-23T02:13:48.789Z — SKILL-032 closed out: PR #225 merged as 3862f2c7a8fa9fee8ce041c60364c7f90fb973ce; merged-main proof PASS; exact ticket worktree and local/remote branch removed; take_ticket release completed.

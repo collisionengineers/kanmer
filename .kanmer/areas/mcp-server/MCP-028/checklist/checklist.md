@@ -236,3 +236,11 @@ Live named-tunnel, DNS/TLS, Worker deployment, token rotation over a hosted rout
 - [x] Branch deleted: mcp-028-remote-access-integration
 - [x] git fetch --prune origin and git worktree prune completed
 - [x] take_ticket action: release completed
+
+
+## 2026-08-23 protected attempt disposition
+
+- [x] Infisical-backed Cloudflare API access exercised only through disposable resources.
+- [x] Ingress validation failure and corrected-origin public-readiness timeout recorded in `proof.md`.
+- [x] `finally` cleanup and independent zero-resource inventory completed.
+- [ ] Worker deployment/client lifecycle remains INCONCLUSIVE because the connector never reached public readiness; no result is promoted to PASS.

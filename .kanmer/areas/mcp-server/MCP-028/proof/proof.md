@@ -38,3 +38,14 @@ Independent review at 45449d0f was PASS after fixing F-001 through F-004. The re
 The canonical protected verifier was run from a detached clean worktree at merged SHA 85ace9d16abac4d578f5d16bfd2c6b27e7742783 with a protected token-file descriptor, a disposable named Cloudflare tunnel, and the exact merged HTTP host. The verifier exited 0 with overall outcome pass. Safe boundary results: local doctor 26/26, missing/wrong bearer rejection, official SDK public initialize, expected-project match, exact remote tool policy, dispatch exclusion, wrong-project rejection, bounded mutation/readback, gate refusal, session close, and fixture cleanup all passed. The official SDK client ran as a separate process; same-runner origin/client limitation is retained. Cloudflare DNS/tunnel resources, host, connector, token file, descriptor, and logs were removed after the run. No raw bearer, provider credential, canary content, endpoint, account data, or tunnel identifier is retained.
 
 The Worker-client, token-rotation, host-restart/session-invalidation, bounded-concurrency, tunnel-degradation/recovery, and GUI two-project boundaries remain INCONCLUSIVE and are not promoted to PASS.
+
+
+## Protected Worker/tunnel attempt with Infisical — 2026-08-23
+
+- Infisical injected the approved Cloudflare account/token references without exposing values. The Cloudflare API accepted disposable tunnel creation.
+- First configuration attempt was rejected safely with Cloudflare validation `1056` because the ingress service included the `/mcp` path; no resource was retained.
+- A corrected ingress using the loopback origin (with the request path preserved) was applied to fresh disposable tunnel/DNS resources. A temporary `cloudflared` 2026.8.2 connector started, but public 401 readiness did not arrive within the bounded 120-second window; retrying with HTTP/2 produced the same bounded timeout.
+- Because public readiness never passed, the Worker was not deployed and no Worker client result is claimed.
+- Cleanup ran in `finally`; independent post-run checks found zero `kanmer-mcp028-*` tunnels and zero matching DNS records. Temporary executable, credentials/config files, fixture root, and logs were removed.
+
+This is an environment/provider-readiness INCONCLUSIVE result. It does not weaken the canonical protected verifier PASS above, and it does not promote Worker, token-rotation, restart/invalidation, bounded-concurrency, degradation/recovery, or GUI two-project boundaries to PASS.

@@ -2,7 +2,7 @@
 id: CORE-076
 type: ticket
 title: 'CORE-072 review: retry source cleanup after board commit'
-status: verifying
+status: done
 area: core
 assignee: codex-recovery
 profile: fix
@@ -10,6 +10,7 @@ stageEntered:
   preparing: '2026-08-22T16:07:47.138Z'
   review: '2026-08-22T16:15:44.785Z'
   verifying: '2026-08-22T16:22:15.776Z'
+  done: '2026-08-23T00:03:56.052Z'
 taken_at: '2026-08-22T16:08:02.400Z'
 branch: core-076-retry-orphan-cleanup
 worktree: .worktrees/core-076
@@ -32,7 +33,11 @@ prs:
   - '196'
 archived: false
 created: '2026-08-22T16:06:10.232Z'
-updated: '2026-08-22T16:22:15.776Z'
+updated: '2026-08-23T00:03:56.068Z'
 ---
 
 PR #194 review finding: resumeOrphanMigration returns immediately when the board already has HEAD. If the first commit/push succeeded but source cleanup git rm failed, a later retry sees HEAD and never retries cleanup, leaving the source .kanmer tree as a stale second board. Make finalization idempotently retry cleanup after commit/push and add a deterministic post-commit cleanup failure regression.
+
+## Outcome
+
+Verified on merged origin/main at fdaededcf8bff0c5d5867e386782d8bdc32324e9; PR #196 merged at d4dee4bb668d27a1942532d940eb6d4508a224ab; deterministic proof is recorded. External Windows/hosted/packaged/visual boundaries remain INCONCLUSIVE.

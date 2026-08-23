@@ -2,7 +2,7 @@
 id: CORE-069
 type: ticket
 title: 'CORE-058 review: retry the current saved board branch'
-status: verifying
+status: done
 area: core
 assignee: codex-recovery
 profile: fix
@@ -11,6 +11,7 @@ stageEntered:
   implementing: '2026-08-22T15:29:37.661Z'
   review: '2026-08-22T15:33:53.015Z'
   verifying: '2026-08-22T15:35:06.893Z'
+  done: '2026-08-23T00:03:52.580Z'
 taken_at: '2026-08-22T15:29:45.571Z'
 branch: core-069-retry-current-branch
 worktree: .worktrees/core-069
@@ -33,7 +34,11 @@ prs:
   - '190'
 archived: false
 created: '2026-08-22T15:15:55.407Z'
-updated: '2026-08-22T15:35:07.798Z'
+updated: '2026-08-23T00:03:52.591Z'
 ---
 
 PR #180 thread 3836307986: when settings change the board branch while the project is paused, retry must use the current saved branch (or explicitly update the paused state) rather than retrying the stale branch; add regression.
+
+## Outcome
+
+Verified on merged origin/main at fdaededcf8bff0c5d5867e386782d8bdc32324e9; PR #190 merged at 217eba4515f0b9030d25ed9f0a86a10fd7418d0f; deterministic proof is recorded. External Windows/hosted/packaged/visual boundaries remain INCONCLUSIVE.

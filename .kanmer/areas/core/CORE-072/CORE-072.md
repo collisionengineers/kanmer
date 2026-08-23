@@ -2,7 +2,7 @@
 id: CORE-072
 type: ticket
 title: 'CORE-058 review: resume orphan migration after retry'
-status: verifying
+status: done
 area: core
 assignee: codex-recovery
 profile: fix
@@ -11,6 +11,7 @@ stageEntered:
   implementing: '2026-08-22T15:59:39.538Z'
   review: '2026-08-22T16:03:57.101Z'
   verifying: '2026-08-22T16:25:37.312Z'
+  done: '2026-08-23T00:03:54.260Z'
 taken_at: '2026-08-22T15:59:40.487Z'
 branch: core-072-resume-orphan-migration
 worktree: .worktrees/core-072
@@ -36,7 +37,11 @@ prs:
   - '196'
 archived: false
 created: '2026-08-22T15:15:55.500Z'
-updated: '2026-08-22T16:25:37.312Z'
+updated: '2026-08-23T00:03:54.273Z'
 ---
 
 PR #180 thread 3836323268: when orphan creation copied the source board and ignore repair failed, a later retry must complete the source-board cleanup/migration rather than only repairing .gitignore; add regression under FRD-020 R2.
+
+## Outcome
+
+Verified on merged origin/main at fdaededcf8bff0c5d5867e386782d8bdc32324e9; PR #194 merged at 271790e58c52a14fa4b3cec62f7146b6a67bcdcd; deterministic proof is recorded. External Windows/hosted/packaged/visual boundaries remain INCONCLUSIVE.

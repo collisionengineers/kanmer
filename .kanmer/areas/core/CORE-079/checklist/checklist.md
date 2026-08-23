@@ -9,3 +9,16 @@
 - [x] Build, GUI typecheck, GUI build, scripts 88/88, verify-docs, check-manual, and diff-check pass after worktree-local dependency setup.
 - [x] Preserved initial stale-junction/setup failures and the authoritative-wrapper transient ENOENT in the report.
 - [x] Commit, push, PR traceability, and Review handoff completed.
+
+---
+
+## Closeout — CORE-079
+
+- [ ] PR merge verified
+- [ ] proof.md finalised with PR URL and merge date
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body
+- [ ] Recorded worktree removed
+- [ ] Recorded branch deleted
+- [ ] git fetch --prune and worktree prune
+- [ ] take_ticket release

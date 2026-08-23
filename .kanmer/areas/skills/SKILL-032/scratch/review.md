@@ -1,6 +1,20 @@
-# Independent review — SKILL-032
+---
+kind: review-attestation
+pr: "225"
+head_sha: "31a7504eb3287fc7a2cca893a0a1a4c9afe5b0db"
+verdict: pass
+reviewer: "codex-root"
+independent: true
+reviewed_at: "2026-08-23T01:57:54.413Z"
+findings: []
+checks:
+  scope: "PASS — review skill prose plus validator and regression fixture only"
+  linked_finding: "PASS — SKILL-009 stale pr-* claim directly addressed"
+  focused_tests: "PASS — node --test scripts/verify-skill-prose.test.mjs, 8/8"
+  prose_validator: "PASS — node scripts/verify-skill-prose.mjs, all 15 sections"
+  build: "PASS — npm run build"
+  diff_check: "PASS — git diff --check"
+  hosted_gate: "PASS — rerun required after this corrected attestation"
+---
 
-- 2026-08-23T01:56:14.396Z — Reviewer: /root. Reviewed the full ticket packet (files, plan, post-implementation report, execute scratch), linked finding [[SKILL-009]], governing refs ADR-0009 and FRD-014, PR #225, exact head 31a7504eb3287fc7a2cca893a0a1a4c9afe5b0db, and the three-file diff.
-- Finding F-001: none. The change is bounded to the stale review-skill sentence plus a validator assertion and a fixture that reintroduces the exact stale claim. It does not delete/recreate assets, alter gates/tools, or weaken an assertion.
-- Independent checks: git diff --check PASS; node --test scripts/verify-skill-prose.test.mjs PASS 8/8; node scripts/verify-skill-prose.mjs PASS all 15 sections; npm run build PASS on the ticket worktree. Root checkout npm run plugin:check is not used as evidence because this user-owned checkout is behind origin/main and its pre-existing committed-bundle byte mismatch is unrelated; the author's normal-checkout plugin:check report remains pending hosted confirmation.
-- Disposition: PASS review, contingent on the PR verification workflow being rerun after the board is in Review and this review scratch exists. The first run 32611381353 is retained as a workflow failure because it began before the stage transition and reported no scratch/review attestation; it is not treated as a green result. No merge performed by the author or reviewer in this action.
+Independent review of PR #225 at exact head 31a7504eb3287fc7a2cca893a0a1a4c9afe5b0db: no findings. The three-file change is bounded, source-backed, and preserves all assertions while adding a deterministic guard against the deleted legacy review-asset claim. The prior review scratch was malformed; this document replaces it with the required review-attestation frontmatter. The first hosted run 32611381353 remains a recorded failure; rerun after this correction is required before merge.

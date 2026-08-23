@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-23T01:56:14.396Z
+updated_at: 2026-08-23T01:57:54.413Z
 ---
 
 # Current auto run — HZN-007
@@ -987,3 +987,6 @@ Release boundary: 2026-08-23T01:48:06.684Z — exact-tag v0.3.3 public assets no
 
 
 Review handoff: 2026-08-23T01:56:14.396Z — SKILL-032 exact-head review PASS with no findings; hosted run 32611381353 remains FAIL from pre-review race, so rerun is required before merge.
+
+
+Review correction: 2026-08-23T01:57:54.413Z — SKILL-032 scratch/review.md now has valid review-attestation frontmatter; rerun hosted PR checks before merge.

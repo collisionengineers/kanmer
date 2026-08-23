@@ -26,3 +26,13 @@ GitHub branch-protection PUTs for both disposable private `main` and `kanmer-boa
 ## Closeout disposition
 
 The implementation source is reachable on merged main through the recorded cumulative trace. The protected disposable-repository boundary returned HTTP 403 and cannot be rerun in the available environment; this remains explicitly INCONCLUSIVE/accepted-risk, not a fabricated PASS. The ticket is closed because no in-scope source work remains and the limitation is recorded for the controlling release/integration follow-up.
+
+## Independent merged-main rerun — 2026-08-23T14:04Z
+
+Verification ran in detached worktree at origin/main `8554c733aac5817e99909622e062d022d6c12be3`. No disposable protected-merge SHA exists for this integration ticket.
+
+- `npm run typecheck`: PASS (all workspaces, exit 0); `npm run build:core`: PASS; `npm run build:server`: PASS; `git diff --check`: PASS.
+- `npm run verify`: FAIL (exit 1) at core tests: 5 unrelated Windows timing/cleanup tests exceeded Vitest's 5-second timeout (io stale-lock; docs profile matrix; migrate folded-id and migrated-board; store area-id), with ENOTEMPTY cleanup reported by migration.
+- `npm run dist:check`: PASS; updater package reports 8/8 checks.
+
+The missing protected disposable repository/branch-protection capability remains a hard external boundary: no protected conversation/merge, exact fixture merge SHA, detached fixture verification, or cleanup can be claimed. Result remains INCONCLUSIVE; ticket stays Verifying.

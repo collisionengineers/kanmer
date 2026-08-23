@@ -32,3 +32,13 @@ Authorized PR merge is evidenced by merge commit e141dca7. Public tag publicatio
 - Public verify-release-assets.mjs initially detected mismatched published installer/blockmap/manifest bytes. Exact tag-built assets were then uploaded with gh release upload --clobber, temporary duplicate upload names were removed, and the public check was rerun.
 - Final public asset verification exited 0 with the expected three assets and matching size/SHA-256 metadata. No source or branch-protection bypass was used.
 - A two-version installed updater cycle and protected disposable-repository proof remain INCONCLUSIVE; CORE-042 stays Verifying.
+
+## Independent merged-main rerun — 2026-08-23T14:04Z
+
+Verification ran in detached worktree at origin/main `8554c733aac5817e99909622e062d022d6c12be3`; PR #160 remains MERGED at `e141dca74bec48e7e8068b767f6db9e7a5c41322`.
+
+- `node --test scripts/release-flow.test.mjs`: PASS, 5/5; `node --check scripts/release.mjs`: PASS; `node --check scripts/release-flow.mjs`: PASS.
+- `npm run test:scripts`: PASS, 98/98; `npm run typecheck`: PASS (all workspaces); `npm run build:core` and `npm run build:server`: PASS; `npm run dist:check`: PASS, updater package 8/8; `git diff --check`: PASS.
+- Authoritative `npm run verify`: FAIL (exit 1) at five unrelated Windows timing/cleanup core tests (io stale-lock; docs profile matrix; migrate folded-id and migrated-board; store area-id), including ENOTEMPTY cleanup.
+
+The protected release-flow code is current and deterministic rails pass. The two-version installed updater cycle and protected disposable-repository proof remain INCONCLUSIVE; CORE-042 stays Verifying and is not moved or closed.

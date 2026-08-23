@@ -37,3 +37,13 @@ PR #127's merged artifact is reachable on main through merge commit `470b2fad5d1
 - Using the approved release publisher account, the exact three tag-built assets were uploaded to v0.3.3 with gh release upload --clobber; transient API cache and temporary dotted-name duplicates were removed.
 - Final node scripts/verify-release-assets.mjs 0.3.3 --dir apps/gui/release exited 0: exactly the expected installer, blockmap, and latest.yml are present, uploaded, and byte-identical.
 - This proves public asset integrity for the existing tag. It does not yet prove the ticket's separate tag-triggered release-verify green workflow or intentionally incomplete disposable-release red run; those remain INCONCLUSIVE and CORE-036 stays Verifying.
+
+## Independent merged-main rerun — 2026-08-23T14:04Z
+
+Verification ran in detached worktree at origin/main `8554c733aac5817e99909622e062d022d6c12be3`; PR #127 remains MERGED at `470b2fad5d16ca4edcc9833b3f674460f994e73d`.
+
+- `node --test scripts/release-flow.test.mjs`: PASS, 5/5; `node --check scripts/release.mjs` and `node --check scripts/release-flow.mjs`: PASS.
+- `npm run test:scripts`: PASS, 98/98; `npm run typecheck`: PASS; `npm run dist:check`: PASS, updater package 8/8; `git diff --check`: PASS.
+- Authoritative `npm run verify`: FAIL (exit 1) at the same five unrelated Windows timing/cleanup core tests (io stale-lock; docs profile matrix; migrate folded-id and migrated-board; store area-id), including ENOTEMPTY cleanup.
+
+The separate real next-tag green `release-verify` run and intentionally incomplete-release red run remain unavailable; existing-tag asset integrity does not satisfy those checks. CORE-036 remains Verifying; no Done move or closeout is claimed.

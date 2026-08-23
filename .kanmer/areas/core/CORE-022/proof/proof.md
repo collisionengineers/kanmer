@@ -46,3 +46,13 @@ A temporary detached worktree checked out the fetched merged target origin/main 
 - git -C .worktrees/verify-core022-origin diff --check — exit 0.
 
 These are exact merged-origin deterministic rails. They do not supply the unavailable 242-ticket fixture or a genuine Windows handle/antivirus lock. Those two checklist items remain INCONCLUSIVE and are not reclassified; CORE-022 remains Verifying, with no Done move or closeout/release.
+
+## Independent merged-main rerun — 2026-08-23T14:04Z
+
+Verification ran in detached worktree at origin/main `8554c733aac5817e99909622e062d022d6c12be3`; PR #28 remains MERGED at `dfc2b059aaab7f6dbaac5085c9a2b475c538cd09`, and implementation `d0f927a3f9aab7fa6f4716410138126f3ff1fc35` is reachable.
+
+- `npm run test -w @kanmer/core -- src/io.test.ts src/migrate.test.ts`: PASS, 2 files / 48 tests.
+- `npm run test -w @kanmer/core`: FAIL (exit 1), 305/310 passed; five Windows timing/cleanup timeouts (io stale-lock; docs profile matrix; migrate folded-id and migrated-board; store area-id), including ENOTEMPTY cleanup.
+- `npm run typecheck -w @kanmer/core`: PASS; `npm run build -w @kanmer/core`: PASS; `git diff --check`: PASS.
+
+The deterministic migration rail remains green, but the planned 242-ticket fixture and genuine Windows file-lock/antivirus contention remain unavailable and explicitly INCONCLUSIVE. CORE-022 remains Verifying; no Done move or closeout/release is claimed.

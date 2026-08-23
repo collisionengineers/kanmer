@@ -62,6 +62,11 @@ paused. Nothing is lost — your work is committed on the board branch — but i
 will stay paused until you resolve the conflict and retry. See **Sharing a board
 over Git**.
 
+If the board branch is being handed off, the timer also stays stopped while the
+open worktree is on the wrong branch. Kanmer never uses the cached branch for an
+automatic push; after the exact destination is observed, only the generated
+handoff pause is cleared. A genuine sync error remains, with **Retry** available.
+
 ## Two people edited the same thing
 
 Kanmer tells you rather than picking a winner.
@@ -76,10 +81,21 @@ you retitle it is not a conflict at all.
 
 ## Renaming the board branch
 
-Do it from **Settings → Git**, not from the command line. Renaming there keeps
-the board's history and its working copy, and pushes the new name before
-deleting the old one, so the board never briefly exists nowhere. Projects that
-were closed at the time are reconciled the next time you open them.
+For a non-protected branch, do it from **Settings → Git**, not from the command
+line. Renaming there keeps the board's history and its working copy, and pushes
+the new name before any cleanup. A custom-to-custom rename retains the old
+remote ref and warns you to update the hosted `KANMER_BOARD_BRANCH` variable
+first; delete the old ref only after that variable points at the new branch.
+This retained-ref rule applies to every custom-to-custom rename. If Settings
+shows a board worktree together with an error while Git is marked unavailable,
+the project is a failed reconciliation, not a non-Git project: complete the
+handoff and press **Retry**.
+For the protected default, Kanmer deliberately refuses this automatic rename.
+An administrator must push the destination, set the repository Actions variable
+`KANMER_BOARD_BRANCH` to the destination, retarget protection and required
+checks, remove the old rule, and rename each local board worktree. Only after
+that handoff is complete should the Kanmer setting be changed; closed projects
+reconcile when they next open against the exact destination.
 
 ## I cannot find the setting for stages, or priorities
 

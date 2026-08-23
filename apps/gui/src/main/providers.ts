@@ -29,12 +29,27 @@ export interface Invocation {
  */
 const CODEX_LAUNCHER_PATH = "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd";
 
+/** The local default shared by the GUI registration and MCP runtime. */
+export const DEFAULT_BOARD_BRANCH = "kanmer-board";
+
+/** Keep a malformed/blank preference from creating an unusable registration. */
+export function normalizeBoardBranch(branch: string | undefined): string {
+  const trimmed = branch?.trim();
+  return trimmed || DEFAULT_BOARD_BRANCH;
+}
+
+/** The functional native-plugin probe must prove the staged branch, not only project identity. */
+export function nativeFunctionalPrompt(boardBranch: string | undefined): string {
+  const expected = JSON.stringify(normalizeBoardBranch(boardBranch));
+  return `Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format, board_expected_branch, board_actual_branch, board_on_expected_branch copied from that tool response. The expected board branch is ${expected}; copy boardWorktree.expectedBranch, boardWorktree.actualBranch, and boardWorktree.onBoardBranch. Do not invent values or return a marker.`;
+}
+
 /** Return a fresh canonical Codex invocation so callers cannot mutate shared state. */
-export function codexPortableInvocation(): Invocation {
+export function codexPortableInvocation(boardBranch?: string): Invocation {
   return {
     command: "cmd.exe",
     args: ["/d", "/s", "/c", `"${CODEX_LAUNCHER_PATH}"`],
-    env: {},
+    env: boardBranch === undefined ? {} : { KANMER_BOARD_BRANCH: normalizeBoardBranch(boardBranch) },
   };
 }
 
@@ -63,10 +78,14 @@ export type RegisterSpec =
   | {
       kind: "cli";
       addCommand: (inv: Invocation, root: string) => string;
+      /** Optional production-safe argv form; addCommand remains copy/paste text. */
+      addArgv?: (inv: Invocation, root: string) => NativePluginCommand;
       removeCommands: (root: string) => string[];
       /** Optional project file that proves this CLI host remains connected. */
       configPath?: string;
       registrationState?: (existing: string) => RegistrationState;
+      /** Optional provider-owned merge used to refresh an existing registration without invoking the host CLI. */
+      merge?: (existing: string | null, inv: Invocation) => string;
     }
   | {
       kind: "configFile";
@@ -133,7 +152,7 @@ export type InstallSpec =
        listCommand: () => string;
        inspectCommand: () => string;
        validateCommand?: (pluginRoot: string) => string;
-       functionalCommand: (projectRoot: string) => string;
+       functionalCommand: (projectRoot: string, boardRoot?: string, boardBranch?: string) => string;
        requiredFiles: (pluginRoot: string) => string[];
        capabilityPresent: (output: string) => boolean;
        descriptorPath: (pluginRoot: string) => string;
@@ -166,7 +185,7 @@ export interface NativePluginArgvCommands {
   list: () => NativePluginCommand;
   inspect: () => NativePluginCommand;
   validate?: (pluginRoot: string) => NativePluginCommand;
-  functional: (projectRoot: string, boardRoot: string) => NativePluginCommand;
+  functional: (projectRoot: string, boardRoot: string, boardBranch?: string) => NativePluginCommand;
 }
 
 export interface AgentProvider {
@@ -206,7 +225,7 @@ function sharedDispatchSpec(id: DispatchProviderId): Pick<AgentProvider, "dispat
 
 /** Quote a shell argument for the copy-paste fallback command line. */
 export function q(s: string): string {
-  return /[\s"]/.test(s) ? `"${s.replace(/"/g, '\\"')}"` : s;
+  return /[\s"&|<>^();`$%@!]/.test(s) ? `"${s.replace(/"/g, '\\"')}"` : s;
 }
 
 function nativePluginPresent(pluginName: string, output: string): boolean {
@@ -755,14 +774,34 @@ function mcpServersUnmerge(existing: string): string {
     }
   });
 }
+
+/** Claude's project registration shape, used for safe branch-only refreshes. */
+function mcpServersMerge(existing: string | null, inv: Invocation): string {
+  return editJson(existing, (o) => {
+    const mcpServers = (typeof o.mcpServers === "object" && o.mcpServers !== null
+      ? o.mcpServers
+      : {}) as Record<string, unknown>;
+    mcpServers.kanmer = {
+      command: inv.command,
+      args: inv.args,
+      ...(Object.keys(inv.env).length > 0 ? { env: inv.env } : {}),
+    };
+    o.mcpServers = mcpServers;
+  });
+}
 /** codex/claude `mcp add` command line (shared by both CLI providers). */
-function cliAddCommand(id: "codex" | "claude", inv: Invocation, root: string): string {
+function cliAddArgv(id: "codex" | "claude", inv: Invocation, root: string): NativePluginCommand {
   const envFlag = id === "codex" ? "--env" : "-e";
   const envParts = Object.entries(inv.env).flatMap(([k, v]) => [envFlag, `${k}=${v}`]);
   const name = id === "claude" ? "kanmer" : codexServerName(root);
   const scope = id === "claude" ? ["-s", "project"] : [];
   const server = [inv.command, ...inv.args];
-  return [id, "mcp", "add", name, ...scope, ...envParts, "--", ...server].map(q).join(" ");
+  return { file: id, args: ["mcp", "add", name, ...scope, ...envParts, "--", ...server] };
+}
+
+function cliAddCommand(id: "codex" | "claude", inv: Invocation, root: string): string {
+  const command = cliAddArgv(id, inv, root);
+  return [command.file, ...command.args].map(q).join(" ");
 }
 
 export const PROVIDERS: AgentProvider[] = [
@@ -803,12 +842,14 @@ export const PROVIDERS: AgentProvider[] = [
     register: {
       kind: "cli",
       addCommand: (inv, root) => cliAddCommand("claude", inv, root),
+      addArgv: (inv, root) => cliAddArgv("claude", inv, root),
       removeCommands: () => [
         "claude mcp remove kanmer -s project",
         "claude mcp remove kanmer -s user", // stale user-scope entry older versions wrote
       ],
       configPath: ".mcp.json",
       registrationState: (existing) => jsonRegistrationState(existing, "mcpServers"),
+      merge: mcpServersMerge,
     },
     install: {
       kind: "marketplace",
@@ -860,7 +901,7 @@ export const PROVIDERS: AgentProvider[] = [
       uninstallCommand: () => "grok plugin uninstall kanmer --confirm",
       listCommand: () => "grok plugin list",
       inspectCommand: () => "grok inspect",
-      functionalCommand: (root) => `grok -p ${q("Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.")} --cwd ${q(root)}`,
+      functionalCommand: (root, _boardRoot, boardBranch) => `grok -p ${q(nativeFunctionalPrompt(boardBranch))} --cwd ${q(root)}`,
       requiredFiles: (root) => [
         join(root, ".claude-plugin", "plugin.json"),
         join(root, "skills"),
@@ -880,11 +921,11 @@ export const PROVIDERS: AgentProvider[] = [
         uninstall: () => ({ file: "grok", args: ["plugin", "uninstall", "kanmer", "--confirm"] }),
         list: () => ({ file: "grok", args: ["plugin", "list"] }),
         inspect: () => ({ file: "grok", args: ["inspect"] }),
-        functional: (root) => ({
+        functional: (root, _boardRoot, boardBranch) => ({
           file: "grok",
           args: [
             "-p",
-            "Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.",
+            nativeFunctionalPrompt(boardBranch),
             "--cwd",
             root,
           ],
@@ -913,8 +954,8 @@ export const PROVIDERS: AgentProvider[] = [
       // oracle. Functional capability still requires a bound real tool call.
       inspectCommand: () => "agy plugin list",
       validateCommand: (root) => `agy plugin validate ${q(root)}`,
-      functionalCommand: (root) =>
-        `agy --add-dir ${q(root)} -p ${q("Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.")}`,
+      functionalCommand: (root, _boardRoot, boardBranch) =>
+        `agy --add-dir ${q(root)} -p ${q(nativeFunctionalPrompt(boardBranch))}`,
       requiredFiles: (root) => [
         join(root, "plugin.json"),
         join(root, "mcp_config.json"),
@@ -940,13 +981,13 @@ export const PROVIDERS: AgentProvider[] = [
         // agy 1.1.14 has no inspect subcommand; list is the supported oracle.
         inspect: () => ({ file: "agy", args: ["plugin", "list"] }),
         validate: (root) => ({ file: "agy", args: ["plugin", "validate", root] }),
-        functional: (_projectRoot, boardRoot) => ({
+        functional: (_projectRoot, boardRoot, boardBranch) => ({
           file: "agy",
           args: [
             "--add-dir",
             boardRoot,
             "-p",
-            "Call the Kanmer get_status tool for this workspace. Return exactly one JSON object with keys project_fingerprint, board_root, repo_root, format copied from that tool response. Do not invent values or return a marker.",
+            nativeFunctionalPrompt(boardBranch),
           ],
         }),
       },

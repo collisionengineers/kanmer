@@ -723,7 +723,9 @@ function GitTab(): JSX.Element {
     */}
     <label className="field"><span>Kanmer branch</span><input value={branch} onChange={(e) => setBranch(e.target.value)} /></label>
     {pending && <p className="hint">
-      Renames <code>{saved}</code> to <code>{pending}</code> in place, keeping the board&rsquo;s history and worktree path. The new branch is pushed first, then <code>{saved}</code> is deleted from <code>origin</code>.
+      {saved === "kanmer-board"
+        ? <>The default <code>kanmer-board</code> branch is protected by the repository&rsquo;s merge gate. Before changing it, an authorized administrator must push <code>{pending}</code>, set the repository Actions variable <code>KANMER_BOARD_BRANCH</code> to that destination, retarget branch protection and required checks, remove the old rule, and rename each local board worktree. Kanmer will refuse this automatic rename until that handoff is complete.</>
+        : <>Renames <code>{saved}</code> to <code>{pending}</code> in place, keeping the board&rsquo;s history and worktree path. The new branch is pushed first, but the old remote ref is retained until an administrator updates the repository Actions variable <code>KANMER_BOARD_BRANCH</code> to <code>{pending}</code>; delete <code>{saved}</code> only after that hosted handoff.</>}
     </p>}
     <button className="ghost sm" disabled={!pending || renaming} onClick={() => {
       if (!pending) return;
@@ -732,10 +734,15 @@ function GitTab(): JSX.Element {
     }}>{renaming ? "Renaming…" : "Rename branch"}</button>
     <label className="check"><input type="checkbox" checked={minutes > 0} onChange={(e) => { const next = e.target.checked ? 1 : 0; setMinutes(next); void save({ minutes: next }); }} /> Automatic sync</label>
     {minutes > 0 && <label className="field"><span>Minutes</span><input type="number" min={1} step={1} value={minutes} onChange={(e) => setMinutes(Math.max(1, Math.trunc(Number(e.target.value) || 1)))} onBlur={() => void save()} /></label>}
-    {!status?.available && !status?.boardRoot ? <p className="hint">Git sync is unavailable for this non-Git project.</p> : <>
-      <p className="hint">Board worktree: <code>{status.boardRoot}</code>{status.lastSync ? ` · last sync ${status.lastSync}` : ""}</p>
+    {!status?.available && !status?.boardRoot && !status?.error ? <p className="hint">Git sync is unavailable for this non-Git project.</p> : <>
+      {status?.boardRoot && <p className="hint">Board worktree: <code>{status.boardRoot}</code>{status.lastSync ? ` · last sync ${status.lastSync}` : ""}</p>}
+      {status.handoffPending && <p className="error">{status.handoffPending.warning}</p>}
+      {status.handoffPending && <button className="ghost sm" onClick={() => void window.kanmer.confirmKanmerGitHandoff(client.projectId).then(setStatus)}>Mark hosted handoff complete</button>}
+      {status.nativeReconnectRequired && <p className="error">
+        {status.nativeReconnectRequired.providers.map((provider) => provider === "grok" ? "Grok" : "Antigravity").join(" and ")} may have user-scoped native plugin state staged for an older board branch. Reconnect {status.nativeReconnectRequired.providers.length === 1 ? "this provider" : "these providers"} in the Connect section to refresh <code>KANMER_BOARD_BRANCH</code> for <code>{status.nativeReconnectRequired.branch}</code>.
+      </p>}
       {status.error && <p className="error">{status.error}</p>}
-      <button className="ghost sm" onClick={() => void window.kanmer.syncKanmerNow(client.projectId).then(setStatus)}>{status.paused ? "Retry" : "Sync now"}</button>
+      {status.boardRoot && <button className="ghost sm" onClick={() => void window.kanmer.syncKanmerNow(client.projectId).then(setStatus)}>{status.paused || !status.available ? "Retry" : "Sync now"}</button>}
     </>}
   </div>;
 }

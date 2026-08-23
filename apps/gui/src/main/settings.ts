@@ -2,6 +2,7 @@ import { app } from "electron";
 import { join } from "node:path";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dispatchProviderById, DISPATCH_PROMPT_SUFFIX_MAX, DISPATCH_TASKS, type DispatchProviderId, type DispatchTaskId } from "@kanmer/core";
+import type { NativeReconnectProvider, NativeReconnectRequirement } from "../shared/ipc.js";
 
 export type Theme = "dark" | "light" | "system";
 export type CardDensity = "comfortable" | "compact";
@@ -45,6 +46,12 @@ export interface AppSettings extends UiPreferences {
   sessionInitialized: boolean;
   kanmerBranch: string;
   gitSyncMinutes: number;
+  /** Hosted board-branch handoffs awaiting explicit operator acknowledgement. */
+  pendingBoardHandoffs?: Record<string, { from: string; to: string; warning: string }>;
+  /** Native providers whose user-scoped staged descriptor needs explicit reconnect. */
+  pendingNativeReconnects?: Record<string, NativeReconnectRequirement>;
+  /** Last successfully observed board branch for each opened project. */
+  lastKnownBoardBranches?: Record<string, string>;
   /** GUI remote-access registry; owned by the remote-access store but preserved by settings writes. */
   remoteAccess?: Record<string, unknown>;
   dispatch: DispatchSettings;
@@ -154,6 +161,15 @@ export function readSettings(): AppSettings {
       defaultArea: typeof parsed.defaultArea === "string" ? parsed.defaultArea : "",
       kanmerBranch: typeof parsed.kanmerBranch === "string" && parsed.kanmerBranch.trim() ? parsed.kanmerBranch.trim() : "kanmer-board",
       gitSyncMinutes: Number.isInteger(parsed.gitSyncMinutes) && (parsed.gitSyncMinutes ?? 0) > 0 ? parsed.gitSyncMinutes! : 0,
+      ...(parsed.pendingBoardHandoffs && typeof parsed.pendingBoardHandoffs === "object" && !Array.isArray(parsed.pendingBoardHandoffs)
+        ? { pendingBoardHandoffs: parsed.pendingBoardHandoffs as AppSettings["pendingBoardHandoffs"] }
+        : {}),
+      ...(parsed.pendingNativeReconnects && typeof parsed.pendingNativeReconnects === "object" && !Array.isArray(parsed.pendingNativeReconnects)
+        ? { pendingNativeReconnects: normalizeNativeReconnectMap(parsed.pendingNativeReconnects) }
+        : {}),
+      ...(parsed.lastKnownBoardBranches && typeof parsed.lastKnownBoardBranches === "object" && !Array.isArray(parsed.lastKnownBoardBranches)
+        ? { lastKnownBoardBranches: normalizeKnownBranches(parsed.lastKnownBoardBranches) }
+        : {}),
       ...(parsed.remoteAccess && typeof parsed.remoteAccess === "object" ? { remoteAccess: parsed.remoteAccess as Record<string, unknown> } : {}),
       dispatch: normalizeDispatchSettings(parsed.dispatch),
       ...(bounds && typeof bounds.width === "number" && typeof bounds.height === "number"
@@ -171,6 +187,122 @@ export function setKanmerGitPreferences(kanmerBranch: string, gitSyncMinutes: nu
     const settings = readSettings();
     settings.kanmerBranch = kanmerBranch.trim() || "kanmer-board";
     settings.gitSyncMinutes = Number.isInteger(gitSyncMinutes) && gitSyncMinutes > 0 ? gitSyncMinutes : 0;
+    writeSettings(settings);
+    return settings;
+  });
+}
+
+/** Persist the hosted handoff state independently of a project's open context. */
+export function setKanmerGitHandoff(
+  projectId: string,
+  handoff: { from: string; to: string; warning: string } | null,
+): Promise<AppSettings> {
+  return withSettingsFileLock(async () => {
+    const settings = readSettings();
+    const pending = { ...(settings.pendingBoardHandoffs ?? {}) };
+    if (handoff) pending[projectId] = handoff;
+    else delete pending[projectId];
+    if (Object.keys(pending).length > 0) settings.pendingBoardHandoffs = pending;
+    else delete settings.pendingBoardHandoffs;
+    writeSettings(settings);
+    return settings;
+  });
+}
+
+const NATIVE_RECONNECT_PROVIDERS: readonly NativeReconnectProvider[] = ["grok", "antigravity"];
+
+function normalizeNativeReconnect(value: unknown): NativeReconnectRequirement | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const branch = cleanText(record.branch, 200, MODEL_CONTROL);
+  const providers = Array.isArray(record.providers)
+    ? [...new Set(record.providers.filter((id): id is NativeReconnectProvider => NATIVE_RECONNECT_PROVIDERS.includes(id as NativeReconnectProvider)))]
+    : [];
+  return branch && providers.length > 0 ? { branch, providers } : undefined;
+}
+
+function normalizeNativeReconnectMap(value: unknown): Record<string, NativeReconnectRequirement> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const result: Record<string, NativeReconnectRequirement> = {};
+  for (const [projectId, requirement] of Object.entries(value as Record<string, unknown>)) {
+    const clean = normalizeNativeReconnect(requirement);
+    if (clean) result[projectId] = clean;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function normalizeKnownBranches(value: unknown): Record<string, string> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const result: Record<string, string> = {};
+  for (const [projectId, branch] of Object.entries(value as Record<string, unknown>)) {
+    const clean = cleanText(branch, 200, MODEL_CONTROL);
+    if (clean) result[projectId] = clean;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function writeNativeReconnectState(settings: AppSettings, projectId: string, requirement: NativeReconnectRequirement | null): void {
+  const pending = { ...(settings.pendingNativeReconnects ?? {}) };
+  if (requirement && requirement.providers.length > 0) pending[projectId] = requirement;
+  else delete pending[projectId];
+  if (Object.keys(pending).length > 0) settings.pendingNativeReconnects = pending;
+  else delete settings.pendingNativeReconnects;
+}
+
+/** Observe a successfully opened board branch and retain native reconnect state across reopen. */
+export function observeKanmerBoardBranch(projectId: string, branch: string): Promise<NativeReconnectRequirement | null> {
+  return withSettingsFileLock(async () => {
+    const settings = readSettings();
+    const current = branch.trim() || "kanmer-board";
+    const previous = settings.lastKnownBoardBranches?.[projectId];
+    const existing = settings.pendingNativeReconnects?.[projectId];
+    const providers = new Set<NativeReconnectProvider>(existing?.providers ?? []);
+    // A pre-existing project may be opened for the first time after an
+    // upgrade with a custom board branch. There is no prior observation to
+    // compare, but legacy native descriptors still default to kanmer-board;
+    // require an explicit reconnect before treating that custom convention as
+    // healthy.
+    if ((!previous && current !== "kanmer-board") || (previous && previous !== current)) {
+      for (const provider of NATIVE_RECONNECT_PROVIDERS) providers.add(provider);
+    }
+    const known = { ...(settings.lastKnownBoardBranches ?? {}), [projectId]: current };
+    settings.lastKnownBoardBranches = known;
+    const requirement = providers.size > 0 ? { branch: current, providers: [...providers] } : null;
+    writeNativeReconnectState(settings, projectId, requirement);
+    writeSettings(settings);
+    return requirement;
+  });
+}
+
+/** Mark both user-scoped native providers stale after an in-app branch rename. */
+export function markNativeReconnectRequired(projectId: string, branch: string): Promise<AppSettings> {
+  return withSettingsFileLock(async () => {
+    const settings = readSettings();
+    const current = branch.trim() || "kanmer-board";
+    settings.lastKnownBoardBranches = { ...(settings.lastKnownBoardBranches ?? {}), [projectId]: current };
+    writeNativeReconnectState(settings, projectId, { branch: current, providers: [...NATIVE_RECONNECT_PROVIDERS] });
+    writeSettings(settings);
+    return settings;
+  });
+}
+
+/**
+ * Clear a user-scoped native provider after explicit Connect or Disconnect.
+ *
+ * The project id remains in the API for compatibility with the renderer, but
+ * Grok and Antigravity are user-scoped installs: one successful lifecycle
+ * operation reconciles the provider for every project that was waiting on it.
+ */
+export function clearNativeReconnectRequired(_projectId: string, provider: NativeReconnectProvider): Promise<AppSettings> {
+  return withSettingsFileLock(async () => {
+    const settings = readSettings();
+    const pending = { ...(settings.pendingNativeReconnects ?? {}) };
+    for (const [projectId, existing] of Object.entries(pending)) {
+      writeNativeReconnectState(settings, projectId, {
+        branch: existing.branch,
+        providers: existing.providers.filter((candidate) => candidate !== provider),
+      });
+    }
     writeSettings(settings);
     return settings;
   });

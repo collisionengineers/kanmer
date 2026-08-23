@@ -55,9 +55,16 @@ jobs:
         run: git fetch --no-tags origin "$PR_HEAD_SHA" "$PR_BASE_SHA"
 
       - name: Fetch the board worktree
+        env:
+          # Repository administrators must set this variable to the destination
+          # before retargeting the protected board branch. The default preserves
+          # existing repos until that explicit handoff is complete. The GUI
+          # retains the old custom remote ref until this hosted handoff too.
+          KANMER_BOARD_BRANCH: ${{ vars.KANMER_BOARD_BRANCH || 'kanmer-board' }}
         run: |
-          git fetch origin kanmer-board
-          git worktree add "$RUNNER_TEMP/kanmer-board" origin/kanmer-board
+          test -n "$KANMER_BOARD_BRANCH"
+          git fetch origin "$KANMER_BOARD_BRANCH"
+          git worktree add "$RUNNER_TEMP/kanmer-board" "origin/$KANMER_BOARD_BRANCH"
 
       - name: Assert fetched board is separate from the pull request checkout
         run: |

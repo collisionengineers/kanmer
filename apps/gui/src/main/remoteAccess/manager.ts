@@ -177,6 +177,11 @@ function message(error: unknown): string {
   return value.replace(/[A-Za-z0-9_-]{32,}/g, "[redacted]").slice(0, 240);
 }
 
+/** The branch binding shared by remote runtime and doctor child processes. */
+export function remoteBoardBranchEnvironment(boardBranch?: string): { KANMER_BOARD_BRANCH: string } {
+  return { KANMER_BOARD_BRANCH: boardBranch?.trim() || "kanmer-board" };
+}
+
 export class RemoteAccessManager {
   private readonly records = new Map<string, RemoteRecord>();
   private readonly listeners = new Set<StatusListener>();
@@ -195,13 +200,16 @@ export class RemoteAccessManager {
   private registryReconciled = false;
   private settingsDepth = 0;
   private readonly clipboardAdapter: RemoteClipboardPort;
+  private readonly boardBranch: () => string;
 
   public constructor(
     private readonly userData: string,
     private readonly spawnProcess: SpawnFn = (command, args, options) => spawn(command, args, options),
     private readonly backend?: SecretBackend,
     clipboardAdapter?: RemoteClipboardPort,
+    boardBranch: () => string = () => "kanmer-board",
   ) {
+    this.boardBranch = boardBranch;
     this.clipboardAdapter = clipboardAdapter ?? {
       readText: () => clipboard?.readText() ?? "",
       writeText: (value) => { if (!clipboard) throw new Error("REMOTE_CLIPBOARD_UNAVAILABLE"); clipboard.writeText(value); },
@@ -694,6 +702,7 @@ export class RemoteAccessManager {
           ...(app.isPackaged ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
           KANMER_ROOT: paths.root,
           KANMER_REPO_ROOT: paths.repoRoot,
+          ...remoteBoardBranchEnvironment(this.boardBranch()),
           KANMER_TUNNEL_PROVIDER: "cloudflared",
           KANMER_HTTP_TOKEN_FILE: tokenFile,
           KANMER_TUNNEL_HOSTNAME: config.hostname,
@@ -869,6 +878,7 @@ export class RemoteAccessManager {
           ...(app.isPackaged ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
           KANMER_ROOT: paths.root,
           KANMER_REPO_ROOT: paths.repoRoot,
+          ...remoteBoardBranchEnvironment(this.boardBranch()),
           KANMER_EXPECTED_PROJECT: identity.fingerprint,
           KANMER_REMOTE_HOSTNAME: config.hostname,
           KANMER_TOKEN_FILE: tokenFile,

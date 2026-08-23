@@ -11,9 +11,10 @@ The board can live on its own branch, shared across machines, without ever touch
 - R2. First-time setup migrates an existing `.kanmer/` to the branch only after a successful commit; source-branch cleanup is left **staged and visible**, never auto-committed. `.kanmer/` and `.worktrees/` are gitignored at the source; `activity.jsonl` is ignored on the board branch.
 - R3. **Automatic sync** (off by default; whole-minute interval): add scoped to `.kanmer` + the board `.gitignore` → commit if dirty → fetch/rebase if the remote branch exists → push. Never `--force`, never any other branch; a rebase conflict aborts, preserves local commits, and **pauses that project** with a visible error + Retry. "Sync now" always available.
 - R4. Non-Git folders keep colocated `.kanmer/` with sync shown unavailable.
-- R5. **Branch rename** should migrate all known projects safely — push the new branch before deleting the old, worktree path unchanged so MCP registrations stay valid. **Not built** (see the gap note below); the end state is specified here so the eventual implementation has a target.
+- R5. **Branch rename** keeps the worktree path and history, and for a non-protected configured branch pushes the new branch before any cleanup. Because the GUI cannot update the hosted `KANMER_BOARD_BRANCH` Actions variable, every custom-to-custom rename retains the old remote ref and tells the operator to update that variable; only after the hosted variable points at the new branch may the old ref be deleted. The repository's protected default `kanmer-board` is an explicit operator boundary: Kanmer refuses to rename away from it automatically because it cannot retarget GitHub protection or required checks. An authorized administrator must retarget protection first, remove the old rule, and rename every local board worktree before the setting is changed.
+- R6. **Reopening a project reconciles its provider state after board-worktree recovery.** Codex, Claude, and OpenCode registrations are refreshed through their provider-owned project registration files after `ensureBoardWorktree` establishes the current branch; malformed or failed registrations remain visible as a paused project error. Grok and Antigravity are user-scoped native plugins, so reopen never mutates their host installation implicitly. If a saved branch changed while a project was closed, Settings retains a project-scoped reconnect requirement naming the branch and native providers; an explicit Connect refreshes that provider's staged branch state.
 
-**Acceptance (as-built):** the Phase 9 verification list — real-repo tests for orphan creation, migration byte-preservation, conflict pause, and cross-machine recovery. (Rename is excluded: see R5.)
+**Acceptance (as-built):** the Phase 9 verification list — real-repo tests for orphan creation, migration byte-preservation, conflict pause, cross-machine recovery, manual Retry live-branch preflight, and the R5 protected-default refusal/history-preserving custom rename boundary, including retention of the old custom remote ref until `KANMER_BOARD_BRANCH` is updated.
 
 Related: docs/plans/kanmer-v2/phase-9 · kanmerGit.ts · FRD-018 (watcher picks up synced changes).
 
@@ -35,11 +36,17 @@ Related: docs/plans/kanmer-v2/phase-9 · kanmerGit.ts · FRD-018 (watcher picks 
 - R4 — non-git short-circuit `kanmerGit.ts:47` returns `available: false`; `boardRoot` then falls
   back to the project dir `main/index.ts:412`.
 
-**Gap found (R5).** Branch rename is **not implemented**. `setKanmerGitPreferences`
-(`settings.ts:87-93`) only persists the string; nothing migrates existing projects, pushes the new
-branch, or removes the old one. The next `openProject` calls `ensureBoardWorktree` with the new
-name and simply creates or adopts a worktree for it, leaving the old branch behind. Relatedly,
-`removeBoardWorktree` (`kanmerGit.ts:108-110`) is dead code — never called from anywhere.
+**Protection constraint (R5).** `renameBoardBranch` migrates an existing non-default board
+worktree in place: it renames the local ref and pushes the new remote ref. For a custom-to-custom
+rename it retains the old remote ref and reports the `KANMER_BOARD_BRANCH` handoff; the operator
+deletes that old ref only after the hosted variable is updated. When the current ref is the
+protected literal `kanmer-board`, it refuses before any Git mutation and reports the administrator
+handoff required to retarget protection and required checks. `applyGitPreferences` retains the old
+persisted setting when an open protected board is refused, so the GUI cannot report a branch the
+live board does not use. A closed project follows the same refusal during `ensureBoardWorktree`
+reconciliation. Both automatic sync and manual Retry re-inspect the live worktree before calling
+`syncBoard`; a mismatch pauses without pushing the cached branch. `removeBoardWorktree`
+(`kanmerGit.ts`) remains unused because observation and repair are deliberately separate.
 
 ## Compiled-workflow end state (ADR-0016)
 

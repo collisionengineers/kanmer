@@ -48,14 +48,23 @@ Only useful when the project is a Git repository; Kanmer says so plainly when it
 is not, rather than showing controls that cannot do anything.
 
 - **Kanmer branch** — the name of the branch your board lives on, with a
-  **Rename branch** button. Renaming happens in place and keeps the board's
-  history.
+  **Rename branch** button. Non-protected branch renames happen in place and
+  keep the board's history. A custom-to-custom rename retains the old remote
+  ref until an administrator updates the repository Actions variable
+  `KANMER_BOARD_BRANCH` to the new branch; remove the old ref only after that
+  handoff. The protected default `kanmer-board` requires an
+  administrator to set the repository Actions variable `KANMER_BOARD_BRANCH`
+  to the destination, retarget GitHub protection and required checks, and
+  rename local board worktrees before the setting can change; Kanmer refuses
+  that automatic rename.
 - **Automatic sync** — off until you turn it on, then every N **minutes**.
 - **Sync now** — sync immediately. It becomes **Retry** if a sync has paused on
   a conflict.
 
 Under those, Kanmer shows where the board worktree is and when it last synced,
-and any error from the last attempt. See **Sharing a board over Git**.
+and any error from the last attempt. A retained board worktree with an error
+means reconciliation failed (not that the project is non-Git); finish the
+hosted handoff and press **Retry**. See **Sharing a board over Git**.
 
 ## Connect
 

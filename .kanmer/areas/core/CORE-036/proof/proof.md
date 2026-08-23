@@ -28,3 +28,12 @@ Independent review and merge are complete, but merged-main verification has two 
 ## Closeout disposition
 
 PR #127's merged artifact is reachable on main through merge commit `470b2fad5d16ca4edcc9833b3f674460f994e73d`; the source commit is correctly recorded as a squash-unreachable implementation SHA. The merged-main verify/dist failures and unavailable external release/tag cycle remain INCONCLUSIVE/accepted-risk, not PASS. The ticket is closed because no in-scope source work remains; external release proof is preserved as a boundary for the release workflow owner.
+
+
+## Exact-tag release asset repair — 2026-08-23
+
+- Exact tag 'v0.3.3' resolves to '240e269d5ce1ac05c4e74ac30cc45eeb75968151'. A clean detached checkout rebuilt the tag and npm run dist:check passed (updater package 7 checks).
+- The first public integrity check exited 1 because the published installer, blockmap, and latest.yml did not match the exact-tag build. The failed attempt is retained in HZN-007 automation history.
+- Using the approved release publisher account, the exact three tag-built assets were uploaded to v0.3.3 with gh release upload --clobber; transient API cache and temporary dotted-name duplicates were removed.
+- Final node scripts/verify-release-assets.mjs 0.3.3 --dir apps/gui/release exited 0: exactly the expected installer, blockmap, and latest.yml are present, uploaded, and byte-identical.
+- This proves public asset integrity for the existing tag. It does not yet prove the ticket's separate tag-triggered release-verify green workflow or intentionally incomplete disposable-release red run; those remain INCONCLUSIVE and CORE-036 stays Verifying.

@@ -24,3 +24,11 @@ The release flow now keeps preparation on release/v<version>, uses the operator'
 ### External boundary
 
 Authorized PR merge is evidenced by merge commit e141dca7. Public tag publication, publisher/upload integrity, latest-release visibility, and a real two-version installed updater cycle remain INCONCLUSIVE because this verification did not run a production release or disposable installed-host cycle. No external success is claimed.
+
+
+## Public release integrity repair — 2026-08-23
+
+- The protected-main release flow was exercised against the existing exact tag v0.3.3 at 240e269d5ce1ac05c4e74ac30cc45eeb75968151. A clean tagged checkout produced a coherent Windows package (npm run dist:check, updater package 7 checks).
+- Public verify-release-assets.mjs initially detected mismatched published installer/blockmap/manifest bytes. Exact tag-built assets were then uploaded with gh release upload --clobber, temporary duplicate upload names were removed, and the public check was rerun.
+- Final public asset verification exited 0 with the expected three assets and matching size/SHA-256 metadata. No source or branch-protection bypass was used.
+- A two-version installed updater cycle and protected disposable-repository proof remain INCONCLUSIVE; CORE-042 stays Verifying.

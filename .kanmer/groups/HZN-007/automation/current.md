@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-23T01:46:01.856Z
+updated_at: 2026-08-23T01:47:18.614Z
 ---
 
 # Current auto run — HZN-007
@@ -978,3 +978,6 @@ Next dispatch: 2026-08-23T01:44:46.861Z — prepare and then run the three bound
 
 
 Dispatch: 2026-08-23T01:46:01.856Z — DOC-019, SKILL-032, and GUI-124 are in Preparing with files/plan docs and are the only active remediation lanes. Root reviews and merges only after independent review; all other verifying tickets remain held on their external evidence boundaries.
+
+
+Queued follow-up: 2026-08-23T01:47:18.614Z — GUI-125 is a bounded priority-surface cleanup in Backlog, waiting for a free implementation lane.

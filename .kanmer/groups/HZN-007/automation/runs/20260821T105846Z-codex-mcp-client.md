@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-23T01:46:01.856Z
+updated_at: 2026-08-23T01:47:18.614Z
 lane_limit: 3
 stop_reason:
 ---
@@ -927,3 +927,5 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - 2026-08-23T01:44:46.861Z — three bounded remediation lanes created from the historical audit and held in Backlog pending their own pipeline documents: DOC-019 (generated documentation mirror plus README release/Windows guidance; links DOC-004/DOC-002/GUI-061/GUI-063), SKILL-032 (stale deleted pr-* review-asset prose; links SKILL-009), and GUI-124 (surface restored-project tab failures without dropping other tabs; links GUI-033). No GUI-011/GUI-031 ticket was created because their current requirement status remains evidence-gated. Controller will prepare docs, then dispatch at most these three conflict-free lanes; each author stops at Review for independent review.
 
 - 2026-08-23T01:46:01.856Z — DOC-019, SKILL-032, and GUI-124 each passed the backlog→preparing move after their profile gates were re-read; no ticket is taken yet. Dispatch is now authorized as three conflict-free implementation lanes. Authors must use their recorded worktrees/branches, write post-implementation reports, and stop at Review for root's independent review; no self-merge or cross-lane edits.
+
+- 2026-08-23T01:47:18.614Z — follow-up queued from GUI historical audit: GUI-125 will remove the unused priority filter field/active-state residue from FilterBar and focused tests, matching FRD-008's zero-priority-surface contract. The old GUI-031 tab drag/PageUp plan remains explicitly not ticketed because current FRD-019 does not require it. GUI-125 stays Backlog until one of the three active remediation lanes frees a conflict-free slot.

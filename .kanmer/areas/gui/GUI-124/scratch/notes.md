@@ -1,0 +1,1 @@
+Execution packet was ready, but its checklist document is missing (documents.checklist.exists=false; version=null). Per kanmer-execute preconditions, stopping before worktree/take until checklist is supplied or the ticket is replanned.

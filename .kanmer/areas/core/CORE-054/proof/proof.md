@@ -1,6 +1,6 @@
-# Verification proof — CORE-049
+# Verification proof — CORE-054
 
-Remediated bounded quarantine rename retry and cumulative ownership traceability. PR #171 merged at `311c6eef4d6b5c1e6acea1b7e6d779660f792cea`; child PR #172 merged at `31e572dc54b311164444cd5ee1a6cba225d618f2`. Recorded implementation SHAs `8edfede9`, `fc8e591e`, and `31e572dc` are reachable from `origin/main`.
+Remediated protected-board refusal when the live worktree is on an unexpected branch, preserving refs and current preference. PR #176 merged at `f4705d9e87545a7e64ea4aebf9c0a7272eb45d28`; recorded implementation SHAs are reachable from `origin/main`.
 
 ## Merged-main target
 
@@ -23,4 +23,4 @@ Verification checkout: detached `origin/main` at `a8cc6b01`.
 
 Live Windows handle contention, packaged-host behavior, hosted branch/protection state, and external DNS/network behavior are INCONCLUSIVE unless explicitly proved by the above deterministic rails. No assertion was weakened and no external proof is fabricated.
 
-The IO rail includes the bounded EPERM/EBUSY/EACCES quarantine retry, stale-owner revalidation, replacement-lock preservation, cleanup-error surfacing, and token-path regressions. Broad HTTP readiness and live Windows/crash/PID evidence remain INCONCLUSIVE.
+The merged GUI Git suite passed 48/48 and includes no-mutation mismatch/ref regressions. The production-caller sync suite was environment-limited (3/11 PASS; 8/11 INCONCLUSIVE due Windows EPERM/timeouts) and is recorded without weakening assertions.

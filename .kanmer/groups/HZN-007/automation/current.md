@@ -927,3 +927,6 @@ Batch blocker: CORE-048 packet was read and verification reached the merged-main
 
 
 2026-08-23T01:30Z — CORE-043 closed out: proof/proof.md written on merged main a8cc6b01 (PR #168), move Verifying→Done passed all gates, ticket trace includes final b59fad2f and merge a8cc6b01, assignee released, local/remote branch and .worktrees/core-043 removed. Final hosted and merged-main evidence PASS; live protection/native/packaged boundaries remain INCONCLUSIVE.
+
+
+2026-08-23 verification lane CORE-049–CORE-060: refreshed proof.md on detached origin/main a8cc6b01. All recorded implementation/merge SHAs are reachable on origin/main; merged PRs confirmed (#171–#182, #197–#199). Deterministic Core/IO/source/scripts/build/plugin rails PASS (Core 123/123; sources 32/32; scripts 89/89; plugin SHA F52D9C5B...). GUI kanmerGit 48/48 PASS; index.sync production-caller suite remains explicit INCONCLUSIVE (3/11 PASS, 8/11 Windows temp EPERM/fixed-timeout failures under shared concurrent workspace). No unreachable-stack blocker remains for CORE-060 on current origin/main; live Windows/hosted/external network boundaries remain INCONCLUSIVE and preserved in proofs.

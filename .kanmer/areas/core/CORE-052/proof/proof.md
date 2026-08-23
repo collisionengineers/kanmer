@@ -1,6 +1,6 @@
-# Verification proof — CORE-049
+# Verification proof — CORE-052
 
-Remediated bounded quarantine rename retry and cumulative ownership traceability. PR #171 merged at `311c6eef4d6b5c1e6acea1b7e6d779660f792cea`; child PR #172 merged at `31e572dc54b311164444cd5ee1a6cba225d618f2`. Recorded implementation SHAs `8edfede9`, `fc8e591e`, and `31e572dc` are reachable from `origin/main`.
+Remediated board-branch handoff state, requested-destination validation, and operator guidance. PR #175 merged at `4f106865947e556759aeb88363ea9aab7c01beac`; PRs #176 and #177 merged into its stack at `f4705d9e` and `b7957214`. Recorded implementation SHAs are reachable from `origin/main`.
 
 ## Merged-main target
 
@@ -23,4 +23,4 @@ Verification checkout: detached `origin/main` at `a8cc6b01`.
 
 Live Windows handle contention, packaged-host behavior, hosted branch/protection state, and external DNS/network behavior are INCONCLUSIVE unless explicitly proved by the above deterministic rails. No assertion was weakened and no external proof is fabricated.
 
-The IO rail includes the bounded EPERM/EBUSY/EACCES quarantine retry, stale-owner revalidation, replacement-lock preservation, cleanup-error surfacing, and token-path regressions. Broad HTTP readiness and live Windows/crash/PID evidence remain INCONCLUSIVE.
+The merged GUI Git suite `src/main/kanmerGit.test.ts` passed 48/48. The concurrent production-caller suite `src/main/index.sync.test.ts` produced 3/11 PASS and 8/11 INCONCLUSIVE because Windows temporary-directory cleanup hit EPERM and several hooks exceeded their fixed timeout under the shared concurrent workspace; this is preserved as an environment boundary, not converted to PASS.

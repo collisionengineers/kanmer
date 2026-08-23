@@ -13,9 +13,6 @@ stageEntered:
   review: '2026-08-22T12:36:53.591Z'
   verifying: '2026-08-22T12:52:16.445Z'
   done: '2026-08-23T00:42:02.436Z'
-taken_at: '2026-08-22T12:23:15.192Z'
-branch: core-051-destination-error-remediation
-worktree: .worktrees/core-051
 labels:
   - pr-review
   - security
@@ -41,7 +38,7 @@ prs:
   - '174'
 archived: false
 created: '2026-08-22T12:18:46.999Z'
-updated: '2026-08-23T00:42:34.197Z'
+updated: '2026-08-23T00:45:25.499Z'
 ---
 
 Close remaining CORE-045 cumulative review blockers: narrow IPv4 special-use predicates to only non-global subranges while retaining public exceptions; match 3fff::/20 rather than 3fff::/16; propagate the actionable final claim error after stale recovery instead of the original EEXIST. Add deterministic regressions, refresh CORE-045 cumulative report/item traceability to head 0f9af92b and child lineage, and resolve the related PR #166 threads with evidence. Link [[CORE-045]].

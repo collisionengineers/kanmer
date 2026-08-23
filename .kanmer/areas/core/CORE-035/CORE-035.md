@@ -12,9 +12,6 @@ stageEntered:
   review: '2026-08-22T08:22:18.429Z'
   verifying: '2026-08-22T08:28:25.492Z'
   done: '2026-08-23T00:28:45.894Z'
-taken_at: '2026-08-22T07:55:47.652Z'
-branch: core-035-spine-integration
-worktree: .worktrees/core-035
 labels:
   - integration
 groups:
@@ -36,7 +33,7 @@ prs:
     https://github.com/collisionengineers/kanmer-spine-integration-20260822t075446z-78e5ba65/pull/2
 archived: false
 created: '2026-08-20T10:14:42.535Z'
-updated: '2026-08-23T00:28:45.894Z'
+updated: '2026-08-23T00:45:21.922Z'
 ---
 
 ## What

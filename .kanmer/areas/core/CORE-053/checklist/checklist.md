@@ -15,7 +15,7 @@
 - [x] proof.md finalised (merged-main reachability, evidence, PR URL and merge date recorded)
 - [x] Moved to final stage
 - [x] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; exact recorded worktree removal pending
-- [ ] exact recorded branch deletion pending
-- [ ] git fetch --prune + git worktree prune pending
-- [ ] take_ticket action: "release" pending
+- [x] cd out of worktree; exact recorded worktree removal completed
+- [x] exact recorded branch deletion completed locally and remotely
+- [x] git fetch --prune + git worktree prune completed
+- [x] take_ticket action: "release" completed

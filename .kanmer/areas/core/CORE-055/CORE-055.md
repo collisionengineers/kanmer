@@ -10,9 +10,6 @@ stageEntered:
   review: '2026-08-22T13:07:25.701Z'
   verifying: '2026-08-22T13:12:22.174Z'
   done: '2026-08-23T00:42:03.539Z'
-taken_at: '2026-08-22T13:02:47.057Z'
-branch: core-055-skip-mismatch-rename
-worktree: .worktrees/core-055
 labels:
   - pr-review
   - branch-protection
@@ -31,7 +28,7 @@ prs:
   - '177'
 archived: false
 created: '2026-08-22T13:01:26.151Z'
-updated: '2026-08-23T00:42:35.417Z'
+updated: '2026-08-23T00:45:25.609Z'
 ---
 
 Close the remaining CORE-054 review finding: when `refreshBoardBranch` reports `branchMismatch`, `applyGitPreferences` must skip both the protected refusal rename and the ordinary rename loop. Preserve the current preference and live refs/worktree state for stale cached branches or failed prior handoffs. Add an integration regression exercising the mismatch with a cached branch different from the saved preference. Link [[CORE-054]].

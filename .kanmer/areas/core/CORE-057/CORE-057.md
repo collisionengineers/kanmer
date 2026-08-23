@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-22T13:18:03.398Z'
   verifying: '2026-08-22T13:58:39.370Z'
   done: '2026-08-23T00:42:04.184Z'
-taken_at: '2026-08-22T13:06:05.181Z'
-branch: core-057-dns-bound-resolver
-worktree: .worktrees/core-057
 labels:
   - pr-review
   - sources
@@ -34,7 +31,7 @@ prs:
   - '178'
 archived: false
 created: '2026-08-22T13:03:00.897Z'
-updated: '2026-08-23T00:42:35.951Z'
+updated: '2026-08-23T00:45:25.723Z'
 ---
 
 Close CORE-044 remote-source review findings: ensure the outbound request is bound to the address validated by the public-destination preflight (or implement a governing-document-backed safe equivalent), and enforce the documented fetch deadline across DNS resolution. Add deterministic regression coverage and preserve surfaced errors. Link [[CORE-044]].

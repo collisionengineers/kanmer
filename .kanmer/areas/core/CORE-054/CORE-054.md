@@ -12,9 +12,6 @@ stageEntered:
   review: '2026-08-22T12:58:45.363Z'
   verifying: '2026-08-22T13:16:20.854Z'
   done: '2026-08-23T00:42:03.264Z'
-taken_at: '2026-08-22T12:52:51.051Z'
-branch: core-054-no-rename-mismatch
-worktree: .worktrees/core-054
 labels:
   - pr-review
   - branch-protection
@@ -36,7 +33,7 @@ prs:
   - '177'
 archived: false
 created: '2026-08-22T12:51:54.808Z'
-updated: '2026-08-23T00:42:35.209Z'
+updated: '2026-08-23T00:45:25.574Z'
 ---
 
 Close CORE-052 review P1: when refresh observes a live board worktree on an unexpected branch, the protected refusal path must not call renameBoardBranch or alter refs/worktree. Preserve the current preference, surface mismatch/paused state, and add an integration regression proving no automatic rename. Link [[CORE-052]].

@@ -12,9 +12,6 @@ stageEntered:
   review: '2026-08-21T19:27:49.096Z'
   verifying: '2026-08-21T19:29:46.294Z'
   done: '2026-08-23T00:28:46.198Z'
-taken_at: '2026-08-21T19:04:23.566Z'
-branch: core-036-tag-push-release-verification
-worktree: .worktrees/core-036
 labels: []
 groups:
   - HZN-005
@@ -28,7 +25,7 @@ prs:
   - '127'
 archived: false
 created: '2026-08-20T10:14:42.545Z'
-updated: '2026-08-23T00:28:46.198Z'
+updated: '2026-08-23T00:45:21.976Z'
 ---
 
 ## What

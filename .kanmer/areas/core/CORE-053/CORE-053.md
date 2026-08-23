@@ -12,9 +12,6 @@ stageEntered:
   review: '2026-08-22T12:45:44.063Z'
   verifying: '2026-08-22T12:48:37.313Z'
   done: '2026-08-23T00:42:03.011Z'
-taken_at: '2026-08-22T12:38:55.221Z'
-branch: core-053-marker-cleanup-error
-worktree: .worktrees/core-053
 labels:
   - pr-review
   - concurrency
@@ -34,7 +31,7 @@ prs:
   - '174'
 archived: false
 created: '2026-08-22T12:38:15.586Z'
-updated: '2026-08-23T00:42:34.823Z'
+updated: '2026-08-23T00:45:25.551Z'
 ---
 
 Close PR #173 review finding: when lock cleanup read fails and removing the claimant marker also fails, surface or combine the cleanup error instead of discarding it and leaving a marker that blocks later claimants. Add deterministic regression and preserve exact CORE-051/CORE-045 cumulative traceability. Link [[CORE-051]].

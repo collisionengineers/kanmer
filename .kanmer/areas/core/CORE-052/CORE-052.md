@@ -14,9 +14,6 @@ stageEntered:
   review: '2026-08-22T12:46:42.160Z'
   verifying: '2026-08-22T13:19:50.794Z'
   done: '2026-08-23T00:42:02.707Z'
-taken_at: '2026-08-22T12:34:49.490Z'
-branch: core-052-board-refresh-state
-worktree: .worktrees/core-052
 labels:
   - pr-review
   - branch-protection
@@ -41,7 +38,7 @@ prs:
   - '177'
 archived: false
 created: '2026-08-22T12:33:30.281Z'
-updated: '2026-08-23T00:42:34.490Z'
+updated: '2026-08-23T00:45:25.525Z'
 ---
 
 Close remaining CORE-043 cumulative review findings: document the KANMER_BOARD_BRANCH Actions-variable handoff; refresh and require equality with the requested destination; preserve paused/error state during branch refresh; fix contradictory troubleshooting.md rename guidance and regenerate the manual. Link [[CORE-043]].

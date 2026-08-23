@@ -280,10 +280,12 @@ function checkPluginManifests() {
     const entry = serverEntry(agyMcp);
     const args = entry.args ?? [];
     if (entry.command !== "cmd.exe") problems.push(`mcp_config.json: command is "${entry.command}", expected "cmd.exe"`);
-    if (JSON.stringify(args) !== JSON.stringify(["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"'])) {
-      problems.push('mcp_config.json: args must be ["/d", "/s", "/c", "\\\"%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd\\\""]');
+    if (JSON.stringify(args) !== JSON.stringify(["/d", "/s", "/c", "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"])) {
+      problems.push('mcp_config.json: args must be ["/d", "/s", "/c", "%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd"]');
     }
     if (entry.cwd !== undefined) problems.push("mcp_config.json: must not set cwd");
+    const extraEnv = Object.keys(entry.env ?? {}).filter((key) => key !== "KANMER_BOARD_BRANCH");
+    if (extraEnv.length) problems.push(`mcp_config.json: unexpected env keys: ${extraEnv.join(", ")}`);
     if (args.some((a) => typeof a === "string" && /(?:^|[\\/])(?:Users|home|tmp)[\\/]|^[A-Za-z]:[\\/]|--(?:root|repo-root)\b/i.test(a))) {
       problems.push("mcp_config.json: must not contain a machine path or root flag");
     }

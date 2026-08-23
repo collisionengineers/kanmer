@@ -49,3 +49,7 @@ The real Grok clean-project install plus authenticated get_status call and unamb
 ## Acceptance boundary reaffirmed
 
 The named Grok clean-project install, authenticated functional `get_status`, and unambiguous post-uninstall inspection remain INCONCLUSIVE: no XAI_API_KEY is available and pre-existing user plugin state reports Kanmer after uninstall. `grok inspect`/list output alone is not functional proof. Mechanical enter-done gates are passable, but this explicit acceptance boundary remains unresolved, so MCP-014 stays Verifying; no Done move or release/cleanup was performed.
+
+## OAuth-backed Grok operator evidence — 2026-08-23
+
+Grok CLI v1.0.5 was run with its existing OAuth session. After installing the shipped Kanmer plugin with the native trust flow, a fresh non-interactive Grok process in the project invoked the real Kanmer get_status tool and returned the exact marker KANMER_GET_STATUS_OK with exit 0. The plugin was then uninstalled; no project .grok registration or Kanmer-owned copied skills remained. User-authored/global Grok state was not overwritten, and the remaining stale user-level enablement entry is retained as an explicit migration-boundary note. This proves the functional OAuth tool path but does not fabricate absent/malformed fixture files or unexecuted disconnect-idempotence variants.

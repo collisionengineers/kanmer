@@ -18,3 +18,7 @@ Final detached rails on merged main: GUI vitest 41 files / 375 tests PASS; works
 Two concurrent OpenAI project profiles reaching only their intended live boards remains INCONCLUSIVE without disposable credentials, projects, and a documented listener probe. The implementation and proof claim no live control-plane or listener result, and no API-key value or tunnel identifier is recorded.
 
 The production caller chain is GUI Settings → OpenAITunnelManager → packaged tunnel-client lifecycle and existing stdio MCP target.
+
+## External operator evidence — 2026-08-23
+
+The official OpenAI tunnel-client Windows amd64 release v0.0.12 was downloaded to a disposable temp directory and SHA-256 verified against its published SHA256SUMS.txt. With the project runtime credential supplied only through the Infisical-injected environment, doctor --config passed config/profile/tunnel-id/API-key-reference/packaged-stdio-target/health-listener checks (exit 0). A detached run --config instance reached /readyz and /healthz with HTTP 200, fetched tunnel metadata, started the OpenAI control-plane poller, launched the packaged Kanmer stdio target with ELECTRON_RUN_AS_NODE=1, and reported the tunnel client started. The exact owned process and child were then stopped; readiness disappeared and no long-lived verification process remained. The ticket's two-concurrent-project distinct-board proof remains INCONCLUSIVE because only one provisioned project/tunnel profile was available; no API-key value or tunnel identifier is recorded.

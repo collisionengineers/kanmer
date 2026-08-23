@@ -38,7 +38,7 @@ On merged `main`, run:
 
 - `npm run verify:skills` — expect the skill-prose rail to pass with zero legacy `impact` hits.
 - `npm run verify:docs` — expect the manual check, target-neutral canonical asset check, and board-resolved mirror check to pass.
-- `node --test scripts/check-doc-structure.test.mjs` — expect 3/3 pass, including stale-fixture rejection and injected custom-board globs.
+- `node --test scripts/check-doc-structure.test.mjs` — expect 4/4 pass, including stale-fixture rejection and injected custom-board globs.
 - `npm run test:scripts` — expect the full dependency-free scripts suite to pass.
 - `npm run build:core` and `git diff --check` — expect both to pass.
 

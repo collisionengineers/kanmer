@@ -257,7 +257,14 @@ export function observeKanmerBoardBranch(projectId: string, branch: string): Pro
     const previous = settings.lastKnownBoardBranches?.[projectId];
     const existing = settings.pendingNativeReconnects?.[projectId];
     const providers = new Set<NativeReconnectProvider>(existing?.providers ?? []);
-    if (previous && previous !== current) for (const provider of NATIVE_RECONNECT_PROVIDERS) providers.add(provider);
+    // A pre-existing project may be opened for the first time after an
+    // upgrade with a custom board branch. There is no prior observation to
+    // compare, but legacy native descriptors still default to kanmer-board;
+    // require an explicit reconnect before treating that custom convention as
+    // healthy.
+    if ((!previous && current !== "kanmer-board") || (previous && previous !== current)) {
+      for (const provider of NATIVE_RECONNECT_PROVIDERS) providers.add(provider);
+    }
     const known = { ...(settings.lastKnownBoardBranches ?? {}), [projectId]: current };
     settings.lastKnownBoardBranches = known;
     const requirement = providers.size > 0 ? { branch: current, providers: [...providers] } : null;

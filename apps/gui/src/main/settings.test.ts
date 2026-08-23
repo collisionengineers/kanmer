@@ -37,6 +37,13 @@ describe("dispatch settings", () => {
 });
 
 describe("board-branch handoff settings", () => {
+  it("requires native reconnect on the first observation of a custom branch", async () => {
+    expect(await observeKanmerBoardBranch("C:\\repo-existing", "team-board")).toEqual({
+      branch: "team-board",
+      providers: ["grok", "antigravity"],
+    });
+  });
+
   it("persists a pending handoff across settings reads and clears only that project", async () => {
     const handoff = { from: "team-board", to: "renamed-board", warning: "update KANMER_BOARD_BRANCH" };
     await setKanmerGitHandoff("C:\\repo-a", handoff);
@@ -50,12 +57,12 @@ describe("board-branch handoff settings", () => {
   it("treats native reconnect as user-scoped across closed projects", async () => {
     const project = "C:\\repo-closed";
     const other = "C:\\repo-other";
-    expect(await observeKanmerBoardBranch(project, "release-board")).toBeNull();
+    expect(await observeKanmerBoardBranch(project, "kanmer-board")).toBeNull();
     expect(await observeKanmerBoardBranch(project, "team-board")).toEqual({
       branch: "team-board",
       providers: ["grok", "antigravity"],
     });
-    expect(await observeKanmerBoardBranch(other, "release-board")).toBeNull();
+    expect(await observeKanmerBoardBranch(other, "kanmer-board")).toBeNull();
     expect(await observeKanmerBoardBranch(other, "other-board")).toEqual({
       branch: "other-board",
       providers: ["grok", "antigravity"],

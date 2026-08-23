@@ -25,12 +25,13 @@ refs:
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
 commits:
   - ed7d8a98
+  - ddf05569
 prs:
   - '224'
   - 'https://github.com/collisionengineers/kanmer/pull/224'
 archived: false
 created: '2026-08-23T00:53:27.109Z'
-updated: '2026-08-23T00:59:39.296Z'
+updated: '2026-08-23T01:04:52.399Z'
 ---
 
 The current merged main source builds a standalone MCP server whose bytes differ from plugins/kanmer/mcp/kanmer-mcp.cjs, so npm run verify stops at mcpb:check. Refresh the committed artifact from a normal checkout at the exact current source, preserve byte-parity assertions, run plugin:check and mcpb:check in a clean checkout, obtain independent review, merge, and verify the exact merged artifact on main. No source behavior or assertion weakening is in scope.

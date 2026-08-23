@@ -2,7 +2,7 @@
   "mcpServers": {
     "kanmer": {
       "command": "cmd.exe",
-      "args": ["/d", "/s", "/c", "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"],
+      "args": ["/d", "/s", "/c", "pushd %LOCALAPPDATA%\\Kanmer\\bin && call kanmer-mcp.cmd"],
       "env": { "KANMER_BOARD_BRANCH": "kanmer-board" }
     }
   }

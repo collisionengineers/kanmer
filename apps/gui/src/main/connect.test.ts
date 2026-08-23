@@ -266,7 +266,7 @@ describe("Antigravity native plugin lifecycle (MCP-015)", () => {
     const bundle = join(root, "plugin");
     await writeTree(root, {
       "plugin/plugin.json": '{"name":"kanmer","version":"0.3.3","skills":"./skills/"}\n',
-      "plugin/mcp_config.json": '{"mcpServers":{"kanmer":{"command":"cmd.exe","args":["/d","/s","/c","%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd"]}}}\n',
+      "plugin/mcp_config.json": '{"mcpServers":{"kanmer":{"command":"cmd.exe","args":["/d","/s","/c","pushd %LOCALAPPDATA%\\\\Kanmer\\\\bin && call kanmer-mcp.cmd"]}}}\n',
       "plugin/skills/kanmer-plan/SKILL.md": "skill\n",
       "plugin/mcp/kanmer-mcp.cjs": "\n",
     });
@@ -315,7 +315,7 @@ describe("Antigravity native plugin lifecycle (MCP-015)", () => {
     expect(seen.slice(0, 4)).toEqual([
       { file: "agy", args: ["--version"] },
       { file: "agy", args: ["plugin", "--help"] },
-      { file: "cmd.exe", args: ["/d", "/s", "/c", "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd --probe"] },
+      { file: "cmd.exe", args: ["/d", "/s", "/c", "pushd %LOCALAPPDATA%\\Kanmer\\bin && call kanmer-mcp.cmd --probe"] },
       { file: "agy", args: ["plugin", "validate", expect.stringContaining("kanmer-native-plugin-")] },
     ]);
     expect(seen[4]).toEqual({ file: "agy", args: ["plugin", "install", expect.stringContaining("kanmer-native-plugin-")] });
@@ -338,7 +338,7 @@ describe("Antigravity native plugin lifecycle (MCP-015)", () => {
     const bundle = join(root, "plugin");
     await writeTree(root, {
       "plugin/plugin.json": '{"name":"kanmer","version":"0.3.3","skills":"./skills/"}\n',
-      "plugin/mcp_config.json": '{"mcpServers":{"kanmer":{"command":"cmd.exe","args":["/d","/s","/c","%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd"]}}}\n',
+      "plugin/mcp_config.json": '{"mcpServers":{"kanmer":{"command":"cmd.exe","args":["/d","/s","/c","pushd %LOCALAPPDATA%\\\\Kanmer\\\\bin && call kanmer-mcp.cmd"]}}}\n',
       "plugin/skills/kanmer-plan/SKILL.md": "skill\n",
       "plugin/mcp/kanmer-mcp.cjs": "\n",
       ".agents/mcp_config.json": JSON.stringify({ mcpServers: { kanmer: { command: "old" } } }),

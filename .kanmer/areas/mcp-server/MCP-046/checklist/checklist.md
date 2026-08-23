@@ -1,1 +1,17 @@
-# Checklist — MCP-046\n\n- [x] Update the native Antigravity descriptor to the exact agy-compatible launcher argv.\n- [x] Add plugin-sync validation and regression coverage for accepted and rejected quoting forms, including a spaced LOCALAPPDATA command test.\n- [ ] Run the real agy bound get_status probe with the final pushd/call descriptor and installed launcher/runtime; retain safe output.\n- [x] Run plugin:check, focused script tests, typecheck/build, and git diff --check.\n- [x] Write the post-implementation report and link the exact evidence.\n- [ ] Stop at Review for independent review; do not self-merge.\n\n## Evidence notes\n\n- Shipped quoted descriptor: real agy bound session failed before MCP initialize because cmd.exe received the embedded quote characters literally.\n- Direct unquoted launcher: Windows command test failed when LOCALAPPDATA contained spaces.\n- Final pushd/call launcher: Windows command test reached a disposable shim under a spaced LOCALAPPDATA path and returned KANMER_ARGV_SPACE_OK.\n- Focused config regression: 3/3; GUI connect.test.ts: 35/35; plugin:check: PASS; GUI typecheck: PASS; git diff --check: PASS.\n- Full GUI Vitest attempted; unrelated Windows EPERM cleanup/timeouts in index.sync.test.ts and kanmerGit.test.ts are retained as a failed rail.\n
+# Checklist — MCP-046
+
+- [x] Update the native Antigravity descriptor to the exact agy-compatible launcher argv.
+- [x] Add plugin-sync validation and regression coverage for accepted and rejected quoting forms, including a spaced LOCALAPPDATA command test.
+- [x] Run the real agy bound get_status probe with the final pushd/call descriptor and installed launcher/runtime; retain safe output.
+- [x] Run plugin:check, focused script tests, typecheck/build, and git diff --check.
+- [x] Write the post-implementation report and link the exact evidence.
+- [ ] Stop at Review for independent review; do not self-merge.
+
+## Evidence notes
+
+- Shipped quoted descriptor: real agy bound session failed before MCP initialize because cmd.exe received the embedded quote characters literally.
+- Direct unquoted launcher: Windows command test failed when LOCALAPPDATA contained spaces.
+- Final pushd/call launcher: Windows command test reached a disposable shim under a spaced LOCALAPPDATA path and returned KANMER_ARGV_SPACE_OK.
+- Final installed plugin plus bound agy get_status: exact KANMER_AGY_FINAL_PUSHDCALL_OK, with --dangerously-skip-permissions used only to avoid the non-interactive permission prompt.
+- Focused config regression: 3/3; GUI connect.test.ts: 35/35; plugin:check: PASS; GUI typecheck: PASS; git diff --check: PASS.
+- Full GUI Vitest attempted; unrelated Windows EPERM cleanup/timeouts in index.sync.test.ts and kanmerGit.test.ts are retained as a failed rail.

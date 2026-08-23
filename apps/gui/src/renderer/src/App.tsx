@@ -17,7 +17,7 @@ import { classifyKanmerPath } from "../../shared/kanmerPath.js";
 import { ContextMenu, useDismissOnOutside, type MenuItem } from "./components/ContextMenu.js";
 import { ClientContext, makeClient, type ProjectClient } from "./lib/client.js";
 import { readOnlyClient } from "./lib/readOnly.js";
-import { restoreTabs, restoredActiveTab } from "./lib/session.js";
+import { restoreBackgroundTabs, restoreTabs, restoredActiveTab } from "./lib/session.js";
 import { tabCloseDecision } from "./lib/tabClose.js";
 import { restartWarning, updateSurface } from "./lib/update.js";
 import { friendlyGateError } from "./lib/gateError.js";
@@ -438,18 +438,26 @@ export function App(): JSX.Element {
       const active = restoredActiveTab(toOpen, s.activeTab)!;
       // Open background tabs (their main context + watcher go live) without
       // activating them, so counts/unread update; then activate the last.
-      for (const p of toOpen) {
-        if (p === active) continue;
-        try {
-          const res = await window.kanmer.openProject(p);
+      await restoreBackgroundTabs(
+        toOpen,
+        active,
+        (path) => window.kanmer.openProject(path),
+        (res) => {
           setTabs((ts) => [
             ...ts.filter((t) => t.projectId !== res.projectId),
             { projectId: res.projectId, root: res.root, name: projectNameOf(res.root), unread: 0 },
           ]);
-        } catch {
-          // skip an unopenable restored tab
-        }
-      }
+        },
+        (path) => {
+          const seq = ++toastSeq.current;
+          const name = projectNameOf(path) || "a saved project";
+          setToasts((ts) => [
+            ...ts.slice(-2),
+            { seq, id: null, text: `Could not restore ${name}; it will stay closed for this session.` },
+          ]);
+          setTimeout(() => setToasts((ts) => ts.filter((toast) => toast.seq !== seq)), 12_000);
+        },
+      );
       await openProject(active);
       sessionHydrated.current = true;
     })();

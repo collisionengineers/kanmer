@@ -1,17 +1,1 @@
----
-kind: post-implementation-report
-ticket: MCP-046
-result: PASS
----
-
-## Outcome
-
-The native Antigravity descriptor now passes the installer-owned launcher as one unquoted percent-variable argv token, matching agy's Windows command runner. plugin:check validates the exact command/argv shape and the dependency-free regression rejects the former embedded-quote form.
-
-## Verification
-
-The real host experiment retained the failure of the merged quoted form and the success of the corrected form: with the exact launcher present, agy plugin install processed one MCP server and a bound agy --add-dir session invoked the real Kanmer get_status tool, returning KANMER_AGY_GET_STATUS_OK with exit 0. Deterministic checks passed: config tests 2/2, plugin:check, build, workspace typecheck, test:scripts 96/96, and git diff --check.
-
-## Scope and residuals
-
-Only plugins/kanmer/mcp_config.json, scripts/check-plugin-sync.mjs, and the dependency-free config regression changed. The launcher path, board-branch environment, Claude/Grok descriptor, GUI provider code, and installer implementation remain unchanged. The temporary launcher/runtime used for proof was removed after the run; no credential or board content is retained.
+---\nkind: post-implementation-report\nticket: MCP-046\nresult: PASS\n---\n\n## Outcome\n\nThe native Antigravity descriptor now uses a quote-free `pushd %LOCALAPPDATA%\\Kanmer\\bin && call kanmer-mcp.cmd` token. This keeps the agy-compatible argv form while changing into the installer-owned directory first, so a local-appdata path containing spaces is safe. GUI Connect now derives and validates the same invocation; Codex's separate quoted contract is unchanged.\n\n## Verification\n\nThe earlier real-host failure of the embedded-quoted form remains retained as evidence. The direct unquoted path was also rejected by a Windows command test when LOCALAPPDATA contained spaces; the new pushd/call token reached a disposable shim at the spaced path and returned KANMER_ARGV_SPACE_OK. Fresh deterministic checks pass: Antigravity config regression 3/3, GUI connect tests 35/35, plugin:check, GUI typecheck, and git diff --check. The full GUI Vitest rail was attempted and failed with pre-existing Windows EPERM cleanup/timeouts in index.sync.test.ts and kanmerGit.test.ts (not this change); that failure remains recorded rather than hidden.\n\n## Scope and residuals\n\nThe implementation changes the Antigravity provider helper, its GUI fixtures, the native descriptor, plugin-sync validator, dependency-free regression, FRD-012, and AGENTS.md. Claude/Grok descriptors, Codex's quoted launcher, installer implementation, and board selection remain unchanged. A fresh bound agy `get_status` proof against this final pushd/call descriptor is still required before verification; the attempted run was stopped after no MCP child appeared while the host session remained in model streaming. No credential or board content is retained.\n

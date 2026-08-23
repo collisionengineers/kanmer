@@ -9,3 +9,8 @@ PASS: CORE-043 PR #168 hosted verify and kanmer-gate PASS in run 32607472961; PR
 INCONCLUSIVE (preserved): linked-worktree plugin:check and mcpb:check; real Grok/Antigravity host lifecycle and credentials; hosted protection/Actions-variable mutation.
 
 Result: provider registration ownership, native descriptor staging, branch propagation, and adversarial handling verified; live native-host/packaged parity remains unproven.
+
+## Closeout traceability
+
+- PR [#208](https://github.com/collisionengineers/kanmer/pull/208) — merged 2026-08-22T19:52:51Z.
+- Final parent PR [#168](https://github.com/collisionengineers/kanmer/pull/168) — merged into `main` as `a8cc6b01ca95340f1186bccc9770238036d080d8` at 2026-08-23T00:22:40Z.

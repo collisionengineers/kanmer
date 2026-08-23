@@ -4,7 +4,7 @@ type: ticket
 title: >-
   CORE-043 review remediation: recheck live branch on manual retry and align
   retained-ref contract
-status: verifying
+status: done
 area: core
 assignee: codex-mcp-client
 profile: fix
@@ -12,6 +12,7 @@ stageEntered:
   preparing: '2026-08-22T17:50:45.742Z'
   review: '2026-08-22T18:02:12.922Z'
   verifying: '2026-08-22T18:38:30.956Z'
+  done: '2026-08-23T00:42:44.846Z'
 labels:
   - pr-review
   - branch-protection
@@ -35,7 +36,7 @@ prs:
   - '203'
 archived: false
 created: '2026-08-22T17:50:29.988Z'
-updated: '2026-08-22T18:39:08.638Z'
+updated: '2026-08-23T00:42:44.846Z'
 ---
 
 ## What

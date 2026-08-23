@@ -19,3 +19,16 @@ Deterministic source/core/HTTP, build, MCP typecheck, scripts, protocol smoke, d
 - [x] Regenerated and parity-checked standalone plugin from an exact normal checkout; SHA256 06110A9E0CA2007A51CC2AEDCDD0E2BD353B627484C184AADB709A52AF686878.
 
 External/live DNS, Windows/package, hosted CI, and external network proof remains INCONCLUSIVE; independent review is required for the changed head.
+
+---
+
+## Closeout — CORE-057
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (merged-main reachability, evidence, PR URL and merge date recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; exact recorded worktree removal pending
+- [ ] exact recorded branch deletion pending
+- [ ] git fetch --prune + git worktree prune pending
+- [ ] take_ticket action: "release" pending

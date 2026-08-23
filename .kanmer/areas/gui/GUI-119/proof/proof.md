@@ -9,3 +9,8 @@ PASS: CORE-043 PR #168 hosted verify and kanmer-gate PASS in run 32607472961; PR
 INCONCLUSIVE (preserved): initial missing-core-dist scripts failure and full-suite timeout/hang; real Claude/OpenAI/remote host, installed marketplace, tunnel, and protected-live-branch proof.
 
 Result: merged-main provider branch propagation verified; live provider/tunnel/packaged behavior remains unproven.
+
+## Closeout traceability
+
+- PR [#217](https://github.com/collisionengineers/kanmer/pull/217) — merged 2026-08-22T22:12:05Z.
+- Final parent PR [#168](https://github.com/collisionengineers/kanmer/pull/168) — merged into `main` as `a8cc6b01ca95340f1186bccc9770238036d080d8` at 2026-08-23T00:22:40Z.

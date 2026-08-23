@@ -11,3 +11,22 @@
 - [x] Write post-implementation report with file-by-file rationale, governing-doc alignment, evidence, risks, and post-merge verification.
 - [x] Record commit/PR traceability, push, open PR targeting the current CORE-043 stack, and move Implementing→Review.
 - [x] Leave post-merge proof unchecked; stop for independent review without merging or verifying.
+
+# Closeout checklist
+
+Append to the ticket's checklist.md when closeout starts
+(`set_ticket_doc doc: "checklist", append: true`) so cleanup progress is
+visible on the board.
+
+---
+
+## Closeout — GUI-112
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/<id>`
+- [ ] `git branch -d <branch>` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

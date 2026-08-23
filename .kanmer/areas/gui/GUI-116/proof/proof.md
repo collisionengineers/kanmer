@@ -9,3 +9,8 @@ PASS: CORE-043 PR #168 hosted verify and kanmer-gate PASS in run 32607472961; PR
 INCONCLUSIVE (preserved): packet full GUI 425/426 with inherited Windows kanmerGit cleanup EPERM/timeout; native Grok/Antigravity live install/credentials/host proof; hosted protection mutation. No GUI-116 focused test failed.
 
 Result: merged-main closed-project reconciliation, durable native reconnect state, and project isolation verified.
+
+## Closeout traceability
+
+- PR [#215](https://github.com/collisionengineers/kanmer/pull/215) — merged 2026-08-22T21:33:55Z.
+- Final parent PR [#168](https://github.com/collisionengineers/kanmer/pull/168) — merged into `main` as `a8cc6b01ca95340f1186bccc9770238036d080d8` at 2026-08-23T00:22:40Z.

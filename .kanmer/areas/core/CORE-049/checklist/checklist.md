@@ -23,3 +23,16 @@ The prior cumulative-only closeout was reversed after reachability audit. The ex
 - [ ] branch deleted
 - [x] fetch/prune performed during correction
 - [ ] take_ticket release
+
+---
+
+## Closeout — CORE-049
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (merged-main reachability, evidence, PR URL and merge date recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; exact recorded worktree removal pending
+- [ ] exact recorded branch deletion pending
+- [ ] git fetch --prune + git worktree prune pending
+- [ ] take_ticket action: "release" pending

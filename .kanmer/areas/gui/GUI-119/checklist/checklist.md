@@ -20,3 +20,22 @@
 - `npm run test:scripts` first attempt — exit 1 because the fresh worktree lacked `packages/core/dist`; after `npm run build:core` exit 0, scripts 89/89 PASS.
 - A full GUI attempt with the initial whole-repository marketplace staging timed out the new test at Vitest's 5s default (exit 1). Staging was narrowed to marketplace manifests and `plugins/kanmer`; a subsequent full attempt reached all test files but did not return a final summary and was stopped (INCONCLUSIVE). This is not represented as a full-suite PASS.
 - No real Claude/OpenAI/remote provider host, installed marketplace, tunnel, or live protected-branch evidence was available; those boundaries remain INCONCLUSIVE.
+
+# Closeout checklist
+
+Append to the ticket's checklist.md when closeout starts
+(`set_ticket_doc doc: "checklist", append: true`) so cleanup progress is
+visible on the board.
+
+---
+
+## Closeout — GUI-119
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/<id>`
+- [ ] `git branch -d <branch>` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

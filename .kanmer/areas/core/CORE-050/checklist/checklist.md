@@ -12,3 +12,16 @@
 ## Evidence note
 
 Focused IO/source/store: 22/22 IO, 6/6 core source, 85/85 store (113/113 combined). MCP source: 14/14. Core and all-workspace typecheck: exit 0. Core build, standalone plugin build, and plugin:check: exit 0 after the documented ignored worktree-local @kanmer/core junction. Broad HTTP/hosted evidence remains outside this bounded lane and is preserved as INCONCLUSIVE.
+
+---
+
+## Closeout — CORE-050
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (merged-main reachability, evidence, PR URL and merge date recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; exact recorded worktree removal pending
+- [ ] exact recorded branch deletion pending
+- [ ] git fetch --prune + git worktree prune pending
+- [ ] take_ticket action: "release" pending

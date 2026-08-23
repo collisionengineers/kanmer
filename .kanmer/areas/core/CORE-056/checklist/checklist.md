@@ -8,3 +8,16 @@
 - [x] Regenerate the standalone plugin artifact needed by the source change and record any inherited provenance limitation as INCONCLUSIVE.
 - [x] Write the post-implementation report and scratch handoff with governing-doc mapping, scope, evidence, and external boundaries.
 - [x] Commit/push, record exact SHA/PR traceability, confirm get_doc_gates, and move CORE-056 to Review only.
+
+---
+
+## Closeout — CORE-056
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (merged-main reachability, evidence, PR URL and merge date recorded)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; exact recorded worktree removal pending
+- [ ] exact recorded branch deletion pending
+- [ ] git fetch --prune + git worktree prune pending
+- [ ] take_ticket action: "release" pending

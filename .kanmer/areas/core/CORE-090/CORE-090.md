@@ -2,7 +2,7 @@
 id: CORE-090
 type: ticket
 title: 'CORE-026 review: refresh MCPB artifact after source-cache hardening'
-status: verifying
+status: done
 area: core
 assignee: core041_executor
 profile: fix
@@ -10,9 +10,7 @@ stageEntered:
   implementing: '2026-08-22T22:26:51.954Z'
   review: '2026-08-22T22:30:25.315Z'
   verifying: '2026-08-22T22:59:33.745Z'
-taken_at: '2026-08-22T22:27:01.070Z'
-branch: core-090-mcpb-refresh
-worktree: .worktrees/core-090
+  done: '2026-08-23T00:42:50.725Z'
 labels: []
 groups:
   - HZN-007
@@ -30,7 +28,7 @@ prs:
   - '220'
 archived: false
 created: '2026-08-22T22:26:12.855Z'
-updated: '2026-08-22T22:59:43.967Z'
+updated: '2026-08-23T00:42:51.061Z'
 ---
 
 Refresh the committed MCPB/plugin artifact after CORE-088 source-cache hardening so the authoritative mcpb:check compares equal on the cumulative CORE-026 branch. Add the generated artifact only; no source behaviour change. This ticket blocks [[CORE-026]].

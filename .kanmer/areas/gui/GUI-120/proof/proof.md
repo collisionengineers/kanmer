@@ -9,3 +9,8 @@ PASS: CORE-043 PR #168 hosted verify and kanmer-gate PASS in run 32607472961; PR
 INCONCLUSIVE (preserved): inherited full-workspace typecheck mismatch; no hosted stacked checks or live packaged/native-host/protected mutation evidence.
 
 Result: merged-main multi-project status broadcasts verified.
+
+## Closeout traceability
+
+- PR [#221](https://github.com/collisionengineers/kanmer/pull/221) — merged 2026-08-22T22:51:50Z.
+- Final parent PR [#168](https://github.com/collisionengineers/kanmer/pull/168) — merged into `main` as `a8cc6b01ca95340f1186bccc9770238036d080d8` at 2026-08-23T00:22:40Z.

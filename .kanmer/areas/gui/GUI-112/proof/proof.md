@@ -9,3 +9,8 @@ PASS: CORE-043 PR #168 hosted verify and kanmer-gate PASS in run 32607472961; PR
 INCONCLUSIVE (preserved): hosted GitHub protection/Actions-variable retarget, retained-ref deletion, and multi-machine handoff; linked-worktree plugin:check; local Git-heavy sync rerun interrupted after provider/connect/remote suites.
 
 Result: deterministic branch-handoff, fail-closed retry, and documentation/workflow behavior verified; live hosted/multi-machine behavior remains unproven.
+
+## Closeout traceability
+
+- PR [#207](https://github.com/collisionengineers/kanmer/pull/207) — merged 2026-08-22T19:19:48Z.
+- Final parent PR [#168](https://github.com/collisionengineers/kanmer/pull/168) — merged into `main` as `a8cc6b01ca95340f1186bccc9770238036d080d8` at 2026-08-23T00:22:40Z.

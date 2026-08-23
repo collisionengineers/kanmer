@@ -8,3 +8,11 @@ PASS: CORE-043 PR #168 hosted verify and kanmer-gate PASS in run 32607472961; PR
 INCONCLUSIVE (preserved): inherited full-workspace typecheck mismatch; local Git-heavy rerun interrupted after provider/connect/remote suites; no packaged/native-host/protected mutation or visual proof.
 
 Result: merged-main cumulative lifecycle/provider behavior verified with explicit live/packaged/visual limits.
+
+## Closeout traceability
+
+- PR [#219](https://github.com/collisionengineers/kanmer/pull/219) — merged 2026-08-22T23:17:12Z.
+- PR [#221](https://github.com/collisionengineers/kanmer/pull/221) — merged 2026-08-22T22:51:50Z.
+- PR [#222](https://github.com/collisionengineers/kanmer/pull/222) — merged 2026-08-22T23:17:10Z.
+- PR [#223](https://github.com/collisionengineers/kanmer/pull/223) — merged 2026-08-22T23:14:47Z.
+- Final parent PR [#168](https://github.com/collisionengineers/kanmer/pull/168) — merged into `main` as `a8cc6b01ca95340f1186bccc9770238036d080d8` at 2026-08-23T00:22:40Z.

@@ -19,3 +19,16 @@
 - Focused config regression: 4/4; installer launcher tests: 4/4; GUI connect.test.ts: 35/35; script rail: 98/98; plugin:check: PASS; GUI typecheck: PASS; git diff --check: PASS.
 - Full GUI Vitest attempted; unrelated Windows EPERM cleanup/timeouts in index.sync.test.ts and kanmerGit.test.ts are retained as a failed rail.
 - Hosted kanmer-gate and verify both pass on run 32642585777.
+
+---
+
+## Closeout — MCP-046
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/mcp-046`
+- [ ] `git branch -d mcp-046-antigravity-argv` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

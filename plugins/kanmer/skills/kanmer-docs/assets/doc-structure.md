@@ -1,9 +1,10 @@
 # Document structure
 
 **Descriptive mirror — never authoritative.** The board's `board.yml` is the
-source of truth. This file is the canonical `kanmer-docs` asset copied into a
-repo's `docs/contributing/doc-structure.md`; the mirror is checked for byte
-equality so a prose-only update cannot leave the shipped template stale.
+source of truth. This file is the canonical `kanmer-docs` asset. `kanmer-setup`
+materializes a target repository's `docs/contributing/doc-structure.md` from
+this asset after resolving that board's document globs; the freshness check
+validates both the target-neutral asset and the generated mirror.
 
 ## The `/docs/` tree
 
@@ -11,19 +12,20 @@ The repository's governing documents live under the configured paths:
 
 ```
 docs/
-  product/                    vision and product context
-  functional/frd/             functional requirements
-  architecture/adr/           architecture decisions
+  <configured product path>   vision and product context
+  <configured FRD path>       functional requirements
+  <configured ADR path>       architecture decisions
   contributing/doc-structure.md  this generated mirror
 ```
 
-This board classifies governing documents with these `repoDocs` globs:
+The target board classifies governing documents with its `repoDocs` globs. The
+asset leaves those repository-specific values unresolved:
 
-| Kind | Glob |
+| Kind | Resolved by the target board |
 |---|---|
-| `prd` | `docs/product/prd/**` |
-| `frd` | `docs/functional/frd/**` |
-| `adr` | `docs/architecture/adr/**` |
+| `prd` | `<board repoDocs.prd>` |
+| `frd` | `<board repoDocs.frd>` |
+| `adr` | `<board repoDocs.adr>` |
 
 A ticket links a governing document through `refs`. Whether that link is
 required at a stage boundary is profile-resolved; call `get_doc_gates` for the
@@ -62,15 +64,18 @@ requirements and what is already satisfied. Creation is ungated, so historical
 backfill can create a ticket directly in any stage.
 
 The board's `profiles` and `defaultProfile` fields, plus any area overrides,
-define the effective requirements. The shipped default document types are the
-seven types listed above; the board may configure a different set. This mirror
-describes the live format-3 defaults, not an independent policy.
+define the effective requirements. Format 3 currently uses the seven fixed
+document types listed above; profile configuration selects which of those are
+required at each boundary. Ask `get_doc_gates` for the effective requirements.
+This asset describes the live format-3 model, not an independent policy.
 
 ## Generation and freshness
 
 `plugins/kanmer/skills/kanmer-docs/assets/doc-structure.md` is the canonical
-skill asset. `docs/contributing/doc-structure.md` is its repository mirror.
-Run `npm run verify:docs` to validate the manual and assert that the mirror is
-byte-identical to this asset; the check also rejects the retired format-2
-wording and legacy loose-file paths. Update the asset first when the board model changes, then
-regenerate the repository mirror through `kanmer-docs`.
+skill asset. `docs/contributing/doc-structure.md` is the generated mirror for
+the current board, so its resolved `repoDocs` globs may differ from the
+target-neutral placeholders above. Run `npm run verify:docs` to validate the
+manual, the resolved mirror, and the canonical asset; the check also rejects
+retired format-2 wording and legacy loose-file paths. Update the asset first
+when the board model changes, then regenerate the repository mirror through
+`kanmer-docs`.

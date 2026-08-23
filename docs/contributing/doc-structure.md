@@ -1,13 +1,14 @@
 # Document structure
 
 **Descriptive mirror — never authoritative.** The board's `board.yml` is the
-source of truth. This file is the canonical `kanmer-docs` asset copied into a
-repo's `docs/contributing/doc-structure.md`; the mirror is checked for byte
-equality so a prose-only update cannot leave the shipped template stale.
+source of truth. This file is the generated `kanmer-docs` mirror for this
+repository, materialized from the canonical asset after resolving this board's
+document globs; the freshness check validates both the source asset and this
+resolved mirror.
 
 ## The `/docs/` tree
 
-The repository's governing documents live under the configured paths:
+The repository's governing documents live under this board's configured paths:
 
 ```
 docs/
@@ -17,7 +18,7 @@ docs/
   contributing/doc-structure.md  this generated mirror
 ```
 
-This board classifies governing documents with these `repoDocs` globs:
+This board classifies governing documents with these resolved `repoDocs` globs:
 
 | Kind | Glob |
 |---|---|
@@ -62,15 +63,17 @@ requirements and what is already satisfied. Creation is ungated, so historical
 backfill can create a ticket directly in any stage.
 
 The board's `profiles` and `defaultProfile` fields, plus any area overrides,
-define the effective requirements. The shipped default document types are the
-seven types listed above; the board may configure a different set. This mirror
-describes the live format-3 defaults, not an independent policy.
+define the effective requirements. Format 3 currently uses the seven fixed
+document types listed above; profile configuration selects which of those are
+required at each boundary. Ask `get_doc_gates` for the effective requirements.
+This mirror describes the live format-3 model, not an independent policy.
 
 ## Generation and freshness
 
 `plugins/kanmer/skills/kanmer-docs/assets/doc-structure.md` is the canonical
-skill asset. `docs/contributing/doc-structure.md` is its repository mirror.
-Run `npm run verify:docs` to validate the manual and assert that the mirror is
-byte-identical to this asset; the check also rejects the retired format-2
-wording and legacy loose-file paths. Update the asset first when the board model changes, then
-regenerate the repository mirror through `kanmer-docs`.
+skill asset. This file is the generated mirror for this board, with its
+resolved `repoDocs` globs. Run `npm run verify:docs` to validate the manual,
+the resolved mirror, and the canonical asset; the check also rejects retired
+format-2 wording and legacy loose-file paths. Update the asset first when the
+board model changes, then regenerate this repository mirror through
+`kanmer-docs`.

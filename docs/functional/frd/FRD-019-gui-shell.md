@@ -75,9 +75,12 @@ Renderer paths relative to `apps/gui/src/`.
   separate Backlog view is not present.
 - R6 — `ContextMenu.tsx` is a renderer-drawn menu mounted by `App.tsx:1965-1973`.
   It uses theme tokens, a portal, viewport-clamped root/submenu placement,
-  Escape/click-away dismissal, and `role=menu` keyboard navigation; the
-  placement helpers and dismissal behavior are covered by `lib/menu.test.ts`
-  and `components/ContextMenu.test.tsx`.
+  Escape/click-away dismissal, and `role=menu` keyboard handling; placement
+  helpers are covered by `lib/menu.test.ts` and outside-dismissal behavior by
+  `components/ContextMenu.test.tsx`. Full submenu keyboard navigation is not
+  yet proven: the current implementation closes the entire menu when
+  `ArrowLeft` is pressed in a submenu instead of returning focus to its parent.
+  Restoring that focus is tracked separately from this documentation refresh.
 - R7 — single-instance lock `main/index.ts:105-125` (with the deliberate smoke-mode failure exit),
   window bounds `settings.ts:136`, app menu with DevTools gated to dev `main/index.ts:274-333`,
   `Welcome.tsx`.

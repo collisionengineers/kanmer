@@ -375,6 +375,18 @@ status alone is not evidence of an uploaded asset; re-check any release with:
 node scripts/verify-release-assets.mjs <version>
 ```
 
+The verifier is a byte comparison, so it needs the matching installer,
+blockmap, and `latest.yml` in a local package directory. Retain the package
+for each release you may need to re-check, or provide an archived package
+explicitly:
+
+```bash
+node scripts/verify-release-assets.mjs <version> --dir path/to/release-artifacts
+```
+
+Without matching local artifacts the command exits 1 because it cannot derive
+the expected asset set; that is not a verdict about the remote release.
+
 Never delete assets from an old release: a missing old `.blockmap` silently
 costs every client on that version a full ~77 MB download instead of a
 differential one.

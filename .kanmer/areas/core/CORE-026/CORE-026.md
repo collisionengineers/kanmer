@@ -2,7 +2,7 @@
 id: CORE-026
 type: ticket
 title: 'Sources: let a project declare which MCPs, plugins and llms.txt to prefer'
-status: verifying
+status: done
 area: core
 assignee: core026-executor
 profile: feature
@@ -10,9 +10,7 @@ stageEntered:
   preparing: '2026-08-20T20:30:12.790Z'
   review: '2026-08-22T08:51:37.124Z'
   verifying: '2026-08-22T23:15:58.130Z'
-taken_at: '2026-08-22T08:32:18.405Z'
-branch: core-026-project-declared-sources
-worktree: .worktrees/core-026
+  done: '2026-08-23T00:33:50.716Z'
 labels: []
 groups:
   - HZN-006
@@ -47,7 +45,7 @@ prs:
   - '220'
 archived: false
 created: '2026-08-16T18:26:15.208Z'
-updated: '2026-08-22T23:15:58.130Z'
+updated: '2026-08-23T00:33:55.087Z'
 ---
 
 ## What

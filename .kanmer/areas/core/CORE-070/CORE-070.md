@@ -12,9 +12,6 @@ stageEntered:
   review: '2026-08-22T15:38:06.963Z'
   verifying: '2026-08-22T15:40:47.184Z'
   done: '2026-08-23T00:03:53.175Z'
-taken_at: '2026-08-22T15:35:17.712Z'
-branch: core-070-effective-cache-ignore
-worktree: .worktrees/core-070
 labels:
   - pr-review
   - core-058
@@ -34,7 +31,7 @@ prs:
   - '191'
 archived: false
 created: '2026-08-22T15:15:55.434Z'
-updated: '2026-08-23T00:03:53.188Z'
+updated: '2026-08-23T00:08:38.427Z'
 ---
 
 PR #180 thread 3836307987: reconcile managed cache exclusions after later negations or verify effective ignore behavior, so an existing exception cannot make the sources cache trackable; add regression.

@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-22T15:27:25.220Z'
   verifying: '2026-08-22T15:29:20.714Z'
   done: '2026-08-23T00:03:52.078Z'
-taken_at: '2026-08-22T15:18:23.976Z'
-branch: core-068-rearm-sync-retry
-worktree: .worktrees/core-068
 labels:
   - pr-review
   - core-058
@@ -33,7 +30,7 @@ prs:
   - '189'
 archived: false
 created: '2026-08-22T15:15:55.378Z'
-updated: '2026-08-23T00:03:52.091Z'
+updated: '2026-08-23T00:08:36.190Z'
 ---
 
 PR #180 thread 3836307985: when retry repairs a temporarily unavailable board worktree, restore the automatic sync timer for the already-enabled interval; add a deterministic regression and preserve the paused/retry state semantics.

@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-22T14:52:32.882Z'
   verifying: '2026-08-22T14:55:02.775Z'
   done: '2026-08-23T00:03:48.953Z'
-taken_at: '2026-08-22T14:46:31.706Z'
-branch: core-065-retry-ignore-reconciliation
-worktree: .worktrees/core-065
 labels:
   - pr-review
   - board-sync
@@ -33,7 +30,7 @@ prs:
   - '186'
 archived: false
 created: '2026-08-22T14:30:31.050Z'
-updated: '2026-08-23T00:03:48.967Z'
+updated: '2026-08-23T00:08:31.884Z'
 ---
 
 Review finding from PR #180 head b1abac871da28522759d4e5582caa69d5cdb5 (thread 3836232929). The attached-worktree failure returns available:false, boardRoot set, paused:true; Settings renders the non-Git message and syncBoard short-circuits on unavailable, so repairing .gitignore cannot be retried without reopening. Preserve a distinct failed-Git state that surfaces the error and permits retry/reconciliation, with deterministic UI/status and idempotence coverage. Child of [[CORE-058]].

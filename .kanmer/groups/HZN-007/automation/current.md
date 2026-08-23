@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-23T01:57:54.413Z
+updated_at: 2026-08-23T01:59:20.160Z
 ---
 
 # Current auto run — HZN-007
@@ -990,3 +990,6 @@ Review handoff: 2026-08-23T01:56:14.396Z — SKILL-032 exact-head review PASS wi
 
 
 Review correction: 2026-08-23T01:57:54.413Z — SKILL-032 scratch/review.md now has valid review-attestation frontmatter; rerun hosted PR checks before merge.
+
+
+Review handoff: 2026-08-23T01:59:20.160Z — GUI-124 exact-head review PASS with no findings; hosted verify passed, but the old gate run was a timing failure and must be rerun after valid review attestation.

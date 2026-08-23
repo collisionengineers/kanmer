@@ -58,7 +58,8 @@ if (forbidden || args.includes("--help") || !has("--acknowledge-protected-enviro
     let child;
     try { child = JSON.parse(client.stdout || "{}"); } catch { child = { outcome: "inconclusive", reason: "protected client returned no sanitised evidence" }; }
     const failed = client.status !== 0 && client.status !== 2;
-    await writeResult({ schemaVersion: 1, ticket: "MCP-028", outcome: failed ? "fail" : child.outcome === "pass" ? "pass" : "inconclusive", exactCommitVerified: true, protectedClient: child });
-    process.exitCode = failed ? 1 : child.outcome === "pass" ? 0 : 2;
+    const outcome = failed ? "fail" : child.outcome === "pass" ? "pass" : child.outcome === "fail" ? "fail" : "inconclusive";
+    await writeResult({ schemaVersion: 1, ticket: "MCP-028", outcome, exactCommitVerified: true, protectedClient: child });
+    process.exitCode = outcome === "pass" ? 0 : outcome === "fail" ? 1 : 2;
   }
 }

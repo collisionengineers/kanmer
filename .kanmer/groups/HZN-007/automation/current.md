@@ -945,3 +945,6 @@ CORE-091 entered Preparing after the mcpb:check parity failure; research and pla
 
 
 CORE-091 assigned to worktree .worktrees/core-091 on core-091-refresh-current-mcp-artifact; dependency installation completed without package changes, implementation is artifact-only.
+
+
+CORE-091 moved to Review with PR #224 and commit ed7d8a98; generated-only diff, plugin:check, mcpb:check, and scripts 89/89 passed. Independent review assigned before merge.

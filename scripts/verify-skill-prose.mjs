@@ -436,5 +436,24 @@ for (const [name, rule] of forbiddenAutoClaims) {
   check(`no ${name}`, !rule.test(autoSkill), "unsafe legacy claim absent");
 }
 
+console.log("\n=== 15. review prose describes only the current review-asset flow ===");
+const reviewSkill = read(join(skillsDir, "kanmer-review", "SKILL.md"));
+const staleReviewAssetClaims = hits(
+  /legacy `pr-\*` review assets remain untouched|SKILL-015 owns their deletion/i,
+);
+staleReviewAssetClaims.forEach((h) =>
+  console.log(`      ${h.file}:${h.line}  ${h.text.trim().slice(0, 120)}`),
+);
+check(
+  "no stale legacy review-asset prose",
+  staleReviewAssetClaims.length === 0,
+  staleReviewAssetClaims.length ? "deleted pr-* assets must not be assigned to a future ticket" : "legacy claim absent",
+);
+check(
+  "kanmer-review names the current whole-file review record",
+  /whole-file `scratch\/review\.md` attestation|Replace `scratch\/review\.md` as one version-aware file/i.test(reviewSkill),
+  "scratch/review.md is the current review flow",
+);
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

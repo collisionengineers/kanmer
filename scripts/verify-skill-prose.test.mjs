@@ -155,3 +155,27 @@ test("auto prose validator rejects partial-roster success language", () => {
     rmSync(fixture, { recursive: true, force: true });
   }
 });
+
+test("review prose validator rejects the deleted legacy review-asset claim", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-review-assets-contract-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const review = join(fixture, "plugins", "kanmer", "skills", "kanmer-review", "SKILL.md");
+    writeFileSync(
+      review,
+      `${readFileSync(review, "utf8")}\nThe legacy \`pr-*\` review assets remain untouched here; SKILL-015 owns their deletion.\n`,
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /no stale legacy review-asset prose/);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});

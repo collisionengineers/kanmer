@@ -122,8 +122,8 @@ The merged SHA belongs to `kanmer-verify`; do not write proof here.
 Review feedback that needs implementation becomes a linked PR Review ticket;
 the original remains blocked until it is dispositioned and re-reviewed. Do not
 change an unticked open question while applying review fixes without the
-owner's decision. The legacy `pr-*` review assets remain untouched here;
-SKILL-015 owns their deletion.
+owner's decision. The whole-file `scratch/review.md` attestation is the current
+review record; deleted legacy `pr-*` assets are not part of this workflow.
 
 ---
 

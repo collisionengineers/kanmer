@@ -9,7 +9,13 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const root = join(fileURLToPath(new URL("..", import.meta.url)));
-const expected = ["/d", "/s", "/c", "pushd %LOCALAPPDATA%\\Kanmer\\bin && call kanmer-mcp.cmd"];
+const expected = [
+  "/d",
+  "/v:on",
+  "/s",
+  "/c",
+  "setlocal EnableDelayedExpansion&&set KANMER_PROVIDER_CWD=!CD!&&pushd !LOCALAPPDATA!\\Kanmer\\bin&&call kanmer-mcp.cmd",
+];
 const execFileAsync = promisify(execFile);
 
 function validate(entry) {
@@ -20,9 +26,11 @@ function validate(entry) {
   assert.deepEqual(Object.keys(entry.env ?? {}), ["KANMER_BOARD_BRANCH"]);
 }
 
-test("native Antigravity descriptor uses a quote-free space-safe launcher token", () => {
+test("native Antigravity descriptor uses a quote-free space-safe launcher token and preserves cwd", () => {
   const config = JSON.parse(readFileSync(join(root, "plugins/kanmer/mcp_config.json"), "utf8"));
   validate(config.mcpServers.kanmer);
+  assert.match(expected[4], /KANMER_PROVIDER_CWD=!CD!/);
+  assert.match(expected[4], /!LOCALAPPDATA!/);
 });
 
 test("direct launcher tokens are rejected because they fail when LOCALAPPDATA has spaces", () => {
@@ -41,13 +49,21 @@ test("the quote-free launcher still reaches the shim when LOCALAPPDATA contains 
   const localAppData = join(root, "Kanmer Test Space");
   const bin = join(localAppData, "Kanmer", "bin");
   await mkdir(bin, { recursive: true });
-  await writeFile(join(bin, "kanmer-mcp.cmd"), "@echo KANMER_ARGV_SPACE_OK\\r\\n", "utf8");
+  await writeFile(
+    join(bin, "kanmer-mcp.cmd"),
+    "@echo CWD=%CD%\\r\\n@echo PROVIDER_CWD=%KANMER_PROVIDER_CWD%\\r\\n@echo KANMER_ARGV_SPACE_OK\\r\\n",
+    "utf8",
+  );
+  const caller = join(root, "provider workspace");
+  await mkdir(caller, { recursive: true });
   try {
-    const { stdout } = await execFileAsync("cmd.exe", ["/d", "/s", "/c", `${expected[3]} --probe`], {
+    const { stdout } = await execFileAsync("cmd.exe", [...expected.slice(0, 4), `${expected[4]} --probe`], {
       env: { ...process.env, LOCALAPPDATA: localAppData },
+      cwd: caller,
       windowsHide: true,
       timeout: 5_000,
     });
+    assert.match(stdout, /PROVIDER_CWD=.*provider workspace/);
     assert.match(stdout, /KANMER_ARGV_SPACE_OK/);
   } finally {
     await rm(root, { recursive: true, force: true });

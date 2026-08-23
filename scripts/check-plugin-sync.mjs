@@ -280,8 +280,15 @@ function checkPluginManifests() {
     const entry = serverEntry(agyMcp);
     const args = entry.args ?? [];
     if (entry.command !== "cmd.exe") problems.push(`mcp_config.json: command is "${entry.command}", expected "cmd.exe"`);
-    if (JSON.stringify(args) !== JSON.stringify(["/d", "/s", "/c", "pushd %LOCALAPPDATA%\\Kanmer\\bin && call kanmer-mcp.cmd"])) {
-      problems.push('mcp_config.json: args must be ["/d", "/s", "/c", "pushd %LOCALAPPDATA%\\\\Kanmer\\\\bin && call kanmer-mcp.cmd"]');
+    const expectedArgs = [
+      "/d",
+      "/v:on",
+      "/s",
+      "/c",
+      "setlocal EnableDelayedExpansion&&set KANMER_PROVIDER_CWD=!CD!&&pushd !LOCALAPPDATA!\\Kanmer\\bin&&call kanmer-mcp.cmd",
+    ];
+    if (JSON.stringify(args) !== JSON.stringify(expectedArgs)) {
+      problems.push(`mcp_config.json: args must be ${JSON.stringify(expectedArgs)}`);
     }
     if (entry.cwd !== undefined) problems.push("mcp_config.json: must not set cwd");
     const extraEnv = Object.keys(entry.env ?? {}).filter((key) => key !== "KANMER_BOARD_BRANCH");

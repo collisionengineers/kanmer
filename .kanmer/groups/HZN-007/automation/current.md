@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-23T02:00:33.535Z
+updated_at: 2026-08-23T02:01:30.035Z
 ---
 
 # Current auto run — HZN-007
@@ -999,3 +999,6 @@ Review handoff: 2026-08-23T02:00:02.072Z — DOC-019 exact-head review PASS with
 
 
 Hosted result: 2026-08-23T02:00:33.535Z — SKILL-032 PR #225 gate and verify both PASS at exact head 31a7504e; merge remains held pending controlled merge sequence.
+
+
+Review blocker: 2026-08-23T02:01:30.035Z — DOC-019 PR #227 needs changes: verify:skills rejects the legacy term in the new skill asset. F-001 is open; no merge.

@@ -2,20 +2,24 @@
 kind: review-attestation
 pr: "227"
 head_sha: "e1d86926d7f847c29a89ee2e0feaca0d6cf4fd24"
-verdict: pass
+verdict: needs-changes
 reviewer: "codex-root"
 independent: true
-reviewed_at: "2026-08-23T02:00:02.072Z"
-findings: []
+reviewed_at: "2026-08-23T02:01:30.035Z"
+plan_hash: "4ddbb871b1818857"
+ticket_updated: "2026-08-23T01:57:36.457Z"
+findings:
+  - id: F-001
+    severity: blocker
+    summary: "The canonical skill asset still contains the literal legacy term impact, so verify:skills fails even though the focused docs rail passes."
+    disposition: open
 checks:
-  scope: "PASS — canonical/mirror docs, README/FRD prose, and dependency-free freshness rail only"
-  source_backing: "PASS — generated asset/mirror and FRD-019 corrections match current format-3/GUI source"
-  mirror_test: "PASS — node --test scripts/check-doc-structure.test.mjs, 2/2"
+  scope: "PASS — canonical/mirror docs, README/FRD prose, and freshness rail only"
+  mirror_test: "PASS — 2/2"
   docs_rail: "PASS — npm run verify:docs"
   scripts: "PASS — npm run test:scripts, 91/91"
-  diff_check: "PASS — git diff --check"
-  hosted_gate: "PASS — PR run 32611615139 kanmer-gate"
-  full_verify: "IN_PROGRESS — PR run 32611615139 verify job"
+  hosted_gate: "PASS — kanmer-gate in 32611615139"
+  hosted_verify: "FAIL — verify:skills rejects the literal legacy term in the skill asset"
 ---
 
-Independent review of PR #227 at exact head e1d86926d7f847c29a89ee2e0feaca0d6cf4fd24: no findings. The canonical skill asset and repository mirror are byte-equal, the new check has a deliberate stale fixture, README release commands match release.mjs usage and protected-main sequencing, and the FRD-019 edits are source-backed as-built corrections rather than requirement changes. Focused docs, verify:docs, scripts, and diff checks pass. The known npm test Windows ENOTEMPTY baseline failure is preserved in the report; no unsupported green claim is made. Merge remains held until the hosted verify job completes and the phase-2 gate remains green.
+Independent review of PR #227 at exact head e1d86926d7f847c29a89ee2e0feaca0d6cf4fd24 found one blocking issue. The new canonical doc-structure skill asset says the current files location replaces the v2 impact name; the authoritative skill-prose validator forbids that literal legacy term anywhere in the skill tree, so hosted run 32611615139 fails at verify:skills. Reword that one explanatory sentence without changing scope, regenerate the mirror, rerun the authoritative rail, and replace this attestation at the new head. No merge.

@@ -30,7 +30,7 @@ Refreshed the canonical `kanmer-docs` document-model asset and its board-specifi
 
 - The canonical asset intentionally leaves repository-specific `repoDocs` globs unresolved; `kanmer-setup` must materialize the target board's resolved values into its mirror. Future document-model changes must update the asset first and regenerate the mirror in the same change.
 - The current implementation closes the entire ContextMenu on `ArrowLeft` from a submenu. GUI-126 is the explicit follow-up for parent-focus restoration and keyboard assertions; implementing GUI behavior remains outside DOC-019's documentation-only scope.
-- `npm test` was attempted after `npm ci` and `npm run build:core`; it retains a pre-existing Windows filesystem cleanup failure in `packages/core/src/docs.test.ts` (`creation is ungated (FRD-002 G3)` timed out and then reported `ENOTEMPTY` under `%TEMP%`). This documentation change did not alter core code. The focused documentation rail and complete `test:scripts` suite passed.
+- The first board-discovery regression run failed because the fixture's temporary-directory parent contained ambiguous candidates; discovery was narrowed to explicit roots, the checkout's `.worktrees`, or a worktree parent, and the corrected run passed 4/4.\n- `npm test` was attempted after `npm ci` and `npm run build:core`; it retains a pre-existing Windows filesystem cleanup failure in `packages/core/src/docs.test.ts` (`creation is ungated (FRD-002 G3)` timed out and then reported `ENOTEMPTY` under `%TEMP%`). This documentation change did not alter core code. The focused documentation rail and complete `test:scripts` suite passed.
 
 ## Verification hand-off
 

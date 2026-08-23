@@ -22,3 +22,5 @@ Focused mirror tests now pass 3/3 and verify:docs passes. Ticket remains Review.
 Also aligned `scripts/release.mjs` dry-run output/comment: no Git or remote release state is written, but verification may create local build outputs; the message no longer claims the entire tree is untouched.
 
 Added a board-worktree discovery regression test; focused mirror tests now pass 4/4 (verify:docs remains PASS).
+
+Test note: the first board-discovery regression run failed because scanning arbitrary temp-directory siblings made the fixture ambiguous; narrowed discovery to explicit roots, the checkout's `.worktrees`, or a worktree parent, then reran mirror tests 4/4 and test:scripts 93/93 successfully.

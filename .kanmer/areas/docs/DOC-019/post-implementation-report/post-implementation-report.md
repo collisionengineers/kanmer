@@ -22,9 +22,9 @@ Refreshed the canonical `kanmer-docs` document-model asset and its board-specifi
 
 ## Governing docs
 
-- **FRD-014 R4:** the canonical `kanmer-docs` asset and generated mirror are kept together; the new check enforces their shared model, target-neutral source placeholders, board-resolved mirror globs, and rejection of retired model markers.
+- **FRD-014 R4:** the canonical `kanmer-docs` asset and generated mirror are kept together; the new check enforces their shared model, target-neutral source placeholders, effective board-resolved mirror globs when the board worktree is available, and rejection of retired model markers.
 - **FRD-019 R5/R6:** the stale verified-against-code paragraph now records the six fixed stages, current Settings surface, renderer-drawn ContextMenu, viewport/submenu behavior, and the evidence actually covered by tests. It no longer presents full submenu keyboard navigation as verified; GUI-126 tracks the source fix. No product behavior was changed.
-- **FRD-021 R3:** README release instructions now name the protected-main preparation PR and the post-merge publication command, including full-SHA reachability, complete asset verification, and retention/provision of local artifacts for later byte comparisons.
+- **FRD-021 R3:** README release instructions now name the protected-main preparation PR and the post-merge publication command, including full-SHA reachability, complete asset verification, and retention/provision of local artifacts; a matching local manifest enables its byte comparison while the verifier's documented fallback checks presence/state only.
 
 ## Risks / follow-ups
 
@@ -38,7 +38,7 @@ On merged `main`, run:
 
 - `npm run verify:skills` — expect the skill-prose rail to pass with zero legacy `impact` hits.
 - `npm run verify:docs` — expect the manual check, target-neutral canonical asset check, and board-resolved mirror check to pass.
-- `node --test scripts/check-doc-structure.test.mjs` — expect 2/2 pass, including stale-fixture rejection.
+- `node --test scripts/check-doc-structure.test.mjs` — expect 3/3 pass, including stale-fixture rejection and injected custom-board globs.
 - `npm run test:scripts` — expect the full dependency-free scripts suite to pass.
 - `npm run build:core` and `git diff --check` — expect both to pass.
 
@@ -51,6 +51,13 @@ No GUI screenshot is required; FRD-019 changes are source-backed prose only.
 - **3837493577 / configurable document types:** removed the claim that boards can configure a different document-type set; the asset now states that Format 3's seven folder types are fixed and profiles only select requirements.
 - **3837493579 / AGENTS command documentation:** added `npm run verify:docs` to the command table and checklist and described its role in `npm run verify`.
 - **3837493581 / FRD-019 keyboard claim:** narrowed the verified statement to the behavior and tests actually present, recorded the ArrowLeft limitation, and opened GUI-126 for the out-of-scope source fix.
-- **3837493582 / release artifact retention:** documented retaining or explicitly supplying the matching local package with `--dir`; a missing local package is not a remote-release verdict.
+- **3837493582 / release artifact retention:** documented retaining or explicitly supplying local installer/blockmap artifacts with `--dir`; the matching-manifest byte comparison and presence-only fallback are now explicit.
+
+## Review remediation — second pass
+
+- **3837522502 / effective repoDocs:** the freshness check now discovers an available board worktree (or honors `KANMER_BOARD_ROOT`/`KANMER_ROOT`) and compares the mirror against that effective map. With no board checkout, it validates the target-neutral/source-independent shape; tests inject a custom map to prove stale values fail. No repository-specific glob literals remain in the checker.
+- **3837522504 / local latest.yml fallback:** aligned README and AGENTS with `verify-release-assets.mjs`: installer/blockmap artifacts are required to derive the expected set; a matching local `latest.yml` gets a byte comparison, while absent/different-version local manifests are presence/state-only.
+- **3837522507 / consumer footer:** separated source-repository maintenance guidance from the materialized mirror. The canonical asset retains Kanmer-source instructions; the mirror tells consumer maintainers to rerun their setup/documentation rail and contains no Kanmer source path or root verification command.
+- **3837522508 / dry-run writes:** clarified README and AGENTS that dry-run skips Git and remote publication but verification may create or replace local build outputs.
 
 The ticket remains in Review for fresh independent review; no merge was performed.

@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-23T02:17:06.543Z
+updated_at: 2026-08-23T02:30:25.313Z
 lane_limit: 3
 stop_reason:
 ---
@@ -955,3 +955,7 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - 2026-08-23T02:16:30.954Z — GUI-124 closed out: PR #226 merged as 181b6475208a2f18eaeeaa0a9beb44c0c786ae4f; clean detached merged-main focused test proof PASS; exact ticket worktrees and local/remote branch removed; take_ticket release completed.
 
 - 2026-08-23T02:17:06.543Z — GUI-125 prepared from the queued historical-audit remediation: plan written, backlog→preparing passed, and one free conflict-free lane is authorized. The child author must take the recorded ticket, implement only priority-filter state removal while preserving defaultPriority persistence, stop at Review, and leave root to independently review/merge.
+
+- 2026-08-23T02:29:59.465Z — GUI-125 closed out: PR #228 merged as 6abe8abae7e5e533032a30cc2c175fb38ba7403c; clean detached merged-main renderer proof PASS; exact ticket worktrees and local/remote branch removed; take_ticket release completed.
+
+- 2026-08-23T02:30:25.313Z — GUI-126 prepared from DOC-019 review follow-up: files/plan written, backlog→preparing passed, and one free GUI lane is authorized. The child author must implement only submenu ArrowLeft parent-focus restoration, update FRD-019 evidence, stop at Review, and leave root to independently review/merge.

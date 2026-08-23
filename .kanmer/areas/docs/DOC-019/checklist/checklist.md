@@ -8,3 +8,4 @@
 - [x] Run focused documentation/freshness checks and inspect the diff for scope and traceability.
 - [x] Write the post-implementation report with governing-doc mapping, risks, and merged-main verification commands.
 - [x] Resolve independent review findings: target-neutral asset globs, fixed document-type wording, AGENTS verification documentation, FRD-019 keyboard caveat, and release artifact retention guidance; record GUI-126 as the source-code follow-up.
+- [x] Resolve second-pass review findings: effective board-glob resolution, manifest presence-only fallback, consumer-safe mirror footer, and dry-run local artifact wording.

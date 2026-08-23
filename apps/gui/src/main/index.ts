@@ -939,7 +939,11 @@ async function syncProjectLocked(projectId: string, ctx: ProjectContext, automat
   // operator can complete the handoff outside Kanmer. Retry reconciliation
   // before treating that state as a non-Git project or attempting any sync.
   if (!ctx.syncStatus.available && ctx.syncStatus.boardRoot) {
-    const branch = retryBoardBranch(ctx.syncStatus.branch, readSettings().kanmerBranch);
+    // A retained board root is the paused context's source of truth. The
+    // saved setting may still be the protected default when the refusal was
+    // raised while the project was closed; retrying that default would simply
+    // rediscover the refusal and discard the administrator's handoff.
+    const branch = ctx.syncStatus.branch || retryBoardBranch(ctx.syncStatus.branch, readSettings().kanmerBranch);
     const retried = await ensureBoardWorktree(ctx.sourceRoot, branch);
     ctx.syncStatus = bindRetryBoardStatus(ctx.boardRoot, ctx.syncStatus, retried);
     if (ctx.syncStatus.available) armSyncTimer(projectId, ctx, readSettings().gitSyncMinutes);

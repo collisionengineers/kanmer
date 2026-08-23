@@ -788,7 +788,10 @@ describe("ensureBoardWorktree reconciliation", () => {
   });
 
   realGitTest("preserves the board root when rename succeeds before ignore reconciliation fails", async () => {
-    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    // A custom source branch represents the state after protection has already
+    // been retargeted. The protected default is intentionally refused by the
+    // production rename helper and is covered by the test above.
+    const created = await ensureBoardWorktree(repo, "team-board");
     const boardRoot = created.boardRoot!;
     const ignorePath = join(boardRoot, ".gitignore");
     rmSync(ignorePath);
@@ -797,14 +800,14 @@ describe("ensureBoardWorktree reconciliation", () => {
     // host-specific permission/lock behavior.
     mkdirSync(ignorePath);
 
-    const reopened = await ensureBoardWorktree(repo, "team-board");
+    const reopened = await ensureBoardWorktree(repo, "renamed-board");
 
     expect(reopened.available).toBe(false);
     expect(reopened.boardRoot).toBe(resolve(boardRoot));
-    expect(reopened.branch).toBe("team-board");
+    expect(reopened.branch).toBe("renamed-board");
     expect(reopened.paused).toBe(true);
     expect(reopened.error).toBeTruthy();
-    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("team-board");
+    expect(await git(boardRoot, "symbolic-ref", "--short", "HEAD")).toBe("renamed-board");
   });
 
   realGitTest("reports the branch the worktree is really on when reconciling fails", async () => {

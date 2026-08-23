@@ -519,7 +519,7 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
       // this worktree is not actually on — that lie is what made the next sync
       // push the board somewhere nobody was looking.
       const renamed = await renameBoardBranch(boardRoot, branch);
-      if (!renamed.ok) return { ...empty(branch, renamed.error), boardRoot: resolve(boardRoot) };
+      if (!renamed.ok) return { ...empty(branch, renamed.error), boardRoot: resolve(boardRoot), paused: true };
       try {
         await ensureBoardWorktreeIgnore(boardRoot);
       } catch (error) {

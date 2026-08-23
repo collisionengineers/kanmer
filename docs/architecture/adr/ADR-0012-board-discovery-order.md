@@ -246,6 +246,8 @@ source. The installer rejects roots overlapping `%LOCALAPPDATA%\\Kanmer\\mcp`
 and best-effort prunes unlocked stale version directories while retaining
 `current` and locked live runtimes. The launcher retains the install-root payload
 as a fallback for legacy registrations; neither path adds `--root`,
-`--repo-root`, `cd`, or provider-specific serialization. Real
-packaged-update/session-survival proof is an integration boundary and remains
+`--repo-root`, or provider-specific serialization. The native Antigravity path
+uses only the explicit `cd /d "%KANMER_PROVIDER_CWD%"` restoration described
+above after its quote-free temporary `pushd`; it does not otherwise change cwd.
+Real packaged-update/session-survival proof is an integration boundary and remains
 INCONCLUSIVE until a disposable Windows host executes it.

@@ -1,1 +1,3 @@
 Preparation note: initial get_execution_packet before files/plan returned ready:false GATE_BLOCKED (leave-preparing requires files and plan). Wrote research, files, plan, checklist, and resolved open-questions via MCP after confirming current source/artifact hashes and script contracts.
+
+Hosted PR #224 run 32609245159 failed at mcpb:check: CI npm ci built server f52d9c5b while the artifact from the local plain npm install was 56f0644e. This is preserved as a genuine reproducibility finding. Reinstalled with npm ci --ignore-scripts --no-audit --no-fund, regenerated the artifact, and reran plugin:check (PASS), mcpb:check (PASS; 3 files/1,671,293 bytes), and scripts 89/89 (PASS). New artifact and commit are required before rerunning hosted verification.

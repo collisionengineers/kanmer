@@ -7,7 +7,7 @@
 - [x] Run the real agy bound get_status probe with the final installed plugin and launcher/runtime; retain safe output.
 - [x] Run plugin:check, focused script tests, typecheck/build, and git diff --check.
 - [x] Write the post-implementation report and link the exact evidence.
-- [ ] Stop at Review for independent review; do not self-merge.
+- [x] Stop at Review for independent review; do not self-merge.
 
 ## Evidence notes
 
@@ -24,11 +24,11 @@
 
 ## Closeout — MCP-046
 
-- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] PR merge verified (gh pr view --json state,mergedAt)
 - [x] proof.md finalised (PR URL + merge date appended)
 - [x] Moved to final stage
 - [x] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/mcp-046`
-- [ ] `git branch -d mcp-046-antigravity-argv` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] cd out of worktree; git worktree remove .worktrees/mcp-046
+- [x] git branch -d mcp-046-antigravity-argv (merged branch removed)
+- [x] git fetch --prune origin + git worktree prune
+- [x] take_ticket action: "release"

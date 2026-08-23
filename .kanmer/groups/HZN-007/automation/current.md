@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-23T02:03:01.192Z
+updated_at: 2026-08-23T02:05:15.445Z
 ---
 
 # Current auto run — HZN-007
@@ -1005,3 +1005,6 @@ Review blocker: 2026-08-23T02:01:30.035Z — DOC-019 PR #227 needs changes: veri
 
 
 Review metadata correction: 2026-08-23T02:03:01.192Z — GUI-124 and SKILL-032 attestations now carry plan_hash and ticket_updated; rerun any failed hosted gate before merge.
+
+
+Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448; exact-head PASS attestation written, hosted verify still running.

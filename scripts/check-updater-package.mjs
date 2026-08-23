@@ -220,7 +220,7 @@ if (!existsSync(launcher)) {
       "restore the fixed GUI-099 launcher contract; do not substitute a build-machine path",
     );
   }
-  if (/^\s*(cd|pushd|start)\b/im.test(launcherText) || launcherText.includes("%*") || /[A-Za-z]:\\Users\\/i.test(launcherText)) {
+  if (/^\s*(pushd|start)\b/im.test(launcherText) || launcherText.includes("%*") || /[A-Za-z]:\\Users\\/i.test(launcherText)) {
     fail(
       `${launcher} changes cwd, forwards arbitrary arguments, or embeds a build-machine user path`,
       "the static shim must use only the fixed HKCU indirection and inherited provider cwd/stdio",

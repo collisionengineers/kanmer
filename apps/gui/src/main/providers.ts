@@ -62,10 +62,17 @@ export function codexPortableProbeInvocation(): Invocation {
 
 /** The installer-owned Windows runtime used by native plugin MCP configs. */
 export function antigravityPortableInvocation(probe = false): Invocation {
-  const launcher = '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"';
+  // Antigravity forwards embedded quotes in the final `/c` argv token
+  // literally. Enable delayed expansion so the command stays quote-free (and
+  // therefore agy-compatible) while still working when LOCALAPPDATA contains
+  // spaces. Capture the provider cwd before pushd; the installer-owned shim
+  // restores it before starting MCP so ADR-0012 board discovery sees the
+  // workspace rather than the launcher's bin directory.
+  const launcher =
+    "setlocal EnableDelayedExpansion&&set KANMER_PROVIDER_CWD=!CD!&&pushd !LOCALAPPDATA!\\Kanmer\\bin&&call kanmer-mcp.cmd";
   return {
     command: "cmd.exe",
-    args: ["/d", "/s", "/c", `${launcher}${probe ? " --probe" : ""}`],
+    args: ["/d", "/v:on", "/s", "/c", `${launcher}${probe ? " --probe" : ""}`],
     env: {},
   };
 }

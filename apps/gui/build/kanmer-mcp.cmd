@@ -72,6 +72,16 @@ exit /b 0
 :launch
 call :resolve
 if errorlevel 1 exit /b %ERRORLEVEL%
+rem Antigravity's quote-free descriptor temporarily pushd's into the shim
+rem directory for spaced LOCALAPPDATA paths. Restore the provider workspace
+rem before MCP starts so ADR-0012 discovery walks the bound project.
+if defined KANMER_PROVIDER_CWD (
+  cd /d "%KANMER_PROVIDER_CWD%" 2>nul
+  if errorlevel 1 (
+    >&2 echo Kanmer MCP launcher: the provider workspace is unavailable.
+    exit /b 68
+  )
+)
 set "ELECTRON_RUN_AS_NODE=1"
 "%KANMER_EXE%" "%MCP_BUNDLE%"
 set "CHILD_EXIT=%ERRORLEVEL%"

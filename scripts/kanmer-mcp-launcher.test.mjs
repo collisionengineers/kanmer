@@ -29,7 +29,8 @@ describe("installer-owned MCP launcher contract", () => {
   });
 
   test("keeps cwd and protocol stdio safe", () => {
-    assert.ok(!/^\s*(cd|pushd|start)\b/im.test(shim));
+    assert.ok(!/^\s*(pushd|start)\b/im.test(shim));
+    assert.match(shim, /if defined KANMER_PROVIDER_CWD[\s\S]*?cd \/d "%KANMER_PROVIDER_CWD%"/);
     assert.ok(!shim.includes("%*"));
     assert.match(shim, /if "%~1"=="" if "%~2"=="" goto :launch/);
     assert.match(shim, /set "CHILD_EXIT=%ERRORLEVEL%"/);
@@ -38,7 +39,7 @@ describe("installer-owned MCP launcher contract", () => {
   });
 
   test("has distinct refusal paths without launching the child", () => {
-    for (const [code, detail] of [[65, "installation is missing or invalid"], [66, "Kanmer.exe is missing"], [67, "bundled MCP server is missing"], [64, "invalid arguments"]]) {
+    for (const [code, detail] of [[65, "installation is missing or invalid"], [66, "Kanmer.exe is missing"], [67, "bundled MCP server is missing"], [68, "provider workspace is unavailable"], [64, "invalid arguments"]]) {
       assert.ok(shim.includes(`exit /b ${code}`), `missing exit ${code}`);
       assert.ok(shim.includes(detail), `missing ${detail}`);
     }
@@ -57,6 +58,6 @@ describe("installer-owned MCP launcher contract", () => {
     assert.doesNotMatch(installer, /IfFileExists "\$LOCALAPPDATA\\Kanmer\\mcp\\current\\Kanmer\.exe"/);
     assert.match(installer, /overlaps the external MCP runtime/);
     assert.doesNotMatch(installer, /HKLM|RMDir \/r \"\$INSTDIR/i);
-    assert.doesNotMatch(shim, /target\.txt|PowerShell|WScript|(^|\r?\n)\s*(cd|pushd|start)\b/i);
+    assert.doesNotMatch(shim, /target\.txt|PowerShell|WScript|(^|\r?\n)\s*(pushd|start)\b/i);
   });
 });

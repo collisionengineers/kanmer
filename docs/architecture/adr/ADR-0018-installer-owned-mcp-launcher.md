@@ -33,10 +33,15 @@ same-directory temporary file and replaces the fixed shim, then writes
 `InstallDir`. The shim resolves that exact registry value using
 `%SystemRoot%\System32\reg.exe`, validates `<InstallDir>\Kanmer.exe` and
 `<InstallDir>\resources\mcp\kanmer-mcp.cjs`, sets `ELECTRON_RUN_AS_NODE=1`
-only locally, and directly runs the quoted executable and bundle.
+only locally, and directly runs the quoted executable and bundle. The native
+Antigravity descriptor temporarily changes directory to reach the shim without
+embedded quotes when `%LOCALAPPDATA%` contains spaces; it passes the original
+provider cwd in `KANMER_PROVIDER_CWD`, which the shim restores before launching
+MCP so board discovery still starts at the workspace.
 
-Normal launch accepts no arguments, does not change cwd, does not use `start`,
-and leaves stdin/stdout/stderr to the MCP child. It returns the child exit code
+Normal launch accepts no arguments, leaves the provider cwd unchanged (or
+restores `KANMER_PROVIDER_CWD` supplied by the native Antigravity descriptor),
+does not use `start`, and leaves stdin/stdout/stderr to the MCP child. It returns the child exit code
 unchanged. The sole `--probe` mode validates the resolved targets and emits a
 human diagnostic without starting MCP. Missing registry data, executable, bundle
 or invalid arguments fail with distinct non-zero launcher exits.

@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { checkDocStructure } from "./check-doc-structure.mjs";
+import { checkDocStructure, resolveRepoDocs } from "./check-doc-structure.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const canonical = readFileSync(
@@ -43,4 +44,24 @@ test("the freshness check uses injected effective board globs", () => {
     mirror,
     repoDocs: { ...repoDocs, frd: "docs/other/frd/**" },
   }).some((problem) => problem.includes("repoDocs.frd")));
+});
+
+test("the freshness check discovers repoDocs from a board worktree", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-doc-structure-board-"));
+  try {
+    mkdirSync(join(fixture, ".kanmer", "data"), { recursive: true });
+    writeFileSync(join(fixture, ".kanmer", "data", "board.yml"), [
+      "repoDocs:",
+      "  prd: docs/custom/prd/**",
+      "  frd: docs/custom/frd/**",
+      "  adr: docs/custom/adr/**",
+    ].join("\n"));
+    assert.deepEqual(resolveRepoDocs({ root: fixture, boardRoot: fixture }), {
+      prd: "docs/custom/prd/**",
+      frd: "docs/custom/frd/**",
+      adr: "docs/custom/adr/**",
+    });
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
 });

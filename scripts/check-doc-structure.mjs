@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 /**
  * The skill asset is the target-neutral source for the repository's descriptive
@@ -31,12 +31,14 @@ function boardCandidates(root) {
     const boardFile = join(candidate, ".kanmer", "data", "board.yml");
     if (existsSync(boardFile)) candidates.push(resolve(boardFile));
   };
-  for (const envName of ["KANMER_BOARD_ROOT", "KANMER_ROOT"]) {
-    if (process.env[envName]) add(resolve(process.env[envName]));
+  const explicitRoot = process.env.KANMER_BOARD_ROOT ?? process.env.KANMER_ROOT;
+  if (explicitRoot) {
+    add(resolve(explicitRoot));
+    return [...new Set(candidates)];
   }
   add(root);
   const parent = dirname(root);
-  if (existsSync(parent)) {
+  if (basename(parent) === ".worktrees" && existsSync(parent)) {
     for (const name of readdirSync(parent)) {
       const candidate = join(parent, name);
       try {
@@ -60,8 +62,10 @@ function boardCandidates(root) {
   return [...new Set(candidates)];
 }
 
-export function resolveRepoDocs({ root }) {
-  const candidates = boardCandidates(root);
+export function resolveRepoDocs({ root, boardRoot = null }) {
+  const candidates = boardRoot
+    ? [resolve(join(boardRoot, ".kanmer", "data", "board.yml"))].filter(existsSync)
+    : boardCandidates(root);
   if (candidates.length !== 1) return null;
   return parseRepoDocs(readFileSync(candidates[0], "utf8"));
 }

@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-23T01:30:44.234Z
+updated_at: 2026-08-23T01:39:00.329Z
 lane_limit: 3
 stop_reason:
 ---
@@ -918,3 +918,6 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 
 
 2026-08-23 resumed-goal reconciliation — live get_status reports format 3, 291 tickets, 281 Done, 10 Verifying, 16 archived, 0 taken, 0 warnings; HZN-007 group reports 149 tickets, 139 Done, 10 Verifying. Provider-neutral implementation tickets DOC-012, DOC-017, MCP-021, MCP-025, MCP-026, MCP-027, GUI-095, and DOC-013 are Done; MCP-028 remains Verifying pending genuine remote Cloudflare proof. Next safe action is a read-only historical Done backfill audit in three conflict-free lanes; no ticket stage/write claims are made by this event.
+
+
+2026-08-23 release-integrity audit — exact tag v0.3.3 at 240e269d was rebuilt in an isolated clean checkout. npm run dist:check passed (updater package 7 checks), but node scripts/verify-release-assets.mjs 0.3.3 --dir apps/gui/release exited 1: published installer SHA 68e656c9… differs from fresh 727d6fa6…, published blockmap size/SHA 82113/933db1a1… differs from fresh 82083/b30eaa32…, and latest.yml SHA 100a8068… differs from fresh 7ba17dbf…. Existing public assets were recorded before the approved exact-file repair; no source or board stage claim is made by this event.

@@ -20,8 +20,8 @@
 - [x] PR merge verified (`gh pr view --json state,mergedAt`): [#246](https://github.com/collisionengineers/kanmer/pull/246) is `MERGED` at 2026-08-24T20:47:30Z, merge `e63a1090bfbda89f473a422817629eaadd1ed264`.
 - [x] proof.md finalised with the PR URL, merge date, exact merged SHA, and focused evidence.
 - [x] Moved to final stage (Done).
-- [ ] Outcome recorded in ticket body (PR link, follow-ups).
-- [ ] Returned to a safe checkout; remove `.worktrees/doc-022`.
-- [ ] Delete `doc-022-v035-release-notes` (force only if its squash merge leaves it non-ancestor).
-- [ ] Run `git fetch --prune origin` and `git worktree prune`.
-- [ ] Release the ticket take record.
+- [x] Outcome recorded in ticket body with PR link and [[CORE-098]] follow-up boundary.
+- [x] Returned to a safe checkout; `git worktree remove .worktrees/doc-022` exited 0.
+- [x] Local and remote `doc-022-v035-release-notes` branches deleted; local `git branch -d` exited 0 without force.
+- [x] `git fetch --prune origin` and `git worktree prune` exited 0; the board worktree was retained.
+- [x] Ticket take record released after cleanup.

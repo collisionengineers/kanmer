@@ -31,9 +31,11 @@ prs:
     https://github.com/collisionengineers/kanmer-spine-integration-20260822t075446z-78e5ba65/pull/1
   - >-
     https://github.com/collisionengineers/kanmer-spine-integration-20260822t075446z-78e5ba65/pull/2
+  - >-
+    https://github.com/collisionengineers/kanmer-core035-protected-20260824t142522z-dd4f69a4/pull/1
 archived: false
 created: '2026-08-20T10:14:42.535Z'
-updated: '2026-08-23T00:50:03.326Z'
+updated: '2026-08-24T14:34:22.732Z'
 ---
 
 ## What
@@ -43,7 +45,8 @@ end-to-end on a disposable repo + board: packet fetched → refusal paths → ta
 - [x] Exact merged source verify passed.
 - [x] Disposable fixture focused tests and local gate/refusal matrix recorded.
 - [x] Hosted NO_TICKET, WRONG_STAGE, warning, and unreachable-commit evidence retained.
-- [ ] Protected merge and detached exact-SHA verification: INCONCLUSIVE — GitHub refused private-repo branch protection with HTTP 403.
+- [x] Public disposable `main` protection and normal merge refusal observed: required `verify`/ `kanmer-gate`, approval, conversations, admin enforcement, and no force/delete.
+- [ ] Protected merge and detached exact-SHA verification: INCONCLUSIVE — the public fixture's real `verify` failed at the existing release-notes repository-URL assertion, and this agent must not author-review or merge.
 
 ## Outcome
-INCONCLUSIVE at the private GitHub branch-protection capability boundary. Disposable PRs remain open for independent review; no merge or bypass performed.
+INCONCLUSIVE at the public-fixture verification and independent-review boundary. The public protected-branch configuration, hosted `kanmer-gate` PASS, and HTTP 405 protected-merge refusal are retained. No review, merge, bypass, rule weakening, or fabricated exact-SHA claim was performed.

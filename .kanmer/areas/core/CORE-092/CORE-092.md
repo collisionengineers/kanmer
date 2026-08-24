@@ -28,11 +28,12 @@ refs:
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 commits:
   - 883db4ea136e43762fe93b3f08c48660a634725b
+  - 6f9fd5dc926b92981fcad87b1b8e026f0329854e
 prs:
   - '233'
 archived: false
 created: '2026-08-24T09:36:52.291Z'
-updated: '2026-08-24T10:10:39.590Z'
+updated: '2026-08-24T10:53:03.926Z'
 ---
 
 ## What

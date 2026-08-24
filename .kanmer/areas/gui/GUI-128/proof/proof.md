@@ -23,3 +23,9 @@ PR #237 merged into main at `89a538b73a89d4135d4c5b823b248117c751da8e`. It adds 
 ## Result
 
 GUI-128's claim is verified on merged main: the Electron mock now represents the static production guard, the sync test exits cleanly, and the complete GUI rail is green. The unrelated later MCP failure is retained as a non-passing overall-root result and is not erased or presented as a GUI success.
+
+## Closeout traceability
+
+- Merged PR: #237, https://github.com/collisionengineers/kanmer/pull/237
+- Merge time: 2026-08-24T13:24:46Z
+- Merge commit: `89a538b73a89d4135d4c5b823b248117c751da8e`

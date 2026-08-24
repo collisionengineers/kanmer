@@ -6,6 +6,18 @@ against shipping the previous release's notes. electron-builder reads this file
 from the app directory (`projectDir` is `apps/gui` when the packer is invoked
 there) and uses it as the GitHub release body.
 
+## 0.3.6
+
+### Publisher builds before creating a release tag
+
+The governed local publisher now builds the Windows GUI before it creates and
+pushes the release tag. A GUI build failure therefore stops before a tag or
+GitHub Release can be published.
+
+Tag-triggered workflow remains explicit non-publishing verification: it builds
+and checks the Windows updater package but never creates or repairs a GitHub
+Release or its assets.
+
 ## 0.3.5
 
 ### Release verification packages without publishing

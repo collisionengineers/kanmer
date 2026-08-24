@@ -1132,3 +1132,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T21:15Z — CORE-098 corrected preparation passed and PR #247 was independently reviewed after record-only remediations, both hosted checks passing. It normal-protected squash-merged as 8a4b7d982b0c94c71a843782d0b6fb1db160025e; ticket moved Review→Verifying. A separate publisher agent is authorized for one clean-clone local release --publish invocation with a process-local token; no manual tag/upload/release repair, no v0.3.4 mutation, and no proof/Done decision by that agent.
+
+
+- 2026-08-24T21:24Z — CORE-098’s one authorized v0.3.5 publisher completed all rails but exited 1 after pushing immutable tag v0.3.5 at 8a4b7d982b0c94c71a843782d0b6fb1db160025e: Electron Builder reported app.asar missing out/main/index.js, then updater-package artifacts were absent. GitHub Release/assets remain absent; no retry/manual repair/downstream proof occurred. Archived GUI-131 is reopened and blocks CORE-096/CORE-098 to investigate the passing-clean-package versus failing-canonical-publisher discrepancy without source/release mutations. Any successor publication requires a separately governed ticket after diagnosis.

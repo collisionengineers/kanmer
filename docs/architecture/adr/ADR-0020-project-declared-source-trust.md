@@ -1,10 +1,10 @@
 ---
-status: proposed
+status: draft
 ---
 
 # ADR-0020 — Project-declared sources are preferences, not authority
 
-- **Status:** proposed
+- **Status:** draft
 - **Date:** 2026-08-22
 
 ## Context

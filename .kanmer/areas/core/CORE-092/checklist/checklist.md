@@ -16,4 +16,4 @@
 - [x] cd out of worktree; `git worktree remove .worktrees/core-092`
 - [x] `git branch -d core-092-board-branch-fetch-ref` (`-D` if squash/rebase-merged)
 - [x] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] `take_ticket action: "release"`

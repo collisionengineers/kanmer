@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-24T09:44:37.030Z'
   verifying: '2026-08-24T10:57:09.210Z'
   done: '2026-08-24T10:58:20.365Z'
-taken_at: '2026-08-24T09:39:50.163Z'
-branch: core-092-board-branch-fetch-ref
-worktree: .worktrees/core-092
 labels:
   - ci
   - merge-gate
@@ -36,7 +33,7 @@ prs:
   - '233'
 archived: false
 created: '2026-08-24T09:36:52.291Z'
-updated: '2026-08-24T10:58:47.649Z'
+updated: '2026-08-24T10:59:55.604Z'
 ---
 
 ## What

@@ -459,7 +459,7 @@ Run from the repo root unless noted.
 | `npm run dist` | build everything **and** produce `apps/gui/release/Kanmer Setup <v>.exe` |
 | `npm run dist:check` | `dist`, then `check-updater-package.mjs` — the eight things that must be true for the **packaged** app to auto-update |
 | `npm run release -- <version> --ticket <id>` | the protected-main preparation phase: run the shared `npm run verify` rail, bump/package deterministic artifacts on `release/v<version>`, push only that branch, and open a PR targeting exact `main` with a standalone `Kanmer: <id>` footer. It stops before tag/publisher calls and uses the operator's normal `gh auth` session. |
-| `npm run release -- <version> --publish --release-commit <full-sha>` | the post-merge publication phase: from clean merged `main`, require matching manifests and prove the supplied **post-merge** commit is reachable, then push only `refs/tags/v<version>`, publish once, and verify visibility/updater/every asset. Extend `VERIFY_STEPS`, never a third verification pyramid. Needs `GH_TOKEN` (or `GITHUB_RELEASE_TOKEN`/`GITHUB_TOKEN`). `--dry-run` skips Git/remote publication but still runs verification steps that may write local build outputs. |
+| `npm run release -- <version> --publish --release-commit <full-sha>` | the post-merge publication phase: from clean merged `main`, require matching manifests and prove the supplied **post-merge** commit is reachable, then build the GUI before creating/pushing only `refs/tags/v<version>`. A GUI-build failure stops before any tag or GitHub Release exists. On build success it publishes once and verifies visibility/updater/every asset. Extend `VERIFY_STEPS`, never a third verification pyramid. Needs `GH_TOKEN` (or `GITHUB_RELEASE_TOKEN`/`GITHUB_TOKEN`). `--dry-run` skips Git/remote publication but still runs verification steps that may write local build outputs. |
 | `npm run mcpb:check` | build and deterministically validate the Windows Claude Desktop MCPB from the standalone server; generated output is under `dist/mcpb/` and is not committed |
 | `npm run smoke:headless` | run the standalone MCP server from a temporary host with no repository `node_modules`, using an explicit board root |
 | `node scripts/verify-release-assets.mjs <version> [--dir <localDir>]` | re-check **any** published release read-only, without cutting a new one: installer/blockmap bytes use retained local artifacts (default `apps/gui/release/`; use `--dir` for an archived package), while a matching local `latest.yml` enables its byte comparison and an absent/different-version manifest is presence/state-only. Exit 0 = pass, 1 = the release is incomplete or required installer/blockmap artifacts are missing, 2 = the *check* could not run (rate limit, bad token, API drift) — the two are never conflated |
@@ -668,6 +668,8 @@ targeting exact `main` with a standalone `Kanmer: <id>` footer. It never pushes
 `verify`, run
 `npm run release -- <version> --publish --release-commit <full-sha>` from clean
 local `main`; the full post-merge SHA must be an ancestor before the script
-creates/pushes only `refs/tags/v<version>` and publishes. The tag workflow stays
+runs the existing GUI build. A GUI-build failure stops there: it creates neither
+the immutable tag nor a GitHub Release. Only a successful build permits the
+script to create/push `refs/tags/v<version>` and publish. The tag workflow stays
 read-only verification. Live PR/merge, publisher, latest-release, and real
 two-version updater evidence are external until recorded.

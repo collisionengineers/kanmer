@@ -3,10 +3,10 @@
 ## Preparation
 
 - [x] Create a clean isolated clone at the recorded current-main SHA.
-- [ ] Wait for DOC-021's reviewed release-notes PR to merge; record its merge SHA.
+- [x] Wait for DOC-021's reviewed release-notes PR to merge; record its merge SHA: be15545a90af27f08e2124e7aaf39c4bcc3b51dc.
 - [x] Bind the existing canonical board through KANMER_ROOT for isolated-clone test discovery.
 - [x] Run the exact 0.3.4 release dry-run gate and retain every exit.
-- [ ] Refresh the preparation clone from DOC-021's merged main and confirm it is clean.
+- [x] Refresh the preparation clone from DOC-021's merged main and confirm it is clean.
 - [ ] Run the preparation phase once with --ticket CORE-096.
 - [ ] Inspect the release branch diff and confirm it contains only script-generated release artifacts.
 - [ ] Record the PR number, head SHA, preparation commit, and local command exits.

@@ -32,3 +32,10 @@ A body-only edit to PR #235 preserved `Kanmer: CORE-093` and created GitHub Acti
 The job emitted only the expected non-blocking `NO_REVIEW_RECORD` warning; independent review remains the next stage responsibility.
 
 The same edited-body run completed with the full `verify` rail passing in 3m01s. Both required PR #235 checks are green.
+
+## Rebased merge evidence — 2026-08-24
+
+- After CORE-092 merged, rebased this PR to merged `main` as `ae1dde60b179aaffdcb0d27c35d507cf3bb45d67` and resolved adjacent AGENTS documentation into one non-duplicated merge-gate convention.
+- `node --test scripts/pr-workflow.test.mjs` — PASS, 1/1.
+- `node --test packages/mcp-server/src/check-pr.test.mjs` — PASS, 5/5.
+- Fresh GitHub Actions run `32719735508`: `kanmer-gate` PASS (1m00s); `verify` PASS (3m21s).

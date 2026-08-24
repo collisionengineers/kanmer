@@ -24,15 +24,15 @@
 
 - [x] Do not run the release publisher, create/push a tag, publish, or package an installer as part of this remediation.
 - [x] Do not change release credentials, workflows/permissions, Electron package configuration, manual upload semantics, or retained v0.3.4/v0.3.5 release records.
-- [ ] Leave independent review, merge, merged-main proof, and closeout to later governed owners.
+- [x] Independent review, merge, merged-main proof, and governed closeout completed.
 
 ## Closeout — GUI-131
 
 - [x] PR merge verified (`gh pr view --json state,mergedAt`): [#248](https://github.com/collisionengineers/kanmer/pull/248) is `MERGED` at 2026-08-24T21:52:09Z, merge `3abef518bedbe79647070a84038779644fbc0fa2`.
 - [x] proof.md finalised with the PR URL, merge date, exact merged SHA, safe merged-main evidence, and the source-only release boundary.
 - [x] Moved to final stage (Done).
-- [ ] Outcome recorded in ticket body (PR link, successor-release boundary).
-- [ ] Returned to a safe checkout; remove `.worktrees/gui-131`.
-- [ ] Delete `gui-131-build-before-tag` (force only if its squash merge leaves it non-ancestor).
-- [ ] Run `git fetch --prune origin` and `git worktree prune`.
-- [ ] Release the ticket take record.
+- [x] Outcome recorded in ticket body with PR link and [[CORE-098]] successor-release boundary.
+- [x] `git worktree remove .worktrees/gui-131` exited 0 and unregistered the worktree. The exact directory retains only ignored `node_modules` with no `.git`; policy rejected recursive deletion, which is recorded in proof.
+- [x] Local and remote `gui-131-build-before-tag` branches deleted; local `git branch -d` exited 0 without force.
+- [x] `git fetch --prune origin` and `git worktree prune` exited 0; the board worktree was retained.
+- [x] Ticket take record released after scoped cleanup.

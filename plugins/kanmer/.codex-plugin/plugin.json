@@ -15,7 +15,7 @@
     "keep their server via .claude-plugin/plugin.json → mcp/claude.mcp.json."
   ],
   "name": "kanmer",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "File-based kanban for AI agents: track tickets, plans and research in a .kanmer folder shared live with the Kanmer desktop GUI.",
   "author": {
     "name": "Kanmer contributors",

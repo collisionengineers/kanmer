@@ -7,4 +7,4 @@
 - [x] Run the focused static test and the full script-test suite.
 - [x] Run the exact non-publishing package/check sequence in the isolated ticket worktree (the default ignored output hit Windows `EBUSY`; the documented isolated-output retry passed 8/8).
 - [x] Run `npm run verify` from a clean GitHub-origin normal clone at the committed head.
-- [ ] Commit, push, open a PR with `Kanmer: CORE-097`, record CI/security evidence, and move the ticket to Review.
+- [x] Commit, push, open PR [#245](https://github.com/collisionengineers/kanmer/pull/245) with `Kanmer: CORE-097`, record CI/security evidence, and move the ticket to Review. The initial gate snapshot failed only for pre-Review stage; its rerun and `verify` are now passing.

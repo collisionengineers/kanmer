@@ -25,3 +25,9 @@ No credential, repository secret, write permission, tag, release, asset upload, 
 ## Handoff
 
 Await independent PR review and merge. Do not retag, publish, or verify/close this ticket from this branch.
+
+## Pull-request CI
+
+- GitHub Actions run [32766977802](https://github.com/collisionengineers/kanmer/actions/runs/32766977802): `verify` passed in 4m 2s.
+- Its first `kanmer-gate` attempt failed in 56s only because the PR was opened while the ticket snapshot was still `implementing`; its exact error was `WRONG_STAGE`, expected `review`. The ticket then moved through the gated Implementing → Review boundary and the canonical board synced.
+- Rerunning only the failed gate against that Review-stage board snapshot passed in 50s. The PR now has both required checks passing.

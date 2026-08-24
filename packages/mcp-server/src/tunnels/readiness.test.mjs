@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { allocateLoopbackPort, reserveLoopbackPort, reserveSpecificLoopbackPort, waitForTunnelReadiness } from "../../dist/tunnels/readiness.js";
 import { createServer } from "node:net";
+import { createServer as createHttpServer } from "node:http";
 
 test("allocator returns an unprivileged loopback port", async () => {
   const port = await allocateLoopbackPort();
@@ -63,6 +64,34 @@ test("readiness accepts only a bounded successful loopback /ready response", asy
     },
   });
   assert.equal(attempts, 2);
+});
+
+test("readiness accepts a delayed local success without coupling its request deadline to polling", async () => {
+  let attempts = 0;
+  const server = createHttpServer((request, response) => {
+    attempts++;
+    const status = attempts === 1 ? 503 : 200;
+    setTimeout(() => {
+      response.writeHead(status, { "content-type": "text/plain" });
+      response.end(status === 200 ? "ready" : "not ready");
+    }, status === 200 ? 150 : 0);
+  });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  try {
+    await waitForTunnelReadiness({
+      endpoint: `http://127.0.0.1:${address.port}/ready`,
+      timeoutMs: 1_000,
+      pollMs: 10,
+    });
+    assert.equal(attempts, 2);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
 });
 
 test("readiness rejects non-local endpoints and times out on malformed success", async () => {

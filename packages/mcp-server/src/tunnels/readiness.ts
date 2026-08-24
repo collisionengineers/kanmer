@@ -1,6 +1,9 @@
 import { createServer } from "node:net";
 
 const LOOPBACK = new Set(["127.0.0.1", "[::1]"]);
+const DEFAULT_READINESS_TIMEOUT_MS = 30_000;
+const DEFAULT_READINESS_POLL_MS = 100;
+const MAX_READINESS_REQUEST_TIMEOUT_MS = 1_000;
 
 export interface LoopbackPortLease {
   readonly port: number;
@@ -89,14 +92,19 @@ function assertLoopbackReadyEndpoint(value: string): URL {
 /** Poll Cloudflare's local readiness endpoint; child output is never readiness evidence. */
 export async function waitForTunnelReadiness(options: ReadinessOptions): Promise<void> {
   const endpoint = assertLoopbackReadyEndpoint(options.endpoint);
-  const timeoutMs = options.timeoutMs ?? 10_000;
-  const pollMs = options.pollMs ?? 100;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_READINESS_TIMEOUT_MS;
+  const pollMs = options.pollMs ?? DEFAULT_READINESS_POLL_MS;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || !Number.isSafeInteger(pollMs) || pollMs < 1) throw new Error("TUNNEL_READINESS_POLICY_INVALID");
   const deadline = Date.now() + timeoutMs;
   const fetchImpl = options.fetchImpl ?? fetch;
-  while (Date.now() <= deadline) {
+  while (true) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs < 1) break;
     const abort = new AbortController();
-    const requestTimeout = setTimeout(() => abort.abort(), Math.min(pollMs, 1_000));
+    // Polling controls how soon the next probe starts, not how long a valid
+    // loopback HTTP response may take. Keep each probe finite and never let it
+    // exceed the total startup deadline.
+    const requestTimeout = setTimeout(() => abort.abort(), Math.min(MAX_READINESS_REQUEST_TIMEOUT_MS, remainingMs));
     try {
       const response = await fetchImpl(endpoint, { signal: abort.signal, redirect: "error" });
       if (response.status === 200) {
@@ -105,8 +113,9 @@ export async function waitForTunnelReadiness(options: ReadinessOptions): Promise
       }
     } catch { /* provider may still be binding; deadline determines failure */ }
     finally { clearTimeout(requestTimeout); }
-    if (Date.now() + pollMs > deadline) break;
-    await new Promise<void>((resolve) => setTimeout(resolve, pollMs));
+    const nextDelayMs = Math.min(pollMs, deadline - Date.now());
+    if (nextDelayMs < 1) break;
+    await new Promise<void>((resolve) => setTimeout(resolve, nextDelayMs));
   }
   throw new Error("TUNNEL_READINESS_TIMEOUT");
 }

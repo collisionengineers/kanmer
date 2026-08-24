@@ -1084,3 +1084,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T17:18:00Z — DOC-021 implementation is Review-ready: PR #242, head 3921d90f, modifies only apps/gui/release-notes.md. Corrected focused test passed after the isolated checkout built Core; the prebuild failure is retained in scratch. post-implementation report, commit/PR traceability, gates, links, and stage were read back. Hosted verify and kanmer-gate are running. Independent review and normal protected-main merge are required; CORE-096 remains blocked on that merge.
+
+
+- 2026-08-24T17:22:00Z — DOC-021 PR #242 at 3921d90 has both required checks PASS (kanmer-gate 56s; verify 4m19s) and no actionable automated Codex suggestion. It remains Review because that automated COMMENTED review is not a formal different-identity approval; GitHub reports merge state BLOCKED. Author will not self-approve or merge. Resume requires a formal approval from a different GitHub identity, then normal protected-main merge and DOC-021 merged-main proof before CORE-096 can resume.

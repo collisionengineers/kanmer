@@ -24,4 +24,4 @@
 
 ## Scope and handoff
 
-No release tag, generated release artifact, manifest, CI, provider configuration, branch protection, or root-checkout file changed. PR #242 is open; hosted verify and kanmer-gate were queued when recorded. Stop for independent review and normal protected-main merge. CORE-096 remains blocked until the resulting merge SHA is recorded.
+No release tag, generated release artifact, manifest, CI, provider configuration, branch protection, or root-checkout file changed. PR #242 is open at the recorded head. Hosted verify passed in 4m19s and kanmer-gate passed in 56s. The automated Codex review left no actionable suggestion, but it is a COMMENTED review rather than a formal independent approval; GitHub still reports mergeState BLOCKED. Stop for a different GitHub identity to approve and for normal protected-main merge. CORE-096 remains blocked until the resulting merge SHA is recorded.

@@ -2,12 +2,15 @@
 id: CORE-092
 type: ticket
 title: Fetch board branch into a resolvable CI ref
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: codex
 profile: fix
 stageEntered:
   preparing: '2026-08-24T09:38:03.826Z'
+taken_at: '2026-08-24T09:39:50.163Z'
+branch: core-092-board-branch-fetch-ref
+worktree: .worktrees/core-092
 labels:
   - ci
   - merge-gate
@@ -23,7 +26,7 @@ refs:
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 archived: false
 created: '2026-08-24T09:36:52.291Z'
-updated: '2026-08-24T09:38:03.826Z'
+updated: '2026-08-24T09:39:50.163Z'
 ---
 
 ## What

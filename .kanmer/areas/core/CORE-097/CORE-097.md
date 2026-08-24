@@ -2,12 +2,16 @@
 id: CORE-097
 type: ticket
 title: Keep tag release verification non-publishing while packaging the updater
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-24T18:58:06.696Z'
+  implementing: '2026-08-24T19:03:13.253Z'
+taken_at: '2026-08-24T19:03:33.283Z'
+branch: core-097-nonpublishing-release-verify
+worktree: .worktrees/core-097
 labels:
   - release
   - ci
@@ -20,7 +24,7 @@ blocks:
 docs_todo: true
 archived: false
 created: '2026-08-24T18:57:31.028Z'
-updated: '2026-08-24T19:01:51.163Z'
+updated: '2026-08-24T19:03:33.283Z'
 ---
 
 ## What

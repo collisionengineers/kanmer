@@ -12,7 +12,7 @@
 - [x] Take CORE-100 only after an authorized boundary crossing, in its own recorded worktree and branch based on current `origin/main`.
 - [x] Add `artifactName: "${productName}-Setup-${version}.${ext}"` under Electron Builder `win:`; do not alter Electron packaging dependencies, workflows, credentials, release publisher code, or existing tags/releases/assets.
 - [x] Preserve all functional verifier logic and integrity checks; no explanatory verifier edit was required by the explicit-name contract.
-- [x] Add a configuration-contract regression and the precise v0.3.6 mixed-public-inventory regression in `scripts/verify-release-assets.test.mjs`; do not weaken existing assertions.
+- [x] Add a configuration-contract regression and the exact v0.3.6 tag-workflow/public regression for all four name/byte-integrity failures in `scripts/verify-release-assets.test.mjs`; do not weaken existing assertions.
 - [x] Update only the human-owned release guidance in `AGENTS.md` with the explicit hyphenated installer and manifest/upload agreement; leave the managed Kanmer block unchanged.
 - [x] Run and record `node --test scripts/verify-release-assets.test.mjs`, `node --test scripts/check-updater-package.test.mjs`, `npm run test:scripts`, `npm run verify:agents-block`, and `npm run verify:docs`; package with `npm run dist -w @kanmer/gui -- --publish never` plus `node scripts/check-updater-package.mjs` so publishing stays explicitly disabled.
 - [ ] Run the authoritative `npm run verify` from a normal clean checkout before opening a PR; record the exact head and every exit code.

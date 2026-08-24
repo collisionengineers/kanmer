@@ -2,7 +2,7 @@
 id: CORE-092
 type: ticket
 title: Fetch board branch into a resolvable CI ref
-status: verifying
+status: done
 area: core
 assignee: codex
 profile: fix
@@ -10,6 +10,7 @@ stageEntered:
   preparing: '2026-08-24T09:38:03.826Z'
   review: '2026-08-24T09:44:37.030Z'
   verifying: '2026-08-24T10:57:09.210Z'
+  done: '2026-08-24T10:58:20.365Z'
 taken_at: '2026-08-24T09:39:50.163Z'
 branch: core-092-board-branch-fetch-ref
 worktree: .worktrees/core-092
@@ -30,11 +31,12 @@ refs:
 commits:
   - 883db4ea136e43762fe93b3f08c48660a634725b
   - 6f9fd5dc926b92981fcad87b1b8e026f0329854e
+  - 72677b3a56ff90427ae5b67a1797e5a8cce6c74e
 prs:
   - '233'
 archived: false
 created: '2026-08-24T09:36:52.291Z'
-updated: '2026-08-24T10:57:09.210Z'
+updated: '2026-08-24T10:58:47.649Z'
 ---
 
 ## What
@@ -54,3 +56,7 @@ Fix the `kanmer-gate` workflow so the fetched board branch is available as the r
 ## Scope
 
 This is a remediation for [[CORE-024]]. The phase-2 CLI already exists on current `origin/main`; no new gate semantics are introduced.
+
+## Outcome
+
+Merged via [PR #233](https://github.com/collisionengineers/kanmer/pull/233) on 2026-08-24. The documented board-worktree ref contract shipped as planned; no follow-up ticket was created.

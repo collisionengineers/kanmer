@@ -11,3 +11,7 @@
 2026-08-24 — PR #244 hosted verify job 97544237148 (run 32762464916) also failed: core `src/store.test.ts > gives tickets area-based ids and places them in the area's folder` exceeded its 5000ms Vitest timeout; 309/310 tests passed. The same full release gate passed locally in both clean invocations. Preserve this as a transient hosted timeout; do not weaken/change the test in release scope. After independent attestation, rerun the full workflow once for exact-head hosted confirmation.
 
 2026-08-24 — Independent exact-head review PASS and rerun checks PASS; PR #244 normal-protected squash-merged as 102ba3b120cc3065943089d122a6172de8934ece. Ticket is Verifying. Next is exactly one authorized publish invocation from a new clean checkout pinned to that merge; no source modification is permitted.
+
+2026-08-24 — First publish invocation exited 1 before mutation because scripts/release.mjs requires local branch `main`, rejecting detached HEAD despite the exact --release-commit SHA. The fresh clone’s tracked main is the same merge; switch to clean main and retry the one publish phase. No tag, release, package build, or upload occurred.
+
+2026-08-24 — Corrected publish invocation on clean main exited 1 before build/tag/upload because scripts/release.mjs requires GH_TOKEN (or equivalent) explicitly in its process environment. The existing authenticated gh session remains available; bridge its token only into the release process without printing or recording any secret, then retry once. No tag, release, package build, or upload occurred.

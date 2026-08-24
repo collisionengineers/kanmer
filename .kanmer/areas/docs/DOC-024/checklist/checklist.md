@@ -27,8 +27,8 @@ Planning records the user-specified release-note wording as the approval boundar
 - [x] PR merge verified: [#252](https://github.com/collisionengineers/kanmer/pull/252) is MERGED at 2026-08-24T23:39:10Z.
 - [x] proof.md finalised with PR URL, merge SHA, merged-main evidence, and preserved inspection limitations.
 - [x] Moved to final stage.
-- [ ] Outcome recorded in ticket body (PR link, follow-ups).
-- [ ] Returned to main checkout; remove `.worktrees/doc-024`.
-- [ ] Delete `doc-024-v037-release-notes` (`-D` only if the verified squash merge leaves it non-ancestor).
-- [ ] Prune remote/worktree metadata.
-- [ ] Release the ticket after cleanup.
+- [x] Outcome recorded in ticket body with PR #252, merge SHA, verification disposition, and CORE-101 hand-off boundary.
+- [x] Returned to the root main checkout; removed the clean recorded `.worktrees/doc-024`.
+- [x] Deleted local and remote `doc-024-v037-release-notes` after verified squash merge; local `-D` was required because it was non-ancestor.
+- [x] Ran `git fetch --prune origin` and `git worktree prune`; no DOC-024 worktree or local/remote branch remains.
+- [x] Released the ticket after all DOC-024 cleanup completed.

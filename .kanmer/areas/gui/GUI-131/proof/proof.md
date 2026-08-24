@@ -54,3 +54,7 @@ This proves the **source fix only**: a publisher-path GUI build failure stops be
 ## Result
 
 **PASS.** The merged source enforces the required pre-tag GUI-build ordering and regression protection without broadening release authority or changing existing release records.
+
+## Closeout exception
+
+`git worktree remove .worktrees/gui-131` completed and removed the Git worktree registration. The exact former directory contains only ignored `node_modules` and no `.git`; it is not a registered worktree and contains no tracked source. The environment rejected the final recursive filesystem deletion, so it remains as a documented orphan rather than being bypassed. The local and remote `gui-131-build-before-tag` branches were deleted after the merged-PR confirmation.

@@ -1036,3 +1036,9 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 
 
 - 2026-08-24T17:22:00Z — DOC-021 PR #242 at 3921d90 has both required checks PASS (kanmer-gate 56s; verify 4m19s) and no actionable automated Codex suggestion. It remains Review because that automated COMMENTED review is not a formal different-identity approval; GitHub reports merge state BLOCKED. Author will not self-approve or merge. Resume requires a formal approval from a different GitHub identity, then normal protected-main merge and DOC-021 merged-main proof before CORE-096 can resume.
+
+
+- 2026-08-24T17:25:00Z — Independent DOC-021 review completed: substantive PASS at PR #242 head 3921d90f; diff is one release-notes file, aligns with plan/FRD-027/ADR-0020 and current Windows work, and hosted verify/gate both pass. The reviewer confirmed the current GitHub credential is the author identity and did not self-approve or merge. No source finding exists; the exact remaining external action is an approval/merge by a different GitHub identity, after which only merged-main verification may begin.
+
+
+- 2026-08-24T17:27:00Z — Paused on repeated external protected-flow blocker. Three consecutive live checks found DOC-021 PR #242 unchanged: exact head 3921d90f, verify and kanmer-gate SUCCESS, substantive independent review PASS, but OPEN/unmerged and current credential is its author. No safe independent GitHub identity is available to approve/merge; CORE-096 consequently cannot run the clean release preparation. Other remaining Verifying tickets are independently evidence-gated and have no permitted safe replay. Resume only after a different GitHub identity approves and merges #242, then re-read the live PR, HZN-007 current/run, DOC-021 packet and CORE-096 packet before moving DOC-021 to Verifying and resuming release preparation.

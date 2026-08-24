@@ -32,3 +32,14 @@ Verification ran in detached worktree at origin/main `8554c733aac5817e99909622e0
 - Authoritative `npm run verify`: FAIL (exit 1) in unrelated Windows timing/cleanup behavior: 5 core tests exceeded Vitest's 5-second timeout (io stale-lock; docs profile matrix; migrate folded-id and migrated-board; store area-id), with ENOTEMPTY cleanup reported by migration. The rail stopped at core tests; no overall verify PASS is claimed.
 
 The phase-1 evaluator/CLI/build/typecheck evidence is current and green, but the existing checklist's four merged-main/protection items remain unresolved (including direct board-push observation), so this ticket remains Verifying; no Done move or closeout is claimed.
+
+## Final current-main verification — 2026-08-24
+
+Verified at current merged main 9a75bd690a80bf070bb8ddc372b3a95fa03ec789, which contains the original PR #155 merge.
+
+- A detached current-main ticket worktree ran the complete canonical npm run verify command and exited 0. It passed core 310/310, GUI 462/462, MCP HTTP 101/101, scripts 224/224, all workspace typechecks, docs, protocol/headless smokes, and plugin/MCPB consistency.
+- Current compliant PR #236 carried the explicit Kanmer: GUI-127 footer. Both required jobs passed on its head 28ea4782816218d4aae4930b135484477d2a9b17: kanmer-gate and verify (run 32733389281).
+- The latest direct GUI board sync was observed at kanmer-board commit c2b279fee76115320bcd2d510503916d269bd51e. GitHub's PR workflow query for that board branch returned no runs, consistent with the workflow's pull_request-only trigger.
+- CORE-033's observed-once condition is now satisfied. The live main protection readback was updated only to retain verify and add the exact successfully posted GitHub Actions check name kanmer-gate; GitHub returned both contexts with the Actions app id.
+
+These current outcomes supersede the old Windows timing/cleanup and generated-artifact parity verification blockers. Earlier failed attempts remain above as historical evidence.

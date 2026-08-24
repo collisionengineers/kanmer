@@ -9,11 +9,15 @@
 - [x] Inspect tracked diff and confirm it is the one intended release-notes file with no version/config/source/workflow/credential changes.
 - [x] Build the focused-test prerequisite if required and run `node --test scripts/release-notes.test.mjs`; record every exit.
 - [x] Run `git diff --check` and record the one-file scope result.
-- [ ] Write the post-implementation report, commit the one-file change, push the branch, and open a PR with `Kanmer: DOC-024`.
-- [ ] Move exactly one boundary to Review and stop for independent review; do not self-review, merge, publish, or write proof.
+- [x] Write the post-implementation report, commit the one-file change, push the branch, and open a PR with `Kanmer: DOC-024`.
+- [x] Move exactly one boundary to Review and stop for independent review; do not self-review, merge, publish, or write proof.
 
 ## Progress notes
 
 Planning records the user-specified release-note wording as the approval boundary: only `apps/gui/release-notes.md` may change.
 
 - 2026-08-25: clean dedicated worktree created at current `origin/main` `41408981ae78364f1d64e3d3b3db3c1ec67d96d1`; core build exit 0; focused `node --test scripts/release-notes.test.mjs` exit 0 (1/1); `git diff --check` exit 0; tracked diff/status name only `apps/gui/release-notes.md`. No release-side command was run.
+
+- 2026-08-25: committed `fc46f34294d64c50c8d464aa364397bfd37a20ab`, pushed `doc-024-v037-release-notes`, and opened PR #252 at that exact head with the required `Kanmer: DOC-024` footer. Hosted `verify` is queued and `kanmer-gate` is in progress; neither has been reviewed or rerun by the author.
+
+- 2026-08-25: moved one boundary from Implementing to Review. Stop condition reached: independent review owns the exact PR head and any merge; author will not review, merge, publish, tag, upload, repair, or write proof.

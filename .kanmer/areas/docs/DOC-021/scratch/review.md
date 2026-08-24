@@ -35,3 +35,13 @@ This review was performed by an agent other than the authoring agent and did not
 ### Verdict
 
 Substantive review **passes**. Do not author-self-approve or author-self-merge. Await a different GitHub identity to formally approve and merge PR #242; after the merge, record the merge SHA and move DOC-021 from Review to Verifying only.
+
+## 2026-08-24 — protected-main merge attempt
+
+The user confirmed that the separate reviewing agent satisfies the process-level independent-review requirement despite a shared GitHub account. GitHub nevertheless identifies the active credential as the PR author and enforces its own actor rule.
+
+- Normal `gh pr merge 242 --merge`: exit 1 — the base branch policy prohibits the merge and suggests `--auto` or `--admin`.
+- Formal reviewer approval from this credential: exit 1 — `Review Can not approve your own pull request`.
+- Normal protected-flow auto-merge: exit 1 — auto-merge is disabled for this repository.
+
+No administrator bypass was used. No source, workflow, branch-protection, release, or provider change was made. PR #242 remains open; no merge SHA exists, so DOC-021 correctly remains in Review and must not move to Verifying. A distinct GitHub identity must submit the formal approval and a repository administrator must either enable/use the normal merge path after policy permits it, or explicitly authorize an administrative bypass.

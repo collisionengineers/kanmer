@@ -14,12 +14,12 @@
 - [x] Run the focused `index.sync.test.ts` command with the explicit prefix; record exit code and output.
 - [x] Run the full GUI workspace test command with the explicit prefix; record exit code and output.
 - [x] Run GUI typecheck and GUI build with the explicit prefix; record exit codes and output.
-- [ ] In a clean normal clone, run the explicit-prefix authoritative `npm run verify`; record resolved normal-clone path, exit code, and all failure output if any.
+- [x] In a clean normal clone, run the explicit-prefix authoritative `npm run verify`; record resolved normal-clone path, exit code, and all failure output if any.
 - [x] Preserve the prior failing normal-clone verification as separate evidence; do not relabel it as passed.
 
 ## Handoff
 
-- [ ] Write the post-implementation report with the exact diff, command outputs, prior failure disposition, commit, and PR URL.
-- [ ] Create a PR with the `Kanmer: GUI-130` footer only after the normal-clone verification exits 0.
+- [x] Write the post-implementation report with the exact diff, command outputs, prior failure disposition, commit, and PR URL.
+- [x] Create a PR with the `Kanmer: GUI-130` footer only after the normal-clone verification exits 0.
 - [ ] Move GUI-130 from Implementing to Review only after rechecking document gates and recording the PR.
 - [ ] Stop for independent review; do not self-review, merge, write proof, or advance the ticket further.

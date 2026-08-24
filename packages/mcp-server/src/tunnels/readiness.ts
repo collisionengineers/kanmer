@@ -1,7 +1,7 @@
 import { createServer } from "node:net";
 
 const LOOPBACK = new Set(["127.0.0.1", "[::1]"]);
-const DEFAULT_READINESS_TIMEOUT_MS = 30_000;
+const DEFAULT_READINESS_TIMEOUT_MS = 10_000;
 const DEFAULT_READINESS_POLL_MS = 100;
 const MAX_READINESS_REQUEST_TIMEOUT_MS = 1_000;
 

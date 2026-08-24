@@ -11,7 +11,7 @@
 1. Keep `loopbackEndpoint()` strict: accepted targets remain HTTP, loopback-only, port-required, exact `/mcp`, and no query, fragment, credentials, or alternate path.
 2. Add a small origin derivation that converts the already-validated endpoint to `protocol//host:port`. Use that solely for the generated Cloudflare ingress `service`.
 3. Update the focused configuration tests to distinguish the retained MCP endpoint from rendered origin-only provider service, including IPv6 loopback coverage if present.
-4. Add an optional real-cloudflared config validation integration test using a synthetic UUID and nonexistent credentials path; it must never login, create a tunnel, mutate DNS, or read credentials. Skip only when no explicit local executable is available.
+4. Run the installed real cloudflared ingress validate/rule commands manually against a synthetic config. Do not commit an environment-dependent CLI test: this host showed its process can exceed the existing bounded validation window, and the ordinary test suite must not spawn a real provider executable.
 5. Update the provider manual to state that Cloudflare keeps the incoming `/mcp` path, so the origin service excludes it.
 6. Build and run focused tests, real CLI validation, typecheck, and an appropriate HTTP/tunnel regression rail. Record outputs and limits in the implementation report.
 
@@ -25,7 +25,7 @@ Changing the endpoint to an origin-only URL would violate the MCP contract. Swit
 |---|---|
 | Broadening origin acceptance | Reuse strict endpoint validation and only derive origin after it passes. |
 | Losing `/mcp` routing | Assert public `https://host/mcp` matches the origin-only ingress rule with real cloudflared. |
-| Tests requiring external credentials | Use generated nonsecret configuration and local ingress subcommands only. |
+| Environment-dependent tests | Keep real CLI validation manual and keep the committed suite deterministic. |
 | Documentation ambiguity | State public path and provider-origin distinction explicitly. |
 
 ## Proof

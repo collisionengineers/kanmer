@@ -557,6 +557,12 @@ way, so it could not fail.
   (and the SKILL.md if the *workflow* changed, not just the signature), run
   `npm run plugin:build` to refresh the bundled server, and run
   `npm run plugin:check` — it fails on tool-name drift.
+- **Independent review is a distinct agent role, not a distinct GitHub account.**
+  The author may not review or merge its own PR, but a separately assigned
+  reviewing agent may use the same repository credential. GitHub remains the
+  authority for whether that credential can approve or merge: required reviews,
+  unresolved conversations, permissions, and merge settings are not bypassed by
+  the Kanmer workflow.
 - **Document writes carry an optional version token.** `getDocWithVersion`/`get_ticket_doc` return a content hash; passing it back as `setDoc`'s `expectedVersion` / `set_ticket_doc`'s `expected_version` turns a concurrent overwrite into a conflict, exactly like `expectedUpdated` on `updateItem`. Omitting it is last-write-wins. Documents have no frontmatter to hold `updated`, which is why this is a hash and not a timestamp.
 - **Renderer logic that could be pure, is.** `renderer/src/lib/` holds the DOM-free modules — `markdown.ts`, `board.ts` (column lookups, the blocked/overdue rules, drop-position and optimistic-order arithmetic) and `standup.ts` (the whole standup report plus its markdown). Put new logic there rather than in JSX, export it, and take `now`/`today` as an argument instead of calling `Date.now()` inside.
   **Component tests exist, but only to prove *rendering* (GUI-065).** `lib/` used to be the only renderer code with vitest coverage; `components/UpdateBanner.test.tsx` is now the deliberate exception, because that ticket's bug was a component sitting in the wrong subtree — something no pure test can see. The rule that still holds is the one above: **a component test is not a place to put logic.** If you find yourself asserting a decision rather than a rendering, the decision belongs in `lib/`. The stack is `jsdom` + `@testing-library/react` (devDeps of `apps/gui`), and jsdom is enabled **per file** with a `// @vitest-environment jsdom` docblock — deliberately not globally, because the other test files in `apps/gui` cover pure and main-process modules and must not run under a DOM. There is no vitest config file and none is needed.

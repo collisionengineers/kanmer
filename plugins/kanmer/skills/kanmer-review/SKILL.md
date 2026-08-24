@@ -17,6 +17,11 @@ and the one-stage board transition.
 1. Confirm the live ticket is in Review, identify the PR, and verify that you
    are not its author. A self-review may inspect and report but must set
    `independent: false`, must not claim a pass, and must not merge.
+   Independence is a **distinct agent-role** boundary, not a distinct GitHub
+   credential: a separately assigned reviewer may use the same repository
+   account as the author. GitHub still decides whether that account can approve
+   or merge under its own permissions, review, conversation, and merge-policy
+   rules.
 2. Gather the ticket, every packet document, governing refs, group context,
    current ticket timestamp, PR diff, current head SHA, checks, reviews,
    comments, and unresolved threads.

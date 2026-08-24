@@ -14,3 +14,9 @@ Run in `C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\doc-020` detached at `o
 | `npm run verify:docs` | PASS — document mirror, remote chapters, doctor IDs, links/fences, provider boundaries, generated manual current |
 
 No ADR decision content or declared-source implementation changed.
+
+## Closeout record
+
+- Merged PR: [#234](https://github.com/collisionengineers/kanmer/pull/234)
+- Merge date: 2026-08-24
+- No deployment is tracked for this documentation-only remediation.

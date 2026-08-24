@@ -15,9 +15,9 @@
 
 ## Independent review and merge
 
-- [ ] Obtain independent review of the exact release PR head.
-- [ ] Resolve every review finding and required GitHub check.
-- [ ] Merge through normal protected-main review flow; record the exact merge SHA.
+- [x] Obtain independent review of the exact release PR head.
+- [x] Resolve every review finding and required GitHub check.
+- [x] Merge through normal protected-main review flow; record merge SHA: 102ba3b120cc3065943089d122a6172de8934ece.
 
 ## Publication and verification
 

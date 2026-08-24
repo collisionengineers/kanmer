@@ -2,13 +2,14 @@
 id: CORE-092
 type: ticket
 title: Fetch board branch into a resolvable CI ref
-status: review
+status: verifying
 area: core
 assignee: codex
 profile: fix
 stageEntered:
   preparing: '2026-08-24T09:38:03.826Z'
   review: '2026-08-24T09:44:37.030Z'
+  verifying: '2026-08-24T10:57:09.210Z'
 taken_at: '2026-08-24T09:39:50.163Z'
 branch: core-092-board-branch-fetch-ref
 worktree: .worktrees/core-092
@@ -33,7 +34,7 @@ prs:
   - '233'
 archived: false
 created: '2026-08-24T09:36:52.291Z'
-updated: '2026-08-24T10:53:03.926Z'
+updated: '2026-08-24T10:57:09.210Z'
 ---
 
 ## What

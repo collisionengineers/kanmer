@@ -1,6 +1,7 @@
 import { execFile as execFileCallback } from "node:child_process";
 import { mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync, readFileSync, existsSync, realpathSync } from "node:fs";
 import { mkdirSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -13,6 +14,8 @@ import { ensureBoardWorktree, guardGitBranchPreference, ignoreEntriesToAppend, i
 // keep that larger, bounded budget scoped to this file rather than weakening
 // the GUI suite's global default for pure tests.
 const REAL_GIT_TEST_TIMEOUT_MS = 30_000;
+const REAL_GIT_CLEANUP_RETRIES = 20;
+const REAL_GIT_CLEANUP_RETRY_DELAY_MS = 100;
 
 const execFile = promisify(execFileCallback);
 const git = async (cwd: string, ...args: string[]): Promise<string> =>
@@ -76,9 +79,15 @@ beforeEach(async () => {
   await git(repo, "commit", "-m", "board");
 });
 
-afterEach(() => {
-  rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
-});
+afterEach(async () => {
+  await rm(dir, {
+    recursive: true,
+    force: true,
+    maxRetries: REAL_GIT_CLEANUP_RETRIES,
+    retryDelay: REAL_GIT_CLEANUP_RETRY_DELAY_MS,
+  });
+  expect(existsSync(dir)).toBe(false);
+}, REAL_GIT_TEST_TIMEOUT_MS);
 
 const remoteHeads = async (): Promise<string[]> =>
   (await git(origin, "for-each-ref", "--format=%(refname:short)", "refs/heads"))

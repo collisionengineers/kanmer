@@ -2,13 +2,14 @@
 id: CORE-100
 type: ticket
 title: Correct release asset-name verification for Electron Builder output
-status: review
+status: verifying
 area: core
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-24T22:43:11.335Z'
   review: '2026-08-24T23:11:16.705Z'
+  verifying: '2026-08-24T23:17:37.496Z'
 taken_at: '2026-08-24T22:51:49.961Z'
 branch: core-100-deterministic-windows-assets
 worktree: .worktrees/core-100
@@ -32,7 +33,7 @@ prs:
   - '251'
 archived: false
 created: '2026-08-24T22:43:05.670Z'
-updated: '2026-08-24T23:11:16.705Z'
+updated: '2026-08-24T23:17:37.496Z'
 ---
 
 ## What

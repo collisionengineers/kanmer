@@ -17,7 +17,7 @@ Make the *future* Windows NSIS release contract explicit: local installer, `late
 3. Keep `scripts/verify-release-assets.mjs` functional behavior unchanged: `githubName`, required uploaded state, required presence, size, SHA-256, blockmap, and `latest.yml` URL/size/SHA-512 checks remain strict. Change only its explanatory prose if it would otherwise describe the now-obsolete implicit naming premise.
 4. Extend `scripts/verify-release-assets.test.mjs` with:
    - a configuration contract that requires `artifactName: "${productName}-Setup-${version}.${ext}"`; and
-   - a pure public-v0.3.6 inventory fixture proving that the absent `Kanmer-Setup-0.3.6.exe` remains an error, while the dot-form installer/blockmap and duplicate mixed blockmap are extras only. The fixture must retain a matching hyphen-form `latest.yml` reference, so the test proves alias acceptance would conceal a real missing-asset failure.
+   - an exact v0.3.6 tag-workflow/local-versus-public fixture that preserves all four historical errors: absent `Kanmer-Setup-0.3.6.exe`, the space-origin blockmap's size and SHA-256 mismatches, and the local `latest.yml` SHA-256 mismatch. It must retain the matching hyphen-form manifest URL/size/SHA-512 bridge and classify the dot installer/blockmap plus MCPB as informational extras, so alias acceptance or weakening any byte check cannot turn the release into a pass.
 5. Update only the human-owned release guidance in `AGENTS.md`, outside the managed Kanmer block, to state the explicit `Kanmer-Setup-<version>.exe` convention and strict manifest/upload agreement. Do not change workflows, credentials, publication logic, or the managed block.
 6. Run focused source tests, script rails, documentation/managed-block validation, and an isolated packaging rail. Record every exit and preserve any failure; do not work around it by loosening tests or changing the published release.
 7. Run a read-only v0.3.6 verification using the generated verifier data after the source test. It must remain a FAIL/inconclusive-as-applicable if the public release still lacks the manifest-named hyphenated installer; record its exact output without calling an upload, repair, rerun, or release command.
@@ -27,7 +27,7 @@ Make the *future* Windows NSIS release contract explicit: local installer, `late
 
 - `apps/gui/electron-builder.yml` explicitly declares `artifactName: "${productName}-Setup-${version}.${ext}"` for Windows output.
 - The verifier continues to reject absent assets, non-uploaded assets, size/digest mismatches, missing blockmaps, and `latest.yml` installer URL/size/SHA-512 inconsistencies; it accepts no dot-name alias.
-- The new regression fails if the public v0.3.6 mixed inventory is incorrectly treated as complete, and demonstrates why its manifest-named installer is missing.
+- The new regression preserves the v0.3.6 tag workflow's exact four strict failures—missing manifest-named installer, blockmap size/digest mismatch, and manifest digest mismatch—while classifying only unrelated/mixed assets as informational extras.
 - Contributor documentation accurately states the explicit artifact convention without modifying the Kanmer-managed block.
 - The source test rails and package/update validation succeed. A live read-only v0.3.6 check remains an explicitly recorded non-pass until a future separately governed successor release provides fresh evidence.
 - No tag, GitHub Release, asset, workflow run, credential, manual upload, or historical release artifact is changed.

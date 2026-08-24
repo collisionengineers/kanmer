@@ -2,12 +2,15 @@
 id: CORE-093
 type: ticket
 title: Rerun the merge gate when a PR body is edited
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: codex
 profile: fix
 stageEntered:
   preparing: '2026-08-24T10:02:32.249Z'
+taken_at: '2026-08-24T10:03:32.106Z'
+branch: core-093-pr-body-edit-trigger
+worktree: .worktrees/core-093
 labels:
   - ci
   - merge-gate
@@ -24,7 +27,7 @@ refs:
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 archived: false
 created: '2026-08-24T09:59:47.119Z'
-updated: '2026-08-24T10:02:32.249Z'
+updated: '2026-08-24T10:03:32.106Z'
 ---
 
 ## What

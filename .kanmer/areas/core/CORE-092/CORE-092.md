@@ -22,6 +22,8 @@ groups:
   - HZN-007
 links:
   - CORE-024
+blocks:
+  - CORE-093
 refs:
   - docs/functional/frd/FRD-009-interrogative-workflow.md
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
@@ -31,7 +33,7 @@ prs:
   - '233'
 archived: false
 created: '2026-08-24T09:36:52.291Z'
-updated: '2026-08-24T09:44:37.030Z'
+updated: '2026-08-24T10:03:15.599Z'
 ---
 
 ## What

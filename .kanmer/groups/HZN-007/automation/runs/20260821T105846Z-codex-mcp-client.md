@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-24T16:16:41.654Z
+updated_at: 2026-08-24T16:38:45.274Z
 lane_limit: 3
 stop_reason: 
 ---
@@ -1019,3 +1019,6 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - 2026-08-24T16:16:41.654Z — Completion increment: CORE-095 (#238/c31544fc), GUI-130 (#240/77892783), MCP-048 (#239/75793410), and GUI-129 (#241/ef67c04e) were independently reviewed, merged, proven on clean GitHub-origin main `ef67c04e`, moved to Done, and closed out. The exact full verification passed: Core 310/310, GUI 468/468, MCP HTTP 102/102, scripts 98/98, typecheck/docs/smokes/MCPB/protocol/skills/agents/plugin checks. Their dedicated worktrees and both local/remote branches were removed; ticket leases released. The local root checkout remains untouched.
 
 - 2026-08-24T16:16:41.654Z — Live board now has five Verifying tickets and no active implementation/review/taken records: CORE-022 (real Windows lock and 242-ticket migration fixture), CORE-035 (formal independent approval plus protected merge), CORE-036 (green protected/tag release and intentional asset-negative proof), CORE-042 (protected two-version installed updater proof), and MCP-028 (remaining authenticated tunnel restart/rotation/concurrency/degradation/secret-scan matrix). CORE-035 protected fixture PR #2/run 32747239427 passed checks at production main 75793410 but correctly remains open awaiting the repository's configured different-identity approval; no protection was weakened.
+
+
+- 2026-08-24T16:38:45.274Z — Goal-mode resume reconciliation: live board is format 3 with 304 Done, four Verifying (CORE-035, CORE-036, CORE-042, MCP-028), zero Backlog/Preparing/Implementing/Review, zero taken and no board warnings. Clean GitHub-origin main verification remains PASS at ef67c04e. CORE-022 is now Done after real migration/Windows-lock proof. MCP-028 remains INCONCLUSIVE after two bounded canonical public-readiness timeouts with retained Cloudflare resources unchanged. CORE-035 awaits a formal different-identity approval on protected fixture PR #2. CORE-036/CORE-042 retain release/update boundaries; disposable release fixture did not reach asset verification and its draft/tag were removed, while repo deletion awaits delete_repo scope. Live board and external state supersede the older baseline; no action will be replayed.

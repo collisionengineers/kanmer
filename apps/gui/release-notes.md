@@ -6,7 +6,7 @@ against shipping the previous release's notes. electron-builder reads this file
 from the app directory (`projectDir` is `apps/gui` when the packer is invoked
 there) and uses it as the GitHub release body.
 
-## 0.3.3 (unreleased — notes accumulating)
+## 0.3.4
 
 ### Grok Connect uses the native Kanmer plugin
 
@@ -46,6 +46,22 @@ of locked live runtimes. Deterministic package checks cover the boundary; a real
 two-version update with a live agent session, junction behavior, and uninstall
 cleanup still requires a disposable Windows host and is not claimed by these
 notes.
+
+### Project-declared research sources remain preferences, not permissions
+
+Projects can now declare which MCPs, plugins, and `llms.txt` sources they
+prefer for research. Kanmer treats those declarations as bounded retrieval
+preferences: it does not install software, authenticate to providers, or grant
+access merely because a project names a source.
+
+### Windows connection and remote-access setup is more resilient
+
+Provider registration now has a safer lifecycle on Windows, including handling
+transient rename locks. Tunnel setup also reports an origin-path and readiness
+problem directly instead of leaving a connected-looking route that cannot serve
+the MCP endpoint.
+
+## 0.3.3
 
 ### A `fix` now goes through Review
 

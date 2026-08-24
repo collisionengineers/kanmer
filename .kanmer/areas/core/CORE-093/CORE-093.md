@@ -2,13 +2,14 @@
 id: CORE-093
 type: ticket
 title: Rerun the merge gate when a PR body is edited
-status: review
+status: verifying
 area: core
 assignee: codex
 profile: fix
 stageEntered:
   preparing: '2026-08-24T10:02:32.249Z'
   review: '2026-08-24T10:10:53.763Z'
+  verifying: '2026-08-24T11:10:46.878Z'
 taken_at: '2026-08-24T10:03:32.106Z'
 branch: core-093-pr-body-edit-trigger
 worktree: .worktrees/core-093
@@ -32,7 +33,7 @@ prs:
   - '235'
 archived: false
 created: '2026-08-24T09:59:47.119Z'
-updated: '2026-08-24T11:06:56.071Z'
+updated: '2026-08-24T11:10:46.878Z'
 ---
 
 ## What

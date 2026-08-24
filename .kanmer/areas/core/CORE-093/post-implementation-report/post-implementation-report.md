@@ -39,3 +39,9 @@ The same edited-body run completed with the full `verify` rail passing in 3m01s.
 - `node --test scripts/pr-workflow.test.mjs` — PASS, 1/1.
 - `node --test packages/mcp-server/src/check-pr.test.mjs` — PASS, 5/5.
 - Fresh GitHub Actions run `32719735508`: `kanmer-gate` PASS (1m00s); `verify` PASS (3m21s).
+
+## Review disposition — P2
+
+- **Fixed in PR:** body/title edits still trigger `kanmer-gate`, but the `verify` job now has `if: github.event.action != 'edited'`, so metadata-only edits do not re-run the full Windows verification rail.
+- The workflow-contract test asserts that condition and the AGENTS guide explains it.
+- Validation: `node --test scripts/pr-workflow.test.mjs` PASS (1/1); `npm run test:scripts` PASS (98/98); hosted run `32720186025` `kanmer-gate` PASS (54s) and `verify` PASS (3m10s).

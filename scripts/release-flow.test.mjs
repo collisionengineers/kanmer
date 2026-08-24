@@ -66,3 +66,20 @@ test("release source separates the PR branch push from the post-merge tag push",
   assert.doesNotMatch(source, /run\("git push"\)/);
   assert.doesNotMatch(source, /git push --tags/);
 });
+
+test("tag release verification packages without scheduling a publisher", () => {
+  const workflow = readFileSync(new URL("../.github/workflows/release.yml", import.meta.url), "utf8");
+  assert.match(workflow, /^permissions:\n  contents: read$/m);
+
+  const stepStart = workflow.indexOf("      - name: Build and check the packaged updater");
+  const nextStep = workflow.indexOf("\n      - name:", stepStart + 1);
+  assert.notEqual(stepStart, -1, "the packaged-updater step must exist");
+  assert.notEqual(nextStep, -1, "the packaged-updater step must have a following step");
+  const packageStep = workflow.slice(stepStart, nextStep);
+
+  assert.match(
+    packageStep,
+    /run: \|\n          npm run build\n          npm run build -w @kanmer\/gui\n          npm run dist -w @kanmer\/gui -- --publish never\n          node scripts\/check-updater-package\.mjs/,
+  );
+  assert.doesNotMatch(packageStep, /\bGH_TOKEN\b/);
+});

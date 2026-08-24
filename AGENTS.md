@@ -471,21 +471,35 @@ Run from the repo root unless noted.
 | `npm run verify:agents-block` | end-to-end check of the `kanmer-setup` AGENTS.md managed block (insert, refresh, idempotence, CLAUDE.md pointer, malformed markers) |
 | `node scripts/agents-block.mjs <repo>` | write/refresh that block in a target repo (what `kanmer-setup` calls) |
 
-### Pull-request gate board worktree
+### Pull-request merge gate
 
-`kanmer-gate` reads the board from a separate, read-only worktree. In a fresh
-Actions checkout, fetching a branch by name alone leaves it only in
-`FETCH_HEAD`, so the workflow must create the remote-tracking ref it later
-uses:
+`.github/workflows/pr.yml` runs `kanmer-gate` on PR creation, new commits,
+ready-for-review transitions, and **body edits**. The gate resolves its ticket
+from the standalone `Kanmer: <ID>` footer in the current PR body, so an edit to
+that footer must re-evaluate the same head SHA. It builds core, then fetches the
+configured board branch into a separate read-only worktree. In a fresh Actions
+checkout a named fetch exists only in `FETCH_HEAD`, so create the tracking ref
+the worktree later resolves:
+
+The `verify` job deliberately skips edited events: metadata-only changes need a
+fresh body-derived gate result, not another full Windows verification of the
+unchanged source tree.
 
 ```bash
 git fetch --no-tags origin "refs/heads/$KANMER_BOARD_BRANCH:refs/remotes/origin/$KANMER_BOARD_BRANCH"
 git worktree add "$RUNNER_TEMP/kanmer-board" "refs/remotes/origin/$KANMER_BOARD_BRANCH"
 ```
 
-Keep this worktree distinct from the pull-request checkout. When changing that
-fetch or worktree contract, update and run `scripts/pr-workflow.test.mjs` in
-the same PR.
+The gate then runs:
+
+```bash
+node packages/mcp-server/src/check-pr.mjs --board "$RUNNER_TEMP/kanmer-board" --event "$GITHUB_EVENT_PATH"
+```
+
+Keep that board worktree separate from the pull-request checkout. When changing
+the trigger, board-ref setup, or command contract, update
+`scripts/pr-workflow.test.mjs` and run `node --test scripts/pr-workflow.test.mjs`,
+`npm run test:scripts`, and `node --test packages/mcp-server/src/check-pr.test.mjs`.
 
 **Smoke test env overrides** (in `smoke.mjs`): `KANMER_SERVER=<path>` points at a different server entry (e.g. the standalone bundle); `KANMER_NODE=<electron.exe>` runs it via Electron-as-Node (sets `ELECTRON_RUN_AS_NODE=1`). Example — test the packaged server exactly as shipped:
 ```bash

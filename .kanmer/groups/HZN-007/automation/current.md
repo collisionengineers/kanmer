@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-24T16:38:49.416Z
+updated_at: 2026-08-24T16:42:44.937Z
 ---
 
 # Current auto run — HZN-007
@@ -1067,3 +1067,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 - 2026-08-24T16:40Z — CORE-036 disposable empty-release fixture stayed INCONCLUSIVE before asset verification: both runs stopped at a release-notes test bound to the checkout repository identity. Temporary draft/tag were removed; repository deletion is awaiting `delete_repo` scope or manual cleanup. Detail: `automation/runs/20260821T105846Z-codex-mcp-client-updates/20260824T1640Z-core036-fixture.md`.
 
 - 2026-08-24T16:38:49.416Z — Resume reconciled against live board: four evidence-gated Verifying tickets remain; see run history for exact blockers. No ticket is taken and no source/worktree action is being replayed.
+
+
+- 2026-08-24T16:42:44.937Z — Read-only MCP-028 provider recheck: Cloudflare inventory is reachable but the canonical public endpoint returned HTTP 530 rather than reaching the authenticated MCP service. A live connection could not be attributed to the locally managed connector because this workstation has no local named-tunnel configuration. No configuration was changed and no exhausted matrix retry was run; MCP-028 remains Verifying.

@@ -1120,3 +1120,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T18:57Z — Tag run 32764694871 failure was isolated: GitHub Actions omitted GH_TOKEN for Electron Builder’s implicit packaged update publish. New CORE-097 exclusively owns safe release-verification publisher authentication and blocks CORE-096. GUI-131 fresh local/tag evidence disproved its original app.asar trigger (main entry and updater check are healthy); it is being archived rather than implemented. v0.3.4 remains a tag with no public release/assets, and no retag/manual upload is allowed.
+
+
+- 2026-08-24T19:35Z — CORE-097 is Done: merged PR #245 preserves contents:read and changes tag verification to explicit --publish never; full merged-main rail and local 8/8 updater check PASS, no publisher credential/tag/release action. CORE-096 v0.3.4 recovery now has an explicit immutable-tag boundary: v0.3.4 already exists at the failed release commit, public release is absent, and scripts/release.mjs creates/pushes the version tag unconditionally. Retagging is prohibited by the ticket plan; safe recovery requires an explicitly approved successor release version/ticket, not a forced tag or manual asset upload.

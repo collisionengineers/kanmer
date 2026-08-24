@@ -8,13 +8,13 @@
 
 ## Implementation
 
-- [ ] Add only the static unavailable-notification mock member.
-- [ ] Preserve production and test behavior outside the mock.
+- [x] Add only the static unavailable-notification mock member.
+- [x] Preserve production and test behavior outside the mock.
 
 ## Verification
 
-- [ ] Focused sync suite exits 0 with no unhandled errors.
-- [ ] Run typecheck.
-- [ ] Run `git diff --check`.
-- [ ] Run canonical GUI/root verification and record independent outcomes.
+- [x] Focused sync suite exits 0 with no unhandled errors: 11/11 PASS.
+- [x] Run typecheck: PASS across all workspaces.
+- [x] Run `git diff --check`: PASS.
+- [ ] Run canonical GUI/root verification and record independent outcomes; hosted PR result pending.
 - [ ] Write post-implementation report, open PR, and hand to review.

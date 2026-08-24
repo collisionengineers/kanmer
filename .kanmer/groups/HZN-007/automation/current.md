@@ -1093,3 +1093,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T17:27:00Z — Paused on repeated external protected-flow blocker. Three consecutive live checks found DOC-021 PR #242 unchanged: exact head 3921d90f, verify and kanmer-gate SUCCESS, substantive independent review PASS, but OPEN/unmerged and current credential is its author. No safe independent GitHub identity is available to approve/merge; CORE-096 consequently cannot run the clean release preparation. Other remaining Verifying tickets are independently evidence-gated and have no permitted safe replay. Resume only after a different GitHub identity approves and merges #242, then re-read the live PR, HZN-007 current/run, DOC-021 packet and CORE-096 packet before moving DOC-021 to Verifying and resuming release preparation.
+
+
+- 2026-08-24T18:03:00Z — New SKILL-033 workflow-clarification ticket is Preparing with a ready execution packet. It is an independent documentation lane: clarify that review independence is a distinct agent role, not a distinct GitHub credential, while GitHub technical merge policy remains authoritative. It does not alter DOC-021, branch protection, workflows, or release behavior.

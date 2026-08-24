@@ -2,13 +2,16 @@
 id: SKILL-033
 type: ticket
 title: Clarify independent review when agents share a GitHub account
-status: preparing
+status: implementing
 area: skills
 order: 10
-assignee: ''
+assignee: codex-skill-033
 profile: chore
 stageEntered:
   preparing: '2026-08-24T18:01:44.084Z'
+taken_at: '2026-08-24T18:02:17.256Z'
+branch: SKILL-033-review-agent-credentials
+worktree: .worktrees/skill-033
 labels:
   - workflow
   - review
@@ -18,7 +21,7 @@ groups:
 links: []
 archived: false
 created: '2026-08-24T18:01:37.214Z'
-updated: '2026-08-24T18:01:44.084Z'
+updated: '2026-08-24T18:02:17.256Z'
 ---
 
 ## What

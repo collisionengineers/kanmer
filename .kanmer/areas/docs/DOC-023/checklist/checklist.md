@@ -17,3 +17,10 @@
 - 2026-08-24: pushed `doc-023-v036-release-notes`; opened PR #249 at `18619b55e543cc43dfbb4eef90f1b0584e886a14` with `Kanmer: DOC-023`.
 
 - 2026-08-24: moved to Review after PR #249 opened; author stops here for an independent reviewer.
+
+## Closeout
+
+- [x] Confirm PR #249 is merged at `d1d61506435151b73dc04c9fcff18c74656ab4a8`.
+- [x] Record merge traceability and Outcome.
+- [x] Remove the recorded ticket worktree and branches, then prune.
+- [ ] Release the completed ticket take.

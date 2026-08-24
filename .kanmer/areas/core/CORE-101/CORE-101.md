@@ -2,12 +2,15 @@
 id: CORE-101
 type: ticket
 title: Publish and validate the v0.3.7 successor release
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: codex-core-101
 profile: chore
 stageEntered:
   preparing: '2026-08-24T23:29:48.670Z'
+taken_at: '2026-08-24T23:45:16.776Z'
+branch: core-101-v037-release-hold
+worktree: .worktrees/core-101
 labels:
   - release
   - verification
@@ -24,7 +27,7 @@ refs:
   - docs/functional/frd/FRD-021-auto-update.md
 archived: false
 created: '2026-08-24T23:29:36.859Z'
-updated: '2026-08-24T23:29:48.670Z'
+updated: '2026-08-24T23:45:16.776Z'
 ---
 
 ## Why

@@ -2,12 +2,13 @@
 id: CORE-092
 type: ticket
 title: Fetch board branch into a resolvable CI ref
-status: implementing
+status: review
 area: core
 assignee: codex
 profile: fix
 stageEntered:
   preparing: '2026-08-24T09:38:03.826Z'
+  review: '2026-08-24T09:44:37.030Z'
 taken_at: '2026-08-24T09:39:50.163Z'
 branch: core-092-board-branch-fetch-ref
 worktree: .worktrees/core-092
@@ -24,9 +25,13 @@ links:
 refs:
   - docs/functional/frd/FRD-009-interrogative-workflow.md
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
+commits:
+  - 883db4ea136e43762fe93b3f08c48660a634725b
+prs:
+  - '233'
 archived: false
 created: '2026-08-24T09:36:52.291Z'
-updated: '2026-08-24T09:39:50.163Z'
+updated: '2026-08-24T09:44:37.030Z'
 ---
 
 ## What

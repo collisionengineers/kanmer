@@ -18,7 +18,7 @@ Create a ticket-bound v0.3.4 release preparation PR from clean current main, obt
 
 ## Required changes
 
-1. Derive accurate user-facing changes from commits after v0.3.3 and update apps/gui/release-notes.md so its top section names 0.3.4.\n2. Create an isolated clean clone at the exact current origin/main SHA and run the release script dry-run gate for 0.3.4.
+1. Derive accurate user-facing changes from commits after v0.3.3 and update apps/gui/release-notes.md so its top section names 0.3.4.\n2. Create an isolated clean clone at the exact current origin/main SHA. Bind only the existing canonical board root through KANMER_ROOT for the local test process, because an independent clone cannot discover the outer repository worktree. Run the release script dry-run gate for 0.3.4.
 3. In that clone, run the preparation phase exactly once with --ticket CORE-096; let the script make only its version-manifest/artifact branch and PR.
 4. Record the preparation commit, PR number, exact head SHA, local verification exits, and script-generated changed-file set. Do not amend generated artifacts by hand.
 5. Obtain independent ticket/PR review; resolve every finding and ensure GitHub required PR checks pass. The author does not review or merge.
@@ -49,7 +49,7 @@ Create a ticket-bound v0.3.4 release preparation PR from clean current main, obt
 
 ## Commands
 
-npm run release -- 0.3.4 --ticket CORE-096 --dry-run
+$env:KANMER_ROOT = '<canonical-board-root>'; npm run release -- 0.3.4 --ticket CORE-096 --dry-run
 npm run release -- 0.3.4 --ticket CORE-096
 npm run release -- 0.3.4 --publish --release-commit <merged-sha>
 node scripts/verify-release-assets.mjs 0.3.4
@@ -57,7 +57,7 @@ git diff --check
 
 ## Failure and deviation rules
 
-- A preflight, PR check, package, publish, tag-workflow, or asset-verifier failure is recorded and stops the corresponding phase. Do not substitute a shorter rail, retag, rerun a second package, or edit public assets outside the release script's one exact-file repair.
+- A preflight, PR check, package, publish, tag-workflow, or asset-verifier failure is recorded and stops the corresponding phase. Do not substitute a shorter rail, retag, rerun a second package, or edit public assets outside the release script's one exact-file repair.\n- A clean standalone clone that cannot discover the existing board is an environment failure, not a source failure. Bind the known canonical board through KANMER_ROOT before one corrected retry; never create a fresh board to make the tests pass.
 - If the preparation PR changes unrelated files, stop and investigate rather than broadening the release.
 - If publication is unavailable because credentials or GitHub state fail, retain the failure and keep this ticket in its truthful stage.
 

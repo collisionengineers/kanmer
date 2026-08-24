@@ -1,0 +1,1 @@
+Focused `node --test scripts/release-notes.test.mjs` first run: exit 1 before assertions because isolated worktree lacked `packages/core/dist/index.js` (`ERR_MODULE_NOT_FOUND`). This is a clean-worktree build prerequisite, not a source/test failure; build Core then rerun unchanged.

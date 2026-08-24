@@ -38,7 +38,7 @@ Until every condition holds, record the unmet precondition and stop. In particul
 
 ## Approved pre-mutation configuration correction
 
-The initial preparation invocation on 2026-08-24 exited 1 in the MCP HTTP rail before the release script created a release branch, version commit, tag, PR, package, publisher action, or public release. Build, Core 310/310, and GUI 468/468 had already passed; 9 of 102 MCP HTTP tests then failed because the fresh normal clone had no discoverable board and the process did not receive `KANMER_ROOT`. The full failed output and zero-mutation remote/clone census are retained in `scratch/execution` and the failed checklist entry remains unticked.
+The initial preparation invocation on 2026-08-24 exited 1 in the MCP HTTP rail before the release script created a release branch, version commit, tag, PR, package, publisher action, or public release. Build, Core 310/310, and GUI 468/468 had already passed; 9 of 102 MCP HTTP tests then failed because the fresh normal clone had no discoverable board and the process did not receive `KANMER_ROOT`. The full failed output and zero-mutation remote/clone census are retained in `scratch/execution`; the failed invocation is ticked as completed failure-evidence preservation, not as a successful preparation.
 
 This is a precondition omission, not a source or release failure. It authorizes **one** corrected preparation invocation in a newly rechecked clean normal clone, after setting `$env:KANMER_ROOT` to the existing canonical board root for that process before running the same command. This binding supplies test context only; it does not copy, initialize, or edit a board in the clone. No other retry is authorized: a failure after this corrected configuration remains a hard stop.
 

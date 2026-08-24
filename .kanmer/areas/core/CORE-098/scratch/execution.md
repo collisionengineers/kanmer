@@ -24,3 +24,7 @@ Next action requires an explicit remediation decision; do not retry, alter test/
 - Post-run clean tree; `git diff --check e63a1090bfbda89f473a422817629eaadd1ed264...HEAD` passed. Changed only the 8 script-generated version/lock/plugin-artifact files listed in the implementation report.
 - Remote tag census was empty for `v0.3.5`; GitHub reported release not found. No tag, release, asset, publisher token, publish, review, merge, or manual upload occurred.
 - At handoff, PR #247 was OPEN and MERGEABLE; `verify` and `kanmer-gate` checks were IN_PROGRESS.
+
+## Review-handoff CI snapshot
+
+At the post-move read-only GitHub snapshot, PR #247 remained OPEN at `74051a072a199ac8d87c8250fa28be20acb52940` and merge state was BLOCKED: required `verify` was IN_PROGRESS, while `kanmer-gate` had completed FAILURE at 2026-08-24T21:07:54Z. This is recorded for the independent reviewer; no rerun, source change, self-review, merge, tag, publication, or release action was taken.

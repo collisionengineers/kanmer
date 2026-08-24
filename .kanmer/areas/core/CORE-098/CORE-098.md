@@ -2,12 +2,13 @@
 id: CORE-098
 type: ticket
 title: Publish and validate the v0.3.5 successor release
-status: implementing
+status: review
 area: core
 assignee: codex-mcp-client
 profile: chore
 stageEntered:
   preparing: '2026-08-24T20:34:50.700Z'
+  review: '2026-08-24T21:08:03.323Z'
 taken_at: '2026-08-24T20:37:08.531Z'
 branch: core-098-v035-release-hold
 worktree: .worktrees/core-098
@@ -31,7 +32,7 @@ prs:
   - '247'
 archived: false
 created: '2026-08-24T20:33:03.952Z'
-updated: '2026-08-24T21:07:58.441Z'
+updated: '2026-08-24T21:08:03.323Z'
 ---
 
 ## Why

@@ -8,8 +8,8 @@
 - [x] Run git diff --check and confirm only the two planned documentation paths changed.
 - [x] Run skill-prose validation and the relevant review-skill checks.
 - [x] Run the complete required verification rail.
-- [ ] Commit, push, and open a normal PR with traceability.
-- [ ] Write the post-implementation report and move to Review.
+- [x] Commit, push, and open a normal PR with traceability.
+- [x] Write the post-implementation report and move to Review.
 
 ## Review and merge
 

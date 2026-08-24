@@ -1096,3 +1096,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T18:03:00Z — New SKILL-033 workflow-clarification ticket is Preparing with a ready execution packet. It is an independent documentation lane: clarify that review independence is a distinct agent role, not a distinct GitHub credential, while GitHub technical merge policy remains authoritative. It does not alter DOC-021, branch protection, workflows, or release behavior.
+
+
+- 2026-08-24T18:10Z — User clarified the standing workflow: independent review is satisfied by a separately assigned agent even when all agents use the same GitHub account. SKILL-033 is now Review on PR #243 (commit 6c4432f), with full local verification PASS and hosted checks pending. DOC-021 PR #242 at 0d68bc0 is now hosted-checks PASS after a factual release-note correction and resolved review thread; independent re-review/normal protected-main merge is being resumed. No GitHub policy, protected-branch setting, or administrative bypass was changed.

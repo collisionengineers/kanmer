@@ -18,17 +18,21 @@
 - [x] Run the authoritative `npm run verify` from a fresh GitHub-origin normal checkout at `fb501a0487dc4314e432054c7ef01336b5d67f25`; exit 0, with all rails recorded in `scratch/execute.md`.
 - [x] Read-only recheck v0.3.6 against the strict verifier and retain the expected missing-manifest-named-installer FAIL (or an exact INCONCLUSIVE); no upload, repair, tag, release, retag, retry, or publisher invocation.
 - [x] Write the post-implementation report, open a ticket-footed PR, and move exactly one boundary to Review. Stop for independent review; do not self-review, merge, publish, or write proof.
-- [ ] After independent merge and proof, defer any actual successor release to its separate ticket and governed single-invocation protocol.
+- [x] After independent merge and proof, defer any actual successor release to its separate ticket and governed single-invocation protocol.
 
 ---
 
 ## Closeout — CORE-100
 
-- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
-- [ ] proof.md finalised (PR URL + merge date appended)
-- [ ] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/core-100`
-- [ ] `git branch -d core-100-deterministic-windows-assets` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/core-100`
+- [x] `git branch -d core-100-deterministic-windows-assets` (`-D` if squash/rebase-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`
+
+Closeout progress: PR #251 merge and proof are confirmed; the Outcome records reachable merge SHA `41408981ae78364f1d64e3d3b3db3c1ec67d96d1`. The clean exact worktree was removed; local branch deletion succeeded with `git branch -d`; remote branch deletion, `git fetch --prune`, and `git worktree prune` succeeded. Read-back confirms no CORE-100 worktree or local/remote branch. Release of the ticket take is the sole remaining closeout action.
+
+Closeout complete: the ticket take was released after all recorded cleanup completed.

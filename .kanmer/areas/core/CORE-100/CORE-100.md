@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-24T23:11:16.705Z'
   verifying: '2026-08-24T23:17:37.496Z'
   done: '2026-08-24T23:26:59.232Z'
-taken_at: '2026-08-24T22:51:49.961Z'
-branch: core-100-deterministic-windows-assets
-worktree: .worktrees/core-100
 labels:
   - release
   - assets
@@ -33,7 +30,7 @@ prs:
   - '251'
 archived: false
 created: '2026-08-24T22:43:05.670Z'
-updated: '2026-08-24T23:27:31.788Z'
+updated: '2026-08-24T23:28:40.131Z'
 ---
 
 ## What

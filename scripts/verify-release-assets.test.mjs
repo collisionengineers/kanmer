@@ -17,7 +17,7 @@
 //   v0.3.2 must PASS
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -115,6 +115,20 @@ const errors = (r) => r.problems.filter((p) => p.severity === "error");
 const kinds = (r) => errors(r).map((p) => p.kind);
 
 // ---------------------------------------------------------------------------
+describe("Windows artifact-name contract", () => {
+  test("pins the public installer name instead of relying on an implicit upload rename", () => {
+    const builderConfig = readFileSync(
+      new URL("../apps/gui/electron-builder.yml", import.meta.url),
+      "utf8",
+    );
+    assert.match(
+      builderConfig,
+      /^win:\r?\n  artifactName: "\$\{productName\}-Setup-\$\{version\}\.\$\{ext\}"\r?$/m,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 describe("verifyAssets — golden fixtures from the three real releases", () => {
   test("v0.3.2 PASSES: all three assets present, uploaded, digests match", () => {
     const assets = GOLDEN["0.3.2"];
@@ -151,6 +165,98 @@ describe("verifyAssets — golden fixtures from the three real releases", () => 
     assert.equal(r.ok, false);
     assert.equal(errors(r).length, 1);
     assert.equal(errors(r)[0].severity, "error");
+  });
+
+  test("v0.3.6 preserves all tag-workflow name and byte-integrity failures", () => {
+    // Exact local-versus-public result repeated by the v0.3.6 tag workflow.
+    // Its local builder emitted the space-form blockmap, which githubName()
+    // maps to the hyphenated expected name. The public release instead has a
+    // dot-form installer/blockmap, a mismatching hyphen blockmap, and a
+    // different latest.yml. Accepting the dot installer as an alias would
+    // conceal three remaining integrity failures as well as the missing URL.
+    const assets = [
+      {
+        name: "kanmer-0.3.6.mcpb",
+        size: 1671295,
+        state: "uploaded",
+        digest: "sha256:1f4ccafe1eae467b98e28276bb055b9c04776077bf57e84b58ca6bd3ec2277ea",
+      },
+      {
+        name: "Kanmer-Setup-0.3.6.exe.blockmap",
+        size: 83041,
+        state: "uploaded",
+        digest: "sha256:9fc4b74a8f45ff4a8cc993a5d0c1089e11a630c246023b44b79fd8f2fde2b960",
+      },
+      {
+        name: "Kanmer.Setup.0.3.6.exe",
+        size: 79999540,
+        state: "uploaded",
+        digest: "sha256:a10967fb894caf9349dddf03e6bac6ed054bbf2d898b984049403cf5f4ae5e94",
+      },
+      {
+        name: "Kanmer.Setup.0.3.6.exe.blockmap",
+        size: 83041,
+        state: "uploaded",
+        digest: "sha256:9fc4b74a8f45ff4a8cc993a5d0c1089e11a630c246023b44b79fd8f2fde2b960",
+      },
+      {
+        name: MANIFEST,
+        size: 340,
+        state: "uploaded",
+        digest: "sha256:00ca8e627dc3e8b56dd2d8977686a910ef135f67d7adbdc352211f82f2fcd69e",
+      },
+    ];
+    const expected = [
+      {
+        name: "Kanmer-Setup-0.3.6.exe",
+        diskName: "Kanmer Setup 0.3.6.exe",
+        size: 79999540,
+        sha512: "7D7qoVZ9FarUi5vOEO8Z6Qtab9efeCN/ALRKRQ+BB7hB0xT8G1qJ1+/Kh1Xipj9hbFyjXMgQ/h5cmHM+I3UuJg==",
+        comparable: true,
+      },
+      {
+        name: "Kanmer-Setup-0.3.6.exe.blockmap",
+        diskName: "Kanmer Setup 0.3.6.exe.blockmap",
+        size: 83074,
+        sha256: "83f9b7cff175a19b409d57776d6bbbc329b5ac12faf7d774f4d07b4c7c318ee7",
+        comparable: true,
+      },
+      {
+        name: MANIFEST,
+        diskName: MANIFEST,
+        size: 340,
+        sha256: "3c37d47970842376e28c199c11f9dc04a20e575fd0571117dde8e68c7a08fd65",
+        comparable: true,
+        manifest: {
+          url: "Kanmer-Setup-0.3.6.exe",
+          size: 79999540,
+          sha512: "7D7qoVZ9FarUi5vOEO8Z6Qtab9efeCN/ALRKRQ+BB7hB0xT8G1qJ1+/Kh1Xipj9hbFyjXMgQ/h5cmHM+I3UuJg==",
+        },
+      },
+    ];
+
+    const r = verifyAssets({ expected, assets });
+    assert.equal(r.ok, false, "the manifest-named installer must remain required");
+    assert.deepEqual(
+      errors(r).map((problem) => [problem.kind, problem.asset]),
+      [
+        ["missing", "Kanmer-Setup-0.3.6.exe"],
+        ["size", "Kanmer-Setup-0.3.6.exe.blockmap"],
+        ["digest", "Kanmer-Setup-0.3.6.exe.blockmap"],
+        ["digest", MANIFEST],
+      ],
+    );
+    assert.deepEqual(
+      r.problems
+        .filter((problem) => problem.kind === "extra")
+        .map((problem) => problem.asset)
+        .sort(),
+      [
+        "Kanmer.Setup.0.3.6.exe",
+        "Kanmer.Setup.0.3.6.exe.blockmap",
+        "kanmer-0.3.6.mcpb",
+      ],
+    );
   });
 });
 

@@ -6,4 +6,4 @@
 - [x] Document the merge-gate convention in `AGENTS.md`.
 - [x] Run focused workflow and gate CLI tests.
 - [x] Run the script test rail and review the diff.
-- [ ] Record implementation results and open the PR.
+- [x] Record implementation results and open the PR.

@@ -10,12 +10,12 @@
 - [x] Run the three named test files via the core package script; record command, exit code, file/test counts, and exact SHA.
 - [x] Run the full core package test script; record command, exit code, file/test counts, and exact SHA.
 - [x] Run `npm run typecheck -w @kanmer/core`, `npm run build -w @kanmer/core`, and `git diff --check`.
-- [ ] Run `npm run verify` from a normal checkout, not a linked worktree; preserve every failed attempt if any.
-- [ ] Obtain independent review before merge.
-- [ ] After merge, CORE-035 reruns its protected Windows fixture at the reviewed exact SHA; its `verify` job passes while the existing PR #1 failed run remains recorded.
+- [x] Run `npm run verify` from a normal checkout, not a linked worktree; preserve every failed attempt if any.
+- [x] Obtain independent review before merge.
+- [x] After merge, CORE-035 reruns its protected Windows fixture at the reviewed exact SHA; its `verify` job passes while the existing PR #1 failed run remains recorded.
 
 ## Stop conditions
-- [ ] Stop and report if disabling file parallelism does not remove the named Windows timeout; do not mask it with a global timeout, blanket retry, skipped assertion, or fixture-rule change.
+- [x] Stop condition not triggered: serial execution removed the named Windows timeouts without a global timeout, blanket retry, skipped assertion, or fixture-rule change.
 
 ## Progress notes
 

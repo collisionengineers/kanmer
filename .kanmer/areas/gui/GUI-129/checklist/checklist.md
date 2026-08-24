@@ -8,7 +8,7 @@
 - [x] [pre-review] Run GUI typecheck, GUI production build, and the authoritative full verification without weakening assertions.
 - [x] [pre-review] Rebase onto current `origin/main`, write the post-implementation report, commit, push, and open PR #241 with `Kanmer: GUI-129`.
 - [x] [pre-review] Stop in Review for independent review; do not self-review or merge.
-- [ ] [post-merge] On merged main, rerun the focused settings test and an applicable verification rail; record evidence in proof.
+- [x] [post-merge] On merged main, rerun the focused settings test and an applicable verification rail; record evidence in proof.
 
 ## Progress notes
 

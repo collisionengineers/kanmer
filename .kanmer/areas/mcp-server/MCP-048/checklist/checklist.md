@@ -9,7 +9,7 @@
 - [x] [pre-review] Fix independent-review blocker F-001 by restoring the existing 10,000 ms default total deadline only; retain the one-second request cap, polling policy, assertions, and provider/public scope.
 - [x] [pre-review] Rebase the corrected branch on `origin/main` `c31544fc`, force-push PR #239 at `2b9ea369`, and run a fresh normal-clone full verification.
 - [x] [pre-review] Return only to Review and await a fresh independent review; do not merge or start another ticket.
-- [ ] [post-merge] Verify the merged result on main and write proof; do not perform this as the implementation author.
+- [x] [post-merge] Verify the merged result on main and write proof; do not perform this as the implementation author.
 
 ## Progress notes
 

@@ -19,8 +19,8 @@
   "scripts": {
     "build": "tsup && node scripts/check-browser.mjs",
     "dev": "tsup --watch",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run --no-file-parallelism",
+    "test:watch": "vitest --no-file-parallelism",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

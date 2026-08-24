@@ -6,9 +6,9 @@
 - [x] Read fresh GitHub `main` and create a new clean **normal clone** at that exact SHA; it was clean/on `main` and neither `release/v0.3.5` nor `v0.3.5` existed.
 - [x] Install locked dependencies in that clone without changing the lockfile or creating a new board: `npm ci --ignore-scripts` exit 0.
 - [ ] Initial preparation invocation (without canonical-board binding) exited 1 pre-mutation in the MCP HTTP rail; retained in `scratch/execution` and intentionally not counted as successful preparation.
-- [ ] Run the one authorized corrected preparation command from a newly rechecked clean clone with process-scoped `KANMER_ROOT` bound to the existing canonical board: `npm run release -- 0.3.5 --ticket CORE-098`. **Attempted once and failed exit 1 before any release mutation because the boardless normal clone lacked `KANMER_ROOT`; no retry is authorized.**
-- [x] Record all preparation exits, fresh-main SHA, generated commit/head, PR, script-generated changed-file set, and `git diff --check`; the failure record confirms no generated commit/PR existed, no release branch/tag was created, and the clone remained clean.
-- [ ] Write the implementation report and enter Review only after the generated release PR is open.
+- [x] Run the one authorized corrected preparation command from a newly rechecked clean clone with process-scoped `KANMER_ROOT` bound to the existing canonical board: `npm run release -- 0.3.5 --ticket CORE-098`. It exited 0 and generated `release/v0.3.5` at `74051a072a199ac8d87c8250fa28be20acb52940` with PR [#247](https://github.com/collisionengineers/kanmer/pull/247).
+- [x] Record all preparation exits, fresh-main SHA, generated commit/head, PR, script-generated changed-file set, and `git diff --check`; the retained initial failure confirms no generated commit/PR existed, no release branch/tag was created, and the clone remained clean. The corrected run completed the authoritative rail and its post-run diff check passed.
+- [x] Write the implementation report; the generated release PR is open and ready for independent review. CORE-098 moves to Review after this checklist update.
 
 ## Independent review and merge
 

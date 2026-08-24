@@ -13,3 +13,14 @@
 - Post-failure census: clone remains clean on `main` at the same SHA; no local/remote `release/v0.3.5`, no `v0.3.5` tag, and no release PR exist. v0.3.4 was not touched.
 
 Next action requires an explicit remediation decision; do not retry, alter test/source, tag, publish, review, merge, or move CORE-098 to Review from this failed preparation.
+
+## Corrected preparation — 2026-08-24
+
+- Authorized one-time correction from plan applied: the new clean GitHub-origin normal clone bound the existing canonical board only through process-scoped `KANMER_ROOT`.
+- Rechecked before execution: clean `main` at `e63a1090bfbda89f473a422817629eaadd1ed264`; no local/remote `release/v0.3.5`, no `v0.3.5` tag, no existing release PR, and release notes named 0.3.5. `npm ci --ignore-scripts` exited 0.
+- Exact corrected invocation: `npm run release -- 0.3.5 --ticket CORE-098`; exit **0**.
+- Completed rails: Core 310/310, GUI 468/468, MCP HTTP 102/102, script tests 99/99, all-workspace typecheck, docs, MCP/headless/protocol/discovery smoke, MCPB, skills, managed AGENTS, plugin sync, and GUI build.
+- Generated and pushed `release/v0.3.5` release commit `74051a072a199ac8d87c8250fa28be20acb52940`; created https://github.com/collisionengineers/kanmer/pull/247 with `Kanmer: CORE-098`.
+- Post-run clean tree; `git diff --check e63a1090bfbda89f473a422817629eaadd1ed264...HEAD` passed. Changed only the 8 script-generated version/lock/plugin-artifact files listed in the implementation report.
+- Remote tag census was empty for `v0.3.5`; GitHub reported release not found. No tag, release, asset, publisher token, publish, review, merge, or manual upload occurred.
+- At handoff, PR #247 was OPEN and MERGEABLE; `verify` and `kanmer-gate` checks were IN_PROGRESS.

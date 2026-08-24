@@ -448,7 +448,7 @@ Run from the repo root unless noted.
 | `npm run setup` | install + build core, server, and GUI |
 | `npm run build` | build core + mcp-server (incl. standalone bundle) |
 | `npm run build:core` / `npm run build:server` | build just one package |
-| `npm test` | core **and GUI** vitest suites, **and** `npm run test:scripts`. Core Vitest files intentionally run serially: the suite exercises real filesystem and lock behaviour on Windows, so file parallelism can make timing evidence nondeterministic. |
+| `npm test` | core **and GUI** vitest suites, **and** `npm run test:scripts`. Core Vitest files intentionally run serially: the suite exercises real filesystem and lock behaviour on Windows, so file parallelism can make timing evidence nondeterministic. GUI Vitest files also intentionally run serially: its real-Git sync fixtures are sensitive to Windows full-rail contention. Both commands retain their existing finite test and hook bounds. |
 | `npm run test:scripts` | `node scripts/test-scripts.mjs`, which enumerates direct `scripts/*.test.mjs` files and runs them with `node:test`. Deliberately **not** vitest: `scripts/` is dependency-free, and `node:test` needs no root devDependency, no root config, and no `package-lock.json` churn (`release.mjs` refuses on a dirty tree) |
 | `npm run typecheck` | type-check **every** workspace — core, mcp-server, ui, gui. Use this, not the per-workspace form: vitest does not typecheck, so a green `npm test` says nothing about types, and a partial typecheck says nothing about the workspaces it skipped |
 | `npm run typecheck -w @kanmer/<pkg>` | one workspace, when you want a fast loop |

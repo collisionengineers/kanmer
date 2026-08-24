@@ -18,6 +18,7 @@
 - [x] From a fresh normal GitHub-origin clone of the exact branch head, run `npm run verify`: exit 0 (Core 310/310, GUI 468/468, MCP HTTP 102/102, scripts 100/100, typecheck, docs, smokes, skills, managed AGENTS, and plugin sync).
 - [x] Push the branch, open PR [#248](https://github.com/collisionengineers/kanmer/pull/248) with `Kanmer: GUI-131`, record commit/PR traceability and the exact two-file diff.
 - [x] Write the post-implementation report and move exactly one stage to Review; report is recorded and GUI-131 is now in Review.
+- [x] Resolve independent-review finding REV-001: document the protected-main/local publisher sequence in the human-owned AGENTS.md guidance—GUI build after post-merge preconditions, before tag creation/push; GUI-build failure creates no tag or GitHub Release; managed Kanmer block unchanged.
 
 ## Boundaries
 

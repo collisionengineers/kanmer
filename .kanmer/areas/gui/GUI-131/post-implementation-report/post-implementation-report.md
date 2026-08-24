@@ -16,10 +16,11 @@ GUI-131 corrects the source-owned publish ordering gap without changing release 
 
 `scripts/release-flow.test.mjs` adds a focused static control-flow regression. It proves that the exact publish precondition block invokes the GUI build, that this invocation precedes tag creation and tag push, and that `run()` is synchronous. The test does not execute any release command.
 
-The exact diff contains only:
+The final PR diff contains only:
 
 - `scripts/release.mjs`
 - `scripts/release-flow.test.mjs`
+- `AGENTS.md` (human-owned contributor guidance only; the managed Kanmer block is unchanged)
 
 `git diff --check origin/main...HEAD` passed and both ticket worktree and normal verification clone were clean after their respective source checks.
 
@@ -43,3 +44,9 @@ At handoff, PR #248 is open at the recorded head. Required `verify` and `kanmer-
 The implementation meets FRD-021 R3 by ensuring the packaged publisher receives the GUI bundle before it can create an immutable public release identifier. It preserves the existing single direct Electron Builder publisher invocation and all bounded asset-recovery behavior.
 
 No proof was written: proof belongs on merged main. No downstream ticket state was changed.
+
+## Independent-review remediation (REV-001)
+
+Independent review correctly found that the publish-order change establishes a contributor convention and therefore requires AGENTS.md guidance under rule 24. The plan was amended (version `0e763a425d1934f5`), then commit `64fe347143478f4612e18287f94a471f2f8e0d4a` updated only AGENTS.md outside its managed Kanmer block. Its release command reference and protected-main section now state that local `--publish` mode first satisfies merged-manifest and post-merge reachability preconditions, then builds the GUI before it creates or pushes `refs/tags/v<version>`; a GUI-build failure creates neither an immutable tag nor a GitHub Release.
+
+For this documentation-only amendment, `node --test scripts/release-flow.test.mjs` exited 0 (7/7), `npm run test:scripts` exited 0 (100/100), `npm run verify:agents-block` exited 0 (31/31), and `npm run verify:docs` passed. The prior authoritative clean GitHub-origin `npm run verify` evidence remains attached to the source-control head `4c2d29e62bf74c053a58898ed14d7f06a838a3a8`; hosted CI is responsible for the updated PR head. No release operation occurred.

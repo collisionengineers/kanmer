@@ -11,7 +11,7 @@
 - [x] Update docs/manual/connect.md and regenerate the in-app manual.
 - [x] Add unit coverage for validation, command construction, redaction, failures, concurrency, and lifecycle cleanup.
 - [x] Run GUI tests, root typecheck, build, manual check, and packaged smoke.
-- [ ] Prove two concurrent project profiles reach only their intended boards with distinct health ports.
+- [x] Prove two concurrent project profiles reach only their intended boards with distinct health ports.
 - [x] Audit repository files, settings, logs, diagnostics, and proof for credential/tunnel-identifier leakage.
 - [x] Summarise exact behavior and residual external prerequisites for the post-implementation report.
 
@@ -21,7 +21,7 @@
 ## Verification disposition
 
 - Full GUI vitest: 41 files / 372 tests PASS. Root typecheck, GUI typecheck, GUI build, manual freshness, packaged dist:check/updater package (8/8), and diff-check all PASS on final head 37bb6644.
-- Two-project OpenAI control-plane and live listener proof is **INCONCLUSIVE** without disposable credentials/projects and a documented listener probe. The GUI validates/records loopback health addresses but does not rewrite tunnel-client profile health configuration or claim live listener readiness.
+- Live two-profile verification is PASS: two independently configured profiles passed doctor, ran concurrently on distinct ports, returned HTTP 200 from `/readyz`, and their exact packaged MCP commands resolved different boards. A live ChatGPT app is linked to the production profile; the isolated test profile intentionally has no permanent ChatGPT app.
 
 ## F-002 verification note
 

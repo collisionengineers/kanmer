@@ -22,3 +22,13 @@ The production caller chain is GUI Settings → OpenAITunnelManager → packaged
 ## External operator evidence — 2026-08-23
 
 The official OpenAI tunnel-client Windows amd64 release v0.0.12 was downloaded to a disposable temp directory and SHA-256 verified against its published SHA256SUMS.txt. With the project runtime credential supplied only through the Infisical-injected environment, doctor --config passed config/profile/tunnel-id/API-key-reference/packaged-stdio-target/health-listener checks (exit 0). A detached run --config instance reached /readyz and /healthz with HTTP 200, fetched tunnel metadata, started the OpenAI control-plane poller, launched the packaged Kanmer stdio target with ELECTRON_RUN_AS_NODE=1, and reported the tunnel client started. The exact owned process and child were then stopped; readiness disappeared and no long-lived verification process remained. The ticket's two-concurrent-project distinct-board proof remains INCONCLUSIVE because only one provisioned project/tunnel profile was available; no API-key value or tunnel identifier is recorded.
+
+## Live two-profile and ChatGPT-link verification — 2026-08-24
+
+- Two independently configured OpenAI tunnel-client profiles ran at the same time on distinct loopback health ports. Each passed `doctor --explain` with an environment key reference only, and both `/readyz` endpoints returned HTTP 200.
+- The exact packaged-MCP command configured for the live profile resolved the real Kanmer board (`8 Verifying / 294 Done`). The exact command configured for the second profile resolved an isolated disposable verification board (`1 Review / 7 Verifying / 294 Done`). This is direct evidence that the concurrent profiles target different boards rather than merely occupying different ports.
+- In the signed-in ChatGPT workspace, developer mode was already enabled. A developer-mode **Kanmer** app was created with the live tunnel selected, no separate MCP OAuth setting, and the user completed ChatGPT’s final Connect confirmation. ChatGPT then listed Kanmer under Installed apps.
+- The second tunnel was intentionally not linked as a permanent ChatGPT app because it targets only the disposable verification board. No ChatGPT tool call was made as part of this verification; this record does not claim one.
+- No runtime credential value or tunnel identifier was written to repository-tracked state, Kanmer documents, or this proof.
+
+The previously INCONCLUSIVE two-profile local listener/board boundary is now PASS. The live ChatGPT app association is PASS; only a future explicit remote tool-call test remains optional operational evidence.

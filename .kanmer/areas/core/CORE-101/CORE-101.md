@@ -2,13 +2,14 @@
 id: CORE-101
 type: ticket
 title: Publish and validate the v0.3.7 successor release
-status: review
+status: verifying
 area: core
 assignee: codex-core-101
 profile: chore
 stageEntered:
   preparing: '2026-08-24T23:29:48.670Z'
   review: '2026-08-24T23:54:27.689Z'
+  verifying: '2026-08-24T23:59:34.591Z'
 taken_at: '2026-08-24T23:45:16.776Z'
 branch: core-101-v037-release-hold
 worktree: .worktrees/core-101
@@ -30,7 +31,7 @@ prs:
   - '253'
 archived: false
 created: '2026-08-24T23:29:36.859Z'
-updated: '2026-08-24T23:54:27.689Z'
+updated: '2026-08-24T23:59:34.591Z'
 ---
 
 ## Why

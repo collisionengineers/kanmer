@@ -37,3 +37,10 @@ GitHub Actions itself will execute the workflow on the review PR; no CI configur
 PR [#233](https://github.com/collisionengineers/kanmer/pull/233) ran the repaired workflow. The required `kanmer-gate` job passed in 50 seconds, directly exercising the board-worktree fetch path.
 
 At the time of handoff, the independent `verify` job remains pending; no outcome for it is claimed here.
+
+## Review remediation — 2026-08-24
+
+- Addressed PR #233 review finding P1: the contributor guide now documents the exact remote-tracking ref fetch and separate board worktree required by `kanmer-gate`.
+- `node --test scripts/pr-workflow.test.mjs` — PASS, 1/1.
+- `git diff --check` — PASS.
+- The follow-up commit will be pushed to #233 and must receive a fresh hosted CI result before the authorized merge.

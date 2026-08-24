@@ -7,7 +7,7 @@
 - [x] [pre-review] Run the focused settings tests repeatedly and record every exit.
 - [x] [pre-review] Run GUI typecheck, GUI production build, and the authoritative full verification without weakening assertions.
 - [x] [pre-review] Rebase onto current `origin/main`, write the post-implementation report, commit, push, and open PR #241 with `Kanmer: GUI-129`.
-- [ ] [pre-review] Stop in Review for independent review; do not self-review or merge.
+- [x] [pre-review] Stop in Review for independent review; do not self-review or merge.
 - [ ] [post-merge] On merged main, rerun the focused settings test and an applicable verification rail; record evidence in proof.
 
 ## Progress notes
@@ -18,3 +18,4 @@
 - 2026-08-24 — Full normal-checkout `npm run verify` at predecessor `49807c28` reached Core 310/310 and GUI settings 11/11 but failed one unrelated `index.sync.test.ts` cleanup hook at 10,000 ms, then did not exit and was interrupted (exit 1). It remains recorded in `scratch/execute`; no assertion was weakened. The exact named suite later passed 11/11 in isolation.
 - 2026-08-24 — Rebased GUI-129 to `cfac84a8cc45876f8d3d517d3d6573d0c6fb8ff0` on current `origin/main`. In its isolated worktree, `ci --ignore-scripts` and core build exited 0; focused settings tests passed 11/11 three times; GUI typecheck and production build both exited 0.
 - 2026-08-24 — Final authoritative evidence used a fresh genuine GitHub-origin normal clone at exactly `cfac84a8`, with `npm --prefix <absolute-clone> ci --ignore-scripts` then `npm --prefix <absolute-clone> run verify`. Both exited 0; Core 310/310, GUI 468/468, MCP HTTP 102/102, scripts 98/98. No other GUI full-test rail was running before it started, and no clone-owned Node process remained afterward.
+- 2026-08-24 — PR #241 is open and GUI-129 entered Review. Independent review is the next action; proof remains post-merge.

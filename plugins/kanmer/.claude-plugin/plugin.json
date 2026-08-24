@@ -1,6 +1,6 @@
 {
   "name": "kanmer",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "File-based kanban for AI agents: track tickets, plans and research in a .kanmer folder shared live with the Kanmer desktop GUI.",
   "author": {
     "name": "Kanmer contributors",

@@ -2,10 +2,10 @@
 
 ## Preparation
 
-- [ ] Create a clean isolated checkout at current origin/main.
-- [ ] Apply the verified release-notes-only change.
-- [ ] Run the focused release-notes test.
-- [ ] Run git diff --check and confirm only the release-notes file changed.
+- [x] Create a clean isolated checkout at current origin/main.
+- [x] Apply the verified release-notes-only change.
+- [x] Run the focused release-notes test.
+- [x] Run git diff --check and confirm only the release-notes file changed.
 - [ ] Commit, push the DOC-021 branch, and open the normal PR.
 - [ ] Record PR number, head SHA, and command exits.
 - [ ] Write the post-implementation report and move to Review.

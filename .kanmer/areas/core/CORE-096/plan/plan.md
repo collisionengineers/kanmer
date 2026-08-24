@@ -18,7 +18,8 @@ Create a ticket-bound v0.3.4 release preparation PR from clean current main, obt
 
 ## Required changes
 
-1. Derive accurate user-facing changes from commits after v0.3.3 and update apps/gui/release-notes.md so its top section names 0.3.4.\n2. Create an isolated clean clone at the exact current origin/main SHA. Bind only the existing canonical board root through KANMER_ROOT for the local test process, because an independent clone cannot discover the outer repository worktree. Run the release script dry-run gate for 0.3.4.
+1. Wait for [[DOC-021]] to merge its independently reviewed manual release-notes PR; record its merge SHA and do not import or repeat its source change.
+2. Create an isolated clean clone at the exact current origin/main SHA. Bind only the existing canonical board root through KANMER_ROOT for the local test process, because an independent clone cannot discover the outer repository worktree. Run the release script dry-run gate for 0.3.4.
 3. In that clone, run the preparation phase exactly once with --ticket CORE-096; let the script make only its version-manifest/artifact branch and PR.
 4. Record the preparation commit, PR number, exact head SHA, local verification exits, and script-generated changed-file set. Do not amend generated artifacts by hand.
 5. Obtain independent ticket/PR review; resolve every finding and ensure GitHub required PR checks pass. The author does not review or merge.
@@ -35,6 +36,7 @@ Create a ticket-bound v0.3.4 release preparation PR from clean current main, obt
 ## Do not modify
 
 - The dirty root checkout or another ticket worktree.
+- apps/gui/release-notes.md; it is owned by [[DOC-021]].
 - scripts/release.mjs, the release workflow, release asset names, signing, publishing semantics, branch protection, or CORE-036/CORE-042 source scope.
 - Existing release tags/assets or retained Cloudflare resources.
 
@@ -60,6 +62,10 @@ git diff --check
 - A preflight, PR check, package, publish, tag-workflow, or asset-verifier failure is recorded and stops the corresponding phase. Do not substitute a shorter rail, retag, rerun a second package, or edit public assets outside the release script's one exact-file repair.\n- A clean standalone clone that cannot discover the existing board is an environment failure, not a source failure. Bind the known canonical board through KANMER_ROOT before one corrected retry; never create a fresh board to make the tests pass.
 - If the preparation PR changes unrelated files, stop and investigate rather than broadening the release.
 - If publication is unavailable because credentials or GitHub state fail, retain the failure and keep this ticket in its truthful stage.
+
+## Sequencing correction
+
+The completed dry run proved the release gate in a clean isolated clone. The real preparation script refuses a dirty checkout, so DOC-021 is the mandatory reviewed documentation prerequisite. This ticket remains blocked on that normal merge; it does not create a direct-main notes commit or include those notes in the generated release branch.
 
 ## Stop condition
 

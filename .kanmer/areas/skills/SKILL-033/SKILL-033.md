@@ -28,7 +28,7 @@ prs:
   - '243'
 archived: false
 created: '2026-08-24T18:01:37.214Z'
-updated: '2026-08-24T18:34:32.726Z'
+updated: '2026-08-24T18:58:50.145Z'
 ---
 
 ## What
@@ -44,3 +44,6 @@ The existing rule correctly prohibits author self-review and self-merge, but its
 - the change receives independent review and merges through the normal PR flow.
 
 ## Outcome
+- [PR #243](https://github.com/collisionengineers/kanmer/pull/243) merged through the normal protected-main squash path on 2026-08-24T18:29:33Z as `2db5989682d6885612d62af4e5da8dafe013a33f`.
+- Merged-main proof confirmed the role-based independence clarification, retained author self-review/self-merge prohibition, and retained GitHub policy as the authority for technical merge constraints.
+- No branch-protection, workflow, release, runtime, provider, or ticket-model change shipped; no follow-up ticket is created by this closeout.

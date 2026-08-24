@@ -2,10 +2,12 @@
 id: CORE-097
 type: ticket
 title: Provide safe GitHub publisher authentication to tag release verification
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-24T18:58:06.696Z'
 labels:
   - release
   - ci
@@ -18,7 +20,7 @@ blocks:
 docs_todo: true
 archived: false
 created: '2026-08-24T18:57:31.028Z'
-updated: '2026-08-24T18:57:31.028Z'
+updated: '2026-08-24T18:58:06.696Z'
 ---
 
 ## What

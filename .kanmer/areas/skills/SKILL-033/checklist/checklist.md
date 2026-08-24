@@ -16,3 +16,16 @@
 - [ ] Obtain an independent exact-head review and resolve every finding.
 - [ ] Merge via normal protected-main flow.
 - [ ] Verify on merged main, write proof, close out, and release the ticket.
+
+---
+
+## Closeout — SKILL-033
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/skill-033`
+- [ ] `git branch -d SKILL-033-review-agent-credentials` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

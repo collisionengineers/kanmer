@@ -1,11 +1,14 @@
-import { rm } from "node:fs/promises";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const userData = "C:\\Windows\\Temp\\kanmer-gui075-settings";
-vi.mock("electron", () => ({ app: { getPath: () => "C:\\Windows\\Temp\\kanmer-gui075-settings" } }));
+const fixture = vi.hoisted(() => ({ userData: "", sequence: 0 }));
+vi.mock("electron", () => ({ app: { getPath: () => fixture.userData } }));
 
 const {
   readSettings,
+  renameSettingsFile,
   setDispatchSettings,
   setKanmerGitHandoff,
   resolveDispatchSettings,
@@ -13,7 +16,57 @@ const {
   clearNativeReconnectRequired,
 } = await import("./settings.js");
 
-afterEach(async () => { await rm(userData, { recursive: true, force: true }); });
+beforeEach(() => {
+  fixture.userData = join(tmpdir(), `kanmer-gui129-settings-${process.pid}-${fixture.sequence += 1}`);
+});
+
+afterEach(async () => { await rm(fixture.userData, { recursive: true, force: true }); });
+
+function renameError(code: string): NodeJS.ErrnoException {
+  return Object.assign(new Error(`rename failed: ${code}`), { code });
+}
+
+describe("settings-file atomic rename", () => {
+  it.each(["EPERM", "EBUSY"] as const)("retries a transient Windows %s rename within the bounded schedule", (code) => {
+    const failure = renameError(code);
+    const rename = vi.fn<(...args: [string, string]) => void>()
+      .mockImplementationOnce(() => { throw failure; })
+      .mockImplementationOnce(() => { throw failure; });
+    const pauses: number[] = [];
+
+    renameSettingsFile("temporary", "target", rename, (milliseconds) => pauses.push(milliseconds), "win32");
+
+    expect(rename).toHaveBeenCalledTimes(3);
+    expect(pauses).toEqual([10, 20]);
+  });
+
+  it("surfaces a persistent transient Windows rename error after the bounded retries", () => {
+    const failure = renameError("EPERM");
+    const rename = vi.fn(() => { throw failure; });
+    const pauses: number[] = [];
+
+    expect(() => renameSettingsFile("temporary", "target", rename, (milliseconds) => pauses.push(milliseconds), "win32")).toThrow(failure);
+    expect(rename).toHaveBeenCalledTimes(4);
+    expect(pauses).toEqual([10, 20, 40]);
+  });
+
+  it.each([
+    ["a non-transient Windows error", renameError("EACCES"), "win32"],
+    ["a transient non-Windows error", renameError("EPERM"), "linux"],
+  ] as const)("does not retry %s", (_case, failure, platform) => {
+    const rename = vi.fn(() => { throw failure; });
+    const pauses: number[] = [];
+
+    expect(() => renameSettingsFile("temporary", "target", rename, (milliseconds) => pauses.push(milliseconds), platform)).toThrow(failure);
+    expect(rename).toHaveBeenCalledTimes(1);
+    expect(pauses).toEqual([]);
+  });
+
+  it("leaves no temporary sibling after a successful production settings write", async () => {
+    await setDispatchSettings({ providers: { codex: { defaultModel: "gpt-5" } } });
+    expect(await readdir(fixture.userData)).toEqual(["settings.json"]);
+  });
+});
 
 describe("dispatch settings", () => {
   it("normalizes known providers/tasks and resolves task precedence", async () => {

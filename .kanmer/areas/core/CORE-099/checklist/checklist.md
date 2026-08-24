@@ -5,7 +5,7 @@
 - [x] Read CORE-099, every currently present ticket document, its links/dependency graph, HZN-007 context, FRD-021, release-owner source, and the retained CORE-096/CORE-098/GUI-131 evidence.
 - [x] Record research, file surface, resolved questions, and the no-source/no-release planning boundary through Kanmer MCP.
 - [x] Write the executable successor-release plan/checklist and remain in Preparing without taking a branch or worktree.
-- [ ] Wait for [[DOC-023]] to be Done after normal review, merge, and merged-main proof; re-read CORE-099/DOC-023 items, links, and gates before any execution packet or take.
+- [x] Wait for [[DOC-023]] to be Done after normal review, merge, and merged-main proof; re-read CORE-099/DOC-023 items, links, and gates before any execution packet or take.
 
 ## One preparation invocation
 

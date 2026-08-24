@@ -2,13 +2,16 @@
 id: CORE-099
 type: ticket
 title: Publish and validate the v0.3.6 successor release
-status: preparing
+status: implementing
 area: core
 order: 20
-assignee: ''
+assignee: codex-root-release-author
 profile: chore
 stageEntered:
   preparing: '2026-08-24T22:05:45.609Z'
+taken_at: '2026-08-24T22:19:58.156Z'
+branch: core-099-v036-release-hold
+worktree: .worktrees/core-099
 labels:
   - release
   - verification
@@ -26,7 +29,7 @@ refs:
   - docs/functional/frd/FRD-021-auto-update.md
 archived: false
 created: '2026-08-24T22:04:47.134Z'
-updated: '2026-08-24T22:05:45.609Z'
+updated: '2026-08-24T22:19:58.156Z'
 ---
 
 ## Why

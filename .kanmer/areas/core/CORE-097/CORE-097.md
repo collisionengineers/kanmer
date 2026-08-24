@@ -22,9 +22,11 @@ links: []
 blocks:
   - CORE-096
 docs_todo: true
+prs:
+  - '245'
 archived: false
 created: '2026-08-24T18:57:31.028Z'
-updated: '2026-08-24T19:03:33.283Z'
+updated: '2026-08-24T19:14:23.121Z'
 ---
 
 ## What

@@ -1,3 +1,5 @@
 2026-08-24 — Execution packet obtained from the current origin/main bundled MCP because the installed packaged v0.3.3 server does not expose get_execution_packet. Packet was ready for GUI-129; worktree .worktrees/gui-129 at origin/main 9a75bd690a80bf070bb8ddc372b3a95fa03ec789, branch gui-129-windows-settings-rename-retry.
 
 Baseline: npm test -w @kanmer/gui -- --run src/main/settings.test.ts (cwd .worktrees/gui-129) exited 0: 1 file, 5 tests passed. This is a clean focused baseline; it does not reproduce the intermittent external Windows lock.
+
+2026-08-24 — First GUI typecheck attempt: npm run typecheck -w @kanmer/gui (cwd .worktrees/gui-129) exited 1 before GUI-129 code was typechecked. It resolved stale parent workspace links and reported pre-existing current-main/core contract mismatches: missing @kanmer/core exports dispatchDeliverableProven and withExclusiveFileLock, missing DispatchSupervisorOptions.verifyDeliverable, and an antigravity DispatchProviderId mismatch. This failure is retained. Next action is npm ci inside only the ticket worktree to restore its own current-main workspace links before rerunning.

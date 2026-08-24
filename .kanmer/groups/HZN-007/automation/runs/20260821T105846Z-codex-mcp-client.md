@@ -997,3 +997,6 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 
 
 - 2026-08-24T14:23:09.884Z — Dispatch: Lane 1 reserves protected-disposable GitHub evidence for CORE-035 only (shared fixture remains serialized for CORE-036/CORE-042); Lane 2 reserves MCP-048 readiness remediation; Lane 3 reserves GUI-129 settings-write remediation. Each lane has disjoint source/files or external resources, must preserve all failed evidence, and must stop at independent review rather than self-review/merge. Controller retains MCP-028 environment cleanup and no lane may touch the board worktree directly.
+
+
+- 2026-08-24T14:27:00Z — Controller capability handoff: the active packaged MCP v0.3.3 lacks `get_execution_packet`. A read-only current-main committed standalone MCP artifact, rooted explicitly at the canonical board, returned a ready execution packet for MCP-048 (files/plan/checklist gates satisfied; HZN-007 context present; no existing take). Lane 2 may now take MCP-048 on `mcp-048-loopback-readiness-timing` / `.worktrees/mcp-048`, implement only the readiness remediation, and stop at independent review. Current main's ordinary standalone server build separately exposes an existing core-export mismatch; it is out of MCP-048 scope and must be retained as failing evidence if it blocks a named command.

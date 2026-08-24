@@ -14,3 +14,14 @@
 - 2026-08-24: `npm run build:core` exited 0. The unchanged focused test then exited 0 (1/1 pass). The release-note wording inspection and `git diff --check` both exited 0; the uncommitted path census was exactly `apps/gui/release-notes.md`.
 - 2026-08-24: Commit `8a71a423c9dd3e210367af5a26357a6c52e6f364` was pushed on `doc-022-v035-release-notes`; PR [#246](https://github.com/collisionengineers/kanmer/pull/246) is open with the required `Kanmer: DOC-022` footer.
 - 2026-08-24: Post-implementation report written and the ticket moved Implementing → Review. Await independent review; author must not review or merge.
+
+## Closeout — DOC-022
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`): [#246](https://github.com/collisionengineers/kanmer/pull/246) is `MERGED` at 2026-08-24T20:47:30Z, merge `e63a1090bfbda89f473a422817629eaadd1ed264`.
+- [x] proof.md finalised with the PR URL, merge date, exact merged SHA, and focused evidence.
+- [x] Moved to final stage (Done).
+- [ ] Outcome recorded in ticket body (PR link, follow-ups).
+- [ ] Returned to a safe checkout; remove `.worktrees/doc-022`.
+- [ ] Delete `doc-022-v035-release-notes` (force only if its squash merge leaves it non-ancestor).
+- [ ] Run `git fetch --prune origin` and `git worktree prune`.
+- [ ] Release the ticket take record.

@@ -56,3 +56,13 @@ Verification ran in detached worktree at origin/main `8554c733aac5817e99909622e0
 - `npm run typecheck -w @kanmer/core`: PASS; `npm run build -w @kanmer/core`: PASS; `git diff --check`: PASS.
 
 The deterministic migration rail remains green, but the planned 242-ticket fixture and genuine Windows file-lock/antivirus contention remain unavailable and explicitly INCONCLUSIVE. CORE-022 remains Verifying; no Done move or closeout/release is claimed.
+
+## Current-main real-fixture verification — 2026-08-24
+
+Verification target: GitHub-origin detached clone at `ef67c04e0f3a20145dcb88497fdcb97a53038ab6`. The implementation commit `d0f927a3f9aab7fa6f4716410138126f3ff1fc35` remains reachable from this target.
+
+- Full clean merged-main `npm run verify`: **PASS** (exit 0): Core 15 files / 310 tests; GUI 49 files / 468 tests; MCP HTTP 102 tests; scripts 98 tests; all-workspace typecheck, build, smoke, headless, MCPB, protocol, discovery, skills, AGENTS and plugin rails passed.
+- Real 242-ticket format-2 board fixture using the built current-main `KanmerStore`/`migrateToV3`: **PASS** (exit 0). It migrated 48 tickets, left 194 ticket bytes untouched, remapped 47 `todo` statuses, needed no restage, swept five stale atomic temps, reached format 3, then made a clean `alreadyV3` no-op second run with zero changed ticket files.
+- Genuine Windows lock fixture against built current-main `writeFileAtomic`: **PASS** (exit 0). A real .NET `FileShare.Read` handle produced direct `EPERM` on rename; atomic replacement then completed after 298 ms with target `after\\n` and no temp residue.
+
+The two checks previously marked INCONCLUSIVE are now PASS. Earlier failures and limitations above remain historical observations; they are not rewritten. CORE-022's final verification result is PASS on current merged main.

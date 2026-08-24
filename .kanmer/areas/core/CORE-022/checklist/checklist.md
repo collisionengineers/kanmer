@@ -29,13 +29,13 @@
 - [x] non-transient code fails fast
 - [x] no temp left after permanent failure
 - [x] re-run rewrites zero tickets; `resumed` true
-- [ ] real-board fixture: completes, 48 migrate, 194 untouched, 47 remapped, 0 needs-restage, 5 temps swept, version → 3 — historical proof records this, but this lane did not rerun the unavailable 242-ticket fixture or claim real Windows/EPERM evidence.
-- [ ] second fixture run is a clean `alreadyV3` no-op — not independently rerun against the unavailable real-board fixture.
+- [x] real-board fixture: current-main fixture passed — 48 migrated, 194 byte-untouched, 47 remapped, 0 needs-restage, 5 stale temps swept, version 3.
+- [x] second fixture run is a clean `alreadyV3` no-op — current-main fixture passed with zero changed ticket files.
 
 ## Docs and rail
 - [x] FRD-007 M4 corrected
-- [ ] `npm test`, both smokes, typecheck, GUI build, boot smoke — core 263/263, GUI 349/349, both MCP smokes, typecheck, GUI build, headless boot rerun, and scripts 79/79 passed; the root rail remains failed at unrelated MCP HTTP tests (first run 2/61, rerun 1/61) as recorded below.
-- [ ] `plugin:build` + `plugin:check` — build passed; plugin:check refused this linked worktree because @kanmer/core resolved to the main checkout.
+- [x] `npm test`, both smokes, typecheck, GUI build, boot smoke — fresh GitHub-origin current-main `npm run verify` passed: Core 310, GUI 468, MCP HTTP 102, scripts 98, typecheck/build/smokes/headless all green.
+- [x] `plugin:build` + `plugin:check` — passed in the fresh GitHub-origin current-main verification clone.
 
 ## Progress notes
 

@@ -2,7 +2,7 @@
 id: CORE-022
 type: ticket
 title: Migration survives EPERM and resumes per ticket
-status: verifying
+status: done
 area: core
 order: 50
 assignee: core022-take
@@ -31,7 +31,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/28'
 archived: false
 created: '2026-08-16T13:17:25.100Z'
-updated: '2026-08-23T00:50:02.892Z'
+updated: '2026-08-24T16:24:55.197Z'
 ---
 
 A user's format-2 → format-3 migration failed three times on Windows and left
@@ -59,3 +59,7 @@ carried into v2→v3.
 separate calls.
 
 Full diagnosis in the research document.
+
+## Outcome
+
+Verified Done on current merged main `ef67c04e0f3a20145dcb88497fdcb97a53038ab6`: a real 242-ticket migration fixture and genuine Windows destination-lock retry both passed, alongside the full clean verification rail. PR #28 merged to main at `dfc2b059aaab7f6dbaac5085c9a2b475c538cd09`; implementation `d0f927a3f9aab7fa6f4716410138126f3ff1fc35` is reachable. No ticket worktree or source branch remains; this ticket does not publish a release.

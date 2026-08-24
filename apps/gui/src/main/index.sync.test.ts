@@ -1,6 +1,7 @@
 import { execFile as execFileCallback } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { mkdirSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -72,6 +73,9 @@ import { ensureBoardWorktree } from "./kanmerGit.js";
 import { readSettings, setKanmerGitHandoff } from "./settings.js";
 
 const execFile = promisify(execFileCallback);
+const REAL_GIT_FIXTURE_TIMEOUT_MS = 30_000;
+const REAL_GIT_CLEANUP_RETRIES = 20;
+const REAL_GIT_CLEANUP_RETRY_DELAY_MS = 100;
 const git = async (cwd: string, ...args: string[]): Promise<string> =>
   (await execFile("git", args, {
     cwd,
@@ -102,12 +106,18 @@ beforeEach(async () => {
   electronMocks.syncBoard.mockImplementation(async (status) => status);
 });
 
-afterEach(() => {
+afterEach(async () => {
   const ctx = __kanmerTest.contexts.get(repo) as { syncTimer?: ReturnType<typeof setInterval> } | undefined;
   if (ctx?.syncTimer) clearInterval(ctx.syncTimer);
   __kanmerTest.contexts.delete(repo);
-  rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
-});
+  await rm(dir, {
+    recursive: true,
+    force: true,
+    maxRetries: REAL_GIT_CLEANUP_RETRIES,
+    retryDelay: REAL_GIT_CLEANUP_RETRY_DELAY_MS,
+  });
+  expect(existsSync(dir)).toBe(false);
+}, REAL_GIT_FIXTURE_TIMEOUT_MS);
 
 describe("syncProject production Retry caller", () => {
   it("broadcasts user-scoped native reconnect updates with each open project id", async () => {

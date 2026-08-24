@@ -1,47 +1,32 @@
-## 2026-08-24 — hosted status
+---
+kind: review-attestation
+pr: "242"
+head_sha: "3921d90f4a613d4a6b2037dc5833df5cdad6a8a6"
+verdict: needs-changes
+reviewer: "doc021-independent-reviewer"
+independent: true
+plan_hash: "dee5d59e8588222e"
+ticket_updated: "2026-08-24T17:17:50.220Z"
+findings:
+  - id: P2
+    severity: major
+    summary: "Release note overpromises a direct tunnel diagnostic"
+    disposition: open
+    reason: "The wording says tunnel setup reports an origin-path and readiness problem directly. The implementation fixes the generated cloudflared service origin and bounds delayed readiness polling, but individual probe failures are suppressed and the terminal result is the generic TUNNEL_READINESS_TIMEOUT; no direct origin-path diagnostic is surfaced."
+---
 
-PR #242 head 3921d90f passed `kanmer-gate` (56s) and authoritative `verify` (4m19s). The automated Codex review is COMMENTED with no actionable suggestion, not an APPROVED review. GitHub reports `mergeStateStatus: BLOCKED` and no formal review decision. Per the ticket stop condition and protected-main rule, the author will not self-approve or merge; a different GitHub identity must supply the formal approval.
+# Independent review — DOC-021 PR #242
 
-## 2026-08-24 — independent review of PR #242
+## Review basis
 
-### Reviewer identity and boundary
+Reviewed ticket DOC-021, its plan, files map, checklist, open questions, post-implementation report, and the exact PR #242 diff at head `3921d90f4a613d4a6b2037dc5833df5cdad6a8a6`. The ticket plan hash is `dee5d59e8588222e`; the ticket timestamp bound to this attestation is `2026-08-24T17:17:50.220Z`.
 
-This review was performed by an agent other than the authoring agent and did not modify the PR. The current GitHub credential resolves to `collisionengineers`, which is also the PR author, so it cannot supply a formal independent GitHub approval or author-safe merge.
+The diff is limited to `apps/gui/release-notes.md`. It correctly promotes the accumulated user-facing content to 0.3.4, preserves the 0.3.3 boundary, and accurately describes project-declared source preferences. Required `verify` and `kanmer-gate` checks passed on this head.
 
-### Changes reviewed
+## Finding P2 — OPEN
 
-- `apps/gui/release-notes.md` is the sole changed path (17 additions, 1 deletion) at head `3921d90f4a613d4a6b2037dc5833df5cdad6a8a6`.
-- It promotes the accumulated top section to `0.3.4`, retains the four already-recorded post-v0.3.3 user-facing changes, adds bounded summaries for project-declared sources and Windows connection/remote-access resilience, and starts the existing shipped material under `0.3.3`.
-- No release script, manifest, generated artifact, workflow, provider setting, tag, or publishing behavior is changed.
+The Windows connection and remote-access section says tunnel setup “reports an origin-path and readiness problem directly.” That is not supported by the implementation: route generation was corrected and readiness polling is bounded, but no direct origin-path diagnostic is emitted. The release note must be reworded to describe the actual route-generation and delayed-readiness fixes without promising an actionable direct diagnostic.
 
-### Checks against plan and governing evidence
+## Disposition and verdict
 
-- The diff exactly matches the plan and files map. The post-implementation report accurately lists the one file, commit, PR, focused test, and diff check.
-- The source-preference wording agrees with `FRD-027` and `ADR-0020`: declarations are retrieval preferences and never install software, authenticate, enable, or grant access.
-- The Windows wording is supported by the post-v0.3.3 transient settings-rename-lock fixes and cloudflared origin-path/readiness fixes; it does not claim public-route verification or provider automation.
-- All open questions are resolved or explicitly parked for CORE-096. No unintended scope or unplanned extra was found.
-
-### Hosted evidence
-
-- `verify`: SUCCESS on the exact head.
-- `kanmer-gate`: SUCCESS on the exact head.
-- PR is OPEN with `mergeStateStatus: BLOCKED`; GitHub lists no APPROVED review (only the automated COMMENTED review). Branch-protection status checks are satisfied.
-
-### Comments and disposition
-
-- **Blocking — workflow:** a formal independent GitHub approval and merge eligibility are still absent. This is an external protected-flow condition, not a defect in the change; no remediation ticket is appropriate.
-- **Non-blocking:** none.
-
-### Verdict
-
-Substantive review **passes**. Do not author-self-approve or author-self-merge. Await a different GitHub identity to formally approve and merge PR #242; after the merge, record the merge SHA and move DOC-021 from Review to Verifying only.
-
-## 2026-08-24 — protected-main merge attempt
-
-The user confirmed that the separate reviewing agent satisfies the process-level independent-review requirement despite a shared GitHub account. GitHub nevertheless identifies the active credential as the PR author and enforces its own actor rule.
-
-- Normal `gh pr merge 242 --merge`: exit 1 — the base branch policy prohibits the merge and suggests `--auto` or `--admin`.
-- Formal reviewer approval from this credential: exit 1 — `Review Can not approve your own pull request`.
-- Normal protected-flow auto-merge: exit 1 — auto-merge is disabled for this repository.
-
-No administrator bypass was used. No source, workflow, branch-protection, release, or provider change was made. PR #242 remains open; no merge SHA exists, so DOC-021 correctly remains in Review and must not move to Verifying. A distinct GitHub identity must submit the formal approval and a repository administrator must either enable/use the normal merge path after policy permits it, or explicitly authorize an administrative bypass.
+**NEEDS-CHANGES.** P2 is a substantive user-facing accuracy finding and remains open. No source change, merge, stage move, verification, proof, or closeout was performed during this review. PR #242 remains OPEN/BLOCKED and DOC-021 remains in Review until the author fixes P2, the thread is resolved, checks are green on the new head, and the ticket is re-reviewed.

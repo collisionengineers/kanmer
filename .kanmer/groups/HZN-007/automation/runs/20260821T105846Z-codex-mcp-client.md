@@ -1025,3 +1025,8 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 
 
 - 2026-08-24T16:50:42.983Z — Live-state reconciliation created [[CORE-096]] (Backlog, chore) as the governed v0.3.4 release record. It blocks CORE-036 and CORE-042, which retain their own distinct verification claims. The goal authorizes release operations required by approved tickets; no release worktree, branch, tag, or provider state has been created yet.
+
+
+- 2026-08-24T17:14:00Z — Release sequencing correction: CORE-096's corrected clean-clone dry run passed its complete release gate with KANMER_ROOT bound to the existing canonical board. The real preparation command requires a clean checkout and makes its own generated release PR, so the manual v0.3.4 release-notes edit is split into new DOC-021 rather than carried uncommitted or committed directly to main. DOC-021 blocks CORE-096, changes only apps/gui/release-notes.md, and must stop at independent Review; no tag, asset, publisher, workflow, provider, or root-checkout state was changed.
+
+- 2026-08-24T17:14:00Z — Dispatch reservation: DOC-021 is the sole active documentation lane on branch DOC-021-release-notes / .worktrees/doc-021. It has a ready current-source execution packet and all Preparing gates pass. The author may implement only the reviewed release-notes delta, open the PR, and stop at Review; no self-review, merge, or cross-ticket release work. CORE-096 remains Implementing but does not run its non-dry preparation until DOC-021 merges.

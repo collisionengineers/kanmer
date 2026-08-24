@@ -45,12 +45,17 @@ export function validateCloudflaredTunnel(options: CloudflaredTunnelOptions, tar
  */
 export function cloudflaredConfig(options: CloudflaredTunnelOptions, target: TunnelTarget): string {
   const valid = validateCloudflaredTunnel(options, target);
+  // cloudflared preserves the path from the public request when forwarding to
+  // an HTTP origin.  The endpoint remains strictly `/mcp`, but the provider
+  // service must name only the loopback origin: cloudflared rejects an origin
+  // URL that embeds its own path.
+  const serviceOrigin = new URL(valid.endpoint).origin;
   return [
     `tunnel: ${options.tunnelId}`,
     `credentials-file: ${JSON.stringify(options.credentialsFile)}`,
     "ingress:",
     `  - hostname: ${valid.hostname}`,
-    `    service: ${valid.endpoint}`,
+    `    service: ${serviceOrigin}`,
     "  - service: http_status:404",
     "",
   ].join("\n");

@@ -28,7 +28,7 @@
 - [x] proof.md finalised (PR URL + merge date appended)
 - [x] Moved to final stage
 - [x] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/gui-129`
-- [ ] `git branch -d <branch>` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] cd out of worktree; `git worktree remove .worktrees/gui-129`
+- [x] `git branch -d <branch>` (`-D` if squash/rebase-merged)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

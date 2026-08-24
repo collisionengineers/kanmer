@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-24T14:50:28.320Z'
   verifying: '2026-08-24T14:57:09.332Z'
   done: '2026-08-24T16:13:34.500Z'
-taken_at: '2026-08-24T14:45:04.026Z'
-branch: core-095-vitest-file-isolation
-worktree: .worktrees/core-095
 labels:
   - windows
   - ci
@@ -32,7 +29,7 @@ prs:
   - '238'
 archived: false
 created: '2026-08-24T14:39:17.215Z'
-updated: '2026-08-24T16:14:16.793Z'
+updated: '2026-08-24T16:15:34.927Z'
 ---
 
 ## What

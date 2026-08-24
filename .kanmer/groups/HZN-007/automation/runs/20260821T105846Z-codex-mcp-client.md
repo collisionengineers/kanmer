@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-24T13:57:45.902Z
+updated_at: 2026-08-24T16:16:41.654Z
 lane_limit: 3
 stop_reason: 
 ---
@@ -1014,3 +1014,8 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - 2026-08-24T15:46:13Z — PR #239 / MCP-048 exact head 2b9ea369 passed hosted `verify` and `kanmer-gate` (run 32745559385). Independent re-review recorded F-001 fixed: the original 10-second readiness deadline is retained while a bounded per-request budget permits delayed loopback success. A superseded-revision cancellation comment was rejected with reason, replied to, and resolved; no unproven scope expansion was merged. PR #239 merged normally as 7579341048f8d5952916dd7556bff0504f720eab and MCP-048 moved Review→Verifying. Its worktree remains retained until merged-main proof/closeout.
 
 - 2026-08-24T15:46:13Z — Windows test isolation remediation now exists on merged main: CORE-095 (PR #238 / c31544fc) serializes Core Vitest files; GUI-130 (PR #240 / 77892783) serializes GUI Vitest files. Full GUI verification rails are serialized locally because their Electron test setup shares a fixed temporary user-data directory; authoritative reruns use a genuine GitHub-origin clone so the release-notes URL contract is not contaminated by a local remote.
+
+
+- 2026-08-24T16:16:41.654Z — Completion increment: CORE-095 (#238/c31544fc), GUI-130 (#240/77892783), MCP-048 (#239/75793410), and GUI-129 (#241/ef67c04e) were independently reviewed, merged, proven on clean GitHub-origin main `ef67c04e`, moved to Done, and closed out. The exact full verification passed: Core 310/310, GUI 468/468, MCP HTTP 102/102, scripts 98/98, typecheck/docs/smokes/MCPB/protocol/skills/agents/plugin checks. Their dedicated worktrees and both local/remote branches were removed; ticket leases released. The local root checkout remains untouched.
+
+- 2026-08-24T16:16:41.654Z — Live board now has five Verifying tickets and no active implementation/review/taken records: CORE-022 (real Windows lock and 242-ticket migration fixture), CORE-035 (formal independent approval plus protected merge), CORE-036 (green protected/tag release and intentional asset-negative proof), CORE-042 (protected two-version installed updater proof), and MCP-028 (remaining authenticated tunnel restart/rotation/concurrency/degradation/secret-scan matrix). CORE-035 protected fixture PR #2/run 32747239427 passed checks at production main 75793410 but correctly remains open awaiting the repository's configured different-identity approval; no protection was weakened.

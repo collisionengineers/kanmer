@@ -76,7 +76,11 @@ const MAX_RECENT = 8;
 const MAX_MODEL = 200;
 const MODEL_CONTROL = /[\u0000-\u001f\u007f]/;
 const SUFFIX_CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
+const SETTINGS_RENAME_RETRY_DELAYS_MS = [10, 20, 40] as const;
 let settingsQueue: Promise<void> = Promise.resolve();
+
+type RenameFile = (source: string, destination: string) => void;
+type Pause = (milliseconds: number) => void;
 
 function cleanText(value: unknown, max: number, control = SUFFIX_CONTROL): string | undefined {
   if (typeof value !== "string") return undefined;
@@ -335,7 +339,36 @@ function writeSettings(settings: AppSettings): void {
   mkdirSync(join(app.getPath("userData")), { recursive: true });
   const temporary = `${target}.${process.pid}.${Date.now()}.tmp`;
   writeFileSync(temporary, `${JSON.stringify(settings, null, 2)}\n`, "utf8");
-  renameSync(temporary, target);
+  renameSettingsFile(temporary, target);
+}
+
+function pauseRenameRetry(milliseconds: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT)), 0, 0, milliseconds);
+}
+
+function isTransientWindowsRenameError(error: unknown, platform: NodeJS.Platform): boolean {
+  if (platform !== "win32" || !error || typeof error !== "object") return false;
+  const code = (error as NodeJS.ErrnoException).code;
+  return code === "EPERM" || code === "EBUSY";
+}
+
+/** Replace a fully-written settings file without hiding a persistent filesystem error. */
+export function renameSettingsFile(
+  temporary: string,
+  target: string,
+  renameFile: RenameFile = renameSync,
+  pause: Pause = pauseRenameRetry,
+  platform: NodeJS.Platform = process.platform,
+): void {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      renameFile(temporary, target);
+      return;
+    } catch (error) {
+      if (!isTransientWindowsRenameError(error, platform) || attempt === SETTINGS_RENAME_RETRY_DELAYS_MS.length) throw error;
+      pause(SETTINGS_RENAME_RETRY_DELAYS_MS[attempt]);
+    }
+  }
 }
 
 /** Serialize every settings.json read-modify-write, including remote access. */

@@ -29,7 +29,7 @@ prs:
   - '238'
 archived: false
 created: '2026-08-24T14:39:17.215Z'
-updated: '2026-08-24T16:15:34.927Z'
+updated: '2026-08-24T16:19:13.433Z'
 ---
 
 ## What
@@ -42,9 +42,9 @@ Reproduce the Windows runner behavior and make core test execution deterministic
 
 ## Verification
 
-- [ ] The three named cases pass on a clean Windows GitHub Actions run alongside the core suite.
-- [ ] `npm run verify` passes on the protected fixture at a reviewed exact head.
-- [ ] Any timeout adjustment is test-specific, justified, and retains a finite failure bound.
+- [x] The three named cases pass on a clean Windows GitHub Actions run alongside the core suite.
+- [x] `npm run verify` passes on the protected fixture at a reviewed exact head.
+- [x] Any timeout adjustment is test-specific, justified, and retains a finite failure bound.
 
 ## Outcome
 

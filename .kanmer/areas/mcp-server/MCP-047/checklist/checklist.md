@@ -7,6 +7,6 @@
 - [x] Clarify the path-preserving provider contract in the manual.
 - [x] Run focused configuration and tunnel tests.
 - [x] Run real cloudflared ingress validate and rule checks.
-- [ ] Run build and typecheck/regression commands appropriate to the changed package.
-- [ ] Record implementation results, known limits, and no-secret evidence.
+- [x] Run build and typecheck/regression commands appropriate to the changed package.
+- [x] Record implementation results, known limits, and no-secret evidence.
 - [ ] Open a PR; do not merge it.

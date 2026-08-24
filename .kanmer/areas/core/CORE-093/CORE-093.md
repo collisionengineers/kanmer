@@ -27,12 +27,12 @@ refs:
   - docs/functional/frd/FRD-009-interrogative-workflow.md
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 commits:
-  - ae1dde60b179aaffdcb0d27c35d507cf3bb45d67
+  - 409aa9015af44bd3cb72a126a5f8a0f7972dbe9b
 prs:
   - '235'
 archived: false
 created: '2026-08-24T09:59:47.119Z'
-updated: '2026-08-24T11:01:41.744Z'
+updated: '2026-08-24T11:06:56.071Z'
 ---
 
 ## What

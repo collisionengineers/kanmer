@@ -2,7 +2,7 @@
 
 ## Summary
 
-The settings persistence path now retries only short-lived Windows `EPERM`/`EBUSY` failures during the final atomic rename, using a fixed 10/20/40 ms backoff. The temporary file is still fully written before replacement, and a non-eligible or exhausted error is rethrown unchanged. The settings test no longer shares a fixed Windows directory and adds deterministic coverage for recovery, retry bounds, non-retry behavior, persistent error surfacing, and successful temporary-file cleanup.
+The settings persistence path now retries only short-lived Windows `EPERM` / `EBUSY` failures during the final atomic rename, using a fixed 10/20/40 ms backoff. The temporary file is still fully written before replacement, and a non-eligible or exhausted error is rethrown unchanged. The settings test uses a process-unique temporary user-data path and adds deterministic coverage for recovery, retry bounds, non-retry behavior, persistent error surfacing, and successful temporary-file cleanup.
 
 ## Changes
 
@@ -11,21 +11,38 @@ The settings persistence path now retries only short-lived Windows `EPERM`/`EBUS
 | `apps/gui/src/main/settings.ts` | Added `renameSettingsFile` and wired the existing `writeSettings` temporary-write path through it. | Handles a brief external Windows rename lock without changing the atomic replacement sequence or hiding a final error. |
 | `apps/gui/src/main/settings.test.ts` | Made the mocked Electron user-data path unique per test and added deterministic rename/error/cleanup assertions. | Eliminates a reusable fixture collision and proves the bounded production behavior without fabricating a real antivirus lock. |
 
-## Governing docs
+## Governing document
 
-- `docs/functional/frd/FRD-019-gui-shell.md` — Meets R7: desktop-shell settings remain persisted through the same production `writeSettings` caller and all existing settings mutators continue to use `withSettingsFileLock`. No FRD, schema, UI, or settings format change is made.
+- `docs/functional/frd/FRD-019-gui-shell.md` — Meets R7: desktop-shell settings remain persisted through the same production `writeSettings` caller and all existing settings mutators continue to use `withSettingsFileLock`. No FRD, schema, UI, or settings-format change is made.
 
-## Risks / follow-ups
+## Scope and risks
 
-- The final replacement is intentionally synchronous because the existing production writer is synchronous. The retry budget is small (70 ms total pause) and activates only after a qualifying Windows rename failure.
-- A normal-checkout full `npm run verify` attempt at this head exposed an unrelated 10-second `index.sync.test.ts` hook timeout and then failed to terminate. It is preserved as a failure/inconclusive attempt in `scratch/execute`; the named isolated suite passed 11/11 on rerun. The independent reviewer and hosted CI must assess that full-rail boundary.
-- `MCP-048`, remote-access persistence, OpenAI tunnel persistence, settings schema, and dependencies are out of scope.
+- Scope is limited to the final Windows settings-file rename and its test evidence. The retry budget is 70 ms total, only after a qualifying rename failure.
+- Atomicity remains temp-write then rename; errors still surface when retries exhaust or the error is not eligible.
+- `MCP-048`, remote-access persistence, OpenAI tunnel persistence, settings schema, dependencies, test scheduling, timeouts, and assertions are out of scope.
 
-## Verification hand-off
+## Verification
 
-On the PR head `49807c28a6a3e371bc2793a1ef8c10db63363d92`:
+Rebased commit: `cfac84a8cc45876f8d3d517d3d6573d0c6fb8ff0`.
 
-- Isolated ticket worktree with absolute npm prefix: core build exit 0; focused `settings.test.ts` 11/11, three exit-0 runs; GUI typecheck exit 0; GUI production build exit 0.
-- Clean normal clone baseline at parent `9a75bd690a80bf070bb8ddc372b3a95fa03ec789`: focused settings 5/5, exit 0.
-- Full normal-clone `npm run verify` is not a pass: Core 310/310 passed, then an unrelated index-sync hook timed out; the runner required interruption (exit 1). The exact named index-sync rerun is PASS 11/11, exit 0.
-- After merge, run the focused settings test and an applicable authoritative verification rail on merged `main`, recording all exit codes in `proof.md`.
+| Check | Result |
+|---|---|
+| Isolated ticket worktree: `npm --prefix <absolute-worktree> ci --ignore-scripts` | exit 0 |
+| Isolated ticket worktree: `npm --prefix <absolute-worktree> run build -w @kanmer/core` | exit 0 |
+| Isolated ticket worktree: `npm --prefix <absolute-worktree> test -w @kanmer/gui -- --run src/main/settings.test.ts` | 11/11, exit 0, repeated three times |
+| Isolated ticket worktree GUI typecheck and production build | both exit 0 |
+| Fresh genuine GitHub-origin normal clone at the exact rebased head: `npm --prefix <absolute-clone> ci --ignore-scripts` | exit 0 |
+| Same normal clone: `npm --prefix <absolute-clone> run verify` | exit 0 — Core 310/310, GUI 468/468, MCP HTTP 102/102, scripts 98/98; all remaining verify rails passed |
+
+No other local GUI full-test rail was active before the authoritative normal-clone verification began, and no Node process from that clone remained afterward.
+
+## Preserved prior evidence
+
+- Earlier bare-`npm` worktree commands were setup-contaminated because npm could resolve the parent checkout; they are not used as verification evidence.
+- Before the rebase, a full normal-clone verification at predecessor `49807c28a6a3e371bc2793a1ef8c10db63363d92` passed Core 310/310 and GUI settings 11/11 but failed when an unrelated `index.sync.test.ts` cleanup hook timed out at 10 seconds and the runner would not exit (recorded as exit 1/inconclusive in `scratch/execute`). A later isolated named index-sync suite passed 11/11. This historical failure is retained rather than overwritten; the decisive verification above is the fresh canonical-origin run at the rebased PR head.
+
+## Review hand-off
+
+PR: https://github.com/collisionengineers/kanmer/pull/241
+
+An independent reviewer should inspect the two scoped GUI files, confirm the Windows-only retry eligibility and preserved atomic/error behavior, and use the recorded canonical-origin verification. Do not merge or write proof until review has approved and the PR is merged; `kanmer-verify` owns merged-main proof.

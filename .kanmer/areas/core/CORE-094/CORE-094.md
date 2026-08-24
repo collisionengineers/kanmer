@@ -1,7 +1,7 @@
 ---
 id: CORE-094
 type: ticket
-title: Restore core exports required by the MCP standalone build
+title: Invalid observation — contaminated current-main build check
 status: backlog
 area: core
 assignee: ''
@@ -18,23 +18,13 @@ links:
 refs:
   - docs/functional/frd/FRD-027-project-declared-sources.md
   - docs/architecture/adr/ADR-0020-project-declared-source-trust.md
-archived: false
+archived: true
 created: '2026-08-24T14:30:14.921Z'
-updated: '2026-08-24T14:30:14.921Z'
+updated: '2026-08-24T14:31:27.432Z'
 ---
 
-## What
+## Disposition
 
-Current `origin/main` cannot complete `npm run build`: the MCP standalone bundle imports declared-source and delivery symbols from `@kanmer/core` that are absent from the core public export. This was reproduced in an isolated clean current-main checkout after `npm ci --ignore-scripts`.
+Archived without implementation. The earlier build failure was not a current-main defect: the linked worktree sat below the original checkout, so `npm` resolved the parent checkout's older `@kanmer/core` build. Current main exports the named source-contract symbols through `packages/core/src/index.ts`.
 
-## Scope
-
-Restore the intended public core exports or align the MCP imports so the normal core → MCP server build is internally consistent. Do not fold in tunnel-readiness timing changes from [[MCP-048]]. Preserve the declared-source contract from [[CORE-044]].
-
-## Verification
-
-- [ ] A clean current-main-derived checkout completes `npm run build` with exit 0.
-- [ ] The standalone MCP bundle launches and exposes its declared tool surface.
-- [ ] Focused core/MCP source-contract coverage passes without weakening assertions.
-
-## Outcome
+No source change, PR, or remediation is required from this invalid observation. [[MCP-048]] remains independently scoped to loopback readiness timing.

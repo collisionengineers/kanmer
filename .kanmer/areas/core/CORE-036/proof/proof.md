@@ -47,3 +47,15 @@ Verification ran in detached worktree at origin/main `8554c733aac5817e99909622e0
 - Authoritative `npm run verify`: FAIL (exit 1) at the same five unrelated Windows timing/cleanup core tests (io stale-lock; docs profile matrix; migrate folded-id and migrated-board; store area-id), including ENOTEMPTY cleanup.
 
 The separate real next-tag green `release-verify` run and intentionally incomplete-release red run remain unavailable; existing-tag asset integrity does not satisfy those checks. CORE-036 remains Verifying; no Done move or closeout is claimed.
+
+
+## Disposable tag workflow attempt — 2026-08-24
+
+A disposable public GitHub test repository was used so this did not create or alter a Kanmer release. An exact-source Windows package build completed locally at the temporary test tag SHA; its three expected updater artifacts were attached to a disposable prerelease before the tag workflow ran.
+
+- Two genuine `release-verify` tag runs started on the temporary `v0.3.3` tag. Both passed checkout, Node setup, strict tag/manifest version validation, and `npm ci`.
+- Both failed at the workflow's unchanged `npm run verify` step, before `dist:check` or the published-asset verifier. The first run recorded 309 passing core tests and one Windows timeout in the area-based ticket placement test; the second completed with the same authoritative-step failure.
+- This is a real proof that the tag trigger, Windows job, version guard, and no-bypass verification rail execute. It is not a green release proof, and it cannot be treated as the requested intentionally incomplete-release asset-verifier red proof because the workflow never reached that step.
+- The disposable prerelease and temporary tag were deleted after the runs; API checks confirmed both were absent. CI had read-only contents permission and no workflow step published, edited, repaired, or deleted a release.
+
+**Disposition:** the remaining green-run and asset-negative acceptance checks are blocked by the pre-existing Windows core timeout. CORE-036 remains Verifying; the blocker is recorded rather than bypassed.

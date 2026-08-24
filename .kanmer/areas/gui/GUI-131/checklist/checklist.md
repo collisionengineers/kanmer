@@ -17,7 +17,7 @@
 - [x] Commit only the release control-flow and regression-test changes: `4c2d29e62bf74c053a58898ed14d7f06a838a3a8`.
 - [x] From a fresh normal GitHub-origin clone of the exact branch head, run `npm run verify`: exit 0 (Core 310/310, GUI 468/468, MCP HTTP 102/102, scripts 100/100, typecheck, docs, smokes, skills, managed AGENTS, and plugin sync).
 - [x] Push the branch, open PR [#248](https://github.com/collisionengineers/kanmer/pull/248) with `Kanmer: GUI-131`, record commit/PR traceability and the exact two-file diff.
-- [ ] Write the post-implementation report and move exactly one stage to Review.
+- [x] Write the post-implementation report and move exactly one stage to Review; report is recorded and GUI-131 is now in Review.
 
 ## Boundaries
 

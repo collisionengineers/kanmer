@@ -1,0 +1,1 @@
+Opened PR #232 from `mcp-047-cloudflared-ingress-origin` at `ca6b3c0c`. Focused cloudflared rail passed 17/17; MCP-server typecheck and build passed. Manual real cloudflared synthetic-config validation and `/mcp` route match both exited 0. Await independent review; no Cloudflare resource was created by this code ticket.

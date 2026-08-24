@@ -9,4 +9,4 @@
 - [x] Run real cloudflared ingress validate and rule checks.
 - [x] Run build and typecheck/regression commands appropriate to the changed package.
 - [x] Record implementation results, known limits, and no-secret evidence.
-- [ ] Open a PR; do not merge it.
+- [x] Open a PR; do not merge it.

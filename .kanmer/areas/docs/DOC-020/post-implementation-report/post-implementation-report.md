@@ -16,3 +16,7 @@ This aligns the ADR with the lifecycle declared in `docs/README.md` without chan
 | `rg -n "proposed|status: draft|\*\*Status:\*\* draft" docs/architecture/adr/ADR-0020-project-declared-source-trust.md` | PASS — exactly the two draft status fields, no proposed value |
 | `npm run verify:docs` | PASS — docs mirror/manual/link and boundary checks |
 | `git diff --check` | PASS |
+
+## Hosted CI
+
+PR #234 passed both required GitHub Actions jobs: `kanmer-gate` in 1m01s and `verify` in 3m21s.

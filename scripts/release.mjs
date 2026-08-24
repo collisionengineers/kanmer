@@ -361,6 +361,11 @@ function remoteRefExists(ref) {
 if (publishMode) {
   assertMergedManifestVersions();
   assertReleaseCommitReachable();
+
+  // Electron Builder packages the existing Electron Vite output. Build it
+  // before the immutable tag exists so a GUI-build failure cannot strand a tag
+  // or release whose app.asar lacks out/main/index.js.
+  run("npm run build -w @kanmer/gui");
 } else {
   const branchName = releaseBranch(version);
   if (capture(`git branch --list ${branchName}`).length > 0 || remoteRefExists(releaseBranchRef(version))) {

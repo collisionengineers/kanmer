@@ -67,6 +67,23 @@ test("release source separates the PR branch push from the post-merge tag push",
   assert.doesNotMatch(source, /git push --tags/);
 });
 
+test("publish mode awaits the GUI build before creating or pushing the immutable tag", () => {
+  const source = readFileSync(new URL("./release.mjs", import.meta.url), "utf8");
+  const publishStart = source.indexOf("if (publishMode) {\n  assertMergedManifestVersions();\n  assertReleaseCommitReachable();");
+  const publishEnd = source.indexOf("\n} else {", publishStart);
+  const guiBuild = "run(\"npm run build -w @kanmer/gui\");";
+  const buildIndex = source.indexOf(guiBuild, publishStart);
+  const tagIndex = source.indexOf("run(`git tag ${releaseTag(version)}`);");
+  const tagPushIndex = source.indexOf("run(`git push origin ${releaseTagRef(version)}`);");
+
+  assert.notEqual(publishStart, -1, "publish preconditions must exist");
+  assert.notEqual(publishEnd, -1, "publish preconditions must close before preparation mode");
+  assert.ok(buildIndex > publishStart && buildIndex < publishEnd, "publish mode must invoke the GUI build");
+  assert.ok(tagIndex > buildIndex, "tag creation must follow the GUI build");
+  assert.ok(tagPushIndex > tagIndex, "tag push must follow tag creation");
+  assert.match(source, /function run\(command, cwd = root\) \{[\s\S]*execSync\(command/);
+});
+
 test("tag release verification packages without scheduling a publisher", () => {
   const workflow = readFileSync(new URL("../.github/workflows/release.yml", import.meta.url), "utf8");
   assert.match(workflow, /^permissions:\n  contents: read$/m);

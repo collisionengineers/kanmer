@@ -2,12 +2,15 @@
 id: CORE-100
 type: ticket
 title: Correct release asset-name verification for Electron Builder output
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-24T22:43:11.335Z'
+taken_at: '2026-08-24T22:51:49.961Z'
+branch: core-100-deterministic-windows-assets
+worktree: .worktrees/core-100
 labels:
   - release
   - assets
@@ -23,7 +26,7 @@ refs:
   - docs/functional/frd/FRD-021-auto-update.md
 archived: false
 created: '2026-08-24T22:43:05.670Z'
-updated: '2026-08-24T22:43:11.335Z'
+updated: '2026-08-24T22:51:49.961Z'
 ---
 
 ## What

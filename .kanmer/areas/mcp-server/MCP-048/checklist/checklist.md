@@ -18,3 +18,16 @@
 - 2026-08-24 — Rebased commits `317eb29b` and `2b9ea369` restore the 10-second default. In the isolated ticket worktree: core/server builds and MCP typecheck exited 0, focused readiness + Cloudflared tests passed 19/19, and MCP HTTP tests passed 102/102.
 - 2026-08-24 — Final authoritative evidence: a fresh GitHub-origin normal clone at `2b9ea369b50a4d8ab32347d40356db655a10f948` ran `npm ci --ignore-scripts` exit 0 then `npm run verify` exit 0 (core 310/310, GUI 462/462, MCP 102/102, scripts 98/98; docs/typechecks/smokes/mcpb/plugin checks passed). A pre-rebase clone run was interrupted after 120 seconds idle due to concurrent GUI-130 Electron-user-data contention and is recorded as INCONCLUSIVE, not PASS.
 - 2026-08-24 — The packet's `npm test -w @kanmer/mcp-server` command exits 1 because that workspace defines no `test` script; the repository's supported MCP rail `npm run test:http -w @kanmer/mcp-server` passed 102/102. This mismatch is recorded, not suppressed.
+
+---
+
+## Closeout — MCP-048
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/mcp-048`
+- [ ] `git branch -d <branch>` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

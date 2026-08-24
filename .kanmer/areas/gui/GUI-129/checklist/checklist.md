@@ -19,3 +19,16 @@
 - 2026-08-24 — Rebased GUI-129 to `cfac84a8cc45876f8d3d517d3d6573d0c6fb8ff0` on current `origin/main`. In its isolated worktree, `ci --ignore-scripts` and core build exited 0; focused settings tests passed 11/11 three times; GUI typecheck and production build both exited 0.
 - 2026-08-24 — Final authoritative evidence used a fresh genuine GitHub-origin normal clone at exactly `cfac84a8`, with `npm --prefix <absolute-clone> ci --ignore-scripts` then `npm --prefix <absolute-clone> run verify`. Both exited 0; Core 310/310, GUI 468/468, MCP HTTP 102/102, scripts 98/98. No other GUI full-test rail was running before it started, and no clone-owned Node process remained afterward.
 - 2026-08-24 — PR #241 is open and GUI-129 entered Review. Independent review is the next action; proof remains post-merge.
+
+---
+
+## Closeout — GUI-129
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/gui-129`
+- [ ] `git branch -d <branch>` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

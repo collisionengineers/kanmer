@@ -23,3 +23,16 @@
 - 2026-08-24 — `npm --prefix C:\\Users\\Alex\\Documents\\GitHub\\kanmer\\.worktrees\\core-095 run test -w @kanmer/core -- src/io.test.ts src/docs.test.ts src/store.test.ts` exited 0: 3 files / 167 tests passed in 79.67 s. The three named cases passed within their unchanged 5-second test bound (2.065 s, 2.113 s, and 1.969 s respectively).
 
 - 2026-08-24 — `npm --prefix C:\\Users\\Alex\\Documents\\GitHub\\kanmer\\.worktrees\\core-095 run test -w @kanmer/core` exited 0: 15 files / 310 tests passed in 55.96 s. `npm --prefix C:\\Users\\Alex\\Documents\\GitHub\\kanmer\\.worktrees\\core-095 run typecheck -w @kanmer/core` and `npm --prefix C:\\Users\\Alex\\Documents\\GitHub\\kanmer\\.worktrees\\core-095 run build -w @kanmer/core` both exited 0; `git diff --check` exited 0. The authoritative full rail remains for the clean PR Windows checkout because `plugin:check` deliberately refuses linked worktrees.
+
+---
+
+## Closeout — CORE-095
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/core-095`
+- [ ] `git branch -d <branch>` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

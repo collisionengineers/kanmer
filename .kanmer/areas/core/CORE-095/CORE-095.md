@@ -27,12 +27,12 @@ links:
 refs:
   - docs/functional/frd/FRD-006-typed-proof.md
 commits:
-  - f7942ec647c44753b8901dcbebf2755a6e041c1f
+  - c31544fc98fef186d3f60c1c0df6ee0a177182c9
 prs:
-  - 'https://github.com/collisionengineers/kanmer/pull/238'
+  - '238'
 archived: false
 created: '2026-08-24T14:39:17.215Z'
-updated: '2026-08-24T16:13:34.500Z'
+updated: '2026-08-24T16:14:16.793Z'
 ---
 
 ## What
@@ -50,3 +50,5 @@ Reproduce the Windows runner behavior and make core test execution deterministic
 - [ ] Any timeout adjustment is test-specific, justified, and retains a finite failure bound.
 
 ## Outcome
+
+Verified and closed through PR #238 (merged 2026-08-24T14:56:45Z; c31544fc98fe). The clean GitHub-origin merged-main verification at ef67c04 passed; no follow-up ticket is required.

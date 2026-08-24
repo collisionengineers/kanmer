@@ -9,8 +9,8 @@
 
 ## One preparation invocation
 
-- [ ] Create one freshly checked clean normal GitHub-origin clone from current protected `main` after DOC-023 Done; verify `apps/gui/release-notes.md` names 0.3.6 and no `release/v0.3.6` branch, `v0.3.6` tag, release PR, or GitHub Release exists.
-- [ ] Install locked dependencies with `npm ci --ignore-scripts` and bind only process-scoped `KANMER_ROOT=<canonical-board-root>`; do not copy/init/edit a board.
+- [x] Create one freshly checked clean normal GitHub-origin clone from current protected `main` after DOC-023 Done; verify `apps/gui/release-notes.md` names 0.3.6 and no `release/v0.3.6` branch, `v0.3.6` tag, release PR, or GitHub Release exists.
+- [x] Install locked dependencies with `npm ci --ignore-scripts` and bind only process-scoped `KANMER_ROOT=<canonical-board-root>`; do not copy/init/edit a board.
 - [ ] Run exactly one preparation command: `npm run release -- 0.3.6 --ticket CORE-099`. Do not dry-run, retry, hand-create a release branch, or manually alter generated artifacts.
 - [ ] Record the base SHA, all exits, script-generated branch/commit/PR/footer/diff, verification output, and clean-tree state. On any failure, preserve it and stop before retrying.
 

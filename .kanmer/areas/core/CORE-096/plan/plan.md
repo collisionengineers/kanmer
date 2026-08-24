@@ -18,17 +18,17 @@ Create a ticket-bound v0.3.4 release preparation PR from clean current main, obt
 
 ## Required changes
 
-1. Create an isolated clean clone at the exact current origin/main SHA and run the release script dry-run gate for 0.3.4.
-2. In that clone, run the preparation phase exactly once with --ticket CORE-096; let the script make only its version-manifest/artifact branch and PR.
-3. Record the preparation commit, PR number, exact head SHA, local verification exits, and script-generated changed-file set. Do not amend generated artifacts by hand.
-4. Obtain independent ticket/PR review; resolve every finding and ensure GitHub required PR checks pass. The author does not review or merge.
-5. After normal merge, create a new clean clone at the recorded merge commit and run only npm run release -- 0.3.4 --publish --release-commit <merged-sha> with a token supplied through the process environment.
-6. Observe the v0.3.4 tag release-verify job to a terminal result and independently run the release-asset verifier against the public release.
-7. Record sanitized evidence in this ticket. Append the specific green tag/asset facts to CORE-036 and the first-version facts to CORE-042 without treating either ticket as complete unless its own remaining checks pass.
+1. Derive accurate user-facing changes from commits after v0.3.3 and update apps/gui/release-notes.md so its top section names 0.3.4.\n2. Create an isolated clean clone at the exact current origin/main SHA and run the release script dry-run gate for 0.3.4.
+3. In that clone, run the preparation phase exactly once with --ticket CORE-096; let the script make only its version-manifest/artifact branch and PR.
+4. Record the preparation commit, PR number, exact head SHA, local verification exits, and script-generated changed-file set. Do not amend generated artifacts by hand.
+5. Obtain independent ticket/PR review; resolve every finding and ensure GitHub required PR checks pass. The author does not review or merge.
+6. After normal merge, create a new clean clone at the recorded merge commit and run only npm run release -- 0.3.4 --publish --release-commit <merged-sha> with a token supplied through the process environment.
+7. Observe the v0.3.4 tag release-verify job to a terminal result and independently run the release-asset verifier against the public release.
+8. Record sanitized evidence in this ticket. Append the specific green tag/asset facts to CORE-036 and the first-version facts to CORE-042 without treating either ticket as complete unless its own remaining checks pass.
 
 ## Expected files
 
-- The release script alone changes version-bearing manifests, lockfile, generated MCP/plugin artifacts, and the release branch/PR.
+- apps/gui/release-notes.md is manually updated with the verified 0.3.4 user-facing change summary.\n- The release script changes version-bearing manifests, lockfile, generated MCP/plugin artifacts, and the release branch/PR.
 - Ticket documents and HZN-007 durable run record hold sanitized execution evidence.
 - No manual source edit, board-worktree edit, DNS/tunnel change, or release-fixture rewrite is permitted.
 

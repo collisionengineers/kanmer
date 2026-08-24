@@ -3,7 +3,7 @@
 ## Preparation
 
 - [ ] Create a clean isolated clone at the recorded current-main SHA.
-- [ ] Run the exact 0.3.4 release dry-run gate and retain every exit.
+- [ ] Write accurate top-of-file 0.3.4 release notes from verified post-v0.3.3 changes.\n- [ ] Run the exact 0.3.4 release dry-run gate and retain every exit.
 - [ ] Run the preparation phase once with --ticket CORE-096.
 - [ ] Inspect the release branch diff and confirm it contains only script-generated release artifacts.
 - [ ] Record the PR number, head SHA, preparation commit, and local command exits.

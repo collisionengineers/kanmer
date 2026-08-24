@@ -85,7 +85,7 @@
 - [x] Retain separate fetched board worktree.
 - [x] Fetch PR head/base and sufficient history.
 - [x] Pass exact event head SHA to CLI.
-- [ ] Confirm board direct pushes do not trigger workflow.
+- [x] Confirm board direct pushes do not trigger workflow. The remote kanmer-board sync commit `c2b279fee76115320bcd2d510503916d269bd51e` has no `pr.yml` workflow run; GitHub returned an empty list for that branch.
 - [x] Confirm warnings annotate but keep job green.
 - [x] Confirm errors make job red.
 

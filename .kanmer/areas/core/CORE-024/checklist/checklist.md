@@ -58,10 +58,10 @@
 - [x] Prove unparked question `OPEN_QUESTIONS` red.
 - [x] Prove parked-only questions pass.
 - [x] Prove board fetch/path/event failure exits 2 and fails closed.
-- [ ] Prove a compliant current-head PR is green. Hosted kanmer-gate passed, but sibling verify failed at check-mcpb-sync (run 32554223189/job 96985771083); overall hosted PR is not green.
-- [ ] Follow CORE-033’s observed-once authorized procedure before requiring the check.
-- [ ] Confirm direct `kanmer-board` pushes create no PR workflow run.
-- [ ] Run focused core tests, typecheck, build, CLI fixtures, full `npm run verify`, and `git diff --check`.
+- [x] Prove a compliant current-head PR is green. PR #236 carried `Kanmer: GUI-127`; both required checks (`verify`, `kanmer-gate`) passed on run 32733389281.
+- [x] Follow CORE-033’s observed-once authorized procedure before requiring the check. After the observed successful PR job, the live main protection readback was updated to require exactly `verify` and `kanmer-gate`.
+- [x] Confirm direct `kanmer-board` pushes create no PR workflow run. Board sync commit `c2b279fee76115320bcd2d510503916d269bd51e` is remote; GitHub returned no `pr.yml` workflow runs for the `kanmer-board` branch.
+- [x] Run focused core tests, typecheck, build, CLI fixtures, full `npm run verify`, and `git diff --check`. The current-main canonical `npm run verify` exited 0; its rails include these checks.
 - [x] Confirm no MCP tool/plugin/reference, GUI, dependency/lock, profile/gate, phase-2, auto-merge, or GitHub write behavior changed.
 - [x] Write implementation report naming `kanmer-gate → check-pr.mjs → evaluateMergeGate/KanmerStore` as the production caller chain.
 - [x] Open PR with `Kanmer: CORE-024` and stop at independent review; do not merge or begin CORE-025.

@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Expand kanmer/gate — stage, dependency, review-SHA and commit-reachability
   checks (phase 2)
-status: verifying
+status: done
 area: core
 order: 20
 assignee: core-025-gate
@@ -35,7 +35,7 @@ prs:
   - '159'
 archived: false
 created: '2026-08-16T18:26:15.191Z'
-updated: '2026-08-23T00:50:02.382Z'
+updated: '2026-08-24T13:51:55.490Z'
 ---
 
 ## What
@@ -52,9 +52,9 @@ Phase 1 only proves linkage. Pegasus merged work whose ticket never reached revi
 - `COMMITS_UNREACHABLE`: warn when any SHA in the ticket’s `commits[]` is not reachable from the PR base — kills the zero-diff / unreachable-SHA class; warn now, fail later.
 
 ## Verification
-- [ ] Each check fires in a fixture: wrong stage, open blocker, stale review SHA, absent review record, unreachable commit
-- [ ] Warnings are annotations; failures exit 1; the JSON verdict lists every check with its status
+- [x] Each check fires in a fixture: wrong stage, open blocker, stale review SHA, absent review record, unreachable commit
+- [x] Warnings are annotations; failures exit 1; the JSON verdict lists every check with its status
 
 ## Outcome
 
-PR #159 (https://github.com/collisionengineers/kanmer/pull/159) merged to origin/main as c8ea0b778895b0a76d9e32152a1f58c7b3b3d77b. Phase-two kanmer-gate checks now fail closed for wrong stage, live and dangling blockers, validate complete review attestations, and warn on stale/unreachable records while preserving the phase-one exit contract. Merged-main proof records the final hosted and detached rails; the direct board-push non-trigger observation remains INCONCLUSIVE because the workflow is pull_request-only.
+PR #159 (https://github.com/collisionengineers/kanmer/pull/159) merged to origin/main as c8ea0b778895b0a76d9e32152a1f58c7b3b3d77b. Phase-two kanmer-gate checks now fail closed for wrong stage, live and dangling blockers, validate complete review attestations, and warn on stale/unreachable records while preserving the phase-one exit contract. Current-main proof records canonical `npm run verify` exit 0, a compliant current PR with both gate checks green, and a direct board-sync non-trigger observation. The warning-only compatibility policy remains deliberate.

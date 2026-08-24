@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Implement kanmer check-pr — ticket linkage and open-questions merge gate
   (phase 1)
-status: verifying
+status: done
 area: core
 order: 10
 assignee: core024-executor
@@ -34,7 +34,7 @@ prs:
   - '155'
 archived: false
 created: '2026-08-16T18:26:15.167Z'
-updated: '2026-08-23T00:50:02.069Z'
+updated: '2026-08-24T13:51:20.761Z'
 ---
 
 ## What
@@ -52,11 +52,11 @@ GitHub is the merge boundary, and today nothing ties a PR to its board record �
 - GHA job `kanmer-gate` added to the PR workflow ([[CORE-032]]).
 
 ## Verification
-- [ ] PR with no ticket reference fails `NO_TICKET`; footer and branch-prefix resolution both pass
-- [ ] Ticket with open unparked questions fails `OPEN_QUESTIONS`; parked-only questions pass
-- [ ] Board fetch failure exits 2 and the job fails
-- [ ] `kanmer-gate` green on a compliant PR
+- [x] PR with no ticket reference fails `NO_TICKET`; footer and branch-prefix resolution both pass
+- [x] Ticket with open unparked questions fails `OPEN_QUESTIONS`; parked-only questions pass
+- [x] Board fetch failure exits 2 and the job fails
+- [x] `kanmer-gate` green on a compliant PR
 
 ## Outcome
 
-PR #155 (https://github.com/collisionengineers/kanmer/pull/155) merged to origin/main as 0c5ed84ed0128aed6c8a60bec265a8dcb589061a. The phase-1 read-only merge gate is live in the production chain `kanmer-gate → check-pr.mjs → evaluateMergeGate → KanmerStore`. Merged-main proof is recorded in `proof/proof.md`; hosted verify passed after MCP-043 repaired the generated plugin artifact. Local stale-resolution and generated-byte parity failures, plus live GitHub/protection evidence, remain explicitly preserved as environment-sensitive or INCONCLUSIVE boundaries.
+PR #155 (https://github.com/collisionengineers/kanmer/pull/155) merged to origin/main as 0c5ed84ed0128aed6c8a60bec265a8dcb589061a. The phase-1 read-only merge gate is live in the production chain `kanmer-gate → check-pr.mjs → evaluateMergeGate → KanmerStore`. Current-main proof now records canonical `npm run verify` exit 0, a compliant PR #236 with both checks green, direct board-sync no-run observation, and the protection update that now requires the observed `verify` and `kanmer-gate` checks.

@@ -1123,3 +1123,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T19:35Z — CORE-097 is Done: merged PR #245 preserves contents:read and changes tag verification to explicit --publish never; full merged-main rail and local 8/8 updater check PASS, no publisher credential/tag/release action. CORE-096 v0.3.4 recovery now has an explicit immutable-tag boundary: v0.3.4 already exists at the failed release commit, public release is absent, and scripts/release.mjs creates/pushes the version tag unconditionally. Retagging is prohibited by the ticket plan; safe recovery requires an explicitly approved successor release version/ticket, not a forced tag or manual asset upload.
+
+
+- 2026-08-24T20:33Z — Operator explicitly approved v0.3.5 as the successor release. [[CORE-098]] now owns the immutable-tag-safe publication path: v0.3.4 stays unchanged, no manual asset repair or retagging is permitted, and the local governed publisher runs only after the generated v0.3.5 release PR merges. [[DOC-022]] blocks CORE-098 and owns only its accurate release-notes entry; it will stop for independent review.

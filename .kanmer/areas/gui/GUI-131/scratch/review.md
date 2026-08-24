@@ -1,35 +1,37 @@
 ---
 kind: review-attestation
 pr: "248"
-head_sha: "4c2d29e62bf74c053a58898ed14d7f06a838a3a8"
-verdict: needs-changes
+head_sha: "64fe347143478f4612e18287f94a471f2f8e0d4a"
+verdict: pass
 reviewer: "codex-root-independent-reviewer"
 independent: true
-plan_hash: "bb2c1fb3f558d422"
-ticket_updated: "2026-08-24T21:39:35.756Z"
+plan_hash: "0e763a425d1934f5"
+ticket_updated: "2026-08-24T21:47:37.904Z"
 findings:
   - id: "REV-001"
     severity: major
-    summary: "AGENTS.md does not document the new publish-mode pre-tag GUI build and failure boundary."
-    disposition: open
+    summary: "AGENTS.md did not document the new publish-mode pre-tag GUI build and failure boundary."
+    disposition: fixed
 ---
 
-# Independent review — GUI-131
+# Independent final review — GUI-131
 
 ## Decision
 
-NEEDS CHANGES. The source control-flow change and regression test correctly address the clean-publisher failure, but the repository’s contributor guidance must change in the same PR because this establishes a new release command sequence and failure boundary.
+PASS. This is an independent review by a separately assigned agent-role from the GUI-131 author and is bound to the exact PR head `64fe347143478f4612e18287f94a471f2f8e0d4a`.
 
-## Confirmed implementation
+## Scope and implementation
 
-The exact head changes only `scripts/release.mjs` and `scripts/release-flow.test.mjs`. The synchronous existing GUI build is inside publish mode after its merged-manifest/reachability preconditions and before tag creation/tag push; the source-order test proves build < tag < tag push. It preserves one Electron Builder package and does not touch existing tags, release state, credentials, workflows, or manual recovery behavior.
+The source change keeps the shared verification and publish preconditions intact, then synchronously invokes the existing GUI build before any immutable tag creation or tag push. This means a build failure stops before the tag, release, Electron Builder publisher, asset handling, and later publication checks. It retains the existing single Electron Builder package and does not alter existing tags/releases, workflows, credentials, Electron configuration, or asset-repair semantics.
 
-The focused test, script tests, typecheck, fresh normal-clone authoritative verification, and required hosted checks passed. The initial gate failure was the recorded pre-Review snapshot and its rerun passed.
+The focused test explicitly enforces build < tag < tag push and verifies the command is synchronous without running release actions. The clean-clone authoritative rail, focused test, scripts test suite, typecheck, managed AGENTS check, docs verification, and required hosted checks all pass.
 
-## Finding
+## Finding disposition and threads
 
-- **REV-001 — major, open:** AGENTS.md must describe that local publish mode builds the GUI before the immutable tag is created/pushed, and that a GUI build failure stops before a tag/release can be created. This is required by the repository rule for PRs that change commands or conventions. Update the ticket plan to include this source-document change, then update AGENTS.md in the same PR, run the applicable documentation/source checks, and request a fresh exact-head review. Do not alter release behavior beyond this established build prerequisite, retry release, tag, publish, or merge.
+- **REV-001 — fixed:** AGENTS.md now documents the exact protected-main/local publish order, including GUI build before immutable tag creation/push and the fact that a GUI-build failure creates neither a tag nor a GitHub Release. The guidance is outside the managed block, which the dedicated check confirms remains unchanged.
 
-## Threads
+The automated P1 thread is resolved with a concrete author disposition. There are no open GitHub review threads, comments, blocker/major findings, or source-scope deviations.
 
-One automated GitHub P1 thread is unresolved and is represented by REV-001. No other threads or comments require action.
+## Residual risk
+
+The fix has not retried either failed release: v0.3.4 and v0.3.5 remain immutable failed-release records. A separately governed successor release is required after merged-main proof.

@@ -1111,3 +1111,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T18:28Z — SKILL-033 PR #243 now has both required hosted checks PASS at 6c4432f. A distinct verifier agent is performing its exact-head review and may normal-merge under the clarified same-account role-independence policy. No source or protected-branch configuration beyond the PR is being changed.
+
+
+- 2026-08-24T18:31Z — SKILL-033 independently reviewed and normal-protected squash-merged PR #243 as 2db5989682d6885612d62af4e5da8dafe013a33f. It is Verifying; proof is assigned separately. This makes shared-GitHub-credential role independence explicit in both the review skill and contributor guidance. No GitHub account/branch-protection/workflow bypass was used.

@@ -16,10 +16,16 @@ test("cloudflared config permits one exact HTTPS hostname and loopback MCP origi
     `credentials-file: ${JSON.stringify(options.credentialsFile)}`,
     "ingress:",
     "  - hostname: kanmer.example.test",
-    "    service: http://127.0.0.1:43123/mcp",
+    "    service: http://127.0.0.1:43123",
     "  - service: http_status:404",
     "",
   ].join("\n"));
+});
+
+test("cloudflared ingress keeps the public MCP path while using an IPv6 loopback origin", () => {
+  const ipv6Target = { hostname: options.hostname, endpoint: "http://[::1]:43123/mcp" };
+  assert.deepEqual(validateCloudflaredTunnel(options, ipv6Target), { hostname: options.hostname, endpoint: "http://[::1]:43123/mcp" });
+  assert.match(cloudflaredConfig(options, ipv6Target), /service: http:\/\/\[::1\]:43123\n/);
 });
 
 test("cloudflared config fails closed for broad public routes and non-loopback origins", () => {

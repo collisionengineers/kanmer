@@ -2,7 +2,7 @@ Cloudflared is the first supported tunnel adapter. This appendix covers a locall
 
 ## Supported named-tunnel mode
 
-Provide an absolute `cloudflared` executable, a UUID-shaped tunnel id, a protected credentials-file reference, and one exact public hostname. The generated route maps that hostname to the local authenticated `/mcp` origin and ends with a terminal not-found rule. The child runs without shell interpolation and without automatic updates. Readiness and metrics remain local and bounded. The credentials file is validated before start and is never copied into project data or diagnostics.
+Provide an absolute `cloudflared` executable, a UUID-shaped tunnel id, a protected credentials-file reference, and one exact public hostname. The generated route maps that hostname to the loopback origin and ends with a terminal not-found rule. Cloudflared preserves the public request path, so a public `/mcp` request reaches the authenticated loopback `/mcp` endpoint without embedding `/mcp` in the provider's `service` URL. The child runs without shell interpolation and without automatic updates. Readiness and metrics remain local and bounded. The credentials file is validated before start and is never copied into project data or diagnostics.
 
 ## Operator provisioning
 

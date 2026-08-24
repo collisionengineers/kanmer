@@ -57,9 +57,9 @@ access merely because a project names a source.
 ### Windows connection and remote-access setup is more resilient
 
 Provider registration now has a safer lifecycle on Windows, including handling
-transient rename locks. Tunnel setup also reports an origin-path and readiness
-problem directly instead of leaving a connected-looking route that cannot serve
-the MCP endpoint.
+transient rename locks. Tunnel setup now generates the correct origin route and
+has fixed delayed-readiness polling, reducing cases where a route appears
+connected but cannot serve the MCP endpoint.
 
 ## 0.3.3
 

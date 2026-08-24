@@ -1126,3 +1126,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T20:33Z — Operator explicitly approved v0.3.5 as the successor release. [[CORE-098]] now owns the immutable-tag-safe publication path: v0.3.4 stays unchanged, no manual asset repair or retagging is permitted, and the local governed publisher runs only after the generated v0.3.5 release PR merges. [[DOC-022]] blocks CORE-098 and owns only its accurate release-notes entry; it will stop for independent review.
+
+
+- 2026-08-24T20:55Z — CORE-098’s first v0.3.5 preparation invocation exited 1 before any release mutation because its fresh normal clone omitted the required process-scoped canonical-board binding: build, Core 310/310, and GUI 468/468 passed; MCP HTTP then failed 9/102 without a discoverable board. The failed output and zero-mutation remote census are retained. Plan/checklist now authorize one corrected fresh-clone invocation with KANMER_ROOT bound only for the test process; any post-correction failure is a hard stop. v0.3.4 remains untouched and v0.3.5 still has no tag/release.

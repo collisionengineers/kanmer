@@ -17,7 +17,7 @@ After [[DOC-022]] has independently merged its v0.3.5 release-notes change, prep
    - `git status --porcelain` is empty;
    - its checked-out branch is `main`;
    - no `release/v0.3.5` branch or `v0.3.5` tag exists;
-   - the canonical board is only supplied through configuration if a test needs it; do not create or edit a board in the clone;
+   - before running the preparation command, set `$env:KANMER_ROOT` to the existing canonical board root for that process if its MCP HTTP tests need a board; do not create, copy, or edit a board in the clone;
    - dependencies are installed from the lockfile without changing it.
 
 Until every condition holds, record the unmet precondition and stop. In particular, do not run a dry-run, version bump, tag, or packaging attempt early.
@@ -35,6 +35,12 @@ Until every condition holds, record the unmet precondition and stop. In particul
 4. Capture sanitized command exits, fresh-main SHA, generated commit/head SHA, PR URL/number, exact changed-file set, `git diff --check`, and release-script output. The diff must contain only the script-generated release-bearing manifests, lockfile, and regenerated artifacts documented in `files`. Any unrelated change, failed rail, existing release branch, or unexpected output is a stop-and-report condition, not a scope expansion.
 
 5. Write the implementation report, move only to Review, and wait for an independent reviewer of the exact PR head. The author does not review, merge, alter branch protection, or use a bypass.
+
+## Approved pre-mutation configuration correction
+
+The initial preparation invocation on 2026-08-24 exited 1 in the MCP HTTP rail before the release script created a release branch, version commit, tag, PR, package, publisher action, or public release. Build, Core 310/310, and GUI 468/468 had already passed; 9 of 102 MCP HTTP tests then failed because the fresh normal clone had no discoverable board and the process did not receive `KANMER_ROOT`. The full failed output and zero-mutation remote/clone census are retained in `scratch/execution` and the failed checklist entry remains unticked.
+
+This is a precondition omission, not a source or release failure. It authorizes **one** corrected preparation invocation in a newly rechecked clean normal clone, after setting `$env:KANMER_ROOT` to the existing canonical board root for that process before running the same command. This binding supplies test context only; it does not copy, initialize, or edit a board in the clone. No other retry is authorized: a failure after this corrected configuration remains a hard stop.
 
 ## Post-merge publication and evidence
 

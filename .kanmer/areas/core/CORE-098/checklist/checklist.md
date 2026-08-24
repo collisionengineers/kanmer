@@ -2,11 +2,12 @@
 
 ## Hold and preparation
 
-- [ ] Wait for [[DOC-022]] to merge normally; record its PR and merge SHA and confirm merged `apps/gui/release-notes.md` names 0.3.5.
-- [ ] Read fresh GitHub `main` and create a new clean **normal clone** at that exact SHA; prove it is clean/on `main` and that `release/v0.3.5` and `v0.3.5` do not already exist.
-- [ ] Install locked dependencies in that clone without changing the lockfile or creating a new board.
-- [ ] Run exactly one preparation command: `npm run release -- 0.3.5 --ticket CORE-098`.
-- [ ] Record all preparation exits, fresh-main SHA, generated commit/head, PR, script-generated changed-file set, and `git diff --check`; stop on any failure or unexpected diff.
+- [x] Wait for [[DOC-022]] to merge normally; its PR #246 merged at `e63a1090bfbda89f473a422817629eaadd1ed264`, with merged proof confirming `apps/gui/release-notes.md` names 0.3.5.
+- [x] Read fresh GitHub `main` and create a new clean **normal clone** at that exact SHA; it was clean/on `main` and neither `release/v0.3.5` nor `v0.3.5` existed.
+- [x] Install locked dependencies in that clone without changing the lockfile or creating a new board: `npm ci --ignore-scripts` exit 0.
+- [ ] Initial preparation invocation (without canonical-board binding) exited 1 pre-mutation in the MCP HTTP rail; retained in `scratch/execution` and intentionally not counted as successful preparation.
+- [ ] Run the one authorized corrected preparation command from a newly rechecked clean clone with process-scoped `KANMER_ROOT` bound to the existing canonical board: `npm run release -- 0.3.5 --ticket CORE-098`. **Attempted once and failed exit 1 before any release mutation because the boardless normal clone lacked `KANMER_ROOT`; no retry is authorized.**
+- [x] Record all preparation exits, fresh-main SHA, generated commit/head, PR, script-generated changed-file set, and `git diff --check`; the failure record confirms no generated commit/PR existed, no release branch/tag was created, and the clone remained clean.
 - [ ] Write the implementation report and enter Review only after the generated release PR is open.
 
 ## Independent review and merge

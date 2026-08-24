@@ -75,7 +75,11 @@ jobs:
         run: npm run verify
 
       - name: Build and check the packaged updater
-        run: npm run dist:check
+        run: |
+          npm run build
+          npm run build -w @kanmer/gui
+          npm run dist -w @kanmer/gui -- --publish never
+          node scripts/check-updater-package.mjs
 
       - name: Verify published release assets
         env:

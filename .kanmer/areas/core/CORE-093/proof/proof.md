@@ -20,3 +20,9 @@ Run in `C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\core-093` detached at `
 - Body-only edit of still-open PR #234 preserved the same head `f52f740661eff73ffaf21fcaefff8a938a3b2ee2` and created run `32720952512`: `kanmer-gate` PASS (49s); `verify` skipped. This proves the scoped trigger refreshes the body-derived gate without rerunning the full verification rail.
 
 No provider configuration, secrets, or board policy semantics changed.
+
+## Closeout record
+
+- Merged PR: [#235](https://github.com/collisionengineers/kanmer/pull/235)
+- Merge date: 2026-08-24
+- No deployment is tracked for this repository-only CI remediation.

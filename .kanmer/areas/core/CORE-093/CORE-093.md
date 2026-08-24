@@ -2,7 +2,7 @@
 id: CORE-093
 type: ticket
 title: Rerun the merge gate when a PR body is edited
-status: verifying
+status: done
 area: core
 assignee: codex
 profile: fix
@@ -10,9 +10,7 @@ stageEntered:
   preparing: '2026-08-24T10:02:32.249Z'
   review: '2026-08-24T10:10:53.763Z'
   verifying: '2026-08-24T11:10:46.878Z'
-taken_at: '2026-08-24T10:03:32.106Z'
-branch: core-093-pr-body-edit-trigger
-worktree: .worktrees/core-093
+  done: '2026-08-24T11:16:55.837Z'
 labels:
   - ci
   - merge-gate
@@ -29,11 +27,12 @@ refs:
   - docs/architecture/adr/ADR-0011-gates-may-read-open-questions.md
 commits:
   - 409aa9015af44bd3cb72a126a5f8a0f7972dbe9b
+  - 2146887195083de128ff54e38a16c1310ef5a1a2
 prs:
   - '235'
 archived: false
 created: '2026-08-24T09:59:47.119Z'
-updated: '2026-08-24T11:10:46.878Z'
+updated: '2026-08-24T11:17:54.822Z'
 ---
 
 ## What
@@ -53,3 +52,7 @@ The gate resolves its ticket from the `Kanmer:` footer in the PR body. Without a
 ## Scope
 
 Follow-up remediation for [[CORE-024]] and [[CORE-092]]. This does not change the gate’s ticket policy or its executable.
+
+## Outcome
+
+Merged via [PR #235](https://github.com/collisionengineers/kanmer/pull/235) on 2026-08-24. The scoped body-edit gate behavior shipped as planned; no follow-up ticket was created.

@@ -1,0 +1,7 @@
+## 2026-08-24 disposable release-fixture attempt — INCONCLUSIVE
+
+- A public disposable repository was created from current merged main only to exercise the deliberately incomplete-release path. It used an empty draft release and a temporary `v0.3.3` tag; no production repository, tag, release, or source branch was changed.
+- First hosted run `32751023881` stopped during `npm run verify` before packaging/assets: one release-notes unit test expected the production repository URL but the copied fixture correctly rendered its own URL.
+- A second fixture-only attempt supplied the production identity to the verification step; hosted run `32751403636` stopped at the same one-test assertion before package/assets. The source test obtains the checkout repository identity directly, so this cannot be corrected through that environment value.
+- Therefore neither run reached the intended asset-verifier failure; they are not evidence for the required negative-release acceptance check. The behavior is a fixture portability limitation, not a production CI regression (current production merged-main verification is green).
+- Draft release and temporary tag were deleted successfully. Repository deletion was attempted but GitHub rejected it because the authenticated token lacks the `delete_repo` scope; the otherwise empty disposable repository remains for a human to delete or for a later authorized token refresh. No secret is recorded.

@@ -1117,3 +1117,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T18:51Z — CORE-096 publication failed before GitHub Release/assets: v0.3.4 tag is pushed and release-verify is in progress, but Electron Builder rejected app.asar because its configured out/main/index.js entry was absent; updater-package check then found no release manifest/incomplete resources. Public release lookup is absent. New [[GUI-131]] blocks CORE-096 and owns only this packaging remediation; it must not retag, manually upload, or change release semantics. The full failure and focused MCP-suite retry evidence are in CORE-096 scratch.
+
+
+- 2026-08-24T18:57Z — Tag run 32764694871 failure was isolated: GitHub Actions omitted GH_TOKEN for Electron Builder’s implicit packaged update publish. New CORE-097 exclusively owns safe release-verification publisher authentication and blocks CORE-096. GUI-131 fresh local/tag evidence disproved its original app.asar trigger (main entry and updater check are healthy); it is being archived rather than implemented. v0.3.4 remains a tag with no public release/assets, and no retag/manual upload is allowed.

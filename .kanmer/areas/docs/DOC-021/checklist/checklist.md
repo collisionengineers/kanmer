@@ -12,20 +12,20 @@
 
 ## Review and merge
 
-- [ ] Obtain independent review of the exact head.
+- [x] Obtain independent review of the exact head.
 - [x] Resolve required GitHub checks; any reviewer finding remains to be dispositioned.
-- [ ] Merge via normal protected-main flow; record merge SHA for CORE-096.
-- [ ] Write merged-main proof and close out DOC-021.
+- [x] Merge via normal protected-main flow; record merge SHA for CORE-096.
+- [x] Write merged-main proof and close out DOC-021.
 
 ---
 
 ## Closeout — DOC-021
 
-- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
-- [ ] proof.md finalised (PR URL + merge date appended)
-- [ ] Moved to final stage
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/doc-021`
-- [ ] `git branch -d DOC-021-release-notes` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] PR merge verified (`gh pr view --json state,mergedAt`).
+- [x] proof.md finalised (PR URL + merge date already present).
+- [x] Moved to final stage.
+- [x] Outcome recorded in ticket body (PR link, merge SHA, and follow-up disposition).
+- [x] Removed the unregistered, clean `.worktrees/doc-021` leftover via a path-scoped Git cleanup after a dry run identified only that directory.
+- [x] Local `DOC-021-release-notes` branch was already absent; deleted the merged remote branch.
+- [x] Ran `git fetch --prune origin` and `git worktree prune`.
+- [x] `take_ticket action: "release"`

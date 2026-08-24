@@ -2,12 +2,13 @@
 id: CORE-096
 type: ticket
 title: 'Prepare, publish, and validate v0.3.4 release'
-status: implementing
+status: review
 area: core
 assignee: codex-release-096
 profile: chore
 stageEntered:
   preparing: '2026-08-24T16:50:52.591Z'
+  review: '2026-08-24T18:27:19.603Z'
 taken_at: '2026-08-24T16:54:50.921Z'
 branch: release/v0.3.4
 worktree: .worktrees/core-096
@@ -20,9 +21,13 @@ links: []
 blocks:
   - CORE-036
   - CORE-042
+commits:
+  - 03eb9f49e46a3d6961054d7e1eb880bc01790f30
+prs:
+  - '244'
 archived: false
 created: '2026-08-24T16:50:29.723Z'
-updated: '2026-08-24T16:54:50.921Z'
+updated: '2026-08-24T18:27:19.603Z'
 ---
 
 ## What

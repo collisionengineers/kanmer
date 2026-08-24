@@ -1105,3 +1105,9 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T18:15Z — DOC-021 merged-main verification PASS on be15545a: core build, focused release-notes test, merge diff, wording inspection, and worktree cleanliness passed. Proof was written and ticket moved Verifying→Done; closeout is deferred while release preparation is active. CORE-096 now runs its one corrected preparation invocation from a separate clean checkout at be15545a; the first attempt on a pre-created feature branch safely exited before mutation and is retained.
+
+
+- 2026-08-24T18:27Z — CORE-096 release preparation completed after two preserved pre-mutation checkout-correction refusals. PR #244 is Review at exact commit 03eb9f49e46a3d6961054d7e1eb880bc01790f30; diff is limited to the eight release-script-generated version/plugin/lock artifacts and full local release gate PASS. Hosted checks and independent review/normal merge are pending. No tag, release asset, public release, or publication action has occurred.
+
+
+- 2026-08-24T18:28Z — SKILL-033 PR #243 now has both required hosted checks PASS at 6c4432f. A distinct verifier agent is performing its exact-head review and may normal-merge under the clarified same-account role-independence policy. No source or protected-branch configuration beyond the PR is being changed.

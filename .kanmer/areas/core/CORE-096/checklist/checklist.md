@@ -7,11 +7,11 @@
 - [x] Bind the existing canonical board through KANMER_ROOT for isolated-clone test discovery.
 - [x] Run the exact 0.3.4 release dry-run gate and retain every exit.
 - [x] Refresh the preparation clone from DOC-021's merged main and confirm it is clean.
-- [ ] Run the preparation phase once with --ticket CORE-096.
-- [ ] Inspect the release branch diff and confirm it contains only script-generated release artifacts.
-- [ ] Record the PR number, head SHA, preparation commit, and local command exits.
-- [ ] Run git diff --check and the release script complete verification gate in the preparation clone.
-- [ ] Write the post-implementation report and move to Review.
+- [x] Run the preparation phase once with --ticket CORE-096.
+- [x] Inspect the release branch diff and confirm it contains only script-generated release artifacts.
+- [x] Record the PR number, head SHA, preparation commit, and local command exits.
+- [x] Run git diff --check and the release script complete verification gate in the preparation clone.
+- [x] Write the post-implementation report and move to Review.
 
 ## Independent review and merge
 

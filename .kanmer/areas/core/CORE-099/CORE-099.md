@@ -2,10 +2,13 @@
 id: CORE-099
 type: ticket
 title: Publish and validate the v0.3.6 successor release
-status: backlog
+status: preparing
 area: core
+order: 20
 assignee: ''
 profile: chore
+stageEntered:
+  preparing: '2026-08-24T22:05:45.609Z'
 labels:
   - release
   - verification
@@ -23,7 +26,7 @@ refs:
   - docs/functional/frd/FRD-021-auto-update.md
 archived: false
 created: '2026-08-24T22:04:47.134Z'
-updated: '2026-08-24T22:04:47.134Z'
+updated: '2026-08-24T22:05:45.609Z'
 ---
 
 ## Why

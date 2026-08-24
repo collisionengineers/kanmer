@@ -1138,3 +1138,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T21:28Z — Read-only tag workflow 32779200928 for v0.3.5 confirms the split: validate, authoritative rail, and non-publishing package/updater checks passed; public asset verification failed because no GitHub Release/assets exist after publisher failure. GUI-131 research identified publisher-mode source orchestration as the cause (GUI output not built before tag/publish). GUI-131 is assigned to repair that pre-tag build guarantee with a regression test; no release retry is allowed and a new successor record will be required after merge/proof.
+
+
+- 2026-08-24T21:52Z — GUI-131 remediation PR #248 independently passed after its AGENTS.md P1 documentation fix and resolved review thread, then normal-protected squash-merged as 3abef518bedbe79647070a84038779644fbc0fa2. The source now builds GUI synchronously before any publish-mode immutable tag/push; no failed release was retried. GUI-131 is Verifying for safe merged-main proof/closeout only. A future successor release must be separately ticketed after that proof.

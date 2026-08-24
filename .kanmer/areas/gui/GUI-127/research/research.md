@@ -22,3 +22,9 @@ The narrow fix should make teardown asynchronous and bounded, with a hook timeou
 - `apps/gui/src/main/kanmerGit.ts` — Git subprocess helper and board-worktree operations.
 - GUI-085 plan/proof — prior scoped-timeout decision and evidence boundary.
 - Local command: `npm run verify` (exit 1 on GUI cleanup); `Get-Process git` (none) and inspected OS-temp `kanmer-git-*` roots.
+
+## Scope amendment — 2026-08-24
+
+A clean current-main `npm run verify` worktree reproduced the same `afterEach` default-timeout plus `EPERM` deletion failure in `apps/gui/src/main/index.sync.test.ts`. That file creates the same kind of disposable local bare-remote/source/worktree fixture and tears it down with the same synchronous `rmSync(... maxRetries: 3)` pattern. It is therefore the same real-Git fixture-lifecycle defect and belongs in this ticket.
+
+The same full-suite run also exposed a separate atomic-settings rename `EPERM` in `settings.test.ts`; that file does not create a real Git fixture and remains out of scope. Its failure will be tracked separately. The isolated `kanmerGit.test.ts` run was 48/48 PASS after the cleanup change; the full-suite run then showed one existing concurrent-orphan assertion failure, which remains to be re-evaluated after the companion cleanup change.

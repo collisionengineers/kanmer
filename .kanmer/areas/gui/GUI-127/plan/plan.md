@@ -42,3 +42,9 @@ This is preferred over a global Vitest timeout because only this real filesystem
 ## Stop condition
 
 Stop with a focused test-fixture-only PR, post-implementation report, local evidence, and hosted Windows result. Do not change production board logic, merge the PR, or treat other tickets' external verification conditions as met.
+
+## Scope amendment — companion real-Git fixture
+
+Current-main full-suite evidence found the same synchronous cleanup hook in `apps/gui/src/main/index.sync.test.ts`. Extend steps 2–4 to that companion file: after clearing its owned sync timer and test context, await the same bounded removal, assert the exact fixture root is absent, and give the hook the scoped real-Git timeout. Preserve all application/mock assertions. This is the same defect class, not a new product feature.
+
+Do not address `settings.test.ts` here: its fixed-path atomic write rename failure is a separate non-Git fixture issue and requires its own ticket.

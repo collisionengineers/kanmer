@@ -24,3 +24,11 @@
 
 - Production board/worktree behavior, Cloudflare/OpenAI tunnelling, GitHub branch protection, and the historical migration fixture required by CORE-022.
 - Removing pre-existing temporary directories not created by this ticket's controlled test runs.
+
+## Scope amendment — same fixture lifecycle
+
+| Path | Change | Risk / guardrail |
+| --- | --- | --- |
+| `apps/gui/src/main/index.sync.test.ts` | Replace the synchronous real-Git fixture removal with the same awaited bounded cleanup and scoped hook timeout; retain the existing timer/context cleanup before removal. | Do not change mocked Electron behavior, application settings persistence, or production sync logic. |
+
+`apps/gui/src/main/settings.test.ts` is inspect-only and out of scope: its atomic-settings rename failure is a distinct non-Git test fixture issue.

@@ -29,3 +29,9 @@
 ## Closeout
 
 - [ ] Hand the PR to independent review; do not self-merge.
+
+## Scope amendment — companion fixture
+
+- [ ] Apply the same bounded real-Git cleanup to `index.sync.test.ts`, preserving its timer/context teardown.
+- [ ] Run `index.sync.test.ts` in isolation and confirm its controlled fixture roots are removed.
+- [x] Keep the unrelated `settings.test.ts` atomic-write failure out of GUI-127 scope.

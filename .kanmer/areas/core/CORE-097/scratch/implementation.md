@@ -13,3 +13,7 @@
 5. Documented alternate-output retry: GUI build plus Electron Builder `--win --publish never --config.directories.output=release-core097` exited 0; `node scripts/check-updater-package.mjs --out apps/gui/release-core097` passed all 8 checks. Electron Builder output showed the explicit `--publish never` command and no upload task.
 
 Pending: commit the reviewed diff and run the clean GitHub-origin normal-clone `npm run verify` at that exact commit.
+
+### Authoritative normal-clone verification
+
+A fresh clone from `https://github.com/collisionengineers/kanmer.git`, branch `core-097-nonpublishing-release-verify`, resolved commit `a029e5e5deddb197f703c3fede4ab1b2b49a9bbc`. After `npm ci --ignore-scripts`, `npm run verify` exited 0. Its rails included core 310/310, GUI 468/468, MCP HTTP 102/102, script tests 99/99, all-workspace typecheck, docs, MCP smokes, skill/managed-block validation, and plugin synchronization.

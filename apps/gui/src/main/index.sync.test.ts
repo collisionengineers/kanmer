@@ -43,7 +43,9 @@ vi.mock("electron", () => ({
     setApplicationMenu: vi.fn(),
   },
   nativeTheme: electronMocks.nativeTheme,
-  Notification: class Notification {},
+  Notification: class Notification {
+    static isSupported(): boolean { return false; }
+  },
   screen: { getAllDisplays: vi.fn(() => [{ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }]) },
   shell: {
     openExternal: vi.fn(),

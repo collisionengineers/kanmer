@@ -17,4 +17,4 @@
 - [x] cd out of worktree; `git worktree remove .worktrees/core-093`
 - [x] `git branch -d core-093-pr-body-edit-trigger` (`-D` if squash/rebase-merged)
 - [x] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] `take_ticket action: "release"`

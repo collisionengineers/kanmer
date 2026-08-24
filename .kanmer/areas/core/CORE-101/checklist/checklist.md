@@ -9,9 +9,9 @@
 
 ## Execution after explicit authorization and DOC-024 Done
 
-- [ ] Re-read DOC-024/CORE-101 items, links, gates, documents, HZN-007 context, and current protected `main`; confirm DOC-024 is Done and CORE-101 is unblocked before taking the ticket.
-- [ ] Create one fresh clean GitHub-origin normal clone for preparation; prove clean exact `main`, 0.3.6 current manifests, 0.3.7 notes, canonical board binding, and absence of the v0.3.7 branch/tag/release/PR.
-- [ ] Run exactly once with process-scoped `KANMER_ROOT`: `npm run release -- 0.3.7 --ticket CORE-101`; record its exact exit, generated branch/commit/PR/footer/diff/checks, or preserve a failure and stop.
+- [x] Re-read DOC-024/CORE-101 items, links, gates, documents, HZN-007 context, and current protected `main`; confirmed DOC-024 Done at `6e8be9f522f9ba622c1d0c5c5e5604ad5fc2a789` and CORE-101 unblocked before take.
+- [x] Create one fresh clean GitHub-origin normal clone for preparation; proved clean exact `main` at `6e8be9f522f9ba622c1d0c5c5e5604ad5fc2a789`, 0.3.6 current manifests, 0.3.7 notes, canonical board binding, and absence of the v0.3.7 branch/tag/release/PR.
+- [x] Run exactly once with process-scoped `KANMER_ROOT`: `npm run release -- 0.3.7 --ticket CORE-101` exited 0; generated `release/v0.3.7`, `839fa59b2f28e343ff809af8e177c2cd09566065`, and PR #253 with `Kanmer: CORE-101`. Initial required-check snapshot is recorded in the post-implementation report.
 - [ ] Obtain independent exact-head review and terminal checks; merge only through the normal protected-main path and record the full merge SHA. The author neither reviews nor merges.
 - [ ] Create one second fresh clean GitHub-origin normal clone at merged main; prove manifest/reachability/tag/release preconditions and bind canonical `KANMER_ROOT`.
 - [ ] Run exactly once with the authorized credential only in that process: `npm run release -- 0.3.7 --publish --release-commit <full-normal-merge-sha>`; record its exact exit or preserve a failure and stop.

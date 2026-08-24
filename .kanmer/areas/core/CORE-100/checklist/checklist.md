@@ -1,0 +1,21 @@
+# Checklist — CORE-100
+
+## Planning record
+
+- [x] Read the complete CORE-100 ticket, resolved gates, linked [[CORE-099]] and [[GUI-131]], [[HZN-007]] context, FRD-021, and the exact retained CORE-099 publisher result.
+- [x] Compare the strict release verifier/release call path, Electron Builder configuration/version/schema, updater-package checks, existing verifier tests, and read-only public v0.3.6 asset inventory plus `latest.yml`.
+- [x] Resolve that alias acceptance is unsafe: the manifest names the absent hyphen installer, so dotted v0.3.6 assets cannot constitute a complete updater release.
+- [x] Record a forward-only source/test/documentation plan; retain v0.3.4, v0.3.5, and v0.3.6 failure/publication evidence untouched.
+
+## Future implementation — not authorized in this planning pass
+
+- [ ] Take CORE-100 only after an authorized boundary crossing, in its own recorded worktree and branch based on current `origin/main`.
+- [ ] Add `artifactName: "${productName}-Setup-${version}.${ext}"` under Electron Builder `win:`; do not alter Electron packaging dependencies, workflows, credentials, release publisher code, or existing tags/releases/assets.
+- [ ] Preserve all functional verifier logic and integrity checks; update only explanatory text in `scripts/verify-release-assets.mjs` if required by the explicit-name contract.
+- [ ] Add a configuration-contract regression and the precise v0.3.6 mixed-public-inventory regression in `scripts/verify-release-assets.test.mjs`; do not weaken existing assertions.
+- [ ] Update only the human-owned release guidance in `AGENTS.md` with the explicit hyphenated installer and manifest/upload agreement; leave the managed Kanmer block unchanged.
+- [ ] Run and record `node --test scripts/verify-release-assets.test.mjs`, `node --test scripts/check-updater-package.test.mjs`, `npm run test:scripts`, `npm run verify:agents-block`, `npm run verify:docs`, and `npm run dist:check`.
+- [ ] Run the authoritative `npm run verify` from a normal clean checkout before opening a PR; record the exact head and every exit code.
+- [ ] Read-only recheck v0.3.6 against the strict verifier and retain the expected missing-manifest-named-installer FAIL (or an exact INCONCLUSIVE); no upload, repair, tag, release, retag, retry, or publisher invocation.
+- [ ] Write the post-implementation report, open a ticket-footed PR, and move exactly one boundary to Review. Stop for independent review; do not self-review, merge, publish, or write proof.
+- [ ] After independent merge and proof, defer any actual successor release to its separate ticket and governed single-invocation protocol.

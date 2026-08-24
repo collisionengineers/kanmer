@@ -19,3 +19,16 @@
 - [x] Read-only recheck v0.3.6 against the strict verifier and retain the expected missing-manifest-named-installer FAIL (or an exact INCONCLUSIVE); no upload, repair, tag, release, retag, retry, or publisher invocation.
 - [x] Write the post-implementation report, open a ticket-footed PR, and move exactly one boundary to Review. Stop for independent review; do not self-review, merge, publish, or write proof.
 - [ ] After independent merge and proof, defer any actual successor release to its separate ticket and governed single-invocation protocol.
+
+---
+
+## Closeout — CORE-100
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/core-100`
+- [ ] `git branch -d core-100-deterministic-windows-assets` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

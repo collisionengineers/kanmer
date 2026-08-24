@@ -28,13 +28,12 @@ blocks:
 refs:
   - docs/functional/frd/FRD-021-auto-update.md
 commits:
-  - 7e0683be876ff1e3921a999fc3d6f0257d937e43
-  - fb501a0487dc4314e432054c7ef01336b5d67f25
+  - 41408981ae78364f1d64e3d3b3db3c1ec67d96d1
 prs:
   - '251'
 archived: false
 created: '2026-08-24T22:43:05.670Z'
-updated: '2026-08-24T23:26:59.232Z'
+updated: '2026-08-24T23:27:31.788Z'
 ---
 
 ## What
@@ -57,3 +56,6 @@ The one authorized [[CORE-099]] publisher invocation for v0.3.6 completed its sh
 Provide a regression test covering the exact expected/actual-name boundary and record whether an existing published v0.3.6 release verifies read-only after the source fix. No release is claimed or retried here.
 
 ## Outcome
+- PR [#251](https://github.com/collisionengineers/kanmer/pull/251) merged normally on 2026-08-24 at `41408981ae78364f1d64e3d3b3db3c1ec67d96d1`; this reachable squash-merge SHA is the recorded commit traceability.
+- The explicit future Windows artifact contract and strict v0.3.6 regression are verified on merged main. The v0.3.6 release remains preserved historical failure evidence; no tag, release, asset, upload, repair, or publication state was changed.
+- No successor release was undertaken. Any successor remains a separately governed release decision; [[CORE-099]] was not advanced by this closeout.

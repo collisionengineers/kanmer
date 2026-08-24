@@ -1099,3 +1099,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T18:10Z — User clarified the standing workflow: independent review is satisfied by a separately assigned agent even when all agents use the same GitHub account. SKILL-033 is now Review on PR #243 (commit 6c4432f), with full local verification PASS and hosted checks pending. DOC-021 PR #242 at 0d68bc0 is now hosted-checks PASS after a factual release-note correction and resolved review thread; independent re-review/normal protected-main merge is being resumed. No GitHub policy, protected-branch setting, or administrative bypass was changed.
+
+
+- 2026-08-24T18:12Z — DOC-021’s independent same-account reviewer re-reviewed corrected head 0d68bc0, confirmed zero unresolved threads and both hosted checks PASS, then normal-protected squash-merged PR #242 as be15545a90af27f08e2124e7aaf39c4bcc3b51dc (no administrative bypass). Ticket moved Review→Verifying only; merged-main proof is assigned before any closeout. CORE-096’s release prerequisite is now merged.

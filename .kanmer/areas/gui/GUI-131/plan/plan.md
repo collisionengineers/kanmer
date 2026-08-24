@@ -8,6 +8,7 @@ Repair the source-owned `--publish` control-flow gap: require the existing GUI b
 
 - **FRD-021 R3** requires `release.mjs` to enforce release discipline and the packaged app to be verifiable for self-update. A publish path that feeds Electron Builder no GUI bundle cannot satisfy that requirement.
 - **HZN-007 context** requires a bounded, source-owned remediation with exact evidence, adjacent board stages, independent review, and no unapproved release action.
+- **AGENTS.md rule 24** requires a PR that changes commands or conventions to update contributor instructions in the same PR. The human-owned contributor guidance will document the protected-main/local publisher sequence and the pre-tag GUI-build failure boundary, without changing the managed Kanmer block.
 - This ticket has no frontmatter `refs`; this plan does not amend governance. It applies the existing FRD-021 release-owner contract only.
 
 ## Chosen approach
@@ -22,7 +23,8 @@ Repair the source-owned `--publish` control-flow gap: require the existing GUI b
 
 - **Modify:** `scripts/release.mjs` — add only the publish-path GUI-build prerequisite.
 - **Modify:** `scripts/release-flow.test.mjs` — assert the publish-path synchronous call and irreversible-action ordering.
-- **Do not modify:** Electron Builder configuration, GUI package scripts, GitHub Actions workflows/permissions, credentials, release asset recovery semantics, tags, releases, or any release ticket state.
+- **Modify:** `AGENTS.md` outside its managed Kanmer block — document local publish mode's GUI build before immutable tag creation/push, and that build failure stops before a tag or release exists.
+- **Do not modify:** the AGENTS.md managed Kanmer block, Electron Builder configuration, GUI package scripts, GitHub Actions workflows/permissions, credentials, release asset recovery semantics, tags, releases, or any release ticket state.
 - **Do not run:** `release.mjs`, packaging, publication, tag mutation, manual uploads, or an actual publishing command.
 
 ## Verification
@@ -30,8 +32,9 @@ Repair the source-owned `--publish` control-flow gap: require the existing GUI b
 1. Run `node --test scripts/release-flow.test.mjs`; it must pass the new ordering assertion without creating any tag or release.
 2. Run `npm run test:scripts` to cover the repository script-test suite containing the focused regression.
 3. Run `npm run typecheck` if the isolated worktree dependencies permit it; record its exit.
-4. Run the authoritative `npm run verify` from a fresh normal GitHub-origin clone of the exact branch head after the commit, because plugin synchronization refuses linked worktrees. Preserve every failure rather than retrying.
-5. Record the exact diff, commit, PR, and check state in the implementation report; wait for independent review before any merge or later release lifecycle work.
+4. Run `npm run verify:agents-block` after the AGENTS.md prose update to prove its managed block remains canonical.
+5. Run the authoritative `npm run verify` from a fresh normal GitHub-origin clone of the exact branch head after the commit, because plugin synchronization refuses linked worktrees. Preserve every failure rather than retrying.
+6. Record the exact diff, commit, PR, and check state in the implementation report; wait for independent review before any merge or later release lifecycle work.
 
 ## Risks and mitigations
 
@@ -41,4 +44,4 @@ Repair the source-owned `--publish` control-flow gap: require the existing GUI b
 
 ## Stop condition
 
-Stop with GUI-131 in Review at an open PR that contains only the control-flow prerequisite and its regression test. Do not self-review, merge, tag, publish, write proof, or close out.
+Stop with GUI-131 in Review at an open PR that contains only the control-flow prerequisite, its regression test, and the required AGENTS.md contributor guidance. Do not self-review, merge, tag, publish, write proof, or close out.

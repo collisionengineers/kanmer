@@ -31,3 +31,12 @@
 ## Reviewer focus
 
 Confirm that deriving `new URL(valid.endpoint).origin` cannot weaken strict endpoint validation, and that the generated service no longer includes `/mcp` while public routing and manual wording retain it.
+
+## CI remediation update — 2026-08-24
+
+- Regenerated `apps/gui/src/renderer/src/manual/chapters.generated.ts` with `npm run build:manual` after the Cloudflared manual source edit; `npm run check:manual` now passes.
+- `git diff --check` — PASS, exit 0.
+- Cloudflared focused rail (`node --test cloudflared-config.test.mjs cloudflared-validate.test.mjs cloudflared.test.mjs`) — PASS, 17/17.
+- `npm run typecheck -w @kanmer/mcp-server` — PASS, exit 0.
+- Full `npm run verify` rebuilt successfully and passed the manual guard, then ended non-zero only because four untouched core tests timed out at Vitest's fixed 5s limit on this Windows host (306/310 tests passed). Rerunning each named test alone passed: profile default/override 1/1 (4.84s), stale-lock recovery 1/1, migration folded-block relation 1/1, and area-based ticket placement 1/1. No test assertion or timeout was changed.
+- The follow-up commit is pushed to PR #232 for hosted CI, which remains the merge authority.

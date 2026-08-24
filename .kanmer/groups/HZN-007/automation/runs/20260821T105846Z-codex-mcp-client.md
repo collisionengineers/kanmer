@@ -7,7 +7,7 @@ project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|rep
 controller: codex-mcp-client
 status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-24T16:38:45.274Z
+updated_at: 2026-08-24T16:50:42.983Z
 lane_limit: 3
 stop_reason: 
 ---
@@ -1022,3 +1022,6 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 
 
 - 2026-08-24T16:38:45.274Z — Goal-mode resume reconciliation: live board is format 3 with 304 Done, four Verifying (CORE-035, CORE-036, CORE-042, MCP-028), zero Backlog/Preparing/Implementing/Review, zero taken and no board warnings. Clean GitHub-origin main verification remains PASS at ef67c04e. CORE-022 is now Done after real migration/Windows-lock proof. MCP-028 remains INCONCLUSIVE after two bounded canonical public-readiness timeouts with retained Cloudflare resources unchanged. CORE-035 awaits a formal different-identity approval on protected fixture PR #2. CORE-036/CORE-042 retain release/update boundaries; disposable release fixture did not reach asset verification and its draft/tag were removed, while repo deletion awaits delete_repo scope. Live board and external state supersede the older baseline; no action will be replayed.
+
+
+- 2026-08-24T16:50:42.983Z — Live-state reconciliation created [[CORE-096]] (Backlog, chore) as the governed v0.3.4 release record. It blocks CORE-036 and CORE-042, which retain their own distinct verification claims. The goal authorizes release operations required by approved tickets; no release worktree, branch, tag, or provider state has been created yet.

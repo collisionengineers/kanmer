@@ -7,7 +7,7 @@ group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
 status: running
-updated_at: 2026-08-24T16:48:27.921Z
+updated_at: 2026-08-24T16:50:42.983Z
 ---
 
 # Current auto run — HZN-007
@@ -1073,3 +1073,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T16:48:27.921Z — Cloudflare diagnosis corrected the earlier aggregate inventory reading: the canonical DNS CNAME maps to the retained named tunnel and its local ingress configuration includes the expected hostname rule, but the dedicated Cloudflare connections API reports zero active connectors. The public endpoint returns HTTP 530 with Cloudflare error 1033 (no healthy connector). A separate token-managed Windows service is running, but it is not a healthy connector for the canonical route. No DNS, tunnel, credential, service, or source change was made; the two bounded canonical adapter attempts remain the maximum allowed by MCP-028.
+
+
+- 2026-08-24T16:50:42.983Z — Live-state reconciliation created [[CORE-096]] (Backlog, chore) as the governed v0.3.4 release record. It blocks CORE-036 and CORE-042, which retain their own distinct verification claims. The goal authorizes release operations required by approved tickets; no release worktree, branch, tag, or provider state has been created yet.

@@ -1,0 +1,4 @@
+Hosted PR run `32774878829` final diagnostics:
+
+- `kanmer-gate` failed only on `WRONG_STAGE`: its event/board snapshot saw DOC-022 in `implementing` before the author moved it to Review. `NO_REVIEW_RECORD` is a warning only and expected until independent review. The snapshot also predates the ticket commit/PR traceability update. Disposition: stale lifecycle snapshot; rerun only this job now that the ticket is Review.
+- `verify` failed independently of this docs-only diff: Core Vitest `src/store.test.ts` test `gives tickets area-based ids and places them in the area's folder` exceeded its existing 5000ms timeout on Windows CI. Result: 309 passed, 1 timed out. No source/test change is authorized in DOC-022; preserve this failure for parent diagnosis and do not represent hosted verify as passing.

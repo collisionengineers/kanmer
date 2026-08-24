@@ -31,3 +31,9 @@ The workflow contract test now requires both ends of that mapping and rejects th
 The first broad script/CLI invocations in the fresh worktree exited 1 before testing their claims because `packages/core/dist/index.js` did not yet exist. After the required `npm run build:core`, both commands passed as recorded above; the initial setup failure is retained here rather than being represented as a test pass.
 
 GitHub Actions itself will execute the workflow on the review PR; no CI configuration was changed locally beyond the guarded fetch/ref sequence.
+
+## GitHub Actions evidence
+
+PR [#233](https://github.com/collisionengineers/kanmer/pull/233) ran the repaired workflow. The required `kanmer-gate` job passed in 50 seconds, directly exercising the board-worktree fetch path.
+
+At the time of handoff, the independent `verify` job remains pending; no outcome for it is claimed here.

@@ -1102,3 +1102,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T18:12Z — DOC-021’s independent same-account reviewer re-reviewed corrected head 0d68bc0, confirmed zero unresolved threads and both hosted checks PASS, then normal-protected squash-merged PR #242 as be15545a90af27f08e2124e7aaf39c4bcc3b51dc (no administrative bypass). Ticket moved Review→Verifying only; merged-main proof is assigned before any closeout. CORE-096’s release prerequisite is now merged.
+
+
+- 2026-08-24T18:15Z — DOC-021 merged-main verification PASS on be15545a: core build, focused release-notes test, merge diff, wording inspection, and worktree cleanliness passed. Proof was written and ticket moved Verifying→Done; closeout is deferred while release preparation is active. CORE-096 now runs its one corrected preparation invocation from a separate clean checkout at be15545a; the first attempt on a pre-created feature branch safely exited before mutation and is retained.

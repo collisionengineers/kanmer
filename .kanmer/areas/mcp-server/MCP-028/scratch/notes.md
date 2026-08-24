@@ -26,3 +26,11 @@ Fresh hosted verification for remediation head 45449d0f4935b8cc1193eeaf7cc4b5227
 ## 2026-08-24 remote-managed token-mode retry (non-acceptance experiment)
 
 At the user’s direct request, a single disposable remote-managed Cloudflare Tunnel retry used the documented token-file connector mode. The first configuration request again received Cloudflare validation 1056 when the ingress service contained `/mcp`; a corrected retry used only the loopback origin, allowing Cloudflare to preserve `/mcp` in the request path. The connector later exited before public authenticated readiness was observed. The harness cleanup removed DNS but initially left one newly-created, down disposable tunnel; an immediate bounded inventory detected it, then removed that exact `kanmer-mcp028-*` tunnel. Final independent provider inventory: matching tunnels `0`, matching DNS records `0`; no spawned connector remained. No Worker was deployed, no bearer/provider value or endpoint was retained, and this remote-managed mode is outside the MCP-028 group contract, so it is not acceptance evidence.
+
+## 2026-08-24 exact-PR provider attempt
+
+- Exact merged PR #154 commit `710bddff6d9e1672e8fea38467f3e10848265aad` was fetched into a clean detached verification worktree; `npm ci --ignore-scripts` and `npm run build` both exited 0.
+- Operator-provisioned Cloudflare prerequisites were present: a locally managed named tunnel with a protected credential-file reference and a public DNS route. The pre-existing token-managed tunnel was not used or modified.
+- Starting the exact PR artifact exited 1 with `TUNNEL_INGRESS_VALIDATION_FAILED`. A redacted direct ingress validation confirmed Cloudflare rejects the generated service URL because it embeds the `/mcp` path; Cloudflare preserves the request path and requires an origin service without that path.
+- No public MCP request, bearer disclosure, Worker deployment, or production-board access occurred. The ticket remains **Verifying**.
+- `origin/main` contains the later reachable MCP-047 fix (`e779c4a2`) which renders the service as the loopback origin while retaining the externally requested `/mcp` path. The next environment attempt will validate that later merged fix; it cannot retroactively make this exact-PR attempt PASS.

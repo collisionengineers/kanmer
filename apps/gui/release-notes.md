@@ -6,6 +6,19 @@ against shipping the previous release's notes. electron-builder reads this file
 from the app directory (`projectDir` is `apps/gui` when the packer is invoked
 there) and uses it as the GitHub release body.
 
+## 0.3.7
+
+### Deterministic Windows updater artifacts
+
+Windows release packaging now explicitly names the installer
+`Kanmer-Setup-<version>.exe`, matching the updater's `latest.yml` manifest.
+Strict release-asset verification continues to reject missing, mismatched, or
+mixed artifact sets; alternate names are not treated as equivalent.
+
+Tag-triggered workflow remains non-publishing verification: it packages and
+checks the Windows updater artifacts but does not create or repair a GitHub
+Release or its assets.
+
 ## 0.3.6
 
 ### Publisher builds before creating a release tag

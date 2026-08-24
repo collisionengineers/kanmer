@@ -1129,3 +1129,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T20:55Z — CORE-098’s first v0.3.5 preparation invocation exited 1 before any release mutation because its fresh normal clone omitted the required process-scoped canonical-board binding: build, Core 310/310, and GUI 468/468 passed; MCP HTTP then failed 9/102 without a discoverable board. The failed output and zero-mutation remote census are retained. Plan/checklist now authorize one corrected fresh-clone invocation with KANMER_ROOT bound only for the test process; any post-correction failure is a hard stop. v0.3.4 remains untouched and v0.3.5 still has no tag/release.
+
+
+- 2026-08-24T21:15Z — CORE-098 corrected preparation passed and PR #247 was independently reviewed after record-only remediations, both hosted checks passing. It normal-protected squash-merged as 8a4b7d982b0c94c71a843782d0b6fb1db160025e; ticket moved Review→Verifying. A separate publisher agent is authorized for one clean-clone local release --publish invocation with a process-local token; no manual tag/upload/release repair, no v0.3.4 mutation, and no proof/Done decision by that agent.

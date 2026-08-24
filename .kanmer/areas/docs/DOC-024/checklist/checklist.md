@@ -21,3 +21,14 @@ Planning records the user-specified release-note wording as the approval boundar
 - 2026-08-25: committed `fc46f34294d64c50c8d464aa364397bfd37a20ab`, pushed `doc-024-v037-release-notes`, and opened PR #252 at that exact head with the required `Kanmer: DOC-024` footer. Hosted `verify` is queued and `kanmer-gate` is in progress; neither has been reviewed or rerun by the author.
 
 - 2026-08-25: moved one boundary from Implementing to Review. Stop condition reached: independent review owns the exact PR head and any merge; author will not review, merge, publish, tag, upload, repair, or write proof.
+
+## Closeout — DOC-024
+
+- [x] PR merge verified: [#252](https://github.com/collisionengineers/kanmer/pull/252) is MERGED at 2026-08-24T23:39:10Z.
+- [x] proof.md finalised with PR URL, merge SHA, merged-main evidence, and preserved inspection limitations.
+- [x] Moved to final stage.
+- [ ] Outcome recorded in ticket body (PR link, follow-ups).
+- [ ] Returned to main checkout; remove `.worktrees/doc-024`.
+- [ ] Delete `doc-024-v037-release-notes` (`-D` only if the verified squash merge leaves it non-ancestor).
+- [ ] Prune remote/worktree metadata.
+- [ ] Release the ticket after cleanup.

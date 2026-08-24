@@ -49,3 +49,22 @@ The Worker-client, token-rotation, host-restart/session-invalidation, bounded-co
 - Cleanup ran in `finally`; independent post-run checks found zero `kanmer-mcp028-*` tunnels and zero matching DNS records. Temporary executable, credentials/config files, fixture root, and logs were removed.
 
 This is an environment/provider-readiness INCONCLUSIVE result. It does not weaken the canonical protected verifier PASS above, and it does not promote Worker, token-rotation, restart/invalidation, bounded-concurrency, degradation/recovery, or GUI two-project boundaries to PASS.
+
+
+## 2026-08-24 public Worker acceptance increment — INCONCLUSIVE overall
+
+### Exact source and provider preparation
+
+- Exact PR #154 merge worktree `710bddff6d9e1672e8fea38467f3e10848265aad`: `npm ci --ignore-scripts` exit 0 and `npm run build` exit 0. Its generated ingress validation failed with `TUNNEL_INGRESS_VALIDATION_FAILED` because the origin service incorrectly contained `/mcp`; no public request was attempted from that artifact.
+- The reachable MCP-047 merge `f5401043e7dfdcbb25b7f4a91d87914e96c8254f` corrected the origin-only ingress rendering. In its detached worktree, `npm ci --ignore-scripts` exit 0; a premature server-only build exit 1 was retained (the core workspace had not yet been built); the canonical `npm run build` then exited 0.
+- A dedicated locally managed named-tunnel credential reference and public DNS route were operator-provisioned outside repository data. `cloudflared` 2026.8.2 ingress validation and exact `/mcp` rule selection both exited 0. No provider token, tunnel id, hostname, account id, credential content, or bearer is recorded here.
+
+### Real public route and Worker client
+
+- The first provider connections were delayed; an owned HTTP/2 test connector ultimately reached all edge connections and local readiness returned HTTP 200. A public unauthenticated `POST /mcp` returned HTTP 401 with no redirect.
+- A disposable Cloudflare Worker was deployed as the external client. Its bearer existed only in a Worker secret binding. The Worker passed public initialize, expected-project comparison, remote tool discovery, disposable create/update/archive, activity observation, and session close.
+- The Worker was deleted after the run; the provider API confirmed it absent (HTTP 404). Only the test-owned connector and HTTP host were stopped. Test runtime/token/board/config directories were moved to the local recycle bin; the intended local named tunnel/DNS route and the unrelated pre-existing token-managed connector were retained.
+
+### Boundary and disposition
+
+This proves the external Worker path, public TLS route, bearer rejection, and disposable lifecycle. It does **not** promote the ticket: the canonical automatic adapter timed out before this network's delayed edge readiness, so the successful route used an explicitly owned manual HTTP/2 connector for this increment. Token rotation, host-restart/session invalidation, bounded concurrency, degradation/recovery through the canonical supervisor, complete public doctor matrix, GUI evidence, and full secret/canary scan remain unproven. Overall result remains **INCONCLUSIVE**.

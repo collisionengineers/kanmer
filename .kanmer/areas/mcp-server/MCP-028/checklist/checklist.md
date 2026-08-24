@@ -179,9 +179,9 @@
 
 ## Roadmap amendment — Cloudflare Worker remote-client proof
 
-- [ ] Deploy a disposable Worker client with bearer in a secret binding only.
+- [x] Deploy a disposable Worker client with bearer in a secret binding only.
 - [ ] Prove initialize, expected-project/tool verification, disposable create/update/archive, session close and public doctor health.
-- [ ] Prove no Access/redirect/proxy path was used and delete Worker, secret, runtime config and temporary board record.
+- [x] Prove no Access/redirect/proxy path was used and delete Worker, secret, runtime config and temporary board record.
 
 ## Deterministic harness completion (implemented in this lane)
 
@@ -243,4 +243,4 @@ Live named-tunnel, DNS/TLS, Worker deployment, token rotation over a hosted rout
 - [x] Infisical-backed Cloudflare API access exercised only through disposable resources.
 - [x] Ingress validation failure and corrected-origin public-readiness timeout recorded in `proof.md`.
 - [x] `finally` cleanup and independent zero-resource inventory completed.
-- [ ] Worker deployment/client lifecycle remains INCONCLUSIVE because the connector never reached public readiness; no result is promoted to PASS.
+- [x] Worker deployment/client lifecycle passed through the public route; full public acceptance remains INCONCLUSIVE pending the remaining rotation/restart/degradation/concurrency/GUI/secret-scan matrix.

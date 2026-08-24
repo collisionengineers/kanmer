@@ -35,7 +35,7 @@ prs:
     https://github.com/collisionengineers/kanmer-core035-protected-20260824t142522z-dd4f69a4/pull/1
 archived: false
 created: '2026-08-20T10:14:42.535Z'
-updated: '2026-08-24T14:34:22.732Z'
+updated: '2026-08-24T14:38:22.825Z'
 ---
 
 ## What
@@ -46,7 +46,7 @@ end-to-end on a disposable repo + board: packet fetched → refusal paths → ta
 - [x] Disposable fixture focused tests and local gate/refusal matrix recorded.
 - [x] Hosted NO_TICKET, WRONG_STAGE, warning, and unreachable-commit evidence retained.
 - [x] Public disposable `main` protection and normal merge refusal observed: required `verify`/ `kanmer-gate`, approval, conversations, admin enforcement, and no force/delete.
-- [ ] Protected merge and detached exact-SHA verification: INCONCLUSIVE — the public fixture's real `verify` failed at the existing release-notes repository-URL assertion, and this agent must not author-review or merge.
+- [ ] Protected merge and detached exact-SHA verification: INCONCLUSIVE — fixture-only canonical-origin setup cleared the prior release-notes URL mismatch, but the latest Windows `verify` run timed out in three existing core tests; this agent must not author-review or merge.
 
 ## Outcome
-INCONCLUSIVE at the public-fixture verification and independent-review boundary. The public protected-branch configuration, hosted `kanmer-gate` PASS, and HTTP 405 protected-merge refusal are retained. No review, merge, bypass, rule weakening, or fabricated exact-SHA claim was performed.
+INCONCLUSIVE at the public-fixture verification and independent-review boundary. The public protected-branch configuration, two hosted `kanmer-gate` passes, prior HTTP 405 protected-merge refusal, and both retained `verify` failures are recorded. No review, merge, bypass, rule weakening, or fabricated exact-SHA claim was performed.

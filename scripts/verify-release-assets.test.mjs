@@ -17,7 +17,7 @@
 //   v0.3.2 must PASS
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -115,6 +115,20 @@ const errors = (r) => r.problems.filter((p) => p.severity === "error");
 const kinds = (r) => errors(r).map((p) => p.kind);
 
 // ---------------------------------------------------------------------------
+describe("Windows artifact-name contract", () => {
+  test("pins the public installer name instead of relying on an implicit upload rename", () => {
+    const builderConfig = readFileSync(
+      new URL("../apps/gui/electron-builder.yml", import.meta.url),
+      "utf8",
+    );
+    assert.match(
+      builderConfig,
+      /^win:\r?\n  artifactName: "\$\{productName\}-Setup-\$\{version\}\.\$\{ext\}"\r?$/m,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 describe("verifyAssets — golden fixtures from the three real releases", () => {
   test("v0.3.2 PASSES: all three assets present, uploaded, digests match", () => {
     const assets = GOLDEN["0.3.2"];
@@ -151,6 +165,92 @@ describe("verifyAssets — golden fixtures from the three real releases", () => 
     assert.equal(r.ok, false);
     assert.equal(errors(r).length, 1);
     assert.equal(errors(r)[0].severity, "error");
+  });
+
+  test("v0.3.6 remains broken when latest.yml names an absent hyphenated installer", () => {
+    // Read-only GitHub API snapshot of v0.3.6. The installer upload used dots,
+    // while latest.yml points at the absent hyphenated name; both blockmap
+    // spellings are present. Treating the dot installer as an alias would turn
+    // this updater-breaking release into a false pass.
+    const assets = [
+      {
+        name: "kanmer-0.3.6.mcpb",
+        size: 1671295,
+        state: "uploaded",
+        digest: "sha256:1f4ccafe1eae467b98e28276bb055b9c04776077bf57e84b58ca6bd3ec2277ea",
+      },
+      {
+        name: "Kanmer-Setup-0.3.6.exe.blockmap",
+        size: 83041,
+        state: "uploaded",
+        digest: "sha256:9fc4b74a8f45ff4a8cc993a5d0c1089e11a630c246023b44b79fd8f2fde2b960",
+      },
+      {
+        name: "Kanmer.Setup.0.3.6.exe",
+        size: 79999540,
+        state: "uploaded",
+        digest: "sha256:a10967fb894caf9349dddf03e6bac6ed054bbf2d898b984049403cf5f4ae5e94",
+      },
+      {
+        name: "Kanmer.Setup.0.3.6.exe.blockmap",
+        size: 83041,
+        state: "uploaded",
+        digest: "sha256:9fc4b74a8f45ff4a8cc993a5d0c1089e11a630c246023b44b79fd8f2fde2b960",
+      },
+      {
+        name: MANIFEST,
+        size: 340,
+        state: "uploaded",
+        digest: "sha256:00ca8e627dc3e8b56dd2d8977686a910ef135f67d7adbdc352211f82f2fcd69e",
+      },
+    ];
+    const expected = [
+      {
+        name: "Kanmer-Setup-0.3.6.exe",
+        diskName: "Kanmer-Setup-0.3.6.exe",
+        size: 79999540,
+        sha256: "a10967fb894caf9349dddf03e6bac6ed054bbf2d898b984049403cf5f4ae5e94",
+        sha512: "7D7qoVZ9FarUi5vOEO8Z6Qtab9efeCN/ALRKRQ+BB7hB0xT8G1qJ1+/Kh1Xipj9hbFyjXMgQ/h5cmHM+I3UuJg==",
+        comparable: true,
+      },
+      {
+        name: "Kanmer-Setup-0.3.6.exe.blockmap",
+        diskName: "Kanmer-Setup-0.3.6.exe.blockmap",
+        size: 83041,
+        sha256: "9fc4b74a8f45ff4a8cc993a5d0c1089e11a630c246023b44b79fd8f2fde2b960",
+        comparable: true,
+      },
+      {
+        name: MANIFEST,
+        diskName: MANIFEST,
+        size: 340,
+        sha256: "00ca8e627dc3e8b56dd2d8977686a910ef135f67d7adbdc352211f82f2fcd69e",
+        comparable: true,
+        manifest: {
+          url: "Kanmer-Setup-0.3.6.exe",
+          size: 79999540,
+          sha512: "7D7qoVZ9FarUi5vOEO8Z6Qtab9efeCN/ALRKRQ+BB7hB0xT8G1qJ1+/Kh1Xipj9hbFyjXMgQ/h5cmHM+I3UuJg==",
+        },
+      },
+    ];
+
+    const r = verifyAssets({ expected, assets });
+    assert.equal(r.ok, false, "the manifest-named installer must remain required");
+    assert.deepEqual(
+      errors(r).map((problem) => [problem.kind, problem.asset]),
+      [["missing", "Kanmer-Setup-0.3.6.exe"]],
+    );
+    assert.deepEqual(
+      r.problems
+        .filter((problem) => problem.kind === "extra")
+        .map((problem) => problem.asset)
+        .sort(),
+      [
+        "Kanmer.Setup.0.3.6.exe",
+        "Kanmer.Setup.0.3.6.exe.blockmap",
+        "kanmer-0.3.6.mcpb",
+      ],
+    );
   });
 });
 

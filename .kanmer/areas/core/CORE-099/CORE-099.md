@@ -2,13 +2,14 @@
 id: CORE-099
 type: ticket
 title: Publish and validate the v0.3.6 successor release
-status: implementing
+status: review
 area: core
 order: 20
 assignee: codex-root-release-author
 profile: chore
 stageEntered:
   preparing: '2026-08-24T22:05:45.609Z'
+  review: '2026-08-24T22:27:11.240Z'
 taken_at: '2026-08-24T22:19:58.156Z'
 branch: core-099-v036-release-hold
 worktree: .worktrees/core-099
@@ -33,7 +34,7 @@ prs:
   - '250'
 archived: false
 created: '2026-08-24T22:04:47.134Z'
-updated: '2026-08-24T22:26:52.944Z'
+updated: '2026-08-24T22:27:11.240Z'
 ---
 
 ## Why

@@ -11,8 +11,8 @@
 
 - [x] Create one freshly checked clean normal GitHub-origin clone from current protected `main` after DOC-023 Done; verify `apps/gui/release-notes.md` names 0.3.6 and no `release/v0.3.6` branch, `v0.3.6` tag, release PR, or GitHub Release exists.
 - [x] Install locked dependencies with `npm ci --ignore-scripts` and bind only process-scoped `KANMER_ROOT=<canonical-board-root>`; do not copy/init/edit a board.
-- [ ] Run exactly one preparation command: `npm run release -- 0.3.6 --ticket CORE-099`. Do not dry-run, retry, hand-create a release branch, or manually alter generated artifacts.
-- [ ] Record the base SHA, all exits, script-generated branch/commit/PR/footer/diff, verification output, and clean-tree state. On any failure, preserve it and stop before retrying.
+- [x] Run exactly one preparation command: `npm run release -- 0.3.6 --ticket CORE-099`. Do not dry-run, retry, hand-create a release branch, or manually alter generated artifacts.
+- [x] Record the base SHA, all exits, script-generated branch/commit/PR/footer/diff, verification output, and clean-tree state. On any failure, preserve it and stop before retrying.
 
 ## Independent review and normal merge
 
@@ -31,3 +31,4 @@
 ## Progress notes
 
 Planning assignment complete. CORE-099 is held in Preparing because [[DOC-023]] is still Preparing; no release action has been performed.
+- 2026-08-24: one authorized clean-clone preparation invocation started from protected `main` `d1d61506435151b73dc04c9fcff18c74656ab4a8` after absence/notes/dependency preflight and process-scoped canonical board binding. It exited 0 after build; core 310/310; GUI 468/468; MCP 102/102; scripts 100/100; type/docs/smoke/MCPB/protocol/discovery/skills/AGENTS/plugin rails; and GUI production build. It generated `release/v0.3.6` at `d658585848f8c8545b300ecb557a5d23a8c30ed9` and PR #250 with `Kanmer: CORE-099`; diff is exactly eight generated version/plugin/lock artifacts and `git diff --check`/clean tree pass. No v0.3.6 tag, GitHub Release, asset, publisher invocation, manual repair, or retry occurred. Independent review/normal merge is next.

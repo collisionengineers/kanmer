@@ -1,0 +1,1 @@
+2026-08-24: opened PR #250 at d658585848f8c8545b300ecb557a5d23a8c30ed9 after the single authorized clean-clone preparation invocation exited 0. Ticket moved to Review. Hosted checks are pending; author stops here. No tag, GitHub Release, asset, publisher invocation, manual repair, retry, or merge was performed.

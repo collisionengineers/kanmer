@@ -2,13 +2,14 @@
 id: CORE-095
 type: ticket
 title: Stabilize core Vitest isolation on protected Windows runners
-status: review
+status: verifying
 area: core
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-24T14:39:54.327Z'
   review: '2026-08-24T14:50:28.320Z'
+  verifying: '2026-08-24T14:57:09.332Z'
 taken_at: '2026-08-24T14:45:04.026Z'
 branch: core-095-vitest-file-isolation
 worktree: .worktrees/core-095
@@ -30,7 +31,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/238'
 archived: false
 created: '2026-08-24T14:39:17.215Z'
-updated: '2026-08-24T14:50:28.320Z'
+updated: '2026-08-24T14:57:09.332Z'
 ---
 
 ## What

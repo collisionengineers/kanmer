@@ -2,12 +2,15 @@
 id: CORE-095
 type: ticket
 title: Stabilize core Vitest isolation on protected Windows runners
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-24T14:39:54.327Z'
+taken_at: '2026-08-24T14:45:04.026Z'
+branch: core-095-vitest-file-isolation
+worktree: .worktrees/core-095
 labels:
   - windows
   - ci
@@ -22,7 +25,7 @@ refs:
   - docs/functional/frd/FRD-006-typed-proof.md
 archived: false
 created: '2026-08-24T14:39:17.215Z'
-updated: '2026-08-24T14:39:54.327Z'
+updated: '2026-08-24T14:45:04.026Z'
 ---
 
 ## What

@@ -6,8 +6,8 @@ run_path: automation/runs/20260821T105846Z-codex-mcp-client.md
 group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
-status: blocked
-updated_at: 2026-08-23T03:15:01.931Z
+status: running
+updated_at: 2026-08-24T13:57:45.902Z
 ---
 
 # Current auto run — HZN-007
@@ -1040,3 +1040,13 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 - Resume action: obtain the named external credentials/hosts or disposable resources, then re-read get_status, HZN-007 context/current/run, every affected ticket's item/gates/docs, and resume only the corresponding Verifying proof/closeout lanes.
 \n\n2026-08-23T12:15:00Z — Resumed after external-access update. Infisical dev injection is available for the project; OAuth-backed Grok and Antigravity hosts are present. Grok Kanmer plugin functional get_status proof passed; Antigravity plugin import is present but its MCP binding/packaged launcher boundary remains to verify. MCP-045 safe token-file verifier remediation is merged and closed with exact public protected proof and teardown. Next proof lanes are MCP-028, MCP-014, and MCP-015; GUI-104 remains held on the independent OpenAI Secure MCP Tunnel client boundary. No secret values are recorded.\n
 \n\n2026-08-23T13:18:00Z — External evidence update: MCP-028 canonical protected public verifier passed at merged SHA 85ace9d; Cloudflare named resources and secret material were torn down. MCP-014 Grok OAuth-backed real get_status passed after native plugin install. GUI-104 OpenAI tunnel-client v0.0.12 was SHA-verified, doctor passed, and a detached run reached local health/ready with the packaged Kanmer stdio target before exact owned-process cleanup; its two-project distinct-board criterion remains INCONCLUSIVE. Agy plugin import remains skills-only because the installer-owned launcher is absent; MCP-015 real bound tool proof remains INCONCLUSIVE.\n
+
+
+## 2026-08-24 reconciliation / resumed
+
+- 2026-08-24T13:57:45.902Z — Reconciled after the operator confirmed login. This is a continuation of run `20260821T105846Z-codex-mcp-client`, not a new auto-run. The former `external-evidence-exhausted` stop reason is obsolete: authenticated GitHub and Cloudflare access are available; credentials remain external and are not recorded here.
+- Live roster is seven non-Done tickets: Verifying `CORE-022`, `CORE-035`, `CORE-036`, `CORE-042`, and `MCP-028`; Backlog regressions `GUI-129` and `MCP-048`. No ticket is currently taken. `GUI-129` and `MCP-048` will be added to HZN-007 before implementation.
+- Completed since the previous blocked handoff: GUI-104, GUI-127, GUI-128, CORE-024, and CORE-025 were reconciled/closed with the then-current evidence. A clean canonical verification was later recorded with exit 0; this resumed run will repeat only ticket-relevant checks and will not treat historic results as new proof.
+- Independent audit results retained: CORE-022 still lacks genuine historical Windows lock evidence; MCP-028 still lacks the full authenticated Worker/tunnel matrix; CORE-035/CORE-036/CORE-042 need protected disposable-repository evidence. These are active work items, not grounds for promotion.
+- Controller reconciliation note: the packaged MCP is v0.3.3 and reports an `agents-block` drift warning. This is an environment/update concern to resolve through its own governed work, not by silently rewriting the board instructions.
+- Lane reservation (maximum three, conflict-aware): (1) protected disposable GitHub evidence, serialized across CORE-035/CORE-036/CORE-042; (2) Cloudflare/tunnel evidence, serialized across MCP-028/MCP-048; (3) Windows/core-GUI regression investigation, serialized across CORE-022/GUI-129. No lane may claim another ticket’s files or external fixture.

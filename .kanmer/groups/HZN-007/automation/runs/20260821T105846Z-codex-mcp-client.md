@@ -5,11 +5,11 @@ run_id: 20260821T105846Z-codex-mcp-client
 group: HZN-007
 project_fingerprint: C:\Users\Alex\Documents\GitHub\kanmer\.worktrees\kanmer|repo=C:\Users\Alex\Documents\GitHub\kanmer|format=3|server=29849049
 controller: codex-mcp-client
-status: blocked
+status: running
 created_at: 2026-08-21T10:58:46.923Z
-updated_at: 2026-08-23T03:15:01.931Z
+updated_at: 2026-08-24T13:57:45.902Z
 lane_limit: 3
-stop_reason: external-evidence-exhausted: MCP-028 needs a real Cloudflare Worker/tunnel proof but cloudflared is absent and Wrangler 4.125.0 reports expired/non-interactive auth; MCP-014 needs a fresh Grok get_status call but no XAI_API_KEY; MCP-015 needs an Antigravity host; GUI-104 needs OpenAI control-plane/tunnel access; CORE-022 needs a genuine Windows EPERM/antivirus run; CORE-035 needs a protected disposable integration repo; CORE-036 needs tag-triggered/negative disposable release proof; CORE-042 needs protected two-version updater proof. No safe in-repo action remains that can produce these claims.
+stop_reason: 
 ---
 
 # Auto run — 20260821T105846Z-codex-mcp-client
@@ -977,3 +977,13 @@ GUI-113 is complete on `gui-113-provider-registration-reconcile` / `.worktrees/g
 - Remaining Verifying records are not promoted: CORE-022, CORE-024, CORE-025, CORE-035, CORE-036, CORE-042, GUI-104, MCP-014, MCP-015, and MCP-028 retain explicit external/operator evidence gaps and their existing INCONCLUSIVE records.
 - Exact stop predicate: external-evidence-exhausted: MCP-028 needs a real Cloudflare Worker/tunnel proof but cloudflared is absent and Wrangler 4.125.0 reports expired/non-interactive auth; MCP-014 needs a fresh Grok get_status call but no XAI_API_KEY; MCP-015 needs an Antigravity host; GUI-104 needs OpenAI control-plane/tunnel access; CORE-022 needs a genuine Windows EPERM/antivirus run; CORE-035 needs a protected disposable integration repo; CORE-036 needs tag-triggered/negative disposable release proof; CORE-042 needs protected two-version updater proof. No safe in-repo action remains that can produce these claims.
 - Resume action: obtain the named external credentials/hosts or disposable resources, then re-read get_status, HZN-007 context/current/run, every affected ticket's item/gates/docs, and resume only the corresponding Verifying proof/closeout lanes.
+
+
+## 2026-08-24 reconciliation / resumed
+
+- 2026-08-24T13:57:45.902Z — Reconciled after the operator confirmed login. This is a continuation of run `20260821T105846Z-codex-mcp-client`, not a new auto-run. The former `external-evidence-exhausted` stop reason is obsolete: authenticated GitHub and Cloudflare access are available; credentials remain external and are not recorded here.
+- Live roster is seven non-Done tickets: Verifying `CORE-022`, `CORE-035`, `CORE-036`, `CORE-042`, and `MCP-028`; Backlog regressions `GUI-129` and `MCP-048`. No ticket is currently taken. `GUI-129` and `MCP-048` will be added to HZN-007 before implementation.
+- Completed since the previous blocked handoff: GUI-104, GUI-127, GUI-128, CORE-024, and CORE-025 were reconciled/closed with the then-current evidence. A clean canonical verification was later recorded with exit 0; this resumed run will repeat only ticket-relevant checks and will not treat historic results as new proof.
+- Independent audit results retained: CORE-022 still lacks genuine historical Windows lock evidence; MCP-028 still lacks the full authenticated Worker/tunnel matrix; CORE-035/CORE-036/CORE-042 need protected disposable-repository evidence. These are active work items, not grounds for promotion.
+- Controller reconciliation note: the packaged MCP is v0.3.3 and reports an `agents-block` drift warning. This is an environment/update concern to resolve through its own governed work, not by silently rewriting the board instructions.
+- Lane reservation (maximum three, conflict-aware): (1) protected disposable GitHub evidence, serialized across CORE-035/CORE-036/CORE-042; (2) Cloudflare/tunnel evidence, serialized across MCP-028/MCP-048; (3) Windows/core-GUI regression investigation, serialized across CORE-022/GUI-129. No lane may claim another ticket’s files or external fixture.

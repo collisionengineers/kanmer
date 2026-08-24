@@ -63,8 +63,8 @@ jobs:
           KANMER_BOARD_BRANCH: ${{ vars.KANMER_BOARD_BRANCH || 'kanmer-board' }}
         run: |
           test -n "$KANMER_BOARD_BRANCH"
-          git fetch origin "$KANMER_BOARD_BRANCH"
-          git worktree add "$RUNNER_TEMP/kanmer-board" "origin/$KANMER_BOARD_BRANCH"
+          git fetch --no-tags origin "refs/heads/$KANMER_BOARD_BRANCH:refs/remotes/origin/$KANMER_BOARD_BRANCH"
+          git worktree add "$RUNNER_TEMP/kanmer-board" "refs/remotes/origin/$KANMER_BOARD_BRANCH"
 
       - name: Assert fetched board is separate from the pull request checkout
         run: |

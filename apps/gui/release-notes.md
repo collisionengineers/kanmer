@@ -6,6 +6,16 @@ against shipping the previous release's notes. electron-builder reads this file
 from the app directory (`projectDir` is `apps/gui` when the packer is invoked
 there) and uses it as the GitHub release body.
 
+## 0.3.5
+
+### Release verification packages without publishing
+
+Tag-triggered release verification now builds and checks the Windows updater
+package in explicit non-publishing mode. The governed local publisher remains
+responsible for creating and publishing a release after its protected-main
+preparation and merge; verification alone never creates or repairs a GitHub
+Release or its assets.
+
 ## 0.3.4
 
 ### Grok Connect uses the native Kanmer plugin

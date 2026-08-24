@@ -30,3 +30,5 @@ PR #235’s initial `kanmer-gate` job reached and passed checkout, core build, a
 A body-only edit to PR #235 preserved `Kanmer: CORE-093` and created GitHub Actions run `32715510795` for the unchanged head `a40c027a`. Its `kanmer-gate` job passed in 56 seconds, including the phase-2 command. This proves the `edited` trigger refreshes the gate when the body-derived ticket mapping can change.
 
 The job emitted only the expected non-blocking `NO_REVIEW_RECORD` warning; independent review remains the next stage responsibility.
+
+The same edited-body run completed with the full `verify` rail passing in 3m01s. Both required PR #235 checks are green.

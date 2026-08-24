@@ -21,5 +21,5 @@
 
 - [x] Write the post-implementation report with the exact diff, command outputs, prior failure disposition, commit, and PR URL.
 - [x] Create a PR with the `Kanmer: GUI-130` footer only after the normal-clone verification exits 0.
-- [ ] Move GUI-130 from Implementing to Review only after rechecking document gates and recording the PR.
-- [ ] Stop for independent review; do not self-review, merge, write proof, or advance the ticket further.
+- [x] Move GUI-130 from Implementing to Review only after rechecking document gates and recording the PR.
+- [x] Stop for independent review; do not self-review, merge, write proof, or advance the ticket further.

@@ -3,3 +3,5 @@
 Baseline: npm test -w @kanmer/gui -- --run src/main/settings.test.ts (cwd .worktrees/gui-129) exited 0: 1 file, 5 tests passed. This is a clean focused baseline; it does not reproduce the intermittent external Windows lock.
 
 2026-08-24 — First GUI typecheck attempt: npm run typecheck -w @kanmer/gui (cwd .worktrees/gui-129) exited 1 before GUI-129 code was typechecked. It resolved stale parent workspace links and reported pre-existing current-main/core contract mismatches: missing @kanmer/core exports dispatchDeliverableProven and withExclusiveFileLock, missing DispatchSupervisorOptions.verifyDeliverable, and an antigravity DispatchProviderId mismatch. This failure is retained. Next action is npm ci inside only the ticket worktree to restore its own current-main workspace links before rerunning.
+
+2026-08-24 — After npm ci, the first repeated focused test attempt exited 1 before collecting tests: Vite could not resolve the unbuilt local @kanmer/core package entry. This is a clean-worktree build prerequisite, not a GUI-129 assertion failure. Next action: npm run build:core in the ticket worktree, then rerun the exact focused command.

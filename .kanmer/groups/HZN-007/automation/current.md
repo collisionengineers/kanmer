@@ -1114,3 +1114,6 @@ Re-review: 2026-08-23T02:05:15.445Z — DOC-019 F-001 fixed at PR head 1064b448;
 
 
 - 2026-08-24T18:31Z — SKILL-033 independently reviewed and normal-protected squash-merged PR #243 as 2db5989682d6885612d62af4e5da8dafe013a33f. It is Verifying; proof is assigned separately. This makes shared-GitHub-credential role independence explicit in both the review skill and contributor guidance. No GitHub account/branch-protection/workflow bypass was used.
+
+
+- 2026-08-24T18:51Z — CORE-096 publication failed before GitHub Release/assets: v0.3.4 tag is pushed and release-verify is in progress, but Electron Builder rejected app.asar because its configured out/main/index.js entry was absent; updater-package check then found no release manifest/incomplete resources. Public release lookup is absent. New [[GUI-131]] blocks CORE-096 and owns only this packaging remediation; it must not retag, manually upload, or change release semantics. The full failure and focused MCP-suite retry evidence are in CORE-096 scratch.

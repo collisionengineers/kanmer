@@ -8,15 +8,15 @@
 
 ## Implementation
 
-- [ ] Create GUI-131's dedicated branch/worktree from current `origin/main` only after the Preparing → Implementing gate passes.
-- [ ] Add the existing GUI build command to the publish-mode pre-tag control flow in `scripts/release.mjs`, without adding a second package invocation.
-- [ ] Add a focused `scripts/release-flow.test.mjs` regression proving the synchronous publish-path GUI build precedes tag creation and tag push.
-- [ ] Run `node --test scripts/release-flow.test.mjs` and record its exit.
-- [ ] Run `npm run test:scripts` and record its exit.
-- [ ] Run `npm run typecheck` and record its exit.
-- [ ] Commit only the release control-flow and regression-test changes.
-- [ ] From a fresh normal GitHub-origin clone of the exact branch head, run `npm run verify` and record the complete exit/output state.
-- [ ] Push the branch, open the PR with `Kanmer: GUI-131`, record commit/PR traceability and the exact diff.
+- [x] Create GUI-131's dedicated branch/worktree from current `origin/main` only after the Preparing → Implementing gate passes: `.worktrees/gui-131` on `gui-131-build-before-tag` at `8a4b7d982b0c94c71a843782d0b6fb1db160025e`.
+- [x] Add the existing GUI build command to the publish-mode pre-tag control flow in `scripts/release.mjs`, without adding a second package invocation.
+- [x] Add a focused `scripts/release-flow.test.mjs` regression proving the synchronous publish-path GUI build precedes tag creation and tag push.
+- [x] Run `node --test scripts/release-flow.test.mjs`: exit 0, 7/7 passing.
+- [x] Run `npm run test:scripts`: the first isolated attempt exited 1 only because clean dependencies lacked `packages/core/dist/index.js`; after the explicit core build prerequisite it exited 0, 100/100 passing. Both outcomes are retained in `scratch/execution`.
+- [x] Run `npm run typecheck`: exit 0 across all workspaces.
+- [x] Commit only the release control-flow and regression-test changes: `4c2d29e62bf74c053a58898ed14d7f06a838a3a8`.
+- [x] From a fresh normal GitHub-origin clone of the exact branch head, run `npm run verify`: exit 0 (Core 310/310, GUI 468/468, MCP HTTP 102/102, scripts 100/100, typecheck, docs, smokes, skills, managed AGENTS, and plugin sync).
+- [x] Push the branch, open PR [#248](https://github.com/collisionengineers/kanmer/pull/248) with `Kanmer: GUI-131`, record commit/PR traceability and the exact two-file diff.
 - [ ] Write the post-implementation report and move exactly one stage to Review.
 
 ## Boundaries

@@ -9,13 +9,13 @@
 
 ## Future implementation — not authorized in this planning pass
 
-- [ ] Take CORE-100 only after an authorized boundary crossing, in its own recorded worktree and branch based on current `origin/main`.
-- [ ] Add `artifactName: "${productName}-Setup-${version}.${ext}"` under Electron Builder `win:`; do not alter Electron packaging dependencies, workflows, credentials, release publisher code, or existing tags/releases/assets.
-- [ ] Preserve all functional verifier logic and integrity checks; update only explanatory text in `scripts/verify-release-assets.mjs` if required by the explicit-name contract.
-- [ ] Add a configuration-contract regression and the precise v0.3.6 mixed-public-inventory regression in `scripts/verify-release-assets.test.mjs`; do not weaken existing assertions.
-- [ ] Update only the human-owned release guidance in `AGENTS.md` with the explicit hyphenated installer and manifest/upload agreement; leave the managed Kanmer block unchanged.
-- [ ] Run and record `node --test scripts/verify-release-assets.test.mjs`, `node --test scripts/check-updater-package.test.mjs`, `npm run test:scripts`, `npm run verify:agents-block`, `npm run verify:docs`, and `npm run dist:check`.
+- [x] Take CORE-100 only after an authorized boundary crossing, in its own recorded worktree and branch based on current `origin/main`.
+- [x] Add `artifactName: "${productName}-Setup-${version}.${ext}"` under Electron Builder `win:`; do not alter Electron packaging dependencies, workflows, credentials, release publisher code, or existing tags/releases/assets.
+- [x] Preserve all functional verifier logic and integrity checks; no explanatory verifier edit was required by the explicit-name contract.
+- [x] Add a configuration-contract regression and the precise v0.3.6 mixed-public-inventory regression in `scripts/verify-release-assets.test.mjs`; do not weaken existing assertions.
+- [x] Update only the human-owned release guidance in `AGENTS.md` with the explicit hyphenated installer and manifest/upload agreement; leave the managed Kanmer block unchanged.
+- [x] Run and record `node --test scripts/verify-release-assets.test.mjs`, `node --test scripts/check-updater-package.test.mjs`, `npm run test:scripts`, `npm run verify:agents-block`, and `npm run verify:docs`; package with `npm run dist -w @kanmer/gui -- --publish never` plus `node scripts/check-updater-package.mjs` so publishing stays explicitly disabled.
 - [ ] Run the authoritative `npm run verify` from a normal clean checkout before opening a PR; record the exact head and every exit code.
-- [ ] Read-only recheck v0.3.6 against the strict verifier and retain the expected missing-manifest-named-installer FAIL (or an exact INCONCLUSIVE); no upload, repair, tag, release, retag, retry, or publisher invocation.
+- [x] Read-only recheck v0.3.6 against the strict verifier and retain the expected missing-manifest-named-installer FAIL (or an exact INCONCLUSIVE); no upload, repair, tag, release, retag, retry, or publisher invocation.
 - [ ] Write the post-implementation report, open a ticket-footed PR, and move exactly one boundary to Review. Stop for independent review; do not self-review, merge, publish, or write proof.
 - [ ] After independent merge and proof, defer any actual successor release to its separate ticket and governed single-invocation protocol.

@@ -40,7 +40,7 @@ In the future execution worktree, run and record:
 2. `node --test scripts/check-updater-package.test.mjs`
 3. `npm run test:scripts`
 4. `npm run verify:agents-block` and `npm run verify:docs`
-5. `npm run dist:check`, confirming generated installer and `latest.yml` use the exact hyphenated name.
+5. `npm run dist -w @kanmer/gui -- --publish never`, then `node scripts/check-updater-package.mjs`, confirming the generated installer and `latest.yml` use the exact hyphenated name while publishing is explicitly disabled.
 6. A read-only `node scripts/verify-release-assets.mjs 0.3.6 --dir apps/gui/release` (or the current verifier interface) against the public release metadata, expected to preserve the missing-installer failure rather than pass.
 7. Before a PR, the repository's authoritative `npm run verify` from a normal non-worktree checkout, recording the exact head and exit code.
 
@@ -48,4 +48,4 @@ If a source, packaging, or verification rail fails, stop before opening/releasin
 
 ## Delivery boundary
 
-Future implementation stops at an open PR in Review with its post-implementation report and full evidence. It does not self-review, merge, publish, retag, repair, write proof, move downstream tickets, or perform a successor release. This planning pass stops in Preparing with no worktree, branch, source modification, PR, release preparation, publisher invocation, tag, release, asset upload, repair, or retry.
+Future implementation stops at an open PR in Review with its post-implementation report and full evidence. It does not self-review, merge, publish, retag, repair, write proof, move downstream tickets, or perform a successor release. This authorized implementation pass stops only after an open Review PR; it still performs no release preparation, publisher invocation, tag, release, asset upload, repair, retry, or successor release.

@@ -2,12 +2,13 @@
 id: CORE-100
 type: ticket
 title: Correct release asset-name verification for Electron Builder output
-status: implementing
+status: review
 area: core
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-24T22:43:11.335Z'
+  review: '2026-08-24T23:11:16.705Z'
 taken_at: '2026-08-24T22:51:49.961Z'
 branch: core-100-deterministic-windows-assets
 worktree: .worktrees/core-100
@@ -24,9 +25,14 @@ blocks:
   - CORE-099
 refs:
   - docs/functional/frd/FRD-021-auto-update.md
+commits:
+  - 7e0683be876ff1e3921a999fc3d6f0257d937e43
+  - fb501a0487dc4314e432054c7ef01336b5d67f25
+prs:
+  - '251'
 archived: false
 created: '2026-08-24T22:43:05.670Z'
-updated: '2026-08-24T22:51:49.961Z'
+updated: '2026-08-24T23:11:16.705Z'
 ---
 
 ## What

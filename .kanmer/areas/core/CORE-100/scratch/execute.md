@@ -14,3 +14,9 @@
 - Plan and checklist were amended through MCP. The regression now asserts exactly those four errors and passes (46/46).
 - Commits pushed: `7e0683be876ff1e3921a999fc3d6f0257d937e43` (explicit Windows artifact name, documentation, initial regression) and `fb501a0487dc4314e432054c7ef01336b5d67f25` (complete historical tag-workflow integrity regression).
 - Final fresh GitHub-origin normal clone at `fb501a0487dc4314e432054c7ef01336b5d67f25`: `npm ci --ignore-scripts` exit 0; authoritative `npm run verify` exit 0. It included core 310/310, GUI 468/468, MCP HTTP 102/102, scripts 102/102, typecheck, docs, MCP smokes, MCPB check, skill/AGENTS/plugin checks.
+
+## Review hand-off — 2026-08-24
+
+Opened [PR #251](https://github.com/collisionengineers/kanmer/pull/251) from `core-100-deterministic-windows-assets` at `fb501a0487dc4314e432054c7ef01336b5d67f25`; ticket traceability records commits `7e0683be876ff1e3921a999fc3d6f0257d937e43` and `fb501a0487dc4314e432054c7ef01336b5d67f25`.
+
+Initial hosted checks are queued: `verify` and `kanmer-gate` in GitHub Actions run `32788167943`. Local authoritative fresh GitHub-origin clone verification at the same head exited 0. This hand-off does not change the immutable v0.3.6 tag, release, assets, or public state.

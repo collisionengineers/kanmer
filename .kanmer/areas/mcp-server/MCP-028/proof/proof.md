@@ -1,7 +1,7 @@
 ---
-result: PASS
-verified_at: 2026-08-22T05:42:00Z
-verified_on: 710bddff6d9e1672e8fea38467f3e10848265aad
+result: INCONCLUSIVE
+verified_at: 2026-08-24T16:25:00Z
+verified_on: ef67c04e0f3a20145dcb88497fdcb97a53038ab6
 pr: "154"
 ---
 
@@ -68,3 +68,15 @@ This is an environment/provider-readiness INCONCLUSIVE result. It does not weake
 ### Boundary and disposition
 
 This proves the external Worker path, public TLS route, bearer rejection, and disposable lifecycle. It does **not** promote the ticket: the canonical automatic adapter timed out before this network's delayed edge readiness, so the successful route used an explicitly owned manual HTTP/2 connector for this increment. Token rotation, host-restart/session invalidation, bounded concurrency, degradation/recovery through the canonical supervisor, complete public doctor matrix, GUI evidence, and full secret/canary scan remain unproven. Overall result remains **INCONCLUSIVE**.
+
+## Canonical current-main adapter matrix — 2026-08-24
+
+A fresh GitHub-origin clone at `ef67c04e0f3a20145dcb88497fdcb97a53038ab6` passed `npm ci --ignore-scripts` and `npm run build`. Infisical provided Cloudflare API credentials only to the test process; a redacted inventory check passed and no retained Cloudflare resource was created, changed, or deleted.
+
+- Canonical `remote-cli` local authenticated-origin readiness: **PASS**.
+- Initial executable-reference setup attempt: **FAIL** with `TUNNEL_EXECUTABLE_INVALID`, corrected without a provider mutation.
+- Two bounded canonical named-tunnel attempts: **INCONCLUSIVE**, each ending `TUNNEL_READINESS_TIMEOUT` before any public connected state. No deadline, assertion, source, or provider configuration was weakened or changed.
+- Public Worker/client, concurrency, bearer rotation/revocation, host restart/session invalidation, and degradation/recovery: **not attempted / INCONCLUSIVE**, because no canonical public adapter became connected.
+- Cleanup: **PASS**. Exact parent/child processes, owner lock, disposable board/token/log/config/source clone were absent after cleanup; redacted provider inventory retained the same route/tunnel binding.
+
+This preserves all earlier evidence and does not promote MCP-028. The ticket remains **Verifying** until a canonical current-main provider run reaches connected state and the dependent matrix passes.

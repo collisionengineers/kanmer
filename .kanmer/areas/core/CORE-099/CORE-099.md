@@ -27,9 +27,13 @@ blocks:
   - CORE-042
 refs:
   - docs/functional/frd/FRD-021-auto-update.md
+commits:
+  - d658585848f8c8545b300ecb557a5d23a8c30ed9
+prs:
+  - '250'
 archived: false
 created: '2026-08-24T22:04:47.134Z'
-updated: '2026-08-24T22:19:58.156Z'
+updated: '2026-08-24T22:26:52.944Z'
 ---
 
 ## Why

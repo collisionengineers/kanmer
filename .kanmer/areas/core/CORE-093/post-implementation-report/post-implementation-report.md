@@ -24,3 +24,9 @@ The branch is based on commit `883db4ea` from [[CORE-092]], which supplies the e
 ## Hosted CI observation
 
 PR #235’s initial `kanmer-gate` job reached and passed checkout, core build, ancestry fetch, explicit board-ref fetch, and separate-worktree checks. Its policy verdict correctly failed while CORE-093 was still Implementing and had an unnecessary live blocker from CORE-092. This report moves the ticket to Review and removes that blocker; an edited PR-body event will provide the final hosted trigger evidence.
+
+## Body-edit trigger proof
+
+A body-only edit to PR #235 preserved `Kanmer: CORE-093` and created GitHub Actions run `32715510795` for the unchanged head `a40c027a`. Its `kanmer-gate` job passed in 56 seconds, including the phase-2 command. This proves the `edited` trigger refreshes the gate when the body-derived ticket mapping can change.
+
+The job emitted only the expected non-blocking `NO_REVIEW_RECORD` warning; independent review remains the next stage responsibility.

@@ -16,7 +16,7 @@ Make the existing GUI workspace test command execute test files serially so the 
 3. Do not edit `apps/gui/src/main/index.sync.test.ts`. Its real-Git setup/cleanup, 30-second test and cleanup bounds, and cleanup assertion remain the regression signal.
 4. Record the source diff, exact commit SHA, and verification outcomes in the checklist and post-implementation report. Preserve the earlier normal-clone failure as a distinct failure; a later pass is additional evidence rather than a replacement.
 
-## Verification plan
+## Verification commands
 
 Use an isolated ticket worktree for the fast checks, always with an absolute prefix:
 

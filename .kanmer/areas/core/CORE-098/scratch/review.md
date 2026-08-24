@@ -2,10 +2,10 @@
 kind: review-attestation
 pr: "247"
 head_sha: "74051a072a199ac8d87c8250fa28be20acb52940"
-verdict: needs-changes
+verdict: pass
 reviewer: "codex-root-independent-reviewer"
 independent: true
-plan_hash: "e277c7dfeba846ca"
+plan_hash: "1e59d98be3688454"
 ticket_updated: "2026-08-24T21:08:03.323Z"
 findings:
   - id: "REV-001"
@@ -14,27 +14,28 @@ findings:
     disposition: fixed
   - id: "REV-002"
     severity: minor
-    summary: "The approved correction section of the plan still says the failed checklist item remains unticked, contradicting the fixed checklist."
-    disposition: open
+    summary: "The approved correction section of the plan said the failed checklist item remained unticked, contradicting the fixed checklist."
+    disposition: fixed
 ---
 
-# Independent re-review — CORE-098
+# Independent final review — CORE-098
 
 ## Decision
 
-NEEDS CHANGES. The source PR head is unchanged and the first review finding is fixed, but the plan and checklist must state the same retained-failure disposition before the record can pass.
+PASS. This review is performed by an independently assigned agent-role from the CORE-098 author. The PR remains at the exact reviewed head `74051a072a199ac8d87c8250fa28be20acb52940`.
 
-## Confirmed scope and checks
+## Scope, plan, and evidence
 
-The exact PR head remains `74051a072a199ac8d87c8250fa28be20acb52940`. It changes only the eight release-script-generated version, lockfile, plugin-manifest, and stamped MCP bundle artifacts. The release preparation passed its complete local rail; hosted `verify` and the post-Review `kanmer-gate` rerun are green; no GitHub review threads or comments are open.
+The PR contains exactly eight release-script-generated version-bearing artifacts: root and GUI manifests, package lockfile, three plugin manifests, MCPB manifest, and the version-stamped committed MCP bundle. It introduces no release-script, workflow, permission, publisher, tag, release, asset, or unrelated source change.
 
-No v0.3.5 tag, release, asset, publication, v0.3.4 mutation, workflow change, manual upload, or source modification occurred during record remediation.
+The corrected preparation completed the authoritative local rail: Core 310/310, GUI 468/468, MCP HTTP 102/102, scripts 99/99, workspace typecheck, docs, smoke/protocol/discovery, MCPB, skills, managed-AGENTS, and plugin checks. The post-run diff check passed. The initial boardless invocation remains explicitly preserved as a pre-mutation configuration failure; it created no branch, commit, PR, tag, package, publisher action, or release. The plan authorizes the one corrected KANMER_ROOT-bound invocation that produced this PR.
 
-## Finding dispositions
+Both prior record findings are fixed. The checklist now ticks evidence preservation of the failed attempt without claiming preparation success, and the plan says the same. The final state contains no unchecked historical-failure task.
 
-- **REV-001 — fixed:** The checklist now ticks the action that preserves and dispositions the initial failed boardless invocation, while explicitly saying it is not a successful preparation. The eventual Done record will therefore not contain an unchecked historical-failure task.
-- **REV-002 — minor, open:** The plan's Approved pre-mutation configuration correction still says “the failed checklist entry remains unticked.” Replace that phrase with wording that matches the fixed checklist: the failed invocation is retained and ticked as completed failure-evidence preservation, not preparation success. This is a single ticket-plan wording correction only. Do not alter source, PR head, release preparation, tag, publication, or merge.
+## Required checks and threads
+
+At this head, hosted `verify` passed and the post-Review `kanmer-gate` rerun passed. GitHub has no comments, reviews, or unresolved review threads. The ticket, plan hash, checklist, governing reference, and HZN-007 context were re-read for this decision.
 
 ## Residual risk
 
-The local publisher phase follows only after this independently reviewed PR merges through normal protection and remains outside this review scope.
+The local publish, public assets, tag workflow, and merged-main proof are intentionally separate CORE-098 phases and have not yet been performed. v0.3.4 remains untouched.

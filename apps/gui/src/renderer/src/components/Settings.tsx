@@ -1265,13 +1265,13 @@ export function OpenAITunnelSection({ projectId }: { projectId: string }): JSX.E
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [draft, setDraft] = useState<OpenAITunnelConfigInput>({ profileName: "", tunnelId: "", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: false, autoStart: false, expectedGeneration: null });
+  const [draft, setDraft] = useState<OpenAITunnelConfigInput>({ runtimeAlias: "", profileName: "", tunnelId: "", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: false, autoStart: false, expectedGeneration: null });
 
   const load = useCallback(async () => {
     try {
       const next = await window.kanmer.openAITunnelRegister(projectId);
       setView(next); setStatus(next.status);
-      if (next.profile) setDraft({ profileName: next.profile.profileName, tunnelId: next.profile.tunnelId, executable: next.profile.executable, credentialEnv: next.profile.credentialEnv, healthAddress: next.profile.healthAddress, enabled: next.profile.enabled, autoStart: next.profile.autoStart, expectedGeneration: next.profile.generation || null });
+      if (next.profile) setDraft({ runtimeAlias: next.profile.runtimeAlias, profileName: next.profile.profileName, tunnelId: next.profile.tunnelId, executable: next.profile.executable, credentialEnv: next.profile.credentialEnv, healthAddress: next.profile.healthAddress, enabled: next.profile.enabled, autoStart: next.profile.autoStart, expectedGeneration: next.profile.generation || null });
       setOverview(await window.kanmer.openAITunnelOverview()); setError(null);
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
   }, [projectId]);
@@ -1299,10 +1299,10 @@ export function OpenAITunnelSection({ projectId }: { projectId: string }): JSX.E
   const start = () => run("start", async () => { const next = await window.kanmer.openAITunnelStart(projectId, view?.profile?.generation ?? null); setStatus(next); });
   const stop = () => run("stop", async () => { const next = await window.kanmer.openAITunnelStop(projectId, view?.profile?.generation ?? null); setStatus(next); });
   const restart = () => run("restart", async () => { const next = await window.kanmer.openAITunnelRestart(projectId, view?.profile?.generation ?? null); setStatus(next); });
-  const reconcile = () => run("reconcile", async () => { const next = await window.kanmer.openAITunnelReconcile(projectId, null); setView(next); setStatus(next.status); if (next.profile) setDraft({ profileName: next.profile.profileName, tunnelId: next.profile.tunnelId, executable: next.profile.executable, credentialEnv: next.profile.credentialEnv, healthAddress: next.profile.healthAddress, enabled: next.profile.enabled, autoStart: next.profile.autoStart, expectedGeneration: next.profile.generation || null }); setOverview(await window.kanmer.openAITunnelOverview()); });
+  const reconcile = () => run("reconcile", async () => { const next = await window.kanmer.openAITunnelReconcile(projectId, null); setView(next); setStatus(next.status); if (next.profile) setDraft({ runtimeAlias: next.profile.runtimeAlias, profileName: next.profile.profileName, tunnelId: next.profile.tunnelId, executable: next.profile.executable, credentialEnv: next.profile.credentialEnv, healthAddress: next.profile.healthAddress, enabled: next.profile.enabled, autoStart: next.profile.autoStart, expectedGeneration: next.profile.generation || null }); setOverview(await window.kanmer.openAITunnelOverview()); });
   const remove = () => run("remove", async () => { await window.kanmer.openAITunnelRemove(projectId, view?.profile?.generation ?? null); setView(null); setStatus(null); setOverview(await window.kanmer.openAITunnelOverview()); setMessage("OpenAI Secure MCP Tunnel profile removed."); });
   const active = status?.state === "ready" || status?.state === "starting" || status?.state === "degraded";
-  const draftDirty = Boolean(view?.profile && (draft.profileName !== view.profile.profileName || draft.tunnelId !== view.profile.tunnelId || draft.executable !== view.profile.executable || draft.credentialEnv !== view.profile.credentialEnv || draft.healthAddress !== view.profile.healthAddress || draft.enabled !== view.profile.enabled || draft.autoStart !== view.profile.autoStart));
+  const draftDirty = Boolean(view?.profile && (draft.runtimeAlias !== view.profile.runtimeAlias || draft.profileName !== view.profile.profileName || draft.tunnelId !== view.profile.tunnelId || draft.executable !== view.profile.executable || draft.credentialEnv !== view.profile.credentialEnv || draft.healthAddress !== view.profile.healthAddress || draft.enabled !== view.profile.enabled || draft.autoStart !== view.profile.autoStart));
 
   return <div className="settings-section" aria-label="OpenAI Secure MCP Tunnel">
     <h3>OpenAI Secure MCP Tunnel</h3>
@@ -1312,10 +1312,11 @@ export function OpenAITunnelSection({ projectId }: { projectId: string }): JSX.E
     {error && <div className="banner error">{error}</div>}
     {message && <div className="banner success">{message}</div>}
     <div className="field-row">
-      <label className="field"><span>Runtime alias / profile</span><input value={draft.profileName} onChange={(e) => setDraft({ ...draft, profileName: e.target.value })} placeholder="my-kanmer" /></label>
-      <label className="field"><span>Tunnel id</span><input value={draft.tunnelId} onChange={(e) => setDraft({ ...draft, tunnelId: e.target.value })} placeholder="tunnel-id" /></label>
+      <label className="field"><span>Runtime alias</span><input value={draft.runtimeAlias} onChange={(e) => setDraft({ ...draft, runtimeAlias: e.target.value })} placeholder="kanmer-board" /></label>
+      <label className="field"><span>Runtime profile</span><input value={draft.profileName} onChange={(e) => setDraft({ ...draft, profileName: e.target.value })} placeholder="kanmer-local" /></label>
     </div>
     <div className="field-row">
+      <label className="field"><span>Tunnel id</span><input value={draft.tunnelId} onChange={(e) => setDraft({ ...draft, tunnelId: e.target.value })} placeholder="tunnel-id" /></label>
       <label className="field"><span>tunnel-client executable</span><input value={draft.executable} onChange={(e) => setDraft({ ...draft, executable: e.target.value })} placeholder="tunnel-client" /></label>
       <label className="field"><span>Credential environment variable</span><input value={draft.credentialEnv} onChange={(e) => setDraft({ ...draft, credentialEnv: e.target.value })} placeholder="CONTROL_PLANE_API_KEY" /></label>
     </div>

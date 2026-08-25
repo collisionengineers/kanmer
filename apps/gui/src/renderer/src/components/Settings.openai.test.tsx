@@ -6,7 +6,7 @@ import { OpenAITunnelSection } from "./Settings.js";
 
 const fingerprint = `kanmer-proj-v1:${"a".repeat(64)}`;
 const status: OpenAITunnelStatus = { projectId: "/repo", fingerprint, profileName: "repo", state: "stopped", action: "idle", severity: "info", health: { executable: "ready", credential: "unknown", listener: "unknown", mcp: "unknown" }, restartRequired: false, lastSummary: null, lastError: null, lastDoctorAt: null, updatedAt: new Date().toISOString() };
-const project: OpenAITunnelProjectView = { projectId: "/repo", identity: { fingerprint, boardRoot: "/repo/.worktrees/kanmer", repoRoot: "/repo", format: 3, boardSource: "file" }, profile: { profileName: "repo", tunnelId: "tunnel-1", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, generation: "11111111-1111-1111-1111-111111111111", lastSummary: null, lastError: null, lastDoctorAt: null }, status };
+const project: OpenAITunnelProjectView = { projectId: "/repo", identity: { fingerprint, boardRoot: "/repo/.worktrees/kanmer", repoRoot: "/repo", format: 3, boardSource: "file" }, profile: { runtimeAlias: "repo", profileName: "repo", tunnelId: "tunnel-1", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, generation: "11111111-1111-1111-1111-111111111111", lastSummary: null, lastError: null, lastDoctorAt: null }, status };
 
 describe("OpenAI tunnel settings surface", () => {
   afterEach(() => { cleanup(); vi.restoreAllMocks(); });

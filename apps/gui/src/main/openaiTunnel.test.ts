@@ -55,14 +55,14 @@ describe("OpenAITunnelManager", () => {
     const commands: string[][] = [];
     const manager = new OpenAITunnelManager(root, spawnFake(children, [], environments, commands));
     await manager.register("C:\\\\repo\\", identity);
-    const profile = await manager.saveProfile("C:/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "MY_TUNNEL_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: null });
+    const profile = await manager.saveProfile("C:/repo", identity, { runtimeAlias: "board-alias", profileName: "runtime-profile", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "MY_TUNNEL_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: null });
     const previous = process.env.MY_TUNNEL_KEY;
     process.env.MY_TUNNEL_KEY = "test-key";
     try {
       await manager.initialize("C:\\\\repo\\", identity, { boardRoot: identity.boardRoot, repoRoot: identity.repoRoot });
       expect(environments[0]?.MY_TUNNEL_KEY).toBe("test-key");
-      expect(commands[0]).toEqual(["runtimes", "connect", "--alias", "first", "--profile", "first", "--tunnel-id", "tunnel-first", "--runtime-api-key", "env:MY_TUNNEL_KEY", "--mcp-command", buildOpenAITunnelMcpCommand({ command: process.execPath, args: [] }), "--tunnel-client-bin", "tunnel-client", "--json"]);
-      expect(commands[1]).toEqual(["runtimes", "status", "first", "--json"]);
+      expect(commands[0]).toEqual(["runtimes", "connect", "--alias", "board-alias", "--profile", "runtime-profile", "--tunnel-id", "tunnel-first", "--runtime-api-key", "env:MY_TUNNEL_KEY", "--mcp-command", buildOpenAITunnelMcpCommand({ command: process.execPath, args: [] }), "--tunnel-client-bin", "tunnel-client", "--json"]);
+      expect(commands[1]).toEqual(["runtimes", "status", "board-alias", "--json"]);
       expect((await manager.overview())[0]?.projectId).toBe("C:/repo");
       expect(profile.profile?.generation).toMatch(/^[0-9a-f-]{36}$/i);
     } finally {
@@ -112,7 +112,8 @@ describe("OpenAITunnelManager", () => {
     const first = new OpenAITunnelManager(root);
     await first.register("/tmp/.kanmer", identity);
     const settingsPath = join(root, "openai-tunnels.json");
-    const legacy = JSON.parse(await readFile(settingsPath, "utf8")) as { profiles: Record<string, { profileName: string }> };
+    const legacy = JSON.parse(await readFile(settingsPath, "utf8")) as { profiles: Record<string, { profileName: string; runtimeAlias?: string }> };
+    delete legacy.profiles[identity.fingerprint]!.runtimeAlias;
     legacy.profiles[identity.fingerprint]!.profileName = ".kanmer";
     await writeFile(settingsPath, JSON.stringify(legacy), "utf8");
     const restarted = new OpenAITunnelManager(root);
@@ -240,6 +241,26 @@ describe("OpenAITunnelManager", () => {
     const manager = new OpenAITunnelManager(root, (() => { throw new Error("must not spawn"); }) as ConstructorParameters<typeof OpenAITunnelManager>[1]);
     await manager.register("/repo", identity);
     await manager.remove("/repo", identity, "");
+    expect(await manager.overview()).toEqual([]);
+  });
+
+  it("removes a complete saved profile whose runtime alias was never connected", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
+    const commands: string[][] = [];
+    const spawn = ((...args: Parameters<NonNullable<ConstructorParameters<typeof OpenAITunnelManager>[1]>>) => {
+      commands.push(args[1]);
+      const child = fakeChild();
+      queueMicrotask(() => {
+        child.stderr?.emit("data", "alias saved-alias is not known; run create or connect first");
+        child.finish(1);
+      });
+      return child;
+    }) as ConstructorParameters<typeof OpenAITunnelManager>[1];
+    const manager = new OpenAITunnelManager(root, spawn);
+    await manager.register("/repo", identity);
+    const saved = await manager.saveProfile("/repo", identity, { runtimeAlias: "saved-alias", profileName: "runtime-profile", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: null });
+    await manager.remove("/repo", identity, saved.profile!.generation);
+    expect(commands).toEqual([["runtimes", "status", "saved-alias", "--json"]]);
     expect(await manager.overview()).toEqual([]);
   });
 

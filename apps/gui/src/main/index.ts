@@ -265,9 +265,9 @@ function assertRemoteConfig(value: unknown): asserts value is RemoteConfigInput 
 function assertOpenAITunnelConfig(value: unknown): asserts value is OpenAITunnelConfigInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("OPENAI_PROFILE_INVALID");
   const keys = Object.keys(value).sort().join(",");
-  if (keys !== "autoStart,credentialEnv,enabled,executable,expectedGeneration,healthAddress,profileName,tunnelId") throw new Error("OPENAI_PROFILE_UNKNOWN_FIELD");
+  if (keys !== "autoStart,credentialEnv,enabled,executable,expectedGeneration,healthAddress,profileName,runtimeAlias,tunnelId" && keys !== "autoStart,credentialEnv,enabled,executable,expectedGeneration,healthAddress,profileName,tunnelId") throw new Error("OPENAI_PROFILE_UNKNOWN_FIELD");
   const config = value as Partial<OpenAITunnelConfigInput>;
-  if (![config.profileName, config.tunnelId, config.executable, config.credentialEnv, config.healthAddress].every((part) => typeof part === "string") || typeof config.enabled !== "boolean" || typeof config.autoStart !== "boolean" || (config.expectedGeneration !== null && typeof config.expectedGeneration !== "string")) throw new Error("OPENAI_PROFILE_INVALID");
+  if ((config.runtimeAlias !== undefined && typeof config.runtimeAlias !== "string") || ![config.profileName, config.tunnelId, config.executable, config.credentialEnv, config.healthAddress].every((part) => typeof part === "string") || typeof config.enabled !== "boolean" || typeof config.autoStart !== "boolean" || (config.expectedGeneration !== null && typeof config.expectedGeneration !== "string")) throw new Error("OPENAI_PROFILE_INVALID");
 }
 
 function remoteOwner(event: IpcMainInvokeEvent): { webContentsId: number; frameRoutingId: number } {

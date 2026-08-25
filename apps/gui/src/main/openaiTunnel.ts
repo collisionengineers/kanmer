@@ -67,6 +67,7 @@ function sanitize(value: unknown, profile?: OpenAITunnelProfile): string {
   let text = value instanceof Error ? value.message : String(value);
   if (profile) {
     if (profile.tunnelId) text = text.split(profile.tunnelId).join("[tunnel-id]");
+    if (profile.runtimeAlias) text = text.split(profile.runtimeAlias).join("[alias]");
     if (profile.profileName) text = text.split(profile.profileName).join("[profile]");
   }
   return text.replace(/[A-Za-z0-9_-]{32,}/g, "[redacted]").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 240);
@@ -106,17 +107,17 @@ function defaultProfile(projectId: string): OpenAITunnelProfile {
   const base = projectId.split(/[\\/]/).filter(Boolean).at(-1) ?? "kanmer";
   const cleaned = base.replace(/[^A-Za-z0-9._-]/g, "-");
   const profileName = (/^[A-Za-z0-9]/.test(cleaned) ? cleaned : `kanmer-${cleaned}`).slice(0, 64) || "kanmer";
-  return { ...emptyOpenAITunnelProfile(), profileName };
+  return { ...emptyOpenAITunnelProfile(), runtimeAlias: profileName, profileName };
 }
 
 function legacyDefaultProfile(projectId: string): OpenAITunnelProfile {
   const base = projectId.split(/[\\/]/).filter(Boolean).at(-1) ?? "kanmer";
   const profileName = base.replace(/[^A-Za-z0-9._-]/g, "-").slice(0, 56) || "kanmer";
-  return { ...emptyOpenAITunnelProfile(), profileName };
+  return { ...emptyOpenAITunnelProfile(), runtimeAlias: profileName, profileName };
 }
 
 function isRunnableProfile(profile: Partial<OpenAITunnelProfile>): profile is OpenAITunnelProfile {
-  return isSafeOpenAIProfileName(profile.profileName) && isSafeOpenAITunnelId(profile.tunnelId) && isSafeOpenAIExecutable(profile.executable) &&
+  return isSafeOpenAIProfileName(profile.runtimeAlias) && isSafeOpenAIProfileName(profile.profileName) && isSafeOpenAITunnelId(profile.tunnelId) && isSafeOpenAIExecutable(profile.executable) &&
     isSafeOpenAICredentialEnv(profile.credentialEnv) && isLoopbackHealthAddress(profile.healthAddress) && typeof profile.enabled === "boolean" &&
     typeof profile.autoStart === "boolean" && typeof profile.generation === "string" && /^[0-9a-f-]{36}$/i.test(profile.generation);
 }
@@ -124,16 +125,17 @@ function isRunnableProfile(profile: Partial<OpenAITunnelProfile>): profile is Op
 function normalizeProfile(value: unknown, expectedDefault: OpenAITunnelProfile, legacyDefault: OpenAITunnelProfile): OpenAITunnelProfile | null {
   if (!value || typeof value !== "object") return null;
   const p = value as Partial<OpenAITunnelProfile>;
+  p.runtimeAlias ??= p.profileName;
   const complete = isRunnableProfile(p);
   const diagnosticsValid = (p.lastSummary === null || typeof p.lastSummary === "string") && (p.lastError === null || typeof p.lastError === "string") &&
     (p.lastDoctorAt === null || (typeof p.lastDoctorAt === "string" && !Number.isNaN(Date.parse(p.lastDoctorAt))));
-  const matchesDefault = (candidate: OpenAITunnelProfile) => p.profileName === candidate.profileName && p.tunnelId === candidate.tunnelId && p.executable === candidate.executable &&
+  const matchesDefault = (candidate: OpenAITunnelProfile) => p.runtimeAlias === candidate.runtimeAlias && p.profileName === candidate.profileName && p.tunnelId === candidate.tunnelId && p.executable === candidate.executable &&
     p.credentialEnv === candidate.credentialEnv && p.healthAddress === candidate.healthAddress && p.enabled === candidate.enabled &&
     p.autoStart === candidate.autoStart && p.generation === candidate.generation;
   const productDefault = diagnosticsValid && (matchesDefault(expectedDefault) || matchesDefault(legacyDefault));
   if ((!complete && !productDefault) || (!productDefault && !isSafeOpenAIProfileName(p.profileName)) || !isSafeOpenAIExecutable(p.executable) || !isSafeOpenAICredentialEnv(p.credentialEnv) || !isLoopbackHealthAddress(p.healthAddress) || typeof p.enabled !== "boolean" || typeof p.autoStart !== "boolean") return null;
   return {
-    profileName: productDefault ? expectedDefault.profileName : p.profileName!, tunnelId: p.tunnelId!, executable: p.executable,
+    runtimeAlias: productDefault ? expectedDefault.runtimeAlias : p.runtimeAlias!, profileName: productDefault ? expectedDefault.profileName : p.profileName!, tunnelId: p.tunnelId!, executable: p.executable,
     credentialEnv: p.credentialEnv, healthAddress: p.healthAddress, enabled: p.enabled,
     autoStart: p.autoStart, generation: p.generation!,
     lastSummary: typeof p.lastSummary === "string" ? sanitize(p.lastSummary) : null,
@@ -365,15 +367,17 @@ export class OpenAITunnelManager {
       const profile = this.data.profiles[identity.fingerprint];
       if (expectedGeneration !== (profile?.generation ?? null)) throw new Error("OPENAI_PROFILE_VERSION_CONFLICT");
       if (profile && isRunnableProfile(profile)) {
-        const before = await this.readRuntimeStatusStrict(record, profile);
-        if (before.process_running === true) {
-          const stopped = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "stop", profile.profileName, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(projectId));
-          if (stopped.code !== 0) throw new Error(commandFailure(stopped, profile, "OPENAI_RUNTIME_STOP_FAILED"));
-          const after = await this.readRuntimeStatusStrict(record, profile);
-          if (after.process_running !== false) throw new Error("OPENAI_RUNTIME_STOP_UNCONFIRMED");
+        const before = await this.readRuntimeStatusForRemoval(record, profile);
+        if (before !== null) {
+          if (before.process_running === true) {
+            const stopped = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "stop", profile.runtimeAlias, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(projectId));
+            if (stopped.code !== 0) throw new Error(commandFailure(stopped, profile, "OPENAI_RUNTIME_STOP_FAILED"));
+            const after = await this.readRuntimeStatusStrict(record, profile);
+            if (after.process_running !== false) throw new Error("OPENAI_RUNTIME_STOP_UNCONFIRMED");
+          }
+          const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "rm", profile.runtimeAlias, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(projectId));
+          if (result.code !== 0) throw new Error(commandFailure(result, profile, "OPENAI_RUNTIME_REMOVE_FAILED"));
         }
-        const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "rm", profile.profileName, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(projectId));
-        if (result.code !== 0) throw new Error(commandFailure(result, profile, "OPENAI_RUNTIME_REMOVE_FAILED"));
       }
       const previousProject = this.data.projects[identity.fingerprint];
       const previousProfile = profile;
@@ -396,10 +400,10 @@ export class OpenAITunnelManager {
       await this.load(); const record = this.record(projectId, identity); const previous = this.data.profiles[identity.fingerprint] ?? null;
       const previousGeneration = previous?.generation && previous.generation.length > 0 ? previous.generation : null;
       if (previousGeneration !== input.expectedGeneration) throw new Error("OPENAI_PROFILE_VERSION_CONFLICT");
-      const values = { ...input, profileName: input.profileName.trim(), tunnelId: input.tunnelId.trim(), executable: input.executable.trim(), credentialEnv: input.credentialEnv.trim(), healthAddress: input.healthAddress.trim() };
-      if (!isSafeOpenAIProfileName(values.profileName) || !isSafeOpenAITunnelId(values.tunnelId) || !isSafeOpenAIExecutable(values.executable) || !isSafeOpenAICredentialEnv(values.credentialEnv) || !isLoopbackHealthAddress(values.healthAddress)) throw new Error("OPENAI_PROFILE_INVALID");
-      for (const [fingerprint, other] of Object.entries(this.data.profiles)) if (fingerprint !== identity.fingerprint && other.generation && other.tunnelId && (other.profileName === values.profileName || other.healthAddress === values.healthAddress)) throw new Error("OPENAI_PROFILE_RESOURCE_DUPLICATE");
-      if (previousGeneration && previous && (previous.profileName !== values.profileName || previous.executable !== values.executable || previous.tunnelId !== values.tunnelId)) throw new Error("OPENAI_REMOVE_BEFORE_ALIAS_CHANGE");
+      const values = { ...input, runtimeAlias: (input.runtimeAlias ?? input.profileName).trim(), profileName: input.profileName.trim(), tunnelId: input.tunnelId.trim(), executable: input.executable.trim(), credentialEnv: input.credentialEnv.trim(), healthAddress: input.healthAddress.trim() };
+      if (!isSafeOpenAIProfileName(values.runtimeAlias) || !isSafeOpenAIProfileName(values.profileName) || !isSafeOpenAITunnelId(values.tunnelId) || !isSafeOpenAIExecutable(values.executable) || !isSafeOpenAICredentialEnv(values.credentialEnv) || !isLoopbackHealthAddress(values.healthAddress)) throw new Error("OPENAI_PROFILE_INVALID");
+      for (const [fingerprint, other] of Object.entries(this.data.profiles)) if (fingerprint !== identity.fingerprint && other.generation && other.tunnelId && (other.runtimeAlias === values.runtimeAlias || other.healthAddress === values.healthAddress)) throw new Error("OPENAI_PROFILE_RESOURCE_DUPLICATE");
+      if (previousGeneration && previous && (previous.runtimeAlias !== values.runtimeAlias || previous.profileName !== values.profileName || previous.executable !== values.executable || previous.tunnelId !== values.tunnelId)) throw new Error("OPENAI_REMOVE_BEFORE_ALIAS_CHANGE");
       const previousProject = this.data.projects[identity.fingerprint];
       const previousStatus = record.status;
       const next: OpenAITunnelProfile = { ...values, generation: randomUUID(), lastSummary: previous?.lastSummary ?? null, lastError: previous?.lastError ?? null, lastDoctorAt: previous?.lastDoctorAt ?? null };
@@ -422,7 +426,7 @@ export class OpenAITunnelManager {
       if (!profile.enabled) throw new Error("OPENAI_PROFILE_DISABLED");
       record.status = { ...record.status, action: "initializing", updatedAt: new Date().toISOString() }; this.emit(record.status);
       if (!process.env[profile.credentialEnv]) return this.finishDoctor(record, profile, [{ id: "CREDENTIAL_ENV_PRESENT", status: "fail", detail: `Environment variable ${profile.credentialEnv} is not present.` }], `Environment variable ${profile.credentialEnv} is not present.`);
-      const command = this.invocation(roots); const mcpCommand = buildOpenAITunnelMcpCommand(command); const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "connect", "--alias", profile.profileName, "--profile", profile.profileName, "--tunnel-id", profile.tunnelId, "--runtime-api-key", `env:${profile.credentialEnv}`, "--mcp-command", mcpCommand, "--tunnel-client-bin", profile.executable, "--json"], roots.repoRoot, this.childEnv(profile, command.env), profile, this.commandTracker(projectId), 60_000);
+      const command = this.invocation(roots); const mcpCommand = buildOpenAITunnelMcpCommand(command); const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "connect", "--alias", profile.runtimeAlias, "--profile", profile.profileName, "--tunnel-id", profile.tunnelId, "--runtime-api-key", `env:${profile.credentialEnv}`, "--mcp-command", mcpCommand, "--tunnel-client-bin", profile.executable, "--json"], roots.repoRoot, this.childEnv(profile, command.env), profile, this.commandTracker(projectId), 60_000);
       const failure = commandFailure(result, profile, "Managed runtime connection failed.");
       const checks: OpenAITunnelCheck[] = [{ id: "EXECUTABLE_PRESENT", status: result.code === 0 ? "pass" : "fail", detail: result.code === 0 ? "Managed runtime command completed." : failure }, { id: "CREDENTIAL_ENV_PRESENT", status: "pass", detail: "Named credential environment variable is present; its value was not read into diagnostics." }, { id: "MCP_TARGET", status: result.code === 0 ? "pass" : "fail", detail: result.code === 0 ? "Managed runtime is bound to the canonical stdio MCP target." : failure }];
       if (result.code !== 0) return this.finishDoctor(record, profile, checks, failure);
@@ -433,13 +437,25 @@ export class OpenAITunnelManager {
   private childEnv(profile: OpenAITunnelProfile, extra?: Record<string, string>): NodeJS.ProcessEnv { const env: NodeJS.ProcessEnv = { ...process.env, ...extra }; if (!process.env[profile.credentialEnv]) delete env[profile.credentialEnv]; return env; }
 
   private async readRuntimeStatus(record: RecordState, profile: OpenAITunnelProfile): Promise<ManagedRuntimeStatus | null> {
-    const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "status", profile.profileName, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
+    const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "status", profile.runtimeAlias, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
     return result.code === 0 ? parseManagedRuntimeStatus(result.output) : null;
   }
 
   private async readRuntimeStatusStrict(record: RecordState, profile: OpenAITunnelProfile): Promise<ManagedRuntimeStatus> {
-    const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "status", profile.profileName, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
+    const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "status", profile.runtimeAlias, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
     if (result.code !== 0) throw new Error(commandFailure(result, profile, "OPENAI_RUNTIME_STATUS_FAILED"));
+    const runtime = parseManagedRuntimeStatus(result.output);
+    if (!runtime || typeof runtime.process_running !== "boolean") throw new Error("OPENAI_RUNTIME_STATUS_INVALID");
+    return runtime;
+  }
+
+  private async readRuntimeStatusForRemoval(record: RecordState, profile: OpenAITunnelProfile): Promise<ManagedRuntimeStatus | null> {
+    const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "status", profile.runtimeAlias, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
+    const detail = commandFailure(result, profile, "OPENAI_RUNTIME_STATUS_FAILED");
+    if (result.code !== 0) {
+      if (detail === "alias [alias] is not known; run create or connect first") return null;
+      throw new Error(detail);
+    }
     const runtime = parseManagedRuntimeStatus(result.output);
     if (!runtime || typeof runtime.process_running !== "boolean") throw new Error("OPENAI_RUNTIME_STATUS_INVALID");
     return runtime;
@@ -470,7 +486,7 @@ export class OpenAITunnelManager {
   }
 
   private async runtimeStatus(record: RecordState, profile: OpenAITunnelProfile, roots: OpenAITunnelRoots, checks: OpenAITunnelCheck[]): Promise<OpenAITunnelDoctorResult> {
-    const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "status", profile.profileName, "--json"], roots.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
+    const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "status", profile.runtimeAlias, "--json"], roots.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
     const runtime = result.code === 0 ? parseManagedRuntimeStatus(result.output) : null;
     const ready = managedRuntimeReady(runtime);
     checks.push({ id: "DOCTOR_COMMAND", status: result.code === 0 && runtime ? "pass" : "fail", detail: runtime ? "Managed runtime status returned structured JSON." : "Managed runtime status failed or returned invalid JSON." });
@@ -506,7 +522,7 @@ export class OpenAITunnelManager {
   }
 
   async stop(projectId: string, identity: RemoteProjectIdentity, expectedGeneration: string | null = null): Promise<OpenAITunnelStatus> {
-    return this.enqueue(projectId, async () => { await this.load(); const record = this.record(projectId, identity); const profile = this.data.profiles[identity.fingerprint]; if (profile && profile.generation !== expectedGeneration) throw new Error("OPENAI_PROFILE_VERSION_CONFLICT"); if (!profile) throw new Error("OPENAI_PROFILE_REQUIRED"); record.status = { ...record.status, state: "stopping", action: "stopping", updatedAt: new Date().toISOString() }; this.emit(record.status); const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "stop", profile.profileName, "--json"], identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(projectId)); const nextState = result.code === 0 ? (profile.enabled ? "stopped" : "disabled") : "error"; record.status = { ...record.status, state: nextState, action: "idle", severity: result.code === 0 ? "info" : "error", health: healthFor(nextState), lastError: result.code === 0 ? null : commandFailure(result, profile, "OPENAI_RUNTIME_STOP_FAILED"), updatedAt: new Date().toISOString() }; this.emit(record.status); return record.status; });
+    return this.enqueue(projectId, async () => { await this.load(); const record = this.record(projectId, identity); const profile = this.data.profiles[identity.fingerprint]; if (profile && profile.generation !== expectedGeneration) throw new Error("OPENAI_PROFILE_VERSION_CONFLICT"); if (!profile) throw new Error("OPENAI_PROFILE_REQUIRED"); record.status = { ...record.status, state: "stopping", action: "stopping", updatedAt: new Date().toISOString() }; this.emit(record.status); const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "stop", profile.runtimeAlias, "--json"], identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(projectId)); const nextState = result.code === 0 ? (profile.enabled ? "stopped" : "disabled") : "error"; record.status = { ...record.status, state: nextState, action: "idle", severity: result.code === 0 ? "info" : "error", health: healthFor(nextState), lastError: result.code === 0 ? null : commandFailure(result, profile, "OPENAI_RUNTIME_STOP_FAILED"), updatedAt: new Date().toISOString() }; this.emit(record.status); return record.status; });
   }
 
   async closeProject(projectId: string, _identity: RemoteProjectIdentity): Promise<void> {

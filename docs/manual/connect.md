@@ -104,13 +104,14 @@ the tunnel ready from `doctor` alone: status must say the process is running,
 healthy and ready. Use the corresponding runtime stop/remove command before
 retiring an alias; do not kill an unrelated process or delete the remote tunnel.
 
-In the GUI, open **Settings → OpenAI tunnel**, enter the profile name, tunnel id,
+In the GUI, open **Settings → OpenAI tunnel**, enter the runtime alias, profile name, tunnel id,
 `tunnel-client` path, credential environment-variable name, and loopback health
 address, then save. The address is a validated, non-secret expectation; the GUI
 does not rewrite `tunnel-client`'s profile file or claim a live listener, so
 distinct ports must still be configured in the client profile by the operator.
 The GUI uses `runtimes connect`, `runtimes status`, `runtimes stop`, and
-`runtimes rm`. **Connect runtime** creates or reuses the alias and **Check
+`runtimes rm`. The runtime alias and client profile may have different names.
+**Connect runtime** creates or reuses the alias and **Check
 status** reports ready only when the managed process is running, healthy, and
 ready. The credential is passed as `--runtime-api-key env:<NAME>`, so its value
 is never persisted or rendered by Kanmer. A downloaded app update marks a ready

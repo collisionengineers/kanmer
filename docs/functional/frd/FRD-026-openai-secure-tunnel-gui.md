@@ -18,10 +18,10 @@ provisioning API.
 
 - **R1 — Project isolation.** A profile belongs to one canonical project
   identity (board root, source root and format). The GUI must not combine
-  boards behind one profile and must reject duplicate profile names or loopback
+  boards behind one profile and must reject duplicate runtime aliases or loopback
   health addresses across projects.
-- **R2 — Non-secret persistence.** App-global settings may persist the profile
-  name, tunnel identifier, executable path, named credential environment
+- **R2 — Non-secret persistence.** App-global settings may persist the runtime
+  alias, profile name, tunnel identifier, executable path, named credential environment
   variable and loopback health address. API-key values, tunnel-client profile
   files and credentials never enter project files, Kanmer documents, logs,
   diagnostics or renderer state.

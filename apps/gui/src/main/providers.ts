@@ -55,9 +55,17 @@ export function codexPortableInvocation(boardBranch?: string): Invocation {
 
 /** Add the installer-owned health-check mode to the canonical command string. */
 export function codexPortableProbeInvocation(): Invocation {
-  const invocation = codexPortableInvocation();
-  invocation.args[3] = `${invocation.args[3]} --probe`;
-  return invocation;
+  return {
+    command: "cmd.exe",
+    // `cmd /s /c` applies special quote stripping when the command starts with
+    // a quoted executable. Node's Windows argv serialiser then adds another
+    // outer quote, producing the literal trailing quote seen by GUI-132. `call`
+    // keeps the first token unquoted while preserving environment expansion and
+    // the installer-owned portable path. This is probe-only: the Codex project
+    // registration remains the exact rootless FRD-012 R1e invocation above.
+    args: ["/d", "/s", "/c", `call "${CODEX_LAUNCHER_PATH}" --probe`],
+    env: {},
+  };
 }
 
 /** The installer-owned Windows runtime used by native plugin MCP configs. */

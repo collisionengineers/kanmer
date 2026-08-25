@@ -374,7 +374,7 @@ describe("codex project-scoped TOML registration (FRD-012 R1)", () => {
     const probe = codexPortableProbeInvocation();
     expect(probe).toEqual({
       command: "cmd.exe",
-      args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe'],
+      args: ["/d", "/s", "/c", 'call "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe'],
       env: {},
     });
     const normal = codexPortableInvocation();

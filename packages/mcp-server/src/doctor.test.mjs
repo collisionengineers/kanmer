@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { DOCTOR_CHECK_IDS, runDoctor } from "../dist/doctor/index.js";
 
 test("doctor emits a stable schema-v1 ordered report and explicit public skips", async () => {
@@ -89,14 +92,17 @@ test("doctor uses the injected clock for its total deadline", async () => {
   assert.equal(report.checks.some((check) => check.details?.reason === "doctor total deadline exceeded"), false);
 });
 
-test("packaged local CLI rejects an unsafe endpoint before probing it", async () => {
+test("packaged local CLI rejects an unsafe endpoint before probing it", async (t) => {
   let hits = 0;
+  const boardRoot = mkdtempSync(join(tmpdir(), "kanmer-doctor-cli-test-"));
+  mkdirSync(join(boardRoot, ".kanmer"));
+  t.after(() => rmSync(boardRoot, { recursive: true, force: true }));
   const server = createServer((_request, response) => { hits++; response.end(); });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
   assert.ok(address && typeof address === "object");
   const endpoint = `http://127.0.0.1:${address.port}/not-mcp`;
-  const child = spawn(process.execPath, ["dist/doctor-cli.js", "local", "--json"], { cwd: process.cwd(), env: { ...process.env, KANMER_LOCAL_ENDPOINT: endpoint } });
+  const child = spawn(process.execPath, ["dist/doctor-cli.js", "local", "--json"], { cwd: process.cwd(), env: { ...process.env, KANMER_ROOT: boardRoot, KANMER_LOCAL_ENDPOINT: endpoint } });
   let stdout = "";
   child.stdout.on("data", (chunk) => { stdout += chunk; });
   const code = await new Promise((resolve, reject) => { child.once("error", reject); child.once("close", resolve); });

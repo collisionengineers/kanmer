@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test, { after } from "node:test";
 import { createKanmerRemoteHost } from "../dist/remote-host.js";
+
+const boardRoot = mkdtempSync(join(tmpdir(), "kanmer-remote-host-test-"));
+mkdirSync(join(boardRoot, ".kanmer"));
+const previousRoot = process.env.KANMER_ROOT;
+process.env.KANMER_ROOT = boardRoot;
+after(() => {
+  if (previousRoot === undefined) delete process.env.KANMER_ROOT;
+  else process.env.KANMER_ROOT = previousRoot;
+  rmSync(boardRoot, { recursive: true, force: true });
+});
 
 const verifyLocal = async () => {};
 

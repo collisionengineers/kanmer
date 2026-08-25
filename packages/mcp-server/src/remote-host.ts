@@ -101,12 +101,12 @@ export class KanmerRemoteHost {
       try {
         await process.checkReadiness?.();
         if (!this.stopped && this.monitoredProcess === process && this.status.provider === "degraded") {
-          this.status = { ...this.status, provider: "running" };
+          this.status = { ...this.status, provider: "running", changedAt: new Date().toISOString() };
           this.emit();
         }
       } catch {
         if (!this.stopped && this.monitoredProcess === process && this.status.provider === "running") {
-          this.status = { ...this.status, provider: "degraded" };
+          this.status = { ...this.status, provider: "degraded", changedAt: new Date().toISOString() };
           this.emit();
         }
       }

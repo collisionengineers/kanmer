@@ -97,12 +97,18 @@ test("provider readiness loss becomes degraded and a later local-ready poll reco
   });
   try {
     await remote.start();
+    const connectedAt = remote.getStatus().changedAt;
     healthy = false;
+    await new Promise((resolve) => setTimeout(resolve, 2));
     await poll();
     assert.equal(remote.getStatus().provider, "degraded");
+    const degradedAt = remote.getStatus().changedAt;
+    assert.notEqual(degradedAt, connectedAt);
     healthy = true;
+    await new Promise((resolve) => setTimeout(resolve, 2));
     await poll();
     assert.equal(remote.getStatus().provider, "running");
+    assert.notEqual(remote.getStatus().changedAt, degradedAt);
   } finally { await remote.close(); }
 });
 

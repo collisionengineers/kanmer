@@ -26,7 +26,7 @@ test("remote host starts bearer-protected HTTP before giving one loopback target
     assert.equal(target.hostname, "kanmer.example.test");
     assert.match(target.projectFingerprint, /^kanmer-proj-v1:[0-9a-f]{64}$/);
     assert.equal(target.authGeneration, "sha256:0123456789ab");
-    assert.deepEqual(remote.getStatus(), { local: "ready", provider: "running", publicVerification: "unknown", endpoint: "https://kanmer.example.test/mcp" });
+    assert.deepEqual(remote.getStatus(), { local: "ready", provider: "running", publicVerification: "unknown", endpoint: "https://kanmer.example.test/mcp", attempt: 1 });
     assert.deepEqual(statuses.at(-1), remote.getStatus());
     assert.equal(JSON.stringify(statuses).includes('"principal"'), false);
   } finally { await remote.close(); }
@@ -40,7 +40,7 @@ test("provider startup failure leaves the local authenticated HTTP host availabl
   });
   try {
     await assert.rejects(() => remote.start(), /provider unavailable/);
-    assert.deepEqual(remote.getStatus(), { local: "ready", provider: "failed", publicVerification: "unknown" });
+    assert.deepEqual(remote.getStatus(), { local: "ready", provider: "failed", publicVerification: "unknown", attempt: 1 });
   } finally { await remote.close(); }
 });
 
@@ -157,7 +157,7 @@ test("origin invalidation stops forwarding but keeps the authenticated local lis
   await remote.start();
   await remote.invalidateOrigin();
   assert.equal(stopped, true);
-  assert.deepEqual(remote.getStatus(), { local: "ready", provider: "failed", publicVerification: "unknown", endpoint: "https://kanmer.example.test/mcp", reason: "TUNNEL_ORIGIN_INVALIDATED" });
+  assert.deepEqual(remote.getStatus(), { local: "ready", provider: "failed", publicVerification: "unknown", endpoint: "https://kanmer.example.test/mcp", reason: "TUNNEL_ORIGIN_INVALIDATED", attempt: 1 });
   const response = await fetch(target.endpoint, { headers: { authorization: "Bearer anything" } });
   assert.equal(response.status, 400);
   await remote.close();

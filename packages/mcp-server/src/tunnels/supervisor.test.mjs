@@ -23,14 +23,16 @@ async function waitFor(promise, label, timeoutMs = 1_000) {
 test("supervisor restarts only a bounded number of unexpected exits and stops its current child", async () => {
   const exits = [];
   const states = [];
+  const attempts = [];
   const secondChildRunning = deferred();
   const failed = deferred();
   const supervisor = new TunnelSupervisor({
     maxRestarts: 1,
     restartPolicy: { baseDelayMs: 0, maxDelayMs: 0 },
     random: () => 0.5,
-    onState: (state) => {
+    onState: (state, attempt) => {
       states.push(state);
+      attempts.push(attempt);
       if (state === "running" && exits.length === 2) secondChildRunning.resolve();
       if (state === "failed") failed.resolve();
     },
@@ -46,6 +48,7 @@ test("supervisor restarts only a bounded number of unexpected exits and stops it
   exits[1].resolve({ code: 1, signal: null });
   await waitFor(failed.promise, "bounded retry failure");
   assert.deepEqual(states, ["starting", "running", "restarting", "running", "failed"]);
+  assert.deepEqual(attempts, [1, 1, 2, 2, 2]);
   await supervisor.stop();
   assert.equal(states.at(-1), "stopped");
 });

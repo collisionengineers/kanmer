@@ -23,6 +23,7 @@ export interface RemoteHostStatus {
   readonly publicVerification: "unknown";
   readonly endpoint?: string;
   readonly reason?: string;
+  readonly attempt?: number;
 }
 
 /** Composes bearer-protected loopback HTTP with a provider-neutral tunnel. */
@@ -62,10 +63,10 @@ export class KanmerRemoteHost {
         this.monitorHealth(process);
         return process;
       },
-      onState: (state) => {
+      onState: (state, attempt) => {
         const provider: RemoteHostStatus["provider"] = state === "stopped" ? "stopped" : state === "starting" ? "starting" : state;
         if (provider === "stopped" || provider === "failed") this.stopHealthMonitor();
-        this.status = { ...this.status, provider }; this.emit();
+        this.status = { ...this.status, provider, attempt }; this.emit();
       },
     });
   }

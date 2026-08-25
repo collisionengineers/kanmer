@@ -28,9 +28,11 @@ function fakeChild(): ChildProcess & { finish(code?: number): void } {
   return child;
 }
 
-function spawnFake(children: Array<ChildProcess & { finish(code?: number): void }>, codes: Array<number | undefined> = [], environments: NodeJS.ProcessEnv[] = []) {
+function spawnFake(children: Array<ChildProcess & { finish(code?: number): void }>, codes: Array<number | undefined> = [], environments: NodeJS.ProcessEnv[] = [], commands: string[][] = []) {
   return ((...args: Parameters<NonNullable<ConstructorParameters<typeof OpenAITunnelManager>[1]>>) => {
-    environments.push(args[2].env); const child = fakeChild(); children.push(child); const code = codes[children.length - 1]; if (code !== undefined) queueMicrotask(() => child.finish(code)); return child;
+    environments.push(args[2].env); commands.push(args[1]); const child = fakeChild(); children.push(child); const index = children.length - 1; const code = index < codes.length ? codes[index] : 0;
+    if (code !== undefined) queueMicrotask(() => { if (args[1][0] === "runtimes" && args[1][1] === "status") child.stdout?.emit("data", JSON.stringify({ alias: args[1][2], process_running: true, healthy: true, ready: true, runtime_state: "ready" })); child.finish(code); });
+    return child;
   }) as ConstructorParameters<typeof OpenAITunnelManager>[1];
 }
 
@@ -50,7 +52,8 @@ describe("OpenAITunnelManager", () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
     const children: Array<ChildProcess & { finish(code?: number): void }> = [];
     const environments: NodeJS.ProcessEnv[] = [];
-    const manager = new OpenAITunnelManager(root, spawnFake(children, [0], environments));
+    const commands: string[][] = [];
+    const manager = new OpenAITunnelManager(root, spawnFake(children, [], environments, commands));
     await manager.register("C:\\\\repo\\", identity);
     const profile = await manager.saveProfile("C:/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "MY_TUNNEL_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: null });
     const previous = process.env.MY_TUNNEL_KEY;
@@ -58,6 +61,8 @@ describe("OpenAITunnelManager", () => {
     try {
       await manager.initialize("C:\\\\repo\\", identity, { boardRoot: identity.boardRoot, repoRoot: identity.repoRoot });
       expect(environments[0]?.MY_TUNNEL_KEY).toBe("test-key");
+      expect(commands[0]).toEqual(["runtimes", "connect", "--alias", "first", "--profile", "first", "--tunnel-id", "tunnel-first", "--runtime-api-key", "env:MY_TUNNEL_KEY", "--mcp-command", buildOpenAITunnelMcpCommand({ command: process.execPath, args: [] }), "--tunnel-client-bin", "tunnel-client", "--json"]);
+      expect(commands[1]).toEqual(["runtimes", "status", "first", "--json"]);
       expect((await manager.overview())[0]?.projectId).toBe("C:/repo");
       expect(profile.profile?.generation).toMatch(/^[0-9a-f-]{36}$/i);
     } finally {
@@ -178,11 +183,11 @@ describe("OpenAITunnelManager", () => {
     expect(reconciled.profile?.profileName).toBe("first");
   });
 
-  it("does not leak credentials, starts an owned child, and cleans it up", async () => {
+  it("does not leak credentials and manages a persistent runtime alias", async () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
     const children: Array<ChildProcess & { finish(code?: number): void }> = [];
     const environments: NodeJS.ProcessEnv[] = [];
-    const manager = new OpenAITunnelManager(root, spawnFake(children, [0, undefined, 0], environments), () => ({ command: "kanmer", args: [], env: { ELECTRON_RUN_AS_NODE: "1" } }));
+    const manager = new OpenAITunnelManager(root, spawnFake(children, [], environments), () => ({ command: "kanmer", args: [], env: { ELECTRON_RUN_AS_NODE: "1" } }));
     await manager.register("/repo", identity);
     const profile = await manager.saveProfile("/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: null });
     const previous = process.env.CONTROL_PLANE_API_KEY;
@@ -193,20 +198,17 @@ describe("OpenAITunnelManager", () => {
       expect(initialized.checks.find((check) => check.id === "EXECUTABLE_PRESENT")?.status).toBe("pass");
       expect(environments[0]?.ELECTRON_RUN_AS_NODE).toBe("1");
       const started = await manager.start("/repo", identity, { boardRoot: identity.boardRoot, repoRoot: identity.repoRoot }, profile.profile!.generation);
-      expect(started.state).toBe("degraded");
-      expect(children).toHaveLength(2);
-      expect(environments[1]?.ELECTRON_RUN_AS_NODE).toBe("1");
-      await expect(manager.saveProfile("/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: profile.profile!.generation, })).rejects.toThrow("OPENAI_STOP_BEFORE_SAVE");
+      expect(started.state).toBe("ready");
+      expect(children).toHaveLength(4);
       await manager.markRestartRequired();
       expect((await manager.viewFor("/repo", identity)).status.restartRequired).toBe(true);
       const doctor = await manager.doctor("/repo", identity, { boardRoot: identity.boardRoot, repoRoot: identity.repoRoot });
       expect(doctor.ok).toBe(true);
-      expect(doctor.severity).toBe("warning");
-      expect(doctor.checks.find((check) => check.id === "HEALTH_ADDRESS")?.status).toBe("warn");
+      expect(doctor.severity).toBe("info");
+      expect(doctor.checks.find((check) => check.id === "HEALTH_ADDRESS")?.status).toBe("pass");
       expect(doctor.checks.some((check) => check.detail.includes("do-not-log"))).toBe(false);
       await manager.closeProject("/repo", identity);
-      expect(children[1]!.exitCode).toBe(0);
-      expect((await manager.viewFor("/repo", identity)).status.state).toBe("stopped");
+      expect((await manager.viewFor("/repo", identity)).status.state).toBe("ready");
     } finally {
       if (previous === undefined) delete process.env.CONTROL_PLANE_API_KEY; else process.env.CONTROL_PLANE_API_KEY = previous;
     }

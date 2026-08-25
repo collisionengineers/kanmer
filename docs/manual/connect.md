@@ -44,10 +44,9 @@ OpenAI Secure MCP Tunnel can let a ChatGPT developer-mode app reach Kanmer
 without a public MCP endpoint or an inbound firewall rule. The separate
 `tunnel-client` process connects
 outbound to OpenAI and starts Kanmer's existing stdio server as its private MCP
-target. Kanmer does not store the tunnel id or API key and does not supervise
-the tunnel process when you use the manual commands below. The GUI also has a
-separate **Settings → OpenAI tunnel** surface that stores non-secret profile
-metadata, runs `init`/`doctor`, and owns the local `run` process when enabled.
+target. Kanmer never stores the API key. The GUI has a separate **Settings →
+OpenAI tunnel** surface that stores non-secret profile metadata and manages the
+same long-lived runtime alias used by the manual commands below.
 
 You need an OpenAI tunnel associated with the intended Platform organization
 and ChatGPT workspace, a runtime API key whose principal has **Tunnels Read +
@@ -110,15 +109,15 @@ In the GUI, open **Settings → OpenAI tunnel**, enter the profile name, tunnel 
 address, then save. The address is a validated, non-secret expectation; the GUI
 does not rewrite `tunnel-client`'s profile file or claim a live listener, so
 distinct ports must still be configured in the client profile by the operator.
-This GUI surface and the native runtime supervisor are separate operating
-modes: **Initialize** runs `tunnel-client init`, **Run doctor** runs
-`tunnel-client doctor`, and **Start**, **Stop**, and **Restart** supervise the
-GUI-owned `tunnel-client run` child. The GUI does not execute `runtimes connect`
-or manage native runtime aliases. Initialize binds the selected credential name with tunnel-client's
-`--control-plane-api-key-ref env:<NAME>` option, so a custom environment
-variable is honored without putting its value in the profile;
-the GUI never asks for or persists the API-key value. A downloaded app update marks a
-running tunnel for restart, and quitting Kanmer stops its owned process tree.
+The GUI uses `runtimes connect`, `runtimes status`, `runtimes stop`, and
+`runtimes rm`. **Connect runtime** creates or reuses the alias and **Check
+status** reports ready only when the managed process is running, healthy, and
+ready. The credential is passed as `--runtime-api-key env:<NAME>`, so its value
+is never persisted or rendered by Kanmer. A downloaded app update marks a ready
+runtime for reconnect; quitting Kanmer leaves the long-lived managed runtime
+running. Stop and remove affect only the local alias and never delete the remote
+tunnel. In ChatGPT select the discovered Tunnel app. Do not use Custom
+Connector: that screen requests OAuth endpoints Kanmer does not implement.
 Cloudflare settings are a different provider path and are not used here.
 
 Use forward slashes inside `$mcpCommand`, including on Windows. Version 0.0.11's

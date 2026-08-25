@@ -20,12 +20,12 @@ describe("OpenAI tunnel settings surface", () => {
     expect(await screen.findByDisplayValue("CONTROL_PLANE_API_KEY")).toBeTruthy();
     await waitFor(() => expect((screen.getByRole("checkbox", { name: /Enable this project/i }) as HTMLInputElement).checked).toBe(true));
     expect(screen.queryByDisplayValue(/do-not-log|secret|api-key-value/i)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Initialize" }));
+    fireEvent.click(screen.getByRole("button", { name: "Connect runtime" }));
     await waitFor(() => expect(api.openAITunnelInitialize).toHaveBeenCalledWith("/repo"));
     fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
     await waitFor(() => expect(api.openAITunnelSaveProfile).toHaveBeenCalledWith("/repo", expect.objectContaining({ credentialEnv: "CONTROL_PLANE_API_KEY" })));
     fireEvent.change(screen.getByDisplayValue("tunnel-1"), { target: { value: "unsaved-tunnel" } });
-    expect((screen.getByRole("button", { name: "Initialize" }) as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole("button", { name: "Restart" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Connect runtime" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Reconnect" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

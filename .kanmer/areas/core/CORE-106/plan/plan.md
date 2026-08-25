@@ -32,7 +32,7 @@ No new dependency. No retag or repair of v0.3.8. No second package generation in
 3. Add failing fixtures/tests, then implement remote-coherence CLI mode.
 4. Replace Electron Builder publication with package-never, explicit release creation, exact upload, and local-to-remote digest verification.
 5. Update the tag workflow and contributor/closeout guidance.
-6. Run targeted script tests, full `npm run test:scripts`, `npm run verify`, and a dry-run release path that performs no remote writes.
+6. Run targeted script tests, full `npm run test:scripts`, and `npm run verify`. The version-specific v0.3.9 release dry run is deliberately owned by CORE-107 because it requires the v0.3.9 release notes and version preparation that this remediation ticket must not absorb.
 7. Record the implementation report and open a protected-main PR.
 
 ## Acceptance checks
@@ -40,11 +40,11 @@ No new dependency. No retag or repair of v0.3.8. No second package generation in
 - Valid public asset set passes without any local installer comparison.
 - Publisher produces one package generation and uploads only exact verified paths.
 - Existing release/tag conflict refuses rather than mutating history.
-- Full verification rail and release dry run exit 0.
+- Targeted tests, script tests, and the full verification rail exit 0.
 - CLOSEOUT_PLAN.md accurately begins recovery at CORE-106 then CORE-107/v0.3.9.
 
 ## Commands
-`npm run test:scripts`; `npm run verify`; `npm run release -- 0.3.9 --ticket CORE-107 --dry-run`. Network-writing commands are not used on this implementation ticket.
+`node --test scripts/verify-release-assets.test.mjs scripts/release-flow.test.mjs scripts/release-publish.test.mjs`; `npm run test:scripts`; `npm run verify`. Network-writing commands are not used on this implementation ticket. CORE-107 runs `npm run release -- 0.3.9 --ticket CORE-107 --dry-run` after preparing v0.3.9 notes.
 
 ## Failure and deviation rules
 A test failure stops the PR. If explicit GitHub release creation cannot preserve release notes/latest semantics, record the exact CLI/API behavior and amend the plan before coding an alternate. Any runtime defect discovered becomes a separate ticket.

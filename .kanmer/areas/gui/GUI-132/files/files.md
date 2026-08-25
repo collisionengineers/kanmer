@@ -29,3 +29,9 @@
 ## Deliberately out of scope
 
 Updater replacement/version skew belongs to [[GUI-133]]. Setup-script packaging belongs to [[SKILL-034]]. OpenAI/Cloudflare supervision belongs to [[MCP-049]]. No provider registration format, absolute fallback, or installer behavior changes are authorized here.
+
+## Convention documentation addition
+
+| Path | Role and risk |
+|---|---|
+| `AGENTS.md` | Required by repository rule 24 because the probe command/process convention changes. Document the probe-only `call` plus `windowsVerbatimArguments` contract and explicitly preserve the persisted rootless registration. |

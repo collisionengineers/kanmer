@@ -6,6 +6,37 @@ against shipping the previous release's notes. electron-builder reads this file
 from the app directory (`projectDir` is `apps/gui` when the packer is invoked
 there) and uses it as the GitHub release body.
 
+## 0.3.8
+
+### A steadier release and update path
+
+Kanmer's release checks now keep the Windows installer name, updater manifest,
+and published assets in one deterministic contract. The release verification
+also isolates the area-based ticket-ID coverage from unrelated cold board setup,
+so that test still proves where a new ticket is stored without making a release
+depend on incidental startup cost.
+
+### Safer protected pull-request handoff
+
+The protected-main gate now reruns when a pull request description changes and
+can resolve the board branch in a clean GitHub Actions checkout. This keeps the
+required `verify` and `kanmer-gate` checks aligned with the ticket named by the
+pull request.
+
+### Remote MCP access is managed per project
+
+Kanmer can manage a named Cloudflare Tunnel for its authenticated Streamable
+HTTP MCP endpoint, with diagnostics that separate local server, credential,
+tunnel, DNS, and remote-client failures. The OpenAI Secure MCP Tunnel remains
+an independent local client path. You still need to configure and start your
+own tunnel before a public hostname becomes available.
+
+### Provider integrations stay within their supported roles
+
+Codex and Claude Code use their OAuth-backed local MCP registrations. Grok can
+use the native Kanmer plugin, and Antigravity can use its supported direct
+plugin path. Antigravity does not run Kanmer background dispatch.
+
 ## 0.3.7
 
 ### Deterministic Windows updater artifacts

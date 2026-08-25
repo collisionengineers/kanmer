@@ -24,6 +24,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { releaseAssetNames } from "./release-publish.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -201,8 +202,6 @@ export function sanityCheckExpected({ expected, version }) {
  *             .exe.blockmap is an ERROR, by operator decision: treating it as a
  *             warning re-creates exactly the quiet failure this exists to kill
  *             (v0.3.0 shipped without one and passed the old gate).
- *   "warn"  — the check could not be completed for this asset (no digest). Never
- *             conflated with "the release is broken".
  *   "info"  — noted, not a problem (an extra asset on the release).
  *
  * @returns {{ok: boolean, problems: Array<{asset, kind, detail, severity}>}}
@@ -250,7 +249,7 @@ export function verifyAssets({ expected, assets }) {
       problems.push({
         asset: want.name,
         kind: "no-digest",
-        severity: "warn",
+        severity: "error",
         detail:
           "GitHub returned no digest for this asset — integrity NOT verified, " +
           "checked presence, state and size only",
@@ -259,7 +258,7 @@ export function verifyAssets({ expected, assets }) {
       problems.push({
         asset: want.name,
         kind: "no-digest",
-        severity: "warn",
+        severity: "error",
         detail: `digest "${digest}" is not sha256 — integrity NOT verified for this asset`,
       });
     } else if (digest.slice("sha256:".length).toLowerCase() !== want.sha256) {
@@ -438,12 +437,7 @@ export async function fetchReleaseAssets({
 
 /** The exact public shape produced by the current Windows-only release. */
 export function requiredRemoteAssetNames(version) {
-  return [
-    `Kanmer-Setup-${version}.exe`,
-    `Kanmer-Setup-${version}.exe.blockmap`,
-    `kanmer-${version}.mcpb`,
-    MANIFEST,
-  ];
+  return releaseAssetNames(version);
 }
 
 /**
@@ -494,10 +488,16 @@ async function fetchAssetBytes(asset, fetchImpl) {
   const response = await fetchImpl(asset.browser_download_url, { headers: { Accept: "application/octet-stream" } });
   if (!response.ok) {
     const error = new Error(`${asset.name} download returned ${response.status} — the CHECK could not run`);
-    error.kind = "http";
+    error.kind = response.status === 404 ? "public-unavailable" : "http";
     throw error;
   }
   return Buffer.from(await response.arrayBuffer());
+}
+
+/** Map verifier failures onto the tag workflow's retry contract. */
+export function verificationFailureExitCode(error, { remoteCoherent = false } = {}) {
+  if (remoteCoherent && (error?.kind === "not-found" || error?.kind === "public-unavailable")) return 1;
+  return 2;
 }
 
 /** Verify the public release against itself, not against a second signed build. */
@@ -652,7 +652,7 @@ if (isMain) {
     if (err.kind === "rate-limit" || err.kind === "auth") {
       console.error("  fix: set GH_TOKEN (or GITHUB_RELEASE_TOKEN / GITHUB_TOKEN) to a PAT with repo scope");
     }
-    process.exitCode = 2;
+    process.exitCode = verificationFailureExitCode(err, { remoteCoherent });
     result = null;
   }
 

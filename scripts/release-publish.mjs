@@ -1,5 +1,15 @@
 // Construct the explicit upload set for the one package produced by release.mjs.
 
+/** The canonical public filenames emitted and published for one release. */
+export function releaseAssetNames(version) {
+  return [
+    `Kanmer-Setup-${version}.exe`,
+    `Kanmer-Setup-${version}.exe.blockmap`,
+    `kanmer-${version}.mcpb`,
+    "latest.yml",
+  ];
+}
+
 /**
  * Build the exact gh(1) upload arguments for a single already-built package.
  *

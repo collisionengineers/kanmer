@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { exactUploadSpecs } from "./release-publish.mjs";
+import { exactUploadSpecs, releaseAssetNames } from "./release-publish.mjs";
 
 const complete = {
   expected: [
@@ -22,4 +22,13 @@ test("uses explicit GitHub names for exact local upload arguments", () => {
 test("refuses to construct an upload from an incomplete expected set", () => {
   assert.throws(() => exactUploadSpecs([]), /without expected local assets/);
   assert.throws(() => exactUploadSpecs([{ name: "latest.yml" }]), /lacks its local path/);
+});
+
+test("owns the one canonical public release asset-name set", () => {
+  assert.deepEqual(releaseAssetNames("1.2.3"), [
+    "Kanmer-Setup-1.2.3.exe",
+    "Kanmer-Setup-1.2.3.exe.blockmap",
+    "kanmer-1.2.3.mcpb",
+    "latest.yml",
+  ]);
 });

@@ -35,6 +35,7 @@ import {
   requiredRemoteAssetNames,
   verifyRemoteAssetShape,
   verifyRemoteRelease,
+  verificationFailureExitCode,
   MANIFEST,
 } from "./verify-release-assets.mjs";
 
@@ -125,6 +126,23 @@ describe("remote-coherent verification", () => {
     });
     assert.equal(result.ok, false);
     assert.ok(result.problems.filter((problem) => problem.kind === "manifest").length >= 4);
+  });
+
+  test("treats draft visibility races as retryable but auth/API failures as inconclusive", async () => {
+    await assert.rejects(
+      verifyRemoteRelease({
+        version,
+        fetchImpl: async (url) => url.includes("api.github.com")
+          ? { ok: true, status: 200, json: async () => ({ assets }) }
+          : { ok: false, status: 404 },
+      }),
+      (error) => error.kind === "public-unavailable",
+    );
+    assert.equal(verificationFailureExitCode({ kind: "not-found" }, { remoteCoherent: true }), 1);
+    assert.equal(verificationFailureExitCode({ kind: "public-unavailable" }, { remoteCoherent: true }), 1);
+    assert.equal(verificationFailureExitCode({ kind: "auth" }, { remoteCoherent: true }), 2);
+    assert.equal(verificationFailureExitCode({ kind: "http" }, { remoteCoherent: true }), 2);
+    assert.equal(verificationFailureExitCode({ kind: "not-found" }), 2);
   });
 });
 
@@ -390,18 +408,18 @@ describe("verifyAssets — the failure modes that were never recorded", () => {
     assert.deepEqual(kinds(r), ["digest"]);
   });
 
-  test("digest: null DEGRADES to state+size and says so — it does not crash or pass silently", () => {
+  test("digest: null is a hard failure because integrity was not verified", () => {
     const assets = base();
     assets[0].digest = null;
     const r = verifyAssets({ expected: expectedFrom(GOLDEN["0.3.2"]), assets });
-    assert.equal(r.ok, true, "an absent digest must not fail an otherwise good release");
-    const warn = r.problems.find((p) => p.kind === "no-digest");
-    assert.ok(warn, "the un-verified asset must be reported");
-    assert.equal(warn.severity, "warn");
-    assert.match(warn.detail, /integrity NOT verified/);
+    assert.equal(r.ok, false);
+    const failure = r.problems.find((p) => p.kind === "no-digest");
+    assert.ok(failure, "the un-verified asset must be reported");
+    assert.equal(failure.severity, "error");
+    assert.match(failure.detail, /integrity NOT verified/);
   });
 
-  test("digest: null still catches a bad size (the degrade is partial, not a pass)", () => {
+  test("digest: null reports both the missing digest and a bad size", () => {
     const assets = base();
     assets[0].digest = null;
     assets[0].size = 412;
@@ -410,11 +428,11 @@ describe("verifyAssets — the failure modes that were never recorded", () => {
     assert.ok(kinds(r).includes("size"));
   });
 
-  test("a non-sha256 digest degrades rather than mis-comparing", () => {
+  test("a non-sha256 digest hard-fails rather than mis-comparing", () => {
     const assets = base();
     assets[0].digest = "sha512:deadbeef";
     const r = verifyAssets({ expected: expectedFrom(GOLDEN["0.3.2"]), assets });
-    assert.equal(r.ok, true);
+    assert.equal(r.ok, false);
     assert.ok(r.problems.some((p) => p.kind === "no-digest"));
   });
 

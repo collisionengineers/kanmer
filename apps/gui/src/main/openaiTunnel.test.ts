@@ -106,6 +106,10 @@ describe("OpenAITunnelManager", () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
     const first = new OpenAITunnelManager(root);
     await first.register("/tmp/.kanmer", identity);
+    const settingsPath = join(root, "openai-tunnels.json");
+    const legacy = JSON.parse(await readFile(settingsPath, "utf8")) as { profiles: Record<string, { profileName: string }> };
+    legacy.profiles[identity.fingerprint]!.profileName = ".kanmer";
+    await writeFile(settingsPath, JSON.stringify(legacy), "utf8");
     const restarted = new OpenAITunnelManager(root);
     expect((await restarted.viewFor("/tmp/.kanmer", identity)).profile?.profileName).toBe("kanmer-.kanmer");
   });

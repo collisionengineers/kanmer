@@ -2,12 +2,15 @@
 id: CORE-106
 type: ticket
 title: Make release publication single-build and externally verifiable
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: codex-core106
 profile: fix
 stageEntered:
   preparing: '2026-08-25T09:39:23.470Z'
+taken_at: '2026-08-25T09:41:54.552Z'
+branch: core-106-single-build-release
+worktree: .worktrees/core-106
 labels:
   - release
   - remediation
@@ -22,7 +25,7 @@ refs:
   - docs/functional/frd/FRD-021-auto-update.md
 archived: false
 created: '2026-08-25T09:39:07.478Z'
-updated: '2026-08-25T09:39:23.470Z'
+updated: '2026-08-25T09:41:54.552Z'
 ---
 
 v0.3.8 exposed two release-system defects: electron-builder raced an already-created GitHub release and left only the installer uploaded, while the tag workflow independently rebuilt a signed NSIS installer and required byte identity with the publisher build. Signed installers are not reproducible across builds, so that verifier can fail even when both builds are valid. Establish one authoritative package generation and one publication owner, preserve strict manifest/hash checks against that generation, recover incomplete-release handling without retagging, and add regression tests for the exact failure.

@@ -2,10 +2,12 @@
 id: SKILL-035
 type: ticket
 title: Retire irrecoverable verification failures without clogging Verifying
-status: backlog
+status: preparing
 area: skills
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-25T12:11:36.199Z'
 labels:
   - workflow
   - verification
@@ -16,7 +18,7 @@ refs:
   - docs/functional/frd/FRD-015-ticket-and-board-core.md
 archived: false
 created: '2026-08-25T11:57:55.187Z'
-updated: '2026-08-25T11:57:55.187Z'
+updated: '2026-08-25T12:11:36.199Z'
 ---
 
 ## Purpose

@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-25T11:56:02.967Z'
   verifying: '2026-08-25T12:04:00.994Z'
   done: '2026-08-25T12:10:30.951Z'
-taken_at: '2026-08-25T11:52:37.877Z'
-branch: core-108-draft-release-lookup
-worktree: .worktrees/core-108
 labels:
   - release
   - github
@@ -26,13 +23,16 @@ blocks:
 refs:
   - docs/functional/frd/FRD-021-auto-update.md
 commits:
-  - b253d27611051b54e04994490a9d702d758567f8
-  - 28ecbe2a
+  - 77e21f1f7482b4978f74d8aaa7013512268a016b
 prs:
   - '273'
 archived: false
 created: '2026-08-25T11:52:01.670Z'
-updated: '2026-08-25T12:10:30.951Z'
+updated: '2026-08-25T12:11:22.141Z'
 ---
 
 The governed v0.3.9 publisher creates a draft and uploads all assets, then calls the tag-specific GitHub Releases REST endpoint. GitHub returns 404 for that unpublished draft even with the same authenticated credential that can list and inspect it, so strict verification cannot complete and the release remains unpublished. Fix draft identity/lookup without weakening asset/digest checks, add regression coverage using the actual draft shape, and publish only a higher successor release. Links [[CORE-106]] and blocks [[CORE-107]].
+
+## Outcome
+
+Merged PR #273 at 77e21f1f7482b4978f74d8aaa7013512268a016b. Exact-SHA verification passed the full repository rail. Draft verification now uses the authenticated numeric release identity; public verification remains tag-based. The successor release remains owned by [[CORE-107]].

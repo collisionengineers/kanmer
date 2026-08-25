@@ -41,8 +41,6 @@ interface RecordState {
   projectId: string;
   identity: RemoteProjectIdentity;
   status: OpenAITunnelStatus;
-  child?: ChildProcess;
-  output: string;
 }
 
 interface CommandResult { code: number | null; output: string; error?: string }
@@ -69,6 +67,7 @@ function sanitize(value: unknown, profile?: OpenAITunnelProfile): string {
   let text = value instanceof Error ? value.message : String(value);
   if (profile) {
     if (profile.tunnelId) text = text.split(profile.tunnelId).join("[tunnel-id]");
+    if (profile.runtimeAlias) text = text.split(profile.runtimeAlias).join("[alias]");
     if (profile.profileName) text = text.split(profile.profileName).join("[profile]");
   }
   return text.replace(/[A-Za-z0-9_-]{32,}/g, "[redacted]").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 240);
@@ -108,17 +107,17 @@ function defaultProfile(projectId: string): OpenAITunnelProfile {
   const base = projectId.split(/[\\/]/).filter(Boolean).at(-1) ?? "kanmer";
   const cleaned = base.replace(/[^A-Za-z0-9._-]/g, "-");
   const profileName = (/^[A-Za-z0-9]/.test(cleaned) ? cleaned : `kanmer-${cleaned}`).slice(0, 64) || "kanmer";
-  return { ...emptyOpenAITunnelProfile(), profileName };
+  return { ...emptyOpenAITunnelProfile(), runtimeAlias: profileName, profileName };
 }
 
 function legacyDefaultProfile(projectId: string): OpenAITunnelProfile {
   const base = projectId.split(/[\\/]/).filter(Boolean).at(-1) ?? "kanmer";
   const profileName = base.replace(/[^A-Za-z0-9._-]/g, "-").slice(0, 56) || "kanmer";
-  return { ...emptyOpenAITunnelProfile(), profileName };
+  return { ...emptyOpenAITunnelProfile(), runtimeAlias: profileName, profileName };
 }
 
 function isRunnableProfile(profile: Partial<OpenAITunnelProfile>): profile is OpenAITunnelProfile {
-  return isSafeOpenAIProfileName(profile.profileName) && isSafeOpenAITunnelId(profile.tunnelId) && isSafeOpenAIExecutable(profile.executable) &&
+  return isSafeOpenAIProfileName(profile.runtimeAlias) && isSafeOpenAIProfileName(profile.profileName) && isSafeOpenAITunnelId(profile.tunnelId) && isSafeOpenAIExecutable(profile.executable) &&
     isSafeOpenAICredentialEnv(profile.credentialEnv) && isLoopbackHealthAddress(profile.healthAddress) && typeof profile.enabled === "boolean" &&
     typeof profile.autoStart === "boolean" && typeof profile.generation === "string" && /^[0-9a-f-]{36}$/i.test(profile.generation);
 }
@@ -126,16 +125,17 @@ function isRunnableProfile(profile: Partial<OpenAITunnelProfile>): profile is Op
 function normalizeProfile(value: unknown, expectedDefault: OpenAITunnelProfile, legacyDefault: OpenAITunnelProfile): OpenAITunnelProfile | null {
   if (!value || typeof value !== "object") return null;
   const p = value as Partial<OpenAITunnelProfile>;
+  p.runtimeAlias ??= p.profileName;
   const complete = isRunnableProfile(p);
   const diagnosticsValid = (p.lastSummary === null || typeof p.lastSummary === "string") && (p.lastError === null || typeof p.lastError === "string") &&
     (p.lastDoctorAt === null || (typeof p.lastDoctorAt === "string" && !Number.isNaN(Date.parse(p.lastDoctorAt))));
-  const matchesDefault = (candidate: OpenAITunnelProfile) => p.profileName === candidate.profileName && p.tunnelId === candidate.tunnelId && p.executable === candidate.executable &&
+  const matchesDefault = (candidate: OpenAITunnelProfile) => p.runtimeAlias === candidate.runtimeAlias && p.profileName === candidate.profileName && p.tunnelId === candidate.tunnelId && p.executable === candidate.executable &&
     p.credentialEnv === candidate.credentialEnv && p.healthAddress === candidate.healthAddress && p.enabled === candidate.enabled &&
     p.autoStart === candidate.autoStart && p.generation === candidate.generation;
   const productDefault = diagnosticsValid && (matchesDefault(expectedDefault) || matchesDefault(legacyDefault));
   if ((!complete && !productDefault) || (!productDefault && !isSafeOpenAIProfileName(p.profileName)) || !isSafeOpenAIExecutable(p.executable) || !isSafeOpenAICredentialEnv(p.credentialEnv) || !isLoopbackHealthAddress(p.healthAddress) || typeof p.enabled !== "boolean" || typeof p.autoStart !== "boolean") return null;
   return {
-    profileName: productDefault ? expectedDefault.profileName : p.profileName!, tunnelId: p.tunnelId!, executable: p.executable,
+    runtimeAlias: productDefault ? expectedDefault.runtimeAlias : p.runtimeAlias!, profileName: productDefault ? expectedDefault.profileName : p.profileName!, tunnelId: p.tunnelId!, executable: p.executable,
     credentialEnv: p.credentialEnv, healthAddress: p.healthAddress, enabled: p.enabled,
     autoStart: p.autoStart, generation: p.generation!,
     lastSummary: typeof p.lastSummary === "string" ? sanitize(p.lastSummary) : null,
@@ -184,10 +184,6 @@ export function buildOpenAITunnelMcpCommand(invocation: OpenAITunnelInvocation):
   return [invocation.command, ...invocation.args].map(shellArg).join(" ");
 }
 
-function appendOutput(record: RecordState, chunk: unknown, profile?: OpenAITunnelProfile): void {
-  record.output = `${record.output}${sanitize(chunk, profile)}\n`.slice(-MAX_OUTPUT);
-}
-
 async function terminateChild(child: ChildProcess): Promise<{ ok: boolean; error?: string }> {
   if (child.exitCode !== null || child.signalCode !== null) return { ok: true };
   if (child.pid === undefined) {
@@ -218,21 +214,47 @@ function waitForChildExit(child: ChildProcess, timeoutMs = 1500): Promise<boolea
   });
 }
 
-function runCommand(spawnProcess: OpenAITunnelSpawn, command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv, profile?: OpenAITunnelProfile, tracker?: CommandTracker): Promise<CommandResult> {
+function runCommand(spawnProcess: OpenAITunnelSpawn, command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv, profile?: OpenAITunnelProfile, tracker?: CommandTracker, timeoutMs = 15_000): Promise<CommandResult> {
   return new Promise((resolve) => {
     let child: ChildProcess;
     try { child = spawnProcess(command, args, { cwd, env, stdio: ["ignore", "pipe", "pipe"] }); }
     catch (error) { resolve({ code: null, output: "", error: sanitize(error, profile) }); return; }
     let output = "";
-    const collect = (chunk: unknown) => { output = `${output}${sanitize(chunk, profile)}\n`.slice(-MAX_OUTPUT); };
+    const collect = (chunk: unknown) => { output = `${output}${String(chunk)}`.slice(-MAX_OUTPUT); };
     let settled = false;
     tracker?.add(child);
     const finish = (result: CommandResult, remove = true) => { if (settled) return; settled = true; if (remove) tracker?.remove(child); clearTimeout(timer); resolve(result); };
-    const timer = setTimeout(async () => { const termination = await terminateChild(child); finish({ code: null, output, error: termination.ok ? "OPENAI_TUNNEL_COMMAND_TIMEOUT" : termination.error }, termination.ok); }, 15_000);
+    const timer = setTimeout(async () => { const termination = await terminateChild(child); finish({ code: null, output, error: termination.ok ? "OPENAI_TUNNEL_COMMAND_TIMEOUT" : termination.error }, termination.ok); }, timeoutMs);
     child.stdout?.on("data", collect); child.stderr?.on("data", collect);
     child.once("error", (error) => { tracker?.remove(child); finish({ code: null, output, error: sanitize(error, profile) }); });
     child.once("close", (code) => { tracker?.remove(child); finish({ code, output }); });
   });
+}
+
+interface ManagedRuntimeStatus {
+  alias?: string;
+  healthy?: boolean;
+  process_running?: boolean;
+  ready?: boolean;
+  runtime_state?: string;
+  stale?: boolean;
+}
+
+export function parseManagedRuntimeStatus(output: string): ManagedRuntimeStatus | null {
+  try {
+    const value = JSON.parse(output.trim()) as ManagedRuntimeStatus;
+    return value && typeof value === "object" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function managedRuntimeReady(runtime: ManagedRuntimeStatus | null): boolean {
+  return runtime?.process_running === true && runtime.healthy === true && runtime.ready === true && runtime.runtime_state === "ready" && runtime.stale === false;
+}
+
+function commandFailure(result: CommandResult, profile: OpenAITunnelProfile, fallback: string): string {
+  return (result.error ?? sanitize(result.output, profile)) || fallback;
 }
 
 export class OpenAITunnelManager {
@@ -281,7 +303,7 @@ export class OpenAITunnelManager {
     if (existing && existing.identity.fingerprint !== identity.fingerprint) throw new Error("OPENAI_PROJECT_IDENTITY_CHANGED");
     if (existing) return existing;
     const profile = this.data.profiles[identity.fingerprint] ?? null;
-    const record: RecordState = { projectId, identity, status: statusFor(projectId, identity, profile, profile?.enabled ? "stopped" : "disabled"), output: "" };
+    const record: RecordState = { projectId, identity, status: statusFor(projectId, identity, profile, profile?.enabled ? "stopped" : "disabled") };
     this.records.set(projectId, record); return record;
   }
 
@@ -294,7 +316,7 @@ export class OpenAITunnelManager {
     if (existing && existing.identity.fingerprint !== identity.fingerprint) return { projectId, identity, profile: null, identityConflict: true, status: statusFor(projectId, identity, null, "error", { lastError: "OPENAI_PROJECT_IDENTITY_CHANGED" }) };
     const persistedConflict = Object.entries(this.data.projects).find(([fingerprint, entry]) => entry.projectId === projectId && fingerprint !== identity.fingerprint);
     if (persistedConflict) return { projectId, identity, profile: null, identityConflict: true, status: statusFor(projectId, identity, null, "error", { lastError: "OPENAI_PROJECT_IDENTITY_CHANGED" }) };
-    const record = this.record(projectId, identity); this.data.projects[identity.fingerprint] = { projectId: record.projectId, identity }; if (!this.data.profiles[identity.fingerprint]) this.data.profiles[identity.fingerprint] = defaultProfile(record.projectId); const profile = this.data.profiles[identity.fingerprint]; if (record.status.state !== "error") record.status = statusFor(record.projectId, identity, profile, profile.enabled ? "stopped" : "disabled"); await this.persist(); return this.view(record);
+    const record = this.record(projectId, identity); this.data.projects[identity.fingerprint] = { projectId: record.projectId, identity }; if (!this.data.profiles[identity.fingerprint]) this.data.profiles[identity.fingerprint] = defaultProfile(record.projectId); const profile = this.data.profiles[identity.fingerprint]; if (record.status.state !== "error") record.status = statusFor(record.projectId, identity, profile, profile.enabled ? "stopped" : "disabled"); await this.persist(); if (profile.enabled && isRunnableProfile(profile)) await this.refreshRuntimeStatus(record, profile); return this.view(record);
   }
 
   async reconcile(projectId: string, identity: RemoteProjectIdentity, expectedGeneration: string | null = null): Promise<OpenAITunnelProjectView> {
@@ -314,11 +336,11 @@ export class OpenAITunnelManager {
         return this.view(nextRecord);
       }
       if (this.data.profiles[identity.fingerprint]) throw new Error("OPENAI_PROJECT_IDENTITY_CONFLICT");
-      if (record?.child) throw new Error("OPENAI_STOP_BEFORE_RECONCILE");
       await this.stopCommands(projectId);
       const oldProject = this.data.projects[oldFingerprint];
       const oldProfile = this.data.profiles[oldFingerprint];
       if (expectedGeneration !== null && expectedGeneration !== (oldProfile?.generation ?? null)) throw new Error("OPENAI_PROFILE_VERSION_CONFLICT");
+      if (oldProject && oldProfile && isRunnableProfile(oldProfile)) await this.removeManagedAlias(this.record(projectId, oldProject.identity), oldProfile);
       const previousTarget = this.data.projects[identity.fingerprint];
       const previousProfile = this.data.profiles[identity.fingerprint];
       this.data.projects[identity.fingerprint] = { projectId, identity };
@@ -342,10 +364,12 @@ export class OpenAITunnelManager {
     return this.enqueue(projectId, async () => {
       await this.load();
       const record = this.record(projectId, identity);
-      if (record.child) throw new Error("OPENAI_STOP_BEFORE_REMOVE");
       await this.stopCommands(projectId);
       const profile = this.data.profiles[identity.fingerprint];
       if (expectedGeneration !== (profile?.generation ?? null)) throw new Error("OPENAI_PROFILE_VERSION_CONFLICT");
+      if (profile && isRunnableProfile(profile)) {
+        await this.removeManagedAlias(record, profile);
+      }
       const previousProject = this.data.projects[identity.fingerprint];
       const previousProfile = profile;
       delete this.data.projects[identity.fingerprint]; delete this.data.profiles[identity.fingerprint];
@@ -359,18 +383,19 @@ export class OpenAITunnelManager {
     });
   }
 
-  async viewFor(projectId: string, identity: RemoteProjectIdentity): Promise<OpenAITunnelProjectView> { await this.load(); return this.view(this.record(projectId, identity)); }
+  async viewFor(projectId: string, identity: RemoteProjectIdentity): Promise<OpenAITunnelProjectView> { await this.load(); const record = this.record(projectId, identity); const profile = this.data.profiles[identity.fingerprint]; if (profile?.enabled && isRunnableProfile(profile)) await this.refreshRuntimeStatus(record, profile); return this.view(record); }
   async overview(): Promise<OpenAITunnelProjectView[]> { await this.load(); return Object.values(this.data.projects).sort((a, b) => a.projectId.localeCompare(b.projectId)).map((entry) => this.view(this.record(entry.projectId, entry.identity))); }
 
   async saveProfile(projectId: string, identity: RemoteProjectIdentity, input: OpenAITunnelConfigInput): Promise<OpenAITunnelProjectView> {
     return this.enqueue(projectId, async () => {
       await this.load(); const record = this.record(projectId, identity); const previous = this.data.profiles[identity.fingerprint] ?? null;
-      if (record.child) throw new Error("OPENAI_STOP_BEFORE_SAVE");
       const previousGeneration = previous?.generation && previous.generation.length > 0 ? previous.generation : null;
       if (previousGeneration !== input.expectedGeneration) throw new Error("OPENAI_PROFILE_VERSION_CONFLICT");
-      const values = { ...input, profileName: input.profileName.trim(), tunnelId: input.tunnelId.trim(), executable: input.executable.trim(), credentialEnv: input.credentialEnv.trim(), healthAddress: input.healthAddress.trim() };
-      if (!isSafeOpenAIProfileName(values.profileName) || !isSafeOpenAITunnelId(values.tunnelId) || !isSafeOpenAIExecutable(values.executable) || !isSafeOpenAICredentialEnv(values.credentialEnv) || !isLoopbackHealthAddress(values.healthAddress)) throw new Error("OPENAI_PROFILE_INVALID");
-      for (const [fingerprint, other] of Object.entries(this.data.profiles)) if (fingerprint !== identity.fingerprint && other.generation && other.tunnelId && (other.profileName === values.profileName || other.healthAddress === values.healthAddress)) throw new Error("OPENAI_PROFILE_RESOURCE_DUPLICATE");
+      const values = { ...input, runtimeAlias: (input.runtimeAlias ?? input.profileName).trim(), profileName: input.profileName.trim(), tunnelId: input.tunnelId.trim(), executable: input.executable.trim(), credentialEnv: input.credentialEnv.trim(), healthAddress: input.healthAddress.trim() };
+      if (!isSafeOpenAIProfileName(values.runtimeAlias) || !isSafeOpenAIProfileName(values.profileName) || !isSafeOpenAITunnelId(values.tunnelId) || !isSafeOpenAIExecutable(values.executable) || !isSafeOpenAICredentialEnv(values.credentialEnv) || !isLoopbackHealthAddress(values.healthAddress)) throw new Error("OPENAI_PROFILE_INVALID");
+      for (const [fingerprint, other] of Object.entries(this.data.profiles)) if (fingerprint !== identity.fingerprint && other.generation && other.tunnelId && (other.runtimeAlias === values.runtimeAlias || other.profileName === values.profileName || other.healthAddress === values.healthAddress)) throw new Error("OPENAI_PROFILE_RESOURCE_DUPLICATE");
+      if (previousGeneration && previous && (previous.runtimeAlias !== values.runtimeAlias || previous.profileName !== values.profileName || previous.executable !== values.executable || previous.tunnelId !== values.tunnelId)) throw new Error("OPENAI_REMOVE_BEFORE_ALIAS_CHANGE");
+      if (previous?.enabled && !values.enabled && isRunnableProfile(previous)) await this.stopManagedAliasStrict(record, previous);
       const previousProject = this.data.projects[identity.fingerprint];
       const previousStatus = record.status;
       const next: OpenAITunnelProfile = { ...values, generation: randomUUID(), lastSummary: previous?.lastSummary ?? null, lastError: previous?.lastError ?? null, lastDoctorAt: previous?.lastDoctorAt ?? null };
@@ -390,15 +415,69 @@ export class OpenAITunnelManager {
     return this.enqueue(projectId, async () => {
       await this.load(); const record = this.record(projectId, identity); const profile = this.data.profiles[identity.fingerprint]; if (!profile) throw new Error("OPENAI_PROFILE_REQUIRED");
       if (!isRunnableProfile(profile)) throw new Error("OPENAI_PROFILE_INCOMPLETE");
+      if (!profile.enabled) throw new Error("OPENAI_PROFILE_DISABLED");
       record.status = { ...record.status, action: "initializing", updatedAt: new Date().toISOString() }; this.emit(record.status);
-      if (!process.env[profile.credentialEnv]) return this.finishDoctor(record, profile, [{ id: "CREDENTIAL_ENV_PRESENT", status: "fail", detail: `Environment variable ${profile.credentialEnv} is not present.` }], "Credential environment variable is not present.");
-      const command = this.invocation(roots); const mcpCommand = buildOpenAITunnelMcpCommand(command); const result = await runCommand(this.spawnProcess, profile.executable, ["init", "--sample", "sample_mcp_stdio_local", "--profile", profile.profileName, "--tunnel-id", profile.tunnelId, "--control-plane-api-key-ref", `env:${profile.credentialEnv}`, "--mcp-command", mcpCommand], roots.repoRoot, this.childEnv(profile, command.env), profile, this.commandTracker(projectId));
-      const checks: OpenAITunnelCheck[] = [{ id: "EXECUTABLE_PRESENT", status: result.code === 0 ? "pass" : "fail", detail: result.code === 0 ? "tunnel-client init completed." : result.error ?? "Tunnel-client init failed." }, { id: "CREDENTIAL_ENV_PRESENT", status: "pass", detail: "Named credential environment variable is present; its value was not read into diagnostics." }, { id: "MCP_TARGET", status: result.code === 0 ? "pass" : "fail", detail: result.code === 0 ? "Canonical stdio MCP target initialized." : result.error ?? "Tunnel-client init failed." }];
-      return this.finishDoctor(record, profile, checks, result.code === 0 ? "OpenAI tunnel profile initialized." : result.error ?? "OpenAI tunnel profile initialization failed.");
+      if (!process.env[profile.credentialEnv]) return this.finishDoctor(record, profile, [{ id: "CREDENTIAL_ENV_PRESENT", status: "fail", detail: `Environment variable ${profile.credentialEnv} is not present.` }], `Environment variable ${profile.credentialEnv} is not present.`);
+      const command = this.invocation(roots); const mcpCommand = buildOpenAITunnelMcpCommand(command); const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "connect", "--alias", profile.runtimeAlias, "--profile", profile.profileName, "--tunnel-id", profile.tunnelId, "--runtime-api-key", `env:${profile.credentialEnv}`, "--mcp-command", mcpCommand, "--tunnel-client-bin", profile.executable, "--json"], roots.repoRoot, this.childEnv(profile, command.env), profile, this.commandTracker(projectId), 60_000);
+      const failure = commandFailure(result, profile, "Managed runtime connection failed.");
+      const checks: OpenAITunnelCheck[] = [{ id: "EXECUTABLE_PRESENT", status: result.code === 0 ? "pass" : "fail", detail: result.code === 0 ? "Managed runtime command completed." : failure }, { id: "CREDENTIAL_ENV_PRESENT", status: "pass", detail: "Named credential environment variable is present; its value was not read into diagnostics." }, { id: "MCP_TARGET", status: result.code === 0 ? "pass" : "fail", detail: result.code === 0 ? "Managed runtime is bound to the canonical stdio MCP target." : failure }];
+      if (result.code !== 0) return this.finishDoctor(record, profile, checks, failure);
+      return this.runtimeStatus(record, profile, roots, checks);
     });
   }
 
   private childEnv(profile: OpenAITunnelProfile, extra?: Record<string, string>): NodeJS.ProcessEnv { const env: NodeJS.ProcessEnv = { ...process.env, ...extra }; if (!process.env[profile.credentialEnv]) delete env[profile.credentialEnv]; return env; }
+
+  private async readRuntimeStatus(record: RecordState, profile: OpenAITunnelProfile): Promise<ManagedRuntimeStatus | null> {
+    const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "status", profile.runtimeAlias, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
+    return result.code === 0 ? parseManagedRuntimeStatus(result.output) : null;
+  }
+
+  private async readRuntimeStatusStrict(record: RecordState, profile: OpenAITunnelProfile): Promise<ManagedRuntimeStatus> {
+    const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "status", profile.runtimeAlias, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
+    if (result.code !== 0) throw new Error(commandFailure(result, profile, "OPENAI_RUNTIME_STATUS_FAILED"));
+    const runtime = parseManagedRuntimeStatus(result.output);
+    if (!runtime || typeof runtime.process_running !== "boolean") throw new Error("OPENAI_RUNTIME_STATUS_INVALID");
+    return runtime;
+  }
+
+  private async readRuntimeStatusForRemoval(record: RecordState, profile: OpenAITunnelProfile): Promise<ManagedRuntimeStatus | null> {
+    const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "status", profile.runtimeAlias, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
+    const detail = commandFailure(result, profile, "OPENAI_RUNTIME_STATUS_FAILED");
+    if (result.code !== 0) {
+      if (result.output.trim() === `alias ${profile.runtimeAlias} is not known; run create or connect first`) return null;
+      throw new Error(detail);
+    }
+    const runtime = parseManagedRuntimeStatus(result.output);
+    if (!runtime || typeof runtime.process_running !== "boolean") throw new Error("OPENAI_RUNTIME_STATUS_INVALID");
+    return runtime;
+  }
+
+  private async stopManagedAliasStrict(record: RecordState, profile: OpenAITunnelProfile, knownStatus?: ManagedRuntimeStatus): Promise<void> {
+    const before = knownStatus ?? await this.readRuntimeStatusForRemoval(record, profile);
+    if (before === null || before.process_running === false) return;
+    const stopped = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "stop", profile.runtimeAlias, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
+    if (stopped.code !== 0) throw new Error(commandFailure(stopped, profile, "OPENAI_RUNTIME_STOP_FAILED"));
+    const after = await this.readRuntimeStatusStrict(record, profile);
+    if (after.process_running !== false) throw new Error("OPENAI_RUNTIME_STOP_UNCONFIRMED");
+  }
+
+  private async removeManagedAlias(record: RecordState, profile: OpenAITunnelProfile): Promise<void> {
+    const before = await this.readRuntimeStatusForRemoval(record, profile);
+    if (before === null) return;
+    if (before.process_running === true) await this.stopManagedAliasStrict(record, profile, before);
+    const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "rm", profile.runtimeAlias, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
+    if (result.code !== 0) throw new Error(commandFailure(result, profile, "OPENAI_RUNTIME_REMOVE_FAILED"));
+  }
+
+  private async refreshRuntimeStatus(record: RecordState, profile: OpenAITunnelProfile): Promise<void> {
+    const runtime = await this.readRuntimeStatus(record, profile);
+    const ready = managedRuntimeReady(runtime);
+    const running = runtime?.process_running === true;
+    const state: OpenAITunnelStatus["state"] = ready ? "ready" : running ? "degraded" : runtime ? "stopped" : "missing";
+    record.status = { ...record.status, state, action: "idle", severity: ready || (!running && runtime) ? "info" : running ? "warning" : "error", health: { executable: runtime ? "ready" : "failed", credential: process.env[profile.credentialEnv] ? "ready" : "unknown", listener: ready ? "ready" : running ? "unknown" : "failed", mcp: ready ? "ready" : running ? "unknown" : "failed" }, lastSummary: ready ? "OpenAI managed runtime is ready." : running ? "OpenAI managed runtime is running but not ready." : runtime ? "OpenAI managed runtime is stopped." : "OpenAI managed runtime status is unavailable.", updatedAt: new Date().toISOString() };
+    this.emit(record.status);
+  }
 
   async doctor(projectId: string, identity: RemoteProjectIdentity, roots: OpenAITunnelRoots): Promise<OpenAITunnelDoctorResult> {
     return this.enqueue(projectId, async () => {
@@ -408,15 +487,24 @@ export class OpenAITunnelManager {
       const checks: OpenAITunnelCheck[] = [{ id: "PROFILE_VALID", status: "pass", detail: "Profile fields passed local validation." }];
       if (!isSafeOpenAIExecutable(profile.executable)) checks.push({ id: "EXECUTABLE_PRESENT", status: "fail", detail: "Configured tunnel-client executable is invalid." });
       else checks.push({ id: "EXECUTABLE_PRESENT", status: "pass", detail: "Configured tunnel-client executable is valid; availability is checked by the child command." });
-      if (!process.env[profile.credentialEnv]) checks.push({ id: "CREDENTIAL_ENV_PRESENT", status: "fail", detail: `Environment variable ${profile.credentialEnv} is not present.` });
+      if (!process.env[profile.credentialEnv]) checks.push({ id: "CREDENTIAL_ENV_PRESENT", status: "warn", detail: `Environment variable ${profile.credentialEnv} is not present; it is required to connect, not to check an existing runtime.` });
       else checks.push({ id: "CREDENTIAL_ENV_PRESENT", status: "pass", detail: "Named credential environment variable is present; its value was not read into diagnostics." });
       if (checks.some((check) => check.status === "fail")) return this.finishDoctor(record, profile, checks, "OpenAI tunnel prerequisites are incomplete.");
-      const result = await runCommand(this.spawnProcess, profile.executable, ["doctor", "--profile", profile.profileName, "--explain"], roots.repoRoot, this.childEnv(profile), profile, this.commandTracker(projectId));
-      checks.push({ id: "DOCTOR_COMMAND", status: result.code === 0 ? "pass" : "fail", detail: result.code === 0 ? "tunnel-client doctor completed." : result.error ?? "tunnel-client doctor failed." });
-      checks.push({ id: "MCP_TARGET", status: result.code === 0 ? "pass" : "warn", detail: result.code === 0 ? "Configured profile remains bound to its canonical MCP target." : "MCP target could not be proven because doctor failed." });
-      checks.push({ id: "HEALTH_ADDRESS", status: "warn", detail: "Loopback health address is validated and recorded, but tunnel-client profile configuration and listener readiness remain operator-managed; GUI does not rewrite or claim a live listener." });
-      return this.finishDoctor(record, profile, checks, result.code === 0 ? "OpenAI tunnel doctor passed." : "OpenAI tunnel doctor failed.");
+      return this.runtimeStatus(record, profile, roots, checks);
     });
+  }
+
+  private async runtimeStatus(record: RecordState, profile: OpenAITunnelProfile, roots: OpenAITunnelRoots, checks: OpenAITunnelCheck[]): Promise<OpenAITunnelDoctorResult> {
+    const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "status", profile.runtimeAlias, "--json"], roots.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
+    const runtime = result.code === 0 ? parseManagedRuntimeStatus(result.output) : null;
+    const ready = managedRuntimeReady(runtime);
+    checks.push({ id: "DOCTOR_COMMAND", status: result.code === 0 && runtime ? "pass" : "fail", detail: runtime ? "Managed runtime status returned structured JSON." : "Managed runtime status failed or returned invalid JSON." });
+    checks.push({ id: "HEALTH_ADDRESS", status: ready ? "pass" : "fail", detail: ready ? "Managed runtime reports healthy and ready." : "Managed runtime is not healthy and ready." });
+    checks.push({ id: "MCP_TARGET", status: ready ? "pass" : "fail", detail: ready ? "Managed runtime process is running." : "Managed runtime process is not ready." });
+    const report = await this.finishDoctor(record, profile, checks, ready ? "OpenAI managed runtime is ready." : "OpenAI managed runtime is not ready.");
+    record.status = { ...record.status, state: ready ? "ready" : "error", severity: ready ? "info" : "error", health: { executable: runtime ? "ready" : "failed", credential: process.env[profile.credentialEnv] ? "ready" : "unknown", listener: ready ? "ready" : "failed", mcp: ready ? "ready" : "failed" }, updatedAt: new Date().toISOString() };
+    this.emit(record.status);
+    return report;
   }
 
   private async finishDoctor(record: RecordState, profile: OpenAITunnelProfile, checks: OpenAITunnelCheck[], summary: string): Promise<OpenAITunnelDoctorResult> {
@@ -425,36 +513,35 @@ export class OpenAITunnelManager {
     const credential = checks.some((check) => check.id === "CREDENTIAL_ENV_PRESENT" && check.status === "pass") ? "ready" : "failed";
     const listener = checks.some((check) => check.id === "HEALTH_ADDRESS" && check.status === "pass") ? "ready" : checks.some((check) => check.id === "HEALTH_ADDRESS" && check.status === "fail") ? "failed" : record.status.health.listener;
     const mcp = checks.some((check) => check.id === "MCP_TARGET" && check.status === "pass") ? "ready" : checks.some((check) => check.id === "MCP_TARGET" && check.status === "fail") ? "failed" : record.status.health.mcp;
-    record.status = { ...record.status, state: record.child ? (ok && severity === "info" ? "ready" : "degraded") : record.status.state, action: "idle", severity, lastSummary: profile.lastSummary, lastError: profile.lastError, lastDoctorAt: at, health: { executable, credential, listener, mcp }, updatedAt: at };
+    record.status = { ...record.status, state: ok ? record.status.state : "error", action: "idle", severity, lastSummary: profile.lastSummary, lastError: profile.lastError, lastDoctorAt: at, health: { executable, credential, listener, mcp }, updatedAt: at };
     await this.persist(); this.emit(record.status); return { ok, projectId: record.projectId, fingerprint: record.identity.fingerprint, checks, summary: profile.lastSummary, severity, generation: profile.generation, at };
   }
 
   async start(projectId: string, identity: RemoteProjectIdentity, roots: OpenAITunnelRoots, expectedGeneration: string | null = null): Promise<OpenAITunnelStatus> {
-    return this.enqueue(projectId, async () => {
-      await this.load(); const record = this.record(projectId, identity); const profile = this.data.profiles[identity.fingerprint]; if (!profile) throw new Error("OPENAI_PROFILE_REQUIRED"); if (profile.generation !== expectedGeneration) throw new Error("OPENAI_PROFILE_VERSION_CONFLICT"); if (!profile.enabled) throw new Error("OPENAI_PROFILE_DISABLED"); if (!process.env[profile.credentialEnv]) { record.status = { ...record.status, state: "error", severity: "error", lastError: `Environment variable ${profile.credentialEnv} is not present.`, updatedAt: new Date().toISOString() }; this.emit(record.status); return record.status; }
-      if (record.child && record.child.exitCode === null) return record.status;
-      record.status = { ...record.status, state: "starting", action: "starting", severity: "info", lastError: null, updatedAt: new Date().toISOString() }; this.emit(record.status);
-      const command = this.invocation(roots);
-      let child: ChildProcess; try { child = this.spawnProcess(profile.executable, ["run", "--profile", profile.profileName], { cwd: roots.repoRoot, env: this.childEnv(profile, command.env), stdio: ["ignore", "pipe", "pipe"], detached: process.platform !== "win32" }); } catch (error) { record.status = { ...record.status, state: "error", action: "idle", severity: "error", lastError: sanitize(error, profile), updatedAt: new Date().toISOString() }; this.emit(record.status); return record.status; }
-      record.child = child; record.output = ""; child.stdout?.on("data", (chunk) => appendOutput(record, chunk, profile)); child.stderr?.on("data", (chunk) => appendOutput(record, chunk, profile)); child.once("error", (error) => { record.status = { ...record.status, state: "error", action: "idle", severity: "error", lastError: sanitize(error, profile), updatedAt: new Date().toISOString() }; record.child = undefined; this.emit(record.status); }); child.once("close", (code) => { if (record.child !== child) return; record.child = undefined; if (record.status.state !== "stopping") { record.status = { ...record.status, state: code === 0 ? "stopped" : "error", action: "idle", severity: code === 0 ? "info" : "error", lastError: code === 0 ? null : `tunnel-client exited with code ${code ?? "unknown"}.`, updatedAt: new Date().toISOString() }; this.emit(record.status); } });
-      record.status = { ...record.status, state: "degraded", action: "idle", severity: "warning", health: { executable: "ready", credential: "ready", listener: "unknown", mcp: "unknown" }, lastSummary: "tunnel-client started; run doctor to verify its listener and MCP target.", updatedAt: new Date().toISOString() }; this.emit(record.status); return record.status;
-    });
+    await this.load();
+    const record = this.record(projectId, identity);
+    const profile = this.data.profiles[identity.fingerprint];
+    if (!profile) throw new Error("OPENAI_PROFILE_REQUIRED");
+    if (profile.generation !== expectedGeneration) throw new Error("OPENAI_PROFILE_VERSION_CONFLICT");
+    if (!profile.enabled) throw new Error("OPENAI_PROFILE_DISABLED");
+    record.status = { ...record.status, state: "starting", action: "starting", severity: "info", lastError: null, updatedAt: new Date().toISOString() };
+    this.emit(record.status);
+    await this.initialize(projectId, identity, roots);
+    return record.status;
   }
 
   async stop(projectId: string, identity: RemoteProjectIdentity, expectedGeneration: string | null = null): Promise<OpenAITunnelStatus> {
-    return this.enqueue(projectId, async () => { await this.load(); const record = this.record(projectId, identity); const profile = this.data.profiles[identity.fingerprint]; if (profile && profile.generation !== expectedGeneration) throw new Error("OPENAI_PROFILE_VERSION_CONFLICT"); if (!record.child) { record.status = { ...record.status, state: profile?.enabled ? "stopped" : "disabled", action: "idle", updatedAt: new Date().toISOString() }; return record.status; } const child = record.child; record.status = { ...record.status, state: "stopping", action: "stopping", updatedAt: new Date().toISOString() }; this.emit(record.status); const termination = await terminateChild(child); const exited = termination.ok && await waitForChildExit(child); if (!termination.ok || !exited) { record.status = { ...record.status, state: "error", action: "idle", severity: "error", lastError: termination.error ?? "OPENAI_TUNNEL_TERMINATION_FAILED", updatedAt: new Date().toISOString() }; this.emit(record.status); return record.status; } record.child = undefined; const nextState = profile?.enabled ? "stopped" : "disabled"; record.status = { ...record.status, state: nextState, action: "idle", severity: "info", health: healthFor(nextState), updatedAt: new Date().toISOString() }; this.emit(record.status); return record.status; });
+    return this.enqueue(projectId, async () => { await this.load(); const record = this.record(projectId, identity); const profile = this.data.profiles[identity.fingerprint]; if (profile && profile.generation !== expectedGeneration) throw new Error("OPENAI_PROFILE_VERSION_CONFLICT"); if (!profile) throw new Error("OPENAI_PROFILE_REQUIRED"); record.status = { ...record.status, state: "stopping", action: "stopping", updatedAt: new Date().toISOString() }; this.emit(record.status); const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "stop", profile.runtimeAlias, "--json"], identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(projectId)); let failure = result.code === 0 ? null : commandFailure(result, profile, "OPENAI_RUNTIME_STOP_FAILED"); if (!failure) { try { if ((await this.readRuntimeStatusStrict(record, profile)).process_running !== false) failure = "OPENAI_RUNTIME_STOP_UNCONFIRMED"; } catch (error) { failure = sanitize(error, profile); } } const nextState = failure ? "error" : profile.enabled ? "stopped" : "disabled"; record.status = { ...record.status, state: nextState, action: "idle", severity: failure ? "error" : "info", health: healthFor(nextState), lastError: failure, updatedAt: new Date().toISOString() }; this.emit(record.status); return record.status; });
   }
 
-  async closeProject(projectId: string, identity: RemoteProjectIdentity): Promise<void> {
+  async closeProject(projectId: string, _identity: RemoteProjectIdentity): Promise<void> {
     await this.load();
     await this.stopCommands(projectId);
-    const profile = this.data.profiles[identity.fingerprint];
-    await this.stop(projectId, identity, profile?.generation ?? null);
   }
 
-  async restart(projectId: string, identity: RemoteProjectIdentity, roots: OpenAITunnelRoots, expectedGeneration: string | null = null): Promise<OpenAITunnelStatus> { await this.stop(projectId, identity, expectedGeneration); return this.start(projectId, identity, roots, expectedGeneration); }
-  async closeAll(): Promise<void> { await this.stopCommands(); await Promise.all([...this.records.values()].map(async (record) => { if (!record.child) return; await this.stop(record.projectId, record.identity, this.data.profiles[record.identity.fingerprint]?.generation ?? null); })); }
-  async markRestartRequired(): Promise<void> { for (const record of this.records.values()) if (record.child) { record.status = { ...record.status, restartRequired: true, severity: "warning", state: "degraded", lastSummary: "A packaged update requires this tunnel to restart.", updatedAt: new Date().toISOString() }; this.emit(record.status); } }
+  async restart(projectId: string, identity: RemoteProjectIdentity, roots: OpenAITunnelRoots, expectedGeneration: string | null = null): Promise<OpenAITunnelStatus> { const stopped = await this.stop(projectId, identity, expectedGeneration); if (stopped.state === "error") throw new Error(stopped.lastError ?? "OPENAI_RUNTIME_STOP_FAILED"); return this.start(projectId, identity, roots, expectedGeneration); }
+  async closeAll(): Promise<void> { await this.stopCommands(); }
+  async markRestartRequired(): Promise<void> { await this.load(); for (const { projectId, identity } of Object.values(this.data.projects)) { const record = this.record(projectId, identity); const profile = this.data.profiles[identity.fingerprint]; if (profile?.enabled && isRunnableProfile(profile)) await this.refreshRuntimeStatus(record, profile); if (record.status.state === "ready" || record.status.state === "degraded") { record.status = { ...record.status, restartRequired: true, severity: "warning", state: "degraded", lastSummary: "Reconnect this managed runtime after installing the update.", updatedAt: new Date().toISOString() }; this.emit(record.status); } } }
   async autoStartRegistrations(): Promise<Array<{ projectId: string; identity: RemoteProjectIdentity }>> { await this.load(); return Object.entries(this.data.projects).filter(([fingerprint]) => this.data.profiles[fingerprint]?.enabled && this.data.profiles[fingerprint]?.autoStart).map(([, value]) => value); }
   async autoStart(registrations: Array<{ projectId: string; identity: RemoteProjectIdentity }>, roots: (projectId: string) => OpenAITunnelRoots): Promise<Array<{ projectId: string; ok: boolean; error?: string }>> { const results: Array<{ projectId: string; ok: boolean; error?: string }> = []; for (const registration of registrations) { try { const status = await this.start(registration.projectId, registration.identity, roots(registration.projectId), this.data.profiles[registration.identity.fingerprint]?.generation ?? null); results.push({ projectId: registration.projectId, ok: status.state !== "error", ...(status.state === "error" ? { error: status.lastError ?? "OPENAI_TUNNEL_START_FAILED" } : {}) }); } catch (error) { results.push({ projectId: registration.projectId, ok: false, error: sanitize(error) }); } } return results; }
 }

@@ -14,6 +14,7 @@ export interface OpenAITunnelHealth {
 }
 
 export interface OpenAITunnelProfile {
+  runtimeAlias: string;
   profileName: string;
   tunnelId: string;
   executable: string;
@@ -28,6 +29,7 @@ export interface OpenAITunnelProfile {
 }
 
 export interface OpenAITunnelConfigInput {
+  runtimeAlias?: string;
   profileName: string;
   tunnelId: string;
   executable: string;
@@ -86,6 +88,7 @@ export interface OpenAITunnelInvocation {
 
 export function emptyOpenAITunnelProfile(): OpenAITunnelProfile {
   return {
+    runtimeAlias: "",
     profileName: "",
     tunnelId: "",
     executable: "tunnel-client",

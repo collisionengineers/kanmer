@@ -36,8 +36,10 @@ variable, but Actions variables are not inherited by local processes.
 When a native runtime supervisor launches Kanmer through an operator-private
 wrapper, that wrapper must export both `KANMER_PROVIDER_CWD` and
 `KANMER_BOARD_BRANCH` before invoking the stable launcher. Native
-`tunnel-client runtimes connect/status/stop/remove` supervision is distinct
-from the GUI's `init/doctor/run` controls; do not claim one manages the other.
+The GUI's OpenAI tunnel controls manage the same long-lived native runtime
+alias through `tunnel-client runtimes connect/status/stop/rm`. Application quit
+does not stop that runtime; readiness requires structured non-stale status, and
+local removal must confirm the alias is stopped before deleting its metadata.
 
 ## Agent conduct
 

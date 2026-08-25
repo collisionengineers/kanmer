@@ -1,0 +1,1 @@
+2026-08-25: Retained failed first Infisical doctor wrapper attempt (Windows cmd quoting, exit 1); PowerShell wrapper then passed. New profile doctor passes but reveals stale temporary MCP roots. Cloudflare redacted inventory confirms DNS targets the zero-connector intended tunnel while a separate tunnel is healthy. No provider mutation performed during research.

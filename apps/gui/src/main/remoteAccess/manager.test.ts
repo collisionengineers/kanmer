@@ -278,7 +278,7 @@ describe("RemoteAccessManager", () => {
     expect(JSON.parse(doctorTunnelStatus!)).toEqual({
       state: "degraded",
       provider: "cloudflared",
-      attempt: 1,
+      attempt: 2,
       changedAt: expect.any(String),
       publicEndpoint: "https://mcp.example.com/mcp",
       projectFingerprint: identity.fingerprint,

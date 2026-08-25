@@ -54,6 +54,7 @@ interface RemoteRecord {
   doctor?: DoctorProcess;
   startAbort?: AbortController;
   outputBuffer: string;
+  providerAttempt: number;
   configGeneration: string | null;
   runtimeGeneration: string | null;
 }
@@ -322,6 +323,7 @@ export class RemoteAccessManager {
         lastDoctorAt: configured?.lastDoctorAt ?? null,
       }),
       outputBuffer: "",
+      providerAttempt: 0,
       configGeneration,
       runtimeGeneration: null,
     };
@@ -694,6 +696,7 @@ export class RemoteAccessManager {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
     record.runtimeGeneration = runtimeGeneration;
+    record.providerAttempt = 1;
     record.startAbort = new AbortController();
     record.outputBuffer = "";
     this.emit(record, "starting", { lastError: null, diagnostics: [], runtimeGeneration });
@@ -779,6 +782,7 @@ export class RemoteAccessManager {
         if (event.kind === "kanmer-mcp-remote-ready" && event.endpoint && isCanonicalLocalEndpoint(event.endpoint) && event.projectFingerprint === record.identity.fingerprint) {
           this.emit(record, "ready", { endpoint: event.endpoint, tokenId: event.tokenId ?? null, generation: event.tokenId ?? null, runtimeGeneration: record.runtimeGeneration, public: "stale" });
         } else if (event.kind === "kanmer-mcp-remote-status" && event.status) {
+          if (Number.isInteger(event.status.attempt) && event.status.attempt! > 0) record.providerAttempt = event.status.attempt!;
           const endpoint = event.status.endpoint && isCanonicalLocalEndpoint(event.status.endpoint) ? event.status.endpoint : record.status.endpoint;
           const state = event.status.provider === "degraded" || event.status.provider === "restarting" ? "degraded" : event.status.provider === "failed" ? "error" : event.status.provider === "running" ? (endpoint ? "ready" : "starting") : event.status.local === "starting" ? "starting" : record.status.state;
           this.emit(record, state, { endpoint, diagnostics: event.status.reason ? [event.status.reason] : [] });
@@ -900,7 +904,7 @@ export class RemoteAccessManager {
           KANMER_TUNNEL_STATUS_JSON: JSON.stringify({
             state: record.status.tunnel === "connected" ? "connected" : record.status.tunnel === "degraded" ? "degraded" : "failed",
             provider: "cloudflared",
-            attempt: 1,
+            attempt: record.providerAttempt,
             changedAt: record.status.updatedAt,
             publicEndpoint: `https://${config.hostname}/mcp`,
             projectFingerprint: identity.fingerprint,

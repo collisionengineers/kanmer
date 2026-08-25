@@ -1,43 +1,46 @@
 ---
 kind: review-attestation
 pr: "266"
-head_sha: "4b20eab9f0a2c0a4bba141ddeb21afee6e42b373"
+head_sha: "4d815a73d573aca8f55f1c6957399fc6c32456b2"
 verdict: needs-changes
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "14a3e94c0e563ecc"
-ticket_updated: "2026-08-25T07:24:06.132Z"
+ticket_updated: "2026-08-25T07:33:41.525Z"
 findings:
   - id: F-001
     severity: major
-    summary: "New native runtime command convention is absent from AGENTS.md"
-    disposition: open
+    summary: "Native runtime convention was absent from AGENTS.md"
+    disposition: fixed
   - id: F-002
     severity: major
-    summary: "The private wrapper loses a project's configured board branch"
-    disposition: open
+    summary: "Private wrapper did not preserve a configured board branch"
+    disposition: fixed
   - id: F-003
     severity: major
-    summary: "The manual incorrectly equates GUI Initialize with native runtime supervision"
-    disposition: open
+    summary: "Manual conflated GUI controls with native runtime supervision"
+    disposition: fixed
   - id: F-004
     severity: major
-    summary: "Current native runtime JSON-status acceptance remains unproven"
+    summary: "Current native runtime JSON-status acceptance was not independently re-proven"
+    disposition: fixed
+  - id: F-005
+    severity: major
+    summary: "PR branch reverts GUI-139 persisted-profile safeguards and their regression coverage from current main"
     disposition: open
 ---
 # Independent review — MCP-049 / PR #266
 
 ## Scope and evidence
 
-Reviewed the exact PR head 4b20eab9f0a2c0a4bba141ddeb21afee6e42b373 against the complete MCP-049 packet, FRD-025, HZN-007 context, and post-implementation report. The repository diff is limited to docs/manual/connect.md and its generated manual mirror. Added-content confidentiality scanning found no API-key, bearer, private-key, provider-token, tunnel-id, or non-placeholder user-path pattern. The operational report is also appropriately redacted: it presents no credential, bearer, full provider identifier, or machine-specific path.
+Reviewed exact head `4d815a73d573aca8f55f1c6957399fc6c32456b2` against the full MCP-049 packet, HZN-007 context, FRD-025, current main, the post-implementation report, exact diff, GitHub reviews, and every current review thread. The reviewer is a distinct agent role from the author.
 
-Local repository checks passed: node scripts/build-manual.mjs --check (22 chapters), focused generated-manual tests (11/11), npm run test:scripts (111/111), npm run typecheck (all workspaces), and git diff --check. Hosted verify and kanmer-gate are green on this head. A safe live public MCP probe returned 401 without a bearer and process enumeration found one tunnel-client and two cloudflared processes, but that is intentionally only partial operational corroboration. The correct tunnel-client runtimes status command did not yield JSON within the bounded read-only review query (60 seconds under Infisical injection; 10 seconds without); only that client query was terminated and no runtime/provider state was changed.
+F-001 through F-004 are fixed in this head. The canonical managed AGENTS body, its installed-skill mirror, and generated AGENTS.md now define the native `runtimes connect/status/stop/remove` boundary and distinguish it from GUI `init/doctor/run`. The private wrapper example now exports both `KANMER_PROVIDER_CWD` and `KANMER_BOARD_BRANCH`. The report retains bounded, redacted operational evidence: a fresh native status query exited 0 and reported process-running, healthy, ready, and non-stale, without identifiers, credentials, paths, PIDs, URLs, or log tails. The changed manual/source mirror contains no credential or provider-specific operational value.
 
-## Findings
+The previous two GitHub P1 threads remain unresolved at this review point but are covered by F-001 and F-002 as fixed; they may be resolved only after the author rebases/corrects the current PR and a fresh review confirms the new head. The exact-head kanmer-gate is green; hosted verify was still in progress at the review decision.
 
-- **F-001 — major, open:** This PR replaces the supported operational convention from foreground init/run to the long-lived runtimes connect/status lifecycle. AGENTS.md is unchanged, despite the repository rule requiring a PR that changes commands or conventions to update it. The first unresolved GitHub P1 thread identifies this. Add concise contributor guidance defining the supported native-supervisor lifecycle and its separation from repository code; do not add secret or machine-specific values.
-- **F-002 — major, open:** The new private wrapper exports KANMER_PROVIDER_CWD but not KANMER_BOARD_BRANCH. The installed launcher consumes that variable to preserve a caller's configured board branch. On any project using a non-default board branch, the wrapper therefore defaults to kanmer-board and reports the correct board worktree as mismatched. The second unresolved GitHub P1 thread identifies this. Document/export the configured branch in the private wrapper with a generic placeholder and preserve the default safely.
-- **F-003 — major, open:** Immediately after changing the documented long-lived path to runtimes connect, the GUI section still says Initialize and Run doctor execute the same commands. Production code shows Initialize invokes tunnel-client init and Start invokes tunnel-client run; neither creates the required native runtime alias. Clarify that GUI initialization/doctor validates the profile only, while native runtimes connect/status is the separate persistent-supervision step. Do not claim that the GUI has created or is monitoring that alias.
-- **F-004 — major, open:** The plan requires current process_running, healthy, and ready JSON status, not doctor alone. The report claims that result, but the reviewer’s safe current status recheck was inconclusive: the exact status query produced no JSON within its bounded waits. Re-run the exact command in the known private Infisical context, record only exit code and approved redacted status booleans, and ensure it responds before fresh review. Preserve this attempt; do not expose secret material or modify the runtime merely to satisfy review.
+## Blocking finding
 
-The two GitHub threads are unresolved and are dispositioned by F-001 and F-002. No merge is authorized while these major findings remain open. This attestation makes no post-merge, release, or proof claim.
+- **F-005 — major, open:** The branch has not been rebased onto current main. Its merge base is `700ae9c46904cd5417abe81dd3b256f6d33000d0`, while PR base `bb6e8f47d5aa2bffc5830d0c447fbfca15caa4d6` is the GUI-139 merge. Consequently the exact PR diff deletes GUI-139's persisted incomplete/default-profile recovery tests and restores the older `openaiTunnel.ts` implementation: it removes the safe leading-name normalization, strict default-profile recovery/diagnostic validation, and the `OPENAI_PROFILE_INCOMPLETE` checks before Initialize and Doctor. MCP-049's plan permits documentation/mirror changes and inspection of the existing GUI manager; it does not authorize rolling back GUI-139. Squash-merging this PR would regress the already merged GUI-139 remediation. Rebase the current branch onto `origin/main`, preserve GUI-139's source and tests unchanged, regenerate/confirm the manual mirror, and request a new exact-head review. Do not resolve this by weakening or deleting the GUI-139 assertions.
+
+No merge is authorized. This review records no post-merge, release, or proof claim.

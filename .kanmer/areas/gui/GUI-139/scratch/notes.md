@@ -13,3 +13,7 @@ Direct inspection showed the real product-owned incomplete record already carrie
 ## Review remediation F-003
 
 F-003 accepted and fixed in `a34b4531`: default profile names are now prefixed when the sanitized basename does not begin alphanumerically, retaining the existing 64-character schema bound. A `/tmp/.kanmer` register → restart regression passes. Focused suite 14/14, GUI typecheck, and diff check PASS.
+
+## Review remediation F-004
+
+F-004 accepted and fixed in `464104e0`: the reader recognizes only the prior deterministic default name for the same project plus the new canonical default, while every other structural field remains exact. It normalizes the legacy name in memory to the canonical safe name. The regression now rewrites a real persisted `/tmp/.kanmer` default to its legacy `.kanmer` name before restart and proves canonical recovery. Focused 14/14, GUI typecheck, diff check PASS.

@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "263"
-head_sha: "76abfc07fdf218588a0f0940842eacaaa0c0e1e4"
+head_sha: "b38276f4545b25c5e720b5bf85dfa562883d8d81"
 verdict: needs-changes
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "c454dbe71cb339a3"
-ticket_updated: "2026-08-25T05:57:01.124Z"
+ticket_updated: "2026-08-25T06:10:20.162Z"
 findings:
   - id: F-001
     severity: major
@@ -22,50 +22,60 @@ findings:
     disposition: fixed
   - id: F-004
     severity: major
-    summary: "Supervisor attempt resets with retry budget and diverges from the provider's monotonic launch attempt after a stable-period reset."
-    disposition: open
+    summary: "Supervisor attempt reset with retry budget and diverged from the provider's monotonic launch attempt after a stable-period reset."
+    disposition: fixed
   - id: F-005
     severity: major
-    summary: "The doctor snapshot labels the remote ready token id as auth generation instead of using the verifier fingerprint."
-    disposition: open
+    summary: "The doctor snapshot labeled the remote ready token id as auth generation instead of the verifier fingerprint."
+    disposition: fixed
   - id: F-006
     severity: major
-    summary: "The doctor snapshot records doctor invocation time as provider transition time."
+    summary: "The doctor snapshot recorded doctor invocation time as provider transition time."
+    disposition: fixed
+  - id: F-007
+    severity: major
+    summary: "Remote-host readiness health transitions retain the previous provider changedAt timestamp."
     disposition: open
 ---
 
 # Independent re-review — GUI-138
 
-## Reviewed inputs
+## Reviewed inputs and scope
 
-Reviewed PR #263 at exact head 76abfc07fdf218588a0f0940842eacaaa0c0e1e4, rebased onto CORE-104 merge e958ff2c182373a5461856e60d1a563f37d32b3d, against the complete packet, HZN-007 control context, and FRD-025. The exact diff remains the six planned lifecycle/status files. Reviewer evidence is green: MCP HTTP/remote suite 102/102, GUI manager suite 12/12, all-workspace typecheck, and exact diff check. The post-attestation rerun of workflow 32814833102 is terminal green: kanmer-gate 57s and verify 4m21s.
+Reviewed PR #263 at exact head b38276f4545b25c5e720b5bf85dfa562883d8d81 against the complete GUI-138 packet, HZN-007 control context, and FRD-025. The ticket remains in Review, the author is collisionengineers, and this is a separate reviewer role. The diff remains bounded to the six declared manager/supervisor/remote-host source and test files; no provider query, public routing, bearer/credential/log material, dependency, updater, release, or doctor semantic weakening appears.
 
-## Dispositions
+Reviewer commands on the exact worktree passed: npm run test:http -w @kanmer/mcp-server (102 tests), focused GUI manager suite (12 tests), npm run typecheck, and git diff --check against e958ff2c182373a5461856e60d1a563f37d32b3d.
+
+## Prior finding dispositions
 
 ### F-001 — major — FIXED
 
-Restarting maps to degraded and the manager-to-doctor test requires TUNNEL_PROCESS_READY to fail during restart backoff.
+Restarting maps to degraded and the manager-to-doctor regression requires TUNNEL_PROCESS_READY to fail during backoff.
 
 ### F-002 — major — FIXED
 
-Attempt propagation is now present from supervisor through RemoteHostStatus and remote-cli to the GUI, with the manager regression asserting attempt 2.
+The runtime now carries a real attempt through remote status to the manager and the doctor snapshot.
 
 ### F-003 — major — FIXED
 
-CORE-104 repaired the unrelated hosted core timeout. The exact rebased head passes both required hosted checks.
+CORE-104 repaired the unrelated hosted timeout; current hosted checks are separately pending for this new head.
 
-### F-004 — major — OPEN
+### F-004 — major — FIXED
 
-TunnelSupervisor emits this.restarts + 1 as the provider attempt. Its stable-period branch resets restarts before a later exit, while CloudflaredAdapter's owned TunnelStatus attempt remains monotonic across launches. After that reset the GUI doctor snapshot can report attempt 2 while the actual adapter lifecycle is at attempt 3 or higher. Track a separate monotonic launch/provider attempt and add the stable-reset regression. GitHub thread PRRT_kwDOT2PEds6b8_ga is unresolved.
+RemoteHost now derives its displayed attempt from the adapter's monotonic status rather than the resettable supervisor retry budget; restarting uses the next adapter launch attempt. The original GitHub thread remains to be marked resolved after this review record is accepted.
 
-### F-005 — major — OPEN
+### F-005 — major — FIXED
 
-remote-cli emits both verifier.tokenId and verifier.fingerprint, while its remote host starts the tunnel with the fingerprint. Manager readLine stores tokenId in status.generation, then the doctor snapshot serializes it as authGeneration. Thus a normal remote identifier is mislabeled as a sha256 auth-generation value; the regression fabricated a sha256 token id and did not exercise the production values. Preserve event.fingerprint for the snapshot, or omit authGeneration absent a valid fingerprint, and cover the real ready event. GitHub thread PRRT_kwDOT2PEds6b8_ge is unresolved.
+The real ready event keeps remote tokenId separate and stores verifier fingerprint as auth generation. The manager regression now uses the production-shaped remote token id and sha256 fingerprint.
 
-### F-006 — major — OPEN
+### F-006 — major — FIXED
 
-manager.doctorNow emits action diagnosing before serializing KANMER_TUNNEL_STATUS_JSON. emit updates status.updatedAt for every UI action, so changedAt represents doctor start rather than the connected/degraded/restarting provider transition. Keep a dedicated provider-transition timestamp and prove diagnostic-action updates do not overwrite it. GitHub thread PRRT_kwDOT2PEds6b8_gi is unresolved.
+The manager keeps providerChangedAt independently from UI status.updatedAt and passes that value to doctor; the restart regression asserts the supplied provider transition time after doctor action changes.
+
+### F-007 — major — OPEN
+
+RemoteHost.monitorHealth changes provider from running to degraded (and back) after provider-owned checkReadiness, but does not refresh its changedAt from the adapter's current status or otherwise stamp that readiness transition. The GUI therefore preserves the older connected transition time in the doctor snapshot. A direct exact-build reproduction started with adapter changedAt 2026-08-25T05:00:00.000Z, changed the adapter to degraded at 2026-08-25T06:00:00.000Z, invoked the injected health poll, and observed RemoteHost status degraded with the stale 05:00 timestamp. This violates truthful lifecycle timestamps required by FRD-025 RA-TUNNEL-2 and leaves readiness-age diagnostics inaccurate. Refresh changedAt for both health degradation and recovery and add coverage at the remote-host to GUI/doctor boundary. No GitHub thread exists yet for this new finding.
 
 ## Decision
 
-The new three exact-head P2 threads are substantiated and have no acceptable-risk or deferred disposition. This needs-changes attestation supersedes the prior PASS. Do not merge or move GUI-138 until the corrections are implemented, all threads are resolved, a current-head review attestation passes, and the required checks are green again. Packaged public-doctor and remote MCP evidence remains strictly post-merge verification work.
+The three former P2 findings are fixed, but F-007 is a current major production truthfulness defect. This attestation is needs-changes; do not merge or move GUI-138 until F-007 is corrected, the review threads are resolved/dispositioned, and exact-head required checks pass.

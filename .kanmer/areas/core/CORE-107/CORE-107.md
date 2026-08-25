@@ -26,12 +26,12 @@ links:
 refs:
   - docs/functional/frd/FRD-021-auto-update.md
 commits:
-  - 3a0c4b89e733a91d7dea9fed7f52877bd9fbe26d
+  - f973be26dc03f30adb1d2075643c3ba73e447b7a
 prs:
   - '271'
 archived: false
 created: '2026-08-25T09:39:07.506Z'
-updated: '2026-08-25T11:20:58.243Z'
+updated: '2026-08-25T11:26:15.756Z'
 ---
 
 Publish the first clean successor after the immutable partial v0.3.8 release. Require protected-main merge, one authoritative Windows package generation, complete public assets, green tag workflow, strict external verification, installed update/reinstall validation, working Codex Connect and pasteable launcher probe guidance, packaged MCP identity v0.3.9, healthy Cloudflare remote access, and healthy OpenAI managed tunnel runtime. Preserve v0.3.8 as failed historical evidence.

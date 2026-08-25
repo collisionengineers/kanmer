@@ -40,3 +40,7 @@ F-002 (major) — FIXED. The manager now retains the positive integer attempt em
 Additional commit: b992a34e fix(gui): preserve tunnel restart attempt
 
 F-002 follow-up — FIXED at the production boundary. TunnelSupervisor now emits its bounded real attempt; RemoteHostStatus and remote-cli carry it; GUI retains it. Supervisor/host tests 15/15, manager tests 12/12, all-workspace typecheck, and diff check pass. Commit a8ff5a3a.
+
+## CI baseline refresh
+
+Rebased onto CORE-104 merge e958ff2c after its hosted Windows timeout repair. New reachable commits: 42fc099f, c42ca48d, dce037db, 76abfc07. Post-rebase manager 12/12, supervisor/host 15/15, and all-workspace typecheck pass.

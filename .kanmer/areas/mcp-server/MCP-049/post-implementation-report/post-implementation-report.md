@@ -16,13 +16,16 @@ Updated `docs/manual/connect.md` to use the stable installed launcher, require b
 - F-002 fixed: the documented wrapper exports `KANMER_BOARD_BRANCH` as well as `KANMER_PROVIDER_CWD`.
 - F-003 fixed: the manual no longer says GUI Initialize executes native runtime commands; it names the GUI's actual `init`, `doctor`, and owned `run` behavior.
 - F-004 fixed: a fresh bounded native status query exited 0 with process-running, healthy, ready, and non-stale states.
+- F-005 fixed: rebased onto current main so GUI-139 recovery code and tests remain intact; the PR diff is scoped to intended documentation/convention artifacts.
+- F-006 fixed: regenerated the packaged setup-runtime copy and proved `plugin:check`.
+- F-007 fixed: the generic wrapper now uses an explicit saved-board-branch placeholder and tells the operator to copy the exact value from Settings → Git, including custom branch names.
 
 ## Attempts retained
 
 - Manual freshness passed (22 chapters). The first all-workspace typecheck used a stale inherited linked dependency tree and failed on missing current core exports; after `npm ci` and `npm run build:core`, all-workspace typecheck passed. `git diff --check` passed.
 - The first exact installed restart public doctors returned intermediary/502 failures because a bounded manual Cloudflare probe launched during diagnosis had remained as a second connector to a deliberately dead origin. That exact owned process was identified by command line and creation time and terminated; after provider propagation the public route returned 401 with a bearer challenge and packaged public doctor passed 26/26. No unrelated process or remote resource was changed.
 - The OpenAI GUI settings file initially failed closed as `OPENAI_TUNNEL_SETTINGS_INVALID`; [[GUI-139]] records the full source/review/install resolution.
-- After review corrections: managed-block verification passed 31/31, manual freshness passed 22 chapters, script tests passed 111/111, GUI-139 focused recovery tests passed 14/14, all-workspace typecheck passed, and `git diff --check` passed.
+- After review corrections: managed-block verification passed 31/31, manual freshness passed 22 chapters, script tests passed 111/111, GUI-139 focused recovery tests passed 14/14, all-workspace typecheck passed, and `git diff --check` passed. The F-007 correction regenerated the 22-chapter mirror; manual freshness, `plugin:check`, and `git diff --check` passed again.
 - The first rebased hosted rail failed at `plugin:check` because changing the canonical setup body requires regenerating its packaged runtime copy. `npm run plugin:build` updated only `plugins/kanmer/scripts/agents-block-body.mjs`; `npm run plugin:check` then passed with 37 tools, matching bundle bytes, 12 parsed skills, and an isolated 37-tool handshake. The failed hosted attempt remains part of the record.
 
 ## Cleanup

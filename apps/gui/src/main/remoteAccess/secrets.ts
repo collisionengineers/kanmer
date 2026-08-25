@@ -7,19 +7,21 @@ export type SecureBackend = "dpapi" | "keychain" | "gnome_libsecret" | `kwallet$
 
 export interface SecretBackend {
   isEncryptionAvailable(): boolean;
-  getSelectedStorageBackend(): string;
+  getSelectedStorageBackend?(): string;
   encryptString(value: string): Buffer;
   decryptString(value: Buffer): string;
 }
 
 const SAFE_BACKENDS = new Set<SecureBackend>(["dpapi", "keychain", "gnome_libsecret", "kwallet"]);
 
-export function secureBackend(backend: SecretBackend = safeStorage): SecureBackend {
+export function secureBackend(backend: SecretBackend = safeStorage, platform: NodeJS.Platform = process.platform): SecureBackend {
+  if (!backend.isEncryptionAvailable()) throw new Error("REMOTE_SECURE_STORAGE_UNAVAILABLE");
+  if (platform === "win32") return "dpapi";
+  if (platform === "darwin") return "keychain";
+  if (platform !== "linux" || !backend.getSelectedStorageBackend) throw new Error("REMOTE_SECURE_STORAGE_UNAVAILABLE");
   const selected = backend.getSelectedStorageBackend();
   const accepted = SAFE_BACKENDS.has(selected as SecureBackend) || /^kwallet[0-9]+$/.test(selected);
-  if (!backend.isEncryptionAvailable() || !accepted) {
-    throw new Error("REMOTE_SECURE_STORAGE_UNAVAILABLE");
-  }
+  if (!accepted) throw new Error("REMOTE_SECURE_STORAGE_UNAVAILABLE");
   return selected as SecureBackend;
 }
 

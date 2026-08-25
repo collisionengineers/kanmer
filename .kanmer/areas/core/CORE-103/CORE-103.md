@@ -2,16 +2,13 @@
 id: CORE-103
 type: ticket
 title: Publish and validate v0.3.8 closeout release
-status: implementing
+status: preparing
 area: core
 assignee: codex-closeout
 profile: chore
 stageEntered:
   preparing: '2026-08-25T01:10:15.001Z'
   implementing: '2026-08-25T01:10:19.884Z'
-taken_at: '2026-08-25T01:10:32.138Z'
-branch: main
-worktree: 'C:/Users/Alex/AppData/Local/Temp/kanmer-release-v038'
 labels:
   - release
   - v0.3.8
@@ -28,7 +25,7 @@ refs:
   - docs/functional/frd/FRD-021-auto-update.md
 archived: false
 created: '2026-08-25T01:04:13.262Z'
-updated: '2026-08-25T01:10:32.138Z'
+updated: '2026-08-25T01:27:13.226Z'
 ---
 
 ## Purpose

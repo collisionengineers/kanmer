@@ -63,37 +63,61 @@ The Platform shows a new key once: put it in the process environment, never in
 the profile, a command committed to source control, or a chat message. Revoke
 and replace a key immediately if it is exposed.
 
-The installed app already contains everything needed for the MCP command. In
-PowerShell, substitute your paths and tunnel id:
+The installed app already contains a stable launcher at
+`%LOCALAPPDATA%\Kanmer\bin\kanmer-mcp.cmd`. Point the tunnel at that launcher,
+not at a versioned `Kanmer.exe` or bundle path: the installer keeps the launcher
+stable while replacing the runtime behind it. Because tunnel-client 0.0.11
+parses a Windows command string before it starts MCP, use a small
+operator-private PowerShell wrapper to preserve the project working directory.
+For example, save this outside the project as `kanmer-tunnel-mcp.ps1`:
+
+```powershell
+$env:KANMER_PROVIDER_CWD = "C:/path/to/project"
+$env:KANMER_BOARD_BRANCH = "<saved-board-branch>"
+& "$env:LOCALAPPDATA\Kanmer\bin\kanmer-mcp.cmd"
+exit $LASTEXITCODE
+```
+
+Substitute the project path and the exact board branch saved in **Settings →
+Git** (the default is `kanmer-board`). Then substitute your paths, profile,
+alias, environment-variable name and tunnel id:
 
 ```powershell
 $env:CONTROL_PLANE_API_KEY = "<runtime-api-key>"
-$env:ELECTRON_RUN_AS_NODE = "1"
 
 $tunnelClient = "C:/path/to/tunnel-client.exe"
-$mcpCommand = '"C:/Users/<you>/AppData/Local/Programs/Kanmer/Kanmer.exe" "C:/Users/<you>/AppData/Local/Programs/Kanmer/resources/mcp/kanmer-mcp.cjs" --root "C:/path/to/project/.worktrees/kanmer" --repo-root "C:/path/to/project"'
+$mcpCommand = 'powershell.exe -NoProfile -NonInteractive -File "C:/private/path/kanmer-tunnel-mcp.ps1"'
 
-& $tunnelClient init `
-  --sample sample_mcp_stdio_local `
+& $tunnelClient runtimes connect `
+  --alias kanmer-board `
   --profile kanmer-local `
   --tunnel-id <tunnel-id> `
-  --mcp-command $mcpCommand
+  --runtime-api-key env:CONTROL_PLANE_API_KEY `
+  --mcp-command $mcpCommand `
+  --tunnel-client-bin $tunnelClient
 
 & $tunnelClient doctor --profile kanmer-local --explain
-& $tunnelClient run --profile kanmer-local
+& $tunnelClient runtimes status kanmer-board --json
 ```
+
+`runtimes connect` is the supported long-lived local supervisor. Do not report
+the tunnel ready from `doctor` alone: status must say the process is running,
+healthy and ready. Use the corresponding runtime stop/remove command before
+retiring an alias; do not kill an unrelated process or delete the remote tunnel.
 
 In the GUI, open **Settings → OpenAI tunnel**, enter the profile name, tunnel id,
 `tunnel-client` path, credential environment-variable name, and loopback health
 address, then save. The address is a validated, non-secret expectation; the GUI
 does not rewrite `tunnel-client`'s profile file or claim a live listener, so
 distinct ports must still be configured in the client profile by the operator.
-**Initialize** and **Run doctor** execute the same commands. Initialize binds
-the selected credential name with tunnel-client's
+This GUI surface and the native runtime supervisor are separate operating
+modes: **Initialize** runs `tunnel-client init`, **Run doctor** runs
+`tunnel-client doctor`, and **Start**, **Stop**, and **Restart** supervise the
+GUI-owned `tunnel-client run` child. The GUI does not execute `runtimes connect`
+or manage native runtime aliases. Initialize binds the selected credential name with tunnel-client's
 `--control-plane-api-key-ref env:<NAME>` option, so a custom environment
 variable is honored without putting its value in the profile;
-**Start**, **Stop**, and **Restart** supervise the owned `run` process. The GUI
-never asks for or persists the API-key value. A downloaded app update marks a
+the GUI never asks for or persists the API-key value. A downloaded app update marks a
 running tunnel for restart, and quitting Kanmer stops its owned process tree.
 Cloudflare settings are a different provider path and are not used here.
 
@@ -103,8 +127,8 @@ command parser treats backslashes as escapes; a normal Windows path such as
 it creates under `%APPDATA%\tunnel-client` refers to the API key as an
 `env:<NAME>` reference; it does not need the key written into YAML.
 
-Keep `tunnel-client run` alive while creating the ChatGPT app and whenever the
-app uses Kanmer. In ChatGPT's developer-mode app settings, choose **Tunnel** and
+Keep the managed runtime connected while creating the ChatGPT app and whenever
+the app uses Kanmer. In ChatGPT's developer-mode app settings, choose **Tunnel** and
 select the tunnel associated with that workspace. Keep the local operator UI
 on its default loopback address. Restart the tunnel after a Kanmer update,
 because the installed MCP process is replaced during the update.
@@ -116,26 +140,29 @@ state and must not be committed. The packaged MCP smoke separately verifies all
 
 ### More than one project
 
-Use one OpenAI tunnel, one local profile, and one ChatGPT app per Kanmer
-project. Reuse the installed Kanmer runtime, MCP bundle and runtime API key;
-change the tunnel id, profile name, `--root`, and `--repo-root`:
+Use one OpenAI tunnel, one local profile, one private wrapper, one runtime alias,
+and one ChatGPT app per Kanmer project. Reuse the installed stable launcher and
+runtime API key; change the tunnel id, profile name, wrapper project path and
+alias:
 
 ```powershell
-$projectRoot = "C:/Users/<you>/Documents/GitHub/another-project"
-$boardRoot = "$projectRoot/.worktrees/kanmer"
 $profile = "another-project"
-$mcpCommand = '"C:/Users/<you>/AppData/Local/Programs/Kanmer/Kanmer.exe" "C:/Users/<you>/AppData/Local/Programs/Kanmer/resources/mcp/kanmer-mcp.cjs" --root "' + $boardRoot + '" --repo-root "' + $projectRoot + '"'
+$alias = "another-project"
+$mcpCommand = 'powershell.exe -NoProfile -NonInteractive -File "C:/private/path/another-project-kanmer-mcp.ps1"'
 
-& $tunnelClient init `
-  --sample sample_mcp_stdio_local `
+& $tunnelClient runtimes connect `
+  --alias $alias `
   --profile $profile `
   --tunnel-id <another-project-tunnel-id> `
-  --mcp-command $mcpCommand
+  --runtime-api-key env:CONTROL_PLANE_API_KEY `
+  --mcp-command $mcpCommand `
+  --tunnel-client-bin $tunnelClient
 ```
 
-If `.kanmer` is directly inside the project rather than the GUI-managed board
-worktree, set `$boardRoot = $projectRoot`. List configured profiles with
-`tunnel-client profiles list`, and select one with `run --profile <name>`.
+Each wrapper sets its own `KANMER_PROVIDER_CWD` and `KANMER_BOARD_BRANCH`. The stable launcher discovers
+either a direct `.kanmer` folder or the GUI-managed board worktree from that
+project root. List configured profiles with `tunnel-client profiles list` and
+managed aliases with `tunnel-client runtimes list --json`.
 Profiles default their local health/admin surface to `127.0.0.1:8080`, so run
 one at a time or assign each profile a distinct `health.listen_addr` before
 running them concurrently. Combining boards behind one tunnel is discouraged:

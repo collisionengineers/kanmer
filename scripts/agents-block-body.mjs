@@ -55,6 +55,11 @@ provider registration or exported local runtime, falling back to the default
 board branch when unset. GUI Connect writes the saved board-branch setting into local
 registrations. Hosted Actions should mirror the same value in the repository
 variable, but Actions variables are not inherited by local processes.
+When a native runtime supervisor launches Kanmer through an operator-private
+wrapper, that wrapper must export both \`KANMER_PROVIDER_CWD\` and
+\`KANMER_BOARD_BRANCH\` before invoking the stable launcher. Native
+\`tunnel-client runtimes connect/status/stop/remove\` supervision is distinct
+from the GUI's \`init/doctor/run\` controls; do not claim one manages the other.
 
 ## Agent conduct
 

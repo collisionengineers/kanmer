@@ -2,7 +2,7 @@
 kind: review-attestation
 pr: "270"
 head_sha: "9def9c09c4e3b8c04d2880094782533fe48b82cc"
-verdict: pass
+verdict: needs-changes
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "d495e81f9d336ec4"
@@ -12,30 +12,39 @@ findings:
     severity: major
     summary: "The publisher made the Release latest before the explicit asset upload, allowing an upload failure to expose a partial updater release."
     disposition: fixed
+  - id: F-002
+    severity: major
+    summary: "The documented GITHUB_RELEASE_TOKEN is accepted by preflight but is not forwarded to gh, so publish can use an unrelated cached login or fail authentication."
+    disposition: open
+  - id: F-003
+    severity: major
+    summary: "The release-existence probe treats every gh release view exit-1 failure as release absence, so a transient/API failure can strand an immutable tag after the next create fails."
+    disposition: open
 ---
 # Independent review — CORE-106 / PR #270
 
 ## Review scope
 
-Freshly reviewed PR #270 at `9def9c09c4e3b8c04d2880094782533fe48b82cc` against the complete CORE-106 packet, HZN-007 control context, and FRD-021. The reviewer is independent of the author role. The nine-file release-only diff stays within the plan: it replaces concurrent Electron Builder publication with one retained `--publish never` Windows package, explicit bounded GitHub upload, local-to-remote integrity verification, and an independent public-set verifier for tag CI. It makes no runtime updater, credential, dependency, prior-release, tag, or branch-policy change.
+Freshly reviewed PR #270 at `9def9c09c4e3b8c04d2880094782533fe48b82cc` against the complete CORE-106 packet, HZN-007 control context, and FRD-021. The reviewer is independent of the author role. The nine-file release-only diff remains within the planned publisher/verification scope. Focused local release tests pass 60/60 and exact diff hygiene passes. Hosted full `verify` run `32836402760` passed in 4m10s; the attestation-triggered edited-event gate run `32836821342` passed. A separate full rerun was in progress when the final thread review below found blockers.
 
-## Acceptance evidence
+## GitHub review/thread gather
 
-- Exact local focused rail: `node --test scripts/verify-release-assets.test.mjs scripts/release-flow.test.mjs scripts/release-publish.test.mjs` — PASS, 60/60.
-- Exact local diff hygiene: `git diff --check 8c8fdb868aed3677b3603b9ba360f304139aee6f...9def9c09c4e3b8c04d2880094782533fe48b82cc` — PASS.
-- Hosted PR run `32836402760` at the reviewed head: `verify` PASS in 4m10s; its pre-attestation `kanmer-gate` job also completed successfully in 54s. The gate record correctly notes that the prior review file was bound to the superseded `3ceaf…` head; this new attestation must be synced and the gate rerun before merge.
-- GitHub final review gather at this head: PR is open and mergeable; no reviews, comments, or review threads are present.
+The PR is open and mergeable, with no ordinary comments. Three unresolved Codex review threads remain. The first is fixed; the latter two are valid and block merge.
 
 ## Findings and dispositions
 
 ### F-001 — major — fixed
 
-The prior review found that the publisher made the release public/latest before its explicit uploads and verification. The corrected flow now creates the release as a draft, uploads the exact retained installer/blockmap/MCPB/manifest set, validates that draft against the same package, and only then executes `gh release edit … --draft=false --latest`. The regression pins the required order `create < upload < verify < publish`. A failed upload or byte check therefore preserves a hidden failed draft rather than offering an incomplete updater release to clients.
+The prior public-partial-release finding is remediated. The publisher creates a draft, uploads and verifies the exact retained package while hidden, then runs `gh release edit … --draft=false --latest`. The regression asserts `create < upload < verify < publish`, so a failed upload/verification preserves hidden failed evidence rather than serving an incomplete updater release.
 
-## Residual boundary
+### F-002 — major — open — forward the supported publisher token to gh
 
-This review approves the source change and its tests only. CORE-107 owns the future real v0.3.9 publication and installed-product evidence; this ticket neither publishes nor retags any release.
+`release.mjs` intentionally accepts `GITHUB_RELEASE_TOKEN`, `GH_TOKEN`, or `GITHUB_TOKEN` in `tokenVar`, and uses the selected variable for the JS verifier. The `gh release view/create/upload/edit` commands, however, inherit their original environment. GitHub CLI recognizes `GH_TOKEN`/`GITHUB_TOKEN`, not `GITHUB_RELEASE_TOKEN`; with only the documented latter variable, the write commands can fail or use an unrelated persisted account. Normalize the selected secret into the environment seen by every `gh` invocation (without logging it) and add a regression covering the documented variable.
+
+### F-003 — major — open — distinguish verified release absence from generic gh failure
+
+The preflight catches `gh release view` and accepts any exit status 1 as absence. GitHub CLI uses exit 1 for general failures as well as a missing release, so transient network/API/repository errors can be misclassified. The script would push the irreversible tag, then fail release creation and strand a tag that future attempts refuse. Continue only after a reliable not-found result (for example a bounded API response whose 404 is explicit); surface all other failures as inconclusive before any tag mutation. Add a regression for non-404/transport failure.
 
 ## Decision
 
-PASS, conditional on a post-attestation board sync and exact-head required-check rerun that proves the merge gate sees this attestation.
+NEEDS CHANGES. Keep CORE-106 in Review. Do not merge, publish, retag, or resolve the two open threads. A corrected head, updated report/packet as needed, terminal exact-head checks, and a new independent attestation are required.

@@ -1,0 +1,12 @@
+# Plan
+
+1. Correct FRD-026 first: the supported Windows lifecycle is one persistent tunnel-client runtime alias per canonical project. Kanmer invokes `runtimes connect`, observes `runtimes status <alias> --json`, stops with `runtimes stop`, and removes with `runtimes rm`; it never presents Cloudflare bearer access as ChatGPT OAuth and never owns or scavenges a runtime child.
+2. Evolve the persisted non-secret profile and shared status model minimally. Treat the existing profile name as the tunnel-client profile and derive/use a stable runtime alias per project. Keep tunnel id, executable, credential environment-variable name and canonical MCP command; never persist or render the key value. Migrate the existing version-1 settings shape without deleting valid user configuration.
+3. Replace obsolete command construction in `OpenAITunnelManager`. `connect` must include alias, profile, tunnel id, `env:<NAME>`, canonical packaged MCP command, and tunnel-client binary. Readiness requires parseable status JSON reporting running, healthy, and ready; command errors and malformed/unready status remain visible failures. Stop/remove affect only the configured alias and must not delete the remote tunnel.
+4. Update IPC and Settings actions/text to match the native runtime lifecycle. The main process waits for bounded commands rather than retaining a child; app quit must leave healthy managed runtimes running. Update replacement reports whether reconnect is required based on runtime status, without killing it.
+5. Update deterministic main-process and renderer tests for exact Windows argument vectors, JSON parsing, redaction, project isolation, settings migration, connect/status/stop/remove behavior, and absence of obsolete `init`, `run`, or terminal-paste guidance. Regenerate the in-app manual from its source.
+6. Run focused GUI tests and typecheck, then the full repository verification. Create a PR and obtain independent exact-head review. After merge, verify the exact merge SHA, build/package a new Windows release, install it, connect the existing private tunnel through the GUI, and prove ChatGPT traffic reaches Kanmer. Do not mark the ticket Done if control-plane/runtime evidence is inconclusive.
+
+## Stop condition
+
+Stop before implementation if tunnel-client 0.0.11 help or live status contradicts the `runtimes connect/status/stop/rm` contract, or if satisfying it would require OAuth support, a new dependency, a Linux lane, or changing Cloudflare scope; record the conflict instead of expanding the ticket.

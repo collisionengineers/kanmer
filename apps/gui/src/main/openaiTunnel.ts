@@ -106,18 +106,38 @@ function statusFor(projectId: string, identity: RemoteProjectIdentity, profile: 
 
 function defaultProfile(projectId: string): OpenAITunnelProfile {
   const base = projectId.split(/[\\/]/).filter(Boolean).at(-1) ?? "kanmer";
+  const cleaned = base.replace(/[^A-Za-z0-9._-]/g, "-");
+  const profileName = (/^[A-Za-z0-9]/.test(cleaned) ? cleaned : `kanmer-${cleaned}`).slice(0, 64) || "kanmer";
+  return { ...emptyOpenAITunnelProfile(), profileName };
+}
+
+function legacyDefaultProfile(projectId: string): OpenAITunnelProfile {
+  const base = projectId.split(/[\\/]/).filter(Boolean).at(-1) ?? "kanmer";
   const profileName = base.replace(/[^A-Za-z0-9._-]/g, "-").slice(0, 56) || "kanmer";
   return { ...emptyOpenAITunnelProfile(), profileName };
 }
 
-function normalizeProfile(value: unknown): OpenAITunnelProfile | null {
+function isRunnableProfile(profile: Partial<OpenAITunnelProfile>): profile is OpenAITunnelProfile {
+  return isSafeOpenAIProfileName(profile.profileName) && isSafeOpenAITunnelId(profile.tunnelId) && isSafeOpenAIExecutable(profile.executable) &&
+    isSafeOpenAICredentialEnv(profile.credentialEnv) && isLoopbackHealthAddress(profile.healthAddress) && typeof profile.enabled === "boolean" &&
+    typeof profile.autoStart === "boolean" && typeof profile.generation === "string" && /^[0-9a-f-]{36}$/i.test(profile.generation);
+}
+
+function normalizeProfile(value: unknown, expectedDefault: OpenAITunnelProfile, legacyDefault: OpenAITunnelProfile): OpenAITunnelProfile | null {
   if (!value || typeof value !== "object") return null;
   const p = value as Partial<OpenAITunnelProfile>;
-  if (!isSafeOpenAIProfileName(p.profileName) || !isSafeOpenAITunnelId(p.tunnelId) || !isSafeOpenAIExecutable(p.executable) || !isSafeOpenAICredentialEnv(p.credentialEnv) || !isLoopbackHealthAddress(p.healthAddress) || typeof p.enabled !== "boolean" || typeof p.autoStart !== "boolean" || typeof p.generation !== "string" || !/^[0-9a-f-]{36}$/i.test(p.generation)) return null;
+  const complete = isRunnableProfile(p);
+  const diagnosticsValid = (p.lastSummary === null || typeof p.lastSummary === "string") && (p.lastError === null || typeof p.lastError === "string") &&
+    (p.lastDoctorAt === null || (typeof p.lastDoctorAt === "string" && !Number.isNaN(Date.parse(p.lastDoctorAt))));
+  const matchesDefault = (candidate: OpenAITunnelProfile) => p.profileName === candidate.profileName && p.tunnelId === candidate.tunnelId && p.executable === candidate.executable &&
+    p.credentialEnv === candidate.credentialEnv && p.healthAddress === candidate.healthAddress && p.enabled === candidate.enabled &&
+    p.autoStart === candidate.autoStart && p.generation === candidate.generation;
+  const productDefault = diagnosticsValid && (matchesDefault(expectedDefault) || matchesDefault(legacyDefault));
+  if ((!complete && !productDefault) || (!productDefault && !isSafeOpenAIProfileName(p.profileName)) || !isSafeOpenAIExecutable(p.executable) || !isSafeOpenAICredentialEnv(p.credentialEnv) || !isLoopbackHealthAddress(p.healthAddress) || typeof p.enabled !== "boolean" || typeof p.autoStart !== "boolean") return null;
   return {
-    profileName: p.profileName, tunnelId: p.tunnelId, executable: p.executable,
+    profileName: productDefault ? expectedDefault.profileName : p.profileName!, tunnelId: p.tunnelId!, executable: p.executable,
     credentialEnv: p.credentialEnv, healthAddress: p.healthAddress, enabled: p.enabled,
-    autoStart: p.autoStart, generation: p.generation,
+    autoStart: p.autoStart, generation: p.generation!,
     lastSummary: typeof p.lastSummary === "string" ? sanitize(p.lastSummary) : null,
     lastError: typeof p.lastError === "string" ? sanitize(p.lastError) : null,
     lastDoctorAt: typeof p.lastDoctorAt === "string" ? p.lastDoctorAt.slice(0, 64) : null,
@@ -140,7 +160,7 @@ export async function readOpenAITunnelSettings(userData: string): Promise<Persis
   for (const [fingerprint, entry] of Object.entries(raw.projects)) {
     if (!entry || !/^kanmer-proj-v1:[a-f0-9]{64}$/i.test(fingerprint) || typeof entry.projectId !== "string" || !isAbsolute(entry.projectId) || !entry.identity || entry.identity.fingerprint !== fingerprint || !isAbsolute(entry.identity.boardRoot) || !isAbsolute(entry.identity.repoRoot) || !Number.isInteger(entry.identity.format) || (entry.identity.boardSource !== "file" && entry.identity.boardSource !== "default")) throw new Error("OPENAI_TUNNEL_SETTINGS_INVALID");
     projects[fingerprint] = { projectId: canonicalOpenAITunnelPath(entry.projectId), identity: { ...entry.identity, boardRoot: canonicalOpenAITunnelPath(entry.identity.boardRoot), repoRoot: canonicalOpenAITunnelPath(entry.identity.repoRoot) } };
-    const profile = normalizeProfile(raw.profiles[fingerprint]);
+    const profile = normalizeProfile(raw.profiles[fingerprint], defaultProfile(entry.projectId), legacyDefaultProfile(entry.projectId));
     if (raw.profiles[fingerprint] !== undefined && !profile) throw new Error("OPENAI_TUNNEL_SETTINGS_INVALID");
     if (profile) profiles[fingerprint] = profile;
   }
@@ -369,6 +389,7 @@ export class OpenAITunnelManager {
   async initialize(projectId: string, identity: RemoteProjectIdentity, roots: OpenAITunnelRoots): Promise<OpenAITunnelDoctorResult> {
     return this.enqueue(projectId, async () => {
       await this.load(); const record = this.record(projectId, identity); const profile = this.data.profiles[identity.fingerprint]; if (!profile) throw new Error("OPENAI_PROFILE_REQUIRED");
+      if (!isRunnableProfile(profile)) throw new Error("OPENAI_PROFILE_INCOMPLETE");
       record.status = { ...record.status, action: "initializing", updatedAt: new Date().toISOString() }; this.emit(record.status);
       if (!process.env[profile.credentialEnv]) return this.finishDoctor(record, profile, [{ id: "CREDENTIAL_ENV_PRESENT", status: "fail", detail: `Environment variable ${profile.credentialEnv} is not present.` }], "Credential environment variable is not present.");
       const command = this.invocation(roots); const mcpCommand = buildOpenAITunnelMcpCommand(command); const result = await runCommand(this.spawnProcess, profile.executable, ["init", "--sample", "sample_mcp_stdio_local", "--profile", profile.profileName, "--tunnel-id", profile.tunnelId, "--control-plane-api-key-ref", `env:${profile.credentialEnv}`, "--mcp-command", mcpCommand], roots.repoRoot, this.childEnv(profile, command.env), profile, this.commandTracker(projectId));
@@ -381,7 +402,9 @@ export class OpenAITunnelManager {
 
   async doctor(projectId: string, identity: RemoteProjectIdentity, roots: OpenAITunnelRoots): Promise<OpenAITunnelDoctorResult> {
     return this.enqueue(projectId, async () => {
-      await this.load(); const record = this.record(projectId, identity); const profile = this.data.profiles[identity.fingerprint]; if (!profile) throw new Error("OPENAI_PROFILE_REQUIRED"); record.status = { ...record.status, action: "diagnosing", updatedAt: new Date().toISOString() }; this.emit(record.status);
+      await this.load(); const record = this.record(projectId, identity); const profile = this.data.profiles[identity.fingerprint]; if (!profile) throw new Error("OPENAI_PROFILE_REQUIRED");
+      if (!isRunnableProfile(profile)) throw new Error("OPENAI_PROFILE_INCOMPLETE");
+      record.status = { ...record.status, action: "diagnosing", updatedAt: new Date().toISOString() }; this.emit(record.status);
       const checks: OpenAITunnelCheck[] = [{ id: "PROFILE_VALID", status: "pass", detail: "Profile fields passed local validation." }];
       if (!isSafeOpenAIExecutable(profile.executable)) checks.push({ id: "EXECUTABLE_PRESENT", status: "fail", detail: "Configured tunnel-client executable is invalid." });
       else checks.push({ id: "EXECUTABLE_PRESENT", status: "pass", detail: "Configured tunnel-client executable is valid; availability is checked by the child command." });

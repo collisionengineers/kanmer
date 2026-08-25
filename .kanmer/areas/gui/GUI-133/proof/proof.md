@@ -76,3 +76,10 @@ The merged source builds and passes the complete repository test and typecheck s
 The initial test and typecheck failures were caused by launching downstream validation concurrently before a clean checkout had produced `@kanmer/core` build artifacts. They are retained above, then resolved by following the repository's documented build order; no assertion was weakened or removed.
 
 The npm audit warning is recorded as dependency-state evidence and is not a failure of GUI-133's bounded installer behavior. The independently reviewed residual race for an already-running legacy direct executable remains an accepted first-upgrade limitation; this release moves future MCP sessions onto the stable external launcher and guarded immutable generations.
+
+
+## Merge traceability
+
+- Pull request: https://github.com/collisionengineers/kanmer/pull/258
+- Merged at: 2026-08-25T03:36:26Z
+- Merge SHA: `f0815bfdbb19de427488b5179127bbd454b17350`

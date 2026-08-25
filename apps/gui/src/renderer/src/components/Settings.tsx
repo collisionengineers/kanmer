@@ -1173,11 +1173,11 @@ export function RemoteSection({ projectId }: { projectId: string }): JSX.Element
   useEffect(() => {
     void load();
     const remove = window.kanmer.onRemoteStatus((next) => {
-      if (next.projectId === projectId) setStatus(next);
-      setOverview((current) => current.map((project) => project.projectId === next.projectId ? { ...project, status: next } : project));
+      if (next.fingerprint === view?.identity.fingerprint) setStatus(next);
+      setOverview((current) => current.map((project) => project.identity.fingerprint === next.fingerprint ? { ...project, status: next } : project));
     });
     return remove;
-  }, [load, projectId]);
+  }, [load, projectId, view?.identity.fingerprint]);
 
   const run = async (operation: string, action: () => Promise<void>) => {
     setBusy(operation); setError(null); setMessage(null);
@@ -1220,7 +1220,7 @@ export function RemoteSection({ projectId }: { projectId: string }): JSX.Element
       <p className="hint">Remote access is per project. Kanmer stores only this project’s Cloudflare references and keeps the bearer token in encrypted OS storage.</p>
       <div className="settings-section" aria-label="Registered remote-access projects">
         <h4>Registered projects</h4>
-        {overview.length === 0 ? <p className="hint">No projects are registered yet.</p> : <div className="remote-project-grid">{overview.map((project) => <article className="card" key={project.identity.fingerprint} aria-label={`Remote access project ${project.projectId}`}><strong>{project.projectId}</strong><span className="hint">State {project.status.state} · Action {project.status.action} · Severity {project.status.severity}</span><span className="hint">{project.config.hostname || "no hostname"} · Board {project.status.health.board} · Listener {project.status.health.listener} · Auth {project.status.health.authentication} · Tunnel {project.status.health.tunnel} · Remote {project.status.health.remote}</span>{project.status.lastSummary && <span className="hint">Last doctor: {project.status.lastSummary}</span>}{project.projectId === projectId ? <span className="hint">Selected project actions are below.</span> : <button className="ghost xs" disabled={busy !== null} onClick={() => void run("open", async () => { await window.kanmer.openProject(project.projectId); setOverview(await window.kanmer.remoteOverview()); })}>Open project</button>}</article>)}</div>}
+        {overview.length === 0 ? <p className="hint">No projects are registered yet.</p> : <div className="remote-project-grid">{overview.map((project) => <article className="card" key={project.identity.fingerprint} aria-label={`Remote access project ${project.projectId}`}><strong>{project.projectId}</strong><span className="hint">State {project.status.state} · Action {project.status.action} · Severity {project.status.severity}</span><span className="hint">{project.config.hostname || "no hostname"} · Board {project.status.health.board} · Listener {project.status.health.listener} · Auth {project.status.health.authentication} · Tunnel {project.status.health.tunnel} · Remote {project.status.health.remote}</span>{project.status.lastSummary && <span className="hint">Last doctor: {project.status.lastSummary}</span>}{project.identity.fingerprint === view?.identity.fingerprint ? <span className="hint">Selected project actions are below.</span> : <button className="ghost xs" disabled={busy !== null} onClick={() => void run("open", async () => { await window.kanmer.openProject(project.projectId); setOverview(await window.kanmer.remoteOverview()); })}>Open project</button>}</article>)}</div>}
       </div>
       {view?.identity && <p className="hint">Project fingerprint: <code>{view.identity.fingerprint}</code></p>}
       {error && <div className="banner error">{error}</div>}

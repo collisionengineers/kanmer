@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "263"
-head_sha: "b992a34e2d54def121d2d65bfe95a600e14bf330"
+head_sha: "a8ff5a3a02618f3ff237feaafa6682aaeaebbc54"
 verdict: needs-changes
 reviewer: "codex-doc021-review"
 independent: true
-plan_hash: "eb2abff500efd115"
-ticket_updated: "2026-08-25T05:34:50.081Z"
+plan_hash: "c454dbe71cb339a3"
+ticket_updated: "2026-08-25T05:44:14.685Z"
 findings:
   - id: F-001
     severity: major
@@ -15,27 +15,37 @@ findings:
   - id: F-002
     severity: major
     summary: "The production remote-status protocol does not carry the supervisor restart attempt."
+    disposition: fixed
+  - id: F-003
+    severity: major
+    summary: "Required hosted verify is red on the exact head."
     disposition: open
 ---
 
 # Independent re-review — GUI-138
 
-## Scope and evidence
+## Scope and contract
 
-Re-reviewed PR #263 at exact head b992a34e2d54def121d2d65bfe95a600e14bf330 against the full packet, HZN-007 control context, and FRD-025. The current diff is limited to manager.ts and manager.test.ts. Reviewer checks on that exact worktree passed: focused manager suite 12/12, GUI typecheck, GUI build, and exact diff check. Hosted run 32813387803 is terminal green on this head: verify 3m29s and kanmer-gate 1m0s.
+Reviewed PR #263 at exact head a8ff5a3a02618f3ff237feaafa6682aaeaebbc54 against the full packet, HZN-007 control context, and FRD-025. The packet was correctly expanded to the real owned lifecycle path: supervisor, remote host status, CLI status JSON, GUI manager, and doctor boundary. The six changed source/test files are within that declared scope; no provider query, DNS/endpoint, secret, doctor semantic, dependency, or updater change is introduced.
+
+The status payload remains allowlisted. It contains no bearer, credential content, raw provider output, or session material. The doctor snapshot remains a manager-owned copy containing only state, provider, attempt, timestamp, public endpoint, project fingerprint, and opaque auth generation.
 
 ## Finding dispositions
 
 ### F-001 — major — FIXED
 
-Provider restarting maps to degraded, preventing the doctor snapshot from claiming connected during restart backoff. The regression drives ready to restarting and proves TUNNEL_PROCESS_READY fails from the non-connected snapshot.
+Restarting maps to degraded in the manager, so a public doctor cannot receive connected during tunnel restart backoff. The manager-to-doctor boundary regression requires TUNNEL_PROCESS_READY to fail and asserts the degraded snapshot.
 
-### F-002 — major — OPEN: the test fabricates a field the production protocol never emits
+### F-002 — major — FIXED
 
-The manager accepts a positive status attempt and the test injects attempt 2, but the child cannot emit it in production. RemoteHostStatus defines local, provider, publicVerification, endpoint, and reason only; TunnelSupervisor onState supplies only a state string; remote-host forwards that status unchanged; and remote-cli serializes that same status to the GUI process. Thus every real restarting event lacks attempt, so providerAttempt remains its locally initialized value 1 and the doctor snapshot is still not the child/supervisor's actual lifecycle attempt.
+TunnelSupervisor now emits its real bounded lifecycle attempt (covered by the 1,1,2,2,2 sequence); RemoteHostStatus carries the value; remote-cli serializes the exact status object; and the manager accepts only a positive integer before passing it to doctor. The restart regression asserts attempt 2 in the doctor snapshot. This resolves both GitHub P2 review threads without fabricating a test-only protocol field.
 
-Propagate an owned positive attempt from TunnelSupervisor through RemoteHostStatus and remote-cli to the manager, then prove the production status protocol (not a hand-authored GUI test event) reaches the doctor snapshot. Update the packet plan/files/report for the required MCP-server path before implementation. Do not weaken or remove the attempt assertion.
+### F-003 — major — OPEN: required hosted verification is red
 
-## Merge decision
+Exact-head Actions run 32813997180 has a green kanmer-gate but failed verify. The only failure is the unchanged core test KanmerStore > validates area only when the board defines areas; empty area always legal timing out at the 5-second limit (309/310 passed). This is reproducibly unrelated to GUI-138's six-file remote-status diff and is being handled by a separate bounded remediation, but a required red check prohibits merge.
 
-The new GitHub P2 thread at manager.ts:785 remains open and the earlier resolution is being corrected because its attempt requirement is not actually satisfied. A green CI rail does not override this semantic defect. No merge or board move is authorized. Packaged public-doctor and remote MCP proof remain merged-main verification work and are not claimed here.
+## Local evidence and decision
+
+Reviewer commands all exited 0 on the exact worktree: MCP test:http (102 tests), focused GUI manager suite (12 tests), all-workspace typecheck, GUI build, and exact diff check. The two original code-review threads are fixed and resolved. Packaged public-doctor and remote MCP proof remains post-merge verification work and is not claimed here.
+
+Source review passes, but this attestation is needs-changes solely because required hosted verify is red. No merge or stage move is authorized until the exact-head required rail is green.

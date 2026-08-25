@@ -17,3 +17,7 @@ F-003 accepted and fixed in `a34b4531`: default profile names are now prefixed w
 ## Review remediation F-004
 
 F-004 accepted and fixed in `464104e0`: the reader recognizes only the prior deterministic default name for the same project plus the new canonical default, while every other structural field remains exact. It normalizes the legacy name in memory to the canonical safe name. The regression now rewrites a real persisted `/tmp/.kanmer` default to its legacy `.kanmer` name before restart and proves canonical recovery. Focused 14/14, GUI typecheck, diff check PASS.
+
+## CI disposition
+
+The post-attestation Windows run failed only on the unrelated core area-validation timing test (20.789s versus its 15s bound, 309/310); the immediately preceding and following exact-head authoritative runs passed. The failure is retained and deferred to [[CORE-105]], which blocks the release ticket. GUI-139 does not change or absorb that core test.

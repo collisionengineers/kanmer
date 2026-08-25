@@ -80,7 +80,13 @@ describe("OpenAITunnelManager", () => {
     expect((await afterOperations.viewFor("/repo", identity)).profile).toMatchObject({ tunnelId: "", generation: "" });
 
     const settingsPath = join(root, "openai-tunnels.json");
-    const stored = JSON.parse(await readFile(settingsPath, "utf8")) as { profiles: Record<string, { tunnelId: string; executable: string; profileName: string }> };
+    const stored = JSON.parse(await readFile(settingsPath, "utf8")) as { profiles: Record<string, { tunnelId: string; executable: string; profileName: string; lastSummary: string | null; lastError: string | null; lastDoctorAt: string | null }> };
+    stored.profiles[identity.fingerprint]!.lastSummary = "OpenAI tunnel prerequisites are incomplete.";
+    stored.profiles[identity.fingerprint]!.lastError = "OpenAI tunnel prerequisites are incomplete.";
+    stored.profiles[identity.fingerprint]!.lastDoctorAt = "2026-08-25T06:00:00.000Z";
+    await writeFile(settingsPath, JSON.stringify(stored), "utf8");
+    expect((await readOpenAITunnelSettings(root)).profiles[identity.fingerprint]).toMatchObject({ tunnelId: "", generation: "", lastDoctorAt: "2026-08-25T06:00:00.000Z" });
+
     stored.profiles[identity.fingerprint]!.tunnelId = "partially-configured";
     await writeFile(settingsPath, JSON.stringify(stored), "utf8");
     await expect(readOpenAITunnelSettings(root)).rejects.toThrow("OPENAI_TUNNEL_SETTINGS_INVALID");

@@ -120,10 +120,11 @@ function normalizeProfile(value: unknown, expectedDefault: OpenAITunnelProfile):
   if (!value || typeof value !== "object") return null;
   const p = value as Partial<OpenAITunnelProfile>;
   const complete = isRunnableProfile(p);
+  const diagnosticsValid = (p.lastSummary === null || typeof p.lastSummary === "string") && (p.lastError === null || typeof p.lastError === "string") &&
+    (p.lastDoctorAt === null || (typeof p.lastDoctorAt === "string" && !Number.isNaN(Date.parse(p.lastDoctorAt))));
   const productDefault = p.profileName === expectedDefault.profileName && p.tunnelId === expectedDefault.tunnelId && p.executable === expectedDefault.executable &&
     p.credentialEnv === expectedDefault.credentialEnv && p.healthAddress === expectedDefault.healthAddress && p.enabled === expectedDefault.enabled &&
-    p.autoStart === expectedDefault.autoStart && p.generation === expectedDefault.generation && p.lastSummary === expectedDefault.lastSummary &&
-    p.lastError === expectedDefault.lastError && p.lastDoctorAt === expectedDefault.lastDoctorAt;
+    p.autoStart === expectedDefault.autoStart && p.generation === expectedDefault.generation && diagnosticsValid;
   if ((!complete && !productDefault) || !isSafeOpenAIProfileName(p.profileName) || !isSafeOpenAIExecutable(p.executable) || !isSafeOpenAICredentialEnv(p.credentialEnv) || !isLoopbackHealthAddress(p.healthAddress) || typeof p.enabled !== "boolean" || typeof p.autoStart !== "boolean") return null;
   return {
     profileName: p.profileName, tunnelId: p.tunnelId!, executable: p.executable,

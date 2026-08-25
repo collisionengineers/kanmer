@@ -9,6 +9,7 @@
 | `plugins/kanmer/skills/kanmer-auto/SKILL.md` | Give failed verification a deterministic operator-disposition/resume path. | Auto must not independently waive or retire failures. |
 | `plugins/kanmer/skills/kanmer-setup/SKILL.md` | Keep the fallback fenced managed block synchronized with the convention. | Drift would break setup verification. |
 | `scripts/agents-block-body.mjs` | Update the canonical managed AGENTS body imported by setup and GUI reconciliation. | This is the executable source of truth discovered during implementation. |
+| `plugins/kanmer/scripts/agents-block-body.mjs` | Ship the canonical body with the installed plugin runtime. | A stale packaged copy would leave installed setup broken. |
 | `AGENTS.md` | Refresh the managed block with the new convention. | Managed text must remain byte-identical to the canonical body. |
 | `docs/functional/frd/FRD-007-fixed-six-stage-board.md` | Clarify terminal failure uses archive, not a seventh stage or Done. | Preserve fixed-stage semantics. |
 | `docs/functional/frd/FRD-015-ticket-and-board-core.md` | Clarify archive is also terminal non-success retirement with preserved status/evidence. | Do not redefine archive as successful completion. |

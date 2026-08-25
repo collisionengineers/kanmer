@@ -30,3 +30,7 @@ Restores FRD-025's one-runtime-per-canonical-project ownership and restart/autos
 ## Verification handoff
 
 Install the exact merge, restart the app with the normal Windows project path, confirm auto-start produces one canonical ready record, run doctor from the opened project, and repeat public missing/wrong/valid bearer MCP checks plus session close.
+
+## Production-caller ripple
+
+A pre-review caller audit found Settings still correlated status events and selected cards by raw display path. The packet was revised before editing. Commit `19ec39169233a5bf835866df88dc7e4ae0032307` switches those renderer correlations to the stable project fingerprint and adds a Windows display-path versus canonical-status regression. Final focused manager + renderer tests pass 13/13, GUI typecheck passes, and diff check passes.

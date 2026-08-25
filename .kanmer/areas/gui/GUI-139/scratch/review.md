@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "265"
-head_sha: "04774ce2e618ad2cf1e943c048a65b1de61a3b2b"
-verdict: needs-changes
+head_sha: "b24e91873e544a685090daebcb5890ce18c137bc"
+verdict: pass
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "9af7da453bc2b0c7"
-ticket_updated: "2026-08-25T06:47:21.268Z"
+ticket_updated: "2026-08-25T06:50:30.291Z"
 findings:
   - id: F-001
     severity: major
@@ -15,19 +15,25 @@ findings:
   - id: F-002
     severity: major
     summary: "Doctor or Initialize makes the product-created incomplete profile unloadable"
-    disposition: open
+    disposition: fixed
 ---
-# Independent re-review — GUI-139 / PR #265
+# Independent review — GUI-139 / PR #265
 
-## Scope and evidence
+## Verdict
 
-Reviewed exact PR head 04774ce2e618ad2cf1e943c048a65b1de61a3b2b against the full GUI-139 packet, FRD-025, and HZN-007 context. The two-file diff remains within scope. Local evidence passed: npm exec vitest run -- src/main/openaiTunnel.test.ts (13/13), npm run typecheck (all workspaces), and git diff --check against base 700ae9c46904cd5417abe81dd3b256f6d33000d0.
+PASS for exact head b24e91873e544a685090daebcb5890ce18c137bc. The reviewer is independent of the author role. The two-file diff remains within the GUI-139 packet and keeps the OpenAI stdio path separate from Cloudflare remote access as required by FRD-025 and HZN-007.
 
-Hosted kanmer-gate is green. Hosted verify remained in progress at the final gather. There are no GitHub review threads, reviews, or ordinary PR comments.
+## Evidence
 
-## Findings
+- Local focused test: npm exec vitest run -- src/main/openaiTunnel.test.ts — 13/13 passed.
+- Local rail: npm run typecheck — all workspaces passed.
+- Scope integrity: git diff --check 700ae9c46904cd5417abe81dd3b256f6d33000d0...b24e91873e544a685090daebcb5890ce18c137bc — passed; no local changes.
+- Hosted run 32818742228: verify passed in 4m8s. The initial gate is success but records the prior attestation head, so it must be refreshed after this exact-head record before merge.
+- Final pre-attestation GitHub gather: PR open and clean; head and base unchanged; no ordinary comments, reviews, or review threads.
 
-- **F-001 — major, fixed:** The reader now derives the expected default from the persisted project and compares all structural/default fields. The updated regression rejects altered safe tunnel id, executable, and profile name. This closes the prior over-broad incomplete-profile admission.
-- **F-002 — major, open:** The same exact-default predicate requires lastSummary, lastError, and lastDoctorAt to remain null. Yet the GUI enables Initialize and Run doctor whenever an unchanged profile exists, including the registered incomplete default. Both operations invoke finishDoctor, which writes and persists those diagnostic fields even when prerequisites are incomplete. On the next app restart, readOpenAITunnelSettings rejects that still-product-owned default as OPENAI_TUNNEL_SETTINGS_INVALID, recreating the ticket's startup failure after a normal exposed action. Make incomplete defaults safe across those operations: either require complete configuration before Initialize/Doctor and prove no metadata is persisted, or allow product-owned diagnostic metadata without widening the structural incomplete-profile exception. Add a register → Doctor/Initialize → restart regression.
+## Finding dispositions
 
-No merge decision is authorized while F-002 remains open. This attestation makes no post-merge, release, or proof claim.
+- **F-001 — major, fixed:** The persisted incomplete profile is accepted only when it matches the project-derived default; safe but altered tunnel, executable, or profile-name values are rejected by the regression coverage.
+- **F-002 — major, fixed:** Initialize and Doctor now require a runnable profile before status mutation, spawning, or persistence. The regression proves register, restart, both expected incomplete-profile rejections, and a second restart preserve the incomplete default.
+
+Residual risk is limited to the explicit post-merge installed-artifact verification in the ticket checklist. This review does not claim post-merge proof, release, or cleanup.

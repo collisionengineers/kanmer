@@ -1,39 +1,35 @@
 ---
 kind: review-attestation
-pr: "279"
-head_sha: "8419a0168dc4d12b82eeac75fc1fc9a35187e095"
-base_sha: "645694f651561f5ad3bf0fc44ae88bee054fe8de"
+pr: "280"
+head_sha: "887c3830ff853b7333c40a1e33bd41a7e83ea3a9"
 verdict: pass
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "0cf21996f50e9f02"
-ticket_updated: "2026-08-25T16:07:35.198Z"
-reviewed_at: "2026-08-25T16:15:00Z"
+ticket_updated: "2026-08-25T16:35:08.076Z"
 findings: []
 ---
 
 # Independent review — PASS
 
-## Scope and traceability
+## Scope and generated-artifact census
 
-Reviewed PR #279 at exact head `8419a0168dc4d12b82eeac75fc1fc9a35187e095`, based on `645694f651561f5ad3bf0fc44ae88bee054fe8de`. The one-file diff adds only the top `0.3.11` section in `apps/gui/release-notes.md` (22 additions); it does not change release code, version manifests, artifacts, CI, platform scope, or user settings. This is the notes-only prerequisite recorded in CORE-110 plan `0cf21996f50e9f02`.
+Reviewed release PR #280 at exact head `887c3830ff853b7333c40a1e33bd41a7e83ea3a9`, based on merged release-notes commit `48d819d6d896f3bf4aac66925a2a92cbc6baa202`. The diff is limited to the release preparation output expected by CORE-110: root/GUI package metadata, lockfile, MCPB manifest, all three shipped plugin manifests, and the rebuilt plugin MCP bundle. No product code, release notes, workflow, platform, tag, GitHub release, or asset publication change is included.
 
-## Contract review
+All release version surfaces read `0.3.11`: `package.json`, `apps/gui/package.json`, `package-lock.json` root and GUI package entries, `mcpb/manifest.json`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and the Antigravity root `plugins/kanmer/plugin.json`. The bundle contains the compiled `0.3.11` server version and no compiled `0.3.10` version. The PR release script retains the canonical three-manifest `pluginManifestPaths` source of truth, so future preparation bumps the same installed manifests rather than relying on a manual correction.
 
-- The top heading names `0.3.11`, satisfying the release-notes version guard in FRD-021.
-- The OpenAI managed-runtime wording is supported by already-merged GUI-141 (`645694f651561f5ad3bf0fc44ae88bee054fe8de`): distinct runtime aliases and profile names, restored runtime state, structured status/health gating, and stop/replacement lifecycle. It does not claim the still-required installed/live ChatGPT acceptance proof succeeded.
-- The Cloudflare wording is supported by already-merged MCP-051 (`803bb4b927bbbe854b9d8c1f6ea0bef46d3ba601`): bounded 60-second startup readiness with retained 10-second health checks, cancellation across startup boundaries, and host-close protection against later provider start. It remains explicitly Windows-only and introduces no Ubuntu/CI claim.
-- No tag, release, asset upload, or publication has occurred; those remain post-merge CORE-110 work.
+## Plan and release boundary
+
+The diff implements the plan’s release-preparation step only. The already-merged top release-note section remains the input to this generated release commit. FRD-021’s publication and public updater verification requirements remain deliberately post-merge/publish work. No tag, draft release, asset upload, installed GUI update, or live remote proof has been claimed or performed here.
 
 ## Evidence
 
-- `git diff --check 645694f651561f5ad3bf0fc44ae88bee054fe8de HEAD`: PASS.
-- `node --test scripts/release-notes.test.mjs`: PASS (1/1).
-- `node --test scripts/release-publish.test.mjs`: PASS (7/7).
-- `node --test scripts/verify-release-assets.test.mjs`: PASS (44/44).
-- GitHub workflow `32869961872`, `verify` job `97874313442`: PASS for this head.
-- GitHub reviews, issue comments, and GraphQL review threads: none; unresolved threads: 0.
+- `git diff --check 48d819d6d896f3bf4aac66925a2a92cbc6baa202 HEAD`: PASS.
+- `node --test scripts/release-manifests.test.mjs`: PASS (1/1); verifies all three shipped plugin manifests are in the release source of truth.
+- `npm run plugin:check`: PASS — 37 tools, byte-current bundle, 12 skill frontmatters, version-current manifests, and isolated MCP handshake.
+- GitHub workflow `32872771410`: `kanmer-gate` PASS and authoritative `verify` PASS for this exact head.
+- GitHub reviews and issue comments: none. GraphQL review threads: none; unresolved threads: 0.
 
-## Gate disposition
+## Findings and residual risk
 
-The initial `kanmer-gate` job `97874313680` failed because its remote board snapshot did not yet contain CORE-110. This is not a source or document defect. The canonical board now contains the ticket and this attestation; GUI-owned sync plus a post-sync rerun must be green before merge.
+No review findings. The remaining risks are intentionally outside this PR: after a protected merge, publish mode must still create the immutable tag and draft release, verify every Windows/MCPB/updater asset while hidden, then make the release public and prove latest visibility. Those steps belong to merged-main verification/publishing, not this review.

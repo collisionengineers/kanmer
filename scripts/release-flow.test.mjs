@@ -115,6 +115,7 @@ test("publisher packages once, then explicitly creates and uploads the release",
   assert.match(source, /GitHub Release .* already exists/);
   assert.match(source, /process\.env\.GH_TOKEN = process\.env\[tokenVar\]/);
   assert.match(source, /await fetchReleaseAssets\(\{/);
+  assert.match(source, /tag: releaseTag\(version\)/);
   assert.match(source, /error\?\.kind !== "not-found"/);
   assert.doesNotMatch(source, /error\?\.status !== 1/);
 

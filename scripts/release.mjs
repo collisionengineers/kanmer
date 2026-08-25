@@ -445,9 +445,9 @@ if (capture(`git tag --list ${releaseTag(version)}`).length > 0 ||
 }
 try {
   await fetchReleaseAssets({
-    version,
     owner: OWNER,
     repo: REPO,
+    tag: releaseTag(version),
     token: process.env[tokenVar],
   });
   refuse(

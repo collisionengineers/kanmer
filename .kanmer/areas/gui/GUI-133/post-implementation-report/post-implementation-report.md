@@ -68,3 +68,13 @@ The review at `c6fb4ce59d937eb22cbc3cde9a237e5c22824e7f` fixed both remaining mi
 - F-008: FRD-012 R1d now governs the complete immutable `<version>-<installer-pid>[-<collision-index>]` tree and no install-time pruning.
 
 Focused tests 10/10, real NSIS `dist:check`, scripts 110/110, all-workspace typecheck, and diff check pass. All seven automated review threads received explicit fixed dispositions and were resolved.
+
+## Late automated review dispositions
+
+Three comments appeared after the first final CI run:
+
+- inaccessible elevated external `kanmer-mcp.exe`: fixed by limiting inaccessible-path refusal to `Kanmer.exe`, the only legacy install-root executable name;
+- point-in-time launch race: accepted risk with reason. An independently spawned legacy direct executable can theoretically start after the final snapshot. Eliminating arbitrary launches atomically requires a new cross-version barrier that already-installed old binaries cannot honor; adding a nominal barrier here would not close the first-upgrade case. The repeated guard, app-side stop, and external-launcher migration address the observed failure;
+- partial unactivated generations: fixed by removing `current.next` and `$R8` on every pre-publication copy/payload/junction failure. Activated generations are never pruned.
+
+All three threads received these dispositions and were resolved. Focused tests 11/11, real NSIS `dist:check`, and diff check pass.

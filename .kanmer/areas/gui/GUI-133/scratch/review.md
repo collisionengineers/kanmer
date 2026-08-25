@@ -1,39 +1,47 @@
 ---
 kind: review-attestation
 pr: "258"
-head_sha: "ee3d90e8e844dd8b93d631976a5cb15306b76d7e"
-verdict: needs-changes
+head_sha: "3bb0ba887a429f4335fb0a40455b45353a7e1110"
+verdict: pass
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "aa6a4303fb63ac49"
-ticket_updated: "2026-08-25T02:58:09.266Z"
+ticket_updated: "2026-08-25T03:14:07.356Z"
 findings:
   - id: F-001
     severity: major
-    summary: "Direct replacement now distinguishes Electron Builder's nested --updated invocation from an actual updater parent and retains the interactive cancel path."
+    summary: "Updater-parent detection preserves direct interactive replacement while retaining unattended updater behavior."
     disposition: fixed
   - id: F-002
     severity: major
-    summary: "Generation allocation now probes collision-suffixed names before copying, preventing PID reuse from overwriting a retained runtime."
+    summary: "Absent collision-suffixed allocation prevents PID reuse from overwriting a retained runtime."
     disposition: fixed
   - id: F-003
     severity: major
-    summary: "A drive-root install produces a doubled trailing separator, bypasses overlap detection, and can recursively xcopy the source into its external-runtime descendant."
-    disposition: open
+    summary: "Canonical bidirectional overlap detection rejects drive-root and other install/runtime containment."
+    disposition: fixed
   - id: F-004
     severity: major
-    summary: "Null inaccessible ExecutablePath values are treated as nonmatches, allowing a process the installer cannot inspect to survive clearance."
-    disposition: open
+    summary: "An inaccessible Kanmer-named process makes clearance inconclusive and refuses replacement."
+    disposition: fixed
   - id: F-005
     severity: minor
-    summary: "PowerShell/CIM probes and termination calls have no execution timeout, so a hung child process can block the installer indefinitely."
-    disposition: open
+    summary: "All process PowerShell/CIM calls have finite fail-closed timeouts."
+    disposition: fixed
   - id: F-006
     severity: minor
-    summary: "Best-effort recursive pruning can delete unlocked MCP resources from a prior generation that is still live."
-    disposition: open
+    summary: "Install-time recursive pruning of prior immutable generations was removed."
+    disposition: fixed
+  - id: F-007
+    severity: minor
+    summary: "The guard records and excludes its own PID from every discovery, termination, and recheck query."
+    disposition: fixed
+  - id: F-008
+    severity: minor
+    summary: "FRD-012 R1d now governs the complete immutable generation and no-pruning contract."
+    disposition: fixed
 ---
 
-# Independent re-review — GUI-133 / PR #258
+# Independent final review — GUI-133 / PR #258
 
-F-001 and F-002 are fixed at this head. Four further lifecycle findings remain open: drive-root overlap normalization, inaccessible Kanmer process paths, unbounded CIM calls, and unsafe eager pruning of retained runtime generations. Do not merge this head.
+The exact final head, complete ticket packet, HZN-007 context, governing FRDs, required checks, reviews, comments, and threads were re-gathered. All eight findings are fixed, all seven review threads are resolved, both required checks are green, and the diff remains within GUI-133 scope. Residual risk is limited to the explicitly documented continuously-live external-session integration boundary; real replacement and installed SDK handshake evidence passed.

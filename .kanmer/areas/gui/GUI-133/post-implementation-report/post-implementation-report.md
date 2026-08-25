@@ -78,3 +78,7 @@ Three comments appeared after the first final CI run:
 - partial unactivated generations: fixed by removing `current.next` and `$R8` on every pre-publication copy/payload/junction failure. Activated generations are never pruned.
 
 All three threads received these dispositions and were resolved. Focused tests 11/11, real NSIS `dist:check`, and diff check pass.
+
+## Activation-validation cleanup
+
+F-011 fixed at `ad426b5b`: if the newly renamed `current` junction fails payload validation, the installer removes that invalid junction and routes through the same pre-publication `$R8` cleanup. Focused tests pass 11/11 and explicitly cover this label. F-010 remains an independently accepted residual first-upgrade risk for the reasons already recorded.

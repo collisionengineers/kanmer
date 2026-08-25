@@ -48,3 +48,14 @@ Independent review at `55a88825ae707012c007371d173ab12f2d909471` found two major
 - F-002 fixed: generation allocation probes for an existing `<version>-<pid>` path and selects the first absent bounded numeric suffix before any copy. PID reuse can no longer make `xcopy /Y` target a retained generation.
 
 Post-fix evidence: focused tests 9/9, `dist:check` with real NSIS compilation, updater-mode install exit 0, complete external runtime, official SDK handshake through the installed launcher, core 310/310, GUI 469/469, MCP HTTP 102/102, scripts 109/109, all-workspace typecheck, and `git diff --check`.
+
+## Second independent review fixes
+
+The re-review at `ee3d90e8e844dd8b93d631976a5cb15306b76d7e` fixed all four new findings without waiver:
+
+- F-003: overlap detection now canonicalizes install/runtime roots, trims and restores exactly one separator, and compares both directions in bounded PowerShell. Drive-root selection is covered.
+- F-004: a Kanmer-named process with inaccessible `ExecutablePath` makes the probe inconclusive and refuses replacement.
+- F-005: every PowerShell/CIM operation uses a 10-second `nsExec` timeout and nonzero/timeout results enter the fail-closed path.
+- F-006: install-time pruning was removed. Prior immutable generations remain available to live sessions; uninstall alone owns recursive cleanup.
+
+Post-fix evidence: focused tests 10/10; real NSIS `dist:check`; direct replacement exit 2 with unchanged install; updater replacement exit 0; installed SDK handshake from generation `0.3.7-1580`; core 310/310, GUI 469/469, MCP HTTP 102/102; the first script rail correctly failed one obsolete `FindFirst` assertion, which was updated to assert no eager prune; scripts then passed 110/110; all-workspace typecheck and diff check passed.

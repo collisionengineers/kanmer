@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-25T16:07:35.198Z'
   verifying: '2026-08-25T16:26:39.941Z'
   done: '2026-08-25T16:55:19.644Z'
-taken_at: '2026-08-25T16:35:08.076Z'
-branch: release/v0.3.11
-worktree: .worktrees/release-prep-0.3.11
 labels:
   - release
   - v0.3.11
@@ -30,7 +27,7 @@ prs:
   - '280'
 archived: false
 created: '2026-08-25T16:05:04.081Z'
-updated: '2026-08-25T16:56:09.855Z'
+updated: '2026-08-25T16:57:21.476Z'
 ---
 
 Publish and independently validate the consolidated Windows release containing the merged remote ChatGPT connector and setup fixes. This ticket changes no product scope: it packages the already-merged main branch, verifies the public updater artifacts, and hands GUI installation to the user.

@@ -16,6 +16,7 @@ void (async () => {
 let ownerFile = "";
 let ownerNonce = "";
 let ownerAcquired = false;
+let shutdown: Promise<void> | undefined;
 const releaseOwner = async () => {
   if (!ownerAcquired || !ownerFile) return;
   try {
@@ -62,11 +63,22 @@ try {
       hostname: required("KANMER_TUNNEL_HOSTNAME"),
     }),
   });
+  const stop = () => shutdown ??= (async () => {
+    try { await remote.close(); }
+    finally { await releaseOwner(); }
+  })();
+  const onSignal = () => void stop().finally(() => process.exit(0));
+  // Install shutdown ownership before startup can enter Cloudflare's bounded
+  // fallback window. The adapter exposes its provisional child handle so close
+  // cancels that in-flight start and removes its temporary configuration.
+  process.once("SIGINT", onSignal); process.once("SIGTERM", onSignal);
   const ready = await remote.start();
   process.stdout.write(`${JSON.stringify({ kind: "kanmer-mcp-remote-ready", version: 1, endpoint: ready.localEndpoint, publicEndpoint: ready.endpoint, authRequired: true, tokenId: verifier.tokenId, fingerprint: verifier.fingerprint, projectFingerprint: await projectFingerprint() })}\n`);
-  const stop = () => void remote.close().finally(async () => { await releaseOwner(); process.exit(0); });
-  process.once("SIGINT", stop); process.once("SIGTERM", stop);
 } catch (error) {
+  if (shutdown) {
+    await shutdown;
+    process.exit(0);
+  }
   await releaseOwner();
   process.stderr.write(`kanmer-mcp-remote fatal: ${error instanceof Error ? error.message : "REMOTE_CONFIG_INVALID"}\n`);
   process.exit(1);

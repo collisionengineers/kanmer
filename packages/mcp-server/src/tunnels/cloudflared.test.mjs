@@ -194,6 +194,36 @@ test("adapter status follows provider readiness degradation and recovery", async
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
+test("stop cancels an owned child while startup readiness is still pending", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-start-stop-"));
+  try {
+    const credentials = path.join(directory, "credentials.json");
+    await writeFile(credentials, "{}", { mode: 0o600 });
+    let child;
+    let spawnedResolve;
+    const spawned = new Promise((resolve) => { spawnedResolve = resolve; });
+    const fakeSpawn = () => {
+      child = new EventEmitter();
+      child.pid = 4321; child.killed = false;
+      child.stdout = new PassThrough(); child.stderr = new PassThrough();
+      child.kill = () => { child.killed = true; queueMicrotask(() => child.emit("exit", 0, null)); return true; };
+      queueMicrotask(() => { child.emit("spawn"); spawnedResolve(); });
+      return child;
+    };
+    const adapter = createCloudflaredAdapter({
+      executable: process.execPath, tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", credentialsFile: credentials,
+      hostname: "kanmer.example.test", metricsPort: 43130, validateExecutable: async () => {}, waitForReady: () => new Promise(() => {}),
+    }, fakeSpawn);
+    const starting = adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" });
+    await spawned;
+    await new Promise((resolve) => setImmediate(resolve));
+    await adapter.stop();
+    await assert.rejects(() => starting, /TUNNEL_CHILD_EXITED_BEFORE_READY/);
+    assert.equal(child.killed, true);
+    assert.equal(adapter.getStatus().state, "failed");
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
 test("readiness failure waits for the owned child to exit before cleanup", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-cleanup-"));
   try {

@@ -204,6 +204,10 @@ export class CloudflaredAdapter implements TunnelAdapter {
       // against the owned process so a malformed or unavailable metrics
       // endpoint never hides an immediate provider failure behind its timeout.
       let handle: TunnelProcess | undefined;
+      const cleanup = () => rm(directory, { recursive: true, force: true });
+      const cleanupPromise = exited.then(cleanup, cleanup);
+      let intentionalStop = false;
+      let stopPromise: Promise<void> | undefined;
       const checkReadinessWithTimeout = async (timeoutMs: number): Promise<void> => {
         try {
           await (this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`, timeoutMs)
@@ -229,14 +233,9 @@ export class CloudflaredAdapter implements TunnelAdapter {
         }
       };
       const checkReadiness = () => checkReadinessWithTimeout(CLOUDFLARED_HEALTH_READINESS_TIMEOUT_MS);
-      await Promise.race([
-        checkReadinessWithTimeout(CLOUDFLARED_STARTUP_READINESS_TIMEOUT_MS),
-        exited.then(() => { throw new Error("TUNNEL_CHILD_EXITED_BEFORE_READY"); }),
-      ]);
-      const cleanup = () => rm(directory, { recursive: true, force: true });
-      const cleanupPromise = exited.then(cleanup, cleanup);
-      let intentionalStop = false;
-      let stopPromise: Promise<void> | undefined;
+      // Publish the owned process handle before the potentially long startup
+      // readiness wait. A parent shutdown can then cancel startup and clean
+      // the detached child/config instead of waiting for the deadline.
       handle = {
         pid: spawned.pid,
         exited,
@@ -249,6 +248,10 @@ export class CloudflaredAdapter implements TunnelAdapter {
         })(),
       };
       this.active = handle;
+      await Promise.race([
+        checkReadinessWithTimeout(CLOUDFLARED_STARTUP_READINESS_TIMEOUT_MS),
+        exited.then(() => { throw new Error("TUNNEL_CHILD_EXITED_BEFORE_READY"); }),
+      ]);
       this.transition("connected", target, {
         attempt,
         pid: spawned.pid,
@@ -266,7 +269,10 @@ export class CloudflaredAdapter implements TunnelAdapter {
       });
       return handle;
     } catch (error) {
-      if (child && childExited) await stopOwnedChild(child, childExited, () => settleChildExit?.({ code: null, signal: null }));
+      if (this.active) {
+        await this.active.stop();
+        this.active = undefined;
+      } else if (child && childExited) await stopOwnedChild(child, childExited, () => settleChildExit?.({ code: null, signal: null }));
       else if (child && !child.killed) child.kill("SIGTERM");
       await metricsLease?.release();
       metricsLease = undefined;

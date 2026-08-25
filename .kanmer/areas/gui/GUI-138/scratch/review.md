@@ -2,7 +2,7 @@
 kind: review-attestation
 pr: "263"
 head_sha: "76abfc07fdf218588a0f0940842eacaaa0c0e1e4"
-verdict: pass
+verdict: needs-changes
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "c454dbe71cb339a3"
@@ -20,32 +20,52 @@ findings:
     severity: major
     summary: "Required hosted verify was red on the pre-CORE-104 base."
     disposition: fixed
+  - id: F-004
+    severity: major
+    summary: "Supervisor attempt resets with retry budget and diverges from the provider's monotonic launch attempt after a stable-period reset."
+    disposition: open
+  - id: F-005
+    severity: major
+    summary: "The doctor snapshot labels the remote ready token id as auth generation instead of using the verifier fingerprint."
+    disposition: open
+  - id: F-006
+    severity: major
+    summary: "The doctor snapshot records doctor invocation time as provider transition time."
+    disposition: open
 ---
 
 # Independent re-review — GUI-138
 
-## Inputs and scope
+## Reviewed inputs
 
-Independently reviewed PR #263 at exact head 76abfc07fdf218588a0f0940842eacaaa0c0e1e4, rebased onto CORE-104 merge e958ff2c182373a5461856e60d1a563f37d32b3d, against the complete GUI-138 packet, HZN-007 control context, and FRD-025. The changed scope is exactly the declared six lifecycle/status source and test files: GUI remote-access manager and regression, MCP tunnel supervisor and regression, and remote host/status regression. No provider query, public routing, bearer/credential/log material, dependency, updater, release, or doctor-contract weakening is introduced.
+Reviewed PR #263 at exact head 76abfc07fdf218588a0f0940842eacaaa0c0e1e4, rebased onto CORE-104 merge e958ff2c182373a5461856e60d1a563f37d32b3d, against the complete packet, HZN-007 control context, and FRD-025. The exact diff remains the six planned lifecycle/status files. Reviewer evidence is green: MCP HTTP/remote suite 102/102, GUI manager suite 12/12, all-workspace typecheck, and exact diff check. The post-attestation rerun of workflow 32814833102 is terminal green: kanmer-gate 57s and verify 4m21s.
 
-The production chain is complete: TunnelSupervisor emits its real bounded attempt; RemoteHostStatus carries it; remote-cli serializes that status object; and the GUI accepts only a positive integer, maps restarting/degraded to degraded, and supplies an allowlisted manager-owned doctor snapshot. The snapshot includes state, provider, attempt, timestamp, public endpoint, project fingerprint, and opaque auth generation only.
-
-## Findings and dispositions
+## Dispositions
 
 ### F-001 — major — FIXED
 
-A provider restart now maps the manager to degraded, so TUNNEL_PROCESS_READY cannot pass during restart backoff. The manager regression drives ready to restarting, requires a failing readiness check, and asserts the degraded snapshot.
+Restarting maps to degraded and the manager-to-doctor test requires TUNNEL_PROCESS_READY to fail during restart backoff.
 
 ### F-002 — major — FIXED
 
-The real lifecycle attempt is now carried from TunnelSupervisor through RemoteHostStatus and remote-cli to the manager. Supervisor coverage asserts the bounded 1,1,2,2,2 sequence; the manager-to-doctor regression asserts attempt 2. Both GitHub review threads are resolved.
+Attempt propagation is now present from supervisor through RemoteHostStatus and remote-cli to the GUI, with the manager regression asserting attempt 2.
 
 ### F-003 — major — FIXED
 
-The prior unrelated core timeout was repaired and merged separately as CORE-104. The exact rebased head's hosted workflow 32814833102 is terminal green: verify passed in 4m49s and kanmer-gate passed in 46s. Its gate snapshot predates this replacement attestation, so the gate must be refreshed before merge; no failing required check remains.
+CORE-104 repaired the unrelated hosted core timeout. The exact rebased head passes both required hosted checks.
 
-## Evidence and decision
+### F-004 — major — OPEN
 
-Reviewer commands on the exact worktree all exited 0: npm run test:http -w @kanmer/mcp-server (102 tests), npm exec vitest run -- src/main/remoteAccess/manager.test.ts (12 tests), npm run typecheck, and git diff --check e958ff2c182373a5461856e60d1a563f37d32b3d...76abfc07fdf218588a0f0940842eacaaa0c0e1e4. GitHub has no unresolved review thread or ordinary PR comment. Packaged public-doctor and authenticated/unauthenticated remote MCP evidence is explicitly post-merge verification work and is not claimed by this review.
+TunnelSupervisor emits this.restarts + 1 as the provider attempt. Its stable-period branch resets restarts before a later exit, while CloudflaredAdapter's owned TunnelStatus attempt remains monotonic across launches. After that reset the GUI doctor snapshot can report attempt 2 while the actual adapter lifecycle is at attempt 3 or higher. Track a separate monotonic launch/provider attempt and add the stable-reset regression. GitHub thread PRRT_kwDOT2PEds6b8_ga is unresolved.
 
-Verdict: PASS, contingent only on the post-attestation kanmer-gate refresh completing green at this unchanged head.
+### F-005 — major — OPEN
+
+remote-cli emits both verifier.tokenId and verifier.fingerprint, while its remote host starts the tunnel with the fingerprint. Manager readLine stores tokenId in status.generation, then the doctor snapshot serializes it as authGeneration. Thus a normal remote identifier is mislabeled as a sha256 auth-generation value; the regression fabricated a sha256 token id and did not exercise the production values. Preserve event.fingerprint for the snapshot, or omit authGeneration absent a valid fingerprint, and cover the real ready event. GitHub thread PRRT_kwDOT2PEds6b8_ge is unresolved.
+
+### F-006 — major — OPEN
+
+manager.doctorNow emits action diagnosing before serializing KANMER_TUNNEL_STATUS_JSON. emit updates status.updatedAt for every UI action, so changedAt represents doctor start rather than the connected/degraded/restarting provider transition. Keep a dedicated provider-transition timestamp and prove diagnostic-action updates do not overwrite it. GitHub thread PRRT_kwDOT2PEds6b8_gi is unresolved.
+
+## Decision
+
+The new three exact-head P2 threads are substantiated and have no acceptable-risk or deferred disposition. This needs-changes attestation supersedes the prior PASS. Do not merge or move GUI-138 until the corrections are implemented, all threads are resolved, a current-head review attestation passes, and the required checks are green again. Packaged public-doctor and remote MCP evidence remains strictly post-merge verification work.

@@ -2,10 +2,15 @@
 id: CORE-109
 type: ticket
 title: Publish and validate v0.3.10 recovery release
-status: backlog
+status: implementing
 area: core
-assignee: ''
+assignee: codex
 profile: chore
+stageEntered:
+  preparing: '2026-08-25T12:44:51.759Z'
+taken_at: '2026-08-25T12:44:58.374Z'
+branch: core-109-release-v0-3-10
+worktree: .worktrees/core-109
 labels:
   - release
   - v0.3.10
@@ -19,7 +24,7 @@ refs:
   - docs/functional/frd/FRD-021-auto-update.md
 archived: false
 created: '2026-08-25T12:43:12.101Z'
-updated: '2026-08-25T12:43:12.101Z'
+updated: '2026-08-25T12:44:58.374Z'
 ---
 
 ## Purpose

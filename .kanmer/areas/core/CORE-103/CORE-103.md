@@ -2,7 +2,7 @@
 id: CORE-103
 type: ticket
 title: Publish and validate v0.3.8 closeout release
-status: review
+status: verifying
 area: core
 assignee: codex-closeout
 profile: chore
@@ -10,6 +10,7 @@ stageEntered:
   preparing: '2026-08-25T01:10:15.001Z'
   implementing: '2026-08-25T01:10:19.884Z'
   review: '2026-08-25T09:02:34.978Z'
+  verifying: '2026-08-25T09:13:42.067Z'
 taken_at: '2026-08-25T08:17:47.041Z'
 branch: release/v0.3.8
 worktree: .worktrees/core-103
@@ -33,7 +34,7 @@ prs:
   - '269'
 archived: false
 created: '2026-08-25T01:04:13.262Z'
-updated: '2026-08-25T09:02:34.978Z'
+updated: '2026-08-25T09:13:42.067Z'
 ---
 
 ## Purpose

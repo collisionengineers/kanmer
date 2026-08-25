@@ -18,14 +18,14 @@ Remove the structural verification clog by adding a truthful, explicit terminal-
 1. In `kanmer-verify`, classify a non-PASS outcome as retryable by default. Permit terminal retirement only when the failure is irrecoverable or superseded and an operator explicitly supplies a reason plus either a successor ticket or a no-successor disposition. Require truthful proof, Outcome note, link, archive, and handoff to closeout; never move it to Done.
 2. In `kanmer-closeout`, support both verified-Done and archived-Verifying entry paths. For the latter, confirm merged PR and final non-PASS proof, preserve status and archive, record traceability/outcome, safely remove worktree/branch, and release the ticket.
 3. In `kanmer-auto`, keep failed verification as a stop until operator disposition exists, then route the ticket through the verifier/closeout retirement path rather than leaving an undirected permanent block.
-4. Amend FRD-007 and FRD-015 and refresh the managed AGENTS block from the canonical setup skill. Add a concise rule that Done requires PASS, while explicitly disposed terminal failures are archived and released.
+4. Amend FRD-007 and FRD-015. Update `scripts/agents-block-body.mjs`, its fallback fenced copy in kanmer-setup, and refresh `AGENTS.md` with the rule that Done requires PASS while explicitly disposed terminal failures are archived and released.
 5. Extend `verify-skill-prose.mjs` with semantic assertions covering retryable default, explicit operator/successor requirement, never-Done rule, closeout path, and auto routing.
 6. Run focused prose/AGENTS tests and the authoritative repository verification rail.
 7. Open a protected PR for independent review. After merge, exact-SHA verify and close out SKILL-035. Only then use the shipped workflow to retire CORE-103.
 
 ## Expected files
 
-Only the eight paths in `files/files.md`.
+Only the nine change-scope paths in `files/files.md`.
 
 ## Do not modify
 
@@ -48,7 +48,7 @@ Run the three acceptance commands from the ticket worktree; record exact exit co
 
 ## Failure and deviation rules
 
-Any wording that allows automatic retirement, hides failed proof, or moves non-PASS work to Done is a failure. Scope growth into schema/UI or release work requires a separate ticket.
+Any wording that allows automatic retirement, hides failed proof, or moves non-PASS work to Done is a failure. Scope growth into schema/UI or release work requires a separate ticket. The canonical AGENTS body path was corrected from the planning assumption to `scripts/agents-block-body.mjs` after the focused verifier exposed the actual import structure.
 
 ## Stop condition
 

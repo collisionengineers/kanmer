@@ -611,8 +611,14 @@ describe("portable Codex launcher contract (GUI-100)", () => {
     expect(result.output).toBe("Kanmer MCP launcher: healthy");
     expect(calls).toEqual([{
       file: "cmd.exe",
-      args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe'],
-      options: { cwd: "C:/workspace", windowsHide: true, timeout: 10_000, maxBuffer: 32 * 1024 },
+      args: ["/d", "/s", "/c", 'call "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe'],
+      options: {
+        cwd: "C:/workspace",
+        windowsHide: true,
+        windowsVerbatimArguments: true,
+        timeout: 10_000,
+        maxBuffer: 32 * 1024,
+      },
     }]);
   });
 
@@ -718,6 +724,27 @@ describe("portable Codex launcher contract (GUI-100)", () => {
     testProviders.delete("mcp-114");
   });
 
+  it.runIf(process.platform === "win32")("crosses the real Node to cmd.exe launcher boundary", async () => {
+    const localAppData = await tempRoot();
+    const launcher = join(localAppData, "Kanmer", "bin", "kanmer-mcp.cmd");
+    await mkdir(dirname(launcher), { recursive: true });
+    await writeFile(launcher, "@echo off\r\necho Kanmer MCP launcher: healthy\r\n", "utf8");
+
+    const previous = process.env.LOCALAPPDATA;
+    process.env.LOCALAPPDATA = localAppData;
+    try {
+      const result = await probeCodexLauncher(localAppData);
+      expect(result).toMatchObject({
+        ok: true,
+        command: 'cmd.exe /d /s /c call "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe',
+        output: "Kanmer MCP launcher: healthy",
+      });
+    } finally {
+      if (previous === undefined) delete process.env.LOCALAPPDATA;
+      else process.env.LOCALAPPDATA = previous;
+    }
+  });
+
   it("refuses a failed probe before creating or changing project config", async () => {
     const root = await tempRoot();
     const result = await connectAgent("codex", root, root, {
@@ -727,6 +754,7 @@ describe("portable Codex launcher contract (GUI-100)", () => {
     expect(result.ok).toBe(false);
     expect(result.command).toContain("cmd.exe");
     expect(result.command).toContain("--probe");
+    expect(result.command).not.toContain('\\"');
     expect(result.output).toContain("No absolute-path fallback was used");
     await missing(root, ".codex", "config.toml");
   });

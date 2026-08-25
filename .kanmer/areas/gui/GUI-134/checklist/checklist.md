@@ -6,4 +6,4 @@
 - [x] [pre-review] Add regression coverage for exact generation forwarding.
 - [x] [pre-review] Run focused tests, GUI typecheck, diff check, and diff secret scan.
 - [x] [pre-review] Write the post-implementation report, commit, push, open the PR, and move to Review.
-- [ ] [post-merge] Reproduce Save → Create token on the exact merged installed build and record proof.
+- [x] [post-merge] Reproduce Save → Create token on the exact merged installed build and record proof.

@@ -69,3 +69,15 @@ attempts:
 # Verification summary
 
 The exact merged safe-storage implementation builds, packages, installs, and creates a protected bearer successfully on Windows. The ticket remains Verifying because its recorded post-merge checklist also requires Start/doctor, which is blocked by the independently scoped endpoint-protocol defect GUI-136.
+
+---
+
+# Final verification — GUI-135
+
+Result: PASS
+
+Merge SHA: `e440e0b5a26a5f90f9e8ecc526812f44d905467c` (PR #260).
+
+The earlier exact-merge attempts above remain part of the record. The dependent endpoint and doctor defects were then fixed without changing this safeStorage implementation. On the installed exact GUI-138 artifact, rotating the protected bearer succeeded through renderer/preload/main, the runtime started ready, and public doctor passed SECRET_REFERENCE_VALID plus all local and public authentication/MCP checks. This closes the formerly inconclusive Start/doctor step.
+
+The exact current packaged Windows installer loaded from installed `resources/app.asar`. Its public-mode doctor returned `ok: true`, `summary: pass`, and 26/26 PASS, including tunnel readiness, redaction, and no board mutation. No secret value, provider credential, or session identifier is recorded.

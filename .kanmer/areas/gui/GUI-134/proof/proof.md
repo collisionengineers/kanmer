@@ -28,3 +28,15 @@ attempts:
 # Verification — GUI-134
 
 The exact merged source and packaged preload contain the intended generation forwarding. The end-to-end acceptance action cannot yet be declared PASS because the next protected-storage boundary fails independently. GUI-134 remains Verifying and is blocked by GUI-135; a later pass must retain all attempts above.
+
+---
+
+# Final verification — GUI-134
+
+Result: PASS
+
+Merge SHA: `62cafcf628609ad94e9ed1f3fadc3e37969f570e` (PR #259).
+
+The earlier exact-merge attempts above remain part of the record. The independent safeStorage defect was fixed by GUI-135 without changing generation forwarding. On the installed exact GUI-138 artifact, remoteCreateSecret was invoked with the current configuration generation, protected bearer rotation succeeded, and the resulting runtime reached ready and passed the complete public doctor. This proves the generation traverses the renderer/preload/main boundary correctly.
+
+The exact current packaged Windows installer loaded from installed `resources/app.asar`. Its public-mode doctor returned `ok: true`, `summary: pass`, and 26/26 PASS, including tunnel readiness, redaction, and no board mutation. No secret value, provider credential, or session identifier is recorded.

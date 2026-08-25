@@ -5,4 +5,4 @@
 - [x] [pre-review] Add regression coverage at remote-host and GUI-manager boundaries.
 - [x] [pre-review] Pass focused tests, full typecheck/build, and diff checks.
 - [x] [pre-review] Write report, commit, push, open PR, and move to Review.
-- [ ] [post-merge] Install the exact merge and pass packaged Start → doctor → authenticated public validation.
+- [x] [post-merge] Install the exact merge and pass packaged Start → doctor → authenticated public validation.

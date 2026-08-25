@@ -12,8 +12,8 @@
 - [x] [pre-review] Update `docs/manual/connect.md` with the stable-launcher and native-runtime supervision path; regenerate the packaged manual mirror.
 - [x] [pre-review] Run manual freshness, focused remote/launcher tests, workspace typecheck, secret scan of the diff, and `git diff --check` without weakening assertions.
 - [x] [pre-review] Write the post-implementation report with every attempt/exit code and open the bounded PR; stop before merge.
-- [ ] [post-merge] Verify the exact merge SHA, both supervised runtimes, restart behavior, and generated manual artifact.
+- [x] [post-merge] Verify the exact merge SHA, both supervised runtimes, restart behavior, and generated manual artifact.
 
 ## Progress notes
 
-Planning found no need for new provider code or resources. Existing supervisors are the required production callers; the only repository change is the generic runbook/mirror correction unless execution proves a bounded defect.
+Exact-merge verification completed at the recorded protected merge SHA.

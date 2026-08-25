@@ -73,6 +73,7 @@ For example, save this outside the project as `kanmer-tunnel-mcp.ps1`:
 
 ```powershell
 $env:KANMER_PROVIDER_CWD = "C:/path/to/project"
+$env:KANMER_BOARD_BRANCH = "kanmer-board"
 & "$env:LOCALAPPDATA\Kanmer\bin\kanmer-mcp.cmd"
 exit $LASTEXITCODE
 ```
@@ -108,12 +109,14 @@ In the GUI, open **Settings → OpenAI tunnel**, enter the profile name, tunnel 
 address, then save. The address is a validated, non-secret expectation; the GUI
 does not rewrite `tunnel-client`'s profile file or claim a live listener, so
 distinct ports must still be configured in the client profile by the operator.
-**Initialize** and **Run doctor** execute the same commands. Initialize binds
-the selected credential name with tunnel-client's
+This GUI surface and the native runtime supervisor are separate operating
+modes: **Initialize** runs `tunnel-client init`, **Run doctor** runs
+`tunnel-client doctor`, and **Start**, **Stop**, and **Restart** supervise the
+GUI-owned `tunnel-client run` child. The GUI does not execute `runtimes connect`
+or manage native runtime aliases. Initialize binds the selected credential name with tunnel-client's
 `--control-plane-api-key-ref env:<NAME>` option, so a custom environment
 variable is honored without putting its value in the profile;
-**Start**, **Stop**, and **Restart** supervise the owned `run` process. The GUI
-never asks for or persists the API-key value. A downloaded app update marks a
+the GUI never asks for or persists the API-key value. A downloaded app update marks a
 running tunnel for restart, and quitting Kanmer stops its owned process tree.
 Cloudflare settings are a different provider path and are not used here.
 
@@ -155,7 +158,7 @@ $mcpCommand = 'powershell.exe -NoProfile -NonInteractive -File "C:/private/path/
   --tunnel-client-bin $tunnelClient
 ```
 
-Each wrapper sets its own `KANMER_PROVIDER_CWD`. The stable launcher discovers
+Each wrapper sets its own `KANMER_PROVIDER_CWD` and `KANMER_BOARD_BRANCH`. The stable launcher discovers
 either a direct `.kanmer` folder or the GUI-managed board worktree from that
 project root. List configured profiles with `tunnel-client profiles list` and
 managed aliases with `tunnel-client runtimes list --json`.

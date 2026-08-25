@@ -99,4 +99,16 @@ test("tag release verification packages without scheduling a publisher", () => {
     /run: \|\n          npm run build\n          npm run build -w @kanmer\/gui\n          npm run dist -w @kanmer\/gui -- --publish never\n          node scripts\/check-updater-package\.mjs/,
   );
   assert.doesNotMatch(packageStep, /\bGH_TOKEN\b/);
+  assert.match(workflow, /verify-release-assets\.mjs "\$VERSION" --remote-coherent/);
+});
+
+test("publisher packages once, then explicitly creates and uploads the release", () => {
+  const source = readFileSync(new URL("./release.mjs", import.meta.url), "utf8");
+  assert.match(source, /npx electron-builder --win --publish never/);
+  assert.doesNotMatch(source, /electron-builder --win --publish always/);
+  assert.match(source, /gh release create \$\{releaseTag\(version\)\}/);
+  assert.match(source, /gh release upload \$\{releaseTag\(version\)\}/);
+  assert.doesNotMatch(source, /gh release upload[^\n]*--clobber/);
+  assert.match(source, /tag .* already exists locally or on origin/);
+  assert.match(source, /GitHub Release .* already exists/);
 });

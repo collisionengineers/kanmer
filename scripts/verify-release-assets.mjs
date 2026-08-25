@@ -1,23 +1,20 @@
 // Prove that a published GitHub release actually carries every asset it should.
 //
-// `electron-builder --publish always` can exit 0 having uploaded nothing:
-// gitHubPublisher.js getOrCreateRelease() returns *null* (not an error) when the
-// existing release's type does not match, or when it was published_at more than
-// two hours ago and EP_GH_IGNORE_TIME is unset (:85-96) — and doUpload() then
-// merely logs "skipped publishing" and returns (:126-131). Three consecutive
-// Kanmer releases shipped with a missing asset that way. The exit code of the
-// publisher is not evidence of upload. Verify from the outside.
+// Release publication is explicit, but a successful upload command is still not
+// evidence that the public release is complete and internally coherent. Verify
+// the public asset metadata and, in independent CI, the downloaded update bytes.
 //
 // Split so the interesting part is testable without cutting a release:
 //
 //   expectedAssets({version, localDir})   pure-ish (reads disk), no network
 //   verifyAssets({expected, assets})      PURE: no fetch, no fs, no exit
-//   fetchReleaseAssets({...,fetchImpl})   the one REST call, injectable
+//   fetchReleaseAssets({...,fetchImpl})   release metadata request, injectable
 //
 // GET /repos/{owner}/{repo}/releases/tags/v{version} returns, per asset, `name`,
 // `size`, `state` AND `digest: "sha256:<hex>"`. Since the caller is holding the
-// freshly built local files, hashing those locally and comparing to `digest` is
-// a true end-to-end integrity check with ZERO bytes downloaded.
+// freshly built local files, local release verification compares those hashes.
+// Remote-coherent mode instead downloads the public manifest and installer so
+// an independently signed CI build is never treated as byte-identical evidence.
 //
 // Dependency-free, matching the other scripts in this directory.
 //
@@ -439,6 +436,121 @@ export async function fetchReleaseAssets({
   return body.assets;
 }
 
+/** The exact public shape produced by the current Windows-only release. */
+export function requiredRemoteAssetNames(version) {
+  return [
+    `Kanmer-Setup-${version}.exe`,
+    `Kanmer-Setup-${version}.exe.blockmap`,
+    `kanmer-${version}.mcpb`,
+    MANIFEST,
+  ];
+}
+
+/**
+ * PURE metadata checks for a self-contained public release.  Unlike
+ * verifyAssets(), this deliberately has no local build: signed NSIS packages
+ * are not reproducible across independent builders.
+ */
+export function verifyRemoteAssetShape({ version, assets }) {
+  const problems = [];
+  const required = requiredRemoteAssetNames(version);
+  const counts = new Map();
+  for (const asset of assets ?? []) counts.set(asset.name, (counts.get(asset.name) ?? 0) + 1);
+
+  for (const name of required) {
+    const matches = (assets ?? []).filter((asset) => asset.name === name);
+    if (matches.length === 0) {
+      problems.push({ asset: name, kind: "missing", severity: "error", detail: "not present on the release" });
+      continue;
+    }
+    if (matches.length !== 1) {
+      problems.push({ asset: name, kind: "duplicate", severity: "error", detail: `present ${matches.length} times; expected exactly once` });
+      continue;
+    }
+    const asset = matches[0];
+    if (asset.state !== "uploaded") {
+      problems.push({ asset: name, kind: "state", severity: "error", detail: `state is "${asset.state}", expected "uploaded"` });
+    }
+    if (!Number.isSafeInteger(asset.size) || asset.size <= 0) {
+      problems.push({ asset: name, kind: "size", severity: "error", detail: `published size ${asset.size} is not a positive integer` });
+    }
+    if (typeof asset.digest !== "string" || !/^sha256:[0-9a-f]{64}$/i.test(asset.digest)) {
+      problems.push({ asset: name, kind: "no-digest", severity: "error", detail: "GitHub did not return a usable sha256 digest" });
+    }
+    if (typeof asset.browser_download_url !== "string" || !asset.browser_download_url.startsWith("https://")) {
+      problems.push({ asset: name, kind: "download-url", severity: "error", detail: "no HTTPS browser_download_url was returned" });
+    }
+  }
+
+  for (const [name, count] of counts) {
+    if (!required.includes(name)) {
+      problems.push({ asset: name, kind: "extra", severity: "info", detail: `present ${count} time(s) but not required` });
+    }
+  }
+  return { ok: !problems.some((problem) => problem.severity === "error"), problems };
+}
+
+async function fetchAssetBytes(asset, fetchImpl) {
+  const response = await fetchImpl(asset.browser_download_url, { headers: { Accept: "application/octet-stream" } });
+  if (!response.ok) {
+    const error = new Error(`${asset.name} download returned ${response.status} — the CHECK could not run`);
+    error.kind = "http";
+    throw error;
+  }
+  return Buffer.from(await response.arrayBuffer());
+}
+
+/** Verify the public release against itself, not against a second signed build. */
+export async function verifyRemoteRelease({
+  version,
+  owner = DEFAULT_OWNER,
+  repo = DEFAULT_REPO,
+  token,
+  fetchImpl = fetch,
+}) {
+  const assets = await fetchReleaseAssets({ owner, repo, tag: `v${version}`, token, fetchImpl });
+  const shape = verifyRemoteAssetShape({ version, assets });
+  if (!shape.ok) return { ...shape, assets, expected: requiredRemoteAssetNames(version), notes: [] };
+
+  const byName = new Map(assets.map((asset) => [asset.name, asset]));
+  const manifestAsset = byName.get(MANIFEST);
+  const installerName = `Kanmer-Setup-${version}.exe`;
+  const installerAsset = byName.get(installerName);
+  const [manifestBytes, installerBytes] = await Promise.all([
+    fetchAssetBytes(manifestAsset, fetchImpl),
+    fetchAssetBytes(installerAsset, fetchImpl),
+  ]);
+  const problems = [...shape.problems];
+  const manifestText = manifestBytes.toString("utf8");
+  const manifest = parseManifest(manifestText);
+  if (manifestVersion(manifestText) !== version) {
+    problems.push({ asset: MANIFEST, kind: "manifest", severity: "error", detail: `version is ${manifestVersion(manifestText) ?? "missing"}, expected ${version}` });
+  }
+  if (manifest.url !== installerName) {
+    problems.push({ asset: MANIFEST, kind: "manifest", severity: "error", detail: `files[0].url is "${manifest.url}", expected "${installerName}"` });
+  }
+  if (manifest.size !== installerBytes.length || installerAsset.size !== installerBytes.length) {
+    problems.push({ asset: MANIFEST, kind: "manifest", severity: "error", detail: `installer size does not agree across manifest, GitHub metadata and downloaded bytes` });
+  }
+  const installerSha512 = createHash("sha512").update(installerBytes).digest("base64");
+  if (manifest.sha512 !== installerSha512) {
+    problems.push({ asset: MANIFEST, kind: "manifest", severity: "error", detail: "files[0].sha512 does not match the downloaded installer" });
+  }
+  for (const [asset, bytes] of [[manifestAsset, manifestBytes], [installerAsset, installerBytes]]) {
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    if (asset.digest.toLowerCase() !== `sha256:${sha256}`) {
+      problems.push({ asset: asset.name, kind: "digest", severity: "error", detail: "GitHub digest does not match downloaded bytes" });
+    }
+  }
+  return {
+    ok: !problems.some((problem) => problem.severity === "error"),
+    problems,
+    assets,
+    expected: requiredRemoteAssetNames(version),
+    notes: ["verified public manifest and installer bytes without comparing an independent signed build"],
+  };
+}
+
 /**
  * The whole thing, for callers that want one function: derive, sanity-check,
  * fetch, verify.
@@ -505,7 +617,7 @@ if (isMain) {
   const version = positional[0];
 
   if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
-    console.error("usage: node scripts/verify-release-assets.mjs <version> [--dir <localDir>] [--owner <o>] [--repo <r>]");
+    console.error("usage: node scripts/verify-release-assets.mjs <version> [--remote-coherent] [--dir <localDir>] [--owner <o>] [--repo <r>]");
     console.error('  version is MAJOR.MINOR.PATCH with no "v" prefix');
     process.exit(2);
   }
@@ -518,7 +630,10 @@ if (isMain) {
   const owner = flag("owner", DEFAULT_OWNER);
   const repo = flag("repo", DEFAULT_REPO);
 
-  console.log(`verifying ${owner}/${repo} v${version} against ${localDir}`);
+  const remoteCoherent = flags["remote-coherent"] === true;
+  console.log(remoteCoherent
+    ? `verifying ${owner}/${repo} v${version} as a self-contained public release`
+    : `verifying ${owner}/${repo} v${version} against ${localDir}`);
 
   // Set process.exitCode and let the loop drain; do NOT call process.exit() here.
   // process.exit() straight after a global fetch() trips libuv on Windows
@@ -528,7 +643,9 @@ if (isMain) {
   // exit code would see neither PASS nor FAIL. Observed while building this.
   let result;
   try {
-    result = await verifyRelease({ version, localDir, owner, repo, token });
+    result = remoteCoherent
+      ? await verifyRemoteRelease({ version, owner, repo, token })
+      : await verifyRelease({ version, localDir, owner, repo, token });
   } catch (err) {
     // Distinct exit code: the check could not run. NOT the same as a broken release.
     console.error(`\nverification could not run (${err.kind ?? "error"}): ${err.message}`);
@@ -541,12 +658,14 @@ if (isMain) {
 
   if (result) {
     for (const note of result.notes) console.log(`  note: ${note}`);
-    console.log(`  expected ${result.expected.length} asset(s): ${result.expected.map((e) => e.name).join(", ")}`);
+    console.log(`  expected ${result.expected.length} asset(s): ${result.expected.map((e) => e.name ?? e).join(", ")}`);
 
     if (result.problems.length > 0) console.log(`\n${formatProblems(result.problems)}`);
 
     if (result.ok) {
-      console.log(`\nPASS: every expected asset of v${version} is present, uploaded, and byte-identical to the local build`);
+      console.log(remoteCoherent
+        ? `\nPASS: v${version} is complete and its public manifest matches the published installer bytes`
+        : `\nPASS: every expected asset of v${version} is present, uploaded, and byte-identical to the local build`);
     } else {
       const errs = result.problems.filter((p) => p.severity === "error").length;
       console.error(`\nFAIL: v${version} has ${errs} problem(s) that make the release incomplete`);

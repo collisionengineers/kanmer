@@ -11,14 +11,10 @@
 //     (gitHubPublisher.js:35-37), after a four-minute pack;
 //   - a prerelease version is excluded from /releases/latest, so the updater
 //     would never see it;
-//   - `--publish always` is load-bearing from a laptop: getOrCreateRelease
-//     (gitHubPublisher.js:101) only creates a release when publish === "always"
-//     OR a CI tag exists, and there is no CI tag here;
 //   - stale release notes ship last release's text;
 //   - a stale committed plugin bundle ships an old MCP server to plugin users;
-//   - `electron-builder --publish always` can exit 0 having uploaded NOTHING
-//     (see EP_GH_IGNORE_TIME below and scripts/verify-release-assets.mjs), which
-//     is how three consecutive releases shipped with a missing asset.
+//   - Electron Builder's concurrent GitHub publisher can race release creation
+//     and leave a public release with only some assets.
 //
 // Dependency-free, matching the other scripts in this directory.
 //
@@ -44,7 +40,7 @@ import {
   verifyLocalArtifacts,
   verifyRelease,
 } from "./verify-release-assets.mjs";
-import { exactUploadSpecs, settlePublication } from "./release-publish.mjs";
+import { exactUploadSpecs } from "./release-publish.mjs";
 import { VERIFY_STEPS } from "./verify.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -70,20 +66,6 @@ const notesPath = join(guiDir, "release-notes.md");
 const OWNER = "collisionengineers";
 const REPO = "kanmer";
 const releaseDir = join(guiDir, "release");
-
-// ---------------------------------------------------------------------------
-// EP_GH_IGNORE_TIME is load-bearing, not cosmetic. Set it once, here, before
-// anything packs — run() uses execSync, which inherits process.env, so no
-// per-call plumbing is needed.
-//
-// Without it, gitHubPublisher.js getOrCreateRelease() returns *null* for a
-// release whose published_at is more than two hours old (:85-96), and doUpload()
-// then merely logs "skipped publishing" and returns — no throw, exit 0 (:126-131).
-// Both manual re-publishes of the incomplete 0.3.x releases needed this. It is
-// especially load-bearing for the repair pass in section 9: without it, the
-// repair would itself silently no-op into a second identical failure.
-// ---------------------------------------------------------------------------
-process.env.EP_GH_IGNORE_TIME = "true";
 
 /**
  * Stop the script from a refusal without calling process.exit().
@@ -153,7 +135,7 @@ function assertLocalPackageCoherent() {
   if (!check.ok) {
     refuse(
       `the local package is incoherent:\n${formatProblems(check.problems)}`,
-      "rebuild once with `npx electron-builder --win --publish always` and inspect the resulting manifest before retrying",
+      "rebuild once with `npx electron-builder --win --publish never` and inspect the resulting manifest before retrying",
     );
   }
 }
@@ -447,23 +429,39 @@ process.exit(0);
 //    for a tag it has never seen, so the exact tag ref is pushed only after the
 //    supplied preparation commit is proven reachable from this main checkout.
 // ---------------------------------------------------------------------------
+if (capture(`git tag --list ${releaseTag(version)}`).length > 0 ||
+    capture(`git ls-remote --tags origin ${releaseTagRef(version)}`).length > 0) {
+  refuse(
+    `tag ${releaseTag(version)} already exists locally or on origin`,
+    "never move or overwrite a release tag; preserve it as evidence and publish a higher version",
+  );
+}
+try {
+  execSync(`gh release view ${releaseTag(version)}`, { cwd: root, stdio: "ignore" });
+  refuse(
+    `GitHub Release ${releaseTag(version)} already exists`,
+    "do not overwrite an existing public release; preserve it as evidence and publish a higher version",
+  );
+} catch (error) {
+  if (error instanceof Refusal) throw error;
+  if (error?.status !== 1) {
+    refuse(
+      `could not establish whether GitHub Release ${releaseTag(version)} exists`,
+      "verify gh authentication and GitHub availability before retrying",
+    );
+  }
+}
 run(`git tag ${releaseTag(version)}`);
 run(`git push origin ${releaseTagRef(version)}`);
 
 // ---------------------------------------------------------------------------
-// 8. Build and publish the only Windows installer. `latest.yml`, the installer
-//    and its blockmap all originate from this one package invocation. The
-//    packaged-app rail runs immediately afterwards; it is intentionally not a
-//    second --publish never pass, because NSIS output can differ per package.
+// 8. Build the only Windows installer with publishing disabled. `latest.yml`,
+//    the installer and its blockmap originate from this one package invocation.
+//    GitHub publication is explicit below: Electron Builder used concurrent
+//    publisher tasks that raced release creation during v0.3.8 and left a
+//    public release with only the installer.
 // ---------------------------------------------------------------------------
-let publisherError = null;
-try {
-  run("npx electron-builder --win --publish always", guiDir);
-} catch (error) {
-  publisherError = error;
-  console.error("\npublisher exited non-zero; checking the public release before deciding whether it failed:");
-  console.error(error.message);
-}
+run("npx electron-builder --win --publish never", guiDir);
 const mcpbPath = join(root, "dist", "mcpb", `kanmer-${version}.mcpb`);
 if (!existsSync(mcpbPath)) {
   refuse(`MCPB output is missing after the release build: ${mcpbPath}`, "run `npm run mcpb:build` and inspect the generated bundle");
@@ -472,6 +470,14 @@ copyFileSync(mcpbPath, join(releaseDir, `kanmer-${version}.mcpb`));
 console.log(`copied MCPB release asset: ${mcpbPath}`);
 run("node scripts/check-updater-package.mjs");
 assertLocalPackageCoherent();
+
+const { expected } = expectedAssets({ version, localDir: releaseDir });
+const uploads = exactUploadSpecs(expected);
+run(
+  `gh release create ${releaseTag(version)} --title "Kanmer v${version}" ` +
+    `--notes-file "${notesPath}" --latest`,
+);
+run(`gh release upload ${releaseTag(version)} ${uploads.map((upload) => `"${upload}"`).join(" ")}`);
 
 // ---------------------------------------------------------------------------
 // 9a. The release is VISIBLE. Read exactly what GitHubProvider reads: it polls
@@ -493,80 +499,42 @@ if (body.tag_name !== `v${version}`) {
 console.log(`\nverified: /releases/latest is v${version}`);
 
 // ---------------------------------------------------------------------------
-// 9b. Every published asset is present, uploaded, and byte-identical to what
-//     was just built. Three consecutive releases uploaded incompletely while
-//     electron-builder logged success (0.3.0 lost its blockmap, 0.3.1 its
-//     installer AND manifest, 0.3.2 its manifest), so the publisher's exit code
-//     is not evidence of upload. One REST call gets name/size/state/digest for
-//     every asset; the local files are hashed and compared, so this is a full
-//     integrity check that downloads zero bytes.
-//
-//     A missing .exe.blockmap is a HARD failure, same as any other missing
-//     asset. Treating it as a warning is exactly how 0.3.0 passed the old gate.
-//
-//     On a gap: upload the exact files from this one package once, then
-//     re-verify and refuse if it remains incomplete. Never run the pack a
-//     second time: NSIS output can differ per package invocation, so a second
-//     publish is exactly how a manifest can describe a different installer.
+// 9b. Every published asset is present, uploaded, and byte-identical to the
+//     one package generation above. There is no automatic repair: a failed
+//     explicit upload is preserved and the next release uses a higher version.
 // ---------------------------------------------------------------------------
-async function verifyAssetsNow() {
-  return verifyRelease({
+let check;
+try {
+  check = await verifyRelease({
     version,
     localDir: releaseDir,
     owner: OWNER,
     repo: REPO,
     token: process.env[tokenVar],
   });
-}
-
-const publication = await settlePublication({
-  publisherError,
-  verify: verifyAssetsNow,
-  repair: async (expected) => {
-    const uploads = exactUploadSpecs(expected);
-    console.error("\nthe published release is INCOMPLETE; uploading the exact one-package assets once…");
-    run(`gh release upload v${version} --clobber ${uploads.map((upload) => `"${upload}"`).join(" ")}`);
-  },
-});
-
-if (publication.status === "check-failed") {
+} catch (error) {
   refuse(
-    `could not verify the published assets (${publication.error.kind ?? "error"}): ${publication.error.message}`,
+    `could not verify the published assets (${error.kind ?? "error"}): ${error.message}`,
     "this is the CHECK failing, not necessarily the release. Re-run " +
       `\`node scripts/verify-release-assets.mjs ${version}\` once the cause is cleared, ` +
       "and check the release by hand before assuming it is good.",
   );
 }
-
-if (publication.status === "local-artifacts-invalid") {
+if (check.derivationBroken) {
   refuse(
-    `the expected asset set could not be derived from ${releaseDir}:\n${formatProblems(publication.check.problems)}`,
+    `the expected asset set could not be derived from ${releaseDir}:\n${formatProblems(check.problems)}`,
     "the pack output is missing or incomplete — this is a bug in the release script's " +
       "assumptions, not in the release. Inspect the directory before touching the release.",
   );
 }
-
-if (publication.status === "repair-failed" || publication.status === "still-incomplete") {
-  const problems = publication.check?.problems ?? [];
-  const repairDetail = publication.status === "repair-failed"
-    ? `the exact-file repair failed: ${publication.error.message}`
-    : "the release is still incomplete after one exact-file repair";
+if (!check.ok) {
   refuse(
-    `${repairDetail}:\n${formatProblems(problems)}`,
-    "the tag and release are already public and are NOT being demoted automatically. " +
-      "Fix by hand, then re-verify with " +
-      `\`node scripts/verify-release-assets.mjs ${version}\`. To take the release out of ` +
-      "/releases/latest while you work, mark it a prerelease:\n" +
-      `         gh release edit v${version} --prerelease\n` +
-      "       …and undo it with `--latest` once the assets are complete.",
+    `the explicit upload is incomplete or corrupt:\n${formatProblems(check.problems)}`,
+    "preserve this release as failed evidence; do not overwrite it or retag it. Fix the cause and publish a higher version.",
   );
 }
-
-const check = publication.check;
 console.log(`  expected ${check.expected.length} asset(s): ${check.expected.map((e) => e.name).join(", ")}`);
 for (const note of check.notes) console.log(`  note: ${note}`);
-if (publication.repaired) console.log("\nthe exact-file repair restored the release without a second package.");
-if (publisherError) console.warn("\npublisher reported an error, but the externally verified release is complete.");
 
 for (const p of check.problems) console.warn(`  [${p.severity}] ${p.asset}: ${p.detail}`);
 console.log(

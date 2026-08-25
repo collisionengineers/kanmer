@@ -92,7 +92,7 @@ jobs:
           while true; do
             echo "release asset verification attempt $attempt/$max_attempts"
             set +e
-            node scripts/verify-release-assets.mjs "$VERSION"
+            node scripts/verify-release-assets.mjs "$VERSION" --remote-coherent
             result=$?
             set -e
 
@@ -101,8 +101,8 @@ jobs:
                 echo "### Release verification"
                 echo "- tag: $GITHUB_REF_NAME"
                 echo "- version: $VERSION"
-                echo "- local artifacts: apps/gui/release/"
-                echo "- asset verification: PASS (attempt $attempt/$max_attempts)"
+                echo "- public asset set: manifest, installer, blockmap, MCPB"
+                echo "- asset verification: PASS, public-set coherent (attempt $attempt/$max_attempts)"
               } >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
@@ -113,7 +113,7 @@ jobs:
                 echo "### Release verification"
                 echo "- tag: $GITHUB_REF_NAME"
                 echo "- version: $VERSION"
-                echo "- local artifacts: apps/gui/release/"
+                echo "- public asset set: not compared to this independent signed build"
                 echo "- asset verification: INCONCLUSIVE (exit 2)"
               } >> "$GITHUB_STEP_SUMMARY"
               exit 2
@@ -129,7 +129,7 @@ jobs:
                 echo "### Release verification"
                 echo "- tag: $GITHUB_REF_NAME"
                 echo "- version: $VERSION"
-                echo "- local artifacts: apps/gui/release/"
+                echo "- public asset set: incomplete or incoherent"
                 echo "- asset verification: FAIL after $max_attempts attempts"
               } >> "$GITHUB_STEP_SUMMARY"
               exit 1

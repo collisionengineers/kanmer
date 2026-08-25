@@ -17,6 +17,7 @@
 //   v0.3.2 must PASS
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtempSync, writeFileSync, rmSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -31,8 +32,101 @@ import {
   manifestVersion,
   parseManifest,
   formatProblems,
+  requiredRemoteAssetNames,
+  verifyRemoteAssetShape,
+  verifyRemoteRelease,
   MANIFEST,
 } from "./verify-release-assets.mjs";
+
+describe("remote-coherent verification", () => {
+  const version = "1.2.3";
+  const installer = Buffer.from("one authoritative signed installer");
+  const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+  const sha512 = (bytes) => createHash("sha512").update(bytes).digest("base64");
+  const manifest = Buffer.from([
+    `version: ${version}`,
+    "files:",
+    `  - url: Kanmer-Setup-${version}.exe`,
+    `    sha512: ${sha512(installer)}`,
+    `    size: ${installer.length}`,
+  ].join("\n"));
+  const bytesByName = new Map([
+    [`Kanmer-Setup-${version}.exe`, installer],
+    [MANIFEST, manifest],
+  ]);
+  const assets = requiredRemoteAssetNames(version).map((name) => {
+    const bytes = bytesByName.get(name) ?? Buffer.from(name);
+    return {
+      name,
+      state: "uploaded",
+      size: bytes.length,
+      digest: `sha256:${sha256(bytes)}`,
+      browser_download_url: `https://downloads.example/${name}`,
+    };
+  });
+
+  test("accepts the exact four-asset public shape", () => {
+    assert.deepEqual(requiredRemoteAssetNames(version), [
+      `Kanmer-Setup-${version}.exe`,
+      `Kanmer-Setup-${version}.exe.blockmap`,
+      `kanmer-${version}.mcpb`,
+      MANIFEST,
+    ]);
+    assert.equal(verifyRemoteAssetShape({ version, assets }).ok, true);
+  });
+
+  test("rejects missing, duplicate, non-uploaded and missing-digest assets", () => {
+    const missing = verifyRemoteAssetShape({ version, assets: assets.slice(1) });
+    assert.equal(missing.ok, false);
+    assert.ok(missing.problems.some((problem) => problem.kind === "missing"));
+
+    const duplicate = verifyRemoteAssetShape({ version, assets: [...assets, assets[0]] });
+    assert.ok(duplicate.problems.some((problem) => problem.kind === "duplicate"));
+
+    const invalid = structuredClone(assets);
+    invalid[1].state = "new";
+    invalid[2].digest = null;
+    const checked = verifyRemoteAssetShape({ version, assets: invalid });
+    assert.ok(checked.problems.some((problem) => problem.kind === "state"));
+    assert.ok(checked.problems.some((problem) => problem.kind === "no-digest"));
+  });
+
+  test("downloads only manifest and installer and validates their hashes", async () => {
+    const result = await verifyRemoteRelease({
+      version,
+      fetchImpl: async (url) => {
+        if (url.includes("api.github.com")) return { ok: true, status: 200, json: async () => ({ assets }) };
+        const name = decodeURIComponent(url.split("/").at(-1));
+        const bytes = bytesByName.get(name);
+        return { ok: Boolean(bytes), status: bytes ? 200 : 404, arrayBuffer: async () => bytes };
+      },
+    });
+    assert.equal(result.ok, true);
+  });
+
+  test("rejects wrong manifest version, URL, size and sha512", async () => {
+    const badManifest = Buffer.from([
+      "version: 9.9.9",
+      "files:",
+      "  - url: wrong.exe",
+      "    sha512: WRONG",
+      "    size: 999",
+    ].join("\n"));
+    const changed = assets.map((asset) => asset.name === MANIFEST
+      ? { ...asset, size: badManifest.length, digest: `sha256:${sha256(badManifest)}` }
+      : asset);
+    const result = await verifyRemoteRelease({
+      version,
+      fetchImpl: async (url) => {
+        if (url.includes("api.github.com")) return { ok: true, status: 200, json: async () => ({ assets: changed }) };
+        const bytes = url.endsWith(MANIFEST) ? badManifest : installer;
+        return { ok: true, status: 200, arrayBuffer: async () => bytes };
+      },
+    });
+    assert.equal(result.ok, false);
+    assert.ok(result.problems.filter((problem) => problem.kind === "manifest").length >= 4);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Golden fixtures — real `assets[]` from

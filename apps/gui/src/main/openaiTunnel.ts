@@ -106,7 +106,8 @@ function statusFor(projectId: string, identity: RemoteProjectIdentity, profile: 
 
 function defaultProfile(projectId: string): OpenAITunnelProfile {
   const base = projectId.split(/[\\/]/).filter(Boolean).at(-1) ?? "kanmer";
-  const profileName = base.replace(/[^A-Za-z0-9._-]/g, "-").slice(0, 56) || "kanmer";
+  const cleaned = base.replace(/[^A-Za-z0-9._-]/g, "-");
+  const profileName = (/^[A-Za-z0-9]/.test(cleaned) ? cleaned : `kanmer-${cleaned}`).slice(0, 64) || "kanmer";
   return { ...emptyOpenAITunnelProfile(), profileName };
 }
 

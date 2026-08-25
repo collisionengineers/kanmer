@@ -102,6 +102,14 @@ describe("OpenAITunnelManager", () => {
     await expect(readOpenAITunnelSettings(root)).rejects.toThrow("OPENAI_TUNNEL_SETTINGS_INVALID");
   });
 
+  it("creates a reloadable default for a project basename without a leading alphanumeric", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
+    const first = new OpenAITunnelManager(root);
+    await first.register("/tmp/.kanmer", identity);
+    const restarted = new OpenAITunnelManager(root);
+    expect((await restarted.viewFor("/tmp/.kanmer", identity)).profile?.profileName).toBe("kanmer-.kanmer");
+  });
+
   it("validates loopback health and safe executable inputs", () => {
     expect(isLoopbackHealthAddress("127.0.0.1:8765")).toBe(true);
     expect(isLoopbackHealthAddress("[::1]:8765")).toBe(true);

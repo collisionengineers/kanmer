@@ -24,6 +24,7 @@ links:
   - CORE-036
   - CORE-042
   - MCP-028
+  - CORE-109
 refs:
   - docs/functional/frd/FRD-021-auto-update.md
 commits:
@@ -34,7 +35,7 @@ prs:
   - '272'
 archived: false
 created: '2026-08-25T09:39:07.506Z'
-updated: '2026-08-25T11:43:25.232Z'
+updated: '2026-08-25T12:43:37.370Z'
 ---
 
 Publish the first clean successor after the immutable partial v0.3.8 release. Require protected-main merge, one authoritative Windows package generation, complete public assets, green tag workflow, strict external verification, installed update/reinstall validation, working Codex Connect and pasteable launcher probe guidance, packaged MCP identity v0.3.9, healthy Cloudflare remote access, and healthy OpenAI managed tunnel runtime. Preserve v0.3.8 as failed historical evidence.

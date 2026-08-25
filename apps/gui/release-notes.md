@@ -10,9 +10,9 @@ there) and uses it as the GitHub release body.
 
 ### Draft releases are verified before they become public
 
-The release publisher now verifies its authenticated GitHub draft through the
-numeric release identity returned when that draft is created. This keeps the
-strict asset, digest, and updater-manifest checks in force while avoiding the
+The release publisher now reads the numeric identity of its just-created GitHub
+draft and uses that identity for authenticated verification. This keeps the strict
+asset, digest, and updater-manifest checks in force while avoiding the
 tag lookup that cannot see an unpublished draft. Public release verification
 continues to use the public tag route.
 

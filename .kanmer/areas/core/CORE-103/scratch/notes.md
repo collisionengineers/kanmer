@@ -1,0 +1,1 @@
+2026-08-25: Initial `npm run release 0.3.8 -- --dry-run` from a fresh clean clone refused before mutation because the current release script requires `--ticket CORE-103` in preparation mode. The corrected invocation is `npm run release 0.3.8 -- --ticket CORE-103 --dry-run`.

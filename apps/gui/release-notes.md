@@ -6,6 +6,23 @@ against shipping the previous release's notes. electron-builder reads this file
 from the app directory (`projectDir` is `apps/gui` when the packer is invoked
 there) and uses it as the GitHub release body.
 
+## 0.3.10
+
+### Draft releases are verified before they become public
+
+The release publisher now reads the numeric identity of its just-created GitHub
+draft and uses that identity for authenticated verification. This keeps the strict
+asset, digest, and updater-manifest checks in force while avoiding the
+tag lookup that cannot see an unpublished draft. Public release verification
+continues to use the public tag route.
+
+### Failed release attempts no longer clog active verification
+
+An irrecoverable or superseded verification failure can now be retired as an
+archived, explicit non-success after an operator records the reason and its
+successor decision. Its failed proof stays intact and it never becomes Done;
+retryable and inconclusive work still remains active in Verifying by default.
+
 ## 0.3.9
 
 ### Complete updater assets are published as one verified release

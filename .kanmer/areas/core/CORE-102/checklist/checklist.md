@@ -15,7 +15,7 @@
 - [x] Run `npm run test -w @kanmer/core`; record the full core file/test counts and exit code with the unchanged finite test bound.
 - [x] Run `npm run typecheck -w @kanmer/core`, `npm run build -w @kanmer/core`, and `git diff --check`; record each exit code.
 - [x] From a fresh normal GitHub-origin clone at the exact implementation head, run `npm ci --ignore-scripts` then `npm run verify`; preserve all output and exit codes.
-- [ ] Open a PR with the `Kanmer: CORE-102` footer, record the post-implementation report, and move only to Review for independent review; do not merge, publish, tag, write proof, or change CORE-101.
+- [x] Open a PR with the `Kanmer: CORE-102` footer, record the post-implementation report, and move only to Review for independent review; do not merge, publish, tag, write proof, or change CORE-101.
 
 ## Stop conditions
 
@@ -29,3 +29,4 @@
 - 2026-08-25: Ten bounded fresh focused invocations of the area-ID/folder test all passed (exit 0; test durations 61, 64, 66, 67, 69, 69, 72, 75, 88, and 155 ms). No timeout, retry, cache warm, or assertion change was used.
 - 2026-08-25: Full core suite passed (exit 0; 15 files, 310 tests). Core typecheck, core build, and `git diff --check` each passed (exit 0).
 - 2026-08-25: Fresh GitHub-origin clone `C:\Users\Alex\AppData\Local\Temp\kanmer-core102-verify-1787617531386` checked out `6bd74aaa900651e53378b96deb785721c841855b`; `npm ci --ignore-scripts` and `npm run verify` both passed (exit 0). The verify rail included 15 core files/310 tests, 49 GUI files/468 tests, 102 HTTP tests, 102 script tests, all workspaces typechecks, docs, MCP smokes, mcpb, skills, managed-block, and plugin synchronization.
+- 2026-08-25: PR [#254](https://github.com/collisionengineers/kanmer/pull/254) opened with the required `Kanmer: CORE-102` footer; post-implementation report records the exact head and evidence.

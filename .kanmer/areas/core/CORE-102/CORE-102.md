@@ -2,12 +2,13 @@
 id: CORE-102
 type: ticket
 title: Stabilize the area-based ticket-ID test under the release verification rail
-status: implementing
+status: review
 area: core
 assignee: codex-mcp-client
 profile: fix
 stageEntered:
   preparing: '2026-08-25T00:11:20.854Z'
+  review: '2026-08-25T00:32:42.821Z'
 taken_at: '2026-08-25T00:21:47.982Z'
 branch: core-102-stabilize-area-id-test
 worktree: .worktrees/core-102
@@ -25,9 +26,13 @@ blocks:
   - CORE-101
 refs:
   - docs/functional/frd/FRD-015-ticket-and-board-core.md
+commits:
+  - 6bd74aaa900651e53378b96deb785721c841855b
+prs:
+  - '254'
 archived: false
 created: '2026-08-25T00:11:16.436Z'
-updated: '2026-08-25T00:21:47.982Z'
+updated: '2026-08-25T00:32:42.821Z'
 ---
 
 ## Trigger

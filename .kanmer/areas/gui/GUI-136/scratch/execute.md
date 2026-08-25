@@ -1,0 +1,1 @@
+Independent review finding F-001 accepted and fixed in 49695fae: provider-running without a trusted loopback endpoint now remains Starting; regression test reproduces status-before-ready ordering. Rerun: manager 10/10 PASS, build PASS, remote-host 8/8 PASS, full typecheck PASS, diff check PASS.

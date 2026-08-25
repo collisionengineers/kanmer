@@ -38,3 +38,7 @@ Exact-merge packaged verification must still install the merged build and prove 
 ## Verification handoff
 
 Use the exact GitHub merge SHA in a detached worktree, run the commands above plus `npm run dist`, install that artifact, then exercise the configured Kanmer remote through the production renderer/preload/main path.
+
+## Review correction
+
+Independent review found that the real child emits a provider-running status before the final ready event. The initial GUI test emitted only the ready event, so the manager could still resolve Start early with a null endpoint. Commit `49695fae` changes provider-running without a trusted loopback endpoint to remain `starting`, and the regression test now emits the real two-event order and asserts that every observed `ready` status carries the canonical loopback endpoint. Focused manager tests, build, remote-host tests, full typecheck, and diff checks passed after the correction.

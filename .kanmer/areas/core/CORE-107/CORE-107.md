@@ -2,13 +2,14 @@
 id: CORE-107
 type: ticket
 title: Publish and validate v0.3.9 recovery release
-status: review
+status: verifying
 area: core
 assignee: codex
 profile: chore
 stageEntered:
   implementing: '2026-08-25T11:06:34.827Z'
   review: '2026-08-25T11:18:58.739Z'
+  verifying: '2026-08-25T11:43:25.232Z'
 taken_at: '2026-08-25T11:31:54.834Z'
 branch: release/v0.3.9
 worktree: .worktrees/core-107-release
@@ -33,7 +34,7 @@ prs:
   - '272'
 archived: false
 created: '2026-08-25T09:39:07.506Z'
-updated: '2026-08-25T11:38:59.292Z'
+updated: '2026-08-25T11:43:25.232Z'
 ---
 
 Publish the first clean successor after the immutable partial v0.3.8 release. Require protected-main merge, one authoritative Windows package generation, complete public assets, green tag workflow, strict external verification, installed update/reinstall validation, working Codex Connect and pasteable launcher probe guidance, packaged MCP identity v0.3.9, healthy Cloudflare remote access, and healthy OpenAI managed tunnel runtime. Preserve v0.3.8 as failed historical evidence.

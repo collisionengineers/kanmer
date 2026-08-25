@@ -11,6 +11,31 @@
 ; prefers this supported override. Discovery and termination both use the real
 ; ExecutablePath field and the same trailing-separator boundary.
 !macro customCheckAppRunning
+  ; `--updated` is ambiguous: electron-updater supplies it to the outer
+  ; installer, but electron-builder also supplies it to the nested old
+  ; uninstaller for every replacement. Mark only the outer updater process;
+  ; the nested uninstaller inherits that process-local environment value.
+  ; A direct interactive replacement therefore keeps its notice/cancel path.
+  StrCpy $R7 "interactive"
+  ${If} ${isUpdated}
+    ClearErrors
+    ${GetOptions} $CMDLINE "/KEEP_APP_DATA" $R6
+    ${If} ${Errors}
+      StrCpy $R7 "updater"
+      System::Call 'Kernel32::SetEnvironmentVariable(t "KANMER_UPDATER_PARENT", t "1") i.R9'
+      ${If} $R9 == 0
+        DetailPrint "Cannot mark the Kanmer updater process"
+        SetErrorLevel 21
+        Quit
+      ${EndIf}
+    ${Else}
+      ReadEnvStr $R6 "KANMER_UPDATER_PARENT"
+      ${If} $R6 == "1"
+        StrCpy $R7 "updater"
+      ${EndIf}
+    ${EndIf}
+  ${EndIf}
+
   ; Pass the path through the process environment, never through interpolated
   ; PowerShell source: assisted installs allow apostrophes and other shell
   ; metacharacters in $INSTDIR.
@@ -32,7 +57,7 @@
     Goto gui133_process_probe_failed
   ${EndIf}
 
-  ${If} ${isUpdated}
+  ${If} $R7 == "updater"
     Sleep 1000
     Goto gui133_recheck_after_grace
   ${EndIf}
@@ -164,10 +189,23 @@ gui106_runtime_v8_missing:
   Abort
 gui106_runtime_v8_present:
   CreateDirectory "$LOCALAPPDATA\Kanmer\mcp"
-  ; A version can be reinstalled. Give every completed runtime an immutable
-  ; generation id so a repair never overwrites a live same-version session.
+  ; A version can be reinstalled and Windows can reuse process ids. Allocate
+  ; the first absent generation name before copying anything; xcopy never
+  ; targets an existing generation, including one held by a live session.
   System::Call 'Kernel32::GetCurrentProcessId() i.R9'
   StrCpy $R8 "${VERSION}-$R9"
+  StrCpy $R7 0
+gui106_runtime_allocate:
+  IfFileExists "$LOCALAPPDATA\Kanmer\mcp\$R8" gui106_runtime_collision gui106_runtime_allocated
+gui106_runtime_collision:
+  IntOp $R7 $R7 + 1
+  ${If} $R7 >= 1000
+    DetailPrint "Could not allocate an immutable external Kanmer MCP runtime generation"
+    Abort
+  ${EndIf}
+  StrCpy $R8 "${VERSION}-$R9-$R7"
+  Goto gui106_runtime_allocate
+gui106_runtime_allocated:
   CreateDirectory "$LOCALAPPDATA\Kanmer\mcp\$R8"
   CreateDirectory "$LOCALAPPDATA\Kanmer\mcp\$R8\resources"
   CreateDirectory "$LOCALAPPDATA\Kanmer\mcp\$R8\resources\mcp"

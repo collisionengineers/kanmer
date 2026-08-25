@@ -28,9 +28,20 @@ test("process discovery is path-safe, bounded, and fail-closed before install", 
   assert.match(source, /SetErrorLevel 23\s+Quit/);
 });
 
+test("only a real updater parent bypasses the interactive replacement prompt", () => {
+  assert.match(source, /GetOptions[^\n]+\/KEEP_APP_DATA/);
+  assert.match(source, /KANMER_UPDATER_PARENT/);
+  assert.match(source, /\$R7 == "updater"[\s\S]+Sleep 1000/);
+  assert.match(source, /MessageBox MB_OKCANCEL[\s\S]+\/SD IDCANCEL/);
+  assert.doesNotMatch(source, /\$\{If\} \$\{isUpdated\}\s+Sleep 1000/);
+});
+
 test("same-version repair stages an immutable external runtime generation", () => {
   assert.match(source, /GetCurrentProcessId\(\) i\.R9/);
   assert.match(source, /StrCpy \$R8 "\$\{VERSION\}-\$R9"/);
+  assert.match(source, /IfFileExists "\$LOCALAPPDATA\\Kanmer\\mcp\\\$R8" gui106_runtime_collision/);
+  assert.match(source, /StrCpy \$R8 "\$\{VERSION\}-\$R9-\$R7"/);
+  assert.match(source, /\$R7 >= 1000/);
   assert.match(source, /mklink \/J[^\n]+\\mcp\\\$R8/);
   assert.match(source, /StrCmp \$R1 "\$R8" gui106_runtime_prune_next/);
 });

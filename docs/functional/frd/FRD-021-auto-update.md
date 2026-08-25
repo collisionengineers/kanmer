@@ -207,11 +207,15 @@ The supported `customCheckAppRunning` hook now replaces that defective
 predicate. Before the old uninstaller runs it discovers and stops processes by
 the real `ExecutablePath`, constrained to the exact case-insensitive install
 directory boundary, then re-enumerates. An unavailable/inconclusive probe or a
-remaining process refuses before file mutation. Static package checks pin the
-hook. External runtimes stage the complete installed Electron tree—not only the
+remaining process refuses before file mutation. Because Electron Builder adds
+`--updated` to every nested old-uninstaller invocation, updater inheritance is
+carried by a process-local marker: direct interactive replacement retains its
+notice/cancel path, while an actual updater and its nested uninstaller use the
+bounded unattended path. Static package checks pin the hook. External runtimes stage the complete installed Electron tree—not only the
 exe, ICU and V8 snapshot—into immutable `<version>-<installer-pid>` generations
-before `current` is switched, so every sibling DLL and resource pack is present
-and repairing the same version cannot overwrite a live prior generation.
+before `current` is switched. PID reuse is handled by allocating an absent
+numeric-suffixed name before copying anything, so every sibling DLL and resource
+pack is present and a repair cannot overwrite a live prior generation.
 Acceptance also requires a real version-distinguishable two-install
 cycle showing agreement among `Kanmer.exe`, app.asar, registry/uninstaller,
 external runtime, launcher probe, and GUI boot.

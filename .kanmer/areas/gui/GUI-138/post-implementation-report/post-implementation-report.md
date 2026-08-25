@@ -34,3 +34,7 @@ After independent review and merge, build and install the exact merge SHA, run t
 F-001 (major) — FIXED. Provider restart backoff now maps the manager to degraded rather than retaining ready/connected. The regression drives ready → restarting, asserts degraded manager state, and makes the doctor TUNNEL_PROCESS_READY result fail unless the snapshot is genuinely connected. Focused manager tests 12/12, GUI typecheck, full build, and git diff --check pass after the fix.
 
 Additional commit: b9aad276 fix(gui): degrade tunnel state during restart
+
+F-002 (major) — FIXED. The manager now retains the positive integer attempt emitted by its owned provider status and passes that exact attempt into the doctor snapshot. The restart regression emits attempt 2 and asserts the snapshot reports 2. Focused manager tests 12/12, GUI typecheck, and git diff --check pass.
+
+Additional commit: b992a34e fix(gui): preserve tunnel restart attempt

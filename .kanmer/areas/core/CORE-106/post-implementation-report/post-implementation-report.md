@@ -29,3 +29,6 @@ The original plan assigned a v0.3.9 dry run to CORE-106. That command requires v
 
 ## Scope confirmation
 No runtime updater, Codex launcher, remote-access runtime, dependency version, existing tag/release, or branch-protection behavior was modified. No secrets were written.
+
+## Review remediation
+Independent review of head `3ceafecd24c768d169b2a5cfaf803783f09eed13` recorded F-001 (major): the initial explicit flow made the release public/latest before upload and verification completed. Head `9def9c09c4e3b8c04d2880094782533fe48b82cc` fixes the finding by creating a draft, uploading and verifying the exact retained package while it remains hidden, and only then running `gh release edit ... --draft=false --latest`. The release-flow regression now asserts create-draft < upload < verify < publish. Focused release tests pass 60/60 and `git diff --check` exits 0. The fresh head must receive a new independent attestation and green required CI before merge.

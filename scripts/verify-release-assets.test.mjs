@@ -714,6 +714,35 @@ describe("fetchReleaseAssets — every network failure is 'the CHECK could not r
     assert.equal(assets.length, 3);
   });
 
+  test("uses the draft-capable release-by-id route when a numeric identity is supplied", async () => {
+    let seen;
+    const assets = await fetchReleaseAssets({
+      owner: "o",
+      repo: "r",
+      tag: "v1.2.3",
+      releaseId: 376364285,
+      token: "T",
+      fetchImpl: async (url, init) => {
+        seen = { url, init };
+        return ok({ assets: GOLDEN["0.3.2"] });
+      },
+    });
+    assert.equal(seen.url, "https://api.github.com/repos/o/r/releases/376364285");
+    assert.equal(seen.init.headers.Authorization, "Bearer T");
+    assert.equal(assets.length, 3);
+  });
+
+  test("rejects malformed draft release identities before any network call", async () => {
+    for (const releaseId of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+      let called = false;
+      await assert.rejects(
+        fetchReleaseAssets({ releaseId, fetchImpl: async () => { called = true; return ok({ assets: [] }); } }),
+        (error) => error.kind === "malformed" && /invalid GitHub release id/.test(error.message),
+      );
+      assert.equal(called, false);
+    }
+  });
+
   test("omits Authorization when there is no token", async () => {
     let seen;
     await fetchReleaseAssets({
@@ -730,6 +759,15 @@ describe("fetchReleaseAssets — every network failure is 'the CHECK could not r
     await assert.rejects(
       fetchReleaseAssets({ tag: "v9.9.9", fetchImpl: async () => bad(404) }),
       (e) => e.kind === "not-found" && /no release tagged v9\.9\.9/.test(e.message),
+    );
+  });
+
+  test("draft release-id 404 identifies the inaccessible id, not a missing tag", async () => {
+    await assert.rejects(
+      fetchReleaseAssets({ tag: "v9.9.9", releaseId: 376364285, fetchImpl: async () => bad(404) }),
+      (e) => e.kind === "not-found"
+        && /release id 376364285 was not accessible/.test(e.message)
+        && !/no release tagged/.test(e.message),
     );
   });
 

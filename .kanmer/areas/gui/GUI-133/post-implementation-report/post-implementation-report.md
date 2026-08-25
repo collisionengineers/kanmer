@@ -59,3 +59,12 @@ The re-review at `ee3d90e8e844dd8b93d631976a5cb15306b76d7e` fixed all four new f
 - F-006: install-time pruning was removed. Prior immutable generations remain available to live sessions; uninstall alone owns recursive cleanup.
 
 Post-fix evidence: focused tests 10/10; real NSIS `dist:check`; direct replacement exit 2 with unchanged install; updater replacement exit 0; installed SDK handshake from generation `0.3.7-1580`; core 310/310, GUI 469/469, MCP HTTP 102/102; the first script rail correctly failed one obsolete `FindFirst` assertion, which was updated to assert no eager prune; scripts then passed 110/110; all-workspace typecheck and diff check passed.
+
+## Final independent review fixes
+
+The review at `c6fb4ce59d937eb22cbc3cde9a237e5c22824e7f` fixed both remaining minor findings:
+
+- F-007: the installer records its own PID in a process-local environment value and excludes it from every discovery, stop, and recheck enumeration. A real installer copy launched from inside `$INSTDIR` followed the direct cancel path (exit 2), kept all four install-root processes alive, and was removed after the test.
+- F-008: FRD-012 R1d now governs the complete immutable `<version>-<installer-pid>[-<collision-index>]` tree and no install-time pruning.
+
+Focused tests 10/10, real NSIS `dist:check`, scripts 110/110, all-workspace typecheck, and diff check pass. All seven automated review threads received explicit fixed dispositions and were resolved.

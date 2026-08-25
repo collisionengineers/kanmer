@@ -65,6 +65,22 @@ describe("OpenAITunnelManager", () => {
     }
   });
 
+  it("reloads its incomplete registered default but rejects partial runnable profiles", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
+    const first = new OpenAITunnelManager(root);
+    await first.register("/repo", identity);
+
+    const restarted = new OpenAITunnelManager(root);
+    const registered = await restarted.viewFor("/repo", identity);
+    expect(registered.profile).toMatchObject({ profileName: "repo", tunnelId: "", generation: "", enabled: false, autoStart: false });
+
+    const settingsPath = join(root, "openai-tunnels.json");
+    const stored = JSON.parse(await readFile(settingsPath, "utf8")) as { profiles: Record<string, { tunnelId: string }> };
+    stored.profiles[identity.fingerprint]!.tunnelId = "partially-configured";
+    await writeFile(settingsPath, JSON.stringify(stored), "utf8");
+    await expect(readOpenAITunnelSettings(root)).rejects.toThrow("OPENAI_TUNNEL_SETTINGS_INVALID");
+  });
+
   it("validates loopback health and safe executable inputs", () => {
     expect(isLoopbackHealthAddress("127.0.0.1:8765")).toBe(true);
     expect(isLoopbackHealthAddress("[::1]:8765")).toBe(true);

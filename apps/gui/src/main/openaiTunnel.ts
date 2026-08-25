@@ -113,11 +113,13 @@ function defaultProfile(projectId: string): OpenAITunnelProfile {
 function normalizeProfile(value: unknown): OpenAITunnelProfile | null {
   if (!value || typeof value !== "object") return null;
   const p = value as Partial<OpenAITunnelProfile>;
-  if (!isSafeOpenAIProfileName(p.profileName) || !isSafeOpenAITunnelId(p.tunnelId) || !isSafeOpenAIExecutable(p.executable) || !isSafeOpenAICredentialEnv(p.credentialEnv) || !isLoopbackHealthAddress(p.healthAddress) || typeof p.enabled !== "boolean" || typeof p.autoStart !== "boolean" || typeof p.generation !== "string" || !/^[0-9a-f-]{36}$/i.test(p.generation)) return null;
+  const complete = isSafeOpenAITunnelId(p.tunnelId) && typeof p.generation === "string" && /^[0-9a-f-]{36}$/i.test(p.generation);
+  const productDefault = p.tunnelId === "" && p.generation === "" && p.enabled === false && p.autoStart === false;
+  if (!isSafeOpenAIProfileName(p.profileName) || (!complete && !productDefault) || !isSafeOpenAIExecutable(p.executable) || !isSafeOpenAICredentialEnv(p.credentialEnv) || !isLoopbackHealthAddress(p.healthAddress) || typeof p.enabled !== "boolean" || typeof p.autoStart !== "boolean") return null;
   return {
-    profileName: p.profileName, tunnelId: p.tunnelId, executable: p.executable,
+    profileName: p.profileName, tunnelId: p.tunnelId!, executable: p.executable,
     credentialEnv: p.credentialEnv, healthAddress: p.healthAddress, enabled: p.enabled,
-    autoStart: p.autoStart, generation: p.generation,
+    autoStart: p.autoStart, generation: p.generation!,
     lastSummary: typeof p.lastSummary === "string" ? sanitize(p.lastSummary) : null,
     lastError: typeof p.lastError === "string" ? sanitize(p.lastError) : null,
     lastDoctorAt: typeof p.lastDoctorAt === "string" ? p.lastDoctorAt.slice(0, 64) : null,

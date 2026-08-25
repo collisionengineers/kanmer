@@ -1,6 +1,6 @@
 {
   "name": "kanmer",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "private": true,
   "description": "MCP-driven Kanban / ticket / plan / research manager with an Electron GUI, sharing one .kanmer file store between AI agents and humans.",
   "workspaces": [

@@ -113,6 +113,10 @@ test("publisher packages once, then explicitly creates and uploads the release",
   assert.doesNotMatch(source, /gh release upload[^\n]*--clobber/);
   assert.match(source, /tag .* already exists locally or on origin/);
   assert.match(source, /GitHub Release .* already exists/);
+  assert.match(source, /process\.env\.GH_TOKEN = process\.env\[tokenVar\]/);
+  assert.match(source, /await fetchReleaseAssets\(\{/);
+  assert.match(source, /error\?\.kind !== "not-found"/);
+  assert.doesNotMatch(source, /error\?\.status !== 1/);
 
   const createAt = source.indexOf("gh release create");
   const uploadAt = source.indexOf("gh release upload");

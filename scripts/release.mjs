@@ -36,6 +36,7 @@ import {
 
 import {
   expectedAssets,
+  fetchReleaseAssets,
   formatProblems,
   verifyLocalArtifacts,
   verifyRelease,
@@ -277,6 +278,12 @@ if (publishMode && !tokenVar) {
     "set GH_TOKEN (or GITHUB_RELEASE_TOKEN / GITHUB_TOKEN) to a PAT with repo scope",
   );
 }
+if (publishMode) {
+  // gh(1) only consumes GH_TOKEN/GITHUB_TOKEN. Normalize the documented
+  // GITHUB_RELEASE_TOKEN here so every release command uses the same explicit
+  // credential as the REST verifier, never an unrelated cached gh identity.
+  process.env.GH_TOKEN = process.env[tokenVar];
+}
 
 // 4. Release notes that mention THIS version.
 if (!existsSync(notesPath)) {
@@ -437,16 +444,21 @@ if (capture(`git tag --list ${releaseTag(version)}`).length > 0 ||
   );
 }
 try {
-  execSync(`gh release view ${releaseTag(version)}`, { cwd: root, stdio: "ignore" });
+  await fetchReleaseAssets({
+    version,
+    owner: OWNER,
+    repo: REPO,
+    token: process.env[tokenVar],
+  });
   refuse(
     `GitHub Release ${releaseTag(version)} already exists`,
     "do not overwrite an existing public release; preserve it as evidence and publish a higher version",
   );
 } catch (error) {
   if (error instanceof Refusal) throw error;
-  if (error?.status !== 1) {
+  if (error?.kind !== "not-found") {
     refuse(
-      `could not establish whether GitHub Release ${releaseTag(version)} exists`,
+      `could not establish whether GitHub Release ${releaseTag(version)} exists (${error?.kind ?? "error"}): ${error?.message ?? error}`,
       "verify gh authentication and GitHub availability before retrying",
     );
   }

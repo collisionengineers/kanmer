@@ -19,7 +19,9 @@ const remote = createKanmerRemoteHost({
   },
 });
 try {
-  assert.deepEqual(await remote.start(), { endpoint: "https://kanmer.example.test/mcp" });
+  const ready = await remote.start();
+  assert.equal(ready.endpoint, "https://kanmer.example.test/mcp");
+  assert.equal(ready.localEndpoint, target.endpoint);
   const response = await fetch(target.endpoint, { headers: { authorization: `Bearer ${generated.token}` } });
   assert.equal(response.status, 400, "authenticated loopback host must answer before the tunnel becomes connected");
   process.stdout.write("remote smoke passed (fake provider, no public route)\n");

@@ -18,7 +18,10 @@ test("remote host starts bearer-protected HTTP before giving one loopback target
     tunnel: { start: async (received) => { target = received; return { exited, stop: async () => stop() }; } },
   });
   try {
-    assert.deepEqual(await remote.start(), { endpoint: "https://kanmer.example.test/mcp" });
+    const ready = await remote.start();
+    assert.equal(ready.endpoint, "https://kanmer.example.test/mcp");
+    assert.match(ready.localEndpoint, /^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
+    assert.equal(ready.localEndpoint, target.endpoint);
     assert.match(target.endpoint, /^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
     assert.equal(target.hostname, "kanmer.example.test");
     assert.match(target.projectFingerprint, /^kanmer-proj-v1:[0-9a-f]{64}$/);

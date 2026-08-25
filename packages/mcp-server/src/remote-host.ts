@@ -106,11 +106,12 @@ export class KanmerRemoteHost {
     })();
   }
 
-  async start(): Promise<{ readonly endpoint: string }> {
+  async start(): Promise<{ readonly endpoint: string; readonly localEndpoint: string }> {
     if (this.stopped) throw new Error("REMOTE_HOST_STOPPED");
     await this.supervisor.start();
     this.status = { ...this.status, endpoint: this.publicEndpoint }; this.emit();
-    return { endpoint: this.publicEndpoint };
+    if (!this.ready) throw new Error("REMOTE_LOCAL_ENDPOINT_MISSING");
+    return { endpoint: this.publicEndpoint, localEndpoint: this.ready.endpoint };
   }
   getStatus(): RemoteHostStatus { return { ...this.status }; }
 

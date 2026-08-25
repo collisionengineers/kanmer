@@ -63,7 +63,7 @@ try {
     }),
   });
   const ready = await remote.start();
-  process.stdout.write(`${JSON.stringify({ kind: "kanmer-mcp-remote-ready", version: 1, endpoint: ready.endpoint, authRequired: true, tokenId: verifier.tokenId, fingerprint: verifier.fingerprint, projectFingerprint: await projectFingerprint() })}\n`);
+  process.stdout.write(`${JSON.stringify({ kind: "kanmer-mcp-remote-ready", version: 1, endpoint: ready.localEndpoint, publicEndpoint: ready.endpoint, authRequired: true, tokenId: verifier.tokenId, fingerprint: verifier.fingerprint, projectFingerprint: await projectFingerprint() })}\n`);
   const stop = () => void remote.close().finally(async () => { await releaseOwner(); process.exit(0); });
   process.once("SIGINT", stop); process.once("SIGTERM", stop);
 } catch (error) {

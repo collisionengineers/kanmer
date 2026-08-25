@@ -2,7 +2,7 @@
 id: CORE-104
 type: ticket
 title: Stabilize Windows CI timeout for area validation
-status: verifying
+status: done
 area: core
 assignee: codex-ci
 profile: fix
@@ -10,6 +10,7 @@ stageEntered:
   preparing: '2026-08-25T05:47:22.898Z'
   review: '2026-08-25T05:49:45.270Z'
   verifying: '2026-08-25T05:55:58.809Z'
+  done: '2026-08-25T05:58:48.327Z'
 taken_at: '2026-08-25T05:48:01.864Z'
 branch: core-104-stabilize-ci-timeout
 worktree: .worktrees/core-104
@@ -19,12 +20,16 @@ labels:
   - test
 links: []
 commits:
-  - 7bcc3a92
+  - e958ff2c182373a5461856e60d1a563f37d32b3d
 prs:
   - '264'
 archived: false
 created: '2026-08-25T05:47:06.633Z'
-updated: '2026-08-25T05:55:58.809Z'
+updated: '2026-08-25T05:59:11.341Z'
 ---
 
 The unchanged area-validation store test exceeded the five-second default on two consecutive hosted Windows runs, blocking unrelated reviewed PRs while passing locally. Give this filesystem-heavy integration test an explicit bounded timeout appropriate to hosted Windows without weakening assertions or changing production behavior. Verify with repeated focused runs and the full hosted rail.
+
+## Outcome
+
+PR #264 shipped a test-local 15-second timeout with assertions and production behavior unchanged. Exact-merge and hosted verification passed.

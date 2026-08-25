@@ -38,3 +38,6 @@ The second independent review identified F-002 and F-003. Head `ff0f6033` normal
 
 ## Third review remediation
 Review caught that the typed release lookup had been passed an unused `version` property rather than its required `tag`. Head `05083f4075d0588ceec633725e40774d0badd5a5` now passes `tag: releaseTag(version)` and removes the misleading extra property. The source regression pins that exact argument. Focused release tests pass 60/60 and `git diff --check` exits 0. Fresh hosted CI and independent review remain required.
+
+## Fourth review remediation
+Review findings F-005 through F-007 are addressed on head `5b3b61af85359c3a4f2c9d708856d1b3d1920964`. Missing or non-SHA256 GitHub digests are now hard errors in local-to-draft verification. Remote-coherent CLI maps a not-yet-created release or draft browser-download 404 to exit 1 so tag CI retries, while authentication, rate-limit, malformed, network, and other API failures remain exit 2/inconclusive. Public asset names now come from `releaseAssetNames(version)`, the single helper shared by publisher and remote verification. Regression tests cover the canonical set, hard digest failures, draft visibility races, and exit classification. Focused tests pass 62/62; the complete script rail passes 113/113; `git diff --check` exits 0. Fresh hosted CI and independent review remain required.

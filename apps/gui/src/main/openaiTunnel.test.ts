@@ -73,6 +73,11 @@ describe("OpenAITunnelManager", () => {
     const restarted = new OpenAITunnelManager(root);
     const registered = await restarted.viewFor("/repo", identity);
     expect(registered.profile).toMatchObject({ profileName: "repo", tunnelId: "", generation: "", enabled: false, autoStart: false });
+    await expect(restarted.doctor("/repo", identity, { boardRoot: identity.boardRoot, repoRoot: identity.repoRoot })).rejects.toThrow("OPENAI_PROFILE_INCOMPLETE");
+    await expect(restarted.initialize("/repo", identity, { boardRoot: identity.boardRoot, repoRoot: identity.repoRoot })).rejects.toThrow("OPENAI_PROFILE_INCOMPLETE");
+
+    const afterOperations = new OpenAITunnelManager(root);
+    expect((await afterOperations.viewFor("/repo", identity)).profile).toMatchObject({ tunnelId: "", generation: "" });
 
     const settingsPath = join(root, "openai-tunnels.json");
     const stored = JSON.parse(await readFile(settingsPath, "utf8")) as { profiles: Record<string, { tunnelId: string; executable: string; profileName: string }> };

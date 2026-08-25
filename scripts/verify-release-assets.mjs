@@ -409,7 +409,9 @@ export async function fetchReleaseAssets({
     const err = new Error(`${url} returned ${res.status}`);
     if (res.status === 404) {
       err.kind = "not-found";
-      err.message = `no release tagged ${tag} at ${owner}/${repo} (${url} returned 404)`;
+      err.message = releaseId === undefined
+        ? `no release tagged ${tag} at ${owner}/${repo} (${url} returned 404)`
+        : `release id ${releaseId} was not accessible at ${owner}/${repo} (${url} returned 404)`;
     } else if (res.status === 403 || res.status === 429) {
       err.kind = "rate-limit";
       err.message = `GitHub rate-limited or refused the request (${res.status}) — the CHECK could not run`;

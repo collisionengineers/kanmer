@@ -762,6 +762,15 @@ describe("fetchReleaseAssets — every network failure is 'the CHECK could not r
     );
   });
 
+  test("draft release-id 404 identifies the inaccessible id, not a missing tag", async () => {
+    await assert.rejects(
+      fetchReleaseAssets({ tag: "v9.9.9", releaseId: 376364285, fetchImpl: async () => bad(404) }),
+      (e) => e.kind === "not-found"
+        && /release id 376364285 was not accessible/.test(e.message)
+        && !/no release tagged/.test(e.message),
+    );
+  });
+
   test("403 and 429 -> kind 'rate-limit', and the message says the CHECK could not run", async () => {
     for (const status of [403, 429]) {
       await assert.rejects(

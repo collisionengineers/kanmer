@@ -264,7 +264,11 @@ gui106_runtime_skills_ready:
   IfFileExists "$LOCALAPPDATA\Kanmer\mcp\current\kanmer-mcp.exe" gui106_runtime_ready gui106_runtime_activation_failed
 gui106_runtime_activation_failed:
   DetailPrint "The external Kanmer MCP runtime was not activated"
-  Abort
+  ; The old current junction has already been replaced on this path, but the
+  ; validation failed. Remove the invalid publication before cleaning `$R8`;
+  ; the install-root launcher fallback remains complete.
+  RMDir "$LOCALAPPDATA\Kanmer\mcp\current"
+  Goto gui106_runtime_stage_failed
 gui106_runtime_ready:
 
   ; Prior immutable generations may still serve live MCP sessions. Installation

@@ -70,4 +70,5 @@ test("an unactivated partial generation is removed on every staging failure", ()
   assert.match(source, /gui106_runtime_stage_failed:[\s\S]+RMDir "\$LOCALAPPDATA\\Kanmer\\mcp\\current\.next"[\s\S]+RMDir \/r "\$LOCALAPPDATA\\Kanmer\\mcp\\\$R8"[\s\S]+Abort/);
   assert.match(source, /gui106_runtime_copy_failed:[\s\S]+Goto gui106_runtime_stage_failed/);
   assert.match(source, /Could not activate the external Kanmer MCP runtime[\s\S]+Goto gui106_runtime_stage_failed/);
+  assert.match(source, /gui106_runtime_activation_failed:[\s\S]+RMDir "\$LOCALAPPDATA\\Kanmer\\mcp\\current"[\s\S]+Goto gui106_runtime_stage_failed/);
 });

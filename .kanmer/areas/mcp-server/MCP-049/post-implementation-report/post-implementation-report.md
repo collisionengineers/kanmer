@@ -22,7 +22,8 @@ Updated `docs/manual/connect.md` to use the stable installed launcher, require b
 - Manual freshness passed (22 chapters). The first all-workspace typecheck used a stale inherited linked dependency tree and failed on missing current core exports; after `npm ci` and `npm run build:core`, all-workspace typecheck passed. `git diff --check` passed.
 - The first exact installed restart public doctors returned intermediary/502 failures because a bounded manual Cloudflare probe launched during diagnosis had remained as a second connector to a deliberately dead origin. That exact owned process was identified by command line and creation time and terminated; after provider propagation the public route returned 401 with a bearer challenge and packaged public doctor passed 26/26. No unrelated process or remote resource was changed.
 - The OpenAI GUI settings file initially failed closed as `OPENAI_TUNNEL_SETTINGS_INVALID`; [[GUI-139]] records the full source/review/install resolution.
-- After review corrections: managed-block verification passed 31/31, manual freshness passed 22 chapters, script tests passed 111/111, all-workspace typecheck passed, and `git diff --check` passed.
+- After review corrections: managed-block verification passed 31/31, manual freshness passed 22 chapters, script tests passed 111/111, GUI-139 focused recovery tests passed 14/14, all-workspace typecheck passed, and `git diff --check` passed.
+- The first rebased hosted rail failed at `plugin:check` because changing the canonical setup body requires regenerating its packaged runtime copy. `npm run plugin:build` updated only `plugins/kanmer/scripts/agents-block-body.mjs`; `npm run plugin:check` then passed with 37 tools, matching bundle bytes, 12 parsed skills, and an isolated 37-tool handshake. The failed hosted attempt remains part of the record.
 
 ## Cleanup
 

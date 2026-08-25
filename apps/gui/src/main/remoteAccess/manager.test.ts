@@ -163,7 +163,7 @@ describe("RemoteAccessManager", () => {
           kind: "kanmer-mcp-remote-ready", version: 1,
           endpoint: "http://127.0.0.1:43123/mcp",
           publicEndpoint: "https://mcp.example.com/mcp",
-          authRequired: true, tokenId: "sha256:0123456789ab",
+          authRequired: true, tokenId: "remote-0123456789ab", fingerprint: "sha256:0123456789ab",
           projectFingerprint: identity.fingerprint,
         })}\n`), 0);
       });
@@ -247,7 +247,7 @@ describe("RemoteAccessManager", () => {
           kind: "kanmer-mcp-remote-ready", version: 1,
           endpoint: "http://127.0.0.1:43125/mcp",
           publicEndpoint: "https://mcp.example.com/mcp",
-          authRequired: true, tokenId: "sha256:0123456789ab",
+          authRequired: true, tokenId: "remote-0123456789ab", fingerprint: "sha256:0123456789ab",
           projectFingerprint: identity.fingerprint,
         })}\n`));
       } else {
@@ -269,7 +269,8 @@ describe("RemoteAccessManager", () => {
     await manager.createSecret("/repo", identity, false, owner, configured.status.configGeneration);
     const startable = await manager.viewFor("/repo", identity);
     const ready = await manager.start("/repo", identity, { root: identity.boardRoot, repoRoot: identity.repoRoot }, startable.status.configGeneration);
-    runtimeStdout!.write(`${JSON.stringify({ kind: "kanmer-mcp-remote-status", version: 1, status: { local: "ready", provider: "restarting", endpoint: ready.endpoint, attempt: 2 } })}\n`);
+    const providerChangedAt = "2026-08-25T05:00:00.000Z";
+    runtimeStdout!.write(`${JSON.stringify({ kind: "kanmer-mcp-remote-status", version: 1, status: { local: "ready", provider: "restarting", endpoint: ready.endpoint, attempt: 2, changedAt: providerChangedAt } })}\n`);
     const restarting = await manager.viewFor("/repo", identity);
     expect(restarting.status.state).toBe("degraded");
     const result = await manager.doctor("/repo", identity, { root: identity.boardRoot, repoRoot: identity.repoRoot }, ready.configGeneration, ready.runtimeGeneration);
@@ -279,7 +280,7 @@ describe("RemoteAccessManager", () => {
       state: "degraded",
       provider: "cloudflared",
       attempt: 2,
-      changedAt: expect.any(String),
+      changedAt: providerChangedAt,
       publicEndpoint: "https://mcp.example.com/mcp",
       projectFingerprint: identity.fingerprint,
       authGeneration: "sha256:0123456789ab",

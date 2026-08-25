@@ -55,6 +55,7 @@ interface RemoteRecord {
   startAbort?: AbortController;
   outputBuffer: string;
   providerAttempt: number;
+  providerChangedAt: string;
   configGeneration: string | null;
   runtimeGeneration: string | null;
 }
@@ -324,6 +325,7 @@ export class RemoteAccessManager {
       }),
       outputBuffer: "",
       providerAttempt: 0,
+      providerChangedAt: new Date().toISOString(),
       configGeneration,
       runtimeGeneration: null,
     };
@@ -697,6 +699,7 @@ export class RemoteAccessManager {
     }
     record.runtimeGeneration = runtimeGeneration;
     record.providerAttempt = 1;
+    record.providerChangedAt = new Date().toISOString();
     record.startAbort = new AbortController();
     record.outputBuffer = "";
     this.emit(record, "starting", { lastError: null, diagnostics: [], runtimeGeneration });
@@ -778,11 +781,12 @@ export class RemoteAccessManager {
     const lines = parts.filter(Boolean);
     for (const line of lines) {
       try {
-        const event = JSON.parse(line) as { kind?: string; endpoint?: string; tokenId?: string; fingerprint?: string; projectFingerprint?: string; status?: { state?: string; local?: string; provider?: string; endpoint?: string; reason?: string; attempt?: number } };
+        const event = JSON.parse(line) as { kind?: string; endpoint?: string; tokenId?: string; fingerprint?: string; projectFingerprint?: string; status?: { state?: string; local?: string; provider?: string; endpoint?: string; reason?: string; attempt?: number; changedAt?: string; authGeneration?: string } };
         if (event.kind === "kanmer-mcp-remote-ready" && event.endpoint && isCanonicalLocalEndpoint(event.endpoint) && event.projectFingerprint === record.identity.fingerprint) {
-          this.emit(record, "ready", { endpoint: event.endpoint, tokenId: event.tokenId ?? null, generation: event.tokenId ?? null, runtimeGeneration: record.runtimeGeneration, public: "stale" });
+          this.emit(record, "ready", { endpoint: event.endpoint, tokenId: event.tokenId ?? null, generation: event.fingerprint ?? null, runtimeGeneration: record.runtimeGeneration, public: "stale" });
         } else if (event.kind === "kanmer-mcp-remote-status" && event.status) {
           if (Number.isInteger(event.status.attempt) && event.status.attempt! > 0) record.providerAttempt = event.status.attempt!;
+          if (event.status.changedAt && !Number.isNaN(Date.parse(event.status.changedAt))) record.providerChangedAt = event.status.changedAt;
           const endpoint = event.status.endpoint && isCanonicalLocalEndpoint(event.status.endpoint) ? event.status.endpoint : record.status.endpoint;
           const state = event.status.provider === "degraded" || event.status.provider === "restarting" ? "degraded" : event.status.provider === "failed" ? "error" : event.status.provider === "running" ? (endpoint ? "ready" : "starting") : event.status.local === "starting" ? "starting" : record.status.state;
           this.emit(record, state, { endpoint, diagnostics: event.status.reason ? [event.status.reason] : [] });
@@ -905,7 +909,7 @@ export class RemoteAccessManager {
             state: record.status.tunnel === "connected" ? "connected" : record.status.tunnel === "degraded" ? "degraded" : "failed",
             provider: "cloudflared",
             attempt: record.providerAttempt,
-            changedAt: record.status.updatedAt,
+            changedAt: record.providerChangedAt,
             publicEndpoint: `https://${config.hostname}/mcp`,
             projectFingerprint: identity.fingerprint,
             ...(record.status.generation ? { authGeneration: record.status.generation } : {}),

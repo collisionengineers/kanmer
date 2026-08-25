@@ -15,7 +15,10 @@ test("remote host starts bearer-protected HTTP before giving one loopback target
     verifyLocal,
     onStatus: (status) => statuses.push(status),
     hostname: "kanmer.example.test",
-    tunnel: { start: async (received) => { target = received; return { exited, stop: async () => stop() }; } },
+    tunnel: {
+      getStatus: () => ({ state: "connected", provider: "cloudflared", attempt: 7, changedAt: "2026-08-25T05:00:00.000Z", authGeneration: "sha256:0123456789ab" }),
+      start: async (received) => { target = received; return { exited, stop: async () => stop() }; },
+    },
   });
   try {
     const ready = await remote.start();
@@ -26,7 +29,7 @@ test("remote host starts bearer-protected HTTP before giving one loopback target
     assert.equal(target.hostname, "kanmer.example.test");
     assert.match(target.projectFingerprint, /^kanmer-proj-v1:[0-9a-f]{64}$/);
     assert.equal(target.authGeneration, "sha256:0123456789ab");
-    assert.deepEqual(remote.getStatus(), { local: "ready", provider: "running", publicVerification: "unknown", endpoint: "https://kanmer.example.test/mcp", attempt: 1 });
+    assert.deepEqual(remote.getStatus(), { local: "ready", provider: "running", publicVerification: "unknown", endpoint: "https://kanmer.example.test/mcp", attempt: 7, changedAt: "2026-08-25T05:00:00.000Z", authGeneration: "sha256:0123456789ab" });
     assert.deepEqual(statuses.at(-1), remote.getStatus());
     assert.equal(JSON.stringify(statuses).includes('"principal"'), false);
   } finally { await remote.close(); }

@@ -285,7 +285,7 @@ from the GUI's `init/doctor/run` controls; do not claim one manages the other.
 17. **Recorded commits must be reachable.** Ticket SHAs must exist on the merge target.
 18. **Stubs are not done.** Do not present TODOs, placeholders, or mocks as implementation.
 19. **Tests prove the claim.** Never weaken or delete an assertion to pass; a failing test stops and is reported.
-20. **Verify with exit codes.** Run stated commands and record outputs; INCONCLUSIVE is not PASS, and a later pass does not erase a failure.
+20. **Verify with exit codes.** Run stated commands and record outputs; INCONCLUSIVE is not PASS, and a later pass does not erase a failure. Done requires PASS; an explicitly disposed terminal non-PASS stays Verifying, is archived, and is released.
 21. **No speculative CI or tests.** Delete a gate that gates nothing.
 
 **Conduct**

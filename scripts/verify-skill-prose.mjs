@@ -455,5 +455,34 @@ check(
   "scratch/review.md is the current review flow",
 );
 
+console.log("\n=== 16. terminal verification failures have a truthful retirement path ===");
+const verifySkill = read(join(skillsDir, "kanmer-verify", "SKILL.md"));
+const closeoutSkill = read(join(skillsDir, "kanmer-closeout", "SKILL.md"));
+const retirementContract = [
+  [
+    "non-PASS verification is retryable by default",
+    /non-PASS result is retryable by default[\s\S]*Leave the\s+ticket active in Verifying/i.test(verifySkill),
+  ],
+  [
+    "terminal retirement requires explicit operator disposition and successor decision",
+    /operator may explicitly declare it irrecoverable or superseded[\s\S]*reason and either a successor ticket or the\s+operator's explicit no-successor decision/i.test(verifySkill),
+  ],
+  [
+    "terminal non-success is archived without becoming Done",
+    /set `archived: true` without changing the ticket's Verifying status[\s\S]*Never move a non-PASS ticket\s+to Done/i.test(verifySkill),
+  ],
+  [
+    "closeout accepts and preserves the archived Verifying shape",
+    /retired non-success[\s\S]*status Verifying, archived[\s\S]*Closeout never decides that a failure is terminal/i.test(closeoutSkill),
+  ],
+  [
+    "auto waits for disposition then routes retirement without calling it cleared",
+    /auto never infers that[\s\S]*terminal[\s\S]*resume through `kanmer-verify`'s terminal-retirement[\s\S]*never cleared or Done/i.test(autoSkill),
+  ],
+];
+for (const [name, ok] of retirementContract) {
+  check(name, ok, ok ? "contract present" : "terminal-retirement contract missing");
+}
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

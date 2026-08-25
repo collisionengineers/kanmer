@@ -25,9 +25,11 @@ worktree remain untouched.
    observed result, and summary; preserve failures and inconclusive attempts.
 6. Replace `proof/proof.md` as one version-aware proof record. Only a truthful
    top-level `PASS` may proceed to the Done gate.
-7. Re-read `get_doc_gates`, move only `verifying` → `done` for PASS, and hand
-   off to closeout. FAIL, INCONCLUSIVE, NOT_APPLICABLE, or an unavailable
-   external check stays in Verifying.
+7. Classify a non-PASS result as retryable by default and leave it in
+   Verifying. A failure that is irrecoverable or superseded may instead use
+   the explicit terminal-retirement path below, but only with the operator's
+   disposition. PASS moves only `verifying` → `done`. Both terminal paths hand
+   off to closeout.
 
 ## Confirm the merge before touching Git
 
@@ -120,14 +122,39 @@ check failed or is unavailable, write the truthful record and remain in
 Verifying. Do not turn the structural existence gate into a claim that the
 shipped result passed.
 
-After the proof has been read back and the Done move succeeds, remove only the
-disposable detached verification worktree with the exact recorded path. Keep
-the implementation worktree and branch for closeout, and report cleanup and
-any failure to the next skill. No verification step merges, rewrites, or pulls
-main.
+## Terminal retirement after failed verification
+
+A non-PASS result is retryable by default. Do not infer terminal failure from
+age, a second ticket, a failed command, or an agent's preference. Leave the
+ticket active in Verifying while a rerun or remediation can still make its own
+acceptance criteria true.
+
+When the result cannot be repaired in place — for example an immutable release
+attempt — the operator may explicitly declare it irrecoverable or superseded.
+That disposition must name a reason and either a successor ticket or the
+operator's explicit no-successor decision. Then, in this order:
+
+1. preserve the final non-PASS `proof/proof.md` and read it back;
+2. link the successor when one exists;
+3. add an `## Outcome` note that names the operator, reason, proof result and
+   successor/no-successor disposition;
+4. set `archived: true` without changing the ticket's Verifying status; and
+5. hand off to `kanmer-closeout` for traceability, Git cleanup and release.
+
+Retirement is a terminal **non-success** outcome. Never move a non-PASS ticket
+to Done, delete it, erase failed attempts, or archive it automatically. Archive
+keeps the evidence recoverable while removing work that has an explicit
+terminal disposition from the active board.
+
+After the proof has been read back and either the Done move or explicit archive
+succeeds, remove only the disposable detached verification worktree with the
+exact recorded path. Keep the implementation worktree and branch for closeout,
+and report cleanup and any failure to the next skill. No verification step
+merges, rewrites, or pulls main.
 
 ---
 
-**Hand off to `kanmer-closeout`** after the exact merged-SHA proof and the
-Verifying → Done move. Closeout owns final traceability, release, and cleanup;
-this skill never self-reviews, merges, or mutates the board worktree.
+**Hand off to `kanmer-closeout`** after either the exact merged-SHA PASS and
+Verifying → Done move, or an operator-disposed non-PASS retirement that remains
+Verifying and is archived. Closeout owns final traceability, release, and
+cleanup; this skill never self-reviews, merges, or mutates the board worktree.

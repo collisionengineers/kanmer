@@ -20,6 +20,13 @@ Every Kanmer board has the same six stages, in the same order, non-customizable:
 | **Verifying** | **Post-merge**: the shipped result is validated on merged `main`; proof is written here. "Merged but unconfirmed" is a real state worth a column. | kanmer-verify |
 | **Done** | Verified. Closeout (records, cleanup) happens after entry. | kanmer-closeout |
 
+An explicitly disposed terminal verification failure does not create a seventh
+stage and does not enter Done. It retains Verifying as the last truthful stage,
+keeps its non-PASS proof, and is archived as a reversible non-success retirement.
+Retryable or merely old failures remain active in Verifying; retirement requires
+an operator-supplied irrecoverable/superseded reason and a successor ticket or
+explicit no-successor decision.
+
 ## Behaviour (absorbed + changed)
 
 - B1. Stage ids/names/order/colours are constants in `@kanmer/core`; `statuses:` no longer exists in `board.yml` (ADR-0002).

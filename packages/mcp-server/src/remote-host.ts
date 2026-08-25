@@ -51,9 +51,11 @@ export class KanmerRemoteHost {
       start: async () => {
         this.status = { ...this.status, local: "starting" }; this.emit();
         this.ready ??= await this.http.start();
+        if (this.stopped) throw new Error("REMOTE_HOST_STOPPED");
         if (!this.ready.authRequired || !/^kanmer-proj-v1:[a-f0-9]{64}$/.test(this.ready.projectFingerprint)) throw new Error("TUNNEL_LOCAL_READY_INVALID");
         this.status = { ...this.status, local: "ready" }; this.emit();
         await options.verifyLocal(this.ready);
+        if (this.stopped) throw new Error("REMOTE_HOST_STOPPED");
         const authGeneration = options.authGeneration?.();
         if (authGeneration && !/^sha256:[a-f0-9]{12}$/.test(authGeneration)) throw new Error("TUNNEL_AUTH_GENERATION_INVALID");
         const process = await options.tunnel.start({

@@ -1,4 +1,5 @@
-// Copy the standalone MCP bundle into the plugin. Run after `npm run build`.
+// Copy the standalone MCP bundle and setup runtime into the plugin. Run after
+// `npm run build`.
 import { copyFileSync, existsSync, mkdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,6 +7,7 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const src = join(root, "packages/mcp-server/dist/standalone/kanmer-mcp.cjs");
 const dest = join(root, "plugins/kanmer/mcp/kanmer-mcp.cjs");
+const setupScripts = ["agents-block.mjs", "agents-block-body.mjs"];
 
 if (!existsSync(src)) {
   console.error("Standalone bundle missing — run `npm run build` first.");
@@ -15,3 +17,12 @@ mkdirSync(dirname(dest), { recursive: true });
 copyFileSync(src, dest);
 const kb = Math.round(statSync(dest).size / 1024);
 console.log(`plugin: copied kanmer-mcp.cjs (${kb} KB) → ${dest}`);
+
+const pluginScriptsDir = join(root, "plugins", "kanmer", "scripts");
+mkdirSync(pluginScriptsDir, { recursive: true });
+for (const name of setupScripts) {
+  const scriptSrc = join(root, "scripts", name);
+  const scriptDest = join(pluginScriptsDir, name);
+  copyFileSync(scriptSrc, scriptDest);
+  console.log(`plugin: copied ${name} → ${scriptDest}`);
+}

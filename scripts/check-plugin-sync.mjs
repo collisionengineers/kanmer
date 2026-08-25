@@ -9,6 +9,8 @@
 //      every store method, so behaviour can drift arbitrarily far from source
 //      without a single tool name changing. Names alone cannot see that.
 //   3. every SKILL.md's YAML frontmatter parses under a strict parser (SKILL-018).
+//   4. the setup runtime shipped beside the skills is byte-identical to its
+//      canonical source, so the setup skill's documented command can run.
 //
 // (2) means plugin:check now requires a prior `npm run build` — consistent with
 // `npm run plugin:build` already running it, and with AGENTS.md §10 pairing the
@@ -116,6 +118,19 @@ const sha = (p) => createHash("sha256").update(readFileSync(p)).digest("hex");
 if (sha(bundlePath) !== sha(distPath)) {
   console.error("Committed plugin bundle differs from a fresh build — run `npm run plugin:build`.");
   process.exit(1);
+}
+
+for (const name of ["agents-block.mjs", "agents-block-body.mjs"]) {
+  const canonical = join(root, "scripts", name);
+  const packaged = join(root, "plugins", "kanmer", "scripts", name);
+  if (!existsSync(packaged)) {
+    console.error(`Packaged setup runtime is missing ${packaged} — run \`npm run plugin:build\`.`);
+    process.exit(1);
+  }
+  if (sha(canonical) !== sha(packaged)) {
+    console.error(`Packaged setup runtime ${name} has drifted — run \`npm run plugin:build\`.`);
+    process.exit(1);
+  }
 }
 
 // The byte comparison proves source and committed bundle agree. This separate

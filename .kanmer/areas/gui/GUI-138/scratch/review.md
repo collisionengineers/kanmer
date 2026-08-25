@@ -1,33 +1,43 @@
 ---
 kind: review-attestation
 pr: "263"
-head_sha: "9705b3175ad802fd2f9eacaaaca857d685f65694"
+head_sha: "b9aad2764564b487dfd8119bc933fd833c85d262"
 verdict: needs-changes
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "eb2abff500efd115"
-ticket_updated: "2026-08-25T05:25:13.236Z"
+ticket_updated: "2026-08-25T05:31:25.952Z"
 findings:
   - id: F-001
     severity: major
-    summary: "A restarting tunnel can be attested as connected."
+    summary: "A restarting tunnel could be attested as connected."
+    disposition: fixed
+  - id: F-002
+    severity: minor
+    summary: "The tunnel snapshot hard-codes attempt 1 instead of preserving the child attempt."
     disposition: open
 ---
 
-# Independent review — GUI-138
+# Independent re-review — GUI-138
 
 ## Scope and evidence
 
-Reviewed PR #263 at exact head `9705b3175ad802fd2f9eacaaaca857d685f65694` against the complete GUI-138 packet, HZN-007 context, and FRD-025. The two-file scope, use of a doctor-child-only environment value, configured hostname/fingerprint, and non-secret opaque generation are otherwise aligned with the packet. Local reviewer checks passed: `npm exec vitest run -- src/main/remoteAccess/manager.test.ts` (12/12), `npm run typecheck -w @kanmer/gui`, `npm run build -w @kanmer/gui`, and the PR diff check. Hosted `verify` and `kanmer-gate` on run 32812758769 passed, but the gate predates this review record.
+Re-reviewed PR #263 at exact head `b9aad2764564b487dfd8119bc933fd833c85d262` against the complete packet, HZN-007 context, and FRD-025. The diff remains restricted to `manager.ts` and `manager.test.ts`; it has no provider, DNS, endpoint, secret, dependency, or doctor-semantics change. Reviewer checks on the exact PR content passed: focused manager tests 12/12, GUI typecheck, GUI build, and diff check.
 
-## Findings
+## Finding dispositions
 
-### F-001 — major — OPEN: restarting tunnel is reported as connected
+### F-001 — major — FIXED
 
-`readLine` maps a child `provider: "restarting"` event to the existing record state. If the record was previously ready, its tunnel status stays `connected`; the new doctor snapshot then serializes `state: "connected"` and `attempt: 1` even though the supervisor is in restart backoff and no provider child is ready. Public doctor can therefore pass `TUNNEL_PROCESS_READY` and run dependent public checks on fabricated readiness. This violates the ticket’s truthful manager-owned readiness objective and FRD-025 tunnel lifecycle/doctor requirements.
+The new `provider: "restarting" → "degraded"` mapping ensures the manager-derived snapshot is non-connected during restart backoff. The regression drives ready → restarting and makes the mock doctor fail `TUNNEL_PROCESS_READY` unless the snapshot actually says connected. This resolves the prior false-readiness safety defect.
 
-Fix the manager’s handling of a restarting provider status so it becomes a non-connected owned state before snapshot creation, and add a regression that proves the restart window cannot pass tunnel readiness. Preserve the fail-closed behavior; do not solve this by weakening doctor checks or inventing provider status.
+### F-002 — minor — OPEN: restart attempt is still fabricated
 
-## Disposition and residual risk
+The corrected regression deliberately emits child status `attempt: 2`, but `readLine` still ignores that value and snapshot serialization still emits `attempt: 1`. Thus the snapshot does not preserve its claimed manager-owned lifecycle attempt after a restart. This does not reintroduce the false-connected doctor pass, but it makes the diagnostic lifecycle metadata untruthful and leaves the original review thread’s explicit attempt requirement only partially addressed.
 
-F-001 is open; no merge is authorized for this head. GitHub has no other review threads or comments requiring a disposition. Post-merge packaged/public doctor verification remains separate work and is not claimed here.
+Persist/forward the manager-owned attempt from remote status events and assert the snapshot contains `2` in this regression. Do not weaken the test or remove the attempt field.
+
+## Hosted state and merge decision
+
+Required hosted `kanmer-gate` is green. Required hosted `verify` run 32813167087 is red: an unrelated core test, `KanmerStore > validates area only when the board defines areas; empty area always legal`, timed out at Vitest’s 5-second limit (309/310 passed). This failure is preserved and is not attributed to the GUI diff, but a required red check cannot support a merge. The previous GitHub P2 thread remains unresolved; its connected-state portion is fixed, but it must be dispositioned/resolved after the attempt correction.
+
+No merge is authorized for this head. Packaged/public doctor and MCP evidence remain post-merge verification work and are not claimed here.

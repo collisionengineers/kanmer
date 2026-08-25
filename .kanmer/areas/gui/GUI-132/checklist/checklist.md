@@ -14,3 +14,12 @@
 - [x] Open a PR containing `Kanmer: GUI-132`.
 - [x] Write and read back the post-implementation report.
 - [x] Move GUI-132 only from Implementing to Review and stop for independent review.
+
+## Closeout
+
+- [x] Confirm PR #256 is merged.
+- [x] Confirm final exact-merge PASS proof and reachable merge SHA.
+- [x] Record commit and PR traceability.
+- [x] Remove the exact ticket worktree.
+- [x] Remove the exact merged local/remote ticket branch and prune refs.
+- [x] Release the ticket assignment last.

@@ -16,3 +16,14 @@
 - [x] Run npm run verify and record exit code.
 - [x] Assign the v0.3.9 CORE-107 release dry run to CORE-107 after its release notes/version preparation; do not absorb that release scope here.
 - [x] Write the post-implementation report and open the CORE-106 PR.
+
+## Closeout — CORE-106
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/core-106`
+- [ ] `git branch -D core-106-single-build-release` (squash-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: release`

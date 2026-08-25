@@ -60,3 +60,9 @@ attempts:
 PASS. The exact squash-merge commit was verified independently of mutable `main`. The merged release flow packages and validates before tag creation, publishes one canonical four-asset set through a pinned repository and explicit credential, keeps the release hidden until upload/digest/manifest coherence passes, and lets tag CI retry only the expected draft-visibility race. All nine review findings are represented by merged regression coverage.
 
 This proof validates CORE-106's release mechanism. It does not claim that v0.3.9 has been published or installed; those external release and installed-product checks belong to CORE-107.
+
+## Merge traceability
+
+- PR: https://github.com/collisionengineers/kanmer/pull/270
+- Merged: 2026-08-25T10:53:20Z
+- GitHub merge SHA: `093f4b74882d56cac448a5b6513b5b0726401c89`

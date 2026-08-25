@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-25T12:29:09.430Z'
   verifying: '2026-08-25T12:34:17.024Z'
   done: '2026-08-25T12:41:26.845Z'
-taken_at: '2026-08-25T12:13:04.150Z'
-branch: skill-035-terminal-verification-retirement
-worktree: .worktrees/skill-035
 labels:
   - workflow
   - verification
@@ -24,7 +21,7 @@ refs:
   - docs/functional/frd/FRD-015-ticket-and-board-core.md
 archived: false
 created: '2026-08-25T11:57:55.187Z'
-updated: '2026-08-25T12:41:26.845Z'
+updated: '2026-08-25T12:42:03.402Z'
 ---
 
 ## Purpose

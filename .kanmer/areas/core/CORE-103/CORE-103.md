@@ -11,9 +11,6 @@ stageEntered:
   implementing: '2026-08-25T01:10:19.884Z'
   review: '2026-08-25T09:02:34.978Z'
   verifying: '2026-08-25T09:13:42.067Z'
-taken_at: '2026-08-25T08:17:47.041Z'
-branch: release/v0.3.8
-worktree: .worktrees/core-103
 labels:
   - release
   - v0.3.8
@@ -26,15 +23,16 @@ links:
   - CORE-042
   - MCP-028
   - CORE-102
+  - CORE-107
 refs:
   - docs/functional/frd/FRD-021-auto-update.md
 commits:
   - 8c8fdb868aed3677b3603b9ba360f304139aee6f
 prs:
   - '269'
-archived: false
+archived: true
 created: '2026-08-25T01:04:13.262Z'
-updated: '2026-08-25T09:35:13.614Z'
+updated: '2026-08-25T12:42:34.231Z'
 ---
 
 ## Purpose

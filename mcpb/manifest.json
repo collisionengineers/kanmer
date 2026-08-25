@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "kanmer",
   "display_name": "Kanmer",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "description": "Headless Kanmer board access for Claude Desktop and other MCPB hosts.",
   "author": {
     "name": "Collision Engineers"

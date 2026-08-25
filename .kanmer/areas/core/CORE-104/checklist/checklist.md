@@ -9,5 +9,5 @@
 
 - [x] Confirm PR #264 merged and proof is final.
 - [x] Record merge traceability and outcome.
-- [ ] Remove ticket worktree and branches.
-- [ ] Release ticket assignment.
+- [x] Remove ticket worktree and branches.
+- [x] Release ticket assignment.

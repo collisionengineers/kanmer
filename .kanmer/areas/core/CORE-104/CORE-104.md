@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-25T05:49:45.270Z'
   verifying: '2026-08-25T05:55:58.809Z'
   done: '2026-08-25T05:58:48.327Z'
-taken_at: '2026-08-25T05:48:01.864Z'
-branch: core-104-stabilize-ci-timeout
-worktree: .worktrees/core-104
 labels:
   - ci
   - windows
@@ -25,7 +22,7 @@ prs:
   - '264'
 archived: false
 created: '2026-08-25T05:47:06.633Z'
-updated: '2026-08-25T05:59:11.341Z'
+updated: '2026-08-25T05:59:52.120Z'
 ---
 
 The unchanged area-validation store test exceeded the five-second default on two consecutive hosted Windows runs, blocking unrelated reviewed PRs while passing locally. Give this filesystem-heavy integration test an explicit bounded timeout appropriate to hosted Windows without weakening assertions or changing production behavior. Verify with repeated focused runs and the full hosted rail.

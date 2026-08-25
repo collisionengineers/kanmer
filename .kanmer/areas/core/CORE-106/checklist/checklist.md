@@ -15,4 +15,4 @@
 - [x] Run npm run test:scripts and record exit code.
 - [x] Run npm run verify and record exit code.
 - [x] Assign the v0.3.9 CORE-107 release dry run to CORE-107 after its release notes/version preparation; do not absorb that release scope here.
-- [ ] Write the post-implementation report and open the CORE-106 PR.
+- [x] Write the post-implementation report and open the CORE-106 PR.

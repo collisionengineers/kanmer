@@ -2,7 +2,9 @@
 
 | File | Change |
 |---|---|
-| `apps/gui/src/main/remoteAccess/manager.ts` | Serialize an allowlisted owned tunnel snapshot into the doctor child environment. |
-| `apps/gui/src/main/remoteAccess/manager.test.ts` | Capture doctor spawn environment and prove the snapshot matches the running record. |
-
-Context: `packages/mcp-server/src/doctor-cli.ts`, `packages/mcp-server/src/doctor/index.ts`, FRD-025. Out of scope: provider/DNS mutation, endpoint/secret changes, direct Cloudflare API calls.
+| `apps/gui/src/main/remoteAccess/manager.ts` | Serialize owned readiness and retain provider attempt. |
+| `apps/gui/src/main/remoteAccess/manager.test.ts` | Prove restart is degraded and doctor receives attempt 2. |
+| `packages/mcp-server/src/tunnels/supervisor.ts` | Emit the real bounded lifecycle attempt. |
+| `packages/mcp-server/src/tunnels/supervisor.test.mjs` | Prove attempt sequence across restart. |
+| `packages/mcp-server/src/remote-host.ts` | Carry attempt through RemoteHostStatus to remote-cli JSON. |
+| `packages/mcp-server/src/remote-host.test.mjs` | Assert production status shape. |

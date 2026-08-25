@@ -38,3 +38,5 @@ Additional commit: b9aad276 fix(gui): degrade tunnel state during restart
 F-002 (major) — FIXED. The manager now retains the positive integer attempt emitted by its owned provider status and passes that exact attempt into the doctor snapshot. The restart regression emits attempt 2 and asserts the snapshot reports 2. Focused manager tests 12/12, GUI typecheck, and git diff --check pass.
 
 Additional commit: b992a34e fix(gui): preserve tunnel restart attempt
+
+F-002 follow-up — FIXED at the production boundary. TunnelSupervisor now emits its bounded real attempt; RemoteHostStatus and remote-cli carry it; GUI retains it. Supervisor/host tests 15/15, manager tests 12/12, all-workspace typecheck, and diff check pass. Commit a8ff5a3a.

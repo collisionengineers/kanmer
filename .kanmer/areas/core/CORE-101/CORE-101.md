@@ -10,9 +10,6 @@ stageEntered:
   preparing: '2026-08-24T23:29:48.670Z'
   review: '2026-08-24T23:54:27.689Z'
   verifying: '2026-08-24T23:59:34.591Z'
-taken_at: '2026-08-24T23:45:16.776Z'
-branch: core-101-v037-release-hold
-worktree: .worktrees/core-101
 labels:
   - release
   - verification
@@ -22,16 +19,14 @@ groups:
 links:
   - CORE-099
   - CORE-100
-blocks:
-  - CORE-036
-  - CORE-042
+blocks: []
 refs:
   - docs/functional/frd/FRD-021-auto-update.md
 prs:
   - '253'
-archived: false
+archived: true
 created: '2026-08-24T23:29:36.859Z'
-updated: '2026-08-24T23:59:34.591Z'
+updated: '2026-08-25T01:02:42.886Z'
 ---
 
 ## Why
@@ -57,3 +52,5 @@ The immutable v0.3.4 and v0.3.5 failed-publication tags and the public-but-incom
 Record sanitized release-script output, the exact tag target, GitHub Release and asset verification, latest.yml contract, and terminal tag-workflow result. The Outcome is completed only at closeout.
 
 ## Outcome
+
+Historical disposition: **FAIL — superseded release attempt**. Its original release/tag evidence remains immutable; active successor work is the governed v0.3.8 release record.

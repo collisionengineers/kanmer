@@ -10,9 +10,6 @@ stageEntered:
   preparing: '2026-08-24T20:34:50.700Z'
   review: '2026-08-24T21:08:03.323Z'
   verifying: '2026-08-24T21:14:59.588Z'
-taken_at: '2026-08-24T20:37:08.531Z'
-branch: core-098-v035-release-hold
-worktree: .worktrees/core-098
 labels:
   - release
   - verification
@@ -22,18 +19,16 @@ groups:
 links:
   - CORE-096
   - CORE-097
-blocks:
-  - CORE-036
-  - CORE-042
+blocks: []
 refs:
   - docs/functional/frd/FRD-021-auto-update.md
 commits:
   - 74051a072a199ac8d87c8250fa28be20acb52940
 prs:
   - '247'
-archived: false
+archived: true
 created: '2026-08-24T20:33:03.952Z'
-updated: '2026-08-24T21:14:59.588Z'
+updated: '2026-08-25T01:02:42.850Z'
 ---
 
 ## Why
@@ -60,3 +55,5 @@ The v0.3.4 tag was pushed during a failed publication attempt and has no GitHub 
 Record the release-script output, published asset verification, tag-workflow result, and any explicit downstream-ticket evidence. The Outcome section is completed only at closeout.
 
 ## Outcome
+
+Historical disposition: **FAIL — superseded release attempt**. Its original release/tag evidence remains immutable; active successor work is the governed v0.3.8 release record.

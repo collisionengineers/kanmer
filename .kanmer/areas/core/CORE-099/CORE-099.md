@@ -11,9 +11,6 @@ stageEntered:
   preparing: '2026-08-24T22:05:45.609Z'
   review: '2026-08-24T22:27:11.240Z'
   verifying: '2026-08-24T22:32:09.445Z'
-taken_at: '2026-08-24T22:19:58.156Z'
-branch: core-099-v036-release-hold
-worktree: .worktrees/core-099
 labels:
   - release
   - verification
@@ -24,18 +21,16 @@ links:
   - CORE-096
   - CORE-098
   - GUI-131
-blocks:
-  - CORE-036
-  - CORE-042
+blocks: []
 refs:
   - docs/functional/frd/FRD-021-auto-update.md
 commits:
   - d658585848f8c8545b300ecb557a5d23a8c30ed9
 prs:
   - '250'
-archived: false
+archived: true
 created: '2026-08-24T22:04:47.134Z'
-updated: '2026-08-24T22:32:09.445Z'
+updated: '2026-08-25T01:02:42.868Z'
 ---
 
 ## Why
@@ -63,3 +58,5 @@ The immutable v0.3.4 and v0.3.5 tags each record a failed local publication atte
 Record the release-script output, public asset verification, tag-workflow result, and any explicit downstream-ticket evidence. The Outcome section is completed only at closeout.
 
 ## Outcome
+
+Historical disposition: **FAIL — superseded release attempt**. Its original release/tag evidence remains immutable; active successor work is the governed v0.3.8 release record.

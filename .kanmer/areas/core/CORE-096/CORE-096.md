@@ -10,25 +10,20 @@ stageEntered:
   preparing: '2026-08-24T16:50:52.591Z'
   review: '2026-08-24T18:27:19.603Z'
   verifying: '2026-08-24T18:34:07.423Z'
-taken_at: '2026-08-24T16:54:50.921Z'
-branch: release/v0.3.4
-worktree: .worktrees/core-096
 labels:
   - release
   - verification
 groups:
   - HZN-007
 links: []
-blocks:
-  - CORE-036
-  - CORE-042
+blocks: []
 commits:
   - 03eb9f49e46a3d6961054d7e1eb880bc01790f30
 prs:
   - '244'
-archived: false
+archived: true
 created: '2026-08-24T16:50:29.723Z'
-updated: '2026-08-24T18:34:07.423Z'
+updated: '2026-08-25T01:02:42.833Z'
 ---
 
 ## What
@@ -45,3 +40,5 @@ Prepare the v0.3.4 release through the repository's protected-main release workf
 - evidence is appended to CORE-036 and CORE-042 without promoting either until their distinct acceptance criteria pass.
 
 ## Outcome
+
+Historical disposition: **FAIL — superseded release attempt**. Its original release/tag evidence remains immutable; active successor work is the governed v0.3.8 release record.

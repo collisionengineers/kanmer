@@ -41,3 +41,10 @@
 - [ ] `git branch -d core-102-stabilize-area-id-test` (`-D` if squash/rebase-merged)
 - [ ] `git fetch --prune` + `git worktree prune`
 - [ ] `take_ticket action: "release"`
+
+## Closeout completion
+
+- [x] Removed `.worktrees/core-102` after confirming PR #254 is MERGED and the worktree was clean.
+- [x] Deleted squash-merged branch `core-102-stabilize-area-id-test` with `git branch -D`.
+- [x] Ran `git fetch --prune origin` and `git worktree prune`.
+- [x] Released the ticket assignment.

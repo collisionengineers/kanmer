@@ -1,0 +1,1 @@
+v0.3.8 cannot provide positive closeout evidence. Tag points to 8c8fdb868aed3677b3603b9ba360f304139aee6f, but publisher exit 1 left only the installer public; MCPB, blockmap, and latest.yml are absent. Tag workflow 32831367125 failed asset verification 10/10 and observed a cross-build installer digest mismatch. Ticket remains Verifying; no manual repair or false Done move.

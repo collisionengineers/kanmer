@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "270"
-head_sha: "ff0f6033e1db279fd95356f64e5f09ee9e6b2cb6"
-verdict: needs-changes
+head_sha: "05083f4075d0588ceec633725e40774d0badd5a5"
+verdict: pass
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "d495e81f9d336ec4"
-ticket_updated: "2026-08-25T10:25:35.921Z"
+ticket_updated: "2026-08-25T10:27:13.254Z"
 findings:
   - id: F-001
     severity: major
@@ -22,39 +22,44 @@ findings:
     disposition: fixed
   - id: F-004
     severity: major
-    summary: "The new typed release-existence probe passes version instead of the helper's required tag argument, so it requests /releases/tags/undefined and always infers absence."
-    disposition: open
+    summary: "The typed release-existence probe passed version instead of the helper's required tag argument, so it requested /releases/tags/undefined and always inferred absence."
+    disposition: fixed
 ---
 # Independent review — CORE-106 / PR #270
 
 ## Review scope
 
-Freshly reviewed PR #270 at `ff0f6033e1db279fd95356f64e5f09ee9e6b2cb6` against the complete CORE-106 packet, HZN-007 control context, and FRD-021. This is a release-only, two-file remediation on top of the existing bounded publisher/verifier work. The reviewer is independent of the author role.
+Reviewed PR #270 at `05083f4075d0588ceec633725e40774d0badd5a5` against the complete CORE-106 packet, HZN-007 control context, and FRD-021. The reviewer is independent of the author role. The nine-file release-only diff remains within the ticket's one-package publisher and public-coherence verification scope; it does not change runtime updater behaviour, dependencies, credentials, historic assets/tags, or branch policy.
 
-## Evidence
+## Acceptance evidence
 
-- The focused release suite was independently re-run: `node --test scripts/verify-release-assets.test.mjs scripts/release-flow.test.mjs scripts/release-publish.test.mjs` — PASS, 60/60.
-- `git diff --check 8c8fdb868aed3677b3603b9ba360f304139aee6f...ff0f6033e1db279fd95356f64e5f09ee9e6b2cb6` — PASS.
-- Fresh required CI was still in progress at this review point; it cannot clear the source finding below.
+- `node --test scripts/verify-release-assets.test.mjs scripts/release-flow.test.mjs scripts/release-publish.test.mjs` — PASS, 60/60 on the reviewed head.
+- `git diff --check 8c8fdb868aed3677b3603b9ba360f304139aee6f...05083f4075d0588ceec633725e40774d0badd5a5` — PASS.
+- Hosted exact-head run `32837275332`: `verify` PASS in 4m29s and initial `kanmer-gate` PASS in 1m11s. The gate was necessarily taken before this attestation and reported the old SHA; sync and rerun are required before merge.
+- Final GitHub gather: PR open and mergeable, no regular comments, and all three review threads resolved.
 
 ## Findings and dispositions
 
 ### F-001 — major — fixed
 
-The publisher creates a hidden draft, uploads and verifies the retained package, then makes it public/latest. The ordering regression remains present.
+The explicit publisher creates a draft, uploads the exact retained package, verifies it while hidden, and only then makes it public/latest. The regression pins `create < upload < verify < publish`.
 
 ### F-002 — major — fixed
 
-Publish mode now normalizes the chosen documented credential into `process.env.GH_TOKEN` before any `gh` command while retaining that credential for REST verification. This avoids a cached unrelated identity and does not log the secret.
+Publish mode normalizes the selected supported credential into `GH_TOKEN` before each `gh` command and uses the same selected token for REST verification, without logging the token.
 
 ### F-003 — major — fixed
 
-The ambiguous `gh release view` exit-code branch has been replaced by typed REST failure handling: only `kind: not-found` is eligible to proceed; auth, rate-limit, malformed, server, and other failures refuse before the tag mutation.
+The pre-tag release check now uses typed REST failure handling rather than ambiguous `gh release view` exit statuses. Only an explicit `not-found` result proceeds; auth, rate-limit, malformed, and other errors refuse before tag mutation.
 
-### F-004 — major — open — use the helper's required tag argument
+### F-004 — major — fixed
 
-`fetchReleaseAssets` destructures `tag` and constructs `/releases/tags/${tag}`. The new preflight calls it with `{ version, owner, repo, token }`, not `tag: releaseTag(version)`. The request is therefore made to `/releases/tags/undefined`; its 404 is treated as real release absence. This defeats the claimed typed release lookup and leaves the new test as a static source assertion rather than proof of the actual tag request. Pass `tag: releaseTag(version)` and add an argument/URL-level regression, then rerun review and CI.
+The typed lookup now passes `tag: releaseTag(version)`, and the source regression pins that exact request argument. It queries the actual release tag rather than `undefined`.
+
+## Residual boundary
+
+This source review does not publish, tag, or prove a real v0.3.9 release. Those external release and installed-product claims remain CORE-107 work.
 
 ## Decision
 
-NEEDS CHANGES. Keep CORE-106 in Review; do not merge, publish, retag, or move the ticket.
+PASS, conditional on a synced, post-attestation exact-head merge-gate run.

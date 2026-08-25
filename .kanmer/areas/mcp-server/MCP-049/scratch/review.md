@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "266"
-head_sha: "45b7c649adf332bbb59d0e4aa92d6ba09889403f"
-verdict: needs-changes
+head_sha: "71e5f0a2123a8ed182fca1d12a9fc60d4523296c"
+verdict: pass
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "14a3e94c0e563ecc"
-ticket_updated: "2026-08-25T07:43:21.770Z"
+ticket_updated: "2026-08-25T07:55:01.831Z"
 findings:
   - id: F-001
     severity: major
@@ -34,17 +34,19 @@ findings:
     disposition: fixed
   - id: F-007
     severity: major
-    summary: "Generic wrapper hard-codes the default board branch without telling custom-branch operators to substitute their saved value"
-    disposition: open
+    summary: "Generic wrapper hard-coded the default board branch without custom-branch substitution guidance"
+    disposition: fixed
 ---
 # Independent review — MCP-049 / PR #266
 
-## Superseded pass
+## Verdict and scope
 
-The earlier PASS is superseded by a final GitHub-thread gather. Exact head `45b7c649adf332bbb59d0e4aa92d6ba09889403f` remains correctly rebased, scoped to its six intended files, green in hosted verify (4m10s) and kanmer-gate (1m17s), and locally passes manual freshness, focused manual test, scripts, typecheck, build, plugin synchronization, and diff check. F-001 through F-006 remain fixed exactly as documented in the prior attestation. The two original review threads are resolved.
+PASS for exact head `71e5f0a2123a8ed182fca1d12a9fc60d4523296c`. This independent review covers the complete MCP-049 packet, HZN-007 context, FRD-025, report, current main, exact diff, checks, reviews, comments, and every review thread.
 
-## Blocking finding
+The correction replaces the generic wrapper's forced default with `<saved-board-branch>` and explicitly directs operators to copy the exact **Settings → Git** value, while noting `kanmer-board` only as its default. The regenerated in-app manual is current. This resolves F-007 without exposing a project-specific branch or any secret.
 
-- **F-007 — major, open:** A newly opened unresolved GitHub P1 thread correctly identifies that the generic PowerShell wrapper exports `KANMER_BOARD_BRANCH = "kanmer-board"`, while the immediately following substitution instruction tells the operator to replace paths, profile, alias, environment-variable name, and tunnel id but omits the board branch. For a repository whose saved branch is custom, copying these directions forces the wrong expected branch and causes the documented `get_status` mismatch/stop behavior. Replace the hard-coded example with a clearly generic saved-branch placeholder or explicitly direct operators to substitute their repository's saved `KANMER_BOARD_BRANCH` value, regenerate the manual mirror, and request a fresh exact-head review. Keep the default available only as an explicit fallback, not as an undocumented forced value.
+## Findings and evidence
 
-Do not merge while this major thread/finding is open. This record makes no post-merge, release, or proof claim.
+F-001 through F-006 remain fixed: canonical/installed/packaged AGENTS conventions agree; the wrapper carries both required environment values; GUI lifecycle is accurately separated; bounded read-only native status is healthy; GUI-139 safeguards are preserved from base; and the packaged setup-runtime artifact is regenerated and passes plugin synchronization. F-007 is fixed as above.
+
+Independent local evidence: manual freshness 22 chapters; focused manual test 11/11; plugin synchronization (37 matching tools, matching bundle bytes, 12 frontmatters, isolated 37-tool handshake); and diff check passed. Exact-head hosted run 32823918570 passed: verify 4m02s and kanmer-gate 56s. All three GitHub review threads are either resolved or outdated; the F-007 thread may now be resolved. No open blocker or residual scope issue remains.

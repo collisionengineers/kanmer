@@ -1,38 +1,41 @@
 ---
 kind: review-attestation
 pr: "270"
-head_sha: "3ceafecd24c768d169b2a5cfaf803783f09eed13"
-verdict: needs-changes
+head_sha: "9def9c09c4e3b8c04d2880094782533fe48b82cc"
+verdict: pass
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "d495e81f9d336ec4"
-ticket_updated: "2026-08-25T10:13:09.817Z"
+ticket_updated: "2026-08-25T10:17:02.589Z"
 findings:
   - id: F-001
     severity: major
-    summary: "The publisher makes the Release latest before the explicit asset upload, allowing an upload failure to expose a partial updater release."
-    disposition: open
+    summary: "The publisher made the Release latest before the explicit asset upload, allowing an upload failure to expose a partial updater release."
+    disposition: fixed
 ---
 # Independent review — CORE-106 / PR #270
 
 ## Review scope
 
-Reviewed PR #270 at `3ceafecd24c768d169b2a5cfaf803783f09eed13` against CORE-106's full packet, HZN-007 context, and FRD-021. The change is within the expected release-system files, retains the no-publish implementation scope, and the focused script rail passed 60/60. At this review point, the initial `kanmer-gate` is green and hosted `verify` is still running; neither result clears the finding below.
+Freshly reviewed PR #270 at `9def9c09c4e3b8c04d2880094782533fe48b82cc` against the complete CORE-106 packet, HZN-007 control context, and FRD-021. The reviewer is independent of the author role. The nine-file release-only diff stays within the plan: it replaces concurrent Electron Builder publication with one retained `--publish never` Windows package, explicit bounded GitHub upload, local-to-remote integrity verification, and an independent public-set verifier for tag CI. It makes no runtime updater, credential, dependency, prior-release, tag, or branch-policy change.
 
-## Findings
+## Acceptance evidence
 
-### F-001 — major — public partial release is exposed before upload succeeds
+- Exact local focused rail: `node --test scripts/verify-release-assets.test.mjs scripts/release-flow.test.mjs scripts/release-publish.test.mjs` — PASS, 60/60.
+- Exact local diff hygiene: `git diff --check 8c8fdb868aed3677b3603b9ba360f304139aee6f...9def9c09c4e3b8c04d2880094782533fe48b82cc` — PASS.
+- Hosted PR run `32836402760` at the reviewed head: `verify` PASS in 4m10s; its pre-attestation `kanmer-gate` job also completed successfully in 54s. The gate record correctly notes that the prior review file was bound to the superseded `3ceaf…` head; this new attestation must be synced and the gate rerun before merge.
+- GitHub final review gather at this head: PR is open and mergeable; no reviews, comments, or review threads are present.
 
-`scripts/release.mjs` pushes the tag, then calls `gh release create v<version> --latest` (lines 476–479) before the subsequent `gh release upload` command (line 480). If upload fails or only partially succeeds, GitHub's `/releases/latest` immediately exposes the incomplete release to updater clients. The later local-to-remote check refuses, but it runs only after the exposure; this recreates the user-facing failure CORE-106 is meant to prevent.
+## Findings and dispositions
 
-The publisher must stage the release as non-visible (for example, create it as a draft), upload and verify the exact single package generation, and only then make it latest/non-draft. On failure it may remain preserved as failed evidence, but it must not be served as the latest update. Add deterministic ordering/failure regression coverage for that visibility boundary.
+### F-001 — major — fixed
 
-## Other evidence
+The prior review found that the publisher made the release public/latest before its explicit uploads and verification. The corrected flow now creates the release as a draft, uploads the exact retained installer/blockmap/MCPB/manifest set, validates that draft against the same package, and only then executes `gh release edit … --draft=false --latest`. The regression pins the required order `create < upload < verify < publish`. A failed upload or byte check therefore preserves a hidden failed draft rather than offering an incomplete updater release to clients.
 
-- `node --test scripts/verify-release-assets.test.mjs scripts/release-flow.test.mjs scripts/release-publish.test.mjs`: PASS, 60/60.
-- The remote-coherent verifier correctly avoids comparing independently signed builds. It requires each named core asset exactly once and verifies manifest/installer bytes when those prerequisite checks pass.
-- No GitHub reviews, comments, or review threads were present in the initial gather.
+## Residual boundary
 
-## Disposition
+This review approves the source change and its tests only. CORE-107 owns the future real v0.3.9 publication and installed-product evidence; this ticket neither publishes nor retags any release.
 
-NEEDS CHANGES. Keep CORE-106 in Review; do not merge or publish. A corrected PR head, updated report/packet as needed, terminal exact-head checks, and a new independent attestation are required.
+## Decision
+
+PASS, conditional on a post-attestation board sync and exact-head required-check rerun that proves the merge gate sees this attestation.

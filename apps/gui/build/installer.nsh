@@ -49,7 +49,7 @@
   ; Exit 0 = clear, 10 = matching process(es), 20 = inconclusive/error. A
   ; missing or policy-blocked PowerShell follows the same fail-closed probe
   ; path; a separate availability probe would only duplicate this execution.
-  nsExec::Exec `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; $$matches = @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) }); if ($$matches.Count -eq 0) { exit 0 } else { exit 10 } } catch { exit 20 }"`
+  nsExec::Exec /TIMEOUT=10000 `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; $$all = @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop); $$unknown = @($$all | Where-Object { -not $$_.ExecutablePath -and ($$_.Name -ieq 'Kanmer.exe' -or $$_.Name -ieq 'kanmer-mcp.exe') }); if ($$unknown.Count -gt 0) { exit 20 }; $$matches = @($$all | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) }); if ($$matches.Count -eq 0) { exit 0 } else { exit 10 } } catch { exit 20 }"`
   Pop $R8
   ${If} $R8 == 0
     Goto gui133_processes_clear
@@ -66,7 +66,7 @@
   Quit
 
 gui133_recheck_after_grace:
-  nsExec::Exec `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; if (@(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) }).Count -eq 0) { exit 0 } else { exit 10 } } catch { exit 20 }"`
+  nsExec::Exec /TIMEOUT=10000 `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; $$all = @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop); if (@($$all | Where-Object { -not $$_.ExecutablePath -and ($$_.Name -ieq 'Kanmer.exe' -or $$_.Name -ieq 'kanmer-mcp.exe') }).Count -gt 0) { exit 20 }; if (@($$all | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) }).Count -eq 0) { exit 0 } else { exit 10 } } catch { exit 20 }"`
   Pop $R8
   ${If} $R8 == 0
     Goto gui133_processes_clear
@@ -80,13 +80,13 @@ gui133_stop_processes:
   ; A target may exit between enumeration and Stop-Process. That result is not
   ; discarded: the mandatory re-enumeration below decides whether clearance
   ; actually converged, without misclassifying a normal exit as probe failure.
-  nsExec::Exec `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $$_.ProcessId -ErrorAction SilentlyContinue }; exit 0 } catch { exit 20 }"`
+  nsExec::Exec /TIMEOUT=10000 `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; $$all = @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop); if (@($$all | Where-Object { -not $$_.ExecutablePath -and ($$_.Name -ieq 'Kanmer.exe' -or $$_.Name -ieq 'kanmer-mcp.exe') }).Count -gt 0) { exit 20 }; $$all | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $$_.ProcessId -ErrorAction SilentlyContinue }; exit 0 } catch { exit 20 }"`
   Pop $R8
   ${If} $R8 != 0
     Goto gui133_process_probe_failed
   ${EndIf}
   Sleep 500
-  nsExec::Exec `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; if (@(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) }).Count -eq 0) { exit 0 } else { exit 10 } } catch { exit 20 }"`
+  nsExec::Exec /TIMEOUT=10000 `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; $$all = @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop); if (@($$all | Where-Object { -not $$_.ExecutablePath -and ($$_.Name -ieq 'Kanmer.exe' -or $$_.Name -ieq 'kanmer-mcp.exe') }).Count -gt 0) { exit 20 }; if (@($$all | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) }).Count -eq 0) { exit 0 } else { exit 10 } } catch { exit 20 }"`
   Pop $R8
   ${If} $R8 == 0
     Goto gui133_processes_clear
@@ -94,13 +94,13 @@ gui133_stop_processes:
     Goto gui133_process_probe_failed
   ${EndIf}
 
-  nsExec::Exec `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force -ErrorAction SilentlyContinue }; exit 0 } catch { exit 20 }"`
+  nsExec::Exec /TIMEOUT=10000 `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; $$all = @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop); if (@($$all | Where-Object { -not $$_.ExecutablePath -and ($$_.Name -ieq 'Kanmer.exe' -or $$_.Name -ieq 'kanmer-mcp.exe') }).Count -gt 0) { exit 20 }; $$all | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force -ErrorAction SilentlyContinue }; exit 0 } catch { exit 20 }"`
   Pop $R8
   ${If} $R8 != 0
     Goto gui133_process_probe_failed
   ${EndIf}
   Sleep 500
-  nsExec::Exec `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; if (@(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) }).Count -eq 0) { exit 0 } else { exit 10 } } catch { exit 20 }"`
+  nsExec::Exec /TIMEOUT=10000 `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; $$all = @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop); if (@($$all | Where-Object { -not $$_.ExecutablePath -and ($$_.Name -ieq 'Kanmer.exe' -or $$_.Name -ieq 'kanmer-mcp.exe') }).Count -gt 0) { exit 20 }; if (@($$all | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) }).Count -eq 0) { exit 0 } else { exit 10 } } catch { exit 20 }"`
   Pop $R8
   ${If} $R8 == 0
     Goto gui133_processes_clear
@@ -149,19 +149,22 @@ gui106_skills_present:
   ; that are meant to survive the update. Compare case-insensitively with a
   ; trailing separator so prefix lookalikes such as \Kanmer\mcp-old do not
   ; match. This is deliberately before any external staging.
-  StrCpy $R0 "$LOCALAPPDATA\Kanmer\mcp\"
-  StrCpy $R1 "$INSTDIR\"
-  StrLen $R2 "$R0"
-  StrCpy $R3 "$R1" $R2
-  System::Call 'Kernel32::lstrcmpi(t rR0, t rR3) i .rR4'
-  ${If} $R4 == 0
-    Goto gui106_overlap_rejected
+  System::Call 'Kernel32::SetEnvironmentVariable(t "KANMER_INSTALL_ROOT", t "$INSTDIR") i.R9'
+  System::Call 'Kernel32::SetEnvironmentVariable(t "KANMER_RUNTIME_ROOT", t "$LOCALAPPDATA\Kanmer\mcp") i.R8'
+  ${If} $R9 == 0
+  ${OrIf} $R8 == 0
+    DetailPrint "Cannot prepare the Kanmer runtime overlap guard"
+    Abort
   ${EndIf}
-  StrLen $R2 "$R1"
-  StrCpy $R3 "$R0" $R2
-  System::Call 'Kernel32::lstrcmpi(t rR1, t rR3) i .rR4'
-  ${If} $R4 == 0
+  nsExec::Exec /TIMEOUT=10000 `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$install = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; $$runtime = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_RUNTIME_ROOT')).TrimEnd('\') + '\'; if ($$install.StartsWith($$runtime, [StringComparison]::OrdinalIgnoreCase) -or $$runtime.StartsWith($$install, [StringComparison]::OrdinalIgnoreCase)) { exit 10 } else { exit 0 } } catch { exit 20 }"`
+  Pop $R4
+  System::Call 'Kernel32::SetEnvironmentVariable(t "KANMER_INSTALL_ROOT", p 0) i.R9'
+  System::Call 'Kernel32::SetEnvironmentVariable(t "KANMER_RUNTIME_ROOT", p 0) i.R9'
+  ${If} $R4 == 10
     Goto gui106_overlap_rejected
+  ${ElseIf} $R4 != 0
+    DetailPrint "Could not inspect the Kanmer installation/runtime overlap"
+    Abort
   ${EndIf}
   Goto gui106_overlap_clear
 gui106_overlap_rejected:
@@ -256,26 +259,10 @@ gui106_runtime_activation_failed:
   Abort
 gui106_runtime_ready:
 
-  ; Best-effort pruning: leave the active current junction, the version just
-  ; staged, and current.next alone. A live old runtime keeps its mapped files
-  ; locked, so RMDir /r fails and the old version remains available to it.
-  FindFirst $R0 $R1 "$LOCALAPPDATA\Kanmer\mcp\*"
-  IfErrors gui106_runtime_prune_done
-gui106_runtime_prune_loop:
-  StrCmp $R1 "." gui106_runtime_prune_next
-  StrCmp $R1 ".." gui106_runtime_prune_next
-  StrCmp $R1 "current" gui106_runtime_prune_next
-  StrCmp $R1 "current.next" gui106_runtime_prune_next
-  StrCmp $R1 "$R8" gui106_runtime_prune_next
-  ClearErrors
-  RMDir /r "$LOCALAPPDATA\Kanmer\mcp\$R1"
-gui106_runtime_prune_next:
-  FindNext $R0 $R1
-  IfErrors gui106_runtime_prune_close
-  Goto gui106_runtime_prune_loop
-gui106_runtime_prune_close:
-  FindClose $R0
-gui106_runtime_prune_done:
+  ; Prior immutable generations may still serve live MCP sessions. Installation
+  ; never prunes them: eager recursive deletion can remove unlocked bundle and
+  ; skill files beneath a process whose executable remains locked. Uninstall is
+  ; the one operation that owns complete external-runtime removal.
 
   CreateDirectory "$LOCALAPPDATA\Kanmer\bin"
   Delete "$LOCALAPPDATA\Kanmer\bin\kanmer-mcp.cmd.tmp"

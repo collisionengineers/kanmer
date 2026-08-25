@@ -21,6 +21,8 @@ test("process discovery is path-safe, bounded, and fail-closed before install", 
   assert.match(source, /Sleep 1000/);
   assert.match(source, /Sleep 500/);
   assert.match(source, /Stop-Process -Id \$\$_\.ProcessId -Force -ErrorAction SilentlyContinue/);
+  assert.match(source, /nsExec::Exec \/TIMEOUT=10000/g);
+  assert.match(source, /-not \$\$_\.ExecutablePath[\s\S]+Kanmer\.exe[\s\S]+kanmer-mcp\.exe/);
   assert.match(source, /process enumeration failed; refusing partial replacement/);
   assert.match(source, /processes remain; refusing partial replacement/);
   assert.match(source, /No application files will be replaced\.[^\n]+\/SD IDOK/);
@@ -43,7 +45,15 @@ test("same-version repair stages an immutable external runtime generation", () =
   assert.match(source, /StrCpy \$R8 "\$\{VERSION\}-\$R9-\$R7"/);
   assert.match(source, /\$R7 >= 1000/);
   assert.match(source, /mklink \/J[^\n]+\\mcp\\\$R8/);
-  assert.match(source, /StrCmp \$R1 "\$R8" gui106_runtime_prune_next/);
+  assert.doesNotMatch(source, /gui106_runtime_prune/);
+  assert.doesNotMatch(source, /RMDir \/r "\$LOCALAPPDATA\\Kanmer\\mcp\\\$R1"/);
+});
+
+test("runtime overlap canonicalizes roots before comparing either direction", () => {
+  assert.match(source, /KANMER_RUNTIME_ROOT/);
+  assert.match(source, /GetFullPath[^\n]+TrimEnd\('\\'\) \+ '\\'/);
+  assert.match(source, /\$\$install\.StartsWith\(\$\$runtime/);
+  assert.match(source, /\$\$runtime\.StartsWith\(\$\$install/);
 });
 
 test("external MCP generation contains the complete Electron runtime", () => {

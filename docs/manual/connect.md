@@ -73,13 +73,14 @@ For example, save this outside the project as `kanmer-tunnel-mcp.ps1`:
 
 ```powershell
 $env:KANMER_PROVIDER_CWD = "C:/path/to/project"
-$env:KANMER_BOARD_BRANCH = "kanmer-board"
+$env:KANMER_BOARD_BRANCH = "<saved-board-branch>"
 & "$env:LOCALAPPDATA\Kanmer\bin\kanmer-mcp.cmd"
 exit $LASTEXITCODE
 ```
 
-Then substitute your paths, profile, alias, environment-variable name and
-tunnel id:
+Substitute the project path and the exact board branch saved in **Settings →
+Git** (the default is `kanmer-board`). Then substitute your paths, profile,
+alias, environment-variable name and tunnel id:
 
 ```powershell
 $env:CONTROL_PLANE_API_KEY = "<runtime-api-key>"

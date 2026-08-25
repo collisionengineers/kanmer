@@ -2,7 +2,7 @@
 kind: review-attestation
 pr: "270"
 head_sha: "05083f4075d0588ceec633725e40774d0badd5a5"
-verdict: pass
+verdict: needs-changes
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "d495e81f9d336ec4"
@@ -24,42 +24,43 @@ findings:
     severity: major
     summary: "The typed release-existence probe passed version instead of the helper's required tag argument, so it requested /releases/tags/undefined and always inferred absence."
     disposition: fixed
+  - id: F-005
+    severity: major
+    summary: "The draft publisher can make a release public when GitHub omits an asset SHA-256 digest, despite the release invariant requiring every asset digest."
+    disposition: open
+  - id: F-006
+    severity: minor
+    summary: "Tag CI treats a not-yet-public draft asset download as non-retryable exit 2, creating a race with draft publication."
+    disposition: open
+  - id: F-007
+    severity: minor
+    summary: "Remote-coherent verification hard-codes a second asset-name list, so newly added or renamed package outputs can escape strict remote validation."
+    disposition: open
 ---
 # Independent review — CORE-106 / PR #270
 
-## Review scope
+## Review scope and evidence
 
-Reviewed PR #270 at `05083f4075d0588ceec633725e40774d0badd5a5` against the complete CORE-106 packet, HZN-007 control context, and FRD-021. The reviewer is independent of the author role. The nine-file release-only diff remains within the ticket's one-package publisher and public-coherence verification scope; it does not change runtime updater behaviour, dependencies, credentials, historic assets/tags, or branch policy.
+Freshly reviewed PR #270 at `05083f4075d0588ceec633725e40774d0badd5a5` against the complete CORE-106 packet, HZN-007 context, FRD-021, full diff, hosted checks, and all GitHub review threads. The reviewer is independent of the author role. The exact-head focused release rail passes 60/60, diff hygiene passes, and hosted run `32837275332` reports `verify` PASS in 4m29s and post-attestation `kanmer-gate` PASS in 51s. Those checks do not clear the findings below.
 
-## Acceptance evidence
+## Disposed prior findings
 
-- `node --test scripts/verify-release-assets.test.mjs scripts/release-flow.test.mjs scripts/release-publish.test.mjs` — PASS, 60/60 on the reviewed head.
-- `git diff --check 8c8fdb868aed3677b3603b9ba360f304139aee6f...05083f4075d0588ceec633725e40774d0badd5a5` — PASS.
-- Hosted exact-head run `32837275332`: `verify` PASS in 4m29s and initial `kanmer-gate` PASS in 1m11s. The gate was necessarily taken before this attestation and reported the old SHA; sync and rerun are required before merge.
-- Final GitHub gather: PR open and mergeable, no regular comments, and all three review threads resolved.
+F-001 through F-004 are fixed: the release remains a draft until exact upload/verification completes; the selected documented token is normalized for `gh`; the ambiguous CLI release probe is replaced by typed REST classification; and that lookup now passes `tag: releaseTag(version)`. Their GitHub threads are resolved.
 
-## Findings and dispositions
+## Findings
 
-### F-001 — major — fixed
+### F-005 — major — open — reject a draft whose asset digest is missing
 
-The explicit publisher creates a draft, uploads the exact retained package, verifies it while hidden, and only then makes it public/latest. The regression pins `create < upload < verify < publish`.
+The publisher's pre-publication `verifyRelease` calls `verifyAssets`. For a null or non-SHA-256 GitHub `digest`, that function records only a warning, keeps `check.ok` true, and lets the draft become public. That conflicts with the current AGENTS release convention: “A missing asset or digest remains a hard failure,” and denies the claimed exact byte-integrity proof. Make usable SHA-256 digest mandatory for every published asset in this publisher path and update the legacy degrade tests accordingly.
 
-### F-002 — major — fixed
+### F-006 — minor — open — make an unpublished-draft download retryable for tag CI
 
-Publish mode normalizes the selected supported credential into `GH_TOKEN` before each `gh` command and uses the same selected token for REST verification, without logging the token.
+Tag CI begins as soon as the immutable tag is pushed, before the local publisher finishes packaging and makes its draft public. If remote verification observes uploaded draft metadata then follows the anonymous `browser_download_url`, GitHub can return 404 until `gh release edit --draft=false` completes. `fetchAssetBytes` currently throws an `http` error, mapping the CLI to exit 2; `release.yml` treats exit 2 as inconclusive and deliberately does not retry. The normal release race is thus promoted to a permanent failed CI attempt. Classify transient unavailable public bytes in remote-coherent mode as an incomplete release (exit 1) so the existing bounded poll retries; retain distinct non-retryable auth/API failures.
 
-### F-003 — major — fixed
+### F-007 — minor — open — use one canonical asset-set definition
 
-The pre-tag release check now uses typed REST failure handling rather than ambiguous `gh release view` exit statuses. Only an explicit `not-found` result proceeds; auth, rate-limit, malformed, and other errors refuse before tag mutation.
-
-### F-004 — major — fixed
-
-The typed lookup now passes `tag: releaseTag(version)`, and the source regression pins that exact request argument. It queries the actual release tag rather than `undefined`.
-
-## Residual boundary
-
-This source review does not publish, tag, or prove a real v0.3.9 release. Those external release and installed-product claims remain CORE-107 work.
+`expectedAssets` derives the publisher's expected outputs from the actual package directory, but `requiredRemoteAssetNames` repeats only the current four names. A future target addition or artifact rename is either incorrectly rejected or reported as informational and receives neither state/digest nor coherence validation. Reuse a shared/canonical package asset-name source for both paths (without comparing independently signed installer bytes) and add a regression that proves the remote required set widens with a valid added output.
 
 ## Decision
 
-PASS, conditional on a synced, post-attestation exact-head merge-gate run.
+NEEDS CHANGES. Keep CORE-106 in Review. Do not merge, publish, retag, move the ticket, or resolve F-005 through F-007 until a corrected head receives fresh CI and independent review.

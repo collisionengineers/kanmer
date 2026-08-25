@@ -44,3 +44,11 @@ F-002 follow-up — FIXED at the production boundary. TunnelSupervisor now emits
 ## CI baseline refresh
 
 Rebased onto CORE-104 merge e958ff2c after its hosted Windows timeout repair. New reachable commits: 42fc099f, c42ca48d, dce037db, 76abfc07. Post-rebase manager 12/12, supervisor/host 15/15, and all-workspace typecheck pass.
+
+## Final review finding dispositions
+
+- F-004 FIXED: RemoteHost now derives the reported attempt from the monotonic Cloudflared adapter status; restart backoff advances from that provider attempt rather than the supervisor retry budget.
+- F-005 FIXED: GUI readiness stores verifier fingerprint as auth generation and keeps tokenId separate.
+- F-006 FIXED: manager retains providerChangedAt from remote status independently of UI/action updatedAt; doctor receives the provider transition time.
+
+Focused MCP host/supervisor tests 15/15, GUI manager 12/12, all-workspace typecheck, build, and diff check pass. Commit b38276f4.

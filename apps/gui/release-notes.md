@@ -6,6 +6,33 @@ against shipping the previous release's notes. electron-builder reads this file
 from the app directory (`projectDir` is `apps/gui` when the packer is invoked
 there) and uses it as the GitHub release body.
 
+## 0.3.9
+
+### Complete updater assets are published as one verified release
+
+This recovery release replaces the incomplete v0.3.8 update feed. The release
+publisher now creates a draft, uploads the one canonical Windows package set,
+checks every uploaded asset against the locally built size and SHA-256 digest,
+and only then makes the release public and latest. The v0.3.8 release remains
+unchanged as historical evidence of the failed publication.
+
+### Windows upgrades and Codex connection use the installed runtime reliably
+
+This release includes atomic replacement logic for the complete Windows
+application, including files that disappeared between versions. A real
+two-version installed update remains part of this release's acceptance checks,
+not a pre-publication claim. Codex Connect also probes the installed launcher
+with its Windows-safe probe-only invocation, so a valid packaged runtime is no
+longer rejected during setup.
+
+### Remote access credentials cross the packaged GUI boundary correctly
+
+Cloudflare secret generation now carries its version through the renderer
+bridge, and remote bearer storage follows Electron 31's supported
+`safeStorage` capability contract. These changes keep Cloudflare Tunnel setup
+aligned with the packaged v0.3.9 runtime; the separate OpenAI managed-tunnel
+path is unchanged.
+
 ## 0.3.8
 
 ### A steadier release and update path

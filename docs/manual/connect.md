@@ -121,6 +121,12 @@ tunnel. In ChatGPT select the discovered Tunnel app. Do not use Custom
 Connector: that screen requests OAuth endpoints Kanmer does not implement.
 Cloudflare settings are a different provider path and are not used here.
 
+Disabling a saved profile stops and confirms its managed runtime first. Project
+identity reconciliation removes the old local alias before transferring the
+profile, after which Connect binds a new runtime to the current board and source
+roots. Check status can inspect an existing runtime without the runtime API key;
+the key is required when connecting or reconnecting.
+
 Use forward slashes inside `$mcpCommand`, including on Windows. Version 0.0.11's
 command parser treats backslashes as escapes; a normal Windows path such as
 `C:\Users\...` becomes invalid during its executable preflight. The profile

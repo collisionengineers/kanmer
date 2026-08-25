@@ -36,6 +36,12 @@ function spawnFake(children: Array<ChildProcess & { finish(code?: number): void 
   }) as ConstructorParameters<typeof OpenAITunnelManager>[1];
 }
 
+const spawnUnknownAlias = ((...args: Parameters<NonNullable<ConstructorParameters<typeof OpenAITunnelManager>[1]>>) => {
+  const child = fakeChild();
+  queueMicrotask(() => { child.stderr?.emit("data", `alias ${args[1][2]} is not known; run create or connect first`); child.finish(1); });
+  return child;
+}) as ConstructorParameters<typeof OpenAITunnelManager>[1];
+
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
 
 describe("OpenAITunnelManager", () => {
@@ -136,7 +142,7 @@ describe("OpenAITunnelManager", () => {
 
   it("keeps project profiles isolated and rejects duplicate health resources", async () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
-    const manager = new OpenAITunnelManager(root);
+    const manager = new OpenAITunnelManager(root, spawnUnknownAlias);
     await Promise.all([manager.register("/repo", identity), manager.register("/other", secondIdentity)]);
     const first = await manager.saveProfile("/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: null });
     expect(first.profile?.generation).toMatch(/^[0-9a-f-]{36}$/i);
@@ -154,11 +160,19 @@ describe("OpenAITunnelManager", () => {
     const first = await manager.saveProfile("/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8080", enabled: true, autoStart: false, expectedGeneration: null });
     expect(first.profile?.healthAddress).toBe("127.0.0.1:8080");
     await expect(manager.saveProfile("/other", secondIdentity, { profileName: "second", tunnelId: "tunnel-second", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8080", enabled: true, autoStart: false, expectedGeneration: null })).rejects.toThrow("OPENAI_PROFILE_RESOURCE_DUPLICATE");
+    await expect(manager.saveProfile("/other", secondIdentity, { runtimeAlias: "second-alias", profileName: "first", tunnelId: "tunnel-second", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8081", enabled: true, autoStart: false, expectedGeneration: null })).rejects.toThrow("OPENAI_PROFILE_RESOURCE_DUPLICATE");
   });
 
   it("reconciles a changed project identity without stranding its profile", async () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
-    const manager = new OpenAITunnelManager(root);
+    let running = true;
+    const commands: string[][] = [];
+    const spawn = ((...args: Parameters<NonNullable<ConstructorParameters<typeof OpenAITunnelManager>[1]>>) => {
+      commands.push(args[1]); const child = fakeChild();
+      queueMicrotask(() => { if (args[1][1] === "stop") running = false; if (args[1][1] === "status") child.stdout?.emit("data", JSON.stringify({ process_running: running, healthy: running, ready: running, runtime_state: running ? "ready" : "stopped", stale: false })); child.finish(0); });
+      return child;
+    }) as ConstructorParameters<typeof OpenAITunnelManager>[1];
+    const manager = new OpenAITunnelManager(root, spawn);
     await manager.register("/repo", identity);
     const saved = await manager.saveProfile("/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: null });
     const conflict = await manager.register("/repo", migratedIdentity);
@@ -166,6 +180,7 @@ describe("OpenAITunnelManager", () => {
     const reconciled = await manager.reconcile("/repo", migratedIdentity, saved.profile!.generation);
     expect(reconciled.profile?.profileName).toBe("first");
     expect(reconciled.identity.fingerprint).toBe(migratedIdentity.fingerprint);
+    expect(commands.map((args) => args[1])).toEqual(["status", "stop", "status", "rm"]);
     const stored = JSON.parse(await readFile(join(root, "openai-tunnels.json"), "utf8")) as { projects: Record<string, unknown>; profiles: Record<string, unknown> };
     expect(stored.projects[identity.fingerprint]).toBeUndefined();
     expect(stored.profiles[migratedIdentity.fingerprint]).toBeDefined();
@@ -176,7 +191,7 @@ describe("OpenAITunnelManager", () => {
     const first = new OpenAITunnelManager(root);
     await first.register("/repo", identity);
     const saved = await first.saveProfile("/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: null });
-    const restarted = new OpenAITunnelManager(root);
+    const restarted = new OpenAITunnelManager(root, spawnUnknownAlias);
     const conflict = await restarted.register("/repo", migratedIdentity);
     expect(conflict.identityConflict).toBe(true);
     expect(conflict.profile).toBeNull();
@@ -262,6 +277,44 @@ describe("OpenAITunnelManager", () => {
     await manager.remove("/repo", identity, saved.profile!.generation);
     expect(commands).toEqual([["runtimes", "status", "saved-alias", "--json"]]);
     expect(await manager.overview()).toEqual([]);
+  });
+
+  it("stops and confirms a persistent alias before disabling its profile", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
+    let running = true;
+    const commands: string[][] = [];
+    const spawn = ((...args: Parameters<NonNullable<ConstructorParameters<typeof OpenAITunnelManager>[1]>>) => {
+      commands.push(args[1]); const child = fakeChild();
+      queueMicrotask(() => { if (args[1][1] === "stop") running = false; if (args[1][1] === "status") child.stdout?.emit("data", JSON.stringify({ process_running: running, healthy: running, ready: running, runtime_state: running ? "ready" : "stopped", stale: false })); child.finish(0); });
+      return child;
+    }) as ConstructorParameters<typeof OpenAITunnelManager>[1];
+    const manager = new OpenAITunnelManager(root, spawn);
+    await manager.register("/repo", identity);
+    const enabled = await manager.saveProfile("/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: null });
+    const disabled = await manager.saveProfile("/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: false, autoStart: false, expectedGeneration: enabled.profile!.generation });
+    expect(running).toBe(false);
+    expect(commands.map((args) => args[1])).toEqual(["status", "stop", "status"]);
+    expect((await new OpenAITunnelManager(root, spawn).register("/repo", identity)).status.state).toBe("disabled");
+    expect(disabled.profile?.enabled).toBe(false);
+  });
+
+  it("checks an existing runtime without a credential and aborts reconnect after stop failure", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
+    const commands: string[][] = [];
+    const spawn = ((...args: Parameters<NonNullable<ConstructorParameters<typeof OpenAITunnelManager>[1]>>) => {
+      commands.push(args[1]); const child = fakeChild();
+      queueMicrotask(() => { if (args[1][1] === "status") child.stdout?.emit("data", JSON.stringify({ process_running: true, healthy: true, ready: true, runtime_state: "ready", stale: false })); child.finish(args[1][1] === "stop" ? 1 : 0); });
+      return child;
+    }) as ConstructorParameters<typeof OpenAITunnelManager>[1];
+    const manager = new OpenAITunnelManager(root, spawn);
+    await manager.register("/repo", identity);
+    const saved = await manager.saveProfile("/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "OPENAI_TUNNEL_TEST_MISSING", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: null });
+    delete process.env.OPENAI_TUNNEL_TEST_MISSING;
+    const doctor = await manager.doctor("/repo", identity, { boardRoot: identity.boardRoot, repoRoot: identity.repoRoot });
+    expect(doctor.ok).toBe(true);
+    expect(doctor.checks.find((check) => check.id === "CREDENTIAL_ENV_PRESENT")?.status).toBe("warn");
+    await expect(manager.restart("/repo", identity, { boardRoot: identity.boardRoot, repoRoot: identity.repoRoot }, saved.profile!.generation)).rejects.toThrow();
+    expect(commands.some((args) => args[1] === "connect")).toBe(false);
   });
 
   it("does not leak credentials and manages a persistent runtime alias", async () => {

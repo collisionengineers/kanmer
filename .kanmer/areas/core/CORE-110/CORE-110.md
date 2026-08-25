@@ -2,7 +2,7 @@
 id: CORE-110
 type: ticket
 title: Publish and validate v0.3.11 connector closeout release
-status: review
+status: verifying
 area: core
 assignee: codex
 profile: chore
@@ -29,7 +29,7 @@ prs:
   - '280'
 archived: false
 created: '2026-08-25T16:05:04.081Z'
-updated: '2026-08-25T16:35:08.076Z'
+updated: '2026-08-25T16:44:54.593Z'
 ---
 
 Publish and independently validate the consolidated Windows release containing the merged remote ChatGPT connector and setup fixes. This ticket changes no product scope: it packages the already-merged main branch, verifies the public updater artifacts, and hands GUI installation to the user.

@@ -52,3 +52,5 @@ Rebased onto CORE-104 merge e958ff2c after its hosted Windows timeout repair. Ne
 - F-006 FIXED: manager retains providerChangedAt from remote status independently of UI/action updatedAt; doctor receives the provider transition time.
 
 Focused MCP host/supervisor tests 15/15, GUI manager 12/12, all-workspace typecheck, build, and diff check pass. Commit b38276f4.
+
+- F-007 FIXED: provider readiness degradation and recovery now each refresh RemoteHostStatus.changedAt; regression proves connected, degraded, and recovered timestamps differ. MCP host 8/8, GUI manager 12/12, full typecheck/diff pass. Commit cf6d206c.

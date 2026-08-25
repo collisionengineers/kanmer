@@ -1,0 +1,41 @@
+# Post-implementation report — GUI-133
+
+## Outcome
+
+Windows update and same-version repair now refuse before mutation unless all processes executing below the exact install-root boundary have stopped. The installer replaces Electron Builder 26.15.3's defective `Win32_Process.Path` predicate with the supported `customCheckAppRunning` hook and the real `ExecutablePath` field. It stages each external MCP runtime as an immutable `<version>-<installer-pid>` generation and activates `current` only after a complete Electron runtime tree, standalone MCP bundle, and installed skills exist.
+
+## Root causes and dispositions
+
+1. Electron Builder queried a nonexistent CIM field, so legacy install-root GUI/MCP processes survived into the old uninstaller and could leave a split installation. Fixed with an exact, case-insensitive path-boundary probe, bounded graceful/forced stop, mandatory re-probe, and fail-closed exit codes 21–23.
+2. Same-version external staging reused a version-only directory. Fixed with an installer-PID generation suffix.
+3. Initial external staging copied only the executable, ICU and V8 snapshot. Real launch returned Windows `0xc0000135` because Electron's sibling DLLs/resource packs were absent. Fixed by staging the complete installed Electron tree; the launcher now selects an external generation only when representative DLL/resource dependencies also exist.
+
+## Verification
+
+All attempts are retained:
+
+- FAIL: the first updated invocation used the wrong argument order and hung before the custom guard; it was terminated with no file replacement.
+- FAIL: silent refusal initially displayed an unbounded MessageBox; `/SD IDOK` was added.
+- FAIL: an unreliable redundant PowerShell precheck returned exit 20; it was removed so the actual probe owns the result.
+- FAIL: same-version staging collided with an existing version directory and exited 2; immutable generations were added.
+- FAIL: the first PID binding produced `0.3.7-false`; the NSIS return binding was corrected to `i.R9`.
+- FAIL: after the first apparent 0.3.8 success, a real stdio MCP start exited `0xc0000135`; the incomplete Electron runtime copy was found and corrected.
+- PASS: a version-distinguishable 0.3.7 → 0.3.8 install completed with coherent executable, app.asar, registry, external runtime and GUI smoke evidence.
+- PASS: the corrected 0.3.8 → 0.3.7 install completed with exit 0 and created generation `0.3.7-4568`.
+- PASS: an official MCP SDK client opened the installed launcher runtime, called `get_status`, and reported packaged v0.3.7, format 3, and `repo.upToDate: true`.
+- PASS: focused installer/package tests 8/8.
+- PASS: `npm run dist:check`, including real NSIS compilation and all 8 packaged checks.
+- PASS: core 310/310, GUI 469/469, MCP HTTP 102/102, scripts 108/108.
+- PASS: all-workspace `npm run typecheck`.
+- PASS: `git diff --check`.
+
+## Files changed
+
+- `apps/gui/build/installer.nsh`
+- `apps/gui/build/kanmer-mcp.cmd`
+- `scripts/check-updater-package.mjs`
+- `scripts/installer-process-guard.test.mjs`
+- `docs/functional/frd/FRD-021-auto-update.md`
+- `AGENTS.md`
+
+No dependency or schema changes were introduced.

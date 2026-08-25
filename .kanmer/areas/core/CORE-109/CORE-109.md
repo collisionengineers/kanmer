@@ -23,9 +23,15 @@ links:
   - MCP-028
 refs:
   - docs/functional/frd/FRD-021-auto-update.md
+commits:
+  - a309d4e7c89b1956d7c4c76697ab7f05a0d31736
+  - 7b518d0c303a56c18e6310f1818d2e7e9c3cf3e2
+prs:
+  - '275'
+  - '276'
 archived: false
 created: '2026-08-25T12:43:12.101Z'
-updated: '2026-08-25T12:55:23.671Z'
+updated: '2026-08-25T13:06:16.147Z'
 ---
 
 ## Purpose

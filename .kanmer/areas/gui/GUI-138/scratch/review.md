@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "263"
-head_sha: "b38276f4545b25c5e720b5bf85dfa562883d8d81"
-verdict: needs-changes
+head_sha: "cf6d206c92f2927c24d59aa905ea0bd16e3b342a"
+verdict: pass
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "c454dbe71cb339a3"
-ticket_updated: "2026-08-25T06:10:20.162Z"
+ticket_updated: "2026-08-25T06:14:43.376Z"
 findings:
   - id: F-001
     severity: major
@@ -34,48 +34,50 @@ findings:
     disposition: fixed
   - id: F-007
     severity: major
-    summary: "Remote-host readiness health transitions retain the previous provider changedAt timestamp."
-    disposition: open
+    summary: "Remote-host readiness health transitions retained the previous provider changedAt timestamp."
+    disposition: fixed
 ---
 
-# Independent re-review — GUI-138
+# Independent final re-review — GUI-138
 
-## Reviewed inputs and scope
+## Scope and contract
 
-Reviewed PR #263 at exact head b38276f4545b25c5e720b5bf85dfa562883d8d81 against the complete GUI-138 packet, HZN-007 control context, and FRD-025. The ticket remains in Review, the author is collisionengineers, and this is a separate reviewer role. The diff remains bounded to the six declared manager/supervisor/remote-host source and test files; no provider query, public routing, bearer/credential/log material, dependency, updater, release, or doctor semantic weakening appears.
+Independently reviewed PR #263 at exact head cf6d206c92f2927c24d59aa905ea0bd16e3b342a against the complete ticket packet, HZN-007 control context, and FRD-025. The source remains confined to the six declared GUI manager, remote-host, and supervisor source/test files. The production path is complete: Cloudflared adapter status supplies a monotonic attempt and lifecycle metadata to RemoteHost; remote-cli serializes the status; the GUI records only allowlisted status facts and supplies doctor with the manager-owned snapshot. No provider query, public routing, bearer/credential/log content, dependency, updater, release, or doctor-contract weakening is introduced.
 
-Reviewer commands on the exact worktree passed: npm run test:http -w @kanmer/mcp-server (102 tests), focused GUI manager suite (12 tests), npm run typecheck, and git diff --check against e958ff2c182373a5461856e60d1a563f37d32b3d.
-
-## Prior finding dispositions
+## Finding dispositions
 
 ### F-001 — major — FIXED
 
-Restarting maps to degraded and the manager-to-doctor regression requires TUNNEL_PROCESS_READY to fail during backoff.
+Restarting maps to degraded, and the manager-to-doctor regression proves TUNNEL_PROCESS_READY fails during backoff.
 
 ### F-002 — major — FIXED
 
-The runtime now carries a real attempt through remote status to the manager and the doctor snapshot.
+Attempt is carried across the real status path to the GUI snapshot.
 
 ### F-003 — major — FIXED
 
-CORE-104 repaired the unrelated hosted timeout; current hosted checks are separately pending for this new head.
+The prior unrelated core timeout was repaired separately by CORE-104; the exact head passes hosted verification.
 
 ### F-004 — major — FIXED
 
-RemoteHost now derives its displayed attempt from the adapter's monotonic status rather than the resettable supervisor retry budget; restarting uses the next adapter launch attempt. The original GitHub thread remains to be marked resolved after this review record is accepted.
+RemoteHost derives its attempt from the adapter's monotonic status rather than its supervisor retry budget; a restarting status represents the next adapter launch attempt.
 
 ### F-005 — major — FIXED
 
-The real ready event keeps remote tokenId separate and stores verifier fingerprint as auth generation. The manager regression now uses the production-shaped remote token id and sha256 fingerprint.
+The production-shaped remote ready event retains tokenId separately and uses the verifier sha256 fingerprint as auth generation.
 
 ### F-006 — major — FIXED
 
-The manager keeps providerChangedAt independently from UI status.updatedAt and passes that value to doctor; the restart regression asserts the supplied provider transition time after doctor action changes.
+providerChangedAt is separate from UI status.updatedAt and is passed unchanged to doctor.
 
-### F-007 — major — OPEN
+### F-007 — major — FIXED
 
-RemoteHost.monitorHealth changes provider from running to degraded (and back) after provider-owned checkReadiness, but does not refresh its changedAt from the adapter's current status or otherwise stamp that readiness transition. The GUI therefore preserves the older connected transition time in the doctor snapshot. A direct exact-build reproduction started with adapter changedAt 2026-08-25T05:00:00.000Z, changed the adapter to degraded at 2026-08-25T06:00:00.000Z, invoked the injected health poll, and observed RemoteHost status degraded with the stale 05:00 timestamp. This violates truthful lifecycle timestamps required by FRD-025 RA-TUNNEL-2 and leaves readiness-age diagnostics inaccurate. Refresh changedAt for both health degradation and recovery and add coverage at the remote-host to GUI/doctor boundary. No GitHub thread exists yet for this new finding.
+RemoteHost now stamps fresh changedAt values on provider health degradation and recovery. The regression proves connected, degraded, and recovered timestamps differ, so a health-driven snapshot cannot retain the old connected transition time.
 
-## Decision
+All original review threads (F-001 through F-007) are resolved. GitHub has no ordinary PR comments.
 
-The three former P2 findings are fixed, but F-007 is a current major production truthfulness defect. This attestation is needs-changes; do not merge or move GUI-138 until F-007 is corrected, the review threads are resolved/dispositioned, and exact-head required checks pass.
+## Evidence and decision
+
+Reviewer commands on the exact worktree exited 0: npm run test:http -w @kanmer/mcp-server (102 tests), npm exec vitest run -- src/main/remoteAccess/manager.test.ts (12 tests), npm run typecheck, and git diff --check e958ff2c182373a5461856e60d1a563f37d32b3d...cf6d206c92f2927c24d59aa905ea0bd16e3b342a. Exact-head workflow 32816113735 is terminal green: verify 4m5s and kanmer-gate 1m0s. That gate snapshot predates this replacement record, so it must be refreshed before merge. Packaged public-doctor and authenticated/unauthenticated remote MCP evidence remains post-merge verification work and is not claimed here.
+
+Verdict: PASS, contingent only on the post-attestation gate refresh at this unchanged head.

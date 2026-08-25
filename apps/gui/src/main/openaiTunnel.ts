@@ -110,11 +110,14 @@ function defaultProfile(projectId: string): OpenAITunnelProfile {
   return { ...emptyOpenAITunnelProfile(), profileName };
 }
 
-function normalizeProfile(value: unknown): OpenAITunnelProfile | null {
+function normalizeProfile(value: unknown, expectedDefault: OpenAITunnelProfile): OpenAITunnelProfile | null {
   if (!value || typeof value !== "object") return null;
   const p = value as Partial<OpenAITunnelProfile>;
   const complete = isSafeOpenAITunnelId(p.tunnelId) && typeof p.generation === "string" && /^[0-9a-f-]{36}$/i.test(p.generation);
-  const productDefault = p.tunnelId === "" && p.generation === "" && p.enabled === false && p.autoStart === false;
+  const productDefault = p.profileName === expectedDefault.profileName && p.tunnelId === expectedDefault.tunnelId && p.executable === expectedDefault.executable &&
+    p.credentialEnv === expectedDefault.credentialEnv && p.healthAddress === expectedDefault.healthAddress && p.enabled === expectedDefault.enabled &&
+    p.autoStart === expectedDefault.autoStart && p.generation === expectedDefault.generation && p.lastSummary === expectedDefault.lastSummary &&
+    p.lastError === expectedDefault.lastError && p.lastDoctorAt === expectedDefault.lastDoctorAt;
   if (!isSafeOpenAIProfileName(p.profileName) || (!complete && !productDefault) || !isSafeOpenAIExecutable(p.executable) || !isSafeOpenAICredentialEnv(p.credentialEnv) || !isLoopbackHealthAddress(p.healthAddress) || typeof p.enabled !== "boolean" || typeof p.autoStart !== "boolean") return null;
   return {
     profileName: p.profileName, tunnelId: p.tunnelId!, executable: p.executable,
@@ -142,7 +145,7 @@ export async function readOpenAITunnelSettings(userData: string): Promise<Persis
   for (const [fingerprint, entry] of Object.entries(raw.projects)) {
     if (!entry || !/^kanmer-proj-v1:[a-f0-9]{64}$/i.test(fingerprint) || typeof entry.projectId !== "string" || !isAbsolute(entry.projectId) || !entry.identity || entry.identity.fingerprint !== fingerprint || !isAbsolute(entry.identity.boardRoot) || !isAbsolute(entry.identity.repoRoot) || !Number.isInteger(entry.identity.format) || (entry.identity.boardSource !== "file" && entry.identity.boardSource !== "default")) throw new Error("OPENAI_TUNNEL_SETTINGS_INVALID");
     projects[fingerprint] = { projectId: canonicalOpenAITunnelPath(entry.projectId), identity: { ...entry.identity, boardRoot: canonicalOpenAITunnelPath(entry.identity.boardRoot), repoRoot: canonicalOpenAITunnelPath(entry.identity.repoRoot) } };
-    const profile = normalizeProfile(raw.profiles[fingerprint]);
+    const profile = normalizeProfile(raw.profiles[fingerprint], defaultProfile(entry.projectId));
     if (raw.profiles[fingerprint] !== undefined && !profile) throw new Error("OPENAI_TUNNEL_SETTINGS_INVALID");
     if (profile) profiles[fingerprint] = profile;
   }

@@ -75,8 +75,18 @@ describe("OpenAITunnelManager", () => {
     expect(registered.profile).toMatchObject({ profileName: "repo", tunnelId: "", generation: "", enabled: false, autoStart: false });
 
     const settingsPath = join(root, "openai-tunnels.json");
-    const stored = JSON.parse(await readFile(settingsPath, "utf8")) as { profiles: Record<string, { tunnelId: string }> };
+    const stored = JSON.parse(await readFile(settingsPath, "utf8")) as { profiles: Record<string, { tunnelId: string; executable: string; profileName: string }> };
     stored.profiles[identity.fingerprint]!.tunnelId = "partially-configured";
+    await writeFile(settingsPath, JSON.stringify(stored), "utf8");
+    await expect(readOpenAITunnelSettings(root)).rejects.toThrow("OPENAI_TUNNEL_SETTINGS_INVALID");
+
+    stored.profiles[identity.fingerprint]!.tunnelId = "";
+    stored.profiles[identity.fingerprint]!.executable = "another-safe-client";
+    await writeFile(settingsPath, JSON.stringify(stored), "utf8");
+    await expect(readOpenAITunnelSettings(root)).rejects.toThrow("OPENAI_TUNNEL_SETTINGS_INVALID");
+
+    stored.profiles[identity.fingerprint]!.executable = "tunnel-client";
+    stored.profiles[identity.fingerprint]!.profileName = "another-safe-name";
     await writeFile(settingsPath, JSON.stringify(stored), "utf8");
     await expect(readOpenAITunnelSettings(root)).rejects.toThrow("OPENAI_TUNNEL_SETTINGS_INVALID");
   });

@@ -31,7 +31,7 @@ function fakeChild(): ChildProcess & { finish(code?: number): void } {
 function spawnFake(children: Array<ChildProcess & { finish(code?: number): void }>, codes: Array<number | undefined> = [], environments: NodeJS.ProcessEnv[] = [], commands: string[][] = []) {
   return ((...args: Parameters<NonNullable<ConstructorParameters<typeof OpenAITunnelManager>[1]>>) => {
     environments.push(args[2].env); commands.push(args[1]); const child = fakeChild(); children.push(child); const index = children.length - 1; const code = index < codes.length ? codes[index] : 0;
-    if (code !== undefined) queueMicrotask(() => { if (args[1][0] === "runtimes" && args[1][1] === "status") child.stdout?.emit("data", JSON.stringify({ alias: args[1][2], process_running: true, healthy: true, ready: true, runtime_state: "ready" })); child.finish(code); });
+    if (code !== undefined) queueMicrotask(() => { if (args[1][0] === "runtimes" && args[1][1] === "status") child.stdout?.emit("data", JSON.stringify({ alias: args[1][2], process_running: true, healthy: true, ready: true, runtime_state: "ready", stale: false })); child.finish(code); });
     return child;
   }) as ConstructorParameters<typeof OpenAITunnelManager>[1];
 }
@@ -194,7 +194,7 @@ describe("OpenAITunnelManager", () => {
       commands.push(args[1]);
       const child = fakeChild();
       queueMicrotask(() => {
-        if (args[1][1] === "status") child.stdout?.emit("data", JSON.stringify({ process_running: running, healthy: running, ready: running, runtime_state: running ? "ready" : "stopped" }));
+        if (args[1][1] === "status") child.stdout?.emit("data", JSON.stringify({ process_running: running, healthy: running, ready: running, runtime_state: running ? "ready" : "stopped", stale: false }));
         if (args[1][1] === "stop") running = false;
         child.finish(0);
       });
@@ -210,6 +210,37 @@ describe("OpenAITunnelManager", () => {
       ["runtimes", "status", "first"],
       ["runtimes", "rm", "first"],
     ]);
+  });
+
+  it("refuses unknown removal state, alias replacement, disabled connect, and stale readiness", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
+    const malformedSpawn = ((..._args: Parameters<NonNullable<ConstructorParameters<typeof OpenAITunnelManager>[1]>>) => {
+      const child = fakeChild(); queueMicrotask(() => { child.stdout?.emit("data", "not-json"); child.finish(0); }); return child;
+    }) as ConstructorParameters<typeof OpenAITunnelManager>[1];
+    const manager = new OpenAITunnelManager(root, malformedSpawn);
+    await manager.register("/repo", identity);
+    const saved = await manager.saveProfile("/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: false, autoStart: false, expectedGeneration: null });
+    await expect(manager.initialize("/repo", identity, { boardRoot: identity.boardRoot, repoRoot: identity.repoRoot })).rejects.toThrow("OPENAI_PROFILE_DISABLED");
+    await expect(manager.saveProfile("/repo", identity, { profileName: "renamed", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: false, autoStart: false, expectedGeneration: saved.profile!.generation })).rejects.toThrow("OPENAI_REMOVE_BEFORE_ALIAS_CHANGE");
+    await expect(manager.remove("/repo", identity, saved.profile!.generation)).rejects.toThrow("OPENAI_RUNTIME_STATUS_INVALID");
+
+    const staleRoot = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(staleRoot);
+    const staleSpawn = ((..._args: Parameters<NonNullable<ConstructorParameters<typeof OpenAITunnelManager>[1]>>) => {
+      const child = fakeChild(); queueMicrotask(() => { child.stdout?.emit("data", JSON.stringify({ process_running: true, healthy: true, ready: true, runtime_state: "ready", stale: true })); child.finish(0); }); return child;
+    }) as ConstructorParameters<typeof OpenAITunnelManager>[1];
+    const stale = new OpenAITunnelManager(staleRoot, staleSpawn);
+    await stale.register("/repo", identity);
+    const staleProfile = await stale.saveProfile("/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: null });
+    expect(staleProfile.profile).toBeTruthy();
+    expect((await stale.viewFor("/repo", identity)).status.state).toBe("degraded");
+  });
+
+  it("removes an incomplete local registration without invoking tunnel-client", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
+    const manager = new OpenAITunnelManager(root, (() => { throw new Error("must not spawn"); }) as ConstructorParameters<typeof OpenAITunnelManager>[1]);
+    await manager.register("/repo", identity);
+    await manager.remove("/repo", identity, "");
+    expect(await manager.overview()).toEqual([]);
   });
 
   it("does not leak credentials and manages a persistent runtime alias", async () => {

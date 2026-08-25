@@ -41910,7 +41910,7 @@ function readSwitch(argv, name) {
 var import_node_crypto = require("crypto");
 var import_node_fs = __toESM(require("fs"), 1);
 var import_node_path2 = __toESM(require("path"), 1);
-var SERVER_VERSION = true ? "0.3.8" : null;
+var SERVER_VERSION = true ? "0.3.9" : null;
 function selfPath() {
   try {
     return typeof __filename === "string" && __filename ? import_node_path2.default.resolve(__filename) : null;

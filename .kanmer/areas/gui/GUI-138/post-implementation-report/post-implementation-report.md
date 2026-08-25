@@ -28,3 +28,9 @@ The remote access manager now passes its owned, allowlisted Cloudflare readiness
 ## Remaining verification
 
 After independent review and merge, build and install the exact merge SHA, run the packaged public-mode doctor, and repeat the authenticated and unauthenticated public MCP probes.
+
+## Review finding disposition
+
+F-001 (major) — FIXED. Provider restart backoff now maps the manager to degraded rather than retaining ready/connected. The regression drives ready → restarting, asserts degraded manager state, and makes the doctor TUNNEL_PROCESS_READY result fail unless the snapshot is genuinely connected. Focused manager tests 12/12, GUI typecheck, full build, and git diff --check pass after the fix.
+
+Additional commit: b9aad276 fix(gui): degrade tunnel state during restart

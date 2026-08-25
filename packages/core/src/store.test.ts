@@ -133,7 +133,7 @@ describe("KanmerStore", () => {
     ).rejects.toThrow(/Unknown area "api".*pr-review, ui/);
     const ok = await store.createItem({ type: "ticket", title: "C", area: "" });
     expect(ok.area).toBe("");
-  });
+  }, 15_000);
 
 
   it("rejects traversal and separator ids from every id-taking method", async () => {

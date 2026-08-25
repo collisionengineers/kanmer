@@ -12,6 +12,7 @@ vi.mock("electron", () => ({
 }));
 
 const { RemoteAccessManager, remoteBoardBranchEnvironment } = await import("./manager.js");
+const { canonicalProjectPath } = await import("./identity.js");
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
 
@@ -132,13 +133,13 @@ describe("RemoteAccessManager", () => {
     await (await import("node:fs/promises")).mkdir(ownerDir, { recursive: true });
     await writeFile(join(ownerDir, `${"a".repeat(64)}.json`), JSON.stringify({ pid: 999999, nonce: "00000000-0000-0000-0000-000000000000", projectFingerprint: projectIdentity.fingerprint }));
     const manager = new RemoteAccessManager(root);
-    await manager.register("/repo", projectIdentity);
-    const first = await manager.viewFor("/repo", projectIdentity);
-    await manager.saveConfig("/repo", projectIdentity, { ...config, autoStart: true, expectedConfigGeneration: first.status.configGeneration });
-    const configured = await manager.viewFor("/repo", projectIdentity);
-    await manager.createSecret("/repo", projectIdentity, false, owner, configured.status.configGeneration);
+    await manager.register(projectRoot, projectIdentity);
+    const first = await manager.viewFor(projectRoot, projectIdentity);
+    await manager.saveConfig(projectRoot, projectIdentity, { ...config, autoStart: true, expectedConfigGeneration: first.status.configGeneration });
+    const configured = await manager.viewFor(projectRoot, projectIdentity);
+    await manager.createSecret(projectRoot, projectIdentity, false, owner, configured.status.configGeneration);
     const registrations = await manager.autoStartRegistrations();
-    expect(registrations.map((entry) => entry.projectId)).toEqual(["/repo"]);
+    expect(registrations.map((entry) => entry.projectId)).toEqual([canonicalProjectPath(projectRoot)]);
     await expect(readFile(join(ownerDir, `${"a".repeat(64)}.json`))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
@@ -186,5 +187,44 @@ describe("RemoteAccessManager", () => {
     ]);
     await manager.closeAll();
     expect(child!).toBeDefined();
+  });
+
+  it("shares one runtime between persisted canonical and opened Windows project ids", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-remote-manager-")); roots.push(root);
+    const projectRoot = await mkdtemp(join(tmpdir(), "Kanmer-Remote-Project-")); roots.push(projectRoot);
+    const boardRoot = join(projectRoot, ".worktrees", "kanmer");
+    await mkdir(boardRoot, { recursive: true });
+    const projectIdentity = { ...identity, fingerprint: "kanmer-proj-v1:" + "d".repeat(64), boardRoot, repoRoot: projectRoot };
+    let spawns = 0;
+    const spawnProcess = () => {
+      spawns++;
+      const process = new EventEmitter() as ChildProcess;
+      const stdout = new PassThrough();
+      Object.assign(process, {
+        stdout, stderr: new PassThrough(), pid: undefined, exitCode: null, signalCode: null,
+        kill: () => { Object.defineProperty(process, "exitCode", { value: 0, configurable: true }); queueMicrotask(() => process.emit("exit", 0, null)); return true; },
+      });
+      queueMicrotask(() => stdout.write(`${JSON.stringify({
+        kind: "kanmer-mcp-remote-ready", version: 1, endpoint: "http://127.0.0.1:43124/mcp",
+        publicEndpoint: "https://mcp.example.com/mcp", projectFingerprint: projectIdentity.fingerprint,
+      })}\n`));
+      return process;
+    };
+    const manager = new RemoteAccessManager(root, spawnProcess);
+    await manager.register(projectRoot, projectIdentity);
+    const initial = await manager.viewFor(projectRoot, projectIdentity);
+    await manager.saveConfig(projectRoot, projectIdentity, { ...config, credentialsFile: join(projectRoot, "credentials.json"), autoStart: true, expectedConfigGeneration: initial.status.configGeneration });
+    const configured = await manager.viewFor(projectRoot, projectIdentity);
+    await manager.createSecret(projectRoot, projectIdentity, false, owner, configured.status.configGeneration);
+    const registrations = await manager.autoStartRegistrations();
+    expect(registrations).toHaveLength(1);
+    expect((await manager.autoStart(registrations))[0]?.ok).toBe(true);
+    const displaySpelling = projectRoot.replace(/^([a-z]):/, (_, drive: string) => `${drive.toUpperCase()}:`).replace(/\//g, "\\");
+    const opened = await manager.viewFor(displaySpelling, projectIdentity);
+    expect(opened.status.state).toBe("ready");
+    expect(opened.status.endpoint).toBe("http://127.0.0.1:43124/mcp");
+    expect(await manager.start(displaySpelling, projectIdentity, { root: boardRoot, repoRoot: projectRoot }, opened.status.configGeneration)).toEqual(opened.status);
+    expect(spawns).toBe(1);
+    await manager.closeAll();
   });
 });

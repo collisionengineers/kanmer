@@ -7,6 +7,7 @@ import { isAbsolute, join } from "node:path";
 import { app, clipboard } from "electron";
 import { withSettingsFileLock } from "../settings.js";
 import { emptyRemoteAccess, readRemoteAccess, writeRemoteAccess, type PersistedRemoteAccess } from "./configStore.js";
+import { canonicalProjectPath } from "./identity.js";
 import { getSecret, putSecret, removeSecret, type SecretBackend } from "./secrets.js";
 import type {
   CloudflareRemoteConfig,
@@ -293,6 +294,7 @@ export class RemoteAccessManager {
   }
 
   private enqueue<T>(projectId: string, work: () => Promise<T>): Promise<T> {
+    projectId = canonicalProjectPath(projectId);
     const previous = this.queues.get(projectId) ?? Promise.resolve();
     const run = previous.catch(() => undefined).then(work);
     const tail = run.then(() => undefined, () => undefined);
@@ -302,6 +304,7 @@ export class RemoteAccessManager {
 
 
   private record(projectId: string, identity: RemoteProjectIdentity): RemoteRecord {
+    projectId = canonicalProjectPath(projectId);
     const existing = this.records.get(projectId);
     if (existing && existing.identity.fingerprint !== identity.fingerprint) {
       throw new Error("REMOTE_PROJECT_IDENTITY_CHANGED");
@@ -328,6 +331,7 @@ export class RemoteAccessManager {
 
   async register(projectId: string, identity: RemoteProjectIdentity): Promise<RemoteProjectView> {
     return this.withSettingsLock(async () => {
+      projectId = canonicalProjectPath(projectId);
       await this.load();
       const record = this.record(projectId, identity);
       if (record.status.state === "missing") record.status = statusFor(projectId, identity, this.data.configs[identity.fingerprint]?.enabled && this.data.configs[identity.fingerprint]?.secretId ? "stopped" : "disabled", { configGeneration: record.configGeneration });
@@ -357,6 +361,7 @@ export class RemoteAccessManager {
 
   async reconcile(projectId: string, identity: RemoteProjectIdentity, expectedConfigGeneration: string | null = null): Promise<RemoteProjectView> {
     return this.withSettingsLock(async () => {
+      projectId = canonicalProjectPath(projectId);
       await this.load();
       const registered = this.data.projects[identity.fingerprint];
       if (registered && registered.projectId !== projectId) throw new Error("REMOTE_PROJECT_IDENTITY_CONFLICT");
@@ -401,6 +406,7 @@ export class RemoteAccessManager {
   }
 
   async remove(projectId: string, identity: RemoteProjectIdentity, expectedConfigGeneration: string | null = null): Promise<void> {
+    projectId = canonicalProjectPath(projectId);
     return this.enqueue(projectId, async () => {
       await this.withSettingsLock(async () => {
         await this.load();
@@ -449,6 +455,7 @@ export class RemoteAccessManager {
   private async saveConfigNow(projectId: string, identity: RemoteProjectIdentity, patch: RemoteConfigPatch): Promise<RemoteProjectView> {
     await this.load();
     const record = this.record(projectId, identity);
+    projectId = record.projectId;
     if (patch.expectedConfigGeneration !== record.configGeneration) throw new Error("REMOTE_CONFIG_VERSION_CONFLICT");
     if (!isSafeExecutable(patch.executable.trim()) || !isSafeCredentialsPath(patch.credentialsFile.trim()) || !isTunnelId(patch.tunnelId.trim()) || !isHostname(patch.hostname.trim())) throw new Error("REMOTE_CONFIG_INVALID");
     const previous = this.data.configs[identity.fingerprint];
@@ -489,6 +496,7 @@ export class RemoteAccessManager {
   private async createSecretNow(projectId: string, identity: RemoteProjectIdentity, rotate = false, owner: { webContentsId: number; frameRoutingId: number }, expectedConfigGeneration?: string | null): Promise<RemoteSecretDelivery> {
     await this.load();
     const record = this.record(projectId, identity);
+    projectId = record.projectId;
     if (expectedConfigGeneration !== undefined && expectedConfigGeneration !== record.configGeneration) throw new Error("REMOTE_CONFIG_VERSION_CONFLICT");
     if (record.process) throw new Error("REMOTE_STOP_BEFORE_ROTATE");
     const config = this.data.configs[identity.fingerprint];
@@ -532,6 +540,7 @@ export class RemoteAccessManager {
   }
 
   private invalidateDeliveries(projectId: string): void {
+    projectId = canonicalProjectPath(projectId);
     for (const [deliveryId, delivery] of this.deliveries) if (delivery.projectId === projectId) {
       delivery.token = "";
       const timer = this.deliveryTimers.get(deliveryId);
@@ -543,6 +552,7 @@ export class RemoteAccessManager {
 
   /** Consume the delivery capability after the initiating renderer has shown/copy-confirmed it. */
   consumeSecretDelivery(projectId: string, deliveryId: string, owner: { webContentsId: number; frameRoutingId: number }): boolean {
+    projectId = canonicalProjectPath(projectId);
     const entry = this.deliveries.get(deliveryId);
     this.deliveries.delete(deliveryId);
     const timer = this.deliveryTimers.get(deliveryId);
@@ -558,6 +568,7 @@ export class RemoteAccessManager {
 
   /** Copy the one-time capability in the main process; the renderer never receives clipboard authority. */
   copySecretDelivery(projectId: string, deliveryId: string, owner: { webContentsId: number; frameRoutingId: number }): boolean {
+    projectId = canonicalProjectPath(projectId);
     const entry = this.deliveries.get(deliveryId);
     if (!entry || entry.expiresAt <= Date.now() || entry.projectId !== projectId || entry.webContentsId !== owner.webContentsId || entry.frameRoutingId !== owner.frameRoutingId) {
       if (entry) entry.token = "";
@@ -661,6 +672,7 @@ export class RemoteAccessManager {
   private async startNow(projectId: string, identity: RemoteProjectIdentity, paths: { root: string; repoRoot: string }, expectedConfigGeneration: string | null): Promise<RemoteStatus> {
     await this.load();
     const record = this.record(projectId, identity);
+    projectId = record.projectId;
     if (this.closing) throw new Error("REMOTE_MANAGER_CLOSING");
     if (expectedConfigGeneration !== record.configGeneration) throw new Error("REMOTE_CONFIG_VERSION_CONFLICT");
     const config = this.data.configs[identity.fingerprint];
@@ -839,6 +851,7 @@ export class RemoteAccessManager {
   private async stopNow(projectId: string, identity: RemoteProjectIdentity, expectedRuntimeGeneration: string | null): Promise<RemoteStatus> {
     await this.load();
     const record = this.record(projectId, identity);
+    projectId = record.projectId;
     if (expectedRuntimeGeneration !== null && expectedRuntimeGeneration !== record.runtimeGeneration) throw new Error("REMOTE_RUNTIME_VERSION_CONFLICT");
     if (!record.process) { record.runtimeGeneration = null; this.emit(record, this.data.configs[identity.fingerprint]?.enabled ? "stopped" : "disabled", { action: "idle", runtimeGeneration: null }); return record.status; }
     await this.stopProcess(record);
@@ -852,6 +865,7 @@ export class RemoteAccessManager {
   private async doctorNow(projectId: string, identity: RemoteProjectIdentity, paths: { root: string; repoRoot: string }, expectedConfigGeneration: string | null, expectedRuntimeGeneration: string | null): Promise<RemoteDoctorResult> {
     await this.load();
     const record = this.record(projectId, identity);
+    projectId = record.projectId;
     if (expectedConfigGeneration !== record.configGeneration) throw new Error("REMOTE_CONFIG_VERSION_CONFLICT");
     if (expectedRuntimeGeneration !== null && expectedRuntimeGeneration !== record.runtimeGeneration) throw new Error("REMOTE_RUNTIME_VERSION_CONFLICT");
     const config = this.data.configs[identity.fingerprint];

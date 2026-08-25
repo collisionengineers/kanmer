@@ -16,3 +16,8 @@
 ## Out of scope
 
 No provider, DNS, secret format, endpoint protocol, updater, or OpenAI runtime changes.
+
+## Approved ripple correction
+
+| `apps/gui/src/renderer/src/components/Settings.tsx` | Correlate selected/overview remote status by stable project fingerprint rather than display-path equality. |
+| `apps/gui/src/renderer/src/components/Settings.remote.test.tsx` | Prove a canonical status event updates a selected project opened with a Windows display path. |

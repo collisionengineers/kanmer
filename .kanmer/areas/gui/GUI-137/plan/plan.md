@@ -54,3 +54,7 @@ Preserve failures; do not broaden into other runtime managers.
 ## Stop condition
 
 Stop with the PR open and GUI-137 in Review for independent review.
+
+## Approved ripple correction
+
+Because manager status ids become canonical, update the Settings production consumer to correlate selected and overview status by the already-present project fingerprint. Add its renderer regression. This is part of the same identity boundary and introduces no new normalization rule.

@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "270"
-head_sha: "9def9c09c4e3b8c04d2880094782533fe48b82cc"
+head_sha: "ff0f6033e1db279fd95356f64e5f09ee9e6b2cb6"
 verdict: needs-changes
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "d495e81f9d336ec4"
-ticket_updated: "2026-08-25T10:17:02.589Z"
+ticket_updated: "2026-08-25T10:25:35.921Z"
 findings:
   - id: F-001
     severity: major
@@ -14,37 +14,47 @@ findings:
     disposition: fixed
   - id: F-002
     severity: major
-    summary: "The documented GITHUB_RELEASE_TOKEN is accepted by preflight but is not forwarded to gh, so publish can use an unrelated cached login or fail authentication."
-    disposition: open
+    summary: "The documented GITHUB_RELEASE_TOKEN was accepted by preflight but was not forwarded to gh."
+    disposition: fixed
   - id: F-003
     severity: major
-    summary: "The release-existence probe treats every gh release view exit-1 failure as release absence, so a transient/API failure can strand an immutable tag after the next create fails."
+    summary: "The release-existence probe treated every gh release view exit-1 failure as release absence."
+    disposition: fixed
+  - id: F-004
+    severity: major
+    summary: "The new typed release-existence probe passes version instead of the helper's required tag argument, so it requests /releases/tags/undefined and always infers absence."
     disposition: open
 ---
 # Independent review — CORE-106 / PR #270
 
 ## Review scope
 
-Freshly reviewed PR #270 at `9def9c09c4e3b8c04d2880094782533fe48b82cc` against the complete CORE-106 packet, HZN-007 control context, and FRD-021. The reviewer is independent of the author role. The nine-file release-only diff remains within the planned publisher/verification scope. Focused local release tests pass 60/60 and exact diff hygiene passes. Hosted full `verify` run `32836402760` passed in 4m10s; the attestation-triggered edited-event gate run `32836821342` passed. A separate full rerun was in progress when the final thread review below found blockers.
+Freshly reviewed PR #270 at `ff0f6033e1db279fd95356f64e5f09ee9e6b2cb6` against the complete CORE-106 packet, HZN-007 control context, and FRD-021. This is a release-only, two-file remediation on top of the existing bounded publisher/verifier work. The reviewer is independent of the author role.
 
-## GitHub review/thread gather
+## Evidence
 
-The PR is open and mergeable, with no ordinary comments. Three unresolved Codex review threads remain. The first is fixed; the latter two are valid and block merge.
+- The focused release suite was independently re-run: `node --test scripts/verify-release-assets.test.mjs scripts/release-flow.test.mjs scripts/release-publish.test.mjs` — PASS, 60/60.
+- `git diff --check 8c8fdb868aed3677b3603b9ba360f304139aee6f...ff0f6033e1db279fd95356f64e5f09ee9e6b2cb6` — PASS.
+- Fresh required CI was still in progress at this review point; it cannot clear the source finding below.
 
 ## Findings and dispositions
 
 ### F-001 — major — fixed
 
-The prior public-partial-release finding is remediated. The publisher creates a draft, uploads and verifies the exact retained package while hidden, then runs `gh release edit … --draft=false --latest`. The regression asserts `create < upload < verify < publish`, so a failed upload/verification preserves hidden failed evidence rather than serving an incomplete updater release.
+The publisher creates a hidden draft, uploads and verifies the retained package, then makes it public/latest. The ordering regression remains present.
 
-### F-002 — major — open — forward the supported publisher token to gh
+### F-002 — major — fixed
 
-`release.mjs` intentionally accepts `GITHUB_RELEASE_TOKEN`, `GH_TOKEN`, or `GITHUB_TOKEN` in `tokenVar`, and uses the selected variable for the JS verifier. The `gh release view/create/upload/edit` commands, however, inherit their original environment. GitHub CLI recognizes `GH_TOKEN`/`GITHUB_TOKEN`, not `GITHUB_RELEASE_TOKEN`; with only the documented latter variable, the write commands can fail or use an unrelated persisted account. Normalize the selected secret into the environment seen by every `gh` invocation (without logging it) and add a regression covering the documented variable.
+Publish mode now normalizes the chosen documented credential into `process.env.GH_TOKEN` before any `gh` command while retaining that credential for REST verification. This avoids a cached unrelated identity and does not log the secret.
 
-### F-003 — major — open — distinguish verified release absence from generic gh failure
+### F-003 — major — fixed
 
-The preflight catches `gh release view` and accepts any exit status 1 as absence. GitHub CLI uses exit 1 for general failures as well as a missing release, so transient network/API/repository errors can be misclassified. The script would push the irreversible tag, then fail release creation and strand a tag that future attempts refuse. Continue only after a reliable not-found result (for example a bounded API response whose 404 is explicit); surface all other failures as inconclusive before any tag mutation. Add a regression for non-404/transport failure.
+The ambiguous `gh release view` exit-code branch has been replaced by typed REST failure handling: only `kind: not-found` is eligible to proceed; auth, rate-limit, malformed, server, and other failures refuse before the tag mutation.
+
+### F-004 — major — open — use the helper's required tag argument
+
+`fetchReleaseAssets` destructures `tag` and constructs `/releases/tags/${tag}`. The new preflight calls it with `{ version, owner, repo, token }`, not `tag: releaseTag(version)`. The request is therefore made to `/releases/tags/undefined`; its 404 is treated as real release absence. This defeats the claimed typed release lookup and leaves the new test as a static source assertion rather than proof of the actual tag request. Pass `tag: releaseTag(version)` and add an argument/URL-level regression, then rerun review and CI.
 
 ## Decision
 
-NEEDS CHANGES. Keep CORE-106 in Review. Do not merge, publish, retag, or resolve the two open threads. A corrected head, updated report/packet as needed, terminal exact-head checks, and a new independent attestation are required.
+NEEDS CHANGES. Keep CORE-106 in Review; do not merge, publish, retag, or move the ticket.

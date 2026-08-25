@@ -35,3 +35,6 @@ Independent review of head `3ceafecd24c768d169b2a5cfaf803783f09eed13` recorded F
 
 ## Second review remediation
 The second independent review identified F-002 and F-003. Head `ff0f6033` normalizes the selected documented release credential into `GH_TOKEN` before any publish-mode `gh` command, so `GITHUB_RELEASE_TOKEN`, `GH_TOKEN`, and `GITHUB_TOKEN` all drive the same explicit identity used by REST verification. It also replaces the ambiguous `gh release view` exit-code inference with the typed REST release lookup: only `not-found` permits tag creation; auth, rate-limit, malformed response, network, and server failures refuse before the immutable tag is created. Source regression assertions cover both rules. Focused release tests pass 60/60, the full script rail passes 111/111, and `git diff --check` exits 0. Fresh hosted CI and independent review remain required.
+
+## Third review remediation
+Review caught that the typed release lookup had been passed an unused `version` property rather than its required `tag`. Head `05083f4075d0588ceec633725e40774d0badd5a5` now passes `tag: releaseTag(version)` and removes the misleading extra property. The source regression pins that exact argument. Focused release tests pass 60/60 and `git diff --check` exits 0. Fresh hosted CI and independent review remain required.

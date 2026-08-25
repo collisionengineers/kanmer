@@ -192,6 +192,30 @@ banner is `renderer/src/components/UpdateBanner.tsx`, rendered from a JSX value
 bound above `App.tsx`'s `if (!root || !board)`. The R2 line's "exactly two
 `installUpdate()` call sites" has been **one** since GUI-064.
 
+## Amended — GUI-133
+
+The v0.3.7 installation exposed a deeper failure beneath GUI-064: Electron
+Builder 26's generated process guard queried `Win32_Process.Path`, but CIM's
+field is `ExecutablePath`. It therefore selected and stopped no install-root
+processes. The old uninstaller could enter its file-by-file atomic rename while
+legacy Electron-as-Node sessions still mapped ICU/V8, and recovery/reinstall
+could produce a split tree: v0.3.7 app resources and registry metadata beside a
+v0.3.3 executable/runtime. `customInstall` ran after application extraction and
+could only prove that files existed, not that every file belonged to one build.
+
+The supported `customCheckAppRunning` hook now replaces that defective
+predicate. Before the old uninstaller runs it discovers and stops processes by
+the real `ExecutablePath`, constrained to the exact case-insensitive install
+directory boundary, then re-enumerates. An unavailable/inconclusive probe or a
+remaining process refuses before file mutation. Static package checks pin the
+hook. External runtimes stage the complete installed Electron tree—not only the
+exe, ICU and V8 snapshot—into immutable `<version>-<installer-pid>` generations
+before `current` is switched, so every sibling DLL and resource pack is present
+and repairing the same version cannot overwrite a live prior generation.
+Acceptance also requires a real version-distinguishable two-install
+cycle showing agreement among `Kanmer.exe`, app.asar, registry/uninstaller,
+external runtime, launcher probe, and GUI boot.
+
 ## Amended — CORE-042 protected-main release boundary
 
 R3's release owner remains `scripts/release.mjs`, but the command now has two

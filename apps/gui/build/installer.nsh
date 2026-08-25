@@ -4,6 +4,101 @@
 ; GUI-106 additionally copies the Electron-as-Node runtime outside $INSTDIR.
 ; The install-root payload remains for legacy registrations and rollback.
 
+; GUI-133: electron-builder 26.0.12's default process guard queries the
+; nonexistent Win32_Process.Path field. It therefore sees no install-root
+; process, lets the old uninstaller begin its atomic rename, and can leave a
+; mixed application tree when ICU/V8 files are mapped. The template explicitly
+; prefers this supported override. Discovery and termination both use the real
+; ExecutablePath field and the same trailing-separator boundary.
+!macro customCheckAppRunning
+  ; Pass the path through the process environment, never through interpolated
+  ; PowerShell source: assisted installs allow apostrophes and other shell
+  ; metacharacters in $INSTDIR.
+  System::Call 'Kernel32::SetEnvironmentVariable(t "KANMER_INSTALL_ROOT", t "$INSTDIR") i.R9'
+  ${If} $R9 == 0
+    DetailPrint "Cannot prepare the Kanmer process guard"
+    SetErrorLevel 21
+    Quit
+  ${EndIf}
+
+  ; Exit 0 = clear, 10 = matching process(es), 20 = inconclusive/error. A
+  ; missing or policy-blocked PowerShell follows the same fail-closed probe
+  ; path; a separate availability probe would only duplicate this execution.
+  nsExec::Exec `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; $$matches = @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) }); if ($$matches.Count -eq 0) { exit 0 } else { exit 10 } } catch { exit 20 }"`
+  Pop $R8
+  ${If} $R8 == 0
+    Goto gui133_processes_clear
+  ${ElseIf} $R8 != 10
+    Goto gui133_process_probe_failed
+  ${EndIf}
+
+  ${If} ${isUpdated}
+    Sleep 1000
+    Goto gui133_recheck_after_grace
+  ${EndIf}
+  MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION "Kanmer must close before the installation can be replaced." /SD IDCANCEL IDOK gui133_stop_processes
+  SetErrorLevel 2
+  Quit
+
+gui133_recheck_after_grace:
+  nsExec::Exec `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; if (@(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) }).Count -eq 0) { exit 0 } else { exit 10 } } catch { exit 20 }"`
+  Pop $R8
+  ${If} $R8 == 0
+    Goto gui133_processes_clear
+  ${ElseIf} $R8 != 10
+    Goto gui133_process_probe_failed
+  ${EndIf}
+
+gui133_stop_processes:
+  ; First request normal termination. A remaining process gets one forced pass;
+  ; there is no retry loop that can turn a locked install into a hang.
+  ; A target may exit between enumeration and Stop-Process. That result is not
+  ; discarded: the mandatory re-enumeration below decides whether clearance
+  ; actually converged, without misclassifying a normal exit as probe failure.
+  nsExec::Exec `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $$_.ProcessId -ErrorAction SilentlyContinue }; exit 0 } catch { exit 20 }"`
+  Pop $R8
+  ${If} $R8 != 0
+    Goto gui133_process_probe_failed
+  ${EndIf}
+  Sleep 500
+  nsExec::Exec `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; if (@(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) }).Count -eq 0) { exit 0 } else { exit 10 } } catch { exit 20 }"`
+  Pop $R8
+  ${If} $R8 == 0
+    Goto gui133_processes_clear
+  ${ElseIf} $R8 != 10
+    Goto gui133_process_probe_failed
+  ${EndIf}
+
+  nsExec::Exec `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force -ErrorAction SilentlyContinue }; exit 0 } catch { exit 20 }"`
+  Pop $R8
+  ${If} $R8 != 0
+    Goto gui133_process_probe_failed
+  ${EndIf}
+  Sleep 500
+  nsExec::Exec `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = [IO.Path]::GetFullPath([Environment]::GetEnvironmentVariable('KANMER_INSTALL_ROOT')).TrimEnd('\') + '\'; if (@(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase) }).Count -eq 0) { exit 0 } else { exit 10 } } catch { exit 20 }"`
+  Pop $R8
+  ${If} $R8 == 0
+    Goto gui133_processes_clear
+  ${ElseIf} $R8 == 10
+    Goto gui133_processes_remain
+  ${EndIf}
+
+gui133_process_probe_failed:
+  DetailPrint "Kanmer process enumeration failed; refusing partial replacement"
+  MessageBox MB_OK|MB_ICONSTOP "Kanmer could not inspect the existing installation. No application files will be replaced. Close running agents and Kanmer, then try again." /SD IDOK
+  SetErrorLevel 22
+  Quit
+
+gui133_processes_remain:
+  DetailPrint "Existing Kanmer processes remain; refusing partial replacement"
+  MessageBox MB_OK|MB_ICONSTOP "Kanmer could not safely close every process from the existing installation. No application files will be replaced. Close running agents and Kanmer, then try again." /SD IDOK
+  SetErrorLevel 23
+  Quit
+
+gui133_processes_clear:
+  System::Call 'Kernel32::SetEnvironmentVariable(t "KANMER_INSTALL_ROOT", p 0) i.R9'
+!macroend
+
 !macro customInstall
   IfFileExists "$INSTDIR\kanmer-mcp.cmd" gui099_shim_present gui099_shim_missing
 gui099_shim_missing:
@@ -50,9 +145,9 @@ gui106_overlap_rejected:
 gui106_overlap_clear:
 
   ; Provision a complete external runtime before activating the stable launcher.
-  ; Kanmer.exe is copied under a versioned path with the two Electron runtime
-  ; files it memory-maps, plus the standalone bundle. A partial copy never
-  ; becomes current; the launcher can still fall back to the install-root copy.
+  ; Electron requires its sibling DLLs and resource packs as well as the exe;
+  ; copying only the exe, ICU and V8 snapshot produces Windows 0xc0000135.
+  ; Stage the complete installed tree, then give its executable the MCP name.
   IfFileExists "$INSTDIR\Kanmer.exe" gui106_runtime_exe_present gui106_runtime_exe_missing
 gui106_runtime_exe_missing:
   DetailPrint "Kanmer Electron runtime is missing; refusing incomplete install"
@@ -69,37 +164,40 @@ gui106_runtime_v8_missing:
   Abort
 gui106_runtime_v8_present:
   CreateDirectory "$LOCALAPPDATA\Kanmer\mcp"
-  CreateDirectory "$LOCALAPPDATA\Kanmer\mcp\${VERSION}"
-  CreateDirectory "$LOCALAPPDATA\Kanmer\mcp\${VERSION}\resources"
-  CreateDirectory "$LOCALAPPDATA\Kanmer\mcp\${VERSION}\resources\mcp"
-  CreateDirectory "$LOCALAPPDATA\Kanmer\mcp\${VERSION}\resources\plugins\kanmer\skills"
+  ; A version can be reinstalled. Give every completed runtime an immutable
+  ; generation id so a repair never overwrites a live same-version session.
+  System::Call 'Kernel32::GetCurrentProcessId() i.R9'
+  StrCpy $R8 "${VERSION}-$R9"
+  CreateDirectory "$LOCALAPPDATA\Kanmer\mcp\$R8"
+  CreateDirectory "$LOCALAPPDATA\Kanmer\mcp\$R8\resources"
+  CreateDirectory "$LOCALAPPDATA\Kanmer\mcp\$R8\resources\mcp"
+  CreateDirectory "$LOCALAPPDATA\Kanmer\mcp\$R8\resources\plugins\kanmer\skills"
   ClearErrors
-  CopyFiles /SILENT "$INSTDIR\Kanmer.exe" "$LOCALAPPDATA\Kanmer\mcp\${VERSION}"
-  CopyFiles /SILENT "$INSTDIR\icudtl.dat" "$LOCALAPPDATA\Kanmer\mcp\${VERSION}"
-  CopyFiles /SILENT "$INSTDIR\v8_context_snapshot.bin" "$LOCALAPPDATA\Kanmer\mcp\${VERSION}"
-  CopyFiles /SILENT "$INSTDIR\resources\mcp\kanmer-mcp.cjs" "$LOCALAPPDATA\Kanmer\mcp\${VERSION}\resources\mcp"
-  Rename "$LOCALAPPDATA\Kanmer\mcp\${VERSION}\Kanmer.exe" "$LOCALAPPDATA\Kanmer\mcp\${VERSION}\kanmer-mcp.exe"
+  ExecWait '"$SYSDIR\cmd.exe" /d /s /c xcopy /E /I /Q /Y "$INSTDIR\*" "$LOCALAPPDATA\Kanmer\mcp\$R8"' $0
+  ${If} $0 != 0
+    Goto gui106_runtime_copy_failed
+  ${EndIf}
+  Rename "$LOCALAPPDATA\Kanmer\mcp\$R8\Kanmer.exe" "$LOCALAPPDATA\Kanmer\mcp\$R8\kanmer-mcp.exe"
   IfErrors gui106_runtime_copy_failed gui106_runtime_copy_ready
 gui106_runtime_copy_failed:
   DetailPrint "Could not stage the external Kanmer MCP runtime"
   Abort
 gui106_runtime_copy_ready:
-  IfFileExists "$LOCALAPPDATA\Kanmer\mcp\${VERSION}\kanmer-mcp.exe" gui106_runtime_files_ready gui106_runtime_files_missing
+  IfFileExists "$LOCALAPPDATA\Kanmer\mcp\$R8\kanmer-mcp.exe" gui106_runtime_files_ready gui106_runtime_files_missing
 gui106_runtime_files_missing:
   DetailPrint "The external Kanmer MCP runtime is incomplete"
   Abort
 gui106_runtime_files_ready:
-  ClearErrors
-  ExecWait '"$SYSDIR\cmd.exe" /d /s /c xcopy /E /I /Q /Y "$INSTDIR\resources\plugins\kanmer\skills" "$LOCALAPPDATA\Kanmer\mcp\${VERSION}\resources\plugins\kanmer\skills"' $0
-  ${If} $0 != 0
-    Goto gui106_runtime_skills_copy_failed
-  ${EndIf}
-  IfFileExists "$LOCALAPPDATA\Kanmer\mcp\${VERSION}\resources\mcp\kanmer-mcp.cjs" gui106_runtime_bundle_ready gui106_runtime_bundle_missing
+  IfFileExists "$LOCALAPPDATA\Kanmer\mcp\$R8\ffmpeg.dll" gui106_runtime_dll_ready gui106_runtime_files_missing
+gui106_runtime_dll_ready:
+  IfFileExists "$LOCALAPPDATA\Kanmer\mcp\$R8\resources.pak" gui106_runtime_pack_ready gui106_runtime_files_missing
+gui106_runtime_pack_ready:
+  IfFileExists "$LOCALAPPDATA\Kanmer\mcp\$R8\resources\mcp\kanmer-mcp.cjs" gui106_runtime_bundle_ready gui106_runtime_bundle_missing
 gui106_runtime_bundle_missing:
   DetailPrint "The external Kanmer MCP bundle is incomplete"
   Abort
 gui106_runtime_bundle_ready:
-  IfFileExists "$LOCALAPPDATA\Kanmer\mcp\${VERSION}\resources\plugins\kanmer\skills\kanmer-setup\SKILL.md" gui106_runtime_skills_ready gui106_runtime_skills_copy_failed
+  IfFileExists "$LOCALAPPDATA\Kanmer\mcp\$R8\resources\plugins\kanmer\skills\kanmer-setup\SKILL.md" gui106_runtime_skills_ready gui106_runtime_skills_copy_failed
 gui106_runtime_skills_copy_failed:
   DetailPrint "The external Kanmer bundled skills are incomplete"
   Abort
@@ -107,7 +205,7 @@ gui106_runtime_skills_ready:
   ; Build the new junction beside the old one. Only a complete versioned
   ; directory is ever named current; the old install-root fallback remains.
   RMDir "$LOCALAPPDATA\Kanmer\mcp\current.next"
-  ExecWait '"$SYSDIR\cmd.exe" /d /s /c mklink /J "$LOCALAPPDATA\Kanmer\mcp\current.next" "$LOCALAPPDATA\Kanmer\mcp\${VERSION}"' $0
+  ExecWait '"$SYSDIR\cmd.exe" /d /s /c mklink /J "$LOCALAPPDATA\Kanmer\mcp\current.next" "$LOCALAPPDATA\Kanmer\mcp\$R8"' $0
   ${If} $0 != 0
     DetailPrint "Could not activate the external Kanmer MCP runtime"
     Abort
@@ -130,7 +228,7 @@ gui106_runtime_prune_loop:
   StrCmp $R1 ".." gui106_runtime_prune_next
   StrCmp $R1 "current" gui106_runtime_prune_next
   StrCmp $R1 "current.next" gui106_runtime_prune_next
-  StrCmp $R1 "${VERSION}" gui106_runtime_prune_next
+  StrCmp $R1 "$R8" gui106_runtime_prune_next
   ClearErrors
   RMDir /r "$LOCALAPPDATA\Kanmer\mcp\$R1"
 gui106_runtime_prune_next:

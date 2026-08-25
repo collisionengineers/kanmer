@@ -244,6 +244,12 @@ if (!/nsis:[\s\S]*?include: build\/installer\.nsh/.test(builderConfig)) {
 
 const installer = readFileSync(join(root, "apps", "gui", "build", "installer.nsh"), "utf8");
 const installerMarkers = [
+  "!macro customCheckAppRunning",
+  "Win32_Process",
+  "ExecutablePath",
+  "KANMER_INSTALL_ROOT",
+  "StringComparison]::OrdinalIgnoreCase",
+  "refusing partial replacement",
   "!macro customInstall",
   "!macro customUnInstall",
   'HKCU "Software\\Kanmer" "InstallDir"',
@@ -253,6 +259,9 @@ const installerMarkers = [
   "${VERSION}",
   "kanmer-mcp.exe",
   "xcopy /E /I /Q /Y",
+  '"$INSTDIR\\*"',
+  "ffmpeg.dll",
+  "resources.pak",
   "resources\\plugins\\kanmer\\skills",
   "FindFirst",
   "overlaps the external MCP runtime",
@@ -264,6 +273,12 @@ if (missingInstallerMarkers.length > 0) {
   fail(
     `apps/gui/build/installer.nsh is missing lifecycle marker(s): ${missingInstallerMarkers.join(", ")}`,
     "restore the GUI-099 install/uninstall ownership hooks before shipping the package",
+  );
+}
+if (/\$\$_\.Path\b/.test(installer)) {
+  fail(
+    "apps/gui/build/installer.nsh queries nonexistent Win32_Process.Path",
+    "use ExecutablePath in the customCheckAppRunning override; Path makes the installer miss every live runtime",
   );
 }
 

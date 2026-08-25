@@ -38,7 +38,9 @@ set "EXTERNAL_EXE=%EXTERNAL_DIR%\kanmer-mcp.exe"
 set "EXTERNAL_BUNDLE=%EXTERNAL_DIR%\resources\mcp\kanmer-mcp.cjs"
 set "EXTERNAL_ICU=%EXTERNAL_DIR%\icudtl.dat"
 set "EXTERNAL_V8=%EXTERNAL_DIR%\v8_context_snapshot.bin"
-if exist "%EXTERNAL_EXE%" if exist "%EXTERNAL_BUNDLE%" if exist "%EXTERNAL_ICU%" if exist "%EXTERNAL_V8%" (
+set "EXTERNAL_FFMPEG=%EXTERNAL_DIR%\ffmpeg.dll"
+set "EXTERNAL_RESOURCES=%EXTERNAL_DIR%\resources.pak"
+if exist "%EXTERNAL_EXE%" if exist "%EXTERNAL_BUNDLE%" if exist "%EXTERNAL_ICU%" if exist "%EXTERNAL_V8%" if exist "%EXTERNAL_FFMPEG%" if exist "%EXTERNAL_RESOURCES%" (
   set "KANMER_EXE=%EXTERNAL_EXE%"
   set "MCP_BUNDLE=%EXTERNAL_BUNDLE%"
   goto runtime_ready
@@ -56,6 +58,8 @@ set "EXTERNAL_EXE="
 set "EXTERNAL_BUNDLE="
 set "EXTERNAL_ICU="
 set "EXTERNAL_V8="
+set "EXTERNAL_FFMPEG="
+set "EXTERNAL_RESOURCES="
 :runtime_ready
 exit /b 0
 

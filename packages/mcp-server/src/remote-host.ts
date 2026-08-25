@@ -23,6 +23,9 @@ export interface RemoteHostStatus {
   readonly publicVerification: "unknown";
   readonly endpoint?: string;
   readonly reason?: string;
+  readonly attempt?: number;
+  readonly changedAt?: string;
+  readonly authGeneration?: string;
 }
 
 /** Composes bearer-protected loopback HTTP with a provider-neutral tunnel. */
@@ -65,7 +68,16 @@ export class KanmerRemoteHost {
       onState: (state) => {
         const provider: RemoteHostStatus["provider"] = state === "stopped" ? "stopped" : state === "starting" ? "starting" : state;
         if (provider === "stopped" || provider === "failed") this.stopHealthMonitor();
-        this.status = { ...this.status, provider }; this.emit();
+        const tunnelStatus = options.tunnel.getStatus?.();
+        const attempt = state === "restarting" ? (tunnelStatus?.attempt ?? 0) + 1 : Math.max(1, tunnelStatus?.attempt ?? 0);
+        this.status = {
+          ...this.status,
+          provider,
+          attempt,
+          ...(state === "restarting" ? { changedAt: new Date().toISOString() } : tunnelStatus?.changedAt ? { changedAt: tunnelStatus.changedAt } : {}),
+          ...(tunnelStatus?.authGeneration ? { authGeneration: tunnelStatus.authGeneration } : {}),
+        };
+        this.emit();
       },
     });
   }
@@ -89,12 +101,12 @@ export class KanmerRemoteHost {
       try {
         await process.checkReadiness?.();
         if (!this.stopped && this.monitoredProcess === process && this.status.provider === "degraded") {
-          this.status = { ...this.status, provider: "running" };
+          this.status = { ...this.status, provider: "running", changedAt: new Date().toISOString() };
           this.emit();
         }
       } catch {
         if (!this.stopped && this.monitoredProcess === process && this.status.provider === "running") {
-          this.status = { ...this.status, provider: "degraded" };
+          this.status = { ...this.status, provider: "degraded", changedAt: new Date().toISOString() };
           this.emit();
         }
       }

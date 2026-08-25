@@ -12,7 +12,7 @@ export interface TunnelSupervisorOptions {
   readonly now?: () => number;
   /** Security/configuration exits are terminal; only transient exits retry. */
   readonly classifyExit?: (result: Awaited<TunnelProcess["exited"]>) => "transient" | "terminal";
-  readonly onState?: (state: "starting" | "running" | "restarting" | "stopped" | "failed") => void;
+  readonly onState?: (state: "starting" | "running" | "restarting" | "stopped" | "failed", attempt: number) => void;
 }
 
 /** Bounded, parent-owned recovery for a single tunnel child. */
@@ -38,7 +38,7 @@ export class TunnelSupervisor {
     if (this.maxRestarts > 10 || this.policy.baseDelayMs > this.policy.maxDelayMs || this.policy.stableResetMs < 1) throw new Error("TUNNEL_RESTART_POLICY_INVALID");
   }
 
-  private emit(state: Parameters<NonNullable<TunnelSupervisorOptions["onState"]>>[0]): void { this.options.onState?.(state); }
+  private emit(state: Parameters<NonNullable<TunnelSupervisorOptions["onState"]>>[0]): void { this.options.onState?.(state, this.restarts + 1); }
 
   async start(): Promise<void> {
     if (this.process || this.launching || this.retrying || this.stopping) throw new Error("TUNNEL_SUPERVISOR_NOT_STARTABLE");

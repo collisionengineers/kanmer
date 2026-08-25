@@ -48,7 +48,7 @@ Keep the change source-compatible within the app by making every production call
 
 ## Commands
 
-- npm test -w @kanmer/gui -- --run apps/gui/src/preload/index.test.ts apps/gui/src/renderer/src/components/Settings.remote.test.tsx
+- npm test -w @kanmer/gui -- --run src/preload/index.test.ts src/renderer/src/components/Settings.remote.test.tsx
 - npm run typecheck -w @kanmer/gui
 - git diff --check
 

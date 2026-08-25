@@ -1,31 +1,39 @@
 ---
 kind: review-attestation
 pr: "261"
-head_sha: "21e7828e0827b5268c235390404d12bdfd78d4af"
-verdict: needs-changes
+head_sha: "49695fae85e910cb0c9c9fe269ddd0db413b9f22"
+verdict: pass
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "ec8f86d87ee55e01"
-ticket_updated: "2026-08-25T04:48:41.274Z"
+ticket_updated: "2026-08-25T04:52:02.997Z"
 findings:
   - id: F-001
     severity: major
-    summary: "The manager can resolve startup as ready before the corrected loopback ready event is processed."
-    disposition: open
+    summary: "The manager could resolve startup as ready before the corrected loopback ready event was processed."
+    disposition: fixed
 ---
 
 # Independent review — GUI-136 / PR #261
 
-I reviewed the full packet, HZN-007 context, FRD-025, exact PR diff, hosted check state, and GitHub review/comments/threads. The reviewed head is 21e7828e0827b5268c235390404d12bdfd78d4af; the PR had no review threads or general comments at review time.
+I re-reviewed the complete packet, HZN-007 context, FRD-025, the current diff, hosted checks, reviews, comments, and threads at head 49695fae85e910cb0c9c9fe269ddd0db413b9f22.
 
-## Scope assessment
+## Scope and implementation
 
-The additive localEndpoint result preserves the public endpoint return contract, and the child ready event now carries the loopback endpoint. The host and direct ready-event tests pass, but they do not exercise the full emitted-status sequence.
+The implementation remains within the declared five files. The remote host retains the existing HTTPS public endpoint while exposing a distinct listener-derived loopback endpoint. The child ready event supplies the loopback value to the GUI and names the public endpoint separately. No Cloudflare, credential, bearer, storage, updater, dependency, or public-contract expansion is present.
 
-## F-001 — open major finding
+## F-001 disposition — fixed
 
-KanmerRemoteHost emits status changes while its supervisor starts. When the provider reaches running, remote-cli emits a kanmer-mcp-remote-status line before remote.start() returns and before it writes the corrected kanmer-mcp-remote-ready line. The manager currently maps any status with provider === "running" to state ready, retaining the previous endpoint when the status endpoint is absent or public. startNow() resolves as soon as it observes any ready status. Therefore startup can resolve with a null/rejected public endpoint before the later canonical loopback ready event arrives, leaving the doctor race from the reproduction intact.
+The correction changes a provider-running status with no trusted canonical endpoint from ready to starting. The regression now emits the real public status-before-ready order, awaits the loopback ready event, and proves every observed ready status has the canonical loopback endpoint. This prevents start() from resolving with null or rejected public endpoint and preserves the existing fail-closed trust boundary. Doctor derives KANMER_LOCAL_ENDPOINT from this retained status endpoint.
 
-The new manager test writes only the final ready event, so it cannot expose this order. Fix the manager protocol transition so a provider-running status alone cannot resolve startup without a canonical loopback endpoint, and add a regression that emits the real status-before-ready sequence and proves both start() and doctor input use the loopback origin. Preserve the public endpoint contract and the fail-closed trust check.
+## Evidence
 
-No Cloudflare, credential, storage, tunnel-resource, or dependency change is warranted. The stated focused build, remote-host test, manager test, full typecheck, and diff check completed successfully, but they are insufficient to justify a pass because F-001 remains open.
+- Focused GUI manager test: PASS, 10/10.
+- Remote-host test: PASS, 8/8.
+- Full workspace typecheck: PASS.
+- Core/server build: PASS.
+- Diff whitespace check: PASS.
+- Hosted verify: PASS, 4m02s.
+- The sole corresponding GitHub review thread is resolved; there are no unresolved threads or general comments.
+
+The initial gate predates this fresh review record and must be rerun for an exact-head attestation snapshot. No open blocker or major finding remains. This is an independent PASS.

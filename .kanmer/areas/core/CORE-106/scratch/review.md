@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "270"
-head_sha: "61010005cc0829bfb6cfd272072cd5e4bfbdddf5"
-verdict: needs-changes
+head_sha: "6aee92d5bcdedf75ed9da277cfb5d23ad96ea0e3"
+verdict: pass
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "d495e81f9d336ec4"
-ticket_updated: "2026-08-25T10:38:47.356Z"
+ticket_updated: "2026-08-25T10:45:07.146Z"
 findings:
   - id: F-001
     severity: major
@@ -38,31 +38,31 @@ findings:
     disposition: fixed
   - id: F-008
     severity: major
-    summary: "The publisher pushes the immutable tag before building and validating its one package, so a local packaging failure strands a retry-blocking tag."
-    disposition: open
+    summary: "The publisher pushed the immutable tag before building and validating its one package, so a local packaging failure stranded a retry-blocking tag."
+    disposition: fixed
   - id: F-009
     severity: major
-    summary: "Unqualified gh release commands can honor GH_REPO and create/upload a release in a repository different from the tag and REST-verification repository."
-    disposition: open
+    summary: "Unqualified gh release commands could honor GH_REPO and create/upload a release in a repository different from the tag and REST-verification repository."
+    disposition: fixed
 ---
 # Independent review — CORE-106 / PR #270
 
-## Review scope and evidence
+## Scope and evidence
 
-Freshly reviewed PR #270 at `61010005cc0829bfb6cfd272072cd5e4bfbdddf5` against the complete CORE-106 packet, HZN-007 context, FRD-021, full diff, hosted checks, and every GitHub review thread. The reviewer is independent of the author role. Focused tests pass 62/62, exact diff hygiene passes, and hosted run `32838236035` reports `verify` PASS in 4m35s and `kanmer-gate` PASS in 51s. These checks do not clear the source findings below.
+Independently reviewed PR #270 at exact head `6aee92d5bcdedf75ed9da277cfb5d23ad96ea0e3` against the full CORE-106 packet, HZN-007 context, FRD-021, complete diff, current review threads, and hosted checks. The reviewer is distinct from the author role. The bounded scope is retained: a single local Windows package generation, explicit release publication, strict local and remote coherence checks, a read-only tag verifier, release guidance, and recovery documentation; no runtime updater, existing tag/release, dependency, credential, or branch-protection change is present.
 
-## Disposed findings
+Focused command `node --test scripts/verify-release-assets.test.mjs scripts/release-flow.test.mjs scripts/release-publish.test.mjs` exited 0: 62/62 passing. `git diff --check 8c8fdb868aed3677b3603b9ba360f304139aee6f...6aee92d5bcdedf75ed9da277cfb5d23ad96ea0e3` exited 0. Exact-head hosted workflow 32838765805 is green: `verify` passed at 2026-08-25T10:49:07Z (4m06s) and `kanmer-gate` passed at 2026-08-25T10:46:05Z (1m04s).
 
-F-001 through F-007 are fixed. In particular, the shared canonical set is now enforced by the publisher before upload and consumed by remote verification. The F-005 through F-007 review threads have the code remedy needed, but must be resolved with the next clean review.
+## Findings and dispositions
 
-## F-008 — major — open — validate the package before pushing the retry-blocking immutable tag
+F-001 through F-007 remain fixed. The publisher creates a draft, uploads and digest-verifies the exact retained package before making it public/latest; token normalization and typed release lookup fail closed; digest absence is a hard error; retry classification distinguishes public visibility races from execution/authentication failures; and one canonical four-asset helper governs both local upload construction and remote verification.
 
-The publish path checks tag absence then immediately creates and pushes `v<version>`, before running Electron Builder, copying the MCPB, updater package checks, and local artifact coherence. Any of those local failures leaves the tag on origin without a release. The following invocation refuses the existing tag, so an otherwise unpublished version cannot be retried and must be abandoned. Build and validate the one package generation first; only then create/push the immutable tag and draft release. A concurrent tag creation during packaging must fail safely before any release mutation. Add an ordering regression.
+F-008 is fixed at this head. All local publication prerequisites now precede any tag creation: GUI build, Electron Builder with `--publish never`, MCPB copy, packaged-updater check, local manifest coherence, and canonical exact-upload-set validation. A tag push failure deletes only the just-created local tag, refuses before any GitHub Release operation, and preserves a competing remote tag as immutable evidence. The regression pins package validation before tag push and the local-tag cleanup path.
 
-## F-009 — major — open — pin every gh release command to the verified repository
+F-009 is fixed at this head. `gh release create`, `gh release upload`, and `gh release edit` each explicitly pass `--repo collisionengineers/kanmer`, matching the tag and REST-verification target rather than ambient `GH_REPO`. The release-flow regression pins all three commands.
 
-The tag push and REST verification are bound to the local origin / `collisionengineers/kanmer`, but `gh release create`, `upload`, and `edit` have no `--repo`. GitHub CLI honours `GH_REPO`, so a caller environment can create a tag, draft release, and assets in a different repository before later verification fails against Kanmer. Pass the same explicit repository to create, upload, and edit, and pin it with a regression.
+All nine recorded findings are disposed as fixed. GitHub review threads F-001 through F-007 are resolved; F-008 and F-009 are remediated at this head and are resolved with this decision. No unresolved review thread, requested change, or failed/pending required check remains.
 
 ## Decision
 
-NEEDS CHANGES. Keep CORE-106 in Review. Do not merge, publish, retag, move the ticket, or resolve F-008/F-009 until a corrected head has fresh CI and independent review.
+PASS. With the board review record synchronized and the post-attestation merge gate green, PR #270 may be squash-merged through the normal protected-main flow. CORE-107 exclusively owns the actual v0.3.9 release/publication and installed-runtime proof; this review neither publishes nor verifies a release.

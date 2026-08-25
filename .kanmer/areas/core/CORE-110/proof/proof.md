@@ -42,3 +42,9 @@ attempts:
 v0.3.11 is publicly available from the exact reviewed merge commit. The Windows installer, differential blockmap, updater manifest, and MCPB bundle all match the one canonical local package set.
 
 The installed GUI was deliberately not updated or launched. The user owns that final installation step, after which GUI-141 and MCP-051 can receive their separate live installed-runtime verification.
+
+## Closeout traceability
+
+- Release-notes PR: https://github.com/collisionengineers/kanmer/pull/279 — merged 2026-08-25T16:26:17Z as `48d819d6d896f3bf4aac66925a2a92cbc6baa202`.
+- Release PR: https://github.com/collisionengineers/kanmer/pull/280 — merged 2026-08-25T16:44:40Z as `820aa790f94265cf156873f813ee2af108233b85`.
+- Public release: https://github.com/collisionengineers/kanmer/releases/tag/v0.3.11 — published 2026-08-25T16:53:58Z.

@@ -6,6 +6,28 @@ against shipping the previous release's notes. electron-builder reads this file
 from the app directory (`projectDir` is `apps/gui` when the packer is invoked
 there) and uses it as the GitHub release body.
 
+## 0.3.11
+
+### ChatGPT remote access uses one managed Windows runtime
+
+Kanmer now treats the OpenAI tunnel runtime as a managed installation rather
+than a pasted terminal command. Runtime aliases and provider profiles are kept
+distinct, their state is restored when the app reopens, and Connect refuses to
+claim success when the managed runtime is absent or unhealthy. Start, stop and
+replacement follow one lifecycle, so stale processes are not left behind when
+configuration changes.
+
+### Cloudflare startup fails clearly and shuts down cleanly
+
+Remote access can use the supported Cloudflare transport fallback when the
+preferred startup path is unavailable. Tunnel startup and health checks now
+have separate deadlines, cancellation reaches in-flight startup work, and a
+provider process stops starting as soon as its host session closes. This keeps
+Windows setup responsive and prevents a timed-out connection attempt from
+appearing later as an orphaned tunnel.
+
+This remains a Windows release. It adds no Ubuntu installation or CI lane.
+
 ## 0.3.10
 
 ### Draft releases are verified before they become public

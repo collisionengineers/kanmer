@@ -63,12 +63,11 @@ describe("KanmerStore", () => {
   });
 
   it("gives tickets area-based ids and places them in the area's folder", async () => {
-    await store.addColumn("area", { id: "api", name: "API" });
-    const t = await store.createItem({ type: "ticket", title: "A", area: "api" });
-    expect(t.id).toBe("API-001");
+    const t = await store.createItem({ type: "ticket", title: "A", area: "pr-review" });
+    expect(t.id).toBe("PR-001");
     expect(
       await fs
-        .access(path.join(root, ".kanmer", "areas", "api", "API-001", "API-001.md"))
+        .access(path.join(root, ".kanmer", "areas", "pr-review", "PR-001", "PR-001.md"))
         .then(() => true),
     ).toBe(true);
     const none = await store.createItem({ type: "ticket", title: "B" });
@@ -482,6 +481,7 @@ describe("KanmerStore", () => {
 
   it("creates with an area and filters by it", async () => {
     await store.addColumn("area", { id: "ui", name: "UI", color: "#5b8cff" });
+    expect((await store.getBoard()).areas.map((area) => area.id)).toContain("ui");
     await store.createItem({ type: "ticket", title: "UI card", area: "ui" });
     await store.createItem({ type: "ticket", title: "No area" });
     expect((await store.listItems({ area: "ui" })).length).toBe(1);

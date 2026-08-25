@@ -767,8 +767,8 @@ export class RemoteAccessManager {
         if (event.kind === "kanmer-mcp-remote-ready" && event.endpoint && isCanonicalLocalEndpoint(event.endpoint) && event.projectFingerprint === record.identity.fingerprint) {
           this.emit(record, "ready", { endpoint: event.endpoint, tokenId: event.tokenId ?? null, generation: event.tokenId ?? null, runtimeGeneration: record.runtimeGeneration, public: "stale" });
         } else if (event.kind === "kanmer-mcp-remote-status" && event.status) {
-          const state = event.status.provider === "degraded" ? "degraded" : event.status.provider === "failed" ? "error" : event.status.provider === "running" ? "ready" : event.status.local === "starting" ? "starting" : record.status.state;
           const endpoint = event.status.endpoint && isCanonicalLocalEndpoint(event.status.endpoint) ? event.status.endpoint : record.status.endpoint;
+          const state = event.status.provider === "degraded" ? "degraded" : event.status.provider === "failed" ? "error" : event.status.provider === "running" ? (endpoint ? "ready" : "starting") : event.status.local === "starting" ? "starting" : record.status.state;
           this.emit(record, state, { endpoint, diagnostics: event.status.reason ? [event.status.reason] : [] });
         }
       } catch { /* only protocol JSON is consumed; raw child output is intentionally discarded */ }

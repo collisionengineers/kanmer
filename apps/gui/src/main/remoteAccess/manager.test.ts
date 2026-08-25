@@ -154,13 +154,18 @@ describe("RemoteAccessManager", () => {
         kill: () => { Object.defineProperty(process, "exitCode", { value: 0, configurable: true }); queueMicrotask(() => process.emit("exit", 0, null)); return true; },
       });
       child = process;
-      queueMicrotask(() => stdout.write(`${JSON.stringify({
-        kind: "kanmer-mcp-remote-ready", version: 1,
-        endpoint: "http://127.0.0.1:43123/mcp",
-        publicEndpoint: "https://mcp.example.com/mcp",
-        authRequired: true, tokenId: "sha256:0123456789ab",
-        projectFingerprint: identity.fingerprint,
-      })}\n`));
+      queueMicrotask(() => {
+        stdout.write(`${JSON.stringify({ kind: "kanmer-mcp-remote-status", version: 1, status: {
+          local: "ready", provider: "running", publicVerification: "unknown", endpoint: "https://mcp.example.com/mcp",
+        } })}\n`);
+        setTimeout(() => stdout.write(`${JSON.stringify({
+          kind: "kanmer-mcp-remote-ready", version: 1,
+          endpoint: "http://127.0.0.1:43123/mcp",
+          publicEndpoint: "https://mcp.example.com/mcp",
+          authRequired: true, tokenId: "sha256:0123456789ab",
+          projectFingerprint: identity.fingerprint,
+        })}\n`), 0);
+      });
       return process;
     };
     const manager = new RemoteAccessManager(root, spawnProcess);
@@ -170,9 +175,15 @@ describe("RemoteAccessManager", () => {
     const configured = await manager.viewFor("/repo", identity);
     await manager.createSecret("/repo", identity, false, owner, configured.status.configGeneration);
     const readyView = await manager.viewFor("/repo", identity);
+    const observed: Array<{ state: string; endpoint: string | null }> = [];
+    const unsubscribe = manager.subscribe((next) => observed.push({ state: next.state, endpoint: next.endpoint }));
     const status = await manager.start("/repo", identity, { root: identity.boardRoot, repoRoot: identity.repoRoot }, readyView.status.configGeneration);
+    unsubscribe();
     expect(status.state).toBe("ready");
     expect(status.endpoint).toBe("http://127.0.0.1:43123/mcp");
+    expect(observed.filter((next) => next.state === "ready")).toEqual([
+      { state: "ready", endpoint: "http://127.0.0.1:43123/mcp" },
+    ]);
     await manager.closeAll();
     expect(child!).toBeDefined();
   });

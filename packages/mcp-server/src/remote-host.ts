@@ -51,9 +51,11 @@ export class KanmerRemoteHost {
       start: async () => {
         this.status = { ...this.status, local: "starting" }; this.emit();
         this.ready ??= await this.http.start();
+        if (this.stopped) throw new Error("REMOTE_HOST_STOPPED");
         if (!this.ready.authRequired || !/^kanmer-proj-v1:[a-f0-9]{64}$/.test(this.ready.projectFingerprint)) throw new Error("TUNNEL_LOCAL_READY_INVALID");
         this.status = { ...this.status, local: "ready" }; this.emit();
         await options.verifyLocal(this.ready);
+        if (this.stopped) throw new Error("REMOTE_HOST_STOPPED");
         const authGeneration = options.authGeneration?.();
         if (authGeneration && !/^sha256:[a-f0-9]{12}$/.test(authGeneration)) throw new Error("TUNNEL_AUTH_GENERATION_INVALID");
         const process = await options.tunnel.start({
@@ -148,7 +150,13 @@ export class KanmerRemoteHost {
     // authenticated listener has been retired.  The FRD orders listener and
     // session shutdown ahead of tunnel-child shutdown.
     try { await this.http.close(); }
-    finally { await this.supervisor.stop(); }
+    finally {
+      // The supervisor cannot publish a process until adapter.start resolves.
+      // Ask the adapter to cancel any provisional startup handle first, then
+      // let the supervisor join the lifecycle and stop a published handle.
+      try { await this.options.tunnel.stop?.(); }
+      finally { await this.supervisor.stop(); }
+    }
     // A final stopped snapshot must not make a past invalidation look current.
     // Keep the public endpoint for a caller that needs to display what stopped,
     // but replace transient lifecycle state rather than spreading it forward.

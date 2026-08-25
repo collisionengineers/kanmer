@@ -78,6 +78,28 @@ test("local verification runs before provider spawn and blocks an unhealthy orig
   } finally { await remote.close(); }
 });
 
+test("close during local verification prevents a later provider start", async () => {
+  let releaseVerification;
+  let verificationStartedResolve;
+  const verificationStarted = new Promise((resolve) => { verificationStartedResolve = resolve; });
+  const verification = new Promise((resolve) => { releaseVerification = resolve; });
+  let starts = 0;
+  const remote = createKanmerRemoteHost({
+    authorizer: { authorize: async () => ({ principal: "test" }) },
+    hostname: "kanmer.example.test",
+    verifyLocal: async () => { verificationStartedResolve(); await verification; },
+    tunnel: { start: async () => { starts++; throw new Error("must not spawn"); }, stop: async () => {} },
+  });
+  const starting = remote.start();
+  await verificationStarted;
+  const closing = remote.close();
+  releaseVerification();
+  await assert.rejects(() => starting, /REMOTE_HOST_STOPPED/);
+  await closing;
+  assert.equal(starts, 0);
+  assert.equal(remote.getStatus().provider, "stopped");
+});
+
 test("remote host accepts only opaque auth-generation metadata before a tunnel starts", async () => {
   let starts = 0;
   const remote = createKanmerRemoteHost({

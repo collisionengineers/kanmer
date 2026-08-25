@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { allocateLoopbackPort, reserveLoopbackPort, reserveSpecificLoopbackPort, waitForTunnelReadiness } from "../../dist/tunnels/readiness.js";
+import { DEFAULT_READINESS_TIMEOUT_MS, allocateLoopbackPort, reserveLoopbackPort, reserveSpecificLoopbackPort, waitForTunnelReadiness } from "../../dist/tunnels/readiness.js";
 import { createServer } from "node:net";
 import { createServer as createHttpServer } from "node:http";
+
+test("generic readiness remains bounded for recurring health checks", () => {
+  assert.equal(DEFAULT_READINESS_TIMEOUT_MS, 10_000);
+});
 
 test("allocator returns an unprivileged loopback port", async () => {
   const port = await allocateLoopbackPort();

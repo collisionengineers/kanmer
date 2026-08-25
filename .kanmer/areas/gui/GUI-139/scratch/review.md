@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "265"
-head_sha: "b24e91873e544a685090daebcb5890ce18c137bc"
-verdict: pass
+head_sha: "1218384c8248c4670cdb54bb790958996005afd7"
+verdict: needs-changes
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "9af7da453bc2b0c7"
-ticket_updated: "2026-08-25T06:50:30.291Z"
+ticket_updated: "2026-08-25T06:57:14.081Z"
 findings:
   - id: F-001
     severity: major
@@ -16,24 +16,21 @@ findings:
     severity: major
     summary: "Doctor or Initialize makes the product-created incomplete profile unloadable"
     disposition: fixed
+  - id: F-003
+    severity: major
+    summary: "Generated default profile name can fail its own validation on restart"
+    disposition: open
 ---
-# Independent review — GUI-139 / PR #265
+# Independent re-review — GUI-139 / PR #265
 
-## Verdict
+## Scope and evidence
 
-PASS for exact head b24e91873e544a685090daebcb5890ce18c137bc. The reviewer is independent of the author role. The two-file diff remains within the GUI-139 packet and keeps the OpenAI stdio path separate from Cloudflare remote access as required by FRD-025 and HZN-007.
-
-## Evidence
-
-- Local focused test: npm exec vitest run -- src/main/openaiTunnel.test.ts — 13/13 passed.
-- Local rail: npm run typecheck — all workspaces passed.
-- Scope integrity: git diff --check 700ae9c46904cd5417abe81dd3b256f6d33000d0...b24e91873e544a685090daebcb5890ce18c137bc — passed; no local changes.
-- Hosted run 32818742228: verify passed in 4m8s. The initial gate is success but records the prior attestation head, so it must be refreshed after this exact-head record before merge.
-- Final pre-attestation GitHub gather: PR open and clean; head and base unchanged; no ordinary comments, reviews, or review threads.
+Reviewed exact PR head 1218384c8248c4670cdb54bb790958996005afd7 against the full GUI-139 packet, FRD-025, and HZN-007 context. The three remediation commits remain within the two declared files. Exact-head local evidence passed: focused openaiTunnel tests (13/13), all-workspace typecheck, and git diff --check against 700ae9c46904cd5417abe81dd3b256f6d33000d0. Hosted checks were in progress at the final gather.
 
 ## Finding dispositions
 
-- **F-001 — major, fixed:** The persisted incomplete profile is accepted only when it matches the project-derived default; safe but altered tunnel, executable, or profile-name values are rejected by the regression coverage.
-- **F-002 — major, fixed:** Initialize and Doctor now require a runnable profile before status mutation, spawning, or persistence. The regression proves register, restart, both expected incomplete-profile rejections, and a second restart preserve the incomplete default.
+- **F-001 — major, fixed:** Structural default matching remains restricted to the canonical project-derived configuration, and the regressions reject altered safe tunnel, executable, and profile-name values.
+- **F-002 — major, fixed:** Product-written diagnostic metadata is now separately bounded to string/null summaries/errors and a parseable-or-null timestamp while structural default fields remain exact. Incomplete profiles are still rejected before Doctor/Initialize mutates state, spawns, or persists data.
+- **F-003 — major, open:** defaultProfile derives profileName by replacing unsafe characters but does not ensure its first character is alphanumeric. A project basename such as .kanmer, _repo, -repo, or a non-ASCII-prefixed directory persists an expected default whose name fails isSafeOpenAIProfileName; normalizeProfile then rejects it at the next restart despite productDefault matching. Canonicalize or prefix the generated name so it always satisfies the profile-name validator, and add a register/restart regression for a non-alphanumeric basename.
 
-Residual risk is limited to the explicit post-merge installed-artifact verification in the ticket checklist. This review does not claim post-merge proof, release, or cleanup.
+No merge is authorized while F-003 is open. GitHub currently also has one matching unresolved F-003 thread; the older diagnostics thread is disposed fixed by this head. This attestation makes no post-merge, release, or proof claim.

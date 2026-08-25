@@ -31,11 +31,12 @@ commits:
   - 05083f4075d0588ceec633725e40774d0badd5a5
   - 5b3b61af85359c3a4f2c9d708856d1b3d1920964
   - 61010005cc0829bfb6cfd272072cd5e4bfbdddf5
+  - 6aee92d5bcdedf75ed9da277cfb5d23ad96ea0e3
 prs:
   - '270'
 archived: false
 created: '2026-08-25T09:39:07.478Z'
-updated: '2026-08-25T10:38:47.356Z'
+updated: '2026-08-25T10:45:07.146Z'
 ---
 
 v0.3.8 exposed two release-system defects: electron-builder raced an already-created GitHub release and left only the installer uploaded, while the tag workflow independently rebuilt a signed NSIS installer and required byte identity with the publisher build. Signed installers are not reproducible across builds, so that verifier can fail even when both builds are valid. Establish one authoritative package generation and one publication owner, preserve strict manifest/hash checks against that generation, recover incomplete-release handling without retagging, and add regression tests for the exact failure.

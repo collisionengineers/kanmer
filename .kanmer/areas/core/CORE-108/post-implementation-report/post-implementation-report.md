@@ -4,12 +4,12 @@
 
 The release publisher now captures the numeric GitHub database ID of the draft it just created and passes that identity into strict pre-publication verification. `fetchReleaseAssets` and `verifyRelease` accept an optional positive safe-integer `releaseId`; with it they use `GET /repos/{owner}/{repo}/releases/{id}`, while public/tag verification retains the existing tag endpoint.
 
-The release script validates the captured ID before upload/verification and refuses without publishing if GitHub returns an invalid identity. Asset derivation, required names, uploaded state, sizes, SHA-256 digests, manifest SHA-512, and public remote-coherence checks are unchanged.
+The release script validates the captured ID before upload/verification and refuses without publishing if GitHub returns an invalid identity. A review finding also corrected 404 diagnostics so the by-ID path reports an inaccessible release ID instead of falsely claiming that a tag is absent. Asset derivation, required names, uploaded state, sizes, SHA-256 digests, manifest SHA-512, and public remote-coherence checks are unchanged.
 
 ## Verification
 
-- Focused release-flow and verifier tests: 61/61 PASS.
-- Full script suite after build: 115/115 PASS.
+- Focused release-flow and verifier tests after review remediation: 62/62 PASS.
+- Full script suite after build: 115/115 PASS before review remediation; the focused affected suite passed again afterward.
 - Workspace typecheck: PASS.
 - Live authenticated check of failed draft release id 376364285 through the new by-ID route: exit 0, four canonical assets, zero problems.
 - The first ad-hoc live wrapper returned the same zero-problem result but then forced `process.exit()` and triggered a Windows libuv assertion while HTTP cleanup was closing; the graceful-exit rerun passed with exit 0.

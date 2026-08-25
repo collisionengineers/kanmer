@@ -505,6 +505,16 @@ run(
   `gh release create ${releaseTag(version)} --title "Kanmer v${version}" ` +
     `--notes-file "${notesPath}" --draft --repo ${OWNER}/${REPO}`,
 );
+const draftReleaseIdText = capture(
+  `gh release view ${releaseTag(version)} --json databaseId --jq .databaseId --repo ${OWNER}/${REPO}`,
+);
+if (!/^[1-9]\d*$/.test(draftReleaseIdText) || !Number.isSafeInteger(Number(draftReleaseIdText))) {
+  refuse(
+    `GitHub returned an invalid draft release id: ${JSON.stringify(draftReleaseIdText)}`,
+    "preserve the draft and inspect it with `gh release view`; do not publish without a stable release identity",
+  );
+}
+const draftReleaseId = Number(draftReleaseIdText);
 run(`gh release upload ${releaseTag(version)} ${uploads.map((upload) => `"${upload}"`).join(" ")} --repo ${OWNER}/${REPO}`);
 
 // ---------------------------------------------------------------------------
@@ -520,6 +530,7 @@ try {
     localDir: releaseDir,
     owner: OWNER,
     repo: REPO,
+    releaseId: draftReleaseId,
     token: process.env[tokenVar],
   });
 } catch (error) {

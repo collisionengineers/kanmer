@@ -120,6 +120,7 @@ test("publisher packages once, then explicitly creates and uploads the release",
   assert.doesNotMatch(source, /error\?\.status !== 1/);
 
   const createAt = source.indexOf("gh release create");
+  const viewAt = source.indexOf("gh release view ${releaseTag(version)} --json databaseId");
   const uploadAt = source.indexOf("gh release upload");
   const verifyAt = source.indexOf("check = await verifyRelease");
   const publishAt = source.indexOf("gh release edit");
@@ -127,5 +128,6 @@ test("publisher packages once, then explicitly creates and uploads the release",
   const tagPushAt = source.indexOf("git push origin ${releaseTagRef(version)}");
   assert.ok(packageCheckAt < tagPushAt && tagPushAt < createAt);
   assert.match(source, /git tag -d \$\{releaseTag\(version\)\}/);
-  assert.ok(createAt < uploadAt && uploadAt < verifyAt && verifyAt < publishAt);
+  assert.ok(createAt < viewAt && viewAt < uploadAt && uploadAt < verifyAt && verifyAt < publishAt);
+  assert.match(source, /releaseId: draftReleaseId/);
 });

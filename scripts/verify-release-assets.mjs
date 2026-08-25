@@ -385,10 +385,18 @@ export async function fetchReleaseAssets({
   owner = DEFAULT_OWNER,
   repo = DEFAULT_REPO,
   tag,
+  releaseId,
   token,
   fetchImpl = fetch,
 }) {
-  const url = `https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`;
+  if (releaseId !== undefined && (!Number.isSafeInteger(releaseId) || releaseId <= 0)) {
+    const err = new Error(`invalid GitHub release id: ${releaseId}`);
+    err.kind = "malformed";
+    throw err;
+  }
+  const url = releaseId === undefined
+    ? `https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`
+    : `https://api.github.com/repos/${owner}/${repo}/releases/${releaseId}`;
   const headers = {
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
@@ -562,6 +570,7 @@ export async function verifyRelease({
   localDir = DEFAULT_LOCAL_DIR,
   owner = DEFAULT_OWNER,
   repo = DEFAULT_REPO,
+  releaseId,
   token,
   fetchImpl = fetch,
 }) {
@@ -583,7 +592,7 @@ export async function verifyRelease({
     };
   }
 
-  const assets = await fetchReleaseAssets({ owner, repo, tag: `v${version}`, token, fetchImpl });
+  const assets = await fetchReleaseAssets({ owner, repo, tag: `v${version}`, releaseId, token, fetchImpl });
   const { ok, problems } = verifyAssets({ expected, assets });
   return { ok, derivationBroken: false, problems, expected, notes, assets };
 }

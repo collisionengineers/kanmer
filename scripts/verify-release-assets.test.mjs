@@ -714,6 +714,35 @@ describe("fetchReleaseAssets — every network failure is 'the CHECK could not r
     assert.equal(assets.length, 3);
   });
 
+  test("uses the draft-capable release-by-id route when a numeric identity is supplied", async () => {
+    let seen;
+    const assets = await fetchReleaseAssets({
+      owner: "o",
+      repo: "r",
+      tag: "v1.2.3",
+      releaseId: 376364285,
+      token: "T",
+      fetchImpl: async (url, init) => {
+        seen = { url, init };
+        return ok({ assets: GOLDEN["0.3.2"] });
+      },
+    });
+    assert.equal(seen.url, "https://api.github.com/repos/o/r/releases/376364285");
+    assert.equal(seen.init.headers.Authorization, "Bearer T");
+    assert.equal(assets.length, 3);
+  });
+
+  test("rejects malformed draft release identities before any network call", async () => {
+    for (const releaseId of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+      let called = false;
+      await assert.rejects(
+        fetchReleaseAssets({ releaseId, fetchImpl: async () => { called = true; return ok({ assets: [] }); } }),
+        (error) => error.kind === "malformed" && /invalid GitHub release id/.test(error.message),
+      );
+      assert.equal(called, false);
+    }
+  });
+
   test("omits Authorization when there is no token", async () => {
     let seen;
     await fetchReleaseAssets({

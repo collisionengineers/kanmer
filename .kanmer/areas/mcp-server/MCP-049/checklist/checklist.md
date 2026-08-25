@@ -1,9 +1,9 @@
 # Checklist — MCP-049
 
-- [ ] [pre-review] Create and validate the clean MCP-049 worktree/branch from current origin/main; read the complete packet.
-- [ ] [pre-review] Preserve private rollback copies, then rewrite the canonical OpenAI profile to the real board/repository through the stable installed launcher and Infisical environment reference.
-- [ ] [pre-review] Pass canonical OpenAI doctor and start one native managed runtime alias under Infisical injection.
-- [ ] [pre-review] Prove OpenAI runtime JSON status is process-running, healthy, and ready; prove loopback readiness without exposing the admin UI.
+- [x] [pre-review] Create and validate the clean MCP-049 worktree/branch from current origin/main; read the complete packet.
+- [x] [pre-review] Preserve private rollback copies, then rewrite the canonical OpenAI profile to the real board/repository through the stable installed launcher and Infisical environment reference.
+- [x] [pre-review] Pass canonical OpenAI doctor and start one native managed runtime alias under Infisical injection.
+- [x] [pre-review] Prove OpenAI runtime JSON status is process-running, healthy, and ready; prove loopback readiness without exposing the admin UI.
 - [ ] [pre-review] Configure the existing Kanmer Cloudflare manager through the production GUI/IPC path using the existing executable, locally managed credential, tunnel, and hostname.
 - [ ] [pre-review] Generate/store the Kanmer bearer through its protected one-time flow and enable autostart.
 - [ ] [pre-review] Pass Cloudflare config/local/public doctor, bearer-negative checks, authenticated MCP initialize, expected project identity, tool policy, and session close.

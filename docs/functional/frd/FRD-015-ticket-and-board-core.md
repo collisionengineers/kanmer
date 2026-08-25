@@ -13,7 +13,7 @@ The item model everything else stands on.
 - R4. Fields: title, status, area, assignee, labels, groups (FRD-001), profile (FRD-002), refs/docs_todo, commits/prs, deployment (board-gated), taken state (FRD-016), archived, created/updated, manual `order`.
 - R5. Writes are atomic (temp+rename), exclusive-create id allocation survives concurrent creates, no-op writes don't bump `updated`, and optimistic concurrency (`expected_updated`, doc versions) protects read-modify-write.
 - R6. Every write validates field values against the board config; unknown values are rejected, never silently written.
-- R7. **Archive is the human delete** (GUI Delete = Archive; archived items leave the board, live in the Archived view); `delete_item` is agent-only and destructive-annotated, cleans dangling links, reports body refs.
+- R7. **Archive is reversible retirement** (GUI Delete = Archive; archived items leave the board, live in the Archived view); `delete_item` is agent-only and destructive-annotated, cleans dangling links, reports body refs. A terminal post-merge verification failure uses archive without changing its truthful Verifying status or non-PASS proof, and only after an explicit operator reason plus successor or no-successor disposition. Archive never means Done.
 
 **Acceptance (as-built):** the existing vitest suites are this FRD's evidence — id race (10-way), traversal guard, no-op skip, link integrity, board validation, archive semantics.
 

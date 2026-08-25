@@ -141,6 +141,14 @@ target. The only operator-wait stop is a genuine operator-only question. A
 partial-roster report presented as success is a defect; safety predicates use
 `paused`, `blocked`, or `aborted` with their exact reason instead.
 
+A failed verification first stops the lane as retryable; auto never infers that
+it is terminal. If the operator explicitly declares the result irrecoverable or
+superseded and supplies the reason plus a successor ticket or an explicit
+no-successor disposition, resume through `kanmer-verify`'s terminal-retirement
+path and then `kanmer-closeout`. The archived Verifying ticket is reported as
+skipped/retired non-success, never cleared or Done. Without that disposition,
+the lane remains stopped with the exact failed check and resume action.
+
 ## 5. Persisted stop/hand-off format
 
 Before an intentional safe stop, set the accurate run status and `stop_reason`.

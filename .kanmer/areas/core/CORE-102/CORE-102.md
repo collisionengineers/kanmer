@@ -2,7 +2,7 @@
 id: CORE-102
 type: ticket
 title: Stabilize the area-based ticket-ID test under the release verification rail
-status: verifying
+status: done
 area: core
 assignee: codex-mcp-client
 profile: fix
@@ -10,9 +10,7 @@ stageEntered:
   preparing: '2026-08-25T00:11:20.854Z'
   review: '2026-08-25T00:32:42.821Z'
   verifying: '2026-08-25T00:38:14.018Z'
-taken_at: '2026-08-25T00:21:47.982Z'
-branch: core-102-stabilize-area-id-test
-worktree: .worktrees/core-102
+  done: '2026-08-25T01:01:19.917Z'
 labels:
   - ci
   - tests
@@ -33,7 +31,7 @@ prs:
   - '254'
 archived: false
 created: '2026-08-25T00:11:16.436Z'
-updated: '2026-08-25T00:38:14.018Z'
+updated: '2026-08-25T01:01:56.028Z'
 ---
 
 ## Trigger
@@ -54,3 +52,7 @@ Diagnose and remove the nondeterministic timeout without weakening assertions or
 ## Exit condition
 
 A normally merged remediation PR has terminal passing verification. Its merged-main proof records the relevant test and authoritative rail exit codes. Only then may [[CORE-101]] receive factual follow-up evidence; it is not automatically Done.
+
+## Outcome
+
+PR #254 merged normally on 2026-08-25. The bounded test-only remediation is verified; [[CORE-101]] is the separate historical v0.3.7 release record and is not implicitly successful.

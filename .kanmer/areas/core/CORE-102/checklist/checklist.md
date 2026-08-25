@@ -30,3 +30,14 @@
 - 2026-08-25: Full core suite passed (exit 0; 15 files, 310 tests). Core typecheck, core build, and `git diff --check` each passed (exit 0).
 - 2026-08-25: Fresh GitHub-origin clone `C:\Users\Alex\AppData\Local\Temp\kanmer-core102-verify-1787617531386` checked out `6bd74aaa900651e53378b96deb785721c841855b`; `npm ci --ignore-scripts` and `npm run verify` both passed (exit 0). The verify rail included 15 core files/310 tests, 49 GUI files/468 tests, 102 HTTP tests, 102 script tests, all workspaces typechecks, docs, MCP smokes, mcpb, skills, managed-block, and plugin synchronization.
 - 2026-08-25: PR [#254](https://github.com/collisionengineers/kanmer/pull/254) opened with the required `Kanmer: CORE-102` footer; post-implementation report records the exact head and evidence.
+
+## Closeout — CORE-102
+
+- [x] PR merge verified (`gh pr view 254 --json state,mergedAt`)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/core-102`
+- [ ] `git branch -d core-102-stabilize-area-id-test` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

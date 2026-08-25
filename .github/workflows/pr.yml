@@ -13,6 +13,22 @@ defaults:
     shell: bash
 
 jobs:
+  posix-remote-shutdown:
+    name: posix-remote-shutdown
+    if: github.event.action != 'edited'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the pull request
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Prove detached provider cleanup during startup shutdown
+        run: npm ci && npm run build:core && npm run build:server && node --test packages/mcp-server/src/remote-cli.test.mjs
+
   verify:
     name: verify
     if: github.event.action != 'edited'

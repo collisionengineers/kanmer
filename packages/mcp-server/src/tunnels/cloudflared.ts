@@ -88,6 +88,8 @@ export class CloudflaredAdapter implements TunnelAdapter {
   private status: TunnelStatus = { state: "stopped", provider: "cloudflared", attempt: 0, changedAt: new Date().toISOString() };
   private active?: TunnelProcess;
   private starting = false;
+  private stopRequested = false;
+  private pendingStop?: () => Promise<void>;
   constructor(private readonly options: CloudflaredAdapterOptions, private readonly spawnProcess: CloudflaredSpawner = spawn) {}
 
   getDiagnostics(): readonly TunnelLogEvent[] { return this.diagnostics.snapshot(); }
@@ -100,7 +102,10 @@ export class CloudflaredAdapter implements TunnelAdapter {
     catch (error) { checks.push({ id: "credentials", ok: false, code: safeFailureCode(error) }); }
     return { provider: "cloudflared", ok: checks.every((check) => check.ok), checks };
   }
-  async stop(): Promise<void> { await this.active?.stop(); }
+  async stop(): Promise<void> {
+    if (this.starting) this.stopRequested = true;
+    await (this.active?.stop() ?? this.pendingStop?.());
+  }
   subscribe(listener: (status: TunnelStatus) => void): () => void {
     this.listeners.add(listener);
     listener(this.getStatus());
@@ -123,6 +128,8 @@ export class CloudflaredAdapter implements TunnelAdapter {
   async start(target: TunnelTarget): Promise<TunnelProcess> {
     if (this.active || this.starting) throw new Error("TUNNEL_ALREADY_ACTIVE");
     this.starting = true;
+    this.stopRequested = false;
+    const assertNotStopped = () => { if (this.stopRequested) throw new Error("TUNNEL_START_CANCELLED"); };
     const attempt = this.status.attempt + 1;
     this.transition("validating", target, { attempt });
     let metricsLease: LoopbackPortLease | undefined;
@@ -137,21 +144,29 @@ export class CloudflaredAdapter implements TunnelAdapter {
       });
       validateCloudflaredTunnel(this.options, target);
       await validateRegularFile(this.options.executable, "TUNNEL_EXECUTABLE_INVALID", false);
+      assertNotStopped();
       const executableValidation = await (this.options.validateExecutable?.(this.options.executable) ?? validateCloudflaredExecutable({ executable: this.options.executable }));
+      assertNotStopped();
       await validateRegularFile(this.options.credentialsFile, "TUNNEL_CREDENTIALS_FILE_UNSAFE", true);
+      assertNotStopped();
     metricsLease = this.options.metricsPort === undefined
       ? await reserveLoopbackPort()
       : await reserveSpecificLoopbackPort(this.options.metricsPort);
+    assertNotStopped();
     const metricsPort = metricsLease.port;
     const directory = runtimeDirectory = await mkdtemp(path.join(os.tmpdir(), "kanmer-cloudflared-"));
+    assertNotStopped();
     await chmod(directory, 0o700);
+    assertNotStopped();
     const configPath = path.join(directory, "config.yml");
     let child: ChildProcess | undefined;
     let childExited: Promise<{ code: number | null; signal: NodeJS.Signals | null }> | undefined;
     let settleChildExit: ((result: { code: number | null; signal: NodeJS.Signals | null }) => void) | undefined;
     try {
       await writeFile(configPath, cloudflaredConfig(this.options, target), { encoding: "utf8", mode: 0o600, flag: "wx" });
+      assertNotStopped();
       await chmod(configPath, 0o600);
+      assertNotStopped();
       // In production, run only cloudflared's documented local ingress
       // validation/rule commands.  They inspect the generated file and do not
       // contact the account or mutate DNS.  Injected spawners use the explicit
@@ -159,11 +174,13 @@ export class CloudflaredAdapter implements TunnelAdapter {
       const ingressValidation = this.options.validateIngress
         ?? (!this.options.validateExecutable && this.spawnProcess === spawn ? (config: string, hostname: string) => validateCloudflaredIngress({ executable: this.options.executable, configPath: config, hostname }) : undefined);
       if (ingressValidation) await ingressValidation(configPath, this.options.hostname);
+      assertNotStopped();
       // Release the reservation immediately before spawning the owned child;
       // this bounds the collision window to the direct spawn boundary and
       // guarantees release on every error path below.
       await metricsLease?.release();
       metricsLease = undefined;
+      assertNotStopped();
       this.transition("starting", target, { attempt });
       const spawned = this.spawnProcess(this.options.executable, ["tunnel", "--no-autoupdate", "--metrics", `127.0.0.1:${metricsPort}`, "--config", configPath, "run", this.options.tunnelId], {
         cwd: directory,
@@ -193,6 +210,17 @@ export class CloudflaredAdapter implements TunnelAdapter {
       spawned.once("error", () => settle({ code: null, signal: null }));
       childExited = exited;
       void exited.then(() => this.diagnostics.flush().forEach((event) => this.options.onLog?.(event)));
+      const cleanup = () => rm(directory, { recursive: true, force: true });
+      const cleanupPromise = exited.then(cleanup, cleanup);
+      let intentionalStop = false;
+      let stopPromise: Promise<void> | undefined;
+      const stopChild = () => stopPromise ??= (async () => {
+        intentionalStop = true;
+        this.transition("stopping", target, { attempt, pid: spawned.pid });
+        await stopOwnedChild(spawned, exited, () => settle({ code: null, signal: null }));
+        await cleanupPromise;
+      })();
+      this.pendingStop = stopChild;
       await Promise.race([
         new Promise<void>((resolve, reject) => {
         spawned.once("spawn", resolve);
@@ -204,10 +232,6 @@ export class CloudflaredAdapter implements TunnelAdapter {
       // against the owned process so a malformed or unavailable metrics
       // endpoint never hides an immediate provider failure behind its timeout.
       let handle: TunnelProcess | undefined;
-      const cleanup = () => rm(directory, { recursive: true, force: true });
-      const cleanupPromise = exited.then(cleanup, cleanup);
-      let intentionalStop = false;
-      let stopPromise: Promise<void> | undefined;
       const checkReadinessWithTimeout = async (timeoutMs: number): Promise<void> => {
         try {
           await (this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`, timeoutMs)
@@ -240,18 +264,15 @@ export class CloudflaredAdapter implements TunnelAdapter {
         pid: spawned.pid,
         exited,
         checkReadiness,
-        stop: () => stopPromise ??= (async () => {
-          intentionalStop = true;
-          this.transition("stopping", target, { attempt, pid: spawned.pid });
-          await stopOwnedChild(spawned, exited, () => settle({ code: null, signal: null }));
-          await cleanupPromise;
-        })(),
+        stop: stopChild,
       };
       this.active = handle;
+      this.pendingStop = undefined;
       await Promise.race([
         checkReadinessWithTimeout(CLOUDFLARED_STARTUP_READINESS_TIMEOUT_MS),
         exited.then(() => { throw new Error("TUNNEL_CHILD_EXITED_BEFORE_READY"); }),
       ]);
+      assertNotStopped();
       this.transition("connected", target, {
         attempt,
         pid: spawned.pid,
@@ -284,7 +305,7 @@ export class CloudflaredAdapter implements TunnelAdapter {
       if (runtimeDirectory) await rm(runtimeDirectory, { recursive: true, force: true });
       this.transition("failed", target, { attempt, code: safeFailureCode(error) });
       throw error;
-    } finally { this.starting = false; }
+    } finally { this.starting = false; this.pendingStop = undefined; }
   }
 }
 

@@ -228,10 +228,11 @@ describe("RemoteAccessManager", () => {
     await manager.closeAll();
   });
 
-  it("passes the owned tunnel readiness snapshot to the remote doctor", async () => {
+  it("does not report the tunnel connected to doctor during provider restart backoff", async () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-remote-manager-")); roots.push(root);
     let spawnCount = 0;
     let doctorTunnelStatus: string | undefined;
+    let runtimeStdout: PassThrough | undefined;
     const spawnProcess = (_command: string, _args: readonly string[], options: { env?: NodeJS.ProcessEnv }) => {
       spawnCount++;
       const process = new EventEmitter() as ChildProcess;
@@ -241,6 +242,7 @@ describe("RemoteAccessManager", () => {
         kill: () => { Object.defineProperty(process, "exitCode", { value: 0, configurable: true }); queueMicrotask(() => process.emit("exit", 0, null)); return true; },
       });
       if (spawnCount === 1) {
+        runtimeStdout = stdout;
         queueMicrotask(() => stdout.write(`${JSON.stringify({
           kind: "kanmer-mcp-remote-ready", version: 1,
           endpoint: "http://127.0.0.1:43125/mcp",
@@ -251,8 +253,10 @@ describe("RemoteAccessManager", () => {
       } else {
         doctorTunnelStatus = options.env?.KANMER_TUNNEL_STATUS_JSON;
         queueMicrotask(() => {
-          stdout.write(`${JSON.stringify({ status: "pass", checks: [] })}\n`);
-          process.emit("exit", 0, null);
+          const tunnel = JSON.parse(doctorTunnelStatus!);
+          const passed = tunnel.state === "connected";
+          stdout.write(`${JSON.stringify({ status: passed ? "pass" : "fail", checks: [{ id: "TUNNEL_PROCESS_READY", status: passed ? "pass" : "fail", details: { reason: passed ? "connected" : "provider is restarting" } }] })}\n`);
+          process.emit("exit", passed ? 0 : 1, null);
         });
       }
       return process;
@@ -265,10 +269,14 @@ describe("RemoteAccessManager", () => {
     await manager.createSecret("/repo", identity, false, owner, configured.status.configGeneration);
     const startable = await manager.viewFor("/repo", identity);
     const ready = await manager.start("/repo", identity, { root: identity.boardRoot, repoRoot: identity.repoRoot }, startable.status.configGeneration);
+    runtimeStdout!.write(`${JSON.stringify({ kind: "kanmer-mcp-remote-status", version: 1, status: { local: "ready", provider: "restarting", endpoint: ready.endpoint, attempt: 2 } })}\n`);
+    const restarting = await manager.viewFor("/repo", identity);
+    expect(restarting.status.state).toBe("degraded");
     const result = await manager.doctor("/repo", identity, { root: identity.boardRoot, repoRoot: identity.repoRoot }, ready.configGeneration, ready.runtimeGeneration);
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
+    expect(result.checks).toEqual([expect.objectContaining({ id: "TUNNEL_PROCESS_READY", status: "fail" })]);
     expect(JSON.parse(doctorTunnelStatus!)).toEqual({
-      state: "connected",
+      state: "degraded",
       provider: "cloudflared",
       attempt: 1,
       changedAt: expect.any(String),

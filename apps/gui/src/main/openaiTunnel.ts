@@ -246,6 +246,10 @@ export function parseManagedRuntimeStatus(output: string): ManagedRuntimeStatus 
   }
 }
 
+function managedRuntimeReady(runtime: ManagedRuntimeStatus | null): boolean {
+  return runtime?.process_running === true && runtime.healthy === true && runtime.ready === true && runtime.runtime_state === "ready";
+}
+
 export class OpenAITunnelManager {
   private readonly records = new Map<string, RecordState>();
   private readonly listeners = new Set<(status: OpenAITunnelStatus) => void>();
@@ -305,7 +309,7 @@ export class OpenAITunnelManager {
     if (existing && existing.identity.fingerprint !== identity.fingerprint) return { projectId, identity, profile: null, identityConflict: true, status: statusFor(projectId, identity, null, "error", { lastError: "OPENAI_PROJECT_IDENTITY_CHANGED" }) };
     const persistedConflict = Object.entries(this.data.projects).find(([fingerprint, entry]) => entry.projectId === projectId && fingerprint !== identity.fingerprint);
     if (persistedConflict) return { projectId, identity, profile: null, identityConflict: true, status: statusFor(projectId, identity, null, "error", { lastError: "OPENAI_PROJECT_IDENTITY_CHANGED" }) };
-    const record = this.record(projectId, identity); this.data.projects[identity.fingerprint] = { projectId: record.projectId, identity }; if (!this.data.profiles[identity.fingerprint]) this.data.profiles[identity.fingerprint] = defaultProfile(record.projectId); const profile = this.data.profiles[identity.fingerprint]; if (record.status.state !== "error") record.status = statusFor(record.projectId, identity, profile, profile.enabled ? "stopped" : "disabled"); await this.persist(); return this.view(record);
+    const record = this.record(projectId, identity); this.data.projects[identity.fingerprint] = { projectId: record.projectId, identity }; if (!this.data.profiles[identity.fingerprint]) this.data.profiles[identity.fingerprint] = defaultProfile(record.projectId); const profile = this.data.profiles[identity.fingerprint]; if (record.status.state !== "error") record.status = statusFor(record.projectId, identity, profile, profile.enabled ? "stopped" : "disabled"); await this.persist(); if (profile.enabled && isRunnableProfile(profile)) await this.refreshRuntimeStatus(record, profile); return this.view(record);
   }
 
   async reconcile(projectId: string, identity: RemoteProjectIdentity, expectedGeneration: string | null = null): Promise<OpenAITunnelProjectView> {
@@ -356,6 +360,13 @@ export class OpenAITunnelManager {
       const profile = this.data.profiles[identity.fingerprint];
       if (expectedGeneration !== (profile?.generation ?? null)) throw new Error("OPENAI_PROFILE_VERSION_CONFLICT");
       if (profile?.profileName) {
+        const before = await this.readRuntimeStatus(record, profile);
+        if (before?.process_running === true) {
+          const stopped = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "stop", profile.profileName, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(projectId));
+          if (stopped.code !== 0) throw new Error(stopped.error ?? "OPENAI_RUNTIME_STOP_FAILED");
+          const after = await this.readRuntimeStatus(record, profile);
+          if (after?.process_running === true) throw new Error("OPENAI_RUNTIME_STILL_RUNNING");
+        }
         const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "rm", profile.profileName, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(projectId));
         if (result.code !== 0) throw new Error(result.error ?? "OPENAI_RUNTIME_REMOVE_FAILED");
       }
@@ -372,7 +383,7 @@ export class OpenAITunnelManager {
     });
   }
 
-  async viewFor(projectId: string, identity: RemoteProjectIdentity): Promise<OpenAITunnelProjectView> { await this.load(); return this.view(this.record(projectId, identity)); }
+  async viewFor(projectId: string, identity: RemoteProjectIdentity): Promise<OpenAITunnelProjectView> { await this.load(); const record = this.record(projectId, identity); const profile = this.data.profiles[identity.fingerprint]; if (profile?.enabled && isRunnableProfile(profile)) await this.refreshRuntimeStatus(record, profile); return this.view(record); }
   async overview(): Promise<OpenAITunnelProjectView[]> { await this.load(); return Object.values(this.data.projects).sort((a, b) => a.projectId.localeCompare(b.projectId)).map((entry) => this.view(this.record(entry.projectId, entry.identity))); }
 
   async saveProfile(projectId: string, identity: RemoteProjectIdentity, input: OpenAITunnelConfigInput): Promise<OpenAITunnelProjectView> {
@@ -413,6 +424,20 @@ export class OpenAITunnelManager {
 
   private childEnv(profile: OpenAITunnelProfile, extra?: Record<string, string>): NodeJS.ProcessEnv { const env: NodeJS.ProcessEnv = { ...process.env, ...extra }; if (!process.env[profile.credentialEnv]) delete env[profile.credentialEnv]; return env; }
 
+  private async readRuntimeStatus(record: RecordState, profile: OpenAITunnelProfile): Promise<ManagedRuntimeStatus | null> {
+    const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "status", profile.profileName, "--json"], record.identity.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
+    return result.code === 0 ? parseManagedRuntimeStatus(result.output) : null;
+  }
+
+  private async refreshRuntimeStatus(record: RecordState, profile: OpenAITunnelProfile): Promise<void> {
+    const runtime = await this.readRuntimeStatus(record, profile);
+    const ready = managedRuntimeReady(runtime);
+    const running = runtime?.process_running === true;
+    const state: OpenAITunnelStatus["state"] = ready ? "ready" : running ? "degraded" : runtime ? "stopped" : "missing";
+    record.status = { ...record.status, state, action: "idle", severity: ready || (!running && runtime) ? "info" : running ? "warning" : "error", health: { executable: runtime ? "ready" : "failed", credential: process.env[profile.credentialEnv] ? "ready" : "unknown", listener: ready ? "ready" : running ? "unknown" : "failed", mcp: ready ? "ready" : running ? "unknown" : "failed" }, lastSummary: ready ? "OpenAI managed runtime is ready." : running ? "OpenAI managed runtime is running but not ready." : runtime ? "OpenAI managed runtime is stopped." : "OpenAI managed runtime status is unavailable.", updatedAt: new Date().toISOString() };
+    this.emit(record.status);
+  }
+
   async doctor(projectId: string, identity: RemoteProjectIdentity, roots: OpenAITunnelRoots): Promise<OpenAITunnelDoctorResult> {
     return this.enqueue(projectId, async () => {
       await this.load(); const record = this.record(projectId, identity); const profile = this.data.profiles[identity.fingerprint]; if (!profile) throw new Error("OPENAI_PROFILE_REQUIRED");
@@ -431,7 +456,7 @@ export class OpenAITunnelManager {
   private async runtimeStatus(record: RecordState, profile: OpenAITunnelProfile, roots: OpenAITunnelRoots, checks: OpenAITunnelCheck[]): Promise<OpenAITunnelDoctorResult> {
     const result = await runCommand(this.spawnProcess, profile.executable, ["runtimes", "status", profile.profileName, "--json"], roots.repoRoot, this.childEnv(profile), profile, this.commandTracker(record.projectId));
     const runtime = result.code === 0 ? parseManagedRuntimeStatus(result.output) : null;
-    const ready = runtime?.process_running === true && runtime.healthy === true && runtime.ready === true && runtime.runtime_state === "ready";
+    const ready = managedRuntimeReady(runtime);
     checks.push({ id: "DOCTOR_COMMAND", status: result.code === 0 && runtime ? "pass" : "fail", detail: runtime ? "Managed runtime status returned structured JSON." : "Managed runtime status failed or returned invalid JSON." });
     checks.push({ id: "HEALTH_ADDRESS", status: ready ? "pass" : "fail", detail: ready ? "Managed runtime reports healthy and ready." : "Managed runtime is not healthy and ready." });
     checks.push({ id: "MCP_TARGET", status: ready ? "pass" : "fail", detail: ready ? "Managed runtime process is running." : "Managed runtime process is not ready." });

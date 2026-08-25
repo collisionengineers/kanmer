@@ -183,6 +183,35 @@ describe("OpenAITunnelManager", () => {
     expect(reconciled.profile?.profileName).toBe("first");
   });
 
+  it("rehydrates a persistent runtime and stops it before removing local metadata", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
+    const first = new OpenAITunnelManager(root);
+    await first.register("/repo", identity);
+    const saved = await first.saveProfile("/repo", identity, { profileName: "first", tunnelId: "tunnel-first", executable: "tunnel-client", credentialEnv: "CONTROL_PLANE_API_KEY", healthAddress: "127.0.0.1:8765", enabled: true, autoStart: false, expectedGeneration: null });
+    const commands: string[][] = [];
+    let running = true;
+    const spawnManaged = ((...args: Parameters<NonNullable<ConstructorParameters<typeof OpenAITunnelManager>[1]>>) => {
+      commands.push(args[1]);
+      const child = fakeChild();
+      queueMicrotask(() => {
+        if (args[1][1] === "status") child.stdout?.emit("data", JSON.stringify({ process_running: running, healthy: running, ready: running, runtime_state: running ? "ready" : "stopped" }));
+        if (args[1][1] === "stop") running = false;
+        child.finish(0);
+      });
+      return child;
+    }) as ConstructorParameters<typeof OpenAITunnelManager>[1];
+    const restarted = new OpenAITunnelManager(root, spawnManaged);
+    expect((await restarted.register("/repo", identity)).status.state).toBe("ready");
+    await restarted.remove("/repo", identity, saved.profile!.generation);
+    expect(commands.map((args) => args.slice(0, 3))).toEqual([
+      ["runtimes", "status", "first"],
+      ["runtimes", "status", "first"],
+      ["runtimes", "stop", "first"],
+      ["runtimes", "status", "first"],
+      ["runtimes", "rm", "first"],
+    ]);
+  });
+
   it("does not leak credentials and manages a persistent runtime alias", async () => {
     const root = await mkdtemp(join(tmpdir(), "kanmer-openai-tunnel-")); roots.push(root);
     const children: Array<ChildProcess & { finish(code?: number): void }> = [];

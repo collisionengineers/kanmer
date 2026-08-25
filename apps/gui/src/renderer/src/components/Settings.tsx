@@ -1306,7 +1306,7 @@ export function OpenAITunnelSection({ projectId }: { projectId: string }): JSX.E
 
   return <div className="settings-section" aria-label="OpenAI Secure MCP Tunnel">
     <h3>OpenAI Secure MCP Tunnel</h3>
-    <p className="hint">This is a separate OpenAI-managed stdio tunnel path; it does not use Cloudflare, Access, or an HTTP relay. Kanmer stores profile metadata only, never the API key.</p>
+    <p className="hint">This is separate from Kanmer’s Cloudflare remote-access and Access configuration. tunnel-client may use its own managed transport companion. Kanmer stores profile metadata only, never the API key.</p>
     <p className="hint">Install <code>tunnel-client</code> and export the named runtime credential. Connect creates a long-lived managed runtime; Check status proves it is running, healthy, and ready. In ChatGPT choose the discovered Tunnel app—not Custom Connector, which asks for OAuth Kanmer does not provide.</p>
     {overview.length > 0 && <div className="remote-project-grid" aria-label="Registered OpenAI tunnel projects">{overview.map((project) => <article className="card" key={project.identity.fingerprint}><strong>{project.profile?.profileName ?? project.projectId}</strong><span className="hint">{project.projectId === projectId ? "Selected project" : project.projectId} · {project.status.state}</span></article>)}</div>}
     {error && <div className="banner error">{error}</div>}

@@ -42,4 +42,20 @@ describe("remote access surface", () => {
     fireEvent.click(screen.getByRole("button", { name: "Reveal one-time token" }));
     expect(dialog.querySelector("[aria-label='Revealed one-time token']")).toBeTruthy();
   });
+
+  it("correlates canonical runtime status with a differently spelled selected Windows path", async () => {
+    let listener: ((next: RemoteStatus) => void) | undefined;
+    const canonical = { ...project, projectId: "c:/Repo", status: { ...status, projectId: "c:/Repo" } };
+    const api = {
+      remoteRegister: vi.fn(async () => canonical), remoteOverview: vi.fn(async () => [canonical]), remoteCreateSecret: vi.fn(), remoteCopySecret: vi.fn(), remoteConsumeSecret: vi.fn(),
+      remoteSaveConfig: vi.fn(async () => canonical), remoteStart: vi.fn(), remoteStop: vi.fn(), remoteDoctor: vi.fn(), remoteReconcile: vi.fn(async () => canonical), remoteRemove: vi.fn(), openProject: vi.fn(),
+      onRemoteStatus: vi.fn((next: (status: RemoteStatus) => void) => { listener = next; return () => undefined; }),
+    };
+    (window as unknown as { kanmer: typeof api }).kanmer = api;
+    render(<RemoteSection projectId="C:\\Repo" />);
+    expect(await screen.findByText("Selected project actions are below.")).toBeTruthy();
+    await waitFor(() => expect(listener).toBeDefined());
+    listener?.({ ...canonical.status, state: "ready", local: "ready", tunnel: "connected", endpoint: "http://127.0.0.1:43124/mcp", runtimeGeneration: "runtime-1" });
+    await waitFor(() => expect(screen.getByText(/State ready/)).toBeTruthy());
+  });
 });

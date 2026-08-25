@@ -2,12 +2,13 @@
 id: SKILL-035
 type: ticket
 title: Retire irrecoverable verification failures without clogging Verifying
-status: implementing
+status: review
 area: skills
 assignee: codex
 profile: fix
 stageEntered:
   preparing: '2026-08-25T12:11:36.199Z'
+  review: '2026-08-25T12:29:09.430Z'
 taken_at: '2026-08-25T12:13:04.150Z'
 branch: skill-035-terminal-verification-retirement
 worktree: .worktrees/skill-035
@@ -21,7 +22,7 @@ refs:
   - docs/functional/frd/FRD-015-ticket-and-board-core.md
 archived: false
 created: '2026-08-25T11:57:55.187Z'
-updated: '2026-08-25T12:13:04.150Z'
+updated: '2026-08-25T12:29:09.430Z'
 ---
 
 ## Purpose

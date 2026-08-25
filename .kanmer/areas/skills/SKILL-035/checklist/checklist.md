@@ -7,7 +7,7 @@
 - [x] Update the canonical managed AGENTS rule and refresh `AGENTS.md`.
 - [x] Add semantic prose regression checks.
 - [x] Run focused and authoritative verification commands with exit codes.
-- [ ] Write the post-implementation report, commit, push, open PR, and move to Review.
+- [x] Write the post-implementation report, commit, push, open PR, and move to Review.
 
 ## Verification attempts
 

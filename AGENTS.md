@@ -474,7 +474,6 @@ Run from the repo root unless noted.
 | `npm run inspect` | build, then open MCP Inspector against the server (root `./sandbox`) |
 | `node packages/mcp-server/src/smoke.mjs` | stdio smoke test against the built server |
 | `npm run smoke:protocol` | raw-JSON-RPC stdio check against every protocol version the SDK supports, plus the per-request `_meta` client-identity path |
-| `node --test packages/mcp-server/src/remote-cli.test.mjs` | remote CLI argument and shutdown regression. PR CI runs this on Ubuntu as `posix-remote-shutdown` so the detached-provider signal-cleanup case executes rather than being skipped on Windows. |
 | `npm run verify:agents-block` | end-to-end check of the `kanmer-setup` AGENTS.md managed block (insert, refresh, idempotence, CLAUDE.md pointer, malformed markers) |
 | `node scripts/agents-block.mjs <repo>` | write/refresh that block in a target repo (what `kanmer-setup` calls) |
 

@@ -12,9 +12,6 @@ stageEntered:
   review: '2026-08-24T19:16:31.603Z'
   verifying: '2026-08-24T19:20:44.332Z'
   done: '2026-08-24T19:34:53.980Z'
-taken_at: '2026-08-24T19:03:33.283Z'
-branch: core-097-nonpublishing-release-verify
-worktree: .worktrees/core-097
 labels:
   - release
   - ci
@@ -22,14 +19,13 @@ labels:
 groups:
   - HZN-007
 links: []
-blocks:
-  - CORE-096
+blocks: []
 docs_todo: true
 prs:
   - '245'
 archived: false
 created: '2026-08-24T18:57:31.028Z'
-updated: '2026-08-24T19:34:53.980Z'
+updated: '2026-08-25T01:04:43.431Z'
 ---
 
 ## What
@@ -47,3 +43,5 @@ Change only the release-workflow invocation needed to make the packaged-updater 
 - the existing v0.3.4 failure remains recorded and no release claim is made.
 
 ## Outcome
+
+Non-publishing verification shipped in PR #245; the historical release attempt it once blocked is archived as failed evidence.

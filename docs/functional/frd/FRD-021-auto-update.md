@@ -220,8 +220,10 @@ exe, ICU and V8 snapshot—into immutable `<version>-<installer-pid>` generation
 before `current` is switched. PID reuse is handled by allocating an absent
 numeric-suffixed name before copying anything, so every sibling DLL and resource
 pack is present and a repair cannot overwrite a live prior generation.
-Prior generations are retained during install because they may still serve live
-MCP sessions; only uninstall owns recursive external-runtime cleanup.
+Prior activated generations are retained during install because they may still
+serve live MCP sessions; only uninstall owns their recursive cleanup. A staging
+generation that fails before `current` publication is removed before refusal so
+retry cannot accumulate partial full-tree copies.
 Acceptance also requires a real version-distinguishable two-install
 cycle showing agreement among `Kanmer.exe`, app.asar, registry/uninstaller,
 external runtime, launcher probe, and GUI boot.

@@ -22,7 +22,8 @@ test("process discovery is path-safe, bounded, and fail-closed before install", 
   assert.match(source, /Sleep 500/);
   assert.match(source, /Stop-Process -Id \$\$_\.ProcessId -Force -ErrorAction SilentlyContinue/);
   assert.match(source, /nsExec::Exec \/TIMEOUT=10000/g);
-  assert.match(source, /-not \$\$_\.ExecutablePath[\s\S]+Kanmer\.exe[\s\S]+kanmer-mcp\.exe/);
+  assert.match(source, /-not \$\$_\.ExecutablePath -and \$\$_\.Name -ieq 'Kanmer\.exe'/);
+  assert.doesNotMatch(source, /-not \$\$_\.ExecutablePath[^\n]+kanmer-mcp\.exe/);
   assert.match(source, /GetCurrentProcessId\(\) i\.R6/);
   assert.match(source, /KANMER_GUARD_PID/);
   assert.match(source, /\$\$_\.ProcessId -ne \$\$guardPid/g);
@@ -63,4 +64,10 @@ test("external MCP generation contains the complete Electron runtime", () => {
   assert.match(source, /xcopy \/E \/I \/Q \/Y "\$INSTDIR\\\*"[^\n]+\\mcp\\\$R8/);
   assert.match(source, /\\mcp\\\$R8\\ffmpeg\.dll/);
   assert.match(source, /\\mcp\\\$R8\\resources\.pak/);
+});
+
+test("an unactivated partial generation is removed on every staging failure", () => {
+  assert.match(source, /gui106_runtime_stage_failed:[\s\S]+RMDir "\$LOCALAPPDATA\\Kanmer\\mcp\\current\.next"[\s\S]+RMDir \/r "\$LOCALAPPDATA\\Kanmer\\mcp\\\$R8"[\s\S]+Abort/);
+  assert.match(source, /gui106_runtime_copy_failed:[\s\S]+Goto gui106_runtime_stage_failed/);
+  assert.match(source, /Could not activate the external Kanmer MCP runtime[\s\S]+Goto gui106_runtime_stage_failed/);
 });

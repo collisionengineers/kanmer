@@ -18,9 +18,17 @@ export function releaseAssetNames(version) {
  * suffix also gives each GitHub asset an explicit display label; the packaged
  * filenames are already pinned to the same dash-safe names.
  */
-export function exactUploadSpecs(expected) {
+export function exactUploadSpecs(expected, version) {
   if (!Array.isArray(expected) || expected.length === 0) {
     throw new Error("cannot publish a release without expected local assets");
+  }
+  const actualNames = expected.map(({ name }) => name).sort();
+  const canonicalNames = releaseAssetNames(version).sort();
+  if (JSON.stringify(actualNames) !== JSON.stringify(canonicalNames)) {
+    throw new Error(
+      `local release asset names do not match the canonical set for ${version}: ` +
+        `expected ${canonicalNames.join(", ")}; got ${actualNames.join(", ")}`,
+    );
   }
 
   return expected.map(({ localPath, name }) => {

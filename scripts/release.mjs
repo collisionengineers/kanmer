@@ -484,7 +484,7 @@ run("node scripts/check-updater-package.mjs");
 assertLocalPackageCoherent();
 
 const { expected } = expectedAssets({ version, localDir: releaseDir });
-const uploads = exactUploadSpecs(expected);
+const uploads = exactUploadSpecs(expected, version);
 run(
   `gh release create ${releaseTag(version)} --title "Kanmer v${version}" ` +
     `--notes-file "${notesPath}" --draft`,

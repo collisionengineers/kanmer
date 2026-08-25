@@ -106,10 +106,10 @@ test("publisher packages once, then explicitly creates and uploads the release",
   const source = readFileSync(new URL("./release.mjs", import.meta.url), "utf8");
   assert.match(source, /npx electron-builder --win --publish never/);
   assert.doesNotMatch(source, /electron-builder --win --publish always/);
-  assert.match(source, /gh release create \$\{releaseTag\(version\)\}/);
-  assert.match(source, /gh release upload \$\{releaseTag\(version\)\}/);
+  assert.match(source, /gh release create \$\{releaseTag\(version\)\}[\s\S]{0,200}--repo \$\{OWNER\}\/\$\{REPO\}/);
+  assert.match(source, /gh release upload \$\{releaseTag\(version\)\}[^\n]*--repo \$\{OWNER\}\/\$\{REPO\}/);
   assert.match(source, /--notes-file "\$\{notesPath\}" --draft/);
-  assert.match(source, /gh release edit \$\{releaseTag\(version\)\} --draft=false --latest/);
+  assert.match(source, /gh release edit \$\{releaseTag\(version\)\} --draft=false --latest --repo \$\{OWNER\}\/\$\{REPO\}/);
   assert.doesNotMatch(source, /gh release upload[^\n]*--clobber/);
   assert.match(source, /tag .* already exists locally or on origin/);
   assert.match(source, /GitHub Release .* already exists/);
@@ -123,5 +123,9 @@ test("publisher packages once, then explicitly creates and uploads the release",
   const uploadAt = source.indexOf("gh release upload");
   const verifyAt = source.indexOf("check = await verifyRelease");
   const publishAt = source.indexOf("gh release edit");
+  const packageCheckAt = source.lastIndexOf("assertLocalPackageCoherent()");
+  const tagPushAt = source.indexOf("git push origin ${releaseTagRef(version)}");
+  assert.ok(packageCheckAt < tagPushAt && tagPushAt < createAt);
+  assert.match(source, /git tag -d \$\{releaseTag\(version\)\}/);
   assert.ok(createAt < uploadAt && uploadAt < verifyAt && verifyAt < publishAt);
 });

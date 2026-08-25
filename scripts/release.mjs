@@ -463,9 +463,6 @@ try {
     );
   }
 }
-run(`git tag ${releaseTag(version)}`);
-run(`git push origin ${releaseTagRef(version)}`);
-
 // ---------------------------------------------------------------------------
 // 8. Build the only Windows installer with publishing disabled. `latest.yml`,
 //    the installer and its blockmap originate from this one package invocation.
@@ -485,11 +482,30 @@ assertLocalPackageCoherent();
 
 const { expected } = expectedAssets({ version, localDir: releaseDir });
 const uploads = exactUploadSpecs(expected, version);
+
+// Package validation happens before the immutable remote tag exists. If the
+// race-safe tag push fails, remove only the local tag so a transient failure is
+// retryable; any competing remote tag remains immutable evidence and the next
+// run's preflight refuses it.
+run(`git tag ${releaseTag(version)}`);
+try {
+  run(`git push origin ${releaseTagRef(version)}`);
+} catch (error) {
+  try {
+    run(`git tag -d ${releaseTag(version)}`);
+  } catch (cleanupError) {
+    console.error(`failed to remove local ${releaseTag(version)} after push failure: ${cleanupError.message}`);
+  }
+  refuse(
+    `could not publish immutable tag ${releaseTag(version)}: ${error.message}`,
+    "no GitHub Release was created; inspect origin for a competing tag before retrying",
+  );
+}
 run(
   `gh release create ${releaseTag(version)} --title "Kanmer v${version}" ` +
-    `--notes-file "${notesPath}" --draft`,
+    `--notes-file "${notesPath}" --draft --repo ${OWNER}/${REPO}`,
 );
-run(`gh release upload ${releaseTag(version)} ${uploads.map((upload) => `"${upload}"`).join(" ")}`);
+run(`gh release upload ${releaseTag(version)} ${uploads.map((upload) => `"${upload}"`).join(" ")} --repo ${OWNER}/${REPO}`);
 
 // ---------------------------------------------------------------------------
 // 9a. While the release is still a draft and therefore invisible to installed
@@ -541,7 +557,7 @@ console.log(
 //     GitHubProvider reads: releases/latest excludes drafts and prereleases, so
 //     this separately proves that installed clients can discover the release.
 // ---------------------------------------------------------------------------
-run(`gh release edit ${releaseTag(version)} --draft=false --latest`);
+run(`gh release edit ${releaseTag(version)} --draft=false --latest --repo ${OWNER}/${REPO}`);
 const latestUrl = `https://github.com/${OWNER}/${REPO}/releases/latest`;
 const res = await fetch(latestUrl, { headers: { Accept: "application/json" } });
 const body = await res.json();

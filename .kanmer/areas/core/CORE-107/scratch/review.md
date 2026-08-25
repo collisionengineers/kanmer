@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "271"
-head_sha: "3a0c4b89e733a91d7dea9fed7f52877bd9fbe26d"
+head_sha: "f973be26dc03f30adb1d2075643c3ba73e447b7a"
 verdict: pass
 reviewer: "doc021_review (Carver)"
 independent: true
 plan_hash: "4f977206dab2ede4"
-ticket_updated: "2026-08-25T11:20:58.243Z"
+ticket_updated: "2026-08-25T11:26:15.756Z"
 findings:
   - id: F-001
     severity: minor
@@ -16,12 +16,20 @@ findings:
     severity: minor
     summary: "Cloudflare credential fixes were inaccurately described as changing the separate OpenAI tunnel path."
     disposition: fixed
+  - id: F-003
+    severity: minor
+    summary: "Codex launcher wording claimed parity instead of the distinct Windows-safe probe-only invocation."
+    disposition: fixed
+  - id: F-004
+    severity: minor
+    summary: "The real two-version Windows replacement path was described as proven before installed acceptance testing."
+    disposition: fixed
 ---
 
 # Independent review
 
-Reviewed PR #271 at exact head `3a0c4b89e733a91d7dea9fed7f52877bd9fbe26d` against CORE-107's plan, current main, the release workflow, and FRD-021.
+Reviewed PR #271 at exact head `f973be26dc03f30adb1d2075643c3ba73e447b7a` against CORE-107's plan, current main, release workflow, governing FRD, and all GitHub review threads.
 
-The first review found two wording inaccuracies. The corrected head describes digest verification while assets remain uploaded to a draft release, and limits the credential/capability claim to Cloudflare while explicitly stating that the separate OpenAI managed-tunnel path is unchanged. Re-review found no remaining findings or review threads.
+The final head accurately describes verification during the draft phase, limits Cloudflare credential claims to Cloudflare, identifies the Codex launcher call as a Windows-safe probe-only invocation, and distinguishes included atomic replacement logic from the still-required real two-version installed acceptance check. The independent re-review found no remaining issues. All four review findings are fixed, and all three GitHub threads are resolved.
 
-Required hosted checks were re-gathered after the corrected push: `kanmer-gate` passed in 49 seconds and `verify` passed in 4 minutes 10 seconds. The change remains a single release-notes file, the top release heading is uniquely 0.3.9, and focused release-flow tests passed 8/8. Residual risk is limited to the subsequent governed version-bump PR and real public release/install verification, which remain explicit later steps of CORE-107.
+Required exact-head checks passed: `kanmer-gate` in 51 seconds and `verify` in 3 minutes 57 seconds. The change remains limited to the v0.3.9 release notes. Residual risk is the subsequent governed version-bump PR and public release/install/tunnel verification, which remain explicit later CORE-107 steps.

@@ -39,3 +39,12 @@ All attempts are retained:
 - `AGENTS.md`
 
 No dependency or schema changes were introduced.
+
+## Independent review fixes
+
+Independent review at `55a88825ae707012c007371d173ab12f2d909471` found two major issues; neither was waived.
+
+- F-001 fixed: `--updated` is no longer treated as sufficient updater identity. The outer app-driven updater sets a process-local inheritance marker; Electron Builder's `/KEEP_APP_DATA --updated` nested uninstaller uses unattended behavior only when that marker is inherited. A direct silent replacement with four live install-root processes exited 2, left the installed executable unchanged, and kept all four processes alive.
+- F-002 fixed: generation allocation probes for an existing `<version>-<pid>` path and selects the first absent bounded numeric suffix before any copy. PID reuse can no longer make `xcopy /Y` target a retained generation.
+
+Post-fix evidence: focused tests 9/9, `dist:check` with real NSIS compilation, updater-mode install exit 0, complete external runtime, official SDK handshake through the installed launcher, core 310/310, GUI 469/469, MCP HTTP 102/102, scripts 109/109, all-workspace typecheck, and `git diff --check`.

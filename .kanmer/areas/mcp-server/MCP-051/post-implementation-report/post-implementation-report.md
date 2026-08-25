@@ -2,28 +2,33 @@
 
 ## Result
 
-Cloudflare cold startup now has an explicit bounded 60-second readiness deadline, while generic and established-tunnel health checks remain explicitly bounded at 10 seconds. The 10-second health deadline is below the production 30-second polling interval, preventing overlapping probes.
+Cloudflare cold startup now has an explicit bounded 60-second readiness deadline, while generic and established-tunnel health checks remain bounded at 10 seconds, below the production 30-second polling interval.
 
-The final revision also makes the extended startup window safe to cancel. The adapter publishes its provisional owned child before awaiting readiness; remote-host closes the authenticated listener, cancels that provisional child, and joins the supervisor lifecycle; remote-cli installs one idempotent SIGINT/SIGTERM path before `remote.start()` and releases only its matching owner marker. The loopback `/ready` HTTP-200 requirement, authentication, DNS, retry policy, and provider configuration remain unchanged.
+Shutdown is safe throughout the longer startup. The adapter latches a stop request before any child exists and checks it after every asynchronous validation/configuration boundary, so a later child cannot spawn. Once spawn occurs, a provisional owned-child stop handle exists before the spawn event wait. Remote-host closes the authenticated listener, cancels the adapter, and joins the supervisor lifecycle; remote-cli installs one idempotent SIGINT/SIGTERM path before `remote.start()` and releases only its matching owner marker.
+
+No Ubuntu lane or new supported platform was added. Kanmer's existing Windows CI/release scope remains unchanged. A proposed POSIX-only lane and skipped test were removed after operator rejection; the final diff contains no speculative gate.
 
 ## Live diagnosis and evidence
 
-- Packaged v0.3.10 failed with `TUNNEL_READINESS_TIMEOUT` before Cloudflare completed edge fallback.
-- A direct trace preserved QUIC/TCP pre-check failures followed by four successful HTTP/2 registrations after the former 10-second startup deadline.
-- Independent review identified that a longer startup wait first leaked into recurring health, then exposed a pre-existing late signal-handler window. Both findings were fixed rather than accepted as release risk.
+- Packaged v0.3.10 failed with `TUNNEL_READINESS_TIMEOUT` before Cloudflare completed HTTP/2 edge fallback.
+- A direct trace preserved the late successful edge registrations after the former 10-second startup limit.
+- Independent review found three real lifecycle issues: the startup limit leaking into health polls, late signal-handler registration, and a pre-child cancellation race. All three are fixed in the final source.
 
 ## Verification attempts
 
-1. Initial `npm run build:server` failed in the fresh worktree because `@kanmer/core/dist/index.js` had not been built. The failure is retained.
-2. Correct build order passed; the original focused suite passed 27/27.
-3. Full `npm run verify` passed before review remediation: 310 core tests, 477 GUI tests, HTTP/remote tests, 116 script tests, all typechecks, docs, protocol smokes, skills, AGENTS, MCPB, and plugin sync.
-4. Commit `42bb1f9d` separated 60-second startup from 10-second health. The focused suite passed 36/36 and MCP typecheck passed.
-5. Commit `11b65c4f` added cancellation/owner cleanup. On Windows, the readiness/cloudflared/supervisor/remote-host/remote-cli suite passed 38 with one intentional POSIX-only subprocess skip; MCP typecheck and `git diff --check` passed. Hosted Linux CI must execute, not skip, the detached-provider signal regression and is authoritative for that path.
+1. Initial `npm run build:server` failed because the fresh worktree had not built `@kanmer/core`; this failure remains retained.
+2. Correct build order and original focused suite passed 27/27; full `npm run verify` then passed.
+3. `42bb1f9d` separated 60-second startup from 10-second health; focused verification passed 36/36.
+4. `11b65c4f` installed early idempotent shutdown and provisional-child cleanup.
+5. `5a91466e` added a cancellation latch and regression proving stop during delayed validation prevents any spawn. It also temporarily added an unplanned Ubuntu lane.
+6. `4e137d4f` removed that lane, its AGENTS convention, and the POSIX-only skipped test/fixture. Final Windows focused verification passed 39/39 with zero skips; MCP typecheck and `git diff --check` passed. Exact-head hosted Windows checks and independent review remain the merge authorities.
 
-## Commits and scope
+## Final commits and scope
 
 - `ab03340b` — initial bounded fallback allowance.
 - `42bb1f9d` — separate startup and recurring-health deadlines.
-- `11b65c4f` — cancel delayed startup on shutdown and prove owner/provider cleanup.
+- `11b65c4f` — early shutdown and provisional-child cleanup.
+- `5a91466e` — pre-spawn cancellation latch and regression.
+- `4e137d4f` — remove the unplanned Ubuntu workflow/test expansion.
 
-The final PR changes readiness policy/tests, Cloudflare adapter/tests, remote host/CLI lifecycle code, the CLI subprocess test, and one test-only delayed provider fixture. ChatGPT connector wiring and Grok importer compatibility remain separate work under [[GUI-141]] and [[GUI-140]]; [[DOC-026]] owns the closeout-plan refresh.
+The final PR changes only readiness policy/tests, Cloudflare adapter/tests, remote host, and remote CLI. ChatGPT connector wiring and Grok importer compatibility remain separate under [[GUI-141]] and [[GUI-140]]; [[DOC-026]] owns the closeout-plan refresh.

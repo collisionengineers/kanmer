@@ -13,12 +13,18 @@ export { validateTunnelStartInput } from "./types.js";
 export interface CloudflaredAdapterOptions extends CloudflaredTunnelOptions {
   readonly executable: string;
   readonly metricsPort?: number;
-  readonly waitForReady?: (endpoint: string) => Promise<void>;
+  readonly waitForReady?: (endpoint: string, timeoutMs: number) => Promise<void>;
   readonly onLog?: (event: TunnelLogEvent) => void;
   readonly validateExecutable?: (executable: string) => Promise<void | { readonly version: string }>;
   /** Optional test seam; production validates the generated rules with cloudflared. */
   readonly validateIngress?: (configPath: string, hostname: string) => Promise<void>;
 }
+
+// Cold startup may include Cloudflare connectivity pre-checks and a QUIC to
+// HTTP/2 fallback. Established-tunnel probes must remain shorter than the
+// supervisor's 30-second polling interval so checks cannot overlap.
+export const CLOUDFLARED_STARTUP_READINESS_TIMEOUT_MS = 60_000;
+export const CLOUDFLARED_HEALTH_READINESS_TIMEOUT_MS = 10_000;
 
 /** Test-only spawn seam; normal construction always uses Node's direct spawn. */
 export type CloudflaredSpawner = typeof spawn;
@@ -198,10 +204,10 @@ export class CloudflaredAdapter implements TunnelAdapter {
       // against the owned process so a malformed or unavailable metrics
       // endpoint never hides an immediate provider failure behind its timeout.
       let handle: TunnelProcess | undefined;
-      const checkReadiness = async (): Promise<void> => {
+      const checkReadinessWithTimeout = async (timeoutMs: number): Promise<void> => {
         try {
-          await (this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`)
-            ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${metricsPort}/ready` }));
+          await (this.options.waitForReady?.(`http://127.0.0.1:${metricsPort}/ready`, timeoutMs)
+            ?? waitForTunnelReadiness({ endpoint: `http://127.0.0.1:${metricsPort}/ready`, timeoutMs }));
           if (handle && this.active === handle && this.status.state === "degraded") {
             this.transition("connected", target, {
               attempt,
@@ -222,8 +228,9 @@ export class CloudflaredAdapter implements TunnelAdapter {
           throw error;
         }
       };
+      const checkReadiness = () => checkReadinessWithTimeout(CLOUDFLARED_HEALTH_READINESS_TIMEOUT_MS);
       await Promise.race([
-        checkReadiness(),
+        checkReadinessWithTimeout(CLOUDFLARED_STARTUP_READINESS_TIMEOUT_MS),
         exited.then(() => { throw new Error("TUNNEL_CHILD_EXITED_BEFORE_READY"); }),
       ]);
       const cleanup = () => rm(directory, { recursive: true, force: true });

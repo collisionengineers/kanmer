@@ -1,10 +1,7 @@
 import { createServer } from "node:net";
 
 const LOOPBACK = new Set(["127.0.0.1", "[::1]"]);
-// cloudflared may run connectivity pre-checks and fall back from QUIC to
-// HTTP/2 before its loopback readiness endpoint becomes healthy. Keep the
-// startup wait bounded, but allow that provider negotiation to finish.
-export const DEFAULT_READINESS_TIMEOUT_MS = 60_000;
+export const DEFAULT_READINESS_TIMEOUT_MS = 10_000;
 const DEFAULT_READINESS_POLL_MS = 100;
 const MAX_READINESS_REQUEST_TIMEOUT_MS = 1_000;
 

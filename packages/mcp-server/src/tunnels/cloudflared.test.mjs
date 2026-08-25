@@ -8,7 +8,13 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { createCloudflaredAdapter, validateTunnelStartInput } from "../../dist/tunnels/cloudflared.js";
+import { CLOUDFLARED_HEALTH_READINESS_TIMEOUT_MS, CLOUDFLARED_STARTUP_READINESS_TIMEOUT_MS, createCloudflaredAdapter, validateTunnelStartInput } from "../../dist/tunnels/cloudflared.js";
+
+test("startup and established-tunnel readiness use separate bounded policies", () => {
+  assert.equal(CLOUDFLARED_STARTUP_READINESS_TIMEOUT_MS, 60_000);
+  assert.equal(CLOUDFLARED_HEALTH_READINESS_TIMEOUT_MS, 10_000);
+  assert.ok(CLOUDFLARED_HEALTH_READINESS_TIMEOUT_MS < 30_000);
+});
 
 test("provider-neutral start validation rejects unsafe targets, unknown modes, and invalid retry policies before spawn", () => {
   const input = {
@@ -161,6 +167,7 @@ test("adapter status follows provider readiness degradation and recovery", async
     const credentials = path.join(directory, "credentials.json");
     await writeFile(credentials, "{}", { mode: 0o600 });
     let healthy = true;
+    const readinessTimeouts = [];
     const fakeSpawn = () => {
       const child = new EventEmitter();
       child.pid = 4321; child.killed = false;
@@ -172,15 +179,17 @@ test("adapter status follows provider readiness degradation and recovery", async
     const adapter = createCloudflaredAdapter({
       executable: process.execPath, tunnelId: "3f9620b4-423e-4f37-a30e-61ffcf91f403", credentialsFile: credentials,
       hostname: "kanmer.example.test", metricsPort: 43129, validateExecutable: async () => {},
-      waitForReady: async () => { if (!healthy) throw new Error("provider not ready"); },
+      waitForReady: async (_endpoint, timeoutMs) => { readinessTimeouts.push(timeoutMs); if (!healthy) throw new Error("provider not ready"); },
     }, fakeSpawn);
     const handle = await adapter.start({ endpoint: "http://127.0.0.1:43123/mcp", hostname: "kanmer.example.test" });
+    assert.deepEqual(readinessTimeouts, [CLOUDFLARED_STARTUP_READINESS_TIMEOUT_MS]);
     healthy = false;
     await assert.rejects(() => handle.checkReadiness?.(), /provider not ready/);
     assert.equal(adapter.getStatus().state, "degraded");
     healthy = true;
     await handle.checkReadiness?.();
     assert.equal(adapter.getStatus().state, "connected");
+    assert.deepEqual(readinessTimeouts, [CLOUDFLARED_STARTUP_READINESS_TIMEOUT_MS, CLOUDFLARED_HEALTH_READINESS_TIMEOUT_MS, CLOUDFLARED_HEALTH_READINESS_TIMEOUT_MS]);
     await handle.stop();
   } finally { await rm(directory, { recursive: true, force: true }); }
 });

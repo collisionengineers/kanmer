@@ -4,8 +4,8 @@ import { DEFAULT_READINESS_TIMEOUT_MS, allocateLoopbackPort, reserveLoopbackPort
 import { createServer } from "node:net";
 import { createServer as createHttpServer } from "node:http";
 
-test("production readiness allows bounded Cloudflare transport fallback", () => {
-  assert.equal(DEFAULT_READINESS_TIMEOUT_MS, 60_000);
+test("generic readiness remains bounded for recurring health checks", () => {
+  assert.equal(DEFAULT_READINESS_TIMEOUT_MS, 10_000);
 });
 
 test("allocator returns an unprivileged loopback port", async () => {

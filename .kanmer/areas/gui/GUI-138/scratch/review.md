@@ -2,7 +2,7 @@
 kind: review-attestation
 pr: "263"
 head_sha: "b992a34e2d54def121d2d65bfe95a600e14bf330"
-verdict: pass
+verdict: needs-changes
 reviewer: "codex-doc021-review"
 independent: true
 plan_hash: "eb2abff500efd115"
@@ -13,31 +13,29 @@ findings:
     summary: "A restarting tunnel could be attested as connected."
     disposition: fixed
   - id: F-002
-    severity: minor
-    summary: "The tunnel snapshot hard-codes attempt 1 instead of preserving the child attempt."
-    disposition: fixed
+    severity: major
+    summary: "The production remote-status protocol does not carry the supervisor restart attempt."
+    disposition: open
 ---
 
-# Independent review — GUI-138
+# Independent re-review — GUI-138
 
-## Scope and governing contract
+## Scope and evidence
 
-Reviewed PR #263 at exact head b992a34e2d54def121d2d65bfe95a600e14bf330 against the full GUI-138 packet, HZN-007 control context, and FRD-025. The three commits alter only manager.ts and manager.test.ts. The change passes an allowlisted, manager-owned Cloudflare readiness snapshot solely to the doctor child; it neither changes provider/DNS/doctor semantics nor adds dependencies, secrets, credentials, endpoint protocol, or updater behavior.
-
-The snapshot contains only state, provider, positive lifecycle attempt, timestamp, public endpoint, project fingerprint, and opaque auth generation. It excludes bearer, secret, credential content, and raw provider output. Existing generation-conflict checks remain intact.
+Re-reviewed PR #263 at exact head b992a34e2d54def121d2d65bfe95a600e14bf330 against the full packet, HZN-007 control context, and FRD-025. The current diff is limited to manager.ts and manager.test.ts. Reviewer checks on that exact worktree passed: focused manager suite 12/12, GUI typecheck, GUI build, and exact diff check. Hosted run 32813387803 is terminal green on this head: verify 3m29s and kanmer-gate 1m0s.
 
 ## Finding dispositions
 
 ### F-001 — major — FIXED
 
-The manager maps the child provider restarting state to degraded, so it cannot serialize a connected tunnel during restart backoff. The regression drives ready to restarting and proves the mocked doctor fails TUNNEL_PROCESS_READY from the resulting non-connected snapshot.
+Provider restarting maps to degraded, preventing the doctor snapshot from claiming connected during restart backoff. The regression drives ready to restarting and proves TUNNEL_PROCESS_READY fails from the non-connected snapshot.
 
-### F-002 — minor — FIXED
+### F-002 — major — OPEN: the test fabricates a field the production protocol never emits
 
-The manager now owns providerAttempt, initializes it for a fresh runtime, accepts only positive integer attempts from child status events, and serializes that value to the doctor. The restart regression emits attempt 2 and asserts the snapshot reports attempt 2. This fully resolves the remaining lifecycle-metadata portion of the GitHub P2 thread.
+The manager accepts a positive status attempt and the test injects attempt 2, but the child cannot emit it in production. RemoteHostStatus defines local, provider, publicVerification, endpoint, and reason only; TunnelSupervisor onState supplies only a state string; remote-host forwards that status unchanged; and remote-cli serializes that same status to the GUI process. Thus every real restarting event lacks attempt, so providerAttempt remains its locally initialized value 1 and the doctor snapshot is still not the child/supervisor's actual lifecycle attempt.
 
-## Evidence and merge decision
+Propagate an owned positive attempt from TunnelSupervisor through RemoteHostStatus and remote-cli to the manager, then prove the production status protocol (not a hand-authored GUI test event) reaches the doctor snapshot. Update the packet plan/files/report for the required MCP-server path before implementation. Do not weaken or remove the attempt assertion.
 
-Reviewer commands on the exact worktree all exited 0: focused manager suite (12/12), GUI typecheck, GUI build, and exact diff check. Hosted run 32813387803 is terminal green on this head: verify passed in 3m29s and kanmer-gate passed in 1m0s. The sole GitHub review thread is addressed by F-001/F-002 and is being resolved; no other comments or blockers remain.
+## Merge decision
 
-This is an independent PASS. Packaged public-doctor and remote MCP proof is deliberately deferred to merged-main verification; it is not claimed by this review.
+The new GitHub P2 thread at manager.ts:785 remains open and the earlier resolution is being corrected because its attempt requirement is not actually satisfied. A green CI rail does not override this semantic defect. No merge or board move is authorized. Packaged public-doctor and remote MCP proof remain merged-main verification work and are not claimed here.

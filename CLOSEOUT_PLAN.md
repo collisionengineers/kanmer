@@ -31,7 +31,7 @@ Work CORE-106 through execute, independent review, merge, exact-merge verificati
 2. Copy the matching MCPB into that retained release directory.
 3. Run packaged-updater and local manifest/hash checks before any GitHub mutation.
 4. Refuse if the target tag or GitHub Release already exists.
-5. Push the immutable tag, explicitly create the GitHub Release, and upload exactly the four validated assets. Do not use Electron Builder's GitHub publisher or `--clobber`.
+5. Push the immutable tag, explicitly create a draft GitHub Release, and upload exactly the four validated assets. Verify the hidden draft against the retained package, then and only then make it public/latest. Do not use Electron Builder's GitHub publisher or `--clobber`.
 6. Keep publisher verification byte-identical to that one retained generation.
 7. Add `--remote-coherent` verification for tag CI: require installer, blockmap, MCPB, and `latest.yml` exactly once and uploaded; require valid GitHub SHA-256 metadata; download the public manifest and installer; verify version, URL, size, and SHA-512.
 8. Keep tag CI's independent `dist:check` as source/package health. Never compare its signed installer bytes with the publisher build.

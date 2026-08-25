@@ -108,7 +108,15 @@ test("publisher packages once, then explicitly creates and uploads the release",
   assert.doesNotMatch(source, /electron-builder --win --publish always/);
   assert.match(source, /gh release create \$\{releaseTag\(version\)\}/);
   assert.match(source, /gh release upload \$\{releaseTag\(version\)\}/);
+  assert.match(source, /--notes-file "\$\{notesPath\}" --draft/);
+  assert.match(source, /gh release edit \$\{releaseTag\(version\)\} --draft=false --latest/);
   assert.doesNotMatch(source, /gh release upload[^\n]*--clobber/);
   assert.match(source, /tag .* already exists locally or on origin/);
   assert.match(source, /GitHub Release .* already exists/);
+
+  const createAt = source.indexOf("gh release create");
+  const uploadAt = source.indexOf("gh release upload");
+  const verifyAt = source.indexOf("check = await verifyRelease");
+  const publishAt = source.indexOf("gh release edit");
+  assert.ok(createAt < uploadAt && uploadAt < verifyAt && verifyAt < publishAt);
 });

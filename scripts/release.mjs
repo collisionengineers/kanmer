@@ -475,33 +475,15 @@ const { expected } = expectedAssets({ version, localDir: releaseDir });
 const uploads = exactUploadSpecs(expected);
 run(
   `gh release create ${releaseTag(version)} --title "Kanmer v${version}" ` +
-    `--notes-file "${notesPath}" --latest`,
+    `--notes-file "${notesPath}" --draft`,
 );
 run(`gh release upload ${releaseTag(version)} ${uploads.map((upload) => `"${upload}"`).join(" ")}`);
 
 // ---------------------------------------------------------------------------
-// 9a. The release is VISIBLE. Read exactly what GitHubProvider reads: it polls
-//     releases.atom and /releases/latest, and neither lists drafts, so a draft
-//     release reaches zero installed clients — silently. Kept as its own check
-//     because it tests a different thing from 9b: not "are the bytes there" but
-//     "can any client ever see this release at all".
-// ---------------------------------------------------------------------------
-const latestUrl = `https://github.com/${OWNER}/${REPO}/releases/latest`;
-const res = await fetch(latestUrl, { headers: { Accept: "application/json" } });
-const body = await res.json();
-if (body.tag_name !== `v${version}`) {
-  refuse(
-    `${latestUrl} reports tag_name "${body.tag_name}", expected "v${version}"`,
-    "the release is probably a DRAFT — check releaseType in apps/gui/electron-builder.yml. " +
-      "Until this is right, no installed client can see the update.",
-  );
-}
-console.log(`\nverified: /releases/latest is v${version}`);
-
-// ---------------------------------------------------------------------------
-// 9b. Every published asset is present, uploaded, and byte-identical to the
-//     one package generation above. There is no automatic repair: a failed
-//     explicit upload is preserved and the next release uses a higher version.
+// 9a. While the release is still a draft and therefore invisible to installed
+//     clients, prove that every uploaded asset is present and byte-identical to
+//     the one package generation above. There is no automatic repair: a failed
+//     draft is preserved and the next release uses a higher version.
 // ---------------------------------------------------------------------------
 let check;
 try {
@@ -541,6 +523,23 @@ console.log(
   `\nverified: all ${check.expected.length} assets of v${version} are present, uploaded, ` +
     "and byte-identical to the local build",
 );
+
+// ---------------------------------------------------------------------------
+// 9b. Only a coherent draft may become public/latest. Then read exactly what
+//     GitHubProvider reads: releases/latest excludes drafts and prereleases, so
+//     this separately proves that installed clients can discover the release.
+// ---------------------------------------------------------------------------
+run(`gh release edit ${releaseTag(version)} --draft=false --latest`);
+const latestUrl = `https://github.com/${OWNER}/${REPO}/releases/latest`;
+const res = await fetch(latestUrl, { headers: { Accept: "application/json" } });
+const body = await res.json();
+if (body.tag_name !== `v${version}`) {
+  refuse(
+    `${latestUrl} reports tag_name "${body.tag_name}", expected "v${version}"`,
+    "the release did not become visible as latest. Preserve it as failed evidence and inspect GitHub before publishing another version.",
+  );
+}
+console.log(`\nverified: /releases/latest is v${version}`);
 
 // ---------------------------------------------------------------------------
 // 10. What the script cannot enforce.

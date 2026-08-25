@@ -23,6 +23,9 @@ test("process discovery is path-safe, bounded, and fail-closed before install", 
   assert.match(source, /Stop-Process -Id \$\$_\.ProcessId -Force -ErrorAction SilentlyContinue/);
   assert.match(source, /nsExec::Exec \/TIMEOUT=10000/g);
   assert.match(source, /-not \$\$_\.ExecutablePath[\s\S]+Kanmer\.exe[\s\S]+kanmer-mcp\.exe/);
+  assert.match(source, /GetCurrentProcessId\(\) i\.R6/);
+  assert.match(source, /KANMER_GUARD_PID/);
+  assert.match(source, /\$\$_\.ProcessId -ne \$\$guardPid/g);
   assert.match(source, /process enumeration failed; refusing partial replacement/);
   assert.match(source, /processes remain; refusing partial replacement/);
   assert.match(source, /No application files will be replaced\.[^\n]+\/SD IDOK/);

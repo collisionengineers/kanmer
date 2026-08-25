@@ -227,4 +227,56 @@ describe("RemoteAccessManager", () => {
     expect(spawns).toBe(1);
     await manager.closeAll();
   });
+
+  it("passes the owned tunnel readiness snapshot to the remote doctor", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kanmer-remote-manager-")); roots.push(root);
+    let spawnCount = 0;
+    let doctorTunnelStatus: string | undefined;
+    const spawnProcess = (_command: string, _args: readonly string[], options: { env?: NodeJS.ProcessEnv }) => {
+      spawnCount++;
+      const process = new EventEmitter() as ChildProcess;
+      const stdout = new PassThrough();
+      Object.assign(process, {
+        stdout, stderr: new PassThrough(), pid: undefined, exitCode: null, signalCode: null,
+        kill: () => { Object.defineProperty(process, "exitCode", { value: 0, configurable: true }); queueMicrotask(() => process.emit("exit", 0, null)); return true; },
+      });
+      if (spawnCount === 1) {
+        queueMicrotask(() => stdout.write(`${JSON.stringify({
+          kind: "kanmer-mcp-remote-ready", version: 1,
+          endpoint: "http://127.0.0.1:43125/mcp",
+          publicEndpoint: "https://mcp.example.com/mcp",
+          authRequired: true, tokenId: "sha256:0123456789ab",
+          projectFingerprint: identity.fingerprint,
+        })}\n`));
+      } else {
+        doctorTunnelStatus = options.env?.KANMER_TUNNEL_STATUS_JSON;
+        queueMicrotask(() => {
+          stdout.write(`${JSON.stringify({ status: "pass", checks: [] })}\n`);
+          process.emit("exit", 0, null);
+        });
+      }
+      return process;
+    };
+    const manager = new RemoteAccessManager(root, spawnProcess);
+    await manager.register("/repo", identity);
+    const initial = await manager.viewFor("/repo", identity);
+    await manager.saveConfig("/repo", identity, { ...config, expectedConfigGeneration: initial.status.configGeneration });
+    const configured = await manager.viewFor("/repo", identity);
+    await manager.createSecret("/repo", identity, false, owner, configured.status.configGeneration);
+    const startable = await manager.viewFor("/repo", identity);
+    const ready = await manager.start("/repo", identity, { root: identity.boardRoot, repoRoot: identity.repoRoot }, startable.status.configGeneration);
+    const result = await manager.doctor("/repo", identity, { root: identity.boardRoot, repoRoot: identity.repoRoot }, ready.configGeneration, ready.runtimeGeneration);
+    expect(result.ok).toBe(true);
+    expect(JSON.parse(doctorTunnelStatus!)).toEqual({
+      state: "connected",
+      provider: "cloudflared",
+      attempt: 1,
+      changedAt: expect.any(String),
+      publicEndpoint: "https://mcp.example.com/mcp",
+      projectFingerprint: identity.fingerprint,
+      authGeneration: "sha256:0123456789ab",
+    });
+    expect(doctorTunnelStatus).not.toMatch(/token|secret|credential/i);
+    await manager.closeAll();
+  });
 });

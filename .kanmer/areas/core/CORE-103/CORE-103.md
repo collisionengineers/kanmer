@@ -2,13 +2,14 @@
 id: CORE-103
 type: ticket
 title: Publish and validate v0.3.8 closeout release
-status: implementing
+status: review
 area: core
 assignee: codex-closeout
 profile: chore
 stageEntered:
   preparing: '2026-08-25T01:10:15.001Z'
   implementing: '2026-08-25T01:10:19.884Z'
+  review: '2026-08-25T09:02:34.978Z'
 taken_at: '2026-08-25T08:17:47.041Z'
 branch: release/v0.3.8
 worktree: .worktrees/core-103
@@ -26,9 +27,13 @@ links:
   - CORE-102
 refs:
   - docs/functional/frd/FRD-021-auto-update.md
+commits:
+  - b79259e8a180d0ae5c500866ebcbcfd3c7dbb71e
+prs:
+  - '269'
 archived: false
 created: '2026-08-25T01:04:13.262Z'
-updated: '2026-08-25T08:17:47.041Z'
+updated: '2026-08-25T09:02:34.978Z'
 ---
 
 ## Purpose

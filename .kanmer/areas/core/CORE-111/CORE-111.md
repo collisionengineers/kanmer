@@ -2,7 +2,7 @@
 id: CORE-111
 type: ticket
 title: Publish and validate v0.3.12 stabilization release
-status: verifying
+status: review
 area: core
 assignee: codex-release-controller
 profile: chore
@@ -21,12 +21,13 @@ links: []
 refs:
   - docs/functional/frd/FRD-021-auto-update.md
 commits:
-  - 2c2df04d
+  - 0349f269a4f2e6c31cccd2d610c823f3718bfc77
 prs:
   - '283'
+  - '284'
 archived: false
 created: '2026-08-26T17:40:55.916Z'
-updated: '2026-08-26T20:19:08.201Z'
+updated: '2026-08-26T20:31:33.282Z'
 ---
 
 ## Why

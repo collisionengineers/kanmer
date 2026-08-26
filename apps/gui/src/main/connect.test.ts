@@ -610,6 +610,7 @@ describe("portable Codex launcher contract (GUI-100)", () => {
 
     expect(result.ok).toBe(true);
     expect(result.output).toBe("Kanmer MCP launcher: healthy");
+    expect(result.command).toBe("powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '$ErrorActionPreference = ''Stop''; & (Join-Path $env:LOCALAPPDATA ''Kanmer\\bin\\kanmer-mcp.cmd'') --probe; exit $LASTEXITCODE'");
     expect(calls).toEqual([{
       file: "powershell.exe",
       args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "$ErrorActionPreference = 'Stop'; & (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd') --probe; exit $LASTEXITCODE"],
@@ -736,7 +737,7 @@ describe("portable Codex launcher contract (GUI-100)", () => {
       const result = await probeCodexLauncher(localAppData);
       expect(result).toMatchObject({
         ok: true,
-        command: "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"$ErrorActionPreference = 'Stop'; & (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd') --probe; exit $LASTEXITCODE\"",
+        command: "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '$ErrorActionPreference = ''Stop''; & (Join-Path $env:LOCALAPPDATA ''Kanmer\\bin\\kanmer-mcp.cmd'') --probe; exit $LASTEXITCODE'",
         output: "Kanmer MCP launcher: healthy",
       });
     } finally {

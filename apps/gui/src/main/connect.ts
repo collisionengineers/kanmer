@@ -73,7 +73,11 @@ export async function probeCodexLauncher(
   const invocation = codexPortableProbeInvocation();
   // Keep the fallback directly pasteable in PowerShell. The command is sent as
   // ordinary argv, the same way Codex starts the registered server.
-  const command = `${invocation.command} ${invocation.args.slice(0, 4).join(" ")} "${invocation.args[4]}"`;
+  // A double-quoted PowerShell argument expands `$env:*`, `$LASTEXITCODE`, and
+  // `$ErrorActionPreference` in the caller before the child PowerShell sees
+  // its script. Quote the payload literally for the copyable fallback.
+  const commandPayload = invocation.args[4].replaceAll("'", "''");
+  const command = `${invocation.command} ${invocation.args.slice(0, 4).join(" ")} '${commandPayload}'`;
   try {
     const { stdout, stderr } = await run(invocation.command, invocation.args, {
       cwd: projectRoot,

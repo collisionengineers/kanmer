@@ -391,6 +391,22 @@ describe("detectStaleness — provider MCP registrations", () => {
     expect(isCurrentCodexRegistration(`${prefix}["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')", "--unexpected"]\n`)).toBe(false);
   });
 
+  it("accepts TOML-valid comments and a trailing comma in a canonical Codex array", () => {
+    const registration = [
+      "[mcp_servers.kanmer]",
+      'command = "powershell.exe"',
+      "args = [",
+      '  "-NoProfile", # no profile',
+      '  "-ExecutionPolicy",',
+      '  "Bypass",',
+      '  "-Command",',
+      '  "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')",',
+      "] # portable launcher",
+      "",
+    ].join("\n");
+    expect(isCurrentCodexRegistration(registration)).toBe(true);
+  });
+
   it("reports the legacy cmd.exe Codex descriptor as behind", () => {
     writeAgents();
     put(

@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "282"
-head_sha: "257bb47a6fc9a895a23a5f1b89a723ed6632d71f"
+head_sha: "7bc0168e62ebff55c86102103c996be01b71faf4"
 verdict: needs-changes
 reviewer: "mcp053-independent-review"
 independent: true
-plan_hash: "6ac5041eff20b092"
-ticket_updated: "2026-08-26T12:42:41.355Z"
+plan_hash: "3d052de626aeefc8"
+ticket_updated: "2026-08-26T12:58:35.290Z"
 findings:
   - id: F-001
     severity: note
@@ -16,10 +16,14 @@ findings:
   - id: F-002
     severity: major
     summary: "The advertised resumed path still attempts to create and take an already-recorded worktree and ticket, so it cannot complete."
-    disposition: open
+    disposition: fixed
   - id: F-003
     severity: major
     summary: "AGENTS.md does not document the new occupied-ticket resume convention required for contributors and agents."
+    disposition: fixed
+  - id: F-004
+    severity: major
+    summary: "The required verify job fails the new resumed-worktree smoke assertion on GitHub Windows because Git emits a slash-form path while Node resolves the fixture path with backslashes."
     disposition: open
 ---
 
@@ -27,22 +31,38 @@ findings:
 
 ## Scope and evidence
 
-PR #282 at `257bb47a6fc9a895a23a5f1b89a723ed6632d71f` is narrowly scoped to the execution-packet API, real stdio smoke coverage, plugin bundle, and caller guidance. Independent commands passed: `npm run build:server`; `node packages/mcp-server/src/smoke.mjs` (226/226); and `npm run plugin:check`. `verify` is green for this SHA. The original phase-2 gate raced the board sync and review evidence; it is not a substitute for the open findings below.
+I independently reviewed PR #282 at `7bc0168e62ebff55c86102103c996be01b71faf4`, its packet documents, the full live diff, and both GitHub review threads. The scope remains bounded to the execution-packet resume API, its caller contract, its generated plugin runtime, and the managed contributor instructions. The PR is authored by `collisionengineers`; this is an independent agent-role review.
 
-## Required remediation
+The branch-protection requirements are `verify` and `kanmer-gate`. `kanmer-gate` passed. The required `verify` run 32971427936 failed, so this review cannot pass or merge.
 
-### F-002 — major, open
+Independent local evidence at the reviewed head:
 
-The new retry receives a ready packet but `kanmer-execute` then continues into the fresh-start flow: `git worktree add ... -b ...` fails because the exact worktree/branch already exists, and `take_ticket` rejects an existing `taken_at` without force. Split resumed execution from fresh execution: validate and reuse the recorded worktree/branch, and use a supported handoff/release path only if ownership must change. Add execution-level coverage that exercises the full resumed workflow rather than only packet retrieval.
+- `npm run build:server` — PASS.
+- `node packages/mcp-server/src/smoke.mjs` — PASS, 227/227, including exact resume, mismatched-resume refusal, and Git worktree validation.
+- `node scripts/verify-agents-block.mjs` — PASS, 31/31; it proves the canonical block, repository AGENTS.md, and shipped setup mirror match.
+- `node scripts/verify-skill-prose.mjs` and `node --test scripts/verify-skill-prose.test.mjs` — PASS; the regression test rejects a resumed flow that would recreate its worktree.
+- `npm run plugin:check` — PASS; 37 tools, matching generated bundle, and isolated MCP handshake.
 
-### F-003 — major, open
+## Disposition of prior threads
 
-This change establishes a public packet parameter and a new resume convention. Update AGENTS.md in the same PR so the canonical operating guide describes how an exact resumed packet is validated and reused, consistent with the repository rule requiring command/convention changes to update AGENTS.md.
+### F-002 — fixed
+
+`kanmer-execute` now treats `ticket.taken` as a resumed lane. It validates the precise recorded worktree and branch and expressly skips both `git worktree add` and `take_ticket`; only a packet with no recorded take follows the fresh path. The new smoke creates a real Git worktree, receives a ready packet from a different client identity, and validates that exact branch/worktree. The generated plugin contains the same skill contract.
+
+### F-003 — fixed
+
+The canonical managed block now tells agents that fresh tickets use `take_ticket`, while resumed packets validate and reuse the exact recorded branch/worktree without a second take or worktree creation. `scripts/agents-block-body.mjs`, repository `AGENTS.md`, and the shipped `kanmer-setup` mirror are aligned and passed the dedicated verifier.
+
+## New required remediation
+
+### F-004 — major, open
+
+The implementation needs a cross-form Windows path comparison in the smoke assertion. GitHub's required run fails the exact assertion with `C:/Users/runneradmin/...` returned by Git versus the Windows-resolved fixture path, despite the branch being correct. Normalize both sides to a common slash form (or compare canonical real paths) before equality. Re-run the full required CI and obtain a fresh review attestation at the resulting head.
 
 ## Residual risk
 
-F-001 remains accepted risk. The exact pair is a local workflow confirmation, not identity authorization; that is documented and does not excuse the executable resume-path failure in F-002.
+F-001 remains accepted risk: the exact pair is an explicit local workflow confirmation, not a credential or authorization boundary. The server remains fail-closed for absent, partial, or non-exact values.
 
 ## Verdict
 
-Needs changes. Do not merge. Re-review against the new PR head after both major findings are resolved and all required checks are green.
+Needs changes. Do not merge while required `verify` is red. The only open blocker identified in this review is F-004.

@@ -374,7 +374,7 @@ describe("codex project-scoped TOML registration (FRD-012 R1)", () => {
     const probe = codexPortableProbeInvocation();
     expect(probe).toEqual({
       command: "powershell.exe",
-      args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd') --probe; exit $LASTEXITCODE"],
+      args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "$ErrorActionPreference = 'Stop'; & (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd') --probe; exit $LASTEXITCODE"],
       env: {},
     });
     const normal = codexPortableInvocation();

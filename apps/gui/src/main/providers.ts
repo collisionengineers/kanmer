@@ -28,7 +28,10 @@ export interface Invocation {
  * replace this path with an install, board or source root.
  */
 const CODEX_PORTABLE_COMMAND = "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')";
-const CODEX_PORTABLE_PROBE_COMMAND = `${CODEX_PORTABLE_COMMAND} --probe; exit $LASTEXITCODE`;
+// A command path that does not resolve is otherwise a non-terminating
+// PowerShell error, which would make the probe appear healthy. Make that
+// condition terminating before preserving the launcher's own exit code.
+const CODEX_PORTABLE_PROBE_COMMAND = `$ErrorActionPreference = 'Stop'; ${CODEX_PORTABLE_COMMAND} --probe; exit $LASTEXITCODE`;
 
 /** The local default shared by the GUI registration and MCP runtime. */
 export const DEFAULT_BOARD_BRANCH = "kanmer-board";

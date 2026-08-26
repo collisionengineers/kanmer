@@ -413,7 +413,10 @@ describe("detectStaleness — provider MCP registrations", () => {
       path.join(root, ".codex/config.toml"),
       '[mcp_servers.kanmer]\ncommand = "cmd.exe"\nargs = ["/d", "/s", "/c", \'"%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd"\']\n',
     );
-    expect(rowsFor(detect(), "mcp-registration")).toMatchObject([{ state: "behind" }]);
+    expect(isCurrentCodexRegistration('[mcp_servers.kanmer]\ncommand = "cmd.exe"\nargs = ["/d"]\n')).toBe(false);
+    const rows = rowsFor(detect(), "mcp-registration");
+    if (process.platform === "win32") expect(rows).toMatchObject([{ state: "behind" }]);
+    else expect(rows).toEqual([]);
   });
 
   it("does not read another server's --root as Kanmer's", () => {

@@ -6,6 +6,8 @@
 import { basename, join } from "node:path";
 import * as TOML from "smol-toml";
 import {
+  CODEX_PORTABLE_ARGS,
+  CODEX_PORTABLE_COMMAND,
   dispatchProviderById,
   listDispatchProviders,
   STALENESS_PROVIDER_PATHS,
@@ -27,7 +29,6 @@ export interface Invocation {
  * LOCALAPPDATA on the destination machine; Connect must never expand or
  * replace this path with an install, board or source root.
  */
-const CODEX_PORTABLE_COMMAND = "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')";
 // A command path that does not resolve is otherwise a non-terminating
 // PowerShell error, which would make the probe appear healthy. Make that
 // condition terminating before preserving the launcher's own exit code.
@@ -52,7 +53,7 @@ export function nativeFunctionalPrompt(boardBranch: string | undefined): string 
 export function codexPortableInvocation(boardBranch?: string): Invocation {
   return {
     command: "powershell.exe",
-    args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", CODEX_PORTABLE_COMMAND],
+    args: [...CODEX_PORTABLE_ARGS],
     env: boardBranch === undefined ? {} : { KANMER_BOARD_BRANCH: normalizeBoardBranch(boardBranch) },
   };
 }

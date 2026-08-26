@@ -39515,6 +39515,8 @@ async function writeVersion(paths, version2) {
   await writeFileAtomic(paths.versionFile, `${JSON.stringify(version2, null, 2)}
 `);
 }
+var CODEX_PORTABLE_COMMAND = "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')";
+var CODEX_PORTABLE_ARGS = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", CODEX_PORTABLE_COMMAND];
 var BLOCK_START = "<!-- kanmer:instructions:start \u2014 managed by kanmer-setup; edits inside will be overwritten -->";
 var BLOCK_END = "<!-- kanmer:instructions:end -->";
 var STALENESS_PROVIDER_PATHS = {
@@ -39828,13 +39830,7 @@ function isCurrentCodexRegistration(text) {
   if (args === null) {
     return false;
   }
-  return command?.toLowerCase() === "powershell.exe" && JSON.stringify(args) === JSON.stringify([
-    "-NoProfile",
-    "-ExecutionPolicy",
-    "Bypass",
-    "-Command",
-    "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"
-  ]);
+  return command?.toLowerCase() === "powershell.exe" && JSON.stringify(args) === JSON.stringify(CODEX_PORTABLE_ARGS);
 }
 function parseTomlStringArray(source) {
   let index = 0;

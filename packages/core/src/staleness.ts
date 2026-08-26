@@ -30,6 +30,10 @@ import type { BoardConfig, BoardSource } from "./types.js";
 import type { KanmerPaths } from "./paths.js";
 import { CURRENT_FORMAT } from "./version.js";
 
+/** The single portable Codex registration contract shared with GUI Connect. */
+export const CODEX_PORTABLE_COMMAND = "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')";
+export const CODEX_PORTABLE_ARGS = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", CODEX_PORTABLE_COMMAND] as const;
+
 /**
  * How out-of-date an artefact is — and, just as importantly, whether the user
  * should do anything about it.
@@ -657,13 +661,7 @@ export function isCurrentCodexRegistration(text: string): boolean | null {
     return false;
   }
   return command?.toLowerCase() === "powershell.exe" &&
-    JSON.stringify(args) === JSON.stringify([
-      "-NoProfile",
-      "-ExecutionPolicy",
-      "Bypass",
-      "-Command",
-      "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')",
-    ]);
+    JSON.stringify(args) === JSON.stringify(CODEX_PORTABLE_ARGS);
 }
 
 /** Parse the narrow TOML array shape used by Codex registrations without a new runtime dependency. */

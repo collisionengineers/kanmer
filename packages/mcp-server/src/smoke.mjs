@@ -257,6 +257,10 @@ try {
   execFileSync("git", ["symbolic-ref", "HEAD", `refs/heads/${expectedBoardBranch}`], {
     cwd: sandbox, windowsHide: true, stdio: "ignore",
   });
+  execFileSync("git", ["add", "docs"], { cwd: sandbox, windowsHide: true, stdio: "ignore" });
+  execFileSync("git", ["-c", "user.name=Kanmer smoke", "-c", "user.email=smoke@example.invalid", "commit", "-m", "smoke fixture"], {
+    cwd: sandbox, windowsHide: true, stdio: "ignore",
+  });
   const healthyBranch = JSON.parse(textOf(await client.callTool({ name: "get_status", arguments: {} })));
   check(
     "board worktree observes the expected branch without repairing it",
@@ -1904,6 +1908,10 @@ Second proof attempt passed; the first failure is retained.
     textOf(await client.callTool({ name: "create_item", arguments: { title: "occupied packet", status: "implementing", profile: "chore", docs_todo: true } })),
   ).id;
   await client.callTool({ name: "set_ticket_doc", arguments: { id: occupiedId, doc: "plan", content: "# Occupied" } });
+  const resumedWorktree = path.join(sandbox, ".worktrees", "other");
+  execFileSync("git", ["worktree", "add", "-b", "other-branch", resumedWorktree, expectedBoardBranch], {
+    cwd: sandbox, windowsHide: true, stdio: "ignore",
+  });
   await client.callTool({ name: "take_ticket", arguments: { id: occupiedId, branch: "other-branch", worktree: ".worktrees/other", assignee: "other-agent" } });
   const refusedOccupied = JSON.parse(
     textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: occupiedId } })),
@@ -1924,6 +1932,17 @@ Second proof attempt passed; the first failure is retained.
     "exact recorded branch and worktree resume an occupied packet",
     resumedOccupied.ready === true && resumedOccupied.ticket.taken?.branch === "other-branch" &&
       resumedOccupied.ticket.taken?.worktree === ".worktrees/other",
+  );
+  const resumedTopLevel = execFileSync("git", ["-C", resumedWorktree, "rev-parse", "--show-toplevel"], {
+    encoding: "utf8", windowsHide: true,
+  }).trim();
+  const resumedBranch = execFileSync("git", ["-C", resumedWorktree, "branch", "--show-current"], {
+    encoding: "utf8", windowsHide: true,
+  }).trim();
+  check(
+    "resumed packet's recorded worktree passes the execute skill's validation commands",
+    path.resolve(resumedTopLevel) === path.resolve(resumedWorktree) && resumedBranch === resumedOccupied.ticket.taken?.branch,
+    `${resumedTopLevel} @ ${resumedBranch}`,
   );
   const refusedMismatchedResume = JSON.parse(
     textOf(await client.callTool({

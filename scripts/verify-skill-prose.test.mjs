@@ -179,3 +179,30 @@ test("review prose validator rejects the deleted legacy review-asset claim", () 
     rmSync(fixture, { recursive: true, force: true });
   }
 });
+
+test("skill prose validator rejects a resumed execution flow that recreates its worktree", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-execute-resume-contract-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const execute = join(fixture, "plugins", "kanmer", "skills", "kanmer-execute", "SKILL.md");
+    writeFileSync(
+      execute,
+      readFileSync(execute, "utf8").replace(
+        "Only when `packet.ticket.taken` is absent, create the worktree",
+        "Create the worktree for every ready packet",
+      ),
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /kanmer-execute separates resumed and fresh worktree flows/);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});

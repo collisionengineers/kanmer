@@ -484,5 +484,18 @@ for (const [name, ok] of retirementContract) {
   check(name, ok, ok ? "contract present" : "terminal-retirement contract missing");
 }
 
+console.log("\n=== 17. resumed execution reuses, never recreates, its recorded worktree ===");
+const executeSkill = read(join(skillsDir, "kanmer-execute", "SKILL.md"));
+const resumedExecutionContract =
+  /`ticket\.taken` selects the execution lane[\s\S]*missing value means fresh work[\s\S]*present value means\s+resume the exact already-recorded branch and worktree/i.test(executeSkill) &&
+  /do not\s+create another worktree or call `take_ticket`/i.test(executeSkill) &&
+  /Only when `packet\.ticket\.taken` is absent, create the worktree/i.test(executeSkill) &&
+  /resumed ticket is\s+already taken[\s\S]*skips this fresh-ticket creation and take\s+sequence/i.test(executeSkill);
+check(
+  "kanmer-execute separates resumed and fresh worktree flows",
+  resumedExecutionContract,
+  resumedExecutionContract ? "reuse + fresh-only creation" : "resume must validate/reuse and skip worktree add/take",
+);
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

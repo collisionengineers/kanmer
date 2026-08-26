@@ -24,11 +24,13 @@ run and stop when the packet says to stop.
    with those exact values in `resume`. If that retry refuses, stop. Do not
    call `get_item`, take the ticket, run Git, or write a document after any
    other refusal.
-4. Retain the ready packet and then create and validate the exact worktree and
-   branch it requires. Send `expected_project` only when the preceding status
-   call advertised `compat.expectedProject: "optional"`.
-5. Take the ticket with the exact branch and worktree, work only the packet's
-   files and checklist, and record progress with version-aware MCP writes.
+4. Retain the ready packet. If it reports `ticket.taken`, it is a resumed
+   ticket: validate and reuse that exact recorded worktree and branch; do not
+   create another worktree or call `take_ticket`. Otherwise create and validate
+   a fresh worktree and take the ticket. Send `expected_project` only when the
+   preceding status call advertised `compat.expectedProject: "optional"`.
+5. Work only the packet's files and checklist, and record progress with
+   version-aware MCP writes.
 6. Write the post-implementation report, record traceability, push the branch,
    and open a PR whose body contains `Kanmer: <ID>`.
 7. Re-read `get_doc_gates`, then move only `implementing` → `review` when its
@@ -65,6 +67,12 @@ hint. Treat those versions as optimistic concurrency tokens: read every listed
 path and pass its version to a replacement. Do not silently overwrite a human
 edit; re-read the packet and re-plan if a version conflict occurs.
 
+`ticket.taken` selects the execution lane. A missing value means fresh work;
+create the recorded worktree and then take the ticket. A present value means
+resume the exact already-recorded branch and worktree. It is not permission to
+create another worktree, retake the ticket, clear its ownership, or replace its
+uncommitted work.
+
 ## Project capability and worktree
 
 Before the first mutating call, retain `project.fingerprint` from
@@ -74,7 +82,30 @@ Before the first mutating call, retain `project.fingerprint` from
 when the capability is absent. It is never nested in ticket fields or packet
 documents.
 
-Create the worktree from the repository root, after the packet is ready:
+### Resumed packet
+
+When `packet.ticket.taken` is present, use its `branch` and `worktree` values
+literally. They must be the same pair supplied to `resume` when the prior
+occupancy refusal needed that retry. From the repository root, validate the
+existing worktree without modifying it:
+
+```sh
+git -C <recorded-worktree> rev-parse --show-toplevel
+git -C <recorded-worktree> branch --show-current
+```
+
+The first command must resolve that recorded path; the second must exactly
+equal the recorded branch. The path must not be `.worktrees/kanmer` or another
+ticket's recorded worktree. A missing path, detached or different branch, or
+unexpected repository is a stop: record it in scratch and hand off. Do not
+repair it by `git worktree add`, checkout, reset, or `take_ticket`. Existing
+uncommitted changes belong to the resumed ticket and are not a reason to clean
+or recreate it.
+
+### Fresh packet
+
+Only when `packet.ticket.taken` is absent, create the worktree from the
+repository root after the packet is ready:
 
 ```sh
 git fetch origin
@@ -94,7 +125,9 @@ take_ticket id: <ID>, branch: "<id>-<slug>", worktree: ".worktrees/<id-lowercase
 ```
 
 The ticket comes before the branch in the board record; never invent a branch
-for an unrecorded ticket and never `force` a taken ticket.
+for an unrecorded ticket and never `force` a taken ticket. A resumed ticket is
+already taken, so it deliberately skips this fresh-ticket creation and take
+sequence.
 
 ## Work only the packet
 

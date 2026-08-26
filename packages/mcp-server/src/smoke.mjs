@@ -1939,9 +1939,13 @@ Second proof attempt passed; the first failure is retained.
   const resumedBranch = execFileSync("git", ["-C", resumedWorktree, "branch", "--show-current"], {
     encoding: "utf8", windowsHide: true,
   }).trim();
+  const comparableWorktreePath = (value) => process.platform === "win32"
+    ? path.win32.normalize(value).toLowerCase()
+    : path.resolve(value);
   check(
     "resumed packet's recorded worktree passes the execute skill's validation commands",
-    path.resolve(resumedTopLevel) === path.resolve(resumedWorktree) && resumedBranch === resumedOccupied.ticket.taken?.branch,
+    comparableWorktreePath(resumedTopLevel) === comparableWorktreePath(resumedWorktree) &&
+      resumedBranch === resumedOccupied.ticket.taken?.branch,
     `${resumedTopLevel} @ ${resumedBranch}`,
   );
   const refusedMismatchedResume = JSON.parse(

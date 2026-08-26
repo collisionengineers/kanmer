@@ -6,6 +6,23 @@ against shipping the previous release's notes. electron-builder reads this file
 from the app directory (`projectDir` is `apps/gui` when the packer is invoked
 there) and uses it as the GitHub release body.
 
+## 0.3.12
+
+### Windows Codex Connect now uses a portable launcher registration
+
+Connect writes the installer-owned PowerShell launcher as normal command-line
+arguments, so Codex starts it reliably even when Windows paths contain spaces.
+The preflight probe now surfaces both missing launchers and launch failures,
+and reconnect replaces the legacy generated registration. The bundled MCP
+descriptor and manual configuration stay in sync with that supported contract.
+
+### Resuming an existing ticket requires its recorded workspace
+
+A new MCP client can resume an already-taken ticket only by supplying the
+exact branch and worktree already recorded for it. Missing or mismatched values
+remain refused, preserving workspace ownership while allowing a legitimate
+session handoff.
+
 ## 0.3.11
 
 ### ChatGPT remote access uses one managed Windows runtime

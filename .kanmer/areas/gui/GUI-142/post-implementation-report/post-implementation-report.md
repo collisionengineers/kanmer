@@ -62,3 +62,51 @@ Push the F-012 remediation commit to PR #281, wait for its full CI, then request
 ## Current handoff
 
 Wait for the CI run triggered by 864fc7a6291580731019579303b927430603d422, then request a fresh independent review at that exact SHA.
+
+## Quoted TOML table-key remediation
+
+- Replaced the literal `[mcp_servers.kanmer]` header regex with a dependency-free semantic dotted-key decoder for bare, basic-quoted, and literal-quoted TOML table components.
+- Both explicit-root extraction and Windows Codex descriptor staleness now recognize legal spellings including `[mcp_servers."kanmer"]` and `["mcp_servers".kanmer]`, while section scanning still stops at the next table.
+- Added regressions for both reported quoted-key forms plus literal-quoted components.
+- Commit: 34c74fd810113cb1c4571657136276b34924e695.
+
+## Verification after quoted table-key remediation
+
+- Initial focused invocation: FAIL (exit 1) because the workspace-relative test path was incorrectly supplied from inside the core workspace; Vitest found no files. Retried with the correct path below; the failure remains recorded.
+- PASS (exit 0): `npm test -w @kanmer/core -- --run src/staleness.test.ts` — 48 tests.
+- PASS (exit 0): `npm run typecheck -w @kanmer/core`.
+- PASS (exit 0): `npm test` — Core 317, GUI 486, MCP HTTP 107, scripts 116.
+- PASS (exit 0): `npm run plugin:build; npm run plugin:check` — committed plugin bundle rebuilt; 37 tools match and isolated handshake passes.
+
+## Current handoff
+
+Wait for CI on 34c74fd810113cb1c4571657136276b34924e695, then request a fresh independent review at that exact SHA.
+
+## F-015 complete descriptor remediation
+
+- Tightened `isCurrentCodexRegistration` to enumerate the complete Kanmer TOML table hierarchy and accept exactly one canonical command, one canonical args array, and either no child table or one generated `env` child containing only a non-empty string `KANMER_BOARD_BRANCH`.
+- Duplicate assignments, `cwd`, dotted or inline environment assignments, `LOCALAPPDATA` redirects, other environment keys, and other Kanmer child tables now return false; unrelated provider tables remain ignored.
+- Preserved quoted table components, CRLF/header comments, basic/literal command strings, multiline arrays, trailing commas/comments, explicit-root extraction, and non-Windows behavior.
+- Added direct verdict regressions and Windows-facing staleness regressions for the permitted environment, forbidden cwd, redirected LOCALAPPDATA, other environment/child fields, and unrelated tables.
+- Commit: 328d80bf04eb98aa362da649e6ddb1c8ed933824.
+
+## Verification after F-015
+
+- Expected red run: FAIL (exit 1), `npm test -w @kanmer/core -- --run src/staleness.test.ts` — three intended F-015 failures, 50 passed.
+- Preserved-regression run: FAIL (exit 1) — one literal-command trailing-comment regression exposed by the first implementation, 52 passed; corrected without changing the assertion.
+- PASS (exit 0): focused Core staleness suite — 53 tests.
+- PASS (exit 0): Core typecheck.
+- PASS (exit 0): full `npm test` — Core 322, GUI 486, MCP HTTP 107, scripts 116.
+- PASS (exit 0): plugin rebuild/check — 37 tools match, bundle bytes match, isolated handshake passes.
+
+## Current handoff
+
+Push 328d80bf04eb98aa362da649e6ddb1c8ed933824 to PR #281, wait for fresh exact-head required checks, move GUI-142 back to Review after gates, and hand to a new independent reviewer. Do not merge.
+
+## Exact-head CI after F-015
+
+- PASS: GitHub Actions run `32997726797` at exact PR head `328d80bf04eb98aa362da649e6ddb1c8ed933824`.
+- PASS: required `kanmer-gate` job `98271222415` (47s).
+- PASS: required `verify` job `98271222206` (4m16s).
+
+The implementation is ready for a new independent review at this exact SHA.

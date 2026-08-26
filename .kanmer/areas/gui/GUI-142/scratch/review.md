@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "281"
-head_sha: "864fc7a6291580731019579303b927430603d422"
-verdict: needs-changes
-reviewer: "independent-reviewer-gpt-5.6"
+head_sha: "328d80bf04eb98aa362da649e6ddb1c8ed933824"
+verdict: pass
+reviewer: "operator-bounded-independent-reviewer-gpt-5.6"
 independent: true
-plan_hash: "dbf90ad24d76b31b"
-ticket_updated: "2026-08-26T15:31:44.415Z"
+plan_hash: "a515461542a97c26"
+ticket_updated: "2026-08-26T18:09:37.209Z"
 findings:
   - id: F-001
     severity: blocker
@@ -36,7 +36,7 @@ findings:
     severity: minor
     summary: "The production invocation does not explicitly return the native launcher exit value."
     disposition: rejected-with-reason
-    reason: "Direct Windows execution against an exit-19 launcher returns a non-zero PowerShell result, which is sufficient for Codex failure detection; exact native exit-value preservation is outside this ticket's requirement."
+    reason: "Direct Windows execution against an exit-19 launcher returns a non-zero PowerShell result, sufficient for Codex failure detection; exact native exit-value preservation is outside this ticket's requirement."
   - id: F-008
     severity: minor
     summary: "The copied PowerShell fallback expanded its script payload in the caller shell."
@@ -59,28 +59,68 @@ findings:
     disposition: fixed
   - id: F-013
     severity: major
-    summary: "Required GitHub Actions checks have not run for the reviewed exact head."
-    disposition: open
+    summary: "Required GitHub Actions checks had not run for the previously reviewed exact head."
+    disposition: fixed
+  - id: F-014
+    severity: minor
+    summary: "Quoted TOML table-key components bypassed Kanmer registration recognition."
+    disposition: fixed
+  - id: F-015
+    severity: major
+    summary: "Descriptor staleness accepts forbidden fields that can change the effective launcher contract."
+    disposition: fixed
+  - id: F-016
+    severity: minor
+    summary: "An unrelated TOML array-of-tables after the Kanmer entry is treated as descriptor content and produces a false stale verdict."
+    disposition: deferred-to-ticket
+    ticket: CORE-112
+    reason: "Explicit operator authorization classifies this current-head P2 as a non-blocking false-staleness risk; GUI-142's generated launcher and MCP acceptance remain valid."
+  - id: F-017
+    severity: minor
+    summary: "The detector rejects inline or dotted spellings of the permitted board-branch environment."
+    disposition: deferred-to-ticket
+    ticket: CORE-112
+    reason: "Explicit operator authorization classifies this current-head P2 as the same non-blocking semantic-TOML parser class and directs one comprehensive smol-toml follow-up."
 ---
 
-# Independent review
+# Final bounded independent review
 
-Reviewed GUI-142 / PR #281 at exact head `864fc7a6291580731019579303b927430603d422`, plan version `dbf90ad24d76b31b`, and ticket revision `2026-08-26T15:31:44.415Z`. I am an independently assigned reviewer, not the PR author.
+I independently reviewed GUI-142 / PR #281 at exact head `328d80bf04eb98aa362da649e6ddb1c8ed933824`, plan version `a515461542a97c26`, and ticket revision `2026-08-26T18:09:37.209Z`. This review is bounded to the approved outcome and acceptance checks, exact-head checks and current GitHub findings, the explicit operator dispositions, and blocker/P1/major regression or safety defects. It does not restart open-ended repository ideation or resurrect obsolete-head findings.
 
-## Source and acceptance review
+## Exact-head and required-check evidence
 
-- The 11-file / 369-line diff is within the ticket packet and FRD-012 R1e: GUI Connect emits the rootless portable PowerShell descriptor; its probe fails before config mutation on missing, spawn, timeout, or non-zero launcher outcomes; reconnection retains its owned-table scope; and stale Windows registrations are detected without judging non-Windows ones.
-- The canonical command and argv are exported from Core and consumed by GUI Connect, avoiding a second contract copy. The narrow TOML table/array parser now accepts CRLF, legal header comments, a trailing command comment, and a single-quoted command scalar while continuing to compare the complete descriptor.
-- I reviewed every GitHub inline thread. F-001 through F-012 have corresponding remediations in the reviewed head; the outdated threads remain unresolved in GitHub but are dispositioned here. F-007 is rejected with the documented, tested rationale above. There are no non-outdated source findings and no top-level PR comments.
-- Independent local verification passed: `npm run test --workspace @kanmer/core` (315 tests), and `npm run test --workspace @kanmer/gui`; the latter included the four Windows launcher regressions: normal PowerShell boundary, non-zero probe, missing launcher, and normal-argv MCP initialize/tools handshake. The foreground test process was confirmed exited after completion.
-- The report records current-head plugin synchronization and local NSIS/updater packaging evidence. The committed plugin MCP bundle is included in the diff.
+- The PR remains open and mergeable at the expected exact head; the implementation worktree is clean at that SHA.
+- Exact-head GitHub Actions run `32997726797` passed required `verify` job `98271222206` and required `kanmer-gate` job `98271222415`.
+- A later board-metadata-triggered run at the unchanged head passed `kanmer-gate` job `98279025963`; its code `verify` job was correctly skipped because the code head did not change. The exact-head successful verify remains current evidence for the unchanged bytes.
+- The PR body names the correct final remediation head and records the CORE-112 deferral.
+- The complete 11-file diff remains 623 additions / 53 deletions and is wired through production callers, tests, governing FRD, user documentation, example configuration, and regenerated plugin bundle.
 
-## CI procedural blocker — F-013
+## Approved outcome and acceptance
 
-This is **not a source or test failure**. GitHub Actions run `32985456805` for this exact head completed as failure before it created any jobs. Its job list is empty, so it did not run `kanmer-gate`, the verifier, or source tests. Three subsequent exact-head `pull_request` runs — `32985525425`, `32985586053`, and `32985658217` — were queued with no jobs at the final gather. PR statusCheckRollup consequently contains no required green checks.
+The reviewed implementation satisfies GUI-142's core acceptance:
 
-The review verdict must therefore remain `needs-changes` under the repository rule that a required check may not be red, pending, or absent. The remediation is procedural: restore Actions scheduling/runner allocation and obtain a normal exact-head run with green `kanmer-gate` and `verify`; no code change is requested by this finding.
+- Connect generates the rootless portable PowerShell registration from the shared canonical command/argument contract.
+- Normal argv serialization launches the installer-owned launcher and the recorded Windows regression reaches MCP `initialize`, `tools/list`, and `get_status`.
+- The probe uses terminating error behavior and preserves launch failures before configuration mutation.
+- Reconnect replaces the known legacy generated descriptor through the owned merge path.
+- Windows staleness recognizes the generated descriptor and rejects behavior-changing descriptor fields, while non-Windows registrations are not judged by the Windows migration rule.
+- The implementation report records focused, typecheck, full repository, plugin parity, and isolated-handshake passes; exact-head required CI independently confirms the checked revision.
 
-## Decision
+No current blocker, P1, or major regression or safety defect is open.
 
-The implementation is source-ready, but it is **not merge-ready** until F-013 is cleared by a successful required-check run for this unchanged SHA. No code was changed and no merge was performed.
+## Current-head GitHub findings and durable dispositions
+
+GitHub has exactly two non-outdated current-head review threads; both are resolved only after their dispositions became durable in `scratch/controller.md` and [[CORE-112]] existed with the full semantic-parser scope.
+
+- **F-016 / PRRT_kwDOT2PEds6ckRi8 — minor, deferred-to-ticket → [[CORE-112]].** The complete finding is retained in `scratch/controller.md`: an unrelated `[[hooks]]` array-of-tables is not recognized as a section boundary and can produce a false stale verdict. Explicit operator authorization classifies this P2 as non-blocking because it affects manually formatted equivalent TOML, not the generated registration or runtime handshake.
+- **F-017 / PRRT_kwDOT2PEds6ckRjH — minor, deferred-to-ticket → [[CORE-112]].** The complete finding is retained in `scratch/controller.md`: inline or dotted encodings of the sole permitted `KANMER_BOARD_BRANCH` environment are semantically equivalent but rejected by the hand-written scanner. Explicit operator authorization classifies it as the same non-blocking parser class.
+
+CORE-112 requires the repository's existing `smol-toml` parser and covers quoted/bare keys, comments/trailing commas, unrelated normal and array tables, inline/dotted/child-table environment encodings, exact command/argument equality, the sole permitted board-branch environment entry, and rejection of other behavior-changing fields. No further regex patch is accepted as the disposition.
+
+## Residual risk and verdict
+
+Residual risk remains explicit: until CORE-112 lands, manually formatted but semantically equivalent TOML may receive a false reconnect/staleness warning. That risk does not invalidate Connect's generated portable descriptor, normal-argv launch, probe failure propagation, MCP handshake, legacy reconnect replacement, or exact-head required checks.
+
+Verdict: **pass**. The expected head is unchanged, required exact-head checks are green, no current blocker/P1/major finding is open, both current P2 findings are durably deferred to the single linked CORE-112 follow-up under operator authorization, and GUI-142's approved acceptance checks are met.
+
+This attestation does not implement, push, merge, or move the ticket.

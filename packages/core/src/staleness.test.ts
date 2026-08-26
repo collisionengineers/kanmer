@@ -424,6 +424,66 @@ describe("detectStaleness — provider MCP registrations", () => {
     expect(isCurrentCodexRegistration(`['mcp_servers'.'kanmer']\n${body}`)).toBe(true);
   });
 
+  it("accepts only the generated optional board-branch environment", () => {
+    const registration = [
+      "[mcp_servers.kanmer]",
+      'command = "powershell.exe"',
+      'args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]',
+      "[mcp_servers.kanmer.env]",
+      'KANMER_BOARD_BRANCH = "custom-board"',
+      "",
+    ].join("\n");
+    expect(isCurrentCodexRegistration(registration)).toBe(true);
+  });
+
+  it("rejects behavior-changing descriptor fields and environment keys", () => {
+    const descriptor = [
+      "[mcp_servers.kanmer]",
+      'command = "powershell.exe"',
+      'args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]',
+    ].join("\n");
+    expect(isCurrentCodexRegistration(`${descriptor}\ncwd = "C:/elsewhere"\n`)).toBe(false);
+    expect(isCurrentCodexRegistration(`${descriptor}\nenv.LOCALAPPDATA = "C:/missing"\n`)).toBe(false);
+    expect(isCurrentCodexRegistration(`${descriptor}\n[mcp_servers.kanmer.env]\nOTHER = "value"\n`)).toBe(false);
+    expect(isCurrentCodexRegistration(`${descriptor}\n[mcp_servers.kanmer.transport]\ntype = "stdio"\n`)).toBe(false);
+  });
+
+  it("ignores unrelated tables after a complete canonical registration", () => {
+    const registration = [
+      "[mcp_servers.kanmer]",
+      'command = "powershell.exe"',
+      'args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]',
+      "[mcp_servers.other]",
+      'cwd = "C:/elsewhere"',
+      "[mcp_servers.other.env]",
+      'LOCALAPPDATA = "C:/missing"',
+      "",
+    ].join("\n");
+    expect(isCurrentCodexRegistration(registration)).toBe(true);
+  });
+
+  it("reports forbidden Codex descriptor fields as stale on Windows only", () => {
+    writeAgents();
+    put(
+      path.join(root, ".codex/config.toml"),
+      '[mcp_servers.kanmer]\ncommand = "powershell.exe"\nargs = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]\ncwd = "C:/elsewhere"\n',
+    );
+    const rows = rowsFor(detect(), "mcp-registration");
+    if (process.platform === "win32") expect(rows).toMatchObject([{ state: "behind" }]);
+    else expect(rows).toEqual([]);
+  });
+
+  it("reports a redirected launcher environment as stale on Windows only", () => {
+    writeAgents();
+    put(
+      path.join(root, ".codex/config.toml"),
+      '[mcp_servers.kanmer]\ncommand = "powershell.exe"\nargs = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]\n[mcp_servers.kanmer.env]\nLOCALAPPDATA = "C:/missing"\n',
+    );
+    const rows = rowsFor(detect(), "mcp-registration");
+    if (process.platform === "win32") expect(rows).toMatchObject([{ state: "behind" }]);
+    else expect(rows).toEqual([]);
+  });
+
   it("reports the legacy cmd.exe Codex descriptor as behind", () => {
     writeAgents();
     put(

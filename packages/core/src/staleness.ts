@@ -638,6 +638,35 @@ function kanmerTomlSection(text: string): string | null {
   return nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
 }
 
+interface TomlTableSection {
+  path: string[];
+  content: string;
+}
+
+/** Parse table boundaries without interpreting values or unrelated tables. */
+function tomlTableSections(text: string): TomlTableSection[] {
+  const headers = [...text.matchAll(/^[ \t]*\[([^\[\]\r\n]+)\][ \t]*(?:#[^\r\n]*)?\r?$/gm)];
+  return headers.flatMap((header, index) => {
+    if (header.index === undefined) return [];
+    const path = tomlTablePath(header[1]!);
+    if (path === null) return [];
+    const from = header.index + header[0].length;
+    const to = headers[index + 1]?.index ?? text.length;
+    return [{ path, content: text.slice(from, to) }];
+  });
+}
+
+/** Whether a TOML fragment contains only whitespace and comments. */
+function isTomlTrivia(text: string): boolean {
+  return text.replace(/#[^\r\n]*/g, "").trim() === "";
+}
+
+/** Decode one TOML string scalar through the existing narrow array parser. */
+function parseTomlString(source: string): string | null {
+  const parsed = parseTomlStringArray(`[\n${source}\n]`);
+  return parsed?.length === 1 ? parsed[0]! : null;
+}
+
 /**
  * The board root a file's **Kanmer** MCP entry is pinned to, or null.
  *
@@ -701,21 +730,46 @@ export function kanmerRootIn(text: string, format: "json" | "toml"): string | nu
  * entries and formatting are user-owned and irrelevant to this verdict.
  */
 export function isCurrentCodexRegistration(text: string): boolean | null {
-  const section = kanmerTomlSection(text);
-  if (section === null) return null;
+  const kanmerTables = tomlTableSections(text).filter(
+    ({ path }) => path[0] === "mcp_servers" && path[1] === "kanmer",
+  );
+  const mainTables = kanmerTables.filter(({ path }) => path.length === 2);
+  if (mainTables.length === 0) return null;
+  if (mainTables.length !== 1) return false;
+  const section = mainTables[0]!.content;
   // `command` is a TOML string, not a formatting convention. Feed the scalar
   // through the same narrow TOML string parser as `args` so valid literal
   // strings and trailing comments do not make a healthy registration stale.
-  const rawCommand = /^[ \t]*command[ \t]*=[ \t]*(.*)$/m.exec(section)?.[1];
-  const rawArgs = /^[ \t]*args[ \t]*=[ \t]*(\[[\s\S]*?\])/m.exec(section)?.[1];
-  if (rawCommand === undefined || !rawArgs) return false;
-  const command = parseTomlStringArray(`[\n${rawCommand}\n]`);
-  const args = parseTomlStringArray(rawArgs);
-  if (command === null || command.length !== 1 || args === null) {
+  const commandMatch = /^[ \t]*command[ \t]*=[ \t]*(.*)$/m.exec(section);
+  const argsMatch = /^[ \t]*args[ \t]*=[ \t]*(\[[\s\S]*?\])/m.exec(section);
+  if (!commandMatch || !argsMatch) return false;
+  const command = parseTomlString(commandMatch[1]!);
+  const args = parseTomlStringArray(argsMatch[1]!);
+  if (command?.toLowerCase() !== "powershell.exe" || args === null ||
+      JSON.stringify(args) !== JSON.stringify(CODEX_PORTABLE_ARGS)) return false;
+
+  // Removing the two canonical assignments must leave only trivia. This makes
+  // duplicate, dotted, inline and otherwise behavior-changing fields stale.
+  let mainRemainder = section;
+  for (const match of [commandMatch, argsMatch].sort((a, b) => b.index - a.index)) {
+    mainRemainder = mainRemainder.slice(0, match.index) +
+      mainRemainder.slice(match.index + match[0].length);
+  }
+  if (!isTomlTrivia(mainRemainder)) return false;
+
+  const children = kanmerTables.filter(({ path }) => path.length !== 2);
+  if (children.length === 0) return true;
+  if (children.length !== 1 || children[0]!.path.length !== 3 || children[0]!.path[2] !== "env") {
     return false;
   }
-  return command[0]!.toLowerCase() === "powershell.exe" &&
-    JSON.stringify(args) === JSON.stringify(CODEX_PORTABLE_ARGS);
+  const env = children[0]!.content;
+  const assignment = /^[ \t]*([^=\r\n]+?)[ \t]*=[ \t]*(.*)$/m.exec(env);
+  if (!assignment) return false;
+  const key = tomlTablePath(assignment[1]!.trim());
+  const value = parseTomlString(assignment[2]!);
+  const remainder = env.slice(0, assignment.index) + env.slice(assignment.index + assignment[0].length);
+  return key?.length === 1 && key[0] === "KANMER_BOARD_BRANCH" &&
+    value !== null && value.trim() !== "" && isTomlTrivia(remainder);
 }
 
 /** Parse the narrow TOML array shape used by Codex registrations without a new runtime dependency. */

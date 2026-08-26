@@ -39836,6 +39836,26 @@ function kanmerTomlSection(text) {
   const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
   return nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
 }
+function tomlTableSections(text) {
+  const headers = [...text.matchAll(/^[ \t]*\[([^\[\]\r\n]+)\][ \t]*(?:#[^\r\n]*)?\r?$/gm)];
+  return headers.flatMap((header, index) => {
+    if (header.index === void 0) return [];
+    const path122 = tomlTablePath(header[1]);
+    if (path122 === null) return [];
+    const from = header.index + header[0].length;
+    const to = headers[index + 1]?.index ?? text.length;
+    return [{ path: path122, content: text.slice(from, to) }];
+  });
+}
+function isTomlTrivia(text) {
+  return text.replace(/#[^\r\n]*/g, "").trim() === "";
+}
+function parseTomlString(source) {
+  const parsed = parseTomlStringArray(`[
+${source}
+]`);
+  return parsed?.length === 1 ? parsed[0] : null;
+}
 function kanmerRootIn(text, format) {
   if (format === "json") {
     let doc;
@@ -39869,19 +39889,36 @@ function kanmerRootIn(text, format) {
   }
 }
 function isCurrentCodexRegistration(text) {
-  const section = kanmerTomlSection(text);
-  if (section === null) return null;
-  const rawCommand = /^[ \t]*command[ \t]*=[ \t]*(.*)$/m.exec(section)?.[1];
-  const rawArgs = /^[ \t]*args[ \t]*=[ \t]*(\[[\s\S]*?\])/m.exec(section)?.[1];
-  if (rawCommand === void 0 || !rawArgs) return false;
-  const command = parseTomlStringArray(`[
-${rawCommand}
-]`);
-  const args = parseTomlStringArray(rawArgs);
-  if (command === null || command.length !== 1 || args === null) {
+  const kanmerTables = tomlTableSections(text).filter(
+    ({ path: path122 }) => path122[0] === "mcp_servers" && path122[1] === "kanmer"
+  );
+  const mainTables = kanmerTables.filter(({ path: path122 }) => path122.length === 2);
+  if (mainTables.length === 0) return null;
+  if (mainTables.length !== 1) return false;
+  const section = mainTables[0].content;
+  const commandMatch = /^[ \t]*command[ \t]*=[ \t]*(.*)$/m.exec(section);
+  const argsMatch = /^[ \t]*args[ \t]*=[ \t]*(\[[\s\S]*?\])/m.exec(section);
+  if (!commandMatch || !argsMatch) return false;
+  const command = parseTomlString(commandMatch[1]);
+  const args = parseTomlStringArray(argsMatch[1]);
+  if (command?.toLowerCase() !== "powershell.exe" || args === null || JSON.stringify(args) !== JSON.stringify(CODEX_PORTABLE_ARGS)) return false;
+  let mainRemainder = section;
+  for (const match of [commandMatch, argsMatch].sort((a, b) => b.index - a.index)) {
+    mainRemainder = mainRemainder.slice(0, match.index) + mainRemainder.slice(match.index + match[0].length);
+  }
+  if (!isTomlTrivia(mainRemainder)) return false;
+  const children = kanmerTables.filter(({ path: path122 }) => path122.length !== 2);
+  if (children.length === 0) return true;
+  if (children.length !== 1 || children[0].path.length !== 3 || children[0].path[2] !== "env") {
     return false;
   }
-  return command[0].toLowerCase() === "powershell.exe" && JSON.stringify(args) === JSON.stringify(CODEX_PORTABLE_ARGS);
+  const env = children[0].content;
+  const assignment = /^[ \t]*([^=\r\n]+?)[ \t]*=[ \t]*(.*)$/m.exec(env);
+  if (!assignment) return false;
+  const key = tomlTablePath(assignment[1].trim());
+  const value = parseTomlString(assignment[2]);
+  const remainder = env.slice(0, assignment.index) + env.slice(assignment.index + assignment[0].length);
+  return key?.length === 1 && key[0] === "KANMER_BOARD_BRANCH" && value !== null && value.trim() !== "" && isTomlTrivia(remainder);
 }
 function parseTomlStringArray(source) {
   let index = 0;

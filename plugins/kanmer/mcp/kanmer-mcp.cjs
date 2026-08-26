@@ -41550,6 +41550,10 @@ function reconcileEvidence(input) {
     findings.push(finding("EVIDENCE_INCONCLUSIVE", "warning", "required Git, GitHub, CI, workspace or release evidence is unavailable; reconciliation does not invent a recovery action"));
     return { evidence, findings, proposal: null };
   }
+  if (evidence.ticket.status === "verifying" && !evidence.pullRequest.mergeSha) {
+    findings.push(finding("VERIFYING_WITHOUT_MERGE_SHA", "error", "the ticket is Verifying but pull-request evidence has no merge SHA"));
+    return { evidence, findings, proposal: null };
+  }
   if (evidence.pullRequest.requiredChecks === "fail" || evidence.pullRequest.requiredChecks === "pending") {
     findings.push(finding("REQUIRED_CHECKS_NOT_GREEN", "warning", "required checks are failing or pending; reconciliation does not advance the ticket"));
     return { evidence, findings, proposal: null };
@@ -41569,10 +41573,6 @@ function reconcileEvidence(input) {
     }
   }
   if (evidence.ticket.status === "verifying") {
-    if (evidence.pullRequest.state === "merged" && !evidence.pullRequest.mergeSha) {
-      findings.push(finding("VERIFYING_WITHOUT_MERGE_SHA", "error", "the ticket is Verifying but merged pull-request evidence has no merge SHA"));
-      return { evidence, findings, proposal: null };
-    }
     if (evidence.proof.state === "pass" && evidence.pullRequest.state === "merged" && evidence.pullRequest.mergeSha) {
       if (evidence.proof.mergedSha !== evidence.pullRequest.mergeSha) {
         findings.push(finding("PROOF_MERGE_SHA_MISMATCH", "error", "the PASS proof does not name the current merged pull-request SHA; reconciliation does not mark the ticket Done"));

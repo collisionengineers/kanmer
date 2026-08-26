@@ -380,9 +380,18 @@ describe("detectStaleness — provider MCP registrations", () => {
     writeAgents();
     put(
       path.join(root, ".codex/config.toml"),
-      '[mcp_servers.kanmer]\ncommand = "cmd.exe"\nargs = ["/d", "/s", "/c", \'"%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd"\']\n',
+      '[mcp_servers.kanmer]\ncommand = "powershell.exe"\nargs = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]\n',
     );
     expect(rowsFor(detect(), "mcp-registration")).toEqual([]);
+  });
+
+  it("reports the legacy cmd.exe Codex descriptor as behind", () => {
+    writeAgents();
+    put(
+      path.join(root, ".codex/config.toml"),
+      '[mcp_servers.kanmer]\ncommand = "cmd.exe"\nargs = ["/d", "/s", "/c", \'"%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd"\']\n',
+    );
+    expect(rowsFor(detect(), "mcp-registration")).toMatchObject([{ state: "behind" }]);
   });
 
   it("does not read another server's --root as Kanmer's", () => {

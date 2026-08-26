@@ -44,7 +44,6 @@ export type CodexProbeRunner = (
   options: {
     cwd: string;
     windowsHide: boolean;
-    windowsVerbatimArguments?: boolean;
     timeout: number;
     maxBuffer: number;
   },
@@ -72,18 +71,13 @@ export async function probeCodexLauncher(
   run: CodexProbeRunner = execFileAsync,
 ): Promise<ConnectResult> {
   const invocation = codexPortableProbeInvocation();
-  // Keep the fallback directly pasteable in PowerShell and cmd.exe. General
-  // shell quoting (`q`) emits backslash-escaped quotes, which cmd treats as
-  // literal characters and was the unusable command shown by v0.3.7.
-  const command = [invocation.command, ...invocation.args.slice(0, 3), invocation.args[3]].join(" ");
+  // Keep the fallback directly pasteable in PowerShell. The command is sent as
+  // ordinary argv, the same way Codex starts the registered server.
+  const command = [invocation.command, ...invocation.args].join(" ");
   try {
     const { stdout, stderr } = await run(invocation.command, invocation.args, {
       cwd: projectRoot,
       windowsHide: true,
-      // `cmd.exe` owns the quoting rules for its `/c` payload. Allowing Node
-      // to escape the embedded launcher quotes turns them into literal `\"`
-      // characters before cmd can expand `%LOCALAPPDATA%`.
-      windowsVerbatimArguments: true,
       timeout: 10_000,
       maxBuffer: 32 * 1024,
     });

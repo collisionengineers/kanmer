@@ -39815,6 +39815,15 @@ function kanmerRootIn(text, format) {
     return null;
   }
 }
+function isCurrentCodexRegistration(text) {
+  const header = /^[ \t]*\[mcp_servers\.kanmer\][ \t]*$/m.exec(text);
+  if (!header) return null;
+  const from = header.index + header[0].length;
+  const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
+  const section = nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
+  const command = /^[ \t]*command[ \t]*=[ \t]*"([^"]+)"[ \t]*$/m.exec(section)?.[1];
+  return command?.toLowerCase() === "powershell.exe" && /\$env:LOCALAPPDATA/.test(section) && /Kanmer\\\\bin\\\\kanmer-mcp\.cmd/.test(section);
+}
 function sameRoot(a, b) {
   const norm = (p) => import_path8.default.resolve(p).replace(/[\\/]+/g, "/").replace(/\/+$/, "").toLowerCase();
   return norm(a) === norm(b);
@@ -39835,6 +39844,14 @@ function registrationRows(repoRoot, projectRoot2) {
       continue;
     }
     const root = kanmerRootIn(text, rel.endsWith(".toml") ? "toml" : "json");
+    if (rel === STALENESS_PROVIDER_PATHS.codex.registrationFile && isCurrentCodexRegistration(text) === false) {
+      rows.push({
+        artefact: "mcp-registration",
+        state: "behind",
+        detail: `${rel} registers Kanmer with a legacy Codex launcher descriptor. Codex must use the portable PowerShell invocation so normal Windows argv serialization can start it.`,
+        fix: "reconnect this project in the Kanmer app"
+      });
+    }
     if (root === null || sameRoot(root, projectRoot2)) continue;
     rows.push({
       artefact: "mcp-registration",

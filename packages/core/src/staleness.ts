@@ -638,6 +638,23 @@ export function kanmerRootIn(text: string, format: "json" | "toml"): string | nu
   }
 }
 
+/**
+ * Whether Codex's project entry uses the portable invocation Connect currently
+ * writes. This deliberately inspects only Kanmer's TOML table: other MCP
+ * entries and formatting are user-owned and irrelevant to this verdict.
+ */
+export function isCurrentCodexRegistration(text: string): boolean | null {
+  const header = /^[ \t]*\[mcp_servers\.kanmer\][ \t]*$/m.exec(text);
+  if (!header) return null;
+  const from = header.index + header[0].length;
+  const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
+  const section = nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
+  const command = /^[ \t]*command[ \t]*=[ \t]*"([^"]+)"[ \t]*$/m.exec(section)?.[1];
+  return command?.toLowerCase() === "powershell.exe" &&
+    /\$env:LOCALAPPDATA/.test(section) &&
+    /Kanmer\\\\bin\\\\kanmer-mcp\.cmd/.test(section);
+}
+
 /** Compare two roots the way the filesystem does: resolved, normalised, case-insensitively. */
 function sameRoot(a: string, b: string): boolean {
   const norm = (p: string) =>
@@ -673,6 +690,16 @@ function registrationRows(repoRoot: string, projectRoot: string): StaleEntry[] {
       continue;
     }
     const root = kanmerRootIn(text, rel.endsWith(".toml") ? "toml" : "json");
+    if (rel === STALENESS_PROVIDER_PATHS.codex.registrationFile && isCurrentCodexRegistration(text) === false) {
+      rows.push({
+        artefact: "mcp-registration",
+        state: "behind",
+        detail:
+          `${rel} registers Kanmer with a legacy Codex launcher descriptor. ` +
+          "Codex must use the portable PowerShell invocation so normal Windows argv serialization can start it.",
+        fix: "reconnect this project in the Kanmer app",
+      });
+    }
     if (root === null || sameRoot(root, projectRoot)) continue;
     rows.push({
       artefact: "mcp-registration",

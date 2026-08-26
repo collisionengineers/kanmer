@@ -25,7 +25,8 @@ MCP-053 restores safe execution-packet resumption after a ticket is revisited th
 ## Validation
 
 - First attempt: `npm run build:server && node packages/mcp-server/src/smoke.mjs` — FAIL, 226/227. The new assertion compared Git's forward-slash Windows path to Node's backslash form; the actual worktree and branch were correct. The assertion now normalizes both paths.
-- Final `npm run build:server && node packages/mcp-server/src/smoke.mjs` — PASS, 227/227 checks, including actual Git worktree reuse validation.
+- Second attempt: GitHub Actions Node 20 `npm run verify` — FAIL in the same smoke assertion. Git emitted a forward-slash Windows path that Node 20 did not canonicalize through `path.resolve`; the resumed worktree itself and branch were correct. Commit `77def3c4` now compares explicit `path.win32.normalize()` values (including drive-letter case).
+- Final local `npm run build:server && node packages/mcp-server/src/smoke.mjs` — PASS, 227/227 checks, including actual Git worktree reuse validation and the explicit Node-20 path-form comparison.
 - `node scripts/verify-agents-block.mjs` — PASS, 31/31 checks.
 - `node scripts/verify-skill-prose.mjs` and `node --test scripts/verify-skill-prose.test.mjs` — PASS, including the new resumed-flow regression case.
 - `npm test` — PASS: core 310, GUI 483, MCP HTTP 107, scripts 117 tests.
@@ -34,7 +35,7 @@ MCP-053 restores safe execution-packet resumption after a ticket is revisited th
 
 ## Traceability and hand-off
 
-Implementation commits: `257bb47a6fc9a895a23a5f1b89a723ed6632d71f` and `7bc0168e62ebff55c86102103c996be01b71faf4`. PR #282 requires a fresh independent review against the new head. After merge, verify at the exact merge SHA before release or Done.
+Implementation commits: `257bb47a6fc9a895a23a5f1b89a723ed6632d71f`, `7bc0168e62ebff55c86102103c996be01b71faf4`, and `77def3c4c618026346c366b9c20e6027eb4cc5cc`. PR #282 requires a fresh independent review against the new head. After merge, verify at the exact merge SHA before release or Done.
 
 ## Risk
 

@@ -34,7 +34,7 @@ MCP-053 restores safe execution-packet resumption after a ticket is revisited th
 
 ## Traceability and hand-off
 
-Implementation commits: `257bb47a6fc9a895a23a5f1b89a723ed6632d71f` and `7bc0168ec4c4f33f0bddcd08f2a385b6312e61c6`. PR #282 requires a fresh independent review against the new head. After merge, verify at the exact merge SHA before release or Done.
+Implementation commits: `257bb47a6fc9a895a23a5f1b89a723ed6632d71f` and `7bc0168e62ebff55c86102103c996be01b71faf4`. PR #282 requires a fresh independent review against the new head. After merge, verify at the exact merge SHA before release or Done.
 
 ## Risk
 

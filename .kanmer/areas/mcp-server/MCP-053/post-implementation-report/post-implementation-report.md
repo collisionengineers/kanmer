@@ -2,31 +2,40 @@
 
 ## Outcome
 
-MCP-053 restores safe execution-packet resumption when a durable ticket assignee is revisited through a different MCP client name. A caller must now deliberately supply the exact recorded branch and worktree; ordinary occupancy and every mismatch remain refused.
+MCP-053 restores safe execution-packet resumption after a ticket is revisited through a different MCP client name. A caller supplies the exact recorded branch/worktree as a deliberate confirmation; the server remains fail-closed for missing or mismatched values. The execution skill now follows that ready packet correctly: it validates and reuses the recorded worktree and branch, rather than attempting a second worktree creation or ticket take.
 
 ## Changes
 
-- Extended `get_execution_packet` with optional `resume.branch` and `resume.worktree`.
-- Preserved same-actor continuation and strict refusal for another actor without an exact recorded pair.
-- Added stdio-level coverage for successful exact resumption and a mismatched-worktree refusal.
-- Updated the execution skill and tool reference so a worker performs at most this one explicit retry.
-- Regenerated the shipped plugin MCP bundle.
+- Added the bounded `get_execution_packet.resume` pair and exact-match occupancy guard.
+- Kept ordinary competing occupancy and every partial/mismatched resume refused.
+- Added a real Git-worktree stdio smoke: a fresh client resumes a ticket taken by another actor, and the returned recorded worktree passes the exact validation commands required by `kanmer-execute`.
+- Split fresh and resumed execution instructions. A present `ticket.taken` validates/reuses the existing worktree and never calls `git worktree add` or `take_ticket`; only an absent value takes the fresh path.
+- Added a regression validator/test for that execution contract.
+- Updated the canonical managed AGENTS body, generated `AGENTS.md`, and the shipped `kanmer-setup` mirror.
+- Regenerated the shipped setup runtime through `plugin:build`.
 
 ## Files
 
-- `packages/mcp-server/src/execution-packet.ts` — exact-resume guard.
-- `packages/mcp-server/src/index.ts` — public tool schema and description.
-- `packages/mcp-server/src/smoke.mjs` — successful and refused protocol cases.
-- `plugins/kanmer/mcp/kanmer-mcp.cjs` — shipped bundle.
-- `plugins/kanmer/skills/kanmer-execute/SKILL.md` and `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md` — supported caller convention.
+- `packages/mcp-server/src/execution-packet.ts` and `packages/mcp-server/src/index.ts` — bounded resume protocol.
+- `packages/mcp-server/src/smoke.mjs` — exact, mismatched, and physically reusable worktree coverage.
+- `plugins/kanmer/skills/kanmer-execute/SKILL.md` and `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md` — executable caller guidance.
+- `scripts/verify-skill-prose.mjs` and `scripts/verify-skill-prose.test.mjs` — resume-flow regression protection.
+- `scripts/agents-block-body.mjs`, `AGENTS.md`, `plugins/kanmer/skills/kanmer-setup/SKILL.md`, and generated plugin setup runtime — contributor convention and distribution alignment.
 
 ## Validation
 
-- `npm run build:server && node packages/mcp-server/src/smoke.mjs` — PASS, 226/226 checks.
-- `npm test` — PASS: core 310, GUI 483, MCP HTTP 107, scripts 116 tests.
-- `npm run plugin:check` — PASS: 37 tools, bundle bytes match, 12 skill frontmatters parse, isolated handshake succeeds.
-- Fresh source-server call against this board with `resume: { branch: "MCP-053-resume-execution-packets", worktree: ".worktrees/MCP-053" }` — ready packet returned.
+- First attempt: `npm run build:server && node packages/mcp-server/src/smoke.mjs` — FAIL, 226/227. The new assertion compared Git's forward-slash Windows path to Node's backslash form; the actual worktree and branch were correct. The assertion now normalizes both paths.
+- Final `npm run build:server && node packages/mcp-server/src/smoke.mjs` — PASS, 227/227 checks, including actual Git worktree reuse validation.
+- `node scripts/verify-agents-block.mjs` — PASS, 31/31 checks.
+- `node scripts/verify-skill-prose.mjs` and `node --test scripts/verify-skill-prose.test.mjs` — PASS, including the new resumed-flow regression case.
+- `npm test` — PASS: core 310, GUI 483, MCP HTTP 107, scripts 117 tests.
+- `npm run typecheck` — PASS across core, mcp-server, ui, and gui.
+- `npm run plugin:build && npm run plugin:check` — PASS: 37 tools, matching bundle, 12 skill frontmatters, isolated handshake.
 
-## Risk and hand-off
+## Traceability and hand-off
 
-This is a deliberate workflow confirmation, not an identity-security boundary: local MCP clients can already read the recorded ticket location. The guard remains fail-closed for a missing or non-exact pair. Review PR #282; verify on its exact merged SHA before release or closure.
+Implementation commits: `257bb47a6fc9a895a23a5f1b89a723ed6632d71f` and `7bc0168ec4c4f33f0bddcd08f2a385b6312e61c6`. PR #282 requires a fresh independent review against the new head. After merge, verify at the exact merge SHA before release or Done.
+
+## Risk
+
+The exact pair remains a workflow confirmation, not client authentication: local MCP client names and readable ticket locations are not credentials. The resumed path is deliberately narrow and still refuses missing, partial, or non-exact pairs.

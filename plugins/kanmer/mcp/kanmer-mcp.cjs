@@ -39195,7 +39195,7 @@ var COMMON = [
 var EXECUTION_COMMON = [
   "Call get_status, then make get_execution_packet the first ticket-specific call. If an occupancy refusal names an existing branch and worktree, retry only that call with those exact values in resume; stop on every other refusal.",
   "A ready packet with ticket.taken is resumed work: validate and reuse its exact branch/worktree without git worktree add or take_ticket. Only a packet without ticket.taken may create a fresh worktree and call take_ticket.",
-  "After the packet is ready, read its listed documents and group contexts before editing.",
+  "After the packet is ready, read its listed documents and group contexts, then discover and read every human-supplied file in the ticket's reference/ directory before editing \u2014 including non-Markdown inputs omitted from extraDocs.",
   HEADLESS_DELIVERY
 ].join(" ");
 function takeTicketPromptText(id) {
@@ -42114,6 +42114,19 @@ async function physicalExistingPath(input) {
     return { ok: false, detail: error2 instanceof Error ? error2.message : String(error2) };
   }
 }
+async function gitWorktreeRoot(directory) {
+  try {
+    const { stdout } = await execFileAsync("git", ["-C", directory, "rev-parse", "--show-toplevel"], {
+      encoding: "utf8",
+      windowsHide: true
+    });
+    const output = stdout.trim();
+    if (!output) return { ok: false, detail: "Git returned an empty worktree-root path." };
+    return physicalExistingPath(canonicalPathFrom(directory, output));
+  } catch (error2) {
+    return { ok: false, detail: error2 instanceof Error ? error2.message : String(error2) };
+  }
+}
 async function gitCommonDirectory(directory) {
   try {
     const { stdout } = await execFileAsync("git", ["-C", directory, "rev-parse", "--git-common-dir"], {
@@ -42127,34 +42140,84 @@ async function gitCommonDirectory(directory) {
     return { ok: false, detail: error2 instanceof Error ? error2.message : String(error2) };
   }
 }
-async function unsafeTakenWorktree(store2, project, item) {
-  if (!item.taken_at || !item.worktree) return null;
-  const candidate = await physicalExistingPath(canonicalWorktreePath(project, item.worktree));
-  if (!candidate.ok) {
-    return `Ticket "${item.id}" records a worktree that cannot be resolved on disk: ${candidate.detail}`;
+async function checkedOutBranch(directory) {
+  try {
+    const { stdout } = await execFileAsync("git", ["-C", directory, "branch", "--show-current"], {
+      encoding: "utf8",
+      windowsHide: true
+    });
+    const branch = stdout.trim();
+    return branch ? { ok: true, branch } : { ok: false, detail: "HEAD is detached." };
+  } catch (error2) {
+    return { ok: false, detail: error2 instanceof Error ? error2.message : String(error2) };
   }
-  const boardWorktree = await physicalExistingPath(project.boardRoot);
+}
+async function unsafeTakenWorktree(store2, project, item) {
+  if (!item.taken_at || !item.worktree) return { refusal: null, warnings: [] };
+  const candidateLocation = await physicalExistingPath(canonicalWorktreePath(project, item.worktree));
+  if (!candidateLocation.ok) {
+    return {
+      refusal: `Ticket "${item.id}" records a worktree that cannot be resolved on disk: ${candidateLocation.detail}`,
+      warnings: []
+    };
+  }
+  const candidate = await gitWorktreeRoot(candidateLocation.path);
+  if (!candidate.ok) {
+    return {
+      refusal: `Ticket "${item.id}" records a worktree that cannot be verified as a Git checkout: ${candidate.detail}`,
+      warnings: []
+    };
+  }
+  if (!sameWorktreePath(candidateLocation.path, candidate.path)) {
+    return {
+      refusal: `Ticket "${item.id}" records a path inside a Git worktree instead of that worktree's root; this is not a resumable ticket worktree.`,
+      warnings: []
+    };
+  }
+  const boardWorktree = await gitWorktreeRoot(project.boardRoot);
   if (!boardWorktree.ok) {
-    return `The Kanmer board worktree cannot be resolved before resuming "${item.id}": ${boardWorktree.detail}`;
+    return {
+      refusal: `The Kanmer board worktree cannot be resolved before resuming "${item.id}": ${boardWorktree.detail}`,
+      warnings: []
+    };
   }
   if (sameWorktreePath(candidate.path, boardWorktree.path)) {
-    return `Ticket "${item.id}" records the board worktree as its execution worktree; this is not a resumable ticket worktree.`;
+    return {
+      refusal: `Ticket "${item.id}" records the board worktree as its execution worktree; this is not a resumable ticket worktree.`,
+      warnings: []
+    };
   }
-  const sourceCheckout = await physicalExistingPath(project.repoRoot);
+  const sourceCheckout = await gitWorktreeRoot(project.repoRoot);
   if (!sourceCheckout.ok) {
-    return `The source repository checkout cannot be resolved before resuming "${item.id}": ${sourceCheckout.detail}`;
+    return {
+      refusal: `The source repository checkout cannot be resolved before resuming "${item.id}": ${sourceCheckout.detail}`,
+      warnings: []
+    };
   }
   if (sameWorktreePath(candidate.path, sourceCheckout.path)) {
-    return `Ticket "${item.id}" records the shared source checkout as its execution worktree; this is not a resumable ticket worktree.`;
+    return {
+      refusal: `Ticket "${item.id}" records the shared source checkout as its execution worktree; this is not a resumable ticket worktree.`,
+      warnings: []
+    };
   }
+  const warnings = [];
   for (const other of await store2.listItems()) {
-    if (other.id === item.id || !other.worktree) continue;
-    const otherWorktree = await physicalExistingPath(canonicalWorktreePath(project, other.worktree));
+    if (other.id === item.id || !other.taken_at || !other.worktree) continue;
+    const otherLocation = await physicalExistingPath(canonicalWorktreePath(project, other.worktree));
+    if (!otherLocation.ok) {
+      warnings.push(`Active ticket "${other.id}" has an unresolved recorded worktree: ${otherLocation.detail}`);
+      continue;
+    }
+    const otherWorktree = await gitWorktreeRoot(otherLocation.path);
     if (!otherWorktree.ok) {
-      return `Ticket "${item.id}" cannot resume while active ticket "${other.id}" has an unresolved worktree: ${otherWorktree.detail}`;
+      warnings.push(`Active ticket "${other.id}" has a recorded worktree that is not a resolvable Git checkout: ${otherWorktree.detail}`);
+      continue;
     }
     if (sameWorktreePath(candidate.path, otherWorktree.path)) {
-      return `Ticket "${item.id}" records the same worktree as active ticket "${other.id}"; this is not a resumable ticket worktree.`;
+      return {
+        refusal: `Ticket "${item.id}" records the same worktree as active ticket "${other.id}"; this is not a resumable ticket worktree.`,
+        warnings
+      };
     }
   }
   const [candidateGit, sourceGit] = await Promise.all([
@@ -42162,12 +42225,37 @@ async function unsafeTakenWorktree(store2, project, item) {
     gitCommonDirectory(project.repoRoot)
   ]);
   if (!candidateGit.ok) {
-    return `Ticket "${item.id}" records a worktree that cannot be verified as a Git checkout: ${candidateGit.detail}`;
+    return {
+      refusal: `Ticket "${item.id}" records a worktree that cannot be verified as a Git checkout: ${candidateGit.detail}`,
+      warnings
+    };
   }
   if (!sourceGit.ok) {
-    return `The source repository cannot be verified before resuming "${item.id}": ${sourceGit.detail}`;
+    return {
+      refusal: `The source repository cannot be verified before resuming "${item.id}": ${sourceGit.detail}`,
+      warnings
+    };
   }
-  return sameWorktreePath(candidateGit.path, sourceGit.path) ? null : `Ticket "${item.id}" records a worktree from a different Git repository; this is not a resumable ticket worktree.`;
+  if (!sameWorktreePath(candidateGit.path, sourceGit.path)) {
+    return {
+      refusal: `Ticket "${item.id}" records a worktree from a different Git repository; this is not a resumable ticket worktree.`,
+      warnings
+    };
+  }
+  const branch = await checkedOutBranch(candidate.path);
+  if (!branch.ok) {
+    return {
+      refusal: `Ticket "${item.id}" records a worktree without a checked-out branch: ${branch.detail}`,
+      warnings
+    };
+  }
+  if (branch.branch !== item.branch) {
+    return {
+      refusal: `Ticket "${item.id}" records branch "${item.branch}", but its worktree currently has "${branch.branch}" checked out; this is not a resumable ticket worktree.`,
+      warnings
+    };
+  }
+  return { refusal: null, warnings };
 }
 function refuse(project, reason, missing, item, gates) {
   return {
@@ -42263,8 +42351,17 @@ async function getExecutionPacket(input) {
       gates
     );
   }
-  const unsafeWorktree = await unsafeTakenWorktree(store2, project, item);
-  if (unsafeWorktree) return refuse(project, unsafeWorktree, [], item, gates);
+  if (item.taken_at && item.status !== "implementing") {
+    return refuse(
+      project,
+      `Ticket "${id}" is in ${item.status}, not implementing; execution resumption is available only while a ticket is implementing.`,
+      [],
+      item,
+      gates
+    );
+  }
+  const worktreeSafety = await unsafeTakenWorktree(store2, project, item);
+  if (worktreeSafety.refusal) return refuse(project, worktreeSafety.refusal, [], item, gates);
   const exactRecordedResume = resume !== void 0 && item.branch !== void 0 && resume.branch === item.branch && item.worktree !== void 0 && resume.worktree === item.worktree;
   if (item.taken_at && item.assignee !== actor && !exactRecordedResume) {
     const owner = item.assignee || "an unknown actor";
@@ -42291,6 +42388,7 @@ async function getExecutionPacket(input) {
     documents: indexDocuments(fixed),
     extraDocs,
     gates,
+    warnings: worktreeSafety.warnings,
     stopCondition: sectionFromPlan(plan, ["Stop condition"], EXECUTION_STOP_FALLBACK),
     commandsHint: sectionFromPlan(plan, ["Commands", "Verification commands", "Verification"], EXECUTION_COMMANDS_FALLBACK)
   };

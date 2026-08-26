@@ -268,3 +268,29 @@ test("skill prose validator rejects document writes on refusal and closeout rele
     rmSync(fixture, { recursive: true, force: true });
   }
 });
+
+test("skill prose validator rejects a resumed flow without reference inputs or an implementation boundary", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-resume-stage-reference-contract-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const execute = join(fixture, "plugins", "kanmer", "skills", "kanmer-execute", "SKILL.md");
+    writeFileSync(
+      execute,
+      readFileSync(execute, "utf8")
+        .replace("including non-Markdown\ninputs deliberately omitted from `extraDocs`", "only Markdown packet documents")
+        .replace("only while the ticket remains in\n`implementing`", "at every ticket stage"),
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /retains reference inputs and limits resumption to implementation/);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});

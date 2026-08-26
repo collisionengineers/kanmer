@@ -499,7 +499,7 @@ check(
 
 const resumedExecutionSafetyContract =
   /git -C <recorded-worktree> rev-parse --git-common-dir[\s\S]*git -C <source-repository-root> rev-parse --git-common-dir/i.test(executeSkill) &&
-  /Before editing, call `list_items`[\s\S]*every other active ticket's recorded worktree[\s\S]*shared source checkout/i.test(executeSkill) &&
+  /Before editing, call[\s\S]*`list_items`[\s\S]*every other active ticket's[\s\S]*recorded worktree[\s\S]*shared source checkout/i.test(executeSkill) &&
   /Do not release a paused ticket[\s\S]*retains a worktree or branch/i.test(executeSkill);
 check(
   "kanmer-execute validates resumed repository, location, and pause handoff",
@@ -522,6 +522,15 @@ check(
   "kanmer-closeout preserves a paused ticket's resume metadata",
   closeoutPauseContract,
   closeoutPauseContract ? "retained-taken pause contract" : "closeout must not release a ticket that will resume",
+);
+
+const resumeStageAndReferenceInputsContract =
+  /discover and read every human-supplied file in[\s\S]*`reference\/` directory[\s\S]*non-Markdown[\s\S]*`extraDocs`/i.test(executeSkill) &&
+  /resumed packets only while the ticket remains in[\s\S]*`implementing`[\s\S]*Review or Verifying/i.test(executeSkill);
+check(
+  "kanmer-execute retains reference inputs and limits resumption to implementation",
+  resumeStageAndReferenceInputsContract,
+  resumeStageAndReferenceInputsContract ? "reference discovery + implementation-only resume" : "resume must retain all reference inputs and stop outside implementing",
 );
 
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);

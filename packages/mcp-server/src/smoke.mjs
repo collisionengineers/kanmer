@@ -1948,6 +1948,36 @@ Second proof attempt passed; the first failure is retained.
       resumedBranch === resumedOccupied.ticket.taken?.branch,
     `${resumedTopLevel} (prefix: ${resumedPrefix || "."}) @ ${resumedBranch}`,
   );
+  execFileSync("git", ["-C", resumedWorktree, "checkout", "--detach"], {
+    windowsHide: true, stdio: "ignore",
+  });
+  const refusedDetachedResume = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: occupiedId, resume: { branch: "other-branch", worktree: ".worktrees/other" } },
+    })),
+  );
+  check(
+    "a resumed packet refuses a detached recorded worktree",
+    refusedDetachedResume.ready === false && refusedDetachedResume.reason.includes("HEAD is detached"),
+  );
+  execFileSync("git", ["-C", resumedWorktree, "checkout", "-b", "diverged-branch"], {
+    windowsHide: true, stdio: "ignore",
+  });
+  const refusedDivergedResume = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: occupiedId, resume: { branch: "other-branch", worktree: ".worktrees/other" } },
+    })),
+  );
+  check(
+    "a resumed packet refuses a recorded worktree on a different branch",
+    refusedDivergedResume.ready === false && refusedDivergedResume.reason.includes("other-branch") &&
+      refusedDivergedResume.reason.includes("diverged-branch"),
+  );
+  execFileSync("git", ["-C", resumedWorktree, "checkout", "other-branch"], {
+    windowsHide: true, stdio: "ignore",
+  });
   const refusedMismatchedResume = JSON.parse(
     textOf(await client.callTool({
       name: "get_execution_packet",
@@ -1957,6 +1987,32 @@ Second proof attempt passed; the first failure is retained.
   check(
     "mismatched resume remains an occupancy refusal",
     refusedMismatchedResume.ready === false && refusedMismatchedResume.reason.includes("other-agent"),
+  );
+  await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: occupiedId, doc: "post-implementation-report", content: "# Occupied hand-off\n" },
+  });
+  await client.callTool({ name: "update_item", arguments: { id: occupiedId, status: "review" } });
+  const refusedReviewResume = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: occupiedId, resume: { branch: "other-branch", worktree: ".worktrees/other" } },
+    })),
+  );
+  check(
+    "a taken Review ticket cannot issue an execution resume packet",
+    refusedReviewResume.ready === false && refusedReviewResume.reason.includes("not implementing"),
+  );
+  await client.callTool({ name: "update_item", arguments: { id: occupiedId, status: "verifying" } });
+  const refusedVerifyingResume = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: occupiedId, resume: { branch: "other-branch", worktree: ".worktrees/other" } },
+    })),
+  );
+  check(
+    "a taken Verifying ticket cannot issue an execution resume packet",
+    refusedVerifyingResume.ready === false && refusedVerifyingResume.reason.includes("not implementing"),
   );
 
   const resumedWorktreeAlias = path.join(sandbox, ".worktrees", "other-alias");
@@ -1975,6 +2031,27 @@ Second proof attempt passed; the first failure is retained.
   check(
     "a resumed ticket cannot reuse another active ticket's aliased worktree",
     refusedDuplicateWorktree.ready === false && refusedDuplicateWorktree.reason.includes(occupiedId),
+  );
+
+  const nestedOtherWorktree = path.join(resumedWorktree, "nested");
+  fs.mkdirSync(nestedOtherWorktree);
+  const nestedOtherWorktreeId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "nested active worktree", status: "implementing", profile: "chore", docs_todo: true } })),
+  ).id;
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: nestedOtherWorktreeId, doc: "plan", content: "# Nested worktree" } });
+  await client.callTool({
+    name: "take_ticket",
+    arguments: { id: nestedOtherWorktreeId, branch: "nested-branch", worktree: ".worktrees/other/nested", assignee: "other-agent" },
+  });
+  const refusedNestedOtherWorktree = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: nestedOtherWorktreeId, resume: { branch: "nested-branch", worktree: ".worktrees/other/nested" } },
+    })),
+  );
+  check(
+    "a resumed packet refuses a subdirectory of another ticket's worktree",
+    refusedNestedOtherWorktree.ready === false && refusedNestedOtherWorktree.reason.includes("inside a Git worktree"),
   );
 
   const foreignWorktree = path.join(sandbox, "foreign-worktree");
@@ -2028,6 +2105,25 @@ Second proof attempt passed; the first failure is retained.
     refusedAliasedBoardWorktree.ready === false && refusedAliasedBoardWorktree.reason.includes("board worktree"),
   );
 
+  const boardChildId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "board child as resumed worktree", status: "implementing", profile: "chore", docs_todo: true } })),
+  ).id;
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: boardChildId, doc: "plan", content: "# Board child" } });
+  await client.callTool({
+    name: "take_ticket",
+    arguments: { id: boardChildId, branch: expectedBoardBranch, worktree: "docs", assignee: "other-agent" },
+  });
+  const refusedBoardChild = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: boardChildId, resume: { branch: expectedBoardBranch, worktree: "docs" } },
+    })),
+  );
+  check(
+    "a resumed packet refuses a subdirectory of the board worktree",
+    refusedBoardChild.ready === false && refusedBoardChild.reason.includes("inside a Git worktree"),
+  );
+
   const dedicatedBoardWorktree = path.join(sandbox, ".worktrees", "dedicated-board");
   execFileSync("git", ["worktree", "add", "-b", "dedicated-board", dedicatedBoardWorktree, expectedBoardBranch], {
     cwd: sandbox, windowsHide: true, stdio: "ignore",
@@ -2061,11 +2157,64 @@ Second proof attempt passed; the first failure is retained.
       "a dedicated-board ticket cannot resume in the shared source checkout",
       refusedSourceCheckout.ready === false && refusedSourceCheckout.reason.includes("shared source checkout"),
     );
+    const sourceChildId = JSON.parse(
+      textOf(await dedicatedClient.callTool({
+        name: "create_item",
+        arguments: { title: "source child as resumed worktree", status: "implementing", profile: "chore", docs_todo: true },
+      })),
+    ).id;
+    await dedicatedClient.callTool({ name: "set_ticket_doc", arguments: { id: sourceChildId, doc: "plan", content: "# Source child" } });
+    await dedicatedClient.callTool({
+      name: "take_ticket",
+      arguments: { id: sourceChildId, branch: expectedBoardBranch, worktree: "docs", assignee: "other-agent" },
+    });
+    const refusedSourceChild = JSON.parse(
+      textOf(await dedicatedClient.callTool({
+        name: "get_execution_packet",
+        arguments: { id: sourceChildId, resume: { branch: expectedBoardBranch, worktree: "docs" } },
+      })),
+    );
+    check(
+      "a dedicated-board ticket cannot resume in a child of the shared source checkout",
+      refusedSourceChild.ready === false && refusedSourceChild.reason.includes("inside a Git worktree"),
+    );
   } finally {
     await dedicatedClient.close();
     execFileSync("git", ["worktree", "remove", "--force", dedicatedBoardWorktree], { cwd: sandbox, windowsHide: true, stdio: "ignore" });
     execFileSync("git", ["branch", "-D", "dedicated-board"], { cwd: sandbox, windowsHide: true, stdio: "ignore" });
   }
+
+  const staleWorktreeId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "unrelated stale worktree", status: "implementing", profile: "chore", docs_todo: true } })),
+  ).id;
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: staleWorktreeId, doc: "plan", content: "# Stale worktree" } });
+  await client.callTool({
+    name: "take_ticket",
+    arguments: { id: staleWorktreeId, branch: "stale-branch", worktree: ".worktrees/missing", assignee: "other-agent" },
+  });
+  const isolatedWorktree = path.join(sandbox, ".worktrees", "isolated");
+  execFileSync("git", ["worktree", "add", "-b", "isolated-branch", isolatedWorktree, expectedBoardBranch], {
+    cwd: sandbox, windowsHide: true, stdio: "ignore",
+  });
+  const isolatedWorktreeId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "isolated resume despite stale peer", status: "implementing", profile: "chore", docs_todo: true } })),
+  ).id;
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: isolatedWorktreeId, doc: "plan", content: "# Isolated worktree" } });
+  await client.callTool({
+    name: "take_ticket",
+    arguments: { id: isolatedWorktreeId, branch: "isolated-branch", worktree: ".worktrees/isolated", assignee: "other-agent" },
+  });
+  const resumedDespiteStalePeer = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: isolatedWorktreeId, resume: { branch: "isolated-branch", worktree: ".worktrees/isolated" } },
+    })),
+  );
+  check(
+    "an unrelated missing worktree warns without blocking an isolated resume",
+    resumedDespiteStalePeer.ready === true &&
+      resumedDespiteStalePeer.warnings.some((warning) => warning.includes(staleWorktreeId) && warning.includes("unresolved")),
+  );
 
   const incompleteTakenId = JSON.parse(
     textOf(await client.callTool({ name: "create_item", arguments: { title: "incomplete taken ticket", status: "implementing", profile: "chore", docs_todo: true } })),

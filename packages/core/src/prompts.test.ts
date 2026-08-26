@@ -9,6 +9,7 @@ describe("takeTicketPromptText", () => {
     expect(text).toContain("ticket.taken");
     expect(text).toMatch(/take_ticket/);
     expect(text).toContain("without git worktree add or take_ticket");
+    expect(text).toMatch(/reference\/.*non-Markdown.*extraDocs/i);
     expect(text).toMatch(/proof is written only after the merge/i);
   });
 
@@ -17,6 +18,7 @@ describe("takeTicketPromptText", () => {
     expect(text).toContain("get_execution_packet");
     expect(text).toContain("ticket.taken");
     expect(text).toContain("without git worktree add or take_ticket");
+    expect(text).toMatch(/reference\/.*non-Markdown.*extraDocs/i);
     expect(text).not.toMatch(/Create the worktree and branch first/i);
   });
 });

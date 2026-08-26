@@ -37,7 +37,7 @@ const EXECUTION_COMMON = [
   "A ready packet with ticket.taken is resumed work: validate and reuse its exact " +
     "branch/worktree without git worktree add or take_ticket. Only a packet without " +
     "ticket.taken may create a fresh worktree and call take_ticket.",
-  "After the packet is ready, read its listed documents and group contexts before editing.",
+  "After the packet is ready, read its listed documents and group contexts, then discover and read every human-supplied file in the ticket's reference/ directory before editing — including non-Markdown inputs omitted from extraDocs.",
   HEADLESS_DELIVERY,
 ].join(" ");
 

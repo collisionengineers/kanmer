@@ -63,10 +63,15 @@ preparation phase or operator.
 
 A ready packet contains the full ticket body, ordered group contexts, resolved
 gates, and the versioned `plan`, `checklist`, and `files` index documents. It
-also lists every extra Markdown path, an ATX `stopCondition`, and a command
-hint. Treat those versions as optimistic concurrency tokens: read every listed
-path and pass its version to a replacement. Do not silently overwrite a human
-edit; re-read the packet and re-plan if a version conflict occurs.
+also lists every extra Markdown path, an ATX `stopCondition`, a command hint,
+and non-blocking warnings about other tickets' stale locations. Treat those
+versions as optimistic concurrency tokens: read every listed path and pass its
+version to a replacement. Then discover and read every human-supplied file in
+the ticket's `reference/` directory before editing — including non-Markdown
+inputs deliberately omitted from `extraDocs`. Do not silently overwrite a
+human edit; re-read the packet and re-plan if a version conflict occurs. A
+warning never authorizes a repair outside this ticket; retain it for the
+external hand-off.
 
 `ticket.taken` selects the execution lane. A missing value means fresh work;
 create the recorded worktree and then take the ticket. A present value means
@@ -97,14 +102,17 @@ git -C <source-repository-root> rev-parse --git-common-dir
 git -C <recorded-worktree> branch --show-current
 ```
 
-The first command must resolve the recorded worktree; the two common-directory
-values must name the same source repository; and the final command must exactly
-equal the recorded branch. Before editing, call `list_items` and compare the
-candidate against every other active ticket's recorded worktree. It must not be
-`.worktrees/kanmer`, the board root, the shared source checkout, or another
-ticket's worktree. A missing path, detached or different branch, duplicate
-location, or unexpected repository is a stop: return the observed condition in
-the external hand-off without a ticket write. Do not repair it by
+The first command must resolve to the recorded worktree root; the two
+common-directory values must name the same source repository; and the final
+command must exactly equal the recorded branch. Before editing, call
+`list_items` and compare the candidate against every other active ticket's
+recorded worktree. It must not be `.worktrees/kanmer`, the board root, the
+shared source checkout, or another ticket's worktree. A missing path, detached
+or different branch, duplicate location, or unexpected repository is a stop:
+return the observed condition in the external hand-off without a ticket write.
+The server issues resumed packets only while the ticket remains in
+`implementing`; a ticket in Review or Verifying stays taken for traceability,
+not for further implementation. Do not repair it by
 `git worktree add`, checkout, reset, or `take_ticket`. Existing uncommitted
 changes belong to the resumed ticket and are not a reason to clean or recreate
 it.

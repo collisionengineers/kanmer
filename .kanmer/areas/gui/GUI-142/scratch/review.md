@@ -1,7 +1,7 @@
 ---
 kind: review-attestation
 pr: "281"
-head_sha: "bb4702511a8c5d9eb0b7df56721c15e7b2b33898"
+head_sha: "9be994ec7d6c6c63f6093e7ada1b30237feb4919"
 verdict: needs-changes
 reviewer: "independent-reviewer-gpt-5.6"
 independent: true
@@ -26,60 +26,62 @@ findings:
     disposition: fixed
   - id: F-005
     severity: minor
-    summary: "The copy fallback was unquoted and staleness only token-matched the command."
+    summary: "The copied fallback was unsafe and staleness did not compare the complete command contract."
     disposition: fixed
   - id: F-006
     severity: major
-    summary: "A missing or non-invocable launcher still made the probe report success."
+    summary: "A missing or non-invocable launcher could make the probe report success."
     disposition: fixed
   - id: F-007
     severity: minor
-    summary: "The production invocation does not explicitly propagate the native launcher exit code."
+    summary: "The production invocation does not explicitly return the native launcher exit value."
     disposition: rejected-with-reason
-    reason: "A direct Windows execution of the registered command against a launcher exiting 19 made powershell.exe exit non-zero (1). Codex only requires a non-zero process result to detect failure; preserving the exact native exit value is not a ticket requirement."
+    reason: "A direct Windows execution against an exit-19 launcher returns a non-zero PowerShell result, which is sufficient for Codex to surface process failure; exact native exit-value preservation is outside this ticket's requirement."
   - id: F-008
     severity: minor
     summary: "The copied PowerShell fallback expanded its script payload in the caller shell."
     disposition: fixed
   - id: F-009
     severity: minor
-    summary: "Windows staleness interpreted a TOML args array as JSON."
+    summary: "Windows staleness interpreted TOML args as JSON and rejected valid inline comments or trailing commas."
     disposition: fixed
   - id: F-010
     severity: minor
-    summary: "The legacy Windows descriptor test fails on non-Windows platforms."
-    disposition: open
+    summary: "The legacy-descriptor test failed on non-Windows platforms."
+    disposition: fixed
   - id: F-011
     severity: major
-    summary: "The canonical Codex argument contract is duplicated between GUI and core."
+    summary: "The canonical Codex argument contract was duplicated between GUI and core."
+    disposition: fixed
+  - id: F-012
+    severity: minor
+    summary: "A TOML-valid trailing comment on the Kanmer table header bypasses the registration-staleness verdict."
     disposition: open
 ---
 
 # Independent review
 
-Reviewed PR #281 at `bb4702511a8c5d9eb0b7df56721c15e7b2b33898`, ticket GUI-142 at `2026-08-26T11:47:27.076Z`, and plan version `dbf90ad24d76b31b`.
+Reviewed PR #281 at head 9be994ec7d6c6c63f6093e7ada1b30237feb4919, GUI-142 ticket revision 2026-08-26T11:47:27.076Z, and plan version dbf90ad24d76b31b.
 
 ## Evidence
 
-- Required GitHub Actions run `32965528003` is green: `kanmer-gate` and `verify` succeeded at the reviewed head.
-- I independently ran the focused GUI suite (105 passed), core staleness suite (44 passed on Windows), and `npm run plugin:check`. Plugin synchronization passed: 37 tools match, bundle bytes match, skill manifests parse, and the isolated MCP handshake lists 37 tools.
-- The fallback now uses a single-quoted, correctly escaped PowerShell script payload. I pasted the emitted command into PowerShell; it returned `Kanmer MCP launcher: healthy` with exit `0`, without caller-shell expansion.
-- The narrow TOML parser accepts the reviewed trailing-comma and inline-comment canonical registration case, so F-008 and F-009 are fixed.
-- All review threads were gathered. Two new non-outdated findings remain and are recorded below.
+- The current GitHub pull request is open at the recorded head. Its required kanmer-gate and verify checks from run 32967405178 are both SUCCESS. The verification job ran the full npm test command, plugin synchronization check, and authoritative verification rail.
+- I independently ran the focused GUI suite: 105 tests passed, including the normal-argv Windows MCP handshake, non-zero launcher probe, and missing launcher probe. The Core staleness suite passed 44 tests.
+- I independently built the current Windows installer at this head and ran the updater artifact checker: updater package OK, 8 checks.
+- The current source imports the shared CODEX_PORTABLE_ARGS and CODEX_PORTABLE_COMMAND values from Core in GUI providers; the previous duplicated-contract concern is fixed.
+- GitHub has 13 inline review threads: 12 are outdated after their fixes and have the dispositions above; one non-outdated unresolved thread remains. There are no top-level PR comments. The generic Codex review submissions are comments only and add no undispositioned finding.
 
-## Findings and dispositions
+## Current finding
 
-1. `F-001` through `F-006` — fixed as documented in the preceding independent attestations.
-2. `F-007` — rejected with reason: non-zero launch failure remains visible to Codex.
-3. `F-008` — fixed: literal single-quote rendering prevents caller-shell variable expansion; focused execution evidence passed.
-4. `F-009` — fixed: the parser now accepts the relevant TOML comments and trailing comma; core test passed.
-5. `F-010` — minor, open. `registrationRows` emits the legacy descriptor row only on Windows, while the corresponding test currently asserts it unconditionally. Gate that assertion to Windows or test the platform-independent helper directly so the normal core suite passes on supported Linux/macOS development environments.
-6. `F-011` — major, open. The exact canonical PowerShell argv exists as literals in both GUI provider code and core staleness detection. Move the portable descriptor contract into a shared core export and consume it from the GUI, so a future change cannot silently make newly generated registrations appear stale.
+F-012 corresponds to GitHub review comment 3862607379. The finding is valid. Both kanmerRootIn and isCurrentCodexRegistration find the Kanmer TOML table with an exact header regular expression. A valid header such as [mcp_servers.kanmer] followed by a trailing TOML comment therefore returns no table. For a legacy cmd.exe entry, registrationRows sees null rather than false and fails to present stale-registration/reconnect guidance. The same header form also prevents the existing root extractor from inspecting an explicit root.
 
-## Residual risk
+## Required remediation
 
-The concrete Windows behavior and plugin artifact are now proven, but merging with duplicated canonical command data violates the repository's one-list-per-concept rule and leaves a cross-platform test failure.
+1. Create one narrow helper that locates the mcp_servers.kanmer table while accepting legal trailing header comments and CRLF input; use it for both the root extractor and current-registration comparison so they cannot diverge.
+2. Preserve the existing narrow string-array parser and complete argv comparison. No dependency or broader configuration rewrite is needed.
+3. Add Core regressions for a canonical PowerShell entry with a commented header, a legacy cmd.exe entry with a commented header that is reported behind on Windows, and a commented-header explicit-root entry. Cover CRLF where practical.
+4. Run the focused Core suite, full PR CI, and plugin synchronization. Update the implementation report and request a fresh independent review at the new head.
 
 ## Decision
 
-Needs changes. No merge performed; GUI-142 remains in Review. Re-review is required after F-010 and F-011 are resolved and all required checks are green at the resulting head.
+Needs changes. This is a bounded minor correctness issue, but the working tree deliberately detects and guides remediation for stale Windows registrations; a supported TOML syntax must not bypass that detection. No code was changed and no merge was performed.

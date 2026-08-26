@@ -98,6 +98,7 @@ import {
   type ItemWarning,
   type MovePosition,
   type OpenQuestionCount,
+  type ReconciliationProposal,
   type SetDocOptions,
   type TakeTicketInput,
   type TicketDoc,
@@ -910,10 +911,13 @@ export class KanmerStore {
   }
 
   /** Release a taken ticket: clear taken_at / branch / worktree. */
-  async releaseTicket(id: string): Promise<Item> {
+  async releaseTicket(id: string, expectedUpdated?: string): Promise<Item> {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
+    if (expectedUpdated !== undefined && current.updated !== expectedUpdated) {
+      throw this.conflictError(id, current, expectedUpdated);
+    }
     if (!current.taken_at && !current.branch && !current.worktree) return current;
     const next: Item = { ...current, updated: nowIso() };
     delete next.taken_at;
@@ -923,6 +927,59 @@ export class KanmerStore {
     await appendActivity(this.paths, [
       this.activity(id, "release", { field: "branch", from: current.branch }),
     ]);
+    return next;
+  }
+
+  /**
+   * Apply one already-reviewed reconciliation proposal. Host boundaries must
+   * re-collect their Git/GitHub evidence immediately before calling this;
+   * store owns the final ticket revision check and every board mutation.
+   */
+  async applyReconciliation(
+    id: string,
+    input: { expectedUpdated: string; proposal: ReconciliationProposal },
+  ): Promise<Item> {
+    const current = await this.getItem(id);
+    if (!current) throw new Error(`No item with id "${id}"`);
+    if (current.updated !== input.expectedUpdated || input.proposal.ticketUpdated !== current.updated) {
+      throw this.conflictError(id, current, input.expectedUpdated);
+    }
+    if (input.proposal.ticketId !== id) {
+      throw new Error(`Reconciliation proposal is for "${input.proposal.ticketId}", not "${id}"`);
+    }
+
+    let next: Item;
+    switch (input.proposal.action) {
+      case "MOVE_TO_IMPLEMENTING":
+        if (current.status !== "review" || input.proposal.targetStatus !== "implementing") {
+          throw new Error(`Reconciliation proposal MOVE_TO_IMPLEMENTING is not valid for ${id} in "${current.status}"`);
+        }
+        next = await this.moveItem(id, { status: "implementing", expectedUpdated: current.updated });
+        break;
+      case "MOVE_TO_VERIFYING":
+        if (current.status !== "review" || input.proposal.targetStatus !== "verifying") {
+          throw new Error(`Reconciliation proposal MOVE_TO_VERIFYING is not valid for ${id} in "${current.status}"`);
+        }
+        next = await this.moveItem(id, { status: "verifying", expectedUpdated: current.updated });
+        break;
+      case "MOVE_TO_DONE":
+        if (current.status !== "verifying" || input.proposal.targetStatus !== "done") {
+          throw new Error(`Reconciliation proposal MOVE_TO_DONE is not valid for ${id} in "${current.status}"`);
+        }
+        next = await this.moveItem(id, { status: "done", expectedUpdated: current.updated });
+        break;
+      case "RELEASE_CLEAN_TERMINAL_CLAIM":
+        if (current.status !== "done" || !current.taken_at || input.proposal.targetStatus !== undefined) {
+          throw new Error(`Reconciliation proposal RELEASE_CLEAN_TERMINAL_CLAIM is not valid for ${id}`);
+        }
+        next = await this.releaseTicket(id, current.updated);
+        break;
+      default: {
+        const exhaustive: never = input.proposal.action;
+        throw new Error(`Unknown reconciliation action ${exhaustive}`);
+      }
+    }
+    await appendActivity(this.paths, [this.activity(id, "update", { field: "reconciliation", to: input.proposal.action })]);
     return next;
   }
 

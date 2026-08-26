@@ -44,6 +44,7 @@ import { SERVER_VERSION, serverIdentity } from "./identity.js";
 import { bundledSkillsDir } from "./bundled.js";
 import { readTicketDocuments } from "./ticket-docs.js";
 import { getExecutionPacket } from "./execution-packet.js";
+import { applyReconciliation as applyTicketReconciliation, reconcileTicket } from "./reconciliation.js";
 import { failCoded, KanmerError } from "./errors.js";
 import { projectIdentity } from "./project-identity.js";
 import { dispatchPolicyView, parseDispatchPolicy } from "./dispatch-policy.js";
@@ -667,6 +668,35 @@ server.registerTool(
     });
     return ok(await getExecutionPacket({ store, id, actor: actorName(server, extra), project, resume }));
   }),
+);
+
+server.registerTool(
+  "reconcile_ticket",
+  {
+    title: "Dry-run ticket reconciliation",
+    description:
+      "Read one ticket's board, proof, workspace, GitHub PR and required-check facts, then return a deterministic safe recovery proposal or an explicit inconclusive/refusal result. This is dry-run only: it never mutates the board, Git, workspace, checks or release state. The request selects only an existing ticket id; it cannot supply a path, command, executable or project root.",
+    inputSchema: { id: z.string().describe("Existing ticket id") },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  guard(async ({ id }) => ok(await reconcileTicket(store, id))),
+);
+
+server.registerTool(
+  "apply_reconciliation",
+  {
+    title: "Apply a current ticket reconciliation proposal",
+    description:
+      "Apply one proposal returned by reconcile_ticket only when freshly re-collected evidence and the ticket revision still match. The only possible effects are existing legal stage transitions or release of a clean terminal claim. It never deletes a worktree, force-pushes, bypasses checks or mutates the board worktree.",
+    inputSchema: {
+      id: z.string().describe("Existing ticket id"),
+      expected_updated: z.string().describe("Ticket updated timestamp returned by reconcile_ticket"),
+      proposal_id: z.string().length(64).describe("Proposal id returned by reconcile_ticket"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  },
+  write(async ({ id, expected_updated, proposal_id }) =>
+    ok(await applyTicketReconciliation(store, { id, expectedUpdated: expected_updated, proposalId: proposal_id }))),
 );
 
 server.registerTool(

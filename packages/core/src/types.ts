@@ -547,6 +547,73 @@ export interface TakeTicketInput {
   force?: boolean;
 }
 
+/** Facts collected by an approved host boundary before reconciliation policy runs. */
+export interface ReconciliationEvidence {
+  ticket: {
+    id: string;
+    status: string;
+    updated: string;
+    taken: boolean;
+  };
+  /** Legacy claim data is observed only; CORE-114/115 own replacement identity and lease schemas. */
+  claim: {
+    state: "unclaimed" | "legacy";
+    controller: string | null;
+    worker: string | null;
+    takenAt: string | null;
+    branch: string | null;
+    worktree: string | null;
+  };
+  /** Recorded ticket commits, without reachability or history rewriting. */
+  commits: string[];
+  pullRequest: {
+    state: "absent" | "open" | "merged" | "closed-unmerged" | "unavailable";
+    headSha?: string;
+    mergeSha?: string;
+    requiredChecks: "pass" | "fail" | "pending" | "unavailable" | "not-applicable";
+  };
+  proof: {
+    state: "absent" | "pass" | "fail" | "invalid";
+    mergedSha?: string;
+  };
+  workspace: {
+    state: "not-recorded" | "clean" | "dirty" | "missing" | "unavailable";
+    recordedWorktree: string | null;
+    boardWorktree?: boolean;
+  };
+  release: {
+    state: "none" | "superseded" | "contended" | "unavailable";
+  };
+}
+
+/** The only board mutations reconciliation is allowed to request. */
+export type ReconciliationAction =
+  | "MOVE_TO_IMPLEMENTING"
+  | "MOVE_TO_VERIFYING"
+  | "MOVE_TO_DONE"
+  | "RELEASE_CLEAN_TERMINAL_CLAIM";
+
+export interface ReconciliationProposal {
+  /** Stable hash of the action and all evidence it was derived from. */
+  id: string;
+  ticketId: string;
+  ticketUpdated: string;
+  action: ReconciliationAction;
+  targetStatus?: string;
+}
+
+export interface ReconciliationFinding {
+  code: string;
+  level: "info" | "warning" | "error";
+  message: string;
+}
+
+export interface ReconciliationResult {
+  evidence: ReconciliationEvidence;
+  findings: ReconciliationFinding[];
+  proposal: ReconciliationProposal | null;
+}
+
 /** Forward + backward relations for one item (get_links). */
 export interface LinkGraph {
   id: string;

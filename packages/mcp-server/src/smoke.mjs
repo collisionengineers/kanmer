@@ -59,7 +59,7 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
-  check("tools/list returns 37 tools", tools.tools.length === 37, `got ${tools.tools.length}`);
+  check("tools/list returns 39 tools", tools.tools.length === 39, `got ${tools.tools.length}`);
   for (const name of [
     "append_scratch",
     "link_doc",
@@ -75,6 +75,8 @@ try {
     "dispatch_task",
     "list_dispatches",
     "cancel_dispatch",
+    "reconcile_ticket",
+    "apply_reconciliation",
   ]) {
     check(`${name} tool exists`, tools.tools.some((t) => t.name === name));
   }
@@ -88,6 +90,13 @@ try {
   const list = tools.tools.find((t) => t.name === "list_items");
   check("list_items is read-only", list?.annotations?.readOnlyHint === true);
   check("add_column tool exists", tools.tools.some((t) => t.name === "add_column"));
+  const reconcileTicket = tools.tools.find((t) => t.name === "reconcile_ticket");
+  const applyReconciliation = tools.tools.find((t) => t.name === "apply_reconciliation");
+  check("reconcile_ticket is read-only", reconcileTicket?.annotations?.readOnlyHint === true);
+  check(
+    "apply_reconciliation is mutating and project-bound",
+    applyReconciliation?.annotations?.readOnlyHint === false && applyReconciliation?.inputSchema?.properties?.expected_project?.type === "string",
+  );
   const gs = tools.tools.find((t) => t.name === "get_status");
   check("get_status is read-only", gs?.annotations?.readOnlyHint === true);
   const gtd = tools.tools.find((t) => t.name === "get_ticket_doc");
@@ -2227,6 +2236,57 @@ Second proof attempt passed; the first failure is retained.
   check(
     "a taken ticket without a worktree is refused before an unusable ready packet",
     refusedIncompleteTaken.ready === false && refusedIncompleteTaken.reason.includes("incomplete taken-ticket metadata"),
+  );
+
+  // Reconciliation has a read-only dry run and an explicitly guarded apply
+  // endpoint. An unclaimed review ticket with no PR has one safe proposal:
+  // return it to implementing for normal remediation.
+  const reconcileId = JSON.parse(
+    textOf(await client.callTool({
+      name: "create_item",
+      arguments: { title: "reconciliation dry-run", status: "review", profile: "custom", requires: {}, expected_project: expectedProject },
+    })),
+  ).id;
+  const reconciliation = JSON.parse(
+    textOf(await client.callTool({ name: "reconcile_ticket", arguments: { id: reconcileId } })),
+  );
+  check(
+    "reconcile_ticket returns a dry-run remediation proposal",
+    reconciliation.evidence?.ticket?.id === reconcileId &&
+      reconciliation.proposal?.action === "MOVE_TO_IMPLEMENTING" &&
+      typeof reconciliation.proposal?.id === "string",
+    JSON.stringify(reconciliation),
+  );
+  const wrongReconciliationProject = await client.callTool({
+    name: "apply_reconciliation",
+    arguments: {
+      id: reconcileId,
+      expected_updated: reconciliation.evidence.ticket.updated,
+      proposal_id: reconciliation.proposal.id,
+      expected_project: "kanmer-proj-v1:wrong",
+    },
+  });
+  check(
+    "apply_reconciliation rejects a wrong project before mutation",
+    wrongReconciliationProject.isError === true && wrongReconciliationProject.structuredContent?.error?.code === "WRONG_PROJECT",
+    JSON.stringify(wrongReconciliationProject.structuredContent),
+  );
+  const appliedReconciliation = JSON.parse(
+    textOf(await client.callTool({
+      name: "apply_reconciliation",
+      arguments: {
+        id: reconcileId,
+        expected_updated: reconciliation.evidence.ticket.updated,
+        proposal_id: reconciliation.proposal.id,
+        expected_project: expectedProject,
+      },
+    })),
+  );
+  check(
+    "apply_reconciliation re-collects evidence and applies only the matching proposal",
+    appliedReconciliation.result?.proposal?.id === reconciliation.proposal.id &&
+      appliedReconciliation.item?.status === "implementing",
+    JSON.stringify(appliedReconciliation),
   );
 
   const del1 = await client.callTool({ name: "delete_item", arguments: { id: "TICK-001" } });

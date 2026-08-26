@@ -583,6 +583,18 @@ function rootFromArgs(args: unknown): string | null {
 }
 
 /**
+ * Return only Kanmer's TOML MCP table. This accepts TOML's legal trailing
+ * header comments while keeping every later table out of the caller's scan.
+ */
+function kanmerTomlSection(text: string): string | null {
+  const header = /^[ \t]*\[mcp_servers\.kanmer\][ \t]*(?:#[^\r\n]*)?\r?$/m.exec(text);
+  if (!header) return null;
+  const from = header.index + header[0].length;
+  const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
+  return nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
+}
+
+/**
  * The board root a file's **Kanmer** MCP entry is pinned to, or null.
  *
  * Scoped to Kanmer's own entry rather than scanned across the file, and that
@@ -627,11 +639,8 @@ export function kanmerRootIn(text: string, format: "json" | "toml"): string | nu
   }
 
   // TOML: slice the [mcp_servers.kanmer] table out, then scan only inside it.
-  const header = /^[ \t]*\[mcp_servers\.kanmer\][ \t]*$/m.exec(text);
-  if (!header) return null;
-  const from = header.index + header[0].length;
-  const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
-  const section = nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
+  const section = kanmerTomlSection(text);
+  if (section === null) return null;
   const m = /"--root"[\s,]*("(?:[^"\\]|\\.)*")/.exec(section);
   if (!m) return null;
   try {
@@ -648,11 +657,8 @@ export function kanmerRootIn(text: string, format: "json" | "toml"): string | nu
  * entries and formatting are user-owned and irrelevant to this verdict.
  */
 export function isCurrentCodexRegistration(text: string): boolean | null {
-  const header = /^[ \t]*\[mcp_servers\.kanmer\][ \t]*$/m.exec(text);
-  if (!header) return null;
-  const from = header.index + header[0].length;
-  const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
-  const section = nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
+  const section = kanmerTomlSection(text);
+  if (section === null) return null;
   const command = /^[ \t]*command[ \t]*=[ \t]*"([^"]+)"[ \t]*$/m.exec(section)?.[1];
   const rawArgs = /^[ \t]*args[ \t]*=[ \t]*(\[[\s\S]*?\])/m.exec(section)?.[1];
   if (!rawArgs) return false;

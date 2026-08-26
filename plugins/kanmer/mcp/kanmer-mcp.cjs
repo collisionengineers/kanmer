@@ -39782,6 +39782,13 @@ function rootFromArgs(args) {
   const next = args[at + 1];
   return typeof next === "string" && next.trim() !== "" ? next : null;
 }
+function kanmerTomlSection(text) {
+  const header = /^[ \t]*\[mcp_servers\.kanmer\][ \t]*(?:#[^\r\n]*)?\r?$/m.exec(text);
+  if (!header) return null;
+  const from = header.index + header[0].length;
+  const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
+  return nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
+}
 function kanmerRootIn(text, format) {
   if (format === "json") {
     let doc;
@@ -39803,11 +39810,8 @@ function kanmerRootIn(text, format) {
     }
     return null;
   }
-  const header = /^[ \t]*\[mcp_servers\.kanmer\][ \t]*$/m.exec(text);
-  if (!header) return null;
-  const from = header.index + header[0].length;
-  const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
-  const section = nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
+  const section = kanmerTomlSection(text);
+  if (section === null) return null;
   const m = /"--root"[\s,]*("(?:[^"\\]|\\.)*")/.exec(section);
   if (!m) return null;
   try {
@@ -39818,11 +39822,8 @@ function kanmerRootIn(text, format) {
   }
 }
 function isCurrentCodexRegistration(text) {
-  const header = /^[ \t]*\[mcp_servers\.kanmer\][ \t]*$/m.exec(text);
-  if (!header) return null;
-  const from = header.index + header[0].length;
-  const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
-  const section = nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
+  const section = kanmerTomlSection(text);
+  if (section === null) return null;
   const command = /^[ \t]*command[ \t]*=[ \t]*"([^"]+)"[ \t]*$/m.exec(section)?.[1];
   const rawArgs = /^[ \t]*args[ \t]*=[ \t]*(\[[\s\S]*?\])/m.exec(section)?.[1];
   if (!rawArgs) return false;

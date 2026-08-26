@@ -393,7 +393,7 @@ describe("detectStaleness — provider MCP registrations", () => {
 
   it("accepts TOML-valid comments and a trailing comma in a canonical Codex array", () => {
     const registration = [
-      "[mcp_servers.kanmer]",
+      "[mcp_servers.kanmer] # Kanmer local MCP",
       'command = "powershell.exe"',
       "args = [",
       '  "-NoProfile", # no profile',
@@ -403,7 +403,7 @@ describe("detectStaleness — provider MCP registrations", () => {
       '  "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')",',
       "] # portable launcher",
       "",
-    ].join("\n");
+    ].join("\r\n");
     expect(isCurrentCodexRegistration(registration)).toBe(true);
   });
 
@@ -411,7 +411,7 @@ describe("detectStaleness — provider MCP registrations", () => {
     writeAgents();
     put(
       path.join(root, ".codex/config.toml"),
-      '[mcp_servers.kanmer]\ncommand = "cmd.exe"\nargs = ["/d", "/s", "/c", \'"%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd"\']\n',
+      '[mcp_servers.kanmer] # legacy launcher\r\ncommand = "cmd.exe"\r\nargs = ["/d", "/s", "/c", \'"%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd"\']\r\n',
     );
     expect(isCurrentCodexRegistration('[mcp_servers.kanmer]\ncommand = "cmd.exe"\nargs = ["/d"]\n')).toBe(false);
     const rows = rowsFor(detect(), "mcp-registration");
@@ -493,6 +493,15 @@ describe("detectStaleness — provider MCP registrations", () => {
     expect(
       kanmerRootIn('[mcp_servers.kanmer]\nargs = ["--root", "C:\\\\Users\\\\me\\\\repo"]\n', "toml"),
     ).toBe("C:\\Users\\me\\repo");
+  });
+
+  it("reads an explicit root from a commented Kanmer TOML header", () => {
+    expect(
+      kanmerRootIn(
+        '[mcp_servers.kanmer] # project-scoped local server\r\nargs = ["--root", "C:/board"]\r\n',
+        "toml",
+      ),
+    ).toBe("C:/board");
   });
 });
 

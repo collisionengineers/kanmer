@@ -8,31 +8,31 @@ independent: true
 plan_hash: "dbf90ad24d76b31b"
 ticket_updated: "2026-08-26T11:23:02.709Z"
 findings:
-  - id: REV-GUI142-001
+  - id: F-001
     severity: blocker
     summary: "The Kanmer CI gate could not find GUI-142 on the remote board."
     disposition: fixed
-  - id: REV-GUI142-002
+  - id: F-002
     severity: major
     summary: "The probe did not propagate a non-zero launcher exit status."
     disposition: fixed
-  - id: REV-GUI142-003
+  - id: F-003
     severity: major
     summary: "FRD-012 contradicted the PowerShell registration contract."
     disposition: fixed
-  - id: REV-GUI142-004
+  - id: F-004
     severity: minor
     summary: "Windows descriptor staleness created non-Windows false positives."
     disposition: fixed
-  - id: REV-GUI142-005
+  - id: F-005
     severity: minor
     summary: "The copy fallback was unquoted and staleness only token-matched the command."
     disposition: fixed
-  - id: REV-GUI142-006
+  - id: F-006
     severity: major
     summary: "A missing or non-invocable launcher still makes the probe report success."
     disposition: open
-  - id: REV-GUI142-007
+  - id: F-007
     severity: minor
     summary: "The production invocation does not explicitly propagate the native launcher exit code."
     disposition: rejected-with-reason
@@ -53,13 +53,13 @@ Reviewed PR #281 at `cd4c241ae4b6c2189cfc83da850b001bb9a5316f`, ticket GUI-142 a
 
 ## Findings and dispositions
 
-1. `REV-GUI142-001` — fixed. The board is now synchronized for CI and the required Kanmer gate passes at the reviewed head.
-2. `REV-GUI142-002` — fixed. The probe appends `exit $LASTEXITCODE`, and the new Windows subprocess test covers a launcher which starts then returns non-zero.
-3. `REV-GUI142-003` — fixed. FRD-012 R1e, the README, example, and contributor instructions agree on the portable PowerShell descriptor.
-4. `REV-GUI142-004` — fixed. The descriptor-specific staleness migration is gated to Windows.
-5. `REV-GUI142-005` — fixed. The fallback quotes the `-Command` payload and staleness parses the Kanmer table's complete argument array.
-6. `REV-GUI142-006` — major, open. Add a failure-safe invocation/probe contract that causes a missing or non-invocable launcher to exit non-zero, and add a Windows execution test for that case. The current `exit $LASTEXITCODE` only covers a native child which was successfully invoked.
-7. `REV-GUI142-007` — rejected with reason. The production command already returns non-zero when a launcher returns non-zero; exact native exit-code preservation is not required for Codex to detect process failure.
+1. `F-001` — fixed. The board is now synchronized for CI and the required Kanmer gate passes at the reviewed head.
+2. `F-002` — fixed. The probe appends `exit $LASTEXITCODE`, and the new Windows subprocess test covers a launcher which starts then returns non-zero.
+3. `F-003` — fixed. FRD-012 R1e, the README, example, and contributor instructions agree on the portable PowerShell descriptor.
+4. `F-004` — fixed. The descriptor-specific staleness migration is gated to Windows.
+5. `F-005` — fixed. The fallback quotes the `-Command` payload and staleness parses the Kanmer table's complete argument array.
+6. `F-006` — major, open. Add a failure-safe invocation/probe contract that causes a missing or non-invocable launcher to exit non-zero, and add a Windows execution test for that case. The current `exit $LASTEXITCODE` only covers a native child which was successfully invoked.
+7. `F-007` — rejected with reason. The production command already returns non-zero when a launcher returns non-zero; exact native exit-code preservation is not required for Codex to detect process failure.
 
 ## Residual risk
 

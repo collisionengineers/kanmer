@@ -1,68 +1,107 @@
 ---
 kind: review-attestation
 pr: "282"
-head_sha: "7bc0168e62ebff55c86102103c996be01b71faf4"
-verdict: needs-changes
+head_sha: "0dd92f1c326098a7fd420e96f9c6fba2d8c2e8a5"
+verdict: pass
 reviewer: "mcp053-independent-review"
 independent: true
 plan_hash: "3d052de626aeefc8"
-ticket_updated: "2026-08-26T12:58:35.290Z"
+ticket_updated: "2026-08-26T14:41:58.579Z"
 findings:
   - id: F-001
     severity: note
-    summary: "Exact branch/worktree resumption is an explicit local workflow confirmation, not an authorization boundary between MCP clients."
+    summary: "Exact branch/worktree resumption confirms a local workflow location, not an MCP-client identity or authorization boundary."
     disposition: accepted-risk
-    reason: "MCP client names and readable ticket locations are not credentials; exact values are a deliberate bounded confirmation rather than a security control."
+    reason: "MCP client names and recorded ticket locations are not credentials. The exact pair is deliberately a local workflow confirmation, backed by strict location, repository, branch, and stage checks."
   - id: F-002
     severity: major
-    summary: "The advertised resumed path still attempts to create and take an already-recorded worktree and ticket, so it cannot complete."
+    summary: "The original resumed lane recreated and retook an already-recorded worktree and ticket."
     disposition: fixed
   - id: F-003
     severity: major
-    summary: "AGENTS.md does not document the new occupied-ticket resume convention required for contributors and agents."
+    summary: "The original public resume protocol lacked its managed AGENTS convention."
     disposition: fixed
   - id: F-004
     severity: major
-    summary: "The required verify job fails the new resumed-worktree smoke assertion on GitHub Windows because Git emits a slash-form path while Node resolves the fixture path with backslashes."
-    disposition: open
+    summary: "The initial Windows rail depended on environment-specific textual path spellings."
+    disposition: fixed
+  - id: F-005
+    severity: major
+    summary: "The public take-ticket and dispatch prompts bypassed the fresh-versus-resumed packet lane."
+    disposition: fixed
+  - id: F-006
+    severity: major
+    summary: "Resumption could use a foreign repository, shared ticket location, board location, or physical alias."
+    disposition: fixed
+  - id: F-007
+    severity: major
+    summary: "The earlier pause guidance cleared the resume metadata while retaining its branch and worktree."
+    disposition: fixed
+  - id: F-008
+    severity: major
+    summary: "Incomplete taken metadata could return an unusable ready packet."
+    disposition: fixed
+  - id: F-009
+    severity: major
+    summary: "A dedicated-board project could resume in its shared source checkout."
+    disposition: fixed
+  - id: F-010
+    severity: major
+    summary: "Closeout's pause guidance released records that a later resume needs."
+    disposition: fixed
+  - id: F-011
+    severity: major
+    summary: "FRD-016 contradicted the packet-selected resumed execution lane."
+    disposition: fixed
+  - id: F-012
+    severity: minor
+    summary: "Refusal instructions simultaneously requested a scratch write and prohibited ticket writes."
+    disposition: fixed
+  - id: F-013
+    severity: major
+    summary: "Detached or switched worktrees could previously receive a ready packet."
+    disposition: fixed
+  - id: F-014
+    severity: major
+    summary: "An unrelated stale worktree could previously block every otherwise-valid resume."
+    disposition: fixed
+  - id: F-015
+    severity: major
+    summary: "Taken tickets in Review or Verifying could previously issue new execution packets."
+    disposition: fixed
+  - id: F-016
+    severity: major
+    summary: "The changed headless prompts omitted non-Markdown reference inputs."
+    disposition: fixed
+  - id: F-017
+    severity: major
+    summary: "Child paths of shared checkouts bypassed the exact worktree-location checks."
+    disposition: fixed
 ---
 
 # Independent review — MCP-053
 
-## Scope and evidence
+## Target and independent evidence
 
-I independently reviewed PR #282 at `7bc0168e62ebff55c86102103c996be01b71faf4`, its packet documents, the full live diff, and both GitHub review threads. The scope remains bounded to the execution-packet resume API, its caller contract, its generated plugin runtime, and the managed contributor instructions. The PR is authored by `collisionengineers`; this is an independent agent-role review.
+I independently reviewed PR #282 at `0dd92f1c326098a7fd420e96f9c6fba2d8c2e8a5`, its full current diff, MCP-053's files/plan/report/governing FRD, and every live GitHub review thread. This is a separate agent-role review from the PR author.
 
-The branch-protection requirements are `verify` and `kanmer-gate`. `kanmer-gate` passed. The required `verify` run 32971427936 failed, so this review cannot pass or merge.
+The main branch requires `verify` and `kanmer-gate`; both are green at this exact head in run 32981917353. The ticket remains in Review. This record binds plan `3d052de626aeefc8`, ticket revision `2026-08-26T14:41:58.579Z`, and board fingerprint `kanmer-proj-v1:5dbaab312733032858ad528e48eeaa4221b4356f9b7899d892540d964c10b268`.
 
-Independent local evidence at the reviewed head:
+Independent local checks at this head:
 
 - `npm run build:server` — PASS.
-- `node packages/mcp-server/src/smoke.mjs` — PASS, 227/227, including exact resume, mismatched-resume refusal, and Git worktree validation.
-- `node scripts/verify-agents-block.mjs` — PASS, 31/31; it proves the canonical block, repository AGENTS.md, and shipped setup mirror match.
-- `node scripts/verify-skill-prose.mjs` and `node --test scripts/verify-skill-prose.test.mjs` — PASS; the regression test rejects a resumed flow that would recreate its worktree.
-- `npm run plugin:check` — PASS; 37 tools, matching generated bundle, and isolated MCP handshake.
+- `node packages/mcp-server/src/smoke.mjs` — PASS, 241/241.
+- `npm run plugin:check` — PASS: bundled bytes, 37 tools, skill frontmatters, and isolated handshake.
+- `node scripts/verify-agents-block.mjs` — PASS, 31/31.
+- `node scripts/verify-skill-prose.mjs` — PASS.
+- `git diff --check origin/main...0dd92f1c326098a7fd420e96f9c6fba2d8c2e8a5` — PASS.
 
-## Disposition of prior threads
+## Findings and dispositions
 
-### F-002 — fixed
+F-001 is the intentional, documented local-workflow confirmation risk; it is not represented as authentication. F-002 through F-012 are fixed: resumed packets reuse rather than recreate their recorded location; public callers and managed instructions follow that lane; unsafe/incomplete locations fail closed; pauses retain their record; the governing FRD now matches; and refusal hand-off is read-only.
 
-`kanmer-execute` now treats `ticket.taken` as a resumed lane. It validates the precise recorded worktree and branch and expressly skips both `git worktree add` and `take_ticket`; only a packet with no recorded take follows the fresh path. The new smoke creates a real Git worktree, receives a ready packet from a different client identity, and validates that exact branch/worktree. The generated plugin contains the same skill contract.
-
-### F-003 — fixed
-
-The canonical managed block now tells agents that fresh tickets use `take_ticket`, while resumed packets validate and reuse the exact recorded branch/worktree without a second take or worktree creation. `scripts/agents-block-body.mjs`, repository `AGENTS.md`, and the shipped `kanmer-setup` mirror are aligned and passed the dedicated verifier.
-
-## New required remediation
-
-### F-004 — major, open
-
-The implementation needs a cross-form Windows path comparison in the smoke assertion. GitHub's required run fails the exact assertion with `C:/Users/runneradmin/...` returned by Git versus the Windows-resolved fixture path, despite the branch being correct. Normalize both sides to a common slash form (or compare canonical real paths) before equality. Re-run the full required CI and obtain a fresh review attestation at the resulting head.
-
-## Residual risk
-
-F-001 remains accepted risk: the exact pair is an explicit local workflow confirmation, not a credential or authorization boundary. The server remains fail-closed for absent, partial, or non-exact values.
+F-013 through F-017 are fixed at this head. The server resolves the actual Git worktree root, verifies source-common-dir and exact checked-out branch, rejects detached/different branches and child paths, limits resumed execution to Implementing, reports unrelated stale peer locations as non-blocking warnings, and retains all human-supplied reference inputs in headless prompt guidance. The smoke suite covers detached, divergent, Review/Verifying, stale-peer, alias, dedicated board, and board/source/peer child-path cases.
 
 ## Verdict
 
-Needs changes. Do not merge while required `verify` is red. The only open blocker identified in this review is F-004.
+Pass. All required checks are green at the reviewed SHA; every review finding is dispositioned with no open blocker or major finding. Merge is authorized by the standing user delegation. Post-merge exact-SHA verification remains owned by `kanmer-verify`.

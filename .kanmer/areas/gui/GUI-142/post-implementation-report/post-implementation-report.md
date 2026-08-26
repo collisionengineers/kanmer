@@ -26,3 +26,39 @@
 
 ## Handoff
 Push commit 0b784d10, wait for required PR CI, then request a fresh independent review.
+
+
+## Final F-012 remediation
+
+- Added one shared, narrow kanmerTomlSection helper for both explicit-root extraction and Windows Codex descriptor staleness checks.
+- The helper accepts TOML-valid trailing comments on [mcp_servers.kanmer], including CRLF input, while continuing to stop at the next table so another provider's configuration is never scanned.
+- Added regressions for a current PowerShell descriptor with a commented CRLF header, a legacy cmd.exe descriptor with the same header (reported behind on Windows), and an explicit --root entry under a commented header.
+
+## Verification after F-012
+
+- PASS: focused Core staleness regression suite — 45 tests.
+- PASS: complete Core suite — 314 tests.
+- PASS: plugin rebuild and npm run plugin:check — 37 tools, matching bundle bytes, 12 skill frontmatters, isolated MCP handshake.
+- PASS: npm run dist:check — local Windows NSIS installer built and updater package checker passed all 8 checks.
+
+## Handoff
+
+Push the F-012 remediation commit to PR #281, wait for its full CI, then request a fresh independent review at the new head.
+
+
+## Final TOML command-value remediation
+
+- Corrected the complete-descriptor staleness check to parse the command scalar using the same narrow TOML string parser as args; valid single-quoted command values and trailing comments are now recognized as healthy.
+- Added a regression covering a single-quoted powershell.exe command with a trailing portable-launcher comment.
+- Commit: 864fc7a6291580731019579303b927430603d422.
+
+## Verification after TOML command-value remediation
+
+- PASS: focused Core staleness regression suite — 46 tests.
+- PASS: complete Core suite — 315 tests.
+- PASS: plugin rebuild and npm run plugin:check — 37 tools, matching bundle bytes, 12 skill frontmatters, isolated MCP handshake.
+- PASS (preceding head): required GitHub kanmer-gate and verify run 32984945113. The pushed final commit requires a fresh CI run and independent review before merge.
+
+## Current handoff
+
+Wait for the CI run triggered by 864fc7a6291580731019579303b927430603d422, then request a fresh independent review at that exact SHA.

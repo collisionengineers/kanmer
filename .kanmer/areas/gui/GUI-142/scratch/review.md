@@ -1,12 +1,12 @@
 ---
 kind: review-attestation
 pr: "281"
-head_sha: "9be994ec7d6c6c63f6093e7ada1b30237feb4919"
+head_sha: "864fc7a6291580731019579303b927430603d422"
 verdict: needs-changes
 reviewer: "independent-reviewer-gpt-5.6"
 independent: true
 plan_hash: "dbf90ad24d76b31b"
-ticket_updated: "2026-08-26T11:47:27.076Z"
+ticket_updated: "2026-08-26T15:31:44.415Z"
 findings:
   - id: F-001
     severity: blocker
@@ -36,7 +36,7 @@ findings:
     severity: minor
     summary: "The production invocation does not explicitly return the native launcher exit value."
     disposition: rejected-with-reason
-    reason: "A direct Windows execution against an exit-19 launcher returns a non-zero PowerShell result, which is sufficient for Codex to surface process failure; exact native exit-value preservation is outside this ticket's requirement."
+    reason: "Direct Windows execution against an exit-19 launcher returns a non-zero PowerShell result, which is sufficient for Codex failure detection; exact native exit-value preservation is outside this ticket's requirement."
   - id: F-008
     severity: minor
     summary: "The copied PowerShell fallback expanded its script payload in the caller shell."
@@ -55,33 +55,32 @@ findings:
     disposition: fixed
   - id: F-012
     severity: minor
-    summary: "A TOML-valid trailing comment on the Kanmer table header bypasses the registration-staleness verdict."
+    summary: "A TOML-valid trailing comment on the Kanmer table header bypassed the registration-staleness verdict."
+    disposition: fixed
+  - id: F-013
+    severity: major
+    summary: "Required GitHub Actions checks have not run for the reviewed exact head."
     disposition: open
 ---
 
 # Independent review
 
-Reviewed PR #281 at head 9be994ec7d6c6c63f6093e7ada1b30237feb4919, GUI-142 ticket revision 2026-08-26T11:47:27.076Z, and plan version dbf90ad24d76b31b.
+Reviewed GUI-142 / PR #281 at exact head `864fc7a6291580731019579303b927430603d422`, plan version `dbf90ad24d76b31b`, and ticket revision `2026-08-26T15:31:44.415Z`. I am an independently assigned reviewer, not the PR author.
 
-## Evidence
+## Source and acceptance review
 
-- The current GitHub pull request is open at the recorded head. Its required kanmer-gate and verify checks from run 32967405178 are both SUCCESS. The verification job ran the full npm test command, plugin synchronization check, and authoritative verification rail.
-- I independently ran the focused GUI suite: 105 tests passed, including the normal-argv Windows MCP handshake, non-zero launcher probe, and missing launcher probe. The Core staleness suite passed 44 tests.
-- I independently built the current Windows installer at this head and ran the updater artifact checker: updater package OK, 8 checks.
-- The current source imports the shared CODEX_PORTABLE_ARGS and CODEX_PORTABLE_COMMAND values from Core in GUI providers; the previous duplicated-contract concern is fixed.
-- GitHub has 13 inline review threads: 12 are outdated after their fixes and have the dispositions above; one non-outdated unresolved thread remains. There are no top-level PR comments. The generic Codex review submissions are comments only and add no undispositioned finding.
+- The 11-file / 369-line diff is within the ticket packet and FRD-012 R1e: GUI Connect emits the rootless portable PowerShell descriptor; its probe fails before config mutation on missing, spawn, timeout, or non-zero launcher outcomes; reconnection retains its owned-table scope; and stale Windows registrations are detected without judging non-Windows ones.
+- The canonical command and argv are exported from Core and consumed by GUI Connect, avoiding a second contract copy. The narrow TOML table/array parser now accepts CRLF, legal header comments, a trailing command comment, and a single-quoted command scalar while continuing to compare the complete descriptor.
+- I reviewed every GitHub inline thread. F-001 through F-012 have corresponding remediations in the reviewed head; the outdated threads remain unresolved in GitHub but are dispositioned here. F-007 is rejected with the documented, tested rationale above. There are no non-outdated source findings and no top-level PR comments.
+- Independent local verification passed: `npm run test --workspace @kanmer/core` (315 tests), and `npm run test --workspace @kanmer/gui`; the latter included the four Windows launcher regressions: normal PowerShell boundary, non-zero probe, missing launcher, and normal-argv MCP initialize/tools handshake. The foreground test process was confirmed exited after completion.
+- The report records current-head plugin synchronization and local NSIS/updater packaging evidence. The committed plugin MCP bundle is included in the diff.
 
-## Current finding
+## CI procedural blocker — F-013
 
-F-012 corresponds to GitHub review comment 3862607379. The finding is valid. Both kanmerRootIn and isCurrentCodexRegistration find the Kanmer TOML table with an exact header regular expression. A valid header such as [mcp_servers.kanmer] followed by a trailing TOML comment therefore returns no table. For a legacy cmd.exe entry, registrationRows sees null rather than false and fails to present stale-registration/reconnect guidance. The same header form also prevents the existing root extractor from inspecting an explicit root.
+This is **not a source or test failure**. GitHub Actions run `32985456805` for this exact head completed as failure before it created any jobs. Its job list is empty, so it did not run `kanmer-gate`, the verifier, or source tests. Three subsequent exact-head `pull_request` runs — `32985525425`, `32985586053`, and `32985658217` — were queued with no jobs at the final gather. PR statusCheckRollup consequently contains no required green checks.
 
-## Required remediation
-
-1. Create one narrow helper that locates the mcp_servers.kanmer table while accepting legal trailing header comments and CRLF input; use it for both the root extractor and current-registration comparison so they cannot diverge.
-2. Preserve the existing narrow string-array parser and complete argv comparison. No dependency or broader configuration rewrite is needed.
-3. Add Core regressions for a canonical PowerShell entry with a commented header, a legacy cmd.exe entry with a commented header that is reported behind on Windows, and a commented-header explicit-root entry. Cover CRLF where practical.
-4. Run the focused Core suite, full PR CI, and plugin synchronization. Update the implementation report and request a fresh independent review at the new head.
+The review verdict must therefore remain `needs-changes` under the repository rule that a required check may not be red, pending, or absent. The remediation is procedural: restore Actions scheduling/runner allocation and obtain a normal exact-head run with green `kanmer-gate` and `verify`; no code change is requested by this finding.
 
 ## Decision
 
-Needs changes. This is a bounded minor correctness issue, but the working tree deliberately detects and guides remediation for stale Windows registrations; a supported TOML syntax must not bypass that detection. No code was changed and no merge was performed.
+The implementation is source-ready, but it is **not merge-ready** until F-013 is cleared by a successful required-check run for this unchanged SHA. No code was changed and no merge was performed.

@@ -16,10 +16,12 @@ links: []
 blocks:
   - SKILL-036
   - CORE-119
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-031-configurable-delivery-and-release-state.md
+  - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
 archived: false
 created: '2026-08-26T21:02:41.969Z'
-updated: '2026-08-26T21:03:17.019Z'
+updated: '2026-08-26T21:41:04.875Z'
 ---
 
 ## What

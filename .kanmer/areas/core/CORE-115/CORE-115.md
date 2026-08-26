@@ -13,10 +13,11 @@ groups:
 links: []
 blocks:
   - SKILL-036
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-030-renewable-workspace-leases-and-batches.md
 archived: false
 created: '2026-08-26T21:02:41.955Z'
-updated: '2026-08-26T21:03:17.000Z'
+updated: '2026-08-26T21:41:04.863Z'
 ---
 
 ## What

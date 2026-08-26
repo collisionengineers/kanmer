@@ -15,10 +15,11 @@ groups:
 links: []
 blocks:
   - CORE-119
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
 archived: false
 created: '2026-08-26T21:02:42.025Z'
-updated: '2026-08-26T21:03:17.103Z'
+updated: '2026-08-26T21:41:04.909Z'
 ---
 
 ## What

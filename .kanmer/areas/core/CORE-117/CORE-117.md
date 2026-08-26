@@ -13,10 +13,11 @@ groups:
 links: []
 blocks:
   - SKILL-036
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-032-quick-capture-and-promotion.md
 archived: false
 created: '2026-08-26T21:02:41.985Z'
-updated: '2026-08-26T21:03:17.039Z'
+updated: '2026-08-26T21:41:04.886Z'
 ---
 
 ## What

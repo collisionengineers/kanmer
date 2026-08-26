@@ -13,10 +13,12 @@ labels:
 groups:
   - HZN-008
 links: []
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
+  - docs/architecture/adr/ADR-0021-stable-control-plane-for-candidate-work.md
 archived: false
 created: '2026-08-26T21:02:42.079Z'
-updated: '2026-08-26T21:02:42.079Z'
+updated: '2026-08-26T21:41:04.943Z'
 ---
 
 ## What

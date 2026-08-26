@@ -13,10 +13,11 @@ groups:
 links: []
 blocks:
   - SKILL-036
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-033-constrained-preparation-and-step-packets.md
 archived: false
 created: '2026-08-26T21:02:42.005Z'
-updated: '2026-08-26T21:03:17.061Z'
+updated: '2026-08-26T21:41:04.898Z'
 ---
 
 ## What

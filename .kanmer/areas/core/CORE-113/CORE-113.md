@@ -13,10 +13,11 @@ groups:
 links: []
 blocks:
   - CORE-114
-docs_todo: true
+refs:
+  - docs/functional/frd/FRD-028-rescue-and-reconciliation.md
 archived: false
 created: '2026-08-26T21:02:41.922Z'
-updated: '2026-08-26T21:03:16.958Z'
+updated: '2026-08-26T21:41:04.837Z'
 ---
 
 ## What

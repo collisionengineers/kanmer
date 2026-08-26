@@ -10,7 +10,7 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { detectStaleness, kanmerRootIn, SKILLS_STAMP_FILE } from "./staleness.js";
+import { detectStaleness, isCurrentCodexRegistration, kanmerRootIn, SKILLS_STAMP_FILE } from "./staleness.js";
 import { resolvePaths } from "./paths.js";
 import { defaultBoardConfig } from "./board.js";
 import type { BoardConfig } from "./types.js";
@@ -383,6 +383,12 @@ describe("detectStaleness — provider MCP registrations", () => {
       '[mcp_servers.kanmer]\ncommand = "powershell.exe"\nargs = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]\n',
     );
     expect(rowsFor(detect(), "mcp-registration")).toEqual([]);
+  });
+
+  it("requires the complete canonical Codex invocation, not just its path tokens", () => {
+    const prefix = '[mcp_servers.kanmer]\ncommand = "powershell.exe"\nargs = ';
+    expect(isCurrentCodexRegistration(`${prefix}["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]\n`)).toBe(true);
+    expect(isCurrentCodexRegistration(`${prefix}["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')", "--unexpected"]\n`)).toBe(false);
   });
 
   it("reports the legacy cmd.exe Codex descriptor as behind", () => {

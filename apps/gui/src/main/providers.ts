@@ -28,6 +28,7 @@ export interface Invocation {
  * replace this path with an install, board or source root.
  */
 const CODEX_PORTABLE_COMMAND = "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')";
+const CODEX_PORTABLE_PROBE_COMMAND = `${CODEX_PORTABLE_COMMAND} --probe; exit $LASTEXITCODE`;
 
 /** The local default shared by the GUI registration and MCP runtime. */
 export const DEFAULT_BOARD_BRANCH = "kanmer-board";
@@ -59,7 +60,7 @@ export function codexPortableProbeInvocation(): Invocation {
     command: "powershell.exe",
     // Keep the probe derived from the registered command so normal argv
     // serialization exercises the same PowerShell path Codex will use.
-    args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", `${CODEX_PORTABLE_COMMAND} --probe`],
+    args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", CODEX_PORTABLE_PROBE_COMMAND],
     env: {},
   };
 }

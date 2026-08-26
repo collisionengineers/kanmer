@@ -612,7 +612,7 @@ describe("portable Codex launcher contract (GUI-100)", () => {
     expect(result.output).toBe("Kanmer MCP launcher: healthy");
     expect(calls).toEqual([{
       file: "powershell.exe",
-      args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd') --probe"],
+      args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd') --probe; exit $LASTEXITCODE"],
       options: {
         cwd: "C:/workspace",
         windowsHide: true,
@@ -736,9 +736,25 @@ describe("portable Codex launcher contract (GUI-100)", () => {
       const result = await probeCodexLauncher(localAppData);
       expect(result).toMatchObject({
         ok: true,
-        command: "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command & (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd') --probe",
+        command: "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd') --probe; exit $LASTEXITCODE\"",
         output: "Kanmer MCP launcher: healthy",
       });
+    } finally {
+      if (previous === undefined) delete process.env.LOCALAPPDATA;
+      else process.env.LOCALAPPDATA = previous;
+    }
+  });
+
+  it.runIf(process.platform === "win32")("propagates the launcher probe's non-zero exit status", async () => {
+    const localAppData = await tempRoot();
+    const launcher = join(localAppData, "Kanmer", "bin", "kanmer-mcp.cmd");
+    await mkdir(dirname(launcher), { recursive: true });
+    await writeFile(launcher, "@echo off\r\nexit /b 19\r\n", "utf8");
+
+    const previous = process.env.LOCALAPPDATA;
+    process.env.LOCALAPPDATA = localAppData;
+    try {
+      await expect(probeCodexLauncher(localAppData)).resolves.toMatchObject({ ok: false });
     } finally {
       if (previous === undefined) delete process.env.LOCALAPPDATA;
       else process.env.LOCALAPPDATA = previous;

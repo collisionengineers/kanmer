@@ -650,9 +650,23 @@ export function isCurrentCodexRegistration(text: string): boolean | null {
   const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
   const section = nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
   const command = /^[ \t]*command[ \t]*=[ \t]*"([^"]+)"[ \t]*$/m.exec(section)?.[1];
+  const rawArgs = /^[ \t]*args[ \t]*=[ \t]*(\[[\s\S]*?\])/m.exec(section)?.[1];
+  if (!rawArgs) return false;
+  let args: unknown;
+  try {
+    args = JSON.parse(rawArgs);
+  } catch {
+    return false;
+  }
+  if (!Array.isArray(args) || !args.every((arg) => typeof arg === "string")) return false;
   return command?.toLowerCase() === "powershell.exe" &&
-    /\$env:LOCALAPPDATA/.test(section) &&
-    /Kanmer\\\\bin\\\\kanmer-mcp\.cmd/.test(section);
+    JSON.stringify(args) === JSON.stringify([
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-Command",
+      "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')",
+    ]);
 }
 
 /** Compare two roots the way the filesystem does: resolved, normalised, case-insensitively. */
@@ -690,7 +704,7 @@ function registrationRows(repoRoot: string, projectRoot: string): StaleEntry[] {
       continue;
     }
     const root = kanmerRootIn(text, rel.endsWith(".toml") ? "toml" : "json");
-    if (rel === STALENESS_PROVIDER_PATHS.codex.registrationFile && isCurrentCodexRegistration(text) === false) {
+    if (process.platform === "win32" && rel === STALENESS_PROVIDER_PATHS.codex.registrationFile && isCurrentCodexRegistration(text) === false) {
       rows.push({
         artefact: "mcp-registration",
         state: "behind",

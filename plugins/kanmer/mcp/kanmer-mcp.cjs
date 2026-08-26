@@ -39822,7 +39822,22 @@ function isCurrentCodexRegistration(text) {
   const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
   const section = nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
   const command = /^[ \t]*command[ \t]*=[ \t]*"([^"]+)"[ \t]*$/m.exec(section)?.[1];
-  return command?.toLowerCase() === "powershell.exe" && /\$env:LOCALAPPDATA/.test(section) && /Kanmer\\\\bin\\\\kanmer-mcp\.cmd/.test(section);
+  const rawArgs = /^[ \t]*args[ \t]*=[ \t]*(\[[\s\S]*?\])/m.exec(section)?.[1];
+  if (!rawArgs) return false;
+  let args;
+  try {
+    args = JSON.parse(rawArgs);
+  } catch {
+    return false;
+  }
+  if (!Array.isArray(args) || !args.every((arg) => typeof arg === "string")) return false;
+  return command?.toLowerCase() === "powershell.exe" && JSON.stringify(args) === JSON.stringify([
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-Command",
+    "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"
+  ]);
 }
 function sameRoot(a, b) {
   const norm = (p) => import_path8.default.resolve(p).replace(/[\\/]+/g, "/").replace(/\/+$/, "").toLowerCase();
@@ -39844,7 +39859,7 @@ function registrationRows(repoRoot, projectRoot2) {
       continue;
     }
     const root = kanmerRootIn(text, rel.endsWith(".toml") ? "toml" : "json");
-    if (rel === STALENESS_PROVIDER_PATHS.codex.registrationFile && isCurrentCodexRegistration(text) === false) {
+    if (process.platform === "win32" && rel === STALENESS_PROVIDER_PATHS.codex.registrationFile && isCurrentCodexRegistration(text) === false) {
       rows.push({
         artefact: "mcp-registration",
         state: "behind",

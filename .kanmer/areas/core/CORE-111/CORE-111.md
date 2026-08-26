@@ -2,13 +2,14 @@
 id: CORE-111
 type: ticket
 title: Publish and validate v0.3.12 stabilization release
-status: review
+status: verifying
 area: core
 assignee: codex-release-controller
 profile: chore
 stageEntered:
   preparing: '2026-08-26T17:41:22.035Z'
   review: '2026-08-26T19:06:01.562Z'
+  verifying: '2026-08-26T20:19:08.201Z'
 taken_at: '2026-08-26T19:04:43.490Z'
 branch: core-111-release-v0-3-12
 worktree: .worktrees/core-111
@@ -25,7 +26,7 @@ prs:
   - '283'
 archived: false
 created: '2026-08-26T17:40:55.916Z'
-updated: '2026-08-26T19:06:01.562Z'
+updated: '2026-08-26T20:19:08.201Z'
 ---
 
 ## Why

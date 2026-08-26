@@ -497,5 +497,15 @@ check(
   resumedExecutionContract ? "reuse + fresh-only creation" : "resume must validate/reuse and skip worktree add/take",
 );
 
+const resumedExecutionSafetyContract =
+  /git -C <recorded-worktree> rev-parse --git-common-dir[\s\S]*git -C <source-repository-root> rev-parse --git-common-dir/i.test(executeSkill) &&
+  /Before editing, call `list_items`[\s\S]*every other active ticket's recorded worktree/i.test(executeSkill) &&
+  /Do not release a paused ticket[\s\S]*retains a worktree or branch/i.test(executeSkill);
+check(
+  "kanmer-execute validates resumed repository, location, and pause handoff",
+  resumedExecutionSafetyContract,
+  resumedExecutionSafetyContract ? "repository + collision + retained-handoff checks" : "resume must verify repository/location and retain paused metadata",
+);
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

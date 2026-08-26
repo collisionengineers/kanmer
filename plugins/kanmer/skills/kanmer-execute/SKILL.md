@@ -49,8 +49,9 @@ get_execution_packet id: <ID>
 
 The packet is read-only and does not take, move, write, dispatch, or create a
 worktree. It is ordered to refuse unsafe execution: a non-ticket/legacy item,
-spike, unmet `leave-preparing` gate, unresolved questions, or an occupied
-ticket. On any `{ready: false, code: "GATE_BLOCKED", ...}` response, quote the
+spike, unmet `leave-preparing` gate, unresolved questions, an incomplete or
+unsafe taken location, or an occupied ticket. On any `{ready: false,
+code: "GATE_BLOCKED", ...}` response, quote the
 exact refusal in the hand-off and stop before every other ticket, Git, or
 document action. The sole retry is an occupancy refusal that includes its
 recorded branch and worktree: submit those two literal values as
@@ -91,16 +92,21 @@ existing worktree without modifying it:
 
 ```sh
 git -C <recorded-worktree> rev-parse --show-toplevel
+git -C <recorded-worktree> rev-parse --git-common-dir
+git -C <source-repository-root> rev-parse --git-common-dir
 git -C <recorded-worktree> branch --show-current
 ```
 
-The first command must resolve that recorded path; the second must exactly
-equal the recorded branch. The path must not be `.worktrees/kanmer` or another
-ticket's recorded worktree. A missing path, detached or different branch, or
-unexpected repository is a stop: record it in scratch and hand off. Do not
-repair it by `git worktree add`, checkout, reset, or `take_ticket`. Existing
-uncommitted changes belong to the resumed ticket and are not a reason to clean
-or recreate it.
+The first command must resolve the recorded worktree; the two common-directory
+values must name the same source repository; and the final command must exactly
+equal the recorded branch. Before editing, call `list_items` and compare the
+candidate against every other active ticket's recorded worktree. It must not be
+`.worktrees/kanmer`, the board root, or another ticket's worktree. A missing
+path, detached or different branch, duplicate location, or unexpected
+repository is a stop: record it in scratch and hand off. Do not repair it by
+`git worktree add`, checkout, reset, or `take_ticket`. Existing uncommitted
+changes belong to the resumed ticket and are not a reason to clean or recreate
+it.
 
 ### Fresh packet
 
@@ -176,12 +182,14 @@ clean up the implementation worktree, or start another ticket.
 
 ## Pausing
 
-If work must pause before review, append the exact resume point — branch,
-worktree, packet version, and last command/result — to execute scratch. Release
-only when another worker may safely resume; release clears the branch and
-worktree fields, so retain the physical worktree and branch as the named resume
-point. A refusal, missing dependency, or user-only decision is a stop, not a
-reason to guess.
+If work must pause before review, leave the ticket taken and append the exact
+resume point — branch, worktree, packet version, and last command/result — to
+execute scratch. A later worker uses the occupied-ticket `resume` confirmation
+and reuses that same recorded location. Do not release a paused ticket that
+retains a worktree or branch: release clears the metadata that makes a resume
+safe. Release is closeout cleanup only after the recorded location is no longer
+an execution target. A refusal, missing dependency, or user-only decision is a
+stop, not a reason to guess.
 
 ---
 

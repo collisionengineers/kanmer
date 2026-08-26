@@ -1959,6 +1959,68 @@ Second proof attempt passed; the first failure is retained.
     refusedMismatchedResume.ready === false && refusedMismatchedResume.reason.includes("other-agent"),
   );
 
+  const duplicateWorktreeId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "duplicate resumed worktree", status: "implementing", profile: "chore", docs_todo: true } })),
+  ).id;
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: duplicateWorktreeId, doc: "plan", content: "# Duplicate worktree" } });
+  await client.callTool({ name: "take_ticket", arguments: { id: duplicateWorktreeId, branch: "duplicate-branch", worktree: ".worktrees/other", assignee: "other-agent" } });
+  const refusedDuplicateWorktree = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: duplicateWorktreeId, resume: { branch: "duplicate-branch", worktree: ".worktrees/other" } },
+    })),
+  );
+  check(
+    "a resumed ticket cannot reuse another active ticket's recorded worktree",
+    refusedDuplicateWorktree.ready === false && refusedDuplicateWorktree.reason.includes(occupiedId),
+  );
+
+  const foreignWorktree = path.join(sandbox, "foreign-worktree");
+  fs.mkdirSync(foreignWorktree);
+  execFileSync("git", ["init"], { cwd: foreignWorktree, windowsHide: true, stdio: "ignore" });
+  const foreignWorktreeId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "foreign resumed worktree", status: "implementing", profile: "chore", docs_todo: true } })),
+  ).id;
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: foreignWorktreeId, doc: "plan", content: "# Foreign worktree" } });
+  await client.callTool({ name: "take_ticket", arguments: { id: foreignWorktreeId, branch: "foreign-branch", worktree: "foreign-worktree", assignee: "other-agent" } });
+  const refusedForeignWorktree = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: foreignWorktreeId, resume: { branch: "foreign-branch", worktree: "foreign-worktree" } },
+    })),
+  );
+  check(
+    "a resumed ticket cannot use a worktree from a different Git repository",
+    refusedForeignWorktree.ready === false && refusedForeignWorktree.reason.includes("different Git repository"),
+  );
+
+  const boardWorktreeId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "board as resumed worktree", status: "implementing", profile: "chore", docs_todo: true } })),
+  ).id;
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: boardWorktreeId, doc: "plan", content: "# Board worktree" } });
+  const refusedBoardWorktree = await client.callTool({
+    name: "take_ticket",
+    arguments: { id: boardWorktreeId, branch: "board-branch", worktree: ".", assignee: "other-agent" },
+  });
+  check(
+    "taking a ticket rejects the board worktree before it can become resumable",
+    refusedBoardWorktree.isError === true && textOf(refusedBoardWorktree).includes("board workspace"),
+    textOf(refusedBoardWorktree),
+  );
+
+  const incompleteTakenId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "incomplete taken ticket", status: "implementing", profile: "chore", docs_todo: true } })),
+  ).id;
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: incompleteTakenId, doc: "plan", content: "# Incomplete taken ticket" } });
+  await client.callTool({ name: "take_ticket", arguments: { id: incompleteTakenId, branch: "incomplete-branch", assignee: "smoke" } });
+  const refusedIncompleteTaken = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: incompleteTakenId } })),
+  );
+  check(
+    "a taken ticket without a worktree is refused before an unusable ready packet",
+    refusedIncompleteTaken.ready === false && refusedIncompleteTaken.reason.includes("incomplete taken-ticket metadata"),
+  );
+
   const del1 = await client.callTool({ name: "delete_item", arguments: { id: "TICK-001" } });
   check(
     "delete_item removes the ticket folder",

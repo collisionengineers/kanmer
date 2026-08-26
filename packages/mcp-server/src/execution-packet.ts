@@ -1,6 +1,12 @@
 import type { GateReport, Item, KanmerStore, TicketDocumentWithVersion } from "@kanmer/core";
+import { execFile } from "node:child_process";
+import path from "node:path";
+import { promisify } from "node:util";
 import type { ProjectIdentity } from "./project-identity.js";
+import { canonicalProjectPath } from "./project-identity.js";
 import { readTicketDocuments } from "./ticket-docs.js";
+
+const execFileAsync = promisify(execFile);
 
 export const EXECUTION_STOP_FALLBACK = "Stop at the checklist; do not merge; do not start another ticket.";
 export const EXECUTION_COMMANDS_FALLBACK =
@@ -149,6 +155,71 @@ function takenDetails(item: Item): ExecutionPacketTicket["taken"] {
     : null;
 }
 
+function isWindowsAbsolute(input: string): boolean {
+  return /^[A-Za-z]:[\\/]/.test(input) || /^\\\\/.test(input);
+}
+
+function canonicalPathFrom(base: string, input: string): string {
+  const absolute = path.isAbsolute(input) || isWindowsAbsolute(input) ? input : path.join(base, input);
+  return canonicalProjectPath(absolute);
+}
+
+function canonicalWorktreePath(project: ProjectIdentity, worktree: string): string {
+  return canonicalPathFrom(project.repoRoot, worktree);
+}
+
+function sameWorktreePath(left: string, right: string): boolean {
+  return process.platform === "win32" ? left.toLowerCase() === right.toLowerCase() : left === right;
+}
+
+type GitCommonDirectory = { ok: true; path: string } | { ok: false; detail: string };
+
+async function gitCommonDirectory(directory: string): Promise<GitCommonDirectory> {
+  try {
+    const { stdout } = await execFileAsync("git", ["-C", directory, "rev-parse", "--git-common-dir"], {
+      encoding: "utf8",
+      windowsHide: true,
+    });
+    const output = stdout.trim();
+    if (!output) return { ok: false, detail: "Git returned an empty common-directory path." };
+    return { ok: true, path: canonicalPathFrom(directory, output) };
+  } catch (error) {
+    return { ok: false, detail: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+async function unsafeTakenWorktree(
+  store: KanmerStore,
+  project: ProjectIdentity,
+  item: Item,
+): Promise<string | null> {
+  if (!item.taken_at || !item.worktree) return null;
+  const candidate = canonicalWorktreePath(project, item.worktree);
+  if (sameWorktreePath(candidate, project.boardRoot)) {
+    return `Ticket "${item.id}" records the board worktree as its execution worktree; this is not a resumable ticket worktree.`;
+  }
+  const conflict = (await store.listItems()).find((other) =>
+    other.id !== item.id && other.worktree !== undefined &&
+    sameWorktreePath(candidate, canonicalWorktreePath(project, other.worktree)),
+  );
+  if (conflict) {
+    return `Ticket "${item.id}" records the same worktree as active ticket "${conflict.id}"; this is not a resumable ticket worktree.`;
+  }
+  const [candidateGit, sourceGit] = await Promise.all([
+    gitCommonDirectory(candidate),
+    gitCommonDirectory(project.repoRoot),
+  ]);
+  if (!candidateGit.ok) {
+    return `Ticket "${item.id}" records a worktree that cannot be verified as a Git checkout: ${candidateGit.detail}`;
+  }
+  if (!sourceGit.ok) {
+    return `The source repository cannot be verified before resuming "${item.id}": ${sourceGit.detail}`;
+  }
+  return sameWorktreePath(candidateGit.path, sourceGit.path)
+    ? null
+    : `Ticket "${item.id}" records a worktree from a different Git repository; this is not a resumable ticket worktree.`;
+}
+
 function refuse(
   project: ProjectIdentity,
   reason: string,
@@ -257,6 +328,18 @@ export async function getExecutionPacket(input: {
   if (unresolvedQuestion(gates)) {
     return refuse(project, "Execution is blocked by unresolved questions.", ["questions-resolved"], item, gates);
   }
+
+  if (item.taken_at && (!item.branch || !item.worktree)) {
+    return refuse(
+      project,
+      `Ticket "${id}" has incomplete taken-ticket metadata; a resumable ticket requires both branch and worktree. Restore the recorded execution location before retrying.`,
+      [],
+      item,
+      gates,
+    );
+  }
+  const unsafeWorktree = await unsafeTakenWorktree(store, project, item);
+  if (unsafeWorktree) return refuse(project, unsafeWorktree, [], item, gates);
 
   // MCP client names are not durable agent identities. A later session must
   // deliberately name the exact branch and worktree already recorded before

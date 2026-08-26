@@ -206,3 +206,29 @@ test("skill prose validator rejects a resumed execution flow that recreates its 
     rmSync(fixture, { recursive: true, force: true });
   }
 });
+
+test("skill prose validator rejects a resumed flow without repository and retained-handoff checks", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-execute-resume-safety-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const execute = join(fixture, "plugins", "kanmer", "skills", "kanmer-execute", "SKILL.md");
+    writeFileSync(
+      execute,
+      readFileSync(execute, "utf8")
+        .replace("git -C <source-repository-root> rev-parse --git-common-dir", "git -C <source-repository-root> status")
+        .replace("Do not release a paused ticket", "Release a paused ticket"),
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /kanmer-execute validates resumed repository, location, and pause handoff/);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});

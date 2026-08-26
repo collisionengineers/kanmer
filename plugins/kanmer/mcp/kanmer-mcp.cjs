@@ -42140,6 +42140,13 @@ async function unsafeTakenWorktree(store2, project, item) {
   if (sameWorktreePath(candidate.path, boardWorktree.path)) {
     return `Ticket "${item.id}" records the board worktree as its execution worktree; this is not a resumable ticket worktree.`;
   }
+  const sourceCheckout = await physicalExistingPath(project.repoRoot);
+  if (!sourceCheckout.ok) {
+    return `The source repository checkout cannot be resolved before resuming "${item.id}": ${sourceCheckout.detail}`;
+  }
+  if (sameWorktreePath(candidate.path, sourceCheckout.path)) {
+    return `Ticket "${item.id}" records the shared source checkout as its execution worktree; this is not a resumable ticket worktree.`;
+  }
   for (const other of await store2.listItems()) {
     if (other.id === item.id || !other.worktree) continue;
     const otherWorktree = await physicalExistingPath(canonicalWorktreePath(project, other.worktree));

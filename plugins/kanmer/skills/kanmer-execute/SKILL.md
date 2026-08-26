@@ -18,8 +18,8 @@ run and stop when the packet says to stop.
    `compat.expectedProject` capability.
 2. Make `get_execution_packet <id>` the **first ticket-specific data call**.
    A refusal is a normal result, not an invitation to reconstruct the packet.
-3. If `ready: false`, quote its exact `code`, `reason`, and `missing` values
-   in scratch and stop, except for the deliberately resumable occupancy case:
+3. If `ready: false`, return its exact `code`, `reason`, and `missing` values
+   in the external hand-off and stop without mutating the ticket, except for the deliberately resumable occupancy case:
    when the refusal names an existing branch and worktree, retry this one call
    with those exact values in `resume`. If that retry refuses, stop. Do not
    call `get_item`, take the ticket, run Git, or write a document after any
@@ -51,8 +51,8 @@ The packet is read-only and does not take, move, write, dispatch, or create a
 worktree. It is ordered to refuse unsafe execution: a non-ticket/legacy item,
 spike, unmet `leave-preparing` gate, unresolved questions, an incomplete or
 unsafe taken location, or an occupied ticket. On any `{ready: false,
-code: "GATE_BLOCKED", ...}` response, quote the
-exact refusal in the hand-off and stop before every other ticket, Git, or
+code: "GATE_BLOCKED", ...}` response, return the
+exact refusal in the external hand-off and stop before every ticket, Git, or
 document action. The sole retry is an occupancy refusal that includes its
 recorded branch and worktree: submit those two literal values as
 `resume: { branch, worktree }` to the same call. That is a deliberate resume
@@ -101,9 +101,10 @@ The first command must resolve the recorded worktree; the two common-directory
 values must name the same source repository; and the final command must exactly
 equal the recorded branch. Before editing, call `list_items` and compare the
 candidate against every other active ticket's recorded worktree. It must not be
-`.worktrees/kanmer`, the board root, or another ticket's worktree. A missing
-path, detached or different branch, duplicate location, or unexpected
-repository is a stop: record it in scratch and hand off. Do not repair it by
+`.worktrees/kanmer`, the board root, the shared source checkout, or another
+ticket's worktree. A missing path, detached or different branch, duplicate
+location, or unexpected repository is a stop: return the observed condition in
+the external hand-off without a ticket write. Do not repair it by
 `git worktree add`, checkout, reset, or `take_ticket`. Existing uncommitted
 changes belong to the resumed ticket and are not a reason to clean or recreate
 it.

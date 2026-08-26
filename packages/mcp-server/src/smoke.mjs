@@ -2028,6 +2028,45 @@ Second proof attempt passed; the first failure is retained.
     refusedAliasedBoardWorktree.ready === false && refusedAliasedBoardWorktree.reason.includes("board worktree"),
   );
 
+  const dedicatedBoardWorktree = path.join(sandbox, ".worktrees", "dedicated-board");
+  execFileSync("git", ["worktree", "add", "-b", "dedicated-board", dedicatedBoardWorktree, expectedBoardBranch], {
+    cwd: sandbox, windowsHide: true, stdio: "ignore",
+  });
+  const dedicatedTransport = new StdioClientTransport({
+    command: runner,
+    args: [serverEntry, "--root", dedicatedBoardWorktree, "--repo-root", sandbox],
+    env: runnerEnv,
+  });
+  const dedicatedClient = new Client({ name: "dedicated-board-smoke", version: "0.0.0" });
+  try {
+    await dedicatedClient.connect(dedicatedTransport);
+    const sourceCheckoutId = JSON.parse(
+      textOf(await dedicatedClient.callTool({
+        name: "create_item",
+        arguments: { title: "source checkout as resumed worktree", status: "implementing", profile: "chore", docs_todo: true },
+      })),
+    ).id;
+    await dedicatedClient.callTool({ name: "set_ticket_doc", arguments: { id: sourceCheckoutId, doc: "plan", content: "# Source checkout" } });
+    await dedicatedClient.callTool({
+      name: "take_ticket",
+      arguments: { id: sourceCheckoutId, branch: "source-checkout-branch", worktree: ".", assignee: "other-agent" },
+    });
+    const refusedSourceCheckout = JSON.parse(
+      textOf(await dedicatedClient.callTool({
+        name: "get_execution_packet",
+        arguments: { id: sourceCheckoutId, resume: { branch: "source-checkout-branch", worktree: "." } },
+      })),
+    );
+    check(
+      "a dedicated-board ticket cannot resume in the shared source checkout",
+      refusedSourceCheckout.ready === false && refusedSourceCheckout.reason.includes("shared source checkout"),
+    );
+  } finally {
+    await dedicatedClient.close();
+    execFileSync("git", ["worktree", "remove", "--force", dedicatedBoardWorktree], { cwd: sandbox, windowsHide: true, stdio: "ignore" });
+    execFileSync("git", ["branch", "-D", "dedicated-board"], { cwd: sandbox, windowsHide: true, stdio: "ignore" });
+  }
+
   const incompleteTakenId = JSON.parse(
     textOf(await client.callTool({ name: "create_item", arguments: { title: "incomplete taken ticket", status: "implementing", profile: "chore", docs_todo: true } })),
   ).id;

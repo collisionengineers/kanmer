@@ -499,12 +499,29 @@ check(
 
 const resumedExecutionSafetyContract =
   /git -C <recorded-worktree> rev-parse --git-common-dir[\s\S]*git -C <source-repository-root> rev-parse --git-common-dir/i.test(executeSkill) &&
-  /Before editing, call `list_items`[\s\S]*every other active ticket's recorded worktree/i.test(executeSkill) &&
+  /Before editing, call `list_items`[\s\S]*every other active ticket's recorded worktree[\s\S]*shared source checkout/i.test(executeSkill) &&
   /Do not release a paused ticket[\s\S]*retains a worktree or branch/i.test(executeSkill);
 check(
   "kanmer-execute validates resumed repository, location, and pause handoff",
   resumedExecutionSafetyContract,
   resumedExecutionSafetyContract ? "repository + collision + retained-handoff checks" : "resume must verify repository/location and retain paused metadata",
+);
+
+const refusalHandoffContract =
+  /If `ready: false`, return its exact `code`, `reason`, and `missing` values[\s\S]*external hand-off and stop without mutating the ticket/i.test(executeSkill) &&
+  /response, return the[\s\S]*external hand-off and stop before every ticket, Git, or[\s\S]*document action/i.test(executeSkill);
+check(
+  "kanmer-execute leaves every ready:false refusal externally handed off and read-only",
+  refusalHandoffContract,
+  refusalHandoffContract ? "no scratch/document write before a ready packet" : "ready:false must return externally without a ticket write",
+);
+
+const closeoutPauseContract =
+  /\*\*Pausing, not closing\*\*[\s\S]*This is not closeout\. Leave the ticket taken,[\s\S]*Do \*\*not\*\* release it/i.test(closeoutSkill);
+check(
+  "kanmer-closeout preserves a paused ticket's resume metadata",
+  closeoutPauseContract,
+  closeoutPauseContract ? "retained-taken pause contract" : "closeout must not release a ticket that will resume",
 );
 
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);

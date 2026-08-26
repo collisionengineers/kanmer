@@ -8,12 +8,12 @@ covers: shipped execution model (backfill)
 What makes parallel agents safe: every taken ticket works in its own checkout.
 
 - R1. `take_ticket` records `taken_at`, `branch`, `worktree` on the ticket; releasing clears them; `force` semantics exist for stale takes and are surfaced, never silent.
-- R2. The execute skill's **first action** is creating `.worktrees/<ID>` + a branch and taking the ticket with them — one worktree per ticket means conflict-free parallelism (kanmer-auto's lanes depend on it).
+- R2. The execute skill's **first ticket-specific action** is `get_execution_packet`. When `ticket.taken` is absent it creates `.worktrees/<ID>` + a branch and takes the ticket with them; when it is present it validates and reuses the exact recorded branch/worktree without creating or taking again. Both lanes require one isolated ticket worktree: never the board worktree or shared source checkout. This preserves conflict-free parallelism (kanmer-auto's lanes depend on it) across an interrupted hand-off.
 - R3. `.worktrees/` is gitignored by setup; dispatch (FRD-010) spawns agents at the repo root and never pre-creates worktrees — the skill owns that.
 - R4. Cards show a taken badge (who/where); the board's take/release verbs exist in the palette and context menu; stale takes are groom's business.
 - R5. Closeout removes the worktree and branch **after** records (`commits`/`prs`/`deployment`) are written — record-keeping first, cleanup second.
 
-**Acceptance (as-built):** take/release round-trip with frontmatter proof; two tickets executed in parallel touch disjoint worktrees; closeout leaves no `.worktrees/<ID>` behind.
+**Acceptance (as-built):** take/release round-trip with frontmatter proof; a fresh packet creates/takes one isolated worktree while an occupied packet resumes the exact recorded one; source checkout, board worktree, foreign repository, and another ticket's worktree are refused; two tickets executed in parallel touch disjoint worktrees; closeout leaves no `.worktrees/<ID>` behind.
 
 Related: FRD-010 · FRD-023 (execute/closeout skills) · baseline architecture doc.
 
@@ -22,8 +22,10 @@ Related: FRD-010 · FRD-023 (execute/closeout skills) · baseline architecture d
 - R1 — `taken_at`/`branch`/`worktree` on `ItemFrontmatterSchema` `core/types.ts:218-254`;
   `takeTicket` writes them and clears on release `core/store.ts:789-825`; `force` is an explicit
   input field `core/types.ts:348-358` and surfaced on the tool `mcp-server/src/index.ts:570`.
-- R2 — the execute skill creates the worktree and branch first
-  `plugins/kanmer/skills/kanmer-execute/SKILL.md:23-40`.
+- R2 — `get_execution_packet` selects the fresh create/take or exact resumed
+  reuse lane; `plugins/kanmer/skills/kanmer-execute/SKILL.md` and
+  `packages/mcp-server/src/execution-packet.ts` reject board/source/foreign or
+  duplicate locations before a packet is ready.
 - R3 — `.worktrees/` gitignored by setup `apps/gui/src/main/kanmerGit.ts:79` and in this repo's own
   `.gitignore`; dispatch spawns at the source root and pre-creates nothing, with the rule stated in
   its docstring `apps/gui/src/main/dispatch.ts:71-72,107-112`.
@@ -34,4 +36,4 @@ Related: FRD-010 · FRD-023 (execute/closeout skills) · baseline architecture d
 
 ## Compiled-workflow end state (ADR-0016)
 
-Before recording a take, the core normalizes relative, absolute, mixed-separator, trailing-separator, and Windows-case path forms. It refuses both the actual board root and the canonical `.worktrees/kanmer` board path. Taking without a worktree remains valid; `force` retains its existing explicit semantics. This is a pure path guard, not a lease or heartbeat mechanism.
+Before recording a take, the core normalizes relative, absolute, mixed-separator, trailing-separator, and Windows-case path forms. It refuses both the actual board root and the canonical `.worktrees/kanmer` board path. Before issuing a resumed packet, the MCP server resolves the candidate, board, source, and active-ticket locations through the filesystem; it refuses the board worktree, shared source checkout, physical aliases, foreign repositories, and duplicate ticket worktrees. Taking without a worktree remains valid; `force` retains its existing explicit semantics. This is a path guard, not a lease or heartbeat mechanism.

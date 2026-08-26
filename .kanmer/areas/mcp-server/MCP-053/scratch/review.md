@@ -2,7 +2,7 @@
 kind: review-attestation
 pr: "282"
 head_sha: "257bb47a6fc9a895a23a5f1b89a723ed6632d71f"
-verdict: pass
+verdict: needs-changes
 reviewer: "mcp053-independent-review"
 independent: true
 plan_hash: "6ac5041eff20b092"
@@ -12,27 +12,37 @@ findings:
     severity: note
     summary: "Exact branch/worktree resumption is an explicit local workflow confirmation, not an authorization boundary between MCP clients."
     disposition: accepted-risk
-    reason: "MCP client names and readable ticket locations are not credentials; the scope deliberately requires an exact recorded pair, preserves every missing or mismatched-pair refusal, and documents the limitation."
+    reason: "MCP client names and readable ticket locations are not credentials; exact values are a deliberate bounded confirmation rather than a security control."
+  - id: F-002
+    severity: major
+    summary: "The advertised resumed path still attempts to create and take an already-recorded worktree and ticket, so it cannot complete."
+    disposition: open
+  - id: F-003
+    severity: major
+    summary: "AGENTS.md does not document the new occupied-ticket resume convention required for contributors and agents."
+    disposition: open
 ---
 
 # Independent review — MCP-053
 
-## Scope and packet alignment
+## Scope and evidence
 
-Reviewed PR #282 at `257bb47a6fc9a895a23a5f1b89a723ed6632d71f` against MCP-053's files map and plan hash `6ac5041eff20b092`. The diff is limited to the execution-packet guard and schema, real stdio coverage, the shipped plugin bundle, and the two caller-facing references. It implements the planned bounded `resume` object: both values must equal the ticket's recorded branch and worktree. The original occupancy path remains a normal refusal for an absent or mismatched pair.
+PR #282 at `257bb47a6fc9a895a23a5f1b89a723ed6632d71f` is narrowly scoped to the execution-packet API, real stdio smoke coverage, plugin bundle, and caller guidance. Independent commands passed: `npm run build:server`; `node packages/mcp-server/src/smoke.mjs` (226/226); and `npm run plugin:check`. `verify` is green for this SHA. The original phase-2 gate raced the board sync and review evidence; it is not a substitute for the open findings below.
 
-## Acceptance evidence
+## Required remediation
 
-- `npm run build:server` — PASS (independent run).
-- `node packages/mcp-server/src/smoke.mjs` — PASS, 226/226 checks; it proves cross-actor refusal, successful exact-pair resume, and mismatched-worktree refusal through real stdio.
-- `npm run plugin:check` — PASS; 37 tools match, shipped bundle bytes match, 12 skill frontmatters parse, and isolated handshake succeeds.
-- A fresh source-server call against the live board as this separate reviewer identity returned a ready packet only when given MCP-053's exact recorded branch/worktree.
-- GitHub `verify` passed for this SHA. There were no GitHub review comments or unresolved review threads.
+### F-002 — major, open
 
-## Finding disposition and residual risk
+The new retry receives a ready packet but `kanmer-execute` then continues into the fresh-start flow: `git worktree add ... -b ...` fails because the exact worktree/branch already exists, and `take_ticket` rejects an existing `taken_at` without force. Split resumed execution from fresh execution: validate and reuse the recorded worktree/branch, and use a supported handoff/release path only if ownership must change. Add execution-level coverage that exercises the full resumed workflow rather than only packet retrieval.
 
-F-001 is accepted risk, not a security defect: ticket locations are already readable by local MCP clients, and the new pair is a deliberate recovery confirmation rather than an identity assertion. The implementation and report state this explicitly. The normal merge gate initially failed before this required review evidence had been written and before the board sync commit existed; it must be re-run against the synchronized board before merge. No implementation blocker or required remediation remains.
+### F-003 — major, open
+
+This change establishes a public packet parameter and a new resume convention. Update AGENTS.md in the same PR so the canonical operating guide describes how an exact resumed packet is validated and reused, consistent with the repository rule requiring command/convention changes to update AGENTS.md.
+
+## Residual risk
+
+F-001 remains accepted risk. The exact pair is a local workflow confirmation, not identity authorization; that is documented and does not excuse the executable resume-path failure in F-002.
 
 ## Verdict
 
-Pass for the reviewed implementation. Do not merge until the re-run `kanmer-gate` and existing `verify` are both green at this same head SHA.
+Needs changes. Do not merge. Re-review against the new PR head after both major findings are resolved and all required checks are green.

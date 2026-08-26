@@ -582,13 +582,57 @@ function rootFromArgs(args: unknown): string | null {
   return typeof next === "string" && next.trim() !== "" ? next : null;
 }
 
+/** Decode the narrow dotted-key shape used by TOML table headers. */
+function tomlTablePath(header: string): string[] | null {
+  const path: string[] = [];
+  let index = 0;
+  while (index < header.length) {
+    while (/[ \t]/.test(header[index] ?? "")) index++;
+    const quote = header[index];
+    let component = "";
+    if (quote === '"' || quote === "'") {
+      index++;
+      let closed = false;
+      while (index < header.length) {
+        const char = header[index++]!;
+        if (char === quote) { closed = true; break; }
+        if (quote === '"' && char === "\\") {
+          const escaped = header[index++];
+          if (escaped === undefined) return null;
+          component += `\\${escaped}`;
+        } else component += char;
+      }
+      if (!closed) return null;
+      if (quote === '"') {
+        try { component = JSON.parse(`"${component}"`) as string; }
+        catch { return null; }
+      }
+    } else {
+      const match = /^[A-Za-z0-9_-]+/.exec(header.slice(index));
+      if (!match) return null;
+      component = match[0];
+      index += component.length;
+    }
+    path.push(component);
+    while (/[ \t]/.test(header[index] ?? "")) index++;
+    if (index === header.length) return path;
+    if (header[index++] !== ".") return null;
+  }
+  return null;
+}
+
 /**
- * Return only Kanmer's TOML MCP table. This accepts TOML's legal trailing
- * header comments while keeping every later table out of the caller's scan.
+ * Return only Kanmer's TOML MCP table. Table components may use any ordinary
+ * TOML key spelling (bare, basic quoted, or literal quoted). Trailing header
+ * comments are accepted while every later table stays out of the scan.
  */
 function kanmerTomlSection(text: string): string | null {
-  const header = /^[ \t]*\[mcp_servers\.kanmer\][ \t]*(?:#[^\r\n]*)?\r?$/m.exec(text);
-  if (!header) return null;
+  const headers = [...text.matchAll(/^[ \t]*\[([^\[\]\r\n]+)\][ \t]*(?:#[^\r\n]*)?\r?$/gm)];
+  const header = headers.find((candidate) => {
+    const path = tomlTablePath(candidate[1]!);
+    return path?.length === 2 && path[0] === "mcp_servers" && path[1] === "kanmer";
+  });
+  if (!header || header.index === undefined) return null;
   const from = header.index + header[0].length;
   const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
   return nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);

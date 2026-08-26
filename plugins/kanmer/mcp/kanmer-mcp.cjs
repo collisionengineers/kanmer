@@ -39782,9 +39782,56 @@ function rootFromArgs(args) {
   const next = args[at + 1];
   return typeof next === "string" && next.trim() !== "" ? next : null;
 }
+function tomlTablePath(header) {
+  const path122 = [];
+  let index = 0;
+  while (index < header.length) {
+    while (/[ \t]/.test(header[index] ?? "")) index++;
+    const quote = header[index];
+    let component = "";
+    if (quote === '"' || quote === "'") {
+      index++;
+      let closed = false;
+      while (index < header.length) {
+        const char = header[index++];
+        if (char === quote) {
+          closed = true;
+          break;
+        }
+        if (quote === '"' && char === "\\") {
+          const escaped = header[index++];
+          if (escaped === void 0) return null;
+          component += `\\${escaped}`;
+        } else component += char;
+      }
+      if (!closed) return null;
+      if (quote === '"') {
+        try {
+          component = JSON.parse(`"${component}"`);
+        } catch {
+          return null;
+        }
+      }
+    } else {
+      const match = /^[A-Za-z0-9_-]+/.exec(header.slice(index));
+      if (!match) return null;
+      component = match[0];
+      index += component.length;
+    }
+    path122.push(component);
+    while (/[ \t]/.test(header[index] ?? "")) index++;
+    if (index === header.length) return path122;
+    if (header[index++] !== ".") return null;
+  }
+  return null;
+}
 function kanmerTomlSection(text) {
-  const header = /^[ \t]*\[mcp_servers\.kanmer\][ \t]*(?:#[^\r\n]*)?\r?$/m.exec(text);
-  if (!header) return null;
+  const headers = [...text.matchAll(/^[ \t]*\[([^\[\]\r\n]+)\][ \t]*(?:#[^\r\n]*)?\r?$/gm)];
+  const header = headers.find((candidate) => {
+    const path122 = tomlTablePath(candidate[1]);
+    return path122?.length === 2 && path122[0] === "mcp_servers" && path122[1] === "kanmer";
+  });
+  if (!header || header.index === void 0) return null;
   const from = header.index + header[0].length;
   const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
   return nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);

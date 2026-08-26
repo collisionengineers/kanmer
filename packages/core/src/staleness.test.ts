@@ -417,6 +417,13 @@ describe("detectStaleness — provider MCP registrations", () => {
     expect(isCurrentCodexRegistration(registration)).toBe(true);
   });
 
+  it("recognizes quoted components in the Kanmer TOML table key", () => {
+    const body = 'command = "powershell.exe"\nargs = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]\n';
+    expect(isCurrentCodexRegistration(`[mcp_servers."kanmer"]\n${body}`)).toBe(true);
+    expect(isCurrentCodexRegistration(`["mcp_servers".kanmer]\n${body}`)).toBe(true);
+    expect(isCurrentCodexRegistration(`['mcp_servers'.'kanmer']\n${body}`)).toBe(true);
+  });
+
   it("reports the legacy cmd.exe Codex descriptor as behind", () => {
     writeAgents();
     put(
@@ -512,6 +519,11 @@ describe("detectStaleness — provider MCP registrations", () => {
         "toml",
       ),
     ).toBe("C:/board");
+  });
+
+  it("reads an explicit root from quoted Kanmer TOML table keys", () => {
+    expect(kanmerRootIn('[mcp_servers."kanmer"]\nargs = ["--root", "C:/one"]\n', "toml")).toBe("C:/one");
+    expect(kanmerRootIn('["mcp_servers".kanmer]\nargs = ["--root", "C:/two"]\n', "toml")).toBe("C:/two");
   });
 });
 

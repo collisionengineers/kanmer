@@ -39824,13 +39824,10 @@ function isCurrentCodexRegistration(text) {
   const command = /^[ \t]*command[ \t]*=[ \t]*"([^"]+)"[ \t]*$/m.exec(section)?.[1];
   const rawArgs = /^[ \t]*args[ \t]*=[ \t]*(\[[\s\S]*?\])/m.exec(section)?.[1];
   if (!rawArgs) return false;
-  let args;
-  try {
-    args = JSON.parse(rawArgs);
-  } catch {
+  const args = parseTomlStringArray(rawArgs);
+  if (args === null) {
     return false;
   }
-  if (!Array.isArray(args) || !args.every((arg) => typeof arg === "string")) return false;
   return command?.toLowerCase() === "powershell.exe" && JSON.stringify(args) === JSON.stringify([
     "-NoProfile",
     "-ExecutionPolicy",
@@ -39838,6 +39835,55 @@ function isCurrentCodexRegistration(text) {
     "-Command",
     "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"
   ]);
+}
+function parseTomlStringArray(source) {
+  let index = 0;
+  const values = [];
+  const skipTrivia = () => {
+    while (index < source.length) {
+      if (/\s/.test(source[index])) {
+        index++;
+        continue;
+      }
+      if (source[index] === "#") {
+        const newline = source.indexOf("\n", index);
+        index = newline === -1 ? source.length : newline + 1;
+        continue;
+      }
+      break;
+    }
+  };
+  skipTrivia();
+  if (source[index++] !== "[") return null;
+  for (; ; ) {
+    skipTrivia();
+    if (source[index] === "]") return values;
+    const quote = source[index++];
+    if (quote !== '"' && quote !== "'") return null;
+    let encoded = "";
+    let closed = false;
+    while (index < source.length) {
+      const char = source[index++];
+      if (char === quote) {
+        closed = true;
+        break;
+      }
+      if (quote === '"' && char === "\\") {
+        const escaped = source[index++];
+        if (escaped === void 0) return null;
+        encoded += `\\${escaped}`;
+      } else encoded += char;
+    }
+    if (!closed) return null;
+    try {
+      values.push(quote === '"' ? JSON.parse(`"${encoded}"`) : encoded);
+    } catch {
+      return null;
+    }
+    skipTrivia();
+    if (source[index] === "]") return values;
+    if (source[index++] !== ",") return null;
+  }
 }
 function sameRoot(a, b) {
   const norm = (p) => import_path8.default.resolve(p).replace(/[\\/]+/g, "/").replace(/\/+$/, "").toLowerCase();

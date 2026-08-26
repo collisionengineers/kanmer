@@ -1,0 +1,1 @@
+# Files\n\n- `packages/mcp-server/src/execution-packet.ts` — distinguish a deliberate resume from competing occupancy.\n- `packages/mcp-server/src/index.ts` — expose only the bounded resume input needed by the packet endpoint.\n- `packages/mcp-server/src/smoke.mjs` — prove exact-worktree resume and competing-agent refusal.

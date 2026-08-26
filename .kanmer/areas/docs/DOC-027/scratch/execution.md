@@ -1,0 +1,3 @@
+## 2026-08-26 — verification environment note
+
+The first `npm run verify` in `.worktrees/doc-027` exited 1 before tests because Node resolved `@kanmer/core` through the parent root checkout's shared `node_modules`, combining the worktree MCP source with incompatible root core dist exports. This was retained as an environmental failure, not changed in this ticket. After `npm ci --ignore-scripts` created isolated worktree dependencies, the rerun exited 0 across the full verification rail. `npm ci` reported 13 existing dependency-audit findings (4 low, 4 moderate, 4 high, 1 critical); no dependency change is in scope for DOC-027.

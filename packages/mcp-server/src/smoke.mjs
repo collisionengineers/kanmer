@@ -93,6 +93,7 @@ try {
   const reconcileTicket = tools.tools.find((t) => t.name === "reconcile_ticket");
   const applyReconciliation = tools.tools.find((t) => t.name === "apply_reconciliation");
   check("reconcile_ticket is read-only", reconcileTicket?.annotations?.readOnlyHint === true);
+  check("reconciliation tools disclose external Git and GitHub reads", reconcileTicket?.annotations?.openWorldHint === true && applyReconciliation?.annotations?.openWorldHint === true);
   check(
     "apply_reconciliation is mutating and project-bound",
     applyReconciliation?.annotations?.readOnlyHint === false && applyReconciliation?.inputSchema?.properties?.expected_project?.type === "string",

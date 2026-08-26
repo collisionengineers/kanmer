@@ -96,6 +96,7 @@ import {
   type ItemFilter,
   type ItemType,
   type ItemWarning,
+  hasLegacyTicketClaim,
   type MovePosition,
   type OpenQuestionCount,
   type ReconciliationProposal,
@@ -969,7 +970,7 @@ export class KanmerStore {
         next = await this.moveItem(id, { status: "done", expectedUpdated: current.updated });
         break;
       case "RELEASE_CLEAN_TERMINAL_CLAIM":
-        if (current.status !== "done" || !current.taken_at || input.proposal.targetStatus !== undefined) {
+        if (current.status !== "done" || !hasLegacyTicketClaim(current) || input.proposal.targetStatus !== undefined) {
           throw new Error(`Reconciliation proposal RELEASE_CLEAN_TERMINAL_CLAIM is not valid for ${id}`);
         }
         next = await this.releaseTicket(id, current.updated);
@@ -979,7 +980,12 @@ export class KanmerStore {
         throw new Error(`Unknown reconciliation action ${exhaustive}`);
       }
     }
-    await appendActivity(this.paths, [this.activity(id, "update", { field: "reconciliation", to: input.proposal.action })]);
+    await appendActivity(this.paths, [
+      this.activity(id, "update", { field: "reconciliation", to: input.proposal.action }),
+      ...(input.proposal.action === "RELEASE_CLEAN_TERMINAL_CLAIM"
+        ? [this.activity(id, "update", { field: "reconciliation-controller", from: current.assignee ?? null, to: null })]
+        : []),
+    ]);
     return next;
   }
 

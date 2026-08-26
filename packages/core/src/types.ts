@@ -434,6 +434,17 @@ export interface Item extends ItemFrontmatter {
   body: string;
 }
 
+/**
+ * A legacy claim is present when any claim-owned field survives. Keep this
+ * predicate shared by reconciliation policy and apply so a partially-written
+ * historic claim cannot be proposed but then rejected (or vice versa).
+ */
+export function hasLegacyTicketClaim(
+  claim: Pick<Item, "taken_at" | "branch" | "worktree">,
+): boolean {
+  return Boolean(claim.taken_at || claim.branch || claim.worktree);
+}
+
 /** Filters accepted by listItems / MCP list_items. */
 export interface ItemFilter {
   type?: ItemType;
@@ -564,8 +575,11 @@ export interface ReconciliationEvidence {
     branch: string | null;
     worktree: string | null;
   };
-  /** Recorded ticket commits, without reachability or history rewriting. */
-  commits: string[];
+  /** Recorded ticket commits and their reachability from the exact merge target. */
+  commits: {
+    values: string[];
+    reachability: "not-applicable" | "reachable" | "unreachable" | "unavailable";
+  };
   pullRequest: {
     state: "absent" | "open" | "merged" | "closed-unmerged" | "unavailable";
     headSha?: string;
@@ -580,9 +594,11 @@ export interface ReconciliationEvidence {
     state: "not-recorded" | "clean" | "dirty" | "missing" | "unavailable";
     recordedWorktree: string | null;
     boardWorktree?: boolean;
+    /** Required before a terminal legacy-claim release; recovery moves do not infer it. */
+    claimIdentity: "not-applicable" | "matches-claim" | "foreign-repository" | "branch-mismatch" | "detached" | "unavailable";
   };
   release: {
-    state: "none" | "superseded" | "contended" | "unavailable";
+    state: "not-applicable" | "superseded" | "contended" | "unavailable";
   };
 }
 

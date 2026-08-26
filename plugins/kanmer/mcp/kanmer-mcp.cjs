@@ -19478,12 +19478,12 @@ var require_readdirp = __commonJS({
     var fs13 = require("fs");
     var { Readable: Readable2 } = require("stream");
     var sysPath = require("path");
-    var { promisify: promisify4 } = require("util");
+    var { promisify: promisify5 } = require("util");
     var picomatch = require_picomatch2();
-    var readdir = promisify4(fs13.readdir);
-    var stat = promisify4(fs13.stat);
-    var lstat2 = promisify4(fs13.lstat);
-    var realpath2 = promisify4(fs13.realpath);
+    var readdir = promisify5(fs13.readdir);
+    var stat = promisify5(fs13.stat);
+    var lstat2 = promisify5(fs13.lstat);
+    var realpath2 = promisify5(fs13.realpath);
     var BANG = "!";
     var RECURSIVE_ERROR_CODE = "READDIRP_RECURSIVE_ERROR";
     var NORMAL_FLOW_ERRORS = /* @__PURE__ */ new Set(["ENOENT", "EPERM", "EACCES", "ELOOP", RECURSIVE_ERROR_CODE]);
@@ -21415,7 +21415,7 @@ var require_nodefs_handler = __commonJS({
     "use strict";
     var fs13 = require("fs");
     var sysPath = require("path");
-    var { promisify: promisify4 } = require("util");
+    var { promisify: promisify5 } = require("util");
     var isBinaryPath = require_is_binary_path();
     var {
       isWindows,
@@ -21436,11 +21436,11 @@ var require_nodefs_handler = __commonJS({
       STAR
     } = require_constants3();
     var THROTTLE_MODE_WATCH = "watch";
-    var open = promisify4(fs13.open);
-    var stat = promisify4(fs13.stat);
-    var lstat2 = promisify4(fs13.lstat);
-    var close = promisify4(fs13.close);
-    var fsrealpath = promisify4(fs13.realpath);
+    var open = promisify5(fs13.open);
+    var stat = promisify5(fs13.stat);
+    var lstat2 = promisify5(fs13.lstat);
+    var close = promisify5(fs13.close);
+    var fsrealpath = promisify5(fs13.realpath);
     var statMethods = { lstat: lstat2, stat };
     var foreach = (val, fn) => {
       if (val instanceof Set) {
@@ -21906,7 +21906,7 @@ var require_fsevents_handler = __commonJS({
     "use strict";
     var fs13 = require("fs");
     var sysPath = require("path");
-    var { promisify: promisify4 } = require("util");
+    var { promisify: promisify5 } = require("util");
     var fsevents;
     try {
       fsevents = require("fsevents");
@@ -21949,9 +21949,9 @@ var require_fsevents_handler = __commonJS({
       IDENTITY_FN
     } = require_constants3();
     var Depth = (value) => isNaN(value) ? {} : { depth: value };
-    var stat = promisify4(fs13.stat);
-    var lstat2 = promisify4(fs13.lstat);
-    var realpath2 = promisify4(fs13.realpath);
+    var stat = promisify5(fs13.stat);
+    var lstat2 = promisify5(fs13.lstat);
+    var realpath2 = promisify5(fs13.realpath);
     var statMethods = { stat, lstat: lstat2 };
     var FSEventsWatchers = /* @__PURE__ */ new Map();
     var consolidateThreshhold = 10;
@@ -22303,7 +22303,7 @@ var require_chokidar = __commonJS({
     var { EventEmitter } = require("events");
     var fs13 = require("fs");
     var sysPath = require("path");
-    var { promisify: promisify4 } = require("util");
+    var { promisify: promisify5 } = require("util");
     var readdirp = require_readdirp();
     var anymatch = require_anymatch().default;
     var globParent = require_glob_parent();
@@ -22346,8 +22346,8 @@ var require_chokidar = __commonJS({
       isMacos,
       isIBMi
     } = require_constants3();
-    var stat = promisify4(fs13.stat);
-    var readdir = promisify4(fs13.readdir);
+    var stat = promisify5(fs13.stat);
+    var readdir = promisify5(fs13.readdir);
     var arrify = (value = []) => Array.isArray(value) ? value : [value];
     var flatten = (list, result = []) => {
       list.forEach((item) => {
@@ -37536,10 +37536,10 @@ var StdioServerTransport = class {
 };
 
 // src/index.ts
-var import_node_child_process3 = require("child_process");
+var import_node_child_process4 = require("child_process");
 var import_node_path8 = __toESM(require("path"), 1);
 var import_node_os = require("os");
-var import_node_util3 = require("util");
+var import_node_util4 = require("util");
 
 // ../core/dist/index.js
 var import_path = __toESM(require("path"), 1);
@@ -37822,6 +37822,9 @@ var ItemFrontmatterSchema = external_exports.object({
   created: TimestampSchema.default(""),
   updated: TimestampSchema.default("")
 }).passthrough();
+function hasLegacyTicketClaim(claim) {
+  return Boolean(claim.taken_at || claim.branch || claim.worktree);
+}
 function validateSourceDeclarations(sources) {
   return SourceDeclarationArraySchema.parse(sources);
 }
@@ -40881,7 +40884,7 @@ var KanmerStore = class {
         next = await this.moveItem(id, { status: "done", expectedUpdated: current.updated });
         break;
       case "RELEASE_CLEAN_TERMINAL_CLAIM":
-        if (current.status !== "done" || !current.taken_at || input.proposal.targetStatus !== void 0) {
+        if (current.status !== "done" || !hasLegacyTicketClaim(current) || input.proposal.targetStatus !== void 0) {
           throw new Error(`Reconciliation proposal RELEASE_CLEAN_TERMINAL_CLAIM is not valid for ${id}`);
         }
         next = await this.releaseTicket(id, current.updated);
@@ -40891,7 +40894,10 @@ var KanmerStore = class {
         throw new Error(`Unknown reconciliation action ${exhaustive}`);
       }
     }
-    await appendActivity(this.paths, [this.activity(id, "update", { field: "reconciliation", to: input.proposal.action })]);
+    await appendActivity(this.paths, [
+      this.activity(id, "update", { field: "reconciliation", to: input.proposal.action }),
+      ...input.proposal.action === "RELEASE_CLEAN_TERMINAL_CLAIM" ? [this.activity(id, "update", { field: "reconciliation-controller", from: current.assignee ?? null, to: null })] : []
+    ]);
     return next;
   }
   /**
@@ -41503,7 +41509,7 @@ function stableEvidence(evidence) {
   return {
     ticket: { ...evidence.ticket },
     claim: { ...evidence.claim },
-    commits: [...evidence.commits],
+    commits: { values: [...evidence.commits.values], reachability: evidence.commits.reachability },
     pullRequest: { ...evidence.pullRequest },
     proof: { ...evidence.proof },
     workspace: { ...evidence.workspace },
@@ -41525,14 +41531,19 @@ function proposal(evidence, action, targetStatus) {
 function reconcileEvidence(input) {
   const evidence = stableEvidence(input);
   const findings = [];
-  const hasClaim = evidence.ticket.taken || evidence.claim.state === "legacy";
+  const hasClaim = evidence.ticket.taken || hasLegacyTicketClaim({
+    taken_at: evidence.claim.takenAt ?? void 0,
+    branch: evidence.claim.branch ?? void 0,
+    worktree: evidence.claim.worktree ?? void 0
+  });
+  const dirtyWorkspace = evidence.workspace.state === "dirty";
   if (evidence.workspace.boardWorktree) {
     findings.push(finding("BOARD_WORKTREE_PROTECTED", "error", "the recorded workspace is the Kanmer board worktree; reconciliation refuses every action"));
     return { evidence, findings, proposal: null };
   }
-  if (evidence.workspace.state === "dirty") {
-    findings.push(finding("DIRTY_WORKSPACE_PRESERVED", "warning", "the recorded workspace is dirty; reconciliation preserves it and proposes no cleanup"));
-    return { evidence, findings, proposal: null };
+  if (dirtyWorkspace) {
+    findings.push(finding("DIRTY_WORKSPACE_PRESERVED", "warning", "the recorded workspace is dirty; reconciliation preserves it and never proposes cleanup"));
+    if (evidence.ticket.status !== "review") return { evidence, findings, proposal: null };
   }
   if (evidence.workspace.state === "missing" && hasClaim) {
     findings.push(finding("WORKSPACE_MISSING", "warning", "the taken ticket's workspace is missing; reconciliation records no-surviving-workspace evidence and proposes no destructive action"));
@@ -41546,7 +41557,7 @@ function reconcileEvidence(input) {
     findings.push(finding("RELEASE_EVIDENCE_PRESERVED", "warning", "release ownership is contended or superseded; reconciliation preserves immutable evidence and proposes no action"));
     return { evidence, findings, proposal: null };
   }
-  if (evidence.pullRequest.state === "unavailable" || evidence.pullRequest.requiredChecks === "unavailable" || evidence.workspace.state === "unavailable" || evidence.release.state === "unavailable") {
+  if (evidence.pullRequest.state === "unavailable" || evidence.pullRequest.requiredChecks === "unavailable" || evidence.commits.reachability === "unavailable" || evidence.workspace.state === "unavailable" || evidence.release.state === "unavailable") {
     findings.push(finding("EVIDENCE_INCONCLUSIVE", "warning", "required Git, GitHub, CI, workspace or release evidence is unavailable; reconciliation does not invent a recovery action"));
     return { evidence, findings, proposal: null };
   }
@@ -41556,6 +41567,10 @@ function reconcileEvidence(input) {
   }
   if (evidence.pullRequest.requiredChecks === "fail" || evidence.pullRequest.requiredChecks === "pending") {
     findings.push(finding("REQUIRED_CHECKS_NOT_GREEN", "warning", "required checks are failing or pending; reconciliation does not advance the ticket"));
+    return { evidence, findings, proposal: null };
+  }
+  if (evidence.commits.reachability === "unreachable") {
+    findings.push(finding("RECORDED_COMMIT_UNREACHABLE", "error", "a recorded ticket commit is not reachable from the exact merged pull-request target; reconciliation does not advance the ticket"));
     return { evidence, findings, proposal: null };
   }
   if (evidence.ticket.status === "review") {
@@ -41586,9 +41601,13 @@ function reconcileEvidence(input) {
       return { evidence, findings, proposal: null };
     }
   }
-  if (evidence.ticket.status === "done" && hasClaim && evidence.workspace.state === "clean") {
+  if (evidence.ticket.status === "done" && hasClaim && evidence.workspace.state === "clean" && evidence.workspace.claimIdentity === "matches-claim") {
     findings.push(finding("CLEAN_TERMINAL_CLAIM", "info", "a completed ticket still has a clean recorded claim; release the claim but leave physical cleanup to closeout"));
     return { evidence, findings, proposal: proposal(evidence, "RELEASE_CLEAN_TERMINAL_CLAIM") };
+  }
+  if (evidence.ticket.status === "done" && hasClaim && evidence.workspace.state === "clean") {
+    findings.push(finding("TERMINAL_CLAIM_IDENTITY_UNVERIFIED", "warning", "the terminal workspace is clean but does not prove the recorded repository and branch identity; reconciliation preserves the claim"));
+    return { evidence, findings, proposal: null };
   }
   findings.push(finding("NO_RECONCILIATION_NEEDED", "info", "the supplied evidence does not describe a safe reconciliation action"));
   return { evidence, findings, proposal: null };
@@ -42706,105 +42725,237 @@ async function getExecutionPacket(input) {
 }
 
 // src/reconciliation.ts
-var import_node_child_process2 = require("child_process");
+var import_node_child_process3 = require("child_process");
 var import_promises10 = __toESM(require("fs/promises"), 1);
 var import_node_path6 = __toESM(require("path"), 1);
-var import_node_util2 = require("util");
+var import_node_util3 = require("util");
 var import_gray_matter3 = __toESM(require_gray_matter(), 1);
+
+// src/git-reachability.mjs
+var import_node_child_process2 = require("child_process");
+var import_node_util2 = require("util");
 var execFile3 = (0, import_node_util2.promisify)(import_node_child_process2.execFile);
+var FULL_SHA_RE = /^[0-9a-f]{40}$/i;
+var COMMIT_ID_RE = /^[0-9a-f]{4,40}$/i;
+async function collectCommitReachabilityFromTarget({ commits, targetSha, cwd, run = execFile3 }) {
+  if (!FULL_SHA_RE.test(targetSha)) {
+    throw new Error("pull request merge SHA is not a full hexadecimal Git object id");
+  }
+  const unique = [...new Set(commits.map((sha) => String(sha).trim().toLowerCase()))].sort();
+  return Promise.all(unique.map(async (sha) => {
+    if (!COMMIT_ID_RE.test(sha)) {
+      return { sha, state: "indeterminate", diagnostic: "ticket commit is not a valid hexadecimal Git object id or abbreviation" };
+    }
+    try {
+      await run("git", ["merge-base", "--is-ancestor", sha, targetSha], {
+        cwd,
+        timeout: 15e3,
+        windowsHide: true,
+        maxBuffer: 32 * 1024
+      });
+      return { sha, state: "reachable" };
+    } catch (error2) {
+      const code = typeof error2?.code === "number" ? error2.code : Number.NaN;
+      if (code === 1) return { sha, state: "unreachable" };
+      const diagnostic = String(error2?.stderr || error2?.message || "git ancestry query failed").replace(/[\r\n]+/g, " ").slice(0, 240);
+      return { sha, state: "indeterminate", diagnostic };
+    }
+  }));
+}
+
+// src/reconciliation.ts
+var execFile4 = (0, import_node_util3.promisify)(import_node_child_process3.execFile);
 function normalPath(value) {
   return import_node_path6.default.resolve(value).replace(/[\\/]+$/, "").toLowerCase();
 }
-function prNumber(value) {
-  const trimmed = value.trim();
-  if (/^\d+$/.test(trimmed)) return trimmed;
-  const url = /\/pull\/(\d+)\/?$/.exec(trimmed);
-  return url?.[1] ?? null;
+function runErrorCode(error2) {
+  const code = error2?.code;
+  return typeof code === "number" || typeof code === "string" ? code : void 0;
+}
+function errorStdout(error2) {
+  const value = error2?.stdout;
+  return typeof value === "string" ? value : null;
+}
+function validTimestamp(value) {
+  const text = value instanceof Date ? value.toISOString() : value;
+  return typeof text === "string" && text.trim().length > 0 && !Number.isNaN(Date.parse(text));
 }
 function proofEvidence(raw) {
   if (!raw) return { state: "absent" };
   try {
     const parsed = (0, import_gray_matter3.default)(raw).data;
-    if (parsed.kind !== "proof-record" || typeof parsed.result !== "string") return { state: "invalid" };
+    if (parsed.kind !== "proof-record" || typeof parsed.result !== "string" || typeof parsed.merged_sha !== "string" || !parsed.merged_sha.trim() || typeof parsed.environment !== "string" || !parsed.environment.trim() || !validTimestamp(parsed.verified_at) || !Array.isArray(parsed.attempts)) return { state: "invalid" };
     const result = parsed.result.trim().toUpperCase();
-    if (result === "PASS") return { state: "pass", ...typeof parsed.merged_sha === "string" ? { mergedSha: parsed.merged_sha } : {} };
-    if (result === "FAIL") return { state: "fail", ...typeof parsed.merged_sha === "string" ? { mergedSha: parsed.merged_sha } : {} };
+    const mergedSha = parsed.merged_sha.trim();
+    if (result === "PASS") return { state: "pass", mergedSha };
+    if (result === "FAIL") return { state: "fail", mergedSha };
     return { state: "invalid" };
   } catch {
     return { state: "invalid" };
   }
 }
-function pullRequestEvidence(raw) {
+function requiredChecksEvidence(raw) {
+  if (!Array.isArray(raw)) return "unavailable";
+  if (raw.length === 0) return "not-applicable";
+  const checks = raw.map((check2) => {
+    const value = check2;
+    return {
+      bucket: typeof value.bucket === "string" ? value.bucket.toLowerCase() : "",
+      state: typeof value.state === "string" ? value.state.toLowerCase() : ""
+    };
+  });
+  if (checks.some((check2) => check2.bucket === "fail" || ["failure", "cancelled", "timed_out", "action_required", "error"].includes(check2.state))) return "fail";
+  if (checks.some((check2) => check2.bucket === "pending" || ["pending", "queued", "in_progress", "requested", "waiting"].includes(check2.state))) return "pending";
+  if (checks.every((check2) => check2.bucket === "pass" || check2.bucket === "skipping" || ["success", "neutral", "skipped"].includes(check2.state))) return "pass";
+  return "unavailable";
+}
+function pullRequestEvidence(raw, requiredChecks) {
   if (!raw || typeof raw !== "object") return { state: "unavailable", requiredChecks: "unavailable" };
   const value = raw;
   const state = value.state === "MERGED" ? "merged" : value.state === "CLOSED" ? "closed-unmerged" : value.state === "OPEN" ? "open" : "unavailable";
-  const checks = Array.isArray(value.statusCheckRollup) ? value.statusCheckRollup : null;
-  let requiredChecks = "unavailable";
-  if (checks && checks.length > 0) {
-    const conclusions = checks.map((check2) => {
-      const c = check2;
-      return { status: typeof c.status === "string" ? c.status.toUpperCase() : "", conclusion: typeof c.conclusion === "string" ? c.conclusion.toUpperCase() : "" };
-    });
-    if (conclusions.some((check2) => ["FAILURE", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED"].includes(check2.conclusion))) requiredChecks = "fail";
-    else if (conclusions.every((check2) => check2.status === "COMPLETED" && ["SUCCESS", "NEUTRAL", "SKIPPED"].includes(check2.conclusion))) requiredChecks = "pass";
-    else requiredChecks = "pending";
-  }
   const mergeSha = typeof value.mergeCommit?.oid === "string" && value.mergeCommit.oid ? value.mergeCommit.oid : void 0;
   const headSha = typeof value.headRefOid === "string" && value.headRefOid ? value.headRefOid : void 0;
   return { state, requiredChecks, ...headSha ? { headSha } : {}, ...mergeSha ? { mergeSha } : {} };
 }
-async function workspaceEvidence(store2, worktree, run) {
-  if (!worktree) return { state: "not-recorded", recordedWorktree: null };
-  const candidate = import_node_path6.default.resolve(store2.paths.repoRoot, worktree);
-  if (normalPath(candidate) === normalPath(store2.paths.projectRoot)) return { state: "unavailable", recordedWorktree: worktree, boardWorktree: true };
+function selectorForRecordedPr(value, repo) {
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) return { key: repo.toLowerCase() + "#" + trimmed, selector: trimmed };
   try {
-    await import_promises10.default.stat(candidate);
+    const url = new URL(trimmed);
+    if (url.protocol !== "https:" || url.hostname.toLowerCase() !== "github.com" || url.search || url.hash) return null;
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (parts.length !== 4 || parts[2] !== "pull" || !/^\d+$/.test(parts[3] ?? "")) return null;
+    if (`${parts[0]}/${parts[1]}`.toLowerCase() !== repo.toLowerCase()) return null;
+    return { key: repo.toLowerCase() + "#" + parts[3], selector: trimmed };
   } catch {
-    return { state: "missing", recordedWorktree: worktree };
-  }
-  try {
-    const { stdout } = await run("git", ["-C", candidate, "status", "--porcelain"], { cwd: store2.paths.repoRoot, windowsHide: true });
-    return { state: stdout.trim() ? "dirty" : "clean", recordedWorktree: worktree };
-  } catch {
-    return { state: "unavailable", recordedWorktree: worktree };
+    return null;
   }
 }
-async function collectReconciliationEvidence(store2, id, run = execFile3) {
-  const item = await store2.getItem(id);
-  if (!item || item.type !== "ticket") throw new Error(`No ticket with id "${id}"`);
-  const firstPr = item.prs?.[0];
-  let pullRequest;
-  if (!firstPr) {
-    pullRequest = { state: "absent", requiredChecks: "not-applicable" };
-  } else {
-    const number3 = prNumber(firstPr);
-    if (!number3) pullRequest = { state: "unavailable", requiredChecks: "unavailable" };
-    else {
-      try {
-        const { stdout } = await run("gh", ["pr", "view", number3, "--json", "state,headRefOid,mergeCommit,statusCheckRollup"], { cwd: store2.paths.repoRoot, windowsHide: true });
-        pullRequest = pullRequestEvidence(JSON.parse(stdout));
-      } catch {
-        pullRequest = { state: "unavailable", requiredChecks: "unavailable" };
-      }
+async function sourceRepository(store2, run) {
+  try {
+    const { stdout } = await run("gh", ["repo", "view", "--json", "nameWithOwner"], { cwd: store2.paths.repoRoot, windowsHide: true });
+    const name = JSON.parse(stdout).nameWithOwner;
+    return typeof name === "string" && /^[^/]+\/[^/]+$/.test(name) ? name : null;
+  } catch {
+    return null;
+  }
+}
+async function requiredChecksFor(store2, selector, run) {
+  try {
+    const { stdout } = await run("gh", ["pr", "checks", selector, "--required", "--json", "state,bucket"], { cwd: store2.paths.repoRoot, windowsHide: true });
+    return requiredChecksEvidence(JSON.parse(stdout));
+  } catch (error2) {
+    const stdout = errorStdout(error2);
+    if (!stdout) return "unavailable";
+    try {
+      return requiredChecksEvidence(JSON.parse(stdout));
+    } catch {
+      return "unavailable";
     }
   }
+}
+async function collectPullRequestEvidence(store2, refs, run) {
+  if (refs.length === 0) return { state: "absent", requiredChecks: "not-applicable" };
+  const repo = await sourceRepository(store2, run);
+  if (!repo) return { state: "unavailable", requiredChecks: "unavailable" };
+  const candidates = refs.map((reference) => selectorForRecordedPr(reference, repo));
+  if (candidates.some((candidate) => candidate === null)) return { state: "unavailable", requiredChecks: "unavailable" };
+  const selectorsByKey = /* @__PURE__ */ new Map();
+  for (const candidate of candidates) {
+    const existing = selectorsByKey.get(candidate.key);
+    if (!existing || candidate.selector.includes("://")) selectorsByKey.set(candidate.key, candidate);
+  }
+  const selectors = [...selectorsByKey.values()];
+  const observed = [];
+  for (const { selector } of selectors) {
+    try {
+      const { stdout } = await run("gh", ["pr", "view", selector, "--json", "state,headRefOid,mergeCommit"], { cwd: store2.paths.repoRoot, windowsHide: true });
+      const raw = JSON.parse(stdout);
+      observed.push({ selector, raw, evidence: pullRequestEvidence(raw, "unavailable") });
+    } catch {
+      return { state: "unavailable", requiredChecks: "unavailable" };
+    }
+  }
+  const exactly = (state) => observed.filter((entry) => entry.evidence.state === state);
+  const open = exactly("open");
+  const merged = exactly("merged");
+  const closed = exactly("closed-unmerged");
+  const selected = open.length === 1 ? open[0] : open.length > 1 ? void 0 : merged.length === 1 ? merged[0] : merged.length > 1 ? void 0 : closed.length === 1 ? closed[0] : void 0;
+  if (!selected) return { state: "unavailable", requiredChecks: "unavailable" };
+  return pullRequestEvidence(selected.raw, await requiredChecksFor(store2, selected.selector, run));
+}
+async function workspaceEvidence(store2, worktree, branch, run, stat = import_promises10.default.stat) {
+  if (!worktree) return { state: "not-recorded", recordedWorktree: null, claimIdentity: "not-applicable" };
+  const candidate = import_node_path6.default.resolve(store2.paths.repoRoot, worktree);
+  if (normalPath(candidate) === normalPath(store2.paths.projectRoot)) return { state: "unavailable", recordedWorktree: worktree, boardWorktree: true, claimIdentity: "unavailable" };
+  try {
+    await stat(candidate);
+  } catch (error2) {
+    return {
+      state: runErrorCode(error2) === "ENOENT" ? "missing" : "unavailable",
+      recordedWorktree: worktree,
+      claimIdentity: "unavailable"
+    };
+  }
+  let repository;
+  let status;
+  try {
+    ({ stdout: repository } = await run("git", ["-C", candidate, "rev-parse", "--show-toplevel"], { cwd: store2.paths.repoRoot, windowsHide: true }));
+    ({ stdout: status } = await run("git", ["-C", candidate, "status", "--porcelain"], { cwd: store2.paths.repoRoot, windowsHide: true }));
+  } catch {
+    return { state: "unavailable", recordedWorktree: worktree, claimIdentity: "unavailable" };
+  }
+  let claimIdentity;
+  if (normalPath(repository.trim()) !== normalPath(store2.paths.repoRoot)) claimIdentity = "foreign-repository";
+  else if (!branch) claimIdentity = "branch-mismatch";
+  else {
+    try {
+      const { stdout } = await run("git", ["-C", candidate, "symbolic-ref", "--quiet", "--short", "HEAD"], { cwd: store2.paths.repoRoot, windowsHide: true });
+      claimIdentity = stdout.trim() === branch ? "matches-claim" : "branch-mismatch";
+    } catch (error2) {
+      claimIdentity = runErrorCode(error2) === 1 ? "detached" : "unavailable";
+    }
+  }
+  return { state: status.trim() ? "dirty" : "clean", recordedWorktree: worktree, claimIdentity };
+}
+async function commitEvidence(commits, pullRequest, store2, run) {
+  const values = [...commits];
+  if (values.length === 0 || pullRequest.state !== "merged" || !pullRequest.mergeSha) return { values, reachability: "not-applicable" };
+  try {
+    const results = await collectCommitReachabilityFromTarget({
+      commits: values,
+      targetSha: pullRequest.mergeSha,
+      cwd: store2.paths.repoRoot,
+      run: (command, args) => run(command, args, { cwd: store2.paths.repoRoot, windowsHide: true })
+    });
+    if (results.some((result) => result.state === "unreachable")) return { values, reachability: "unreachable" };
+    if (results.every((result) => result.state === "reachable")) return { values, reachability: "reachable" };
+    return { values, reachability: "unavailable" };
+  } catch {
+    return { values, reachability: "unavailable" };
+  }
+}
+async function collectReconciliationEvidence(store2, id, run = execFile4) {
+  const item = await store2.getItem(id);
+  if (!item || item.type !== "ticket") throw new Error(`No ticket with id "${id}"`);
+  const pullRequest = await collectPullRequestEvidence(store2, item.prs ?? [], run);
   return {
     ticket: { id: item.id, status: item.status, updated: item.updated, taken: Boolean(item.taken_at || item.branch || item.worktree) },
     claim: {
       state: item.taken_at || item.branch || item.worktree ? "legacy" : "unclaimed",
-      controller: null,
+      controller: item.assignee || null,
       worker: item.assignee || null,
       takenAt: item.taken_at ?? null,
       branch: item.branch ?? null,
       worktree: item.worktree ?? null
     },
-    commits: [...item.commits ?? []],
+    commits: await commitEvidence(item.commits ?? [], pullRequest, store2, run),
     pullRequest,
     proof: proofEvidence(await store2.getDoc(id, "proof")),
-    workspace: await workspaceEvidence(store2, item.worktree, run),
-    // CORE-116 owns persisted release state. CORE-113 reports a stable neutral
-    // value until that successor makes release evidence observable.
-    release: { state: "none" }
+    workspace: await workspaceEvidence(store2, item.worktree, item.branch, run),
+    // CORE-116 owns persisted release attempts. This collector must never
+    // manufacture a neutral observation for evidence it cannot inspect.
+    release: { state: "not-applicable" }
   };
 }
 async function reconcileTicket(store2, id, run) {
@@ -43508,10 +43659,10 @@ function validateLlmsSource(source) {
 }
 
 // src/index.ts
-var execFile4 = (0, import_node_util3.promisify)(import_node_child_process3.execFile);
+var execFile5 = (0, import_node_util4.promisify)(import_node_child_process4.execFile);
 async function inspectBoardBranch(root) {
   try {
-    const { stdout } = await execFile4("git", ["symbolic-ref", "--short", "HEAD"], {
+    const { stdout } = await execFile5("git", ["symbolic-ref", "--short", "HEAD"], {
       cwd: root,
       windowsHide: true
     });
@@ -43952,7 +44103,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
       title: "Dry-run ticket reconciliation",
       description: "Read one ticket's board, proof, workspace, GitHub PR and required-check facts, then return a deterministic safe recovery proposal or an explicit inconclusive/refusal result. This is dry-run only: it never mutates the board, Git, workspace, checks or release state. The request selects only an existing ticket id; it cannot supply a path, command, executable or project root.",
       inputSchema: { id: external_exports.string().describe("Existing ticket id") },
-      annotations: { readOnlyHint: true, openWorldHint: false }
+      annotations: { readOnlyHint: true, openWorldHint: true }
     },
     guard(async ({ id }) => ok(await reconcileTicket(store, id)))
   );
@@ -43966,7 +44117,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
         expected_updated: external_exports.string().describe("Ticket updated timestamp returned by reconcile_ticket"),
         proposal_id: external_exports.string().length(64).describe("Proposal id returned by reconcile_ticket")
       },
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }
     },
     write(async ({ id, expected_updated, proposal_id }) => ok(await applyReconciliation(store, { id, expectedUpdated: expected_updated, proposalId: proposal_id })))
   );

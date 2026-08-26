@@ -677,7 +677,7 @@ server.registerTool(
     description:
       "Read one ticket's board, proof, workspace, GitHub PR and required-check facts, then return a deterministic safe recovery proposal or an explicit inconclusive/refusal result. This is dry-run only: it never mutates the board, Git, workspace, checks or release state. The request selects only an existing ticket id; it cannot supply a path, command, executable or project root.",
     inputSchema: { id: z.string().describe("Existing ticket id") },
-    annotations: { readOnlyHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: true, openWorldHint: true },
   },
   guard(async ({ id }) => ok(await reconcileTicket(store, id))),
 );
@@ -693,7 +693,7 @@ server.registerTool(
       expected_updated: z.string().describe("Ticket updated timestamp returned by reconcile_ticket"),
       proposal_id: z.string().length(64).describe("Proposal id returned by reconcile_ticket"),
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
   },
   write(async ({ id, expected_updated, proposal_id }) =>
     ok(await applyTicketReconciliation(store, { id, expectedUpdated: expected_updated, proposalId: proposal_id }))),

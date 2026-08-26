@@ -216,6 +216,16 @@ from Connect** — press **Connect** in the Kanmer desktop app (it writes
 `<your project>/.codex/config.toml` for you), or run `codex mcp add`. Nothing
 else is needed, and nothing is missing: that is the whole codex setup.
 
+On Windows, the project registration starts the installer-owned launcher with
+`powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& (Join-Path
+$env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"`. Its health probe runs
+`$ErrorActionPreference = 'Stop'; & (Join-Path $env:LOCALAPPDATA
+'Kanmer\\bin\\kanmer-mcp.cmd') --probe; exit $LASTEXITCODE`, so a missing
+launcher is a failed health check rather than a non-terminating PowerShell error.
+It is deliberately
+rootless and portable: do not replace it with an absolute user path or a
+`cmd.exe /c` wrapper. See `examples/codex-config.toml` for the complete entry.
+
 **Antigravity** uses its native user-scoped plugin. `agy plugin install
 ./plugins/kanmer` gives you the twelve skills and the MCP descriptor; Kanmer
 Connect validates and installs this plugin, proves a bound `get_status` call,

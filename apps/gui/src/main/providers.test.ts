@@ -339,16 +339,16 @@ describe("codex project-scoped TOML registration (FRD-012 R1)", () => {
   it("defines one rootless, byte-identical portable Codex entry with no env", () => {
     const portable = codexPortableInvocation();
     expect(portable).toEqual({
-      command: "cmd.exe",
-      args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"'],
+      command: "powershell.exe",
+      args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"],
       env: {},
     });
     const parsed = TOML.parse(reg.merge(null, portable)) as Record<string, any>;
     expect(parsed).toEqual({
       mcp_servers: {
         kanmer: {
-          command: "cmd.exe",
-          args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"'],
+          command: "powershell.exe",
+          args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"],
         },
       },
     });
@@ -363,7 +363,7 @@ describe("codex project-scoped TOML registration (FRD-012 R1)", () => {
     const configured = codexPortableInvocation(" release-board ");
     const parsed = TOML.parse(reg.merge(null, configured)) as Record<string, any>;
     expect(parsed.mcp_servers.kanmer).toMatchObject({
-      command: "cmd.exe",
+      command: "powershell.exe",
       env: { KANMER_BOARD_BRANCH: "release-board" },
     });
     expect(parsed.mcp_servers.kanmer).not.toHaveProperty("cwd");
@@ -373,12 +373,12 @@ describe("codex project-scoped TOML registration (FRD-012 R1)", () => {
   it("creates a fresh probe descriptor without changing the registration", () => {
     const probe = codexPortableProbeInvocation();
     expect(probe).toEqual({
-      command: "cmd.exe",
-      args: ["/d", "/s", "/c", 'call "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe'],
+      command: "powershell.exe",
+      args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "$ErrorActionPreference = 'Stop'; & (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd') --probe; exit $LASTEXITCODE"],
       env: {},
     });
     const normal = codexPortableInvocation();
-    expect(normal.args).toEqual(["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"']);
+    expect(normal.args).toEqual(["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"]);
   });
 
   it("preserves unknown tables, unknown keys and other MCP servers", () => {

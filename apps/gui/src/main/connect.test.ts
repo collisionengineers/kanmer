@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -5,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyManagedBlock } from "./agentsBlock.js";
 import { remoteProjectIdentity } from "./remoteAccess/identity.js";
-import { q } from "./providers.js";
+import { codexPortableInvocation, q } from "./providers.js";
 
 vi.mock("electron", () => ({ app: { isPackaged: false, getAppPath: () => process.cwd() } }));
 
@@ -580,8 +581,8 @@ describe("portable Codex launcher contract (GUI-100)", () => {
   it("selects one fresh rootless invocation for Codex and preserves installed Electron for other providers", () => {
     const codex = serverInvocation("codex", "C:/board-a", "C:/source-a");
     expect(codex).toEqual({
-      command: "cmd.exe",
-      args: ["/d", "/s", "/c", '"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd"'],
+      command: "powershell.exe",
+      args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"],
       env: { KANMER_BOARD_BRANCH: "kanmer-board" },
     });
     const second = serverInvocation("codex", "D:/other-board", "D:/other-source");
@@ -609,13 +610,13 @@ describe("portable Codex launcher contract (GUI-100)", () => {
 
     expect(result.ok).toBe(true);
     expect(result.output).toBe("Kanmer MCP launcher: healthy");
+    expect(result.command).toBe("powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '$ErrorActionPreference = ''Stop''; & (Join-Path $env:LOCALAPPDATA ''Kanmer\\bin\\kanmer-mcp.cmd'') --probe; exit $LASTEXITCODE'");
     expect(calls).toEqual([{
-      file: "cmd.exe",
-      args: ["/d", "/s", "/c", 'call "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe'],
+      file: "powershell.exe",
+      args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "$ErrorActionPreference = 'Stop'; & (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd') --probe; exit $LASTEXITCODE"],
       options: {
         cwd: "C:/workspace",
         windowsHide: true,
-        windowsVerbatimArguments: true,
         timeout: 10_000,
         maxBuffer: 32 * 1024,
       },
@@ -724,7 +725,7 @@ describe("portable Codex launcher contract (GUI-100)", () => {
     testProviders.delete("mcp-114");
   });
 
-  it.runIf(process.platform === "win32")("crosses the real Node to cmd.exe launcher boundary", async () => {
+  it.runIf(process.platform === "win32")("crosses the real Node to PowerShell launcher boundary", async () => {
     const localAppData = await tempRoot();
     const launcher = join(localAppData, "Kanmer", "bin", "kanmer-mcp.cmd");
     await mkdir(dirname(launcher), { recursive: true });
@@ -736,13 +737,99 @@ describe("portable Codex launcher contract (GUI-100)", () => {
       const result = await probeCodexLauncher(localAppData);
       expect(result).toMatchObject({
         ok: true,
-        command: 'cmd.exe /d /s /c call "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd" --probe',
+        command: "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '$ErrorActionPreference = ''Stop''; & (Join-Path $env:LOCALAPPDATA ''Kanmer\\bin\\kanmer-mcp.cmd'') --probe; exit $LASTEXITCODE'",
         output: "Kanmer MCP launcher: healthy",
       });
     } finally {
       if (previous === undefined) delete process.env.LOCALAPPDATA;
       else process.env.LOCALAPPDATA = previous;
     }
+  });
+
+  it.runIf(process.platform === "win32")("propagates the launcher probe's non-zero exit status", async () => {
+    const localAppData = await tempRoot();
+    const launcher = join(localAppData, "Kanmer", "bin", "kanmer-mcp.cmd");
+    await mkdir(dirname(launcher), { recursive: true });
+    await writeFile(launcher, "@echo off\r\nexit /b 19\r\n", "utf8");
+
+    const previous = process.env.LOCALAPPDATA;
+    process.env.LOCALAPPDATA = localAppData;
+    try {
+      await expect(probeCodexLauncher(localAppData)).resolves.toMatchObject({ ok: false });
+    } finally {
+      if (previous === undefined) delete process.env.LOCALAPPDATA;
+      else process.env.LOCALAPPDATA = previous;
+    }
+  });
+
+  it.runIf(process.platform === "win32")("fails the probe when the portable launcher is missing", async () => {
+    const localAppData = await tempRoot();
+    const previous = process.env.LOCALAPPDATA;
+    process.env.LOCALAPPDATA = localAppData;
+    try {
+      await expect(probeCodexLauncher(localAppData)).resolves.toMatchObject({ ok: false });
+    } finally {
+      if (previous === undefined) delete process.env.LOCALAPPDATA;
+      else process.env.LOCALAPPDATA = previous;
+    }
+  });
+
+  it.runIf(process.platform === "win32")("starts the generated registration and completes an MCP handshake through normal argv serialization", async () => {
+    const localAppData = await mkdtemp(join(tmpdir(), "Kanmer Local App Data "));
+    roots.push(localAppData);
+    const bin = join(localAppData, "Kanmer", "bin");
+    const launcher = join(bin, "kanmer-mcp.cmd");
+    await mkdir(bin, { recursive: true });
+    await writeFile(join(bin, "kanmer-mcp.cjs"), [
+      'const rl = require("node:readline").createInterface({ input: process.stdin });',
+      'rl.on("line", (line) => { const request = JSON.parse(line); if (request.method === "initialize") console.log(JSON.stringify({ jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2025-06-18", capabilities: { tools: {} }, serverInfo: { name: "kanmer", version: "test" } } })); else if (request.method === "tools/list") console.log(JSON.stringify({ jsonrpc: "2.0", id: request.id, result: { tools: [{ name: "get_status" }] } })); else if (request.method === "tools/call") console.log(JSON.stringify({ jsonrpc: "2.0", id: request.id, result: { content: [{ type: "text", text: "{\\\"project\\\":\\\"kanmer\\\"}" }] } })); });',
+    ].join("\n"), "utf8");
+    await writeFile(launcher, `@echo off\r\n"${process.execPath}" "%~dp0kanmer-mcp.cjs"\r\n`, "utf8");
+
+    const invocation = codexPortableInvocation();
+    const responses = await new Promise<unknown[]>((resolve, reject) => {
+      const child = spawn(invocation.command, invocation.args, {
+        cwd: localAppData,
+        env: { ...process.env, LOCALAPPDATA: localAppData },
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+      const received: unknown[] = [];
+      let buffer = "";
+      const timeout = setTimeout(() => {
+        child.kill();
+        reject(new Error("Timed out waiting for generated Codex registration MCP handshake"));
+      }, 5_000);
+      child.once("error", reject);
+      child.stdout.on("data", (chunk) => {
+        buffer += String(chunk);
+        for (;;) {
+          const newline = buffer.indexOf("\n");
+          if (newline < 0) break;
+          const line = buffer.slice(0, newline).trim();
+          buffer = buffer.slice(newline + 1);
+          if (!line) continue;
+          received.push(JSON.parse(line));
+          if (received.length === 1) {
+            child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized", params: {} })}\n`);
+            child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} })}\n`);
+            child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "get_status", arguments: {} } })}\n`);
+          }
+          if (received.length === 3) {
+            clearTimeout(timeout);
+            child.once("close", () => resolve(received));
+            child.kill();
+          }
+        }
+      });
+      child.stderr.on("data", (chunk) => reject(new Error(String(chunk))));
+      child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } } })}\n`);
+    });
+
+    expect(responses).toMatchObject([
+      { result: { serverInfo: { name: "kanmer" } } },
+      { result: { tools: [{ name: "get_status" }] } },
+      { result: { content: [{ text: '{"project":"kanmer"}' }] } },
+    ]);
   });
 
   it("refuses a failed probe before creating or changing project config", async () => {
@@ -752,7 +839,7 @@ describe("portable Codex launcher contract (GUI-100)", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.command).toContain("cmd.exe");
+    expect(result.command).toContain("powershell.exe");
     expect(result.command).toContain("--probe");
     expect(result.command).not.toContain('\\"');
     expect(result.output).toContain("No absolute-path fallback was used");

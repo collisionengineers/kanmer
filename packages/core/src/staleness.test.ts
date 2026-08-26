@@ -10,7 +10,7 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { detectStaleness, kanmerRootIn, SKILLS_STAMP_FILE } from "./staleness.js";
+import { detectStaleness, isCurrentCodexRegistration, kanmerRootIn, SKILLS_STAMP_FILE } from "./staleness.js";
 import { resolvePaths } from "./paths.js";
 import { defaultBoardConfig } from "./board.js";
 import type { BoardConfig } from "./types.js";
@@ -380,9 +380,120 @@ describe("detectStaleness — provider MCP registrations", () => {
     writeAgents();
     put(
       path.join(root, ".codex/config.toml"),
-      '[mcp_servers.kanmer]\ncommand = "cmd.exe"\nargs = ["/d", "/s", "/c", \'"%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd"\']\n',
+      '[mcp_servers.kanmer]\ncommand = "powershell.exe"\nargs = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]\n',
     );
     expect(rowsFor(detect(), "mcp-registration")).toEqual([]);
+  });
+
+  it("requires the complete canonical Codex invocation, not just its path tokens", () => {
+    const prefix = '[mcp_servers.kanmer]\ncommand = "powershell.exe"\nargs = ';
+    expect(isCurrentCodexRegistration(`${prefix}["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]\n`)).toBe(true);
+    expect(isCurrentCodexRegistration(`${prefix}["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')", "--unexpected"]\n`)).toBe(false);
+  });
+
+  it("accepts TOML-valid comments and a trailing comma in a canonical Codex array", () => {
+    const registration = [
+      "[mcp_servers.kanmer] # Kanmer local MCP",
+      'command = "powershell.exe"',
+      "args = [",
+      '  "-NoProfile", # no profile',
+      '  "-ExecutionPolicy",',
+      '  "Bypass",',
+      '  "-Command",',
+      '  "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')",',
+      "] # portable launcher",
+      "",
+    ].join("\r\n");
+    expect(isCurrentCodexRegistration(registration)).toBe(true);
+  });
+
+  it("accepts TOML-valid command quoting and trailing comments", () => {
+    const registration = [
+      "[mcp_servers.kanmer]",
+      "command = 'powershell.exe' # portable launcher",
+      'args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]',
+      "",
+    ].join("\n");
+    expect(isCurrentCodexRegistration(registration)).toBe(true);
+  });
+
+  it("recognizes quoted components in the Kanmer TOML table key", () => {
+    const body = 'command = "powershell.exe"\nargs = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]\n';
+    expect(isCurrentCodexRegistration(`[mcp_servers."kanmer"]\n${body}`)).toBe(true);
+    expect(isCurrentCodexRegistration(`["mcp_servers".kanmer]\n${body}`)).toBe(true);
+    expect(isCurrentCodexRegistration(`['mcp_servers'.'kanmer']\n${body}`)).toBe(true);
+  });
+
+  it("accepts only the generated optional board-branch environment", () => {
+    const registration = [
+      "[mcp_servers.kanmer]",
+      'command = "powershell.exe"',
+      'args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]',
+      "[mcp_servers.kanmer.env]",
+      'KANMER_BOARD_BRANCH = "custom-board"',
+      "",
+    ].join("\n");
+    expect(isCurrentCodexRegistration(registration)).toBe(true);
+  });
+
+  it("rejects behavior-changing descriptor fields and environment keys", () => {
+    const descriptor = [
+      "[mcp_servers.kanmer]",
+      'command = "powershell.exe"',
+      'args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]',
+    ].join("\n");
+    expect(isCurrentCodexRegistration(`${descriptor}\ncwd = "C:/elsewhere"\n`)).toBe(false);
+    expect(isCurrentCodexRegistration(`${descriptor}\nenv.LOCALAPPDATA = "C:/missing"\n`)).toBe(false);
+    expect(isCurrentCodexRegistration(`${descriptor}\n[mcp_servers.kanmer.env]\nOTHER = "value"\n`)).toBe(false);
+    expect(isCurrentCodexRegistration(`${descriptor}\n[mcp_servers.kanmer.transport]\ntype = "stdio"\n`)).toBe(false);
+  });
+
+  it("ignores unrelated tables after a complete canonical registration", () => {
+    const registration = [
+      "[mcp_servers.kanmer]",
+      'command = "powershell.exe"',
+      'args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]',
+      "[mcp_servers.other]",
+      'cwd = "C:/elsewhere"',
+      "[mcp_servers.other.env]",
+      'LOCALAPPDATA = "C:/missing"',
+      "",
+    ].join("\n");
+    expect(isCurrentCodexRegistration(registration)).toBe(true);
+  });
+
+  it("reports forbidden Codex descriptor fields as stale on Windows only", () => {
+    writeAgents();
+    put(
+      path.join(root, ".codex/config.toml"),
+      '[mcp_servers.kanmer]\ncommand = "powershell.exe"\nargs = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]\ncwd = "C:/elsewhere"\n',
+    );
+    const rows = rowsFor(detect(), "mcp-registration");
+    if (process.platform === "win32") expect(rows).toMatchObject([{ state: "behind" }]);
+    else expect(rows).toEqual([]);
+  });
+
+  it("reports a redirected launcher environment as stale on Windows only", () => {
+    writeAgents();
+    put(
+      path.join(root, ".codex/config.toml"),
+      '[mcp_servers.kanmer]\ncommand = "powershell.exe"\nargs = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA \'Kanmer\\\\bin\\\\kanmer-mcp.cmd\')"]\n[mcp_servers.kanmer.env]\nLOCALAPPDATA = "C:/missing"\n',
+    );
+    const rows = rowsFor(detect(), "mcp-registration");
+    if (process.platform === "win32") expect(rows).toMatchObject([{ state: "behind" }]);
+    else expect(rows).toEqual([]);
+  });
+
+  it("reports the legacy cmd.exe Codex descriptor as behind", () => {
+    writeAgents();
+    put(
+      path.join(root, ".codex/config.toml"),
+      '[mcp_servers.kanmer] # legacy launcher\r\ncommand = "cmd.exe"\r\nargs = ["/d", "/s", "/c", \'"%LOCALAPPDATA%\\\\Kanmer\\\\bin\\\\kanmer-mcp.cmd"\']\r\n',
+    );
+    expect(isCurrentCodexRegistration('[mcp_servers.kanmer]\ncommand = "cmd.exe"\nargs = ["/d"]\n')).toBe(false);
+    const rows = rowsFor(detect(), "mcp-registration");
+    if (process.platform === "win32") expect(rows).toMatchObject([{ state: "behind" }]);
+    else expect(rows).toEqual([]);
   });
 
   it("does not read another server's --root as Kanmer's", () => {
@@ -459,6 +570,20 @@ describe("detectStaleness — provider MCP registrations", () => {
     expect(
       kanmerRootIn('[mcp_servers.kanmer]\nargs = ["--root", "C:\\\\Users\\\\me\\\\repo"]\n', "toml"),
     ).toBe("C:\\Users\\me\\repo");
+  });
+
+  it("reads an explicit root from a commented Kanmer TOML header", () => {
+    expect(
+      kanmerRootIn(
+        '[mcp_servers.kanmer] # project-scoped local server\r\nargs = ["--root", "C:/board"]\r\n',
+        "toml",
+      ),
+    ).toBe("C:/board");
+  });
+
+  it("reads an explicit root from quoted Kanmer TOML table keys", () => {
+    expect(kanmerRootIn('[mcp_servers."kanmer"]\nargs = ["--root", "C:/one"]\n', "toml")).toBe("C:/one");
+    expect(kanmerRootIn('["mcp_servers".kanmer]\nargs = ["--root", "C:/two"]\n', "toml")).toBe("C:/two");
   });
 });
 

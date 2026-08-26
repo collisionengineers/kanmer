@@ -18,5 +18,5 @@
 # this ignored file becomes a shareable repository configuration.
 
 [mcp_servers.kanmer]
-command = "cmd.exe"
-args = ["/d", "/s", "/c", "\"%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd\""]
+command = "powershell.exe"
+args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')"]

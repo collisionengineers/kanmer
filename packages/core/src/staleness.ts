@@ -30,6 +30,10 @@ import type { BoardConfig, BoardSource } from "./types.js";
 import type { KanmerPaths } from "./paths.js";
 import { CURRENT_FORMAT } from "./version.js";
 
+/** The single portable Codex registration contract shared with GUI Connect. */
+export const CODEX_PORTABLE_COMMAND = "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')";
+export const CODEX_PORTABLE_ARGS = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", CODEX_PORTABLE_COMMAND] as const;
+
 /**
  * How out-of-date an artefact is — and, just as importantly, whether the user
  * should do anything about it.
@@ -578,6 +582,91 @@ function rootFromArgs(args: unknown): string | null {
   return typeof next === "string" && next.trim() !== "" ? next : null;
 }
 
+/** Decode the narrow dotted-key shape used by TOML table headers. */
+function tomlTablePath(header: string): string[] | null {
+  const path: string[] = [];
+  let index = 0;
+  while (index < header.length) {
+    while (/[ \t]/.test(header[index] ?? "")) index++;
+    const quote = header[index];
+    let component = "";
+    if (quote === '"' || quote === "'") {
+      index++;
+      let closed = false;
+      while (index < header.length) {
+        const char = header[index++]!;
+        if (char === quote) { closed = true; break; }
+        if (quote === '"' && char === "\\") {
+          const escaped = header[index++];
+          if (escaped === undefined) return null;
+          component += `\\${escaped}`;
+        } else component += char;
+      }
+      if (!closed) return null;
+      if (quote === '"') {
+        try { component = JSON.parse(`"${component}"`) as string; }
+        catch { return null; }
+      }
+    } else {
+      const match = /^[A-Za-z0-9_-]+/.exec(header.slice(index));
+      if (!match) return null;
+      component = match[0];
+      index += component.length;
+    }
+    path.push(component);
+    while (/[ \t]/.test(header[index] ?? "")) index++;
+    if (index === header.length) return path;
+    if (header[index++] !== ".") return null;
+  }
+  return null;
+}
+
+/**
+ * Return only Kanmer's TOML MCP table. Table components may use any ordinary
+ * TOML key spelling (bare, basic quoted, or literal quoted). Trailing header
+ * comments are accepted while every later table stays out of the scan.
+ */
+function kanmerTomlSection(text: string): string | null {
+  const headers = [...text.matchAll(/^[ \t]*\[([^\[\]\r\n]+)\][ \t]*(?:#[^\r\n]*)?\r?$/gm)];
+  const header = headers.find((candidate) => {
+    const path = tomlTablePath(candidate[1]!);
+    return path?.length === 2 && path[0] === "mcp_servers" && path[1] === "kanmer";
+  });
+  if (!header || header.index === undefined) return null;
+  const from = header.index + header[0].length;
+  const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
+  return nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
+}
+
+interface TomlTableSection {
+  path: string[];
+  content: string;
+}
+
+/** Parse table boundaries without interpreting values or unrelated tables. */
+function tomlTableSections(text: string): TomlTableSection[] {
+  const headers = [...text.matchAll(/^[ \t]*\[([^\[\]\r\n]+)\][ \t]*(?:#[^\r\n]*)?\r?$/gm)];
+  return headers.flatMap((header, index) => {
+    if (header.index === undefined) return [];
+    const path = tomlTablePath(header[1]!);
+    if (path === null) return [];
+    const from = header.index + header[0].length;
+    const to = headers[index + 1]?.index ?? text.length;
+    return [{ path, content: text.slice(from, to) }];
+  });
+}
+
+/** Whether a TOML fragment contains only whitespace and comments. */
+function isTomlTrivia(text: string): boolean {
+  return text.replace(/#[^\r\n]*/g, "").trim() === "";
+}
+
+/** Decode one TOML string scalar through the existing narrow array parser. */
+function parseTomlString(source: string): string | null {
+  const parsed = parseTomlStringArray(`[\n${source}\n]`);
+  return parsed?.length === 1 ? parsed[0]! : null;
+}
+
 /**
  * The board root a file's **Kanmer** MCP entry is pinned to, or null.
  *
@@ -623,11 +712,8 @@ export function kanmerRootIn(text: string, format: "json" | "toml"): string | nu
   }
 
   // TOML: slice the [mcp_servers.kanmer] table out, then scan only inside it.
-  const header = /^[ \t]*\[mcp_servers\.kanmer\][ \t]*$/m.exec(text);
-  if (!header) return null;
-  const from = header.index + header[0].length;
-  const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
-  const section = nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
+  const section = kanmerTomlSection(text);
+  if (section === null) return null;
   const m = /"--root"[\s,]*("(?:[^"\\]|\\.)*")/.exec(section);
   if (!m) return null;
   try {
@@ -635,6 +721,97 @@ export function kanmerRootIn(text: string, format: "json" | "toml"): string | nu
     return typeof value === "string" && value.trim() !== "" ? value : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Whether Codex's project entry uses the portable invocation Connect currently
+ * writes. This deliberately inspects only Kanmer's TOML table: other MCP
+ * entries and formatting are user-owned and irrelevant to this verdict.
+ */
+export function isCurrentCodexRegistration(text: string): boolean | null {
+  const kanmerTables = tomlTableSections(text).filter(
+    ({ path }) => path[0] === "mcp_servers" && path[1] === "kanmer",
+  );
+  const mainTables = kanmerTables.filter(({ path }) => path.length === 2);
+  if (mainTables.length === 0) return null;
+  if (mainTables.length !== 1) return false;
+  const section = mainTables[0]!.content;
+  // `command` is a TOML string, not a formatting convention. Feed the scalar
+  // through the same narrow TOML string parser as `args` so valid literal
+  // strings and trailing comments do not make a healthy registration stale.
+  const commandMatch = /^[ \t]*command[ \t]*=[ \t]*(.*)$/m.exec(section);
+  const argsMatch = /^[ \t]*args[ \t]*=[ \t]*(\[[\s\S]*?\])/m.exec(section);
+  if (!commandMatch || !argsMatch) return false;
+  const command = parseTomlString(commandMatch[1]!);
+  const args = parseTomlStringArray(argsMatch[1]!);
+  if (command?.toLowerCase() !== "powershell.exe" || args === null ||
+      JSON.stringify(args) !== JSON.stringify(CODEX_PORTABLE_ARGS)) return false;
+
+  // Removing the two canonical assignments must leave only trivia. This makes
+  // duplicate, dotted, inline and otherwise behavior-changing fields stale.
+  let mainRemainder = section;
+  for (const match of [commandMatch, argsMatch].sort((a, b) => b.index - a.index)) {
+    mainRemainder = mainRemainder.slice(0, match.index) +
+      mainRemainder.slice(match.index + match[0].length);
+  }
+  if (!isTomlTrivia(mainRemainder)) return false;
+
+  const children = kanmerTables.filter(({ path }) => path.length !== 2);
+  if (children.length === 0) return true;
+  if (children.length !== 1 || children[0]!.path.length !== 3 || children[0]!.path[2] !== "env") {
+    return false;
+  }
+  const env = children[0]!.content;
+  const assignment = /^[ \t]*([^=\r\n]+?)[ \t]*=[ \t]*(.*)$/m.exec(env);
+  if (!assignment) return false;
+  const key = tomlTablePath(assignment[1]!.trim());
+  const value = parseTomlString(assignment[2]!);
+  const remainder = env.slice(0, assignment.index) + env.slice(assignment.index + assignment[0].length);
+  return key?.length === 1 && key[0] === "KANMER_BOARD_BRANCH" &&
+    value !== null && value.trim() !== "" && isTomlTrivia(remainder);
+}
+
+/** Parse the narrow TOML array shape used by Codex registrations without a new runtime dependency. */
+function parseTomlStringArray(source: string): string[] | null {
+  let index = 0;
+  const values: string[] = [];
+  const skipTrivia = () => {
+    while (index < source.length) {
+      if (/\s/.test(source[index]!)) { index++; continue; }
+      if (source[index] === "#") {
+        const newline = source.indexOf("\n", index);
+        index = newline === -1 ? source.length : newline + 1;
+        continue;
+      }
+      break;
+    }
+  };
+  skipTrivia();
+  if (source[index++] !== "[") return null;
+  for (;;) {
+    skipTrivia();
+    if (source[index] === "]") return values;
+    const quote = source[index++];
+    if (quote !== '"' && quote !== "'") return null;
+    let encoded = "";
+    let closed = false;
+    while (index < source.length) {
+      const char = source[index++]!;
+      if (char === quote) { closed = true; break; }
+      if (quote === '"' && char === "\\") {
+        const escaped = source[index++];
+        if (escaped === undefined) return null;
+        encoded += `\\${escaped}`;
+      } else encoded += char;
+    }
+    if (!closed) return null;
+    try {
+      values.push(quote === '"' ? JSON.parse(`"${encoded}"`) as string : encoded);
+    } catch { return null; }
+    skipTrivia();
+    if (source[index] === "]") return values;
+    if (source[index++] !== ",") return null;
   }
 }
 
@@ -673,6 +850,16 @@ function registrationRows(repoRoot: string, projectRoot: string): StaleEntry[] {
       continue;
     }
     const root = kanmerRootIn(text, rel.endsWith(".toml") ? "toml" : "json");
+    if (process.platform === "win32" && rel === STALENESS_PROVIDER_PATHS.codex.registrationFile && isCurrentCodexRegistration(text) === false) {
+      rows.push({
+        artefact: "mcp-registration",
+        state: "behind",
+        detail:
+          `${rel} registers Kanmer with a legacy Codex launcher descriptor. ` +
+          "Codex must use the portable PowerShell invocation so normal Windows argv serialization can start it.",
+        fix: "reconnect this project in the Kanmer app",
+      });
+    }
     if (root === null || sameRoot(root, projectRoot)) continue;
     rows.push({
       artefact: "mcp-registration",

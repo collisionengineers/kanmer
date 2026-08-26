@@ -6,6 +6,8 @@
 import { basename, join } from "node:path";
 import * as TOML from "smol-toml";
 import {
+  CODEX_PORTABLE_ARGS,
+  CODEX_PORTABLE_COMMAND,
   dispatchProviderById,
   listDispatchProviders,
   STALENESS_PROVIDER_PATHS,
@@ -27,7 +29,10 @@ export interface Invocation {
  * LOCALAPPDATA on the destination machine; Connect must never expand or
  * replace this path with an install, board or source root.
  */
-const CODEX_LAUNCHER_PATH = "%LOCALAPPDATA%\\Kanmer\\bin\\kanmer-mcp.cmd";
+// A command path that does not resolve is otherwise a non-terminating
+// PowerShell error, which would make the probe appear healthy. Make that
+// condition terminating before preserving the launcher's own exit code.
+const CODEX_PORTABLE_PROBE_COMMAND = `$ErrorActionPreference = 'Stop'; ${CODEX_PORTABLE_COMMAND} --probe; exit $LASTEXITCODE`;
 
 /** The local default shared by the GUI registration and MCP runtime. */
 export const DEFAULT_BOARD_BRANCH = "kanmer-board";
@@ -47,8 +52,8 @@ export function nativeFunctionalPrompt(boardBranch: string | undefined): string 
 /** Return a fresh canonical Codex invocation so callers cannot mutate shared state. */
 export function codexPortableInvocation(boardBranch?: string): Invocation {
   return {
-    command: "cmd.exe",
-    args: ["/d", "/s", "/c", `"${CODEX_LAUNCHER_PATH}"`],
+    command: "powershell.exe",
+    args: [...CODEX_PORTABLE_ARGS],
     env: boardBranch === undefined ? {} : { KANMER_BOARD_BRANCH: normalizeBoardBranch(boardBranch) },
   };
 }
@@ -56,14 +61,10 @@ export function codexPortableInvocation(boardBranch?: string): Invocation {
 /** Add the installer-owned health-check mode to the canonical command string. */
 export function codexPortableProbeInvocation(): Invocation {
   return {
-    command: "cmd.exe",
-    // `cmd /s /c` applies special quote stripping when the command starts with
-    // a quoted executable. Node's Windows argv serialiser then adds another
-    // outer quote, producing the literal trailing quote seen by GUI-132. `call`
-    // keeps the first token unquoted while preserving environment expansion and
-    // the installer-owned portable path. This is probe-only: the Codex project
-    // registration remains the exact rootless FRD-012 R1e invocation above.
-    args: ["/d", "/s", "/c", `call "${CODEX_LAUNCHER_PATH}" --probe`],
+    command: "powershell.exe",
+    // Keep the probe derived from the registered command so normal argv
+    // serialization exercises the same PowerShell path Codex will use.
+    args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", CODEX_PORTABLE_PROBE_COMMAND],
     env: {},
   };
 }

@@ -39524,6 +39524,8 @@ async function writeVersion(paths, version2) {
   await writeFileAtomic(paths.versionFile, `${JSON.stringify(version2, null, 2)}
 `);
 }
+var CODEX_PORTABLE_COMMAND = "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')";
+var CODEX_PORTABLE_ARGS = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", CODEX_PORTABLE_COMMAND];
 var BLOCK_START = "<!-- kanmer:instructions:start \u2014 managed by kanmer-setup; edits inside will be overwritten -->";
 var BLOCK_END = "<!-- kanmer:instructions:end -->";
 var STALENESS_PROVIDER_PATHS = {
@@ -39789,6 +39791,80 @@ function rootFromArgs(args) {
   const next = args[at + 1];
   return typeof next === "string" && next.trim() !== "" ? next : null;
 }
+function tomlTablePath(header) {
+  const path122 = [];
+  let index = 0;
+  while (index < header.length) {
+    while (/[ \t]/.test(header[index] ?? "")) index++;
+    const quote = header[index];
+    let component = "";
+    if (quote === '"' || quote === "'") {
+      index++;
+      let closed = false;
+      while (index < header.length) {
+        const char = header[index++];
+        if (char === quote) {
+          closed = true;
+          break;
+        }
+        if (quote === '"' && char === "\\") {
+          const escaped = header[index++];
+          if (escaped === void 0) return null;
+          component += `\\${escaped}`;
+        } else component += char;
+      }
+      if (!closed) return null;
+      if (quote === '"') {
+        try {
+          component = JSON.parse(`"${component}"`);
+        } catch {
+          return null;
+        }
+      }
+    } else {
+      const match = /^[A-Za-z0-9_-]+/.exec(header.slice(index));
+      if (!match) return null;
+      component = match[0];
+      index += component.length;
+    }
+    path122.push(component);
+    while (/[ \t]/.test(header[index] ?? "")) index++;
+    if (index === header.length) return path122;
+    if (header[index++] !== ".") return null;
+  }
+  return null;
+}
+function kanmerTomlSection(text) {
+  const headers = [...text.matchAll(/^[ \t]*\[([^\[\]\r\n]+)\][ \t]*(?:#[^\r\n]*)?\r?$/gm)];
+  const header = headers.find((candidate) => {
+    const path122 = tomlTablePath(candidate[1]);
+    return path122?.length === 2 && path122[0] === "mcp_servers" && path122[1] === "kanmer";
+  });
+  if (!header || header.index === void 0) return null;
+  const from = header.index + header[0].length;
+  const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
+  return nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
+}
+function tomlTableSections(text) {
+  const headers = [...text.matchAll(/^[ \t]*\[([^\[\]\r\n]+)\][ \t]*(?:#[^\r\n]*)?\r?$/gm)];
+  return headers.flatMap((header, index) => {
+    if (header.index === void 0) return [];
+    const path122 = tomlTablePath(header[1]);
+    if (path122 === null) return [];
+    const from = header.index + header[0].length;
+    const to = headers[index + 1]?.index ?? text.length;
+    return [{ path: path122, content: text.slice(from, to) }];
+  });
+}
+function isTomlTrivia(text) {
+  return text.replace(/#[^\r\n]*/g, "").trim() === "";
+}
+function parseTomlString(source) {
+  const parsed = parseTomlStringArray(`[
+${source}
+]`);
+  return parsed?.length === 1 ? parsed[0] : null;
+}
 function kanmerRootIn(text, format) {
   if (format === "json") {
     let doc;
@@ -39810,11 +39886,8 @@ function kanmerRootIn(text, format) {
     }
     return null;
   }
-  const header = /^[ \t]*\[mcp_servers\.kanmer\][ \t]*$/m.exec(text);
-  if (!header) return null;
-  const from = header.index + header[0].length;
-  const nextTable = /^[ \t]*\[/m.exec(text.slice(from));
-  const section = nextTable ? text.slice(from, from + nextTable.index) : text.slice(from);
+  const section = kanmerTomlSection(text);
+  if (section === null) return null;
   const m = /"--root"[\s,]*("(?:[^"\\]|\\.)*")/.exec(section);
   if (!m) return null;
   try {
@@ -39822,6 +39895,87 @@ function kanmerRootIn(text, format) {
     return typeof value === "string" && value.trim() !== "" ? value : null;
   } catch {
     return null;
+  }
+}
+function isCurrentCodexRegistration(text) {
+  const kanmerTables = tomlTableSections(text).filter(
+    ({ path: path122 }) => path122[0] === "mcp_servers" && path122[1] === "kanmer"
+  );
+  const mainTables = kanmerTables.filter(({ path: path122 }) => path122.length === 2);
+  if (mainTables.length === 0) return null;
+  if (mainTables.length !== 1) return false;
+  const section = mainTables[0].content;
+  const commandMatch = /^[ \t]*command[ \t]*=[ \t]*(.*)$/m.exec(section);
+  const argsMatch = /^[ \t]*args[ \t]*=[ \t]*(\[[\s\S]*?\])/m.exec(section);
+  if (!commandMatch || !argsMatch) return false;
+  const command = parseTomlString(commandMatch[1]);
+  const args = parseTomlStringArray(argsMatch[1]);
+  if (command?.toLowerCase() !== "powershell.exe" || args === null || JSON.stringify(args) !== JSON.stringify(CODEX_PORTABLE_ARGS)) return false;
+  let mainRemainder = section;
+  for (const match of [commandMatch, argsMatch].sort((a, b) => b.index - a.index)) {
+    mainRemainder = mainRemainder.slice(0, match.index) + mainRemainder.slice(match.index + match[0].length);
+  }
+  if (!isTomlTrivia(mainRemainder)) return false;
+  const children = kanmerTables.filter(({ path: path122 }) => path122.length !== 2);
+  if (children.length === 0) return true;
+  if (children.length !== 1 || children[0].path.length !== 3 || children[0].path[2] !== "env") {
+    return false;
+  }
+  const env = children[0].content;
+  const assignment = /^[ \t]*([^=\r\n]+?)[ \t]*=[ \t]*(.*)$/m.exec(env);
+  if (!assignment) return false;
+  const key = tomlTablePath(assignment[1].trim());
+  const value = parseTomlString(assignment[2]);
+  const remainder = env.slice(0, assignment.index) + env.slice(assignment.index + assignment[0].length);
+  return key?.length === 1 && key[0] === "KANMER_BOARD_BRANCH" && value !== null && value.trim() !== "" && isTomlTrivia(remainder);
+}
+function parseTomlStringArray(source) {
+  let index = 0;
+  const values = [];
+  const skipTrivia = () => {
+    while (index < source.length) {
+      if (/\s/.test(source[index])) {
+        index++;
+        continue;
+      }
+      if (source[index] === "#") {
+        const newline = source.indexOf("\n", index);
+        index = newline === -1 ? source.length : newline + 1;
+        continue;
+      }
+      break;
+    }
+  };
+  skipTrivia();
+  if (source[index++] !== "[") return null;
+  for (; ; ) {
+    skipTrivia();
+    if (source[index] === "]") return values;
+    const quote = source[index++];
+    if (quote !== '"' && quote !== "'") return null;
+    let encoded = "";
+    let closed = false;
+    while (index < source.length) {
+      const char = source[index++];
+      if (char === quote) {
+        closed = true;
+        break;
+      }
+      if (quote === '"' && char === "\\") {
+        const escaped = source[index++];
+        if (escaped === void 0) return null;
+        encoded += `\\${escaped}`;
+      } else encoded += char;
+    }
+    if (!closed) return null;
+    try {
+      values.push(quote === '"' ? JSON.parse(`"${encoded}"`) : encoded);
+    } catch {
+      return null;
+    }
+    skipTrivia();
+    if (source[index] === "]") return values;
+    if (source[index++] !== ",") return null;
   }
 }
 function sameRoot(a, b) {
@@ -39844,6 +39998,14 @@ function registrationRows(repoRoot, projectRoot2) {
       continue;
     }
     const root = kanmerRootIn(text, rel.endsWith(".toml") ? "toml" : "json");
+    if (process.platform === "win32" && rel === STALENESS_PROVIDER_PATHS.codex.registrationFile && isCurrentCodexRegistration(text) === false) {
+      rows.push({
+        artefact: "mcp-registration",
+        state: "behind",
+        detail: `${rel} registers Kanmer with a legacy Codex launcher descriptor. Codex must use the portable PowerShell invocation so normal Windows argv serialization can start it.`,
+        fix: "reconnect this project in the Kanmer app"
+      });
+    }
     if (root === null || sameRoot(root, projectRoot2)) continue;
     rows.push({
       artefact: "mcp-registration",

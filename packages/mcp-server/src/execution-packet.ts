@@ -1,5 +1,6 @@
 import type { GateReport, Item, KanmerStore, TicketDocumentWithVersion } from "@kanmer/core";
 import { execFile } from "node:child_process";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { ProjectIdentity } from "./project-identity.js";
@@ -174,6 +175,14 @@ function sameWorktreePath(left: string, right: string): boolean {
 
 type GitCommonDirectory = { ok: true; path: string } | { ok: false; detail: string };
 
+async function physicalExistingPath(input: string): Promise<GitCommonDirectory> {
+  try {
+    return { ok: true, path: canonicalProjectPath(await realpath(input)) };
+  } catch (error) {
+    return { ok: false, detail: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 async function gitCommonDirectory(directory: string): Promise<GitCommonDirectory> {
   try {
     const { stdout } = await execFileAsync("git", ["-C", directory, "rev-parse", "--git-common-dir"], {
@@ -182,7 +191,14 @@ async function gitCommonDirectory(directory: string): Promise<GitCommonDirectory
     });
     const output = stdout.trim();
     if (!output) return { ok: false, detail: "Git returned an empty common-directory path." };
-    return { ok: true, path: canonicalPathFrom(directory, output) };
+    // Git can spell the same Windows directory through an 8.3 alias in one
+    // worktree and its long name in another (for example RUNNER~1 versus
+    // runneradmin). Comparing those strings would reject a real worktree
+    // before its resume metadata is even considered. Resolve the existing
+    // common directory through the filesystem, then compare that physical
+    // identity instead. A failed resolution is a refusal: resume must never
+    // fall back to an unverified lexical path.
+    return physicalExistingPath(canonicalPathFrom(directory, output));
   } catch (error) {
     return { ok: false, detail: error instanceof Error ? error.message : String(error) };
   }
@@ -194,19 +210,29 @@ async function unsafeTakenWorktree(
   item: Item,
 ): Promise<string | null> {
   if (!item.taken_at || !item.worktree) return null;
-  const candidate = canonicalWorktreePath(project, item.worktree);
-  if (sameWorktreePath(candidate, project.boardRoot)) {
+  const candidate = await physicalExistingPath(canonicalWorktreePath(project, item.worktree));
+  if (!candidate.ok) {
+    return `Ticket "${item.id}" records a worktree that cannot be resolved on disk: ${candidate.detail}`;
+  }
+  const boardWorktree = await physicalExistingPath(project.boardRoot);
+  if (!boardWorktree.ok) {
+    return `The Kanmer board worktree cannot be resolved before resuming "${item.id}": ${boardWorktree.detail}`;
+  }
+  if (sameWorktreePath(candidate.path, boardWorktree.path)) {
     return `Ticket "${item.id}" records the board worktree as its execution worktree; this is not a resumable ticket worktree.`;
   }
-  const conflict = (await store.listItems()).find((other) =>
-    other.id !== item.id && other.worktree !== undefined &&
-    sameWorktreePath(candidate, canonicalWorktreePath(project, other.worktree)),
-  );
-  if (conflict) {
-    return `Ticket "${item.id}" records the same worktree as active ticket "${conflict.id}"; this is not a resumable ticket worktree.`;
+  for (const other of await store.listItems()) {
+    if (other.id === item.id || !other.worktree) continue;
+    const otherWorktree = await physicalExistingPath(canonicalWorktreePath(project, other.worktree));
+    if (!otherWorktree.ok) {
+      return `Ticket "${item.id}" cannot resume while active ticket "${other.id}" has an unresolved worktree: ${otherWorktree.detail}`;
+    }
+    if (sameWorktreePath(candidate.path, otherWorktree.path)) {
+      return `Ticket "${item.id}" records the same worktree as active ticket "${other.id}"; this is not a resumable ticket worktree.`;
+    }
   }
   const [candidateGit, sourceGit] = await Promise.all([
-    gitCommonDirectory(candidate),
+    gitCommonDirectory(candidate.path),
     gitCommonDirectory(project.repoRoot),
   ]);
   if (!candidateGit.ok) {

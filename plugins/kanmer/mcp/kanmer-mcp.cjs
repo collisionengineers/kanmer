@@ -19483,7 +19483,7 @@ var require_readdirp = __commonJS({
     var readdir = promisify3(fs12.readdir);
     var stat = promisify3(fs12.stat);
     var lstat2 = promisify3(fs12.lstat);
-    var realpath = promisify3(fs12.realpath);
+    var realpath2 = promisify3(fs12.realpath);
     var BANG = "!";
     var RECURSIVE_ERROR_CODE = "READDIRP_RECURSIVE_ERROR";
     var NORMAL_FLOW_ERRORS = /* @__PURE__ */ new Set(["ENOENT", "EPERM", "EACCES", "ELOOP", RECURSIVE_ERROR_CODE]);
@@ -19648,7 +19648,7 @@ var require_readdirp = __commonJS({
         if (stats && stats.isSymbolicLink()) {
           const full = entry.fullPath;
           try {
-            const entryRealPath = await realpath(full);
+            const entryRealPath = await realpath2(full);
             const entryRealPathStats = await lstat2(entryRealPath);
             if (entryRealPathStats.isFile()) {
               return "file";
@@ -21807,7 +21807,7 @@ var require_nodefs_handler = __commonJS({
        * @param {String} realpath
        * @returns {Promise<Function>} closer for the watcher instance.
        */
-      async _handleDir(dir, stats, initialAdd, depth, target, wh, realpath) {
+      async _handleDir(dir, stats, initialAdd, depth, target, wh, realpath2) {
         const parentDir = this.fsw._getWatchedDir(sysPath.dirname(dir));
         const tracked = parentDir.has(sysPath.basename(dir));
         if (!(initialAdd && this.fsw.options.ignoreInitial) && !target && !tracked) {
@@ -21818,7 +21818,7 @@ var require_nodefs_handler = __commonJS({
         let throttler;
         let closer;
         const oDepth = this.fsw.options.depth;
-        if ((oDepth == null || depth <= oDepth) && !this.fsw._symlinkPaths.has(realpath)) {
+        if ((oDepth == null || depth <= oDepth) && !this.fsw._symlinkPaths.has(realpath2)) {
           if (!target) {
             await this._handleRead(dir, initialAdd, wh, target, dir, depth, throttler);
             if (this.fsw.closed) return;
@@ -21951,7 +21951,7 @@ var require_fsevents_handler = __commonJS({
     var Depth = (value) => isNaN(value) ? {} : { depth: value };
     var stat = promisify3(fs12.stat);
     var lstat2 = promisify3(fs12.lstat);
-    var realpath = promisify3(fs12.realpath);
+    var realpath2 = promisify3(fs12.realpath);
     var statMethods = { stat, lstat: lstat2 };
     var FSEventsWatchers = /* @__PURE__ */ new Map();
     var consolidateThreshhold = 10;
@@ -22175,7 +22175,7 @@ var require_fsevents_handler = __commonJS({
         this.fsw._symlinkPaths.set(fullPath, true);
         this.fsw._incrReadyCount();
         try {
-          const linkTarget = await realpath(linkPath);
+          const linkTarget = await realpath2(linkPath);
           if (this.fsw.closed) return;
           if (this.fsw._isIgnored(linkTarget)) {
             return this.fsw._emitReady();
@@ -22283,7 +22283,7 @@ var require_fsevents_handler = __commonJS({
           } else {
             let realPath;
             try {
-              realPath = await realpath(wh.watchPath);
+              realPath = await realpath2(wh.watchPath);
             } catch (e) {
             }
             this.initWatch(realPath, path19, wh, processPath);
@@ -42015,6 +42015,7 @@ async function readTicketDocuments(store2, id, docs) {
 
 // src/execution-packet.ts
 var import_node_child_process = require("child_process");
+var import_promises9 = require("fs/promises");
 var import_node_path5 = __toESM(require("path"), 1);
 var import_node_util = require("util");
 
@@ -42106,6 +42107,13 @@ function canonicalWorktreePath(project, worktree) {
 function sameWorktreePath(left, right) {
   return process.platform === "win32" ? left.toLowerCase() === right.toLowerCase() : left === right;
 }
+async function physicalExistingPath(input) {
+  try {
+    return { ok: true, path: canonicalProjectPath(await (0, import_promises9.realpath)(input)) };
+  } catch (error2) {
+    return { ok: false, detail: error2 instanceof Error ? error2.message : String(error2) };
+  }
+}
 async function gitCommonDirectory(directory) {
   try {
     const { stdout } = await execFileAsync("git", ["-C", directory, "rev-parse", "--git-common-dir"], {
@@ -42114,25 +42122,36 @@ async function gitCommonDirectory(directory) {
     });
     const output = stdout.trim();
     if (!output) return { ok: false, detail: "Git returned an empty common-directory path." };
-    return { ok: true, path: canonicalPathFrom(directory, output) };
+    return physicalExistingPath(canonicalPathFrom(directory, output));
   } catch (error2) {
     return { ok: false, detail: error2 instanceof Error ? error2.message : String(error2) };
   }
 }
 async function unsafeTakenWorktree(store2, project, item) {
   if (!item.taken_at || !item.worktree) return null;
-  const candidate = canonicalWorktreePath(project, item.worktree);
-  if (sameWorktreePath(candidate, project.boardRoot)) {
+  const candidate = await physicalExistingPath(canonicalWorktreePath(project, item.worktree));
+  if (!candidate.ok) {
+    return `Ticket "${item.id}" records a worktree that cannot be resolved on disk: ${candidate.detail}`;
+  }
+  const boardWorktree = await physicalExistingPath(project.boardRoot);
+  if (!boardWorktree.ok) {
+    return `The Kanmer board worktree cannot be resolved before resuming "${item.id}": ${boardWorktree.detail}`;
+  }
+  if (sameWorktreePath(candidate.path, boardWorktree.path)) {
     return `Ticket "${item.id}" records the board worktree as its execution worktree; this is not a resumable ticket worktree.`;
   }
-  const conflict = (await store2.listItems()).find(
-    (other) => other.id !== item.id && other.worktree !== void 0 && sameWorktreePath(candidate, canonicalWorktreePath(project, other.worktree))
-  );
-  if (conflict) {
-    return `Ticket "${item.id}" records the same worktree as active ticket "${conflict.id}"; this is not a resumable ticket worktree.`;
+  for (const other of await store2.listItems()) {
+    if (other.id === item.id || !other.worktree) continue;
+    const otherWorktree = await physicalExistingPath(canonicalWorktreePath(project, other.worktree));
+    if (!otherWorktree.ok) {
+      return `Ticket "${item.id}" cannot resume while active ticket "${other.id}" has an unresolved worktree: ${otherWorktree.detail}`;
+    }
+    if (sameWorktreePath(candidate.path, otherWorktree.path)) {
+      return `Ticket "${item.id}" records the same worktree as active ticket "${other.id}"; this is not a resumable ticket worktree.`;
+    }
   }
   const [candidateGit, sourceGit] = await Promise.all([
-    gitCommonDirectory(candidate),
+    gitCommonDirectory(candidate.path),
     gitCommonDirectory(project.repoRoot)
   ]);
   if (!candidateGit.ok) {
@@ -42341,11 +42360,11 @@ function dispatchPolicyView(policy) {
 
 // src/sources.ts
 var import_node_crypto3 = require("crypto");
-var import_promises9 = require("dns/promises");
+var import_promises10 = require("dns/promises");
 var import_node_https = require("https");
 var import_node_net = require("net");
 var import_node_stream = require("stream");
-var import_promises10 = require("fs/promises");
+var import_promises11 = require("fs/promises");
 var import_node_path6 = __toESM(require("path"), 1);
 var LLMS_TXT_POLICY = Object.freeze({
   maxLinkedPages: 32,
@@ -42544,7 +42563,7 @@ async function assertSafeCacheDirectory(cacheDir) {
   for (const segment of relative ? relative.split(import_node_path6.default.sep) : []) {
     current = import_node_path6.default.join(current, segment);
     try {
-      const entry = await (0, import_promises10.lstat)(current);
+      const entry = await (0, import_promises11.lstat)(current);
       if (entry.isSymbolicLink()) throw new Error(`Refusing symlinked source cache path: ${current}`);
       if (!entry.isDirectory()) throw new Error(`Source cache path is not a directory: ${current}`);
     } catch (error2) {
@@ -42555,9 +42574,9 @@ async function assertSafeCacheDirectory(cacheDir) {
 }
 async function readCache(file) {
   try {
-    const metadata = await (0, import_promises10.lstat)(file);
+    const metadata = await (0, import_promises11.lstat)(file);
     if (metadata.isSymbolicLink() || !metadata.isFile() || metadata.size > MAX_CACHE_FILE_BYTES) return null;
-    const parsed = JSON.parse(await (0, import_promises10.readFile)(file, "utf8"));
+    const parsed = JSON.parse(await (0, import_promises11.readFile)(file, "utf8"));
     if (!parsed || typeof parsed !== "object") return null;
     const cache = parsed;
     if (typeof cache.url !== "string" || typeof cache.fetchedAt !== "string" || typeof cache.expiresAt !== "string" || !Array.isArray(cache.documents) || !cache.documents.every(
@@ -42810,7 +42829,7 @@ async function fetchLlmsTxt(options2) {
   const fetchImpl = options2.fetchImpl ?? fetch;
   const timeoutMs = options2.timeoutMs ?? LLMS_TXT_POLICY.timeoutMs;
   const boundFetch = options2.requestImpl ?? (options2.fetchImpl ? void 0 : pinnedFetch);
-  const lookupImpl = options2.lookupImpl ?? (fetchImpl === fetch ? async (hostname2) => (await (0, import_promises9.lookup)(hostname2, { all: true, verbatim: true })).map(({ address }) => address) : void 0);
+  const lookupImpl = options2.lookupImpl ?? (fetchImpl === fetch ? async (hostname2) => (await (0, import_promises10.lookup)(hostname2, { all: true, verbatim: true })).map(({ address }) => address) : void 0);
   const now = options2.now ?? Date.now;
   await assertSafeCacheDirectory(options2.cacheDir);
   const cacheFile = cachePath(options2.cacheDir, root.toString());
@@ -42881,7 +42900,7 @@ async function fetchLlmsTxt(options2) {
         lastModified: rootResponse.lastModified ?? cached3.lastModified
       };
       await assertSafeCacheDirectory(options2.cacheDir);
-      await (0, import_promises10.mkdir)(options2.cacheDir, { recursive: true });
+      await (0, import_promises11.mkdir)(options2.cacheDir, { recursive: true });
       await writeCache(cacheFile, refreshed);
       return {
         sourceUrl: cached3.url,
@@ -42932,7 +42951,7 @@ async function fetchLlmsTxt(options2) {
       failures
     };
     await assertSafeCacheDirectory(options2.cacheDir);
-    await (0, import_promises10.mkdir)(options2.cacheDir, { recursive: true });
+    await (0, import_promises11.mkdir)(options2.cacheDir, { recursive: true });
     await writeCache(cacheFile, cache);
     return { sourceUrl: root.toString(), documents, failures, fromCache: false, fetchedAt };
   });

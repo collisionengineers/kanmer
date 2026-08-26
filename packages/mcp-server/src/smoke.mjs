@@ -1959,19 +1959,21 @@ Second proof attempt passed; the first failure is retained.
     refusedMismatchedResume.ready === false && refusedMismatchedResume.reason.includes("other-agent"),
   );
 
+  const resumedWorktreeAlias = path.join(sandbox, ".worktrees", "other-alias");
+  fs.symlinkSync(resumedWorktree, resumedWorktreeAlias, process.platform === "win32" ? "junction" : "dir");
   const duplicateWorktreeId = JSON.parse(
     textOf(await client.callTool({ name: "create_item", arguments: { title: "duplicate resumed worktree", status: "implementing", profile: "chore", docs_todo: true } })),
   ).id;
   await client.callTool({ name: "set_ticket_doc", arguments: { id: duplicateWorktreeId, doc: "plan", content: "# Duplicate worktree" } });
-  await client.callTool({ name: "take_ticket", arguments: { id: duplicateWorktreeId, branch: "duplicate-branch", worktree: ".worktrees/other", assignee: "other-agent" } });
+  await client.callTool({ name: "take_ticket", arguments: { id: duplicateWorktreeId, branch: "duplicate-branch", worktree: ".worktrees/other-alias", assignee: "other-agent" } });
   const refusedDuplicateWorktree = JSON.parse(
     textOf(await client.callTool({
       name: "get_execution_packet",
-      arguments: { id: duplicateWorktreeId, resume: { branch: "duplicate-branch", worktree: ".worktrees/other" } },
+      arguments: { id: duplicateWorktreeId, resume: { branch: "duplicate-branch", worktree: ".worktrees/other-alias" } },
     })),
   );
   check(
-    "a resumed ticket cannot reuse another active ticket's recorded worktree",
+    "a resumed ticket cannot reuse another active ticket's aliased worktree",
     refusedDuplicateWorktree.ready === false && refusedDuplicateWorktree.reason.includes(occupiedId),
   );
 
@@ -2006,6 +2008,24 @@ Second proof attempt passed; the first failure is retained.
     "taking a ticket rejects the board worktree before it can become resumable",
     refusedBoardWorktree.isError === true && textOf(refusedBoardWorktree).includes("board workspace"),
     textOf(refusedBoardWorktree),
+  );
+
+  const boardAlias = path.join(sandbox, "board-alias");
+  fs.symlinkSync(sandbox, boardAlias, process.platform === "win32" ? "junction" : "dir");
+  const boardAliasId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "aliased board as resumed worktree", status: "implementing", profile: "chore", docs_todo: true } })),
+  ).id;
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: boardAliasId, doc: "plan", content: "# Aliased board worktree" } });
+  await client.callTool({ name: "take_ticket", arguments: { id: boardAliasId, branch: "aliased-board-branch", worktree: "board-alias", assignee: "other-agent" } });
+  const refusedAliasedBoardWorktree = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: boardAliasId, resume: { branch: "aliased-board-branch", worktree: "board-alias" } },
+    })),
+  );
+  check(
+    "a resumed ticket cannot use an aliased board worktree",
+    refusedAliasedBoardWorktree.ready === false && refusedAliasedBoardWorktree.reason.includes("board worktree"),
   );
 
   const incompleteTakenId = JSON.parse(

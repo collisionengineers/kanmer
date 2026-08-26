@@ -179,3 +179,118 @@ test("review prose validator rejects the deleted legacy review-asset claim", () 
     rmSync(fixture, { recursive: true, force: true });
   }
 });
+
+test("skill prose validator rejects a resumed execution flow that recreates its worktree", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-execute-resume-contract-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const execute = join(fixture, "plugins", "kanmer", "skills", "kanmer-execute", "SKILL.md");
+    writeFileSync(
+      execute,
+      readFileSync(execute, "utf8").replace(
+        "Only when `packet.ticket.taken` is absent, create the worktree",
+        "Create the worktree for every ready packet",
+      ),
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /kanmer-execute separates resumed and fresh worktree flows/);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
+test("skill prose validator rejects a resumed flow without repository and retained-handoff checks", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-execute-resume-safety-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const execute = join(fixture, "plugins", "kanmer", "skills", "kanmer-execute", "SKILL.md");
+    writeFileSync(
+      execute,
+      readFileSync(execute, "utf8")
+        .replace("git -C <source-repository-root> rev-parse --git-common-dir", "git -C <source-repository-root> status")
+        .replace("Do not release a paused ticket", "Release a paused ticket"),
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /kanmer-execute validates resumed repository, location, and pause handoff/);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
+test("skill prose validator rejects document writes on refusal and closeout release of paused work", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-resume-handoff-contract-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const execute = join(fixture, "plugins", "kanmer", "skills", "kanmer-execute", "SKILL.md");
+    const closeout = join(fixture, "plugins", "kanmer", "skills", "kanmer-closeout", "SKILL.md");
+    writeFileSync(
+      execute,
+      readFileSync(execute, "utf8").replace(
+        "in the external hand-off and stop without mutating the ticket",
+        "in scratch and stop",
+      ),
+    );
+    writeFileSync(
+      closeout,
+      readFileSync(closeout, "utf8").replace(
+        "This is not closeout. Leave the ticket taken",
+        "Release the ticket before a later worker resumes it",
+      ),
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /ready:false refusal externally handed off and read-only/);
+    assert.match(result.stdout, /closeout preserves a paused ticket's resume metadata/);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
+test("skill prose validator rejects a resumed flow without reference inputs or an implementation boundary", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-resume-stage-reference-contract-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const execute = join(fixture, "plugins", "kanmer", "skills", "kanmer-execute", "SKILL.md");
+    writeFileSync(
+      execute,
+      readFileSync(execute, "utf8")
+        .replace("including non-Markdown\ninputs deliberately omitted from `extraDocs`", "only Markdown packet documents")
+        .replace("only while the ticket remains in\n`implementing`", "at every ticket stage"),
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /retains reference inputs and limits resumption to implementation/);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});

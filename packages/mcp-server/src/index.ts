@@ -648,11 +648,15 @@ server.registerTool(
   {
     title: "Get an execution packet",
     description:
-      "Return one bounded, read-only implementation packet for a ticket, or a normal ready:false refusal with code GATE_BLOCKED. Refusals are ordered: non-ticket/legacy, spike, unmet leave-preparing requirements, unresolved questions, then occupancy by another actor. A ready packet contains the ticket, ordered group contexts, profile-resolved gates, plan/checklist/files index documents with versions, extra document paths and versions, a stop condition, and command hint. It never takes, moves, writes, dispatches, or creates a worktree.",
-    inputSchema: { id: z.string().describe("Ticket id") },
+      "Return one bounded, read-only implementation packet for a ticket, or a normal ready:false refusal with code GATE_BLOCKED. Refusals are ordered: non-ticket/legacy, spike, unmet leave-preparing requirements, unresolved questions, then occupancy by another actor. An occupied ticket may be deliberately resumed only by providing its exact recorded branch and worktree. A ready packet contains the ticket, ordered group contexts, profile-resolved gates, plan/checklist/files index documents with versions, extra document paths and versions, a stop condition, and command hint. It never takes, moves, writes, dispatches, or creates a worktree.",
+    inputSchema: {
+      id: z.string().describe("Ticket id"),
+      resume: z.object({ branch: z.string(), worktree: z.string() }).optional()
+        .describe("Exact recorded branch/worktree required to resume an occupied ticket from a different MCP client identity"),
+    },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  guard(async ({ id }, extra) => {
+  guard(async ({ id, resume }, extra) => {
     const format = await store.detectFormat();
     const { source } = await store.getBoardWithSource();
     const project = projectIdentity({
@@ -661,7 +665,7 @@ server.registerTool(
       repoRoot: store.paths.repoRoot,
       boardSource: source,
     });
-    return ok(await getExecutionPacket({ store, id, actor: actorName(server, extra), project }));
+    return ok(await getExecutionPacket({ store, id, actor: actorName(server, extra), project, resume }));
   }),
 );
 

@@ -10,13 +10,8 @@ import type { Item, TicketDocsInfo } from "./types.js";
  * running a whole ticket unattended.
  */
 
-/** The clauses every dispatched task carries. */
-const COMMON = [
-  // FRD-003 T9 — the read-everything duty. Stated here because a dispatched
-  // agent may never load a skill; the prompt is the layer that always arrives.
-  "Before anything else, read the whole ticket: get_item, then get_doc_gates, " +
-    "then every existing document in the ticket folder including reference/ " +
-    "(human-supplied inputs) and the shared context of any group it belongs to.",
+/** The headless safety and stopping clauses every dispatched task carries. */
+const HEADLESS_DELIVERY = [
   // FRD-009 R3 — the headless rule.
   "No user is available. If you hit a decision only the user can make, take the " +
     "most reasonable option, record the question and the assumption you made in " +
@@ -25,13 +20,32 @@ const COMMON = [
   "Stop when the deliverable exists. Do not carry on into the next stage's work.",
 ].join(" ");
 
+const COMMON = [
+  // FRD-003 T9 — the read-everything duty. Stated here because a dispatched
+  // agent may never load a skill; the prompt is the layer that always arrives.
+  "Before anything else, read the whole ticket: get_item, then get_doc_gates, " +
+    "then every existing document in the ticket folder including reference/ " +
+    "(human-supplied inputs) and the shared context of any group it belongs to.",
+  HEADLESS_DELIVERY,
+].join(" ");
+
+/** The execution lane must receive its packet before any ticket reconstruction. */
+const EXECUTION_COMMON = [
+  "Call get_status, then make get_execution_packet the first ticket-specific call. " +
+    "If an occupancy refusal names an existing branch and worktree, retry only that call " +
+    "with those exact values in resume; stop on every other refusal.",
+  "A ready packet with ticket.taken is resumed work: validate and reuse its exact " +
+    "branch/worktree without git worktree add or take_ticket. Only a packet without " +
+    "ticket.taken may create a fresh worktree and call take_ticket.",
+  "After the packet is ready, read its listed documents and group contexts, then discover and read every human-supplied file in the ticket's reference/ directory before editing — including non-Markdown inputs omitted from extraDocs.",
+  HEADLESS_DELIVERY,
+].join(" ");
+
 export function takeTicketPromptText(id: string): string {
   return (
-    `Take Kanmer ticket ${id} and work it end to end. ${COMMON} ` +
-    `Call take_ticket with the real branch and worktree you will use, follow what ` +
-    `get_doc_gates says this ticket's profile requires at each boundary — not a ` +
-    `fixed pipeline, since requirements vary by profile — and write real evidence ` +
-    `into proof/ before moving it to Done.`
+    `Execute Kanmer ticket ${id}. ${EXECUTION_COMMON} Follow the packet's resolved ` +
+    `gates at each boundary — requirements vary by profile — and stop at Review ` +
+    `for independent review; proof is written only after the merge.`
   );
 }
 
@@ -124,11 +138,9 @@ export const DISPATCH_TASKS: readonly DispatchTask[] = Object.freeze([
     label: "Execute checklist",
     deliverable: "the checklist worked, a post-implementation report, a PR open",
     prompt: (id) =>
-      `Implement Kanmer ticket ${id}. ${COMMON} Create the worktree and branch ` +
-      `first and take_ticket with them — one worktree per ticket is what makes ` +
-      `parallel agents safe. Work the checklist, appending progress as you go, ` +
-      `and keep files/ current as you discover things it did not predict. Finish ` +
-      `with the post-implementation report and the PR open.`,
+      `Implement Kanmer ticket ${id}. ${EXECUTION_COMMON} Work the checklist, ` +
+      `appending progress as you go, and keep files/ current as you discover things ` +
+      `it did not predict. Finish with the post-implementation report and the PR open.`,
   },
   {
     id: "verify",

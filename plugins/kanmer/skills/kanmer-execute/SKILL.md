@@ -18,14 +18,19 @@ run and stop when the packet says to stop.
    `compat.expectedProject` capability.
 2. Make `get_execution_packet <id>` the **first ticket-specific data call**.
    A refusal is a normal result, not an invitation to reconstruct the packet.
-3. If `ready: false`, quote its exact `code`, `reason`, and `missing` values
-   in scratch and stop. Do not call `get_item`, take the ticket, run Git, or
-   write a document after that refusal.
-4. Retain the ready packet and then create and validate the exact worktree and
-   branch it requires. Send `expected_project` only when the preceding status
-   call advertised `compat.expectedProject: "optional"`.
-5. Take the ticket with the exact branch and worktree, work only the packet's
-   files and checklist, and record progress with version-aware MCP writes.
+3. If `ready: false`, return its exact `code`, `reason`, and `missing` values
+   in the external hand-off and stop without mutating the ticket, except for the deliberately resumable occupancy case:
+   when the refusal names an existing branch and worktree, retry this one call
+   with those exact values in `resume`. If that retry refuses, stop. Do not
+   call `get_item`, take the ticket, run Git, or write a document after any
+   other refusal.
+4. Retain the ready packet. If it reports `ticket.taken`, it is a resumed
+   ticket: validate and reuse that exact recorded worktree and branch; do not
+   create another worktree or call `take_ticket`. Otherwise create and validate
+   a fresh worktree and take the ticket. Send `expected_project` only when the
+   preceding status call advertised `compat.expectedProject: "optional"`.
+5. Work only the packet's files and checklist, and record progress with
+   version-aware MCP writes.
 6. Write the post-implementation report, record traceability, push the branch,
    and open a PR whose body contains `Kanmer: <ID>`.
 7. Re-read `get_doc_gates`, then move only `implementing` → `review` when its
@@ -44,19 +49,35 @@ get_execution_packet id: <ID>
 
 The packet is read-only and does not take, move, write, dispatch, or create a
 worktree. It is ordered to refuse unsafe execution: a non-ticket/legacy item,
-spike, unmet `leave-preparing` gate, unresolved questions, or an occupied
-ticket. On any `{ready: false, code: "GATE_BLOCKED", ...}` response, quote the
-exact refusal in the hand-off and stop before every other ticket, Git, or
-document action. Do not turn `missing` into a guessed plan, run `kanmer-plan`
-inside execute, or retry by passing `force`; hand the ticket back to the named
+spike, unmet `leave-preparing` gate, unresolved questions, an incomplete or
+unsafe taken location, or an occupied ticket. On any `{ready: false,
+code: "GATE_BLOCKED", ...}` response, return the
+exact refusal in the external hand-off and stop before every ticket, Git, or
+document action. The sole retry is an occupancy refusal that includes its
+recorded branch and worktree: submit those two literal values as
+`resume: { branch, worktree }` to the same call. That is a deliberate resume
+confirmation, not a force flag; a changed or incomplete value is refused.
+Do not turn `missing` into a guessed plan, run `kanmer-plan` inside execute,
+or retry by passing `force`; hand every other refusal back to the named
 preparation phase or operator.
 
 A ready packet contains the full ticket body, ordered group contexts, resolved
 gates, and the versioned `plan`, `checklist`, and `files` index documents. It
-also lists every extra Markdown path, an ATX `stopCondition`, and a command
-hint. Treat those versions as optimistic concurrency tokens: read every listed
-path and pass its version to a replacement. Do not silently overwrite a human
-edit; re-read the packet and re-plan if a version conflict occurs.
+also lists every extra Markdown path, an ATX `stopCondition`, a command hint,
+and non-blocking warnings about other tickets' stale locations. Treat those
+versions as optimistic concurrency tokens: read every listed path and pass its
+version to a replacement. Then discover and read every human-supplied file in
+the ticket's `reference/` directory before editing — including non-Markdown
+inputs deliberately omitted from `extraDocs`. Do not silently overwrite a
+human edit; re-read the packet and re-plan if a version conflict occurs. A
+warning never authorizes a repair outside this ticket; retain it for the
+external hand-off.
+
+`ticket.taken` selects the execution lane. A missing value means fresh work;
+create the recorded worktree and then take the ticket. A present value means
+resume the exact already-recorded branch and worktree. It is not permission to
+create another worktree, retake the ticket, clear its ownership, or replace its
+uncommitted work.
 
 ## Project capability and worktree
 
@@ -67,7 +88,39 @@ Before the first mutating call, retain `project.fingerprint` from
 when the capability is absent. It is never nested in ticket fields or packet
 documents.
 
-Create the worktree from the repository root, after the packet is ready:
+### Resumed packet
+
+When `packet.ticket.taken` is present, use its `branch` and `worktree` values
+literally. They must be the same pair supplied to `resume` when the prior
+occupancy refusal needed that retry. From the repository root, validate the
+existing worktree without modifying it:
+
+```sh
+git -C <recorded-worktree> rev-parse --show-toplevel
+git -C <recorded-worktree> rev-parse --git-common-dir
+git -C <source-repository-root> rev-parse --git-common-dir
+git -C <recorded-worktree> branch --show-current
+```
+
+The first command must resolve to the recorded worktree root; the two
+common-directory values must name the same source repository; and the final
+command must exactly equal the recorded branch. Before editing, call
+`list_items` and compare the candidate against every other active ticket's
+recorded worktree. It must not be `.worktrees/kanmer`, the board root, the
+shared source checkout, or another ticket's worktree. A missing path, detached
+or different branch, duplicate location, or unexpected repository is a stop:
+return the observed condition in the external hand-off without a ticket write.
+The server issues resumed packets only while the ticket remains in
+`implementing`; a ticket in Review or Verifying stays taken for traceability,
+not for further implementation. Do not repair it by
+`git worktree add`, checkout, reset, or `take_ticket`. Existing uncommitted
+changes belong to the resumed ticket and are not a reason to clean or recreate
+it.
+
+### Fresh packet
+
+Only when `packet.ticket.taken` is absent, create the worktree from the
+repository root after the packet is ready:
 
 ```sh
 git fetch origin
@@ -87,7 +140,9 @@ take_ticket id: <ID>, branch: "<id>-<slug>", worktree: ".worktrees/<id-lowercase
 ```
 
 The ticket comes before the branch in the board record; never invent a branch
-for an unrecorded ticket and never `force` a taken ticket.
+for an unrecorded ticket and never `force` a taken ticket. A resumed ticket is
+already taken, so it deliberately skips this fresh-ticket creation and take
+sequence.
 
 ## Work only the packet
 
@@ -136,12 +191,14 @@ clean up the implementation worktree, or start another ticket.
 
 ## Pausing
 
-If work must pause before review, append the exact resume point — branch,
-worktree, packet version, and last command/result — to execute scratch. Release
-only when another worker may safely resume; release clears the branch and
-worktree fields, so retain the physical worktree and branch as the named resume
-point. A refusal, missing dependency, or user-only decision is a stop, not a
-reason to guess.
+If work must pause before review, leave the ticket taken and append the exact
+resume point — branch, worktree, packet version, and last command/result — to
+execute scratch. A later worker uses the occupied-ticket `resume` confirmation
+and reuses that same recorded location. Do not release a paused ticket that
+retains a worktree or branch: release clears the metadata that makes a resume
+safe. Release is closeout cleanup only after the recorded location is no longer
+an execution target. A refusal, missing dependency, or user-only decision is a
+stop, not a reason to guess.
 
 ---
 

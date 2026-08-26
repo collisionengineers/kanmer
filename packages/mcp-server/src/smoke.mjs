@@ -1911,7 +1911,29 @@ Second proof attempt passed; the first failure is retained.
   check(
     "other actor occupancy refuses with no missing documents",
     refusedOccupied.ready === false && refusedOccupied.missing.length === 0 &&
-      refusedOccupied.reason.includes("other-agent") && refusedOccupied.reason.includes("other-branch"),
+      refusedOccupied.reason.includes("other-agent") && refusedOccupied.reason.includes("other-branch") &&
+      refusedOccupied.reason.includes(".worktrees/other"),
+  );
+  const resumedOccupied = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: occupiedId, resume: { branch: "other-branch", worktree: ".worktrees/other" } },
+    })),
+  );
+  check(
+    "exact recorded branch and worktree resume an occupied packet",
+    resumedOccupied.ready === true && resumedOccupied.ticket.taken?.branch === "other-branch" &&
+      resumedOccupied.ticket.taken?.worktree === ".worktrees/other",
+  );
+  const refusedMismatchedResume = JSON.parse(
+    textOf(await client.callTool({
+      name: "get_execution_packet",
+      arguments: { id: occupiedId, resume: { branch: "other-branch", worktree: ".worktrees/not-other" } },
+    })),
+  );
+  check(
+    "mismatched resume remains an occupancy refusal",
+    refusedMismatchedResume.ready === false && refusedMismatchedResume.reason.includes("other-agent"),
   );
 
   const del1 = await client.callTool({ name: "delete_item", arguments: { id: "TICK-001" } });

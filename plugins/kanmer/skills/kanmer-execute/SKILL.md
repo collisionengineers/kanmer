@@ -19,8 +19,11 @@ run and stop when the packet says to stop.
 2. Make `get_execution_packet <id>` the **first ticket-specific data call**.
    A refusal is a normal result, not an invitation to reconstruct the packet.
 3. If `ready: false`, quote its exact `code`, `reason`, and `missing` values
-   in scratch and stop. Do not call `get_item`, take the ticket, run Git, or
-   write a document after that refusal.
+   in scratch and stop, except for the deliberately resumable occupancy case:
+   when the refusal names an existing branch and worktree, retry this one call
+   with those exact values in `resume`. If that retry refuses, stop. Do not
+   call `get_item`, take the ticket, run Git, or write a document after any
+   other refusal.
 4. Retain the ready packet and then create and validate the exact worktree and
    branch it requires. Send `expected_project` only when the preceding status
    call advertised `compat.expectedProject: "optional"`.
@@ -47,8 +50,12 @@ worktree. It is ordered to refuse unsafe execution: a non-ticket/legacy item,
 spike, unmet `leave-preparing` gate, unresolved questions, or an occupied
 ticket. On any `{ready: false, code: "GATE_BLOCKED", ...}` response, quote the
 exact refusal in the hand-off and stop before every other ticket, Git, or
-document action. Do not turn `missing` into a guessed plan, run `kanmer-plan`
-inside execute, or retry by passing `force`; hand the ticket back to the named
+document action. The sole retry is an occupancy refusal that includes its
+recorded branch and worktree: submit those two literal values as
+`resume: { branch, worktree }` to the same call. That is a deliberate resume
+confirmation, not a force flag; a changed or incomplete value is refused.
+Do not turn `missing` into a guessed plan, run `kanmer-plan` inside execute,
+or retry by passing `force`; hand every other refusal back to the named
 preparation phase or operator.
 
 A ready packet contains the full ticket body, ordered group contexts, resolved

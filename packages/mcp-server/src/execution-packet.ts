@@ -233,8 +233,9 @@ export async function getExecutionPacket(input: {
   id: string;
   actor: string;
   project: ProjectIdentity;
+  resume?: { branch: string; worktree: string };
 }): Promise<ExecutionPacket> {
-  const { store, id, actor, project } = input;
+  const { store, id, actor, project, resume } = input;
   const item = await store.getItem(id);
   if (!item) return refuse(project, `No ticket with id "${id}" exists.`, []);
   if (item.type !== "ticket") {
@@ -257,7 +258,13 @@ export async function getExecutionPacket(input: {
     return refuse(project, "Execution is blocked by unresolved questions.", ["questions-resolved"], item, gates);
   }
 
-  if (item.taken_at && item.assignee !== actor) {
+  // MCP client names are not durable agent identities. A later session must
+  // deliberately name the exact branch and worktree already recorded before
+  // it may resume; every other occupied-ticket request remains refused.
+  const exactRecordedResume = resume !== undefined &&
+    item.branch !== undefined && resume.branch === item.branch &&
+    item.worktree !== undefined && resume.worktree === item.worktree;
+  if (item.taken_at && item.assignee !== actor && !exactRecordedResume) {
     const owner = item.assignee || "an unknown actor";
     const location = [item.branch && `branch ${item.branch}`, item.worktree && `worktree ${item.worktree}`]
       .filter(Boolean)

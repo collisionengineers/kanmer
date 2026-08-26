@@ -39824,14 +39824,17 @@ function kanmerRootIn(text, format) {
 function isCurrentCodexRegistration(text) {
   const section = kanmerTomlSection(text);
   if (section === null) return null;
-  const command = /^[ \t]*command[ \t]*=[ \t]*"([^"]+)"[ \t]*$/m.exec(section)?.[1];
+  const rawCommand = /^[ \t]*command[ \t]*=[ \t]*(.*)$/m.exec(section)?.[1];
   const rawArgs = /^[ \t]*args[ \t]*=[ \t]*(\[[\s\S]*?\])/m.exec(section)?.[1];
-  if (!rawArgs) return false;
+  if (rawCommand === void 0 || !rawArgs) return false;
+  const command = parseTomlStringArray(`[
+${rawCommand}
+]`);
   const args = parseTomlStringArray(rawArgs);
-  if (args === null) {
+  if (command === null || command.length !== 1 || args === null) {
     return false;
   }
-  return command?.toLowerCase() === "powershell.exe" && JSON.stringify(args) === JSON.stringify(CODEX_PORTABLE_ARGS);
+  return command[0].toLowerCase() === "powershell.exe" && JSON.stringify(args) === JSON.stringify(CODEX_PORTABLE_ARGS);
 }
 function parseTomlStringArray(source) {
   let index = 0;

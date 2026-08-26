@@ -659,14 +659,18 @@ export function kanmerRootIn(text: string, format: "json" | "toml"): string | nu
 export function isCurrentCodexRegistration(text: string): boolean | null {
   const section = kanmerTomlSection(text);
   if (section === null) return null;
-  const command = /^[ \t]*command[ \t]*=[ \t]*"([^"]+)"[ \t]*$/m.exec(section)?.[1];
+  // `command` is a TOML string, not a formatting convention. Feed the scalar
+  // through the same narrow TOML string parser as `args` so valid literal
+  // strings and trailing comments do not make a healthy registration stale.
+  const rawCommand = /^[ \t]*command[ \t]*=[ \t]*(.*)$/m.exec(section)?.[1];
   const rawArgs = /^[ \t]*args[ \t]*=[ \t]*(\[[\s\S]*?\])/m.exec(section)?.[1];
-  if (!rawArgs) return false;
+  if (rawCommand === undefined || !rawArgs) return false;
+  const command = parseTomlStringArray(`[\n${rawCommand}\n]`);
   const args = parseTomlStringArray(rawArgs);
-  if (args === null) {
+  if (command === null || command.length !== 1 || args === null) {
     return false;
   }
-  return command?.toLowerCase() === "powershell.exe" &&
+  return command[0]!.toLowerCase() === "powershell.exe" &&
     JSON.stringify(args) === JSON.stringify(CODEX_PORTABLE_ARGS);
 }
 

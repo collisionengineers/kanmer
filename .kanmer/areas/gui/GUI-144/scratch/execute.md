@@ -1,0 +1,3 @@
+## Transitions
+
+- 2026-08-28T03:40:00Z stage review → implementing by claude-code (auto-run controller); reason: needs-changes attestation scratch/review.md v63961e7382adc4e0 at PR #294 head a9033ec2 — F-001 major: projectRegistry.test.ts fixture injects a duplicate `lease_id:` block after CORE-115's takeTicket already writes lease fields → YAML duplicate key → ticket dropped → hosted verify red; F-002 major: "Open project" on a non-selected card calls openProject directly and does not select the project; F-003..F-007 minors recommended. review_round 1 of remediation_budget 1. Same branch gui-144-project-registry, worktree .worktrees/gui-144, PR #294.

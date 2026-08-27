@@ -2,17 +2,15 @@
 id: CORE-113
 type: ticket
 title: Add dry-run-first rescue and reconciliation for delivery state
-status: review
+status: backlog
 area: core
-assignee: codex-goal-controller
+assignee: ''
 profile: feature
 stageEntered:
   preparing: '2026-08-26T21:45:23.896Z'
   review: '2026-08-26T22:15:29.820Z'
   implementing: '2026-08-26T22:36:35.233Z'
-taken_at: '2026-08-26T21:48:26.729Z'
-branch: core-113-rescue-reconciliation
-worktree: .worktrees/core-113
+  backlog: '2026-08-27T09:58:39.019Z'
 labels:
   - reliable-autonomy
 groups:
@@ -28,9 +26,9 @@ commits:
   - db63fb4b150e956dafb88c75c99ff3088a0b72cc
 prs:
   - '286'
-archived: false
+archived: true
 created: '2026-08-26T21:02:41.922Z'
-updated: '2026-08-26T23:11:36.002Z'
+updated: '2026-08-27T09:58:56.195Z'
 ---
 
 ## What
@@ -53,4 +51,8 @@ A partially broken phase workflow must not make the board unrecoverable or leave
 
 ## Outcome
 
-Implemented in `61927fffeced9f216d5849667357e63964345f2d`, remediated in `83279d14638e874bd98ccf764ccd7844897c6993`, and hardened by the one authorised final remediation commit `db63fb4b150e956dafb88c75c99ff3088a0b72cc`. The candidate adds read-only `reconcile_ticket` plus expected-project-guarded `apply_reconciliation`, with authenticated proof/check/PR/commit/workspace evidence and explicit no-apply classification for unsafe or inconclusive states. The full verification rail passed at the final candidate, but the fresh independent review identified terminal major F-015 / GH-3867261017; CORE-113 remains in Review pending an operator decision, with no additional automatic remediation or merge.
+**Superseded by operator decision on 2026-08-27 (not delivered).** Implemented in `61927fffeced9f216d5849667357e63964345f2d`, remediated in `83279d14638e874bd98ccf764ccd7844897c6993`, hardened in `db63fb4b150e956dafb88c75c99ff3088a0b72cc`; PR #286 closed unmerged, branch `core-113-rescue-reconciliation` retained for reference.
+
+Reason: mutating reconciliation cannot be made safe within this ticket. F-015 (proof write outside ticket CAS) needs a document-inclusive revision (CORE-114); expired-claim classification needs claim expiry/leases (CORE-115); typed verification-failure routing needs a proof failure class (review/verify skill contract). The review attestation at `db63fb4b` also predates Codex round 3 and omits four current P1 threads (git-common-dir worktree identity, missing-worktree merged recovery, verification-failure routing, expired-claim classification).
+
+Successor work (see `scratch/notes.md` and HZN-008 context): a bootstrap ownership/backward-move contract first, then a read-only `reconcile_ticket` inspector salvaged from PR #286 (classifier, collector, reachability helper, tests — with check-order, missing-worktree, `--git-common-dir` and subprocess-timeout fixes), merge-gate/board-sync hardening and a review-consolidation skill contract in parallel, then CORE-114 → CORE-115 → mutating `apply_reconciliation`.

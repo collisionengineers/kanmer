@@ -353,6 +353,8 @@ export const BoardConfigSchema = z.object({
   deployment: DeploymentConfigSchema.optional(),
   /** Project-declared research sources (FRD-027 / ADR-0020). */
   sources: SourceDeclarationArraySchema.optional(),
+  /** Minutes before a ticket claim is considered expired (FRD-030). Absent ⇒ 30. */
+  claimExpiryMinutes: z.number().int().positive().optional(),
   /** Legacy, read-only: present on format ≤2 boards, dropped on migration. */
   statuses: z.array(BoardColumnSchema).optional(),
   priorities: z.array(BoardColumnSchema).optional(),
@@ -405,6 +407,18 @@ export const ItemFrontmatterSchema = z
     branch: z.string().optional(),
     /** The worktree path the taken work happens in, if any. */
     worktree: z.string().optional(),
+    /**
+     * Bootstrap claim contract (CORE-121, FRD-030 partial). Absent on legacy
+     * claims: expiry is then derived from `taken_at` plus the board window.
+     * Expiry never releases anything by itself; it only makes `transfer` legal.
+     */
+    claim_expires_at: TimestampSchema.optional(),
+    /** Durable controller identity behind the claim (the MCP client name in `assignee` is not durable). */
+    claim_controller: z.string().optional(),
+    /** How many times Review has returned this ticket to Implementing. */
+    review_round: z.number().int().nonnegative().optional(),
+    /** How many Review → Implementing returns are allowed before an operator must intervene (default 1). */
+    remediation_budget: z.number().int().positive().optional(),
     /** Optional fractional sort key; unordered items sort after ordered ones. */
     order: z.number().optional(),
     labels: z.array(z.string()).default([]),
@@ -509,6 +523,14 @@ export interface UpdateItemPatch {
    * Omit for last-write-wins (the GUI and casual calls).
    */
   expectedUpdated?: string;
+  /**
+   * Why a ticket is being moved backwards (CORE-121). Required for any move
+   * to an earlier stage; a reason beginning with `operator:` is the human
+   * override for Review → Implementing without a needs-changes attestation.
+   * Recorded in the activity log and the ticket's execution scratch; never
+   * stored in frontmatter.
+   */
+  reason?: string;
 }
 
 /** Result of deleteItem: what was removed and what referenced it. */
@@ -543,8 +565,49 @@ export interface TakeTicketInput {
   /** Stage to move to; defaults to the board's `implementing` stage if it has one. */
   stage?: string;
   assignee?: string;
+  /** Durable controller identity; defaults to `assignee`. */
+  controller?: string;
   /** Take over a ticket that is already taken. */
   force?: boolean;
+}
+
+/** Input for transferTicket: hand an expired (or operator-released) claim to a new controller. */
+export interface TransferTicketInput {
+  /** The new assignee (MCP client name). */
+  assignee: string;
+  /** Durable controller identity; defaults to `assignee`. */
+  controller?: string;
+  /** Required to transfer a live claim: must begin with `operator:`. */
+  reason?: string;
+}
+
+/** Bootstrap claim state (CORE-121). */
+export type ClaimState = "unclaimed" | "live" | "expired";
+
+/** Default claim window when board.yml does not set `claimExpiryMinutes`. */
+export const DEFAULT_CLAIM_EXPIRY_MINUTES = 30;
+
+/**
+ * Classify a ticket's claim. A claim with `claim_expires_at` expires at that
+ * instant; a legacy claim (no `claim_expires_at`) expires `minutes` after
+ * `taken_at` — the FRD-030 "one migration path" for permanent claims.
+ */
+export function claimState(
+  item: Pick<Item, "taken_at" | "claim_expires_at">,
+  now: Date = new Date(),
+  minutes: number = DEFAULT_CLAIM_EXPIRY_MINUTES,
+): ClaimState {
+  if (!item.taken_at) return "unclaimed";
+  const expiresAt = item.claim_expires_at
+    ? Date.parse(item.claim_expires_at)
+    : Date.parse(item.taken_at) + minutes * 60_000;
+  if (Number.isNaN(expiresAt)) return "live"; // unparseable timestamps never expire silently
+  return expiresAt < now.getTime() ? "expired" : "live";
+}
+
+/** Whether a backward-move or transfer reason is the human operator override. */
+export function isOperatorReason(reason: string | undefined): boolean {
+  return typeof reason === "string" && /^operator:\s*\S/u.test(reason);
 }
 
 /** Forward + backward relations for one item (get_links). */

@@ -10189,10 +10189,10 @@ var require_stringify = __commonJS({
       data = Object.assign({}, file.data, data);
       const open = opts.delimiters[0];
       const close = opts.delimiters[1];
-      const matter3 = engine.stringify(data, options2).trim();
+      const matter4 = engine.stringify(data, options2).trim();
       let buf = "";
-      if (matter3 !== "{}") {
-        buf = newline(open) + newline(matter3) + newline(close);
+      if (matter4 !== "{}") {
+        buf = newline(open) + newline(matter4) + newline(close);
       }
       if (typeof file.excerpt === "string" && file.excerpt !== "") {
         if (str2.indexOf(file.excerpt.trim()) === -1) {
@@ -10298,19 +10298,19 @@ var require_gray_matter = __commonJS({
     var toFile = require_to_file();
     var parse4 = require_parse();
     var utils = require_utils2();
-    function matter3(input, options2) {
+    function matter4(input, options2) {
       if (input === "") {
         return { data: {}, content: input, excerpt: "", orig: input };
       }
       let file = toFile(input);
-      const cached3 = matter3.cache[file.content];
+      const cached3 = matter4.cache[file.content];
       if (!options2) {
         if (cached3) {
           file = Object.assign({}, cached3);
           file.orig = cached3.orig;
           return file;
         }
-        matter3.cache[file.content] = file;
+        matter4.cache[file.content] = file;
       }
       return parseMatter(file, options2);
     }
@@ -10332,7 +10332,7 @@ var require_gray_matter = __commonJS({
       }
       str2 = str2.slice(openLen);
       const len = str2.length;
-      const language = matter3.language(str2, opts);
+      const language = matter4.language(str2, opts);
       if (language.name) {
         file.language = language.name;
         str2 = str2.slice(language.raw.length);
@@ -10367,24 +10367,24 @@ var require_gray_matter = __commonJS({
       }
       return file;
     }
-    matter3.engines = engines2;
-    matter3.stringify = function(file, data, options2) {
-      if (typeof file === "string") file = matter3(file, options2);
+    matter4.engines = engines2;
+    matter4.stringify = function(file, data, options2) {
+      if (typeof file === "string") file = matter4(file, options2);
       return stringify(file, data, options2);
     };
-    matter3.read = function(filepath, options2) {
+    matter4.read = function(filepath, options2) {
       const str2 = fs12.readFileSync(filepath, "utf8");
-      const file = matter3(str2, options2);
+      const file = matter4(str2, options2);
       file.path = filepath;
       return file;
     };
-    matter3.test = function(str2, options2) {
+    matter4.test = function(str2, options2) {
       return utils.startsWith(str2, defaults(options2).delimiters[0]);
     };
-    matter3.language = function(str2, options2) {
+    matter4.language = function(str2, options2) {
       const opts = defaults(options2);
       const open = opts.delimiters[0];
-      if (matter3.test(str2)) {
+      if (matter4.test(str2)) {
         str2 = str2.slice(open.length);
       }
       const language = str2.slice(0, str2.search(/\r?\n/));
@@ -10393,11 +10393,11 @@ var require_gray_matter = __commonJS({
         name: language ? language.trim() : ""
       };
     };
-    matter3.cache = {};
-    matter3.clearCache = function() {
-      matter3.cache = {};
+    matter4.cache = {};
+    matter4.clearCache = function() {
+      matter4.cache = {};
     };
-    module2.exports = matter3;
+    module2.exports = matter4;
   }
 });
 
@@ -37573,6 +37573,7 @@ var import_fs5 = require("fs");
 var import_promises7 = __toESM(require("fs/promises"), 1);
 var import_path10 = __toESM(require("path"), 1);
 var import_path11 = __toESM(require("path"), 1);
+var import_gray_matter3 = __toESM(require_gray_matter(), 1);
 var import_promises8 = __toESM(require("fs/promises"), 1);
 var import_path12 = __toESM(require("path"), 1);
 var import_chokidar = __toESM(require_chokidar(), 1);
@@ -37766,6 +37767,8 @@ var BoardConfigSchema = external_exports.object({
   deployment: DeploymentConfigSchema.optional(),
   /** Project-declared research sources (FRD-027 / ADR-0020). */
   sources: SourceDeclarationArraySchema.optional(),
+  /** Minutes before a ticket claim is considered expired (FRD-030). Absent ⇒ 30. */
+  claimExpiryMinutes: external_exports.number().int().positive().optional(),
   /** Legacy, read-only: present on format ≤2 boards, dropped on migration. */
   statuses: external_exports.array(BoardColumnSchema).optional(),
   priorities: external_exports.array(BoardColumnSchema).optional(),
@@ -37801,6 +37804,18 @@ var ItemFrontmatterSchema = external_exports.object({
   branch: external_exports.string().optional(),
   /** The worktree path the taken work happens in, if any. */
   worktree: external_exports.string().optional(),
+  /**
+   * Bootstrap claim contract (CORE-121, FRD-030 partial). Absent on legacy
+   * claims: expiry is then derived from `taken_at` plus the board window.
+   * Expiry never releases anything by itself; it only makes `transfer` legal.
+   */
+  claim_expires_at: TimestampSchema.optional(),
+  /** Durable controller identity behind the claim (the MCP client name in `assignee` is not durable). */
+  claim_controller: external_exports.string().optional(),
+  /** How many times Review has returned this ticket to Implementing. */
+  review_round: external_exports.number().int().nonnegative().optional(),
+  /** How many Review → Implementing returns are allowed before an operator must intervene (default 1). */
+  remediation_budget: external_exports.number().int().positive().optional(),
   /** Optional fractional sort key; unordered items sort after ordered ones. */
   order: external_exports.number().optional(),
   labels: external_exports.array(external_exports.string()).default([]),
@@ -37821,6 +37836,16 @@ var ItemFrontmatterSchema = external_exports.object({
   created: TimestampSchema.default(""),
   updated: TimestampSchema.default("")
 }).passthrough();
+var DEFAULT_CLAIM_EXPIRY_MINUTES = 30;
+function claimState(item, now = /* @__PURE__ */ new Date(), minutes = DEFAULT_CLAIM_EXPIRY_MINUTES) {
+  if (!item.taken_at) return "unclaimed";
+  const expiresAt = item.claim_expires_at ? Date.parse(item.claim_expires_at) : Date.parse(item.taken_at) + minutes * 6e4;
+  if (Number.isNaN(expiresAt)) return "live";
+  return expiresAt < now.getTime() ? "expired" : "live";
+}
+function isOperatorReason(reason) {
+  return typeof reason === "string" && /^operator:\s*\S/u.test(reason);
+}
 function validateSourceDeclarations(sources) {
   return SourceDeclarationArraySchema.parse(sources);
 }
@@ -38460,6 +38485,10 @@ var KEY_ORDER = [
   "taken_at",
   "branch",
   "worktree",
+  "claim_expires_at",
+  "claim_controller",
+  "review_round",
+  "remediation_budget",
   "labels",
   "groups",
   "links",
@@ -40199,6 +40228,59 @@ async function linkItems(store2, sourceId, targetId, action, rel = "relates") {
   }
   return store2.updateItem(sourceId, { [field]: [...set] });
 }
+var FULL_SHA = /^[0-9a-f]{40}$/iu;
+var SEVERITIES = /* @__PURE__ */ new Set(["blocker", "major", "minor", "note"]);
+var DISPOSITIONS = /* @__PURE__ */ new Set(["open", "fixed", "rejected-with-reason", "accepted-risk", "deferred-to-ticket"]);
+function nonEmpty(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+function parseReviewAttestation(raw) {
+  if (raw === null) return { state: "absent" };
+  try {
+    const data = (0, import_gray_matter3.default)(raw).data;
+    if (!data || typeof data !== "object") return { state: "invalid", reason: "frontmatter is not an object" };
+    if (data.kind !== "review-attestation") return { state: "invalid", reason: 'kind must be "review-attestation"' };
+    if (!nonEmpty(data.pr)) return { state: "invalid", reason: "pr must be a non-empty string" };
+    if (typeof data.head_sha !== "string" || !FULL_SHA.test(data.head_sha)) {
+      return { state: "invalid", reason: "head_sha must be a full hexadecimal Git object id" };
+    }
+    if (data.verdict !== "pass" && data.verdict !== "needs-changes") {
+      return { state: "invalid", reason: 'verdict must be "pass" or "needs-changes"' };
+    }
+    if (!nonEmpty(data.reviewer)) return { state: "invalid", reason: "reviewer must be a non-empty string" };
+    if (typeof data.independent !== "boolean") return { state: "invalid", reason: "independent must be boolean" };
+    if (!nonEmpty(data.plan_hash)) return { state: "invalid", reason: "plan_hash must be a non-empty string" };
+    if (!nonEmpty(data.ticket_updated)) return { state: "invalid", reason: "ticket_updated must be a non-empty string" };
+    if (!Array.isArray(data.findings)) return { state: "invalid", reason: "findings must be an array" };
+    for (const [index, finding] of data.findings.entries()) {
+      const f = finding;
+      if (!f || typeof f !== "object") return { state: "invalid", reason: `findings[${index}] must be an object` };
+      if (typeof f.id !== "string" || !/^F-\d{3,}$/u.test(f.id)) return { state: "invalid", reason: `findings[${index}].id must be an F-### identifier` };
+      if (!SEVERITIES.has(f.severity)) return { state: "invalid", reason: `findings[${index}].severity is invalid` };
+      if (!nonEmpty(f.summary)) return { state: "invalid", reason: `findings[${index}].summary must be non-empty` };
+      if (!DISPOSITIONS.has(f.disposition)) return { state: "invalid", reason: `findings[${index}].disposition is invalid` };
+      if ((f.disposition === "rejected-with-reason" || f.disposition === "accepted-risk") && !nonEmpty(f.reason)) {
+        return { state: "invalid", reason: `findings[${index}].reason is required for ${f.disposition}` };
+      }
+      if (f.disposition === "deferred-to-ticket" && !nonEmpty(f.ticket)) {
+        return { state: "invalid", reason: `findings[${index}].ticket is required for deferred-to-ticket` };
+      }
+    }
+    return {
+      state: "valid",
+      pr: String(data.pr).trim(),
+      headSha: data.head_sha.toLowerCase(),
+      verdict: data.verdict,
+      reviewer: data.reviewer,
+      independent: data.independent,
+      ticketUpdated: data.ticket_updated,
+      findings: data.findings
+    };
+  } catch (error2) {
+    const reason = String(error2 instanceof Error ? error2.message : error2).replace(/[\r\n]+/gu, " ").slice(0, 240);
+    return { state: "invalid", reason: `frontmatter could not be parsed: ${reason}` };
+  }
+}
 var ITEM_TYPES = ["ticket", "plan", "research"];
 var CREATE_ATTEMPTS = 20;
 function referencePath(dir, name) {
@@ -40622,7 +40704,7 @@ var KanmerStore = class {
     throw new Error(`Could not allocate a unique ${type} id after ${CREATE_ATTEMPTS} attempts`);
   }
   async updateItem(id, patch) {
-    const { expectedUpdated, ...fields } = patch;
+    const { expectedUpdated, reason, ...fields } = patch;
     let board = null;
     if (fields.status !== void 0 || fields.area !== void 0 || fields.profile !== void 0 || fields.groups !== void 0 || fields.deployment !== void 0) {
       board = await this.getBoard();
@@ -40641,7 +40723,9 @@ var KanmerStore = class {
     if (expectedUpdated !== void 0 && current.updated !== expectedUpdated) {
       throw this.conflictError(id, current, expectedUpdated);
     }
-    const pruned = pruneUndefined(fields);
+    const backward = fields.status !== void 0 && fields.status !== current.status ? await this.backwardMoveEffects(loc, current, fields.status, reason) : null;
+    const { reason: backwardReason, ...backwardEffects } = backward ?? { reason: void 0 };
+    const pruned = pruneUndefined({ ...fields, ...backwardEffects });
     const changed = changedFields(current, pruned);
     if (changed.length === 0) {
       return current;
@@ -40692,6 +40776,17 @@ var KanmerStore = class {
         )
       )
     );
+    if (backward) {
+      await appendActivity(this.paths, [
+        this.activity(id, "update", { field: "status-reason", from: current.status, to: backwardReason })
+      ]);
+      if (loc.kind === "v2") {
+        await this.appendTransition(
+          id,
+          `stage ${current.status} \u2192 ${next.status} by ${this.actor}; reason: ${backwardReason.trim()}` + (backward.review_round !== void 0 ? `; review_round ${backward.review_round}` : "") + (backward.remediation_budget !== void 0 ? `; remediation_budget ${backward.remediation_budget}` : "")
+        );
+      }
+    }
     return next;
   }
   /**
@@ -40702,9 +40797,72 @@ var KanmerStore = class {
   async moveItem(id, to) {
     const { position, ...patch } = to;
     if (position === void 0) return this.updateItem(id, patch);
-    await this.assertMoveAllowed(id, to.status, to.expectedUpdated);
+    await this.assertMoveAllowed(id, to.status, to.expectedUpdated, to.reason);
     const order = await this.computeOrder(id, to.status, position);
     return this.updateItem(id, { ...patch, order });
+  }
+  /**
+   * The CORE-121 backward-move rule. Returns the frontmatter effects of a legal
+   * backward move (`review_round`, and `remediation_budget` on an operator
+   * override), `null` when the move is not backward, and throws a stable-coded
+   * error when it is refused. Forward moves are untouched: their gates live in
+   * `assertDocGate`, and `gates.ts` deliberately treats backward moves as
+   * crossing nothing.
+   */
+  async backwardMoveEffects(loc, current, to, reason) {
+    if (current.type !== "ticket") return null;
+    if (!isStageId(to) || !isStageId(current.status)) return null;
+    if (stageIndex(to) >= stageIndex(current.status)) return null;
+    const from = current.status;
+    if ((!reason || !reason.trim()) && this.actor === "gui") reason = "operator: moved on the board";
+    if (!reason || !reason.trim()) {
+      throw new Error(
+        `BACKWARD_MOVE_NEEDS_REASON: "${current.id}" cannot move ${from} \u2192 ${to} without a reason. Pass reason (for Review \u2192 Implementing, a needs-changes attestation in scratch/review.md is also required, or a reason beginning "operator:").`
+      );
+    }
+    if (from !== "review" || to !== "implementing") return { reason };
+    const round = current.review_round ?? 0;
+    const budget = current.remediation_budget ?? 1;
+    if (isOperatorReason(reason)) {
+      return {
+        reason,
+        review_round: round + 1,
+        ...round >= budget ? { remediation_budget: round + 1 } : {}
+      };
+    }
+    const attestation = parseReviewAttestation(
+      loc.kind === "v2" ? await this.getDoc(current.id, "scratch/review") : null
+    );
+    const prs = current.prs ?? [];
+    const bound = attestation.state === "valid" && attestation.verdict === "needs-changes" && prs.some((pr) => pr === attestation.pr || pr.endsWith(`/${attestation.pr}`));
+    if (!bound) {
+      const why = attestation.state === "absent" ? "no scratch/review.md attestation exists" : attestation.state === "invalid" ? `scratch/review.md is not a valid attestation (${attestation.reason})` : attestation.verdict !== "needs-changes" ? `the attestation verdict is "${attestation.verdict}", not "needs-changes"` : `the attestation names PR ${attestation.pr}, which is not in this ticket's prs`;
+      throw new Error(
+        `REVIEW_RETURN_NEEDS_ATTESTATION: "${current.id}" cannot return review \u2192 implementing: ${why}. Only a needs-changes review attestation for this ticket's PR, or a reason beginning "operator:", authorises the return.`
+      );
+    }
+    if (round >= budget) {
+      throw new Error(
+        `REMEDIATION_BUDGET_EXHAUSTED: "${current.id}" has already returned to implementing ${round} time(s) against a budget of ${budget}. An operator must re-open it with a reason beginning "operator:".`
+      );
+    }
+    return { reason, review_round: round + 1 };
+  }
+  /** Append one committed, human-readable transition line to the ticket's execution scratch. */
+  async appendTransition(id, line) {
+    const existing = await this.getDoc(id, "scratch/execution");
+    const entry = `- ${nowIso()} ${line}`;
+    const content = existing && existing.includes("## Transitions") ? entry : `## Transitions
+
+${entry}`;
+    await this.setDoc(id, "scratch/execution", content, { append: true });
+  }
+  async claimWindowMinutes(board) {
+    const config2 = board ?? await this.getBoard();
+    return config2.claimExpiryMinutes ?? DEFAULT_CLAIM_EXPIRY_MINUTES;
+  }
+  claimExpiry(minutes) {
+    return new Date(Date.now() + minutes * 6e4).toISOString();
   }
   /**
    * Every rejection moveItem can suffer, run before computeOrder writes
@@ -40713,7 +40871,7 @@ var KanmerStore = class {
    * The final updateItem re-checks — that is cheap and closes the window
    * between the two reads.
    */
-  async assertMoveAllowed(id, status, expectedUpdated) {
+  async assertMoveAllowed(id, status, expectedUpdated, reason) {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
@@ -40722,6 +40880,7 @@ var KanmerStore = class {
     }
     const board = await this.getBoard();
     assertStage(status);
+    if (status !== current.status) await this.backwardMoveEffects(loc, current, status, reason);
     if (status !== current.status && current.type === "ticket" && loc.kind === "v2") {
       await this.assertDocGate(loc.dir, board, current, current.status, status);
     }
@@ -40819,6 +40978,10 @@ var KanmerStore = class {
     if (input.worktree !== void 0) next.worktree = input.worktree;
     else delete next.worktree;
     if (input.assignee !== void 0) next.assignee = input.assignee;
+    next.claim_expires_at = this.claimExpiry(await this.claimWindowMinutes(board));
+    const controller = input.controller ?? input.assignee ?? next.assignee;
+    if (controller) next.claim_controller = controller;
+    else delete next.claim_controller;
     await writeFileAtomic(loc.file, serialiseItem(next));
     await appendActivity(this.paths, [
       this.activity(id, "take", { field: "branch", to: input.branch }),
@@ -40836,9 +40999,88 @@ var KanmerStore = class {
     delete next.taken_at;
     delete next.branch;
     delete next.worktree;
+    delete next.claim_expires_at;
+    delete next.claim_controller;
     await writeFileAtomic(loc.file, serialiseItem(next));
     await appendActivity(this.paths, [
       this.activity(id, "release", { field: "branch", from: current.branch })
+    ]);
+    return next;
+  }
+  /**
+   * Transfer a claim to a new controller without `force` (CORE-121, FRD-030).
+   * Legal only when the claim has expired or the reason is an operator
+   * override; a live claim refuses with `CLAIM_LIVE`. The recorded branch,
+   * worktree and `taken_at` are preserved — a transfer changes who is
+   * responsible, never where the work is.
+   */
+  async transferTicket(id, input) {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
+    if (current.type !== "ticket") {
+      throw new Error(`Only tickets can be transferred; "${id}" is a ${current.type}`);
+    }
+    if (!current.taken_at) {
+      throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; use take_ticket action "take" instead of "transfer".`);
+    }
+    if (!input.assignee) throw new Error(`assignee is required to transfer "${id}"`);
+    const minutes = await this.claimWindowMinutes();
+    const now = /* @__PURE__ */ new Date();
+    const state = claimState(current, now, minutes);
+    const operator = isOperatorReason(input.reason);
+    if (state === "live" && !operator) {
+      const until = current.claim_expires_at ?? new Date(Date.parse(current.taken_at) + minutes * 6e4).toISOString();
+      throw new Error(
+        `CLAIM_LIVE: "${id}" is held by ${current.assignee || "an unknown actor"} until ${until}. A live claim is transferred only with a reason beginning "operator:"; otherwise wait for expiry or ask the owner to release.`
+      );
+    }
+    const fromAssignee = current.assignee || null;
+    const fromController = current.claim_controller ?? fromAssignee;
+    const next = {
+      ...current,
+      assignee: input.assignee,
+      claim_controller: input.controller ?? input.assignee,
+      claim_expires_at: this.claimExpiry(minutes),
+      updated: nowIso()
+    };
+    await writeFileAtomic(loc.file, serialiseItem(next));
+    await appendActivity(this.paths, [
+      this.activity(id, "take", { field: "controller", from: fromController, to: next.claim_controller }),
+      ...fromAssignee !== next.assignee ? [this.activity(id, "update", { field: "assignee", from: fromAssignee, to: next.assignee })] : []
+    ]);
+    if (loc.kind === "v2") {
+      await this.appendTransition(
+        id,
+        `claim-transfer ${fromController ?? "(none)"} \u2192 ${next.claim_controller} (${state}${operator ? `; ${input.reason.trim()}` : ""}; branch ${current.branch ?? "(none)"}; worktree ${current.worktree ?? "(none)"}; expires ${next.claim_expires_at})`
+      );
+    }
+    return next;
+  }
+  /**
+   * Renew the caller's own claim (CORE-121). Refuses with `CLAIM_NOT_OWNED`
+   * when the caller is neither the assignee nor the recorded controller.
+   */
+  async renewTicket(id, actor) {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
+    if (!current.taken_at) {
+      throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; there is no claim to renew.`);
+    }
+    if (!actor || current.assignee !== actor && current.claim_controller !== actor) {
+      throw new Error(
+        `CLAIM_NOT_OWNED: "${id}" is held by ${current.assignee || "an unknown actor"}${current.claim_controller ? ` (controller ${current.claim_controller})` : ""}; only the owner can renew it.`
+      );
+    }
+    const next = {
+      ...current,
+      claim_expires_at: this.claimExpiry(await this.claimWindowMinutes()),
+      updated: nowIso()
+    };
+    await writeFileAtomic(loc.file, serialiseItem(next));
+    await appendActivity(this.paths, [
+      this.activity(id, "update", { field: "claim_expires_at", from: current.claim_expires_at ?? null, to: next.claim_expires_at })
     ]);
     return next;
   }
@@ -42525,9 +42767,27 @@ async function getExecutionPacket(input) {
   const worktreeSafety = await unsafeTakenWorktree(store2, project, item);
   if (worktreeSafety.refusal) return refuse(project, worktreeSafety.refusal, [], item, gates);
   const exactRecordedResume = resume !== void 0 && item.branch !== void 0 && resume.branch === item.branch && item.worktree !== void 0 && resume.worktree === item.worktree;
-  if (item.taken_at && item.assignee !== actor && !exactRecordedResume) {
+  const board = await store2.getBoard();
+  const claimMinutes = board.claimExpiryMinutes ?? DEFAULT_CLAIM_EXPIRY_MINUTES;
+  const claim = {
+    state: claimState(item, /* @__PURE__ */ new Date(), claimMinutes),
+    expiresAt: item.claim_expires_at ?? (item.taken_at ? new Date(Date.parse(item.taken_at) + claimMinutes * 6e4).toISOString() : null),
+    controller: item.claim_controller ?? (item.assignee || null),
+    reviewRound: item.review_round ?? 0,
+    remediationBudget: item.remediation_budget ?? 1
+  };
+  if (item.taken_at && item.assignee !== actor && item.claim_controller !== actor && !exactRecordedResume) {
     const owner = item.assignee || "an unknown actor";
     const location = [item.branch && `branch ${item.branch}`, item.worktree && `worktree ${item.worktree}`].filter(Boolean).join(", ");
+    if (claim.state === "expired") {
+      return refuse(
+        project,
+        `Ticket "${id}" is taken by ${owner}${location ? ` (${location})` : ""} but its claim expired at ${claim.expiresAt}; transfer it with take_ticket action "transfer", or resume with the exact recorded branch and worktree.`,
+        [],
+        item,
+        gates
+      );
+    }
     return refuse(
       project,
       `Ticket "${id}" is already taken by ${owner}${location ? ` (${location})` : ""}.`,
@@ -42546,6 +42806,7 @@ async function getExecutionPacket(input) {
     ready: true,
     project,
     ticket: fullTicket(item, gates.profile),
+    claim,
     groupContexts: await groupContexts(store2, item),
     documents: indexDocuments(fixed),
     extraDocs,
@@ -44129,32 +44390,43 @@ function createKanmerMcpServer(policy = "local-stdio") {
         position: external_exports.union([external_exports.enum(["top", "bottom"]), external_exports.object({ after: external_exports.string() })]).optional().describe("Where in the column to place the item"),
         expected_updated: external_exports.string().optional().describe(
           "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the item changed since."
+        ),
+        reason: external_exports.string().optional().describe(
+          `Required for any move to an EARLIER stage. Review \u2192 Implementing additionally needs a needs-changes attestation in scratch/review.md naming this ticket's PR (or a reason beginning "operator:"), and is refused with REMEDIATION_BUDGET_EXHAUSTED once review_round reaches remediation_budget. Backward moves are audited in the activity log and the ticket's scratch/execution.md.`
         )
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
     },
     write(
-      async ({ id, status, position, expected_updated }) => ok(await store.moveItem(id, { status, position, expectedUpdated: expected_updated }))
+      async ({ id, status, position, expected_updated, reason }) => ok(await store.moveItem(id, { status, position, expectedUpdated: expected_updated, reason }))
     )
   );
   server.registerTool(
     "take_ticket",
     {
-      title: "Take or release a ticket",
-      description: "Take a ticket before working it: records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client's name), and moves the ticket to the working stage (default: the board's `implementing` stage). Errors if the ticket is already taken unless force is true. action: \"release\" clears taken_at/branch/worktree when the work ends.",
+      title: "Take, release, transfer or renew a ticket claim",
+      description: 'Take a ticket before working it: records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client\'s name), stamps a claim expiry (board `claimExpiryMinutes`, default 30) and moves the ticket to the working stage (default: the board\'s `implementing` stage). Errors if the ticket is already taken unless force is true. action: "release" clears taken_at/branch/worktree when the work ends. action: "transfer" hands an EXPIRED claim to the caller (or another assignee) while preserving the recorded branch and worktree \u2014 a live claim refuses with CLAIM_LIVE unless reason begins "operator:". action: "renew" extends the caller\'s own claim; a foreign claim refuses with CLAIM_NOT_OWNED. Never use force to recover a dead controller\'s ticket; transfer it.',
       inputSchema: {
         id: external_exports.string().describe("Ticket id"),
-        action: external_exports.enum(["take", "release"]).default("take"),
+        action: external_exports.enum(["take", "release", "transfer", "renew"]).default("take"),
         branch: external_exports.string().optional().describe("Branch the work happens on (required for take)"),
         worktree: external_exports.string().optional().describe("Worktree path, when working in one"),
         stage: external_exports.string().optional().describe("Stage to move to (default: implementing)"),
         assignee: external_exports.string().optional().describe("Defaults to the calling client's name"),
+        controller: external_exports.string().optional().describe("Durable controller identity behind the claim (defaults to assignee)"),
+        reason: external_exports.string().optional().describe('For transfer of a live claim: an operator override beginning "operator:"'),
         force: external_exports.boolean().optional().describe("Take over an already-taken ticket")
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
     },
-    write(async ({ id, action, branch, worktree, stage, assignee, force }, extra) => {
+    write(async ({ id, action, branch, worktree, stage, assignee, controller, reason, force }, extra) => {
       if (action === "release") return ok(await store.releaseTicket(id));
+      if (action === "renew") return ok(await store.renewTicket(id, assignee ?? actorName(server, extra)));
+      if (action === "transfer") {
+        return ok(
+          await store.transferTicket(id, { assignee: assignee ?? actorName(server, extra), controller, reason })
+        );
+      }
       if (!branch) return fail(`branch is required when taking a ticket \u2014 it's the point of taking`);
       return ok(
         await store.takeTicket(id, {
@@ -44162,6 +44434,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
           worktree,
           stage,
           assignee: assignee ?? actorName(server, extra),
+          controller,
           force
         })
       );

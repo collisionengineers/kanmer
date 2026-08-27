@@ -103,8 +103,13 @@ import {
   type TicketDoc,
   type TicketDocumentWithVersion,
   type TicketDocsInfo,
+  type TransferTicketInput,
   type UpdateItemPatch,
+  DEFAULT_CLAIM_EXPIRY_MINUTES,
+  claimState,
+  isOperatorReason,
 } from "./types.js";
+import { parseReviewAttestation } from "./review-attestation.js";
 
 const ITEM_TYPES: ItemType[] = ["ticket", "plan", "research"];
 
@@ -656,7 +661,7 @@ export class KanmerStore {
   }
 
   async updateItem(id: string, patch: UpdateItemPatch): Promise<Item> {
-    const { expectedUpdated, ...fields } = patch;
+    const { expectedUpdated, reason, ...fields } = patch;
     let board: BoardConfig | null = null;
     if (
       fields.status !== undefined ||
@@ -681,7 +686,15 @@ export class KanmerStore {
     if (expectedUpdated !== undefined && current.updated !== expectedUpdated) {
       throw this.conflictError(id, current, expectedUpdated);
     }
-    const pruned = pruneUndefined(fields);
+    // A backward move is legal only with a reason, and Review → Implementing
+    // only against a needs-changes attestation or an operator override
+    // (CORE-121). Raised before any write, like the gate below.
+    const backward =
+      fields.status !== undefined && fields.status !== current.status
+        ? await this.backwardMoveEffects(loc, current, fields.status, reason)
+        : null;
+    const { reason: backwardReason, ...backwardEffects } = backward ?? { reason: undefined };
+    const pruned = pruneUndefined({ ...fields, ...backwardEffects });
     const changed = changedFields(current, pruned);
     if (changed.length === 0) {
       // No-op writes must not bump `updated` — staleness reporting and the
@@ -742,6 +755,19 @@ export class KanmerStore {
         ),
       ),
     );
+    if (backward) {
+      await appendActivity(this.paths, [
+        this.activity(id, "update", { field: "status-reason", from: current.status, to: backwardReason }),
+      ]);
+      if (loc.kind === "v2") {
+        await this.appendTransition(
+          id,
+          `stage ${current.status} → ${next.status} by ${this.actor}; reason: ${backwardReason!.trim()}` +
+            (backward.review_round !== undefined ? `; review_round ${backward.review_round}` : "") +
+            (backward.remediation_budget !== undefined ? `; remediation_budget ${backward.remediation_budget}` : ""),
+        );
+      }
+    }
     return next;
   }
 
@@ -752,7 +778,7 @@ export class KanmerStore {
    */
   async moveItem(
     id: string,
-    to: { status: string; expectedUpdated?: string; position?: MovePosition },
+    to: { status: string; expectedUpdated?: string; position?: MovePosition; reason?: string },
   ): Promise<Item> {
     const { position, ...patch } = to;
     if (position === undefined) return this.updateItem(id, patch);
@@ -760,9 +786,96 @@ export class KanmerStore {
     // because computeOrder materialises `order` on the whole target column as
     // a side effect. Without this, a move that is then refused still rewrote
     // (and re-stamped `updated` on) every sibling and logged the activity.
-    await this.assertMoveAllowed(id, to.status, to.expectedUpdated);
+    await this.assertMoveAllowed(id, to.status, to.expectedUpdated, to.reason);
     const order = await this.computeOrder(id, to.status, position);
     return this.updateItem(id, { ...patch, order });
+  }
+
+  /**
+   * The CORE-121 backward-move rule. Returns the frontmatter effects of a legal
+   * backward move (`review_round`, and `remediation_budget` on an operator
+   * override), `null` when the move is not backward, and throws a stable-coded
+   * error when it is refused. Forward moves are untouched: their gates live in
+   * `assertDocGate`, and `gates.ts` deliberately treats backward moves as
+   * crossing nothing.
+   */
+  private async backwardMoveEffects(
+    loc: ItemLocation,
+    current: Item,
+    to: string,
+    reason: string | undefined,
+  ): Promise<(Pick<Item, "review_round" | "remediation_budget"> & { reason: string }) | null> {
+    if (current.type !== "ticket") return null;
+    if (!isStageId(to) || !isStageId(current.status)) return null;
+    if (stageIndex(to) >= stageIndex(current.status)) return null;
+    const from = current.status;
+    // The GUI's store actor is the human at the board: a drag backwards is an
+    // operator decision by construction, so it carries an implicit operator
+    // reason. Every other actor (MCP clients name themselves) must say why.
+    if ((!reason || !reason.trim()) && this.actor === "gui") reason = "operator: moved on the board";
+    if (!reason || !reason.trim()) {
+      throw new Error(
+        `BACKWARD_MOVE_NEEDS_REASON: "${current.id}" cannot move ${from} → ${to} without a reason. ` +
+          `Pass reason (for Review → Implementing, a needs-changes attestation in scratch/review.md is also required, ` +
+          `or a reason beginning "operator:").`,
+      );
+    }
+    if (from !== "review" || to !== "implementing") return { reason };
+    const round = current.review_round ?? 0;
+    const budget = current.remediation_budget ?? 1;
+    if (isOperatorReason(reason)) {
+      return {
+        reason,
+        review_round: round + 1,
+        ...(round >= budget ? { remediation_budget: round + 1 } : {}),
+      };
+    }
+    const attestation = parseReviewAttestation(
+      loc.kind === "v2" ? await this.getDoc(current.id, "scratch/review") : null,
+    );
+    const prs = current.prs ?? [];
+    const bound =
+      attestation.state === "valid" &&
+      attestation.verdict === "needs-changes" &&
+      prs.some((pr) => pr === attestation.pr || pr.endsWith(`/${attestation.pr}`));
+    if (!bound) {
+      const why =
+        attestation.state === "absent"
+          ? "no scratch/review.md attestation exists"
+          : attestation.state === "invalid"
+            ? `scratch/review.md is not a valid attestation (${attestation.reason})`
+            : attestation.verdict !== "needs-changes"
+              ? `the attestation verdict is "${attestation.verdict}", not "needs-changes"`
+              : `the attestation names PR ${attestation.pr}, which is not in this ticket's prs`;
+      throw new Error(
+        `REVIEW_RETURN_NEEDS_ATTESTATION: "${current.id}" cannot return review → implementing: ${why}. ` +
+          `Only a needs-changes review attestation for this ticket's PR, or a reason beginning "operator:", authorises the return.`,
+      );
+    }
+    if (round >= budget) {
+      throw new Error(
+        `REMEDIATION_BUDGET_EXHAUSTED: "${current.id}" has already returned to implementing ${round} time(s) ` +
+          `against a budget of ${budget}. An operator must re-open it with a reason beginning "operator:".`,
+      );
+    }
+    return { reason, review_round: round + 1 };
+  }
+
+  /** Append one committed, human-readable transition line to the ticket's execution scratch. */
+  private async appendTransition(id: string, line: string): Promise<void> {
+    const existing = await this.getDoc(id, "scratch/execution");
+    const entry = `- ${nowIso()} ${line}`;
+    const content = existing && existing.includes("## Transitions") ? entry : `## Transitions\n\n${entry}`;
+    await this.setDoc(id, "scratch/execution", content, { append: true });
+  }
+
+  private async claimWindowMinutes(board?: BoardConfig): Promise<number> {
+    const config = board ?? (await this.getBoard());
+    return config.claimExpiryMinutes ?? DEFAULT_CLAIM_EXPIRY_MINUTES;
+  }
+
+  private claimExpiry(minutes: number): string {
+    return new Date(Date.now() + minutes * 60_000).toISOString();
   }
 
   /**
@@ -776,6 +889,7 @@ export class KanmerStore {
     id: string,
     status: string,
     expectedUpdated?: string,
+    reason?: string,
   ): Promise<void> {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
@@ -785,6 +899,7 @@ export class KanmerStore {
     }
     const board = await this.getBoard();
     assertStage(status);
+    if (status !== current.status) await this.backwardMoveEffects(loc, current, status, reason);
     if (status !== current.status && current.type === "ticket" && loc.kind === "v2") {
       await this.assertDocGate(loc.dir, board, current, current.status, status);
     }
@@ -899,6 +1014,12 @@ export class KanmerStore {
     if (input.worktree !== undefined) next.worktree = input.worktree;
     else delete next.worktree; // a force-retake must not keep a stale worktree
     if (input.assignee !== undefined) next.assignee = input.assignee;
+    // Bootstrap claim contract (CORE-121): every fresh claim carries an
+    // expiry and a durable controller identity.
+    next.claim_expires_at = this.claimExpiry(await this.claimWindowMinutes(board));
+    const controller = input.controller ?? input.assignee ?? next.assignee;
+    if (controller) next.claim_controller = controller;
+    else delete next.claim_controller;
     await writeFileAtomic(loc.file, serialiseItem(next));
     await appendActivity(this.paths, [
       this.activity(id, "take", { field: "branch", to: input.branch }),
@@ -919,9 +1040,95 @@ export class KanmerStore {
     delete next.taken_at;
     delete next.branch;
     delete next.worktree;
+    delete next.claim_expires_at;
+    delete next.claim_controller;
     await writeFileAtomic(loc.file, serialiseItem(next));
     await appendActivity(this.paths, [
       this.activity(id, "release", { field: "branch", from: current.branch }),
+    ]);
+    return next;
+  }
+
+  /**
+   * Transfer a claim to a new controller without `force` (CORE-121, FRD-030).
+   * Legal only when the claim has expired or the reason is an operator
+   * override; a live claim refuses with `CLAIM_LIVE`. The recorded branch,
+   * worktree and `taken_at` are preserved — a transfer changes who is
+   * responsible, never where the work is.
+   */
+  async transferTicket(id: string, input: TransferTicketInput): Promise<Item> {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
+    if (current.type !== "ticket") {
+      throw new Error(`Only tickets can be transferred; "${id}" is a ${current.type}`);
+    }
+    if (!current.taken_at) {
+      throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; use take_ticket action "take" instead of "transfer".`);
+    }
+    if (!input.assignee) throw new Error(`assignee is required to transfer "${id}"`);
+    const minutes = await this.claimWindowMinutes();
+    const now = new Date();
+    const state = claimState(current, now, minutes);
+    const operator = isOperatorReason(input.reason);
+    if (state === "live" && !operator) {
+      const until = current.claim_expires_at ?? new Date(Date.parse(current.taken_at) + minutes * 60_000).toISOString();
+      throw new Error(
+        `CLAIM_LIVE: "${id}" is held by ${current.assignee || "an unknown actor"} until ${until}. ` +
+          `A live claim is transferred only with a reason beginning "operator:"; otherwise wait for expiry or ask the owner to release.`,
+      );
+    }
+    const fromAssignee = current.assignee || null;
+    const fromController = current.claim_controller ?? fromAssignee;
+    const next: Item = {
+      ...current,
+      assignee: input.assignee,
+      claim_controller: input.controller ?? input.assignee,
+      claim_expires_at: this.claimExpiry(minutes),
+      updated: nowIso(),
+    };
+    await writeFileAtomic(loc.file, serialiseItem(next));
+    await appendActivity(this.paths, [
+      this.activity(id, "take", { field: "controller", from: fromController, to: next.claim_controller }),
+      ...(fromAssignee !== next.assignee
+        ? [this.activity(id, "update", { field: "assignee", from: fromAssignee, to: next.assignee })]
+        : []),
+    ]);
+    if (loc.kind === "v2") {
+      await this.appendTransition(
+        id,
+        `claim-transfer ${fromController ?? "(none)"} → ${next.claim_controller} (${state}` +
+          `${operator ? `; ${input.reason!.trim()}` : ""}; branch ${current.branch ?? "(none)"}; worktree ${current.worktree ?? "(none)"}; expires ${next.claim_expires_at})`,
+      );
+    }
+    return next;
+  }
+
+  /**
+   * Renew the caller's own claim (CORE-121). Refuses with `CLAIM_NOT_OWNED`
+   * when the caller is neither the assignee nor the recorded controller.
+   */
+  async renewTicket(id: string, actor: string): Promise<Item> {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
+    if (!current.taken_at) {
+      throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; there is no claim to renew.`);
+    }
+    if (!actor || (current.assignee !== actor && current.claim_controller !== actor)) {
+      throw new Error(
+        `CLAIM_NOT_OWNED: "${id}" is held by ${current.assignee || "an unknown actor"}` +
+          `${current.claim_controller ? ` (controller ${current.claim_controller})` : ""}; only the owner can renew it.`,
+      );
+    }
+    const next: Item = {
+      ...current,
+      claim_expires_at: this.claimExpiry(await this.claimWindowMinutes()),
+      updated: nowIso(),
+    };
+    await writeFileAtomic(loc.file, serialiseItem(next));
+    await appendActivity(this.paths, [
+      this.activity(id, "update", { field: "claim_expires_at", from: current.claim_expires_at ?? null, to: next.claim_expires_at }),
     ]);
     return next;
   }

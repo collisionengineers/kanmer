@@ -1195,33 +1195,47 @@ server.registerTool(
         .describe(
           "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the item changed since.",
         ),
+      reason: z
+        .string()
+        .optional()
+        .describe(
+          'Required for any move to an EARLIER stage. Review → Implementing additionally needs a needs-changes attestation in scratch/review.md naming this ticket\'s PR (or a reason beginning "operator:"), and is refused with REMEDIATION_BUDGET_EXHAUSTED once review_round reaches remediation_budget. Backward moves are audited in the activity log and the ticket\'s scratch/execution.md.',
+        ),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  write(async ({ id, status, position, expected_updated }) =>
-    ok(await store.moveItem(id, { status, position, expectedUpdated: expected_updated })),
+  write(async ({ id, status, position, expected_updated, reason }) =>
+    ok(await store.moveItem(id, { status, position, expectedUpdated: expected_updated, reason })),
   ),
 );
 
 server.registerTool(
   "take_ticket",
   {
-    title: "Take or release a ticket",
+    title: "Take, release, transfer or renew a ticket claim",
     description:
-      "Take a ticket before working it: records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client's name), and moves the ticket to the working stage (default: the board's `implementing` stage). Errors if the ticket is already taken unless force is true. action: \"release\" clears taken_at/branch/worktree when the work ends.",
+      "Take a ticket before working it: records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client's name), stamps a claim expiry (board `claimExpiryMinutes`, default 30) and moves the ticket to the working stage (default: the board's `implementing` stage). Errors if the ticket is already taken unless force is true. action: \"release\" clears taken_at/branch/worktree when the work ends. action: \"transfer\" hands an EXPIRED claim to the caller (or another assignee) while preserving the recorded branch and worktree — a live claim refuses with CLAIM_LIVE unless reason begins \"operator:\". action: \"renew\" extends the caller's own claim; a foreign claim refuses with CLAIM_NOT_OWNED. Never use force to recover a dead controller's ticket; transfer it.",
     inputSchema: {
       id: z.string().describe("Ticket id"),
-      action: z.enum(["take", "release"]).default("take"),
+      action: z.enum(["take", "release", "transfer", "renew"]).default("take"),
       branch: z.string().optional().describe("Branch the work happens on (required for take)"),
       worktree: z.string().optional().describe("Worktree path, when working in one"),
       stage: z.string().optional().describe("Stage to move to (default: implementing)"),
       assignee: z.string().optional().describe("Defaults to the calling client's name"),
+      controller: z.string().optional().describe("Durable controller identity behind the claim (defaults to assignee)"),
+      reason: z.string().optional().describe('For transfer of a live claim: an operator override beginning "operator:"'),
       force: z.boolean().optional().describe("Take over an already-taken ticket"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
-  write(async ({ id, action, branch, worktree, stage, assignee, force }, extra) => {
+  write(async ({ id, action, branch, worktree, stage, assignee, controller, reason, force }, extra) => {
     if (action === "release") return ok(await store.releaseTicket(id));
+    if (action === "renew") return ok(await store.renewTicket(id, assignee ?? actorName(server, extra)));
+    if (action === "transfer") {
+      return ok(
+        await store.transferTicket(id, { assignee: assignee ?? actorName(server, extra), controller, reason }),
+      );
+    }
     if (!branch) return fail(`branch is required when taking a ticket — it's the point of taking`);
     return ok(
       await store.takeTicket(id, {
@@ -1229,6 +1243,7 @@ server.registerTool(
         worktree,
         stage,
         assignee: assignee ?? actorName(server, extra),
+        controller,
         force,
       }),
     );

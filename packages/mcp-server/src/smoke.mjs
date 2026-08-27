@@ -1933,6 +1933,61 @@ Second proof attempt passed; the first failure is retained.
     resumedOccupied.ready === true && resumedOccupied.ticket.taken?.branch === "other-branch" &&
       resumedOccupied.ticket.taken?.worktree === ".worktrees/other",
   );
+  check(
+    "a ready packet carries the CORE-121 claim block",
+    resumedOccupied.claim?.state === "live" && resumedOccupied.claim.controller === "other-agent" &&
+      resumedOccupied.claim.reviewRound === 0 && resumedOccupied.claim.remediationBudget === 1 &&
+      typeof resumedOccupied.claim.expiresAt === "string",
+    JSON.stringify(resumedOccupied.claim),
+  );
+
+  // CORE-121 bootstrap claim contract: transfer, renew, expired refusal, audited backward move.
+  const claimId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "claim contract", status: "implementing", profile: "chore", docs_todo: true } })),
+  ).id;
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: claimId, doc: "plan", content: "# Claim" } });
+  const claimWorktree = path.join(sandbox, ".worktrees", "claim");
+  execFileSync("git", ["worktree", "add", "-b", "claim-branch", claimWorktree, expectedBoardBranch], {
+    cwd: sandbox, windowsHide: true, stdio: "ignore",
+  });
+  const claimed = JSON.parse(
+    textOf(await client.callTool({ name: "take_ticket", arguments: { id: claimId, branch: "claim-branch", worktree: ".worktrees/claim", assignee: "ctl-a" } })),
+  );
+  check(
+    "take_ticket stamps claim_expires_at and claim_controller",
+    Boolean(claimed.claim_expires_at) && claimed.claim_controller === "ctl-a",
+    JSON.stringify({ claim_expires_at: claimed.claim_expires_at, claim_controller: claimed.claim_controller }),
+  );
+  const liveTransfer = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "transfer", assignee: "ctl-b" } });
+  check("take_ticket transfer refuses a live claim with CLAIM_LIVE", liveTransfer.isError === true && textOf(liveTransfer).includes("CLAIM_LIVE"), textOf(liveTransfer));
+  const foreignRenew = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "renew", assignee: "ctl-b" } });
+  check("take_ticket renew refuses a foreign claim with CLAIM_NOT_OWNED", foreignRenew.isError === true && textOf(foreignRenew).includes("CLAIM_NOT_OWNED"), textOf(foreignRenew));
+  const ownRenew = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "renew", assignee: "ctl-a" } })));
+  check("take_ticket renew extends the owner's claim", Date.parse(ownRenew.claim_expires_at) >= Date.parse(claimed.claim_expires_at), ownRenew.claim_expires_at);
+  const claimFile = path.join(sandbox, ".kanmer", "areas", "_none", claimId, `${claimId}.md`);
+  const staleExpiry = new Date(Date.now() - 60 * 60_000).toISOString();
+  fs.writeFileSync(claimFile, fs.readFileSync(claimFile, "utf8").replace(/^claim_expires_at: .*$/m, `claim_expires_at: '${staleExpiry}'`), "utf8");
+  const expiredPacket = JSON.parse(textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: claimId } })));
+  check(
+    "get_execution_packet names transfer for an expired foreign claim",
+    expiredPacket.ready === false && expiredPacket.reason.includes("claim expired at") && expiredPacket.reason.includes('action "transfer"'),
+    expiredPacket.reason,
+  );
+  const transferred = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "transfer" } })));
+  check(
+    "take_ticket transfer of an expired claim keeps branch/worktree and reassigns to the caller",
+    transferred.assignee === "smoke" && transferred.claim_controller === "smoke" && transferred.branch === "claim-branch" &&
+      transferred.worktree === ".worktrees/claim" && Date.parse(transferred.claim_expires_at) > Date.now(),
+    JSON.stringify(transferred),
+  );
+  const transferredPacket = JSON.parse(textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: claimId } })));
+  check("the new controller receives a resumed packet after transfer", transferredPacket.ready === true && transferredPacket.claim.state === "live", transferredPacket.reason);
+  const backNoReason = await client.callTool({ name: "move_item", arguments: { id: claimId, status: "preparing" } });
+  check("move_item refuses a backward move without a reason", backNoReason.isError === true && textOf(backNoReason).includes("BACKWARD_MOVE_NEEDS_REASON"), textOf(backNoReason));
+  const backWithReason = JSON.parse(textOf(await client.callTool({ name: "move_item", arguments: { id: claimId, status: "preparing", reason: "re-plan after transfer" } })));
+  check("move_item audits a backward move with a reason", backWithReason.status === "preparing", JSON.stringify(backWithReason));
+  const transitions = textOf(await client.callTool({ name: "get_ticket_doc", arguments: { id: claimId, doc: "scratch/execution" } }));
+  check("backward moves and transfers are recorded in scratch/execution Transitions", transitions.includes("## Transitions") && transitions.includes("claim-transfer") && transitions.includes("re-plan after transfer"), transitions.slice(0, 300));
   const resumedTopLevel = execFileSync("git", ["-C", resumedWorktree, "rev-parse", "--show-toplevel"], {
     encoding: "utf8", windowsHide: true,
   }).trim();

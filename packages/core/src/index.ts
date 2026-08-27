@@ -20,6 +20,7 @@ export * from "./staleness.js";
 export * from "./activity.js";
 export * from "./store.js";
 export * from "./merge-gate.js";
+export * from "./review-attestation.js";
 export * from "./links.js";
 export * from "./migrate.js";
 export * from "./watch.js";

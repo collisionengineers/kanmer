@@ -16,8 +16,7 @@ labels:
 groups:
   - HZN-008
 links: []
-blocks:
-  - CORE-114
+blocks: []
 refs:
   - docs/functional/frd/FRD-028-rescue-and-reconciliation.md
 commits:
@@ -28,7 +27,7 @@ prs:
   - '286'
 archived: true
 created: '2026-08-26T21:02:41.922Z'
-updated: '2026-08-27T09:58:56.195Z'
+updated: '2026-08-27T10:09:04.000Z'
 ---
 
 ## What

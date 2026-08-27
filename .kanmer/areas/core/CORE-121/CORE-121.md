@@ -12,7 +12,8 @@ labels:
   - reliable-autonomy
 groups:
   - HZN-008
-links:
+links: []
+blocks:
   - CORE-122
   - CORE-123
   - SKILL-037
@@ -22,7 +23,7 @@ refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
 archived: false
 created: '2026-08-27T10:07:40.746Z'
-updated: '2026-08-27T10:08:02.249Z'
+updated: '2026-08-27T10:08:42.099Z'
 ---
 
 ## What

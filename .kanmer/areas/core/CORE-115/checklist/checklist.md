@@ -20,3 +20,10 @@
 
 - 2026-08-27 typecheck (all four workspaces) exit 0; core suite exit 0; smoke 287/287; protocol 50/50; reconciliation.test.mjs pass; verify:docs PASS after `build:manual`.
 - 2026-08-27 PR https://github.com/collisionengineers/kanmer/pull/293 at 80cdb6e4; verify:skills green at that head.
+
+## Re-entry: rebase onto main (2026-08-27, review c11d69e9dac9e3ef)
+
+- [x] Rebased onto origin/main e903289e (MCP-054); AGENTS.md conflict resolved (gotcha 16 = MCP-054, lease gotcha → 17); bundle taken from main then rebuilt; counts at 39 (smoke.mjs, AGENTS.md §4, tool-reference, manual) — no "38" left.
+- [x] F-005: `transferTicket` refuses `RECOVERY_REFUSED` on `claimIdentity: "branch-mismatch"` (+ test, docs). F-001 not attempted (CORE-125).
+- [x] Rail: typecheck 0; core 411/411; smoke 299/299; smoke:protocol 50/50; reconciliation.test.mjs 0; test:http 0; verify:skills 0; verify:docs 0; plugin:check 0 (39 tools, bytes match); `npm run verify` 1 (same two antigravity EBUSY host-quirk tests only), remaining rail steps 0 individually.
+- [x] Force-with-lease pushed 08586176 to PR #293; workflow run 33112834467 created for the new head; report + commits updated; move to Review.

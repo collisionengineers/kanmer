@@ -2,7 +2,7 @@
 id: CORE-115
 type: ticket
 title: Replace permanent claims with renewable workspace leases and batch ownership
-status: implementing
+status: review
 area: core
 assignee: claude-code-core115
 profile: feature
@@ -24,14 +24,15 @@ blocks:
 refs:
   - docs/functional/frd/FRD-030-renewable-workspace-leases-and-batches.md
 commits:
-  - 692d0d93cdc8a727f1429ec3492bfb8e5c26ea9a
-  - 2f7334b66eaa362097b1d0ec84fd98f79d0c18f8
-  - 80cdb6e41ec12bb3c497aafeb78589c900f5bad4
+  - 20c2fb31
+  - 431006da
+  - c76c2927
+  - 08586176
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/293'
 archived: false
 created: '2026-08-26T21:02:41.955Z'
-updated: '2026-08-27T20:07:02.152Z'
+updated: '2026-08-27T20:22:23.488Z'
 ---
 
 ## What

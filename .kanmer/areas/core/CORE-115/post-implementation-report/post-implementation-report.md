@@ -1,6 +1,6 @@
 # Post-implementation report — CORE-115
 
-Branch `core-115-workspace-leases`, worktree `.worktrees/core-115`, base origin/main 97dfc9f3. Commits: 692d0d93 (implementation), 2f7334b6 and 80cdb6e4 (skill wording for the SKILL-037 prose check). Head 80cdb6e4.
+Branch `core-115-workspace-leases`, worktree `.worktrees/core-115`. Originally based on origin/main 97dfc9f3 (commits 692d0d93, 2f7334b6, 80cdb6e4; PR #293 head 80cdb6e4). **Re-entry 2026-08-27: rebased onto origin/main e903289e (MCP-054)** — commits now 20c2fb31 (implementation), 431006da and c76c2927 (skill wording), 08586176 (F-005 hardening + rebuilt bundle). Head **08586176**.
 
 ## What changed and why
 
@@ -8,17 +8,24 @@ Branch `core-115-workspace-leases`, worktree `.worktrees/core-115`, base origin/
 | --- | --- |
 | `packages/core/src/types.ts` | `lease_*` optional frontmatter fields; `leaseHeartbeatMinutes` / `leaseCommandMaxMinutes`; `LEASE_PHASES`, `LeaseConfig`/`leaseConfig()`, `LeaseState`/`leaseState()` (single expiry rule; `claimState()` is a wrapper), `isLegacyLease()`, `RenewTicketInput`, `LeaseRecoveryEvidence`, run/provider fields on take/transfer inputs; optional lease fields on `ReconciliationEvidence.claim`. |
 | `packages/core/src/frontmatter.ts` | `KEY_ORDER` lease keys after `remediation_budget`. |
-| `packages/core/src/store.ts` | `withLeaseLock` (`.kanmer/leases.lock`), `workspaceKey`, `assertWorkspaceFree`; `takeTicket` (LEASE_LIVE, WORKSPACE_OCCUPIED, lease minting), `renewTicket` (lease id/revision checks, phase, bounded extension, legacy migration; `(id, actor, opts)` overload retained), `transferTicket` (recovery evidence recorded, RECOVERY_REFUSED, new lease id, `lease_reclaimed_from`), `releaseTicket` (clears lease). The unused `claimWindowMinutes` helper was removed. |
-| `packages/core/src/claims.test.ts` | New `leaseState / leaseConfig` and `renewable leases (CORE-115)` suites: record minting and key order, AC1 contention, workspace occupancy (incl. force and expired-unreleased), AC2 renewal id/revision with byte-identical file on refusal, own-expired renew, running-command bound, legacy migration (renew and transfer), AC3 recovery cases (dirty / committed-no-PR / missing worktree), RECOVERY_REFUSED, six-store concurrent renewal under the lock. Existing tests untouched. |
+| `packages/core/src/store.ts` | `withLeaseLock` (`.kanmer/leases.lock`), `workspaceKey`, `assertWorkspaceFree`; `takeTicket` (LEASE_LIVE, WORKSPACE_OCCUPIED, lease minting), `renewTicket` (lease id/revision checks, phase, bounded extension, legacy migration; `(id, actor, opts)` overload retained), `transferTicket` (recovery evidence recorded, RECOVERY_REFUSED for board / foreign-repository / **branch-mismatch (F-005, re-entry)** workspace, new lease id, `lease_reclaimed_from`), `releaseTicket` (clears lease). The unused `claimWindowMinutes` helper was removed. |
+| `packages/core/src/claims.test.ts` | New `leaseState / leaseConfig` and `renewable leases (CORE-115)` suites: record minting and key order, AC1 contention, workspace occupancy (incl. force and expired-unreleased), AC2 renewal id/revision with byte-identical file on refusal, own-expired renew, running-command bound, legacy migration (renew and transfer), AC3 recovery cases (dirty / committed-no-PR / missing worktree), RECOVERY_REFUSED (board, foreign, branch-mismatch), six-store concurrent renewal under the lock. Existing tests untouched. |
 | `packages/mcp-server/src/errors.ts` | `LEASE_EXPIRED` and `LEASE_CONFLICT` codes classified from the store's stable prefixes. |
-| `packages/mcp-server/src/index.ts` | `take_ticket`: lease params, evidence-gated transfer, rewritten description; `get_status.leases`. No new tool (38). |
+| `packages/mcp-server/src/index.ts` | `take_ticket`: lease params, evidence-gated transfer, rewritten description; `get_status.leases`. No new tool (roster stays at main's 39 after MCP-054). |
 | `packages/mcp-server/src/execution-packet.ts` | `claim` block gains lease id/revision/phase/workspace/heartbeat, `legacy`, and the three timing values. |
 | `packages/mcp-server/src/reconciliation.ts` | Claim evidence uses `leaseState`; `leaseRecoverySummary()` exported. |
 | `packages/mcp-server/src/reconciliation.test.mjs` | Claim-block deepEqual extended with the lease fields (strictly more asserted); new legacy/`leaseRecoverySummary`/reclaim test. |
-| `packages/mcp-server/src/smoke.mjs` | Nine new checks (lease minting, `get_status.leases`, packet claim block, WORKSPACE_OCCUPIED, LEASE_LIVE, LEASE_EXPIRED/REVISION_CONFLICT with zero writes, running-command bound, phase return, transfer evidence). 287/287. |
-| `plugins/kanmer/skills/…/tool-reference.md`, `kanmer-execute/SKILL.md`, `kanmer-auto/SKILL.md` | Lease contract for agents (renew with `lease_id`/`lease_revision`, heartbeat cadence, running-command phase, LEASE_EXPIRED is a stop). |
-| `plugins/kanmer/mcp/kanmer-mcp.cjs` | Rebuilt bundle (`plugin:build`; `plugin:check` green). |
-| `AGENTS.md`, `docs/manual/glossary.md`, `apps/gui/src/renderer/src/manual/chapters.generated.ts` | §4 field example, §8 gotcha 16, glossary "Lease" entry and the regenerated manual it feeds. |
+| `packages/mcp-server/src/smoke.mjs` | Nine new lease checks (lease minting, `get_status.leases`, packet claim block, WORKSPACE_OCCUPIED, LEASE_LIVE, LEASE_EXPIRED/REVISION_CONFLICT with zero writes, running-command bound, phase return, transfer evidence). 299/299 after rebase (MCP-054's checks + these). |
+| `plugins/kanmer/skills/…/tool-reference.md`, `kanmer-execute/SKILL.md`, `kanmer-auto/SKILL.md` | Lease contract for agents (renew with `lease_id`/`lease_revision`, heartbeat cadence, running-command phase, LEASE_EXPIRED is a stop; branch-mismatch refusal named). |
+| `plugins/kanmer/mcp/kanmer-mcp.cjs` | Rebuilt bundle from the rebased tree (`plugin:build`; `plugin:check` green, 39 tools, bytes match). |
+| `AGENTS.md`, `docs/manual/glossary.md`, `apps/gui/src/renderer/src/manual/chapters.generated.ts` | §4 field example, §8 gotcha **17** (renumbered after MCP-054's gotcha 16), glossary "Lease" entry and the regenerated manual it feeds. |
+
+## Re-entry: rebase onto main (2026-08-27, attestation scratch/review.md c11d69e9dac9e3ef)
+
+- `git fetch origin && git rebase origin/main` (main e903289e, MCP-054). One conflict: `AGENTS.md` §8 — both sides added a gotcha "16". Resolved by keeping MCP-054's gotcha 16 (endpoint registry) and renumbering CORE-115's lease gotcha to **17**. The §4 tool-count line, `smoke.mjs:69`, `tool-reference.md`, `connect.md` and the generated manual auto-merged to main's **39** (no "38" remained anywhere; verified by grep). `plugins/kanmer/mcp/kanmer-mcp.cjs` was taken from main during the rebase and rebuilt afterwards (a textual merge of the bundle is not a valid artefact) — F-002 closed.
+- The rebased head was pushed with `--force-with-lease` to the existing PR #293 (no new PR) — F-003: a `pull_request` run now exists for the new head (see PR checks).
+- **F-005 done** (minor hardening, three lines + one assertion): `transferTicket` now refuses `RECOVERY_REFUSED` when `recovery.claimIdentity === "branch-mismatch"`, matching the foreign-repository refusal; test "reclaim refuses a board-worktree, foreign-repository or branch-mismatched workspace without writing" asserts the refusal with a byte-identical ticket file. tool-reference and AGENTS.md gotcha text updated.
+- F-001 (lock coverage of `updateItem`/`moveItem`/`expected_revision` writers) deliberately not attempted — CORE-125. F-004/F-006/F-007/F-008/F-009 accepted-risk, unchanged.
 
 ## Governing docs
 
@@ -29,38 +36,44 @@ Branch `core-115-workspace-leases`, worktree `.worktrees/core-115`, base origin/
 
 ## Deviations from the plan
 
-1. **Renew compatibility lane.** The plan made `lease_id` mandatory on every renew of a leased ticket. Existing tests (`claims.test.ts` "renews only the owner's claim", `project.test.ts` F-004) and the installed v0.3.12 skills renew with only an actor; making the id mandatory would have required weakening those tests. A renew that names a lease is checked strictly (AC2); a renew that names none applies the CORE-121 owner check and still bumps the lease revision. Recorded in open-questions (parked item) and AGENTS.md gotcha 16.
+1. **Renew compatibility lane.** The plan made `lease_id` mandatory on every renew of a leased ticket. Existing tests (`claims.test.ts` "renews only the owner's claim", `project.test.ts` F-004) and the installed v0.3.12 skills renew with only an actor; making the id mandatory would have required weakening those tests. A renew that names a lease is checked strictly (AC2); a renew that names none applies the CORE-121 owner check and still bumps the lease revision. Recorded in open-questions (parked item) and AGENTS.md gotcha 17.
 2. **No extra activity entries or take-time transition.** `store.test.ts` asserts the exact activity `op` sequence for take/release; lease minting is visible in frontmatter and the reclaim/migration/phase transitions are still appended to `scratch/execution.md`.
 3. **`apps/gui/src/renderer/src/manual/chapters.generated.ts`** changed: it is the generated manual mirror (`build:manual`) that `verify:docs` requires after the glossary edit; no hand-written GUI code was touched.
-4. **Plugin bundle built in the worktree**, not the main checkout: the worktree has its own `npm ci` node_modules, so tsup bundled this branch's core and `plugin:check` accepted it (38 tools, bytes match). The main checkout carries unrelated uncommitted changes to AGENTS.md, so switching it to this branch was not safe.
+4. **Plugin bundle built in the worktree**, not the main checkout: the worktree has its own `npm ci` node_modules, so tsup bundled this branch's core and `plugin:check` accepted it (39 tools, bytes match). The main checkout carries unrelated uncommitted changes to AGENTS.md, so switching it to this branch was not safe.
 5. Smoke fixtures that take two tickets on shared paths needed no re-basing: they use distinct paths/junction aliases, which the store's normalised comparison does not collapse (physical aliasing stays the packet's job).
+6. **Plan said "38 tools"**: main grew to 39 via MCP-054 before this branch merged; this ticket adds no tool, so every count assertion follows main's 39.
 
-## Commands and exit codes (cwd `.worktrees/core-115`, head 80cdb6e4 unless noted)
+## Commands and exit codes (re-entry; cwd `.worktrees/core-115`, head 08586176)
 
 | Command | Exit |
 | --- | --- |
 | `npm ci` | 0 |
-| `npm run typecheck` (core, mcp-server, ui, gui) | 0 |
+| `npm run build` / `npm run plugin:build` / `npm run plugin:check` | 0 / 0 / 0 (39 tools match, bundle bytes match, isolated handshake lists 39) |
+| `npm run build:manual` | 0 (no diff — generated manual already current) |
+| `npm run typecheck` | 0 |
 | `npm test -w @kanmer/core` | 0 (19 files, 411 tests) |
-| `npm run build` | 0 |
-| `node packages/mcp-server/src/smoke.mjs` | 0 (287/287) |
+| `node packages/mcp-server/src/smoke.mjs` | 0 (299/299) |
 | `npm run smoke:protocol` | 0 (50/50) |
 | `node --test packages/mcp-server/src/reconciliation.test.mjs` | 0 |
-| `npm run build:manual` then `npm run verify:docs` | 0 / 0 |
-| `npm run plugin:build` / `npm run plugin:check` | 0 / 0 |
-| `npm run verify` (at 692d0d93) | 1 — `npm test` → `test:scripts`: the two antigravity launcher tests fail with the known host `EBUSY` quirk (`kanmer-agy-*\Kanmer\bin` rmdir); core 411 and GUI 493 tests passed in that run. Recorded, not chased. |
-| `npm run test:scripts` (alone) | 1 — same two EBUSY tests; 67 others pass |
-| `npm run smoke:headless` / `mcpb:check` / `smoke:discovery` / `verify:agents-block` | 0 each |
-| `npm run verify:skills` | 1 at 692d0d93 (wording regex), 0 at 80cdb6e4 |
+| `npm run test:http -w @kanmer/mcp-server` | 0 |
+| `npm run verify:skills` | 0 |
+| `npm run verify:docs` | 0 |
+| `npm run verify` | 1 — `npm test` → `test:scripts`: the same two antigravity launcher tests fail with the known host `EBUSY` quirk ("quote-free launcher … LOCALAPPDATA contains spaces", "installer shim restores the provider cwd"); core 411 and GUI 493 passed in that run. Recorded, not chased; hosted `verify` is authoritative. |
+| `npm run smoke:headless` / `mcpb:check` / `smoke:discovery` / `verify:agents-block` (run individually after the rail stopped) | 0 each |
+| `git push --force-with-lease origin core-115-workspace-leases` | 0 (80cdb6e4 → 08586176) |
+
+Pre-rebase rail at 80cdb6e4 (previous section of this report): identical outcomes at 287/287 smoke and 38 tools.
 
 ## Risks and follow-ups
 
 - The compatibility lane means a foreign controller that guesses the assignee name could still renew a leased ticket without the lease id; closing it requires the installed skills to send `lease_id`/`lease_revision` first (parked question).
 - `WORKSPACE_OCCUPIED` compares normalised paths, not physical aliases; the packet's physical checks remain the alias guard.
+- Lease writes are locked against each other but not against `updateItem`/`moveItem`/`expected_revision` writers — [[CORE-125]].
+- F-007: the six-store concurrent renewal test depends on `withExclusiveFileLock`'s bounded retry schedule; watch the first CI runs on windows-latest.
 - Batch mode ([[CORE-124]]) will need the workspace rule's "same frozen batch" exception; the lock and `assertWorkspaceFree` are the extension points.
 - Mutating reconciliation (HZN-008 order 6) can now consume `leaseState`, `transfer` with evidence and `RECOVERY_REFUSED`.
 
 ## For kanmer-verify (on the merged SHA)
 
-- `npm test -w @kanmer/core` (lease suites in `claims.test.ts`), `node packages/mcp-server/src/smoke.mjs` (lease checks), `node --test packages/mcp-server/src/reconciliation.test.mjs`, `npm run plugin:check` from a normal checkout, `npm run verify:docs`.
+- `npm test -w @kanmer/core` (lease suites in `claims.test.ts`), `node packages/mcp-server/src/smoke.mjs` (299 incl. lease checks), `node --test packages/mcp-server/src/reconciliation.test.mjs`, `npm run plugin:check` from a normal checkout (39 tools), `npm run verify:docs`.
 - Confirm a v0.3.12 server still lists a ticket carrying `lease_*` fields (passthrough): the live board is served by 0.3.12 and this ticket's own frontmatter will carry them once a candidate server takes it.

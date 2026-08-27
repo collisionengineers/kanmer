@@ -81,6 +81,12 @@ export interface ExecutionPacketClaim {
   heartbeatMinutes: number;
   expiryMinutes: number;
   commandMaxMinutes: number;
+  /**
+   * Batch workspace (CORE-124, FRD-030): null in isolated mode. Members share
+   * one worktree, branch and PR/head attestation; each keeps its own proof.
+   * `pending` are the members not yet Done or archived — cleanup waits for them.
+   */
+  batch: { id: string; frozenAt: string | null; workspace: string | null; members: string[]; pending: string[] } | null;
 }
 
 export interface ExecutionPacketReady {
@@ -318,6 +324,9 @@ async function unsafeTakenWorktree(
   const warnings: string[] = [];
   for (const other of await store.listItems()) {
     if (other.id === item.id || !other.taken_at || !other.worktree) continue;
+    // A frozen member of the same batch shares this worktree by design
+    // (CORE-124); every other active ticket's worktree remains a refusal.
+    if (item.lease_batch !== undefined && other.lease_batch === item.lease_batch) continue;
     const otherLocation = await physicalExistingPath(canonicalWorktreePath(project, other.worktree));
     if (!otherLocation.ok) {
       warnings.push(`Active ticket "${other.id}" has an unresolved recorded worktree: ${otherLocation.detail}`);
@@ -527,7 +536,18 @@ export async function getExecutionPacket(input: {
     heartbeatMinutes: timing.heartbeatMinutes,
     expiryMinutes: timing.expiryMinutes,
     commandMaxMinutes: timing.commandMaxMinutes,
+    batch: null,
   };
+  const batch = await store.batchState(id);
+  if (batch) {
+    claim.batch = {
+      id: batch.id,
+      frozenAt: batch.frozenAt,
+      workspace: batch.workspace,
+      members: batch.members.map((m) => m.id),
+      pending: batch.members.filter((m) => !m.terminal).map((m) => m.id),
+    };
+  }
   if (item.taken_at && item.assignee !== actor && item.claim_controller !== actor && !exactRecordedResume) {
     const owner = item.assignee || "an unknown actor";
     const location = [item.branch && `branch ${item.branch}`, item.worktree && `worktree ${item.worktree}`]

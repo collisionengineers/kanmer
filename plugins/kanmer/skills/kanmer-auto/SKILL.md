@@ -92,7 +92,12 @@ required document versions, activity, and `get_doc_gates`. Record the lane as
 and stop condition; append a `lane-assigned` event; write/read back the full
 run record; only then dispatch.
 
-Each lane uses its own `.worktrees/<id>` worktree and branch. No lane may touch
+Each lane uses its own `.worktrees/<id>` worktree and branch. The one
+exception is a deliberate batch lane (FRD-030): two or more small related
+tickets the run record names as one batch share one worktree, branch and PR,
+declared and frozen by the first member's `take_ticket` with `batch` and
+`batch_members`; the lane is not cleared until every member is terminal, and
+no other ticket may join it or take its workspace. No lane may touch
 `.worktrees/kanmer`, which is the board worktree on the board branch and is
 never a lane, rebase target, or cleanup target. A ticket runs through the
 existing phase skills only: `kanmer-research` → `kanmer-plan` →

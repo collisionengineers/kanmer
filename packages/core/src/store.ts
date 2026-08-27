@@ -114,8 +114,10 @@ import {
   type TransferTicketInput,
   type RenewTicketInput,
   type UpdateItemPatch,
+  type BatchState,
   LEASE_PHASES,
   isLegacyLease,
+  isTerminalTicket,
   isOperatorReason,
   leaseConfig,
   leaseState,
@@ -1108,27 +1110,124 @@ export class KanmerStore {
    * branch is recorded on another taken, non-archived ticket. A lease that has
    * expired but was never released still owns its workspace — "a final claim
    * remains until closeout" — so the check does not consult expiry. `force`
-   * never bypasses this rule; batch membership (CORE-124) is the only planned
-   * exception.
+   * never bypasses this rule. The one deliberate exception (CORE-124, FRD-030
+   * batch mode) is a sibling that is a frozen member of the same batch: a batch
+   * owns exactly one workspace, so a member may take the workspace its batch
+   * already occupies — and only that one (`BATCH_WORKSPACE_MISMATCH`).
    */
-  private async assertWorkspaceFree(id: string, worktree: string | undefined, branch: string | undefined): Promise<void> {
+  private async assertWorkspaceFree(
+    id: string,
+    worktree: string | undefined,
+    branch: string | undefined,
+    batchId: string | undefined,
+    siblings: Item[],
+  ): Promise<void> {
     const mine = worktree ? normalizeWorktreePath(worktree, this.paths.repoRoot) : null;
-    for (const other of await this.listItems({ type: "ticket" })) {
+    for (const other of siblings) {
       if (other.id === id || !other.taken_at) continue;
       const sameWorktree = mine !== null && other.worktree !== undefined &&
         normalizeWorktreePath(other.worktree, this.paths.repoRoot) === mine;
       const sameBranch = branch !== undefined && other.branch === branch;
+      const sameBatch = batchId !== undefined && other.lease_batch === batchId;
+      if (sameBatch) {
+        // A ticket cannot occupy two active workspaces and a batch owns one:
+        // a member must present the workspace its taken sibling recorded.
+        const otherWorktree = other.worktree !== undefined ? normalizeWorktreePath(other.worktree, this.paths.repoRoot) : null;
+        if (otherWorktree !== mine || other.branch !== branch) {
+          throw new Error(
+            `BATCH_WORKSPACE_MISMATCH: "${id}" is a member of batch ${batchId}, whose workspace is ` +
+              `${other.worktree ? `worktree ${other.worktree} on ` : ""}branch ${other.branch} (recorded on "${other.id}"); ` +
+              `take that exact worktree and branch — a batch owns one workspace and a ticket occupies one.`,
+          );
+        }
+        continue;
+      }
       if (!sameWorktree && !sameBranch) continue;
       const holder = other.claim_controller ?? other.assignee ?? "an unknown actor";
       throw new Error(
         `WORKSPACE_OCCUPIED: "${id}" cannot take ${sameWorktree ? `worktree ${worktree}` : `branch ${branch}`}; ` +
-          `it is recorded on "${other.id}" (held by ${holder}${other.lease_id ? `, lease ${other.lease_id}` : ""}). ` +
+          `it is recorded on "${other.id}" (held by ${holder}${other.lease_id ? `, lease ${other.lease_id}` : ""}` +
+          `${other.lease_batch ? `, batch ${other.lease_batch} — only its frozen members may take it` : ""}). ` +
           `One live writer owns a workspace: use an isolated worktree and branch, or close out "${other.id}" first.`,
       );
     }
   }
 
+  // Batch workspaces (CORE-124, FRD-030): membership is the set of tickets
+  // sharing one `lease_batch`; it is written only here, under the lease lock.
+
+  /** Every ticket (archived included — they count as terminal) carrying `lease_batch === batchId`. */
+  private static batchMembersOf(batchId: string, tickets: Item[]): Item[] {
+    return tickets.filter((t) => t.lease_batch === batchId);
+  }
+
+  private static batchStateOf(batchId: string, tickets: Item[]): BatchState {
+    const members = KanmerStore.batchMembersOf(batchId, tickets).sort((a, b) => a.id.localeCompare(b.id));
+    const taken = members.find((m) => m.taken_at);
+    return {
+      id: batchId,
+      frozenAt: members.find((m) => m.lease_batch_frozen_at)?.lease_batch_frozen_at ?? null,
+      workspace: taken?.lease_workspace ?? (taken?.branch ? `branch:${taken.branch}` : null),
+      members: members.map((m) => ({
+        id: m.id,
+        status: m.status,
+        archived: m.archived === true,
+        terminal: isTerminalTicket(m),
+        taken: Boolean(m.taken_at),
+      })),
+      allTerminal: members.every((m) => isTerminalTicket(m)),
+    };
+  }
+
+  /** The frozen batch a ticket belongs to, or null in isolated mode. Read-only. */
+  async batchState(id: string): Promise<BatchState | null> {
+    const item = await this.getItem(id);
+    if (!item?.lease_batch) return null;
+    return KanmerStore.batchStateOf(item.lease_batch, await this.listItems({ type: "ticket", includeArchived: true }));
+  }
+
+  /**
+   * Validate a batch declaration: the taker names the complete membership
+   * (two or more distinct ids including itself); every member must be an
+   * existing, unarchived, non-terminal, untaken ticket that belongs to no
+   * other batch; and the batch id must not already be frozen. Returns the
+   * sibling items to stamp. Refuses before anything is written.
+   */
+  private static validateBatchDeclaration(id: string, batchId: string, memberIds: string[], tickets: Item[]): Item[] {
+    const ids = Array.from(new Set(memberIds.map((m) => m.trim()).filter(Boolean)));
+    if (ids.length < 2) {
+      throw new Error(`BATCH_INVALID: batch ${batchId} needs two or more distinct member ids (got ${ids.length}); isolated mode needs no batch.`);
+    }
+    if (!ids.includes(id)) {
+      throw new Error(`BATCH_INVALID: "${id}" must be one of the members of batch ${batchId} it declares (${ids.join(", ")}).`);
+    }
+    const frozen = KanmerStore.batchMembersOf(batchId, tickets);
+    if (frozen.length > 0) {
+      throw new Error(
+        `BATCH_FROZEN: batch ${batchId} started when "${frozen[0].id}" was taken; its membership (${frozen.map((m) => m.id).join(", ")}) is frozen and cannot be changed.`,
+      );
+    }
+    const byId = new Map(tickets.map((t) => [t.id, t]));
+    const siblings: Item[] = [];
+    for (const memberId of ids) {
+      const member = byId.get(memberId);
+      if (!member) throw new Error(`BATCH_INVALID: batch ${batchId} names "${memberId}", which is not a ticket on this board.`);
+      if (member.archived) throw new Error(`BATCH_INVALID: batch ${batchId} names archived ticket "${memberId}".`);
+      if (isTerminalTicket(member)) throw new Error(`BATCH_INVALID: batch ${batchId} names "${memberId}", which is already ${member.status}.`);
+      if (member.lease_batch !== undefined && member.lease_batch !== batchId) {
+        throw new Error(`BATCH_INVALID: "${memberId}" already belongs to batch ${member.lease_batch}; a ticket is a member of one batch.`);
+      }
+      if (memberId !== id && member.taken_at) {
+        throw new Error(`BATCH_INVALID: "${memberId}" is already taken (${member.branch ?? "no branch"}); a batch is declared before its members start.`);
+      }
+      if (memberId !== id) siblings.push(member);
+    }
+    return siblings;
+  }
+
   private static clearLeaseFields(next: Item): void {
+    delete next.lease_batch;
+    delete next.lease_batch_frozen_at;
     delete next.lease_id;
     delete next.lease_revision;
     delete next.lease_controller_run;
@@ -1193,7 +1292,27 @@ export class KanmerStore {
               : `A live lease is never taken over: wait for expiry or ask the owner to release.`),
         );
       }
-      await this.assertWorkspaceFree(id, input.worktree, input.branch);
+      // Batch workspace (CORE-124): resolve the batch this take belongs to and,
+      // when the membership is declared here, validate it before any write.
+      const batchId = input.batch?.trim() || undefined;
+      if (input.batchMembers !== undefined && batchId === undefined) {
+        throw new Error(`BATCH_INVALID: "${id}" declares batch members without a batch id.`);
+      }
+      if (batchId !== undefined && current.lease_batch !== undefined && current.lease_batch !== batchId) {
+        throw new Error(`BATCH_INVALID: "${id}" is a frozen member of batch ${current.lease_batch}, not ${batchId}.`);
+      }
+      const tickets = await this.listItems({ type: "ticket", includeArchived: true });
+      const effectiveBatch = current.lease_batch ?? batchId;
+      let batchSiblings: Item[] = [];
+      if (input.batchMembers !== undefined) {
+        batchSiblings = KanmerStore.validateBatchDeclaration(id, batchId!, input.batchMembers, tickets);
+      } else if (batchId !== undefined && current.lease_batch === undefined) {
+        throw new Error(
+          `BATCH_INVALID: "${id}" is not a member of batch ${batchId}; membership was frozen when the batch started, ` +
+            `so declare the full membership with batch_members on the first take or take this ticket in isolation.`,
+        );
+      }
+      await this.assertWorkspaceFree(id, input.worktree, input.branch, effectiveBatch, tickets);
       let stage = input.stage;
       if (stage !== undefined) {
         assertStage(stage);
@@ -1229,6 +1348,20 @@ export class KanmerStore {
       next.lease_heartbeat_at = now;
       delete next.lease_reclaimed_from;
       KanmerStore.applyRunIdentity(next, input, false);
+      if (input.batchMembers !== undefined) {
+        // The first member take freezes the batch: stamp every member in the
+        // same critical section. Siblings get the membership record only —
+        // no lease, no stage change, no activity op — so the take/release
+        // op sequence of the taker is unchanged.
+        next.lease_batch = batchId;
+        next.lease_batch_frozen_at = now;
+        for (const sibling of batchSiblings) {
+          const sibLoc = await this.locateItem(sibling.id);
+          if (!sibLoc) throw new Error(`BATCH_INVALID: member "${sibling.id}" disappeared while batch ${batchId} was being declared.`);
+          const sibCurrent = parseItem(await readText(sibLoc.file));
+          await writeFileAtomic(sibLoc.file, serialiseItem({ ...sibCurrent, lease_batch: batchId, lease_batch_frozen_at: now, updated: now }));
+        }
+      }
       await writeFileAtomic(loc.file, serialiseItem(next));
       await appendActivity(this.paths, [
         this.activity(id, "take", { field: "branch", to: input.branch }),
@@ -1247,7 +1380,20 @@ export class KanmerStore {
       if (!loc) throw new Error(`No item with id "${id}"`);
       const current = parseItem(await readText(loc.file));
       await this.assertRevision(loc, id, opts.expectedRevision);
-      if (!current.taken_at && !current.branch && !current.worktree && !current.lease_id) return current;
+      if (!current.taken_at && !current.branch && !current.worktree && !current.lease_id && !current.lease_batch) return current;
+      if (current.lease_batch) {
+        // Cleanup waits for all members (FRD-030): the shared workspace is
+        // still an execution or evidence target while any sibling is not
+        // Done or archived. Refused before anything is written.
+        const state = KanmerStore.batchStateOf(current.lease_batch, await this.listItems({ type: "ticket", includeArchived: true }));
+        const pending = state.members.filter((m) => m.id !== id && !m.terminal);
+        if (pending.length > 0) {
+          throw new Error(
+            `BATCH_ACTIVE: "${id}" shares batch ${current.lease_batch}'s workspace with ${pending.map((m) => `"${m.id}" (${m.status})`).join(", ")}; ` +
+              `release and cleanup wait until every member is Done or archived.`,
+          );
+        }
+      }
       const next: Item = { ...current, updated: nowIso() };
       delete next.taken_at;
       delete next.branch;

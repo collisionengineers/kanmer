@@ -206,6 +206,21 @@ for an unrecorded ticket and never `force` a taken ticket. A resumed ticket is
 already taken, so it deliberately skips this fresh-ticket creation and take
 sequence.
 
+### Batch lane (deliberate, FRD-030)
+
+Isolated mode above is the default. Only when the operator or controller has
+explicitly named two or more small related tickets as one batch, the first
+member's take declares and freezes the membership in one call —
+`take_ticket id: <first>, branch: "<batch>-<slug>", worktree: ".worktrees/<batch>", batch: "<batch>", batch_members: [<every member id>]`
+— and every later member is taken on that exact recorded worktree and branch
+with `batch: "<batch>"` (any other workspace is `BATCH_WORKSPACE_MISMATCH`;
+adding a ticket later is `BATCH_FROZEN`). The packet's `claim.batch` lists the
+members and which are still pending. A batch ships one PR whose body carries a
+`Kanmer: <ID>` line for every member, and review binds one attestation head;
+each member still writes its own post-implementation report, review mapping
+and proof. Never `release` a member while `claim.batch.pending` names a
+sibling — the shared workspace is still theirs.
+
 ## Work only the packet
 
 - Work only the packet's `files` scope. Do not absorb another ticket, repair

@@ -2254,6 +2254,67 @@ Second proof attempt passed; the first failure is retained.
     check("take_ticket renew returns the lease to the board window when the command phase ends", backToWork.lease_revision === 3 && Date.parse(backToWork.claim_expires_at) - Date.now() <= 31 * 60_000, backToWork.claim_expires_at);
     claimed.lease_revision = 3;
   }
+  // CORE-124 (FRD-030 batch mode): the first member's take declares and freezes the batch; members share one
+  // workspace, non-members are refused both ways, the packet reports the batch, and release waits for all members.
+  {
+    const member = async (title) => JSON.parse(
+      textOf(await client.callTool({ name: "create_item", arguments: { title, status: "implementing", profile: "chore", docs_todo: true } })),
+    ).id;
+    const [m1, m2, m3, stranger] = [await member("batch member 1"), await member("batch member 2"), await member("batch member 3"), await member("batch stranger")];
+    for (const id of [m1, m2, m3, stranger]) await client.callTool({ name: "set_ticket_doc", arguments: { id, doc: "plan", content: "# Batch" } });
+    execFileSync("git", ["worktree", "add", "-b", "batch-branch", path.join(sandbox, ".worktrees", "batch"), expectedBoardBranch], {
+      cwd: sandbox, windowsHide: true, stdio: "ignore",
+    });
+    const batchTake = { branch: "batch-branch", worktree: ".worktrees/batch", assignee: "ctl-batch" };
+    const first = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: m1, ...batchTake, batch: "smoke-batch", batch_members: [m1, m2, m3] } })));
+    const frozenSibling = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m3 } })));
+    check(
+      "take_ticket with batch + batch_members declares and freezes the batch on every member (siblings stay untaken)",
+      first.lease_batch === "smoke-batch" && first.lease_batch_frozen_at === first.taken_at && frozenSibling.lease_batch === "smoke-batch" &&
+        frozenSibling.lease_batch_frozen_at === first.taken_at && !frozenSibling.taken_at && !frozenSibling.lease_id,
+      JSON.stringify({ first: first.lease_batch, sibling: frozenSibling.lease_batch, siblingTaken: frozenSibling.taken_at ?? null }),
+    );
+    const second = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: m2, ...batchTake, batch: "smoke-batch" } })));
+    check(
+      "a frozen member takes the batch's worktree and branch and gets its own lease on the shared workspace",
+      second.lease_workspace === first.lease_workspace && second.lease_id && second.lease_id !== first.lease_id && second.lease_batch === "smoke-batch",
+      JSON.stringify({ workspace: second.lease_workspace, lease: second.lease_id }),
+    );
+    const mismatch = await client.callTool({ name: "take_ticket", arguments: { id: m3, branch: "batch-branch", worktree: ".worktrees/elsewhere", assignee: "ctl-batch" } });
+    check(
+      "a member on any other worktree is BATCH_WORKSPACE_MISMATCH (LEASE_CONFLICT): a batch owns one workspace",
+      mismatch.isError === true && textOf(mismatch).includes("BATCH_WORKSPACE_MISMATCH") && mismatch.structuredContent?.error?.code === "LEASE_CONFLICT",
+      textOf(mismatch),
+    );
+    const joinAttempt = await client.callTool({ name: "take_ticket", arguments: { id: stranger, ...batchTake, batch: "smoke-batch", batch_members: [m1, m2, m3, stranger] } });
+    const shareAttempt = await client.callTool({ name: "take_ticket", arguments: { id: stranger, ...batchTake, force: true } });
+    const strangerAfter = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: stranger } })));
+    check(
+      "AC5: an unrelated ticket can neither join the started batch (BATCH_FROZEN) nor share its workspace (WORKSPACE_OCCUPIED, even with force)",
+      joinAttempt.isError === true && textOf(joinAttempt).includes("BATCH_FROZEN") && joinAttempt.structuredContent?.error?.code === "LEASE_CONFLICT" &&
+        shareAttempt.isError === true && textOf(shareAttempt).includes("WORKSPACE_OCCUPIED") && textOf(shareAttempt).includes("smoke-batch") &&
+        !strangerAfter.taken_at && !strangerAfter.lease_batch,
+      JSON.stringify([textOf(joinAttempt), textOf(shareAttempt)]),
+    );
+    const batchPacket = JSON.parse(textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: m2, resume: { branch: "batch-branch", worktree: ".worktrees/batch" } } })));
+    check(
+      "get_execution_packet is ready for a member on the shared batch worktree and its claim block reports the batch (members, pending, workspace)",
+      batchPacket.ready === true && batchPacket.claim?.batch?.id === "smoke-batch" && JSON.stringify(batchPacket.claim.batch.members) === JSON.stringify([m1, m2, m3]) &&
+        JSON.stringify(batchPacket.claim.batch.pending) === JSON.stringify([m1, m2, m3]) && batchPacket.claim.batch.workspace === first.lease_workspace &&
+        batchPacket.claim.batch.frozenAt === first.taken_at,
+      JSON.stringify(batchPacket.claim?.batch ?? batchPacket),
+    );
+    const earlyRelease = await client.callTool({ name: "take_ticket", arguments: { id: m1, action: "release" } });
+    const stillTaken = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: m1 } })));
+    check(
+      "take_ticket release refuses BATCH_ACTIVE (LEASE_CONFLICT) while another member is not Done or archived; nothing is written",
+      earlyRelease.isError === true && textOf(earlyRelease).includes("BATCH_ACTIVE") && textOf(earlyRelease).includes(m2) && textOf(earlyRelease).includes(m3) &&
+        earlyRelease.structuredContent?.error?.code === "LEASE_CONFLICT" && stillTaken.taken_at === first.taken_at && stillTaken.lease_batch === "smoke-batch",
+      textOf(earlyRelease),
+    );
+    const isolated = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: stranger, branch: "stranger-branch", assignee: "ctl-batch" } })));
+    check("isolated mode stays the default: the stranger takes its own branch with no batch record", Boolean(isolated.taken_at) && !isolated.lease_batch, JSON.stringify({ taken: isolated.taken_at, batch: isolated.lease_batch ?? null }));
+  }
   // F-004: release/renew/transfer honour expected_revision like take does — a stale token is REVISION_CONFLICT with zero writes.
   {
     const staleRev = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: claimId } }))).revision;

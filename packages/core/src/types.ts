@@ -468,6 +468,15 @@ export const ItemFrontmatterSchema = z
     lease_heartbeat_at: TimestampSchema.optional(),
     /** The controller a reclaimed lease was taken over from (transfer). */
     lease_reclaimed_from: z.string().optional(),
+    /**
+     * Deliberate batch workspace (CORE-124, FRD-030): the batch this ticket is
+     * a frozen member of. Membership is the set of tickets sharing one id; it
+     * is stamped on every member by the first member take (`lease_batch_frozen_at`)
+     * and only lease verbs under the lease lock write it. Isolated mode (no
+     * batch) remains the default.
+     */
+    lease_batch: z.string().min(1).optional(),
+    lease_batch_frozen_at: TimestampSchema.optional(),
     /** Optional fractional sort key; unordered items sort after ordered ones. */
     order: z.number().optional(),
     labels: z.array(z.string()).default([]),
@@ -630,11 +639,48 @@ export interface TakeTicketInput {
   provider?: string;
   /** Lease phase; defaults to `implementing`. */
   phase?: LeasePhase;
+  /**
+   * Batch workspace (CORE-124, FRD-030). With `batchMembers`, this take
+   * declares and freezes the batch in one locked write set; without them it
+   * names the frozen batch the ticket already belongs to.
+   */
+  batch?: string;
+  /** The complete membership (two or more ids, including this ticket) — accepted only before the batch is frozen. */
+  batchMembers?: string[];
 }
 
 /** The lease phases FRD-030 names; `running-command` is the explicit long-command state. */
 export const LEASE_PHASES = ["implementing", "running-command", "review", "verifying", "closeout"] as const;
 export type LeasePhase = (typeof LEASE_PHASES)[number];
+
+/**
+ * A ticket is terminal for batch cleanup when it is Done or has been archived
+ * (kanmer-closeout's two accepted terminal shapes: verified success, or a
+ * retired non-success archived in Verifying).
+ */
+export function isTerminalTicket(item: Pick<Item, "status" | "archived">): boolean {
+  return item.status === "done" || item.archived === true;
+}
+
+/** One member of a batch workspace as `KanmerStore.batchState` reports it. */
+export interface BatchMemberState {
+  id: string;
+  status: string;
+  archived: boolean;
+  terminal: boolean;
+  taken: boolean;
+}
+
+/** The frozen batch a ticket belongs to (CORE-124): members, their terminal-ness and the shared workspace. */
+export interface BatchState {
+  id: string;
+  frozenAt: string | null;
+  /** The workspace the batch occupies (first taken member's lease workspace), null before any member is taken. */
+  workspace: string | null;
+  members: BatchMemberState[];
+  /** True once every member is Done or archived — the point at which cleanup and release may proceed. */
+  allTerminal: boolean;
+}
 
 /** Input for renewTicket (CORE-115): the caller's own lease, named by id and revision. */
 export interface RenewTicketInput {

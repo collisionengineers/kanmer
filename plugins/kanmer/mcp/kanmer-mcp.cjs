@@ -37842,6 +37842,15 @@ var ItemFrontmatterSchema = external_exports.object({
   lease_heartbeat_at: TimestampSchema.optional(),
   /** The controller a reclaimed lease was taken over from (transfer). */
   lease_reclaimed_from: external_exports.string().optional(),
+  /**
+   * Deliberate batch workspace (CORE-124, FRD-030): the batch this ticket is
+   * a frozen member of. Membership is the set of tickets sharing one id; it
+   * is stamped on every member by the first member take (`lease_batch_frozen_at`)
+   * and only lease verbs under the lease lock write it. Isolated mode (no
+   * batch) remains the default.
+   */
+  lease_batch: external_exports.string().min(1).optional(),
+  lease_batch_frozen_at: TimestampSchema.optional(),
   /** Optional fractional sort key; unordered items sort after ordered ones. */
   order: external_exports.number().optional(),
   labels: external_exports.array(external_exports.string()).default([]),
@@ -37863,6 +37872,9 @@ var ItemFrontmatterSchema = external_exports.object({
   updated: TimestampSchema.default("")
 }).passthrough();
 var LEASE_PHASES = ["implementing", "running-command", "review", "verifying", "closeout"];
+function isTerminalTicket(item) {
+  return item.status === "done" || item.archived === true;
+}
 var DEFAULT_CLAIM_EXPIRY_MINUTES = 30;
 var DEFAULT_LEASE_HEARTBEAT_MINUTES = 5;
 var DEFAULT_LEASE_COMMAND_MAX_MINUTES = 120;
@@ -38555,6 +38567,8 @@ var KEY_ORDER = [
   "lease_phase",
   "lease_heartbeat_at",
   "lease_reclaimed_from",
+  "lease_batch",
+  "lease_batch_frozen_at",
   "labels",
   "groups",
   "links",
@@ -41182,23 +41196,104 @@ ${entry}`;
    * branch is recorded on another taken, non-archived ticket. A lease that has
    * expired but was never released still owns its workspace — "a final claim
    * remains until closeout" — so the check does not consult expiry. `force`
-   * never bypasses this rule; batch membership (CORE-124) is the only planned
-   * exception.
+   * never bypasses this rule. The one deliberate exception (CORE-124, FRD-030
+   * batch mode) is a sibling that is a frozen member of the same batch: a batch
+   * owns exactly one workspace, so a member may take the workspace its batch
+   * already occupies — and only that one (`BATCH_WORKSPACE_MISMATCH`).
    */
-  async assertWorkspaceFree(id, worktree, branch) {
+  async assertWorkspaceFree(id, worktree, branch, batchId, siblings) {
     const mine = worktree ? normalizeWorktreePath(worktree, this.paths.repoRoot) : null;
-    for (const other of await this.listItems({ type: "ticket" })) {
+    for (const other of siblings) {
       if (other.id === id || !other.taken_at) continue;
       const sameWorktree = mine !== null && other.worktree !== void 0 && normalizeWorktreePath(other.worktree, this.paths.repoRoot) === mine;
       const sameBranch = branch !== void 0 && other.branch === branch;
+      const sameBatch = batchId !== void 0 && other.lease_batch === batchId;
+      if (sameBatch) {
+        const otherWorktree = other.worktree !== void 0 ? normalizeWorktreePath(other.worktree, this.paths.repoRoot) : null;
+        if (otherWorktree !== mine || other.branch !== branch) {
+          throw new Error(
+            `BATCH_WORKSPACE_MISMATCH: "${id}" is a member of batch ${batchId}, whose workspace is ${other.worktree ? `worktree ${other.worktree} on ` : ""}branch ${other.branch} (recorded on "${other.id}"); take that exact worktree and branch \u2014 a batch owns one workspace and a ticket occupies one.`
+          );
+        }
+        continue;
+      }
       if (!sameWorktree && !sameBranch) continue;
       const holder = other.claim_controller ?? other.assignee ?? "an unknown actor";
       throw new Error(
-        `WORKSPACE_OCCUPIED: "${id}" cannot take ${sameWorktree ? `worktree ${worktree}` : `branch ${branch}`}; it is recorded on "${other.id}" (held by ${holder}${other.lease_id ? `, lease ${other.lease_id}` : ""}). One live writer owns a workspace: use an isolated worktree and branch, or close out "${other.id}" first.`
+        `WORKSPACE_OCCUPIED: "${id}" cannot take ${sameWorktree ? `worktree ${worktree}` : `branch ${branch}`}; it is recorded on "${other.id}" (held by ${holder}${other.lease_id ? `, lease ${other.lease_id}` : ""}${other.lease_batch ? `, batch ${other.lease_batch} \u2014 only its frozen members may take it` : ""}). One live writer owns a workspace: use an isolated worktree and branch, or close out "${other.id}" first.`
       );
     }
   }
+  // Batch workspaces (CORE-124, FRD-030): membership is the set of tickets
+  // sharing one `lease_batch`; it is written only here, under the lease lock.
+  /** Every ticket (archived included — they count as terminal) carrying `lease_batch === batchId`. */
+  static batchMembersOf(batchId, tickets) {
+    return tickets.filter((t) => t.lease_batch === batchId);
+  }
+  static batchStateOf(batchId, tickets) {
+    const members = _KanmerStore.batchMembersOf(batchId, tickets).sort((a, b) => a.id.localeCompare(b.id));
+    const taken = members.find((m) => m.taken_at);
+    return {
+      id: batchId,
+      frozenAt: members.find((m) => m.lease_batch_frozen_at)?.lease_batch_frozen_at ?? null,
+      workspace: taken?.lease_workspace ?? (taken?.branch ? `branch:${taken.branch}` : null),
+      members: members.map((m) => ({
+        id: m.id,
+        status: m.status,
+        archived: m.archived === true,
+        terminal: isTerminalTicket(m),
+        taken: Boolean(m.taken_at)
+      })),
+      allTerminal: members.every((m) => isTerminalTicket(m))
+    };
+  }
+  /** The frozen batch a ticket belongs to, or null in isolated mode. Read-only. */
+  async batchState(id) {
+    const item = await this.getItem(id);
+    if (!item?.lease_batch) return null;
+    return _KanmerStore.batchStateOf(item.lease_batch, await this.listItems({ type: "ticket", includeArchived: true }));
+  }
+  /**
+   * Validate a batch declaration: the taker names the complete membership
+   * (two or more distinct ids including itself); every member must be an
+   * existing, unarchived, non-terminal, untaken ticket that belongs to no
+   * other batch; and the batch id must not already be frozen. Returns the
+   * sibling items to stamp. Refuses before anything is written.
+   */
+  static validateBatchDeclaration(id, batchId, memberIds, tickets) {
+    const ids = Array.from(new Set(memberIds.map((m) => m.trim()).filter(Boolean)));
+    if (ids.length < 2) {
+      throw new Error(`BATCH_INVALID: batch ${batchId} needs two or more distinct member ids (got ${ids.length}); isolated mode needs no batch.`);
+    }
+    if (!ids.includes(id)) {
+      throw new Error(`BATCH_INVALID: "${id}" must be one of the members of batch ${batchId} it declares (${ids.join(", ")}).`);
+    }
+    const frozen = _KanmerStore.batchMembersOf(batchId, tickets);
+    if (frozen.length > 0) {
+      throw new Error(
+        `BATCH_FROZEN: batch ${batchId} started when "${frozen[0].id}" was taken; its membership (${frozen.map((m) => m.id).join(", ")}) is frozen and cannot be changed.`
+      );
+    }
+    const byId = new Map(tickets.map((t) => [t.id, t]));
+    const siblings = [];
+    for (const memberId of ids) {
+      const member = byId.get(memberId);
+      if (!member) throw new Error(`BATCH_INVALID: batch ${batchId} names "${memberId}", which is not a ticket on this board.`);
+      if (member.archived) throw new Error(`BATCH_INVALID: batch ${batchId} names archived ticket "${memberId}".`);
+      if (isTerminalTicket(member)) throw new Error(`BATCH_INVALID: batch ${batchId} names "${memberId}", which is already ${member.status}.`);
+      if (member.lease_batch !== void 0 && member.lease_batch !== batchId) {
+        throw new Error(`BATCH_INVALID: "${memberId}" already belongs to batch ${member.lease_batch}; a ticket is a member of one batch.`);
+      }
+      if (memberId !== id && member.taken_at) {
+        throw new Error(`BATCH_INVALID: "${memberId}" is already taken (${member.branch ?? "no branch"}); a batch is declared before its members start.`);
+      }
+      if (memberId !== id) siblings.push(member);
+    }
+    return siblings;
+  }
   static clearLeaseFields(next) {
+    delete next.lease_batch;
+    delete next.lease_batch_frozen_at;
     delete next.lease_id;
     delete next.lease_revision;
     delete next.lease_controller_run;
@@ -41251,7 +41346,24 @@ ${entry}`;
           `LEASE_LIVE: "${id}" is already taken (taken_at ${current.taken_at}${current.branch ? `, branch ${current.branch}` : ""}${holder ? `, held by ${holder}` : ""}, lease ${current.lease_id ?? "legacy"} ${lease.state}${lease.expiresAt ? ` until ${lease.expiresAt}` : ""}). ` + (lease.state === "expired" ? `An expired lease is reclaimed with take_ticket action "transfer", never retaken.` : `A live lease is never taken over: wait for expiry or ask the owner to release.`)
         );
       }
-      await this.assertWorkspaceFree(id, input.worktree, input.branch);
+      const batchId = input.batch?.trim() || void 0;
+      if (input.batchMembers !== void 0 && batchId === void 0) {
+        throw new Error(`BATCH_INVALID: "${id}" declares batch members without a batch id.`);
+      }
+      if (batchId !== void 0 && current.lease_batch !== void 0 && current.lease_batch !== batchId) {
+        throw new Error(`BATCH_INVALID: "${id}" is a frozen member of batch ${current.lease_batch}, not ${batchId}.`);
+      }
+      const tickets = await this.listItems({ type: "ticket", includeArchived: true });
+      const effectiveBatch = current.lease_batch ?? batchId;
+      let batchSiblings = [];
+      if (input.batchMembers !== void 0) {
+        batchSiblings = _KanmerStore.validateBatchDeclaration(id, batchId, input.batchMembers, tickets);
+      } else if (batchId !== void 0 && current.lease_batch === void 0) {
+        throw new Error(
+          `BATCH_INVALID: "${id}" is not a member of batch ${batchId}; membership was frozen when the batch started, so declare the full membership with batch_members on the first take or take this ticket in isolation.`
+        );
+      }
+      await this.assertWorkspaceFree(id, input.worktree, input.branch, effectiveBatch, tickets);
       let stage = input.stage;
       if (stage !== void 0) {
         assertStage(stage);
@@ -41285,6 +41397,16 @@ ${entry}`;
       next.lease_heartbeat_at = now;
       delete next.lease_reclaimed_from;
       _KanmerStore.applyRunIdentity(next, input, false);
+      if (input.batchMembers !== void 0) {
+        next.lease_batch = batchId;
+        next.lease_batch_frozen_at = now;
+        for (const sibling of batchSiblings) {
+          const sibLoc = await this.locateItem(sibling.id);
+          if (!sibLoc) throw new Error(`BATCH_INVALID: member "${sibling.id}" disappeared while batch ${batchId} was being declared.`);
+          const sibCurrent = parseItem(await readText(sibLoc.file));
+          await writeFileAtomic(sibLoc.file, serialiseItem({ ...sibCurrent, lease_batch: batchId, lease_batch_frozen_at: now, updated: now }));
+        }
+      }
       await writeFileAtomic(loc.file, serialiseItem(next));
       await appendActivity(this.paths, [
         this.activity(id, "take", { field: "branch", to: input.branch }),
@@ -41300,7 +41422,16 @@ ${entry}`;
       if (!loc) throw new Error(`No item with id "${id}"`);
       const current = parseItem(await readText(loc.file));
       await this.assertRevision(loc, id, opts.expectedRevision);
-      if (!current.taken_at && !current.branch && !current.worktree && !current.lease_id) return current;
+      if (!current.taken_at && !current.branch && !current.worktree && !current.lease_id && !current.lease_batch) return current;
+      if (current.lease_batch) {
+        const state = _KanmerStore.batchStateOf(current.lease_batch, await this.listItems({ type: "ticket", includeArchived: true }));
+        const pending = state.members.filter((m) => m.id !== id && !m.terminal);
+        if (pending.length > 0) {
+          throw new Error(
+            `BATCH_ACTIVE: "${id}" shares batch ${current.lease_batch}'s workspace with ${pending.map((m) => `"${m.id}" (${m.status})`).join(", ")}; release and cleanup wait until every member is Done or archived.`
+          );
+        }
+      }
       const next = { ...current, updated: nowIso() };
       delete next.taken_at;
       delete next.branch;
@@ -43166,6 +43297,7 @@ async function unsafeTakenWorktree(store2, project, item) {
   const warnings = [];
   for (const other of await store2.listItems()) {
     if (other.id === item.id || !other.taken_at || !other.worktree) continue;
+    if (item.lease_batch !== void 0 && other.lease_batch === item.lease_batch) continue;
     const otherLocation = await physicalExistingPath(canonicalWorktreePath(project, other.worktree));
     if (!otherLocation.ok) {
       warnings.push(`Active ticket "${other.id}" has an unresolved recorded worktree: ${otherLocation.detail}`);
@@ -43343,8 +43475,19 @@ async function getExecutionPacket(input) {
     legacy: lease.legacy,
     heartbeatMinutes: timing.heartbeatMinutes,
     expiryMinutes: timing.expiryMinutes,
-    commandMaxMinutes: timing.commandMaxMinutes
+    commandMaxMinutes: timing.commandMaxMinutes,
+    batch: null
   };
+  const batch = await store2.batchState(id);
+  if (batch) {
+    claim.batch = {
+      id: batch.id,
+      frozenAt: batch.frozenAt,
+      workspace: batch.workspace,
+      members: batch.members.map((m) => m.id),
+      pending: batch.members.filter((m) => !m.terminal).map((m) => m.id)
+    };
+  }
   if (item.taken_at && item.assignee !== actor && item.claim_controller !== actor && !exactRecordedResume) {
     const owner = item.assignee || "an unknown actor";
     const location = [item.branch && `branch ${item.branch}`, item.worktree && `worktree ${item.worktree}`].filter(Boolean).join(", ");
@@ -43660,7 +43803,7 @@ async function reconcileTicket(store2, id, run, options2) {
 }
 
 // src/errors.ts
-var LEASE_CONFLICT_PREFIXES = ["LEASE_LIVE:", "CLAIM_LIVE:", "CLAIM_NOT_OWNED:", "WORKSPACE_OCCUPIED:", "RECOVERY_REFUSED:", "LEASE_ID_REQUIRED:", "LEASE_REVISION_REQUIRED:"];
+var LEASE_CONFLICT_PREFIXES = ["LEASE_LIVE:", "CLAIM_LIVE:", "CLAIM_NOT_OWNED:", "WORKSPACE_OCCUPIED:", "RECOVERY_REFUSED:", "LEASE_ID_REQUIRED:", "LEASE_REVISION_REQUIRED:", "BATCH_INVALID:", "BATCH_FROZEN:", "BATCH_WORKSPACE_MISMATCH:", "BATCH_ACTIVE:"];
 var KanmerError = class extends Error {
   constructor(code, message) {
     super(message);
@@ -45575,7 +45718,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "take_ticket",
     {
       title: "Take, release, transfer or renew a ticket workspace lease",
-      description: 'Acquire a ticket\'s workspace lease before working it (FRD-030): records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client\'s name), stamps the lease expiry (board `claimExpiryMinutes`, default 30) and mints the lease record \u2014 lease_id, lease_revision, lease_workspace, lease_phase, lease_heartbeat_at, plus controller_run/worker_run/provider when given \u2014 and moves the ticket to the working stage (default `implementing`). One live writer per workspace: a worktree or branch recorded on another taken ticket refuses with WORKSPACE_OCCUPIED (force does not bypass it); an already-taken ticket refuses with LEASE_LIVE unless force is true. action: "renew" is the heartbeat (renew at least every get_status.leases.heartbeatMinutes): pass the lease_id and lease_revision from your packet or last take \u2014 a non-current lease_id refuses with LEASE_EXPIRED (the lease was reclaimed; stop), a stale lease_revision with REVISION_CONFLICT, and nothing is written on refusal; an expired lease nobody reclaimed still renews for its holder. Optional phase (implementing | running-command | review | verifying | closeout); phase "running-command" with extend_minutes is the explicit long-command state, bounded by board `leaseCommandMaxMinutes` (default 120). A renew that names no lease falls back to the owner check (CLAIM_NOT_OWNED) and migrates a legacy claim into a lease. action: "transfer" reclaims an EXPIRED lease for the caller (or another assignee): it first re-reads worktree, branch, PR, commit and proof evidence, records it with the old and new controller in scratch/execution.md, preserves the recorded branch/worktree and any dirty work, and refuses with RECOVERY_REFUSED for a board or foreign-repository workspace; a live lease refuses with CLAIM_LIVE unless reason begins "operator:". action: "release" clears the claim and lease fields when the work ends (closeout). Never use force to recover a dead controller\'s ticket; transfer it.',
+      description: 'Acquire a ticket\'s workspace lease before working it (FRD-030): records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client\'s name), stamps the lease expiry (board `claimExpiryMinutes`, default 30) and mints the lease record \u2014 lease_id, lease_revision, lease_workspace, lease_phase, lease_heartbeat_at, plus controller_run/worker_run/provider when given \u2014 and moves the ticket to the working stage (default `implementing`). One live writer per workspace: a worktree or branch recorded on another taken ticket refuses with WORKSPACE_OCCUPIED (force does not bypass it); an already-taken ticket refuses with LEASE_LIVE unless force is true. Batch mode is the one deliberate exception: the first member\'s take passes batch (an id) plus batch_members (the complete list of two or more small related ticket ids, including itself) \u2014 that declares AND freezes the batch in one locked write (BATCH_INVALID for an unknown, archived, done, already-taken or otherwise-batched member; BATCH_FROZEN if the batch already started), and later members take the same worktree and branch with batch: <id> (any other workspace is BATCH_WORKSPACE_MISMATCH; a non-member is still WORKSPACE_OCCUPIED). Members share one PR and one review head; each keeps its own review mapping and proof; release refuses BATCH_ACTIVE until every member is Done or archived. action: "renew" is the heartbeat (renew at least every get_status.leases.heartbeatMinutes): pass the lease_id and lease_revision from your packet or last take \u2014 a non-current lease_id refuses with LEASE_EXPIRED (the lease was reclaimed; stop), a stale lease_revision with REVISION_CONFLICT, and nothing is written on refusal; an expired lease nobody reclaimed still renews for its holder. Optional phase (implementing | running-command | review | verifying | closeout); phase "running-command" with extend_minutes is the explicit long-command state, bounded by board `leaseCommandMaxMinutes` (default 120). A renew that names no lease falls back to the owner check (CLAIM_NOT_OWNED) and migrates a legacy claim into a lease. action: "transfer" reclaims an EXPIRED lease for the caller (or another assignee): it first re-reads worktree, branch, PR, commit and proof evidence, records it with the old and new controller in scratch/execution.md, preserves the recorded branch/worktree and any dirty work, and refuses with RECOVERY_REFUSED for a board, foreign-repository or branch-mismatched workspace; a live lease refuses with CLAIM_LIVE unless reason begins "operator:". action: "release" clears the claim, lease and batch fields when the work ends (closeout). Never use force to recover a dead controller\'s ticket; transfer it.',
       inputSchema: {
         id: external_exports.string().describe("Ticket id"),
         action: external_exports.enum(["take", "release", "transfer", "renew"]).default("take"),
@@ -45593,11 +45736,13 @@ function createKanmerMcpServer(policy = "local-stdio") {
         extend_minutes: external_exports.number().positive().optional().describe("renew in phase running-command: extend the lease by up to leaseCommandMaxMinutes"),
         controller_run: external_exports.string().optional().describe("Durable controller run identity behind the lease"),
         worker_run: external_exports.string().optional().describe("Worker run identity doing the work"),
-        provider: external_exports.string().optional().describe("Provider behind the worker (e.g. claude-code, codex)")
+        provider: external_exports.string().optional().describe("Provider behind the worker (e.g. claude-code, codex)"),
+        batch: external_exports.string().min(1).optional().describe("take: the batch workspace this ticket belongs to (FRD-030 batch mode)"),
+        batch_members: external_exports.array(external_exports.string().min(1)).min(2).optional().describe("take, first member only: the complete membership (two or more ids incl. this one); declares and freezes the batch")
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
     },
-    write(async ({ id, action, branch, worktree, stage, assignee, controller, reason, force, expected_revision, lease_id, lease_revision, phase, extend_minutes, controller_run, worker_run, provider }, extra) => {
+    write(async ({ id, action, branch, worktree, stage, assignee, controller, reason, force, expected_revision, lease_id, lease_revision, phase, extend_minutes, controller_run, worker_run, provider, batch, batch_members }, extra) => {
       const identity = { controllerRun: controller_run, workerRun: worker_run, provider };
       if (action === "release") return ok(await store.releaseTicket(id, { expectedRevision: expected_revision }));
       if (action === "renew") {
@@ -45637,6 +45782,8 @@ function createKanmerMcpServer(policy = "local-stdio") {
           force,
           expectedRevision: expected_revision,
           phase,
+          batch,
+          batchMembers: batch_members,
           ...identity
         })
       );

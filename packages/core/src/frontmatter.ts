@@ -29,6 +29,8 @@ const KEY_ORDER = [
   "lease_phase",
   "lease_heartbeat_at",
   "lease_reclaimed_from",
+  "lease_batch",
+  "lease_batch_frozen_at",
   "labels",
   "groups",
   "links",

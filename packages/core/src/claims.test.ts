@@ -549,3 +549,158 @@ describe("renewable leases (CORE-115)", () => {
     expect(await fs.readdir(path.join(root, ".kanmer"))).not.toContain("leases.lock");
   });
 });
+
+describe("batch workspaces (CORE-124)", () => {
+  /** Gate-free tickets so the fixture can walk every stage without pipeline documents. */
+  const free = { type: "ticket" as const, profile: "custom", requires: {}, status: "implementing" };
+  const batchWorkspace = { branch: "batch-a", worktree: ".worktrees/batch-a" };
+  const HEAD = "b".repeat(40);
+  const sharedAttestation = (pr: string) => attestation(pr, "pass").replace(`head_sha: "${"a".repeat(40)}"`, `head_sha: "${HEAD}"`);
+
+  async function walkToDone(id: string): Promise<void> {
+    for (const status of ["review", "verifying", "done"]) await store.moveItem(id, { status });
+  }
+
+  async function threeMemberBatch() {
+    const a = await store.createItem({ ...free, title: "A" });
+    const b = await store.createItem({ ...free, title: "B" });
+    const c = await store.createItem({ ...free, title: "C" });
+    const first = await store.takeTicket(a.id, { ...batchWorkspace, assignee: "ctl-a", batch: "batch-a", batchMembers: [a.id, b.id, c.id] });
+    return { a, b, c, first };
+  }
+
+  it("AC4: three related tickets complete in one frozen batch workspace with one PR/head attestation and three proofs", async () => {
+    const { a, b, c, first } = await threeMemberBatch();
+    // The first take declares and freezes the batch: every member carries the record, only the taker has a lease.
+    expect(first.lease_batch).toBe("batch-a");
+    expect(first.lease_batch_frozen_at).toBe(first.taken_at);
+    for (const id of [b.id, c.id]) {
+      const member = (await store.getItem(id))!;
+      expect(member.lease_batch).toBe("batch-a");
+      expect(member.lease_batch_frozen_at).toBe(first.taken_at);
+      expect(member.taken_at).toBeUndefined();
+      expect(member.lease_id).toBeUndefined();
+      expect(member.status).toBe("implementing");
+    }
+    // Members join the same worktree and branch; each gets its own lease on the shared workspace.
+    const second = await store.takeTicket(b.id, { ...batchWorkspace, assignee: "ctl-a", batch: "batch-a" });
+    const third = await store.takeTicket(c.id, { ...batchWorkspace, assignee: "ctl-a" }); // batch inferred from the frozen record
+    expect(second.lease_workspace).toBe(first.lease_workspace);
+    expect(third.lease_workspace).toBe(first.lease_workspace);
+    expect(new Set([first.lease_id, second.lease_id, third.lease_id]).size).toBe(3);
+    const state = (await store.batchState(c.id))!;
+    expect(state).toMatchObject({ id: "batch-a", frozenAt: first.taken_at, workspace: first.lease_workspace, allTerminal: false });
+    expect(state.members.map((m) => [m.id, m.taken, m.terminal])).toEqual([[a.id, true, false], [b.id, true, false], [c.id, true, false]]);
+    // One PR and one review head shared by every member; review mapping and proof stay per ticket.
+    for (const id of [a.id, b.id, c.id]) {
+      await store.updateItem(id, { prs: ["300"] });
+      await store.setDoc(id, "scratch/review", sharedAttestation("300"));
+      await store.setDoc(id, "proof", `# Proof — ${id}\n\nresult: PASS at ${HEAD}\n`);
+    }
+    for (const id of [a.id, b.id, c.id]) {
+      expect(parseReviewAttestation(await store.getDoc(id, "scratch/review"))).toMatchObject({ state: "valid", pr: "300", headSha: HEAD });
+      expect(await store.getDoc(id, "proof")).toContain(`Proof — ${id}`);
+    }
+    // Cleanup waits for all members: a Done member cannot release while a sibling is still in flight.
+    await walkToDone(a.id);
+    const before = await fs.readFile(ticketFile(a.id), "utf8");
+    await expect(store.releaseTicket(a.id)).rejects.toThrow(new RegExp(`^BATCH_ACTIVE:.*"${b.id}" \\(implementing\\), "${c.id}" \\(implementing\\)`, "u"));
+    expect(await fs.readFile(ticketFile(a.id), "utf8")).toBe(before);
+    await walkToDone(b.id);
+    await walkToDone(c.id);
+    expect((await store.batchState(a.id))!.allTerminal).toBe(true);
+    for (const id of [a.id, b.id, c.id]) {
+      const released = await store.releaseTicket(id);
+      expect(released.lease_batch).toBeUndefined();
+      expect(released.lease_batch_frozen_at).toBeUndefined();
+      expect(await fs.readFile(ticketFile(id), "utf8")).not.toMatch(/^lease_/mu);
+    }
+    expect(await store.batchState(a.id)).toBeNull();
+  });
+
+  it("AC5: an unrelated ticket can neither join a started batch nor share its workspace, even with force", async () => {
+    const { a, b } = await threeMemberBatch();
+    const x = await store.createItem({ ...free, title: "X" });
+    const snapshot = async () => Promise.all([a.id, b.id, x.id].map((id) => fs.readFile(ticketFile(id), "utf8")));
+    const before = await snapshot();
+    // Joining: re-declaring the frozen batch with the stranger added is refused.
+    await expect(store.takeTicket(x.id, { ...batchWorkspace, assignee: "ctl-b", batch: "batch-a", batchMembers: [a.id, b.id, x.id] })).rejects.toThrow(/^BATCH_FROZEN:.*batch batch-a started when "TICK-001" was taken/u);
+    // Naming the batch without being a member is refused.
+    await expect(store.takeTicket(x.id, { ...batchWorkspace, assignee: "ctl-b", batch: "batch-a" })).rejects.toThrow(/^BATCH_INVALID:.*not a member of batch batch-a/u);
+    // Sharing: the batch worktree and branch are occupied for every non-member.
+    await expect(store.takeTicket(x.id, { branch: "x", worktree: ".worktrees\\batch-a\\", assignee: "ctl-b" })).rejects.toThrow(/^WORKSPACE_OCCUPIED:.*batch batch-a — only its frozen members may take it/u);
+    await expect(store.takeTicket(x.id, { branch: "batch-a", assignee: "ctl-b", force: true })).rejects.toThrow(/^WORKSPACE_OCCUPIED:/u);
+    expect(await snapshot()).toEqual(before);
+    expect((await store.getItem(x.id))!.lease_batch).toBeUndefined();
+    // The stranger still works in isolation.
+    expect((await store.takeTicket(x.id, { branch: "x", worktree: ".worktrees/x", assignee: "ctl-b" })).lease_batch).toBeUndefined();
+  });
+
+  it("a member occupies only the batch workspace: another worktree or branch is BATCH_WORKSPACE_MISMATCH", async () => {
+    const { b } = await threeMemberBatch();
+    const before = await fs.readFile(ticketFile(b.id), "utf8");
+    await expect(store.takeTicket(b.id, { branch: "batch-a", worktree: ".worktrees/other", assignee: "ctl-a" })).rejects.toThrow(/^BATCH_WORKSPACE_MISMATCH:.*worktree \.worktrees\/batch-a on branch batch-a/u);
+    await expect(store.takeTicket(b.id, { branch: "other", worktree: ".worktrees/batch-a", assignee: "ctl-a" })).rejects.toThrow(/^BATCH_WORKSPACE_MISMATCH:/u);
+    await expect(store.takeTicket(b.id, { ...batchWorkspace, assignee: "ctl-a", batch: "batch-z" })).rejects.toThrow(/^BATCH_INVALID:.*frozen member of batch batch-a, not batch-z/u);
+    expect(await fs.readFile(ticketFile(b.id), "utf8")).toBe(before);
+  });
+
+  it("refuses an invalid declaration before writing: too few members, the taker missing, a taken, done or otherwise-batched member", async () => {
+    const a = await store.createItem({ ...free, title: "A" });
+    const b = await store.createItem({ ...free, title: "B" });
+    const taken = await store.createItem({ ...free, title: "T" });
+    await store.takeTicket(taken.id, { branch: "t", worktree: ".worktrees/t", assignee: "ctl-c" });
+    const done = await store.createItem({ ...free, title: "D", status: "done" });
+    const other = await store.createItem({ ...free, title: "O" });
+    const other2 = await store.createItem({ ...free, title: "O2" });
+    await store.takeTicket(other.id, { branch: "o", worktree: ".worktrees/o", assignee: "ctl-c", batch: "batch-o", batchMembers: [other.id, other2.id] });
+    const before = await fs.readFile(ticketFile(a.id), "utf8");
+    const attempt = (members: string[], batch = "batch-a") => store.takeTicket(a.id, { ...batchWorkspace, assignee: "ctl-a", batch, batchMembers: members });
+    await expect(attempt([a.id])).rejects.toThrow(/^BATCH_INVALID:.*two or more distinct member ids/u);
+    await expect(attempt([a.id, a.id])).rejects.toThrow(/^BATCH_INVALID:.*two or more distinct member ids/u);
+    await expect(attempt([b.id, taken.id])).rejects.toThrow(/^BATCH_INVALID:.*must be one of the members/u);
+    await expect(attempt([a.id, taken.id])).rejects.toThrow(/^BATCH_INVALID:.*already taken/u);
+    await expect(attempt([a.id, done.id])).rejects.toThrow(/^BATCH_INVALID:.*already done/u);
+    await expect(attempt([a.id, other2.id])).rejects.toThrow(/^BATCH_INVALID:.*already belongs to batch batch-o/u);
+    await expect(attempt([a.id, "TICK-999"])).rejects.toThrow(/^BATCH_INVALID:.*not a ticket on this board/u);
+    await expect(store.takeTicket(a.id, { ...batchWorkspace, assignee: "ctl-a", batchMembers: [a.id, b.id] })).rejects.toThrow(/^BATCH_INVALID:.*without a batch id/u);
+    expect(await fs.readFile(ticketFile(a.id), "utf8")).toBe(before);
+    expect((await store.getItem(b.id))!.lease_batch).toBeUndefined();
+    // A valid declaration after the refusals still works, and the frozen batch survives a force retake of a member.
+    await attempt([a.id, b.id]);
+    const retaken = await store.takeTicket(a.id, { ...batchWorkspace, assignee: "ctl-a", force: true });
+    expect(retaken.lease_batch).toBe("batch-a");
+    expect(retaken.lease_batch_frozen_at).toBeTruthy();
+  });
+
+  it("an archived (retired) member counts as terminal for cleanup", async () => {
+    const { a, b, c } = await threeMemberBatch();
+    await walkToDone(a.id);
+    await walkToDone(b.id);
+    await expect(store.releaseTicket(a.id)).rejects.toThrow(new RegExp(`^BATCH_ACTIVE:.*"${c.id}" \\(implementing\\)`, "u"));
+    await store.moveItem(c.id, { status: "review" });
+    await store.moveItem(c.id, { status: "verifying" });
+    await store.updateItem(c.id, { archived: true });
+    const state = (await store.batchState(a.id))!;
+    expect(state.members.find((m) => m.id === c.id)).toMatchObject({ archived: true, terminal: true, status: "verifying" });
+    expect(state.allTerminal).toBe(true);
+    expect((await store.releaseTicket(a.id)).lease_batch).toBeUndefined();
+  });
+
+  it("serialises the batch record after the lease keys and round-trips it; a v0.3.12 ticket is untouched", async () => {
+    const { a, b } = await threeMemberBatch();
+    const raw = await fs.readFile(ticketFile(a.id), "utf8");
+    expect(raw.indexOf("lease_heartbeat_at:")).toBeLessThan(raw.indexOf("lease_batch:"));
+    expect(raw.indexOf("lease_batch:")).toBeLessThan(raw.indexOf("lease_batch_frozen_at:"));
+    expect(raw.indexOf("lease_batch_frozen_at:")).toBeLessThan(raw.indexOf("labels:"));
+    const reparsed = parseItem(serialiseItem(parseItem(raw)));
+    expect(reparsed.lease_batch).toBe("batch-a");
+    expect(reparsed.lease_batch_frozen_at).toBe((await store.getItem(a.id))!.lease_batch_frozen_at);
+    const sibling = await fs.readFile(ticketFile(b.id), "utf8");
+    expect(sibling).toMatch(/^lease_batch: batch-a$/mu);
+    expect(sibling).not.toMatch(/^lease_id:/mu);
+    const legacy = await store.createItem({ ...free, title: "Legacy" });
+    expect(await fs.readFile(ticketFile(legacy.id), "utf8")).not.toMatch(/^lease_/mu);
+    expect(await store.batchState(legacy.id)).toBeNull();
+  });
+});

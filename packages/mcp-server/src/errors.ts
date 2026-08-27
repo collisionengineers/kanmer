@@ -5,7 +5,7 @@ export type KanmerErrorCode = "WRONG_PROJECT" | "REVISION_CONFLICT" | "GATE_BLOC
  * yours to write": a live lease held by someone else, an occupied workspace,
  * a reclaim the evidence forbids, or a renew that did not name its lease.
  */
-const LEASE_CONFLICT_PREFIXES = ["LEASE_LIVE:", "CLAIM_LIVE:", "CLAIM_NOT_OWNED:", "WORKSPACE_OCCUPIED:", "RECOVERY_REFUSED:", "LEASE_ID_REQUIRED:", "LEASE_REVISION_REQUIRED:"];
+const LEASE_CONFLICT_PREFIXES = ["LEASE_LIVE:", "CLAIM_LIVE:", "CLAIM_NOT_OWNED:", "WORKSPACE_OCCUPIED:", "RECOVERY_REFUSED:", "LEASE_ID_REQUIRED:", "LEASE_REVISION_REQUIRED:", "BATCH_INVALID:", "BATCH_FROZEN:", "BATCH_WORKSPACE_MISMATCH:", "BATCH_ACTIVE:"];
 
 export class KanmerError extends Error {
   constructor(readonly code: KanmerErrorCode, message: string) {

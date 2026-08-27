@@ -1,1 +1,7 @@
 2026-08-27 execute (claude-code, run 20260827T133106Z-claude-code): PR https://github.com/collisionengineers/kanmer/pull/290 opened from `skill-037-review-remediation-contract` at head e6c9e0ad2cbb3f55ea287bcb25026096f2fe2f20; worktree `.worktrees/skill-037`. verify:skills 0, verify:agents-block 0, prose test 0; plugin:check deferred to hosted rail.
+
+## Transitions
+
+- 2026-08-27T19:25:00Z stage review → implementing by claude-code (auto-run controller); reason: needs-changes attestation scratch/review.md v62d0476c1e5a672f at PR #290 head e6c9e0ad (F-001 stale-board gate now moot after board push; F-002/F-003 minor wording; rebase onto main 5684174a required after CORE-123 merged — one conflicting hunk in kanmer-review SKILL.md); review_round 1 of remediation_budget 1. Same branch skill-037-review-remediation-contract, same worktree .worktrees/skill-037, same PR #290.
+
+2026-08-27 remediation round 1 (claude-code, run 20260827T133106Z-claude-code): rebased onto origin/main 5684174a (one conflict hunk in kanmer-review SKILL.md, resolved for SKILL-037 wording with CORE-123 SYNC_REQUIRED sentence kept), fixed F-002 (verify implementation row) and F-003 (inconclusive default, verify + tool-reference; auto already said inconclusive). Force-with-lease push to the SAME PR #290; new head e3354556a9a40b11d5b4b849708306320162c7bc (commits 99576700, e3354556). verify:skills 0, verify:agents-block 0 (31/31), prose test 0, verify:docs 0. Moving implementing → review for delta review.

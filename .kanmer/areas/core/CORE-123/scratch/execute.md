@@ -35,3 +35,7 @@ Remediation round 1 commands (cwd .worktrees/core-123):
 - commit df293ad2bf4b7f603e67998be7cb5b62f9430cbe; `git push --force-with-lease` → 0 (PR #288 head now df293ad2; no new PR).
 - `npm run verify` (bg, .worktrees/core-123-verify-r1.log) → 1: core 382/382, GUI 493/493, test:http 1 fail `http.test.mjs` "project resolution fails before binding" spawnSync ETIMEDOUT (2 s). Alone in worktree attempt 1 → 1; on untouched main → 0; worktree attempts 2,3 → 0,0. File untouched by PR; known host quirk.
 - Docs updated: plan (appended round-1 section, v533b4e5116983c28), open-questions, checklist, ticket Verification bullet, post-implementation report. Ticket commits set to 3dad4b26, 2b3cf620, df293ad2…; moving implementing → review.
+
+## 2026-08-27 delta review — merged (claude-core123-delta-reviewer)
+
+Delta review of PR #288 head df293ad2bf4b7f603e67998be7cb5b62f9430cbe: verdict pass (attestation scratch/review.md v9be967bf37c9f808; F-001/F-002/F-003 fixed, F-004..F-007 accepted-risk). Required checks `verify` and `kanmer-gate` green at df293ad2 (run 33093680581, gate re-run after the board push). Squash-merged via `gh pr merge 288 --squash --delete-branch=false` → merge SHA 5684174ae60ae2d67874a63c1e0c308b29327c38 on main. Ticket moved review → verifying; branch and worktree retained for kanmer-verify.

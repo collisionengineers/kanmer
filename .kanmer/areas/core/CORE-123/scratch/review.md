@@ -1,73 +1,73 @@
 ---
 kind: review-attestation
 pr: "288"
-head_sha: "8989669316befc635a6a85f6a3271873779ad93d"
-verdict: needs-changes
-reviewer: "claude-core123-independent-reviewer"
+head_sha: "df293ad2bf4b7f603e67998be7cb5b62f9430cbe"
+verdict: pass
+reviewer: "claude-core123-delta-reviewer"
 independent: true
-plan_hash: "10bbf738251ae5f8"
-ticket_updated: "2026-08-27T15:01:13.080Z"
-board_sha: "a894217fad1effb5151338d3d2af69d860f7ef12"
+plan_hash: "533b4e5116983c28"
+ticket_updated: "2026-08-27T16:43:53.895Z"
+board_sha: "f7188a8113d686c1b19273eb4f10acc3072982d2"
 threads_snapshot: []
 findings:
   - id: F-001
     severity: major
-    summary: "regate job can never fire on a kanmer-board push: push-event workflows run from the pushed ref, and origin/kanmer-board contains only .gitignore and .kanmer (no .github/workflows/pr.yml). The ticket's 'pushing kanmer-board triggers a gate run' deliverable is non-functional; only workflow_dispatch (from main) works. Plan failure rule ('regate needs a separate workflow file') applies - route back through execute."
-    disposition: open
+    summary: "regate could never fire on a kanmer-board push (push workflows run from the pushed ref's tree; the board branch has no .github). Fixed in df293ad2: pr.yml push trigger is [main] only, regate runs on workflow_dispatch or push to main; new operator-installed .github/workflows/board-regate.yml (on push kanmer-board -> gh workflow run pr.yml --ref main). pr-workflow.test.mjs forbids kanmer-board in any branches list and pins the board-regate contract; plan/open-questions/AGENTS/ADR-0016/ticket Verification reworded as operator-enabled."
+    disposition: fixed
   - id: F-002
     severity: major
-    summary: "syncBoard autostash path commits conflict markers: git rebase --autostash exits 0 when the stash re-apply conflicts ('Applying autostash resulted in conflicts'), leaving UU entries; the second stage() pass then git-adds and commits the marker-laden file and pushes it. Reproduced empirically with plain git. Before this PR the same scenario paused safely; now it corrupts the remote board. Must detect unmerged paths / leftover autostash after rebase and pause (classifySyncFailure never sees this text because the command succeeds)."
-    disposition: open
+    summary: "syncBoard could commit and push conflict markers after a conflicting autostash re-apply (rebase --autostash exits 0). Fixed in df293ad2: refs/stash snapshot before the rebase, `git diff --name-only --diff-filter=U` and surviving-stash check after it, `rebase --abort` only when rebase-merge/rebase-apply exists, no staging, throws an 'Applying autostash resulted in conflicts' error that classifySyncFailure maps to paused:true. New real-git test 'pauses without committing markers when the autostash re-apply conflicts' asserts remote tip unchanged, no markers in any commit, stash retained, UU path listed, no rebase in progress; reviewer confirms the assertions cannot pass with the pre-fix second stage() pass."
+    disposition: fixed
   - id: F-003
     severity: major
-    summary: "PR is CONFLICTING against current origin/main a8318ea6 (CORE-122 merged): plugins/kanmer/mcp/kanmer-mcp.cjs bundle conflicts; index.ts/smoke.mjs auto-merge but bundle must be regenerated and tool-count assertions (37->38) rechecked after rebase. Reviewer does not rebase."
-    disposition: open
+    summary: "PR conflicted with origin/main a8318ea6 (CORE-122). Fixed: branch rebased onto a8318ea6 (3dad4b26, 2b3cf620, df293ad2), bundle regenerated; reviewer's `npm run plugin:check` reports 38 tools / bundle bytes match / isolated handshake 38; GitHub reports MERGEABLE / CLEAN at df293ad2. get_status.boardSync and CORE-122's reconcile_ticket registration coexist in packages/mcp-server/src/index.ts without overlap."
+    disposition: fixed
   - id: F-004
     severity: minor
-    summary: "settings.ts: plan step 6 says absent/invalid gitSyncMinutes -> 5, but implementation (and test) map an invalid value (e.g. 'soon') to 0 and only an absent key to 5. Consistent with the plan's Constraints section and the report; plan wording was ambiguous."
+    summary: "settings.ts maps an invalid gitSyncMinutes to 0 and only an absent key to 5; plan step 6 wording was ambiguous, Constraints text is the tighter rule and is what is implemented and tested."
     disposition: accepted-risk
-    reason: "Constraint text ('only an absent key defaults to 5') is the tighter rule and is what was implemented and tested; behaviour is safe (off)."
+    reason: "Safe behaviour (off) and consistent with the plan's Constraints section; unchanged in the delta."
   - id: F-005
     severity: note
-    summary: "GUI kanmerGit.test.ts: 64/65 pass locally; the single failure is the pre-existing host-only 'serializes concurrent orphan cleanup' test recorded in research F9, untouched by this PR."
+    summary: "Prior run saw the host-only 'serializes concurrent orphan cleanup' failure. Delta run: `npx vitest run src/main/kanmerGit.test.ts --root apps/gui` passed 54/54 in 387.56 s with no orphan-cleanup or hook-timeout flake on this host."
     disposition: accepted-risk
-    reason: "Known host quirk; hosted verify is green at this head."
+    reason: "Known host quirk did not reproduce this run; hosted verify is green at df293ad2."
   - id: F-006
     severity: note
-    summary: "regate re-runs the gate job even for PRs already green and skips runs older than 30 days or in progress (logged). Not a loop: re-run jobs are pull_request runs, and a kanmer-board push skips verify/kanmer-gate via their if: guards. Token permissions block (actions: write, contents: read, pull-requests: read) is correct at job level."
+    summary: "regate re-runs the kanmer-gate job for every open PR (also already-green ones) and skips in-progress/unfound runs with a log line. Not a loop: kanmer-gate is pull_request-only, verify only runs for PRs and main pushes, and the regate job itself never pushes."
     disposition: accepted-risk
-    reason: "Behaviour is documented in open-questions; harmless extra gate reruns."
+    reason: "Documented in open-questions; harmless extra gate reruns."
+  - id: F-007
+    severity: note
+    summary: "board-regate.yml, once an operator installs it on the board branch, dispatches pr.yml on every board push (including each GUI auto-sync push, default interval 5 min), and each dispatch re-runs kanmer-gate for all open PRs. Cannot loop (kanmer-gate/regate never write the board; workflow_dispatch chains are the only hop) and is not required for correctness (manual fallback `gh workflow run pr.yml --ref main`), but it can be chatty on a busy board."
+    disposition: accepted-risk
+    reason: "Operator-opt-in file, documented as such in its header, AGENTS.md and open-questions; throttling would be a follow-up if runner minutes matter."
 ---
 
-# Review — CORE-123 / PR #288 (head 89896693)
+# Delta review — CORE-123 / PR #288 (head df293ad2)
 
-Independent reviewer (not the author `claude-code`). Verdict: **needs-changes**. Not merged.
+Independent delta reviewer (fresh run; not the author `claude-code`, not the round-0 reviewer). Verdict: **pass**. Scope: the round-0 findings F-001..F-006, the changed lines of df293ad2 (and the rebased 3dad4b26/2b3cf620 against a8318ea6), their direct callers/contracts, and the relevant tests.
 
-## What was reviewed
-Full diff `origin/main(dc514375)..89896693` (23 files), packet (plan 10bbf738251ae5f8, research, files, checklist, open-questions, post-implementation report, scratch/execute, scratch/research), FRD-034/FRD-035, ADR-0011/0016 amendments, PR #288 checks/reviews/threads. Review threads: none (GraphQL reviewThreads empty); the only PR comment is the Codex usage-limit notice (no content to disposition).
+## Inputs bound
+- Diff `a8318ea6..df293ad2` (24 files, +1027/-98); delta commit df293ad2 touches board-regate.yml, pr.yml, AGENTS.md, kanmerGit.ts/.test.ts, ADR-0016, bundle, pr-workflow.test.mjs.
+- Plan v533b4e5116983c28 (with "Remediation round 1" section), open-questions, checklist (19/20, only the post-merge verifier item open), post-implementation report v5b4f079ddfbcaa4a, scratch/execute.
+- PR #288: head df293ad2, MERGEABLE/CLEAN, reviewDecision empty, no GitHub reviews, GraphQL reviewThreads empty; the only comment is the Codex usage-limit notice (no content to disposition). Codex automated review not awaited per controller instruction.
+- Board worktree HEAD = origin/kanmer-board = f7188a81 at attestation time (read-only; never touched).
 
-## Independent verification (cwd .worktrees/core-123)
-- `npx vitest run src/merge-gate.test.ts src/review-attestation.test.ts --root packages/core` → exit 0, 19/19.
-- `node --test packages/mcp-server/src/check-pr.test.mjs` → exit 0, 8/8 (incl. needs-changes / missing / stale board_sha / strict off fixtures).
+## Verification of each fix
+- **F-002** `apps/gui/src/main/kanmerGit.ts`: `stashBefore` snapshot, `unmergedPaths()` (`--diff-filter=U`), `rebaseInProgress()` gating `rebase --abort`, no `stage()` before the throw, error text matches the `autostash.*conflict` branch of `classifySyncFailure` → `paused: true`. The success path still runs the second `stage()` only when no unmerged/new stash is present. Test asserts remote tip, `HEAD:.kanmer/version.json`, `log -p --all -S<<<<<<<`, stash list, UU path and no rebase-merge dir — these fail against the previous code (which staged and pushed the markers); report records the red run.
+- **F-001** `.github/workflows/pr.yml`: `push: branches: [main]` + `workflow_dispatch`; `verify` guarded to PR events or refs/heads/main; `kanmer-gate` PR-only; `regate` if guard `workflow_dispatch || (push && refs/heads/main)`, job-level `actions: write, contents: read, pull-requests: read`. `board-regate.yml`: `on: push: [kanmer-board]`, single `gh workflow run pr.yml --ref main` step, header marks it OPERATOR-INSTALLED; not needed for correctness. No loop (see F-006/F-007). `scripts/pr-workflow.test.mjs` asserts `branches: [main]`, `doesNotMatch(/branches: \[[^\]]*kanmer-board[^\]]*\]/)`, and pins the board-regate shape.
+- **F-003**: rebased; `plugin:check` 38 tools; `packages/mcp-server/src/index.ts` carries both CORE-122's `reconcile_ticket` registration and the new `inspectBoardSync`/`boardSync` in `get_status` with no semantic overlap (boardSync is a git ahead/behind probe; reconcile_ticket is a board-document inspector).
+
+## Independent commands (cwd .worktrees/core-123)
+- `npm test -w @kanmer/core -- merge-gate` → exit 0, 16/16.
+- `node --test packages/mcp-server/src/check-pr.test.mjs` → exit 0, 8/8.
 - `node --test scripts/pr-workflow.test.mjs` → exit 0, 1/1.
-- `npm run plugin:check` → exit 0 (37 tools, bundle bytes match at this head).
-- `npx vitest run src/main/kanmerGit.test.ts src/main/settings.test.ts` (apps/gui) → 64 passed / 1 failed in 563 s; failure is the known host-only orphan-cleanup test (F-005). New race/transient/conflict/no-remote/settings tests passed.
-- Hosted run 33083697546 after re-run: `verify` pass, `kanmer-gate` pass (re-run after the board sync), `regate` skipped (correct for a pull_request event). Both required checks (`verify`, `kanmer-gate`) green at 89896693.
-- `gh pr view 288 --json mergeable` → `CONFLICTING` / `DIRTY` against origin/main a8318ea6 (F-003).
+- `npx vitest run src/main/kanmerGit.test.ts --root apps/gui` → exit 0, 54/54 in 387.56 s (autostash-conflict test 20.0 s, race test 17.7 s); no orphan-cleanup or hook-timeout flake this run.
+- `npm run plugin:check` → exit 0 (38 tools, bundle bytes match, isolated handshake 38).
 
-## Assessment against plan / governing docs
-- merge-gate.ts SYNC_REQUIRED semantics match the plan: current/unrecorded pass, stale/unknown fail, skipped without evidence; level follows `strict`; default output unchanged apart from additive keys. Attestation without `board_sha` is `unrecorded` → pass. OK.
-- check-pr.mjs uses core `parseReviewAttestation`; the duplicate validator and `gray-matter` import are gone; `parseReviewEvidence` remains a wrapper. OK.
-- classifySyncFailure: dirty-tree refusal, network and non-fast-forward → transient; CONFLICT/could not apply/autostash conflict → conflict. The regex is adequate for thrown errors, but the dangerous case (F-002) never throws, so the classifier is bypassed.
-- pr.yml: PR-only gate, main-only verify, regate guards and permissions correct; no loop. But the board-push trigger cannot fire (F-001) because the board branch does not carry the workflow file — the plan's own "reviewer to confirm" hosted acceptance check fails.
-- GUI status `sync`, MCP `get_status.boardSync`, smoke assertion, Settings hint, ipc type: as planned.
-- ADR-0011/0016 edits are the one-sentence amendments the plan's Governing docs section explicitly authorises ("Modifies wording only"); AGENTS.md change is a documented small deviation consistent with that section's own rule. Bundle regenerated at this head.
-- FRD-034 AC2 / FRD-035 AC5: partially met — the re-judge-on-board-push half of FRD-035 AC5 is not delivered (F-001).
-
-## Required changes
-1. F-001: make the board push actually trigger a re-gate (e.g. a workflow file that lives on the board branch, `repository_dispatch` from the pusher, or a scheduled poll); update pr-workflow test and AGENTS.md accordingly.
-2. F-002: after `rebase --autostash`, detect unmerged entries (`git diff --name-only --diff-filter=U`) or a surviving `autostash` stash entry, restore local work safely and return `paused: true` with a conflict error; add a real-git test for the autostash-conflict path.
-3. F-003: rebase onto origin/main a8318ea6, regenerate the bundle, re-run `plugin:check` and the smoke tool-count assertions.
+## Checks at df293ad2
+Hosted run 33093680581 (pull_request): first attempt `kanmer-gate` failed only on `WRONG_STAGE` (ticket was `implementing` on the fetched board a428d560; STALE_REVIEW/COMMITS_UNREACHABLE were warnings, SYNC_REQUIRED `current`). After the operator-authorised board push the job was re-run: `verify` pass (4m50s), `kanmer-gate` pass (1m3s), `regate` skipped (correct for a pull_request event). Both required checks green at df293ad2.
 
 ## Residual risk
-None beyond the open findings; default (non-strict) gate behaviour is unchanged.
+Board-push re-gate remains operator-enabled (F-007); strict mode is off by default so a stale attestation stays a warning until `KANMER_GATE_STRICT` is set. The commit list on the ticket still names pre-rebase SHAs only through the attestation history; the live `commits` field carries the rebased SHAs.

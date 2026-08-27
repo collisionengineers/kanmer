@@ -1,6 +1,6 @@
 # Post-implementation report — SKILL-037
 
-PR: https://github.com/collisionengineers/kanmer/pull/290 (head `e6c9e0ad2cbb3f55ea287bcb25026096f2fe2f20`, branch `skill-037-review-remediation-contract`, worktree `.worktrees/skill-037`, base `origin/main` a8318ea6).
+PR: https://github.com/collisionengineers/kanmer/pull/290 (current head `e3354556a9a40b11d5b4b849708306320162c7bc` after remediation round 1; original head `e6c9e0ad2cbb3f55ea287bcb25026096f2fe2f20`; branch `skill-037-review-remediation-contract`, worktree `.worktrees/skill-037`, base `origin/main` 5684174a after rebase — originally a8318ea6).
 
 ## Files changed and why
 
@@ -8,10 +8,10 @@ PR: https://github.com/collisionengineers/kanmer/pull/290 (head `e6c9e0ad2cbb3f5
 |---|---|
 | `plugins/kanmer/skills/kanmer-review/SKILL.md` | Workflow re-ordered (gather → settle expected reviewers → consolidated/delta review → attestation → needs-changes return or pass/merge). New sections: "Expected reviewers and the settle rule" (`expected_reviewers` = independent subagent reviewer(s) named for the ticket; bots never expected, never a gate; timeout-absent listing; a later thread on the same head makes the attestation non-authoritative — replaced, never appended; `threads_snapshot` schema with mandatory `F-###` mapping), "Consolidated review, remediation batch, delta review" (`review_round`/`remediation_budget`, delta scope per FRD-034, merge-blocking criteria), "The sanctioned needs-changes return" (`prs[]` binding, `move_item review → implementing reason`, `REVIEW_RETURN_NEEDS_ATTESTATION` / `REMEDIATION_BUDGET_EXHAUSTED`, operator extension). Attestation frontmatter gains `board_sha`, `expected_reviewers`, `threads_snapshot` with CORE-123's `board_sha`/`SYNC_REQUIRED` sentence. Removed "leave the ticket in Review" and "becomes a linked PR Review ticket". Hand-off names execute (after a return) or verify. |
 | `plugins/kanmer/skills/kanmer-execute/SKILL.md` | Workflow steps 4–6 mention renew and the re-entry lane. Resumed-packet section: `take_ticket action: "renew"` after validation and before long commands (`CLAIM_NOT_OWNED` is a stop, not a force/transfer). New "Re-entry after a needs-changes return" subsection: work only open blocker/major findings, push to the recorded branch so the existing PR updates, never `gh pr create` a second PR, no history rewrite, report gains `## Remediation round <review_round>`, budget is the ticket's. Finish step 2 requires the PR in `prs[]`; step 3 scoped to the fresh lane. Pausing section: background-log rule. All check-16 sentences intact. |
-| `plugins/kanmer/skills/kanmer-verify/SKILL.md` | Workflow step 7 routes by class. Proof gains `failure_class: implementation \| plan \| transient \| inconclusive` (for FAIL/INCONCLUSIVE) with definitions and a routing table; the verifier writes the proof, the controller/operator makes the audited `move_item` with a reason; `PASS` or operator `WAIVED_BY_OPERATOR` are the only Done shapes; verifier never writes the waiver. Terminal-retirement text unchanged. Hand-off names execute/plan for routed failures. |
+| `plugins/kanmer/skills/kanmer-verify/SKILL.md` | Workflow step 7 routes by class. Proof gains `failure_class: implementation \| plan \| transient \| inconclusive` (for FAIL/INCONCLUSIVE) with definitions and a routing table; the verifier writes the proof, the controller/operator makes the audited `move_item` with a reason; `PASS` or operator `WAIVED_BY_OPERATOR` are the only Done shapes; verifier never writes the waiver. Terminal-retirement text unchanged. Hand-off names execute/plan for routed failures. Round 1: `implementation` row reworded (F-002), unclassified default is `inconclusive` (F-003). |
 | `plugins/kanmer/skills/kanmer-closeout/SKILL.md` | Verified-success shape accepts `WAIVED_BY_OPERATOR` with operator identity and reason in the proof body. |
-| `plugins/kanmer/skills/kanmer-auto/SKILL.md` | §1.2: live foreign claim → drop/coordinate; expired foreign claim → scratch note (old controller, new controller, branch, worktree) then `take_ticket action: "transfer"`; `CLAIM_LIVE` means renewed; never `force`, never release a claim with a worktree. §3: workers renew claims; subagent workers read their own background logs; needs-changes and `failure_class` results are routed (`REMEDIATION_BUDGET_EXHAUSTED` is an operator-only question). Stop predicate 8 narrowed to a live claim. §9: force fallback replaced by transfer/wait. All check-13/14/16 sentences intact. |
-| `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md` | Attestation section documents the three optional keys and their validation; proof section documents `failure_class`. `get_status` row untouched (CORE-123). |
+| `plugins/kanmer/skills/kanmer-auto/SKILL.md` | §1.2: live foreign claim → drop/coordinate; expired foreign claim → scratch note (old controller, new controller, branch, worktree) then `take_ticket action: "transfer"`; `CLAIM_LIVE` means renewed; never `force`, never release a claim with a worktree. §3: workers renew claims; subagent workers read their own background logs; needs-changes and `failure_class` results are routed (`REMEDIATION_BUDGET_EXHAUSTED` is an operator-only question); a proof without a class is `inconclusive`. Stop predicate 8 narrowed to a live claim. §9: force fallback replaced by transfer/wait. All check-13/14/16 sentences intact. |
+| `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md` | Attestation section documents the three optional keys and their validation; proof section documents `failure_class` and (round 1) that a class-less record routes as `inconclusive`, never `transient`. `get_status` row untouched (CORE-123). |
 | `scripts/verify-skill-prose.mjs` | Check 18 pins the contract across the five skills (existing numbering already had two "17" headers; the new one is 18). |
 | `scripts/verify-skill-prose.test.mjs` | Negative fixture: re-adding "leave the ticket in Review" and replacing "never open a second PR" fails check 18. |
 
@@ -26,9 +26,9 @@ Not changed, deliberately: `packages/*` (no schema change — the three attestat
 
 (a) Author pushes head H. Reviewer gathers, reads `expected_reviewers` = [R1, R2]; R2 has not posted → reviewer records the wait in scratch and does not attest. R2 posts thread T on H → reviewer gathers again, `threads_snapshot` lists T mapped to F-002, writes the attestation. Later thread T2 appears on H → by the settle rule the attestation is non-authoritative; reviewer re-gathers and replaces it with T2 mapped to a finding. A `pass` written before T2 would have failed the "every thread on it is in `threads_snapshot`" merge condition on the pre-merge re-gather.
 
-(b) Reviewer writes `needs-changes` on H with F-001 open, confirms PR #N is in `prs[]`, calls `move_item review → implementing reason: "needs-changes on H: F-001"`; store increments `review_round` to 1 and appends the transition. Execute resumes the packet (`claim.reviewRound` = 1), renews the claim, fixes F-001, pushes to the same branch (PR #N gets head H2), rewrites the report with `## Remediation round 1`, moves `implementing → review`. Reviewer's delta review covers F-001 + changed lines, writes `pass` on H2 with F-001 `fixed`, merges. `review_round` stays 1; a second return would refuse `REMEDIATION_BUDGET_EXHAUSTED`.
+(b) Reviewer writes `needs-changes` on H with F-001 open, confirms PR #N is in `prs[]`, calls `move_item review → implementing reason: "needs-changes on H: F-001"`; store increments `review_round` to 1 and appends the transition. Execute resumes the packet (`claim.reviewRound` = 1), renews the claim, fixes F-001, pushes to the same branch (PR #N gets head H2), rewrites the report with `## Remediation round 1`, moves `implementing → review`. Reviewer's delta review covers F-001 + changed lines, writes `pass` on H2 with F-001 `fixed`, merges. `review_round` stays 1; a second return would refuse `REMEDIATION_BUDGET_EXHAUSTED`. (This ticket itself walked scenario (b) — see Remediation round 1 below.)
 
-## Commands (cwd `.worktrees/skill-037`)
+## Commands (cwd `.worktrees/skill-037`, round 0 at e6c9e0ad)
 
 | Command | Exit | Result |
 |---|---|---|
@@ -37,12 +37,33 @@ Not changed, deliberately: `packages/*` (no schema change — the three attestat
 | `node --test scripts/verify-skill-prose.test.mjs` | 0 | all cases pass incl. the new negative fixture |
 | `npm run plugin:check` | — | not run: refuses in a linked worktree by design (MCP-007) and no bundle input changed; hosted `verify` is authoritative |
 
+## Remediation round 1
+
+Trigger: needs-changes attestation `scratch/review.md` v62d0476c1e5a672f at head e6c9e0ad (F-001 stale-board gate, F-002/F-003 minor wording, plus a required rebase after CORE-123 #288 merged). Same ticket, branch, worktree and PR #290; pushed with `--force-with-lease` because of the rebase. New head: `e3354556a9a40b11d5b4b849708306320162c7bc` (two commits on top of main 5684174a: 99576700 rebased original, e3354556 round-1 fixes).
+
+- **Rebase** onto `origin/main` 5684174a: exactly one conflict hunk, in `kanmer-review/SKILL.md` attestation-frontmatter paragraph. Resolved in SKILL-037's favour ("this skill always writes both; an empty list is a truthful value; a present but malformed value invalidates the record"); CORE-123's `board_sha` / `SYNC_REQUIRED` sentence and all other CORE-123 text kept intact. Checked against `packages/core/src/review-attestation.ts` on main (now includes `board_sha`, `expected_reviewers`, `threads_snapshot` — optional when absent, invalid when present and malformed), so the paragraph is true against the live parser (F-005 no longer a window).
+- **F-001**: environmental (stale remote board); no file change — moot after the board push.
+- **F-002**: `kanmer-verify` routing table `implementation` row now reads: the fix reuses the same ticket, branch and worktree, but the reviewed PR is already merged, so the fix necessarily opens a new PR against the integration target and the next review binds to that new PR.
+- **F-003**: chosen default is `inconclusive`. `kanmer-verify` `transient` row: "Never the default: a proof that names no class is treated as `inconclusive`, not as retryable"; `inconclusive` row: "Default for any non-PASS proof that names no class". `kanmer-auto` already said "A proof without a class is `inconclusive`" (unchanged). `tool-reference.md` proof section: "A record that names no class is routed as `inconclusive`, never as a retryable `transient`."
+- **F-004..F-007**: accepted-risk/note; no change.
+
+Commands (cwd `.worktrees/skill-037`, at e3354556):
+
+| Command | Exit | Result |
+|---|---|---|
+| `npm run verify:skills` | 0 | ALL CHECKS PASSED |
+| `npm run verify:agents-block` | 0 | 31/31 checks passed |
+| `node --test scripts/verify-skill-prose.test.mjs` | 0 | all tests pass |
+| `npm run verify:docs` | 0 | verify-docs: PASS (manual up to date, 22 chapters) |
+
+Pinned sentences untouched (all prose checks green, check 18 included).
+
 ## Risks and follow-ups
 
-- Merge overlap with `core-123-merge-gate-board-sync` in the kanmer-review frontmatter paragraph; whichever lands second re-applies the other's sentence (CORE-123's `board_sha` sentence is already included here verbatim).
 - The settle rule, delta scope and `failure_class` are procedure, not store-enforced (parked in open-questions for a later core ticket).
 - `verify-skill-prose.mjs` already had two sections headed "17"; not renumbered here to keep the diff to this ticket's scope.
+- Reconciliation / AGENTS.md rule 20 vs `WAIVED_BY_OPERATOR` (F-006) is a follow-up core/setup ticket.
 
 ## For kanmer-verify
 
-At the merge SHA in a detached worktree: `npm run verify:skills` (expect ALL CHECKS PASSED), `npm run verify:agents-block` (expect 31/31), `node --test scripts/verify-skill-prose.test.mjs` (expect exit 0). Hosted `npm run verify` covers `plugin:check`.
+At the merge SHA in a detached worktree: `npm run verify:skills` (expect ALL CHECKS PASSED), `npm run verify:agents-block` (expect 31/31), `node --test scripts/verify-skill-prose.test.mjs` (expect exit 0), `npm run verify:docs` (expect PASS). Hosted `npm run verify` covers `plugin:check`.

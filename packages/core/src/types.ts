@@ -610,6 +610,90 @@ export function isOperatorReason(reason: string | undefined): boolean {
   return typeof reason === "string" && /^operator:\s*\S/u.test(reason);
 }
 
+/**
+ * A legacy claim is present when any claim-owned field survives (CORE-122,
+ * salvaged from PR #286). Branch/worktree-only claims from historic boards
+ * are still claims for reconciliation purposes.
+ */
+export function hasLegacyTicketClaim(
+  claim: Pick<Item, "taken_at" | "branch" | "worktree">,
+): boolean {
+  return Boolean(claim.taken_at || claim.branch || claim.worktree);
+}
+
+/**
+ * Facts collected by an approved host boundary before the read-only
+ * reconciliation policy runs (FRD-028 dry-run half, CORE-122).
+ */
+export interface ReconciliationEvidence {
+  ticket: {
+    id: string;
+    status: string;
+    updated: string;
+    taken: boolean;
+  };
+  /** Bootstrap claim facts (CORE-121): `current` is a live, unexpired claim. */
+  claim: {
+    state: "unclaimed" | "current" | "expired";
+    controller: string | null;
+    worker: string | null;
+    takenAt: string | null;
+    expiresAt: string | null;
+    branch: string | null;
+    worktree: string | null;
+    reviewRound: number;
+    remediationBudget: number;
+  };
+  /** Recorded ticket commits and their reachability from the exact merge target. */
+  commits: {
+    values: string[];
+    reachability: "not-applicable" | "reachable" | "unreachable" | "unavailable";
+  };
+  pullRequest: {
+    state: "absent" | "open" | "merged" | "closed-unmerged" | "unavailable";
+    headSha?: string;
+    mergeSha?: string;
+    requiredChecks: "pass" | "fail" | "pending" | "unavailable" | "not-applicable";
+  };
+  proof: {
+    state: "absent" | "pass" | "fail" | "invalid";
+    mergedSha?: string;
+  };
+  workspace: {
+    state: "not-recorded" | "clean" | "dirty" | "missing" | "unavailable";
+    recordedWorktree: string | null;
+    boardWorktree?: boolean;
+    /** Proven via `--git-common-dir`; recovery recommendations do not infer it. */
+    claimIdentity: "not-applicable" | "matches-claim" | "foreign-repository" | "branch-mismatch" | "detached" | "unavailable";
+  };
+  /** CORE-116 owns persisted release attempts; until then this is `not-applicable`. */
+  release: {
+    state: "not-applicable" | "superseded" | "contended" | "unavailable";
+  };
+}
+
+export interface ReconciliationFinding {
+  code: string;
+  level: "info" | "warning" | "error";
+  message: string;
+}
+
+/**
+ * Advisory only. Nothing consumes this as authority: the inspector never
+ * mutates the board and there is no apply surface until CORE-115 lands.
+ */
+export interface ReconciliationRecommendation {
+  action: "MOVE_TO_IMPLEMENTING" | "MOVE_TO_VERIFYING" | "MOVE_TO_DONE" | "RELEASE_CLEAN_TERMINAL_CLAIM";
+  targetStatus?: string;
+  advisory: true;
+}
+
+export interface ReconciliationResult {
+  evidence: ReconciliationEvidence;
+  findings: ReconciliationFinding[];
+  recommendation: ReconciliationRecommendation | null;
+}
+
 /** Forward + backward relations for one item (get_links). */
 export interface LinkGraph {
   id: string;

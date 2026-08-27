@@ -2,7 +2,7 @@ import { defineConfig } from "tsup";
 import { versionDefine } from "./version-define.mjs";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/http.ts", "src/http-secret.ts", "src/http-cli.ts", "src/remote-token-cli.ts", "src/project-identity.ts", "src/remote-cli.ts", "src/remote-host.ts", "src/doctor/index.ts", "src/doctor-cli.ts", "src/integration/remote-public.ts", "src/integration/remote-public-types.ts", "src/integration/remote-public-evidence.ts", "src/integration/remote-public-cleanup.ts", "src/integration/remote-public-fixture.ts", "src/tunnels/cloudflared-config.ts", "src/tunnels/cloudflared-validate.ts", "src/tunnels/cloudflared.ts", "src/tunnels/logs.ts", "src/tunnels/readiness.ts", "src/tunnels/supervisor.ts"],
+  entry: ["src/index.ts", "src/http.ts", "src/http-secret.ts", "src/http-cli.ts", "src/remote-token-cli.ts", "src/project-identity.ts", "src/reconciliation.ts", "src/remote-cli.ts", "src/remote-host.ts", "src/doctor/index.ts", "src/doctor-cli.ts", "src/integration/remote-public.ts", "src/integration/remote-public-types.ts", "src/integration/remote-public-evidence.ts", "src/integration/remote-public-cleanup.ts", "src/integration/remote-public-fixture.ts", "src/tunnels/cloudflared-config.ts", "src/tunnels/cloudflared-validate.ts", "src/tunnels/cloudflared.ts", "src/tunnels/logs.ts", "src/tunnels/readiness.ts", "src/tunnels/supervisor.ts"],
   format: ["esm"],
   // The stdio entry self-reports its own path/hash and discovers bundled
   // skills relative to that entry. Keep every ESM entry self-contained: a

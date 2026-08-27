@@ -182,11 +182,11 @@ function canonicalWorktreePath(project: ProjectIdentity, worktree: string): stri
   return canonicalPathFrom(project.repoRoot, worktree);
 }
 
-function sameWorktreePath(left: string, right: string): boolean {
+export function sameWorktreePath(left: string, right: string): boolean {
   return process.platform === "win32" ? left.toLowerCase() === right.toLowerCase() : left === right;
 }
 
-type ResolvedPath = { ok: true; path: string } | { ok: false; detail: string };
+export type ResolvedPath = { ok: true; path: string } | { ok: false; detail: string };
 
 interface ResumeWorktreeSafety {
   refusal: string | null;
@@ -215,7 +215,7 @@ async function gitWorktreeRoot(directory: string): Promise<ResolvedPath> {
   }
 }
 
-async function gitCommonDirectory(directory: string): Promise<ResolvedPath> {
+export async function gitCommonDirectory(directory: string): Promise<ResolvedPath> {
   try {
     const { stdout } = await execFileAsync("git", ["-C", directory, "rev-parse", "--git-common-dir"], {
       encoding: "utf8",

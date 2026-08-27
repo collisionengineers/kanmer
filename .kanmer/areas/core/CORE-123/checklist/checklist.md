@@ -28,3 +28,14 @@ Append with `set_ticket_doc(doc: "checklist", append: true)`.
 - 2026-08-27 execute: implementation complete; focused tests green (see scratch/execute.md for exact commands/exits); full `npm run verify` running in background, result to be appended.
 - 2026-08-27 execute: `npm run verify` exit 1 twice on the host-only core `store.test.ts` timeout (identical on untouched main); remaining rails run individually — see the report. PR https://github.com/collisionengineers/kanmer/pull/288, head 8989669316befc635a6a85f6a3271873779ad93d.
 - 2026-08-27 remediation round 1: review v9770bd1beecdaa95 F-001/F-002/F-003 fixed in df293ad2bf4b7f603e67998be7cb5b62f9430cbe (rebased on a8318ea6); commands/exits in scratch/execute.md and the report.
+
+## Closeout — CORE-123
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`) — MERGED 2026-08-27T16:54:22Z, merge SHA 5684174ae60ae2d67874a63c1e0c308b29327c38
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage (Done, proof a20b35df3a8a35a1 PASS)
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/core-123` (+ verification worktree `.worktrees/verify-core-123-5684174a…`)
+- [x] `git branch -D core-123-merge-gate-board-sync` (squash-merged) + `git push origin --delete`
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

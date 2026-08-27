@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Merge-gate hardening and board-sync confirmation (SYNC_REQUIRED, attestation
   errors, board-push CI trigger)
-status: verifying
+status: done
 area: core
 assignee: claude-code
 profile: feature
@@ -13,9 +13,7 @@ stageEntered:
   review: '2026-08-27T15:01:13.080Z'
   implementing: '2026-08-27T16:22:15.731Z'
   verifying: '2026-08-27T16:54:44.813Z'
-taken_at: '2026-08-27T13:51:09.161Z'
-branch: core-123-merge-gate-board-sync
-worktree: .worktrees/core-123
+  done: '2026-08-27T17:28:11.800Z'
 labels:
   - reliable-autonomy
 groups:
@@ -28,11 +26,12 @@ commits:
   - 3dad4b26
   - 2b3cf620
   - df293ad2bf4b7f603e67998be7cb5b62f9430cbe
+  - 5684174ae60ae2d67874a63c1e0c308b29327c38
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/288'
 archived: false
 created: '2026-08-27T10:07:40.813Z'
-updated: '2026-08-27T16:54:44.813Z'
+updated: '2026-08-27T17:30:32.799Z'
 ---
 
 ## What
@@ -57,3 +56,9 @@ Make the CI gate and the board agree before anything is called final: attestatio
 - [ ] GUI shows ahead-of-origin and `get_status` reports the counts.
 
 ## Outcome
+
+- Merged: PR https://github.com/collisionengineers/kanmer/pull/288 (squash merge SHA `5684174ae60ae2d67874a63c1e0c308b29327c38`, merged 2026-08-27T16:54:22Z).
+- Review: delta attestation `9be967bf37c9f808`. Proof: `a20b35df3a8a35a1`, result PASS at the merge SHA (hosted run 33095640744 green).
+- Shipped differently than planned: `pr.yml` cannot observe `kanmer-board` pushes from `main`'s tree, so the board-push re-gate ships as `.github/workflows/board-regate.yml` that an operator installs on the board branch (not automatic). Push-to-`main` and `workflow_dispatch` re-gating are automatic.
+- Operator step: copy `.github/workflows/board-regate.yml` onto the `kanmer-board` branch to enable board-push re-gating.
+- Follow-up tickets: none created.

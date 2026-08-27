@@ -522,7 +522,7 @@ describe("renewable leases (CORE-115)", () => {
     });
   });
 
-  it("reclaim refuses a board-worktree or foreign-repository workspace without writing", async () => {
+  it("reclaim refuses a board-worktree, foreign-repository or branch-mismatched workspace without writing", async () => {
     const t = await store.createItem({ type: "ticket", title: "A", status: "implementing" });
     await store.takeTicket(t.id, { branch: "feat/x", worktree: "wt/x", assignee: "ctl-a" });
     await ageClaim(t.id, 31);
@@ -530,6 +530,7 @@ describe("renewable leases (CORE-115)", () => {
     const base = { workspace: "clean", pullRequest: "absent", commits: 0, proof: "absent" } as const;
     await expect(store.transferTicket(t.id, { assignee: "ctl-b", recovery: { ...base, claimIdentity: "unavailable", boardWorktree: true } })).rejects.toThrow(/^RECOVERY_REFUSED:.*board worktree/u);
     await expect(store.transferTicket(t.id, { assignee: "ctl-b", recovery: { ...base, claimIdentity: "foreign-repository", boardWorktree: false } })).rejects.toThrow(/^RECOVERY_REFUSED:.*different repository/u);
+    await expect(store.transferTicket(t.id, { assignee: "ctl-b", recovery: { ...base, claimIdentity: "branch-mismatch", boardWorktree: false } })).rejects.toThrow(/^RECOVERY_REFUSED:.*not checked out on the recorded branch/u);
     expect(await fs.readFile(ticketFile(t.id), "utf8")).toBe(before);
   });
 

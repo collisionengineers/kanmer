@@ -1271,7 +1271,8 @@ export class KanmerStore {
    * responsible, never where the work is — and the evidence the host re-read
    * before reclaiming (workspace, PR, commits, proof) is recorded, never acted
    * on: expiry is not deletion and dirty work is preserved. A board-worktree
-   * or foreign-repository workspace refuses with `RECOVERY_REFUSED`.
+   * or foreign-repository workspace, or one whose checked-out branch does not
+   * match the recorded branch, refuses with `RECOVERY_REFUSED`.
    */
   async transferTicket(id: string, input: TransferTicketInput): Promise<Item> {
     return this.withLeaseLock(async () => {
@@ -1308,6 +1309,12 @@ export class KanmerStore {
         throw new Error(
           `RECOVERY_REFUSED: "${id}" records a worktree that belongs to a different repository (${current.worktree ?? "(none)"}); ` +
             `an operator must record the correct location before the lease can be reclaimed.`,
+        );
+      }
+      if (recovery?.claimIdentity === "branch-mismatch") {
+        throw new Error(
+          `RECOVERY_REFUSED: "${id}" records worktree ${current.worktree ?? "(none)"} but it is not checked out on the recorded branch ${current.branch ?? "(none)"}; ` +
+            `an operator must restore the branch or record the correct location before the lease can be reclaimed.`,
         );
       }
       const fromAssignee = current.assignee || null;

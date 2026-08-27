@@ -1,4 +1,5 @@
-import type { GateReport, Item, KanmerStore, TicketDocumentWithVersion } from "@kanmer/core";
+import type { ClaimState, GateReport, Item, KanmerStore, TicketDocumentWithVersion } from "@kanmer/core";
+import { DEFAULT_CLAIM_EXPIRY_MINUTES, claimState } from "@kanmer/core";
 import { execFile } from "node:child_process";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
@@ -61,10 +62,20 @@ export interface ExecutionPacketCompactTicket {
   taken: ExecutionPacketTicket["taken"];
 }
 
+/** Bootstrap claim facts (CORE-121) so a resumed remediation knows its owner and budget. */
+export interface ExecutionPacketClaim {
+  state: ClaimState;
+  expiresAt: string | null;
+  controller: string | null;
+  reviewRound: number;
+  remediationBudget: number;
+}
+
 export interface ExecutionPacketReady {
   ready: true;
   project: ProjectIdentity;
   ticket: ExecutionPacketTicket;
+  claim: ExecutionPacketClaim;
   groupContexts: ExecutionPacketGroupContext[];
   documents: {
     plan: ExecutionPacketDocument;
@@ -486,11 +497,33 @@ export async function getExecutionPacket(input: {
   const exactRecordedResume = resume !== undefined &&
     item.branch !== undefined && resume.branch === item.branch &&
     item.worktree !== undefined && resume.worktree === item.worktree;
-  if (item.taken_at && item.assignee !== actor && !exactRecordedResume) {
+  const board = await store.getBoard();
+  const claimMinutes = board.claimExpiryMinutes ?? DEFAULT_CLAIM_EXPIRY_MINUTES;
+  const claim: ExecutionPacketClaim = {
+    state: claimState(item, new Date(), claimMinutes),
+    expiresAt: item.claim_expires_at
+      ?? (item.taken_at ? new Date(Date.parse(item.taken_at) + claimMinutes * 60_000).toISOString() : null),
+    controller: item.claim_controller ?? (item.assignee || null),
+    reviewRound: item.review_round ?? 0,
+    remediationBudget: item.remediation_budget ?? 1,
+  };
+  if (item.taken_at && item.assignee !== actor && item.claim_controller !== actor && !exactRecordedResume) {
     const owner = item.assignee || "an unknown actor";
     const location = [item.branch && `branch ${item.branch}`, item.worktree && `worktree ${item.worktree}`]
       .filter(Boolean)
       .join(", ");
+    // A dead controller's claim is refused differently from a live one: the
+    // remedy is a transfer, never a force retake (CORE-121, FRD-030).
+    if (claim.state === "expired") {
+      return refuse(
+        project,
+        `Ticket "${id}" is taken by ${owner}${location ? ` (${location})` : ""} but its claim expired at ${claim.expiresAt}; ` +
+          `transfer it with take_ticket action "transfer", or resume with the exact recorded branch and worktree.`,
+        [],
+        item,
+        gates,
+      );
+    }
     return refuse(
       project,
       `Ticket "${id}" is already taken by ${owner}${location ? ` (${location})` : ""}.`,
@@ -513,6 +546,7 @@ export async function getExecutionPacket(input: {
     ready: true,
     project,
     ticket: fullTicket(item, gates.profile),
+    claim,
     groupContexts: await groupContexts(store, item),
     documents: indexDocuments(fixed),
     extraDocs,

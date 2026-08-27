@@ -4,10 +4,16 @@ type: ticket
 title: >-
   Bootstrap ownership and backward-move contract (expiring claims, transfer,
   audited Review → Implementing)
-status: backlog
+status: review
 area: core
-assignee: ''
+assignee: claude-code
 profile: feature
+stageEntered:
+  preparing: '2026-08-27T10:11:31.642Z'
+  review: '2026-08-27T11:00:54.345Z'
+taken_at: '2026-08-27T10:15:27.555Z'
+branch: core-121-bootstrap-ownership
+worktree: .worktrees/core-121
 labels:
   - reliable-autonomy
 groups:
@@ -21,9 +27,13 @@ blocks:
 refs:
   - docs/functional/frd/FRD-030-renewable-workspace-leases-and-batches.md
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
+commits:
+  - a79f125c95cad5e1d93ac393a84bb89a7ac5ccc3
+prs:
+  - '287'
 archived: false
 created: '2026-08-27T10:07:40.746Z'
-updated: '2026-08-27T10:08:42.099Z'
+updated: '2026-08-27T11:00:54.345Z'
 ---
 
 ## What

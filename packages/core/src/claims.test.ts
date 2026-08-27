@@ -550,6 +550,124 @@ describe("renewable leases (CORE-115)", () => {
   });
 });
 
+describe("non-lease writers share the lease lock (CORE-125)", () => {
+  it("loses neither the lease record nor a concurrent updateItem from another store", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A", status: "implementing" });
+    const taken = await store.takeTicket(t.id, { branch: "feat/x", assignee: "ctl-a" });
+    const renewer = new KanmerStore(root, { actor: "ctl-a" });
+    const writer = new KanmerStore(root, { actor: "ctl-b" });
+    // renewTicket re-reads the ticket and then awaits getBoard() before it
+    // writes, both inside its lock: wrapping getBoard on this one instance
+    // parks a real renewal in the middle of its critical section, so the
+    // interleaving under test is exact rather than hoped for.
+    let parkedInLock = false;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const realGetBoard = renewer.getBoard.bind(renewer);
+    renewer.getBoard = async () => {
+      if (!parkedInLock) {
+        parkedInLock = true;
+        await held;
+      }
+      return realGetBoard();
+    };
+    const renewal = renewer.renewTicket(t.id, {
+      actor: "ctl-a",
+      leaseId: taken.lease_id!,
+      leaseRevision: 1,
+    });
+    while (!parkedInLock) await new Promise((r) => setTimeout(r, 5));
+    // A second store mutates the same ticket file while the renewal holds the
+    // lock. Unserialised, it completes inside this window and the renewal then
+    // renames its own pre-read copy over the edit (and, with the opposite
+    // scheduling, the edit reverts the lease record).
+    const edit = writer.updateItem(t.id, { title: "edited during the renewal" });
+    await new Promise((r) => setTimeout(r, 50));
+    release();
+    const renewed = await renewal;
+    await edit;
+    const after = (await store.getItem(t.id))!;
+    expect(renewed.lease_revision).toBe(2);
+    expect(after.lease_id).toBe(taken.lease_id);
+    expect(after.lease_revision).toBe(2);
+    expect(after.claim_controller).toBe("ctl-a");
+    expect(after.taken_at).toBe(taken.taken_at);
+    expect(after.title).toBe("edited during the renewal");
+    expect(await fs.readdir(path.join(root, ".kanmer"))).not.toContain("leases.lock");
+  });
+
+  it("keeps a lease renewal that lands mid-updateItem: the stale writer never reverts the lease record", async () => {
+    const t = await store.createItem({ type: "ticket", title: "T", status: "review", prs: ["286"] });
+    await store.setDoc(t.id, "scratch/review", attestation("286", "needs-changes"));
+    const taken = await store.takeTicket(t.id, { branch: "feat/t", assignee: "ctl-a", stage: "review" });
+    const writer = new KanmerStore(root, { actor: "ctl-b" });
+    // The audited Review → Implementing return reads the attestation with the
+    // public getDoc after updateItem has read the ticket and before it writes
+    // it: parking there is the exact window an unlocked writer leaves open.
+    let parkedMidWrite = false;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const realGetDoc = writer.getDoc.bind(writer);
+    writer.getDoc = async (...args: Parameters<typeof realGetDoc>) => {
+      if (!parkedMidWrite) {
+        parkedMidWrite = true;
+        await held;
+      }
+      return realGetDoc(...args);
+    };
+    const back = writer.updateItem(t.id, { status: "implementing", reason: "fix F-001" });
+    while (!parkedMidWrite) await new Promise((r) => setTimeout(r, 5));
+    const renewal = store.renewTicket(t.id, {
+      actor: "ctl-a",
+      leaseId: taken.lease_id!,
+      leaseRevision: 1,
+    });
+    await new Promise((r) => setTimeout(r, 50));
+    release();
+    await back;
+    const renewed = await renewal;
+    const after = (await store.getItem(t.id))!;
+    expect(renewed.lease_revision).toBe(2);
+    expect(after.lease_revision).toBe(2);
+    expect(after.lease_id).toBe(taken.lease_id);
+    expect(after.status).toBe("implementing");
+    expect(after.review_round).toBe(1);
+  });
+
+  it("re-enters the lock on nested writes instead of deadlocking, and leaves no lock behind", async () => {
+    const free = { type: "ticket" as const, profile: "custom", requires: {} };
+    const a = await store.createItem({ ...free, title: "A", status: "implementing" });
+    const b = await store.createItem({ ...free, title: "B", status: "implementing" });
+    // moveItem → computeOrder → updateItem per sibling, then the moved ticket.
+    await store.moveItem(b.id, { status: "implementing", position: "top" });
+    expect((await store.getItem(b.id))!.order).toBeLessThan((await store.getItem(a.id))!.order!);
+    // updateItem → appendTransition → setDoc on an audited backward move.
+    await store.moveItem(a.id, { status: "review", position: "bottom" });
+    const back = await store.updateItem(a.id, { status: "implementing", reason: "operator: re-open" });
+    expect(back.status).toBe("implementing");
+    expect(await store.getScratch(a.id, "execution")).toMatch(/stage review → implementing/u);
+    // A lease verb → appendTransition → setDoc, with the lock already held.
+    const taken = await store.takeTicket(a.id, { branch: "feat/a", assignee: "ctl-a" });
+    const renewed = await store.renewTicket(a.id, {
+      actor: "ctl-a",
+      leaseId: taken.lease_id!,
+      leaseRevision: 1,
+      phase: "running-command",
+      extendMinutes: 45,
+    });
+    expect(renewed.lease_phase).toBe("running-command");
+    expect(await store.getScratch(a.id, "execution")).toMatch(/lease-phase implementing → running-command/u);
+    expect(await fs.readdir(path.join(root, ".kanmer"))).toEqual(
+      expect.not.arrayContaining(["leases.lock"]),
+    );
+    expect((await fs.readdir(path.join(root, ".kanmer"))).filter((f) => f.includes("leases.lock"))).toEqual([]);
+  });
+});
+
 describe("batch workspaces (CORE-124)", () => {
   /** Gate-free tickets so the fixture can walk every stage without pipeline documents. */
   const free = { type: "ticket" as const, profile: "custom", requires: {}, status: "implementing" };

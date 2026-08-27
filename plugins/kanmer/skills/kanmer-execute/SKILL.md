@@ -26,13 +26,16 @@ run and stop when the packet says to stop.
    other refusal.
 4. Retain the ready packet. If it reports `ticket.taken`, it is a resumed
    ticket: validate and reuse that exact recorded worktree and branch; do not
-   create another worktree or call `take_ticket`. Otherwise create and validate
+   create another worktree or call `take_ticket` to take it again — renew the
+   claim instead (`take_ticket action: "renew"`). Otherwise create and validate
    a fresh worktree and take the ticket. Send `expected_project` only when the
    preceding status call advertised `compat.expectedProject: "optional"`.
 5. Work only the packet's files and checklist, and record progress with
-   version-aware MCP writes.
-6. Write the post-implementation report, record traceability, push the branch,
-   and open a PR whose body contains `Kanmer: <ID>`.
+   version-aware MCP writes. Renew the claim before any long command.
+6. Write the post-implementation report, record traceability (commits and the
+   PR in `prs[]`), push the branch, and open a PR whose body contains
+   `Kanmer: <ID>` — or, on the re-entry lane after a needs-changes return,
+   push to the branch behind the **existing** PR and never open a second one.
 7. Re-read `get_doc_gates`, then move only `implementing` → `review` when its
    requirements pass. Stop for an independent reviewer.
 
@@ -117,6 +120,48 @@ not for further implementation. Do not repair it by
 changes belong to the resumed ticket and are not a reason to clean or recreate
 it.
 
+Once the location is validated, renew the claim so the controller can see the
+ticket is alive again:
+
+```
+take_ticket id: <ID>, action: "renew"
+```
+
+Renew refuses `CLAIM_NOT_OWNED` when the claim belongs to another controller;
+that is a stop, not a reason to `force` or `transfer` from inside execute — a
+transfer of an expired claim is the controller's or operator's act and is
+recorded before this skill is dispatched. Renew again before every long
+command (a full test rail, a build, a dispatch) so the claim does not expire
+under a healthy worker; the packet's `claim.expiresAt` shows the window.
+
+### Re-entry after a needs-changes return
+
+A resumed packet whose `claim.reviewRound` is at least 1 is a **remediation
+round**: `kanmer-review` wrote a `needs-changes` attestation for this ticket's
+PR and moved it `review` → `implementing` with a reason. The branch, worktree,
+PR and claim are all the ones already recorded. On this lane:
+
+- Read `get_ticket_doc(doc: "scratch/review")` and work only its `open`
+  blocker/major findings plus whatever the plan still requires; do not widen
+  the scope because you are back in the file. Read the `## Transitions` note
+  in `scratch/execution.md` for the recorded reason.
+- Commit on the recorded branch and push it (`git push origin <branch>`); the
+  existing PR updates from that push. Never run `gh pr create` on this lane
+  and never open a second PR for the same ticket — the store binds the
+  attestation to the PR already in `prs[]`, and a new PR breaks that binding.
+  Never rewrite history the reviewer already attested unless the controller
+  says so; a new head is expected, a force-push that hides the old one is not.
+- Replace the post-implementation report as a whole file, adding a
+  `## Remediation round <review_round>` section that lists each finding id,
+  what changed for it, and the commit. The reviewer's delta review is scoped
+  to exactly that list plus the changed lines.
+- Finish as for any run: `get_doc_gates`, then move one gated boundary,
+  `implementing` → `review`, and record the new head SHA in execute scratch.
+
+The remediation budget is the ticket's, not the worker's: one batch plus one
+delta review by default. If the findings cannot be closed in this batch, say
+so in the report and stop; do not iterate privately with the reviewer.
+
 ### Fresh packet
 
 Only when `packet.ticket.taken` is absent, create the worktree from the
@@ -169,11 +214,15 @@ sequence.
    follow-ups, and tell `kanmer-verify` which checks belong on the merged
    result. `proof.md` is not an execution document and is written only after a
    review merge.
-2. Record the reachable implementation commit(s) and PR with `update_item`.
+2. Record the reachable implementation commit(s) and PR with `update_item`
+   (`commits`, and the PR number or URL in `prs`). The `prs` entry is what lets
+   a later `needs-changes` attestation return this ticket to Implementing on
+   the same PR; a ticket without it cannot take the sanctioned return.
    Link governing docs only when the packet authorizes the link; do not invent
    refs. Keep all writes project-bound when the capability was advertised.
 3. Push the ticket branch and open the PR with the ticket title and
-   `Kanmer: <ID>` footer:
+   `Kanmer: <ID>` footer — on a fresh lane only; a re-entry lane pushes to the
+   branch of the PR already recorded and skips `gh pr create`:
 
    ```sh
    git push -u origin <id>-<slug>
@@ -193,7 +242,10 @@ clean up the implementation worktree, or start another ticket.
 
 If work must pause before review, leave the ticket taken and append the exact
 resume point — branch, worktree, packet version, and last command/result — to
-execute scratch. A later worker uses the occupied-ticket `resume` confirmation
+execute scratch. A worker that backgrounds a long command is not notified
+while it is stopped: read the command's own log file before ending the turn,
+or run it in the foreground with a long timeout; never end a turn "waiting
+for a notification". A later worker uses the occupied-ticket `resume` confirmation
 and reuses that same recorded location. Do not release a paused ticket that
 retains a worktree or branch: release clears the metadata that makes a resume
 safe. Release is closeout cleanup only after the recorded location is no longer

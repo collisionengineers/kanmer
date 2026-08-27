@@ -201,7 +201,13 @@ hex characters. `verdict` is exactly `pass` or `needs-changes`; `reviewer` is a
 non-empty stable identity; `independent` is boolean; `plan_hash` is exactly the
 content-version returned by `get_ticket_doc(doc: "plan")`, not a separately
 computed hash; `ticket_updated` is the ticket timestamp read for that review;
-and `findings` is an ordered array.
+and `findings` is an ordered array. Three further keys are optional for the
+parser (older attestations omit them) but always written by `kanmer-review`:
+`board_sha` (full SHA of the pushed board tip; must be a full hex id when
+present), `expected_reviewers` (array of non-empty reviewer identities — the
+independent reviewers named for the ticket, never bots) and `threads_snapshot`
+(array of the review threads on the head, each mapped to a finding id). A
+present but malformed value makes the attestation invalid.
 
 Each finding is an ordered mapping with these keys and enums:
 
@@ -253,7 +259,10 @@ An attempt's `result` is exactly `PASS | FAIL | INCONCLUSIVE | NOT_APPLICABLE`.
 Failed and inconclusive attempts are retained in order when a later attempt
 passes; a successful rewrite must not erase that history. `WAIVED_BY_OPERATOR`
 is a top-level disposition only and requires the operator identity and reason in
-the Markdown body; it is not a normal attempt result.
+the Markdown body; it is not a normal attempt result. A `FAIL` or `INCONCLUSIVE`
+record also carries `failure_class: implementation | plan | transient |
+inconclusive`, which `kanmer-verify` uses to route the ticket (Implementing,
+Preparing, retry, or wait); the parser does not enforce it.
 
 Which documents a ticket owes comes from its **profile**, not from its area and
 not from a fixed pipeline — call `get_doc_gates` for the ticket's actual types

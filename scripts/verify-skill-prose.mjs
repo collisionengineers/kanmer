@@ -533,5 +533,63 @@ check(
   resumeStageAndReferenceInputsContract ? "reference discovery + implementation-only resume" : "resume must retain all reference inputs and stop outside implementing",
 );
 
+console.log("\n=== 18. SKILL-037 review consolidation and remediation-loop contract ===");
+// The rules CORE-121 made enforceable in the store (needs-changes return with
+// a reason, transfer/renew instead of force) and the reviewer-procedure rules
+// no tool can enforce (expected reviewers settle, replace-not-append, delta
+// scope, typed failure class). Each is stated in the one skill that acts on
+// it; a rewrite that drops one silently reverts to the CORE-113 failure mode.
+const remediationContract = [
+  [
+    "kanmer-review settles expected reviewers and replaces a stale attestation",
+    /expected_reviewers/.test(reviewSkill) &&
+      /threads_snapshot/.test(reviewSkill) &&
+      /\**never\** expected reviewers and never a gate/i.test(reviewSkill) &&
+      /replaced, never appended/i.test(reviewSkill) &&
+      /raw GitHub id is never a finding id/i.test(reviewSkill),
+  ],
+  [
+    "kanmer-review takes the sanctioned same-PR return and honours the budget",
+    /`review` to `implementing`, with a\s+reason/i.test(reviewSkill) &&
+      /REVIEW_RETURN_NEEDS_ATTESTATION/.test(reviewSkill) &&
+      /REMEDIATION_BUDGET_EXHAUSTED/.test(reviewSkill) &&
+      /delta review is limited to the original findings/i.test(reviewSkill) &&
+      !/leave the\s+ticket in Review, and do not merge/i.test(reviewSkill) &&
+      !/becomes a linked PR Review ticket/i.test(reviewSkill),
+  ],
+  [
+    "kanmer-execute re-enters on the existing PR and renews its claim",
+    /### Re-entry after a needs-changes return/.test(executeSkill) &&
+      /never open a second PR for the same ticket/i.test(executeSkill) &&
+      /take_ticket id: <ID>, action: "renew"/.test(executeSkill) &&
+      /Renew again before every long\s+command/i.test(executeSkill),
+  ],
+  [
+    "kanmer-verify classifies failures and routes them",
+    /failure_class: implementation # implementation \| plan \| transient \| inconclusive/.test(verifySkill) &&
+      /`implementation` \| `verifying` → `implementing`/.test(verifySkill) &&
+      /`plan` \| `verifying` → `preparing`/.test(verifySkill) &&
+      /`transient` \| stays in Verifying/.test(verifySkill) &&
+      /Only `PASS`, or an operator's `WAIVED_BY_OPERATOR`, permits the final move/.test(verifySkill),
+  ],
+  [
+    "kanmer-closeout accepts the operator waiver as a Done shape",
+    /final proof result `PASS`,\s+or `WAIVED_BY_OPERATOR` with the operator identity and reason/i.test(closeoutSkill),
+  ],
+  [
+    "kanmer-auto transfers expired claims, never forces, and routes remediation",
+    /take_ticket action: "transfer"/.test(autoSkill) &&
+      /Never pass `force`/.test(autoSkill) &&
+      /another actor's live claim/.test(autoSkill) &&
+      /take_ticket action: "renew"/.test(autoSkill) &&
+      /reads that command's log itself/i.test(autoSkill) &&
+      /`needs-changes` review/.test(autoSkill) &&
+      /`failure_class`/.test(autoSkill),
+  ],
+];
+for (const [name, ok] of remediationContract) {
+  check(name, ok, ok ? "contract present" : "SKILL-037 remediation-loop wording missing");
+}
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

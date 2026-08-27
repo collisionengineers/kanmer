@@ -4,7 +4,7 @@ import type { Socket } from "node:net";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest, SUPPORTED_PROTOCOL_VERSIONS } from "@modelcontextprotocol/sdk/types.js";
-import { createKanmerMcpServer, projectFingerprint } from "./index.js";
+import { boundProject, createKanmerMcpServer } from "./index.js";
 import { BearerAuthorizer, type BearerVerifier, unauthorizedHeaders } from "./http-auth.js";
 import { safeDiagnosticMessage } from "./http-diagnostics.js";
 
@@ -61,7 +61,12 @@ export interface HttpReadyEvent {
   host: string;
   port: number;
   endpoint: string;
+  /** Legacy machine-local `kanmer-proj-v1` fingerprint; what remote-host/GUI match on. */
   projectFingerprint: string;
+  /** FRD-029 logical identity of the one project this endpoint serves (MCP-054); null until the board is migrated. */
+  project_id: string | null;
+  board_id: string | null;
+  identity: "logical" | "unassigned";
   mode: "remote-http-v1";
   authRequired: true;
   supportedProtocolVersions: readonly string[];
@@ -231,7 +236,7 @@ export class KanmerHttpHost {
       // Resolve the immutable project before binding. Keep this await inside
       // the rollback boundary so a root/board failure also clears the
       // constructor-created sweep timer.
-      const fingerprint = await projectFingerprint();
+      const project = await boundProject();
       await new Promise<void>((resolve, reject) => {
         const onError = (error: Error) => { this.httpServer.off("listening", onListening); reject(error); };
         const onListening = () => { this.httpServer.off("error", onError); resolve(); };
@@ -248,7 +253,10 @@ export class KanmerHttpHost {
         host: this.options.host,
         port: address.port,
         endpoint: `http://${this.options.host}:${address.port}/mcp`,
-        projectFingerprint: fingerprint,
+        projectFingerprint: project.fingerprint,
+        project_id: project.project_id,
+        board_id: project.board_id,
+        identity: project.identity,
         mode: "remote-http-v1",
         authRequired: true,
         supportedProtocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS],

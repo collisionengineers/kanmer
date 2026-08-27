@@ -4,10 +4,16 @@ type: ticket
 title: >-
   Merge-gate hardening and board-sync confirmation (SYNC_REQUIRED, attestation
   errors, board-push CI trigger)
-status: backlog
+status: review
 area: core
-assignee: ''
+assignee: claude-code
 profile: feature
+stageEntered:
+  preparing: '2026-08-27T13:45:07.018Z'
+  review: '2026-08-27T15:01:13.080Z'
+taken_at: '2026-08-27T13:51:09.161Z'
+branch: core-123-merge-gate-board-sync
+worktree: .worktrees/core-123
 labels:
   - reliable-autonomy
 groups:
@@ -16,9 +22,14 @@ links: []
 refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
+commits:
+  - 51a736f9
+  - 8989669316befc635a6a85f6a3271873779ad93d
+prs:
+  - 'https://github.com/collisionengineers/kanmer/pull/288'
 archived: false
 created: '2026-08-27T10:07:40.813Z'
-updated: '2026-08-27T10:07:40.813Z'
+updated: '2026-08-27T15:01:13.080Z'
 ---
 
 ## What

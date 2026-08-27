@@ -2,10 +2,16 @@
 id: CORE-122
 type: ticket
 title: 'Read-only reconciliation inspector (reconcile_ticket) salvaged from PR #286'
-status: backlog
+status: review
 area: core
-assignee: ''
+assignee: claude-code
 profile: feature
+stageEntered:
+  preparing: '2026-08-27T13:45:22.030Z'
+  review: '2026-08-27T14:52:48.672Z'
+taken_at: '2026-08-27T13:50:30.210Z'
+branch: core-122-reconcile-inspector
+worktree: .worktrees/core-122
 labels:
   - reliable-autonomy
 groups:
@@ -13,9 +19,13 @@ groups:
 links: []
 refs:
   - docs/functional/frd/FRD-028-rescue-and-reconciliation.md
+commits:
+  - 7f8414276ca86f582d8a41d55c4d2d0ac94b6d20
+prs:
+  - '289'
 archived: false
 created: '2026-08-27T10:07:40.777Z'
-updated: '2026-08-27T10:07:40.777Z'
+updated: '2026-08-27T14:52:48.672Z'
 ---
 
 ## What

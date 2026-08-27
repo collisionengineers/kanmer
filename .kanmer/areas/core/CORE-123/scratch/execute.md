@@ -1,0 +1,20 @@
+## 2026-08-27 execute (claude-code, run 20260827T133106Z-claude-code)
+
+Worktree `.worktrees/core-123`, branch `core-123-merge-gate-board-sync` from origin/main dc514375. Packet versions: plan 10bbf738251ae5f8, checklist 0c3aad9d29e4290e, files a8070540d454347f.
+
+Commands so far (cwd .worktrees/core-123):
+- `npm ci` → exit 0
+- `npx vitest run packages/core/src/merge-gate.test.ts packages/core/src/review-attestation.test.ts --root packages/core` → exit 0 (19 passed)
+- `npm run build:core` → exit 0
+- `node --test packages/mcp-server/src/check-pr.test.mjs` → first attempt exit 0 but 1 failing subtest (fixture: `git checkout -b diverged` refused by uncommitted board writes); fixture changed to `commit-tree`; second attempt 8/8 pass.
+- `npx vitest run src/main/kanmerGit.test.ts src/main/settings.test.ts` (apps/gui) → exit 143, timed out at 10 min (53 real-git tests; host slowness) — INCONCLUSIVE, superseded by the targeted runs + verify rail.
+- `npx vitest run src/main/kanmerGit.test.ts -t "concurrent agent write|transient sync failure|no remote for a board|origin remote|real rebase conflicts"` → exit 1: race test failed on fixture path (`--git-path` absolute + join) → fixed with resolve; second run failed on assertion `M .kanmer/version.json` because the post-commit hook fired on the second stage commit too → hook now self-removes; third run exit 0 (29.3s, within the 30s real-git budget but close).
+- `node -e` js-yaml parse of pr.yml → ok; `actionlint` not installed → INCONCLUSIVE.
+- `npm run typecheck` → exit 0; `npm run build` → exit 0; `npm run plugin:check` → exit 1 (bundle stale) → `npm run plugin:build` exit 0 → `npm run plugin:check` exit 0.
+- `npm run verify` running in background → `.worktrees/core-123-verify.log`.
+
+## 2026-08-27 execute — hand-off
+
+PR opened: https://github.com/collisionengineers/kanmer/pull/288 (head 8989669316befc635a6a85f6a3271873779ad93d, base origin/main dc514375). Commits 51a736f9, 89896693. Full command/exit table in post-implementation-report. Ticket moved implementing → review. Worktree `.worktrees/core-123` and branch retained for review. Author does not review or merge.
+
+Retained attempt logs on disk: `.worktrees/core-123-verify-attempt1.log`, `.worktrees/core-123-verify.log` (attempt 2), `.worktrees/core-123-gui-test.log`, `.worktrees/core-123-gui-git-test.log`.

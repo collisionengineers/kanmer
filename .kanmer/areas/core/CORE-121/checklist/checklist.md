@@ -17,3 +17,16 @@
 
 - 2026-08-27: core focused tests 113/113 (`claims.test.ts`, `store.test.ts`, `frontmatter.test.ts`); MCP smoke 252/252 after adding 12 CORE-121 checks. Design correction recorded in `scratch/execution.md`: the GUI store actor carries an implicit `operator:` reason on backward moves so v0.3.12 board drag behaviour is unchanged; MCP actors must pass `reason`. New core module `review-attestation.ts` and test file `claims.test.ts` (recorded deviation from the expected-files table).
 - 2026-08-27: PR #287 opened at `a79f125c`.
+
+## Closeout — CORE-121
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`): MERGED 2026-08-27T11:54:10Z, https://github.com/collisionengineers/kanmer/pull/287, merge `dc5143754506e915989e1923616267a8d664425d`
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage (Done 2026-08-27T13:14:47Z on operator disposition WAIVED_BY_OPERATOR — closeout proceeds on that explicit operator instruction; the skill's literal "PASS" shape is noted, not silently reinterpreted)
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/core-121` (and the ticket's verify worktree)
+- [ ] `git branch -D core-121-bootstrap-ownership` (squash-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`
+
+- 2026-08-27 closeout done: proof finalised (version `adb1c813f84e6300`); `.worktrees/core-121` and `.worktrees/verify-core-121-dc514375…` removed; branch `core-121-bootstrap-ownership` deleted locally and on origin; `git fetch --prune` + `git worktree prune`; claim released. All closeout boxes above are complete.

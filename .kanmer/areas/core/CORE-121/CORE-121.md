@@ -13,9 +13,6 @@ stageEntered:
   review: '2026-08-27T11:00:54.345Z'
   verifying: '2026-08-27T11:54:26.072Z'
   done: '2026-08-27T13:14:47.320Z'
-taken_at: '2026-08-27T10:15:27.555Z'
-branch: core-121-bootstrap-ownership
-worktree: .worktrees/core-121
 labels:
   - reliable-autonomy
 groups:
@@ -31,11 +28,12 @@ refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
 commits:
   - a79f125c95cad5e1d93ac393a84bb89a7ac5ccc3
+  - dc5143754506e915989e1923616267a8d664425d
 prs:
   - '287'
 archived: false
 created: '2026-08-27T10:07:40.746Z'
-updated: '2026-08-27T13:14:47.320Z'
+updated: '2026-08-27T13:20:04.535Z'
 ---
 
 ## What
@@ -61,3 +59,8 @@ CORE-113 deadlocked because a permanent claim by a dead controller could not be 
 - [ ] A v0.3.12 board with none of the new fields reads and behaves unchanged.
 
 ## Outcome
+
+- Merged PR #287 at `dc5143754506e915989e1923616267a8d664425d` (squash of `a79f125c`; identical tree).
+- Review attestation `scratch/review.md` version `e9677093bfadfbb3`.
+- Proof `proof/proof.md` version `a5810f4a0fb10ef1`, result `WAIVED_BY_OPERATOR` — waived by the operator (Alex) on 2026-08-27: every rail CORE-121 touches is green at the merge SHA (claims 24/24, smoke 252/252, plugin:check, manual acceptance); the sole residual `npm run verify` failure is an `apps/gui` git-fixture test untouched by this ticket that fails identically on clean `origin/main` on this host, while hosted run 33065438808 is green for the identical tree.
+- Moved Verifying → Done 2026-08-27T13:14:47Z.

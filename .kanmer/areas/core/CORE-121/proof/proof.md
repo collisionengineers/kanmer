@@ -107,3 +107,8 @@ What did not pass locally:
 - `npm run verify` failed three times (exit 1). Attempt 1: one mcp-server `http.test.mjs` case with `spawnSync node.exe ETIMEDOUT`. Attempt 2: five GUI tests with `Hook timed out in 10000ms`. Attempt 13 (idle host): a single GUI test, `kanmerGit.test.ts` "serializes concurrent orphan cleanup…", which fails identically on clean `origin/main` on this host. The merge touches no `apps/gui` or `scripts/` files.
 
 The agent recorded the result as INCONCLUSIVE because the skill requires a truthful merge-SHA-bound PASS of the repo-wide gate and no hosted run exists for the merge SHA itself; the hosted green is bound to the PR head SHA (identical tree). The waiver above is the operator's decision on that evidence.
+
+## Closeout
+
+- PR: https://github.com/collisionengineers/kanmer/pull/287 — merged 2026-08-27T11:54:10Z (squash) as `dc5143754506e915989e1923616267a8d664425d`.
+- Closed out 2026-08-27 by the controller on the operator's explicit WAIVED_BY_OPERATOR → Done disposition; implementation and verification worktrees removed, branch deleted, claim released.

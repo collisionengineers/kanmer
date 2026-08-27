@@ -53,8 +53,8 @@ Operators coordinating Kanmer projects, constrained implementation agents, indep
 ## Dependency map
 
 1. [[DOC-027]] establishes concise governing inputs and links each member.
-2. Bootstrap ownership/backward-move contract (successor ticket to be created) unblocks every later lane: expiring claims with owner-checked transfer, audited Review → Implementing.
-3. In parallel after 2: read-only reconciliation inspector (salvaged from [[CORE-113]] PR #286), merge-gate/board-sync hardening, and the review-consolidation skill contract.
+2. [[CORE-121]] bootstrap ownership/backward-move contract unblocks every later lane: expiring claims with owner-checked transfer, audited Review → Implementing.
+3. In parallel after 2: [[CORE-122]] read-only reconciliation inspector (salvaged from [[CORE-113]] PR #286), [[CORE-123]] merge-gate/board-sync hardening, and [[SKILL-037]] review-consolidation skill contract.
 4. [[CORE-114]] establishes project identity and a document-inclusive revision contract.
 5. [[CORE-115]], [[CORE-116]], [[CORE-117]], [[CORE-118]] and [[MCP-054]] build on the shared contracts. [[GUI-144]] follows [[MCP-054]].
 6. Mutating reconciliation (`apply_reconciliation`, expired-claim release, typed verification routing) follows [[CORE-115]].
@@ -63,7 +63,7 @@ Operators coordinating Kanmer projects, constrained implementation agents, indep
 
 ## Implementation order and WIP
 
-[[DOC-027]] is done. Next take the bootstrap ownership contract as a single small PR on the stable line; then run the three parallel lanes in 3 above; then the shared-contract serial lane [[CORE-114]] → [[CORE-115]]. Do not begin more than two implementation PRs; only one shared subsystem PR is active at a time. Re-evaluate dependent plans after each contract merge. The live board remains on stable v0.3.12 throughout candidate work.
+[[DOC-027]] is done. Next take [[CORE-121]] as a single small PR on the stable line; then run the three parallel lanes in 3 above; then the shared-contract serial lane [[CORE-114]] → [[CORE-115]]. Do not begin more than two implementation PRs; only one shared subsystem PR is active at a time. Re-evaluate dependent plans after each contract merge. The live board remains on stable v0.3.12 throughout candidate work.
 
 ## Breakdown
 
@@ -71,10 +71,10 @@ Operators coordinating Kanmer projects, constrained implementation agents, indep
 | --- | --- | --- |
 | [[DOC-027]] | Governing FRD/ADR contract | 1 (done) |
 | [[CORE-113]] | Rescue/reconciliation — **superseded 2026-08-27**, archived | — |
-| (new) bootstrap ownership contract | Expiring claims, transfer, audited backward move | 2 |
-| (new) read-only reconciliation inspector | `reconcile_ticket` salvaged from PR #286 | 3 |
-| (new) merge-gate and board-sync hardening | Attestation errors, `SYNC_REQUIRED`, board-push CI trigger | 3 |
-| (new) review-consolidation skill contract | Expected reviewers settle, delta review, remediation budget, same-PR return | 3 |
+| [[CORE-121]] | Expiring claims, transfer, audited backward move | 2 |
+| [[CORE-122]] | `reconcile_ticket` salvaged from PR #286 | 3 |
+| [[CORE-123]] | Attestation errors, `SYNC_REQUIRED`, board-push CI trigger | 3 |
+| [[SKILL-037]] | Expected reviewers settle, delta review, remediation budget, same-PR return | 3 |
 | [[CORE-114]] | Identity and revision safety | 4 |
 | [[CORE-115]] | Leases and isolated/batch workspaces | 5 |
 | [[CORE-116]] | Delivery policy and release-channel leases | 5 |

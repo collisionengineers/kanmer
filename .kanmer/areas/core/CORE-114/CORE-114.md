@@ -2,7 +2,7 @@
 id: CORE-114
 type: ticket
 title: Add logical project identity and revision-safe mutation contracts
-status: verifying
+status: done
 area: core
 assignee: claude-code
 profile: feature
@@ -11,6 +11,7 @@ stageEntered:
   review: '2026-08-27T18:13:31.044Z'
   implementing: '2026-08-27T18:44:42.353Z'
   verifying: '2026-08-27T19:04:49.086Z'
+  done: '2026-08-27T19:17:57.015Z'
 taken_at: '2026-08-27T17:38:47.769Z'
 branch: core-114-project-identity
 worktree: .worktrees/core-114
@@ -34,7 +35,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/291'
 archived: false
 created: '2026-08-26T21:02:41.938Z'
-updated: '2026-08-27T19:04:49.086Z'
+updated: '2026-08-27T19:17:57.015Z'
 ---
 
 ## What

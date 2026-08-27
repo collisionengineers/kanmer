@@ -143,7 +143,7 @@ heartbeat. Renew refuses `LEASE_EXPIRED` when the lease is no longer current
 claim belongs to another controller; both are a stop, not a reason to `force`
 or `transfer` from inside execute — a transfer of an expired lease is the
 controller's or operator's act and is recorded before this skill is dispatched.
-Renew at least every `claim.heartbeatMinutes` (default 5) and again before
+Renew at least every `claim.heartbeatMinutes` (default 5). Renew again before
 every long command (a full test rail, a build, a dispatch) so the lease does
 not expire under a healthy worker; the packet's `claim.expiresAt` shows the
 window. For a command that outlives the window, renew with

@@ -13,9 +13,10 @@
 - [x] `smoke.mjs` lease checks added (287/287); shared-worktree fixtures needed no re-basing (they use distinct paths/aliases); `smoke:protocol` 50/50.
 - [x] Docs/skills: tool-reference, kanmer-execute, kanmer-auto, AGENTS.md §4/§8 (gotcha 16), manual glossary (+ regenerated `chapters.generated.ts`).
 - [x] Plugin bundle rebuilt (`plugin:build`) and `plugin:check` green (38 tools, bytes match) — run in the worktree with its own `npm ci` node_modules; bundle committed.
-- [ ] [pre-review] `npm run typecheck` and `npm run verify` run with exit codes recorded (host quirks noted, not chased); no assertion weakened.
-- [ ] [pre-review] Post-implementation report written; PR opened with `Kanmer: CORE-115` footer; ticket moved to Review. Stop.
+- [x] [pre-review] `npm run typecheck` 0 and `npm run verify` 1 (only `test:scripts` antigravity EBUSY host quirk; every later rail step run individually, exit 0); no assertion weakened.
+- [x] [pre-review] Post-implementation report written; PR #293 opened with `Kanmer: CORE-115` footer (head 80cdb6e4); ticket moved to Review. Stop.
 
 ## Progress notes
 
 - 2026-08-27 typecheck (all four workspaces) exit 0; core suite exit 0; smoke 287/287; protocol 50/50; reconciliation.test.mjs pass; verify:docs PASS after `build:manual`.
+- 2026-08-27 PR https://github.com/collisionengineers/kanmer/pull/293 at 80cdb6e4; verify:skills green at that head.

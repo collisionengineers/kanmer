@@ -4,12 +4,13 @@ type: ticket
 title: >-
   Review consolidation and remediation-loop contract (expected reviewers settle,
   delta review, same-PR return, failure class)
-status: implementing
+status: review
 area: skills
 assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-08-27T16:39:10.836Z'
+  review: '2026-08-27T16:50:23.509Z'
 taken_at: '2026-08-27T16:44:20.605Z'
 branch: skill-037-review-remediation-contract
 worktree: .worktrees/skill-037
@@ -20,9 +21,13 @@ groups:
 links: []
 refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
+commits:
+  - e6c9e0ad2cbb3f55ea287bcb25026096f2fe2f20
+prs:
+  - 'https://github.com/collisionengineers/kanmer/pull/290'
 archived: false
 created: '2026-08-27T10:07:40.838Z'
-updated: '2026-08-27T16:44:20.605Z'
+updated: '2026-08-27T16:50:23.509Z'
 ---
 
 ## What

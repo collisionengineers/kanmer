@@ -1,0 +1,1 @@
+2026-08-27 execute (claude-code, run 20260827T133106Z-claude-code): PR https://github.com/collisionengineers/kanmer/pull/290 opened from `skill-037-review-remediation-contract` at head e6c9e0ad2cbb3f55ea287bcb25026096f2fe2f20; worktree `.worktrees/skill-037`. verify:skills 0, verify:agents-block 0, prose test 0; plugin:check deferred to hosted rail.

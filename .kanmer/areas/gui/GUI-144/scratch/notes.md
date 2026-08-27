@@ -1,0 +1,3 @@
+Worktree .worktrees/gui-144, branch gui-144-project-registry from origin/main e903289e. npm ci in worktree (exit 0); core dist built there (exit 0). Focused vitest (projectRegistry.test.ts 11, ProjectRegistry.test.tsx 4, preload 1): exit 0. typecheck -w gui: 0. build:manual/check:manual/verify:docs: 0/0/0. Contract test loads packages/mcp-server/src/project-registry.ts by runtime path under vitest and passes.
+
+PR https://github.com/collisionengineers/kanmer/pull/294 head a9033ec2229c05819a6fa6a9e0cf3bf3b4bb0a12; full GUI suite 0 (52 files), GUI build 0; ticket moved implementing → review. Stop condition reached.

@@ -143,9 +143,9 @@ quotes the proof (every backward move is audited under `## Transitions`):
 
 | `failure_class` | Next stage | How |
 |---|---|---|
-| `transient` | stays in Verifying | rerun the failed check; retain both attempts. Default for any non-PASS until classified. |
-| `inconclusive` | stays in Verifying | report the unavailable check and what would make it conclusive; hosted rails may be authoritative. |
-| `implementation` | `verifying` → `implementing` | `move_item` with `reason: "proof FAIL implementation: <summary>"`; same branch, worktree and PR — the fix lands as a new PR only because the old one is already merged. |
+| `transient` | stays in Verifying | rerun the failed check; retain both attempts. Never the default: a proof that names no class is treated as `inconclusive`, not as retryable. |
+| `inconclusive` | stays in Verifying | report the unavailable check and what would make it conclusive; hosted rails may be authoritative. Default for any non-PASS proof that names no class. |
+| `implementation` | `verifying` → `implementing` | `move_item` with `reason: "proof FAIL implementation: <summary>"`; the fix reuses the same ticket, branch and worktree, but the reviewed PR is already merged, so the fix necessarily opens a new PR against the integration target and the next review binds to that new PR. |
 | `plan` | `verifying` → `preparing` | `move_item` with `reason: "proof FAIL plan: <summary>"`; the plan is revised through `kanmer-plan` before any new implementation. |
 
 Only `PASS`, or an operator's `WAIVED_BY_OPERATOR`, permits the final move.

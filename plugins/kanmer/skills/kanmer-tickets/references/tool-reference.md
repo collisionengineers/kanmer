@@ -262,7 +262,8 @@ is a top-level disposition only and requires the operator identity and reason in
 the Markdown body; it is not a normal attempt result. A `FAIL` or `INCONCLUSIVE`
 record also carries `failure_class: implementation | plan | transient |
 inconclusive`, which `kanmer-verify` uses to route the ticket (Implementing,
-Preparing, retry, or wait); the parser does not enforce it.
+Preparing, retry, or wait); the parser does not enforce it. A record that
+names no class is routed as `inconclusive`, never as a retryable `transient`.
 
 Which documents a ticket owes comes from its **profile**, not from its area and
 not from a fixed pipeline — call `get_doc_gates` for the ticket's actual types

@@ -269,6 +269,36 @@ test("skill prose validator rejects document writes on refusal and closeout rele
   }
 });
 
+test("skill prose validator rejects a review flow that parks needs-changes in Review or opens a second PR", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "kanmer-remediation-loop-contract-"));
+  try {
+    cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+      recursive: true,
+    });
+    mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+    cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+    writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+
+    const review = join(fixture, "plugins", "kanmer", "skills", "kanmer-review", "SKILL.md");
+    const execute = join(fixture, "plugins", "kanmer", "skills", "kanmer-execute", "SKILL.md");
+    writeFileSync(
+      review,
+      `${readFileSync(review, "utf8")}\nIf changes are needed, write needs-changes, leave the ticket in Review, and do not merge.\n`,
+    );
+    writeFileSync(
+      execute,
+      readFileSync(execute, "utf8").replace("never open a second PR for the same ticket", "open a fresh PR for each round"),
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /FAIL {2}kanmer-review takes the sanctioned same-PR return/);
+    assert.match(result.stdout, /FAIL {2}kanmer-execute re-enters on the existing PR/);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
 test("skill prose validator rejects a resumed flow without reference inputs or an implementation boundary", () => {
   const fixture = mkdtempSync(join(tmpdir(), "kanmer-resume-stage-reference-contract-"));
   try {

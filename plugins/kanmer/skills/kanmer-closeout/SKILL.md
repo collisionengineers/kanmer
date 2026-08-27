@@ -29,7 +29,10 @@ Proceed only on `state: "MERGED"`. `OPEN` → not a closeout; stop and say so.
 
 The ticket is in exactly one accepted terminal shape:
 
-- **verified success** — status Done, not archived, final proof result `PASS`; or
+- **verified success** — status Done, not archived, final proof result `PASS`,
+  or `WAIVED_BY_OPERATOR` with the operator identity and reason in the proof
+  body (the human disposition `kanmer-verify` describes; a waiver without
+  those is not final); or
 - **retired non-success** — status Verifying, archived, final proof result is
   not `PASS`, and the Outcome names the operator's irrecoverable/superseded
   reason plus a successor ticket or explicit no-successor disposition.
@@ -96,7 +99,8 @@ In both cases Git shows nothing left and the live board has no stale taken work.
 ---
 
 **No successor — this is the end of the pipeline.** The ticket is either Done
-with PASS or archived in Verifying with an explicit non-success disposition;
+with PASS (or an operator waiver) or archived in Verifying with an explicit
+non-success disposition;
 the worktree and branch are gone, and the ticket is released. If closeout produced
 follow-up work, that is a **new ticket** via `kanmer-tickets`, starting again at
 Backlog; it is not a continuation of this one. Control returns to whoever was

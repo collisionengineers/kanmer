@@ -52,8 +52,19 @@ store secrets, full prompts, or large command output.
    group's order and show the resolved roster, target point, and exclusions to
    the operator before starting. `list_items`, not `get_group`, supplies the
    taken, blocked, and profile fields needed for selection.
-2. Read the group's shared context. Drop archived or blocked tickets and
-   tickets taken by another actor; coordinate rather than using `force`.
+2. Read the group's shared context. Drop archived or blocked tickets. A ticket
+   taken by another actor is handled by its claim state, never by `force`:
+   - a **live** foreign claim (`claim_expires_at` in the future, or a
+     pause/resume note in its scratch) belongs to that actor — drop it and
+     coordinate;
+   - an **expired** foreign claim (`get_execution_packet` refuses with the
+     claim expired, or `claim_expires_at` has passed with no live run record)
+     is transferred, not stopped on: first `append_scratch` a note naming the
+     old controller, this controller, the recorded branch and worktree, then
+     `take_ticket action: "transfer"`. Transfer keeps the branch, worktree and
+     uncommitted work; a `CLAIM_LIVE` refusal means the claim was renewed
+     meanwhile — treat it as live. Never pass `force`, and never `release` a
+     claim that still has a worktree.
 3. Parse the requested target: “up to review” stops each ticket after its PR is
    open and its ticket is in Review; the default is closeout, subject to the
    human merge boundary. Resolve stage names with `list_board`.
@@ -94,7 +105,11 @@ The controller chooses one safe next action per ready lane. The worker receives
 the execution packet/approved plan, exact role and allowed scope, and its
 mandatory Stop condition. The worker returns at that Stop condition or a
 mandatory stop predicate; it never chooses another ticket or dispatches a
-successor.
+successor. Workers renew their own claim (`take_ticket action: "renew"`) on
+resume and before long commands; a subagent worker that backgrounds a command
+reads that command's log itself before returning — it is not notified while
+stopped, and a worker that ends its turn "waiting for a notification" is a
+failed worker, reconciled from live state like any other.
 
 On every result or timeout, the controller:
 
@@ -112,6 +127,23 @@ PR (`git fetch origin && git rebase origin/main`). A failed ticket does not
 silently disappear: record the exact failure, release it only under the phase
 skill's rules, return it to the appropriate stage, and classify it in the run.
 
+Two results are routed rather than stopped on:
+
+- A **`needs-changes` review** on a lane's PR. The reviewer (or this
+  controller) moves the ticket `review` → `implementing` with a reason, as
+  `kanmer-review`'s sanctioned return describes; the next action for that lane
+  is `kanmer-execute` on the **same** branch, worktree and PR (its re-entry
+  lane), followed by the reviewer's delta review. Read `review_round` and
+  `remediation_budget` from the item before dispatching: a
+  `REMEDIATION_BUDGET_EXHAUSTED` refusal is an operator-only question, quoted
+  verbatim, never a retry.
+- A **non-PASS verification** with a `failure_class`. Route by
+  `kanmer-verify`'s table — `transient` reruns in Verifying, `inconclusive`
+  waits with the missing check named, `implementation` returns the ticket to
+  Implementing, `plan` returns it to Preparing — each by one `move_item` with
+  a reason quoting the proof. A proof without a class is `inconclusive` until
+  the verifier classifies it.
+
 ## 4. Mandatory stop predicates
 
 These predicates stop or pause dispatch; none may be reported as successful
@@ -124,7 +156,8 @@ completion merely because a partial roster has a standup summary:
 5. a missing required governing or pipeline document;
 6. a materially stale approved plan or document version;
 7. a live dependency;
-8. a ticket occupied by another actor;
+8. a ticket occupied by another actor's live claim (an expired claim is
+   transferred, not stopped on);
 9. a branch/worktree mismatch or unsafe path;
 10. worker-reported plan deviation, ambiguity, destructive risk, security or
     secret risk;
@@ -203,8 +236,10 @@ worker status. For a clearly transient pre-mutation transport failure, record
 it, re-read taken/activity/Git/PR state, and allow at most one logged launch
 retry. If status is unknown, mark the lane waiting/blocked and dispatch nothing
 conflicting. Never automatically retry failed implementation, migration, test,
-build, or verification commands. Never use force takeover as fallback. On
-resume, reconcile the unknown attempt from live state before any new action.
+build, or verification commands. Never use force takeover as fallback: a dead
+worker's expired claim is transferred as in section 1, and a live one is
+waited on. On resume, reconcile the unknown attempt from live state before
+any new action.
 
 ## 10. Report
 

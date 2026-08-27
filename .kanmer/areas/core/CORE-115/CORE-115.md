@@ -12,9 +12,6 @@ stageEntered:
   implementing: '2026-08-27T20:07:02.152Z'
   verifying: '2026-08-27T20:29:10.748Z'
   done: '2026-08-27T20:44:57.841Z'
-taken_at: '2026-08-27T19:25:56.817Z'
-branch: core-115-workspace-leases
-worktree: .worktrees/core-115
 labels:
   - reliable-autonomy
 groups:
@@ -30,11 +27,12 @@ commits:
   - 431006da
   - c76c2927
   - 08586176
+  - 3dd48d37f5492943e0bf63e7f6e83c9d123d60bc
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/293'
 archived: false
 created: '2026-08-26T21:02:41.955Z'
-updated: '2026-08-27T20:44:57.841Z'
+updated: '2026-08-27T20:46:35.467Z'
 ---
 
 ## What
@@ -53,6 +51,11 @@ Dead agents must be recoverable without allowing a live controller or batch work
 
 ## Verification
 
-- [ ] Contention, expiry recovery, dirty work preservation and three-ticket batch fixtures pass.
+- [x] Contention, expiry recovery, dirty work preservation and three-ticket batch fixtures pass.
 
 ## Outcome
+
+- Merged PR #293 (https://github.com/collisionengineers/kanmer/pull/293) as 3dd48d37f5492943e0bf63e7f6e83c9d123d60bc on 2026-08-27; delta review attestation 901b175b698baf3a; proof f66edd8a39e77464 PASS.
+- Shipped differently than planned: batch mode (frozen bounded batch membership / shared evidence) was split out to CORE-124; lease lock coverage follow-up tracked as CORE-125.
+- Deferred: F-013 (skills don't heartbeat) to SKILL-036.
+- Closeout: worktree `.worktrees/core-115` and branch `core-115-workspace-leases` removed locally and on origin; claim released.

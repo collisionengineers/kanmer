@@ -124,3 +124,8 @@ Result: **PASS**.
 - Deterministic checks: build, core 411/411 (lease + cross-store concurrency tests included, no flakiness), smoke 299/299, protocol 50/50, http 124/124, plugin:check 39 tools, typecheck, verify:skills all exit 0.
 - `npm run verify` exit 1 locally solely on the two known antigravity EBUSY tests in `scripts/antigravity-plugin-config.test.mjs` (untouched by this merge; see `git diff --stat e903289e..3dd48d37`). The hosted push-to-main run 33113533888 at this exact SHA ran the same suite and is success (verify + regate).
 - FRD-030 acceptance (a)–(f) exercised manually on throwaway copies only with exact outputs recorded above. Contract notes for the record: transferring a live lease refuses with `CLAIM_LIVE` (take of a taken ticket is `LEASE_LIVE`); a missing worktree is not a refusal but an evidence-recorded transfer (`workspace missing (unavailable)` in scratch Transitions); branch-mismatch and board-worktree workspaces refuse with `RECOVERY_REFUSED` and write nothing.
+
+## Closeout
+
+- PR: https://github.com/collisionengineers/kanmer/pull/293
+- Merged: 2026-08-27T20:28:59Z (merge commit 3dd48d37f5492943e0bf63e7f6e83c9d123d60bc)

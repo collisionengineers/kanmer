@@ -27,3 +27,14 @@
 - [x] F-005: `transferTicket` refuses `RECOVERY_REFUSED` on `claimIdentity: "branch-mismatch"` (+ test, docs). F-001 not attempted (CORE-125).
 - [x] Rail: typecheck 0; core 411/411; smoke 299/299; smoke:protocol 50/50; reconciliation.test.mjs 0; test:http 0; verify:skills 0; verify:docs 0; plugin:check 0 (39 tools, bytes match); `npm run verify` 1 (same two antigravity EBUSY host-quirk tests only), remaining rail steps 0 individually.
 - [x] Force-with-lease pushed 08586176 to PR #293; workflow run 33112834467 created for the new head; report + commits updated; move to Review.
+
+## Closeout — CORE-115
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`: MERGED 2026-08-27T20:28:59Z, mergeCommit 3dd48d37)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage (Done since 2026-08-27T20:44:57Z by kanmer-verify)
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/core-115` (+ verify worktree and stray core-115-*.log files)
+- [x] `git branch -D core-115-workspace-leases` (squash-merged) + `git push origin --delete`
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

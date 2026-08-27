@@ -2,12 +2,15 @@
 id: CORE-124
 type: ticket
 title: Add deliberate batch workspaces on top of renewable leases
-status: preparing
+status: implementing
 area: core
-assignee: ''
+assignee: claude-code-core124
 profile: feature
 stageEntered:
   preparing: '2026-08-27T20:47:48.964Z'
+taken_at: '2026-08-27T20:52:23.804Z'
+branch: core-124-batch-workspaces
+worktree: .worktrees/core-124
 labels:
   - reliable-autonomy
 groups:
@@ -20,7 +23,7 @@ refs:
   - docs/functional/frd/FRD-030-renewable-workspace-leases-and-batches.md
 archived: false
 created: '2026-08-27T19:22:20.928Z'
-updated: '2026-08-27T20:47:48.964Z'
+updated: '2026-08-27T20:52:23.804Z'
 ---
 
 ## What

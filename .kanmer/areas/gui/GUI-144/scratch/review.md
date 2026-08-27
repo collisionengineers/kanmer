@@ -1,22 +1,46 @@
 ---
 kind: review-attestation
 pr: "294"
-head_sha: "50ff61cce20c0ad76a443160716d817f724d30fb"
-verdict: needs-changes
-reviewer: "claude-gui144-delta-reviewer"
+head_sha: "190b022ac9fa6065b9df675fd7cab4f5b5fe3302"
+verdict: pass
+reviewer: "claude-gui144-delta-reviewer-2"
 independent: true
 plan_hash: "0c1490e992725887"
-ticket_updated: "2026-08-27T21:05:55.479Z"
-board_sha: "2f3b832e16432ac209ff0c423694e5b39f9f29e1"
+ticket_updated: "2026-08-27T22:12:50.212Z"
+board_sha: "5bb62b104b446c318dcf213771bafd57382eeed4"
 threads_snapshot:
-  total: 12
-  unresolved: 3
-  ids: [PRRT_kwDOT2PEds6c-TE2, PRRT_kwDOT2PEds6c-TE8, PRRT_kwDOT2PEds6c-TFC, PRRT_kwDOT2PEds6c-TFH, PRRT_kwDOT2PEds6c-TFN, PRRT_kwDOT2PEds6c-TFP, PRRT_kwDOT2PEds6c-TFT, PRRT_kwDOT2PEds6c-TFa, PRRT_kwDOT2PEds6c-TFd, PRRT_kwDOT2PEds6c-tpD, PRRT_kwDOT2PEds6c-tpF, PRRT_kwDOT2PEds6c-tpI]
-  unresolved_ids: [PRRT_kwDOT2PEds6c-tpD, PRRT_kwDOT2PEds6c-tpF, PRRT_kwDOT2PEds6c-tpI]
+  - id: PRRT_kwDOT2PEds6c-TE2
+    resolved: true
+  - id: PRRT_kwDOT2PEds6c-TE8
+    resolved: true
+  - id: PRRT_kwDOT2PEds6c-TFC
+    resolved: true
+  - id: PRRT_kwDOT2PEds6c-TFH
+    resolved: true
+  - id: PRRT_kwDOT2PEds6c-TFN
+    resolved: true
+  - id: PRRT_kwDOT2PEds6c-TFP
+    resolved: true
+  - id: PRRT_kwDOT2PEds6c-TFT
+    resolved: true
+  - id: PRRT_kwDOT2PEds6c-TFa
+    resolved: true
+  - id: PRRT_kwDOT2PEds6c-TFd
+    resolved: true
+  - id: PRRT_kwDOT2PEds6c-tpD
+    resolved: true
+  - id: PRRT_kwDOT2PEds6c-tpF
+    resolved: true
+  - id: PRRT_kwDOT2PEds6c-tpI
+    resolved: true
+  - id: PRRT_kwDOT2PEds6c_uoU
+    resolved: true
+  - id: PRRT_kwDOT2PEds6c_uoY
+    resolved: true
 findings:
   - id: F-001
     severity: major
-    summary: "Required check `verify` red at the merge commit: fixture hand-injected lease_* keys the CORE-115 store already writes (duplicate YAML key, ticketCount 1 not 2)."
+    summary: "Required check `verify` red: fixture hand-injected lease_* keys the CORE-115 store already writes (duplicate YAML key, ticketCount 1 not 2)."
     disposition: fixed
   - id: F-002
     severity: major
@@ -49,7 +73,7 @@ findings:
     reason: "writeFileAtomic (packages/core/src/io.ts) is not exported from @kanmer/core; importing it is a core change outside this GUI-only lane. The stale-edit guard refuses the rename on a changed file; a spurious EPERM surfaces as a retryable error."
   - id: F-009
     severity: note
-    summary: "Renderer repeats the endpoint-name regex in JSX (ProjectRegistry.tsx:176). (Codex PRRT_kwDOT2PEds6c-TFa)"
+    summary: "Renderer repeats the endpoint-name regex in JSX (ProjectRegistry.tsx). (Codex PRRT_kwDOT2PEds6c-TFa)"
     disposition: accepted-risk
     reason: "Main re-validates with assertEndpointName at the IPC boundary; the renderer copy only gates button enablement and the contract test pins the grammar against the server module."
   - id: F-010
@@ -69,48 +93,84 @@ findings:
     reason: "Documentation-only wording outside the packet's file list; one-line follow-up when AGENTS.md is next touched."
   - id: F-013
     severity: major
-    summary: "Regression from the F-002 fix: Settings stays mounted across App.openProject with `draft` initialised once from project A (Settings.tsx:80, no key/reset in App.tsx:1942-1960); Save then writes A's board config into the newly active project B through saveBoard (App.tsx:753-755). The path also bypasses requestOpen's dirty-editor guard (App.tsx:696-702). A registry card thereby enables a cross-project board mutation, which FRD-029 forbids. (Codex PRRT_kwDOT2PEds6c-tpD)"
-    disposition: open
+    summary: "Settings stayed mounted across App.openProject with a draft initialised from project A; Save then wrote A's board config into the newly active project B, and the path bypassed requestOpen's dirty-editor guard. (Codex PRRT_kwDOT2PEds6c-tpD)"
+    disposition: fixed
   - id: F-014
     severity: minor
-    summary: "assertSelectedEndpoint (projectRegistry.ts:370) takes the first `selected` endpoint only; when the registry validly names the same logical project twice, controls on the later selected card always fail with REGISTRY_NOT_SELECTED. Accept any selected match or refuse duplicate logical registrations. (Codex PRRT_kwDOT2PEds6c-tpF)"
-    disposition: open
+    summary: "assertSelectedEndpoint took the first `selected` endpoint only, so controls on a later card failed when the registry validly named one logical project twice. (Codex PRRT_kwDOT2PEds6c-tpF)"
+    disposition: fixed
   - id: F-015
     severity: minor
-    summary: "'Open project' stays enabled for health `missing-board`/`invalid` (ProjectRegistry.tsx:98); openProjectLocked calls store.init() (main/index.ts:698ff) so a stale registry pointer silently becomes a fresh empty board at that path. Disable unless the board is observable. (Codex PRRT_kwDOT2PEds6c-tpI)"
-    disposition: open
+    summary: "'Open project' stayed enabled for health missing-board/invalid/error, so openProjectLocked's store.init() would silently create a fresh empty board at a stale registry path. (Codex PRRT_kwDOT2PEds6c-tpI)"
+    disposition: fixed
+  - id: F-016
+    severity: minor
+    summary: "Residual of F-015: observation proves the board only at `boardRoot`, but the card opens `repoRoot ?? boardRoot`, so an entry with a good boardRoot and an explicitly recorded stale `repoRoot` can still reach store.init() and create an empty board at the wrong path (ProjectRegistry.tsx:63-66, projectRegistry.ts:293, main/index.ts:732). (Codex PRRT_kwDOT2PEds6c_uoU)"
+    disposition: accepted-risk
+    reason: "Entries the GUI writes record repoRoot = an open tab's sourceRoot (the board worktree's parent), and an entry without repoRoot is safe because resolvePaths derives it from boardRoot; the exposure is a hand-edited or externally written registry and the worst outcome is a stray empty .kanmer at a wrong path, with no existing project mutated. Dispositioned on the thread and recorded as a follow-up."
+  - id: F-017
+    severity: minor
+    summary: "observeEndpoint lists with includeArchived:false and feeds the same listing to claims(), so an archived ticket still holding a live lease (a supported terminal batch-member state) drops out of controllers and workspaces; the card can read 'No active controllers' while a workspace is still leased (projectRegistry.ts:300). (Codex PRRT_kwDOT2PEds6c_uoY)"
+    disposition: accepted-risk
+    reason: "Under-report in a read-only observation surface that cannot mutate any board, in a narrow archived-but-leased state. Fix is to aggregate leases from an includeArchived:true listing while keeping ticketCount on the unarchived set. Dispositioned on the thread and recorded as a follow-up."
+  - id: F-018
+    severity: note
+    summary: "New in round 2: routing the Projects-tab open through requestOpen means a dirty ticket editor renders App's ConfirmModal (App.tsx:1700) while <Settings> (App.tsx:1956) is still mounted; both use .modal-backdrop at z-index 20 (styles.css:873), so the later Settings modal paints over the confirm and Settings' focus trap keeps it unreachable — the click appears to do nothing until Settings is closed."
+    disposition: accepted-risk
+    reason: "Fails safe: no project switch and therefore no cross-project write; the confirm becomes reachable as soon as Settings closes. Cosmetic layering fix (raise the confirm's z-index or close Settings before deferring) is a follow-up, not a merge blocker."
 ---
 
-# Review — GUI-144 (PR #294 at 50ff61cc), delta round
+# Review — GUI-144 (PR #294 at 190b022a), delta round 2
 
-Independent delta review by a fresh reviewer (not the implementer, not the prior reviewer). Ticket in Review; plan version `0c1490e992725887`; ticket `updated` 2026-08-27T21:05:55.479Z. Branch rebased onto origin/main 3dd48d37 (f811952f) plus remediation 50ff61cc. Diff vs main: 13 files, all in `apps/gui/**` and `docs/manual/**`; nothing under `packages/*` or `plugins/*`. The `App.tsx` change is exactly one prop (`onOpenProject={openProject}`, App.tsx:1959).
+Independent delta review by a fresh reviewer (`claude-gui144-delta-reviewer-2`), not the implementer and not either prior reviewer. Ticket in Review; plan version `0c1490e992725887` (unchanged); ticket `updated` 2026-08-27T22:12:50.212Z; board `5bb62b10`. Head `190b022a` on `origin/main` 9c9a6980 (CORE-124) after a clean rebase; the earlier heads `a9033ec2`/`50ff61cc` are unreachable.
 
-## Prior findings verified at 50ff61cc
+Scope: the prior attestation's findings, the lines changed since it (`3ec2c09b..190b022a`, 9 files / +267 −21), the direct contracts those lines touch, and the relevant tests. Diff vs main is 14 files, all under `apps/gui/**` and `docs/manual/**` — **nothing under `packages/*` or `plugins/*`**, and `AGENTS.md` untouched, as the plan's "do not modify" list requires.
 
-- F-001: `projectRegistry.test.ts:66-76` captures the record `takeTicket(..., provider: "claude-code")` returns and `:215-228` asserts the observed lease equals it field by field (id, revision 1, phase implementing, workspace, heartbeat, expiry); the expired legacy claim strips minted `lease_*` (`:83`). Health assertions unchanged (`:197` ok, `:232` unassigned, `:271` both). Controllers assertion tightened, not weakened. Hosted `verify` success.
-- F-002: `ProjectRegistry.tsx:105-111` requires `onOpenProject`; `:174` calls it; `Settings.tsx:60-61,78,254` threads it; `App.tsx:1959` passes `openProject`. Renderer test `ProjectRegistry.test.tsx:50-52` makes the raw bridge throw, `:93-95` and `:147-165` prove the App path is used and the section follows the new `projectId`.
-- F-003: `main/index.ts:1149-1168` — handlers take non-null `projectId`, `assertRemoteProjectId`, `requireCtx`, then `assertSelectedEndpoint(await registryView(projectId), name)`; `projectRegistry.ts:369-373` throws `REGISTRY_NOT_SELECTED`. Unit test `:319-333`, renderer refusal test `:167-175`.
-- F-004: `projectRegistry.ts:150-163` is byte-identical logic to `packages/mcp-server/src/project-identity.ts:56-72`; probe is `git config --get remote.origin.url` in the board path (`:167`), same as server `index.ts:274`. Contract test `:137-163` imports the server module, asserts equality on 10 probes and identical `kanmer-loc-v1` fingerprints for three origins.
-- F-005: `entryForContext` (`projectRegistry.ts:380-388`) records `boardBranch` only when `available && boardRoot && branch`; test `:335-344`.
-- F-006: `ProjectRegistryWriter.add` (`:444-450`) throws `REGISTRY_NAME_EXISTS`; handler uses it (`index.ts:1141`); test `:382-390`.
-- F-007: `classifyLease` (`:217-231`) uses core `leaseState` with `claimState` fallback; only `state === "live"` populates controllers (`:246`); `heartbeatStale` surfaced (`ipc.ts:228-229`, card `:39`); test `:296-315`.
-- F-008..F-012: accepted-risk unchanged; corresponding Codex threads replied to and resolved.
+## Round-2 fixes verified at 190b022a
 
-## Local verification (cwd `.worktrees/gui-144`, head 50ff61cc)
+**F-013 (major) — fixed, both structurally and in depth.**
+- `App.tsx:714-720` `openProjectFromSettings` calls `requestOpen({ kind: "path", path: root })`; `requestOpen` (`App.tsx:697-703`) defers to the `pendingProject` confirm when `editorDirty.current`, so the registry open is now the same guarded path as the picker (`pickAndOpen`, `:705`) and the menu (`:726`).
+- `App.tsx:1957` `<Settings key={root ?? "none"} …>`. `draft` is `useState(() => structuredClone(board))` (`Settings.tsx:91`), initialised once per mount, so the re-key guarantees a switched project cannot inherit the previous draft.
+- Settings-side defence: `requestOpenProject` (`Settings.tsx:149-155`) parks a `pendingOpen` when `modified` and renders an explicit `role="alertdialog"` "Discard and open" banner (`:219-231`); the Projects tab is wired to that wrapper, not to the raw prop (`:306`). `save` refuses when `draftProjectId !== projectId` (`Settings.tsx:124-127`) with "this draft belongs to another project".
+- Open-tab ref: `settingsTab` (`App.tsx:196`) carries only a `SettingsTab` string, is written from `onTabChange` and reset to `"board"` in `onClose` (`App.tsx:1974-1977`). No board, draft or project state crosses the remount — the only thing preserved is which tab was open, which is the intent.
+- `Settings.projects.test.tsx` (3 tests) genuinely proves it, not just that a prop is threaded: test 1 dirties A's board draft, clicks Open on B, asserts the guard fires and `onOpenProject` was **not** called, cancels, re-triggers, discards, asserts `onOpenProject("C:/beta")` and that the raw `window.kanmer.openProject` stub (which throws) was never called; it then re-keys to B and asserts `onSaveBoard` is called exactly once **with B's config** and that no call payload contains A's edit. Test 2 is the "caller does not re-key" case: with a fixed key, A's dirty draft survives a `projectId` change and Save is refused with `onSaveBoard` never called. Test 3 proves a clean draft opens with no prompt.
 
-- `npm run typecheck -w @kanmer/gui` exit 0.
-- `npx vitest run src/main/projectRegistry.test.ts src/renderer/src/components/ProjectRegistry.test.tsx --root apps/gui` 22/22 pass.
-- `npm test -w @kanmer/gui` 52 files / 515 tests pass, exit 0; no kanmerGit host flakiness observed.
-- `npm run check:manual` exit 0 (22 chapters up to date); `npm run verify:docs` exit 0 (PASS).
+**F-014 (minor) — fixed.** `assertSelectedEndpoint` (`projectRegistry.ts:369-379`) now filters *all* `selected` endpoints and accepts the named one among them; the refusal lists every bound name. `projectRegistry.test.ts:334-347` registers `alpha` and `alpha-mirror` on the same `boardRoot`/`project_id` plus `beta`, asserts both selected names are accepted and that `beta` is refused with a message naming both. The main handlers still call it before every write (`main/index.ts:1152, 1161, 1169`).
 
-## Checks (required: `verify`, `kanmer-gate`; conversation resolution required)
+**F-015 (minor) — fixed.** `openable = health === "ok" || health === "unassigned"` (`ProjectRegistry.tsx:63-66`) gates the button (`:102`) and an explanatory hint renders when it is refused (`:103`). `ProjectRegistry.test.tsx:115-132` covers `missing-board`, `invalid` and `error` (disabled, hint present, click calls nothing) and asserts an `unassigned` endpoint is still openable with no hint. `docs/manual/settings.md:104-115` documents the disabled open, the editor confirm and the board-draft guard. Residual recorded as F-016.
 
-Run 33115961602 at 50ff61cc: `verify` success, `kanmer-gate` success after the controller's re-run with the board in Review, `regate` skipped (not required). Both required checks are green. PR `mergeStateStatus: BLOCKED` because three review threads remain unresolved (F-013..F-015).
+**F-001..F-007 survived the rebase.** Spot-checked at head: the lease fixture is minted by `takeTicket(..., provider: "claude-code")` and asserted field-by-field (`projectRegistry.test.ts:53-79`); `assertSelectedEndpoint` + `requireCtx` + `assertRemoteProjectId` guard rename/remove/policy (`main/index.ts:1148-1167`); `redactRemoteOrigin` is the server line (`projectRegistry.ts:145-169`) with the contract test importing `project-identity.ts` (`test:137-163`); `entryForContext` records `boardBranch` only when git-backed (`projectRegistry.ts:386-392`); `add` throws `REGISTRY_NAME_EXISTS` (`:450-455`); `classifyLease` uses core `leaseState` with a `claimState` fallback and only `live` populates controllers (`:217-231, 246`). F-008..F-012 remain accepted-risk, unchanged.
 
 ## New findings
 
-Codex posted three threads against the new head. F-013 is confirmed by reading the code and is a regression introduced by the F-002 remediation: `Settings` is rendered unkeyed with `draft` from `useState(() => structuredClone(board))`, so after "Open project" switches the active client, pressing Save writes the previous project's board configuration into the newly opened one. Because this is exactly the cross-project mutation the ticket's "Why" and FRD-029 rule out, it is major and blocks merge. A minimal fix is in App.tsx (close Settings and route the open through `requestOpen`, or key `Settings` by `root`), with a renderer/App test proving Settings does not survive the switch with a stale draft. F-014 and F-015 are minor and straightforward to fix in the same pass.
+- **F-016 (minor)** — the F-015 gate proves the board at `boardRoot`, but the card opens `repoRoot ?? boardRoot` and `openProjectLocked` still calls `store.init()`. A stale explicit `repoRoot` therefore keeps the same failure mode in a narrower window. Accepted-risk with the reasoning on the thread; the clean fix is to validate `repoRoot` during observation or open the observed root through a non-initialising path.
+- **F-017 (minor)** — archived tickets are filtered out before `claims()`, so an archived-but-leased batch member vanishes from the controllers/workspaces view.
+- **F-018 (note)** — with a dirty ticket editor, the newly routed open shows the App's confirm *behind* the Settings modal (same `.modal-backdrop` z-index, Settings later in DOM). It fails safe; the switch simply does not happen until Settings closes.
+
+None of the three is a blocker or a major: none can mutate a board, none can write across projects, and each fails closed.
+
+## Governing docs and plan
+
+FRD-029's boundary now holds end to end: the only action on a non-selected endpoint is opening it through the App's guarded selection path; registry rename/policy/remove are refused in main for any endpoint not bound to the sender's project; no renderer path supplies a filesystem path to a registry channel; location fingerprints are proven equal to the server's. The plan's acceptance checks are met — handlers registered in `registerIpc`, section composed from the Settings `projects` tab, tests showing two projects with distinct health and no mutation control on the non-selected one, serialised concurrent writes. `App.tsx`/`Settings.tsx`/`Settings.projects.test.tsx` fall outside the plan's original file table; both are declared deviations forced by F-002/F-013 and stay within the plan's "do not modify" boundary.
+
+## Local verification (cwd `.worktrees/gui-144`, head 190b022a)
+
+| Command | Result |
+| --- | --- |
+| `npm run typecheck -w @kanmer/gui` | exit 0 |
+| `npx vitest run src/main/projectRegistry.test.ts src/renderer/src/components/ProjectRegistry.test.tsx src/renderer/src/components/Settings.projects.test.tsx --root apps/gui` | 27/27 pass, exit 0 |
+| `npm test -w @kanmer/gui` | 53 files / 520 tests pass, exit 0 (284.8 s) |
+| `npm run check:manual` | exit 0 — manual up to date (22 chapters) |
+| `npm run verify:docs` | exit 0 — PASS |
+
+No host flakiness observed; no retries needed.
+
+## Checks and threads
+
+Run 33121178512 at 190b022a: `verify` **success**, `kanmer-gate` **success** after the controller's re-run with the board recording Review, `regate` skipped (not required). Both required checks are green at the reviewed head; the gate's earlier `STALE_REVIEW` warning was the round-1 attestation's `threads_snapshot` shape and this record writes it as an array.
+
+14 review threads, **0 unresolved**. The two Codex threads opened against this head (`PRRT_kwDOT2PEds6c_uoU`, `PRRT_kwDOT2PEds6c_uoY`) were dispositioned in writing as F-016/F-017 and then resolved; the twelve earlier threads were already resolved. `mergeStateStatus` CLEAN at the time of the merge decision.
 
 ## Verdict
 
-`needs-changes`. Not merged; ticket stays in Review. Re-review requires a new head fixing F-013 (F-014/F-015 recommended), the three open threads dispositioned, and a fresh attestation bound to that head.
+`pass`. Independent review, required checks green at 190b022a, every finding and thread dispositioned, no open blocker or major. Merging under the standing delegation and moving Review → Verifying; F-016/F-017/F-018 are recorded follow-ups for a later GUI ticket, not conditions of this merge.

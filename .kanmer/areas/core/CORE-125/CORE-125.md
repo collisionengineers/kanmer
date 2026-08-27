@@ -2,10 +2,12 @@
 id: CORE-125
 type: ticket
 title: Serialise non-lease ticket writers against the lease lock (CORE-115 F-001)
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: fix
+stageEntered:
+  preparing: '2026-08-27T22:25:43.478Z'
 labels:
   - reliable-autonomy
 groups:
@@ -16,7 +18,7 @@ refs:
   - docs/functional/frd/FRD-030-renewable-workspace-leases-and-batches.md
 archived: false
 created: '2026-08-27T20:05:41.631Z'
-updated: '2026-08-27T20:07:38.005Z'
+updated: '2026-08-27T22:25:43.478Z'
 ---
 
 ## What

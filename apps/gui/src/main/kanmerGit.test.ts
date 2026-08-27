@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureBoardWorktree, guardGitBranchPreference, ignoreEntriesToAppend, inspectBoardWorktree, preflightBoardSync, refreshBoardBranch, refreshBoardBranchForPreference, renameBoardBranch, shouldAttemptOrdinaryBranchRename, shouldAttemptProtectedBranchRename, shouldRunAutomaticSync, shouldScheduleAutomaticSync, syncBoard } from "./kanmerGit.js";
+import { classifySyncFailure, ensureBoardWorktree, guardGitBranchPreference, ignoreEntriesToAppend, inspectBoardSync, inspectBoardWorktree, preflightBoardSync, refreshBoardBranch, refreshBoardBranchForPreference, renameBoardBranch, shouldAttemptOrdinaryBranchRename, shouldAttemptProtectedBranchRename, shouldRunAutomaticSync, shouldScheduleAutomaticSync, syncBoard } from "./kanmerGit.js";
 
 // These are deliberately real-Git integration tests: every case initialises a
 // local repository and several create worktrees/remotes. Windows process and
@@ -469,6 +469,22 @@ describe("automatic sync safety policy", () => {
     expect(shouldScheduleAutomaticSync({ ...healthy, branchMismatch: true }, 1)).toBe(false);
     expect(shouldRunAutomaticSync({ ...healthy, available: false })).toBe(false);
   });
+
+  it("does not arm the timer for a board with no origin remote", () => {
+    const sync = { ahead: 0, behind: 0, localSha: null, remoteSha: null };
+    expect(shouldScheduleAutomaticSync({ ...healthy, sync: { ...sync, remote: false } }, 5)).toBe(false);
+    expect(shouldScheduleAutomaticSync({ ...healthy, sync: { ...sync, remote: true } }, 5)).toBe(true);
+    // Not inspected is not the same as absent: older callers keep arming.
+    expect(shouldScheduleAutomaticSync(healthy, 5)).toBe(true);
+  });
+
+  it("pauses only on real rebase conflicts and retries transient failures", () => {
+    expect(classifySyncFailure("Command failed: git rebase origin/kanmer-board error: cannot rebase: You have unstaged changes.")).toBe("transient");
+    expect(classifySyncFailure("fatal: unable to access 'https://example/': Could not resolve host")).toBe("transient");
+    expect(classifySyncFailure("! [rejected] HEAD -> kanmer-board (fetch first)")).toBe("transient");
+    expect(classifySyncFailure("CONFLICT (content): Merge conflict in .kanmer/data/board.yml\nerror: could not apply abc123... sync")).toBe("conflict");
+    expect(classifySyncFailure("Applied autostash.\nerror: could not apply 1234abc")).toBe("conflict");
+  });
 });
 
 describe("ensureBoardWorktree reconciliation", () => {
@@ -741,6 +757,89 @@ describe("ensureBoardWorktree reconciliation", () => {
 
     expect(synced.paused).toBe(false);
     expect(await git(created.boardRoot!, "ls-files", ".kanmer/data/sources/cache.json")).toBe("");
+  });
+
+  realGitTest("syncs through a concurrent agent write between add and rebase instead of pausing", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const boardRoot = created.boardRoot!;
+    expect(created.sync).toMatchObject({ remote: true, ahead: 0, behind: 0 });
+
+    // Move the remote board ahead so syncBoard must actually rebase.
+    const other = join(dir, "other");
+    await git(dir, "clone", "-q", "--branch", "kanmer-board", origin, other);
+    await git(other, "config", "user.email", "other@example.com");
+    await git(other, "config", "user.name", "Other");
+    writeFileSync(join(other, ".kanmer", "remote.md"), "remote write\n", "utf8");
+    await git(other, "add", "--", ".kanmer");
+    await git(other, "commit", "-q", "-m", "remote board write");
+    await git(other, "push", "-q", "origin", "kanmer-board");
+
+    // Reproduce the race: an agent writes a tracked board file after the sync
+    // commit but before the rebase. A post-commit hook is the deterministic
+    // stand-in for that concurrent MCP write.
+    const tracked = join(boardRoot, ".kanmer", "version.json");
+    // --git-path may be relative to the worktree or absolute; resolve handles both.
+    const hooksDir = resolve(boardRoot, await git(boardRoot, "rev-parse", "--git-path", "hooks"));
+    mkdirSync(hooksDir, { recursive: true });
+    // The hook removes itself so it models one racing write, not a writer
+    // that outruns every commit (that case simply lands on the next tick).
+    writeFileSync(join(hooksDir, "post-commit"), "#!/bin/sh\nprintf 'agent-write' >> .kanmer/version.json\nrm -f -- \"$0\"\n", { encoding: "utf8", mode: 0o755 });
+    writeFileSync(join(boardRoot, ".kanmer", "local.md"), "local write\n", "utf8");
+
+    const synced = await syncBoard(created);
+
+    expect(synced.error).toBeNull();
+    expect(synced.paused).toBe(false);
+    expect(readFileSync(tracked, "utf8")).toContain("agent-write");
+    expect(existsSync(join(boardRoot, ".kanmer", "remote.md"))).toBe(true);
+    // Nothing is left behind: the concurrent write was carried across the
+    // rebase, committed, and pushed.
+    expect(synced.sync).toMatchObject({ remote: true, ahead: 0, behind: 0 });
+    expect(await git(boardRoot, "status", "--porcelain", "--", ".kanmer")).toBe("");
+    expect(await git(boardRoot, "rev-parse", "HEAD")).toBe(await git(origin, "rev-parse", "kanmer-board"));
+    expect(await git(boardRoot, "stash", "list")).toBe("");
+  });
+
+  realGitTest("keeps a transient sync failure retryable but pauses on a real conflict", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const boardRoot = created.boardRoot!;
+
+    // Transient: the remote is unreachable. The error is surfaced, the timer stays armed.
+    await git(boardRoot, "remote", "set-url", "origin", join(dir, "missing.git"));
+    const transient = await syncBoard(created);
+    expect(transient.error).toBeTruthy();
+    expect(transient.paused).toBe(false);
+    expect(shouldRunAutomaticSync(transient)).toBe(true);
+    await git(boardRoot, "remote", "set-url", "origin", origin);
+
+    // Conflict: both sides change the same tracked line.
+    const other = join(dir, "other");
+    await git(dir, "clone", "-q", "--branch", "kanmer-board", origin, other);
+    await git(other, "config", "user.email", "other@example.com");
+    await git(other, "config", "user.name", "Other");
+    writeFileSync(join(other, ".kanmer", "version.json"), '{"format":3,"side":"remote"}\n', "utf8");
+    await git(other, "add", "--", ".kanmer");
+    await git(other, "commit", "-q", "-m", "remote edit");
+    await git(other, "push", "-q", "origin", "kanmer-board");
+    writeFileSync(join(boardRoot, ".kanmer", "version.json"), '{"format":3,"side":"local"}\n', "utf8");
+
+    const conflicted = await syncBoard(created);
+    expect(conflicted.paused).toBe(true);
+    expect(conflicted.error).toMatch(/conflict|could not apply/i);
+    expect(shouldRunAutomaticSync(conflicted)).toBe(false);
+    // The rebase was aborted, local work is intact, and the drift is visible.
+    expect(readFileSync(join(boardRoot, ".kanmer", "version.json"), "utf8")).toContain('"side":"local"');
+    expect(conflicted.sync).toMatchObject({ remote: true, ahead: 1, behind: 1 });
+    expect(await inspectBoardSync(boardRoot, "kanmer-board")).toMatchObject({ remote: true, ahead: 1, behind: 1 });
+  });
+
+  realGitTest("reports no remote for a board without origin", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    await git(created.boardRoot!, "remote", "remove", "origin");
+    const sync = await inspectBoardSync(created.boardRoot!, "kanmer-board");
+    expect(sync).toMatchObject({ remote: false, ahead: 0, behind: 0, remoteSha: null });
+    expect(sync.localSha).toMatch(/^[0-9a-f]{40}$/);
+    expect(shouldScheduleAutomaticSync({ ...created, sync }, 5)).toBe(false);
   });
 
   realGitTest("keeps board lock ownership and quarantine artifacts out of sync", async () => {

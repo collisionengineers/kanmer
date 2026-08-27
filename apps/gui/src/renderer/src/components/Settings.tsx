@@ -735,7 +735,8 @@ function GitTab(): JSX.Element {
     <label className="check"><input type="checkbox" checked={minutes > 0} onChange={(e) => { const next = e.target.checked ? 1 : 0; setMinutes(next); void save({ minutes: next }); }} /> Automatic sync</label>
     {minutes > 0 && <label className="field"><span>Minutes</span><input type="number" min={1} step={1} value={minutes} onChange={(e) => setMinutes(Math.max(1, Math.trunc(Number(e.target.value) || 1)))} onBlur={() => void save()} /></label>}
     {!status?.available && !status?.boardRoot && !status?.error ? <p className="hint">Git sync is unavailable for this non-Git project.</p> : <>
-      {status?.boardRoot && <p className="hint">Board worktree: <code>{status.boardRoot}</code>{status.lastSync ? ` · last sync ${status.lastSync}` : ""}</p>}
+      {status?.boardRoot && <p className="hint">Board worktree: <code>{status.boardRoot}</code>{status.lastSync ? ` · last sync ${status.lastSync}` : ""}{status.sync?.remote ? ` · ahead ${status.sync.ahead} · behind ${status.sync.behind}` : status.sync ? " · no origin remote" : ""}</p>}
+      {status?.sync?.remote && status.sync.ahead > 0 && <p className="hint">{status.sync.ahead} unpushed board commit{status.sync.ahead === 1 ? "" : "s"}: the CI merge gate reads the remote board, so sync before treating a gate result as current.</p>}
       {status.handoffPending && <p className="error">{status.handoffPending.warning}</p>}
       {status.handoffPending && <button className="ghost sm" onClick={() => void window.kanmer.confirmKanmerGitHandoff(client.projectId).then(setStatus)}>Mark hosted handoff complete</button>}
       {status.nativeReconnectRequired && <p className="error">

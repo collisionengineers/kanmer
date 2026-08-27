@@ -373,6 +373,8 @@ export interface KanmerGitStatus {
   nativeReconnectRequired?: NativeReconnectRequirement;
   providerReconciliationPending?: { providers: string[]; branch: string };
   boardWorktree: BoardWorktreeHealth | null;
+  /** Board push drift against the last-fetched origin ref; absent for non-Git boards. */
+  sync?: { remote: boolean; ahead: number; behind: number; localSha: string | null; remoteSha: string | null };
 }
 
 export type NativeReconnectProvider = "grok" | "antigravity";

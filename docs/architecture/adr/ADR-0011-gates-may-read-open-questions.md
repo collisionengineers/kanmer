@@ -37,7 +37,10 @@ spawn a subprocess. The gate parses review frontmatter structurally, compares a
 full attested `head_sha` with the exact PR head, and passes typed reachability
 evidence into the pure evaluator. Missing, malformed, or stale review evidence
 and unreachable historical commits are compatibility-period warnings; stage and
-live-dependency failures remain errors. This keeps the movement-gate contract
+live-dependency failures remain errors. The repository variable
+`KANMER_GATE_STRICT` promotes those warnings to blocking errors, and a
+`SYNC_REQUIRED` check compares the attestation's `board_sha` with the fetched
+board tip so a verdict written against an unpushed board is named (CORE-123). This keeps the movement-gate contract
 and the GitHub merge contract explicit instead of silently broadening the
 `questions-resolved` parser. Review attestations must satisfy the complete
 machine schema (including verdict, reviewer, independence, plan/ticket

@@ -216,10 +216,14 @@ describe("phase-2 merge-gate evidence", () => {
     const ticket = await store.createItem({ type: "ticket", title: "evidence", status: "review" });
     const absent = await evaluateMergeGate(store, { number: 24, headSha: head, branch: "x", body: `Kanmer: ${ticket.id}` }, evidence({ review: { state: "absent" } }));
     expect(absent.checks?.map((entry) => entry.code)).toEqual([
-      "NO_TICKET", "OPEN_QUESTIONS", "WRONG_STAGE", "DEPENDENCY_BLOCKED", "NO_REVIEW_RECORD", "STALE_REVIEW", "COMMITS_UNREACHABLE",
+      "NO_TICKET", "OPEN_QUESTIONS", "WRONG_STAGE", "DEPENDENCY_BLOCKED", "NO_REVIEW_RECORD", "STALE_REVIEW", "COMMITS_UNREACHABLE", "SYNC_REQUIRED",
     ]);
     expect(absent.findings.map((entry) => entry.code)).toEqual(["NO_REVIEW_RECORD"]);
     expect(absent.ok).toBe(true);
+    // No board evidence supplied: the sync check is skipped, never a finding.
+    expect(absent.checks?.at(-1)).toMatchObject({ code: "SYNC_REQUIRED", outcome: "skipped", level: "warning" });
+    expect(absent.boardSha).toBeNull();
+    expect(absent.strict).toBe(false);
 
     const stale = await evaluateMergeGate(store, { number: 25, headSha: head, branch: "x", body: `Kanmer: ${ticket.id}` }, evidence({
       review: { state: "valid", headSha: "b".repeat(40), verdict: "needs-changes" },
@@ -239,7 +243,80 @@ describe("phase-2 merge-gate evidence", () => {
 
   it("marks ticket-dependent checks skipped when linkage fails", async () => {
     const result = await evaluateMergeGate(store, { number: 26, headSha: head, branch: "no-ticket", body: null }, evidence());
-    expect(result.checks?.map((entry) => entry.outcome)).toEqual(["fail", "skipped", "skipped", "skipped", "skipped", "skipped", "skipped"]);
+    expect(result.checks?.map((entry) => entry.outcome)).toEqual(["fail", "skipped", "skipped", "skipped", "skipped", "skipped", "skipped", "skipped"]);
     expect(result.ok).toBe(false);
+  });
+
+  it("keeps attestation and commit checks as warnings by default and promotes them under strict", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "strict", status: "review" });
+    const pr = { number: 30, headSha: head, branch: "x", body: `Kanmer: ${ticket.id}` };
+    const adverse = {
+      review: { state: "valid", headSha: head, verdict: "needs-changes" },
+      commits: [{ sha: "d".repeat(40), state: "unreachable" }],
+    };
+
+    const lenient = await evaluateMergeGate(store, pr, evidence(adverse));
+    expect(lenient.ok).toBe(true);
+    expect(lenient.findings.map((entry) => [entry.code, entry.level, entry.outcome])).toEqual([
+      ["STALE_REVIEW", "warning", "warn"],
+      ["COMMITS_UNREACHABLE", "warning", "warn"],
+    ]);
+
+    const strict = await evaluateMergeGate(store, pr, evidence({ ...adverse, strict: true }));
+    expect(strict.ok).toBe(false);
+    expect(strict.strict).toBe(true);
+    expect(strict.findings.map((entry) => [entry.code, entry.level, entry.outcome])).toEqual([
+      ["STALE_REVIEW", "error", "fail"],
+      ["COMMITS_UNREACHABLE", "error", "fail"],
+    ]);
+    // Stage and dependency checks are errors regardless of the switch.
+    expect(strict.checks?.find((entry) => entry.code === "WRONG_STAGE")?.level).toBe("error");
+    expect(lenient.checks?.find((entry) => entry.code === "WRONG_STAGE")?.level).toBe("error");
+
+    const missing = await evaluateMergeGate(store, pr, evidence({ review: { state: "absent" }, strict: true }));
+    expect(missing.ok).toBe(false);
+    expect(missing.findings.map((entry) => entry.code)).toEqual(["NO_REVIEW_RECORD"]);
+    expect(missing.checks?.find((entry) => entry.code === "STALE_REVIEW")).toMatchObject({ outcome: "skipped", level: "error" });
+
+    const noTicket = await evaluateMergeGate(store, { number: 31, headSha: head, branch: "none", body: null }, evidence({ strict: true }));
+    expect(noTicket.checks?.find((entry) => entry.code === "SYNC_REQUIRED")).toMatchObject({ outcome: "skipped", level: "error" });
+    expect(noTicket.strict).toBe(true);
+  });
+
+  it("evaluates SYNC_REQUIRED from board evidence and records the evaluated board tip", async () => {
+    const ticket = await store.createItem({ type: "ticket", title: "sync", status: "review" });
+    const pr = { number: 32, headSha: head, branch: "x", body: `Kanmer: ${ticket.id}` };
+    const tip = "e".repeat(40);
+    const attested = "f".repeat(40);
+    const sync = (board: Record<string, unknown>, strict = false) =>
+      evaluateMergeGate(store, pr, evidence({ board, strict })).then((result) => ({
+        result,
+        check: result.checks?.find((entry) => entry.code === "SYNC_REQUIRED"),
+      }));
+
+    const current = await sync({ sha: tip.toUpperCase(), attestedSha: attested, state: "current" });
+    expect(current.check).toMatchObject({ outcome: "pass", details: { state: "current", boardSha: tip, attestedBoardSha: attested } });
+    expect(current.result.boardSha).toBe(tip.toUpperCase());
+    expect(current.result.ok).toBe(true);
+
+    const unrecorded = await sync({ sha: tip, state: "unrecorded" }, true);
+    expect(unrecorded.check).toMatchObject({ outcome: "pass", level: "error" });
+    expect(unrecorded.check?.message).toMatch(/records no board_sha/);
+    expect(unrecorded.result.ok).toBe(true);
+
+    const stale = await sync({ sha: tip, attestedSha: attested, state: "stale" });
+    expect(stale.check).toMatchObject({ outcome: "warn", level: "warning", details: { state: "stale" } });
+    expect(stale.result.findings.map((entry) => entry.code)).toEqual(["SYNC_REQUIRED"]);
+    expect(stale.result.ok).toBe(true);
+
+    const staleStrict = await sync({ sha: tip, attestedSha: attested, state: "stale" }, true);
+    expect(staleStrict.check).toMatchObject({ outcome: "fail", level: "error" });
+    expect(staleStrict.check?.message).toMatch(/push the board branch/);
+    expect(staleStrict.result.ok).toBe(false);
+
+    const unknown = await sync({ sha: null, attestedSha: attested, state: "unknown", diagnostic: "not a git checkout" }, true);
+    expect(unknown.check).toMatchObject({ outcome: "fail", details: { state: "unknown", boardSha: null, diagnostic: "not a git checkout" } });
+    expect(unknown.result.boardSha).toBeNull();
+    expect(unknown.result.ok).toBe(false);
   });
 });

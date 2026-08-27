@@ -4,6 +4,14 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review, edited]
+  push:
+    # `main`: every merge SHA gets a bound `verify` result for kanmer-verify.
+    # `kanmer-board`: re-run the merge gate for open PRs, because the gate reads
+    # the remote board tip and would otherwise judge a board that has moved on.
+    # The board branch is literal here: `on:` cannot read repository variables,
+    # so a repo that retargets KANMER_BOARD_BRANCH must also edit this list.
+    branches: [main, kanmer-board]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,7 +23,9 @@ defaults:
 jobs:
   verify:
     name: verify
-    if: github.event.action != 'edited'
+    if: >-
+      (github.event_name == 'pull_request' && github.event.action != 'edited') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-latest
     steps:
       - name: Check out the pull request
@@ -31,6 +41,7 @@ jobs:
 
   kanmer-gate:
     name: kanmer-gate
+    if: github.event_name == 'pull_request'
     runs-on: windows-latest
     steps:
       - name: Check out the pull request
@@ -74,4 +85,55 @@ jobs:
           test "$board_path" != "$workspace_path"
 
       - name: Run the phase-2 merge gate
+        env:
+          # Repository variable. Unset/false keeps the compatibility-period
+          # warnings (missing/stale attestation, unreachable commits, board
+          # sync); `1`/`true` promotes them to blocking errors (CORE-123).
+          KANMER_GATE_STRICT: ${{ vars.KANMER_GATE_STRICT || '' }}
         run: node packages/mcp-server/src/check-pr.mjs --board "$RUNNER_TEMP/kanmer-board" --event "$GITHUB_EVENT_PATH"
+
+  # A board push moves the tip that kanmer-gate judged, so re-run the gate job
+  # of the latest pull_request run for every open PR into main. Only that job
+  # is re-run, not the full verify rail; workflow_dispatch does the same by hand.
+  regate:
+    name: regate
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/kanmer-board')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Re-run kanmer-gate for every open pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW_FILE: pr.yml
+        run: |
+          set -u
+          heads="$(gh pr list --base main --state open --limit 100 --json number,headRefOid --jq '.[] | "\(.number) \(.headRefOid)"')"
+          if [ -z "$heads" ]; then
+            echo "no open pull requests into main"
+            exit 0
+          fi
+          while read -r number sha; do
+            [ -n "$sha" ] || continue
+            run_id="$(gh run list --workflow "$WORKFLOW_FILE" --event pull_request --commit "$sha" --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+            if [ -z "$run_id" ]; then
+              echo "PR #$number ($sha): no pull_request run found; skipping"
+              continue
+            fi
+            job_id="$(gh api "repos/$GH_REPO/actions/runs/$run_id/jobs?per_page=100" --jq '.jobs[] | select(.name == "kanmer-gate") | .id' | head -n 1)"
+            if [ -z "$job_id" ]; then
+              echo "PR #$number ($sha): run $run_id has no kanmer-gate job; skipping"
+              continue
+            fi
+            if gh run rerun "$run_id" --job "$job_id"; then
+              echo "PR #$number ($sha): re-ran kanmer-gate job $job_id of run $run_id"
+            else
+              # A run still in progress cannot be re-run; it will judge the new tip anyway.
+              echo "PR #$number ($sha): could not re-run job $job_id of run $run_id (in progress or not permitted); skipping"
+            fi
+          done <<< "$heads"

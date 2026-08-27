@@ -7,7 +7,8 @@ export type MergeGateFindingCode =
   | "DEPENDENCY_BLOCKED"
   | "NO_REVIEW_RECORD"
   | "STALE_REVIEW"
-  | "COMMITS_UNREACHABLE";
+  | "COMMITS_UNREACHABLE"
+  | "SYNC_REQUIRED";
 export type MergeGateFindingLevel = "error" | "warning";
 export type MergeGateTicketSource = "footer" | "branch" | null;
 export type MergeGateCheckOutcome = "pass" | "fail" | "warn" | "skipped";
@@ -39,7 +40,27 @@ export interface MergeGateReviewValid {
   state: "valid";
   headSha: string;
   verdict?: string;
+  /** Board branch tip the reviewer attested to (CORE-123); absent on older records. */
+  boardSha?: string;
   details?: Record<string, unknown>;
+}
+
+/**
+ * How the attested board tip relates to the board the gate actually fetched.
+ * `current`: attested SHA is an ancestor of (or equal to) the fetched tip.
+ * `stale`: attested SHA exists but is not an ancestor — the reviewer read a
+ * board that diverged from what was pushed. `unknown`: the attested SHA is not
+ * on the fetched board at all (typically never pushed) or the board is not a
+ * Git checkout. `unrecorded`: the attestation carries no `board_sha`.
+ */
+export type MergeGateBoardState = "current" | "stale" | "unknown" | "unrecorded";
+
+export interface MergeGateBoardEvidence {
+  /** Tip of the fetched board branch, or null when it could not be read. */
+  sha: string | null;
+  attestedSha?: string;
+  state: MergeGateBoardState;
+  diagnostic?: string;
 }
 export type MergeGateReviewEvidence = MergeGateReviewAbsent | MergeGateReviewInvalid | MergeGateReviewValid;
 
@@ -64,6 +85,14 @@ export interface MergeGatePhase2Evidence {
   blockers: readonly MergeGateBlockerEvidence[];
   review: MergeGateReviewEvidence;
   commits: readonly MergeGateCommitEvidence[];
+  /**
+   * `KANMER_GATE_STRICT`: promote the compatibility-period warnings
+   * (NO_REVIEW_RECORD, STALE_REVIEW, COMMITS_UNREACHABLE, SYNC_REQUIRED) to
+   * blocking errors. Defaults to false so existing repos keep today's levels.
+   */
+  strict?: boolean;
+  /** Board-tip evidence gathered by the CLI; omitted means the check is skipped. */
+  board?: MergeGateBoardEvidence;
 }
 
 export interface MergeGateResult {
@@ -75,6 +104,10 @@ export interface MergeGateResult {
   questions: OpenQuestionCount | null;
   /** Complete ordered phase-1 + phase-2 verdict; omitted for legacy callers. */
   checks?: MergeGateCheck[];
+  /** The board tip the verdict was evaluated against; null when unknown or not supplied. */
+  boardSha?: string | null;
+  /** Whether attestation/commit/sync checks were evaluated as errors. */
+  strict?: boolean;
 }
 
 /** Keep future warning-level findings non-blocking while errors remain blocking. */
@@ -128,9 +161,15 @@ function noTicket(pr: MergeGatePrInput, message: string): MergeGateResult {
   };
 }
 
-function skipped(code: MergeGateFindingCode, message: string): MergeGateCheck {
-  const level: MergeGateFindingLevel = code === "WRONG_STAGE" || code === "DEPENDENCY_BLOCKED" ? "error" : "warning";
-  return { code, level, outcome: "skipped", message };
+/** The compatibility-period checks whose level follows the strict switch. */
+const SOFT_CODES: ReadonlySet<MergeGateFindingCode> = new Set(["NO_REVIEW_RECORD", "STALE_REVIEW", "COMMITS_UNREACHABLE", "SYNC_REQUIRED"]);
+
+function levelFor(code: MergeGateFindingCode, strict: boolean): MergeGateFindingLevel {
+  return SOFT_CODES.has(code) && !strict ? "warning" : "error";
+}
+
+function skipped(code: MergeGateFindingCode, message: string, strict = false): MergeGateCheck {
+  return { code, level: levelFor(code, strict), outcome: "skipped", message };
 }
 
 function phase2NoTicket(
@@ -138,18 +177,22 @@ function phase2NoTicket(
   message: string,
   source: MergeGateTicketSource,
   ticketId: string | null,
+  evidence: MergeGatePhase2Evidence,
 ): MergeGateResult {
   const base = noTicket(pr, message);
+  const strict = evidence.strict === true;
+  const why = "skipped because no Kanmer ticket was resolved";
   const checks: MergeGateCheck[] = [
     { code: "NO_TICKET", level: "error", outcome: "fail", message },
-    skipped("OPEN_QUESTIONS", "skipped because no Kanmer ticket was resolved"),
-    skipped("WRONG_STAGE", "skipped because no Kanmer ticket was resolved"),
-    skipped("DEPENDENCY_BLOCKED", "skipped because no Kanmer ticket was resolved"),
-    skipped("NO_REVIEW_RECORD", "skipped because no Kanmer ticket was resolved"),
-    skipped("STALE_REVIEW", "skipped because no Kanmer ticket was resolved"),
-    skipped("COMMITS_UNREACHABLE", "skipped because no Kanmer ticket was resolved"),
+    skipped("OPEN_QUESTIONS", why, strict),
+    skipped("WRONG_STAGE", why, strict),
+    skipped("DEPENDENCY_BLOCKED", why, strict),
+    skipped("NO_REVIEW_RECORD", why, strict),
+    skipped("STALE_REVIEW", why, strict),
+    skipped("COMMITS_UNREACHABLE", why, strict),
+    skipped("SYNC_REQUIRED", why, strict),
   ];
-  return { ...base, ticketId, source, checks };
+  return { ...base, ticketId, source, checks, boardSha: evidence.board?.sha ?? null, strict };
 }
 
 function pass(code: MergeGateFindingCode, level: MergeGateFindingLevel, message: string, details?: Record<string, unknown>): MergeGateCheck {
@@ -164,31 +207,33 @@ function reviewChecks(pr: MergeGatePrInput, evidence: MergeGatePhase2Evidence): 
   const checks: MergeGateCheck[] = [];
   const findings: MergeGateFinding[] = [];
   const review = evidence.review;
+  const strict = evidence.strict === true;
+  const soft = levelFor("STALE_REVIEW", strict);
 
   if (review.state === "absent") {
-    const finding = fail("NO_REVIEW_RECORD", "warning", "no scratch/review.md review attestation was recorded");
+    const finding = fail("NO_REVIEW_RECORD", soft, "no scratch/review.md review attestation was recorded");
     checks.push(finding);
     findings.push(finding);
-    checks.push({ code: "STALE_REVIEW", level: "warning", outcome: "skipped", message: "skipped because no review attestation was recorded" });
+    checks.push({ code: "STALE_REVIEW", level: soft, outcome: "skipped", message: "skipped because no review attestation was recorded" });
   } else if (review.state === "invalid") {
-    checks.push(pass("NO_REVIEW_RECORD", "warning", "a review record is present"));
-    const finding = fail("STALE_REVIEW", "warning", `review attestation is invalid: ${review.reason}`, { reason: review.reason });
+    checks.push(pass("NO_REVIEW_RECORD", soft, "a review record is present"));
+    const finding = fail("STALE_REVIEW", soft, `review attestation is invalid: ${review.reason}`, { reason: review.reason });
     checks.push(finding);
     findings.push(finding);
   } else {
     const actual = normalizeSha(review.headSha);
     const expected = normalizeSha(pr.headSha);
-    checks.push(pass("NO_REVIEW_RECORD", "warning", "review attestation is present"));
+    checks.push(pass("NO_REVIEW_RECORD", soft, "review attestation is present"));
     if (!FULL_SHA_RE.test(actual) || !FULL_SHA_RE.test(expected) || actual !== expected) {
-      const finding = fail("STALE_REVIEW", "warning", `review attestation head ${actual || "(missing)"} does not match PR head ${expected || "(missing)"}`, { attestedHeadSha: actual, prHeadSha: expected, verdict: review.verdict });
+      const finding = fail("STALE_REVIEW", soft, `review attestation head ${actual || "(missing)"} does not match PR head ${expected || "(missing)"}`, { attestedHeadSha: actual, prHeadSha: expected, verdict: review.verdict });
       checks.push(finding);
       findings.push(finding);
     } else if (review.verdict?.toLowerCase() === "needs-changes") {
-      const finding = fail("STALE_REVIEW", "warning", "review attestation has verdict needs-changes; it is not an approval", { attestedHeadSha: actual, prHeadSha: expected, verdict: review.verdict });
+      const finding = fail("STALE_REVIEW", soft, "review attestation has verdict needs-changes; it is not an approval", { attestedHeadSha: actual, prHeadSha: expected, verdict: review.verdict });
       checks.push(finding);
       findings.push(finding);
     } else {
-      checks.push(pass("STALE_REVIEW", "warning", "review attestation head matches the PR head", { attestedHeadSha: actual, verdict: review.verdict }));
+      checks.push(pass("STALE_REVIEW", soft, "review attestation head matches the PR head", { attestedHeadSha: actual, verdict: review.verdict }));
     }
   }
 
@@ -198,9 +243,9 @@ function reviewChecks(pr: MergeGatePrInput, evidence: MergeGatePhase2Evidence): 
   const unreachable = commits.filter((entry) => entry.state === "unreachable").map((entry) => entry.sha);
   const indeterminate = commits.filter((entry) => entry.state === "indeterminate").map((entry) => entry.sha);
   if (commits.length === 0) {
-    checks.push(pass("COMMITS_UNREACHABLE", "warning", "no ticket commits were recorded", { commits: [] }));
+    checks.push(pass("COMMITS_UNREACHABLE", soft, "no ticket commits were recorded", { commits: [] }));
   } else if (unreachable.length > 0 || indeterminate.length > 0) {
-    const finding = fail("COMMITS_UNREACHABLE", "warning", `ticket commit reachability is incomplete (${unreachable.length} unreachable, ${indeterminate.length} indeterminate)`, {
+    const finding = fail("COMMITS_UNREACHABLE", soft, `ticket commit reachability is incomplete (${unreachable.length} unreachable, ${indeterminate.length} indeterminate)`, {
       unreachable: [...new Set(unreachable)],
       indeterminate: [...new Set(indeterminate)],
       evidence: commits.map(({ sha, state, diagnostic }) => ({ sha, state, ...(diagnostic ? { diagnostic } : {}) })),
@@ -208,9 +253,38 @@ function reviewChecks(pr: MergeGatePrInput, evidence: MergeGatePhase2Evidence): 
     checks.push(finding);
     findings.push(finding);
   } else {
-    checks.push(pass("COMMITS_UNREACHABLE", "warning", "all recorded ticket commits are reachable", { commits: commits.map((entry) => entry.sha) }));
+    checks.push(pass("COMMITS_UNREACHABLE", soft, "all recorded ticket commits are reachable", { commits: commits.map((entry) => entry.sha) }));
   }
+
+  const sync = syncCheck(evidence, strict);
+  checks.push(sync);
+  if (sync.outcome === "fail" || sync.outcome === "warn") findings.push(sync as MergeGateFinding);
   return { checks, findings };
+}
+
+/**
+ * SYNC_REQUIRED: the attestation's `board_sha` must be on the board the gate
+ * fetched. A reviewer who read an unpushed local board produced a verdict the
+ * remote cannot corroborate (the PR #286/#287 failure), so `stale`/`unknown`
+ * fail; older attestations without `board_sha` are `unrecorded` and pass.
+ */
+function syncCheck(evidence: MergeGatePhase2Evidence, strict: boolean): MergeGateCheck {
+  const level = levelFor("SYNC_REQUIRED", strict);
+  const board = evidence.board;
+  if (!board) return { code: "SYNC_REQUIRED", level, outcome: "skipped", message: "skipped because no board evidence was supplied" };
+  const boardSha = board.sha ? normalizeSha(board.sha) : null;
+  const attested = board.attestedSha ? normalizeSha(board.attestedSha) : undefined;
+  const details = { state: board.state, boardSha, ...(attested ? { attestedBoardSha: attested } : {}), ...(board.diagnostic ? { diagnostic: board.diagnostic } : {}) };
+  switch (board.state) {
+    case "current":
+      return pass("SYNC_REQUIRED", level, `review attestation board ${attested ?? "(unknown)"} is on the fetched board tip ${boardSha ?? "(unknown)"}`, details);
+    case "unrecorded":
+      return pass("SYNC_REQUIRED", level, "review attestation records no board_sha; board sync was not verified", details);
+    case "stale":
+      return fail("SYNC_REQUIRED", level, `review attestation board ${attested ?? "(missing)"} is not an ancestor of the fetched board tip ${boardSha ?? "(unknown)"}; push the board branch and re-run the gate`, details);
+    default:
+      return fail("SYNC_REQUIRED", level, `review attestation board ${attested ?? "(missing)"} is not present on the fetched board; push the board branch and re-run the gate`, details);
+  }
 }
 
 function evaluatePhase2(
@@ -252,7 +326,7 @@ function evaluatePhase2(
   checks.push(...review.checks);
   findings.push(...review.findings);
 
-  return { ok: mergeGateOk(findings), ticketId: item.id, source: null, pr, questions, findings, checks };
+  return { ok: mergeGateOk(findings), ticketId: item.id, source: null, pr, questions, findings, checks, boardSha: evidence.board?.sha ?? null, strict: evidence.strict === true };
 }
 
 /**
@@ -263,14 +337,14 @@ function evaluatePhase2(
 export async function evaluateMergeGate(store: KanmerStore, pr: MergeGatePrInput, phase2?: MergeGatePhase2Evidence): Promise<MergeGateResult> {
   const resolved = resolveMergeGateTicket(pr.body, pr.branch);
   if (!resolved.ticketId) {
-    return phase2 ? phase2NoTicket(pr, resolved.error ?? "pull request has no Kanmer ticket reference", null, null) : noTicket(pr, resolved.error ?? "pull request has no Kanmer ticket reference");
+    return phase2 ? phase2NoTicket(pr, resolved.error ?? "pull request has no Kanmer ticket reference", null, null, phase2) : noTicket(pr, resolved.error ?? "pull request has no Kanmer ticket reference");
   }
 
   const item = await store.getItem(resolved.ticketId);
   if (!item || item.type !== "ticket") {
     const base = noTicket(pr, `Kanmer ticket ${resolved.ticketId} was not found on the fetched board`);
     if (!phase2) return { ...base, ticketId: resolved.ticketId, source: resolved.source };
-    return phase2NoTicket(pr, `Kanmer ticket ${resolved.ticketId} was not found on the fetched board`, resolved.source, resolved.ticketId);
+    return phase2NoTicket(pr, `Kanmer ticket ${resolved.ticketId} was not found on the fetched board`, resolved.source, resolved.ticketId, phase2);
   }
 
   const questions = await store.getOpenQuestionCount(resolved.ticketId);

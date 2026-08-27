@@ -71,6 +71,47 @@ async function inspectBoardBranch(root: string): Promise<string | null> {
   }
 }
 
+export interface BoardSyncState {
+  remoteBranch: string;
+  localSha: string | null;
+  remoteSha: string | null;
+  /** Local board commits not on the last-fetched remote ref (unpushed). */
+  ahead: number;
+  /** Remote commits not in the local board (unpulled). */
+  behind: number;
+}
+
+/**
+ * Observational twin of the GUI's `inspectBoardSync` (CORE-123): compares the
+ * board worktree HEAD with its last-fetched `origin/<branch>` ref so a stalled
+ * board push is visible to agents. Never fetches, never throws; `null` when the
+ * board is not a Git checkout or has no remote-tracking ref for the branch.
+ */
+async function inspectBoardSync(root: string, branch: string): Promise<BoardSyncState | null> {
+  const run = async (args: string[]): Promise<string | null> => {
+    try {
+      const { stdout } = await execFile("git", args, { cwd: root, windowsHide: true, timeout: 15_000 });
+      return stdout.trim() || null;
+    } catch {
+      return null;
+    }
+  };
+  const localSha = await run(["rev-parse", "--verify", "HEAD^{commit}"]);
+  if (!localSha) return null;
+  const remoteRef = `refs/remotes/origin/${branch}`;
+  const remoteSha = await run(["rev-parse", "--verify", `${remoteRef}^{commit}`]);
+  if (!remoteSha) return null;
+  const counts = await run(["rev-list", "--left-right", "--count", `HEAD...${remoteRef}`]);
+  const [ahead, behind] = (counts ?? "0\t0").split(/\s+/).map((value) => Number.parseInt(value, 10));
+  return {
+    remoteBranch: branch,
+    localSha,
+    remoteSha,
+    ahead: Number.isFinite(ahead) ? ahead : 0,
+    behind: Number.isFinite(behind) ? behind : 0,
+  };
+}
+
 function boardWorktreeRepair(
   boardSource: "file" | "default",
   actualBranch: string | null,
@@ -418,6 +459,7 @@ server.registerTool(
       "Repo: a `repo` block answering WHICH KANMER THIS REPO WAS SET UP BY — `{ upToDate, stale: [{ artefact, state, detail, fix }] }`. Itemised, never a bare boolean. Artefacts checked are the ones migration does not touch: the AGENTS.md managed block, the installed skills trees and their `.kanmer-skills-version` stamps, `board.yml`, and the provider MCP registrations — compared by CONTENT HASH against what this build ships, not by version string (no artefact records a product version). " +
       "`state` is `behind` (act on it), `compensated` (the file is old and the runtime already papers over it — informational, no action), `unstamped` (no evidence either way) or `unknown` (could not be read). `upToDate` is true iff nothing is `behind`. Repair is never automatic: run `kanmer-setup`, which is the reconciliation path (FRD-013). Board format is not listed here — it is the `format` field above. " +
       "Board worktree: an informational, non-blocking `boardWorktree` block reports the board path, expected and actual branch, branch match, board source, active ticket count, and operator repair guidance. It never checks out, repairs, initializes, or refuses another tool. " +
+      "Board sync: `boardSync` is `{ remoteBranch, localSha, remoteSha, ahead, behind }` comparing the board HEAD with its last-fetched origin ref, or null without a Git board/remote ref; `ahead > 0` means unpushed board commits the CI merge gate cannot see. It never fetches or pushes. " +
       "Project safety: `project` gives a machine-local fingerprint over the canonical board root, format and repo root. When `compat.expectedProject` is `optional`, a client may send that fingerprint as `expected_project` on any write; omit it for older servers that do not advertise compatibility. " +
       "IMPORTANT: the `server` block is absent on servers older than 0.3.3, and the `repo` block on servers older than 0.3.4 — that ABSENCE is itself the signal 'this build predates the check', not an error. Individual fields are null if they could not be read; the call never fails over it.",
     inputSchema: {},
@@ -431,6 +473,7 @@ server.registerTool(
     const active = items.filter((i) => !i.archived);
     const expectedBranch = process.env.KANMER_BOARD_BRANCH?.trim() || "kanmer-board";
     const actualBranch = await inspectBoardBranch(projectRoot);
+    const boardSync = await inspectBoardSync(projectRoot, actualBranch ?? expectedBranch);
     const byStage: Record<string, number> = {};
     for (const s of STAGE_IDS) byStage[s] = 0;
     let offBoardStage = 0;
@@ -491,6 +534,13 @@ server.registerTool(
         ticketCount: active.filter((item) => item.type === "ticket").length,
         repair: boardWorktreeRepair(source, actualBranch, expectedBranch, projectRoot),
       },
+      /**
+       * Board push drift — CORE-123. `ahead > 0` means local board commits
+       * the remote (and therefore the CI merge gate) has not seen; confirm the
+       * board is pushed before treating a `kanmer-gate` result as current.
+       * `null` when there is no Git board or no remote-tracking ref.
+       */
+      boardSync,
       counts: {
         byStage,
         byType,

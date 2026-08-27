@@ -238,6 +238,14 @@ try {
   );
   const healthBefore = statusBefore.boardWorktree;
   check(
+    "get_status reports boardSync as null or integer ahead/behind counts (CORE-123)",
+    statusBefore.boardSync === null ||
+      (Number.isInteger(statusBefore.boardSync?.ahead) &&
+        Number.isInteger(statusBefore.boardSync?.behind) &&
+        typeof statusBefore.boardSync?.remoteBranch === "string"),
+    JSON.stringify(statusBefore.boardSync),
+  );
+  check(
     "get_status reports the complete informational board worktree block",
     JSON.stringify(Object.keys(healthBefore ?? {}).sort()) ===
       JSON.stringify(["actualBranch", "boardSource", "expectedBranch", "onBoardBranch", "path", "repair", "ticketCount"]),

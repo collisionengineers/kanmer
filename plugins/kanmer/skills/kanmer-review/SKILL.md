@@ -78,10 +78,20 @@ reviewer: "<stable reviewer identity>"
 independent: true
 plan_hash: "<get_ticket_doc(doc: \"plan\").version>"
 ticket_updated: "<ticket updated timestamp read for review>"
+board_sha: "<full SHA of the pushed board branch tip you reviewed against>"
+expected_reviewers: []
+threads_snapshot: []
 findings: []
 ```
 
-`verdict` is exactly `pass` or `needs-changes`. `independent` is true only for
+`verdict` is exactly `pass` or `needs-changes`. `board_sha` is the full commit
+id of the board branch tip (`get_status.boardSync.localSha`, with `ahead` at 0)
+after the board has been pushed; the CI gate checks it is on the remote board
+and reports `SYNC_REQUIRED` when the attestation names a board the remote has
+never seen — push the board first, then write it. `expected_reviewers` and
+`threads_snapshot` are optional arrays (reviewer identities expected to post on
+this head, and the review-thread snapshot dispositioned below); omit them
+rather than guessing. `independent` is true only for
 an actual independent reviewer. Every finding has a stable id, severity
 (`blocker | major | minor | note`), non-empty summary, and a disposition:
 `open | fixed | rejected-with-reason | accepted-risk | deferred-to-ticket`.

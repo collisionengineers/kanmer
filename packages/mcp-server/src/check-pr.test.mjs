@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { KanmerStore } from "../../core/dist/index.js";
 import { assertGitRepository, collectCommitReachability } from "./git-reachability.mjs";
-import { parseReviewEvidence } from "./check-pr.mjs";
+import { parseReviewEvidence, readStrictFlag } from "./check-pr.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const cli = path.join(repoRoot, "packages", "mcp-server", "src", "check-pr.mjs");
@@ -22,10 +22,37 @@ async function fixture() {
 }
 
 function run(board, event, ...args) {
+  return runWithEnv({}, board, event, ...args);
+}
+
+function runWithEnv(env, board, event, ...args) {
   return spawnSync(process.execPath, [cli, "--board", board, "--event", event, ...args], {
     cwd: repoRoot,
     encoding: "utf8",
+    env: { ...process.env, KANMER_GATE_STRICT: "", ...env },
   });
+}
+
+function gitIn(cwd, ...args) {
+  const result = spawnSync("git", args, { cwd, encoding: "utf8", env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } });
+  if (result.status !== 0) throw new Error(`git ${args.join(" ")} failed: ${result.stderr}`);
+  return result.stdout.trim();
+}
+
+function attestation(headSha, verdict = "pass", extra = "") {
+  return `---
+kind: review-attestation
+pr: "1"
+head_sha: ${headSha}
+verdict: ${verdict}
+reviewer: independent-reviewer
+independent: true
+plan_hash: plan-version
+ticket_updated: "2026-08-22T07:00:00.000Z"
+findings: []
+${extra}---
+Review body
+`;
 }
 
 function pullRequestEvent(number, body, headSha, ref, baseSha = "b".repeat(40)) {
@@ -118,6 +145,127 @@ test("check-pr emits one JSON verdict and uses exit 0/1/2", async () => {
     assert.equal(infra.status, 2);
     assert.equal(JSON.parse(infra.stdout).infrastructureError, true);
     assert.doesNotMatch(infra.stderr, /node_modules|[A-Za-z]:\\/);
+  } finally {
+    await fs.rm(board, { recursive: true, force: true });
+  }
+});
+
+test("strict flag parsing accepts only explicit truthy values", () => {
+  for (const value of ["1", "true", "TRUE", "yes", " on "]) assert.equal(readStrictFlag({ KANMER_GATE_STRICT: value }), true, value);
+  for (const value of ["", "0", "false", "no", undefined, "strict"]) assert.equal(readStrictFlag({ KANMER_GATE_STRICT: value }), false, String(value));
+});
+
+test("attestation checks warn by default and block under KANMER_GATE_STRICT", async () => {
+  const { board, store, ticket, event } = await fixture();
+  try {
+    const head = "a".repeat(40);
+    await fs.writeFile(event, JSON.stringify(pullRequestEvent(7, `Kanmer: ${ticket.id}`, head, "strict")));
+
+    // Missing attestation: warning by default, error under strict.
+    const missingLenient = run(board, event);
+    assert.equal(missingLenient.status, 0);
+    assert.match(missingLenient.stderr, /::warning title=kanmer\/gate \[NO_REVIEW_RECORD\]::/);
+    const missingStrict = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
+    assert.equal(missingStrict.status, 1);
+    assert.match(missingStrict.stderr, /::error title=kanmer\/gate \[NO_REVIEW_RECORD\]::/);
+    assert.equal(JSON.parse(missingStrict.stdout).strict, true);
+
+    // needs-changes bound to the exact head: still not an approval.
+    await store.setDoc(ticket.id, "scratch/review", attestation(head, "needs-changes"));
+    const needsChangesLenient = run(board, event);
+    assert.equal(needsChangesLenient.status, 0);
+    assert.match(needsChangesLenient.stderr, /::warning title=kanmer\/gate \[STALE_REVIEW\]::.*needs-changes/);
+    const needsChangesStrict = runWithEnv({ KANMER_GATE_STRICT: "true" }, board, event);
+    assert.equal(needsChangesStrict.status, 1);
+    assert.match(needsChangesStrict.stderr, /::error title=kanmer\/gate \[STALE_REVIEW\]::.*needs-changes/);
+    assert.deepEqual(JSON.parse(needsChangesStrict.stdout).findings.map((finding) => finding.code), ["STALE_REVIEW"]);
+
+    // A passing attestation without board_sha is unrecorded, never stale — and
+    // a plain directory board (not a Git checkout) yields no board tip.
+    await store.setDoc(ticket.id, "scratch/review", attestation(head));
+    const passStrict = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
+    assert.equal(passStrict.status, 0);
+    const passResult = JSON.parse(passStrict.stdout);
+    assert.equal(passResult.ok, true);
+    assert.equal(passResult.boardSha, null);
+    assert.deepEqual(passResult.checks.find((check) => check.code === "SYNC_REQUIRED"), {
+      code: "SYNC_REQUIRED",
+      level: "error",
+      outcome: "pass",
+      message: "review attestation records no board_sha; board sync was not verified",
+      details: { state: "unrecorded", boardSha: null, diagnostic: passResult.checks.find((check) => check.code === "SYNC_REQUIRED").details.diagnostic },
+    });
+    assert.equal(passResult.checks.at(-1).code, "SYNC_REQUIRED");
+  } finally {
+    await fs.rm(board, { recursive: true, force: true });
+  }
+});
+
+test("SYNC_REQUIRED compares the attested board_sha with the fetched board tip", async () => {
+  const { board, store, ticket, event } = await fixture();
+  try {
+    gitIn(board, "init", "--initial-branch=kanmer-board");
+    gitIn(board, "config", "user.email", "gate@example.com");
+    gitIn(board, "config", "user.name", "Gate");
+    gitIn(board, "add", "--", ".kanmer");
+    gitIn(board, "commit", "-q", "-m", "board v1");
+    const first = gitIn(board, "rev-parse", "HEAD");
+    const head = "a".repeat(40);
+    await fs.writeFile(event, JSON.stringify(pullRequestEvent(8, `Kanmer: ${ticket.id}`, head, "sync")));
+
+    // Attest to the current tip: current, and the verdict records that tip.
+    await store.setDoc(ticket.id, "scratch/review", attestation(head, "pass", `board_sha: ${first}\n`));
+    const current = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
+    assert.equal(current.status, 0, current.stderr);
+    const currentResult = JSON.parse(current.stdout);
+    assert.equal(currentResult.checks.find((check) => check.code === "SYNC_REQUIRED").outcome, "pass");
+    assert.equal(currentResult.checks.find((check) => check.code === "SYNC_REQUIRED").details.state, "current");
+
+    // The board moved on after the review but the attested SHA is still an
+    // ancestor: the reviewer read a pushed board, so that is still current.
+    gitIn(board, "add", "--", ".kanmer");
+    gitIn(board, "commit", "-q", "--allow-empty", "-m", "board v2");
+    const second = gitIn(board, "rev-parse", "HEAD");
+    const ancestor = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
+    assert.equal(ancestor.status, 0, ancestor.stderr);
+    assert.equal(JSON.parse(ancestor.stdout).boardSha, second);
+    assert.equal(JSON.parse(ancestor.stdout).checks.find((check) => check.code === "SYNC_REQUIRED").details.state, "current");
+
+    // An attested SHA the fetched board has never seen (a local board that was
+    // never pushed) is SYNC_REQUIRED: a warning by default, blocking under strict.
+    await store.setDoc(ticket.id, "scratch/review", attestation(head, "pass", `board_sha: ${"b".repeat(40)}\n`));
+    const unknownLenient = run(board, event);
+    assert.equal(unknownLenient.status, 0);
+    assert.match(unknownLenient.stderr, /::warning title=kanmer\/gate \[SYNC_REQUIRED\]::.*push the board branch/);
+    const unknownStrict = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
+    assert.equal(unknownStrict.status, 1);
+    assert.match(unknownStrict.stderr, /::error title=kanmer\/gate \[SYNC_REQUIRED\]::/);
+    const unknownResult = JSON.parse(unknownStrict.stdout);
+    assert.deepEqual(unknownResult.findings.map((finding) => finding.code), ["SYNC_REQUIRED"]);
+    assert.equal(unknownResult.checks.find((check) => check.code === "SYNC_REQUIRED").details.state, "unknown");
+    assert.equal(unknownResult.boardSha, second);
+
+    // A real divergence: the attested commit exists but is not an ancestor.
+    // Built with commit-tree so the checkout (and its uncommitted board
+    // writes) never moves: a sibling of v2 hanging off v1.
+    const divergedSha = gitIn(board, "commit-tree", `${first}^{tree}`, "-p", first, "-m", "diverged board");
+    gitIn(board, "update-ref", "refs/heads/diverged", divergedSha);
+    await store.setDoc(ticket.id, "scratch/review", attestation(head, "pass", `board_sha: ${divergedSha}\n`));
+    const stale = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
+    assert.equal(stale.status, 1);
+    const staleResult = JSON.parse(stale.stdout);
+    assert.equal(staleResult.checks.find((check) => check.code === "SYNC_REQUIRED").details.state, "stale");
+    assert.equal(staleResult.checks.find((check) => check.code === "SYNC_REQUIRED").details.attestedBoardSha, divergedSha);
+
+    // Optional fields travel with the review evidence without changing the verdict.
+    await store.setDoc(ticket.id, "scratch/review", attestation(head, "pass", `board_sha: ${second}\nexpected_reviewers:\n  - copilot\nthreads_snapshot: []\n`));
+    const carried = runWithEnv({ KANMER_GATE_STRICT: "1" }, board, event);
+    assert.equal(carried.status, 0, carried.stderr);
+    assert.equal(parseReviewEvidence(attestation(head, "pass", `board_sha: ${second}\nexpected_reviewers:\n  - copilot\n`)).details.expectedReviewers[0], "copilot");
+    await store.setDoc(ticket.id, "scratch/review", attestation(head, "pass", "board_sha: short\n"));
+    const malformed = run(board, event);
+    assert.equal(malformed.status, 0);
+    assert.match(malformed.stderr, /\[STALE_REVIEW\]::review attestation is invalid%3A board_sha/);
   } finally {
     await fs.rm(board, { recursive: true, force: true });
   }

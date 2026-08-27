@@ -38,6 +38,8 @@ export interface KanmerGitStatus {
   branchMismatchError?: boolean;
   /** The mismatch detector supplied the current pause rather than preserving one. */
   branchMismatchPause?: boolean;
+  /** Ahead/behind of the last-fetched origin ref (CORE-123); absent for non-Git boards. */
+  sync?: BoardSyncState;
   /** User-scoped native plugins whose staged board branch needs explicit reconnect. */
   nativeReconnectRequired?: NativeReconnectRequirement;
   /** Provider registrations that failed after a branch was reconciled and must be retried. */
@@ -117,12 +119,61 @@ export function shouldRunAutomaticSync(status: Pick<KanmerGitStatus, "available"
   return status.available && !status.paused && status.branchMismatch !== true;
 }
 
-/** Timer creation shares the same safety predicate as timer execution. */
+/**
+ * Timer creation shares the same safety predicate as timer execution, plus a
+ * remote guard: the default interval (CORE-123) must not schedule a push that
+ * has nowhere to go. `sync` absent means the remote was not inspected, which
+ * preserves the pre-CORE-123 behaviour for callers that never attach it.
+ */
 export function shouldScheduleAutomaticSync(
-  status: Pick<KanmerGitStatus, "available" | "paused" | "branchMismatch">,
+  status: Pick<KanmerGitStatus, "available" | "paused" | "branchMismatch" | "sync">,
   minutes: number,
 ): boolean {
-  return minutes > 0 && shouldRunAutomaticSync(status);
+  return minutes > 0 && shouldRunAutomaticSync(status) && status.sync?.remote !== false;
+}
+
+export interface BoardSyncState {
+  /** The board worktree has an `origin` remote to push to. */
+  remote: boolean;
+  /** Local board commits not on the last-fetched `origin/<branch>` (unpushed). */
+  ahead: number;
+  /** Remote commits not yet rebased into the local board. */
+  behind: number;
+  localSha: string | null;
+  remoteSha: string | null;
+}
+
+/**
+ * Observational twin of the MCP server's `get_status.boardSync`. Compares the
+ * board HEAD with the last-fetched remote ref — it never fetches — so a stalled
+ * auto-sync shows up as `ahead > 0` in Settings. Never throws.
+ */
+export async function inspectBoardSync(boardRoot: string, branch: string): Promise<BoardSyncState> {
+  const probe = async (args: string[]): Promise<string | null> => {
+    try { return (await git(boardRoot, args)) || null; } catch { return null; }
+  };
+  const remote = (await probe(["remote", "get-url", "origin"])) !== null;
+  const localSha = await probe(["rev-parse", "--verify", "HEAD^{commit}"]);
+  const remoteRef = `refs/remotes/origin/${branch}`;
+  const remoteSha = remote ? await probe(["rev-parse", "--verify", `${remoteRef}^{commit}`]) : null;
+  if (!localSha || !remoteSha) return { remote, ahead: 0, behind: 0, localSha, remoteSha };
+  const counts = (await probe(["rev-list", "--left-right", "--count", `HEAD...${remoteRef}`])) ?? "0\t0";
+  const [ahead = 0, behind = 0] = counts.split(/\s+/).map((value) => Number.parseInt(value, 10)).map((value) => (Number.isFinite(value) ? value : 0));
+  return { remote, ahead, behind, localSha, remoteSha };
+}
+
+export type SyncFailureKind = "conflict" | "transient";
+
+/**
+ * A rebase that stopped on a real content conflict needs a human; everything
+ * else (a dirty-tree refusal from a concurrent agent write, a network error, a
+ * non-fast-forward push) is retried on the next tick. Pausing on the transient
+ * class is what silently disabled auto-sync for hours (CORE-123 research).
+ */
+export function classifySyncFailure(message: string): SyncFailureKind {
+  return /\bCONFLICT\b|could not apply|Resolve all conflicts|Merge conflict|conflict.*autostash|autostash.*conflict|rebase is in progress|rebase-merge/i.test(message)
+    ? "conflict"
+    : "transient";
 }
 
 /**
@@ -510,7 +561,7 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
         // checkout and mutate the wrong board.
         return { ...empty(branch, msg(error)), boardRoot: attachedRoot, paused: true };
       }
-      return { available: true, boardRoot: attachedRoot, branch, lastSync: null, error: null, paused: false };
+      return { available: true, boardRoot: attachedRoot, branch, lastSync: null, error: null, paused: false, sync: await inspectBoardSync(attachedRoot, branch) };
     }
     if (existsSync(boardRoot)) {
       // The worktree is here but not on `branch`. Almost always: the board
@@ -542,6 +593,7 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
         error: renamed.error,
         paused: false,
         ...(renamed.error && renamed.from ? { handoffPending: { from: renamed.from, to: branch, warning: renamed.error } } : {}),
+        sync: await inspectBoardSync(resolve(boardRoot), branch),
       };
     }
     const remoteExists = await git(repoRoot, ["ls-remote", "--exit-code", "--heads", "origin", `refs/heads/${branch}`]).then(() => true).catch(() => false);
@@ -587,39 +639,53 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
     } catch (error) {
       return { ...empty(branch, msg(error)), boardRoot: resolve(boardRoot), paused: true };
     }
-    return { available: true, boardRoot: resolve(boardRoot), branch, lastSync: null, error: null, paused: false };
+    return { available: true, boardRoot: resolve(boardRoot), branch, lastSync: null, error: null, paused: false, sync: await inspectBoardSync(resolve(boardRoot), branch) };
   } catch (error) {
     return empty(branch, error instanceof Error ? error.message : String(error));
   }
 }
 
-/** Commit/rebase/push only the canonical board worktree. Conflicts preserve local work and pause. */
+/**
+ * Commit/rebase/push only the canonical board worktree. Real conflicts
+ * preserve local work and pause; transient failures (including the add→rebase
+ * race with a concurrent agent write, CORE-123) leave the timer armed.
+ */
 export async function syncBoard(status: KanmerGitStatus): Promise<KanmerGitStatus> {
   if (!status.available || !status.boardRoot) return status;
   const boardRoot = status.boardRoot;
-  try {
-    await git(boardRoot, ["symbolic-ref", "--short", "HEAD"]);
+  const stage = async (): Promise<void> => {
     await git(boardRoot, ["add", "--", ".kanmer", ".gitignore"]);
     const dirty = await git(boardRoot, ["diff", "--cached", "--quiet", "--", ".kanmer", ".gitignore"]).then(() => false).catch(() => true);
     if (dirty) await git(boardRoot, ["commit", "-m", `chore(kanmer): sync board ${new Date().toISOString()}`]);
+  };
+  try {
+    await git(boardRoot, ["symbolic-ref", "--short", "HEAD"]);
+    await stage();
     const remote = await git(boardRoot, ["ls-remote", "--exit-code", "--heads", "origin", `refs/heads/${status.branch}`]).then(() => true).catch(() => false);
     if (remote) {
       await git(boardRoot, ["fetch", "origin", `+refs/heads/${status.branch}:refs/remotes/origin/${status.branch}`]);
-      try { await git(boardRoot, ["rebase", `origin/${status.branch}`]); }
+      // Agents write .kanmer files continuously; anything that landed between
+      // `add` and here would make a plain rebase refuse ("unstaged changes").
+      // --autostash carries those writes across the rebase, and a second stage
+      // pass commits them so the push below does not leave them behind.
+      try { await git(boardRoot, ["rebase", "--autostash", `origin/${status.branch}`]); }
       catch (e) { await git(boardRoot, ["rebase", "--abort"]).catch(() => undefined); throw e; }
+      await stage();
     }
     await git(boardRoot, ["push", "-u", "origin", `HEAD:refs/heads/${status.branch}`]);
-    return { ...status, lastSync: new Date().toISOString(), error: null, paused: false };
+    return { ...status, lastSync: new Date().toISOString(), error: null, paused: false, sync: await inspectBoardSync(boardRoot, status.branch) };
   } catch (error) {
     // A new sync failure supersedes any handoff-generated state. If the
     // operator presses Retry while the worktree is still mismatched, the
     // resulting error must not be cleared by a later exact-destination refresh.
+    const message = error instanceof Error ? error.message : String(error);
     return {
       ...status,
       branchMismatchError: false,
       branchMismatchPause: false,
-      error: error instanceof Error ? error.message : String(error),
-      paused: true,
+      error: message,
+      paused: classifySyncFailure(message) === "conflict",
+      sync: await inspectBoardSync(boardRoot, status.branch),
     };
   }
 }

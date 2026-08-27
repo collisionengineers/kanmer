@@ -27,7 +27,9 @@ GitHub required checks and branch protection remain merge physics. Kanmer record
 The sole `kanmer-gate` check compiles those records into one read-only verdict:
 stage and live dependency findings fail, while missing/stale review attestations
 and unreachable historical commits remain explicit warnings during the
-compatibility period. Review attestations use the complete machine schema, and
+compatibility period, promoted to errors only by the repository variable
+`KANMER_GATE_STRICT`; `SYNC_REQUIRED` binds the attestation to the pushed board
+tip via `board_sha`, and a board-branch push re-runs the gate for open PRs. Review attestations use the complete machine schema, and
 recorded commit ids must resolve within the PR's `base..head` ancestry range.
 Its JSON/annotation/0-1-2 contract is stable so branch
 protection can consume the check without a second workflow or evaluator.

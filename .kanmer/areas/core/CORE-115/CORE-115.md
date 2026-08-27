@@ -2,7 +2,7 @@
 id: CORE-115
 type: ticket
 title: Replace permanent claims with renewable workspace leases and batch ownership
-status: verifying
+status: done
 area: core
 assignee: claude-code-core115
 profile: feature
@@ -11,6 +11,7 @@ stageEntered:
   review: '2026-08-27T20:00:21.860Z'
   implementing: '2026-08-27T20:07:02.152Z'
   verifying: '2026-08-27T20:29:10.748Z'
+  done: '2026-08-27T20:44:57.841Z'
 taken_at: '2026-08-27T19:25:56.817Z'
 branch: core-115-workspace-leases
 worktree: .worktrees/core-115
@@ -33,7 +34,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/293'
 archived: false
 created: '2026-08-26T21:02:41.955Z'
-updated: '2026-08-27T20:29:10.748Z'
+updated: '2026-08-27T20:44:57.841Z'
 ---
 
 ## What

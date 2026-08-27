@@ -2,13 +2,14 @@
 id: CORE-125
 type: ticket
 title: Serialise non-lease ticket writers against the lease lock (CORE-115 F-001)
-status: review
+status: verifying
 area: core
 assignee: claude-code-core125
 profile: fix
 stageEntered:
   preparing: '2026-08-27T22:25:43.478Z'
   review: '2026-08-27T22:53:19.960Z'
+  verifying: '2026-08-27T23:07:25.806Z'
 taken_at: '2026-08-27T22:28:45.248Z'
 branch: core-125-serialise-ticket-writers
 worktree: .worktrees/core-125
@@ -26,7 +27,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/296'
 archived: false
 created: '2026-08-27T20:05:41.631Z'
-updated: '2026-08-27T22:53:19.960Z'
+updated: '2026-08-27T23:07:25.806Z'
 ---
 
 ## What

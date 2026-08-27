@@ -2,10 +2,12 @@
 id: CORE-118
 type: ticket
 title: Compile evidence-backed constrained plans into step packets
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: feature
+stageEntered:
+  preparing: '2026-08-27T23:05:50.724Z'
 labels:
   - reliable-autonomy
 groups:
@@ -13,11 +15,12 @@ groups:
 links: []
 blocks:
   - SKILL-036
+  - CORE-127
 refs:
   - docs/functional/frd/FRD-033-constrained-preparation-and-step-packets.md
 archived: false
 created: '2026-08-26T21:02:42.005Z'
-updated: '2026-08-26T21:41:04.898Z'
+updated: '2026-08-27T23:06:23.134Z'
 ---
 
 ## What

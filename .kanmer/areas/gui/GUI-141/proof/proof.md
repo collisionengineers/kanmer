@@ -20,3 +20,5 @@ attempts:
 ---
 
 Source and deterministic verification pass at the exact GitHub merge SHA. Hosted PR checks and the independent exact-head review also passed. GUI-141 remains in Verifying because its acceptance boundary includes proving the installed Windows package can adopt the real distinct runtime alias/profile and serve a live ChatGPT request after the next release; this proof does not fabricate that external result.
+
+Closeout addendum: PR https://github.com/collisionengineers/kanmer/pull/278 merged 2026-08-25T15:46:10Z (mergeCommit.oid 645694f651561f5ad3bf0fc44ae88bee054fe8de, matches this proof's merged_sha). Confirmed via `gh pr view 278 --json state,mergedAt,mergeCommit` during operator-authorised closeout on 2026-08-28.

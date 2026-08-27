@@ -133,6 +133,8 @@ import {
   assertEndpointName,
   normalizePolicy,
   observeRegistry,
+  assertSelectedEndpoint,
+  entryForContext,
   productionObservationDeps,
   registryLocation,
 } from "./projectRegistry.js";
@@ -1134,28 +1136,33 @@ function registerIpc(): void {
     assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); assertEndpointName(name);
     // Roots come from the open tab, so the renderer can only register a
     // project the operator already chose through the folder picker.
+    // An existing name is refused (REGISTRY_NAME_EXISTS), never replaced.
     const ctx = requireCtx(projectId);
-    const label = normalizePolicy(policy);
-    await requireRegistryWriter().upsert(name, {
-      boardRoot: ctx.boardRoot,
-      repoRoot: ctx.sourceRoot,
-      boardBranch: ctx.syncStatus.branch,
-      ...(label ? { policy: label } : {}),
-    });
+    await requireRegistryWriter().add(name, entryForContext(ctx, normalizePolicy(policy)));
     return registryView(projectId);
   });
-  ipcMain.handle(CH.registryRename, async (e, projectId: string | null, from: string, to: string) => {
-    assertTrustedRemoteSender(e); assertEndpointName(from); assertEndpointName(to);
+  // Rename/policy/remove act only on the endpoint bound to the sender's open
+  // project: main observes the registry with that project's identity and
+  // refuses any other name (REGISTRY_NOT_SELECTED). The renderer's
+  // selected-card controls are a courtesy, not the enforcement.
+  ipcMain.handle(CH.registryRename, async (e, projectId: string, from: string, to: string) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); assertEndpointName(from); assertEndpointName(to);
+    requireCtx(projectId);
+    assertSelectedEndpoint(await registryView(projectId), from);
     await requireRegistryWriter().rename(from, to);
     return registryView(projectId);
   });
-  ipcMain.handle(CH.registryRemove, async (e, projectId: string | null, name: string) => {
-    assertTrustedRemoteSender(e); assertEndpointName(name);
+  ipcMain.handle(CH.registryRemove, async (e, projectId: string, name: string) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); assertEndpointName(name);
+    requireCtx(projectId);
+    assertSelectedEndpoint(await registryView(projectId), name);
     await requireRegistryWriter().remove(name);
     return registryView(projectId);
   });
-  ipcMain.handle(CH.registrySetPolicy, async (e, projectId: string | null, name: string, policy: string | null) => {
-    assertTrustedRemoteSender(e); assertEndpointName(name);
+  ipcMain.handle(CH.registrySetPolicy, async (e, projectId: string, name: string, policy: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); assertEndpointName(name);
+    requireCtx(projectId);
+    assertSelectedEndpoint(await registryView(projectId), name);
     await requireRegistryWriter().setPolicy(name, normalizePolicy(policy));
     return registryView(projectId);
   });

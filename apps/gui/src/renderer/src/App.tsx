@@ -1956,6 +1956,7 @@ export function App(): JSX.Element {
           onSetNotifications={setNotifications}
           onSetPreferences={setPreferences}
           onClose={() => setSettingsOpen(false)}
+          onOpenProject={openProject}
         />
       )}
 

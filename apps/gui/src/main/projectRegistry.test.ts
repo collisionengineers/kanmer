@@ -8,8 +8,10 @@ import type { RegistryProjectIdentity } from "../shared/ipc.js";
 import {
   ENDPOINT_REGISTRY_ENV,
   ProjectRegistryWriter,
+  assertSelectedEndpoint,
   claims,
   endpointMatches,
+  entryForContext,
   normalizePolicy,
   observeEndpoint,
   observeRegistry,
@@ -48,25 +50,38 @@ let boardA = "";
 let boardB = "";
 let projectIdA = "";
 let fingerprintA = "";
+/** The lease record CORE-115's `takeTicket` actually wrote for the live ticket — asserted, not hand-made. */
+let liveLease: { id: string; revision: number; phase: string; provider: string; workspace: string; heartbeatAt: string; expiresAt: string } | null = null;
 
 beforeAll(async () => {
   home = await mkdtemp(path.join(tmpdir(), "kanmer-gui144-"));
   boardA = path.join(home, "alpha");
   boardB = path.join(home, "beta");
-  // A: a board born with a logical identity, one live claim carrying CORE-115 lease fields, one expired legacy claim.
+  // A: a board born with a logical identity, one live lease as the store
+  // writes it (CORE-115 mints lease_* on take — nothing is hand-injected,
+  // review F-001), one expired legacy claim.
   const storeA = new KanmerStore(boardA, { actor: "test" });
   await storeA.init({ fallbackFingerprint: "kanmer-proj-v1:" + "a".repeat(64) });
   const live = await storeA.createItem({ type: "ticket", title: "live", profile: "chore" });
-  await storeA.takeTicket(live.id, { branch: "live-branch", worktree: ".worktrees/live", assignee: "controller-one", stage: "backlog" });
-  const liveFile = path.join(boardA, ".kanmer", "areas", "_none", live.id, `${live.id}.md`);
-  const liveText = await readFile(liveFile, "utf8");
-  await writeFile(liveFile, liveText.replace(/^taken_at: (.*)$/m, "taken_at: $1\nlease_id: lease-1\nlease_revision: 3\nlease_phase: implementing\nlease_provider: claude-code\nlease_heartbeat_at: 2026-08-27T11:59:00.000Z"), "utf8");
+  const taken = await storeA.takeTicket(live.id, { branch: "live-branch", worktree: ".worktrees/live", assignee: "controller-one", stage: "backlog", provider: "claude-code" });
+  const takenRaw = taken as unknown as Record<string, unknown>;
+  expect(typeof takenRaw.lease_id).toBe("string");
+  liveLease = {
+    id: takenRaw.lease_id as string,
+    revision: takenRaw.lease_revision as number,
+    phase: takenRaw.lease_phase as string,
+    provider: takenRaw.lease_provider as string,
+    workspace: takenRaw.lease_workspace as string,
+    heartbeatAt: takenRaw.lease_heartbeat_at as string,
+    expiresAt: taken.claim_expires_at as string,
+  };
   const expired = await storeA.createItem({ type: "ticket", title: "expired", profile: "chore" });
   await storeA.takeTicket(expired.id, { branch: "old-branch", assignee: "controller-two", stage: "backlog" });
   const expiredFile = path.join(boardA, ".kanmer", "areas", "_none", expired.id, `${expired.id}.md`);
   const text = await readFile(expiredFile, "utf8");
   expect(text).toMatch(/^claim_expires_at: /m);
-  await writeFile(expiredFile, text.replace(/^claim_expires_at: .*$/m, "claim_expires_at: 2026-08-27T11:00:00.000Z"), "utf8");
+  // Strip the minted lease_* keys so this one is a genuine legacy (pre-CORE-115) claim, then expire it.
+  await writeFile(expiredFile, text.replace(/^lease_[a-z_]+: .*\n/gm, "").replace(/^claim_expires_at: .*$/m, "claim_expires_at: 2026-08-27T11:00:00.000Z"), "utf8");
   const record = await storeA.getProject();
   projectIdA = record!.project_id;
   // B: a legacy board (no project.json) — identity unassigned.
@@ -113,8 +128,38 @@ describe("registry location and contract", () => {
     expect(() => normalizePolicy("x".repeat(65))).toThrow(/REGISTRY_POLICY_INVALID/);
     expect(() => normalizePolicy(3)).toThrow(/REGISTRY_POLICY_INVALID/);
     expect(redactRemoteOrigin("https://user:secret@github.com/org/repo.git")).toBe("https://github.com/org/repo.git");
-    expect(redactRemoteOrigin("git@github.com:org/repo.git")).toBe("github.com:org/repo.git");
+    // SCP form keeps its fixed login (the server does too — F-004); only a smuggled password goes.
+    expect(redactRemoteOrigin("git@github.com:org/repo.git")).toBe("git@github.com:org/repo.git");
+    expect(redactRemoteOrigin("git:token@github.com:org/repo.git")).toBe("git@github.com:org/repo.git");
     expect(redactRemoteOrigin("")).toBeNull();
+  });
+
+  it("redacts origins and fingerprints locations exactly as the server's project-identity module", async () => {
+    const serverModule = pathToFileURL(path.resolve(__dirname, "../../../../packages/mcp-server/src/project-identity.ts")).href;
+    const server = (await import(/* @vite-ignore */ serverModule)) as {
+      redactRemoteOrigin: (raw: string | null | undefined) => string | null;
+      locationFingerprint: (input: { repoPath: string; boardPath: string; machine: string | null; boardBranch: string | null; remoteOrigin: string | null }) => { fingerprint: string };
+    };
+    const probes = [
+      "https://user:secret@github.com/org/repo.git",
+      "https://github.com/org/repo.git",
+      "ssh://git@github.com/org/repo.git",
+      "git@github.com:org/repo.git",
+      "git:token@github.com:org/repo.git",
+      "file:///C:/repos/x",
+      "C:\\repos\\x",
+      "   ",
+      null,
+      undefined,
+    ];
+    for (const probe of probes) expect(redactRemoteOrigin(probe)).toBe(server.redactRemoteOrigin(probe));
+    // The kanmer-loc-v1 fingerprint the card shows must equal what list_projects reports for the same facts.
+    for (const origin of ["git@github.com:org/repo.git", "https://github.com/org/repo.git", null]) {
+      const view = await observeEndpoint("alpha", { boardRoot: boardA }, { ...deps, remoteOrigin: async () => redactRemoteOrigin(origin) }, null);
+      expect(view.location).not.toBeNull();
+      const expected = server.locationFingerprint({ repoPath: view.location!.repoPath, boardPath: view.location!.boardPath, machine: "test-machine", boardBranch: "kanmer-board", remoteOrigin: server.redactRemoteOrigin(origin) });
+      expect(view.location!.fingerprint).toBe(expected.fingerprint);
+    }
   });
 
   it("writes a file the MCP server's registry module parses and validates identically", async () => {
@@ -160,14 +205,27 @@ describe("observation", () => {
     expect(a.boardSync).toEqual({ remote: true, ahead: 2, behind: 1, localSha: "a", remoteSha: "b" });
     expect(a.location).toMatchObject({ machine: "test-machine", boardBranch: "kanmer-board", remoteOrigin: "https://example.test/org/repo.git" });
     expect(a.location?.fingerprint).toMatch(/^kanmer-loc-v1:[0-9a-f]{64}$/);
-    expect(a.controllers).toEqual([
-      { controller: "controller-one", tickets: ["TICK-001"] },
-      { controller: "controller-two", tickets: ["TICK-002"] },
+    // Only the live claim is an active controller; the expired legacy claim is a workspace, not a controller (F-007).
+    expect(a.controllers).toEqual([{ controller: "controller-one", tickets: ["TICK-001"] }]);
+    expect(a.workspaces.map((w) => [w.ticket, w.branch, w.worktree, w.claim, w.controller, w.expiresAt])).toEqual([
+      ["TICK-001", "live-branch", ".worktrees/live", "live", "controller-one", liveLease!.expiresAt],
+      ["TICK-002", "old-branch", null, "expired", "controller-two", "2026-08-27T11:00:00.000Z"],
     ]);
-    expect(a.workspaces.map((w) => [w.ticket, w.branch, w.worktree, w.claim, w.lease?.id ?? null, w.lease?.revision ?? null, w.lease?.phase ?? null])).toEqual([
-      ["TICK-001", "live-branch", ".worktrees/live", "live", "lease-1", 3, "implementing"],
-      ["TICK-002", "old-branch", null, "expired", null, null, null],
-    ]);
+    // The lease shown is the one the store wrote on take — never a hand-made record (F-001).
+    expect(a.workspaces[0]?.lease).toEqual({
+      id: liveLease!.id,
+      revision: liveLease!.revision,
+      phase: liveLease!.phase,
+      provider: "claude-code",
+      workspace: liveLease!.workspace,
+      heartbeatAt: liveLease!.heartbeatAt,
+      controllerRun: null,
+      workerRun: null,
+      heartbeatStale: false,
+    });
+    expect(liveLease!.revision).toBe(1);
+    expect(liveLease!.phase).toBe("implementing");
+    expect(a.workspaces[1]?.lease).toBeNull();
     expect(a.problems).toEqual([]);
 
     const b = await observeEndpoint("beta", { boardRoot: boardB }, deps, selected);
@@ -229,11 +287,59 @@ describe("observation", () => {
       { id: "T-2", type: "ticket", status: "backlog", assignee: "" },
       { id: "G-1", type: "group", status: "backlog", assignee: "x", taken_at: "2026-08-27T11:50:00.000Z" },
     ] as unknown as Parameters<typeof claims>[0];
-    const result = claims(items, now, 30);
+    const result = claims(items, now, { claimExpiryMinutes: 30 });
     expect(result.controllers).toEqual([{ controller: "bob", tickets: ["T-1"] }]);
     expect(result.workspaces).toHaveLength(1);
     expect(result.workspaces[0]?.lease).toBeNull();
     expect(result.workspaces[0]?.claim).toBe("live");
+  });
+
+  it("counts only live claims as active controllers and flags stale heartbeats (F-007)", () => {
+    const now = new Date("2026-08-27T12:00:00.000Z");
+    const items = [
+      { id: "T-1", type: "ticket", status: "implementing", claim_controller: "alice", taken_at: "2026-08-27T11:50:00.000Z", claim_expires_at: "2026-08-27T12:20:00.000Z", lease_id: "L1", lease_revision: 2, lease_heartbeat_at: "2026-08-27T11:58:00.000Z" },
+      { id: "T-2", type: "ticket", status: "implementing", claim_controller: "bob", taken_at: "2026-08-27T10:00:00.000Z", claim_expires_at: "2026-08-27T10:30:00.000Z", lease_id: "L2", lease_revision: 1 },
+      { id: "T-3", type: "ticket", status: "review", assignee: "carol", taken_at: "2026-08-27T09:00:00.000Z" },
+      { id: "T-4", type: "ticket", status: "implementing", claim_controller: "alice", taken_at: "2026-08-27T11:00:00.000Z", claim_expires_at: "2026-08-27T12:30:00.000Z", lease_id: "L4", lease_revision: 1, lease_heartbeat_at: "2026-08-27T11:00:00.000Z" },
+    ] as unknown as Parameters<typeof claims>[0];
+    const result = claims(items, now, { claimExpiryMinutes: 30, leaseHeartbeatMinutes: 10 });
+    expect(result.controllers).toEqual([{ controller: "alice", tickets: ["T-1", "T-4"] }]);
+    expect(result.workspaces.map((w) => [w.ticket, w.claim, w.controller, w.lease?.heartbeatStale ?? null])).toEqual([
+      ["T-1", "live", "alice", false],
+      ["T-2", "expired", "bob", true], // no heartbeat recorded: taken_at is the last beat, long stale
+      ["T-3", "expired", "carol", null],
+      ["T-4", "live", "alice", true],
+    ]);
+    // A legacy claim's derived expiry is reported rather than left blank.
+    expect(result.workspaces[2]?.expiresAt).toBe("2026-08-27T09:30:00.000Z");
+  });
+});
+
+describe("main-process guards", () => {
+  it("lets a mutation act only on the endpoint bound to the sender's selected project (F-003)", async () => {
+    const file = path.join(home, "guard", "endpoints.json");
+    const env = { [ENDPOINT_REGISTRY_ENV]: file };
+    const writer = new ProjectRegistryWriter(file);
+    await writer.upsert("alpha", { boardRoot: boardA });
+    await writer.upsert("beta", { boardRoot: boardB });
+    const asAlpha = await observeRegistry(env, home, deps, { project_id: projectIdA, board_id: projectIdA, identity: "logical", origin: "generated", fingerprint: fingerprintA });
+    expect(() => assertSelectedEndpoint(asAlpha, "alpha")).not.toThrow();
+    expect(() => assertSelectedEndpoint(asAlpha, "beta")).toThrow(/REGISTRY_NOT_SELECTED/);
+    const unregistered = await observeRegistry(env, home, deps, { project_id: "someone-else", board_id: null, identity: "logical", origin: "generated", fingerprint: "kanmer-proj-v1:" + "0".repeat(64) });
+    expect(() => assertSelectedEndpoint(unregistered, "alpha")).toThrow(/REGISTRY_NOT_SELECTED/);
+    const nobody = await observeRegistry(env, home, deps, null);
+    expect(() => assertSelectedEndpoint(nobody, "alpha")).toThrow(/REGISTRY_NOT_SELECTED/);
+  });
+
+  it("records a board branch only for a git-backed board (F-005)", () => {
+    const git = entryForContext({ boardRoot: boardA, sourceRoot: boardA, syncStatus: { available: true, boardRoot: boardA, branch: "kanmer-board" } }, "main-only");
+    expect(git).toEqual({ boardRoot: boardA, repoRoot: boardA, boardBranch: "kanmer-board", policy: "main-only" });
+    const plain = entryForContext({ boardRoot: boardB, sourceRoot: boardB, syncStatus: { available: false, boardRoot: null, branch: "kanmer-board" } }, undefined);
+    expect(plain).toEqual({ boardRoot: boardB, repoRoot: boardB });
+    expect("boardBranch" in plain).toBe(false);
+    const broken = entryForContext({ boardRoot: boardB, sourceRoot: boardB, syncStatus: { available: false, boardRoot: boardB, branch: "kanmer-board" } }, undefined);
+    expect(broken.boardBranch).toBeUndefined();
+    expect(validateEntry("plain", plain)).toEqual([]);
   });
 });
 
@@ -271,6 +377,16 @@ describe("serialised writer (MCP-054 F-001)", () => {
     ({ parsed } = await readRegistry(file));
     expect(parsed?.ok && parsed.file.endpoints).toEqual({ uno: { boardRoot: boardA, repoRoot: boardA } });
     await expect(writer.upsert("bad", { boardRoot: "relative" })).rejects.toThrow(/REGISTRY_INVALID/);
+  });
+
+  it("adds a new endpoint but refuses to replace an existing name (F-006)", async () => {
+    const file = path.join(home, "add", "endpoints.json");
+    const writer = new ProjectRegistryWriter(file);
+    await writer.add("one", { boardRoot: boardA, repoRoot: boardA });
+    await expect(writer.add("one", { boardRoot: boardB })).rejects.toThrow(/REGISTRY_NAME_EXISTS/);
+    await expect(writer.add("Bad Name", { boardRoot: boardB })).rejects.toThrow(/REGISTRY_NAME_INVALID/);
+    const { parsed } = await readRegistry(file);
+    expect(parsed?.ok && parsed.file.endpoints).toEqual({ one: { boardRoot: boardA, repoRoot: boardA } });
   });
 
   it("refuses to overwrite an operator edit made while a mutation was in flight", async () => {

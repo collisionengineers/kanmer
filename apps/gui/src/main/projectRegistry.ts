@@ -4,7 +4,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { KanmerStore, claimState, DEFAULT_CLAIM_EXPIRY_MINUTES, type Item } from "@kanmer/core";
+import { KanmerStore, claimState, leaseConfig, leaseState, type BoardConfig, type Item } from "@kanmer/core";
 import { inspectBoardSync, inspectBoardWorktree } from "./kanmerGit.js";
 import { canonicalProjectPath, remoteProjectIdentity } from "./remoteAccess/identity.js";
 import type {
@@ -135,29 +135,37 @@ export function serializeRegistry(registry: RegistryFile): string {
 export interface ObservationDeps {
   inspectBoardBranch(boardRoot: string): Promise<string | null>;
   inspectBoardSync(boardRoot: string, branch: string): Promise<RegistryEndpointView["boardSync"]>;
-  remoteOrigin(repoRoot: string): Promise<string | null>;
+  /** Redacted `remote.origin.url` read from the BOARD path — the server probes the same path. */
+  remoteOrigin(boardRoot: string): Promise<string | null>;
   machine(): string | null;
   now?: () => Date;
 }
 
-/** Same redaction as the server's `redactRemoteOrigin`: never report credentials embedded in a URL. */
+/**
+ * The server's `redactRemoteOrigin` (`packages/mcp-server/src/project-identity.ts`)
+ * line for line: a `scheme://user:token@host` origin loses its userinfo; an
+ * SCP-form `git@host:owner/repo` keeps its fixed login and only drops a
+ * smuggled `user:token@` password. The GUI must agree byte for byte or its
+ * `kanmer-loc-v1` fingerprint diverges from `list_projects` (review F-004).
+ */
 export function redactRemoteOrigin(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const value = raw.trim();
+  const value = (raw ?? "").trim();
   if (!value) return null;
-  try {
-    const url = new URL(value);
-    url.username = "";
-    url.password = "";
-    return url.toString();
-  } catch {
-    return value.replace(/^([^@\s/]+)@/, "");
+  const schemed = value.match(/^([a-z][a-z0-9+.-]*:\/\/)([^/?#]*)(.*)$/i);
+  if (schemed) {
+    const [, scheme, authority, rest] = schemed;
+    const at = authority.lastIndexOf("@");
+    return `${scheme}${at === -1 ? authority : authority.slice(at + 1)}${rest}`;
   }
+  const scp = value.match(/^([^@:/]+):([^@/]*)@(.*)$/);
+  if (scp) return `${scp[1]}@${scp[3]}`;
+  return value;
 }
 
-async function gitRemoteOrigin(repoRoot: string): Promise<string | null> {
+/** Same probe as the server's `resolveLocationFor`: `remote.origin.url` read from the board path. */
+async function gitRemoteOrigin(boardRoot: string): Promise<string | null> {
   try {
-    const { stdout } = await execFile("git", ["remote", "get-url", "origin"], { cwd: repoRoot, windowsHide: true, timeout: 15_000 });
+    const { stdout } = await execFile("git", ["config", "--get", "remote.origin.url"], { cwd: boardRoot, windowsHide: true, timeout: 15_000 });
     return redactRemoteOrigin(stdout.trim());
   } catch {
     return null;
@@ -204,16 +212,39 @@ function optionalString(record: Record<string, unknown>, key: string): string | 
   return typeof value === "string" && value ? value : null;
 }
 
-/** Controllers and workspaces as observable now: every taken ticket, classified live/expired, lease fields read defensively (CORE-115). */
-export function claims(items: Item[], now: Date, minutes: number | undefined): { controllers: RegistryEndpointView["controllers"]; workspaces: RegistryWorkspaceView[] } {
+type LeaseBoardConfig = Pick<BoardConfig, "claimExpiryMinutes" | "leaseHeartbeatMinutes" | "leaseCommandMaxMinutes"> | undefined;
+
+/** `leaseState` when core provides it, else the older `claimState` — same `state`, no heartbeat detail. Never throws. */
+function classifyLease(item: Item, now: Date, board: LeaseBoardConfig): { state: ReturnType<typeof claimState>; expiresAt: string | null; heartbeatStale: boolean } {
+  const config = leaseConfig(board);
+  if (typeof leaseState === "function") {
+    try {
+      const lease = leaseState(item, now, config);
+      return { state: lease.state, expiresAt: lease.expiresAt, heartbeatStale: lease.heartbeatStale };
+    } catch {
+      // fall through to the claim-only classification
+    }
+  }
+  return { state: claimState(item, now, config.expiryMinutes), expiresAt: item.claim_expires_at ?? null, heartbeatStale: false };
+}
+
+/**
+ * Controllers and workspaces as observable now. Every taken ticket is listed
+ * as a workspace with its claim state; only a LIVE claim counts towards the
+ * active controllers (review F-007). Classification is core's `leaseState`
+ * (one expiry rule for legacy claims and CORE-115 leases); lease fields are
+ * read defensively because an older board may carry none or partial ones.
+ */
+export function claims(items: Item[], now: Date, board: LeaseBoardConfig): { controllers: RegistryEndpointView["controllers"]; workspaces: RegistryWorkspaceView[] } {
   const byController = new Map<string, string[]>();
   const workspaces: RegistryWorkspaceView[] = [];
   for (const item of items) {
     if (item.type !== "ticket" || !item.taken_at) continue;
-    const state = claimState(item, now, minutes ?? DEFAULT_CLAIM_EXPIRY_MINUTES);
+    const lease = classifyLease(item, now, board);
+    const state = lease.state;
     if (state === "unclaimed") continue;
     const controller = item.claim_controller || item.assignee || "unknown";
-    byController.set(controller, [...(byController.get(controller) ?? []), item.id]);
+    if (state === "live") byController.set(controller, [...(byController.get(controller) ?? []), item.id]);
     const raw = item as unknown as Record<string, unknown>;
     const leaseId = optionalString(raw, "lease_id");
     const revision = raw.lease_revision;
@@ -226,7 +257,7 @@ export function claims(items: Item[], now: Date, minutes: number | undefined): {
       assignee: item.assignee || null,
       claim: state,
       takenAt: item.taken_at,
-      expiresAt: item.claim_expires_at ?? null,
+      expiresAt: item.claim_expires_at ?? lease.expiresAt,
       lease: leaseId
         ? {
             id: leaseId,
@@ -237,6 +268,7 @@ export function claims(items: Item[], now: Date, minutes: number | undefined): {
             heartbeatAt: optionalString(raw, "lease_heartbeat_at"),
             controllerRun: optionalString(raw, "lease_controller_run"),
             workerRun: optionalString(raw, "lease_worker_run"),
+            heartbeatStale: lease.heartbeatStale,
           }
         : null,
     });
@@ -278,7 +310,7 @@ export async function observeEndpoint(name: string, entry: unknown, deps: Observ
     };
     const branchForSync = actualBranch ?? boardBranch ?? null;
     const [remoteOrigin, boardSync] = await Promise.all([
-      deps.remoteOrigin(store.paths.repoRoot),
+      deps.remoteOrigin(boardRoot),
       branchForSync ? deps.inspectBoardSync(boardRoot, branchForSync) : Promise.resolve(null),
     ]);
     const locationPayload = {
@@ -288,7 +320,7 @@ export async function observeEndpoint(name: string, entry: unknown, deps: Observ
       boardBranch: actualBranch,
       remoteOrigin,
     };
-    const { controllers, workspaces } = claims(listing.items, deps.now?.() ?? new Date(), board.claimExpiryMinutes);
+    const { controllers, workspaces } = claims(listing.items, deps.now?.() ?? new Date(), board);
     const observationProblems = listing.warnings.length ? [`${listing.warnings.length} board file warning(s)`] : [];
     if (boardBranch && actualBranch && boardBranch !== actualBranch) observationProblems.push(`board is on "${actualBranch}", registry expects "${boardBranch}"`);
     return {
@@ -326,6 +358,33 @@ export async function observeRegistry(env: NodeJS.ProcessEnv, home: string, deps
   const names = Object.keys(parsed.file.endpoints).sort();
   const endpoints = await Promise.all(names.map((name) => observeEndpoint(name, parsed.file.endpoints[name], deps, selected)));
   return { registry, endpoints, selectedRegistered: endpoints.some((endpoint) => endpoint.selected) };
+}
+
+/**
+ * The one endpoint a registry mutation may act on: the entry the observation
+ * marked `selected` for the sender's open project (review F-003). Main calls
+ * this before every rename/policy/remove so the selected-project rule is
+ * structural, not a renderer courtesy.
+ */
+export function assertSelectedEndpoint(view: RegistryView, name: string): void {
+  const selected = view.endpoints.find((endpoint) => endpoint.selected);
+  if (!selected) throw new Error("REGISTRY_NOT_SELECTED: the selected project is not in the registry");
+  if (selected.name !== name) throw new Error(`REGISTRY_NOT_SELECTED: "${name}" is not the selected project ("${selected.name}")`);
+}
+
+/**
+ * The registry entry for an open project, from its main-process context only.
+ * `boardBranch` is recorded solely when Git actually reports the board
+ * (review F-005): a non-git project's preference branch is not a fact.
+ */
+export function entryForContext(ctx: { boardRoot: string; sourceRoot: string; syncStatus: { available: boolean; boardRoot: string | null; branch: string } }, policy: string | undefined): RegistryEntry {
+  const gitBacked = ctx.syncStatus.available && Boolean(ctx.syncStatus.boardRoot) && Boolean(ctx.syncStatus.branch.trim());
+  return {
+    boardRoot: ctx.boardRoot,
+    repoRoot: ctx.sourceRoot,
+    ...(gitBacked ? { boardBranch: ctx.syncStatus.branch } : {}),
+    ...(policy ? { policy } : {}),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -379,6 +438,15 @@ export class ProjectRegistryWriter {
   async upsert(name: string, entry: RegistryEntry): Promise<RegistryFile> {
     assertEndpointName(name);
     return this.mutate((current) => ({ ...current, endpoints: { ...current.endpoints, [name]: entry } }));
+  }
+
+  /** Register a NEW endpoint; an existing name is refused rather than replaced (review F-006). */
+  async add(name: string, entry: RegistryEntry): Promise<RegistryFile> {
+    assertEndpointName(name);
+    return this.mutate((current) => {
+      if (current.endpoints[name]) throw new Error("REGISTRY_NAME_EXISTS");
+      return { ...current, endpoints: { ...current.endpoints, [name]: entry } };
+    });
   }
 
   async rename(from: string, to: string): Promise<RegistryFile> {

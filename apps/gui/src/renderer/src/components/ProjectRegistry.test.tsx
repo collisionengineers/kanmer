@@ -18,7 +18,7 @@ const alpha: RegistryEndpointView = {
   format: 3,
   ticketCount: 12,
   controllers: [{ controller: "claude-code", tickets: ["GUI-144"] }],
-  workspaces: [{ ticket: "GUI-144", stage: "implementing", branch: "gui-144-project-registry", worktree: ".worktrees/gui-144", controller: "claude-code", assignee: "claude-code", claim: "live", takenAt: "2026-08-27T20:21:15.896Z", expiresAt: "2026-08-27T20:51:15.896Z", lease: { id: "lease-1", revision: 3, phase: "implementing", provider: "claude-code", workspace: ".worktrees/gui-144", heartbeatAt: "2026-08-27T20:30:00.000Z", controllerRun: null, workerRun: null } }],
+  workspaces: [{ ticket: "GUI-144", stage: "implementing", branch: "gui-144-project-registry", worktree: ".worktrees/gui-144", controller: "claude-code", assignee: "claude-code", claim: "live", takenAt: "2026-08-27T20:21:15.896Z", expiresAt: "2026-08-27T20:51:15.896Z", lease: { id: "lease-1", revision: 3, phase: "implementing", provider: "claude-code", workspace: ".worktrees/gui-144", heartbeatAt: "2026-08-27T20:30:00.000Z", controllerRun: null, workerRun: null, heartbeatStale: false } }],
   problems: [],
 };
 const beta: RegistryEndpointView = {
@@ -47,11 +47,18 @@ function install(overrides: Partial<Record<string, unknown>> = {}) {
     registryRename: vi.fn(async () => view),
     registryRemove: vi.fn(async () => view),
     registrySetPolicy: vi.fn(async () => view),
-    openProject: vi.fn(async () => undefined),
+    // The section must never reach for the raw bridge to open a project: only
+    // the App-level callback updates tabs and board state (review F-002).
+    openProject: vi.fn(async () => { throw new Error("raw openProject must not be called from the registry section"); }),
     ...overrides,
   };
   (window as unknown as { kanmer: typeof api }).kanmer = api;
   return api;
+}
+
+function renderSection(projectId = "C:/alpha", onOpenProject = vi.fn(async (_root: string) => undefined)) {
+  const utils = render(<ProjectRegistrySection projectId={projectId} onOpenProject={onOpenProject} />);
+  return { ...utils, onOpenProject };
 }
 
 describe("project registry surface", () => {
@@ -59,7 +66,7 @@ describe("project registry surface", () => {
 
   it("shows two projects with distinct health and only the selected one is mutable", async () => {
     const api = install();
-    render(<ProjectRegistrySection projectId="C:/alpha" />);
+    const { onOpenProject } = renderSection();
     const alphaCard = await screen.findByRole("article", { name: "Registry endpoint alpha" });
     const betaCard = screen.getByRole("article", { name: "Registry endpoint beta" });
     expect(api.registryObserve).toHaveBeenCalledWith("C:/alpha");
@@ -83,7 +90,9 @@ describe("project registry surface", () => {
     expect(within(betaCard).queryByLabelText("Rename endpoint")).toBeNull();
     expect(within(betaCard).getByText(/Observation only/)).toBeTruthy();
     fireEvent.click(within(betaCard).getByRole("button", { name: "Open project" }));
-    await waitFor(() => expect(api.openProject).toHaveBeenCalledWith("C:/beta"));
+    await waitFor(() => expect(onOpenProject).toHaveBeenCalledWith("C:/beta"));
+    expect(api.openProject).not.toHaveBeenCalled();
+    expect(screen.queryByText(/raw openProject/)).toBeNull();
     expect(api.registryRename).not.toHaveBeenCalled();
     expect(api.registryRemove).not.toHaveBeenCalled();
     expect(api.registrySetPolicy).not.toHaveBeenCalled();
@@ -93,7 +102,7 @@ describe("project registry surface", () => {
   it("renames, saves policy and removes the selected endpoint through the registry api", async () => {
     const api = install();
     vi.spyOn(window, "confirm").mockReturnValue(true);
-    render(<ProjectRegistrySection projectId="C:/alpha" />);
+    renderSection();
     const alphaCard = await screen.findByRole("article", { name: "Registry endpoint alpha" });
     fireEvent.change(within(alphaCard).getByLabelText("Rename endpoint"), { target: { value: "alpha-2" } });
     fireEvent.click(within(alphaCard).getByRole("button", { name: "Rename" }));
@@ -109,7 +118,7 @@ describe("project registry surface", () => {
   it("offers to add the selected project by name only when it is not registered", async () => {
     const unregistered: RegistryView = { ...view, endpoints: [{ ...beta, selected: false }], selectedRegistered: false };
     const api = install({ registryObserve: vi.fn(async () => unregistered) });
-    render(<ProjectRegistrySection projectId="C:/alpha" />);
+    renderSection();
     const form = await screen.findByLabelText("Add this project to the registry");
     const add = within(form).getByRole("button", { name: "Add this project" }) as HTMLButtonElement;
     expect(add.disabled).toBe(true);
@@ -128,10 +137,42 @@ describe("project registry surface", () => {
   it("surfaces a malformed registry file and observation errors without controls", async () => {
     const broken: RegistryView = { registry: { path: "C:/x/endpoints.json", source: "env", exists: true, error: "registry is not valid JSON" }, endpoints: [], selectedRegistered: false };
     install({ registryObserve: vi.fn(async () => broken) });
-    render(<ProjectRegistrySection projectId="C:/alpha" />);
+    renderSection();
     expect(await screen.findByText("registry is not valid JSON")).toBeTruthy();
     expect(screen.getByText(/KANMER_ENDPOINT_REGISTRY/)).toBeTruthy();
     expect(screen.queryByLabelText("Add this project to the registry")).toBeNull();
     expect(screen.queryByRole("button", { name: "Add this project" })).toBeNull();
+  });
+
+  it("opening another project goes through the App and the section follows the new selection", async () => {
+    // After the App switches tabs it re-renders Settings with the new
+    // projectId; the section must reload for that project and show it as
+    // selected — proof that "Open project" is the selection path.
+    const betaSelected: RegistryView = { ...view, endpoints: [{ ...alpha, selected: false }, { ...beta, selected: true }] };
+    const api = install({ registryObserve: vi.fn(async (projectId: string) => (projectId === "C:/beta" ? betaSelected : view)) });
+    const onOpenProject = vi.fn(async (_root: string) => undefined);
+    const { rerender } = render(<ProjectRegistrySection projectId="C:/alpha" onOpenProject={onOpenProject} />);
+    const betaCard = await screen.findByRole("article", { name: "Registry endpoint beta" });
+    fireEvent.click(within(betaCard).getByRole("button", { name: "Open project" }));
+    await waitFor(() => expect(onOpenProject).toHaveBeenCalledWith("C:/beta"));
+    rerender(<ProjectRegistrySection projectId="C:/beta" onOpenProject={onOpenProject} />);
+    await waitFor(() => expect(api.registryObserve).toHaveBeenCalledWith("C:/beta"));
+    const betaNow = await screen.findByRole("article", { name: "Registry endpoint beta" });
+    await waitFor(() => expect(within(betaNow).getByLabelText("Selected project")).toBeTruthy());
+    expect(within(betaNow).getByRole("button", { name: "Remove from registry" })).toBeTruthy();
+    const alphaNow = screen.getByRole("article", { name: "Registry endpoint alpha" });
+    expect(within(alphaNow).queryByRole("button", { name: "Rename" })).toBeNull();
+    expect(within(alphaNow).getByRole("button", { name: "Open project" })).toBeTruthy();
+    expect(api.openProject).not.toHaveBeenCalled();
+  });
+
+  it("surfaces main's refusal when a mutation is aimed at a non-selected endpoint", async () => {
+    const api = install({ registryRename: vi.fn(async () => { throw new Error('REGISTRY_NOT_SELECTED: "alpha" is not the selected project ("beta")'); }) });
+    renderSection();
+    const alphaCard = await screen.findByRole("article", { name: "Registry endpoint alpha" });
+    fireEvent.change(within(alphaCard).getByLabelText("Rename endpoint"), { target: { value: "alpha-2" } });
+    fireEvent.click(within(alphaCard).getByRole("button", { name: "Rename" }));
+    await waitFor(() => expect(api.registryRename).toHaveBeenCalledWith("C:/alpha", "alpha", "alpha-2"));
+    expect(await screen.findByText(/REGISTRY_NOT_SELECTED/)).toBeTruthy();
   });
 });

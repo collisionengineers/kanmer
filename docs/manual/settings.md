@@ -86,8 +86,10 @@ MCP server reports through `list_projects`. Each card shows the project's
 logical identity, where its board and repository are, which branch the board
 is on and how far ahead of or behind the remote it is, the declared policy
 label, how many tickets it holds, and who is working there right now: every
-active controller with the tickets it holds, and each workspace's branch,
-worktree, claim state and — when the board records one — its lease.
+controller holding a live claim with the tickets it holds (an expired claim
+is listed as a workspace but is not an active controller), and each
+workspace's branch, worktree, claim state and — when the board records one —
+its lease, flagged when its heartbeat has gone stale.
 
 Health is one of **Healthy**, **No identity yet** (a board that has not had
 its one-time identity migration), **Board missing**, **Invalid entry** (the
@@ -96,10 +98,14 @@ registry line is malformed; it is shown, never dropped) or **Error**.
 Only the **selected project** — the tab this Settings dialog belongs to — has
 controls: rename its entry, set or clear its policy label, or remove it from
 the registry. If it is not registered yet, name it and press **Add this
-project**; its locations come from the open tab, never from a typed path.
-Every other card is observation only. Its single button, **Open project**,
-opens that project in a tab so you can select it; nothing here writes to
-another project's board or its board branch.
+project**; its locations come from the open tab, never from a typed path, a
+name already in the registry is refused rather than replaced, and the board
+branch is recorded only when the board is actually under Git. The app
+refuses a rename, policy change or removal aimed at any endpoint other than
+the selected project, whatever the window asks for. Every other card is
+observation only. Its single button, **Open project**, opens that project as
+a tab and makes it the selected project — the same path as opening a folder;
+nothing here writes to another project's board or its board branch.
 
 Looking at a project here never changes it: the app reads each board with a
 throw-away read-only view, and writes to the registry file are serialised and

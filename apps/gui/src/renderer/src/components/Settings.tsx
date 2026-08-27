@@ -57,6 +57,8 @@ interface SettingsProps {
   onSetNotifications: (on: boolean) => void;
   onSetPreferences: (patch: Partial<UiPreferences>) => void;
   onClose: () => void;
+  /** App-level open/select path (tabs + board state); the Projects tab's "Open project" goes through it (GUI-144). */
+  onOpenProject: (root: string) => Promise<void>;
 }
 
 const DEFAULT_COLOR = "#5b8cff";
@@ -73,6 +75,7 @@ export function Settings({
   onSetNotifications,
   onSetPreferences,
   onClose,
+  onOpenProject,
 }: SettingsProps): JSX.Element {
   const [draft, setDraft] = useState<BoardConfig>(() => structuredClone(board));
   const [saving, setSaving] = useState(false);
@@ -248,7 +251,7 @@ export function Settings({
 
             {tab === "openai" && <OpenAITunnelSection projectId={projectId} />}
 
-            {tab === "projects" && <ProjectRegistrySection projectId={projectId} />}
+            {tab === "projects" && <ProjectRegistrySection projectId={projectId} onOpenProject={onOpenProject} />}
 
             {tab === "profiles" && <ProfilesTab />}
 

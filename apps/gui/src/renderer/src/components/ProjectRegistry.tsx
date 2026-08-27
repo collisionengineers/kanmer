@@ -5,8 +5,10 @@ import type { RegistryEndpointView, RegistryView, RegistryWorkspaceView } from "
  * Settings → Projects (GUI-144, FRD-029). Every endpoint named in the
  * registry is observed read-only; only the SELECTED project (the open tab
  * this Settings dialog belongs to) exposes registry controls. Another
- * project's only action is "Open project", which changes the selection —
- * it never mutates that project's board or registry entry.
+ * project's only action is "Open project", which changes the selection
+ * through the App-level open path (tabs + board state) — it never mutates
+ * that project's board or registry entry. Main independently refuses
+ * rename/policy/remove for any endpoint other than the selected one.
  */
 
 const HEALTH_LABEL: Record<RegistryEndpointView["health"], string> = {
@@ -34,6 +36,7 @@ function WorkspaceRow({ workspace }: { workspace: RegistryWorkspaceView }): JSX.
       <code>{workspace.ticket}</code> · {workspace.stage} · {workspace.controller}
       {workspace.assignee && workspace.assignee !== workspace.controller ? ` (${workspace.assignee})` : ""} · claim {workspace.claim}
       {workspace.expiresAt ? ` until ${workspace.expiresAt}` : ""}
+      {workspace.lease?.heartbeatStale ? " · heartbeat stale" : ""}
       {workspace.branch ? <> · <code>{workspace.branch}</code></> : null}
       {workspace.worktree ? <> · <code>{workspace.worktree}</code></> : null}
       {lease ? (
@@ -99,7 +102,13 @@ function EndpointCard({ endpoint, busy, onOpen, onRename, onSetPolicy, onRemove 
   );
 }
 
-export function ProjectRegistrySection({ projectId }: { projectId: string }): JSX.Element {
+export interface ProjectRegistrySectionProps {
+  projectId: string;
+  /** The App's `openProject` — the only path that makes another project the selected tab (review F-002). */
+  onOpenProject: (root: string) => Promise<void>;
+}
+
+export function ProjectRegistrySection({ projectId, onOpenProject }: ProjectRegistrySectionProps): JSX.Element {
   const [view, setView] = useState<RegistryView | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -159,7 +168,10 @@ export function ProjectRegistrySection({ projectId }: { projectId: string }): JS
     setMessage(`Removed "${name}" from the registry.`);
     return next;
   });
-  const open = (root: string) => run("open", async () => { await window.kanmer.openProject(root); await refresh(); });
+  // Selection changes only through the App: it opens the tab, swaps the board
+  // state and re-renders this section with the new projectId (which reloads
+  // the view), so no manual refresh is needed here.
+  const open = (root: string) => run("open", async () => { await onOpenProject(root); });
 
   const nameValid = /^[a-z0-9][a-z0-9._-]{0,63}$/.test(addName.trim());
 

@@ -225,6 +225,8 @@ export interface RegistryLeaseView {
   heartbeatAt: string | null;
   controllerRun: string | null;
   workerRun: string | null;
+  /** True when the last heartbeat is older than the board's heartbeat window (core `leaseState`). */
+  heartbeatStale: boolean;
 }
 
 export interface RegistryWorkspaceView {
@@ -807,7 +809,8 @@ export interface KanmerApi {
    */
   registryObserve(projectId: string | null): Promise<RegistryView>;
   registryAddProject(projectId: string, name: string, policy?: string | null): Promise<RegistryView>;
-  registryRename(projectId: string | null, from: string, to: string): Promise<RegistryView>;
-  registryRemove(projectId: string | null, name: string): Promise<RegistryView>;
-  registrySetPolicy(projectId: string | null, name: string, policy: string | null): Promise<RegistryView>;
+  /** Rename/remove/policy act only on the endpoint bound to `projectId`'s open project; any other name is refused (`REGISTRY_NOT_SELECTED`). */
+  registryRename(projectId: string, from: string, to: string): Promise<RegistryView>;
+  registryRemove(projectId: string, name: string): Promise<RegistryView>;
+  registrySetPolicy(projectId: string, name: string, policy: string | null): Promise<RegistryView>;
 }

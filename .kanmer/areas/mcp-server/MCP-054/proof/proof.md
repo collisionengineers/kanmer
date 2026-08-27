@@ -127,3 +127,9 @@ copies of the board and passed; no real board, registry, or worktree other
 than the verification worktree was modified. Temporary boards, registry file
 and the acceptance script were deleted afterwards; `git status` in the
 verification worktree stayed clean.
+
+## Closeout
+
+- PR: https://github.com/collisionengineers/kanmer/pull/292
+- Merged: 2026-08-27T19:57:24Z (merge commit e903289eea919744d33eab4c3e965752e7a39cd9)
+- Closed out 2026-08-27 by claude-code; worktrees `.worktrees/mcp-054` and `.worktrees/verify-mcp-054-e903289eea919744d33eab4c3e965752e7a39cd9` removed, branch `mcp-054-endpoint-registry` deleted locally and on origin.

@@ -18,3 +18,14 @@
 
 - 2026-08-27: implementation complete in `.worktrees/mcp-054`; unit 5/5, smoke 290/290 (dist and bundle), protocol 50/50, test:http green on rerun (first run: one `spawnSync node ETIMEDOUT` — known host quirk), smoke:http/remote/discovery/headless 0, core tests 0, typecheck 0, plugin:check 0 (39 tools). `npm run verify` running.
 - 2026-08-27: `npm run verify` exit 1 — `test:scripts` antigravity EBUSY × 2 (known host quirk); every other rail step green individually. Report written; PR https://github.com/collisionengineers/kanmer/pull/292 head fe612e6d.
+
+## Closeout — MCP-054
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`) — MERGED 2026-08-27T19:57:24Z, merge e903289eea919744d33eab4c3e965752e7a39cd9
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage (Done 2026-08-27T20:13:24Z by kanmer-verify)
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/mcp-054` (+ verify worktree)
+- [x] `git branch -D mcp-054-endpoint-registry` (squash-merged) + `git push origin --delete`
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

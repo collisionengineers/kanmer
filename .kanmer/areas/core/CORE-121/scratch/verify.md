@@ -1,0 +1,6 @@
+## 2026-08-27 — verification attempt 13 at dc5143754506e915989e1923616267a8d664425d (controller-run, after INCONCLUSIVE proof 576d4245e938fe47)
+
+- `npm run verify` in `.worktrees/verify-core-121-dc514375…` on an otherwise idle host: exit 1. Core 347/347; MCP rails green; GUI 485/486 — single failure `apps/gui/src/main/kanmerGit.test.ts` › "ensureBoardWorktree reconciliation > serializes concurrent orphan cleanup and leaves no quarantine residue" (`AssertionError: expected false to be true`, 8.9 s).
+- Same test in isolation on the verify worktree: fails (15.4 s). Same test on the untouched `origin/main` checkout `C:\Users\Alex\Documents\GitHub\kanmer` at `ea8a6408`: fails identically (5.2 s). CORE-121 changes no file under `apps/gui` (`git diff --stat ea8a6408..dc514375 -- apps/gui` is empty).
+- Hosted evidence: run 33065438808 (verify + kanmer-gate success) is bound to PR head `a79f125c`, whose tree `cc05eedcfc465958d22cec468e5511a9503a5d58` equals the merge commit's tree; no workflow ran on the merge SHA itself (pr.yml has no push trigger on main).
+- Conclusion: every rail CORE-121 touches is green at the exact merge SHA; the residual GUI git-fixture failure is a host condition reproducible on clean main. Disposition is the operator's (WAIVED_BY_OPERATOR with this evidence, or rerun on another host/CI).

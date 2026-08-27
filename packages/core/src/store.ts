@@ -112,11 +112,16 @@ import {
   type TicketDocumentWithVersion,
   type TicketDocsInfo,
   type TransferTicketInput,
+  type RenewTicketInput,
   type UpdateItemPatch,
-  DEFAULT_CLAIM_EXPIRY_MINUTES,
-  claimState,
+  LEASE_PHASES,
+  isLegacyLease,
   isOperatorReason,
+  leaseConfig,
+  leaseState,
 } from "./types.js";
+import { randomUUID } from "node:crypto";
+import { normalizeWorktreePath } from "./worktree-guard.js";
 import { parseReviewAttestation } from "./review-attestation.js";
 
 const ITEM_TYPES: ItemType[] = ["ticket", "plan", "research"];
@@ -977,11 +982,6 @@ export class KanmerStore {
     await this.setDoc(id, "scratch/execution", content, { append: true });
   }
 
-  private async claimWindowMinutes(board?: BoardConfig): Promise<number> {
-    const config = board ?? (await this.getBoard());
-    return config.claimExpiryMinutes ?? DEFAULT_CLAIM_EXPIRY_MINUTES;
-  }
-
   private claimExpiry(minutes: number): string {
     return new Date(Date.now() + minutes * 60_000).toISOString();
   }
@@ -1078,173 +1078,385 @@ export class KanmerStore {
     return s2 ? (items[i2].order! + s2.order!) / 2 : items[i2].order! + 10;
   }
 
+  // ---------------------------------------------------------------------------
+  // Renewable workspace leases (CORE-115, FRD-030)
+  //
+  // Every lease verb runs under one board-wide cross-process lock and re-reads
+  // the ticket inside it, so the revision CAS and the write are one step
+  // (CORE-114 F-009). The lock also covers the sibling scan that keeps one
+  // live writer per workspace.
+  // ---------------------------------------------------------------------------
+
+  /** The lease lock file; gitignored on the board branch like every `.kanmer/**\/*.lock`. */
+  private leaseLockFile(): string {
+    return path.join(this.paths.kanmer, "leases.lock");
+  }
+
+  private withLeaseLock<T>(work: () => Promise<T>): Promise<T> {
+    return withExclusiveFileLock(this.leaseLockFile(), work);
+  }
+
+  /** The normalised workspace identity a lease owns: the worktree when recorded, else the branch. */
+  private workspaceKey(worktree: string | undefined, branch: string | undefined): string | undefined {
+    if (worktree) return `worktree:${normalizeWorktreePath(worktree, this.paths.repoRoot)}`;
+    if (branch) return `branch:${branch}`;
+    return undefined;
+  }
+
   /**
-   * Take a ticket: record when, on which branch and (optionally) in which
-   * worktree the work happens, and move it into the working stage. The agent
-   * workflow calls this before touching code so the human's board shows who
-   * is where.
+   * One live writer per workspace (FRD-030): refuse a take whose worktree or
+   * branch is recorded on another taken, non-archived ticket. A lease that has
+   * expired but was never released still owns its workspace — "a final claim
+   * remains until closeout" — so the check does not consult expiry. `force`
+   * never bypasses this rule; batch membership (CORE-124) is the only planned
+   * exception.
+   */
+  private async assertWorkspaceFree(id: string, worktree: string | undefined, branch: string | undefined): Promise<void> {
+    const mine = worktree ? normalizeWorktreePath(worktree, this.paths.repoRoot) : null;
+    for (const other of await this.listItems({ type: "ticket" })) {
+      if (other.id === id || !other.taken_at) continue;
+      const sameWorktree = mine !== null && other.worktree !== undefined &&
+        normalizeWorktreePath(other.worktree, this.paths.repoRoot) === mine;
+      const sameBranch = branch !== undefined && other.branch === branch;
+      if (!sameWorktree && !sameBranch) continue;
+      const holder = other.claim_controller ?? other.assignee ?? "an unknown actor";
+      throw new Error(
+        `WORKSPACE_OCCUPIED: "${id}" cannot take ${sameWorktree ? `worktree ${worktree}` : `branch ${branch}`}; ` +
+          `it is recorded on "${other.id}" (held by ${holder}${other.lease_id ? `, lease ${other.lease_id}` : ""}). ` +
+          `One live writer owns a workspace: use an isolated worktree and branch, or close out "${other.id}" first.`,
+      );
+    }
+  }
+
+  private static clearLeaseFields(next: Item): void {
+    delete next.lease_id;
+    delete next.lease_revision;
+    delete next.lease_controller_run;
+    delete next.lease_worker_run;
+    delete next.lease_workspace;
+    delete next.lease_provider;
+    delete next.lease_phase;
+    delete next.lease_heartbeat_at;
+    delete next.lease_reclaimed_from;
+  }
+
+  private static applyRunIdentity(
+    next: Item,
+    input: { controllerRun?: string; workerRun?: string; provider?: string },
+    keepExisting: boolean,
+  ): void {
+    const set = (key: "lease_controller_run" | "lease_worker_run" | "lease_provider", value: string | undefined) => {
+      if (value !== undefined && value !== "") next[key] = value;
+      else if (!keepExisting) delete next[key];
+    };
+    set("lease_controller_run", input.controllerRun);
+    set("lease_worker_run", input.workerRun);
+    set("lease_provider", input.provider);
+  }
+
+  /**
+   * Take a ticket: acquire its workspace lease — record when, on which branch
+   * and (optionally) in which worktree the work happens, mint the lease record
+   * and move the ticket into the working stage. The agent workflow calls this
+   * before touching code so the human's board shows who is where.
    */
   async takeTicket(id: string, input: TakeTicketInput): Promise<Item> {
-    const loc = await this.locateItem(id);
-    if (!loc) throw new Error(`No item with id "${id}"`);
-    const current = parseItem(await readText(loc.file));
-    if (current.type !== "ticket") {
-      throw new Error(`Only tickets can be taken; "${id}" is a ${current.type}`);
-    }
     if (input.worktree !== undefined) {
       assertNotBoardWorktree(input.worktree, {
         boardRoot: this.paths.projectRoot,
         repoRoot: this.paths.repoRoot,
       });
     }
-    await this.assertRevision(loc, id, input.expectedRevision);
-    if (current.taken_at && !input.force) {
-      throw new Error(
-        `"${id}" is already taken (taken_at ${current.taken_at}` +
-          `${current.branch ? `, branch ${current.branch}` : ""}). ` +
-          `Release it first, or pass force to take it over.`,
-      );
+    if (input.phase !== undefined && !LEASE_PHASES.includes(input.phase)) {
+      throw new Error(`LEASE_PHASE_INVALID: "${input.phase}" is not one of ${LEASE_PHASES.join(", ")}.`);
     }
-    const board = await this.getBoard();
-    let stage = input.stage;
-    if (stage !== undefined) {
-      assertStage(stage);
-    } else {
-      stage = "implementing";
-    }
-    if (stage !== current.status && loc.kind === "v2") {
-      await this.assertDocGate(loc.dir, board, current, current.status, stage);
-    }
-    const next: Item = {
-      ...current,
-      status: stage,
-      taken_at: nowIso(),
-      branch: input.branch,
-      updated: nowIso(),
-    };
-    if (input.worktree !== undefined) next.worktree = input.worktree;
-    else delete next.worktree; // a force-retake must not keep a stale worktree
-    if (input.assignee !== undefined) next.assignee = input.assignee;
-    // Bootstrap claim contract (CORE-121): every fresh claim carries an
-    // expiry and a durable controller identity.
-    next.claim_expires_at = this.claimExpiry(await this.claimWindowMinutes(board));
-    const controller = input.controller ?? input.assignee ?? next.assignee;
-    if (controller) next.claim_controller = controller;
-    else delete next.claim_controller;
-    await writeFileAtomic(loc.file, serialiseItem(next));
-    await appendActivity(this.paths, [
-      this.activity(id, "take", { field: "branch", to: input.branch }),
-      ...(next.status !== current.status
-        ? [this.activity(id, "update", { field: "status", from: current.status, to: next.status })]
-        : []),
-    ]);
-    return next;
+    return this.withLeaseLock(async () => {
+      const loc = await this.locateItem(id);
+      if (!loc) throw new Error(`No item with id "${id}"`);
+      const current = parseItem(await readText(loc.file));
+      if (current.type !== "ticket") {
+        throw new Error(`Only tickets can be taken; "${id}" is a ${current.type}`);
+      }
+      await this.assertRevision(loc, id, input.expectedRevision);
+      const board = await this.getBoard();
+      const timing = leaseConfig(board);
+      if (current.taken_at && !input.force) {
+        const lease = leaseState(current, new Date(), timing);
+        const holder = current.claim_controller ?? current.assignee;
+        throw new Error(
+          `LEASE_LIVE: "${id}" is already taken (taken_at ${current.taken_at}` +
+            `${current.branch ? `, branch ${current.branch}` : ""}` +
+            `${holder ? `, held by ${holder}` : ""}, lease ${current.lease_id ?? "legacy"} ${lease.state}` +
+            `${lease.expiresAt ? ` until ${lease.expiresAt}` : ""}). ` +
+            (lease.state === "expired"
+              ? `An expired lease is reclaimed with take_ticket action "transfer", never retaken.`
+              : `A live lease is never taken over: wait for expiry or ask the owner to release.`),
+        );
+      }
+      await this.assertWorkspaceFree(id, input.worktree, input.branch);
+      let stage = input.stage;
+      if (stage !== undefined) {
+        assertStage(stage);
+      } else {
+        stage = "implementing";
+      }
+      if (stage !== current.status && loc.kind === "v2") {
+        await this.assertDocGate(loc.dir, board, current, current.status, stage);
+      }
+      const now = nowIso();
+      const next: Item = {
+        ...current,
+        status: stage,
+        taken_at: now,
+        branch: input.branch,
+        updated: now,
+      };
+      if (input.worktree !== undefined) next.worktree = input.worktree;
+      else delete next.worktree; // a force-retake must not keep a stale worktree
+      if (input.assignee !== undefined) next.assignee = input.assignee;
+      // Lease record (FRD-030): every fresh acquisition carries an expiry, a
+      // durable controller identity, a lease id/revision and its workspace.
+      next.claim_expires_at = this.claimExpiry(timing.expiryMinutes);
+      const controller = input.controller ?? input.assignee ?? next.assignee;
+      if (controller) next.claim_controller = controller;
+      else delete next.claim_controller;
+      next.lease_id = randomUUID();
+      next.lease_revision = 1;
+      const workspace = this.workspaceKey(input.worktree, input.branch);
+      if (workspace) next.lease_workspace = workspace;
+      else delete next.lease_workspace;
+      next.lease_phase = input.phase ?? "implementing";
+      next.lease_heartbeat_at = now;
+      delete next.lease_reclaimed_from;
+      KanmerStore.applyRunIdentity(next, input, false);
+      await writeFileAtomic(loc.file, serialiseItem(next));
+      await appendActivity(this.paths, [
+        this.activity(id, "take", { field: "branch", to: input.branch }),
+        ...(next.status !== current.status
+          ? [this.activity(id, "update", { field: "status", from: current.status, to: next.status })]
+          : []),
+      ]);
+      return next;
+    });
   }
 
-  /** Release a taken ticket: clear taken_at / branch / worktree. */
+  /** Release a taken ticket: clear taken_at / branch / worktree and the whole lease record. */
   async releaseTicket(id: string, opts: { expectedRevision?: string } = {}): Promise<Item> {
-    const loc = await this.locateItem(id);
-    if (!loc) throw new Error(`No item with id "${id}"`);
-    const current = parseItem(await readText(loc.file));
-    await this.assertRevision(loc, id, opts.expectedRevision);
-    if (!current.taken_at && !current.branch && !current.worktree) return current;
-    const next: Item = { ...current, updated: nowIso() };
-    delete next.taken_at;
-    delete next.branch;
-    delete next.worktree;
-    delete next.claim_expires_at;
-    delete next.claim_controller;
-    await writeFileAtomic(loc.file, serialiseItem(next));
-    await appendActivity(this.paths, [
-      this.activity(id, "release", { field: "branch", from: current.branch }),
-    ]);
-    return next;
+    return this.withLeaseLock(async () => {
+      const loc = await this.locateItem(id);
+      if (!loc) throw new Error(`No item with id "${id}"`);
+      const current = parseItem(await readText(loc.file));
+      await this.assertRevision(loc, id, opts.expectedRevision);
+      if (!current.taken_at && !current.branch && !current.worktree && !current.lease_id) return current;
+      const next: Item = { ...current, updated: nowIso() };
+      delete next.taken_at;
+      delete next.branch;
+      delete next.worktree;
+      delete next.claim_expires_at;
+      delete next.claim_controller;
+      KanmerStore.clearLeaseFields(next);
+      await writeFileAtomic(loc.file, serialiseItem(next));
+      await appendActivity(this.paths, [
+        this.activity(id, "release", { field: "branch", from: current.branch }),
+      ]);
+      return next;
+    });
   }
 
   /**
-   * Transfer a claim to a new controller without `force` (CORE-121, FRD-030).
-   * Legal only when the claim has expired or the reason is an operator
-   * override; a live claim refuses with `CLAIM_LIVE`. The recorded branch,
-   * worktree and `taken_at` are preserved — a transfer changes who is
-   * responsible, never where the work is.
+   * Reclaim a lease for a new controller without `force` (CORE-121 → CORE-115,
+   * FRD-030). Legal only when the lease has expired or the reason is an
+   * operator override; a live lease refuses with `CLAIM_LIVE`. The recorded
+   * branch, worktree and `taken_at` are preserved — a transfer changes who is
+   * responsible, never where the work is — and the evidence the host re-read
+   * before reclaiming (workspace, PR, commits, proof) is recorded, never acted
+   * on: expiry is not deletion and dirty work is preserved. A board-worktree
+   * or foreign-repository workspace, or one whose checked-out branch does not
+   * match the recorded branch, refuses with `RECOVERY_REFUSED`.
    */
   async transferTicket(id: string, input: TransferTicketInput): Promise<Item> {
-    const loc = await this.locateItem(id);
-    if (!loc) throw new Error(`No item with id "${id}"`);
-    const current = parseItem(await readText(loc.file));
-    if (current.type !== "ticket") {
-      throw new Error(`Only tickets can be transferred; "${id}" is a ${current.type}`);
-    }
-    if (!current.taken_at) {
-      throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; use take_ticket action "take" instead of "transfer".`);
-    }
-    if (!input.assignee) throw new Error(`assignee is required to transfer "${id}"`);
-    await this.assertRevision(loc, id, input.expectedRevision);
-    const minutes = await this.claimWindowMinutes();
-    const now = new Date();
-    const state = claimState(current, now, minutes);
-    const operator = isOperatorReason(input.reason);
-    if (state === "live" && !operator) {
-      const until = current.claim_expires_at ?? new Date(Date.parse(current.taken_at) + minutes * 60_000).toISOString();
-      throw new Error(
-        `CLAIM_LIVE: "${id}" is held by ${current.assignee || "an unknown actor"} until ${until}. ` +
-          `A live claim is transferred only with a reason beginning "operator:"; otherwise wait for expiry or ask the owner to release.`,
-      );
-    }
-    const fromAssignee = current.assignee || null;
-    const fromController = current.claim_controller ?? fromAssignee;
-    const next: Item = {
-      ...current,
-      assignee: input.assignee,
-      claim_controller: input.controller ?? input.assignee,
-      claim_expires_at: this.claimExpiry(minutes),
-      updated: nowIso(),
-    };
-    await writeFileAtomic(loc.file, serialiseItem(next));
-    await appendActivity(this.paths, [
-      this.activity(id, "take", { field: "controller", from: fromController, to: next.claim_controller }),
-      ...(fromAssignee !== next.assignee
-        ? [this.activity(id, "update", { field: "assignee", from: fromAssignee, to: next.assignee })]
-        : []),
-    ]);
-    if (loc.kind === "v2") {
-      await this.appendTransition(
-        id,
-        `claim-transfer ${fromController ?? "(none)"} → ${next.claim_controller} (${state}` +
-          `${operator ? `; ${input.reason!.trim()}` : ""}; branch ${current.branch ?? "(none)"}; worktree ${current.worktree ?? "(none)"}; expires ${next.claim_expires_at})`,
-      );
-    }
-    return next;
+    return this.withLeaseLock(async () => {
+      const loc = await this.locateItem(id);
+      if (!loc) throw new Error(`No item with id "${id}"`);
+      const current = parseItem(await readText(loc.file));
+      if (current.type !== "ticket") {
+        throw new Error(`Only tickets can be transferred; "${id}" is a ${current.type}`);
+      }
+      if (!current.taken_at) {
+        throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; use take_ticket action "take" instead of "transfer".`);
+      }
+      if (!input.assignee) throw new Error(`assignee is required to transfer "${id}"`);
+      await this.assertRevision(loc, id, input.expectedRevision);
+      const timing = leaseConfig(await this.getBoard());
+      const now = new Date();
+      const lease = leaseState(current, now, timing);
+      const state = lease.state;
+      const operator = isOperatorReason(input.reason);
+      if (state === "live" && !operator) {
+        const until = lease.expiresAt ?? "(unknown)";
+        throw new Error(
+          `CLAIM_LIVE: "${id}" is held by ${current.assignee || "an unknown actor"} until ${until}. ` +
+            `A live claim is transferred only with a reason beginning "operator:"; otherwise wait for expiry or ask the owner to release.`,
+        );
+      }
+      const recovery = input.recovery;
+      if (recovery?.boardWorktree) {
+        throw new Error(
+          `RECOVERY_REFUSED: "${id}" records the Kanmer board worktree as its workspace; it is never reclaimed or reused as an execution target.`,
+        );
+      }
+      if (recovery?.claimIdentity === "foreign-repository") {
+        throw new Error(
+          `RECOVERY_REFUSED: "${id}" records a worktree that belongs to a different repository (${current.worktree ?? "(none)"}); ` +
+            `an operator must record the correct location before the lease can be reclaimed.`,
+        );
+      }
+      if (recovery?.claimIdentity === "branch-mismatch") {
+        throw new Error(
+          `RECOVERY_REFUSED: "${id}" records worktree ${current.worktree ?? "(none)"} but it is not checked out on the recorded branch ${current.branch ?? "(none)"}; ` +
+            `an operator must restore the branch or record the correct location before the lease can be reclaimed.`,
+        );
+      }
+      const fromAssignee = current.assignee || null;
+      const fromController = current.claim_controller ?? fromAssignee;
+      const nowText = now.toISOString();
+      const next: Item = {
+        ...current,
+        assignee: input.assignee,
+        claim_controller: input.controller ?? input.assignee,
+        claim_expires_at: new Date(now.getTime() + timing.expiryMinutes * 60_000).toISOString(),
+        lease_id: randomUUID(),
+        lease_revision: (current.lease_revision ?? 0) + 1,
+        lease_phase: current.lease_phase ?? "implementing",
+        lease_heartbeat_at: nowText,
+        lease_reclaimed_from: fromController ?? "(none)",
+        updated: nowText,
+      };
+      const workspace = current.lease_workspace ?? this.workspaceKey(current.worktree, current.branch);
+      if (workspace) next.lease_workspace = workspace;
+      KanmerStore.applyRunIdentity(next, input, false);
+      await writeFileAtomic(loc.file, serialiseItem(next));
+      await appendActivity(this.paths, [
+        this.activity(id, "take", { field: "controller", from: fromController, to: next.claim_controller }),
+        this.activity(id, "take", { field: "lease_id", from: current.lease_id ?? null, to: next.lease_id }),
+        ...(fromAssignee !== next.assignee
+          ? [this.activity(id, "update", { field: "assignee", from: fromAssignee, to: next.assignee })]
+          : []),
+      ]);
+      if (loc.kind === "v2") {
+        const evidence = recovery
+          ? `; evidence: workspace ${recovery.workspace} (${recovery.claimIdentity}), pr ${recovery.pullRequest}, commits ${recovery.commits}, proof ${recovery.proof}`
+          : "; evidence: not collected";
+        await this.appendTransition(
+          id,
+          `claim-transfer ${fromController ?? "(none)"} → ${next.claim_controller} (${state}` +
+            `${operator ? `; ${input.reason!.trim()}` : ""}; lease ${current.lease_id ?? "legacy"} → ${next.lease_id} rev ${next.lease_revision}` +
+            `; branch ${current.branch ?? "(none)"}; worktree ${current.worktree ?? "(none)"}; expires ${next.claim_expires_at}${evidence})`,
+        );
+      }
+      return next;
+    });
   }
 
   /**
-   * Renew the caller's own claim (CORE-121). Refuses with `CLAIM_NOT_OWNED`
-   * when the caller is neither the assignee nor the recorded controller.
+   * Renew (heartbeat) a lease (CORE-115). A leased ticket renews only with its
+   * current `lease_id` and `lease_revision`: a non-current id refuses with
+   * `LEASE_EXPIRED`, a stale revision with `Conflict:` (REVISION_CONFLICT),
+   * and nothing is written on refusal. A lease past expiry that nobody has
+   * reclaimed still renews — expiry is not deletion. A legacy claim (no
+   * `lease_id`) renews by owner check (`CLAIM_NOT_OWNED`) and receives its
+   * lease record then: the one migration path. `phase: "running-command"`
+   * with `extendMinutes` is the explicit long-command state, bounded by
+   * `leaseCommandMaxMinutes`.
    */
-  async renewTicket(id: string, actor: string, opts: { expectedRevision?: string } = {}): Promise<Item> {
-    const loc = await this.locateItem(id);
-    if (!loc) throw new Error(`No item with id "${id}"`);
-    const current = parseItem(await readText(loc.file));
-    if (!current.taken_at) {
-      throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; there is no claim to renew.`);
+  async renewTicket(id: string, input: RenewTicketInput | string, legacyOpts: { expectedRevision?: string } = {}): Promise<Item> {
+    const request: RenewTicketInput = typeof input === "string" ? { actor: input, ...legacyOpts } : input;
+    if (request.phase !== undefined && !LEASE_PHASES.includes(request.phase)) {
+      throw new Error(`LEASE_PHASE_INVALID: "${request.phase}" is not one of ${LEASE_PHASES.join(", ")}.`);
     }
-    await this.assertRevision(loc, id, opts.expectedRevision);
-    if (!actor || (current.assignee !== actor && current.claim_controller !== actor)) {
-      throw new Error(
-        `CLAIM_NOT_OWNED: "${id}" is held by ${current.assignee || "an unknown actor"}` +
-          `${current.claim_controller ? ` (controller ${current.claim_controller})` : ""}; only the owner can renew it.`,
-      );
-    }
-    const next: Item = {
-      ...current,
-      claim_expires_at: this.claimExpiry(await this.claimWindowMinutes()),
-      updated: nowIso(),
-    };
-    await writeFileAtomic(loc.file, serialiseItem(next));
-    await appendActivity(this.paths, [
-      this.activity(id, "update", { field: "claim_expires_at", from: current.claim_expires_at ?? null, to: next.claim_expires_at }),
-    ]);
-    return next;
+    return this.withLeaseLock(async () => {
+      const loc = await this.locateItem(id);
+      if (!loc) throw new Error(`No item with id "${id}"`);
+      const current = parseItem(await readText(loc.file));
+      if (!current.taken_at) {
+        throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; there is no claim to renew.`);
+      }
+      await this.assertRevision(loc, id, request.expectedRevision);
+      const legacy = isLegacyLease(current);
+      if (request.leaseRevision !== undefined && request.leaseId === undefined) {
+        throw new Error(`LEASE_ID_REQUIRED: "${id}" lease_revision is only meaningful with lease_id; pass both from your packet or last take.`);
+      }
+      // Compatibility lane: a renew that names no lease (installed v0.3.12
+      // skills) falls back to the CORE-121 owner check. Naming a lease is the
+      // FRD-030 contract and is checked strictly.
+      if (!legacy && request.leaseId !== undefined) {
+        if (request.leaseId !== current.lease_id) {
+          throw new Error(
+            `LEASE_EXPIRED: "${id}" lease ${request.leaseId} is no longer current (current lease ${current.lease_id} is held by ` +
+              `${current.claim_controller ?? current.assignee ?? "an unknown actor"}). It was reclaimed or re-acquired; ` +
+              `stop working under the old lease and transfer or re-take instead of renewing.`,
+          );
+        }
+        if (request.leaseRevision === undefined) {
+          throw new Error(
+            `LEASE_REVISION_REQUIRED: "${id}" lease ${current.lease_id} is at revision ${current.lease_revision}; renew with lease_revision.`,
+          );
+        }
+        if (request.leaseRevision !== current.lease_revision) {
+          throw new Error(
+            `Conflict: "${id}" lease revision changed since you read it (lease revision is now ${current.lease_revision}, ` +
+              `you expected ${request.leaseRevision}). Re-read the item and renew again.`,
+          );
+        }
+      } else if (!request.actor || (current.assignee !== request.actor && current.claim_controller !== request.actor)) {
+        throw new Error(
+          `CLAIM_NOT_OWNED: "${id}" is held by ${current.assignee || "an unknown actor"}` +
+            `${current.claim_controller ? ` (controller ${current.claim_controller})` : ""}; only the owner can renew it.`,
+        );
+      }
+      const timing = leaseConfig(await this.getBoard());
+      const phase = request.phase ?? current.lease_phase ?? "implementing";
+      let minutes = timing.expiryMinutes;
+      if (request.extendMinutes !== undefined) {
+        if (phase !== "running-command") {
+          throw new Error(
+            `LEASE_EXTENSION_NEEDS_RUNNING_COMMAND: "${id}" can only extend its lease beyond the board window in phase "running-command" (requested phase "${phase}").`,
+          );
+        }
+        if (!Number.isFinite(request.extendMinutes) || request.extendMinutes <= 0) {
+          throw new Error(`LEASE_EXTENSION_INVALID: extend_minutes must be a positive number of minutes.`);
+        }
+        minutes = Math.min(Math.max(1, Math.floor(request.extendMinutes)), timing.commandMaxMinutes);
+      }
+      const now = nowIso();
+      const next: Item = {
+        ...current,
+        claim_expires_at: this.claimExpiry(minutes),
+        lease_id: current.lease_id ?? randomUUID(),
+        lease_revision: (current.lease_revision ?? 0) + 1,
+        lease_phase: phase,
+        lease_heartbeat_at: now,
+        updated: now,
+      };
+      if (legacy && !next.claim_controller && request.actor) next.claim_controller = request.actor;
+      const workspace = current.lease_workspace ?? this.workspaceKey(current.worktree, current.branch);
+      if (workspace) next.lease_workspace = workspace;
+      KanmerStore.applyRunIdentity(next, request, true);
+      await writeFileAtomic(loc.file, serialiseItem(next));
+      await appendActivity(this.paths, [
+        this.activity(id, "update", { field: "claim_expires_at", from: current.claim_expires_at ?? null, to: next.claim_expires_at }),
+        ...(legacy ? [this.activity(id, "take", { field: "lease_id", from: null, to: next.lease_id })] : []),
+      ]);
+      if (loc.kind === "v2" && (legacy || phase !== (current.lease_phase ?? "implementing"))) {
+        await this.appendTransition(
+          id,
+          legacy
+            ? `lease-migrate legacy claim → lease ${next.lease_id} rev ${next.lease_revision} by ${request.actor} (phase ${phase}; expires ${next.claim_expires_at})`
+            : `lease-phase ${current.lease_phase ?? "implementing"} → ${phase} (lease ${next.lease_id} rev ${next.lease_revision}; expires ${next.claim_expires_at})`,
+        );
+      }
+      return next;
+    });
   }
 
   /**

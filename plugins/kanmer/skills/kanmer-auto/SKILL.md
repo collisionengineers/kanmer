@@ -105,8 +105,11 @@ The controller chooses one safe next action per ready lane. The worker receives
 the execution packet/approved plan, exact role and allowed scope, and its
 mandatory Stop condition. The worker returns at that Stop condition or a
 mandatory stop predicate; it never chooses another ticket or dispatches a
-successor. Workers renew their own claim (`take_ticket action: "renew"`) on
-resume and before long commands; a subagent worker that backgrounds a command
+successor. Workers renew their own lease (`take_ticket action: "renew"` with
+the packet's `claim.leaseId` / `claim.leaseRevision`) on resume, at least every
+`claim.heartbeatMinutes`, and before long commands (`phase: "running-command"`
+with a bounded `extend_minutes`); a `LEASE_EXPIRED` refusal means the lease was
+reclaimed and the worker stops; a subagent worker that backgrounds a command
 reads that command's log itself before returning — it is not notified while
 stopped, and a worker that ends its turn "waiting for a notification" is a
 failed worker, reconciled from live state like any other.

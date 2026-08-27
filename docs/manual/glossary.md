@@ -42,6 +42,10 @@ shared context. Two kinds ship: epic and horizon.
 **Horizon** — a group meaning *this is what matters now*. A time box rather than
 a feature.
 
+**Lease** — an agent's renewable hold on a ticket's workspace (its branch and
+worktree). It expires unless renewed, so a dead agent's ticket can be taken
+over — with its work kept — instead of staying taken forever.
+
 **Profile** — how much evidence a ticket owes. `fix` is the default; `chore`,
 `feature`, `spike` and `custom` are the others.
 

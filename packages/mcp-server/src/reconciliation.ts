@@ -4,10 +4,11 @@ import path from "node:path";
 import { promisify } from "node:util";
 import matter from "gray-matter";
 import {
-  DEFAULT_CLAIM_EXPIRY_MINUTES,
-  claimState,
+  leaseConfig,
+  leaseState,
   reconcileEvidence,
   type KanmerStore,
+  type LeaseRecoveryEvidence,
   type ReconciliationEvidence,
   type ReconciliationResult,
 } from "@kanmer/core";
@@ -279,9 +280,9 @@ export async function collectReconciliationEvidence(
   const item = await store.getItem(id);
   if (!item || item.type !== "ticket") throw new Error(`No ticket with id "${id}"`);
   const board = await store.getBoard();
-  const claimMinutes = board.claimExpiryMinutes ?? DEFAULT_CLAIM_EXPIRY_MINUTES;
   const now = options.now ?? new Date();
-  const state = claimState(item, now, claimMinutes);
+  const lease = leaseState(item, now, leaseConfig(board));
+  const state = lease.state;
   const pullRequest = await collectPullRequestEvidence(store, item.prs ?? [], run);
   return {
     ticket: { id: item.id, status: item.status, updated: item.updated, taken: Boolean(item.taken_at || item.branch || item.worktree) },
@@ -291,12 +292,17 @@ export async function collectReconciliationEvidence(
       controller: item.claim_controller ?? (item.assignee || null),
       worker: item.assignee || null,
       takenAt: item.taken_at ?? null,
-      expiresAt: item.claim_expires_at
-        ?? (item.taken_at ? new Date(Date.parse(item.taken_at) + claimMinutes * 60_000).toISOString() : null),
+      expiresAt: lease.expiresAt,
       branch: item.branch ?? null,
       worktree: item.worktree ?? null,
       reviewRound: item.review_round ?? 0,
       remediationBudget: item.remediation_budget ?? 1,
+      // Lease record (CORE-115): null on a legacy claim.
+      leaseId: item.lease_id ?? null,
+      leaseRevision: item.lease_revision ?? null,
+      heartbeatAt: item.lease_heartbeat_at ?? null,
+      phase: item.lease_phase ?? null,
+      legacy: lease.legacy,
     },
     commits: await commitEvidence(item.commits ?? [], pullRequest, store, run),
     pullRequest,
@@ -305,6 +311,22 @@ export async function collectReconciliationEvidence(
     // CORE-116 owns persisted release attempts. This collector must never
     // manufacture a neutral observation for evidence it cannot inspect.
     release: { state: "not-applicable" },
+  };
+}
+
+/**
+ * The FRD-030 reclaim re-read, reduced to what the store records on a
+ * transfer: workspace state and identity, PR state, commit count and proof.
+ * Pure — the caller collects the evidence; nothing here mutates anything.
+ */
+export function leaseRecoverySummary(evidence: ReconciliationEvidence): LeaseRecoveryEvidence {
+  return {
+    workspace: evidence.workspace.state,
+    claimIdentity: evidence.workspace.claimIdentity,
+    boardWorktree: evidence.workspace.boardWorktree === true,
+    pullRequest: evidence.pullRequest.state,
+    commits: evidence.commits.values.length,
+    proof: evidence.proof.state,
   };
 }
 

@@ -2,13 +2,14 @@
 id: CORE-122
 type: ticket
 title: 'Read-only reconciliation inspector (reconcile_ticket) salvaged from PR #286'
-status: review
+status: verifying
 area: core
 assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-08-27T13:45:22.030Z'
   review: '2026-08-27T14:52:48.672Z'
+  verifying: '2026-08-27T16:10:51.171Z'
 taken_at: '2026-08-27T13:50:30.210Z'
 branch: core-122-reconcile-inspector
 worktree: .worktrees/core-122
@@ -25,7 +26,7 @@ prs:
   - '289'
 archived: false
 created: '2026-08-27T10:07:40.777Z'
-updated: '2026-08-27T14:52:48.672Z'
+updated: '2026-08-27T16:10:51.171Z'
 ---
 
 ## What

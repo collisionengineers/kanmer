@@ -142,7 +142,7 @@ because the installed MCP process is replaced during the update.
 This path was exercised successfully on Windows with `tunnel-client` 0.0.11.
 Your own tunnel identifier, workspace, and credentials are private operational
 state and must not be committed. The packaged MCP smoke separately verifies all
-38 tools and their file mutations, including the policy-bound dispatch/list/cancel surface when an operator explicitly enables it.
+39 tools and their file mutations, including the policy-bound dispatch/list/cancel surface when an operator explicitly enables it.
 
 ### More than one project
 
@@ -171,7 +171,40 @@ project root. List configured profiles with `tunnel-client profiles list` and
 managed aliases with `tunnel-client runtimes list --json`.
 Profiles default their local health/admin surface to `127.0.0.1:8080`, so run
 one at a time or assign each profile a distinct `health.listen_addr` before
-running them concurrently. Combining boards behind one tunnel is discouraged:
+running them concurrently.
+
+#### Named endpoint registry
+
+Every Kanmer MCP process serves exactly one project — the board it was started
+with — and no request can point it at another path. To keep an eye on several
+projects at once, name their endpoints in a small registry file and any of
+those servers will report all of them through the read-only `list_projects`
+tool:
+
+```json
+{
+  "schema": 1,
+  "endpoints": {
+    "kanmer": { "boardRoot": "C:/path/to/kanmer/.worktrees/kanmer", "repoRoot": "C:/path/to/kanmer", "boardBranch": "kanmer-board", "policy": "main-only" },
+    "another-project": { "boardRoot": "C:/path/to/another/.worktrees/kanmer" }
+  }
+}
+```
+
+The file lives at `~/.kanmer/endpoints.json`, or wherever
+`KANMER_ENDPOINT_REGISTRY` (an absolute path in the server's environment) says
+— an operator or the Kanmer app decides that when the server is started, never
+an agent request. Names are lowercase (`a-z`, `0-9`, `.`, `_`, `-`); paths must
+be absolute. For each name the tool reports the project's logical identity,
+where it physically is, its board sync state, the declared `policy`, health
+(`ok`, `unassigned` for a board that has not received its identity yet,
+`missing-board`, or `invalid` for a malformed entry — never silently dropped),
+and the controllers and workspaces currently holding tickets there. The
+answering server marks which entry is its own. Everything across projects is
+observational: writing to another project means connecting to that project's
+endpoint and passing its `project_id` as `expected_project`; sending another
+project's id to this one is refused with `WRONG_PROJECT`. The app's
+project-health view of this registry is tracked separately (GUI-144). Combining boards behind one tunnel is discouraged:
 each exposes the same Kanmer tool names, leaving the remote agent without a
 clear board-selection boundary.
 

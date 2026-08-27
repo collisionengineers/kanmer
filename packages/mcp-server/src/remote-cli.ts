@@ -2,7 +2,7 @@ import { BearerAuthorizer } from "./http-auth.js";
 import { loadTokenMaterial } from "./http-secret.js";
 import { createKanmerRemoteHost } from "./remote-host.js";
 import { createCloudflaredAdapter } from "./tunnels/cloudflared.js";
-import { projectFingerprint } from "./index.js";
+import { boundProject } from "./index.js";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
@@ -32,7 +32,8 @@ try {
   ownerNonce = required("KANMER_REMOTE_OWNER_NONCE");
   await mkdir(dirname(ownerFile), { recursive: true, mode: 0o700 });
   try {
-    await writeFile(ownerFile, `${JSON.stringify({ pid: process.pid, nonce: ownerNonce, projectFingerprint: await projectFingerprint() })}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
+    const project = await boundProject();
+    await writeFile(ownerFile, `${JSON.stringify({ pid: process.pid, nonce: ownerNonce, projectFingerprint: project.fingerprint, project_id: project.project_id })}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
     ownerAcquired = true;
   } catch { throw new Error("REMOTE_OWNER_EXISTS"); }
   const material = await loadTokenMaterial(required("KANMER_HTTP_TOKEN_FILE"));
@@ -73,7 +74,8 @@ try {
   // cancels that in-flight start and removes its temporary configuration.
   process.once("SIGINT", onSignal); process.once("SIGTERM", onSignal);
   const ready = await remote.start();
-  process.stdout.write(`${JSON.stringify({ kind: "kanmer-mcp-remote-ready", version: 1, endpoint: ready.localEndpoint, publicEndpoint: ready.endpoint, authRequired: true, tokenId: verifier.tokenId, fingerprint: verifier.fingerprint, projectFingerprint: await projectFingerprint() })}\n`);
+  const project = await boundProject();
+  process.stdout.write(`${JSON.stringify({ kind: "kanmer-mcp-remote-ready", version: 1, endpoint: ready.localEndpoint, publicEndpoint: ready.endpoint, authRequired: true, tokenId: verifier.tokenId, fingerprint: verifier.fingerprint, projectFingerprint: project.fingerprint, project_id: project.project_id, board_id: project.board_id, identity: project.identity })}\n`);
 } catch (error) {
   if (shutdown) {
     await shutdown;

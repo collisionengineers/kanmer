@@ -41,6 +41,13 @@ const runnerEnv = process.env.KANMER_NODE
   ? { ...process.env, ELECTRON_RUN_AS_NODE: "1" }
   : process.env;
 
+// MCP-054: the endpoint registry location is fixed at spawn time by the
+// operator (here: the harness), never by a request. The file itself is written
+// later, once the second fixture exists — the server reads it per call.
+const registryFile = path.join(sandbox, "endpoints.json");
+runnerEnv.KANMER_ENDPOINT_REGISTRY = registryFile;
+const sandboxB = fs.mkdtempSync(path.join(os.tmpdir(), "kanmer-smoke-b-"));
+
 const transport = new StdioClientTransport({
   command: runner,
   args: [serverEntry, "--root", sandbox],
@@ -59,7 +66,7 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
-  check("tools/list returns 38 tools", tools.tools.length === 38, `got ${tools.tools.length}`);
+  check("tools/list returns 39 tools", tools.tools.length === 39, `got ${tools.tools.length}`);
   for (const name of [
     "append_scratch",
     "reconcile_ticket",
@@ -2567,6 +2574,109 @@ Second proof attempt passed; the first failure is retained.
     JSON.stringify({ before: reconcileBefore.updated, after: reconcileAfter.updated, status: reconcileAfter.status }),
   );
 
+  // --- FRD-029 AC4/AC5 (MCP-054): named endpoints, observational only -----
+  // A second project fixture served by ITS OWN process: two endpoints, one
+  // project each. The registry names both; neither can reach the other.
+  const clientB = new Client({ name: "smoke-b", version: "0.0.0" });
+  await clientB.connect(new StdioClientTransport({ command: runner, args: [serverEntry, "--root", sandboxB], env: runnerEnv }));
+  try {
+    const noRegistry = JSON.parse(textOf(await client.callTool({ name: "list_projects", arguments: {} })));
+    check(
+      "list_projects without a registry file is empty, not an error",
+      noRegistry.registry?.exists === false && noRegistry.registry?.error === null && noRegistry.registry?.source === "env" &&
+        noRegistry.registry?.path === registryFile && noRegistry.endpoints?.length === 0 && noRegistry.bound?.project_id === projectId,
+      JSON.stringify(noRegistry.registry),
+    );
+    const createdB = await clientB.callTool({ name: "create_item", arguments: { type: "ticket", title: "Fixture B ticket", profile: "chore" } });
+    const ticketB = JSON.parse(textOf(createdB)).id;
+    await clientB.callTool({ name: "take_ticket", arguments: { id: ticketB, branch: "b-work", worktree: ".worktrees/b-work", assignee: "controller-b", stage: "backlog" } });
+    const statusB = JSON.parse(textOf(await clientB.callTool({ name: "get_status", arguments: {} })));
+    const projectIdB = statusB.project?.project_id;
+    check("fixture B has its own logical project_id", UUID_RE.test(projectIdB ?? "") && projectIdB !== projectId, `${projectId} vs ${projectIdB}`);
+    fs.writeFileSync(registryFile, JSON.stringify({
+      schema: 1,
+      endpoints: {
+        alpha: { boardRoot: sandbox, policy: "main-only" },
+        beta: { boardRoot: sandboxB, boardBranch: "kanmer-board" },
+        gamma: { boardRoot: "relative/board" },
+      },
+    }), "utf8");
+    const fromA = JSON.parse(textOf(await client.callTool({ name: "list_projects", arguments: {} })));
+    const fromB = JSON.parse(textOf(await clientB.callTool({ name: "list_projects", arguments: {} })));
+    const byName = (view) => Object.fromEntries((view.endpoints ?? []).map((e) => [e.name, e]));
+    const a = byName(fromA);
+    const b = byName(fromB);
+    check(
+      "both endpoints observe both named projects with their distinct project_ids",
+      fromA.registry?.exists === true && fromA.endpoints?.length === 3 &&
+        a.alpha?.project?.project_id === projectId && a.beta?.project?.project_id === projectIdB &&
+        b.alpha?.project?.project_id === projectId && b.beta?.project?.project_id === projectIdB &&
+        a.alpha.health === "ok" && a.beta.health === "ok" && a.alpha.policy === "main-only",
+      JSON.stringify({ a: Object.keys(a), b: Object.keys(b) }),
+    );
+    check(
+      "each process marks only its own endpoint as bound",
+      a.alpha?.bound === true && a.beta?.bound === false && fromA.bound?.endpoint === "alpha" &&
+        b.beta?.bound === true && b.alpha?.bound === false && fromB.bound?.endpoint === "beta",
+      JSON.stringify({ fromA: fromA.bound, fromB: fromB.bound }),
+    );
+    check(
+      "fixture B's active controller and workspace are observable from endpoint A",
+      a.beta?.controllers?.some((c) => c.controller === "controller-b" && c.tickets.includes(ticketB)) &&
+        a.beta?.workspaces?.some((w) => w.ticket === ticketB && w.branch === "b-work" && w.worktree === ".worktrees/b-work" && w.claim === "live"),
+      JSON.stringify(a.beta?.workspaces),
+    );
+    check(
+      "an invalid registry entry is reported, not dropped or resolved",
+      a.gamma?.health === "invalid" && a.gamma?.problems?.some((p) => p.includes("absolute")) && a.gamma?.project === null,
+      JSON.stringify(a.gamma),
+    );
+    check(
+      "list_projects carries location evidence and board sync per endpoint",
+      typeof a.beta?.location?.fingerprint === "string" && a.beta.location.fingerprint.startsWith("kanmer-loc-v1:") &&
+        "boardSync" in a.beta && a.beta.location.boardPath !== a.alpha.location.boardPath,
+    );
+    const filtered = JSON.parse(textOf(await client.callTool({ name: "list_projects", arguments: { name: "beta" } })));
+    const unknownName = JSON.parse(textOf(await client.callTool({ name: "list_projects", arguments: { name: "delta" } })));
+    check(
+      "the name filter selects one endpoint and reports an unknown name as missing",
+      filtered.endpoints?.length === 1 && filtered.endpoints[0].name === "beta" && unknownName.endpoints?.length === 0 && unknownName.missing?.[0] === "delta",
+    );
+    const pathArgs = JSON.parse(textOf(await client.callTool({ name: "list_projects", arguments: { boardRoot: sandboxB, root: sandboxB, name: "alpha" } })));
+    check(
+      "list_projects ignores path-like arguments — a request cannot select a board",
+      pathArgs.endpoints?.length === 1 && pathArgs.endpoints[0].name === "alpha" && pathArgs.bound?.project_id === projectId,
+    );
+    const projectsTool = tools.tools.find((t) => t.name === "list_projects");
+    check(
+      "no tool schema at all lets a request choose a project path",
+      projectsTool?.annotations?.readOnlyHint === true && Object.keys(projectsTool.inputSchema?.properties ?? {}).join(",") === "name" &&
+        tools.tools.every((t) => !["root", "path_root", "project_root", "board_root", "repo_root", "cwd", "boardRoot", "repoRoot"].some((k) => k in (t.inputSchema?.properties ?? {}))),
+    );
+    // Cross-project mutation: endpoint A is asked to write "as" project B.
+    const ticketBFile = path.join(sandboxB, ".kanmer", "areas", "_none", ticketB, `${ticketB}.md`);
+    const ticketAFile = path.join(sandbox, ".kanmer", "areas", "_none", "TICK-001", "TICK-001.md");
+    const beforeB = fs.readFileSync(ticketBFile, "utf8");
+    const beforeA = fs.readFileSync(ticketAFile, "utf8");
+    const cross = await client.callTool({ name: "update_item", arguments: { id: "TICK-001", labels: ["cross"], expected_project: projectIdB } });
+    const crossB = await client.callTool({ name: "update_item", arguments: { id: ticketB, labels: ["cross"], expected_project: projectIdB } });
+    check(
+      "a cross-project mutation is refused structurally with WRONG_PROJECT and writes nothing on either board",
+      cross.isError === true && cross.structuredContent?.error?.code === "WRONG_PROJECT" && cross.structuredContent?.project?.project_id === projectId &&
+        crossB.isError === true && crossB.structuredContent?.error?.code === "WRONG_PROJECT" &&
+        fs.readFileSync(ticketBFile, "utf8") === beforeB && fs.readFileSync(ticketAFile, "utf8") === beforeA,
+      JSON.stringify({ cross: cross.structuredContent, crossB: crossB.structuredContent }),
+    );
+    const afterA = JSON.parse(textOf(await client.callTool({ name: "get_status", arguments: {} })));
+    check(
+      "observing other endpoints never rebinds this process",
+      afterA.project?.project_id === projectId && afterA.projectRoot === sandbox && afterA.compat?.endpointRegistry === "optional" &&
+        !fs.existsSync(path.join(sandboxB, ".kanmer", "endpoints.json")) && fs.readFileSync(registryFile, "utf8").includes("gamma"),
+    );
+  } finally {
+    await clientB.close();
+  }
+
   const del1 = await client.callTool({ name: "delete_item", arguments: { id: "TICK-001" } });
   check(
     "delete_item removes the ticket folder",
@@ -2581,6 +2691,7 @@ Second proof attempt passed; the first failure is retained.
 } finally {
   await client.close();
   fs.rmSync(sandbox, { recursive: true, force: true });
+  fs.rmSync(sandboxB, { recursive: true, force: true });
 }
 
 const failed = results.filter((r) => !r.pass);

@@ -135,6 +135,12 @@ test("validates the bounded HTTP configuration and emits complete readiness/stop
     assert.ok(ready.port > 0);
     assert.match(ready.endpoint, /^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
     assert.match(ready.projectFingerprint, /^kanmer-proj-v1:[a-f0-9]{64}$/);
+    // FRD-029 / MCP-054: readiness names the logical project. This root has
+    // never been written, so it is still unassigned — and that is reported
+    // as null, never guessed.
+    assert.equal(ready.project_id, null);
+    assert.equal(ready.board_id, null);
+    assert.equal(ready.identity, "unassigned");
     assert.equal(ready.mode, "remote-http-v1");
     assert.equal(ready.authRequired, true);
     assert.deepEqual(ready.supportedProtocolVersions, ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"]);

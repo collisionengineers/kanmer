@@ -34,6 +34,7 @@ async function startHttpCli(entry, tokenFile) {
 const root = await mkdtemp(path.join(os.tmpdir(), "kanmer-http-smoke-"));
 process.env.KANMER_ROOT = root;
 const { createKanmerHttpHost, BearerAuthorizer, createTokenFile, generateBearerToken, loadTokenFile } = await import("../dist/http.js");
+const { remoteHttpToolNames } = await import("../dist/index.js");
 
 const cli = spawnSync(process.execPath, [fileURLToPath(new URL("../dist/http-cli.js", import.meta.url))], { encoding: "utf8" });
 assert.equal(cli.status, 1);
@@ -110,6 +111,9 @@ try {
   assert.equal(ready.host, "127.0.0.1");
   assert.equal(ready.authRequired, true);
   assert.match(ready.projectFingerprint, /^kanmer-proj-v1:[a-f0-9]{64}$/);
+  assert.ok("project_id" in ready && "board_id" in ready, "readiness carries the logical project identity (MCP-054)");
+  assert.ok(ready.identity === "logical" || ready.identity === "unassigned");
+  assert.equal(ready.identity === "logical", typeof ready.project_id === "string");
   assert.deepEqual(ready.supportedProtocolVersions, ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"]);
   const endpoint = ready.endpoint;
   const missing = await fetch(endpoint, { method: "POST" });
@@ -139,7 +143,10 @@ try {
   });
   assert.equal(tools.status, 200);
   const toolsPayload = await mcpPayload(tools);
-  assert.equal(toolsPayload.result.tools.length, 30);
+  // The remote roster is derived from registration, so this cannot go stale again (it sat at 30 while the server exposed 35).
+  const remoteRoster = remoteHttpToolNames();
+  assert.deepEqual(toolsPayload.result.tools.map((tool) => tool.name).sort(), [...remoteRoster]);
+  assert.ok(remoteRoster.includes("list_projects") && !remoteRoster.includes("dispatch_task"));
   // Keep two independently-negotiated sessions live. Session B advertises
   // elicitation, while A does not: a mutable registry-level server reference
   // used to make this A mutation inherit B's identity/capabilities.

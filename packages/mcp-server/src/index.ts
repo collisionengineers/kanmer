@@ -55,6 +55,7 @@ import {
   type LogicalProject,
 } from "./project-identity.js";
 import { dispatchPolicyView, parseDispatchPolicy } from "./dispatch-policy.js";
+import { ENDPOINT_REGISTRY_ENV, observeRegistry, type ObservationDeps } from "./project-registry.js";
 import { fetchLlmsTxt, LLMS_TXT_POLICY, validateLlmsSource } from "./sources.js";
 
 export { createPinnedLookup, fetchLlmsTxt, LLMS_TXT_POLICY, validateLlmsSource } from "./sources.js";
@@ -261,10 +262,15 @@ async function resolveProject(): Promise<LogicalProject> {
  */
 async function resolveLocation(): Promise<LocationFingerprint> {
   const boardBranch = await inspectBoardBranch(projectRoot);
+  return resolveLocationFor({ repoPath: store.paths.repoRoot, boardPath: projectRoot, boardBranch });
+}
+
+/** Root-parameterised twin of `resolveLocation` so the endpoint registry (MCP-054) can observe any board, not only the bound one. */
+async function resolveLocationFor(input: { repoPath: string; boardPath: string; boardBranch: string | null }): Promise<LocationFingerprint> {
   let remoteOrigin: string | null = null;
   try {
     const { stdout } = await execFile("git", ["config", "--get", "remote.origin.url"], {
-      cwd: projectRoot,
+      cwd: input.boardPath,
       windowsHide: true,
       timeout: 15_000,
     });
@@ -279,13 +285,16 @@ async function resolveLocation(): Promise<LocationFingerprint> {
     machine = null;
   }
   return locationFingerprint({
-    repoPath: store.paths.repoRoot,
-    boardPath: projectRoot,
+    repoPath: input.repoPath,
+    boardPath: input.boardPath,
     machine,
-    boardBranch,
+    boardBranch: input.boardBranch,
     remoteOrigin,
   });
 }
+
+/** The probes the registry observes every endpoint with — the same git/os calls `get_status` uses for the bound board. */
+const registryObservationDeps: ObservationDeps = { inspectBoardBranch, inspectBoardSync, resolveLocation: resolveLocationFor };
 
 /** The WRONG_PROJECT refusal, raised before actor attribution, initialisation or any store call. */
 async function assertExpectedProject(expected: string | undefined): Promise<LogicalProject> {
@@ -577,6 +586,7 @@ server.registerTool(
       "Board worktree: an informational, non-blocking `boardWorktree` block reports the board path, expected and actual branch, branch match, board source, active ticket count, and operator repair guidance. It never checks out, repairs, initializes, or refuses another tool. " +
       "Board sync: `boardSync` is `{ remoteBranch, localSha, remoteSha, ahead, behind }` comparing the board HEAD with its last-fetched origin ref, or null without a Git board/remote ref; `ahead > 0` means unpushed board commits the CI merge gate cannot see. It never fetches or pushes. " +
       "Project identity (FRD-029): `project.project_id` is the board's stable LOGICAL identity (persisted in .kanmer/project.json; the same across copies of the board at other paths or machines) and `project.board_id` its board; `project.identity` is `logical` once assigned or `unassigned` on a legacy board that has not yet received its one-time identity migration (the first write or migrate_board performs it, recording the prior `fingerprint` as the auditable fallback in `project.origin`/project.json). `project.location` is the separate machine-local evidence — repo path, board path, machine, board branch, remote origin and a `kanmer-loc-v1` digest — reported, never used to reassign identity. `project.fingerprint` is the legacy `kanmer-proj-v1` machine-local fingerprint, retained for older clients. When `compat.expectedProject` is `optional`, send `project_id` (preferred) or that fingerprint as `expected_project` on any write to be refused with WRONG_PROJECT before anything runs; omit it for older servers that do not advertise compatibility. When `compat.expectedRevision` is `optional`, ticket mutations also accept `expected_revision` — the document-inclusive `revision` from get_item — and refuse a stale one with REVISION_CONFLICT. Every tool result carries `structuredContent.project` naming the logical project. " +
+      "Endpoint registry (FRD-029, MCP-054): when `compat.endpointRegistry` is `optional`, `list_projects` reports every NAMED project endpoint the operator registered — this process still serves exactly one of them. " +
       "IMPORTANT: the `server` block is absent on servers older than 0.3.3, and the `repo` block on servers older than 0.3.4 — that ABSENCE is itself the signal 'this build predates the check', not an error. Individual fields are null if they could not be read; the call never fails over it.",
     inputSchema: {},
     annotations: { readOnlyHint: true, openWorldHint: false },
@@ -645,7 +655,7 @@ server.registerTool(
        * separate machine-local `location` evidence.
        */
       project: { ...legacy, ...logical, location },
-      compat: { expectedProject: "optional", projectIdentity: "logical", expectedRevision: "optional" },
+      compat: { expectedProject: "optional", projectIdentity: "logical", expectedRevision: "optional", endpointRegistry: "optional" },
       dispatch: dispatchPolicyView(dispatchPolicy),
       deploymentTracking: board.deployment !== undefined,
       boardWorktree: {
@@ -702,6 +712,36 @@ server.registerTool(
       boundaries: BOUNDARIES,
       repoDocs: repoDocsMap(board),
       deploymentTracking: board.deployment !== undefined,
+    });
+  }),
+);
+
+server.registerTool(
+  "list_projects",
+  {
+    title: "List named project endpoints",
+    description:
+      "Observe every NAMED project endpoint in the operator-owned endpoint registry (FRD-029, MCP-054) — read-only, and never a way to reach another board. " +
+      "One MCP process stays bound to exactly one project: the registry is a JSON file whose location is fixed when the process is spawned (`KANMER_ENDPOINT_REGISTRY`, else `~/.kanmer/endpoints.json`); no request can supply a path, and this tool takes at most a registry NAME filter. " +
+      "Each endpoint reports its `project` (logical `project_id`/`board_id`, `identity`, legacy `fingerprint`), machine-local `location`, `boardSync`, `health` (`ok` | `unassigned` — legacy board without project.json | `missing-board` | `invalid` — malformed registry entry, see `problems` | `error`), the operator-declared `policy`, and the active `controllers` and `workspaces` (taken tickets with branch/worktree and a `live`/`expired` claim). " +
+      "`bound` marks the one endpoint that IS this process's project; `bound.endpoint` at the top level names it, or null when this project is not registered. Cross-project registry operations are observational only: to mutate another project, connect to ITS endpoint and pass ITS `project_id` as `expected_project` — sending it here is refused with WRONG_PROJECT. " +
+      "A missing registry is not an error (`registry.exists: false`, no endpoints); a malformed one reports `registry.error`.",
+    inputSchema: {
+      name: z.string().optional().describe("Only this registry endpoint name; `missing` lists it when the registry has no such name"),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  guard(async ({ name }) => {
+    // This process's own identity is the only one that may touch lastProject;
+    // every other endpoint is resolved fresh inside observeRegistry.
+    const bound = await resolveProject();
+    const observed = await observeRegistry(process.env, homedir(), registryObservationDeps, bound, name ? { name } : undefined);
+    const boundEndpoint = observed.endpoints.find((endpoint) => endpoint.bound)?.name ?? null;
+    return ok({
+      registry: { ...observed.registry, env: ENDPOINT_REGISTRY_ENV },
+      bound: { project_id: bound.project_id, board_id: bound.board_id, identity: bound.identity, fingerprint: bound.fingerprint, endpoint: boundEndpoint },
+      endpoints: observed.endpoints,
+      missing: observed.missing,
     });
   }),
 );
@@ -1831,6 +1871,12 @@ server.registerPrompt(
 export async function projectFingerprint(): Promise<string> {
   if (!rootResolved) resolveRoot();
   return (await legacyIdentity()).fingerprint;
+}
+
+/** The logical project this process is bound to — for HTTP/remote readiness (FRD-029: every endpoint identifies its project). */
+export async function boundProject(): Promise<LogicalProject> {
+  if (!rootResolved) resolveRoot();
+  return resolveProject();
 }
 
 // ---------------------------------------------------------------------------

@@ -2,13 +2,14 @@
 id: CORE-124
 type: ticket
 title: Add deliberate batch workspaces on top of renewable leases
-status: review
+status: verifying
 area: core
 assignee: claude-code-core124
 profile: feature
 stageEntered:
   preparing: '2026-08-27T20:47:48.964Z'
   review: '2026-08-27T21:10:03.643Z'
+  verifying: '2026-08-27T21:18:53.730Z'
 taken_at: '2026-08-27T20:52:23.804Z'
 branch: core-124-batch-workspaces
 worktree: .worktrees/core-124
@@ -28,7 +29,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/295'
 archived: false
 created: '2026-08-27T19:22:20.928Z'
-updated: '2026-08-27T21:10:03.643Z'
+updated: '2026-08-27T21:18:53.730Z'
 ---
 
 ## What

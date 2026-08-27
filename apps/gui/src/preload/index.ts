@@ -148,6 +148,11 @@ const api: KanmerApi = {
   openAITunnelRestart: (p, expectedGeneration) => ipcRenderer.invoke(CH.openAITunnelRestart, p, expectedGeneration),
   openAITunnelReconcile: (p, expectedGeneration) => ipcRenderer.invoke(CH.openAITunnelReconcile, p, expectedGeneration),
   openAITunnelRemove: (p, expectedGeneration) => ipcRenderer.invoke(CH.openAITunnelRemove, p, expectedGeneration),
+  registryObserve: (p) => ipcRenderer.invoke(CH.registryObserve, p),
+  registryAddProject: (p, name, policy) => ipcRenderer.invoke(CH.registryAddProject, p, name, policy ?? null),
+  registryRename: (p, from, to) => ipcRenderer.invoke(CH.registryRename, p, from, to),
+  registryRemove: (p, name) => ipcRenderer.invoke(CH.registryRemove, p, name),
+  registrySetPolicy: (p, name, policy) => ipcRenderer.invoke(CH.registrySetPolicy, p, name, policy),
   onOpenAITunnelStatus: (cb) => {
     const listener = (_e: unknown, status: OpenAITunnelStatus) => cb(status);
     ipcRenderer.on(CH.openAITunnelStatus, listener);

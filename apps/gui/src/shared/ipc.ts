@@ -169,7 +169,105 @@ export const CH = {
   openAITunnelReconcile: "kanmer:openAITunnelReconcile",
   openAITunnelRemove: "kanmer:openAITunnelRemove",
   openAITunnelStatus: "kanmer:openAITunnelStatus",
+  registryObserve: "kanmer:registryObserve",
+  registryAddProject: "kanmer:registryAddProject",
+  registryRename: "kanmer:registryRename",
+  registryRemove: "kanmer:registryRemove",
+  registrySetPolicy: "kanmer:registrySetPolicy",
 } as const;
+
+// ---------------------------------------------------------------------------
+// FRD-029 named endpoint registry (GUI-144). Mirrors the file contract owned
+// by packages/mcp-server/src/project-registry.ts; the GUI observes every
+// named endpoint read-only and is the registry's only writer.
+// ---------------------------------------------------------------------------
+
+export interface RegistryEntry {
+  /** Absolute path of the folder containing `.kanmer` (the board). */
+  boardRoot: string;
+  repoRoot?: string;
+  boardBranch?: string;
+  /** Operator-declared delivery policy label, echoed back. */
+  policy?: string;
+}
+
+export interface RegistryFile {
+  schema: 1;
+  endpoints: Record<string, RegistryEntry>;
+}
+
+export type RegistryHealth = "ok" | "unassigned" | "missing-board" | "invalid" | "error";
+
+export interface RegistryProjectIdentity {
+  project_id: string | null;
+  board_id: string | null;
+  identity: "logical" | "unassigned";
+  origin: "generated" | "migrated" | null;
+  /** Legacy machine-local `kanmer-proj-v1` fingerprint, the auditable fallback. */
+  fingerprint: string;
+}
+
+export interface RegistryLocation {
+  repoPath: string;
+  boardPath: string;
+  machine: string | null;
+  boardBranch: string | null;
+  remoteOrigin: string | null;
+  fingerprint: string;
+}
+
+export interface RegistryLeaseView {
+  id: string;
+  revision: number | null;
+  phase: string | null;
+  provider: string | null;
+  workspace: string | null;
+  heartbeatAt: string | null;
+  controllerRun: string | null;
+  workerRun: string | null;
+  /** True when the last heartbeat is older than the board's heartbeat window (core `leaseState`). */
+  heartbeatStale: boolean;
+}
+
+export interface RegistryWorkspaceView {
+  ticket: string;
+  stage: string;
+  branch: string | null;
+  worktree: string | null;
+  controller: string;
+  assignee: string | null;
+  claim: "live" | "expired";
+  takenAt: string;
+  expiresAt: string | null;
+  /** CORE-115 lease fields when the board carries them; null on a legacy claim. */
+  lease: RegistryLeaseView | null;
+}
+
+export interface RegistryEndpointView {
+  name: string;
+  boardRoot: string;
+  repoRoot: string | null;
+  boardBranch: string | null;
+  policy: string | null;
+  health: RegistryHealth;
+  /** True when this endpoint IS the project the renderer has selected. */
+  selected: boolean;
+  project: RegistryProjectIdentity | null;
+  location: RegistryLocation | null;
+  boardSync: { remote: boolean; ahead: number; behind: number; localSha: string | null; remoteSha: string | null } | null;
+  format: number | null;
+  ticketCount: number | null;
+  controllers: Array<{ controller: string; tickets: string[] }>;
+  workspaces: RegistryWorkspaceView[];
+  problems: string[];
+}
+
+export interface RegistryView {
+  registry: { path: string; source: "env" | "default"; exists: boolean; error: string | null };
+  endpoints: RegistryEndpointView[];
+  /** Whether the selected project is named in the registry at all. */
+  selectedRegistered: boolean;
+}
 
 /**
  * Where the auto-updater is in its cycle. One channel carries all of it —
@@ -704,4 +802,15 @@ export interface KanmerApi {
   openAITunnelReconcile(projectId: string, expectedGeneration?: string | null): Promise<OpenAITunnelProjectView>;
   openAITunnelRemove(projectId: string, expectedGeneration?: string | null): Promise<void>;
   onOpenAITunnelStatus(cb: (status: OpenAITunnelStatus) => void): () => void;
+  /**
+   * FRD-029 endpoint registry (GUI-144). Observation is read-only across every
+   * named project; writes are registry metadata only and never carry a path —
+   * a project is added by naming an OPEN tab, whose roots main already knows.
+   */
+  registryObserve(projectId: string | null): Promise<RegistryView>;
+  registryAddProject(projectId: string, name: string, policy?: string | null): Promise<RegistryView>;
+  /** Rename/remove/policy act only on the endpoint bound to `projectId`'s open project; any other name is refused (`REGISTRY_NOT_SELECTED`). */
+  registryRename(projectId: string, from: string, to: string): Promise<RegistryView>;
+  registryRemove(projectId: string, name: string): Promise<RegistryView>;
+  registrySetPolicy(projectId: string, name: string, policy: string | null): Promise<RegistryView>;
 }

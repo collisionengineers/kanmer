@@ -41,7 +41,7 @@ import { TabStrip, type Tab } from "./components/TabStrip.js";
 import { ArchivedList } from "./components/ArchivedList.js";
 import { Editor, type EditorMode } from "./components/Editor.js";
 import { FilterBar, type Filters } from "./components/FilterBar.js";
-import { Settings } from "./components/Settings.js";
+import { Settings, type SettingsTab } from "./components/Settings.js";
 import { Standup } from "./components/Standup.js";
 import { ActivityPanel } from "./components/ActivityPanel.js";
 import { CommandPalette, type PaletteCommand } from "./components/CommandPalette.js";
@@ -193,6 +193,8 @@ export function App(): JSX.Element {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Settings is keyed by project root (F-013); remember its tab across the remount.
+  const settingsTab = useRef<SettingsTab>("board");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
   const [unread, setUnread] = useState(0);
@@ -702,6 +704,19 @@ export function App(): JSX.Element {
   );
 
   const pickAndOpen = useCallback(() => requestOpen({ kind: "pick" }), [requestOpen]);
+
+  /**
+   * "Open project" from Settings → Projects (GUI-144). Same path as the
+   * picker and the tab strip: the dirty-editor confirm applies, and the
+   * `key={root}` on <Settings> below remounts it for the new project so a
+   * board draft taken from the previous one can never be saved (F-013).
+   */
+  const openProjectFromSettings = useCallback(
+    async (root: string) => {
+      requestOpen({ kind: "path", path: root });
+    },
+    [requestOpen],
+  );
 
   // Application-menu commands.
   useEffect(() => {
@@ -1940,6 +1955,7 @@ export function App(): JSX.Element {
 
       {settingsOpen && (
         <Settings
+          key={root ?? "none"}
           projectId={root}
           board={board}
           items={items}
@@ -1955,7 +1971,15 @@ export function App(): JSX.Element {
           onSetTheme={setTheme}
           onSetNotifications={setNotifications}
           onSetPreferences={setPreferences}
-          onClose={() => setSettingsOpen(false)}
+          onClose={() => {
+            settingsTab.current = "board";
+            setSettingsOpen(false);
+          }}
+          onOpenProject={openProjectFromSettings}
+          initialTab={settingsTab.current}
+          onTabChange={(tab) => {
+            settingsTab.current = tab;
+          }}
         />
       )}
 

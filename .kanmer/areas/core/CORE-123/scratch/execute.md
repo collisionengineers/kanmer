@@ -22,3 +22,7 @@ Retained attempt logs on disk: `.worktrees/core-123-verify-attempt1.log`, `.work
 ## Transitions
 
 - 2026-08-27T17:20:00Z stage review → implementing by claude-code (auto-run controller); reason: needs-changes attestation scratch/review.md v9770bd1beecdaa95 at PR #288 head 89896693 (F-001 regate cannot fire from a kanmer-board push, F-002 autostash conflict can commit markers, F-003 bundle conflict with main a8318ea6); review_round 1 of remediation_budget 1. Same branch core-123-merge-gate-board-sync, same worktree .worktrees/core-123, same PR #288. (Recorded here because the installed stable v0.3.12 server predates CORE-121's `reason`/`review_round` fields.)
+
+## 2026-08-27 execute — remediation round 1 (claude-code, run 20260827T133106Z-claude-code)
+
+Resumed packet (ticket.taken branch core-123-merge-gate-board-sync, worktree .worktrees/core-123). Worktree validated: toplevel OK, common dir C:/Users/Alex/Documents/GitHub/kanmer/.git, branch matches, tree clean at 89896693. Findings to fix from scratch/review.md v9770bd1beecdaa95: F-001 (regate cannot fire from a board push), F-002 (autostash conflict commits markers), F-003 (rebase onto origin/main a8318ea6). Plan: F-003 rebase first, then F-002, then F-001; force-with-lease push to PR #288.

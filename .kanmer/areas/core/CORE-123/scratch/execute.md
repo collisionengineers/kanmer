@@ -18,3 +18,7 @@ Commands so far (cwd .worktrees/core-123):
 PR opened: https://github.com/collisionengineers/kanmer/pull/288 (head 8989669316befc635a6a85f6a3271873779ad93d, base origin/main dc514375). Commits 51a736f9, 89896693. Full command/exit table in post-implementation-report. Ticket moved implementing → review. Worktree `.worktrees/core-123` and branch retained for review. Author does not review or merge.
 
 Retained attempt logs on disk: `.worktrees/core-123-verify-attempt1.log`, `.worktrees/core-123-verify.log` (attempt 2), `.worktrees/core-123-gui-test.log`, `.worktrees/core-123-gui-git-test.log`.
+
+## Transitions
+
+- 2026-08-27T17:20:00Z stage review → implementing by claude-code (auto-run controller); reason: needs-changes attestation scratch/review.md v9770bd1beecdaa95 at PR #288 head 89896693 (F-001 regate cannot fire from a kanmer-board push, F-002 autostash conflict can commit markers, F-003 bundle conflict with main a8318ea6); review_round 1 of remediation_budget 1. Same branch core-123-merge-gate-board-sync, same worktree .worktrees/core-123, same PR #288. (Recorded here because the installed stable v0.3.12 server predates CORE-121's `reason`/`review_round` fields.)

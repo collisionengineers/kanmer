@@ -59,9 +59,10 @@ try {
   await client.connect(transport);
 
   const tools = await client.listTools();
-  check("tools/list returns 37 tools", tools.tools.length === 37, `got ${tools.tools.length}`);
+  check("tools/list returns 38 tools", tools.tools.length === 38, `got ${tools.tools.length}`);
   for (const name of [
     "append_scratch",
+    "reconcile_ticket",
     "link_doc",
     "get_doc_gates",
     "migrate_board",
@@ -2282,6 +2283,40 @@ Second proof attempt passed; the first failure is retained.
   check(
     "a taken ticket without a worktree is refused before an unusable ready packet",
     refusedIncompleteTaken.ready === false && refusedIncompleteTaken.reason.includes("incomplete taken-ticket metadata"),
+  );
+
+  // CORE-122: reconcile_ticket is a read-only inspector with an advisory
+  // recommendation and no apply surface. An unclaimed Review ticket with no
+  // PR has one safe recommendation: return it to Implementing.
+  const reconcileTool = tools.tools.find((t) => t.name === "reconcile_ticket");
+  check("reconcile_ticket is read-only and discloses external Git/GitHub reads", reconcileTool?.annotations?.readOnlyHint === true && reconcileTool?.annotations?.openWorldHint === true);
+  check("apply_reconciliation is not registered", !tools.tools.some((t) => t.name === "apply_reconciliation"));
+  const reconcileId = JSON.parse(
+    textOf(await client.callTool({
+      name: "create_item",
+      arguments: { title: "reconciliation dry-run", status: "review", profile: "custom", requires: {}, expected_project: expectedProject },
+    })),
+  ).id;
+  const reconcileBefore = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: reconcileId } })));
+  const reconciliation = JSON.parse(textOf(await client.callTool({ name: "reconcile_ticket", arguments: { id: reconcileId } })));
+  check(
+    "reconcile_ticket returns an advisory recommendation with claim facts",
+    reconciliation.evidence?.ticket?.id === reconcileId &&
+      reconciliation.recommendation?.action === "MOVE_TO_IMPLEMENTING" &&
+      reconciliation.recommendation?.advisory === true &&
+      reconciliation.proposal === undefined &&
+      reconciliation.evidence?.claim?.state === "unclaimed" &&
+      reconciliation.evidence?.claim?.reviewRound === 0 &&
+      reconciliation.evidence?.claim?.remediationBudget === 1 &&
+      reconciliation.evidence?.release?.state === "not-applicable" &&
+      reconciliation.findings?.[0]?.code === "REVIEW_WITHOUT_PR_OR_WORKER",
+    JSON.stringify(reconciliation),
+  );
+  const reconcileAfter = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: reconcileId } })));
+  check(
+    "reconcile_ticket never mutates the ticket",
+    reconcileAfter.status === "review" && reconcileAfter.updated === reconcileBefore.updated,
+    JSON.stringify({ before: reconcileBefore.updated, after: reconcileAfter.updated, status: reconcileAfter.status }),
   );
 
   const del1 = await client.callTool({ name: "delete_item", arguments: { id: "TICK-001" } });

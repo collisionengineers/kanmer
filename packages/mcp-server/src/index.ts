@@ -44,6 +44,7 @@ import { SERVER_VERSION, serverIdentity } from "./identity.js";
 import { bundledSkillsDir } from "./bundled.js";
 import { readTicketDocuments } from "./ticket-docs.js";
 import { getExecutionPacket } from "./execution-packet.js";
+import { reconcileTicket } from "./reconciliation.js";
 import { failCoded, KanmerError } from "./errors.js";
 import { projectIdentity } from "./project-identity.js";
 import { dispatchPolicyView, parseDispatchPolicy } from "./dispatch-policy.js";
@@ -641,6 +642,18 @@ server.registerTool(
         : { ...item, blocked },
     );
   }),
+);
+
+server.registerTool(
+  "reconcile_ticket",
+  {
+    title: "Inspect a ticket's reconciliation state (read-only)",
+    description:
+      "Read one ticket's board, claim, proof, recorded-workspace, GitHub PR and required-check facts, then return typed findings plus an ADVISORY recommendation or none. This is a dry-run inspector only: it never mutates the board, Git, workspace, checks or release state, and there is no apply surface — an operator or controller acts on the recommendation through the ordinary tools. Claim state is current | expired | unclaimed with review_round/remediation_budget. Unavailable GitHub/CI/workspace facts are reported as inconclusive, never invented. The request selects only an existing ticket id; it cannot supply a path, command, executable or project root.",
+    inputSchema: { id: z.string().describe("Existing ticket id") },
+    annotations: { readOnlyHint: true, openWorldHint: true },
+  },
+  guard(async ({ id }) => ok(await reconcileTicket(store, id))),
 );
 
 server.registerTool(

@@ -40,35 +40,51 @@ Operators coordinating Kanmer projects, constrained implementation agents, indep
 - Review has one consolidated pass, one remediation batch and one delta review; only blocker/major findings, failed required checks, stale review, unmet acceptance, or a security/destructive risk block merge. Dispositioned minor/note risk does not.
 - The controller reconciles board, Git, GitHub, CI and workspace facts after every worker result; worker prose does not advance state.
 - One active release lease exists per channel. No silent deletion of dirty work. No unlimited remediation or audit loops.
+- **Mutating reconciliation is not attempted before revision and lease contracts exist.** [[CORE-113]] was superseded on 2026-08-27 for this reason (see its Outcome and `scratch/notes.md`); its read-only classifier/collector is salvage material, its `apply_reconciliation` is not.
+
+## Interim ownership and remediation rule (v0.3.12, until the bootstrap ownership contract merges)
+
+- A claim older than 30 minutes with no pause/resume note in `scratch/` and no live controller run record is treated as expired.
+- Transferring an expired claim requires an operator note in the ticket's `scratch/` naming the old controller, the new controller, the recorded branch and worktree. Agents never use `force`; the operator releases via the GUI or `take_ticket action: "release"` after recording the worktree location.
+- A `needs-changes` attestation bound to the current PR head is the only agent-side authority to move Review → Implementing; the move keeps the same branch, worktree and PR, and the ticket's remediation budget is one batch plus one delta review unless an operator note extends it.
+- A review attestation is authoritative only after every expected automated reviewer has posted on the exact head; if a reviewer posts later on the same head, the attestation is replaced, not appended.
+- Confirm the board branch is pushed (local tip == `origin/kanmer-board`) before treating a `kanmer-gate` result as current; the gate reads the remote board tip and does not re-run on board pushes.
 
 ## Dependency map
 
 1. [[DOC-027]] establishes concise governing inputs and links each member.
-2. [[CORE-113]] provides dry-run-first recovery against the current model.
-3. [[CORE-114]] establishes project identity and revision-safe contracts.
-4. [[CORE-115]], [[CORE-116]], [[CORE-117]], [[CORE-118]] and [[MCP-054]] build on the shared contracts. [[GUI-144]] follows [[MCP-054]].
-5. [[SKILL-036]] integrates leases, packets, review/verification and reconciliation into durable orchestration.
-6. [[CORE-119]] proves the complete model on disposable boards and controls stable-to-candidate promotion/rollback.
+2. Bootstrap ownership/backward-move contract (successor ticket to be created) unblocks every later lane: expiring claims with owner-checked transfer, audited Review → Implementing.
+3. In parallel after 2: read-only reconciliation inspector (salvaged from [[CORE-113]] PR #286), merge-gate/board-sync hardening, and the review-consolidation skill contract.
+4. [[CORE-114]] establishes project identity and a document-inclusive revision contract.
+5. [[CORE-115]], [[CORE-116]], [[CORE-117]], [[CORE-118]] and [[MCP-054]] build on the shared contracts. [[GUI-144]] follows [[MCP-054]].
+6. Mutating reconciliation (`apply_reconciliation`, expired-claim release, typed verification routing) follows [[CORE-115]].
+7. [[SKILL-036]] integrates leases, packets, review/verification and reconciliation into durable orchestration.
+8. [[CORE-119]] proves the complete model on disposable boards and controls stable-to-candidate promotion/rollback.
 
 ## Implementation order and WIP
 
-Start only [[DOC-027]], then take the single shared-contract serial lane. Do not begin more than two implementation PRs; only one shared subsystem PR is active at a time. Re-evaluate dependent plans after each contract merge. The live board remains on stable v0.3.12 throughout candidate work.
+[[DOC-027]] is done. Next take the bootstrap ownership contract as a single small PR on the stable line; then run the three parallel lanes in 3 above; then the shared-contract serial lane [[CORE-114]] → [[CORE-115]]. Do not begin more than two implementation PRs; only one shared subsystem PR is active at a time. Re-evaluate dependent plans after each contract merge. The live board remains on stable v0.3.12 throughout candidate work.
 
 ## Breakdown
 
 | Ticket | Outcome | Order |
 | --- | --- | --- |
-| [[DOC-027]] | Governing FRD/ADR contract | 1 |
-| [[CORE-113]] | Rescue/reconciliation | 2 |
-| [[CORE-114]] | Identity and revision safety | 3 |
-| [[CORE-115]] | Leases and isolated/batch workspaces | 4 |
-| [[CORE-116]] | Delivery policy and release-channel leases | 4 |
-| [[CORE-117]] | Capture and promotion | 4 |
-| [[CORE-118]] | Evidence/plan validation and step packets | 4 |
-| [[MCP-054]] | Named multi-project endpoint registry | 4 |
-| [[GUI-144]] | GUI multi-project registry health | 5 |
-| [[SKILL-036]] | Durable `/goal`, review and verification control | 5 |
-| [[CORE-119]] | Golden-board and promotion/rollback proof | 6 |
+| [[DOC-027]] | Governing FRD/ADR contract | 1 (done) |
+| [[CORE-113]] | Rescue/reconciliation — **superseded 2026-08-27**, archived | — |
+| (new) bootstrap ownership contract | Expiring claims, transfer, audited backward move | 2 |
+| (new) read-only reconciliation inspector | `reconcile_ticket` salvaged from PR #286 | 3 |
+| (new) merge-gate and board-sync hardening | Attestation errors, `SYNC_REQUIRED`, board-push CI trigger | 3 |
+| (new) review-consolidation skill contract | Expected reviewers settle, delta review, remediation budget, same-PR return | 3 |
+| [[CORE-114]] | Identity and revision safety | 4 |
+| [[CORE-115]] | Leases and isolated/batch workspaces | 5 |
+| [[CORE-116]] | Delivery policy and release-channel leases | 5 |
+| [[CORE-117]] | Capture and promotion | 5 |
+| [[CORE-118]] | Evidence/plan validation and step packets | 5 |
+| [[MCP-054]] | Named multi-project endpoint registry | 5 |
+| (new) mutating reconciliation | `apply_reconciliation` on revisions + leases | 6 |
+| [[GUI-144]] | GUI multi-project registry health | 6 |
+| [[SKILL-036]] | Durable `/goal`, review and verification control | 6 |
+| [[CORE-119]] | Golden-board and promotion/rollback proof | 7 |
 
 ## Rollout & rollback
 

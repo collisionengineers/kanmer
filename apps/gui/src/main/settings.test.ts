@@ -68,6 +68,24 @@ describe("settings-file atomic rename", () => {
   });
 });
 
+describe("git sync interval default", () => {
+  it("defaults an unrecorded interval to five minutes and keeps an explicit zero off", async () => {
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    await mkdir(fixture.userData, { recursive: true });
+    const file = join(fixture.userData, "settings.json");
+
+    expect(readSettings().gitSyncMinutes).toBe(5);
+    await writeFile(file, JSON.stringify({ theme: "dark" }), "utf8");
+    expect(readSettings().gitSyncMinutes).toBe(5);
+    await writeFile(file, JSON.stringify({ gitSyncMinutes: 0 }), "utf8");
+    expect(readSettings().gitSyncMinutes).toBe(0);
+    await writeFile(file, JSON.stringify({ gitSyncMinutes: 12 }), "utf8");
+    expect(readSettings().gitSyncMinutes).toBe(12);
+    await writeFile(file, JSON.stringify({ gitSyncMinutes: "soon" }), "utf8");
+    expect(readSettings().gitSyncMinutes).toBe(0);
+  });
+});
+
 describe("dispatch settings", () => {
   it("normalizes known providers/tasks and resolves task precedence", async () => {
     const saved = await setDispatchSettings({

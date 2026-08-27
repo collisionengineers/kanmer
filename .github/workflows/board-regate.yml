@@ -1,0 +1,36 @@
+name: Board push re-gate
+
+# OPERATOR-INSTALLED. This file does nothing on `main`: GitHub runs a `push`
+# workflow from the pushed ref's own tree, and the board branch carries only
+# `.gitignore` and `.kanmer`. To make a board push re-judge open PRs, an
+# operator copies this file onto the board branch once:
+#
+#   git -C .worktrees/kanmer checkout kanmer-board
+#   mkdir -p .worktrees/kanmer/.github/workflows
+#   cp .github/workflows/board-regate.yml .worktrees/kanmer/.github/workflows/
+#   git -C .worktrees/kanmer add .github && git -C .worktrees/kanmer commit -m "ci: board push re-gate"
+#   git -C .worktrees/kanmer push origin kanmer-board
+#
+# Agents never commit to the board branch. Until an operator installs this,
+# re-gating after a board push is manual (`gh workflow run pr.yml --ref main`).
+# The `GITHUB_TOKEN` may create `workflow_dispatch` runs (that event is exempt
+# from the no-chained-runs rule), so no PAT is needed.
+
+on:
+  push:
+    branches: [kanmer-board]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch-regate:
+    name: dispatch-regate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch the pull-request workflow on main so its regate job re-runs kanmer-gate for open PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run pr.yml --ref main

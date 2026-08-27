@@ -2,7 +2,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import matter from "gray-matter";
 // The workflow builds core immediately before invoking this source-level CLI.
 import {
   KanmerStore,
@@ -10,9 +9,10 @@ import {
   buildLinkIndex,
   lastStageId,
   evaluateMergeGate,
+  parseReviewAttestation,
   resolveMergeGateTicket,
 } from "../../core/dist/index.js";
-import { assertGitRepository, collectCommitReachability, isFullGitSha } from "./git-reachability.mjs";
+import { assertGitRepository, collectBoardEvidence, collectCommitReachability } from "./git-reachability.mjs";
 
 function parseArgs(argv) {
   const values = {};
@@ -48,46 +48,31 @@ function escapeCommandData(value) {
     .replaceAll(",", "%2C");
 }
 
+/**
+ * The attestation validator lives in @kanmer/core (`parseReviewAttestation`,
+ * CORE-121) so the store's Review → Implementing rule and this gate accept the
+ * same document. This wrapper only reshapes it into merge-gate review evidence.
+ */
 function parseReviewEvidence(raw) {
-  if (raw === null) return { state: "absent" };
-  try {
-    const parsed = matter(raw);
-    const data = parsed.data;
-    const nonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
-    if (!data || typeof data !== "object") return { state: "invalid", reason: "frontmatter is not an object" };
-    if (data.kind !== "review-attestation") return { state: "invalid", reason: 'kind must be "review-attestation"' };
-    if (!nonEmptyString(data.pr)) return { state: "invalid", reason: "pr must be a non-empty string" };
-    if (typeof data.head_sha !== "string" || !isFullGitSha(data.head_sha)) return { state: "invalid", reason: "head_sha must be a full hexadecimal Git object id" };
-    if (data.verdict !== "pass" && data.verdict !== "needs-changes") return { state: "invalid", reason: 'verdict must be "pass" or "needs-changes"' };
-    if (!nonEmptyString(data.reviewer)) return { state: "invalid", reason: "reviewer must be a non-empty string" };
-    if (typeof data.independent !== "boolean") return { state: "invalid", reason: "independent must be boolean" };
-    if (!nonEmptyString(data.plan_hash)) return { state: "invalid", reason: "plan_hash must be a non-empty string" };
-    if (!nonEmptyString(data.ticket_updated)) return { state: "invalid", reason: "ticket_updated must be a non-empty string" };
-    if (!Array.isArray(data.findings)) return { state: "invalid", reason: "findings must be an array" };
-    const severities = new Set(["blocker", "major", "minor", "note"]);
-    const dispositions = new Set(["open", "fixed", "rejected-with-reason", "accepted-risk", "deferred-to-ticket"]);
-    for (const [index, finding] of data.findings.entries()) {
-      if (!finding || typeof finding !== "object") return { state: "invalid", reason: `findings[${index}] must be an object` };
-      if (typeof finding.id !== "string" || !/^F-\d{3,}$/u.test(finding.id)) return { state: "invalid", reason: `findings[${index}].id must be an F-### identifier` };
-      if (!severities.has(finding.severity)) return { state: "invalid", reason: `findings[${index}].severity is invalid` };
-      if (!nonEmptyString(finding.summary)) return { state: "invalid", reason: `findings[${index}].summary must be non-empty` };
-      if (!dispositions.has(finding.disposition)) return { state: "invalid", reason: `findings[${index}].disposition is invalid` };
-      if ((finding.disposition === "rejected-with-reason" || finding.disposition === "accepted-risk") && !nonEmptyString(finding.reason)) return { state: "invalid", reason: `findings[${index}].reason is required for ${finding.disposition}` };
-      if (finding.disposition === "deferred-to-ticket" && !nonEmptyString(finding.ticket)) return { state: "invalid", reason: `findings[${index}].ticket is required for deferred-to-ticket` };
-    }
-    return {
-      state: "valid",
-      headSha: data.head_sha,
-      verdict: data.verdict,
-      details: data,
-    };
-  } catch (error) {
-    const reason = String(error instanceof Error ? error.message : error).replace(/[\r\n]+/g, " ").slice(0, 240);
-    return { state: "invalid", reason: `frontmatter could not be parsed: ${reason}` };
-  }
+  const parsed = parseReviewAttestation(raw);
+  if (parsed.state !== "valid") return parsed;
+  const { state, headSha, verdict, boardSha, ...details } = parsed;
+  return {
+    state,
+    headSha,
+    verdict,
+    ...(boardSha ? { boardSha } : {}),
+    details: { ...details, ...(boardSha ? { boardSha } : {}) },
+  };
 }
 
-async function phase2Evidence(store, pr, ticketId) {
+/** Repo variable KANMER_GATE_STRICT (via env) promotes compatibility warnings to errors. */
+function readStrictFlag(env = process.env) {
+  const raw = String(env.KANMER_GATE_STRICT ?? "").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+}
+
+async function phase2Evidence(store, pr, ticketId, boardRoot, strict) {
   const board = await store.getBoard();
   const reviewStageId = boardStages().find((stage) => stage.name.toLowerCase() === "review")?.id;
   if (!reviewStageId) throw new Error("board has no semantic review stage");
@@ -124,14 +109,16 @@ async function phase2Evidence(store, pr, ticketId) {
   const commitEvidence = commits.length === 0
     ? []
     : (await assertGitRepository({ cwd: process.cwd() }), await collectCommitReachability({ commits, headSha: pr.headSha, baseSha: pr.baseSha, cwd: process.cwd() }));
-  return { reviewStageId, finalStageId, blockers, review, commits: commitEvidence };
+  const boardEvidence = await collectBoardEvidence({ boardRoot, attestedSha: review.state === "valid" ? review.boardSha : undefined });
+  return { reviewStageId, finalStageId, blockers, review, commits: commitEvidence, strict, board: boardEvidence };
 }
 
-async function emptyPhase2Evidence(store) {
+async function emptyPhase2Evidence(store, boardRoot, strict) {
   const board = await store.getBoard();
   const reviewStageId = boardStages().find((stage) => stage.name.toLowerCase() === "review")?.id;
   if (!reviewStageId) throw new Error("board has no semantic review stage");
-  return { reviewStageId, finalStageId: lastStageId(board), blockers: [], review: { state: "absent" }, commits: [] };
+  const boardEvidence = await collectBoardEvidence({ boardRoot });
+  return { reviewStageId, finalStageId: lastStageId(board), blockers: [], review: { state: "absent" }, commits: [], strict, board: boardEvidence };
 }
 
 function emitInfra(message) {
@@ -153,12 +140,14 @@ async function main() {
       fs.access(path.resolve(args.board)),
     ]);
     const pr = readPrEvent(JSON.parse(eventText));
-    const store = new KanmerStore(path.resolve(args.board));
+    const boardRoot = path.resolve(args.board);
+    const store = new KanmerStore(boardRoot);
+    const strict = readStrictFlag();
     const resolved = resolveMergeGateTicket(pr.body, pr.branch);
     const resolvedItem = resolved.ticketId ? await store.getItem(resolved.ticketId) : null;
     const evidence = resolvedItem
-      ? await phase2Evidence(store, pr, resolved.ticketId)
-      : await emptyPhase2Evidence(store);
+      ? await phase2Evidence(store, pr, resolved.ticketId, boardRoot, strict)
+      : await emptyPhase2Evidence(store, boardRoot, strict);
     const result = await evaluateMergeGate(store, pr, evidence);
     process.stdout.write(`${JSON.stringify(result)}\n`);
     for (const finding of result.findings) {
@@ -173,4 +162,4 @@ async function main() {
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) await main();
 
-export { escapeCommandData, parseArgs, parseReviewEvidence, readPrEvent };
+export { escapeCommandData, parseArgs, parseReviewEvidence, readPrEvent, readStrictFlag };

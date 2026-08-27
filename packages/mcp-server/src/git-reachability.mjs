@@ -100,4 +100,43 @@ export async function assertGitRepository({ cwd, run = execFile }) {
   });
 }
 
+/**
+ * Board-tip evidence for SYNC_REQUIRED (CORE-123). Reads the fetched board
+ * checkout's HEAD and, when the attestation recorded a `board_sha`, asks
+ * whether it is an ancestor of that tip. Never throws: a board directory that
+ * is not a Git checkout degrades to `unrecorded` (nothing to compare) or
+ * `unknown` (an attested SHA that cannot be corroborated).
+ */
+export async function collectBoardEvidence({ boardRoot, attestedSha, run = execFile }) {
+  const options = { cwd: boardRoot, timeout: 15_000, windowsHide: true, maxBuffer: 32 * 1024 };
+  const attested = attestedSha ? String(attestedSha).trim().toLowerCase() : undefined;
+  let sha = null;
+  let diagnostic;
+  try {
+    const { stdout } = await run("git", ["rev-parse", "--verify", "HEAD^{commit}"], options);
+    sha = String(stdout).trim().toLowerCase();
+    if (!FULL_SHA_RE.test(sha)) { sha = null; diagnostic = "board HEAD is not a full Git object id"; }
+  } catch (error) {
+    diagnostic = String(error?.stderr || error?.message || "board HEAD could not be read").replace(/[\r\n]+/g, " ").slice(0, 240);
+  }
+  if (!attested) {
+    return { sha, state: "unrecorded", ...(diagnostic ? { diagnostic } : {}) };
+  }
+  if (!FULL_SHA_RE.test(attested)) {
+    return { sha, attestedSha: attested, state: "unknown", diagnostic: "attested board_sha is not a full hexadecimal Git object id" };
+  }
+  if (sha === null) {
+    return { sha, attestedSha: attested, state: "unknown", diagnostic: diagnostic ?? "board tip could not be read" };
+  }
+  try {
+    await run("git", ["merge-base", "--is-ancestor", attested, sha], options);
+    return { sha, attestedSha: attested, state: "current" };
+  } catch (error) {
+    const code = typeof error?.code === "number" ? error.code : Number.NaN;
+    if (code === 1) return { sha, attestedSha: attested, state: "stale" };
+    const reason = String(error?.stderr || error?.message || "git ancestry query failed").replace(/[\r\n]+/g, " ").slice(0, 240);
+    return { sha, attestedSha: attested, state: "unknown", diagnostic: reason };
+  }
+}
+
 export const isFullGitSha = (value) => FULL_SHA_RE.test(String(value));

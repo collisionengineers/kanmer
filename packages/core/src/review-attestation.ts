@@ -17,7 +17,14 @@ export type ReviewAttestation =
       reviewer: string;
       independent: boolean;
       ticketUpdated: string;
+      planHash: string;
       findings: unknown[];
+      /** Board branch tip the reviewer read (CORE-123); absent on older attestations. */
+      boardSha?: string;
+      /** Automated reviewers expected to post on this head (SKILL-037 settles them). */
+      expectedReviewers?: string[];
+      /** Review-thread snapshot as written by the reviewer; carried, not interpreted. */
+      threadsSnapshot?: unknown[];
     };
 
 const FULL_SHA = /^[0-9a-f]{40}$/iu;
@@ -46,6 +53,17 @@ export function parseReviewAttestation(raw: string | null): ReviewAttestation {
     if (!nonEmpty(data.plan_hash)) return { state: "invalid", reason: "plan_hash must be a non-empty string" };
     if (!nonEmpty(data.ticket_updated)) return { state: "invalid", reason: "ticket_updated must be a non-empty string" };
     if (!Array.isArray(data.findings)) return { state: "invalid", reason: "findings must be an array" };
+    // Optional CORE-123 fields: absence keeps older attestations valid; a
+    // present but malformed value is invalid rather than silently ignored.
+    if (data.board_sha !== undefined && (typeof data.board_sha !== "string" || !FULL_SHA.test(data.board_sha))) {
+      return { state: "invalid", reason: "board_sha must be a full hexadecimal Git object id when present" };
+    }
+    if (data.expected_reviewers !== undefined && (!Array.isArray(data.expected_reviewers) || !data.expected_reviewers.every(nonEmpty))) {
+      return { state: "invalid", reason: "expected_reviewers must be an array of non-empty strings when present" };
+    }
+    if (data.threads_snapshot !== undefined && !Array.isArray(data.threads_snapshot)) {
+      return { state: "invalid", reason: "threads_snapshot must be an array when present" };
+    }
     for (const [index, finding] of (data.findings as unknown[]).entries()) {
       const f = finding as Record<string, unknown> | null;
       if (!f || typeof f !== "object") return { state: "invalid", reason: `findings[${index}] must be an object` };
@@ -68,7 +86,11 @@ export function parseReviewAttestation(raw: string | null): ReviewAttestation {
       reviewer: data.reviewer,
       independent: data.independent,
       ticketUpdated: data.ticket_updated,
+      planHash: data.plan_hash,
       findings: data.findings as unknown[],
+      ...(typeof data.board_sha === "string" ? { boardSha: data.board_sha.toLowerCase() } : {}),
+      ...(Array.isArray(data.expected_reviewers) ? { expectedReviewers: (data.expected_reviewers as string[]).map((r) => r.trim()) } : {}),
+      ...(Array.isArray(data.threads_snapshot) ? { threadsSnapshot: data.threads_snapshot as unknown[] } : {}),
     };
   } catch (error) {
     const reason = String(error instanceof Error ? error.message : error).replace(/[\r\n]+/gu, " ").slice(0, 240);

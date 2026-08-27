@@ -40255,6 +40255,15 @@ function parseReviewAttestation(raw) {
     if (!nonEmpty(data.plan_hash)) return { state: "invalid", reason: "plan_hash must be a non-empty string" };
     if (!nonEmpty(data.ticket_updated)) return { state: "invalid", reason: "ticket_updated must be a non-empty string" };
     if (!Array.isArray(data.findings)) return { state: "invalid", reason: "findings must be an array" };
+    if (data.board_sha !== void 0 && (typeof data.board_sha !== "string" || !FULL_SHA.test(data.board_sha))) {
+      return { state: "invalid", reason: "board_sha must be a full hexadecimal Git object id when present" };
+    }
+    if (data.expected_reviewers !== void 0 && (!Array.isArray(data.expected_reviewers) || !data.expected_reviewers.every(nonEmpty))) {
+      return { state: "invalid", reason: "expected_reviewers must be an array of non-empty strings when present" };
+    }
+    if (data.threads_snapshot !== void 0 && !Array.isArray(data.threads_snapshot)) {
+      return { state: "invalid", reason: "threads_snapshot must be an array when present" };
+    }
     for (const [index, finding2] of data.findings.entries()) {
       const f = finding2;
       if (!f || typeof f !== "object") return { state: "invalid", reason: `findings[${index}] must be an object` };
@@ -40277,7 +40286,11 @@ function parseReviewAttestation(raw) {
       reviewer: data.reviewer,
       independent: data.independent,
       ticketUpdated: data.ticket_updated,
-      findings: data.findings
+      planHash: data.plan_hash,
+      findings: data.findings,
+      ...typeof data.board_sha === "string" ? { boardSha: data.board_sha.toLowerCase() } : {},
+      ...Array.isArray(data.expected_reviewers) ? { expectedReviewers: data.expected_reviewers.map((r) => r.trim()) } : {},
+      ...Array.isArray(data.threads_snapshot) ? { threadsSnapshot: data.threads_snapshot } : {}
     };
   } catch (error2) {
     const reason = String(error2 instanceof Error ? error2.message : error2).replace(/[\r\n]+/gu, " ").slice(0, 240);
@@ -43884,6 +43897,30 @@ async function inspectBoardBranch(root) {
     return null;
   }
 }
+async function inspectBoardSync(root, branch) {
+  const run = async (args) => {
+    try {
+      const { stdout } = await execFile5("git", args, { cwd: root, windowsHide: true, timeout: 15e3 });
+      return stdout.trim() || null;
+    } catch {
+      return null;
+    }
+  };
+  const localSha = await run(["rev-parse", "--verify", "HEAD^{commit}"]);
+  if (!localSha) return null;
+  const remoteRef = `refs/remotes/origin/${branch}`;
+  const remoteSha = await run(["rev-parse", "--verify", `${remoteRef}^{commit}`]);
+  if (!remoteSha) return null;
+  const counts = await run(["rev-list", "--left-right", "--count", `HEAD...${remoteRef}`]);
+  const [ahead, behind] = (counts ?? "0	0").split(/\s+/).map((value) => Number.parseInt(value, 10));
+  return {
+    remoteBranch: branch,
+    localSha,
+    remoteSha,
+    ahead: Number.isFinite(ahead) ? ahead : 0,
+    behind: Number.isFinite(behind) ? behind : 0
+  };
+}
 function boardWorktreeRepair(boardSource, actualBranch, expectedBranch, path20) {
   if (boardSource === "default") {
     return `This path is serving a synthesized default board; check ${path20} when tickets are expected.`;
@@ -44081,7 +44118,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "get_status",
     {
       title: "Project status",
-      description: "Orientation call \u2014 use it first, every session. Answers both of the questions you have at session start: WHICH BOARD, and WHICH SERVER. Board: the project root and `rootSource` (how it was found: flag | env | cwd | cwd-worktree | ancestor | ancestor-worktree | init), the `repoRoot` that governing-doc refs resolve against and its `repoRootSource` (flag | env | derived), whether .kanmer/ exists (this tool never creates it), the storage format version, whether the board came from a real board.yml or is the synthesized default, per-stage and per-type item counts, archived/taken counts, and how many file warnings the listing produced. Server: a `server` block naming the build that is answering \u2014 the release `version`, the resolved `path` of the running script, the runtime `sha256` of its bytes (plus `sha256Short`), its `mtime` and `size`, and the `build` shape (packaged | plugin | dev-standalone | dev-esm | unknown). Two hosts pointed at the same board can be running different server builds that enforce different gates; comparing `server.sha256` is how you see that instead of guessing. Repo: a `repo` block answering WHICH KANMER THIS REPO WAS SET UP BY \u2014 `{ upToDate, stale: [{ artefact, state, detail, fix }] }`. Itemised, never a bare boolean. Artefacts checked are the ones migration does not touch: the AGENTS.md managed block, the installed skills trees and their `.kanmer-skills-version` stamps, `board.yml`, and the provider MCP registrations \u2014 compared by CONTENT HASH against what this build ships, not by version string (no artefact records a product version). `state` is `behind` (act on it), `compensated` (the file is old and the runtime already papers over it \u2014 informational, no action), `unstamped` (no evidence either way) or `unknown` (could not be read). `upToDate` is true iff nothing is `behind`. Repair is never automatic: run `kanmer-setup`, which is the reconciliation path (FRD-013). Board format is not listed here \u2014 it is the `format` field above. Board worktree: an informational, non-blocking `boardWorktree` block reports the board path, expected and actual branch, branch match, board source, active ticket count, and operator repair guidance. It never checks out, repairs, initializes, or refuses another tool. Project safety: `project` gives a machine-local fingerprint over the canonical board root, format and repo root. When `compat.expectedProject` is `optional`, a client may send that fingerprint as `expected_project` on any write; omit it for older servers that do not advertise compatibility. IMPORTANT: the `server` block is absent on servers older than 0.3.3, and the `repo` block on servers older than 0.3.4 \u2014 that ABSENCE is itself the signal 'this build predates the check', not an error. Individual fields are null if they could not be read; the call never fails over it.",
+      description: "Orientation call \u2014 use it first, every session. Answers both of the questions you have at session start: WHICH BOARD, and WHICH SERVER. Board: the project root and `rootSource` (how it was found: flag | env | cwd | cwd-worktree | ancestor | ancestor-worktree | init), the `repoRoot` that governing-doc refs resolve against and its `repoRootSource` (flag | env | derived), whether .kanmer/ exists (this tool never creates it), the storage format version, whether the board came from a real board.yml or is the synthesized default, per-stage and per-type item counts, archived/taken counts, and how many file warnings the listing produced. Server: a `server` block naming the build that is answering \u2014 the release `version`, the resolved `path` of the running script, the runtime `sha256` of its bytes (plus `sha256Short`), its `mtime` and `size`, and the `build` shape (packaged | plugin | dev-standalone | dev-esm | unknown). Two hosts pointed at the same board can be running different server builds that enforce different gates; comparing `server.sha256` is how you see that instead of guessing. Repo: a `repo` block answering WHICH KANMER THIS REPO WAS SET UP BY \u2014 `{ upToDate, stale: [{ artefact, state, detail, fix }] }`. Itemised, never a bare boolean. Artefacts checked are the ones migration does not touch: the AGENTS.md managed block, the installed skills trees and their `.kanmer-skills-version` stamps, `board.yml`, and the provider MCP registrations \u2014 compared by CONTENT HASH against what this build ships, not by version string (no artefact records a product version). `state` is `behind` (act on it), `compensated` (the file is old and the runtime already papers over it \u2014 informational, no action), `unstamped` (no evidence either way) or `unknown` (could not be read). `upToDate` is true iff nothing is `behind`. Repair is never automatic: run `kanmer-setup`, which is the reconciliation path (FRD-013). Board format is not listed here \u2014 it is the `format` field above. Board worktree: an informational, non-blocking `boardWorktree` block reports the board path, expected and actual branch, branch match, board source, active ticket count, and operator repair guidance. It never checks out, repairs, initializes, or refuses another tool. Board sync: `boardSync` is `{ remoteBranch, localSha, remoteSha, ahead, behind }` comparing the board HEAD with its last-fetched origin ref, or null without a Git board/remote ref; `ahead > 0` means unpushed board commits the CI merge gate cannot see. It never fetches or pushes. Project safety: `project` gives a machine-local fingerprint over the canonical board root, format and repo root. When `compat.expectedProject` is `optional`, a client may send that fingerprint as `expected_project` on any write; omit it for older servers that do not advertise compatibility. IMPORTANT: the `server` block is absent on servers older than 0.3.3, and the `repo` block on servers older than 0.3.4 \u2014 that ABSENCE is itself the signal 'this build predates the check', not an error. Individual fields are null if they could not be read; the call never fails over it.",
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: false }
     },
@@ -44093,6 +44130,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
       const active = items.filter((i) => !i.archived);
       const expectedBranch = process.env.KANMER_BOARD_BRANCH?.trim() || "kanmer-board";
       const actualBranch = await inspectBoardBranch(projectRoot);
+      const boardSync = await inspectBoardSync(projectRoot, actualBranch ?? expectedBranch);
       const byStage = {};
       for (const s of STAGE_IDS) byStage[s] = 0;
       let offBoardStage = 0;
@@ -44153,6 +44191,13 @@ function createKanmerMcpServer(policy = "local-stdio") {
           ticketCount: active.filter((item) => item.type === "ticket").length,
           repair: boardWorktreeRepair(source, actualBranch, expectedBranch, projectRoot)
         },
+        /**
+         * Board push drift — CORE-123. `ahead > 0` means local board commits
+         * the remote (and therefore the CI merge gate) has not seen; confirm the
+         * board is pushed before treating a `kanmer-gate` result as current.
+         * `null` when there is no Git board or no remote-tracking ref.
+         */
+        boardSync,
         counts: {
           byStage,
           byType,

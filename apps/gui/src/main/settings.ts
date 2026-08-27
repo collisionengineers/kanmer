@@ -69,9 +69,15 @@ const DEFAULTS: AppSettings = {
   defaultPriority: "",
   defaultArea: "",
   kanmerBranch: "kanmer-board",
-  gitSyncMinutes: 0,
+  gitSyncMinutes: 5,
   dispatch: { providers: {} },
 };
+/**
+ * Auto-sync interval applied when settings never recorded one (CORE-123). An
+ * explicit `0` persisted by the user still means off; the timer additionally
+ * requires an `origin` remote (`shouldScheduleAutomaticSync`).
+ */
+export const DEFAULT_GIT_SYNC_MINUTES = 5;
 const MAX_RECENT = 8;
 const MAX_MODEL = 200;
 const MODEL_CONTROL = /[\u0000-\u001f\u007f]/;
@@ -164,7 +170,9 @@ export function readSettings(): AppSettings {
       defaultPriority: typeof parsed.defaultPriority === "string" ? parsed.defaultPriority : "",
       defaultArea: typeof parsed.defaultArea === "string" ? parsed.defaultArea : "",
       kanmerBranch: typeof parsed.kanmerBranch === "string" && parsed.kanmerBranch.trim() ? parsed.kanmerBranch.trim() : "kanmer-board",
-      gitSyncMinutes: Number.isInteger(parsed.gitSyncMinutes) && (parsed.gitSyncMinutes ?? 0) > 0 ? parsed.gitSyncMinutes! : 0,
+      gitSyncMinutes: parsed.gitSyncMinutes === undefined
+        ? DEFAULT_GIT_SYNC_MINUTES
+        : Number.isInteger(parsed.gitSyncMinutes) && (parsed.gitSyncMinutes ?? 0) > 0 ? parsed.gitSyncMinutes! : 0,
       ...(parsed.pendingBoardHandoffs && typeof parsed.pendingBoardHandoffs === "object" && !Array.isArray(parsed.pendingBoardHandoffs)
         ? { pendingBoardHandoffs: parsed.pendingBoardHandoffs as AppSettings["pendingBoardHandoffs"] }
         : {}),

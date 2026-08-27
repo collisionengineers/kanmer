@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-27T14:52:48.672Z'
   verifying: '2026-08-27T16:10:51.171Z'
   done: '2026-08-27T16:35:44.721Z'
-taken_at: '2026-08-27T13:50:30.210Z'
-branch: core-122-reconcile-inspector
-worktree: .worktrees/core-122
 labels:
   - reliable-autonomy
 groups:
@@ -28,7 +25,7 @@ prs:
   - '289'
 archived: false
 created: '2026-08-27T10:07:40.777Z'
-updated: '2026-08-27T16:36:50.865Z'
+updated: '2026-08-27T16:37:45.117Z'
 ---
 
 ## What

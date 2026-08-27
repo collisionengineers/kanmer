@@ -45,3 +45,61 @@ export function projectIdentity(input: ProjectIdentityInput): ProjectIdentity {
   const fingerprint = `kanmer-proj-v1:${createHash("sha256").update(JSON.stringify(payload)).digest("hex")}`;
   return { ...payload, boardSource: input.boardSource, fingerprint };
 }
+
+/**
+ * Where this board physically is — FRD-029's machine-local location
+ * fingerprint. Every field is evidence, never identity: a copy of the board
+ * at another path, or a changed/missing remote origin, yields a different
+ * `fingerprint` here while the logical `project_id` stays the same. Unknown
+ * values are reported as null rather than guessed.
+ */
+export interface LocationFingerprint {
+  repoPath: string;
+  boardPath: string;
+  machine: string | null;
+  boardBranch: string | null;
+  remoteOrigin: string | null;
+  fingerprint: string;
+}
+
+export function locationFingerprint(input: {
+  repoPath: string;
+  boardPath: string;
+  machine: string | null;
+  boardBranch: string | null;
+  remoteOrigin: string | null;
+}): LocationFingerprint {
+  const payload = {
+    repoPath: canonicalProjectPath(input.repoPath),
+    boardPath: canonicalProjectPath(input.boardPath),
+    machine: input.machine,
+    boardBranch: input.boardBranch,
+    remoteOrigin: input.remoteOrigin,
+  };
+  const fingerprint = `kanmer-loc-v1:${createHash("sha256").update(JSON.stringify(payload)).digest("hex")}`;
+  return { ...payload, fingerprint };
+}
+
+/** The logical project as every MCP response reports it. */
+export interface LogicalProject {
+  /** Stable logical identity, or null on a board that has not been migrated yet. */
+  project_id: string | null;
+  board_id: string | null;
+  /** `logical` once `project.json` exists; `unassigned` until the one-time migration runs. */
+  identity: "logical" | "unassigned";
+  /** How the identity came to be, when assigned. */
+  origin: "generated" | "migrated" | null;
+  /** The legacy machine-local fingerprint (`kanmer-proj-v1`), kept as the auditable fallback. */
+  fingerprint: string;
+}
+
+/**
+ * Which `expected_project` values name THIS project: the logical id when one
+ * is assigned, and the legacy location fingerprint for clients written
+ * before FRD-029. A logical id is never accepted before it has been
+ * allocated — it cannot be guessed, so a guess is a wrong project.
+ */
+export function expectedProjectMatches(sent: string, project: LogicalProject): boolean {
+  if (sent === project.fingerprint) return true;
+  return project.project_id !== null && sent === project.project_id;
+}

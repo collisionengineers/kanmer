@@ -83,6 +83,12 @@ import {
 import { parseWikiLinks } from "./links.js";
 import { appendActivity, readActivity, type ActivityEntry } from "./activity.js";
 import { CURRENT_FORMAT, readVersion, writeVersion } from "./version.js";
+import {
+  allocateProjectRecord,
+  computeRevision,
+  readProjectRecord,
+  type ProjectRecord,
+} from "./project.js";
 import { repoDocKindOf } from "./docs.js";
 import {
   ItemTypeSchema,
@@ -99,6 +105,8 @@ import {
   type MovePosition,
   type OpenQuestionCount,
   type SetDocOptions,
+  type InitOptions,
+  type TicketRevision,
   type TakeTicketInput,
   type TicketDoc,
   type TicketDocumentWithVersion,
@@ -224,8 +232,16 @@ export class KanmerStore {
    * version.json — upgrading a board is migration's job, never a side
    * effect of opening it.
    */
-  async init(): Promise<void> {
+  async init(opts: InitOptions = {}): Promise<void> {
     const format = await this.detectFormat();
+    // Identity origin is decided BEFORE the skeleton exists: a board that
+    // already has files is a legacy board receiving its one-time migration,
+    // a fresh one is born with its identity (FRD-029 edge case).
+    const preExisting =
+      (await pathExists(this.paths.boardFile)) ||
+      (await pathExists(this.paths.versionFile)) ||
+      (await pathExists(this.paths.areasRoot)) ||
+      (await pathExists(this.paths.tickets));
     await ensureDir(this.paths.data);
     if (format === 1) {
       await ensureDir(this.paths.tickets);
@@ -239,6 +255,91 @@ export class KanmerStore {
     }
     if (!(await pathExists(this.paths.boardFile))) {
       await writeBoard(this.paths, defaultBoardConfig());
+    }
+    await this.ensureProject({
+      origin: preExisting ? "migrated" : "generated",
+      fallbackFingerprint: opts.fallbackFingerprint,
+    });
+  }
+
+  /** The board's logical identity record, or null before it has been allocated. */
+  async getProject(): Promise<ProjectRecord | null> {
+    return readProjectRecord(this.paths);
+  }
+
+  /**
+   * Allocate the logical identity exactly once (FRD-029). Idempotent: an
+   * existing record is returned untouched. A fresh allocation is written to
+   * the activity log so a migrated board's identity is auditable — the entry
+   * names the origin and, when known, the machine-local fingerprint the board
+   * was previously addressed by.
+   */
+  async ensureProject(
+    opts: { origin: ProjectRecord["origin"]; fallbackFingerprint?: string },
+  ): Promise<{ record: ProjectRecord; allocated: boolean }> {
+    const format = await this.detectFormat();
+    await ensureDir(this.paths.kanmer);
+    const result = await allocateProjectRecord(this.paths, {
+      origin: opts.origin,
+      format,
+      fallbackFingerprint: opts.fallbackFingerprint,
+    });
+    if (result.allocated) {
+      await appendActivity(this.paths, [
+        this.activity("board", "update", {
+          field: "project_id",
+          from: opts.fallbackFingerprint ?? null,
+          to: `${result.record.project_id} (${result.record.origin})`,
+        }),
+      ]);
+    }
+    return result;
+  }
+
+  /**
+   * The document-inclusive revision of a ticket (FRD-029): changes whenever
+   * the ticket file or any pipeline document (plan, proof, review record…)
+   * changes; null for legacy-layout items which have no document folder.
+   */
+  async getRevision(id: string): Promise<TicketRevision | null> {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    return this.revisionAt(loc);
+  }
+
+  private async revisionAt(loc: ItemLocation): Promise<TicketRevision | null> {
+    const text = await readText(loc.file);
+    const item = parseItem(text);
+    if (loc.kind !== "v2") return null;
+    const { documentPaths } = await documentInventory(loc.dir);
+    const documents = await Promise.all(
+      documentPaths.map(async (doc) => ({
+        path: doc,
+        version: contentVersion(await readText(docPathIn(loc.dir, doc))),
+      })),
+    );
+    return { revision: computeRevision(text, documents), updated: item.updated, documents: documents.length };
+  }
+
+  /**
+   * The revision CAS shared by every ticket mutation. Runs after validation
+   * and before the first byte is written, alongside the `expectedUpdated`
+   * check. The `Conflict:` prefix is the classified REVISION_CONFLICT wording.
+   */
+  private async assertRevision(loc: ItemLocation, id: string, expectedRevision?: string): Promise<void> {
+    if (expectedRevision === undefined) return;
+    const current = await this.revisionAt(loc);
+    if (!current) {
+      throw new Error(
+        `Conflict: "${id}" is stored in the legacy layout and has no revision; ` +
+          `omit expected_revision or migrate the board.`,
+      );
+    }
+    if (current.revision !== expectedRevision) {
+      throw new Error(
+        `Conflict: "${id}" revision changed since you read it (revision is now ${current.revision}, ` +
+          `you expected ${expectedRevision}). Re-read the item and re-apply your change.`,
+      );
     }
   }
 
@@ -661,7 +762,7 @@ export class KanmerStore {
   }
 
   async updateItem(id: string, patch: UpdateItemPatch): Promise<Item> {
-    const { expectedUpdated, reason, ...fields } = patch;
+    const { expectedUpdated, expectedRevision, reason, ...fields } = patch;
     let board: BoardConfig | null = null;
     if (
       fields.status !== undefined ||
@@ -686,6 +787,7 @@ export class KanmerStore {
     if (expectedUpdated !== undefined && current.updated !== expectedUpdated) {
       throw this.conflictError(id, current, expectedUpdated);
     }
+    await this.assertRevision(loc, id, expectedRevision);
     // A backward move is legal only with a reason, and Review → Implementing
     // only against a needs-changes attestation or an operator override
     // (CORE-121). Raised before any write, like the gate below.
@@ -778,7 +880,13 @@ export class KanmerStore {
    */
   async moveItem(
     id: string,
-    to: { status: string; expectedUpdated?: string; position?: MovePosition; reason?: string },
+    to: {
+      status: string;
+      expectedUpdated?: string;
+      expectedRevision?: string;
+      position?: MovePosition;
+      reason?: string;
+    },
   ): Promise<Item> {
     const { position, ...patch } = to;
     if (position === undefined) return this.updateItem(id, patch);
@@ -786,7 +894,7 @@ export class KanmerStore {
     // because computeOrder materialises `order` on the whole target column as
     // a side effect. Without this, a move that is then refused still rewrote
     // (and re-stamped `updated` on) every sibling and logged the activity.
-    await this.assertMoveAllowed(id, to.status, to.expectedUpdated, to.reason);
+    await this.assertMoveAllowed(id, to.status, to.expectedUpdated, to.reason, to.expectedRevision);
     const order = await this.computeOrder(id, to.status, position);
     return this.updateItem(id, { ...patch, order });
   }
@@ -890,6 +998,7 @@ export class KanmerStore {
     status: string,
     expectedUpdated?: string,
     reason?: string,
+    expectedRevision?: string,
   ): Promise<void> {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
@@ -897,6 +1006,7 @@ export class KanmerStore {
     if (expectedUpdated !== undefined && current.updated !== expectedUpdated) {
       throw this.conflictError(id, current, expectedUpdated);
     }
+    await this.assertRevision(loc, id, expectedRevision);
     const board = await this.getBoard();
     assertStage(status);
     if (status !== current.status) await this.backwardMoveEffects(loc, current, status, reason);
@@ -987,6 +1097,7 @@ export class KanmerStore {
         repoRoot: this.paths.repoRoot,
       });
     }
+    await this.assertRevision(loc, id, input.expectedRevision);
     if (current.taken_at && !input.force) {
       throw new Error(
         `"${id}" is already taken (taken_at ${current.taken_at}` +
@@ -1255,6 +1366,9 @@ export class KanmerStore {
     // `requires` chain between doc types is gone: profiles express ordering as
     // boundary requirements, so a doc can be written whenever it is useful.
     const file = docPathIn(loc.dir, doc);
+    // The ticket-wide revision CAS precedes the per-document one, and both
+    // precede the folder creation below so a refused write leaves no trace.
+    await this.assertRevision(loc, id, opts.expectedRevision);
     await ensureDir(path.dirname(file)); // folders are created on first write
     // One read serves both the version check and the append.
     const existing = (await pathExists(file)) ? await readText(file) : null;
@@ -1696,7 +1810,12 @@ export class KanmerStore {
    * A blank line separates successive appends. Emits one activity line per call —
    * callers that stream must batch. Scratch is exempt from doc-type validation.
    */
-  async appendScratch(id: string, slug: string, content: string): Promise<{ file: string }> {
+  async appendScratch(
+    id: string,
+    slug: string,
+    content: string,
+    opts: { expectedRevision?: string } = {},
+  ): Promise<{ file: string }> {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     if (loc.kind !== "v2") {
@@ -1705,6 +1824,7 @@ export class KanmerStore {
           `migrate this board to format 2 first.`,
       );
     }
+    await this.assertRevision(loc, id, opts.expectedRevision);
     // Format 3: scratch is a folder like every other type (FRD-003 T1), so a
     // note lands at scratch/<slug>.md rather than the old scratch-<slug>.md.
     const file = docPathIn(loc.dir, `scratch/${slug}`);

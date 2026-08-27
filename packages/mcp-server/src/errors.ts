@@ -15,14 +15,29 @@ function classifiedCode(message: string): KanmerErrorCode | undefined {
   return undefined;
 }
 
-/** The sole tool-result builder for caught/explicit errors. */
-export function failCoded(error: unknown) {
+/** The logical-project block every response carries (FRD-029). */
+export interface ResponseProject {
+  project_id: string | null;
+  board_id: string | null;
+  fingerprint: string;
+}
+
+/**
+ * The sole tool-result builder for caught/explicit errors. `project`, when
+ * known, decorates the structured result so even a refusal names the logical
+ * project that refused it; the text is unchanged for older clients.
+ */
+export function failCoded(error: unknown, project?: ResponseProject) {
   const message = error instanceof Error ? error.message : String(error);
   const code = error instanceof KanmerError ? error.code : classifiedCode(message);
   const text = message.startsWith("Conflict:") ? message : `Error: ${message}`;
+  const structured = {
+    ...(code ? { error: { code, message } } : {}),
+    ...(project ? { project } : {}),
+  };
   return {
     content: [{ type: "text" as const, text }],
     isError: true,
-    ...(code ? { structuredContent: { error: { code, message } } } : {}),
+    ...(Object.keys(structured).length ? { structuredContent: structured } : {}),
   };
 }

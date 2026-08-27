@@ -67,6 +67,32 @@ export interface SetDocOptions {
    * the caller expects the document not to exist yet.
    */
   expectedVersion?: string | null;
+  /**
+   * Document-inclusive ticket revision CAS (FRD-029): the `revision` last
+   * read for the whole ticket. Refused with `Conflict:` when any pipeline
+   * document or the ticket file changed since. `undefined` skips the check.
+   */
+  expectedRevision?: string;
+}
+
+/** Options for opening/initialising a board (`KanmerStore.init`). */
+export interface InitOptions {
+  /**
+   * The machine-local fingerprint the board was addressed by before it had a
+   * logical identity. Recorded as auditable evidence when a legacy board
+   * receives its one-time identity migration; core never computes it.
+   */
+  fallbackFingerprint?: string;
+}
+
+/** A ticket's document-inclusive revision (FRD-029), computed on read. */
+export interface TicketRevision {
+  /** `rev1:<digest>` over the ticket file and every counted document. */
+  revision: string;
+  /** The item's `updated` stamp at the same read, for callers that use both. */
+  updated: string;
+  /** How many documents (excluding scratch/reference) the revision covers. */
+  documents: number;
 }
 
 /** Which pipeline docs exist for a ticket, plus checklist progress if present. */
@@ -492,6 +518,8 @@ export interface CreateItemInput {
 
 /** A patch for updateItem: any frontmatter field plus body. All optional. */
 export interface UpdateItemPatch {
+  /** Document-inclusive revision CAS (FRD-029); see `SetDocOptions.expectedRevision`. */
+  expectedRevision?: string;
   title?: string;
   status?: string;
   area?: string;
@@ -569,6 +597,8 @@ export interface TakeTicketInput {
   controller?: string;
   /** Take over a ticket that is already taken. */
   force?: boolean;
+  /** Document-inclusive revision CAS (FRD-029); see `SetDocOptions.expectedRevision`. */
+  expectedRevision?: string;
 }
 
 /** Input for transferTicket: hand an expired (or operator-released) claim to a new controller. */

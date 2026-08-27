@@ -798,11 +798,43 @@ async function listDirSafe(dir: string): Promise<string[]> {
  */
 export async function migrateBoard(
   store: KanmerStore,
-  opts: { dryRun?: boolean } = {},
-): Promise<{ v2: MigrationReport; backfill: BackfillReport; v3: V3Report }> {
+  opts: { dryRun?: boolean; fallbackFingerprint?: string } = {},
+): Promise<{ v2: MigrationReport; backfill: BackfillReport; v3: V3Report; identity: IdentityReport }> {
   const dryRun = opts.dryRun ?? false;
   const v2 = await migrateToV2(store, { dryRun });
   const backfill = await backfillStages(store, { dryRun });
   const v3 = await migrateToV3(store, { dryRun });
-  return { v2, backfill, v3 };
+  const identity = await migrateIdentity(store, { dryRun, fallbackFingerprint: opts.fallbackFingerprint });
+  return { v2, backfill, v3, identity };
+}
+
+/** What the one-time logical-identity migration did (or would do) — FRD-029. */
+export interface IdentityReport {
+  /** True when a `project.json` was written by this call. */
+  allocated: boolean;
+  /** A dry run's answer to "would a real run allocate?". */
+  wouldAllocate: boolean;
+  project_id: string | null;
+  origin: "generated" | "migrated" | null;
+}
+
+/**
+ * The identity step is independent of the storage format: a format-3 board
+ * that predates FRD-029 still needs it, so it runs even when every other step
+ * reports "already current". A dry run never writes.
+ */
+export async function migrateIdentity(
+  store: KanmerStore,
+  opts: { dryRun?: boolean; fallbackFingerprint?: string } = {},
+): Promise<IdentityReport> {
+  const existing = await store.getProject();
+  if (existing) {
+    return { allocated: false, wouldAllocate: false, project_id: existing.project_id, origin: existing.origin };
+  }
+  if (opts.dryRun) return { allocated: false, wouldAllocate: true, project_id: null, origin: null };
+  const { record, allocated } = await store.ensureProject({
+    origin: "migrated",
+    fallbackFingerprint: opts.fallbackFingerprint,
+  });
+  return { allocated, wouldAllocate: false, project_id: record.project_id, origin: record.origin };
 }

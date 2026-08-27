@@ -6,7 +6,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { execFile as execFileCallback } from "node:child_process";
 import path from "node:path";
-import { homedir } from "node:os";
+import { homedir, hostname } from "node:os";
 import { promisify } from "node:util";
 import { z } from "zod";
 import {
@@ -45,8 +45,14 @@ import { bundledSkillsDir } from "./bundled.js";
 import { readTicketDocuments } from "./ticket-docs.js";
 import { getExecutionPacket } from "./execution-packet.js";
 import { reconcileTicket } from "./reconciliation.js";
-import { failCoded, KanmerError } from "./errors.js";
-import { projectIdentity } from "./project-identity.js";
+import { failCoded, KanmerError, type ResponseProject } from "./errors.js";
+import {
+  expectedProjectMatches,
+  locationFingerprint,
+  projectIdentity,
+  type LocationFingerprint,
+  type LogicalProject,
+} from "./project-identity.js";
 import { dispatchPolicyView, parseDispatchPolicy } from "./dispatch-policy.js";
 import { fetchLlmsTxt, LLMS_TXT_POLICY, validateLlmsSource } from "./sources.js";
 
@@ -176,33 +182,136 @@ function resolveRoot(): void {
   rootResolved = true;
 }
 
-/** JSON tool result. */
-function ok(data: unknown) {
-  return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+/**
+ * The last logical project this process resolved. `ok()`/`guard()` are
+ * synchronous result builders, so they decorate with this snapshot; every
+ * handler refreshes it through `resolveProject()` (get_status, every write,
+ * and the read paths that already compute the identity) before building a
+ * result. It is per-process because a process is bound to one project.
+ */
+let lastProject: ResponseProject | null = null;
+
+/** The `structuredContent.project` block — FRD-029 "every response identifies the logical project". */
+function responseProject(project: LogicalProject): ResponseProject {
+  return { project_id: project.project_id, board_id: project.board_id, fingerprint: project.fingerprint };
+}
+
+/** The one result shape every handler returns: text for every client, structured extras for those that read them. */
+type ToolResult = {
+  content: { type: "text"; text: string }[];
+  isError?: boolean;
+  structuredContent?: Record<string, unknown>;
+};
+
+/** JSON tool result; the text payload is unchanged, the project rides in structuredContent. */
+function ok(data: unknown): ToolResult {
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
+    ...(lastProject ? { structuredContent: { project: lastProject } } : {}),
+  };
 }
 
 /** Error tool result (surfaced to the model, not a protocol failure). */
-function fail(message: string) {
-  return failCoded(new Error(message));
+function fail(message: string): ToolResult {
+  return failCoded(new Error(message), lastProject ?? undefined);
 }
 
 /** Wrap a handler so thrown errors become clean isError results. */
-function guard<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeof ok>>) {
-  return async (...args: A) => {
+function guard<A extends unknown[]>(fn: (...args: A) => Promise<ToolResult>) {
+  return async (...args: A): Promise<ToolResult> => {
     try {
+      if (!lastProject) await resolveProject();
       return await fn(...args);
     } catch (err) {
-      return failCoded(err);
+      return failCoded(err, lastProject ?? undefined);
     }
   };
 }
 
-/** Create the .kanmer skeleton on first write — never merely because we booted. */
+/**
+ * The legacy machine-local fingerprint (`kanmer-proj-v1`). Unchanged bytes:
+ * it is the auditable fallback a migrated board records, and what pre-FRD-029
+ * clients still send as `expected_project`.
+ */
+async function legacyIdentity() {
+  const format = await store.detectFormat();
+  const { source } = await store.getBoardWithSource();
+  return projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
+}
+
+/** Resolve the logical project from `.kanmer/project.json` plus the legacy fingerprint, and remember it. */
+async function resolveProject(): Promise<LogicalProject> {
+  const [record, legacy] = await Promise.all([store.getProject(), legacyIdentity()]);
+  const project: LogicalProject = {
+    project_id: record?.project_id ?? null,
+    board_id: record?.board_id ?? null,
+    identity: record ? "logical" : "unassigned",
+    origin: record?.origin ?? null,
+    fingerprint: legacy.fingerprint,
+  };
+  lastProject = responseProject(project);
+  return project;
+}
+
+/**
+ * Where the board physically is (FRD-029 location fingerprint). Observational:
+ * Git failures and a missing remote are reported as null, never thrown, and
+ * none of it feeds the logical identity.
+ */
+async function resolveLocation(): Promise<LocationFingerprint> {
+  const boardBranch = await inspectBoardBranch(projectRoot);
+  let remoteOrigin: string | null = null;
+  try {
+    const { stdout } = await execFile("git", ["config", "--get", "remote.origin.url"], {
+      cwd: projectRoot,
+      windowsHide: true,
+      timeout: 15_000,
+    });
+    remoteOrigin = stdout.trim() || null;
+  } catch {
+    remoteOrigin = null;
+  }
+  let machine: string | null = null;
+  try {
+    machine = hostname() || null;
+  } catch {
+    machine = null;
+  }
+  return locationFingerprint({
+    repoPath: store.paths.repoRoot,
+    boardPath: projectRoot,
+    machine,
+    boardBranch,
+    remoteOrigin,
+  });
+}
+
+/** The WRONG_PROJECT refusal, raised before actor attribution, initialisation or any store call. */
+async function assertExpectedProject(expected: string | undefined): Promise<LogicalProject> {
+  const project = await resolveProject();
+  if (expected !== undefined && !expectedProjectMatches(expected, project)) {
+    const accepted =
+      project.project_id === null
+        ? `this board has no logical project_id yet (identity unassigned); its fingerprint is ${project.fingerprint}`
+        : `this project is project_id ${project.project_id} (fingerprint ${project.fingerprint})`;
+    throw new KanmerError("WRONG_PROJECT", `expected project ${expected} does not match: ${accepted}`);
+  }
+  return project;
+}
+
+/**
+ * Create the .kanmer skeleton on first write — never merely because we booted.
+ * The first write is also where a legacy board receives its one-time logical
+ * identity; the fingerprint it was known by is passed along as the auditable
+ * fallback (FRD-029 edge case).
+ */
 let initialised = false;
 async function ensureInit() {
   if (initialised) return;
-  await store.init();
+  const legacy = await legacyIdentity();
+  await store.init({ fallbackFingerprint: legacy.fingerprint });
   initialised = true;
+  await resolveProject();
 }
 
 /**
@@ -345,6 +454,19 @@ const expectedProjectField = z
   .optional()
   .describe("Optional project fingerprint from get_status.project.fingerprint; send only when get_status.compat.expectedProject is optional");
 
+/**
+ * FRD-029 document-inclusive revision CAS. Optional this release so clients
+ * written for older servers keep working; a stale token is refused with
+ * REVISION_CONFLICT before any write.
+ */
+const expectedRevisionField = z
+  .string()
+  .optional()
+  .describe(
+    "Optimistic concurrency over the WHOLE ticket: the `revision` you last read from get_item (or set_ticket_doc / get_execution_packet). " +
+      "Unlike expected_updated it also changes when any pipeline document (plan, proof, review record) is rewritten. Rejected with REVISION_CONFLICT if anything changed since; nothing is written.",
+  );
+
 function withProject<T extends z.ZodRawShape>(shape: T): T & { expected_project: typeof expectedProjectField } {
   return { ...shape, expected_project: expectedProjectField };
 }
@@ -428,14 +550,7 @@ export function createKanmerMcpServer(policy: ExposurePolicy = "local-stdio"): M
   function write<T extends Record<string, unknown>, R extends unknown[]>(fn: (input: T, ...rest: R) => Promise<ReturnType<typeof ok>>) {
     return guard(async (input: T, ...rest: R) => {
       const { expected_project, ...cleanInput } = input as T & { expected_project?: string };
-      if (expected_project !== undefined) {
-        const format = await store.detectFormat();
-        const { source } = await store.getBoardWithSource();
-        const identity = projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
-        if (expected_project !== identity.fingerprint) {
-          throw new KanmerError("WRONG_PROJECT", `expected project ${expected_project} does not match current project ${identity.fingerprint}`);
-        }
-      }
+      await assertExpectedProject(expected_project);
       // Attribute this mutation in the activity log to the calling client.
       store.setActor(actorName(server, rest[0]));
       await ensureInit();
@@ -460,7 +575,7 @@ server.registerTool(
       "`state` is `behind` (act on it), `compensated` (the file is old and the runtime already papers over it — informational, no action), `unstamped` (no evidence either way) or `unknown` (could not be read). `upToDate` is true iff nothing is `behind`. Repair is never automatic: run `kanmer-setup`, which is the reconciliation path (FRD-013). Board format is not listed here — it is the `format` field above. " +
       "Board worktree: an informational, non-blocking `boardWorktree` block reports the board path, expected and actual branch, branch match, board source, active ticket count, and operator repair guidance. It never checks out, repairs, initializes, or refuses another tool. " +
       "Board sync: `boardSync` is `{ remoteBranch, localSha, remoteSha, ahead, behind }` comparing the board HEAD with its last-fetched origin ref, or null without a Git board/remote ref; `ahead > 0` means unpushed board commits the CI merge gate cannot see. It never fetches or pushes. " +
-      "Project safety: `project` gives a machine-local fingerprint over the canonical board root, format and repo root. When `compat.expectedProject` is `optional`, a client may send that fingerprint as `expected_project` on any write; omit it for older servers that do not advertise compatibility. " +
+      "Project identity (FRD-029): `project.project_id` is the board's stable LOGICAL identity (persisted in .kanmer/project.json; the same across copies of the board at other paths or machines) and `project.board_id` its board; `project.identity` is `logical` once assigned or `unassigned` on a legacy board that has not yet received its one-time identity migration (the first write or migrate_board performs it, recording the prior `fingerprint` as the auditable fallback in `project.origin`/project.json). `project.location` is the separate machine-local evidence — repo path, board path, machine, board branch, remote origin and a `kanmer-loc-v1` digest — reported, never used to reassign identity. `project.fingerprint` is the legacy `kanmer-proj-v1` machine-local fingerprint, retained for older clients. When `compat.expectedProject` is `optional`, send `project_id` (preferred) or that fingerprint as `expected_project` on any write to be refused with WRONG_PROJECT before anything runs; omit it for older servers that do not advertise compatibility. When `compat.expectedRevision` is `optional`, ticket mutations also accept `expected_revision` — the document-inclusive `revision` from get_item — and refuse a stale one with REVISION_CONFLICT. Every tool result carries `structuredContent.project` naming the logical project. " +
       "IMPORTANT: the `server` block is absent on servers older than 0.3.3, and the `repo` block on servers older than 0.3.4 — that ABSENCE is itself the signal 'this build predates the check', not an error. Individual fields are null if they could not be read; the call never fails over it.",
     inputSchema: {},
     annotations: { readOnlyHint: true, openWorldHint: false },
@@ -474,6 +589,7 @@ server.registerTool(
     const expectedBranch = process.env.KANMER_BOARD_BRANCH?.trim() || "kanmer-board";
     const actualBranch = await inspectBoardBranch(projectRoot);
     const boardSync = await inspectBoardSync(projectRoot, actualBranch ?? expectedBranch);
+    const [legacy, logical, location] = await Promise.all([legacyIdentity(), resolveProject(), resolveLocation()]);
     const byStage: Record<string, number> = {};
     for (const s of STAGE_IDS) byStage[s] = 0;
     let offBoardStage = 0;
@@ -521,8 +637,14 @@ server.registerTool(
       exists,
       format,
       boardSource: source,
-      project: projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source }),
-      compat: { expectedProject: "optional" },
+      /**
+       * FRD-029: the legacy location-derived block (boardRoot, format,
+       * repoRoot, boardSource, fingerprint — unchanged) plus the logical
+       * identity (`project_id`, `board_id`, `identity`, `origin`) and the
+       * separate machine-local `location` evidence.
+       */
+      project: { ...legacy, ...logical, location },
+      compat: { expectedProject: "optional", projectIdentity: "logical", expectedRevision: "optional" },
       dispatch: dispatchPolicyView(dispatchPolicy),
       deploymentTracking: board.deployment !== undefined,
       boardWorktree: {
@@ -680,16 +802,20 @@ server.registerTool(
     if (!item) return fail(`No item with id "${id}"`);
     const info = await store.getTicketDocsInfo(id);
     const blocked = (await blockedSet()).has(id);
+    // FRD-029: the document-inclusive revision rides beside the item in the
+    // response only — it is computed, never written to frontmatter.
+    const revision = (await store.getRevision(id))?.revision ?? null;
     return ok(
       info
         ? {
             ...item,
             blocked,
+            revision,
             docs: info.docs,
             documentPaths: info.documentPaths,
             checklist: info.checklist,
           }
-        : { ...item, blocked },
+        : { ...item, blocked, revision },
     );
   }),
 );
@@ -720,15 +846,16 @@ server.registerTool(
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   guard(async ({ id, resume }, extra) => {
-    const format = await store.detectFormat();
-    const { source } = await store.getBoardWithSource();
-    const project = projectIdentity({
-      boardRoot: projectRoot,
-      format,
-      repoRoot: store.paths.repoRoot,
-      boardSource: source,
+    const [project, logical] = await Promise.all([legacyIdentity(), resolveProject()]);
+    const packet = await getExecutionPacket({ store, id, actor: actorName(server, extra), project, resume });
+    // FRD-029: the packet names the logical project and the ticket's
+    // document-inclusive revision so a worker's first write can be CAS-bound.
+    const revision = packet.ready ? await store.getRevision(id) : null;
+    return ok({
+      ...packet,
+      project: { ...packet.project, project_id: logical.project_id, board_id: logical.board_id, identity: logical.identity },
+      ...(packet.ready ? { ticket: { ...packet.ticket, revision: revision?.revision ?? null } } : {}),
     });
-    return ok(await getExecutionPacket({ store, id, actor: actorName(server, extra), project, resume }));
   }),
 );
 
@@ -752,12 +879,7 @@ server.registerTool(
     if (!dispatchPolicy.enabled) return dispatchRefusal("DISPATCH_DISABLED", dispatchPolicy.reason ?? "dispatch is disabled", policy);
     if (!dispatchPolicy.providers.includes(provider as never)) return dispatchRefusal("DISPATCH_PROVIDER_NOT_ALLOWED", `provider "${provider}" is not allowlisted`, policy);
     if (!dispatchPolicy.tasks.includes(taskId)) return dispatchRefusal("DISPATCH_TASK_NOT_ALLOWED", `task "${taskId}" is not allowlisted`, policy);
-    const format = await store.detectFormat();
-    const { source } = await store.getBoardWithSource();
-    const identity = projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
-    if (expected_project !== undefined && expected_project !== identity.fingerprint) {
-      return failCoded(new KanmerError("WRONG_PROJECT", `expected project ${expected_project} does not match current project ${identity.fingerprint}`));
-    }
+    const identity = await assertExpectedProject(expected_project);
     const item = await store.getItem(ticket_id);
     if (!item || item.type !== "ticket") return dispatchRefusal("DISPATCH_TICKET_NOT_FOUND", `No ticket "${ticket_id}".`, policy);
     if (item.archived) return dispatchRefusal("DISPATCH_TICKET_ARCHIVED", `${ticket_id} is archived.`, policy);
@@ -831,10 +953,7 @@ server.registerTool(
   guard(async ({ dispatch_id, reason, expected_project }, extra) => {
     const policy = dispatchPolicyView(dispatchPolicy);
     if (!dispatchPolicy.enabled) return dispatchRefusal("DISPATCH_DISABLED", dispatchPolicy.reason ?? "dispatch is disabled", policy);
-    const format = await store.detectFormat();
-    const { source } = await store.getBoardWithSource();
-    const identity = projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
-    if (expected_project !== undefined && expected_project !== identity.fingerprint) return failCoded(new KanmerError("WRONG_PROJECT", `expected project ${expected_project} does not match current project ${identity.fingerprint}`));
+    await assertExpectedProject(expected_project);
     const active = dispatchSupervisor.list({ projectId: projectRoot, includeRecent: false }).find((status) => status.dispatchId === dispatch_id);
     if (!active) return dispatchRefusal("DISPATCH_NOT_FOUND", `No active dispatch "${dispatch_id}" in this project.`, policy);
     const status = dispatchSupervisor.cancel(dispatch_id, reason?.trim() || "cancelled by client", actorName(server, extra));
@@ -1225,6 +1344,7 @@ server.registerTool(
         .describe("Deployment status; pass \"\" to clear (only when the board declares environments)"),
       body: z.string().optional(),
       archived: z.boolean().optional(),
+      expected_revision: expectedRevisionField,
       expected_updated: z
         .string()
         .optional()
@@ -1234,8 +1354,8 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  write(async ({ id, expected_updated, ...patch }) =>
-    ok(await store.updateItem(id, { ...patch, expectedUpdated: expected_updated })),
+  write(async ({ id, expected_updated, expected_revision, ...patch }) =>
+    ok(await store.updateItem(id, { ...patch, expectedUpdated: expected_updated, expectedRevision: expected_revision })),
   ),
 );
 
@@ -1252,6 +1372,7 @@ server.registerTool(
         .union([z.enum(["top", "bottom"]), z.object({ after: z.string() })])
         .optional()
         .describe("Where in the column to place the item"),
+      expected_revision: expectedRevisionField,
       expected_updated: z
         .string()
         .optional()
@@ -1267,8 +1388,16 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  write(async ({ id, status, position, expected_updated, reason }) =>
-    ok(await store.moveItem(id, { status, position, expectedUpdated: expected_updated, reason })),
+  write(async ({ id, status, position, expected_updated, expected_revision, reason }) =>
+    ok(
+      await store.moveItem(id, {
+        status,
+        position,
+        expectedUpdated: expected_updated,
+        expectedRevision: expected_revision,
+        reason,
+      }),
+    ),
   ),
 );
 
@@ -1288,10 +1417,11 @@ server.registerTool(
       controller: z.string().optional().describe("Durable controller identity behind the claim (defaults to assignee)"),
       reason: z.string().optional().describe('For transfer of a live claim: an operator override beginning "operator:"'),
       force: z.boolean().optional().describe("Take over an already-taken ticket"),
+      expected_revision: expectedRevisionField,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
-  write(async ({ id, action, branch, worktree, stage, assignee, controller, reason, force }, extra) => {
+  write(async ({ id, action, branch, worktree, stage, assignee, controller, reason, force, expected_revision }, extra) => {
     if (action === "release") return ok(await store.releaseTicket(id));
     if (action === "renew") return ok(await store.renewTicket(id, assignee ?? actorName(server, extra)));
     if (action === "transfer") {
@@ -1308,6 +1438,7 @@ server.registerTool(
         assignee: assignee ?? actorName(server, extra),
         controller,
         force,
+        expectedRevision: expected_revision,
       }),
     );
   }),
@@ -1331,15 +1462,18 @@ server.registerTool(
           "Optimistic concurrency: the `version` you last read from get_ticket_doc. " +
             "Rejected as a conflict if the document changed since. Omit for last-write-wins.",
         ),
+      expected_revision: expectedRevisionField,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
-  write(async ({ id, doc, content, append, expected_version }) => {
+  write(async ({ id, doc, content, append, expected_version, expected_revision }) => {
     const { version } = await store.setDoc(id, doc, content, {
       append,
       expectedVersion: expected_version,
+      expectedRevision: expected_revision,
     });
-    return ok({ id, doc, written: true, appended: append === true, version });
+    const revision = (await store.getRevision(id))?.revision ?? null;
+    return ok({ id, doc, written: true, appended: append === true, version, revision });
   }),
 );
 
@@ -1353,12 +1487,13 @@ server.registerTool(
       id: z.string().describe("Ticket id"),
       slug: z.string().optional().describe('Scratch slug (default "notes") → scratch/<slug>.md'),
       content: z.string().describe("Markdown to append below a blank line"),
+      expected_revision: expectedRevisionField,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
-  write(async ({ id, slug, content }) => {
+  write(async ({ id, slug, content, expected_revision }) => {
     const useSlug = slug ?? "notes";
-    const { file } = await store.appendScratch(id, useSlug, content);
+    const { file } = await store.appendScratch(id, useSlug, content, { expectedRevision: expected_revision });
     return ok({ id, slug: useSlug, appended: true, file });
   }),
 );
@@ -1373,16 +1508,17 @@ server.registerTool(
       id: z.string().describe("Ticket id"),
       path: z.string().describe("Repo-relative path, e.g. docs/prd/checkout.md"),
       action: z.enum(["add", "remove"]).default("add"),
+      expected_revision: expectedRevisionField,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  write(async ({ id, path: refPath, action }) => {
+  write(async ({ id, path: refPath, action, expected_revision }) => {
     const item = await store.getItem(id);
     if (!item) return fail(`No item with id "${id}"`);
     const refs = new Set(item.refs ?? []);
     if (action === "remove") refs.delete(refPath);
     else refs.add(refPath);
-    return ok(await store.updateItem(id, { refs: [...refs] }));
+    return ok(await store.updateItem(id, { refs: [...refs], expectedRevision: expected_revision }));
   }),
 );
 
@@ -1397,11 +1533,12 @@ server.registerTool(
       target_id: z.string().describe("The item being linked to / blocked"),
       action: z.enum(["add", "remove"]).default("add"),
       rel: z.enum(["relates", "blocks"]).default("relates"),
+      expected_revision: expectedRevisionField,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  write(async ({ source_id, target_id, action, rel }) =>
-    ok(await linkItems(store, source_id, target_id, action, rel)),
+  write(async ({ source_id, target_id, action, rel, expected_revision }) =>
+    ok(await linkItems(store, source_id, target_id, action, rel, { expectedRevision: expected_revision })),
   ),
 );
 
@@ -1503,13 +1640,18 @@ server.registerTool(
   {
     title: "Migrate / upgrade the board",
     description:
-      "Bring the board fully current: run the v1→v2 migration if needed, then backfill the 7-stage default (alias-aware, additive — never renames or reorders existing stages, never touches item files). Pass dry_run: true to preview what would move and which stages would be added without writing. The agent-facing route to the same upgrade the GUI offers.",
+      "Bring the board fully current: run the v1→v2 migration if needed, then backfill the 7-stage default (alias-aware, additive — never renames or reorders existing stages, never touches item files), then the one-time logical identity migration (FRD-029): a board without .kanmer/project.json receives a `project_id` with the prior machine-local fingerprint recorded as its auditable fallback, reported under `identity`. Pass dry_run: true to preview what would move, which stages would be added and whether an identity would be allocated, without writing. The agent-facing route to the same upgrade the GUI offers.",
     inputSchema: {
       dry_run: z.boolean().optional().describe("Preview without writing"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  write(async ({ dry_run }) => ok(await migrateBoard(store, { dryRun: dry_run }))),
+  write(async ({ dry_run }) => {
+    const legacy = await legacyIdentity();
+    const report = await migrateBoard(store, { dryRun: dry_run, fallbackFingerprint: legacy.fingerprint });
+    await resolveProject();
+    return ok(report);
+  }),
 );
 
 server.registerTool(
@@ -1672,9 +1814,7 @@ server.registerPrompt(
 /** A stable, non-secret identifier for status/readiness without exposing a path. */
 export async function projectFingerprint(): Promise<string> {
   if (!rootResolved) resolveRoot();
-  const format = await store.detectFormat();
-  const { source } = await store.getBoardWithSource();
-  return projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source }).fingerprint;
+  return (await legacyIdentity()).fingerprint;
 }
 
 // ---------------------------------------------------------------------------

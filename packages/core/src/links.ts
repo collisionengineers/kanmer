@@ -90,6 +90,7 @@ export async function linkItems(
   targetId: string,
   action: "add" | "remove",
   rel: "relates" | "blocks" = "relates",
+  opts: { expectedRevision?: string } = {},
 ): Promise<Item> {
   const source = await store.getItem(sourceId);
   if (!source) throw new Error(`No item with id "${sourceId}"`);
@@ -106,5 +107,5 @@ export async function linkItems(
   } else {
     set.delete(targetId);
   }
-  return store.updateItem(sourceId, { [field]: [...set] });
+  return store.updateItem(sourceId, { [field]: [...set], expectedRevision: opts.expectedRevision });
 }

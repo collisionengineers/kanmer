@@ -183,6 +183,14 @@ for (const proto of PROTOCOLS) {
           !tool.inputSchema?.required?.includes("expected_project")) === true &&
         createItems?.inputSchema?.properties?.items?.items?.properties?.expected_project === undefined,
     );
+    check(
+      `ticket mutations expose optional expected_revision on ${proto}`,
+      ["update_item", "move_item", "take_ticket", "set_ticket_doc", "append_scratch", "link_doc", "link_items"].every((name) => {
+        const tool = tools.result?.tools?.find((candidate) => candidate.name === name);
+        return tool?.inputSchema?.properties?.expected_revision?.type === "string" &&
+          !tool.inputSchema?.required?.includes("expected_revision");
+      }),
+    );
 
     const created = await server.send("tools/call", {
       name: "create_item",

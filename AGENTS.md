@@ -300,6 +300,7 @@ kanmer/
 ```
 .kanmer/
   version.json          # { "format": 2 } (+ migratedFrom/migratedAt after upgrade)
+  project.json          # logical identity (FRD-029): { schema, project_id, board_id, created, origin, migratedFrom? } — allocated once on first write / migrate_board; older servers ignore it
   data/
     board.yml           # statuses, areas (with prefixes), priorities, idPrefixes
     counters.json       # last-used numeric id per PREFIX ({ "API": 3, "TICK": 1 })
@@ -620,6 +621,8 @@ way, so it could not fail.
 13. **Native plugin lifecycle has two separate proofs.** `plugins/kanmer/plugin.json` and `mcp_config.json` are the Antigravity root source of truth; `mcp_config.json` uses the quote-free `cmd.exe /d /v:on /s /c setlocal EnableDelayedExpansion&&set KANMER_PROVIDER_CWD=!CD!&&pushd !LOCALAPPDATA!\\Kanmer\\bin&&call kanmer-mcp.cmd` token because Antigravity forwards embedded quotes literally and a direct unquoted path breaks when `%LOCALAPPDATA%` contains spaces. The provider cwd is captured before the temporary `pushd` and restored by the installer-owned shim before MCP starts, preserving ADR-0012 board discovery. `scripts/release.mjs` bumps that manifest alongside the Claude/Codex manifests. Connect invokes `agy` through an argv runner (never a shell-interpolated project path), validates/install/list first, then accepts legacy `.agents` cleanup only after a fresh `get_status` result matches the project fingerprint, canonical board root, repo root and format. The old `.agents/mcp_config.json` and `.agents/skills/` paths stay ignored until that migration is complete. The Antigravity CLI path was checked on Windows (`agy` 1.1.14); the IDE and non-Windows launcher path remain outside this contract.
 14. **Dispatch success requires a named, machine-checkable deliverable.** A GUI dispatch without a task is rejected; a zero exit code is only terminal success after the supervisor verifies the task's required Kanmer documents (and PR/closed checklist state for execution work). Do not treat a process exit alone as proof that work reached the board.
     **Known accepted gap:** v0.3.0's blockmap is still missing on GitHub and is not being backfilled (it needs a rebuild from that tag). Clients still on 0.3.0 pay one full ~78 MB download on their next update, once.
+
+15. **Project identity is `.kanmer/project.json`, not `board.yml` or `version.json`.** `BoardConfigSchema` strips unknown keys on every board write and migration rewrites `version.json`, so either would silently lose the identity under an older server. `project.json` is its own additive file: a v0.3.12 server neither reads nor writes it and a board carrying it stays fully readable there. Rollback is deleting the file — the next write on a newer server re-migrates a fresh `migrated` identity (a *different* uuid; anything that recorded the old one must be re-bound). The ticket `revision` (`rev1:…`) is computed on read over the ticket file plus every pipeline document **except `scratch/` and `reference/`**, and is never written to frontmatter; `expected_revision` is the CAS that finally covers proof/plan/review-record writes (CORE-113 F-015).
 
 ---
 

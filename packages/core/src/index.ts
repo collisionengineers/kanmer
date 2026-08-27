@@ -16,6 +16,7 @@ export * from "./prompts.js";
 export * from "./dispatch-providers.js";
 export * from "./dispatch-supervisor.js";
 export * from "./version.js";
+export * from "./project.js";
 export * from "./staleness.js";
 export * from "./activity.js";
 export * from "./store.js";

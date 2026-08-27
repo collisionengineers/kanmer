@@ -2195,6 +2195,65 @@ Second proof attempt passed; the first failure is retained.
     Boolean(claimed.claim_expires_at) && claimed.claim_controller === "ctl-a",
     JSON.stringify({ claim_expires_at: claimed.claim_expires_at, claim_controller: claimed.claim_controller }),
   );
+  // CORE-115 (FRD-030): the take mints a lease record; the packet and get_status expose what a worker renews with.
+  check(
+    "take_ticket mints a lease record (lease_id, lease_revision 1, workspace, phase, heartbeat)",
+    typeof claimed.lease_id === "string" && claimed.lease_revision === 1 && String(claimed.lease_workspace).startsWith("worktree:") &&
+      claimed.lease_phase === "implementing" && claimed.lease_heartbeat_at === claimed.taken_at,
+    JSON.stringify({ lease_id: claimed.lease_id, lease_revision: claimed.lease_revision, lease_workspace: claimed.lease_workspace, lease_phase: claimed.lease_phase }),
+  );
+  {
+    const status = JSON.parse(textOf(await client.callTool({ name: "get_status", arguments: {} })));
+    check(
+      "get_status reports explicit lease timing (30 min expiry, 5 min heartbeat, 120 min command bound)",
+      status.leases?.expiryMinutes === 30 && status.leases?.heartbeatMinutes === 5 && status.leases?.commandMaxMinutes === 120,
+      JSON.stringify(status.leases),
+    );
+    const ownPacket = JSON.parse(textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: claimId, resume: { branch: "claim-branch", worktree: ".worktrees/claim" } } })));
+    check(
+      "get_execution_packet claim block carries the lease id, revision, phase and heartbeat cadence",
+      ownPacket.ready === true && ownPacket.claim.leaseId === claimed.lease_id && ownPacket.claim.leaseRevision === 1 &&
+        ownPacket.claim.phase === "implementing" && ownPacket.claim.heartbeatMinutes === 5 && ownPacket.claim.expiryMinutes === 30 && ownPacket.claim.legacy === false,
+      JSON.stringify(ownPacket.claim ?? ownPacket),
+    );
+    const otherClaimId = JSON.parse(
+      textOf(await client.callTool({ name: "create_item", arguments: { title: "workspace contender", status: "implementing", profile: "chore", docs_todo: true } })),
+    ).id;
+    const occupiedWorktree = await client.callTool({ name: "take_ticket", arguments: { id: otherClaimId, branch: "contender-branch", worktree: ".worktrees/claim", assignee: "ctl-b" } });
+    const occupiedBranch = await client.callTool({ name: "take_ticket", arguments: { id: otherClaimId, branch: "claim-branch", assignee: "ctl-b", force: true } });
+    check(
+      "take_ticket refuses another ticket on the same worktree or branch with WORKSPACE_OCCUPIED (LEASE_CONFLICT), even with force",
+      [occupiedWorktree, occupiedBranch].every((r) => r.isError === true && textOf(r).includes("WORKSPACE_OCCUPIED") && r.structuredContent?.error?.code === "LEASE_CONFLICT") &&
+        !JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: otherClaimId } }))).taken_at,
+      JSON.stringify([textOf(occupiedWorktree), textOf(occupiedBranch)]),
+    );
+    const liveRetake = await client.callTool({ name: "take_ticket", arguments: { id: claimId, branch: "other", assignee: "ctl-b" } });
+    check(
+      "take_ticket refuses to acquire a live lease held by another controller with LEASE_LIVE",
+      liveRetake.isError === true && textOf(liveRetake).includes("LEASE_LIVE") && liveRetake.structuredContent?.error?.code === "LEASE_CONFLICT",
+      textOf(liveRetake),
+    );
+    const beforeLease = textOf(await client.callTool({ name: "get_item", arguments: { id: claimId } }));
+    const staleId = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "renew", assignee: "ctl-a", lease_id: "not-current", lease_revision: 1 } });
+    const staleLeaseRev = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "renew", assignee: "ctl-a", lease_id: claimed.lease_id, lease_revision: 9 } });
+    check(
+      "take_ticket renew with a non-current lease_id is LEASE_EXPIRED and with a stale lease_revision is REVISION_CONFLICT; neither writes",
+      staleId.isError === true && staleId.structuredContent?.error?.code === "LEASE_EXPIRED" &&
+        staleLeaseRev.isError === true && staleLeaseRev.structuredContent?.error?.code === "REVISION_CONFLICT" &&
+        textOf(await client.callTool({ name: "get_item", arguments: { id: claimId } })) === beforeLease,
+      JSON.stringify([staleId.structuredContent?.error, staleLeaseRev.structuredContent?.error]),
+    );
+    const heartbeat = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "renew", assignee: "ctl-a", lease_id: claimed.lease_id, lease_revision: 1, phase: "running-command", extend_minutes: 600, worker_run: "run-w1" } })));
+    check(
+      "take_ticket renew with the current lease id/revision bumps the revision, records the phase and bounds a running-command extension",
+      heartbeat.lease_id === claimed.lease_id && heartbeat.lease_revision === 2 && heartbeat.lease_phase === "running-command" && heartbeat.lease_worker_run === "run-w1" &&
+        Date.parse(heartbeat.claim_expires_at) - Date.now() <= 121 * 60_000 && Date.parse(heartbeat.claim_expires_at) - Date.now() > 100 * 60_000,
+      JSON.stringify({ rev: heartbeat.lease_revision, phase: heartbeat.lease_phase, expires: heartbeat.claim_expires_at }),
+    );
+    const backToWork = JSON.parse(textOf(await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "renew", assignee: "ctl-a", lease_id: claimed.lease_id, lease_revision: 2, phase: "implementing" } })));
+    check("take_ticket renew returns the lease to the board window when the command phase ends", backToWork.lease_revision === 3 && Date.parse(backToWork.claim_expires_at) - Date.now() <= 31 * 60_000, backToWork.claim_expires_at);
+    claimed.lease_revision = 3;
+  }
   // F-004: release/renew/transfer honour expected_revision like take does — a stale token is REVISION_CONFLICT with zero writes.
   {
     const staleRev = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: claimId } }))).revision;
@@ -2235,6 +2294,13 @@ Second proof attempt passed; the first failure is retained.
     transferred.assignee === "smoke" && transferred.claim_controller === "smoke" && transferred.branch === "claim-branch" &&
       transferred.worktree === ".worktrees/claim" && Date.parse(transferred.claim_expires_at) > Date.now(),
     JSON.stringify(transferred),
+  );
+  check(
+    "take_ticket transfer of an expired claim mints a new lease and records the old controller and the re-read evidence",
+    transferred.lease_id && transferred.lease_id !== claimed.lease_id && transferred.lease_revision === claimed.lease_revision + 3 &&
+      transferred.lease_reclaimed_from === "ctl-a" &&
+      textOf(await client.callTool({ name: "get_ticket_doc", arguments: { id: claimId, doc: "scratch/execution" } })).includes("evidence: workspace clean (matches-claim), pr absent, commits 0, proof absent"),
+    JSON.stringify({ lease_id: transferred.lease_id, was: claimed.lease_id, rev: transferred.lease_revision, from: transferred.lease_reclaimed_from }),
   );
   const transferredPacket = JSON.parse(textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: claimId } })));
   check("the new controller receives a resumed packet after transfer", transferredPacket.ready === true && transferredPacket.claim.state === "live", transferredPacket.reason);

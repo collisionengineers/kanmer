@@ -28,7 +28,8 @@ run and stop when the packet says to stop.
 4. Retain the ready packet. If it reports `ticket.taken`, it is a resumed
    ticket: validate and reuse that exact recorded worktree and branch; do not
    create another worktree or call `take_ticket` to take it again — renew the
-   claim instead (`take_ticket action: "renew"`). Otherwise create and validate
+   lease instead (`take_ticket action: "renew"` with the packet's
+   `claim.leaseId` / `claim.leaseRevision`). Otherwise create and validate
    a fresh worktree and take the ticket. Send `expected_project` only when the
    preceding status call advertised `compat.expectedProject: "optional"`.
 5. Work only the packet's files and checklist, and record progress with
@@ -129,19 +130,26 @@ not for further implementation. Do not repair it by
 changes belong to the resumed ticket and are not a reason to clean or recreate
 it.
 
-Once the location is validated, renew the claim so the controller can see the
-ticket is alive again:
+Once the location is validated, renew the lease so the controller can see the
+ticket is alive again, naming the lease the packet reported:
 
 ```
-take_ticket id: <ID>, action: "renew"
+take_ticket id: <ID>, action: "renew", lease_id: <claim.leaseId>, lease_revision: <claim.leaseRevision>
 ```
 
-Renew refuses `CLAIM_NOT_OWNED` when the claim belongs to another controller;
-that is a stop, not a reason to `force` or `transfer` from inside execute — a
-transfer of an expired claim is the controller's or operator's act and is
-recorded before this skill is dispatched. Renew again before every long
-command (a full test rail, a build, a dispatch) so the claim does not expire
-under a healthy worker; the packet's `claim.expiresAt` shows the window.
+Every successful renew returns the next `lease_revision`; keep it for the next
+heartbeat. Renew refuses `LEASE_EXPIRED` when the lease is no longer current
+(it was reclaimed by another controller) and `CLAIM_NOT_OWNED` when a legacy
+claim belongs to another controller; both are a stop, not a reason to `force`
+or `transfer` from inside execute — a transfer of an expired lease is the
+controller's or operator's act and is recorded before this skill is dispatched.
+Renew at least every `claim.heartbeatMinutes` (default 5) and again before
+every long command (a full test rail, a build, a dispatch) so the lease does
+not expire under a healthy worker; the packet's `claim.expiresAt` shows the
+window. For a command that outlives the window, renew with
+`phase: "running-command", extend_minutes: <n>` (bounded by
+`claim.commandMaxMinutes`) and renew back with `phase: "implementing"` when it
+ends.
 
 ### Re-entry after a needs-changes return
 

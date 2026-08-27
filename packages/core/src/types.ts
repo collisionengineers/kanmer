@@ -381,6 +381,10 @@ export const BoardConfigSchema = z.object({
   sources: SourceDeclarationArraySchema.optional(),
   /** Minutes before a ticket claim is considered expired (FRD-030). Absent ⇒ 30. */
   claimExpiryMinutes: z.number().int().positive().optional(),
+  /** Minutes between lease heartbeats a worker is expected to keep (FRD-030). Absent ⇒ 5. */
+  leaseHeartbeatMinutes: z.number().int().positive().optional(),
+  /** Upper bound, in minutes, for an explicit `running-command` lease extension (FRD-030). Absent ⇒ 120. */
+  leaseCommandMaxMinutes: z.number().int().positive().optional(),
   /** Legacy, read-only: present on format ≤2 boards, dropped on migration. */
   statuses: z.array(BoardColumnSchema).optional(),
   priorities: z.array(BoardColumnSchema).optional(),
@@ -445,6 +449,25 @@ export const ItemFrontmatterSchema = z
     review_round: z.number().int().nonnegative().optional(),
     /** How many Review → Implementing returns are allowed before an operator must intervene (default 1). */
     remediation_budget: z.number().int().positive().optional(),
+    /**
+     * Renewable workspace lease (CORE-115, FRD-030). Every field is optional
+     * and additive: a taken ticket without `lease_id` is a *legacy lease*
+     * (CORE-121 / v0.3.12 claim) that receives its full record on its first
+     * lease mutation. `taken_at` is the claimed-at instant, `claim_expires_at`
+     * the expiry and `claim_controller` the controller identity of the lease.
+     */
+    lease_id: z.string().min(1).optional(),
+    /** Lease-local revision, +1 on every lease write; renewal must name the current one. */
+    lease_revision: z.number().int().positive().optional(),
+    lease_controller_run: z.string().optional(),
+    lease_worker_run: z.string().optional(),
+    /** Normalised workspace identity (worktree, else branch) the lease owns. */
+    lease_workspace: z.string().optional(),
+    lease_provider: z.string().optional(),
+    lease_phase: z.string().optional(),
+    lease_heartbeat_at: TimestampSchema.optional(),
+    /** The controller a reclaimed lease was taken over from (transfer). */
+    lease_reclaimed_from: z.string().optional(),
     /** Optional fractional sort key; unordered items sort after ordered ones. */
     order: z.number().optional(),
     labels: z.array(z.string()).default([]),
@@ -599,6 +622,51 @@ export interface TakeTicketInput {
   force?: boolean;
   /** Document-inclusive revision CAS (FRD-029); see `SetDocOptions.expectedRevision`. */
   expectedRevision?: string;
+  /** Lease identity (FRD-030): the controller run acquiring the workspace. */
+  controllerRun?: string;
+  /** Lease identity (FRD-030): the worker run doing the work. */
+  workerRun?: string;
+  /** Provider behind the worker (e.g. claude-code, codex). */
+  provider?: string;
+  /** Lease phase; defaults to `implementing`. */
+  phase?: LeasePhase;
+}
+
+/** The lease phases FRD-030 names; `running-command` is the explicit long-command state. */
+export const LEASE_PHASES = ["implementing", "running-command", "review", "verifying", "closeout"] as const;
+export type LeasePhase = (typeof LEASE_PHASES)[number];
+
+/** Input for renewTicket (CORE-115): the caller's own lease, named by id and revision. */
+export interface RenewTicketInput {
+  /** The renewing actor (MCP client name or controller identity). */
+  actor: string;
+  /** The lease the caller holds; required once the ticket carries a lease. */
+  leaseId?: string;
+  /** The lease revision the caller last read; refused with `Conflict:` when stale. */
+  leaseRevision?: number;
+  /** New phase; unchanged when omitted. */
+  phase?: LeasePhase;
+  /** Explicit extension for `running-command`, clamped to `leaseCommandMaxMinutes`. */
+  extendMinutes?: number;
+  controllerRun?: string;
+  workerRun?: string;
+  provider?: string;
+  /** Document-inclusive revision CAS (FRD-029); refused with `Conflict:` when stale. */
+  expectedRevision?: string;
+}
+
+/**
+ * What a reclaim re-read before taking over an expired lease (FRD-030). Core
+ * cannot inspect Git or GitHub; the host boundary collects this and the store
+ * records it — it never deletes or resets anything based on it.
+ */
+export interface LeaseRecoveryEvidence {
+  workspace: "not-recorded" | "clean" | "dirty" | "missing" | "unavailable";
+  claimIdentity: "not-applicable" | "matches-claim" | "foreign-repository" | "branch-mismatch" | "detached" | "unavailable";
+  boardWorktree: boolean;
+  pullRequest: "absent" | "open" | "merged" | "closed-unmerged" | "unavailable";
+  commits: number;
+  proof: "absent" | "pass" | "fail" | "invalid";
 }
 
 /** Input for transferTicket: hand an expired (or operator-released) claim to a new controller. */
@@ -611,6 +679,11 @@ export interface TransferTicketInput {
   reason?: string;
   /** Document-inclusive revision CAS (FRD-029); refused with `Conflict:` when stale. */
   expectedRevision?: string;
+  controllerRun?: string;
+  workerRun?: string;
+  provider?: string;
+  /** Evidence re-read by the host before reclaiming; recorded in the transition. */
+  recovery?: LeaseRecoveryEvidence;
 }
 
 /** Bootstrap claim state (CORE-121). */
@@ -618,23 +691,87 @@ export type ClaimState = "unclaimed" | "live" | "expired";
 
 /** Default claim window when board.yml does not set `claimExpiryMinutes`. */
 export const DEFAULT_CLAIM_EXPIRY_MINUTES = 30;
+/** Default heartbeat cadence when board.yml does not set `leaseHeartbeatMinutes`. */
+export const DEFAULT_LEASE_HEARTBEAT_MINUTES = 5;
+/** Default bound for a `running-command` extension when board.yml does not set `leaseCommandMaxMinutes`. */
+export const DEFAULT_LEASE_COMMAND_MAX_MINUTES = 120;
+
+/** Explicit, testable lease timing (FRD-030). */
+export interface LeaseConfig {
+  expiryMinutes: number;
+  heartbeatMinutes: number;
+  commandMaxMinutes: number;
+}
+
+/** Resolve the lease timing from board.yml, falling back to the FRD-030 defaults. */
+export function leaseConfig(
+  board: Pick<BoardConfig, "claimExpiryMinutes" | "leaseHeartbeatMinutes" | "leaseCommandMaxMinutes"> | undefined,
+): LeaseConfig {
+  return {
+    expiryMinutes: board?.claimExpiryMinutes ?? DEFAULT_CLAIM_EXPIRY_MINUTES,
+    heartbeatMinutes: board?.leaseHeartbeatMinutes ?? DEFAULT_LEASE_HEARTBEAT_MINUTES,
+    commandMaxMinutes: board?.leaseCommandMaxMinutes ?? DEFAULT_LEASE_COMMAND_MAX_MINUTES,
+  };
+}
+
+/** A ticket's lease as classified on read (CORE-115). */
+export interface LeaseState {
+  state: ClaimState;
+  /** True for a taken ticket with no `lease_id` — a CORE-121 / v0.3.12 claim not yet migrated. */
+  legacy: boolean;
+  /** When the lease expires (derived for a legacy lease); null when unclaimed. */
+  expiresAt: string | null;
+  /** True when the last heartbeat (or claimed-at) is older than the heartbeat window. */
+  heartbeatStale: boolean;
+}
+
+type LeaseFields = Pick<Item, "taken_at" | "claim_expires_at" | "lease_id" | "lease_heartbeat_at">;
 
 /**
- * Classify a ticket's claim. A claim with `claim_expires_at` expires at that
- * instant; a legacy claim (no `claim_expires_at`) expires `minutes` after
- * `taken_at` — the FRD-030 "one migration path" for permanent claims.
+ * Classify a ticket's lease. The one expiry rule for every claim, old or new:
+ * a lease with `claim_expires_at` expires at that instant; a legacy claim (no
+ * `claim_expires_at`) expires `expiryMinutes` after `taken_at` — the FRD-030
+ * "one migration path" for permanent claims. Expiry never releases anything.
+ */
+export function leaseState(
+  item: LeaseFields,
+  now: Date = new Date(),
+  config: Partial<LeaseConfig> | number = {},
+): LeaseState {
+  const minutes = typeof config === "number" ? config : config.expiryMinutes ?? DEFAULT_CLAIM_EXPIRY_MINUTES;
+  const heartbeat = typeof config === "number" ? DEFAULT_LEASE_HEARTBEAT_MINUTES : config.heartbeatMinutes ?? DEFAULT_LEASE_HEARTBEAT_MINUTES;
+  if (!item.taken_at) return { state: "unclaimed", legacy: false, expiresAt: null, heartbeatStale: false };
+  const expiresAt = item.claim_expires_at
+    ? Date.parse(item.claim_expires_at)
+    : Date.parse(item.taken_at) + minutes * 60_000;
+  const legacy = !item.lease_id;
+  const lastBeat = Date.parse(item.lease_heartbeat_at ?? item.taken_at);
+  const heartbeatStale = !Number.isNaN(lastBeat) && lastBeat + heartbeat * 60_000 < now.getTime();
+  // Unparseable timestamps never expire silently.
+  if (Number.isNaN(expiresAt)) return { state: "live", legacy, expiresAt: null, heartbeatStale };
+  return {
+    state: expiresAt < now.getTime() ? "expired" : "live",
+    legacy,
+    expiresAt: new Date(expiresAt).toISOString(),
+    heartbeatStale,
+  };
+}
+
+/** True for a taken ticket that carries no lease record yet (CORE-121 / v0.3.12 claim). */
+export function isLegacyLease(item: Pick<Item, "taken_at" | "lease_id">): boolean {
+  return Boolean(item.taken_at) && !item.lease_id;
+}
+
+/**
+ * Classify a ticket's claim (CORE-121 shape). Kept as the thin wrapper over
+ * `leaseState` so nothing has two expiry rules.
  */
 export function claimState(
   item: Pick<Item, "taken_at" | "claim_expires_at">,
   now: Date = new Date(),
   minutes: number = DEFAULT_CLAIM_EXPIRY_MINUTES,
 ): ClaimState {
-  if (!item.taken_at) return "unclaimed";
-  const expiresAt = item.claim_expires_at
-    ? Date.parse(item.claim_expires_at)
-    : Date.parse(item.taken_at) + minutes * 60_000;
-  if (Number.isNaN(expiresAt)) return "live"; // unparseable timestamps never expire silently
-  return expiresAt < now.getTime() ? "expired" : "live";
+  return leaseState(item, now, minutes).state;
 }
 
 /** Whether a backward-move or transfer reason is the human operator override. */
@@ -675,6 +812,12 @@ export interface ReconciliationEvidence {
     worktree: string | null;
     reviewRound: number;
     remediationBudget: number;
+    /** Lease record (CORE-115); null on a legacy claim, absent from older collectors. */
+    leaseId?: string | null;
+    leaseRevision?: number | null;
+    heartbeatAt?: string | null;
+    phase?: string | null;
+    legacy?: boolean;
   };
   /** Recorded ticket commits and their reachability from the exact merge target. */
   commits: {

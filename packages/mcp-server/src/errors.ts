@@ -1,4 +1,11 @@
-export type KanmerErrorCode = "WRONG_PROJECT" | "REVISION_CONFLICT" | "GATE_BLOCKED";
+export type KanmerErrorCode = "WRONG_PROJECT" | "REVISION_CONFLICT" | "GATE_BLOCKED" | "LEASE_EXPIRED" | "LEASE_CONFLICT";
+
+/**
+ * Lease refusals (CORE-115, FRD-030) that mean "the workspace or lease is not
+ * yours to write": a live lease held by someone else, an occupied workspace,
+ * a reclaim the evidence forbids, or a renew that did not name its lease.
+ */
+const LEASE_CONFLICT_PREFIXES = ["LEASE_LIVE:", "CLAIM_LIVE:", "CLAIM_NOT_OWNED:", "WORKSPACE_OCCUPIED:", "RECOVERY_REFUSED:", "LEASE_ID_REQUIRED:", "LEASE_REVISION_REQUIRED:"];
 
 export class KanmerError extends Error {
   constructor(readonly code: KanmerErrorCode, message: string) {
@@ -9,6 +16,8 @@ export class KanmerError extends Error {
 
 function classifiedCode(message: string): KanmerErrorCode | undefined {
   if (message.startsWith("Conflict:")) return "REVISION_CONFLICT";
+  if (message.startsWith("LEASE_EXPIRED:")) return "LEASE_EXPIRED";
+  if (LEASE_CONFLICT_PREFIXES.some((prefix) => message.startsWith(prefix))) return "LEASE_CONFLICT";
   // Core keeps gate failures as ordinary errors. Match its explicit movement
   // refusal wording, not generic words such as "blocked" in validation text.
   if (/\b(?:entering|leaving)\b[^:\n]*\brequires\b/i.test(message) || /\bcannot move\b.*\bcrosses\b/i.test(message)) return "GATE_BLOCKED";

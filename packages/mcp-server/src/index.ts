@@ -34,6 +34,8 @@ import {
   dispatchTaskById,
   taskFeasibility,
   takeTicketPromptText,
+  leaseConfig,
+  LEASE_PHASES,
   watchKanmer,
   type Item,
   type RootSource,
@@ -44,7 +46,7 @@ import { SERVER_VERSION, serverIdentity } from "./identity.js";
 import { bundledSkillsDir } from "./bundled.js";
 import { readTicketDocuments } from "./ticket-docs.js";
 import { getExecutionPacket } from "./execution-packet.js";
-import { reconcileTicket } from "./reconciliation.js";
+import { collectReconciliationEvidence, leaseRecoverySummary, reconcileTicket } from "./reconciliation.js";
 import { failCoded, KanmerError, type ResponseProject } from "./errors.js";
 import {
   expectedProjectMatches,
@@ -657,6 +659,8 @@ server.registerTool(
       project: { ...legacy, ...logical, location },
       compat: { expectedProject: "optional", projectIdentity: "logical", expectedRevision: "optional", endpointRegistry: "optional" },
       dispatch: dispatchPolicyView(dispatchPolicy),
+      /** FRD-030 lease timing: explicit so workers know their heartbeat cadence and the expiry window. */
+      leases: leaseConfig(board),
       deploymentTracking: board.deployment !== undefined,
       boardWorktree: {
         path: projectRoot,
@@ -1445,9 +1449,9 @@ server.registerTool(
 server.registerTool(
   "take_ticket",
   {
-    title: "Take, release, transfer or renew a ticket claim",
+    title: "Take, release, transfer or renew a ticket workspace lease",
     description:
-      "Take a ticket before working it: records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client's name), stamps a claim expiry (board `claimExpiryMinutes`, default 30) and moves the ticket to the working stage (default: the board's `implementing` stage). Errors if the ticket is already taken unless force is true. action: \"release\" clears taken_at/branch/worktree when the work ends. action: \"transfer\" hands an EXPIRED claim to the caller (or another assignee) while preserving the recorded branch and worktree — a live claim refuses with CLAIM_LIVE unless reason begins \"operator:\". action: \"renew\" extends the caller's own claim; a foreign claim refuses with CLAIM_NOT_OWNED. Never use force to recover a dead controller's ticket; transfer it.",
+      "Acquire a ticket's workspace lease before working it (FRD-030): records taken_at, the branch (required) and optionally the worktree, sets the assignee (defaults to the calling client's name), stamps the lease expiry (board `claimExpiryMinutes`, default 30) and mints the lease record — lease_id, lease_revision, lease_workspace, lease_phase, lease_heartbeat_at, plus controller_run/worker_run/provider when given — and moves the ticket to the working stage (default `implementing`). One live writer per workspace: a worktree or branch recorded on another taken ticket refuses with WORKSPACE_OCCUPIED (force does not bypass it); an already-taken ticket refuses with LEASE_LIVE unless force is true. action: \"renew\" is the heartbeat (renew at least every get_status.leases.heartbeatMinutes): pass the lease_id and lease_revision from your packet or last take — a non-current lease_id refuses with LEASE_EXPIRED (the lease was reclaimed; stop), a stale lease_revision with REVISION_CONFLICT, and nothing is written on refusal; an expired lease nobody reclaimed still renews for its holder. Optional phase (implementing | running-command | review | verifying | closeout); phase \"running-command\" with extend_minutes is the explicit long-command state, bounded by board `leaseCommandMaxMinutes` (default 120). A renew that names no lease falls back to the owner check (CLAIM_NOT_OWNED) and migrates a legacy claim into a lease. action: \"transfer\" reclaims an EXPIRED lease for the caller (or another assignee): it first re-reads worktree, branch, PR, commit and proof evidence, records it with the old and new controller in scratch/execution.md, preserves the recorded branch/worktree and any dirty work, and refuses with RECOVERY_REFUSED for a board or foreign-repository workspace; a live lease refuses with CLAIM_LIVE unless reason begins \"operator:\". action: \"release\" clears the claim and lease fields when the work ends (closeout). Never use force to recover a dead controller's ticket; transfer it.",
     inputSchema: {
       id: z.string().describe("Ticket id"),
       action: z.enum(["take", "release", "transfer", "renew"]).default("take"),
@@ -1459,21 +1463,45 @@ server.registerTool(
       reason: z.string().optional().describe('For transfer of a live claim: an operator override beginning "operator:"'),
       force: z.boolean().optional().describe("Take over an already-taken ticket"),
       expected_revision: expectedRevisionField,
+      lease_id: z.string().optional().describe("renew: the lease_id you hold (from the packet or your take)"),
+      lease_revision: z.number().int().positive().optional().describe("renew: the lease_revision you last read; stale ⇒ REVISION_CONFLICT"),
+      phase: z.enum(LEASE_PHASES).optional().describe("take/renew: lease phase; running-command is the explicit long-command state"),
+      extend_minutes: z.number().positive().optional().describe("renew in phase running-command: extend the lease by up to leaseCommandMaxMinutes"),
+      controller_run: z.string().optional().describe("Durable controller run identity behind the lease"),
+      worker_run: z.string().optional().describe("Worker run identity doing the work"),
+      provider: z.string().optional().describe("Provider behind the worker (e.g. claude-code, codex)"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
-  write(async ({ id, action, branch, worktree, stage, assignee, controller, reason, force, expected_revision }, extra) => {
+  write(async ({ id, action, branch, worktree, stage, assignee, controller, reason, force, expected_revision, lease_id, lease_revision, phase, extend_minutes, controller_run, worker_run, provider }, extra) => {
+    const identity = { controllerRun: controller_run, workerRun: worker_run, provider };
     if (action === "release") return ok(await store.releaseTicket(id, { expectedRevision: expected_revision }));
     if (action === "renew") {
-      return ok(await store.renewTicket(id, assignee ?? actorName(server, extra), { expectedRevision: expected_revision }));
+      return ok(
+        await store.renewTicket(id, {
+          actor: assignee ?? actorName(server, extra),
+          leaseId: lease_id,
+          leaseRevision: lease_revision,
+          phase,
+          extendMinutes: extend_minutes,
+          ...identity,
+          expectedRevision: expected_revision,
+        }),
+      );
     }
     if (action === "transfer") {
+      // FRD-030: a reclaim re-reads board, branch, worktree and PR evidence
+      // before anything is written; the store records it and never acts on
+      // it destructively. Core cannot run Git, so the boundary collects.
+      const recovery = leaseRecoverySummary(await collectReconciliationEvidence(store, id));
       return ok(
         await store.transferTicket(id, {
           assignee: assignee ?? actorName(server, extra),
           controller,
           reason,
           expectedRevision: expected_revision,
+          ...identity,
+          recovery,
         }),
       );
     }
@@ -1487,6 +1515,8 @@ server.registerTool(
         controller,
         force,
         expectedRevision: expected_revision,
+        phase,
+        ...identity,
       }),
     );
   }),

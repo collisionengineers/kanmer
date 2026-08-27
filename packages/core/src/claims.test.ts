@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { KanmerStore } from "./store.js";
 import { parseItem, serialiseItem } from "./frontmatter.js";
-import { claimState, isOperatorReason } from "./types.js";
+import { claimState, isLegacyLease, isOperatorReason, leaseConfig, leaseState } from "./types.js";
 import { parseReviewAttestation } from "./review-attestation.js";
 
 let root: string;
@@ -324,5 +324,227 @@ describe("claim frontmatter round trip (CORE-121)", () => {
   it("rejects malformed claim numbers", () => {
     expect(() => parseItem(sample.replace("updated:", "review_round: -1\nupdated:"))).toThrow();
     expect(() => parseItem(sample.replace("updated:", "remediation_budget: 0\nupdated:"))).toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Renewable workspace leases (CORE-115, FRD-030)
+// ---------------------------------------------------------------------------
+
+/** Strip every lease field so a taken ticket looks like a CORE-121 / v0.3.12 claim. */
+async function stripLease(id: string): Promise<void> {
+  const file = ticketFile(id);
+  const raw = await fs.readFile(file, "utf8");
+  // Lazy up to the next key: YAML may fold a long lease_workspace value over several lines.
+  await fs.writeFile(file, raw.replace(/^lease_[a-z_]+: [\s\S]*?\n(?=[a-z_]+: |---)/gmu, ""), "utf8");
+}
+
+async function setBoardLine(line: string): Promise<void> {
+  const boardFile = path.join(root, ".kanmer", "data", "board.yml");
+  await fs.writeFile(boardFile, `${await fs.readFile(boardFile, "utf8")}\n${line}\n`, "utf8");
+}
+
+describe("leaseState / leaseConfig (CORE-115)", () => {
+  const now = new Date("2026-08-27T10:00:00.000Z");
+  it("resolves the FRD-030 defaults and board overrides", () => {
+    expect(leaseConfig(undefined)).toEqual({ expiryMinutes: 30, heartbeatMinutes: 5, commandMaxMinutes: 120 });
+    expect(leaseConfig({ claimExpiryMinutes: 10, leaseHeartbeatMinutes: 2, leaseCommandMaxMinutes: 15 })).toEqual({ expiryMinutes: 10, heartbeatMinutes: 2, commandMaxMinutes: 15 });
+  });
+  it("classifies legacy and leased claims with one expiry rule and a heartbeat flag", () => {
+    expect(leaseState({}, now)).toEqual({ state: "unclaimed", legacy: false, expiresAt: null, heartbeatStale: false });
+    const legacy = leaseState({ taken_at: "2026-08-27T09:50:00.000Z" }, now);
+    expect(legacy).toMatchObject({ state: "live", legacy: true, expiresAt: "2026-08-27T10:20:00.000Z", heartbeatStale: true });
+    const leased = leaseState({ taken_at: "2026-08-27T09:00:00.000Z", claim_expires_at: "2026-08-27T10:30:00.000Z", lease_id: "L1", lease_heartbeat_at: "2026-08-27T09:58:00.000Z" }, now);
+    expect(leased).toMatchObject({ state: "live", legacy: false, heartbeatStale: false });
+    expect(leaseState({ taken_at: "2026-08-27T09:00:00.000Z", claim_expires_at: "2026-08-27T09:30:00.000Z", lease_id: "L1" }, now).state).toBe("expired");
+    expect(claimState({ taken_at: "2026-08-27T09:00:00.000Z" }, now)).toBe("expired");
+    expect(isLegacyLease({ taken_at: "x" })).toBe(true);
+    expect(isLegacyLease({ taken_at: "x", lease_id: "L1" })).toBe(false);
+    expect(isLegacyLease({})).toBe(false);
+  });
+});
+
+describe("renewable leases (CORE-115)", () => {
+  it("take mints a lease record in KEY_ORDER position and release clears it", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A", status: "implementing" });
+    const taken = await store.takeTicket(t.id, {
+      branch: "feat/x", worktree: "wt/x", assignee: "ctl-a", controllerRun: "run-c1", workerRun: "run-w1", provider: "claude-code",
+    });
+    expect(taken.lease_id).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(taken.lease_revision).toBe(1);
+    expect(taken.lease_phase).toBe("implementing");
+    expect(taken.lease_heartbeat_at).toBe(taken.taken_at);
+    expect(taken.lease_workspace).toMatch(/^worktree:/u);
+    expect(taken.lease_controller_run).toBe("run-c1");
+    expect(taken.lease_worker_run).toBe("run-w1");
+    expect(taken.lease_provider).toBe("claude-code");
+    const raw = await fs.readFile(ticketFile(t.id), "utf8");
+    expect(raw.indexOf("claim_controller:")).toBeLessThan(raw.indexOf("lease_id:"));
+    expect(raw.indexOf("lease_id:")).toBeLessThan(raw.indexOf("lease_revision:"));
+    expect(raw.indexOf("lease_heartbeat_at:")).toBeLessThan(raw.indexOf("labels:"));
+    const released = await store.releaseTicket(t.id);
+    for (const key of Object.keys(released)) expect(key.startsWith("lease_")).toBe(false);
+    expect(await fs.readFile(ticketFile(t.id), "utf8")).not.toMatch(/^lease_/mu);
+  });
+
+  it("AC1: a competing controller cannot acquire a live lease, and an expired one only via transfer", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A", status: "implementing" });
+    await store.takeTicket(t.id, { branch: "feat/x", worktree: "wt/x", assignee: "ctl-a" });
+    const before = await fs.readFile(ticketFile(t.id), "utf8");
+    await expect(store.takeTicket(t.id, { branch: "feat/y", worktree: "wt/y", assignee: "ctl-b" })).rejects.toThrow(/^LEASE_LIVE:.*already taken.*live/u);
+    expect(await fs.readFile(ticketFile(t.id), "utf8")).toBe(before);
+    await ageClaim(t.id, 31);
+    await expect(store.takeTicket(t.id, { branch: "feat/y", worktree: "wt/y", assignee: "ctl-b" })).rejects.toThrow(/^LEASE_LIVE:.*expired.*action "transfer"/u);
+  });
+
+  it("one live writer per workspace: the same worktree or branch on another taken ticket is refused, even with force", async () => {
+    const a = await store.createItem({ type: "ticket", title: "A", status: "implementing" });
+    const b = await store.createItem({ type: "ticket", title: "B", status: "implementing" });
+    await store.takeTicket(a.id, { branch: "feat/a", worktree: ".worktrees/a", assignee: "ctl-a" });
+    await expect(store.takeTicket(b.id, { branch: "feat/b", worktree: ".worktrees\\a\\", assignee: "ctl-b" })).rejects.toThrow(/^WORKSPACE_OCCUPIED:.*worktree.*"TICK-001"/u);
+    await expect(store.takeTicket(b.id, { branch: "feat/a", assignee: "ctl-b" })).rejects.toThrow(/^WORKSPACE_OCCUPIED:.*branch feat\/a/u);
+    await expect(store.takeTicket(b.id, { branch: "feat/a", assignee: "ctl-b", force: true })).rejects.toThrow(/^WORKSPACE_OCCUPIED:/u);
+    // An expired but unreleased lease still owns its workspace (a final claim remains until closeout).
+    await ageClaim(a.id, 31);
+    await expect(store.takeTicket(b.id, { branch: "feat/b", worktree: ".worktrees/a", assignee: "ctl-b" })).rejects.toThrow(/^WORKSPACE_OCCUPIED:/u);
+    expect((await store.getItem(b.id))!.taken_at).toBeUndefined();
+    await store.releaseTicket(a.id);
+    const taken = await store.takeTicket(b.id, { branch: "feat/b", worktree: ".worktrees/a", assignee: "ctl-b" });
+    expect(taken.lease_id).toBeTruthy();
+  });
+
+  it("AC2: renewal needs the current lease id and revision; a stale one writes nothing", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A", status: "implementing" });
+    const taken = await store.takeTicket(t.id, { branch: "feat/x", assignee: "ctl-a" });
+    const before = await fs.readFile(ticketFile(t.id), "utf8");
+    await expect(store.renewTicket(t.id, { actor: "ctl-a", leaseId: "not-the-lease", leaseRevision: 1 })).rejects.toThrow(/^LEASE_EXPIRED:.*no longer current/u);
+    await expect(store.renewTicket(t.id, { actor: "ctl-a", leaseId: taken.lease_id, leaseRevision: 7 })).rejects.toThrow(/^Conflict:.*lease revision changed/u);
+    await expect(store.renewTicket(t.id, { actor: "ctl-a", leaseId: taken.lease_id })).rejects.toThrow(/^LEASE_REVISION_REQUIRED:/u);
+    await expect(store.renewTicket(t.id, { actor: "ctl-a", leaseRevision: 1 })).rejects.toThrow(/^LEASE_ID_REQUIRED:/u);
+    await expect(store.renewTicket(t.id, { actor: "ctl-b", leaseId: "stale", leaseRevision: 1 })).rejects.toThrow(/^LEASE_EXPIRED:/u);
+    expect(await fs.readFile(ticketFile(t.id), "utf8")).toBe(before);
+    const renewed = await store.renewTicket(t.id, { actor: "ctl-a", leaseId: taken.lease_id!, leaseRevision: 1, workerRun: "run-w2" });
+    expect(renewed.lease_id).toBe(taken.lease_id);
+    expect(renewed.lease_revision).toBe(2);
+    expect(renewed.lease_worker_run).toBe("run-w2");
+    expect(Date.parse(renewed.lease_heartbeat_at!)).toBeGreaterThanOrEqual(Date.parse(taken.lease_heartbeat_at!));
+    // The old revision is now stale for everyone, including the owner.
+    await expect(store.renewTicket(t.id, { actor: "ctl-a", leaseId: taken.lease_id!, leaseRevision: 1 })).rejects.toThrow(/^Conflict:/u);
+    // The compatibility lane (no lease named) still applies the owner check only.
+    await expect(store.renewTicket(t.id, "ctl-b")).rejects.toThrow(/^CLAIM_NOT_OWNED:/u);
+    expect((await store.renewTicket(t.id, "ctl-a")).lease_revision).toBe(3);
+  });
+
+  it("an expired lease nobody reclaimed still renews for its holder: expiry is not deletion", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A", status: "implementing" });
+    const taken = await store.takeTicket(t.id, { branch: "feat/x", assignee: "ctl-a" });
+    await ageClaim(t.id, 45);
+    expect(claimState((await store.getItem(t.id))!)).toBe("expired");
+    const renewed = await store.renewTicket(t.id, { actor: "ctl-a", leaseId: taken.lease_id!, leaseRevision: 1 });
+    expect(claimState(renewed)).toBe("live");
+    expect(renewed.lease_id).toBe(taken.lease_id);
+  });
+
+  it("running-command is the only phase that extends beyond the window, and it is bounded", async () => {
+    await setBoardLine("leaseCommandMaxMinutes: 10");
+    const t = await store.createItem({ type: "ticket", title: "A", status: "implementing" });
+    const taken = await store.takeTicket(t.id, { branch: "feat/x", assignee: "ctl-a" });
+    await expect(store.renewTicket(t.id, { actor: "ctl-a", leaseId: taken.lease_id!, leaseRevision: 1, extendMinutes: 60 })).rejects.toThrow(/^LEASE_EXTENSION_NEEDS_RUNNING_COMMAND:/u);
+    await expect(store.renewTicket(t.id, { actor: "ctl-a", leaseId: taken.lease_id!, leaseRevision: 1, phase: "bogus" as never })).rejects.toThrow(/^LEASE_PHASE_INVALID:/u);
+    const running = await store.renewTicket(t.id, { actor: "ctl-a", leaseId: taken.lease_id!, leaseRevision: 1, phase: "running-command", extendMinutes: 60 });
+    expect(running.lease_phase).toBe("running-command");
+    const delta = Date.parse(running.claim_expires_at!) - Date.now();
+    expect(delta).toBeGreaterThan(9 * 60_000);
+    expect(delta).toBeLessThan(11 * 60_000);
+    const back = await store.renewTicket(t.id, { actor: "ctl-a", leaseId: taken.lease_id!, leaseRevision: 2, phase: "implementing" });
+    expect(back.lease_phase).toBe("implementing");
+    expect(Date.parse(back.claim_expires_at!) - Date.now()).toBeLessThan(31 * 60_000);
+    expect(await store.getDoc(t.id, "scratch/execution")).toMatch(/lease-phase implementing → running-command[\s\S]*lease-phase running-command → implementing/u);
+  });
+
+  it("one migration path: a legacy claim keeps its derived expiry and receives its lease record on first renew", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A", status: "implementing" });
+    await store.takeTicket(t.id, { branch: "feat/x", worktree: "wt/x", assignee: "ctl-a" });
+    await stripLease(t.id);
+    await ageClaim(t.id, 10, true);
+    const legacy = (await store.getItem(t.id))!;
+    expect(legacy.lease_id).toBeUndefined();
+    expect(leaseState(legacy)).toMatchObject({ state: "live", legacy: true });
+    await expect(store.renewTicket(t.id, "ctl-b")).rejects.toThrow(/^CLAIM_NOT_OWNED:/u);
+    const migrated = await store.renewTicket(t.id, "ctl-a");
+    expect(migrated.lease_id).toBeTruthy();
+    expect(migrated.lease_revision).toBe(1);
+    expect(migrated.lease_workspace).toMatch(/^worktree:/u);
+    expect(migrated.claim_controller).toBe("ctl-a");
+    expect(migrated.branch).toBe("feat/x");
+    expect(migrated.worktree).toBe("wt/x");
+    expect(await store.getDoc(t.id, "scratch/execution")).toMatch(/lease-migrate legacy claim → lease/u);
+  });
+
+  it("one migration path: a legacy claim past its derived window is reclaimed like any expired lease", async () => {
+    const u = await store.createItem({ type: "ticket", title: "B", status: "implementing" });
+    await store.takeTicket(u.id, { branch: "feat/u", assignee: "ctl-a" });
+    await stripLease(u.id);
+    await ageClaim(u.id, 31, true);
+    const reclaimed = await store.transferTicket(u.id, { assignee: "ctl-c" });
+    expect(reclaimed.lease_id).toBeTruthy();
+    expect(reclaimed.lease_revision).toBe(1);
+    expect(reclaimed.lease_reclaimed_from).toBe("ctl-a");
+  });
+
+  describe("AC3: reclaiming an expired lease records the evidence and preserves the work", () => {
+    const cases = [
+      { name: "dirty worktree", recovery: { workspace: "dirty", claimIdentity: "matches-claim", boardWorktree: false, pullRequest: "absent", commits: 0, proof: "absent" } },
+      { name: "committed, no PR", recovery: { workspace: "clean", claimIdentity: "matches-claim", boardWorktree: false, pullRequest: "absent", commits: 3, proof: "absent" } },
+      { name: "branch with missing worktree", recovery: { workspace: "missing", claimIdentity: "unavailable", boardWorktree: false, pullRequest: "open", commits: 2, proof: "absent" } },
+    ] as const;
+    it.each(cases)("$name", async (c) => {
+      const t = await store.createItem({ type: "ticket", title: c.name, status: "implementing" });
+      const taken = await store.takeTicket(t.id, { branch: `feat/${t.id}`, worktree: `.worktrees/${t.id}`, assignee: "ctl-a", controller: "run-old" });
+      await store.updateItem(t.id, { commits: ["abc1234"] });
+      await ageClaim(t.id, 31);
+      const aged = (await store.getItem(t.id))!;
+      const next = await store.transferTicket(t.id, { assignee: "ctl-b", controller: "run-new", controllerRun: "run-new", recovery: c.recovery });
+      expect(next.branch).toBe(`feat/${t.id}`);
+      expect(next.worktree).toBe(`.worktrees/${t.id}`);
+      expect(next.taken_at).toBe(aged.taken_at);
+      expect(next.commits).toEqual(["abc1234"]);
+      expect(next.lease_id).not.toBe(taken.lease_id);
+      expect(next.lease_revision).toBe(2);
+      expect(next.lease_reclaimed_from).toBe("run-old");
+      expect(next.claim_controller).toBe("run-new");
+      expect(next.lease_controller_run).toBe("run-new");
+      expect(claimState(next)).toBe("live");
+      const log = await store.getDoc(t.id, "scratch/execution");
+      expect(log).toMatch(new RegExp(`claim-transfer run-old → run-new \\(expired; lease ${taken.lease_id} → ${next.lease_id} rev 2;.*evidence: workspace ${c.recovery.workspace} \\(${c.recovery.claimIdentity}\\), pr ${c.recovery.pullRequest}, commits ${c.recovery.commits}, proof absent`, "u"));
+      // The old lease is dead: its holder cannot renew any more.
+      await expect(store.renewTicket(t.id, { actor: "ctl-a", leaseId: taken.lease_id!, leaseRevision: 1 })).rejects.toThrow(/^LEASE_EXPIRED:/u);
+    });
+  });
+
+  it("reclaim refuses a board-worktree or foreign-repository workspace without writing", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A", status: "implementing" });
+    await store.takeTicket(t.id, { branch: "feat/x", worktree: "wt/x", assignee: "ctl-a" });
+    await ageClaim(t.id, 31);
+    const before = await fs.readFile(ticketFile(t.id), "utf8");
+    const base = { workspace: "clean", pullRequest: "absent", commits: 0, proof: "absent" } as const;
+    await expect(store.transferTicket(t.id, { assignee: "ctl-b", recovery: { ...base, claimIdentity: "unavailable", boardWorktree: true } })).rejects.toThrow(/^RECOVERY_REFUSED:.*board worktree/u);
+    await expect(store.transferTicket(t.id, { assignee: "ctl-b", recovery: { ...base, claimIdentity: "foreign-repository", boardWorktree: false } })).rejects.toThrow(/^RECOVERY_REFUSED:.*different repository/u);
+    expect(await fs.readFile(ticketFile(t.id), "utf8")).toBe(before);
+  });
+
+  it("serialises the lease writes across store instances: concurrent renewals from one revision yield exactly one success", async () => {
+    const t = await store.createItem({ type: "ticket", title: "A", status: "implementing" });
+    const taken = await store.takeTicket(t.id, { branch: "feat/x", assignee: "ctl-a" });
+    const stores = Array.from({ length: 6 }, () => new KanmerStore(root, { actor: "racer" }));
+    const results = await Promise.allSettled(
+      stores.map((s) => s.renewTicket(t.id, { actor: "ctl-a", leaseId: taken.lease_id!, leaseRevision: 1 })),
+    );
+    const ok = results.filter((r) => r.status === "fulfilled");
+    const conflicts = results.filter((r) => r.status === "rejected" && /^Conflict:/u.test(String((r as PromiseRejectedResult).reason?.message)));
+    expect(ok).toHaveLength(1);
+    expect(conflicts).toHaveLength(5);
+    expect((await store.getItem(t.id))!.lease_revision).toBe(2);
+    expect(await fs.readdir(path.join(root, ".kanmer"))).not.toContain("leases.lock");
   });
 });

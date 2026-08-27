@@ -1,5 +1,5 @@
 import type { ClaimState, GateReport, Item, KanmerStore, TicketDocumentWithVersion } from "@kanmer/core";
-import { DEFAULT_CLAIM_EXPIRY_MINUTES, claimState } from "@kanmer/core";
+import { leaseConfig, leaseState } from "@kanmer/core";
 import { execFile } from "node:child_process";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
@@ -69,6 +69,18 @@ export interface ExecutionPacketClaim {
   controller: string | null;
   reviewRound: number;
   remediationBudget: number;
+  /** Lease record (CORE-115, FRD-030): what a worker names on every renew. Null on a legacy claim. */
+  leaseId: string | null;
+  leaseRevision: number | null;
+  phase: string | null;
+  workspace: string | null;
+  heartbeatAt: string | null;
+  /** True for a CORE-121 / v0.3.12 claim not yet migrated to a lease. */
+  legacy: boolean;
+  /** Explicit timing (FRD-030): renew at least every heartbeatMinutes; the lease expires after expiryMinutes. */
+  heartbeatMinutes: number;
+  expiryMinutes: number;
+  commandMaxMinutes: number;
 }
 
 export interface ExecutionPacketReady {
@@ -498,14 +510,23 @@ export async function getExecutionPacket(input: {
     item.branch !== undefined && resume.branch === item.branch &&
     item.worktree !== undefined && resume.worktree === item.worktree;
   const board = await store.getBoard();
-  const claimMinutes = board.claimExpiryMinutes ?? DEFAULT_CLAIM_EXPIRY_MINUTES;
+  const timing = leaseConfig(board);
+  const lease = leaseState(item, new Date(), timing);
   const claim: ExecutionPacketClaim = {
-    state: claimState(item, new Date(), claimMinutes),
-    expiresAt: item.claim_expires_at
-      ?? (item.taken_at ? new Date(Date.parse(item.taken_at) + claimMinutes * 60_000).toISOString() : null),
+    state: lease.state,
+    expiresAt: lease.expiresAt,
     controller: item.claim_controller ?? (item.assignee || null),
     reviewRound: item.review_round ?? 0,
     remediationBudget: item.remediation_budget ?? 1,
+    leaseId: item.lease_id ?? null,
+    leaseRevision: item.lease_revision ?? null,
+    phase: item.lease_phase ?? null,
+    workspace: item.lease_workspace ?? null,
+    heartbeatAt: item.lease_heartbeat_at ?? null,
+    legacy: lease.legacy,
+    heartbeatMinutes: timing.heartbeatMinutes,
+    expiryMinutes: timing.expiryMinutes,
+    commandMaxMinutes: timing.commandMaxMinutes,
   };
   if (item.taken_at && item.assignee !== actor && item.claim_controller !== actor && !exactRecordedResume) {
     const owner = item.assignee || "an unknown actor";

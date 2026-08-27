@@ -75,11 +75,20 @@ git worktree prune
 If the host repo doesn't auto-delete merged branches:
 `git push origin --delete <id>-<slug>`.
 
+**Batch members share one worktree and branch (FRD-030).** When the ticket
+carries `lease_batch`, closeout refuses to remove the worktree or delete the
+branch while any member of that batch is not yet Done or archived: read every
+member off `list_items` (same `lease_batch`), finish their Kanmer halves, and
+only run the git half once after the last member is terminal. `release` on a
+member with a non-terminal sibling refuses `BATCH_ACTIVE` for the same reason.
+
 ## 3. Release, last
 
 `take_ticket action: "release"` — issued only once nothing is actually in
 flight. Success stays Done; retired non-success stays archived in Verifying.
 In both cases Git shows nothing left and the live board has no stale taken work.
+For a batch, release every member after the shared git cleanup; the last
+release clears the batch record.
 
 ## Edge cases
 

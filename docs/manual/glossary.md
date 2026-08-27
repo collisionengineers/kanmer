@@ -46,6 +46,12 @@ a feature.
 worktree). It expires unless renewed, so a dead agent's ticket can be taken
 over — with its work kept — instead of staying taken forever.
 
+**Batch workspace** — a deliberate exception to "one ticket, one workspace":
+two or more small related tickets that share one branch, worktree and pull
+request. The batch is frozen when its first member is taken, no other ticket
+can join it or use its workspace, each member still gets its own review and
+proof, and cleanup waits until every member is finished.
+
 **Profile** — how much evidence a ticket owes. `fix` is the default; `chore`,
 `feature`, `spike` and `custom` are the others.
 

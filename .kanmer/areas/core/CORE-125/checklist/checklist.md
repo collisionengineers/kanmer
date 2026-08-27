@@ -22,3 +22,16 @@
 
 - 2026-08-27: three tests added rather than one — the `getBoard` barrier proves the concurrent edit being reverted by the lease write, a second test parks the audited Review → Implementing return on its in-lock `getDoc` and proves the lease record itself being reverted (the direction the ticket names), and a third walks every nested path (`moveItem` → `computeOrder` → `updateItem`, `updateItem` → `appendTransition` → `setDoc`, lease verb → `setDoc`) to prove the re-entrancy guard does not deadlock.
 - Lock cost measured with a throwaway benchmark (not committed): 200 sequential `updateItem` calls, 6.08 ms/call before vs 17.34 ms/call after.
+
+---
+
+## Closeout — CORE-125
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/<id>`
+- [ ] `git branch -d <branch>` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

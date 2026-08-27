@@ -3,3 +3,19 @@ Merged-main verification (2026-08-21): normal main/origin-main at 1b5ae0d4; PR #
 2026-08-22T03:06:02.231Z — Fresh merged-main shared rail at 4f785781e7f1993fbcde5e474640db509737c0bd: npm run verify exited 0. Build, manual freshness, core 266/266, GUI 355/355, MCP HTTP 61/61, scripts 82/82, all-workspace typecheck, MCP smoke 224/224, mcpb/plugin parity, protocol 46/46, discovery 13/13, skills/AGENTS checks and diff-check all passed. This strengthens deterministic merged-main evidence only; ticket-specific real external acceptance remains unchanged and is not fabricated.
 
 2026-08-22T03:14:30.616Z — Fresh merged-main packaged rail at 4f785781e7f1993fbcde5e474640db509737c0bd: npm run dist:check exited 0; Electron Windows packaging completed and updater package check passed (8/8). This proves deterministic packaged output only; no installed update or external release/tag claim is made.
+
+## 2026-08-28 — operator disposition: park until the next release tag
+
+The operator reviewed this ticket's evidence and chose to **park it in Verifying until the next real version tag is cut**, rather than relax its acceptance bar or retire it. Recorded so it stops reading as abandoned.
+
+Findings behind the decision (read-only investigation, nothing was moved):
+
+- The merged artifact is real and live: PR #127's merge commit `470b2fad5d16ca4edcc9833b3f674460f994e73d` is still an ancestor of `origin/main` (checked at `c6bbddd6`), and `.github/workflows/release.yml` on main matches the proof feature-for-feature — tag trigger, read-only contents permission, tag-scoped concurrency, windows-latest, version guard, `npm ci`, `npm run verify`, `dist:check`, and the bounded read-only asset-verifier poll.
+- The workflow's mechanics have been exercised for real in GitHub Actions twice (2026-08-24, disposable test repo and temporary tag): trigger, checkout-at-tag, version guard and `npm ci` all passed. The disposable tag and prerelease were deleted and the deletion confirmed by API.
+- Neither of the ticket's own two acceptance criteria has been met: (1) no green `release-verify` run tied to a real production tag — no real tag has been pushed since the workflow merged; (2) no red run that actually reaches the asset-verification step — both disposable runs died earlier at `npm run verify` on the recurring Windows core-test flake now tracked as [[CORE-128]].
+- Every dated section of `proof/proof.md` — 2026-08-21, the 2026-08-23 exact-tag asset repair, the 2026-08-23T14:04Z independent rerun, the 2026-08-24 disposable-tag attempt — ends by declining to claim PASS. The absent `result:` frontmatter field reflects that honestly; it is not an oversight to be typed up after the fact.
+- Of the 7 unchecked checklist boxes: 2–3 are genuinely outstanding (real green tag run; a red run reaching the asset step; the disposable incomplete-release setup only half-done), 2 are done but unticked (disposable release/tag cleanup; confirming CI never published or changed a release), 1 is partial (proof lacks linked Actions run IDs/URLs), and 1 is a pre-merge process constraint now moot.
+- Oddity for the record: `stageEntered.done` carries `2026-08-23T00:28:46.198Z` while `status` is `verifying` — a Done move was made and reverted on 2026-08-23. Nothing in the proof or scratch explains it; the proof written around that time explicitly forbids the move.
+- No `core-036` branch or worktree exists locally or on origin; the ticket is not taken. `assignee: core036-take` is a historical marker, not a live claim.
+
+Plan: HZN-008 will cut a release (v0.3.13 or later, carrying CORE-121…CORE-125). That tag push satisfies criterion 1 automatically and should be captured here as the green run. [[CORE-128]] is the practical unblocker for criterion 2 — until the Windows flake is fixed or quarantined, a disposable red run cannot reach the asset-verifier step it is meant to prove.

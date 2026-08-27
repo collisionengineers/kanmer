@@ -13,8 +13,10 @@
 - [x] [pre-review] `npm test -w @kanmer/gui` 0 (52 files), `npm run typecheck -w @kanmer/gui` 0, `npm run check:manual` 0, `npm run verify:docs` 0, `npm run build -w @kanmer/gui` 0
 - [x] [pre-review] Post-implementation report written; PR #294 open with `Kanmer: GUI-144` footer; ticket moved to Review; stop
 - [x] [remediation 1] Rebase onto origin/main 3dd48d37; reproduce F-001; fix F-001..F-007 (F-008..F-012 accepted-risk); focused vitest 22/22, typecheck 0, `npm test -w @kanmer/gui` 515/515, check:manual 0, verify:docs 0; head 50ff61cc pushed to PR #294; hosted `verify` success, `kanmer-gate` WRONG_STAGE (stale board, controller re-run); report updated; ticket back to Review
+- [x] [remediation 2] Rebase onto origin/main 9c9a6980 (CORE-124); fix F-013 (requestOpen routing + `key={root}` + Settings draft guard + tests), F-014 (assertSelectedEndpoint matches the bound endpoint among duplicates + test), F-015 ("Open project" disabled unless health ok/unassigned + test); F-008..F-012 unchanged; typecheck 0, focused vitest 27/27, `npm test -w @kanmer/gui` 53 files/520 tests 0, check:manual 0, verify:docs 0; head 190b022a force-with-lease pushed to PR #294; report updated; ticket back to Review
 
 ## Progress notes
 
 - 2026-08-27 head a9033ec2, PR https://github.com/collisionengineers/kanmer/pull/294. Deviation: GUI mirrors the registry contract (no typed server import available); contract test proves parity.
 - 2026-08-27 remediation round 1: head 50ff61cc (rebased; a9033ec2 unreachable). Deviation: `App.tsx` touched for one prop (`onOpenProject`) to satisfy F-002.
+- 2026-08-27 remediation round 2: head 190b022a (rebased onto 9c9a6980; 50ff61cc unreachable). Deviation: `Settings.tsx`/`App.tsx` gain a keyed remount + draft guard and a new `Settings.projects.test.tsx` — required by F-013's structural fix.

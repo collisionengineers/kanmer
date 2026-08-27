@@ -84,3 +84,11 @@ Stop and report: an existing test must be weakened to pass; `plugin:check` canno
 
 ## Stop condition
 PR open against `main` with a `Kanmer: CORE-123` footer, post-implementation report written, ticket moved to Review. Do not review, merge, verify, close out, or release the claim.
+
+## Remediation round 1 (2026-08-27, after review v9770bd1beecdaa95)
+
+Revisions to Required change 4 and 5 and to the Hosted acceptance check, recorded rather than silently coded around:
+
+- **Change 4 (workflow) — the failure rule "regate needs a separate workflow file" applied.** `pr.yml` on `main` can never receive `push: kanmer-board` (GitHub runs push workflows from the pushed ref's tree; the board branch has only `.gitignore` and `.kanmer`). Honest shape: `push: branches: [main]` + `workflow_dispatch`; `regate` runs on both (a `main` push moves every open PR's base, so re-judging is real work). A separate minimal `.github/workflows/board-regate.yml` (`on: push: kanmer-board` → `gh workflow run pr.yml --ref main`, `GITHUB_TOKEN` suffices because `workflow_dispatch` is exempt from the no-chained-runs rule) ships on `main` as the file an **operator** copies onto the board branch; agents never commit to the board branch, so the board-push re-gate is operator-enabled, not automatic.
+- **Change 5 (GUI sync) — autostash conflict detection.** `git rebase --autostash` exits 0 when re-applying the stash conflicts; `syncBoard` now checks `git diff --name-only --diff-filter=U` and whether a new `refs/stash` survived the rebase, aborts any in-progress rebase, never stages, and pauses with a conflict error. No automatic `stash pop`/`checkout --merge`; the stash keeps the local writes for a human.
+- **Hosted acceptance check** now reads: a push to `main` re-runs `kanmer-gate` on open PRs; a `kanmer-board` push does so only after the operator installs `board-regate.yml` on the board branch.

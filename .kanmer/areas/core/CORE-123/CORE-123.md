@@ -30,7 +30,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/288'
 archived: false
 created: '2026-08-27T10:07:40.813Z'
-updated: '2026-08-27T16:22:15.731Z'
+updated: '2026-08-27T16:32:06.686Z'
 ---
 
 ## What
@@ -51,7 +51,7 @@ Make the CI gate and the board agree before anything is called final: attestatio
 ## Verification
 
 - [ ] check-pr fixtures: `needs-changes` fails; missing attestation fails; stale `board_sha` yields `SYNC_REQUIRED`; strict flag off keeps warnings.
-- [ ] Pushing `kanmer-board` triggers a gate run on an open PR.
+- [ ] A push to `main` or a `workflow_dispatch` re-runs `kanmer-gate` on open PRs (`regate`). Pushing `kanmer-board` triggers that re-gate only once an operator has copied `.github/workflows/board-regate.yml` onto the board branch (operator-enabled, not automatic — `pr.yml` on `main` cannot observe board-branch pushes).
 - [ ] GUI shows ahead-of-origin and `get_status` reports the counts.
 
 ## Outcome

@@ -169,3 +169,9 @@ disturbing the batch fields.
 exact merge SHA; the sole local failure is the known antigravity EBUSY host
 quirk in an area the merge does not touch, recorded with both attempts and
 compensated by green hosted verification at the same SHA.
+
+## Closeout
+
+- PR: https://github.com/collisionengineers/kanmer/pull/295
+- Merged: 2026-08-27T21:18:41Z as `9c9a6980e34aeaa43a691526d2715fe8fb97d6ce` (squash merge of `core-124-batch-workspaces`)
+- Proof record version at closeout: `e279c645fcceaf2c` — result **PASS**, unchanged by closeout.

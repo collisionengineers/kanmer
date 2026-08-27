@@ -21,3 +21,14 @@
 
 - 2026-08-27 implementation in `.worktrees/core-124` (base 3dd48d37): `npm run typecheck` 0; `vitest run claims.test.ts` 45/45; `node packages/mcp-server/src/smoke.mjs` 306/306 (7 new batch checks). Live take was served by v0.3.12 (no lease minted on this ticket's own record — expected).
 - 2026-08-27 PR https://github.com/collisionengineers/kanmer/pull/295 at head 14cf7083d08eb406aa30361ddca6fcedc94af4f5; `npm run verify` exit 1 (known antigravity EBUSY host quirk only).
+
+## Closeout — CORE-124
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`) — #295 MERGED 2026-08-27T21:18:41Z, merge commit `9c9a6980e34aeaa43a691526d2715fe8fb97d6ce`
+- [x] proof.md finalised (PR URL + merge date appended) — Closeout section added, result PASS unchanged
+- [x] Moved to final stage — Done 2026-08-27T22:09:51Z (proof `e279c645fcceaf2c` PASS)
+- [x] Outcome recorded in ticket body (PR link, follow-ups) — commits incl. merge SHA, prs; follow-ups CORE-126 / CORE-125 (board tracks no deployment)
+- [x] cd out of worktree; `git worktree remove .worktrees/core-124` + `.worktrees/verify-core-124-9c9a6980…` (leftover dirs `rm -rf`d; no stray `core-124-*.log`)
+- [x] `git branch -d core-124-batch-workspaces` (clean delete, was 14cf7083) + `git push origin --delete` done
+- [x] `git fetch --prune` + `git worktree prune` — no core-124 refs local or remote; `.worktrees/kanmer` and `.worktrees/gui-144` untouched
+- [x] `take_ticket action: "release"` — released 2026-08-27T22:18:08Z, no BATCH_ACTIVE (CORE-124 is not itself a batch member); stays Done, unarchived

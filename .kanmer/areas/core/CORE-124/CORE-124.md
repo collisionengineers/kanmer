@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-27T21:10:03.643Z'
   verifying: '2026-08-27T21:18:53.730Z'
   done: '2026-08-27T22:09:51.481Z'
-taken_at: '2026-08-27T20:52:23.804Z'
-branch: core-124-batch-workspaces
-worktree: .worktrees/core-124
 labels:
   - reliable-autonomy
 groups:
@@ -26,11 +23,12 @@ refs:
   - docs/functional/frd/FRD-030-renewable-workspace-leases-and-batches.md
 commits:
   - 14cf7083d08eb406aa30361ddca6fcedc94af4f5
+  - 9c9a6980e34aeaa43a691526d2715fe8fb97d6ce
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/295'
 archived: false
 created: '2026-08-27T19:22:20.928Z'
-updated: '2026-08-27T22:09:51.481Z'
+updated: '2026-08-27T22:18:08.701Z'
 ---
 
 ## What
@@ -51,8 +49,22 @@ FRD-030 acceptance 4 and 5 (three-ticket frozen batch with one PR/head attestati
 
 ## Verification
 
-- [ ] Three-ticket batch fixture: one workspace, one PR head attestation, three proofs.
-- [ ] Unrelated ticket refused from a started batch and from its workspace.
-- [ ] Cleanup waits for all members terminal.
+- [x] Three-ticket batch fixture: one workspace, one PR head attestation, three proofs.
+- [x] Unrelated ticket refused from a started batch and from its workspace.
+- [x] Cleanup waits for all members terminal.
 
 ## Outcome
+
+Shipped as PR [#295](https://github.com/collisionengineers/kanmer/pull/295), squash-merged 2026-08-27 as `9c9a6980e34aeaa43a691526d2715fe8fb97d6ce` (branch `core-124-batch-workspaces`).
+
+- **Review:** attestation v2 by `claude-code-core124-independent-reviewer`.
+- **Proof:** `e279c645fcceaf2c` — **PASS** at the exact merge SHA. All packet checks green (core 417/417, smoke 306/306, protocol 50/50, plugin:check 39 tools, typecheck, verify:skills); the only local `npm run verify` failure was the known antigravity EBUSY host quirk in `scripts/` — an area the merge does not touch — compensated by green hosted verification at the same SHA. FRD-030 AC4/AC5 verified manually on throwaway boards (declare-and-freeze three-ticket batch on one workspace with one head attestation and three member-owned proofs; `WORKSPACE_OCCUPIED` / `BATCH_FROZEN` / `BATCH_INVALID` / `BATCH_WORKSPACE_MISMATCH` refusals with byte-identical board files; `BATCH_ACTIVE` release refusal until every member is terminal).
+
+### Shipped differently than planned
+
+Batch state landed as `lease_batch` / `lease_batch_frozen_at` frontmatter fields on each member rather than a separate `.kanmer/batches/<id>.md` record — the membership set is derivable from the members themselves, so a second file would have been a redundant source of truth.
+
+### Follow-ups (deferred, not part of this ticket)
+
+- [[CORE-126]] — merge-gate multi-footer batch roster (**major**), closeout roster discovery, and batch hardening.
+- [[CORE-125]] — sibling-stamp lock coverage.

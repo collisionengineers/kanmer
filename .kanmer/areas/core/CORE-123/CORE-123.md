@@ -24,13 +24,14 @@ refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
   - docs/functional/frd/FRD-035-golden-board-and-candidate-promotion-safety.md
 commits:
-  - 51a736f9
-  - 8989669316befc635a6a85f6a3271873779ad93d
+  - 3dad4b26
+  - 2b3cf620
+  - df293ad2bf4b7f603e67998be7cb5b62f9430cbe
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/288'
 archived: false
 created: '2026-08-27T10:07:40.813Z'
-updated: '2026-08-27T16:32:06.686Z'
+updated: '2026-08-27T16:32:36.811Z'
 ---
 
 ## What

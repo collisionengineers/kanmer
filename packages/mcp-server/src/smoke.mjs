@@ -8,7 +8,7 @@ import matter from "gray-matter";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { canonicalProjectPath, projectIdentity } from "../dist/project-identity.js";
+import { canonicalProjectPath, projectIdentity, redactRemoteOrigin } from "../dist/project-identity.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // KANMER_SERVER lets us point the smoke test at the standalone bundle.
@@ -160,6 +160,16 @@ try {
       windowsIdentity.repoRoot === "c:/Kanmer/Repo" &&
       canonicalProjectPath("C:\\") === "c:/",
     JSON.stringify({ posixIdentity, windowsIdentity }),
+  );
+  check(
+    "remote origin userinfo is stripped before it is reported or hashed (F-003)",
+    redactRemoteOrigin("https://user:ghp_secret@github.com/o/r.git") === "https://github.com/o/r.git" &&
+      redactRemoteOrigin("ssh://git@github.com/o/r.git") === "ssh://github.com/o/r.git" &&
+      redactRemoteOrigin("git@github.com:o/r.git") === "git@github.com:o/r.git" &&
+      redactRemoteOrigin("user:token@github.com:o/r.git") === "user@github.com:o/r.git" &&
+      redactRemoteOrigin("https://github.com/o/r.git") === "https://github.com/o/r.git" &&
+      redactRemoteOrigin("  ") === null && redactRemoteOrigin(null) === null,
+    JSON.stringify([redactRemoteOrigin("https://user:ghp_secret@github.com/o/r.git"), redactRemoteOrigin("user:token@github.com:o/r.git")]),
   );
   check(
     "project identity hash has the exact ordered payload and excludes boardSource",
@@ -713,24 +723,32 @@ try {
         !fs.existsSync(path.join(legacyRoot, ".kanmer", "project.json")),
       JSON.stringify(guessed.structuredContent),
     );
-    // Every write — migrate_board included, dry run or not — initialises the
-    // board first (lazy init), and the one-time identity migration is part of
-    // that initialisation. So the first accepted write on a legacy board is
-    // what assigns the identity; the migration report then shows it as already
-    // present. (The pure dry-run preview is covered in core's project.test.ts.)
-    const migrated = JSON.parse(textOf(await legacyClient.callTool({ name: "migrate_board", arguments: { dry_run: true, expected_project: legacyStatus.project.fingerprint } })));
+    // A dry run is truly read-only (F-002): it previews the allocation without
+    // initialising the board, so no project.json and no activity entry appear.
+    const preview = JSON.parse(textOf(await legacyClient.callTool({ name: "migrate_board", arguments: { dry_run: true, expected_project: legacyStatus.project.fingerprint } })));
+    check(
+      "migrate_board dry_run on a legacy board previews wouldAllocate without writing project.json",
+      preview.identity?.allocated === false && preview.identity?.wouldAllocate === true && preview.identity?.project_id === null &&
+        !fs.existsSync(path.join(legacyRoot, ".kanmer", "project.json")) &&
+        JSON.parse(textOf(await legacyClient.callTool({ name: "get_status", arguments: {} }))).project?.identity === "unassigned",
+      JSON.stringify(preview.identity),
+    );
+    // The real migration allocates once, with the prior fingerprint as the auditable fallback.
+    const migrated = JSON.parse(textOf(await legacyClient.callTool({ name: "migrate_board", arguments: { expected_project: legacyStatus.project.fingerprint } })));
     const migratedFile = JSON.parse(fs.readFileSync(path.join(legacyRoot, ".kanmer", "project.json"), "utf8"));
     const migratedStatus = JSON.parse(textOf(await legacyClient.callTool({ name: "get_status", arguments: {} })));
     const activity = JSON.parse(textOf(await legacyClient.callTool({ name: "get_activity", arguments: { id: "board" } })));
     const again = JSON.parse(textOf(await legacyClient.callTool({ name: "migrate_board", arguments: { expected_project: migratedStatus.project.project_id } })));
     check(
-      "the first accepted write on a legacy board migrates its identity once, with the prior fingerprint as auditable fallback",
+      "migrate_board on a legacy board migrates its identity once, with the prior fingerprint as auditable fallback",
       migrated.identity?.allocated === false && migrated.identity?.origin === "migrated" &&
         migratedFile.project_id === migrated.identity.project_id &&
         again.identity?.allocated === false && again.identity?.project_id === migratedFile.project_id &&
         migratedFile.migratedFrom?.fingerprint === legacyStatus.project.fingerprint &&
         migratedStatus.project?.identity === "logical" && migratedStatus.project?.origin === "migrated" &&
         migratedStatus.project?.project_id !== projectId &&
+        // exactly one allocation entry for THIS identity (the copied activity log also carries the sandbox's own)
+        activity.filter((e) => e.field === "project_id" && String(e.to).startsWith(migratedFile.project_id)).length === 1 &&
         activity.some((e) => e.field === "project_id" && e.from === legacyStatus.project.fingerprint),
       JSON.stringify({ identity: migrated.identity, file: migratedFile }),
     );
@@ -2170,6 +2188,25 @@ Second proof attempt passed; the first failure is retained.
     Boolean(claimed.claim_expires_at) && claimed.claim_controller === "ctl-a",
     JSON.stringify({ claim_expires_at: claimed.claim_expires_at, claim_controller: claimed.claim_controller }),
   );
+  // F-004: release/renew/transfer honour expected_revision like take does — a stale token is REVISION_CONFLICT with zero writes.
+  {
+    const staleRev = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: claimId } }))).revision;
+    await client.callTool({ name: "append_scratch", arguments: { id: claimId, content: "moves nothing counted" } });
+    await client.callTool({ name: "set_ticket_doc", arguments: { id: claimId, doc: "plan", content: "# moved the revision" } });
+    const beforeItem = textOf(await client.callTool({ name: "get_item", arguments: { id: claimId } }));
+    const staleRenew = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "renew", assignee: "ctl-a", expected_revision: staleRev } });
+    const staleRelease = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "release", expected_revision: staleRev } });
+    const staleTransfer = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "transfer", assignee: "ctl-b", reason: "operator: smoke", expected_revision: staleRev } });
+    check(
+      "take_ticket renew/release/transfer refuse a stale expected_revision with REVISION_CONFLICT and write nothing",
+      [staleRenew, staleRelease, staleTransfer].every((r) => r.isError === true && r.structuredContent?.error?.code === "REVISION_CONFLICT") &&
+        textOf(await client.callTool({ name: "get_item", arguments: { id: claimId } })) === beforeItem,
+      JSON.stringify([staleRenew.structuredContent?.error, staleRelease.structuredContent?.error, staleTransfer.structuredContent?.error]),
+    );
+    const freshRev = JSON.parse(beforeItem).revision;
+    const freshRenew = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "renew", assignee: "ctl-a", expected_revision: freshRev } });
+    check("take_ticket renew accepts the current expected_revision", freshRenew.isError !== true, textOf(freshRenew));
+  }
   const liveTransfer = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "transfer", assignee: "ctl-b" } });
   check("take_ticket transfer refuses a live claim with CLAIM_LIVE", liveTransfer.isError === true && textOf(liveTransfer).includes("CLAIM_LIVE"), textOf(liveTransfer));
   const foreignRenew = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "renew", assignee: "ctl-b" } });

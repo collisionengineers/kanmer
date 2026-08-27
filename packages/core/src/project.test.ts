@@ -86,6 +86,46 @@ describe("store identity", () => {
     expect(activity.some((e) => e.field === "project_id" && String(e.to).startsWith(project!.project_id))).toBe(true);
   });
 
+  it("N concurrent first writes on a legacy board mint exactly one identity and one activity entry", async () => {
+    const seed = new KanmerStore(root);
+    await seed.init();
+    await fs.rm(seed.paths.projectFile); // legacy board: everything but project.json
+    const stores = Array.from({ length: 8 }, () => new KanmerStore(root));
+    await Promise.all(stores.map((s, i) => s.init({ fallbackFingerprint: `kanmer-proj-v1:legacy-${i}` })));
+    const record = await seed.getProject();
+    expect(record?.origin).toBe("migrated");
+    const ids = new Set<string>();
+    for (const s of stores) ids.add((await s.getProject())!.project_id);
+    expect([...ids]).toEqual([record!.project_id]);
+    // Exactly one migration entry (the seed's own `generated` allocation is the only other one).
+    const entries = (await seed.getActivity({ id: "board" })).filter((e) => e.field === "project_id");
+    expect(entries).toHaveLength(2);
+    expect(entries.filter((e) => String(e.to).startsWith(record!.project_id))).toHaveLength(1);
+    // No temp files left behind by the losers.
+    const leftovers = (await fs.readdir(seed.paths.kanmer)).filter((f) => f.includes(".tmp-"));
+    expect(leftovers).toEqual([]);
+  });
+
+  it("allocateProjectRecord itself is exclusive under concurrency", async () => {
+    const paths = resolvePaths(root);
+    await fs.mkdir(paths.kanmer, { recursive: true });
+    const results = await Promise.all(
+      Array.from({ length: 8 }, () => allocateProjectRecord(paths, { origin: "migrated", format: 3 })),
+    );
+    expect(results.filter((r) => r.allocated)).toHaveLength(1);
+    expect(new Set(results.map((r) => r.record.project_id)).size).toBe(1);
+    expect((await readProjectRecord(paths))?.project_id).toBe(results[0].record.project_id);
+  });
+
+  it("a malformed project.json is replaced by a fresh allocation (documented fallback)", async () => {
+    const paths = resolvePaths(root);
+    await fs.mkdir(paths.kanmer, { recursive: true });
+    await fs.writeFile(paths.projectFile, "{ not json", "utf8");
+    const result = await allocateProjectRecord(paths, { origin: "migrated", format: 3, fallbackFingerprint: "kanmer-proj-v1:x" });
+    expect(result.allocated).toBe(true);
+    expect((await readProjectRecord(paths))?.project_id).toBe(result.record.project_id);
+  });
+
   it("the identity survives a copy to another path (logical, not location-bound)", async () => {
     const store = new KanmerStore(root);
     await store.init();
@@ -181,5 +221,35 @@ describe("document-inclusive revision", () => {
     expect(updated.title).toBe("accepted");
     // The accepted write itself moved the revision on.
     expect((await store.getRevision(item.id))!.revision).not.toBe(fresh);
+  });
+
+  it("release, renew and transfer honour expectedRevision with zero writes on conflict (F-004)", async () => {
+    const store = new KanmerStore(root);
+    await store.init();
+    const item = await store.createItem({ type: "ticket", title: "Claim CAS", status: "implementing", profile: "chore", docs_todo: true });
+    const taken = await store.takeTicket(item.id, { branch: "b", worktree: "w", assignee: "ctl-a" });
+    const stale = (await store.getRevision(item.id))!.revision;
+    await store.setDoc(item.id, "plan", "# plan"); // moves the revision without touching the claim
+    const file = path.join(store.paths.areasRoot, "_none", item.id, `${item.id}.md`);
+    const bytes = await fs.readFile(file, "utf8");
+    const activityBefore = (await store.getActivity({ id: item.id })).length;
+
+    await expect(store.renewTicket(item.id, "ctl-a", { expectedRevision: stale })).rejects.toThrow(/^Conflict:/);
+    await expect(
+      store.transferTicket(item.id, { assignee: "ctl-b", reason: "operator: handover", expectedRevision: stale }),
+    ).rejects.toThrow(/^Conflict:/);
+    await expect(store.releaseTicket(item.id, { expectedRevision: stale })).rejects.toThrow(/^Conflict:/);
+
+    expect(await fs.readFile(file, "utf8")).toBe(bytes);
+    expect((await store.getItem(item.id))?.assignee).toBe(taken.assignee);
+    expect((await store.getActivity({ id: item.id })).length).toBe(activityBefore);
+
+    const fresh = (await store.getRevision(item.id))!.revision;
+    const renewed = await store.renewTicket(item.id, "ctl-a", { expectedRevision: fresh });
+    expect(renewed.claim_expires_at).toBeTruthy();
+    const afterRenew = (await store.getRevision(item.id))!.revision;
+    expect(afterRenew).not.toBe(fresh);
+    const released = await store.releaseTicket(item.id, { expectedRevision: afterRenew });
+    expect(released.taken_at).toBeUndefined();
   });
 });

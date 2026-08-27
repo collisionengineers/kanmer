@@ -47,6 +47,31 @@ export function projectIdentity(input: ProjectIdentityInput): ProjectIdentity {
 }
 
 /**
+ * The remote origin as it is safe to report and hash: embedded userinfo
+ * (`https://user:token@host/...`, `ssh://git@host/...`) is stripped so a
+ * credential can never surface in `get_status` or feed `kanmer-loc-v1`.
+ * Returns null for an empty value. Never throws: an unparseable value is
+ * scrubbed by pattern, not by URL().
+ */
+export function redactRemoteOrigin(raw: string | null | undefined): string | null {
+  const value = (raw ?? "").trim();
+  if (!value) return null;
+  // scheme://userinfo@host/... — drop everything between "//" and the last "@" of the authority.
+  const schemed = value.match(/^([a-z][a-z0-9+.-]*:\/\/)([^/?#]*)(.*)$/i);
+  if (schemed) {
+    const [, scheme, authority, rest] = schemed;
+    const at = authority.lastIndexOf("@");
+    return `${scheme}${at === -1 ? authority : authority.slice(at + 1)}${rest}`;
+  }
+  // scp-like git@host:owner/repo.git — the "user" is a fixed login name, not a
+  // secret, but a token could still be smuggled as user:token@host; strip a
+  // password segment while keeping the login.
+  const scp = value.match(/^([^@:/]+):([^@/]*)@(.*)$/);
+  if (scp) return `${scp[1]}@${scp[3]}`;
+  return value;
+}
+
+/**
  * Where this board physically is — FRD-029's machine-local location
  * fingerprint. Every field is evidence, never identity: a copy of the board
  * at another path, or a changed/missing remote origin, yields a different

@@ -1142,10 +1142,11 @@ export class KanmerStore {
   }
 
   /** Release a taken ticket: clear taken_at / branch / worktree. */
-  async releaseTicket(id: string): Promise<Item> {
+  async releaseTicket(id: string, opts: { expectedRevision?: string } = {}): Promise<Item> {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
+    await this.assertRevision(loc, id, opts.expectedRevision);
     if (!current.taken_at && !current.branch && !current.worktree) return current;
     const next: Item = { ...current, updated: nowIso() };
     delete next.taken_at;
@@ -1178,6 +1179,7 @@ export class KanmerStore {
       throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; use take_ticket action "take" instead of "transfer".`);
     }
     if (!input.assignee) throw new Error(`assignee is required to transfer "${id}"`);
+    await this.assertRevision(loc, id, input.expectedRevision);
     const minutes = await this.claimWindowMinutes();
     const now = new Date();
     const state = claimState(current, now, minutes);
@@ -1219,13 +1221,14 @@ export class KanmerStore {
    * Renew the caller's own claim (CORE-121). Refuses with `CLAIM_NOT_OWNED`
    * when the caller is neither the assignee nor the recorded controller.
    */
-  async renewTicket(id: string, actor: string): Promise<Item> {
+  async renewTicket(id: string, actor: string, opts: { expectedRevision?: string } = {}): Promise<Item> {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
     if (!current.taken_at) {
       throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; there is no claim to renew.`);
     }
+    await this.assertRevision(loc, id, opts.expectedRevision);
     if (!actor || (current.assignee !== actor && current.claim_controller !== actor)) {
       throw new Error(
         `CLAIM_NOT_OWNED: "${id}" is held by ${current.assignee || "an unknown actor"}` +

@@ -39602,8 +39602,17 @@ async function allocateProjectRecord(paths, opts) {
       at
     };
   }
-  await writeFileAtomic(paths.projectFile, `${JSON.stringify(record2, null, 2)}
-`);
+  const contents = `${JSON.stringify(record2, null, 2)}
+`;
+  try {
+    await writeFileExclusive(paths.projectFile, contents);
+    return { record: record2, allocated: true };
+  } catch (err) {
+    if (err.code !== "EEXIST") throw err;
+  }
+  const winner = await readProjectRecord(paths);
+  if (winner) return { record: winner, allocated: false };
+  await writeFileAtomic(paths.projectFile, contents);
   return { record: record2, allocated: true };
 }
 var REVISION_EXEMPT_PREFIXES = ["scratch/", "reference/"];
@@ -41148,10 +41157,11 @@ ${entry}`;
     return next;
   }
   /** Release a taken ticket: clear taken_at / branch / worktree. */
-  async releaseTicket(id) {
+  async releaseTicket(id, opts = {}) {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
+    await this.assertRevision(loc, id, opts.expectedRevision);
     if (!current.taken_at && !current.branch && !current.worktree) return current;
     const next = { ...current, updated: nowIso() };
     delete next.taken_at;
@@ -41183,6 +41193,7 @@ ${entry}`;
       throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; use take_ticket action "take" instead of "transfer".`);
     }
     if (!input.assignee) throw new Error(`assignee is required to transfer "${id}"`);
+    await this.assertRevision(loc, id, input.expectedRevision);
     const minutes = await this.claimWindowMinutes();
     const now = /* @__PURE__ */ new Date();
     const state = claimState(current, now, minutes);
@@ -41219,13 +41230,14 @@ ${entry}`;
    * Renew the caller's own claim (CORE-121). Refuses with `CLAIM_NOT_OWNED`
    * when the caller is neither the assignee nor the recorded controller.
    */
-  async renewTicket(id, actor) {
+  async renewTicket(id, actor, opts = {}) {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
     if (!current.taken_at) {
       throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; there is no claim to renew.`);
     }
+    await this.assertRevision(loc, id, opts.expectedRevision);
     if (!actor || current.assignee !== actor && current.claim_controller !== actor) {
       throw new Error(
         `CLAIM_NOT_OWNED: "${id}" is held by ${current.assignee || "an unknown actor"}${current.claim_controller ? ` (controller ${current.claim_controller})` : ""}; only the owner can renew it.`
@@ -42726,6 +42738,19 @@ function projectIdentity(input) {
   const fingerprint = `kanmer-proj-v1:${(0, import_node_crypto2.createHash)("sha256").update(JSON.stringify(payload)).digest("hex")}`;
   return { ...payload, boardSource: input.boardSource, fingerprint };
 }
+function redactRemoteOrigin(raw) {
+  const value = (raw ?? "").trim();
+  if (!value) return null;
+  const schemed = value.match(/^([a-z][a-z0-9+.-]*:\/\/)([^/?#]*)(.*)$/i);
+  if (schemed) {
+    const [, scheme, authority, rest] = schemed;
+    const at = authority.lastIndexOf("@");
+    return `${scheme}${at === -1 ? authority : authority.slice(at + 1)}${rest}`;
+  }
+  const scp = value.match(/^([^@:/]+):([^@/]*)@(.*)$/);
+  if (scp) return `${scp[1]}@${scp[3]}`;
+  return value;
+}
 function locationFingerprint(input) {
   const payload = {
     repoPath: canonicalProjectPath(input.repoPath),
@@ -44172,7 +44197,7 @@ async function resolveLocation() {
       windowsHide: true,
       timeout: 15e3
     });
-    remoteOrigin = stdout.trim() || null;
+    remoteOrigin = redactRemoteOrigin(stdout.trim());
   } catch {
     remoteOrigin = null;
   }
@@ -45089,11 +45114,18 @@ function createKanmerMcpServer(policy = "local-stdio") {
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
     },
     write(async ({ id, action, branch, worktree, stage, assignee, controller, reason, force, expected_revision }, extra) => {
-      if (action === "release") return ok(await store.releaseTicket(id));
-      if (action === "renew") return ok(await store.renewTicket(id, assignee ?? actorName(server, extra)));
+      if (action === "release") return ok(await store.releaseTicket(id, { expectedRevision: expected_revision }));
+      if (action === "renew") {
+        return ok(await store.renewTicket(id, assignee ?? actorName(server, extra), { expectedRevision: expected_revision }));
+      }
       if (action === "transfer") {
         return ok(
-          await store.transferTicket(id, { assignee: assignee ?? actorName(server, extra), controller, reason })
+          await store.transferTicket(id, {
+            assignee: assignee ?? actorName(server, extra),
+            controller,
+            reason,
+            expectedRevision: expected_revision
+          })
         );
       }
       if (!branch) return fail(`branch is required when taking a ticket \u2014 it's the point of taking`);
@@ -45285,7 +45317,15 @@ function createKanmerMcpServer(policy = "local-stdio") {
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
     },
-    write(async ({ dry_run }) => {
+    // Deliberately not `write()`: that wrapper's lazy ensureInit() would allocate
+    // the identity (and stamp the skeleton) before the handler ran, so a dry run
+    // could never be read-only and `identity.wouldAllocate` was unreachable over
+    // MCP. Same guard order as write() — WRONG_PROJECT first, then actor, then
+    // init — but init only when actually writing.
+    guard(async ({ dry_run, expected_project }, extra) => {
+      await assertExpectedProject(expected_project);
+      store.setActor(actorName(server, extra));
+      if (!dry_run) await ensureInit();
       const legacy = await legacyIdentity();
       const report = await migrateBoard(store, { dryRun: dry_run, fallbackFingerprint: legacy.fingerprint });
       await resolveProject();

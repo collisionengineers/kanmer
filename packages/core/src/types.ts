@@ -609,6 +609,8 @@ export interface TransferTicketInput {
   controller?: string;
   /** Required to transfer a live claim: must begin with `operator:`. */
   reason?: string;
+  /** Document-inclusive revision CAS (FRD-029); refused with `Conflict:` when stale. */
+  expectedRevision?: string;
 }
 
 /** Bootstrap claim state (CORE-121). */

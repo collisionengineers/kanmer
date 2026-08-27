@@ -50,6 +50,7 @@ import {
   expectedProjectMatches,
   locationFingerprint,
   projectIdentity,
+  redactRemoteOrigin,
   type LocationFingerprint,
   type LogicalProject,
 } from "./project-identity.js";
@@ -267,7 +268,7 @@ async function resolveLocation(): Promise<LocationFingerprint> {
       windowsHide: true,
       timeout: 15_000,
     });
-    remoteOrigin = stdout.trim() || null;
+    remoteOrigin = redactRemoteOrigin(stdout.trim());
   } catch {
     remoteOrigin = null;
   }
@@ -1422,11 +1423,18 @@ server.registerTool(
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
   write(async ({ id, action, branch, worktree, stage, assignee, controller, reason, force, expected_revision }, extra) => {
-    if (action === "release") return ok(await store.releaseTicket(id));
-    if (action === "renew") return ok(await store.renewTicket(id, assignee ?? actorName(server, extra)));
+    if (action === "release") return ok(await store.releaseTicket(id, { expectedRevision: expected_revision }));
+    if (action === "renew") {
+      return ok(await store.renewTicket(id, assignee ?? actorName(server, extra), { expectedRevision: expected_revision }));
+    }
     if (action === "transfer") {
       return ok(
-        await store.transferTicket(id, { assignee: assignee ?? actorName(server, extra), controller, reason }),
+        await store.transferTicket(id, {
+          assignee: assignee ?? actorName(server, extra),
+          controller,
+          reason,
+          expectedRevision: expected_revision,
+        }),
       );
     }
     if (!branch) return fail(`branch is required when taking a ticket — it's the point of taking`);
@@ -1646,7 +1654,15 @@ server.registerTool(
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   },
-  write(async ({ dry_run }) => {
+  // Deliberately not `write()`: that wrapper's lazy ensureInit() would allocate
+  // the identity (and stamp the skeleton) before the handler ran, so a dry run
+  // could never be read-only and `identity.wouldAllocate` was unreachable over
+  // MCP. Same guard order as write() — WRONG_PROJECT first, then actor, then
+  // init — but init only when actually writing.
+  guard(async ({ dry_run, expected_project }: { dry_run?: boolean; expected_project?: string }, extra) => {
+    await assertExpectedProject(expected_project);
+    store.setActor(actorName(server, extra));
+    if (!dry_run) await ensureInit();
     const legacy = await legacyIdentity();
     const report = await migrateBoard(store, { dryRun: dry_run, fallbackFingerprint: legacy.fingerprint });
     await resolveProject();

@@ -11,9 +11,6 @@ stageEntered:
   review: '2026-08-27T22:53:19.960Z'
   verifying: '2026-08-27T23:07:25.806Z'
   done: '2026-08-27T23:29:56.132Z'
-taken_at: '2026-08-27T22:28:45.248Z'
-branch: core-125-serialise-ticket-writers
-worktree: .worktrees/core-125
 labels:
   - reliable-autonomy
 groups:
@@ -29,7 +26,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/296'
 archived: false
 created: '2026-08-27T20:05:41.631Z'
-updated: '2026-08-27T23:52:41.626Z'
+updated: '2026-08-27T23:53:53.300Z'
 ---
 
 ## What

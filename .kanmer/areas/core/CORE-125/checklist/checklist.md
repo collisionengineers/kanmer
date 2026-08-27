@@ -35,3 +35,5 @@
 - [ ] `git branch -d <branch>` (`-D` if squash/rebase-merged)
 - [ ] `git fetch --prune` + `git worktree prune`
 - [ ] `take_ticket action: "release"`
+
+Closeout complete: PR #296 verified MERGED (mergedAt 2026-08-27T23:07:13Z); proof.md finalised with PR URL + merge date appended below its record (frontmatter untouched); ticket already in Done with PASS proof, no stage move needed; Outcome recorded in ticket body; commits updated to include merge SHA c6bbddd617f6c8caef782f43014ccb3dd6a7fdfa alongside head 437772d4; `.worktrees/core-125` and `.worktrees/verify-core-125-c6bbddd617f6c8caef782f43014ccb3dd6a7fdfa` removed (leftover node_modules force-removed, then `git worktree prune`); no stray `.worktrees/core-125-*.log` found; branch `core-125-serialise-ticket-writers` deleted locally (`-D`, squash-merged so `-d` would have refused) and on origin; `git fetch --prune` clean. Releasing claim next.

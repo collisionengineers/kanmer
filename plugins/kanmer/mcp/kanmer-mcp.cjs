@@ -37571,6 +37571,7 @@ var import_path8 = __toESM(require("path"), 1);
 var import_crypto4 = require("crypto");
 var import_promises6 = __toESM(require("fs/promises"), 1);
 var import_path9 = __toESM(require("path"), 1);
+var import_async_hooks = require("async_hooks");
 var import_fs5 = require("fs");
 var import_promises7 = __toESM(require("fs/promises"), 1);
 var import_path10 = __toESM(require("path"), 1);
@@ -40444,6 +40445,7 @@ function parseReviewAttestation(raw) {
 }
 var ITEM_TYPES = ["ticket", "plan", "research"];
 var CREATE_ATTEMPTS = 20;
+var heldWriteLocks = new import_async_hooks.AsyncLocalStorage();
 function referencePath(dir, name) {
   const candidate = name.trim();
   if (!candidate || candidate === "." || candidate === "..") throw new Error(`Invalid reference name "${candidate}"`);
@@ -40955,78 +40957,80 @@ var KanmerStore = class _KanmerStore {
         assertDeploymentAgainstBoard(board, fields.deployment);
     }
     if (fields.refs !== void 0) await this.assertRefs(fields.refs);
-    const loc = await this.locateItem(id);
-    if (!loc) throw new Error(`No item with id "${id}"`);
-    const current = parseItem(await readText(loc.file));
-    if (expectedUpdated !== void 0 && current.updated !== expectedUpdated) {
-      throw this.conflictError(id, current, expectedUpdated);
-    }
-    await this.assertRevision(loc, id, expectedRevision);
-    const backward = fields.status !== void 0 && fields.status !== current.status ? await this.backwardMoveEffects(loc, current, fields.status, reason) : null;
-    const { reason: backwardReason, ...backwardEffects } = backward ?? { reason: void 0 };
-    const pruned = pruneUndefined({ ...fields, ...backwardEffects });
-    const changed = changedFields(current, pruned);
-    if (changed.length === 0) {
-      return current;
-    }
-    const next = {
-      ...current,
-      ...pruned,
-      updated: nowIso()
-    };
-    if (pruned.deployment === "") delete next.deployment;
-    if (next.docs_todo === false) delete next.docs_todo;
-    if (next.refs && next.refs.length === 0) delete next.refs;
-    if (next.commits && next.commits.length === 0) delete next.commits;
-    if (next.prs && next.prs.length === 0) delete next.prs;
-    if (next.status !== current.status && current.type === "ticket" && loc.kind === "v2") {
-      board ??= await this.getBoard();
-      await this.assertDocGate(loc.dir, board, next, current.status, next.status);
-    }
-    if (next.status !== current.status) {
-      const entered = { ...current.stageEntered ?? {} };
-      if (!entered[next.status]) {
-        entered[next.status] = next.updated;
-        next.stageEntered = entered;
+    return this.withLeaseLock(async () => {
+      const loc = await this.locateItem(id);
+      if (!loc) throw new Error(`No item with id "${id}"`);
+      const current = parseItem(await readText(loc.file));
+      if (expectedUpdated !== void 0 && current.updated !== expectedUpdated) {
+        throw this.conflictError(id, current, expectedUpdated);
       }
-    }
-    let file = loc.file;
-    if (loc.kind === "v2") {
-      const targetFolder = safeAreaFolder(next.area ?? "");
-      if (targetFolder !== null && targetFolder !== loc.areaFolder) {
-        const newDir = ticketDirIn(this.paths, next.area ?? "", id);
-        await ensureDir(import_path10.default.dirname(newDir));
-        await import_promises7.default.rename(loc.dir, newDir);
-        file = import_path10.default.join(newDir, `${id}.md`);
+      await this.assertRevision(loc, id, expectedRevision);
+      const backward = fields.status !== void 0 && fields.status !== current.status ? await this.backwardMoveEffects(loc, current, fields.status, reason) : null;
+      const { reason: backwardReason, ...backwardEffects } = backward ?? { reason: void 0 };
+      const pruned = pruneUndefined({ ...fields, ...backwardEffects });
+      const changed = changedFields(current, pruned);
+      if (changed.length === 0) {
+        return current;
       }
-    }
-    await writeFileAtomic(file, serialiseItem(next));
-    await appendActivity(
-      this.paths,
-      changed.map(
-        (k) => this.activity(
-          id,
-          "update",
-          k === "body" ? { field: "body" } : {
-            field: k,
-            from: current[k],
-            to: next[k]
-          }
-        )
-      )
-    );
-    if (backward) {
-      await appendActivity(this.paths, [
-        this.activity(id, "update", { field: "status-reason", from: current.status, to: backwardReason })
-      ]);
+      const next = {
+        ...current,
+        ...pruned,
+        updated: nowIso()
+      };
+      if (pruned.deployment === "") delete next.deployment;
+      if (next.docs_todo === false) delete next.docs_todo;
+      if (next.refs && next.refs.length === 0) delete next.refs;
+      if (next.commits && next.commits.length === 0) delete next.commits;
+      if (next.prs && next.prs.length === 0) delete next.prs;
+      if (next.status !== current.status && current.type === "ticket" && loc.kind === "v2") {
+        board ??= await this.getBoard();
+        await this.assertDocGate(loc.dir, board, next, current.status, next.status);
+      }
+      if (next.status !== current.status) {
+        const entered = { ...current.stageEntered ?? {} };
+        if (!entered[next.status]) {
+          entered[next.status] = next.updated;
+          next.stageEntered = entered;
+        }
+      }
+      let file = loc.file;
       if (loc.kind === "v2") {
-        await this.appendTransition(
-          id,
-          `stage ${current.status} \u2192 ${next.status} by ${this.actor}; reason: ${backwardReason.trim()}` + (backward.review_round !== void 0 ? `; review_round ${backward.review_round}` : "") + (backward.remediation_budget !== void 0 ? `; remediation_budget ${backward.remediation_budget}` : "")
-        );
+        const targetFolder = safeAreaFolder(next.area ?? "");
+        if (targetFolder !== null && targetFolder !== loc.areaFolder) {
+          const newDir = ticketDirIn(this.paths, next.area ?? "", id);
+          await ensureDir(import_path10.default.dirname(newDir));
+          await import_promises7.default.rename(loc.dir, newDir);
+          file = import_path10.default.join(newDir, `${id}.md`);
+        }
       }
-    }
-    return next;
+      await writeFileAtomic(file, serialiseItem(next));
+      await appendActivity(
+        this.paths,
+        changed.map(
+          (k) => this.activity(
+            id,
+            "update",
+            k === "body" ? { field: "body" } : {
+              field: k,
+              from: current[k],
+              to: next[k]
+            }
+          )
+        )
+      );
+      if (backward) {
+        await appendActivity(this.paths, [
+          this.activity(id, "update", { field: "status-reason", from: current.status, to: backwardReason })
+        ]);
+        if (loc.kind === "v2") {
+          await this.appendTransition(
+            id,
+            `stage ${current.status} \u2192 ${next.status} by ${this.actor}; reason: ${backwardReason.trim()}` + (backward.review_round !== void 0 ? `; review_round ${backward.review_round}` : "") + (backward.remediation_budget !== void 0 ? `; remediation_budget ${backward.remediation_budget}` : "")
+          );
+        }
+      }
+      return next;
+    });
   }
   /**
    * Kanban-move convenience: move an item to a workflow stage, optionally to
@@ -41182,8 +41186,30 @@ ${entry}`;
   leaseLockFile() {
     return import_path10.default.join(this.paths.kanmer, "leases.lock");
   }
+  /**
+   * Run `work` inside this board's write lock (CORE-115, widened to every
+   * ticket-file writer by CORE-125).
+   *
+   * `withExclusiveFileLock` is a cross-process exclusive-create lock and is
+   * **not** re-entrant: a second acquire from the same process gets `EEXIST`,
+   * cannot be recovered as stale (its own pid is alive), exhausts the retry
+   * schedule and throws. Several verbs legitimately nest —
+   * `updateItem` → `appendTransition` → `setDoc`, `renewTicket`/
+   * `transferTicket` → `appendTransition` → `setDoc`, `moveItem` and
+   * `deleteItem` → `updateItem` — so the lock files held by the current async
+   * execution context are tracked and a nested acquire of one of them runs the
+   * work directly. Exclusion against every other context, process and store
+   * instance is unchanged; only re-acquisition inside a section this context
+   * already owns is skipped. Keyed by lock-file path, so a process driving two
+   * boards never aliases one board's section onto the other's.
+   */
   withLeaseLock(work) {
-    return withExclusiveFileLock(this.leaseLockFile(), work);
+    const lockFile = this.leaseLockFile();
+    const held = heldWriteLocks.getStore();
+    if (held?.has(lockFile)) return work();
+    const nested = new Set(held ?? []);
+    nested.add(lockFile);
+    return withExclusiveFileLock(lockFile, () => heldWriteLocks.run(nested, work));
   }
   /** The normalised workspace identity a lease owns: the worktree when recorded, else the branch. */
   workspaceKey(worktree, branch) {
@@ -41712,38 +41738,40 @@ ${entry}`;
    * stays accurate across the trim/append normalisation.
    */
   async setDoc(id, doc, content, opts = {}) {
-    const loc = await this.locateItem(id);
-    if (!loc) throw new Error(`No item with id "${id}"`);
-    if (loc.kind !== "v2") {
-      throw new Error(
-        `"${id}" is stored in the legacy layout, which has no ticket folders \u2014 migrate this board to format 2 first.`
-      );
-    }
-    const file = docPathIn(loc.dir, doc);
-    await this.assertRevision(loc, id, opts.expectedRevision);
-    await ensureDir(import_path10.default.dirname(file));
-    const existing = await pathExists(file) ? await readText(file) : null;
-    if (opts.expectedVersion !== void 0) {
-      const actual = existing === null ? null : contentVersion(existing);
-      if (actual !== opts.expectedVersion) {
+    return this.withLeaseLock(async () => {
+      const loc = await this.locateItem(id);
+      if (!loc) throw new Error(`No item with id "${id}"`);
+      if (loc.kind !== "v2") {
         throw new Error(
-          `Conflict: ${doc}.md on "${id}" changed since you read it. Re-read it with get_ticket_doc and re-apply your change.`
+          `"${id}" is stored in the legacy layout, which has no ticket folders \u2014 migrate this board to format 2 first.`
         );
       }
-    }
-    let text = `${content.trim()}
+      const file = docPathIn(loc.dir, doc);
+      await this.assertRevision(loc, id, opts.expectedRevision);
+      await ensureDir(import_path10.default.dirname(file));
+      const existing = await pathExists(file) ? await readText(file) : null;
+      if (opts.expectedVersion !== void 0) {
+        const actual = existing === null ? null : contentVersion(existing);
+        if (actual !== opts.expectedVersion) {
+          throw new Error(
+            `Conflict: ${doc}.md on "${id}" changed since you read it. Re-read it with get_ticket_doc and re-apply your change.`
+          );
+        }
+      }
+      let text = `${content.trim()}
 `;
-    if (opts.append && existing !== null && existing.trim()) {
-      text = `${existing.trimEnd()}
+      if (opts.append && existing !== null && existing.trim()) {
+        text = `${existing.trimEnd()}
 
 ${content.trim()}
 `;
-    }
-    await writeFileAtomic(file, text);
-    await appendActivity(this.paths, [
-      this.activity(id, "doc", { field: doc, to: opts.append ? "append" : "write" })
-    ]);
-    return { version: contentVersion(text) };
+      }
+      await writeFileAtomic(file, text);
+      await appendActivity(this.paths, [
+        this.activity(id, "doc", { field: doc, to: opts.append ? "append" : "write" })
+      ]);
+      return { version: contentVersion(text) };
+    });
   }
   /**
    * Per-type document counts, checklist progress and reference files for a
@@ -42096,25 +42124,27 @@ ${content.trim()}
    * callers that stream must batch. Scratch is exempt from doc-type validation.
    */
   async appendScratch(id, slug, content, opts = {}) {
-    const loc = await this.locateItem(id);
-    if (!loc) throw new Error(`No item with id "${id}"`);
-    if (loc.kind !== "v2") {
-      throw new Error(
-        `"${id}" is stored in the legacy layout, which has no ticket folders \u2014 migrate this board to format 2 first.`
-      );
-    }
-    await this.assertRevision(loc, id, opts.expectedRevision);
-    const file = docPathIn(loc.dir, `scratch/${slug}`);
-    const had = await pathExists(file);
-    await ensureDir(import_path10.default.dirname(file));
-    const block = `${content.trim()}
+    return this.withLeaseLock(async () => {
+      const loc = await this.locateItem(id);
+      if (!loc) throw new Error(`No item with id "${id}"`);
+      if (loc.kind !== "v2") {
+        throw new Error(
+          `"${id}" is stored in the legacy layout, which has no ticket folders \u2014 migrate this board to format 2 first.`
+        );
+      }
+      await this.assertRevision(loc, id, opts.expectedRevision);
+      const file = docPathIn(loc.dir, `scratch/${slug}`);
+      const had = await pathExists(file);
+      await ensureDir(import_path10.default.dirname(file));
+      const block = `${content.trim()}
 `;
-    await import_promises7.default.appendFile(file, had ? `
+      await import_promises7.default.appendFile(file, had ? `
 ${block}` : block, "utf8");
-    await appendActivity(this.paths, [
-      this.activity(id, "doc", { field: `scratch/${slug}`, to: "append" })
-    ]);
-    return { file };
+      await appendActivity(this.paths, [
+        this.activity(id, "doc", { field: `scratch/${slug}`, to: "append" })
+      ]);
+      return { file };
+    });
   }
   /** Read a per-ticket scratch note back; null when it doesn't exist. */
   async getScratch(id, slug) {

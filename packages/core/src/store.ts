@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { constants as fsConstants } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -130,6 +131,14 @@ const ITEM_TYPES: ItemType[] = ["ticket", "plan", "research"];
 
 /** Bound on exclusive-create retries; ~2× the worst realistic contention. */
 const CREATE_ATTEMPTS = 20;
+
+/**
+ * The board write-lock files held by the current async execution context.
+ * Read by {@link KanmerStore.withLeaseLock} to make a nested acquire a no-op
+ * instead of a self-deadlock; empty for every fresh caller, so it never
+ * weakens exclusion between independent operations.
+ */
+const heldWriteLocks = new AsyncLocalStorage<ReadonlySet<string>>();
 
 function referencePath(dir: string, name: string): string {
   const candidate = name.trim();
@@ -788,96 +797,103 @@ export class KanmerStore {
         assertDeploymentAgainstBoard(board, fields.deployment);
     }
     if (fields.refs !== undefined) await this.assertRefs(fields.refs);
-    const loc = await this.locateItem(id);
-    if (!loc) throw new Error(`No item with id "${id}"`);
-    const current = parseItem(await readText(loc.file));
-    if (expectedUpdated !== undefined && current.updated !== expectedUpdated) {
-      throw this.conflictError(id, current, expectedUpdated);
-    }
-    await this.assertRevision(loc, id, expectedRevision);
-    // A backward move is legal only with a reason, and Review → Implementing
-    // only against a needs-changes attestation or an operator override
-    // (CORE-121). Raised before any write, like the gate below.
-    const backward =
-      fields.status !== undefined && fields.status !== current.status
-        ? await this.backwardMoveEffects(loc, current, fields.status, reason)
-        : null;
-    const { reason: backwardReason, ...backwardEffects } = backward ?? { reason: undefined };
-    const pruned = pruneUndefined({ ...fields, ...backwardEffects });
-    const changed = changedFields(current, pruned);
-    if (changed.length === 0) {
-      // No-op writes must not bump `updated` — staleness reporting and the
-      // GUI watcher both key off it.
-      return current;
-    }
-    const next: Item = {
-      ...current,
-      ...pruned,
-      updated: nowIso(),
-    };
-    if (pruned.deployment === "") delete next.deployment; // "" clears deployment
-    if (next.docs_todo === false) delete next.docs_todo;
-    if (next.refs && next.refs.length === 0) delete next.refs;
-    if (next.commits && next.commits.length === 0) delete next.commits;
-    if (next.prs && next.prs.length === 0) delete next.prs;
-    if (next.status !== current.status && current.type === "ticket" && loc.kind === "v2") {
-      board ??= await this.getBoard();
-      await this.assertDocGate(loc.dir, board, next, current.status, next.status);
-    }
-    if (next.status !== current.status) {
-      // Stamped after the gate, so a refused move records nothing. First entry
-      // only: a ticket sent back to Review and returning keeps the original,
-      // which is what "when did this reach Review" should mean.
-      const entered = { ...(current.stageEntered ?? {}) };
-      if (!entered[next.status]) {
-        entered[next.status] = next.updated;
-        next.stageEntered = entered;
+    // CORE-125: the read, the CAS and the write are one critical section under
+    // the same lock the lease verbs take, so a lease write can never be
+    // renamed over by a stale read here. Argument validation above touches no
+    // ticket file, so it deliberately stays outside the lock.
+    return this.withLeaseLock(async () => {
+      const loc = await this.locateItem(id);
+      if (!loc) throw new Error(`No item with id "${id}"`);
+      const current = parseItem(await readText(loc.file));
+      if (expectedUpdated !== undefined && current.updated !== expectedUpdated) {
+        throw this.conflictError(id, current, expectedUpdated);
       }
-    }
-    let file = loc.file;
-    if (loc.kind === "v2") {
-      // Frontmatter `area` is authoritative over folder location: an area
-      // change (or a hand-moved folder being written to) moves the folder.
-      // The id — and with it every [[link]] — never changes.
-      const targetFolder = safeAreaFolder(next.area ?? "");
-      if (targetFolder !== null && targetFolder !== loc.areaFolder) {
-        const newDir = ticketDirIn(this.paths, next.area ?? "", id);
-        await ensureDir(path.dirname(newDir));
-        await fs.rename(loc.dir, newDir);
-        file = path.join(newDir, `${id}.md`);
+      await this.assertRevision(loc, id, expectedRevision);
+      // A backward move is legal only with a reason, and Review → Implementing
+      // only against a needs-changes attestation or an operator override
+      // (CORE-121). Raised before any write, like the gate below.
+      const backward =
+        fields.status !== undefined && fields.status !== current.status
+          ? await this.backwardMoveEffects(loc, current, fields.status, reason)
+          : null;
+      const { reason: backwardReason, ...backwardEffects } = backward ?? { reason: undefined };
+      const pruned = pruneUndefined({ ...fields, ...backwardEffects });
+      const changed = changedFields(current, pruned);
+      if (changed.length === 0) {
+        // No-op writes must not bump `updated` — staleness reporting and the
+        // GUI watcher both key off it.
+        return current;
       }
-    }
-    await writeFileAtomic(file, serialiseItem(next));
-    await appendActivity(
-      this.paths,
-      changed.map((k) =>
-        this.activity(
-          id,
-          "update",
-          k === "body"
-            ? { field: "body" } // bodies are too big for a log line
-            : {
-                field: k,
-                from: (current as Record<string, unknown>)[k],
-                to: (next as Record<string, unknown>)[k],
-              },
-        ),
-      ),
-    );
-    if (backward) {
-      await appendActivity(this.paths, [
-        this.activity(id, "update", { field: "status-reason", from: current.status, to: backwardReason }),
-      ]);
+      const next: Item = {
+        ...current,
+        ...pruned,
+        updated: nowIso(),
+      };
+      if (pruned.deployment === "") delete next.deployment; // "" clears deployment
+      if (next.docs_todo === false) delete next.docs_todo;
+      if (next.refs && next.refs.length === 0) delete next.refs;
+      if (next.commits && next.commits.length === 0) delete next.commits;
+      if (next.prs && next.prs.length === 0) delete next.prs;
+      if (next.status !== current.status && current.type === "ticket" && loc.kind === "v2") {
+        board ??= await this.getBoard();
+        await this.assertDocGate(loc.dir, board, next, current.status, next.status);
+      }
+      if (next.status !== current.status) {
+        // Stamped after the gate, so a refused move records nothing. First entry
+        // only: a ticket sent back to Review and returning keeps the original,
+        // which is what "when did this reach Review" should mean.
+        const entered = { ...(current.stageEntered ?? {}) };
+        if (!entered[next.status]) {
+          entered[next.status] = next.updated;
+          next.stageEntered = entered;
+        }
+      }
+      let file = loc.file;
       if (loc.kind === "v2") {
-        await this.appendTransition(
-          id,
-          `stage ${current.status} → ${next.status} by ${this.actor}; reason: ${backwardReason!.trim()}` +
-            (backward.review_round !== undefined ? `; review_round ${backward.review_round}` : "") +
-            (backward.remediation_budget !== undefined ? `; remediation_budget ${backward.remediation_budget}` : ""),
-        );
+        // Frontmatter `area` is authoritative over folder location: an area
+        // change (or a hand-moved folder being written to) moves the folder.
+        // The id — and with it every [[link]] — never changes.
+        const targetFolder = safeAreaFolder(next.area ?? "");
+        if (targetFolder !== null && targetFolder !== loc.areaFolder) {
+          const newDir = ticketDirIn(this.paths, next.area ?? "", id);
+          await ensureDir(path.dirname(newDir));
+          await fs.rename(loc.dir, newDir);
+          file = path.join(newDir, `${id}.md`);
+        }
       }
-    }
-    return next;
+      await writeFileAtomic(file, serialiseItem(next));
+      await appendActivity(
+        this.paths,
+        changed.map((k) =>
+          this.activity(
+            id,
+            "update",
+            k === "body"
+              ? { field: "body" } // bodies are too big for a log line
+              : {
+                  field: k,
+                  from: (current as Record<string, unknown>)[k],
+                  to: (next as Record<string, unknown>)[k],
+                },
+          ),
+        ),
+      );
+      if (backward) {
+        await appendActivity(this.paths, [
+          this.activity(id, "update", { field: "status-reason", from: current.status, to: backwardReason }),
+        ]);
+        if (loc.kind === "v2") {
+          // Re-enters the lock we are already holding (see withLeaseLock).
+          await this.appendTransition(
+            id,
+            `stage ${current.status} → ${next.status} by ${this.actor}; reason: ${backwardReason!.trim()}` +
+              (backward.review_round !== undefined ? `; review_round ${backward.review_round}` : "") +
+              (backward.remediation_budget !== undefined ? `; remediation_budget ${backward.remediation_budget}` : ""),
+          );
+        }
+      }
+      return next;
+    });
   }
 
   /**
@@ -901,6 +917,13 @@ export class KanmerStore {
     // because computeOrder materialises `order` on the whole target column as
     // a side effect. Without this, a move that is then refused still rewrote
     // (and re-stamped `updated` on) every sibling and logged the activity.
+    //
+    // Deliberately NOT wrapped in one write lock (CORE-125): computeOrder can
+    // rewrite an entire column, and holding a board-wide lock across that would
+    // serialise every other writer for far longer than the lock's own retry
+    // budget. Each write it causes is serialised individually by updateItem,
+    // and the final updateItem re-reads under the lock, so this ticket's CAS
+    // and write remain atomic against a lease write.
     await this.assertMoveAllowed(id, to.status, to.expectedUpdated, to.reason, to.expectedRevision);
     const order = await this.computeOrder(id, to.status, position);
     return this.updateItem(id, { ...patch, order });
@@ -1094,8 +1117,30 @@ export class KanmerStore {
     return path.join(this.paths.kanmer, "leases.lock");
   }
 
+  /**
+   * Run `work` inside this board's write lock (CORE-115, widened to every
+   * ticket-file writer by CORE-125).
+   *
+   * `withExclusiveFileLock` is a cross-process exclusive-create lock and is
+   * **not** re-entrant: a second acquire from the same process gets `EEXIST`,
+   * cannot be recovered as stale (its own pid is alive), exhausts the retry
+   * schedule and throws. Several verbs legitimately nest —
+   * `updateItem` → `appendTransition` → `setDoc`, `renewTicket`/
+   * `transferTicket` → `appendTransition` → `setDoc`, `moveItem` and
+   * `deleteItem` → `updateItem` — so the lock files held by the current async
+   * execution context are tracked and a nested acquire of one of them runs the
+   * work directly. Exclusion against every other context, process and store
+   * instance is unchanged; only re-acquisition inside a section this context
+   * already owns is skipped. Keyed by lock-file path, so a process driving two
+   * boards never aliases one board's section onto the other's.
+   */
   private withLeaseLock<T>(work: () => Promise<T>): Promise<T> {
-    return withExclusiveFileLock(this.leaseLockFile(), work);
+    const lockFile = this.leaseLockFile();
+    const held = heldWriteLocks.getStore();
+    if (held?.has(lockFile)) return work();
+    const nested = new Set(held ?? []);
+    nested.add(lockFile);
+    return withExclusiveFileLock(lockFile, () => heldWriteLocks.run(nested, work));
   }
 
   /** The normalised workspace identity a lease owns: the worktree when recorded, else the branch. */
@@ -1714,43 +1759,49 @@ export class KanmerStore {
     content: string,
     opts: SetDocOptions = {},
   ): Promise<{ version: string }> {
-    const loc = await this.locateItem(id);
-    if (!loc) throw new Error(`No item with id "${id}"`);
-    if (loc.kind !== "v2") {
-      throw new Error(
-        `"${id}" is stored in the legacy layout, which has no ticket folders — ` +
-          `migrate this board to format 2 first.`,
-      );
-    }
-    // Containment defines type, so validation is just "is this a known folder"
-    // — docPathIn rejects an unknown top-level name and any traversal. The v2
-    // `requires` chain between doc types is gone: profiles express ordering as
-    // boundary requirements, so a doc can be written whenever it is useful.
-    const file = docPathIn(loc.dir, doc);
-    // The ticket-wide revision CAS precedes the per-document one, and both
-    // precede the folder creation below so a refused write leaves no trace.
-    await this.assertRevision(loc, id, opts.expectedRevision);
-    await ensureDir(path.dirname(file)); // folders are created on first write
-    // One read serves both the version check and the append.
-    const existing = (await pathExists(file)) ? await readText(file) : null;
-    if (opts.expectedVersion !== undefined) {
-      const actual = existing === null ? null : contentVersion(existing);
-      if (actual !== opts.expectedVersion) {
+    // CORE-125: a document write moves the ticket's document-inclusive revision
+    // (FRD-029), so its CAS and its write belong in the same critical section
+    // as every other ticket mutation. Reached from `appendTransition` under an
+    // already-held lock, this re-enters instead of deadlocking.
+    return this.withLeaseLock(async () => {
+      const loc = await this.locateItem(id);
+      if (!loc) throw new Error(`No item with id "${id}"`);
+      if (loc.kind !== "v2") {
         throw new Error(
-          `Conflict: ${doc}.md on "${id}" changed since you read it. ` +
-            `Re-read it with get_ticket_doc and re-apply your change.`,
+          `"${id}" is stored in the legacy layout, which has no ticket folders — ` +
+            `migrate this board to format 2 first.`,
         );
       }
-    }
-    let text = `${content.trim()}\n`;
-    if (opts.append && existing !== null && existing.trim()) {
-      text = `${existing.trimEnd()}\n\n${content.trim()}\n`;
-    }
-    await writeFileAtomic(file, text);
-    await appendActivity(this.paths, [
-      this.activity(id, "doc", { field: doc, to: opts.append ? "append" : "write" }),
-    ]);
-    return { version: contentVersion(text) };
+      // Containment defines type, so validation is just "is this a known folder"
+      // — docPathIn rejects an unknown top-level name and any traversal. The v2
+      // `requires` chain between doc types is gone: profiles express ordering as
+      // boundary requirements, so a doc can be written whenever it is useful.
+      const file = docPathIn(loc.dir, doc);
+      // The ticket-wide revision CAS precedes the per-document one, and both
+      // precede the folder creation below so a refused write leaves no trace.
+      await this.assertRevision(loc, id, opts.expectedRevision);
+      await ensureDir(path.dirname(file)); // folders are created on first write
+      // One read serves both the version check and the append.
+      const existing = (await pathExists(file)) ? await readText(file) : null;
+      if (opts.expectedVersion !== undefined) {
+        const actual = existing === null ? null : contentVersion(existing);
+        if (actual !== opts.expectedVersion) {
+          throw new Error(
+            `Conflict: ${doc}.md on "${id}" changed since you read it. ` +
+              `Re-read it with get_ticket_doc and re-apply your change.`,
+          );
+        }
+      }
+      let text = `${content.trim()}\n`;
+      if (opts.append && existing !== null && existing.trim()) {
+        text = `${existing.trimEnd()}\n\n${content.trim()}\n`;
+      }
+      await writeFileAtomic(file, text);
+      await appendActivity(this.paths, [
+        this.activity(id, "doc", { field: doc, to: opts.append ? "append" : "write" }),
+      ]);
+      return { version: contentVersion(text) };
+    });
   }
 
   /**
@@ -2177,26 +2228,30 @@ export class KanmerStore {
     content: string,
     opts: { expectedRevision?: string } = {},
   ): Promise<{ file: string }> {
-    const loc = await this.locateItem(id);
-    if (!loc) throw new Error(`No item with id "${id}"`);
-    if (loc.kind !== "v2") {
-      throw new Error(
-        `"${id}" is stored in the legacy layout, which has no ticket folders — ` +
-          `migrate this board to format 2 first.`,
-      );
-    }
-    await this.assertRevision(loc, id, opts.expectedRevision);
-    // Format 3: scratch is a folder like every other type (FRD-003 T1), so a
-    // note lands at scratch/<slug>.md rather than the old scratch-<slug>.md.
-    const file = docPathIn(loc.dir, `scratch/${slug}`);
-    const had = await pathExists(file);
-    await ensureDir(path.dirname(file));
-    const block = `${content.trim()}\n`;
-    await fs.appendFile(file, had ? `\n${block}` : block, "utf8");
-    await appendActivity(this.paths, [
-      this.activity(id, "doc", { field: `scratch/${slug}`, to: "append" }),
-    ]);
-    return { file };
+    // Same critical section as setDoc (CORE-125): the revision this CAS reads
+    // must not move between the check and the append.
+    return this.withLeaseLock(async () => {
+      const loc = await this.locateItem(id);
+      if (!loc) throw new Error(`No item with id "${id}"`);
+      if (loc.kind !== "v2") {
+        throw new Error(
+          `"${id}" is stored in the legacy layout, which has no ticket folders — ` +
+            `migrate this board to format 2 first.`,
+        );
+      }
+      await this.assertRevision(loc, id, opts.expectedRevision);
+      // Format 3: scratch is a folder like every other type (FRD-003 T1), so a
+      // note lands at scratch/<slug>.md rather than the old scratch-<slug>.md.
+      const file = docPathIn(loc.dir, `scratch/${slug}`);
+      const had = await pathExists(file);
+      await ensureDir(path.dirname(file));
+      const block = `${content.trim()}\n`;
+      await fs.appendFile(file, had ? `\n${block}` : block, "utf8");
+      await appendActivity(this.paths, [
+        this.activity(id, "doc", { field: `scratch/${slug}`, to: "append" }),
+      ]);
+      return { file };
+    });
   }
 
   /** Read a per-ticket scratch note back; null when it doesn't exist. */

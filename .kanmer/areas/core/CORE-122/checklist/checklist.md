@@ -21,3 +21,14 @@
 
 - 2026-08-27 implementation complete in `.worktrees/core-122`; focused rails green; `npm run verify` in progress.
 - 2026-08-27 PR https://github.com/collisionengineers/kanmer/pull/289 head `7f8414276ca86f582d8a41d55c4d2d0ac94b6d20`.
+
+## Closeout — CORE-122
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`: MERGED 2026-08-27T16:10:40Z, merge a8318ea631038dfd82e0dc7bbc1f4656f79361f9)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage (Done since 2026-08-27T16:35:44Z, proof PASS 7781b1b90d3febf8)
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/core-122` (+ verify worktree)
+- [x] `git branch -D core-122-reconcile-inspector` (squash-merged) + `git push origin --delete`
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

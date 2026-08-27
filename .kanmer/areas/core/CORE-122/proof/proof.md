@@ -106,3 +106,9 @@ Verified independently at the exact PR #289 merge commit `a8318ea631038dfd82e0dc
 - Every named deterministic check for this ticket passed at the merge SHA: build, core reconciliation matrix (30), MCP reconciliation collector tests (8), smoke 257/257, plugin:check 38 tools.
 - Manual acceptance on a temp copy of the board: merged-Review ticket yields `MOVE_TO_VERIFYING` (advisory) with `MERGED_REVIEW`; a past `claim_expires_at` yields claim state `expired`; the store is byte-identical before/after (read-only guarantee holds).
 - Two full `npm run verify` runs and `npm run test:scripts` each failed (exit 1) only on the pre-declared host quirks: `http.test.mjs` spawnSync ETIMEDOUT (passes 5/5 in isolation), `kanmerGit.test.ts` orphan-cleanup under load, and `antigravity-plugin-config.test.mjs` cmd.exe shim (2). CORE-122 modifies none of those files (`git diff --stat dc514375..a8318ea6 -- apps/gui/src/main scripts packages/mcp-server/src/http.test.mjs` is empty). Hosted CI run 33084574539 (verify + kanmer-gate, both success) ran on tree `9b25995635f3...`, identical to the merge commit's tree, and is authoritative for those rails. Failed attempts are retained above.
+
+## Closeout
+
+- PR: https://github.com/collisionengineers/kanmer/pull/289
+- Merged: 2026-08-27T16:10:40Z (squash merge `a8318ea631038dfd82e0dc7bbc1f4656f79361f9`)
+- Closed out 2026-08-27 by claude-code: worktrees `.worktrees/core-122` and `.worktrees/verify-core-122-a8318ea631038dfd82e0dc7bbc1f4656f79361f9` removed, branch `core-122-reconcile-inspector` deleted locally and on origin.

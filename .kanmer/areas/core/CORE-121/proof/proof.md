@@ -3,7 +3,7 @@ kind: proof-record
 merged_sha: "dc5143754506e915989e1923616267a8d664425d"
 environment: ".worktrees/verify-core-121-dc5143754506e915989e1923616267a8d664425d (detached, clean, HEAD dc5143754506e915989e1923616267a8d664425d); Windows 11 Pro 10.0.26200, Git Bash, Node v24.15.0, npm ci; verifier actor claude-code (independent run, not author or reviewer)"
 verified_at: "2026-08-27T12:43:00Z"
-result: INCONCLUSIVE
+result: WAIVED_BY_OPERATOR
 attempts:
   - attempted_at: "2026-08-27T11:55:00Z"
     command: "gh pr view 287 --json state,mergeCommit,url"
@@ -77,27 +77,33 @@ attempts:
     exit_code: 0
     result: INCONCLUSIVE
     summary: "No workflow run exists for the merge commit dc5143754506e915989e1923616267a8d664425d (push to main triggered none). PR-head run 33065438808 'Pull request verification' at headSha a79f125c95cad5e1d93ac393a84bb89a7ac5ccc3: conclusion success, jobs verify=success, kanmer-gate=success. Both commits resolve to the identical tree cc05eedcfc465958d22cec468e5511a9503a5d58 (squash merge), so the hosted green covers the exact shipped content but is bound to the PR head SHA, not the merge SHA. Recorded as hosted evidence, not as a PASS of the merge-SHA check."
+  - attempted_at: "2026-08-27T13:00:00Z"
+    command: "npm run verify (attempt 13, controller-run on an otherwise idle host; recorded in scratch/verify.md version 8eef1dde605f452a)"
+    cwd: ".worktrees/verify-core-121-dc5143754506e915989e1923616267a8d664425d"
+    exit_code: 1
+    result: FAIL
+    summary: "Core 347/347; MCP rails green; GUI 485/486 — single failure apps/gui/src/main/kanmerGit.test.ts 'ensureBoardWorktree reconciliation > serializes concurrent orphan cleanup and leaves no quarantine residue' (AssertionError: expected false to be true). The same test fails identically on the untouched origin/main checkout at ea8a6408 on this host, and `git diff --stat ea8a6408..dc514375 -- apps/gui` is empty (CORE-121 touches no apps/gui file). Hosted run 33065438808 is green (verify + kanmer-gate) for the identical tree cc05eedcfc465958d22cec468e5511a9503a5d58 at PR head a79f125c; no workflow ran on the merge SHA (pr.yml has no push trigger on main)."
 ---
 
 # Proof — CORE-121
 
 Independent verification of PR #287 (merge commit `dc5143754506e915989e1923616267a8d664425d`) in a detached worktree at that exact SHA.
 
-## Result: INCONCLUSIVE (retryable; ticket stays in Verifying)
+## Result: WAIVED_BY_OPERATOR
+
+Waived by the operator (Alex) on 2026-08-27 on the evidence above; this is a human disposition, not an agent inference.
+
+Operator reason: every rail CORE-121 touches (core, mcp-server, plugin sync, smoke, manual acceptance) is green at the exact merge SHA; the single residual `npm run verify` failure is a GUI git-fixture test in `apps/gui`, which CORE-121 does not modify, and it reproduces identically on untouched `origin/main` (`ea8a6408`) on this host; hosted CI is green for the identical tree at PR head `a79f125c`.
+
+## Agent-observed evidence (prior to the waiver, top-level result was INCONCLUSIVE)
 
 What passed on the merge SHA:
 
 - Packet-named checks: `npm test -w @kanmer/core -- claims` (24/24), `node packages/mcp-server/src/smoke.mjs` (252/252), `npm run plugin:check` (OK).
-- Manual acceptance of all four ticket Verification bullets' core behaviour, run against the built core library on a throwaway copy of the board: CLAIM_LIVE refusal, expired-claim transfer preserving branch/worktree, REVIEW_RETURN_NEEDS_ATTESTATION, attested return with `review_round` 1, REMEDIATION_BUDGET_EXHAUSTED on the second return.
+- Manual acceptance of the ticket's Verification bullets' core behaviour, run against the built core library on a throwaway copy of the board: CLAIM_LIVE refusal, expired-claim transfer preserving branch/worktree, REVIEW_RETURN_NEEDS_ATTESTATION, attested return with `review_round` 1, REMEDIATION_BUDGET_EXHAUSTED on the second return.
 
 What did not pass locally:
 
-- `npm run verify` failed twice (exit 1). Attempt 1: one mcp-server `http.test.mjs` case with `spawnSync node.exe ETIMEDOUT`. Attempt 2: five GUI tests in `kanmerGit.test.ts` / `index.sync.test.ts` with `Hook timed out in 10000ms`. An isolated rerun failed a different pair of the same file's cases with the same hook timeout. The failing set is non-deterministic and confined to git-fixture setup on this Windows host; the merge touches no `packages/gui` or `scripts/` files. The anticipated `scripts/antigravity-plugin-config.test.mjs` EBUSY failure was never reached because verify stops at the first failing rail.
+- `npm run verify` failed three times (exit 1). Attempt 1: one mcp-server `http.test.mjs` case with `spawnSync node.exe ETIMEDOUT`. Attempt 2: five GUI tests with `Hook timed out in 10000ms`. Attempt 13 (idle host): a single GUI test, `kanmerGit.test.ts` "serializes concurrent orphan cleanup…", which fails identically on clean `origin/main` on this host. The merge touches no `apps/gui` or `scripts/` files.
 
-Why INCONCLUSIVE rather than PASS: the skill requires a truthful top-level PASS and says a required check that failed leaves the ticket in Verifying. `npm run verify` is the repo-wide gate and it did not pass on this host at the merge SHA. Hosted CI (run 33065438808) is green for verify and kanmer-gate, and its head `a79f125c` has the identical tree as the merge commit, but that evidence is bound to the PR head SHA and no workflow ran on the merge SHA itself, so it does not substitute for a merge-SHA-bound green run.
-
-Why INCONCLUSIVE rather than FAIL: every observed failure is a timeout in fixture setup unrelated to the change, with a shifting failure set; the shipped content passed the same gate in CI. My judgement is that this is environmental, but that judgement is not itself evidence.
-
-## Suggested next step
-
-Retry `npm run verify` on a faster host or in hosted CI on `dc5143754506e915989e1923616267a8d664425d` (for example a manual `workflow_dispatch`), then append the attempt and re-issue this record. Alternatively an operator may record `WAIVED_BY_OPERATOR` with identity and reason. The detached verification worktree `.worktrees/verify-core-121-dc5143754506e915989e1923616267a8d664425d` has been left in place for that rerun.
+The agent recorded the result as INCONCLUSIVE because the skill requires a truthful merge-SHA-bound PASS of the repo-wide gate and no hosted run exists for the merge SHA itself; the hosted green is bound to the PR head SHA (identical tree). The waiver above is the operator's decision on that evidence.

@@ -122,3 +122,9 @@ Verified at the exact PR #290 merge commit `3267c7dfd416c63339c42c3ef0c2f0115ba0
 All ticket-named checks pass locally: `verify:skills`, `verify:agents-block`, `verify-skill-prose.test.mjs`, `verify:docs`, `plugin:check` (after build). The full local `npm run verify` exits 1 solely on the known host quirk `packages/mcp-server` http spawn ETIMEDOUT, in code this PR does not touch; the hosted `verify` job on the same merge SHA (run 33097415203) succeeded and is taken as authoritative for that step. The first local `npm run verify` capture was discarded as INCONCLUSIVE because a concurrent verifier overwrote the shared `/tmp/verify.log`.
 
 Manual acceptance (a)-(d) confirmed with line references above. Result: PASS.
+
+## Closeout
+
+- PR: https://github.com/collisionengineers/kanmer/pull/290
+- Merged: 2026-08-27T17:14:47Z (squash merge 3267c7dfd416c63339c42c3ef0c2f0115ba0f973)
+- Proof version at closeout: b2188d5bc59abca9 (PASS)

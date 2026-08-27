@@ -14,9 +14,6 @@ stageEntered:
   implementing: '2026-08-27T16:55:35.820Z'
   verifying: '2026-08-27T17:15:00.710Z'
   done: '2026-08-27T17:44:46.686Z'
-taken_at: '2026-08-27T16:44:20.605Z'
-branch: skill-037-review-remediation-contract
-worktree: .worktrees/skill-037
 labels:
   - reliable-autonomy
 groups:
@@ -27,11 +24,12 @@ refs:
 commits:
   - '99576700'
   - e3354556a9a40b11d5b4b849708306320162c7bc
+  - 3267c7dfd416c63339c42c3ef0c2f0115ba0f973
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/290'
 archived: false
 created: '2026-08-27T10:07:40.838Z'
-updated: '2026-08-27T17:44:46.686Z'
+updated: '2026-08-27T17:47:11.775Z'
 ---
 
 ## What
@@ -57,3 +55,8 @@ CORE-113's attestation at `db63fb4b` was written from a thread snapshot gathered
 - [ ] Golden scenario: needs-changes → same PR remediation → delta review → merge, with `review_round` = 1.
 
 ## Outcome
+
+- Merged PR #290 (https://github.com/collisionengineers/kanmer/pull/290) as squash commit `3267c7dfd416c63339c42c3ef0c2f0115ba0f973` on 2026-08-27T17:14:47Z.
+- Review: delta attestation `22161de29de471b1`. Verification: proof `b2188d5bc59abca9`, result PASS.
+- Carried accepted-risk minor findings F-008, F-010, F-011 — recommended for SKILL-036; no follow-up ticket created.
+- Shipped as planned (skills/docs only, no `packages/` or `apps/` code). Closed out by claude-code: worktree `.worktrees/skill-037` removed, branch `skill-037-review-remediation-contract` deleted locally and on origin, verify worktree and stray log removed, claim released.

@@ -20,3 +20,14 @@
 Append with `set_ticket_doc(doc: "checklist", append: true)`.
 
 - 2026-08-27 verify:skills first run: check 18 FAIL (regex did not allow `**never**` bold markers); fixed the regex, rerun PASS. All other checks passed on first run.
+
+## Closeout — SKILL-037
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`: MERGED 2026-08-27T17:14:47Z, merge 3267c7df)
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage (Done since 2026-08-27T17:44:46Z by kanmer-verify)
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/skill-037` (+ verify worktree and stray log)
+- [x] `git branch -D skill-037-review-remediation-contract` (squash-merged) + `git push origin --delete`
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

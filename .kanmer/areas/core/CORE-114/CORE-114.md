@@ -2,10 +2,15 @@
 id: CORE-114
 type: ticket
 title: Add logical project identity and revision-safe mutation contracts
-status: backlog
+status: implementing
 area: core
-assignee: ''
+assignee: claude-code
 profile: feature
+stageEntered:
+  preparing: '2026-08-27T17:31:37.028Z'
+taken_at: '2026-08-27T17:38:47.769Z'
+branch: core-114-project-identity
+worktree: .worktrees/core-114
 labels:
   - reliable-autonomy
 groups:
@@ -21,7 +26,7 @@ refs:
   - docs/functional/frd/FRD-029-logical-project-identity-and-endpoints.md
 archived: false
 created: '2026-08-26T21:02:41.938Z'
-updated: '2026-08-26T21:41:04.849Z'
+updated: '2026-08-27T17:38:47.769Z'
 ---
 
 ## What

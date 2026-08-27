@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Review consolidation and remediation-loop contract (expected reviewers settle,
   delta review, same-PR return, failure class)
-status: verifying
+status: done
 area: skills
 assignee: claude-code
 profile: feature
@@ -13,6 +13,7 @@ stageEntered:
   review: '2026-08-27T16:50:23.509Z'
   implementing: '2026-08-27T16:55:35.820Z'
   verifying: '2026-08-27T17:15:00.710Z'
+  done: '2026-08-27T17:44:46.686Z'
 taken_at: '2026-08-27T16:44:20.605Z'
 branch: skill-037-review-remediation-contract
 worktree: .worktrees/skill-037
@@ -30,7 +31,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/290'
 archived: false
 created: '2026-08-27T10:07:40.838Z'
-updated: '2026-08-27T17:15:00.710Z'
+updated: '2026-08-27T17:44:46.686Z'
 ---
 
 ## What

@@ -206,3 +206,10 @@ acceptance above reproduces the distinct-health and refusal behaviour against re
 
 Windows 11 Pro 10.0.26200, node v24.15.0, npm 11.14.1, dependencies installed by `npm ci` inside the
 detached verification worktree.
+
+---
+
+## Closeout
+
+Merged: PR [#294](https://github.com/collisionengineers/kanmer/pull/294), merge commit
+`f3060b063b6f206603ac35c3b595d21752dff3f6`, merged at 2026-08-27T22:26:29Z.

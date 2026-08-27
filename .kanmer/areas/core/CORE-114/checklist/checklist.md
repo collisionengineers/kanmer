@@ -19,3 +19,5 @@
 
 - 2026-08-27 commit e2bb6ed8 on `core-114-project-identity`; `npm run verify` run (log `%TEMP%/core-114-verify.log`).
 - 2026-08-27 verification complete: core 392/392, smoke 274/274, protocol 50/50, typecheck 4/4, plugin:check OK, bundle smokes OK, v0.3.12 compat proof OK; `npm run verify` exit 1 on the known antigravity EBUSY script quirk after core+GUI suites passed (all later steps rerun individually, exit 0).
+
+- [x] [remediation 1] F-001 exclusive allocation + concurrency tests; F-002 read-only dry-run migrate + smoke; F-003 origin userinfo redaction + smoke; F-004 expected_revision on release/renew/transfer + core/smoke tests. Commit 631e3a0e pushed to PR #291; core 396/396, smoke 278/278, protocol 50/50, http 118/0, plugin:check OK, typecheck 0, verify 1 (known antigravity EBUSY quirk).

@@ -1,1 +1,7 @@
 2026-08-27 execute (auto run 20260827T133106Z-claude-code, lane 1): PR https://github.com/collisionengineers/kanmer/pull/291 opened from `core-114-project-identity` @ e2bb6ed895a9e3074a3d9521113ac64d153cbecc, worktree `.worktrees/core-114`. Handing off to review.
+
+## Transitions
+
+- 2026-08-27T21:45:00Z stage review → implementing by claude-code (auto-run controller); reason: needs-changes attestation scratch/review.md v90c6f088f8ec0f8b at PR #291 head e2bb6ed8 — F-001 major: `allocateProjectRecord` read-then-rename allows concurrent `store.init` to mint multiple project_ids (reproduced 6×); F-002 dry-run migrate writes project.json; F-003 origin URL userinfo not stripped; F-004 expected_revision ignored on release/renew/transfer. review_round 1 of remediation_budget 1. Same branch core-114-project-identity, worktree .worktrees/core-114, PR #291.
+
+2026-08-27 remediation round 1 (auto run 20260827T133106Z-claude-code, lane 1, resumed packet): fixed F-001..F-004 from scratch/review.md v90c6f088f8ec0f8b; commit 631e3a0eef68da61c7d55c1d9948d6583db6f470 pushed to existing PR https://github.com/collisionengineers/kanmer/pull/291 (same branch `core-114-project-identity`, worktree `.worktrees/core-114`; origin/main unchanged, no rebase). Exits: core test 0, smoke 0 (278/278), smoke:protocol 0, test:http 0, plugin:build+check 0, typecheck 0, verify 1 (known antigravity EBUSY host quirk after core+GUI suites passed). Handing back to review for the delta review at 631e3a0e.

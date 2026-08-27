@@ -62,3 +62,35 @@ Branch `core-114-project-identity`, worktree `.worktrees/core-114`, head `e2bb6e
 ## For kanmer-verify (on the merged SHA)
 
 `npm run build`; `npm test -w @kanmer/core`; `node packages/mcp-server/src/smoke.mjs`; `npm run smoke:protocol`; `npm run typecheck`; `npm run plugin:check`; optionally re-run the v0.3.12 compat proof (candidate writes a board, installed stable server reads/writes it, `project.json` untouched). Confirm `get_status.project.project_id` is null (`unassigned`) on a fresh root before any write, and the live board on stable v0.3.12 is unaffected (no `project.json` appears there until an operator runs the candidate against it).
+
+## Remediation round 1
+
+Review `scratch/review.md` v90c6f088f8ec0f8b (needs-changes at e2bb6ed8). One remediation commit `631e3a0eef68da61c7d55c1d9948d6583db6f470` pushed to the same branch/PR #291 (`origin/main` unchanged at 3267c7df, no rebase needed). Worktree `.worktrees/core-114`.
+
+### Findings resolved
+
+| Finding | Resolution |
+| --- | --- |
+| F-001 (major) | `packages/core/src/project.ts` `allocateProjectRecord` now creates `project.json` with `io.ts` `writeFileExclusive` (temp + hard link, EEXIST on an existing target). On EEXIST it re-reads and returns `{ allocated: false, record: winner }`; `store.ensureProject` therefore logs the `board/project_id` activity entry only for the allocating caller. A pre-existing *malformed* file still yields a fresh allocation via `writeFileAtomic` (the accepted, documented fallback). Tests in `project.test.ts`: 8 concurrent `store.init({fallbackFingerprint})` on a legacy board → one uuid, one migration activity entry, every store reads the same id, no temp files left; 8 concurrent `allocateProjectRecord` → exactly one `allocated: true`; malformed file replaced. |
+| F-002 (minor) | `packages/mcp-server/src/index.ts` `migrate_board` is registered with `guard` instead of `write()`, keeping the same order (`assertExpectedProject` → `setActor` → init) but calling `ensureInit()` only when `dry_run` is false. Smoke now asserts a legacy-board dry run returns `identity.wouldAllocate: true`, `project_id: null`, leaves no `project.json` and `get_status` still `unassigned`; the real migration then allocates once with exactly one activity entry for that id. Tool-reference row updated. |
+| F-003 (minor) | New `redactRemoteOrigin` in `project-identity.ts` strips userinfo from `scheme://user:token@host/...` and the password segment from scp-like `user:token@host:path`; `resolveLocation` applies it before reporting and hashing. Smoke check covers https/ssh/scp/plain/empty/null. |
+| F-004 (minor) | `store.releaseTicket(id, { expectedRevision })`, `renewTicket(id, actor, { expectedRevision })`, `TransferTicketInput.expectedRevision` all run `assertRevision` before any write; `take_ticket` forwards `expected_revision` on every action. Core test proves stale token → `Conflict:` with byte-identical ticket file and unchanged activity count, fresh token accepted; smoke proves `REVISION_CONFLICT` on renew/release/transfer with unchanged `get_item`. |
+| F-005–F-007 | Accepted risk, no change. |
+
+### Files changed this round
+
+`packages/core/src/project.ts`, `project.test.ts`, `store.ts`, `types.ts`; `packages/mcp-server/src/index.ts`, `project-identity.ts`, `smoke.mjs`; `plugins/kanmer/skills/kanmer-tickets/references/tool-reference.md`; regenerated `plugins/kanmer/mcp/kanmer-mcp.cjs`.
+
+### Verification (cwd `.worktrees/core-114`, head 631e3a0e)
+
+| Command | Exit |
+| --- | --- |
+| `npm test -w @kanmer/core` — 19 files, 396 tests | 0 |
+| `node packages/mcp-server/src/smoke.mjs` — 278/278 | 0 |
+| `npm run smoke:protocol` — 50/50 | 0 |
+| `npm run test:http -w @kanmer/mcp-server` — 118 pass / 0 fail | 0 |
+| `npm run plugin:build && npm run plugin:check` — 38 tools, bundle bytes match | 0 |
+| `npm run typecheck` | 0 |
+| `npm run verify` | **1** — core 396 and GUI 493 passed; `test:scripts` failed on the same known host quirk as round 0 (`antigravity-plugin-config.test.mjs` EBUSY rmdir `…\Kanmer Test Space\Kanmer\bin`, 2 tests). Recorded, not chased; every other rail step ran green individually above. Log `%TEMP%/core-114-verify-r1.log`. |
+
+No existing assertion weakened; the two prior smoke checks around dry-run ordering were replaced by stricter ones (dry run must not write).

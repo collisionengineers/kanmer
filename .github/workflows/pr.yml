@@ -21,11 +21,11 @@ defaults:
     shell: bash
 
 jobs:
+  # Edited PR events skip the rail; a push runs it only for main so every
+  # merge SHA carries a bound verify result (the board-branch push does not).
   verify:
     name: verify
-    if: >-
-      (github.event_name == 'pull_request' && github.event.action != 'edited') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: github.event.action != 'edited' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main')
     runs-on: windows-latest
     steps:
       - name: Check out the pull request

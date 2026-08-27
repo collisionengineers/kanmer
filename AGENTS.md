@@ -491,7 +491,14 @@ the worktree later resolves:
 
 The `verify` job deliberately skips edited events: metadata-only changes need a
 fresh body-derived gate result, not another full Windows verification of the
-unchanged source tree.
+unchanged source tree. It also runs on every push to `main`, so a merge SHA
+carries a bound rail result. A push to `kanmer-board` (or `workflow_dispatch`)
+runs the `regate` job, which re-runs the `kanmer-gate` job of the latest
+pull-request run for every open PR into `main` — the gate reads the remote
+board tip, so a board push must re-judge open PRs. Missing/stale attestations,
+`needs-changes`, unreachable commits, and `SYNC_REQUIRED` (an attestation
+`board_sha` absent from the fetched board) are warnings until the repository
+variable `KANMER_GATE_STRICT` is set to `1`/`true`, which makes them errors.
 
 ```bash
 git fetch --no-tags origin "refs/heads/$KANMER_BOARD_BRANCH:refs/remotes/origin/$KANMER_BOARD_BRANCH"

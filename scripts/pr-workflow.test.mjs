@@ -21,6 +21,15 @@ test("kanmer gate follows the configured board branch", async () => {
   assert.doesNotMatch(workflow, /git fetch origin "\$KANMER_BOARD_BRANCH"/);
   assert.doesNotMatch(workflow, /git worktree add "\$RUNNER_TEMP\/kanmer-board" "origin\/\$KANMER_BOARD_BRANCH"/);
   assert.doesNotMatch(workflow, /origin\/kanmer-board/);
+  // CORE-123: the gate re-runs on board pushes and by hand, main pushes get a
+  // bound verify result, and the strict switch reaches check-pr as an env var.
+  assert.match(workflow, /^\s+push:\s+(#.*\n\s+)*branches: \[main, kanmer-board\]/m);
+  assert.match(workflow, /^\s+workflow_dispatch:/m);
+  assert.match(workflow, /kanmer-gate:\s+name: kanmer-gate\s+if: github\.event_name == 'pull_request'/);
+  assert.match(workflow, /KANMER_GATE_STRICT: \$\{\{ vars\.KANMER_GATE_STRICT \|\| '' \}\}/);
+  assert.match(workflow, /regate:\s+name: regate\s+if: >-\s+github\.event_name == 'workflow_dispatch' \|\|\s+\(github\.event_name == 'push' && github\.ref == 'refs\/heads\/kanmer-board'\)/);
+  assert.match(workflow, /gh run rerun "\$run_id" --job "\$job_id"/);
+  assert.match(workflow, /select\(\.name == "kanmer-gate"\)/);
   assert.match(agents, /### Pull-request merge gate/);
   assert.match(agents, /Kanmer: <ID>/);
   assert.match(agents, /`verify` job deliberately skips edited events/);

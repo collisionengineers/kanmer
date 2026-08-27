@@ -27,18 +27,29 @@ const beta: RegistryEndpointView = {
   boardRoot: "C:/beta",
   repoRoot: "C:/beta",
   policy: null,
-  health: "missing-board",
+  health: "unassigned",
   selected: false,
   project: null,
   location: null,
   boardSync: null,
-  format: null,
-  ticketCount: null,
+  format: 3,
+  ticketCount: 0,
   controllers: [],
   workspaces: [],
-  problems: ["no .kanmer board at C:/beta"],
+  problems: ["board has no logical project identity"],
 };
-const view: RegistryView = { registry: { path: "C:/Users/me/.kanmer/endpoints.json", source: "default", exists: true, error: null }, endpoints: [alpha, beta], selectedRegistered: true };
+// A stale registry pointer: no board at the recorded path (F-015).
+const gamma: RegistryEndpointView = {
+  ...beta,
+  name: "gamma",
+  boardRoot: "C:/gamma",
+  repoRoot: "C:/gamma",
+  health: "missing-board",
+  format: null,
+  ticketCount: null,
+  problems: ["no .kanmer board at C:/gamma"],
+};
+const view: RegistryView = { registry: { path: "C:/Users/me/.kanmer/endpoints.json", source: "default", exists: true, error: null }, endpoints: [alpha, beta, gamma], selectedRegistered: true };
 
 function install(overrides: Partial<Record<string, unknown>> = {}) {
   const api = {
@@ -71,14 +82,16 @@ describe("project registry surface", () => {
     const betaCard = screen.getByRole("article", { name: "Registry endpoint beta" });
     expect(api.registryObserve).toHaveBeenCalledWith("C:/alpha");
     expect(within(alphaCard).getByLabelText("Health ok").textContent).toBe("Healthy");
-    expect(within(betaCard).getByLabelText("Health missing-board").textContent).toBe("Board missing");
+    const gammaCard = screen.getByRole("article", { name: "Registry endpoint gamma" });
+    expect(within(betaCard).getByLabelText("Health unassigned").textContent).toBe("No identity yet");
+    expect(within(gammaCard).getByLabelText("Health missing-board").textContent).toBe("Board missing");
     expect(within(alphaCard).getByLabelText("Selected project")).toBeTruthy();
     expect(within(betaCard).queryByLabelText("Selected project")).toBeNull();
     expect(within(alphaCard).getByText(/11111111-1111-4111-8111-111111111111/)).toBeTruthy();
     expect(within(alphaCard).getByText(/ahead 2 · behind 0/)).toBeTruthy();
     expect(within(alphaCard).getByText(/Active controllers: claude-code \(GUI-144\)/)).toBeTruthy();
     expect(within(alphaCard).getByText(/lease lease-1 r3 · implementing/)).toBeTruthy();
-    expect(within(betaCard).getByText("no .kanmer board at C:/beta")).toBeTruthy();
+    expect(within(gammaCard).getByText("no .kanmer board at C:/gamma")).toBeTruthy();
     // The selected project owns every registry control; the other project can only be opened.
     expect(within(alphaCard).getByRole("button", { name: "Rename" })).toBeTruthy();
     expect(within(alphaCard).getByRole("button", { name: "Save policy" })).toBeTruthy();
@@ -97,6 +110,25 @@ describe("project registry surface", () => {
     expect(api.registryRemove).not.toHaveBeenCalled();
     expect(api.registrySetPolicy).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("Add this project to the registry")).toBeNull();
+  });
+
+  it("refuses to open an endpoint whose board was not observed, so a stale pointer never becomes a fresh board (F-015)", async () => {
+    const stale: RegistryEndpointView = { ...gamma, name: "stale-invalid", health: "invalid", problems: ["boardRoot must be a non-empty string"] };
+    const failed: RegistryEndpointView = { ...gamma, name: "stale-error", health: "error", problems: ["EACCES"] };
+    install({ registryObserve: vi.fn(async () => ({ ...view, endpoints: [alpha, beta, gamma, stale, failed] })) });
+    const { onOpenProject } = renderSection();
+    await screen.findByRole("article", { name: "Registry endpoint alpha" });
+    for (const name of ["gamma", "stale-invalid", "stale-error"]) {
+      const card = screen.getByRole("article", { name: `Registry endpoint ${name}` });
+      const open = within(card).getByRole("button", { name: "Open project" }) as HTMLButtonElement;
+      expect(open.disabled).toBe(true);
+      expect(within(card).getByLabelText(`Open refused for ${name}`)).toBeTruthy();
+      fireEvent.click(open);
+    }
+    const betaCard = screen.getByRole("article", { name: "Registry endpoint beta" });
+    expect((within(betaCard).getByRole("button", { name: "Open project" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(within(betaCard).queryByLabelText("Open refused for beta")).toBeNull();
+    expect(onOpenProject).not.toHaveBeenCalled();
   });
 
   it("renames, saves policy and removes the selected endpoint through the registry api", async () => {

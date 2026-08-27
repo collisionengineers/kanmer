@@ -367,9 +367,15 @@ export async function observeRegistry(env: NodeJS.ProcessEnv, home: string, deps
  * structural, not a renderer courtesy.
  */
 export function assertSelectedEndpoint(view: RegistryView, name: string): void {
-  const selected = view.endpoints.find((endpoint) => endpoint.selected);
-  if (!selected) throw new Error("REGISTRY_NOT_SELECTED: the selected project is not in the registry");
-  if (selected.name !== name) throw new Error(`REGISTRY_NOT_SELECTED: "${name}" is not the selected project ("${selected.name}")`);
+  // A registry may validly name one logical project more than once; every
+  // such entry is `selected` for that project, so match on the named one
+  // rather than the first (review F-014).
+  const selected = view.endpoints.filter((endpoint) => endpoint.selected);
+  if (selected.length === 0) throw new Error("REGISTRY_NOT_SELECTED: the selected project is not in the registry");
+  if (!selected.some((endpoint) => endpoint.name === name)) {
+    const names = selected.map((endpoint) => `"${endpoint.name}"`).join(", ");
+    throw new Error(`REGISTRY_NOT_SELECTED: "${name}" is not the selected project (${names})`);
+  }
 }
 
 /**

@@ -60,6 +60,10 @@ function EndpointCard({ endpoint, busy, onOpen, onRename, onSetPolicy, onRemove 
   const [policy, setPolicy] = useState(endpoint.policy ?? "");
   useEffect(() => { setRenameTo(endpoint.name); setPolicy(endpoint.policy ?? ""); }, [endpoint.name, endpoint.policy]);
   const openRoot = endpoint.repoRoot ?? endpoint.boardRoot;
+  // Only a board that was actually observed may be opened: main's open path
+  // initialises a fresh board when none exists, so a stale registry pointer
+  // must never become an empty board at that path (review F-015).
+  const openable = endpoint.health === "ok" || endpoint.health === "unassigned";
   return (
     <article className={endpoint.selected ? "card registry-endpoint selected" : "card registry-endpoint"} aria-label={`Registry endpoint ${endpoint.name}`}>
       <div className="registry-endpoint-head">
@@ -95,7 +99,8 @@ function EndpointCard({ endpoint, busy, onOpen, onRename, onSetPolicy, onRemove 
       ) : (
         <div className="registry-actions">
           <span className="hint">Observation only. Open this project to act on it.</span>
-          <button className="ghost xs" disabled={busy !== null || !openRoot} onClick={() => onOpen(openRoot)}>Open project</button>
+          <button className="ghost xs" disabled={busy !== null || !openRoot || !openable} onClick={() => onOpen(openRoot)}>Open project</button>
+          {!openable && <span className="hint" aria-label={`Open refused for ${endpoint.name}`}>Cannot open: no board was observed at the recorded path, and opening would create a new one.</span>}
         </div>
       )}
     </article>

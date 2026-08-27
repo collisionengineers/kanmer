@@ -104,8 +104,15 @@ branch is recorded only when the board is actually under Git. The app
 refuses a rename, policy change or removal aimed at any endpoint other than
 the selected project, whatever the window asks for. Every other card is
 observation only. Its single button, **Open project**, opens that project as
-a tab and makes it the selected project — the same path as opening a folder;
-nothing here writes to another project's board or its board branch.
+a tab and makes it the selected project — the same path as opening a folder,
+including its confirm when a ticket editor has unsaved changes. Unsaved
+changes on the Board tab block the switch until you discard them, and
+Settings starts afresh for the newly selected project so a draft taken from
+one board is never saved into another. **Open project** is disabled for an
+endpoint whose board could not be observed (missing, invalid or in error):
+opening a folder without a board would create a fresh one there, which a
+stale registry entry must never do. Nothing here writes to another project's
+board or its board branch.
 
 Looking at a project here never changes it: the app reads each board with a
 throw-away read-only view, and writes to the registry file are serialised and

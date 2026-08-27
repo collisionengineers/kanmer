@@ -331,6 +331,20 @@ describe("main-process guards", () => {
     expect(() => assertSelectedEndpoint(nobody, "alpha")).toThrow(/REGISTRY_NOT_SELECTED/);
   });
 
+  it("accepts any endpoint bound to the sender's project when the registry names it twice (F-014)", async () => {
+    const file = path.join(home, "guard-dup", "endpoints.json");
+    const env = { [ENDPOINT_REGISTRY_ENV]: file };
+    const writer = new ProjectRegistryWriter(file);
+    await writer.upsert("alpha", { boardRoot: boardA });
+    await writer.upsert("alpha-mirror", { boardRoot: boardA, policy: "main-only" });
+    await writer.upsert("beta", { boardRoot: boardB });
+    const asAlpha = await observeRegistry(env, home, deps, { project_id: projectIdA, board_id: projectIdA, identity: "logical", origin: "generated", fingerprint: fingerprintA });
+    expect(asAlpha.endpoints.filter((endpoint) => endpoint.selected).map((endpoint) => endpoint.name)).toEqual(["alpha", "alpha-mirror"]);
+    expect(() => assertSelectedEndpoint(asAlpha, "alpha")).not.toThrow();
+    expect(() => assertSelectedEndpoint(asAlpha, "alpha-mirror")).not.toThrow();
+    expect(() => assertSelectedEndpoint(asAlpha, "beta")).toThrow(/REGISTRY_NOT_SELECTED: "beta" is not the selected project \("alpha", "alpha-mirror"\)/);
+  });
+
   it("records a board branch only for a git-backed board (F-005)", () => {
     const git = entryForContext({ boardRoot: boardA, sourceRoot: boardA, syncStatus: { available: true, boardRoot: boardA, branch: "kanmer-board" } }, "main-only");
     expect(git).toEqual({ boardRoot: boardA, repoRoot: boardA, boardBranch: "kanmer-board", policy: "main-only" });

@@ -32,7 +32,7 @@ import {
   type Vocabulary,
 } from "../lib/profileDraft.js";
 
-type SettingsTab = "board" | "profiles" | "appearance" | "git" | "connect" | "dispatch" | "remote" | "openai" | "projects";
+export type SettingsTab = "board" | "profiles" | "appearance" | "git" | "connect" | "dispatch" | "remote" | "openai" | "projects";
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: "board", label: "Board" },
   { id: "profiles", label: "Profiles" },
@@ -57,8 +57,16 @@ interface SettingsProps {
   onSetNotifications: (on: boolean) => void;
   onSetPreferences: (patch: Partial<UiPreferences>) => void;
   onClose: () => void;
-  /** App-level open/select path (tabs + board state); the Projects tab's "Open project" goes through it (GUI-144). */
+  /**
+   * App-level open/select path (tabs + board state); the Projects tab's
+   * "Open project" goes through it (GUI-144). The App routes it through the
+   * same dirty-editor guard as any other project switch and re-keys this
+   * modal by project root, so a draft can never outlive its project (F-013).
+   */
   onOpenProject: (root: string) => Promise<void>;
+  /** Tab to open on; lets the App restore the tab across the re-key (F-013). */
+  initialTab?: SettingsTab;
+  onTabChange?: (tab: SettingsTab) => void;
 }
 
 const DEFAULT_COLOR = "#5b8cff";
@@ -76,12 +84,22 @@ export function Settings({
   onSetPreferences,
   onClose,
   onOpenProject,
+  initialTab,
+  onTabChange,
 }: SettingsProps): JSX.Element {
   const [draft, setDraft] = useState<BoardConfig>(() => structuredClone(board));
+  // Root the draft was taken from. The App keys this modal by project root so
+  // a switch remounts it; the guard below is defence in depth for a caller
+  // that does not (F-013): a draft is never saved into another project.
+  const [draftProjectId] = useState(projectId);
+  // A project open requested from the Projects tab while the board draft is
+  // modified: the user must discard explicitly before the switch runs.
+  const [pendingOpen, setPendingOpen] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
-  const [tab, setTab] = useState<SettingsTab>("board");
+  const [tab, setTabState] = useState<SettingsTab>(initialTab ?? "board");
+  const setTab = (next: SettingsTab) => { setTabState(next); onTabChange?.(next); };
   // Set when a refresh fails and the pane can no longer trust its draft.
   const [reloadRequired] = useState(false);
 
@@ -103,6 +121,10 @@ export function Settings({
       setError(problems.join(" · "));
       return;
     }
+    if (draftProjectId !== projectId) {
+      setError("Reload Settings before saving: this draft belongs to another project.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -120,6 +142,23 @@ export function Settings({
   const requestClose = () => {
     if (modified) setConfirmDiscard(true);
     else onClose();
+  };
+
+  // "Open project" from the Projects tab: a modified board draft blocks the
+  // switch until it is discarded, mirroring the App's dirty-editor guard.
+  const requestOpenProject = async (root: string) => {
+    if (modified) {
+      setPendingOpen(root);
+      return;
+    }
+    await onOpenProject(root);
+  };
+  const discardAndOpen = () => {
+    const root = pendingOpen;
+    setPendingOpen(null);
+    if (root === null) return;
+    setDraft(structuredClone(board));
+    void onOpenProject(root).catch((err) => setError(err instanceof Error ? err.message : String(err)));
   };
 
 
@@ -177,6 +216,19 @@ export function Settings({
         </div>
 
         {error && <div className="banner error">{error}</div>}
+        {pendingOpen !== null && (
+          <div className="banner warn" role="alertdialog" aria-label="Discard board changes and open project">
+            <span>Discard your board changes and open another project?</span>
+            <div className="conflict-actions">
+              <button className="ghost xs" onClick={() => setPendingOpen(null)}>
+                Keep editing
+              </button>
+              <button className="danger xs" onClick={discardAndOpen}>
+                Discard and open
+              </button>
+            </div>
+          </div>
+        )}
         {confirmDiscard && (
           <div className="banner warn">
             <span>Discard your board changes?</span>
@@ -251,7 +303,7 @@ export function Settings({
 
             {tab === "openai" && <OpenAITunnelSection projectId={projectId} />}
 
-            {tab === "projects" && <ProjectRegistrySection projectId={projectId} onOpenProject={onOpenProject} />}
+            {tab === "projects" && <ProjectRegistrySection projectId={projectId} onOpenProject={requestOpenProject} />}
 
             {tab === "profiles" && <ProfilesTab />}
 

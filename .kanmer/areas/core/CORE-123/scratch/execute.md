@@ -26,3 +26,12 @@ Retained attempt logs on disk: `.worktrees/core-123-verify-attempt1.log`, `.work
 ## 2026-08-27 execute — remediation round 1 (claude-code, run 20260827T133106Z-claude-code)
 
 Resumed packet (ticket.taken branch core-123-merge-gate-board-sync, worktree .worktrees/core-123). Worktree validated: toplevel OK, common dir C:/Users/Alex/Documents/GitHub/kanmer/.git, branch matches, tree clean at 89896693. Findings to fix from scratch/review.md v9770bd1beecdaa95: F-001 (regate cannot fire from a board push), F-002 (autostash conflict commits markers), F-003 (rebase onto origin/main a8318ea6). Plan: F-003 rebase first, then F-002, then F-001; force-with-lease push to PR #288.
+
+Remediation round 1 commands (cwd .worktrees/core-123):
+- `git fetch origin && git rebase origin/main` → conflict only in plugins/kanmer/mcp/kanmer-mcp.cjs; `git checkout origin/main -- <bundle>`; `GIT_EDITOR=true git rebase --continue` → exit 0 (3dad4b26, 2b3cf620).
+- `npm run build:core` 0; `npm run plugin:build` 0; `npm run plugin:check` 0 (38 tools).
+- apps/gui `npx vitest run src/main/kanmerGit.test.ts -t "autostash re-apply conflicts|concurrent agent write between add|transient sync failure"` → 0 (3/3). Same new test with kanmerGit.ts fix stashed → 1 (paused false) — red/green proven.
+- `node --test scripts/pr-workflow.test.mjs` 0; js-yaml parse both workflows 0; `verify:agents-block` 0; `verify:docs` 0; `typecheck` 0; `verify:skills` 0; `test:scripts` 1 (118 pass, 2 known antigravity host fails).
+- commit df293ad2bf4b7f603e67998be7cb5b62f9430cbe; `git push --force-with-lease` → 0 (PR #288 head now df293ad2; no new PR).
+- `npm run verify` (bg, .worktrees/core-123-verify-r1.log) → 1: core 382/382, GUI 493/493, test:http 1 fail `http.test.mjs` "project resolution fails before binding" spawnSync ETIMEDOUT (2 s). Alone in worktree attempt 1 → 1; on untouched main → 0; worktree attempts 2,3 → 0,0. File untouched by PR; known host quirk.
+- Docs updated: plan (appended round-1 section, v533b4e5116983c28), open-questions, checklist, ticket Verification bullet, post-implementation report. Ticket commits set to 3dad4b26, 2b3cf620, df293ad2…; moving implementing → review.

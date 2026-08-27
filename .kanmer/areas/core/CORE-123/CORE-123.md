@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Merge-gate hardening and board-sync confirmation (SYNC_REQUIRED, attestation
   errors, board-push CI trigger)
-status: implementing
+status: review
 area: core
 assignee: claude-code
 profile: feature
@@ -31,7 +31,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/288'
 archived: false
 created: '2026-08-27T10:07:40.813Z'
-updated: '2026-08-27T16:32:36.811Z'
+updated: '2026-08-27T16:43:53.895Z'
 ---
 
 ## What

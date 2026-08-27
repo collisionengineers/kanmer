@@ -4,10 +4,15 @@ type: ticket
 title: >-
   Review consolidation and remediation-loop contract (expected reviewers settle,
   delta review, same-PR return, failure class)
-status: backlog
+status: implementing
 area: skills
-assignee: ''
+assignee: claude-code
 profile: feature
+stageEntered:
+  preparing: '2026-08-27T16:39:10.836Z'
+taken_at: '2026-08-27T16:44:20.605Z'
+branch: skill-037-review-remediation-contract
+worktree: .worktrees/skill-037
 labels:
   - reliable-autonomy
 groups:
@@ -17,7 +22,7 @@ refs:
   - docs/functional/frd/FRD-034-durable-goal-control-and-independent-review.md
 archived: false
 created: '2026-08-27T10:07:40.838Z'
-updated: '2026-08-27T10:07:40.838Z'
+updated: '2026-08-27T16:44:20.605Z'
 ---
 
 ## What

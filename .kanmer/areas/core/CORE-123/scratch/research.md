@@ -1,0 +1,7 @@
+## 2026-08-27 — GUI auto-sync stall, root cause (from operator report + CORE-121 review)
+
+Operator saw: `Command failed: git rebase origin/kanmer-board error: cannot rebase: You have unstaged changes.` and auto-sync stopped; the remote board sat at 9a2e0648 for ~1 h while agents kept writing, so kanmer-gate on PR #287 judged a stale board (WRONG_STAGE) — the same failure that hit PR #286.
+
+Mechanism (`apps/gui/src/main/kanmerGit.ts` `syncBoard`): `git add -- .kanmer .gitignore` → commit → `fetch` → `rebase origin/<branch>` → push. Any MCP/agent write to `.kanmer` between the `add` and the `rebase` leaves an unstaged tracked change; `git rebase` refuses; the catch sets `paused: true` and the timer never re-arms (`shouldRunAutomaticSync` requires `!paused`). With agents writing several files per minute, the race fires often; every hit silently disables sync until a human presses Sync.
+
+Fix candidates for this ticket: (1) `git rebase --autostash` (or `git stash push -- .kanmer` around the rebase) so concurrent writes ride along; (2) treat "unstaged changes"/dirty-tree rebase refusals as retryable — re-run `add`+`commit` and retry once before pausing; (3) never leave `paused: true` on a transient error — back off and retry on the next tick, reserving `paused` for real conflicts; (4) surface `ahead/behind` in `get_status` and the GUI so a stalled sync is visible; (5) gate: `SYNC_REQUIRED` when the attestation's `board_sha` is not on the fetched board.

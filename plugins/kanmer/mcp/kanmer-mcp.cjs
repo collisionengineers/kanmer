@@ -37557,6 +37557,7 @@ var import_path4 = __toESM(require("path"), 1);
 var import_yaml = __toESM(require_dist2(), 1);
 var import_path5 = __toESM(require("path"), 1);
 var import_promises3 = __toESM(require("fs/promises"), 1);
+var import_crypto2 = require("crypto");
 var import_path6 = __toESM(require("path"), 1);
 var import_promises4 = __toESM(require("fs/promises"), 1);
 var import_gray_matter2 = __toESM(require_gray_matter(), 1);
@@ -37564,11 +37565,11 @@ var import_child_process2 = require("child_process");
 var import_fs3 = require("fs");
 var import_promises5 = require("fs/promises");
 var import_path7 = require("path");
-var import_crypto2 = require("crypto");
 var import_crypto3 = require("crypto");
+var import_crypto4 = require("crypto");
 var import_fs4 = __toESM(require("fs"), 1);
 var import_path8 = __toESM(require("path"), 1);
-var import_crypto4 = require("crypto");
+var import_crypto5 = require("crypto");
 var import_promises6 = __toESM(require("fs/promises"), 1);
 var import_path9 = __toESM(require("path"), 1);
 var import_async_hooks = require("async_hooks");
@@ -37576,7 +37577,7 @@ var import_fs5 = require("fs");
 var import_promises7 = __toESM(require("fs/promises"), 1);
 var import_path10 = __toESM(require("path"), 1);
 var import_path11 = __toESM(require("path"), 1);
-var import_crypto5 = require("crypto");
+var import_crypto6 = require("crypto");
 var import_gray_matter3 = __toESM(require_gray_matter(), 1);
 var import_promises8 = __toESM(require("fs/promises"), 1);
 var import_path12 = __toESM(require("path"), 1);
@@ -39154,6 +39155,580 @@ function firstBlocking(report, fromStage, toStage) {
   const to = stageIndex(toStage);
   return boundariesCrossed(report.boundaries, from, to).find((b) => !b.passable) ?? null;
 }
+function parseAtxSections(markdown) {
+  const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
+  const headings = [];
+  for (const [index, line] of lines.entries()) {
+    const match = /^(?: {0,3})(#{1,6})(?:[ \t]+|$)(.*)$/.exec(line);
+    if (!match) continue;
+    const title = match[2].trim().replace(/[ \t]+#+[ \t]*$/, "").trim();
+    headings.push({ index, level: match[1].length, title });
+  }
+  return headings.map((heading, position) => {
+    const end = headings.slice(position + 1).find((candidate) => candidate.level <= heading.level)?.index ?? lines.length;
+    return {
+      level: heading.level,
+      title: heading.title,
+      content: lines.slice(heading.index + 1, end).join("\n")
+    };
+  });
+}
+function extractAtxSection(markdown, requestedTitle) {
+  const sections = parseAtxSections(markdown);
+  const wanted = requestedTitle.trim().toLocaleLowerCase();
+  const section = sections.find((candidate) => candidate.title.toLocaleLowerCase() === wanted);
+  if (!section) return null;
+  const content = section.content.trim();
+  return content || null;
+}
+var PLAN_SECTIONS = [
+  "Objective",
+  "Starting state",
+  "Governing docs",
+  "Required changes",
+  "Expected files",
+  "Do not modify",
+  "Constraints",
+  "Ordered steps",
+  "Acceptance checks",
+  "Commands",
+  "Failure and deviation rules",
+  "Stop condition"
+];
+var PLAN_STEP_FIELD_LABELS = {
+  preconditions: ["preconditions", "precondition"],
+  files: ["files", "allowed files"],
+  symbols: ["symbols", "allowed symbols"],
+  change: ["change", "exact change"],
+  preserved: ["preserved behaviour", "preserved behavior", "preserve"],
+  forbidden: ["forbidden", "forbidden behaviour", "forbidden behavior"],
+  negative: ["negative cases", "negative case", "negative"],
+  tests: ["tests", "test"],
+  commands: ["commands", "command"],
+  expected: ["expected output", "expected result"],
+  done: ["done when", "done condition", "done"],
+  deviation: ["deviation stop", "deviation"]
+};
+var PLAN_STEP_REQUIRED_FIELDS = [
+  "files",
+  "change",
+  "tests",
+  "commands",
+  "done"
+];
+var FIELD_BY_LABEL = new Map(
+  Object.entries(PLAN_STEP_FIELD_LABELS).flatMap(
+    ([field, labels]) => labels.map((label) => [label, field])
+  )
+);
+function normalisePlanPath(value) {
+  return value.trim().replace(/^`|`$/g, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+$/, "");
+}
+function sectionContent(sections, title) {
+  const wanted = title.toLocaleLowerCase();
+  const section = sections.find((candidate) => candidate.title.toLocaleLowerCase() === wanted);
+  if (!section) return null;
+  const content = section.content.trim();
+  return content || null;
+}
+function withoutFences(text) {
+  return text.replace(/^ {0,3}(?:```|~~~)[\s\S]*?^ {0,3}(?:```|~~~)\s*$/gm, "");
+}
+function codeSpans(value) {
+  return [...value.matchAll(/`([^`]+)`/g)].map((match) => match[1].trim()).filter(Boolean);
+}
+function listValues(value) {
+  const spans = codeSpans(value);
+  if (spans.length) return spans;
+  return value.split(/[,;]/).map((part) => part.trim().replace(/^[-*]\s*/, "")).filter(Boolean);
+}
+function bulletItems(content) {
+  if (!content) return [];
+  const items = [];
+  for (const raw of withoutFences(content).split("\n")) {
+    const match = /^\s*(?:[-*+]|\d+[.)])\s+(.*)$/.exec(raw);
+    if (match) {
+      items.push(match[1].trim());
+      continue;
+    }
+    if (items.length && /^\s+\S/.test(raw)) items[items.length - 1] += ` ${raw.trim()}`;
+  }
+  return items.filter(Boolean);
+}
+function parseExpectedFiles(content) {
+  if (!content) return [];
+  const rows = [];
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("|")) continue;
+    const cells = trimmed.replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+    if (cells.length < 2) continue;
+    if (cells.every((cell) => /^:?-{2,}:?$/.test(cell))) continue;
+    const path122 = normalisePlanPath(cells[1]);
+    if (!path122) continue;
+    if (cells[0].toLocaleLowerCase() === "action" || path122.toLocaleLowerCase().includes("repo-root-relative")) continue;
+    rows.push({ action: cells[0], path: path122, responsibility: cells[2] ?? "" });
+  }
+  return rows;
+}
+function parseDoNotModify(content) {
+  if (!content) return [];
+  const paths = [];
+  for (const item of bulletItems(content)) {
+    const spans = codeSpans(item);
+    for (const span of spans) {
+      const path122 = normalisePlanPath(span);
+      if (path122 && (path122.includes("/") || path122.includes("."))) paths.push(path122);
+    }
+  }
+  return [...new Set(paths)];
+}
+function parseEvidencePins(content) {
+  if (!content) return [];
+  const pins = [];
+  for (const match of content.matchAll(/`([^`]+)`\s*@\s*`?([0-9a-fA-F]{8,64})`?/g)) {
+    pins.push({ path: normalisePlanPath(match[1]), version: match[2].toLowerCase() });
+  }
+  return pins;
+}
+function stepTitle(heading) {
+  return heading.replace(/^step\s+\d+\s*[—:.\-–]\s*/i, "").trim() || heading.trim();
+}
+function parseStepFields(body) {
+  const fields = {};
+  for (const item of bulletItems(body)) {
+    const match = /^\*{0,2}([^:*]+?)\*{0,2}\s*:\s*(.*)$/.exec(item);
+    if (!match) continue;
+    const field = FIELD_BY_LABEL.get(match[1].trim().toLocaleLowerCase());
+    const value = match[2].trim();
+    if (!field || !value) continue;
+    if (fields[field] === void 0) fields[field] = value;
+  }
+  return fields;
+}
+function buildStep(index, title, structured, body) {
+  const fields = structured ? parseStepFields(body) : {};
+  return {
+    index,
+    id: `step-${index}`,
+    title,
+    structured,
+    fields,
+    files: fields.files ? listValues(fields.files).map(normalisePlanPath) : [],
+    symbols: fields.symbols ? listValues(fields.symbols) : [],
+    tests: fields.tests ? listValues(fields.tests) : [],
+    commands: fields.commands ? listValues(fields.commands) : [],
+    negativeCases: fields.negative ? listValues(fields.negative) : []
+  };
+}
+function parseSteps(content) {
+  if (!content) return [];
+  const lines = withoutFences(content).split("\n");
+  const headings = [];
+  for (const [line, text] of lines.entries()) {
+    const match = /^(?: {0,3})#{3,6}(?:[ \t]+)(.*)$/.exec(text);
+    if (match) headings.push({ line, title: match[1].trim().replace(/[ \t]+#+[ \t]*$/, "").trim() });
+  }
+  if (headings.length) {
+    return headings.map((heading, position) => {
+      const end = headings[position + 1]?.line ?? lines.length;
+      return buildStep(
+        position + 1,
+        stepTitle(heading.title),
+        true,
+        lines.slice(heading.line + 1, end).join("\n")
+      );
+    });
+  }
+  const items = bulletItems(content);
+  return items.map((item, position) => buildStep(position + 1, stepTitle(item), false, ""));
+}
+function parsePlan(markdown) {
+  const sections = parseAtxSections(markdown);
+  const startingState = sectionContent(sections, "Starting state");
+  return {
+    sections,
+    objective: sectionContent(sections, "Objective"),
+    expectedFiles: parseExpectedFiles(sectionContent(sections, "Expected files")),
+    doNotModify: parseDoNotModify(sectionContent(sections, "Do not modify")),
+    acceptanceChecks: bulletItems(sectionContent(sections, "Acceptance checks")),
+    commands: bulletItems(sectionContent(sections, "Commands")),
+    stopCondition: sectionContent(sections, "Stop condition"),
+    evidencePins: parseEvidencePins(startingState),
+    steps: parseSteps(sectionContent(sections, "Ordered steps"))
+  };
+}
+var VAGUE_SCAN_SECTIONS = ["Required changes", "Constraints", "Ordered steps", "Acceptance checks"];
+var VAGUE_MARKERS = [
+  /\binvestigat(?:e|es|ing|ion)\b/i,
+  /\bdecid(?:e|es|ing)\b/i,
+  /\bchoos(?:e|es|ing)\b/i,
+  /\bdetermin(?:e|es|ing)\b/i,
+  /\bfigure out\b/i,
+  /\bexplor(?:e|es|ing)\b/i,
+  /\bas appropriate\b/i,
+  /\bwhere appropriate\b/i,
+  /\bas needed\b/i,
+  /\bas required\b/i,
+  /\bif necessary\b/i,
+  /\bsomehow\b/i,
+  /\bTBD\b/,
+  /\bTODO\b/,
+  /\betc\./i,
+  /\band so on\b/i,
+  /\bmaybe\b/i,
+  /\bprobably\b/i,
+  /\bsome kind of\b/i
+];
+var RESOLUTION_SIGNALS = [
+  /`[^`]+`/,
+  /\b[\w.-]+\/[\w./-]+\b/,
+  /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/,
+  /→/
+];
+var PLAN_RISK_CATEGORIES = {
+  state: /\b(?:store\.ts|frontmatter|persist(?:ed|ence)?|board format|state machine|schema)\b/i,
+  migration: /\b(?:migrat(?:e|es|ion|ions)|backfill|format bump|upgrade path)\b/i,
+  service: /\b(?:http|server|endpoint|remote|tunnel|socket)\b/i,
+  runtime: /\b(?:bundle|standalone|electron|packaged|installer|runtime)\b/i,
+  "public-contract": /\b(?:public api|inputschema|tool (?:schema|surface|reference|roster)|exported? (?:api|type)|index\.ts|mcp tool)\b/i,
+  security: /\b(?:auth|authentication|authoris|authoriz|token|secret|credential|permission|bearer)\b/i,
+  release: /\b(?:release|publish|version bump|changelog)\b/i
+};
+var EVIDENCE_SECTIONS = ["Starting state", "Governing docs", "Constraints"];
+var EVIDENCE_CITATION = /`[^`]*\.(?:ts|tsx|mjs|cjs|js|md|json|yml|yaml)(?::\d+(?:-\d+)?)?[^`]*`|\bdocs\/[\w./-]+|\bresearch\/[\w./-]+/i;
+function sentencesOf(content) {
+  const sentences = [];
+  for (const raw of withoutFences(content).split("\n")) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.startsWith("|")) continue;
+    if (/^#{1,6}\s/.test(line)) continue;
+    for (const part of line.split(/(?<=[.!?])\s+/)) {
+      const sentence = part.trim();
+      if (sentence) sentences.push(sentence);
+    }
+  }
+  return sentences;
+}
+function isResolved(sentence) {
+  return RESOLUTION_SIGNALS.some((signal) => signal.test(sentence));
+}
+function vagueFindings(plan) {
+  const findings = [];
+  for (const title of VAGUE_SCAN_SECTIONS) {
+    const content = sectionContent(plan.sections, title);
+    if (!content) continue;
+    for (const sentence of sentencesOf(content)) {
+      if (isResolved(sentence)) continue;
+      const marker = VAGUE_MARKERS.find((pattern) => pattern.test(sentence));
+      if (!marker) continue;
+      findings.push({
+        code: "PLAN_VAGUE_INSTRUCTION",
+        severity: "advisory",
+        section: title,
+        message: `"${title}" leaves an instruction unresolved: it does not name the exact decision, file, caller, error or test.`,
+        detail: sentence.length > 240 ? `${sentence.slice(0, 237)}...` : sentence
+      });
+    }
+  }
+  return findings;
+}
+function riskFindings(plan) {
+  const declared = [
+    plan.expectedFiles.map((entry) => `${entry.path} ${entry.responsibility}`).join("\n"),
+    sectionContent(plan.sections, "Required changes") ?? ""
+  ].join("\n");
+  const coverage = EVIDENCE_SECTIONS.map((title) => sectionContent(plan.sections, title) ?? "").join("\n");
+  const cited = EVIDENCE_CITATION.test(coverage);
+  const findings = [];
+  for (const [category, pattern] of Object.entries(PLAN_RISK_CATEGORIES)) {
+    if (!pattern.test(declared)) continue;
+    if (cited && pattern.test(coverage)) continue;
+    findings.push({
+      code: "PLAN_RISK_EVIDENCE_MISSING",
+      severity: "advisory",
+      section: "Starting state",
+      message: `The plan touches ${category} work but its Starting state, Governing docs and Constraints cite no evidence for it.`,
+      detail: category
+    });
+  }
+  return findings;
+}
+function evidenceFindings(plan, severity, options2) {
+  if (!options2.liveEvidence) return [];
+  const live = new Map(options2.liveEvidence.map((entry) => [normalisePlanPath(entry.path), entry.version.toLowerCase()]));
+  const findings = [];
+  for (const pin of plan.evidencePins) {
+    const current = live.get(pin.path);
+    if (current === void 0) {
+      findings.push({
+        code: "PLAN_EVIDENCE_UNKNOWN",
+        severity: "advisory",
+        section: "Starting state",
+        message: `The plan pins "${pin.path}", which is not among this ticket's current evidence documents.`,
+        detail: pin.path
+      });
+      continue;
+    }
+    if (current !== pin.version) {
+      findings.push({
+        code: "PLAN_EVIDENCE_STALE",
+        severity,
+        section: "Starting state",
+        message: `Evidence "${pin.path}" changed since the plan pinned it (plan ${pin.version}, current ${current}).`,
+        detail: pin.path
+      });
+    }
+  }
+  if (options2.requireEvidencePin && plan.evidencePins.length === 0) {
+    findings.push({
+      code: "PLAN_EVIDENCE_UNRECORDED",
+      severity,
+      section: "Starting state",
+      message: "This ticket carries research/impact evidence, but the plan pins no evidence version in Starting state, so nothing can tell whether the plan was written against the current evidence."
+    });
+  }
+  return findings;
+}
+function stepFindings(plan, severity, selected) {
+  const findings = [];
+  if (plan.steps.length === 0) {
+    findings.push({
+      code: "PLAN_STEPS_MISSING",
+      severity,
+      section: "Ordered steps",
+      message: "The plan has no ordered steps, so there is nothing to compile into a bounded step packet."
+    });
+    return findings;
+  }
+  if (selected !== void 0 && selected > plan.steps.length) {
+    findings.push({
+      code: "PLAN_STEP_NOT_FOUND",
+      severity,
+      section: "Ordered steps",
+      step: selected,
+      message: `The plan has ${plan.steps.length} ordered step(s); step ${selected} does not exist.`
+    });
+    return findings;
+  }
+  const declared = new Set(plan.expectedFiles.map((entry) => entry.path));
+  const forbidden = new Set(plan.doNotModify);
+  for (const step of plan.steps) {
+    const chosen = selected !== void 0 && step.index === selected;
+    const stepSeverity = chosen ? severity : "advisory";
+    if (!step.structured) {
+      findings.push({
+        code: "PLAN_STEP_UNSTRUCTURED",
+        severity: stepSeverity,
+        section: "Ordered steps",
+        step: step.index,
+        message: `Step ${step.index} is a plain list item. A constrained step packet needs a "### Step ${step.index} \u2014 <title>" sub-section naming its preconditions, files, change, tests, commands and done condition.`
+      });
+      continue;
+    }
+    for (const field of PLAN_STEP_REQUIRED_FIELDS) {
+      if (step.fields[field] === void 0) {
+        findings.push({
+          code: "PLAN_STEP_FIELD_MISSING",
+          severity: stepSeverity,
+          section: "Ordered steps",
+          step: step.index,
+          message: `Step ${step.index} names no "${PLAN_STEP_FIELD_LABELS[field][0]}".`,
+          detail: field
+        });
+      }
+    }
+    for (const field of ["preconditions", "preserved", "negative", "expected", "deviation"]) {
+      if (step.fields[field] === void 0) {
+        findings.push({
+          code: "PLAN_STEP_FIELD_MISSING",
+          severity: "advisory",
+          section: "Ordered steps",
+          step: step.index,
+          message: `Step ${step.index} names no "${PLAN_STEP_FIELD_LABELS[field][0]}".`,
+          detail: field
+        });
+      }
+    }
+    for (const file of step.files) {
+      if (!declared.has(file)) {
+        findings.push({
+          code: "PLAN_STEP_FILE_UNDECLARED",
+          severity: stepSeverity,
+          section: "Ordered steps",
+          step: step.index,
+          message: `Step ${step.index} names "${file}", which the plan's Expected files table never declares.`,
+          detail: file
+        });
+      }
+      if (forbidden.has(file)) {
+        findings.push({
+          code: "PLAN_STEP_FILE_FORBIDDEN",
+          severity: stepSeverity,
+          section: "Ordered steps",
+          step: step.index,
+          message: `Step ${step.index} names "${file}", which the plan's Do not modify section forbids.`,
+          detail: file
+        });
+      }
+    }
+  }
+  return findings;
+}
+function acceptanceIsUsable(check2) {
+  return codeSpans(check2).length > 0 || /\bmanual(?:ly)?\b/i.test(check2);
+}
+function validatePlan(plan, options2 = {}) {
+  const structural = options2.step === void 0 ? "advisory" : "blocker";
+  const findings = [];
+  for (const title of PLAN_SECTIONS) {
+    if (sectionContent(plan.sections, title) === null) {
+      findings.push({
+        code: "PLAN_SECTION_MISSING",
+        severity: "advisory",
+        section: title,
+        message: `The plan has no "${title}" section.`
+      });
+    }
+  }
+  findings.push(...vagueFindings(plan));
+  findings.push(...riskFindings(plan));
+  if (plan.expectedFiles.length === 0) {
+    findings.push({
+      code: "PLAN_ALLOWED_FILES_MISSING",
+      severity: structural,
+      section: "Expected files",
+      message: "The plan declares no Expected files, so a packet cannot limit a worker to any file."
+    });
+  }
+  if (!plan.stopCondition) {
+    findings.push({
+      code: "PLAN_STOP_CONDITION_MISSING",
+      severity: structural,
+      section: "Stop condition",
+      message: "The plan states no Stop condition, so a worker would not know where to stop."
+    });
+  }
+  if (!plan.acceptanceChecks.some(acceptanceIsUsable)) {
+    findings.push({
+      code: "PLAN_ACCEPTANCE_MISSING",
+      severity: structural,
+      section: "Acceptance checks",
+      message: "The plan states no acceptance check that is either executable (a named command or test) or explicitly manual."
+    });
+  }
+  findings.push(...evidenceFindings(plan, structural, options2));
+  findings.push(...stepFindings(plan, structural, options2.step));
+  const blockers = findings.filter((finding2) => finding2.severity === "blocker").length;
+  return { ok: blockers === 0, blockers, advisories: findings.length - blockers, findings };
+}
+var STEP_PACKET_VERSION = "step-packet/1";
+var STEP_RETURN_STOP = "Complete only this step, then stop and report. The controller reconciles the actual changes and evidence before another packet is issued; do not begin the next step, merge, or start another ticket.";
+function checklistBoxes(checklist) {
+  if (!checklist) return [];
+  return [...checklist.matchAll(/^[ \t]*[-*+][ \t]*\[([ xX])\]/gm)].map((match) => match[1].toLowerCase() === "x");
+}
+function boxesByStep(checklist) {
+  const byStep = /* @__PURE__ */ new Map();
+  if (!checklist) return byStep;
+  for (const line of checklist.replace(/\r\n?/g, "\n").split("\n")) {
+    const box = /^[ \t]*[-*+][ \t]*\[([ xX])\][ \t]*(.*)$/.exec(line);
+    if (!box) continue;
+    const named = /\bstep[\s ]+(\d+)\b/i.exec(box[2]);
+    if (!named) continue;
+    const index = Number(named[1]);
+    const ticked = box[1].toLowerCase() === "x";
+    byStep.set(index, [...byStep.get(index) ?? [], ticked]);
+  }
+  return byStep;
+}
+function nextStepIndex(plan, checklist) {
+  if (plan.steps.length === 0) return null;
+  const named = boxesByStep(checklist);
+  if (named.size > 0) {
+    for (const step of plan.steps) {
+      const boxes2 = named.get(step.index);
+      if (!boxes2 || boxes2.some((ticked) => !ticked)) return step.index;
+    }
+    return null;
+  }
+  const boxes = checklistBoxes(checklist);
+  if (boxes.length === 0) return 1;
+  for (const step of plan.steps) {
+    if (!boxes[step.index - 1]) return step.index;
+  }
+  return null;
+}
+function stepField(step, field) {
+  return step.fields[field] ?? null;
+}
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value).filter(([, entry]) => entry !== void 0).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
+    return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`).join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+function refusalReason(validation) {
+  const blockers = validation.findings.filter((finding2) => finding2.severity === "blocker");
+  return `The plan cannot be compiled into a bounded step packet: ${blockers.map((finding2) => finding2.message).join(" ")}`;
+}
+function compileStepPacket(input) {
+  const { plan, checklist, select } = input;
+  const liveEvidence = input.evidence.map((entry) => ({ path: entry.path, version: entry.version }));
+  const requireEvidencePin = input.evidence.some(
+    (entry) => entry.layer === "ticket" && /^(?:research|files)\//.test(entry.path)
+  );
+  const resolved = select === "next" ? nextStepIndex(plan, checklist) : select;
+  if (resolved === null) {
+    const validation2 = validatePlan(plan, { liveEvidence, requireEvidencePin });
+    return {
+      ok: false,
+      reason: plan.steps.length === 0 ? "The plan has no ordered steps, so there is no next step to compile." : "Every ordered step is already ticked in the checklist; there is no next step to compile.",
+      validation: validation2
+    };
+  }
+  const validation = validatePlan(plan, { step: resolved, liveEvidence, requireEvidencePin });
+  if (!validation.ok) return { ok: false, reason: refusalReason(validation), validation };
+  const step = plan.steps[resolved - 1];
+  const evidence = {
+    group: input.evidence.filter((entry) => entry.layer === "group"),
+    ticket: input.evidence.filter((entry) => entry.layer === "ticket")
+  };
+  const body = {
+    packetVersion: STEP_PACKET_VERSION,
+    project: input.project,
+    ticket: input.ticket,
+    batch: input.batch,
+    workspace: input.workspace,
+    plan: { path: input.planPath, version: input.planVersion },
+    step: { index: step.index, total: plan.steps.length, id: step.id, title: step.title },
+    allowedFiles: step.files,
+    allowedSymbols: step.symbols,
+    forbiddenFiles: plan.doNotModify,
+    preconditions: stepField(step, "preconditions"),
+    requiredBehaviour: stepField(step, "change"),
+    preservedBehaviour: stepField(step, "preserved"),
+    forbiddenBehaviour: stepField(step, "forbidden"),
+    negativeCases: step.negativeCases,
+    tests: step.tests,
+    commands: step.commands,
+    expectedOutput: stepField(step, "expected"),
+    doneCondition: stepField(step, "done"),
+    deviationStop: stepField(step, "deviation"),
+    stopCondition: `${input.stopCondition.trim()}
+
+${STEP_RETURN_STOP}`,
+    evidence
+  };
+  return {
+    ok: true,
+    packet: { ...body, packetId: (0, import_crypto2.createHash)("sha256").update(canonicalJson(body), "utf8").digest("hex").slice(0, 16) },
+    validation
+  };
+}
 function deriveMembers(group, items, lastStage) {
   const members = items.filter((i) => (i.groups ?? []).includes(group.id)).map((i) => ({ id: i.id, title: i.title, status: i.status, archived: i.archived })).sort((a, b) => a.id.localeCompare(b.id, void 0, { numeric: true }));
   const progress = {};
@@ -39467,7 +40042,7 @@ var DispatchSupervisor = class {
     if (this.active.size >= this.maxActive) throw new Error(`Dispatch concurrency limit reached (${this.maxActive}).`);
     const timeoutMs = request.timeoutMs ?? this.defaultTimeoutMs;
     if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > this.maxTimeoutMs) throw new Error(`timeout must be an integer between 1 and ${this.maxTimeoutMs}ms.`);
-    const dispatchId = `${request.ticketId}-${(0, import_crypto2.randomUUID)()}`;
+    const dispatchId = `${request.ticketId}-${(0, import_crypto3.randomUUID)()}`;
     const startedAt = this.now();
     const status = {
       dispatchId,
@@ -39662,7 +40237,7 @@ async function allocateProjectRecord(paths, opts) {
   const existing = await readProjectRecord(paths);
   if (existing) return { record: existing, allocated: false };
   const at = (opts.now ?? (() => (/* @__PURE__ */ new Date()).toISOString()))();
-  const id = (0, import_crypto3.randomUUID)();
+  const id = (0, import_crypto4.randomUUID)();
   const record2 = {
     schema: 1,
     project_id: id,
@@ -39695,7 +40270,7 @@ function revisionCountsDocument(docPath) {
   return !REVISION_EXEMPT_PREFIXES.some((prefix) => docPath.startsWith(prefix));
 }
 function computeRevision(ticketText, documents) {
-  const hash = (0, import_crypto3.createHash)("sha256");
+  const hash = (0, import_crypto4.createHash)("sha256");
   hash.update(ticketText, "utf8");
   const counted = documents.filter((doc) => revisionCountsDocument(doc.path)).sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   for (const doc of counted) hash.update(`
@@ -39753,7 +40328,7 @@ function exists(p) {
   }
 }
 function digest(text) {
-  return (0, import_crypto4.createHash)("sha256").update(text.replace(/\r\n/g, "\n")).digest("hex");
+  return (0, import_crypto5.createHash)("sha256").update(text.replace(/\r\n/g, "\n")).digest("hex");
 }
 function walkFiles(dir, base = dir, out = []) {
   let entries;
@@ -41414,7 +41989,7 @@ ${entry}`;
       const controller = input.controller ?? input.assignee ?? next.assignee;
       if (controller) next.claim_controller = controller;
       else delete next.claim_controller;
-      next.lease_id = (0, import_crypto5.randomUUID)();
+      next.lease_id = (0, import_crypto6.randomUUID)();
       next.lease_revision = 1;
       const workspace = this.workspaceKey(input.worktree, input.branch);
       if (workspace) next.lease_workspace = workspace;
@@ -41531,7 +42106,7 @@ ${entry}`;
         assignee: input.assignee,
         claim_controller: input.controller ?? input.assignee,
         claim_expires_at: new Date(now.getTime() + timing.expiryMinutes * 6e4).toISOString(),
-        lease_id: (0, import_crypto5.randomUUID)(),
+        lease_id: (0, import_crypto6.randomUUID)(),
         lease_revision: (current.lease_revision ?? 0) + 1,
         lease_phase: current.lease_phase ?? "implementing",
         lease_heartbeat_at: nowText,
@@ -41624,7 +42199,7 @@ ${entry}`;
       const next = {
         ...current,
         claim_expires_at: this.claimExpiry(minutes),
-        lease_id: current.lease_id ?? (0, import_crypto5.randomUUID)(),
+        lease_id: current.lease_id ?? (0, import_crypto6.randomUUID)(),
         lease_revision: (current.lease_revision ?? 0) + 1,
         lease_phase: phase,
         lease_heartbeat_at: now,
@@ -43169,32 +43744,6 @@ function expectedProjectMatches(sent, project) {
 var execFileAsync = (0, import_node_util.promisify)(import_node_child_process.execFile);
 var EXECUTION_STOP_FALLBACK = "Stop at the checklist; do not merge; do not start another ticket.";
 var EXECUTION_COMMANDS_FALLBACK = "Use only the commands named in the plan/checklist, record exact exit codes, and stop on a failure.";
-function extractAtxSection(markdown, requestedTitle) {
-  const sections = parseAtxSections(markdown);
-  const wanted = requestedTitle.trim().toLocaleLowerCase();
-  const section = sections.find((candidate) => candidate.title.toLocaleLowerCase() === wanted);
-  if (!section) return null;
-  const content = section.content.trim();
-  return content || null;
-}
-function parseAtxSections(markdown) {
-  const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
-  const headings = [];
-  for (const [index, line] of lines.entries()) {
-    const match = /^(?: {0,3})(#{1,6})(?:[ \t]+|$)(.*)$/.exec(line);
-    if (!match) continue;
-    const title = match[2].trim().replace(/[ \t]+#+[ \t]*$/, "").trim();
-    headings.push({ index, level: match[1].length, title });
-  }
-  return headings.map((heading, position) => {
-    const end = headings.slice(position + 1).find((candidate) => candidate.level <= heading.level)?.index ?? lines.length;
-    return {
-      level: heading.level,
-      title: heading.title,
-      content: lines.slice(heading.index + 1, end).join("\n")
-    };
-  });
-}
 function compactTicket(item, profile) {
   return {
     id: item.id,
@@ -43207,8 +43756,8 @@ function compactTicket(item, profile) {
     taken: takenDetails(item)
   };
 }
-function fullTicket(item, profile) {
-  return { ...compactTicket(item, profile), body: item.body };
+function fullTicket(item, profile, revision) {
+  return { ...compactTicket(item, profile), body: item.body, revision };
 }
 function takenDetails(item) {
   return item.taken_at ? {
@@ -43414,6 +43963,7 @@ async function groupContexts(store2, item) {
           title: null,
           body: null,
           context: null,
+          version: null,
           warning: `Group "${id}" is missing from the board.`
         };
       }
@@ -43424,6 +43974,7 @@ async function groupContexts(store2, item) {
         title: group.title,
         body: group.body,
         context,
+        version: context === null ? null : contentVersion(context),
         ...context === null ? { warning: `Group "${id}" has no context.md.` } : {}
       };
     })
@@ -43447,7 +43998,7 @@ function sectionFromPlan(plan, titles, fallback) {
   return fallback;
 }
 async function getExecutionPacket(input) {
-  const { store: store2, id, actor, project, resume } = input;
+  const { store: store2, id, actor, project, resume, logical, step } = input;
   const item = await store2.getItem(id);
   if (!item) return refuse(project, `No ticket with id "${id}" exists.`, []);
   if (item.type !== "ticket") {
@@ -43542,20 +44093,63 @@ async function getExecutionPacket(input) {
     readTicketDocuments(store2, id, ["plan", "checklist", "files"]),
     store2.listTicketDocsWithVersions(id)
   ]);
-  const plan = fixed.find((doc) => doc.doc === "plan")?.content ?? null;
+  const planDoc = fixed.find((doc) => doc.doc === "plan");
+  const plan = planDoc?.content ?? null;
+  const checklist = fixed.find((doc) => doc.doc === "checklist")?.content ?? null;
   const extraDocs = (inventory ?? []).filter((doc) => !["plan/plan.md", "checklist/checklist.md", "files/files.md"].includes(doc.doc)).map((doc) => ({ path: doc.doc, version: doc.version }));
+  const contexts = await groupContexts(store2, item);
+  const evidence = [
+    ...contexts.filter((context) => context.version !== null).map((context) => ({
+      layer: "group",
+      group: context.id,
+      path: `${context.id}/context.md`,
+      version: context.version
+    })),
+    ...(inventory ?? []).filter((doc) => /^(?:research|files)\//.test(doc.doc)).map((doc) => ({ layer: "ticket", group: null, path: doc.doc, version: doc.version }))
+  ];
+  const liveEvidence = evidence.map((entry) => ({ path: entry.path, version: entry.version }));
+  const requireEvidencePin = evidence.some((entry) => entry.layer === "ticket");
+  const parsedPlan = parsePlan(plan ?? "");
+  const stopCondition = sectionFromPlan(plan, ["Stop condition"], EXECUTION_STOP_FALLBACK);
+  const revision = (await store2.getRevision(id))?.revision ?? null;
+  let validation = validatePlan(parsedPlan, { liveEvidence, requireEvidencePin });
+  let compiled;
+  if (step !== void 0) {
+    const result = compileStepPacket({
+      plan: parsedPlan,
+      planPath: "plan/plan.md",
+      planVersion: planDoc?.version ?? null,
+      project: {
+        project_id: logical?.project_id ?? null,
+        board_id: logical?.board_id ?? null,
+        fingerprint: project.fingerprint
+      },
+      ticket: { id: item.id, revision },
+      batch: claim.batch?.id ?? null,
+      workspace: { branch: item.branch ?? null, worktree: item.worktree ?? null },
+      evidence,
+      checklist,
+      select: step,
+      stopCondition
+    });
+    validation = result.validation;
+    if (!result.ok) return { ...refuse(project, result.reason, [], item, gates), validation };
+    compiled = result.packet;
+  }
   return {
     ready: true,
     project,
-    ticket: fullTicket(item, gates.profile),
+    ticket: fullTicket(item, gates.profile, revision),
     claim,
-    groupContexts: await groupContexts(store2, item),
+    groupContexts: contexts,
     documents: indexDocuments(fixed),
     extraDocs,
     gates,
     warnings: worktreeSafety.warnings,
-    stopCondition: sectionFromPlan(plan, ["Stop condition"], EXECUTION_STOP_FALLBACK),
-    commandsHint: sectionFromPlan(plan, ["Commands", "Verification commands", "Verification"], EXECUTION_COMMANDS_FALLBACK)
+    stopCondition,
+    commandsHint: sectionFromPlan(plan, ["Commands", "Verification commands", "Verification"], EXECUTION_COMMANDS_FALLBACK),
+    validation,
+    ...compiled ? { step: compiled } : {}
   };
 }
 
@@ -45264,21 +45858,28 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "get_execution_packet",
     {
       title: "Get an execution packet",
-      description: "Return one bounded, read-only implementation packet for a ticket, or a normal ready:false refusal with code GATE_BLOCKED. Refusals are ordered: non-ticket/legacy, spike, unmet leave-preparing requirements, unresolved questions, then occupancy by another actor. An occupied ticket may be deliberately resumed only by providing its exact recorded branch and worktree. A ready packet contains the ticket, ordered group contexts, profile-resolved gates, plan/checklist/files index documents with versions, extra document paths and versions, a stop condition, and command hint. It never takes, moves, writes, dispatches, or creates a worktree.",
+      description: 'Return one bounded, read-only implementation packet for a ticket, or a normal ready:false refusal with code GATE_BLOCKED. Refusals are ordered: non-ticket/legacy, spike, unmet leave-preparing requirements, unresolved questions, occupancy by another actor, then \u2014 only when `step` is supplied \u2014 a plan that cannot be compiled into a bounded step. An occupied ticket may be deliberately resumed only by providing its exact recorded branch and worktree. A ready packet contains the ticket with its document-inclusive revision, ordered group contexts with context versions, profile-resolved gates, plan/checklist/files index documents with versions, extra document paths and versions, a stop condition, a command hint, and an ADVISORY plan `validation` report. Supplying `step` (a 1-based ordered-step index, or "next") additionally compiles one versioned step packet limiting the worker to that step\'s allowed files and symbols, with its exact tests, commands, expected output and stop condition \u2014 and makes the structural validation findings blocking. It never takes, moves, writes, dispatches, or creates a worktree.',
       inputSchema: {
         id: external_exports.string().describe("Ticket id"),
-        resume: external_exports.object({ branch: external_exports.string(), worktree: external_exports.string() }).optional().describe("Exact recorded branch/worktree required to resume an occupied ticket from a different MCP client identity")
+        resume: external_exports.object({ branch: external_exports.string(), worktree: external_exports.string() }).optional().describe("Exact recorded branch/worktree required to resume an occupied ticket from a different MCP client identity"),
+        step: external_exports.union([external_exports.number().int().positive(), external_exports.literal("next")]).optional().describe('Compile one bounded step packet: a 1-based ordered-step index, or "next" for the first unfinished step')
       },
       annotations: { readOnlyHint: true, openWorldHint: false }
     },
-    guard(async ({ id, resume }, extra) => {
+    guard(async ({ id, resume, step }, extra) => {
       const [project, logical] = await Promise.all([legacyIdentity(), resolveProject()]);
-      const packet = await getExecutionPacket({ store, id, actor: actorName(server, extra), project, resume });
-      const revision = packet.ready ? await store.getRevision(id) : null;
+      const packet = await getExecutionPacket({
+        store,
+        id,
+        actor: actorName(server, extra),
+        project,
+        resume,
+        logical,
+        step
+      });
       return ok({
         ...packet,
-        project: { ...packet.project, project_id: logical.project_id, board_id: logical.board_id, identity: logical.identity },
-        ...packet.ready ? { ticket: { ...packet.ticket, revision: revision?.revision ?? null } } : {}
+        project: { ...packet.project, project_id: logical.project_id, board_id: logical.board_id, identity: logical.identity }
       });
     })
   );

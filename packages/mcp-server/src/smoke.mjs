@@ -2667,6 +2667,274 @@ Second proof attempt passed; the first failure is retained.
     refusedIncompleteTaken.ready === false && refusedIncompleteTaken.reason.includes("incomplete taken-ticket metadata"),
   );
 
+  // CORE-118 / FRD-033: an approved plan compiles into one bounded step packet.
+  // The whole-ticket packet is unchanged apart from an ADVISORY validation
+  // report; only a `step` request makes structural findings blocking.
+  const codesOf = (validation) => (validation?.findings ?? []).map((finding) => finding.code);
+  const stepId = JSON.parse(
+    textOf(
+      await client.callTool({
+        name: "create_item",
+        arguments: {
+          title: "step packet fixture",
+          status: "implementing",
+          profile: "feature",
+          docs_todo: true,
+          groups: [epic.id],
+          body: "Step packet body.",
+        },
+      }),
+    ),
+  ).id;
+  const stepResearchVersion = JSON.parse(
+    textOf(await client.callTool({ name: "set_ticket_doc", arguments: { id: stepId, doc: "research", content: "Queue retry research." } })),
+  ).version;
+  const stepFilesVersion = JSON.parse(
+    textOf(await client.callTool({ name: "set_ticket_doc", arguments: { id: stepId, doc: "files", content: "Queue files map." } })),
+  ).version;
+  const stepPlan = [
+    "# Plan — step packet fixture",
+    "",
+    "## Objective",
+    "Cap the upload retry loop.",
+    "",
+    "## Starting state",
+    "Verified in `src/queue.ts:12`.",
+    "Evidence: `research/research.md`@`" + stepResearchVersion + "`, `files/files.md`@`" + stepFilesVersion + "`.",
+    "",
+    "## Governing docs",
+    "Meets `docs/functional/frd/FRD-001-uploads.md`.",
+    "",
+    "## Required changes",
+    "Cap the retry loop in `src/queue.ts`.",
+    "",
+    "## Expected files",
+    "| Action | Repo-root-relative path | Responsibility |",
+    "|---|---|---|",
+    "| Modify | `src/queue.ts` | retry loop |",
+    "| Add | `src/queue.test.ts` | retry proof |",
+    "| Modify | `docs/queue.md` | note the cap |",
+    "",
+    "## Do not modify",
+    "- `src/vendor/bundle.js` — generated output.",
+    "",
+    "## Constraints",
+    "The cap stays behind `QUEUE_MAX_RETRIES`.",
+    "",
+    "## Ordered steps",
+    "",
+    "### Step 1 — Bound the retry loop",
+    "- Preconditions: `enqueue` retries forever.",
+    "- Files: `src/queue.ts`, `src/queue.test.ts`",
+    "- Symbols: `enqueue`, `QUEUE_MAX_RETRIES`",
+    "- Change: cap the loop at `QUEUE_MAX_RETRIES`.",
+    "- Preserved behaviour: a first-attempt success returns immediately.",
+    "- Negative cases: a permanent failure stops after three attempts",
+    "- Tests: `src/queue.test.ts`",
+    "- Commands: `npm test`",
+    "- Expected output: the retry suite passes.",
+    "- Done when: `npm test` reports green.",
+    "- Deviation stop: stop if the cap must become dynamic.",
+    "",
+    "### Step 2 — Document the cap",
+    "- Preconditions: step 1 landed.",
+    "- Files: `docs/queue.md`",
+    "- Change: record the cap.",
+    "- Preserved behaviour: no runtime change.",
+    "- Negative cases: none",
+    "- Tests: `src/queue.test.ts`",
+    "- Commands: `npm test`",
+    "- Expected output: unchanged suite result.",
+    "- Done when: the note exists.",
+    "- Deviation stop: stop on any runtime change.",
+    "",
+    "### Step 3 — Touch something the plan never declared",
+    "- Preconditions: none.",
+    "- Files: `src/secret.ts`",
+    "- Change: edit an undeclared file.",
+    "- Preserved behaviour: none.",
+    "- Negative cases: none",
+    "- Tests: `src/queue.test.ts`",
+    "- Commands: `npm test`",
+    "- Expected output: none.",
+    "- Done when: never.",
+    "- Deviation stop: stop immediately.",
+    "",
+    "## Acceptance checks",
+    "- `npm test` proves the cap.",
+    "",
+    "## Commands",
+    "- `npm test`",
+    "",
+    "## Failure and deviation rules",
+    "Stop and report on any failing check.",
+    "",
+    "## Stop condition",
+    "Stop when the PR is open.",
+    "",
+  ].join("\n");
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: stepId, doc: "plan", content: stepPlan } });
+  await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: stepId, doc: "checklist", content: "- [ ] Step 1 — cap the loop\n- [ ] Step 2 — document the cap\n" },
+  });
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: stepId, doc: "open-questions", content: "- [x] resolved" } });
+
+  const wholeTicketPacket = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: stepId } })),
+  );
+  check(
+    "a whole-ticket packet carries an advisory validation report and no step block",
+    wholeTicketPacket.ready === true && wholeTicketPacket.step === undefined &&
+      wholeTicketPacket.validation?.ok === true && wholeTicketPacket.validation.blockers === 0 &&
+      Array.isArray(wholeTicketPacket.validation.findings) &&
+      wholeTicketPacket.validation.findings.every((finding) => finding.severity === "advisory"),
+    JSON.stringify(wholeTicketPacket.validation),
+  );
+  check(
+    "group context carries the shared-research evidence version",
+    /^[a-f0-9]{16}$/.test(wholeTicketPacket.groupContexts?.[0]?.version ?? ""),
+    JSON.stringify(wholeTicketPacket.groupContexts?.[0]?.version),
+  );
+
+  const stepOne = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: stepId, step: 1 } })),
+  );
+  check(
+    "a compiled step packet limits the worker to that step's allowed files and symbols",
+    stepOne.ready === true &&
+      JSON.stringify(stepOne.step?.allowedFiles) === JSON.stringify(["src/queue.ts", "src/queue.test.ts"]) &&
+      JSON.stringify(stepOne.step?.allowedSymbols) === JSON.stringify(["enqueue", "QUEUE_MAX_RETRIES"]) &&
+      JSON.stringify(stepOne.step?.forbiddenFiles) === JSON.stringify(["src/vendor/bundle.js"]) &&
+      !stepOne.step?.allowedFiles.includes("docs/queue.md"),
+    JSON.stringify(stepOne.step?.allowedFiles ?? stepOne.reason),
+  );
+  check(
+    "a compiled step packet records its exact tests, commands, expected output and stop condition",
+    JSON.stringify(stepOne.step?.tests) === JSON.stringify(["src/queue.test.ts"]) &&
+      JSON.stringify(stepOne.step?.commands) === JSON.stringify(["npm test"]) &&
+      stepOne.step?.expectedOutput === "the retry suite passes." &&
+      stepOne.step?.doneCondition === "`npm test` reports green." &&
+      stepOne.step?.deviationStop === "stop if the cap must become dynamic." &&
+      stepOne.step?.stopCondition.includes("Stop when the PR is open.") &&
+      stepOne.step?.stopCondition.includes("Complete only this step, then stop and report."),
+    JSON.stringify(stepOne.step?.stopCondition),
+  );
+  check(
+    "a compiled step packet is versioned and bound to project, ticket revision, plan and step identity",
+    stepOne.step?.packetVersion === "step-packet/1" &&
+      /^[a-f0-9]{16}$/.test(stepOne.step?.packetId ?? "") &&
+      stepOne.step?.project?.fingerprint === expectedProject &&
+      typeof stepOne.step?.project?.project_id === "string" &&
+      stepOne.step?.ticket?.id === stepId &&
+      stepOne.step?.ticket?.revision === stepOne.ticket?.revision &&
+      stepOne.step?.plan?.path === "plan/plan.md" &&
+      stepOne.step?.plan?.version === stepOne.documents?.plan?.version &&
+      JSON.stringify(stepOne.step?.step) === JSON.stringify({ index: 1, total: 3, id: "step-1", title: "Bound the retry loop" }),
+    JSON.stringify(stepOne.step?.step),
+  );
+  check(
+    "a compiled step packet keeps the shared group and ticket evidence layers apart",
+    JSON.stringify(stepOne.step?.evidence?.group?.map((e) => e.path)) === JSON.stringify([`${epic.id}/context.md`]) &&
+      stepOne.step?.evidence?.ticket?.some((e) => e.path === "research/research.md" && e.version === stepResearchVersion) &&
+      stepOne.step?.evidence?.ticket?.some((e) => e.path === "files/files.md" && e.version === stepFilesVersion),
+    JSON.stringify(stepOne.step?.evidence),
+  );
+
+  const nextBeforeTick = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: stepId, step: "next" } })),
+  );
+  check(
+    "step \"next\" selects the first unfinished ordered step",
+    nextBeforeTick.ready === true && nextBeforeTick.step?.step?.index === 1,
+    JSON.stringify(nextBeforeTick.step?.step ?? nextBeforeTick.reason),
+  );
+  await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: stepId, doc: "checklist", content: "- [x] Step 1 — cap the loop\n- [ ] Step 2 — document the cap\n" },
+  });
+  const nextAfterTick = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: stepId, step: "next" } })),
+  );
+  check(
+    "step \"next\" advances only after the checklist records the step as done",
+    nextAfterTick.ready === true && nextAfterTick.step?.step?.index === 2 &&
+      JSON.stringify(nextAfterTick.step?.allowedFiles) === JSON.stringify(["docs/queue.md"]),
+    JSON.stringify(nextAfterTick.step?.step ?? nextAfterTick.reason),
+  );
+
+  const stepTicketFile = path.join(sandbox, ".kanmer", "areas", "_none", stepId, `${stepId}.md`);
+  // Scoped to `.kanmer`: by this point the sandbox also holds the linked Git
+  // worktrees earlier checks created, and the board is what must not move.
+  const stepRefusalBefore = {
+    tree: treeSnapshot(path.join(sandbox, ".kanmer")),
+    ticket: fs.readFileSync(stepTicketFile, "utf8"),
+    activity: fs.readFileSync(packetActivity, "utf8"),
+  };
+  const refusedUndeclared = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: stepId, step: 3 } })),
+  );
+  check(
+    "a step naming a file the plan never declared is refused, not silently allowed",
+    refusedUndeclared.ready === false && refusedUndeclared.code === "GATE_BLOCKED" &&
+      refusedUndeclared.missing.length === 0 &&
+      codesOf(refusedUndeclared.validation).includes("PLAN_STEP_FILE_UNDECLARED") &&
+      refusedUndeclared.validation.ok === false,
+    JSON.stringify(codesOf(refusedUndeclared.validation)),
+  );
+  const refusedOutOfRange = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: stepId, step: 9 } })),
+  );
+  check(
+    "a step the plan does not have is refused",
+    refusedOutOfRange.ready === false && codesOf(refusedOutOfRange.validation).includes("PLAN_STEP_NOT_FOUND"),
+    JSON.stringify(codesOf(refusedOutOfRange.validation)),
+  );
+  const stepRefusalAfter = {
+    tree: treeSnapshot(path.join(sandbox, ".kanmer")),
+    ticket: fs.readFileSync(stepTicketFile, "utf8"),
+    activity: fs.readFileSync(packetActivity, "utf8"),
+  };
+  check(
+    "a step-packet refusal leaves board stage, claim and workspace unchanged",
+    JSON.stringify(stepRefusalAfter) === JSON.stringify(stepRefusalBefore),
+  );
+
+  const refusedNoSteps = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: packetId, step: 1 } })),
+  );
+  check(
+    "a plan with no ordered steps cannot be compiled, while its whole-ticket packet still works",
+    refusedNoSteps.ready === false && codesOf(refusedNoSteps.validation).includes("PLAN_STEPS_MISSING") &&
+      readyPacket.ready === true,
+    JSON.stringify(codesOf(refusedNoSteps.validation)),
+  );
+  const legacyStepsId = JSON.parse(
+    textOf(await client.callTool({ name: "create_item", arguments: { title: "legacy step list", status: "implementing", profile: "chore", docs_todo: true } })),
+  ).id;
+  await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: legacyStepsId, doc: "plan", content: "# Legacy\n\n## Ordered steps\n1. Do everything.\n\n## Stop condition\nStop.\n" },
+  });
+  const refusedUnstructured = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: legacyStepsId, step: 1 } })),
+  );
+  check(
+    "a numbered-list plan step is not a bounded packet",
+    refusedUnstructured.ready === false && codesOf(refusedUnstructured.validation).includes("PLAN_STEP_UNSTRUCTURED"),
+    JSON.stringify(codesOf(refusedUnstructured.validation)),
+  );
+
+  await client.callTool({ name: "set_ticket_doc", arguments: { id: stepId, doc: "research", content: "Queue retry research, revised." } });
+  const refusedStaleEvidence = JSON.parse(
+    textOf(await client.callTool({ name: "get_execution_packet", arguments: { id: stepId, step: 2 } })),
+  );
+  check(
+    "a plan pinned to superseded evidence cannot compile another step",
+    refusedStaleEvidence.ready === false && codesOf(refusedStaleEvidence.validation).includes("PLAN_EVIDENCE_STALE"),
+    JSON.stringify(codesOf(refusedStaleEvidence.validation)),
+  );
+
   // CORE-122: reconcile_ticket is a read-only inspector with an advisory
   // recommendation and no apply surface. An unclaimed Review ticket with no
   // PR has one safe recommendation: return it to Implementing.

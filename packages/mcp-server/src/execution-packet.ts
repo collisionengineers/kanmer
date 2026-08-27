@@ -1,5 +1,22 @@
-import type { ClaimState, GateReport, Item, KanmerStore, TicketDocumentWithVersion } from "@kanmer/core";
-import { leaseConfig, leaseState } from "@kanmer/core";
+import type {
+  ClaimState,
+  GateReport,
+  Item,
+  KanmerStore,
+  PlanValidation,
+  StepPacket,
+  StepPacketEvidence,
+  TicketDocumentWithVersion,
+} from "@kanmer/core";
+import {
+  compileStepPacket,
+  contentVersion,
+  extractAtxSection,
+  leaseConfig,
+  leaseState,
+  parsePlan,
+  validatePlan,
+} from "@kanmer/core";
 import { execFile } from "node:child_process";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
@@ -31,6 +48,12 @@ export interface ExecutionPacketGroupContext {
   title: string | null;
   body: string | null;
   context: string | null;
+  /**
+   * Content version of `context.md` — the shared-research evidence layer
+   * FRD-033 keeps distinct from this ticket's own impact research. Null when
+   * the group has no context document.
+   */
+  version: string | null;
   warning?: string;
 }
 
@@ -43,6 +66,12 @@ export interface ExecutionPacketTicket {
   groups: string[] | null;
   refs: string[] | null;
   body: string;
+  /**
+   * The document-inclusive revision (FRD-029/CORE-114) this packet was built
+   * from: the CAS token a worker's first write names, and the anchor a
+   * controller compares before dispatching another step.
+   */
+  revision: string | null;
   taken: {
     taken_at: string;
     assignee: string | null;
@@ -106,6 +135,17 @@ export interface ExecutionPacketReady {
   warnings: string[];
   stopCondition: string;
   commandsHint: string;
+  /**
+   * FRD-033 plan validation. On a whole-ticket packet every finding is
+   * advisory: this report tells a planner what is still unresolved, and it
+   * never refuses work that was previously allowed.
+   */
+  validation: PlanValidation;
+  /**
+   * Present only when the caller asked for one bounded ordered step. The
+   * worker executes this step and nothing else, then returns.
+   */
+  step?: StepPacket;
 }
 
 export interface ExecutionPacketRefusal {
@@ -116,48 +156,11 @@ export interface ExecutionPacketRefusal {
   project: ProjectIdentity;
   ticket?: ExecutionPacketCompactTicket;
   gates?: GateReport;
+  /** Present only for a step-compilation refusal: why the plan is not compilable. */
+  validation?: PlanValidation;
 }
 
 export type ExecutionPacket = ExecutionPacketReady | ExecutionPacketRefusal;
-
-interface AtxSection {
-  level: number;
-  title: string;
-  content: string;
-}
-
-/**
- * Read one ATX heading section, retaining nested lower-level headings and
- * stopping at the next heading at the same or a higher level.
- */
-export function extractAtxSection(markdown: string, requestedTitle: string): string | null {
-  const sections = parseAtxSections(markdown);
-  const wanted = requestedTitle.trim().toLocaleLowerCase();
-  const section = sections.find((candidate) => candidate.title.toLocaleLowerCase() === wanted);
-  if (!section) return null;
-  const content = section.content.trim();
-  return content || null;
-}
-
-function parseAtxSections(markdown: string): AtxSection[] {
-  const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
-  const headings: Array<{ index: number; level: number; title: string }> = [];
-  for (const [index, line] of lines.entries()) {
-    const match = /^(?: {0,3})(#{1,6})(?:[ \t]+|$)(.*)$/.exec(line);
-    if (!match) continue;
-    const title = match[2].trim().replace(/[ \t]+#+[ \t]*$/, "").trim();
-    headings.push({ index, level: match[1].length, title });
-  }
-
-  return headings.map((heading, position) => {
-    const end = headings.slice(position + 1).find((candidate) => candidate.level <= heading.level)?.index ?? lines.length;
-    return {
-      level: heading.level,
-      title: heading.title,
-      content: lines.slice(heading.index + 1, end).join("\n"),
-    };
-  });
-}
 
 function compactTicket(item: Item, profile: string): ExecutionPacketCompactTicket {
   return {
@@ -172,8 +175,8 @@ function compactTicket(item: Item, profile: string): ExecutionPacketCompactTicke
   };
 }
 
-function fullTicket(item: Item, profile: string): ExecutionPacketTicket {
-  return { ...compactTicket(item, profile), body: item.body };
+function fullTicket(item: Item, profile: string, revision: string | null): ExecutionPacketTicket {
+  return { ...compactTicket(item, profile), body: item.body, revision };
 }
 
 function takenDetails(item: Item): ExecutionPacketTicket["taken"] {
@@ -426,6 +429,7 @@ async function groupContexts(store: KanmerStore, item: Item): Promise<ExecutionP
           title: null,
           body: null,
           context: null,
+          version: null,
           warning: `Group "${id}" is missing from the board.`,
         };
       }
@@ -436,6 +440,7 @@ async function groupContexts(store: KanmerStore, item: Item): Promise<ExecutionP
         title: group.title,
         body: group.body,
         context,
+        version: context === null ? null : contentVersion(context),
         ...(context === null ? { warning: `Group "${id}" has no context.md.` } : {}),
       };
     }),
@@ -467,8 +472,16 @@ export async function getExecutionPacket(input: {
   actor: string;
   project: ProjectIdentity;
   resume?: { branch: string; worktree: string };
+  /** Logical project identity (FRD-029), carried into a compiled step packet. */
+  logical?: { project_id: string | null; board_id: string | null };
+  /**
+   * A 1-based ordered-step index, or `"next"`. Its presence is what asks for a
+   * bounded step packet — and what makes the FRD-033 structural findings
+   * blocking. Absent, the response is the established whole-ticket packet.
+   */
+  step?: number | "next";
 }): Promise<ExecutionPacket> {
-  const { store, id, actor, project, resume } = input;
+  const { store, id, actor, project, resume, logical, step } = input;
   const item = await store.getItem(id);
   if (!item) return refuse(project, `No ticket with id "${id}" exists.`, []);
   if (item.type !== "ticket") {
@@ -578,22 +591,76 @@ export async function getExecutionPacket(input: {
     readTicketDocuments(store, id, ["plan", "checklist", "files"]),
     store.listTicketDocsWithVersions(id),
   ]);
-  const plan = fixed.find((doc) => doc.doc === "plan")?.content ?? null;
+  const planDoc = fixed.find((doc) => doc.doc === "plan");
+  const plan = planDoc?.content ?? null;
+  const checklist = fixed.find((doc) => doc.doc === "checklist")?.content ?? null;
   const extraDocs = (inventory ?? [])
     .filter((doc) => !["plan/plan.md", "checklist/checklist.md", "files/files.md"].includes(doc.doc))
     .map((doc) => ({ path: doc.doc, version: doc.version! }));
 
+  const contexts = await groupContexts(store, item);
+  // FRD-033's two evidence layers: shared group research, and this ticket's own
+  // impact research. Both carry the exact content version they were read at, so
+  // a later reconciliation can tell whether the packet went stale.
+  const evidence: StepPacketEvidence[] = [
+    ...contexts
+      .filter((context): context is ExecutionPacketGroupContext & { version: string } => context.version !== null)
+      .map((context) => ({
+        layer: "group" as const,
+        group: context.id,
+        path: `${context.id}/context.md`,
+        version: context.version,
+      })),
+    ...(inventory ?? [])
+      .filter((doc) => /^(?:research|files)\//.test(doc.doc))
+      .map((doc) => ({ layer: "ticket" as const, group: null, path: doc.doc, version: doc.version! })),
+  ];
+  const liveEvidence = evidence.map((entry) => ({ path: entry.path, version: entry.version }));
+  const requireEvidencePin = evidence.some((entry) => entry.layer === "ticket");
+  const parsedPlan = parsePlan(plan ?? "");
+  const stopCondition = sectionFromPlan(plan, ["Stop condition"], EXECUTION_STOP_FALLBACK);
+  const revision = (await store.getRevision(id))?.revision ?? null;
+
+  let validation = validatePlan(parsedPlan, { liveEvidence, requireEvidencePin });
+  let compiled: StepPacket | undefined;
+  if (step !== undefined) {
+    const result = compileStepPacket({
+      plan: parsedPlan,
+      planPath: "plan/plan.md",
+      planVersion: planDoc?.version ?? null,
+      project: {
+        project_id: logical?.project_id ?? null,
+        board_id: logical?.board_id ?? null,
+        fingerprint: project.fingerprint,
+      },
+      ticket: { id: item.id, revision },
+      batch: claim.batch?.id ?? null,
+      workspace: { branch: item.branch ?? null, worktree: item.worktree ?? null },
+      evidence,
+      checklist,
+      select: step,
+      stopCondition,
+    });
+    validation = result.validation;
+    // Last in the refusal order, and still a normal read-only value: nothing
+    // above this point wrote to the board, and nothing here does either.
+    if (!result.ok) return { ...refuse(project, result.reason, [], item, gates), validation };
+    compiled = result.packet;
+  }
+
   return {
     ready: true,
     project,
-    ticket: fullTicket(item, gates.profile),
+    ticket: fullTicket(item, gates.profile, revision),
     claim,
-    groupContexts: await groupContexts(store, item),
+    groupContexts: contexts,
     documents: indexDocuments(fixed),
     extraDocs,
     gates,
     warnings: worktreeSafety.warnings,
-    stopCondition: sectionFromPlan(plan, ["Stop condition"], EXECUTION_STOP_FALLBACK),
+    stopCondition,
     commandsHint: sectionFromPlan(plan, ["Commands", "Verification commands", "Verification"], EXECUTION_COMMANDS_FALLBACK),
+    validation,
+    ...(compiled ? { step: compiled } : {}),
   };
 }

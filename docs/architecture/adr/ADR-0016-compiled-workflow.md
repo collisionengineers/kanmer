@@ -29,7 +29,9 @@ stage and live dependency findings fail, while missing/stale review attestations
 and unreachable historical commits remain explicit warnings during the
 compatibility period, promoted to errors only by the repository variable
 `KANMER_GATE_STRICT`; `SYNC_REQUIRED` binds the attestation to the pushed board
-tip via `board_sha`, and a board-branch push re-runs the gate for open PRs. Review attestations use the complete machine schema, and
+tip via `board_sha`, and the gate is re-run for open PRs on every push to `main`, on
+`workflow_dispatch`, and — once an operator installs `board-regate.yml` on the
+board branch — on a board-branch push. Review attestations use the complete machine schema, and
 recorded commit ids must resolve within the PR's `base..head` ancestry range.
 Its JSON/annotation/0-1-2 contract is stable so branch
 protection can consume the check without a second workflow or evaluator.

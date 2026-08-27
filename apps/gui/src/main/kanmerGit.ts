@@ -650,6 +650,20 @@ export async function ensureBoardWorktree(sourceRoot: string, branch: string): P
  * preserve local work and pause; transient failures (including the add→rebase
  * race with a concurrent agent write, CORE-123) leave the timer armed.
  */
+/** Paths with unresolved merge entries (UU/AA/…) in the index; never throws. */
+export async function unmergedPaths(root: string): Promise<string[]> {
+  const out = await git(root, ["diff", "--name-only", "--diff-filter=U"]).catch(() => "");
+  return out.split("\n").map((line) => line.trim()).filter((line) => line.length > 0);
+}
+
+async function rebaseInProgress(root: string): Promise<boolean> {
+  for (const dirName of ["rebase-merge", "rebase-apply"]) {
+    const path = await git(root, ["rev-parse", "--git-path", dirName]).catch(() => null);
+    if (path && existsSync(resolve(root, path))) return true;
+  }
+  return false;
+}
+
 export async function syncBoard(status: KanmerGitStatus): Promise<KanmerGitStatus> {
   if (!status.available || !status.boardRoot) return status;
   const boardRoot = status.boardRoot;
@@ -668,8 +682,25 @@ export async function syncBoard(status: KanmerGitStatus): Promise<KanmerGitStatu
       // `add` and here would make a plain rebase refuse ("unstaged changes").
       // --autostash carries those writes across the rebase, and a second stage
       // pass commits them so the push below does not leave them behind.
+      const stashBefore = await git(boardRoot, ["rev-parse", "-q", "--verify", "refs/stash"]).catch(() => "");
       try { await git(boardRoot, ["rebase", "--autostash", `origin/${status.branch}`]); }
       catch (e) { await git(boardRoot, ["rebase", "--abort"]).catch(() => undefined); throw e; }
+      // `rebase --autostash` exits 0 even when re-applying the stash conflicts
+      // ("Applying autostash resulted in conflicts"): the tree is left with
+      // unmerged (UU) paths and the stash entry is kept. Staging now would
+      // commit and push conflict markers into the shared board, so detect that
+      // state, keep the tree as Git left it (the stash holds the local work;
+      // no automatic `stash pop`/`checkout --merge`), and pause for a human.
+      const unmerged = await unmergedPaths(boardRoot);
+      const stashAfter = await git(boardRoot, ["rev-parse", "-q", "--verify", "refs/stash"]).catch(() => "");
+      if (unmerged.length > 0 || (stashAfter !== "" && stashAfter !== stashBefore)) {
+        if (await rebaseInProgress(boardRoot)) await git(boardRoot, ["rebase", "--abort"]).catch(() => undefined);
+        throw new Error(
+          `Applying autostash resulted in conflicts after rebase onto origin/${status.branch}` +
+            (unmerged.length > 0 ? ` (unmerged: ${unmerged.join(", ")})` : "") +
+            "; local board writes are kept in `git stash` and nothing was committed or pushed. Resolve in the board worktree, then retry.",
+        );
+      }
       await stage();
     }
     await git(boardRoot, ["push", "-u", "origin", `HEAD:refs/heads/${status.branch}`]);

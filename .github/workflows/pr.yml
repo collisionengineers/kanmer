@@ -5,12 +5,14 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review, edited]
   push:
-    # `main`: every merge SHA gets a bound `verify` result for kanmer-verify.
-    # `kanmer-board`: re-run the merge gate for open PRs, because the gate reads
-    # the remote board tip and would otherwise judge a board that has moved on.
-    # The board branch is literal here: `on:` cannot read repository variables,
-    # so a repo that retargets KANMER_BOARD_BRANCH must also edit this list.
-    branches: [main, kanmer-board]
+    # `main`: every merge SHA gets a bound `verify` result for kanmer-verify,
+    # and `regate` re-judges open PRs whose base just moved. A `push:` trigger
+    # for `kanmer-board` would never fire from here: GitHub runs push workflows
+    # from the pushed ref's tree, and the board branch carries only .kanmer.
+    # `.github/workflows/board-regate.yml` is the file an operator copies onto
+    # the board branch; it dispatches this workflow on `main`.
+    branches: [main]
+  # Manual re-gate, and the target of board-regate.yml's dispatch.
   workflow_dispatch:
 
 permissions:
@@ -92,14 +94,16 @@ jobs:
           KANMER_GATE_STRICT: ${{ vars.KANMER_GATE_STRICT || '' }}
         run: node packages/mcp-server/src/check-pr.mjs --board "$RUNNER_TEMP/kanmer-board" --event "$GITHUB_EVENT_PATH"
 
-  # A board push moves the tip that kanmer-gate judged, so re-run the gate job
-  # of the latest pull_request run for every open PR into main. Only that job
-  # is re-run, not the full verify rail; workflow_dispatch does the same by hand.
+  # Re-run the kanmer-gate job of the latest pull_request run for every open PR
+  # into main. Runs on workflow_dispatch (by hand, or dispatched from the board
+  # branch by board-regate.yml once an operator has installed it there) and on
+  # every push to main (the PR base moved). Only that job is re-run, not the
+  # full verify rail.
   regate:
     name: regate
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/kanmer-board')
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     permissions:
       actions: write

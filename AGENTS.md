@@ -492,10 +492,18 @@ the worktree later resolves:
 The `verify` job deliberately skips edited events: metadata-only changes need a
 fresh body-derived gate result, not another full Windows verification of the
 unchanged source tree. It also runs on every push to `main`, so a merge SHA
-carries a bound rail result. A push to `kanmer-board` (or `workflow_dispatch`)
-runs the `regate` job, which re-runs the `kanmer-gate` job of the latest
-pull-request run for every open PR into `main` — the gate reads the remote
-board tip, so a board push must re-judge open PRs. Missing/stale attestations,
+carries a bound rail result. A push to `main` or a `workflow_dispatch` runs the
+`regate` job, which re-runs the `kanmer-gate` job of the latest pull-request
+run for every open PR into `main`. The gate reads the remote board tip, so a
+board push should also re-judge open PRs — but `pr.yml` cannot listen for
+`push: kanmer-board`: GitHub runs push workflows from the pushed ref's tree, and
+the board branch carries only `.gitignore` and `.kanmer`. That hook is
+**operator-enabled**: `.github/workflows/board-regate.yml` (on `main`) is the
+file an operator copies onto the board branch once (instructions in its
+header); it dispatches `pr.yml` on `main`, whose `regate` job then re-runs the
+gates. Agents never commit to the board branch, so until an operator installs
+it, re-gate by hand with `gh workflow run pr.yml --ref main` after pushing the
+board. Missing/stale attestations,
 `needs-changes`, unreachable commits, and `SYNC_REQUIRED` (an attestation
 `board_sha` absent from the fetched board) are warnings until the repository
 variable `KANMER_GATE_STRICT` is set to `1`/`true`, which makes them errors.

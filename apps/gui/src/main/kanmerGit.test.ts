@@ -800,6 +800,54 @@ describe("ensureBoardWorktree reconciliation", () => {
     expect(await git(boardRoot, "stash", "list")).toBe("");
   });
 
+  realGitTest("pauses without committing markers when the autostash re-apply conflicts", async () => {
+    const created = await ensureBoardWorktree(repo, "kanmer-board");
+    const boardRoot = created.boardRoot!;
+
+    // The remote edits a tracked board file.
+    const other = join(dir, "other");
+    await git(dir, "clone", "-q", "--branch", "kanmer-board", origin, other);
+    await git(other, "config", "user.email", "other@example.com");
+    await git(other, "config", "user.name", "Other");
+    writeFileSync(join(other, ".kanmer", "version.json"), '{"format":3,"side":"remote"}\n', "utf8");
+    await git(other, "add", "--", ".kanmer");
+    await git(other, "commit", "-q", "-m", "remote edit");
+    await git(other, "push", "-q", "origin", "kanmer-board");
+    const remoteTip = await git(origin, "rev-parse", "kanmer-board");
+
+    // A concurrent agent write to the same line lands between the sync commit
+    // and the rebase (post-commit hook), so it travels in the autostash. The
+    // rebase itself succeeds (exit 0); only the stash re-apply conflicts.
+    const hooksDir = resolve(boardRoot, await git(boardRoot, "rev-parse", "--git-path", "hooks"));
+    mkdirSync(hooksDir, { recursive: true });
+    writeFileSync(
+      join(hooksDir, "post-commit"),
+      "#!/bin/sh\nprintf '{\"format\":3,\"side\":\"local\"}\\n' > .kanmer/version.json\nrm -f -- \"$0\"\n",
+      { encoding: "utf8", mode: 0o755 },
+    );
+    writeFileSync(join(boardRoot, ".kanmer", "local.md"), "local write\n", "utf8");
+
+    const synced = await syncBoard(created);
+
+    expect(synced.paused).toBe(true);
+    expect(synced.error).toMatch(/autostash resulted in conflicts/i);
+    expect(shouldRunAutomaticSync(synced)).toBe(false);
+    // Nothing was pushed: the remote tip is untouched and no commit anywhere
+    // on the local branch carries a conflict marker.
+    expect(await git(origin, "rev-parse", "kanmer-board")).toBe(remoteTip);
+    expect(await git(origin, "show", "kanmer-board:.kanmer/version.json")).not.toContain("<<<<<<<");
+    const committed = await git(boardRoot, "show", "HEAD:.kanmer/version.json");
+    expect(committed).not.toContain("<<<<<<<");
+    expect(committed).toContain('"side":"remote"');
+    expect(await git(boardRoot, "log", "-p", "--all", "-S<<<<<<<", "--format=%H")).toBe("");
+    // The local work is preserved in the stash Git left behind, the tree is
+    // not mid-rebase, and the conflict is visible in the index for a human.
+    expect(await git(boardRoot, "stash", "list")).toMatch(/autostash/);
+    expect(await git(boardRoot, "diff", "--name-only", "--diff-filter=U")).toContain(".kanmer/version.json");
+    expect(existsSync(resolve(boardRoot, await git(boardRoot, "rev-parse", "--git-path", "rebase-merge")))).toBe(false);
+    expect(synced.sync).toMatchObject({ remote: true, behind: 0 });
+  });
+
   realGitTest("keeps a transient sync failure retryable but pauses on a real conflict", async () => {
     const created = await ensureBoardWorktree(repo, "kanmer-board");
     const boardRoot = created.boardRoot!;

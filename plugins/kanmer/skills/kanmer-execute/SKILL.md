@@ -14,8 +14,9 @@ run and stop when the packet says to stop.
 
 ## Workflow
 
-1. Orient with `get_status`; inspect the project fingerprint and the server's
-   `compat.expectedProject` capability.
+1. Orient with `get_status`; inspect the project identity (`project.project_id`
+   when `identity` is `logical`, else the legacy `project.fingerprint`) and the
+   server's `compat.expectedProject` / `compat.expectedRevision` capabilities.
 2. Make `get_execution_packet <id>` the **first ticket-specific data call**.
    A refusal is a normal result, not an invitation to reconstruct the packet.
 3. If `ready: false`, return its exact `code`, `reason`, and `missing` values
@@ -84,12 +85,20 @@ uncommitted work.
 
 ## Project capability and worktree
 
-Before the first mutating call, retain `project.fingerprint` from
-`get_status`. If and only if the response advertises
-`compat.expectedProject: "optional"`, pass that value as the top-level
-`expected_project` on writes. Older servers do not accept the field, so omit it
-when the capability is absent. It is never nested in ticket fields or packet
-documents.
+Before the first mutating call, retain the project identity from
+`get_status`: `project.project_id` when `project.identity` is `logical`,
+otherwise the legacy `project.fingerprint`. If and only if the response
+advertises `compat.expectedProject: "optional"`, pass that value as the
+top-level `expected_project` on writes. Older servers do not accept the field,
+so omit it when the capability is absent. It is never nested in ticket fields
+or packet documents.
+
+When the server also advertises `compat.expectedRevision: "optional"`, treat
+the packet's `ticket.revision` (and each later `get_item.revision`) as the
+ticket-wide token: pass it as `expected_revision` on document and ticket
+writes so a plan, proof or review record rewritten by another writer since
+your read is refused as `REVISION_CONFLICT` instead of overwritten. Re-read
+and re-apply on a conflict; never retry blind.
 
 ### Resumed packet
 

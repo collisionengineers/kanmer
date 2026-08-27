@@ -37564,9 +37564,10 @@ var import_fs3 = require("fs");
 var import_promises5 = require("fs/promises");
 var import_path7 = require("path");
 var import_crypto2 = require("crypto");
+var import_crypto3 = require("crypto");
 var import_fs4 = __toESM(require("fs"), 1);
 var import_path8 = __toESM(require("path"), 1);
-var import_crypto3 = require("crypto");
+var import_crypto4 = require("crypto");
 var import_promises6 = __toESM(require("fs/promises"), 1);
 var import_path9 = __toESM(require("path"), 1);
 var import_fs5 = require("fs");
@@ -37912,6 +37913,8 @@ function resolvePaths(projectRoot2, repoRoot) {
     boardFile: import_path.default.join(data, "board.yml"),
     countersFile: import_path.default.join(data, "counters.json"),
     versionFile: import_path.default.join(kanmer, "version.json"),
+    /** Logical project identity (FRD-029); absent on boards that predate it. */
+    projectFile: import_path.default.join(kanmer, "project.json"),
     /** Format 2: area folders live here, one per area id, plus `_none`. */
     areasRoot: import_path.default.join(kanmer, "areas"),
     tickets: import_path.default.join(kanmer, TYPE_DIRS.ticket),
@@ -39556,6 +39559,74 @@ async function writeVersion(paths, version2) {
   await writeFileAtomic(paths.versionFile, `${JSON.stringify(version2, null, 2)}
 `);
 }
+var REVISION_PREFIX = "rev1";
+var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isProjectIdShape(value) {
+  return UUID_RE.test(value);
+}
+async function readProjectRecord(paths) {
+  if (!await pathExists(paths.projectFile)) return null;
+  try {
+    const parsed = JSON.parse(await readText(paths.projectFile));
+    if (parsed.schema !== 1 || typeof parsed.project_id !== "string" || !isProjectIdShape(parsed.project_id) || parsed.origin !== "generated" && parsed.origin !== "migrated") {
+      return null;
+    }
+    return {
+      schema: 1,
+      project_id: parsed.project_id,
+      board_id: typeof parsed.board_id === "string" && parsed.board_id ? parsed.board_id : parsed.project_id,
+      created: typeof parsed.created === "string" ? parsed.created : "",
+      origin: parsed.origin,
+      ...parsed.migratedFrom ? { migratedFrom: parsed.migratedFrom } : {}
+    };
+  } catch {
+    return null;
+  }
+}
+async function allocateProjectRecord(paths, opts) {
+  const existing = await readProjectRecord(paths);
+  if (existing) return { record: existing, allocated: false };
+  const at = (opts.now ?? (() => (/* @__PURE__ */ new Date()).toISOString()))();
+  const id = (0, import_crypto3.randomUUID)();
+  const record2 = {
+    schema: 1,
+    project_id: id,
+    board_id: id,
+    created: at,
+    origin: opts.origin
+  };
+  if (opts.origin === "migrated") {
+    record2.migratedFrom = {
+      ...opts.fallbackFingerprint ? { fingerprint: opts.fallbackFingerprint } : {},
+      format: opts.format,
+      at
+    };
+  }
+  const contents = `${JSON.stringify(record2, null, 2)}
+`;
+  try {
+    await writeFileExclusive(paths.projectFile, contents);
+    return { record: record2, allocated: true };
+  } catch (err) {
+    if (err.code !== "EEXIST") throw err;
+  }
+  const winner = await readProjectRecord(paths);
+  if (winner) return { record: winner, allocated: false };
+  await writeFileAtomic(paths.projectFile, contents);
+  return { record: record2, allocated: true };
+}
+var REVISION_EXEMPT_PREFIXES = ["scratch/", "reference/"];
+function revisionCountsDocument(docPath) {
+  return !REVISION_EXEMPT_PREFIXES.some((prefix) => docPath.startsWith(prefix));
+}
+function computeRevision(ticketText, documents) {
+  const hash = (0, import_crypto3.createHash)("sha256");
+  hash.update(ticketText, "utf8");
+  const counted = documents.filter((doc) => revisionCountsDocument(doc.path)).sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  for (const doc of counted) hash.update(`
+${doc.path}\0${doc.version}`, "utf8");
+  return `${REVISION_PREFIX}:${hash.digest("hex").slice(0, 16)}`;
+}
 var CODEX_PORTABLE_COMMAND = "& (Join-Path $env:LOCALAPPDATA 'Kanmer\\bin\\kanmer-mcp.cmd')";
 var CODEX_PORTABLE_ARGS = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", CODEX_PORTABLE_COMMAND];
 var BLOCK_START = "<!-- kanmer:instructions:start \u2014 managed by kanmer-setup; edits inside will be overwritten -->";
@@ -39607,7 +39678,7 @@ function exists(p) {
   }
 }
 function digest(text) {
-  return (0, import_crypto3.createHash)("sha256").update(text.replace(/\r\n/g, "\n")).digest("hex");
+  return (0, import_crypto4.createHash)("sha256").update(text.replace(/\r\n/g, "\n")).digest("hex");
 }
 function walkFiles(dir, base = dir, out = []) {
   let entries;
@@ -40215,7 +40286,7 @@ async function getLinkGraph(store2, id) {
   const index = buildLinkIndex(items);
   return index.get(id) ?? { id, links: [], backlinks: [], blocks: [], blockedBy: [] };
 }
-async function linkItems(store2, sourceId, targetId, action, rel = "relates") {
+async function linkItems(store2, sourceId, targetId, action, rel = "relates", opts = {}) {
   const source = await store2.getItem(sourceId);
   if (!source) throw new Error(`No item with id "${sourceId}"`);
   const field = rel === "blocks" ? "blocks" : "links";
@@ -40229,7 +40300,7 @@ async function linkItems(store2, sourceId, targetId, action, rel = "relates") {
   } else {
     set.delete(targetId);
   }
-  return store2.updateItem(sourceId, { [field]: [...set] });
+  return store2.updateItem(sourceId, { [field]: [...set], expectedRevision: opts.expectedRevision });
 }
 var FULL_SHA = /^[0-9a-f]{40}$/iu;
 var SEVERITIES = /* @__PURE__ */ new Set(["blocker", "major", "minor", "note"]);
@@ -40370,8 +40441,9 @@ var KanmerStore = class {
    * version.json — upgrading a board is migration's job, never a side
    * effect of opening it.
    */
-  async init() {
+  async init(opts = {}) {
     const format = await this.detectFormat();
+    const preExisting = await pathExists(this.paths.boardFile) || await pathExists(this.paths.versionFile) || await pathExists(this.paths.areasRoot) || await pathExists(this.paths.tickets);
     await ensureDir(this.paths.data);
     if (format === 1) {
       await ensureDir(this.paths.tickets);
@@ -40385,6 +40457,82 @@ var KanmerStore = class {
     }
     if (!await pathExists(this.paths.boardFile)) {
       await writeBoard(this.paths, defaultBoardConfig());
+    }
+    await this.ensureProject({
+      origin: preExisting ? "migrated" : "generated",
+      fallbackFingerprint: opts.fallbackFingerprint
+    });
+  }
+  /** The board's logical identity record, or null before it has been allocated. */
+  async getProject() {
+    return readProjectRecord(this.paths);
+  }
+  /**
+   * Allocate the logical identity exactly once (FRD-029). Idempotent: an
+   * existing record is returned untouched. A fresh allocation is written to
+   * the activity log so a migrated board's identity is auditable — the entry
+   * names the origin and, when known, the machine-local fingerprint the board
+   * was previously addressed by.
+   */
+  async ensureProject(opts) {
+    const format = await this.detectFormat();
+    await ensureDir(this.paths.kanmer);
+    const result = await allocateProjectRecord(this.paths, {
+      origin: opts.origin,
+      format,
+      fallbackFingerprint: opts.fallbackFingerprint
+    });
+    if (result.allocated) {
+      await appendActivity(this.paths, [
+        this.activity("board", "update", {
+          field: "project_id",
+          from: opts.fallbackFingerprint ?? null,
+          to: `${result.record.project_id} (${result.record.origin})`
+        })
+      ]);
+    }
+    return result;
+  }
+  /**
+   * The document-inclusive revision of a ticket (FRD-029): changes whenever
+   * the ticket file or any pipeline document (plan, proof, review record…)
+   * changes; null for legacy-layout items which have no document folder.
+   */
+  async getRevision(id) {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    return this.revisionAt(loc);
+  }
+  async revisionAt(loc) {
+    const text = await readText(loc.file);
+    const item = parseItem(text);
+    if (loc.kind !== "v2") return null;
+    const { documentPaths } = await documentInventory(loc.dir);
+    const documents = await Promise.all(
+      documentPaths.map(async (doc) => ({
+        path: doc,
+        version: contentVersion(await readText(docPathIn(loc.dir, doc)))
+      }))
+    );
+    return { revision: computeRevision(text, documents), updated: item.updated, documents: documents.length };
+  }
+  /**
+   * The revision CAS shared by every ticket mutation. Runs after validation
+   * and before the first byte is written, alongside the `expectedUpdated`
+   * check. The `Conflict:` prefix is the classified REVISION_CONFLICT wording.
+   */
+  async assertRevision(loc, id, expectedRevision) {
+    if (expectedRevision === void 0) return;
+    const current = await this.revisionAt(loc);
+    if (!current) {
+      throw new Error(
+        `Conflict: "${id}" is stored in the legacy layout and has no revision; omit expected_revision or migrate the board.`
+      );
+    }
+    if (current.revision !== expectedRevision) {
+      throw new Error(
+        `Conflict: "${id}" revision changed since you read it (revision is now ${current.revision}, you expected ${expectedRevision}). Re-read the item and re-apply your change.`
+      );
     }
   }
   /** True if this project already has a `.kanmer` folder. */
@@ -40720,7 +40868,7 @@ var KanmerStore = class {
     throw new Error(`Could not allocate a unique ${type} id after ${CREATE_ATTEMPTS} attempts`);
   }
   async updateItem(id, patch) {
-    const { expectedUpdated, reason, ...fields } = patch;
+    const { expectedUpdated, expectedRevision, reason, ...fields } = patch;
     let board = null;
     if (fields.status !== void 0 || fields.area !== void 0 || fields.profile !== void 0 || fields.groups !== void 0 || fields.deployment !== void 0) {
       board = await this.getBoard();
@@ -40739,6 +40887,7 @@ var KanmerStore = class {
     if (expectedUpdated !== void 0 && current.updated !== expectedUpdated) {
       throw this.conflictError(id, current, expectedUpdated);
     }
+    await this.assertRevision(loc, id, expectedRevision);
     const backward = fields.status !== void 0 && fields.status !== current.status ? await this.backwardMoveEffects(loc, current, fields.status, reason) : null;
     const { reason: backwardReason, ...backwardEffects } = backward ?? { reason: void 0 };
     const pruned = pruneUndefined({ ...fields, ...backwardEffects });
@@ -40813,7 +40962,7 @@ var KanmerStore = class {
   async moveItem(id, to) {
     const { position, ...patch } = to;
     if (position === void 0) return this.updateItem(id, patch);
-    await this.assertMoveAllowed(id, to.status, to.expectedUpdated, to.reason);
+    await this.assertMoveAllowed(id, to.status, to.expectedUpdated, to.reason, to.expectedRevision);
     const order = await this.computeOrder(id, to.status, position);
     return this.updateItem(id, { ...patch, order });
   }
@@ -40887,13 +41036,14 @@ ${entry}`;
    * The final updateItem re-checks — that is cheap and closes the window
    * between the two reads.
    */
-  async assertMoveAllowed(id, status, expectedUpdated, reason) {
+  async assertMoveAllowed(id, status, expectedUpdated, reason, expectedRevision) {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
     if (expectedUpdated !== void 0 && current.updated !== expectedUpdated) {
       throw this.conflictError(id, current, expectedUpdated);
     }
+    await this.assertRevision(loc, id, expectedRevision);
     const board = await this.getBoard();
     assertStage(status);
     if (status !== current.status) await this.backwardMoveEffects(loc, current, status, reason);
@@ -40969,6 +41119,7 @@ ${entry}`;
         repoRoot: this.paths.repoRoot
       });
     }
+    await this.assertRevision(loc, id, input.expectedRevision);
     if (current.taken_at && !input.force) {
       throw new Error(
         `"${id}" is already taken (taken_at ${current.taken_at}${current.branch ? `, branch ${current.branch}` : ""}). Release it first, or pass force to take it over.`
@@ -41006,10 +41157,11 @@ ${entry}`;
     return next;
   }
   /** Release a taken ticket: clear taken_at / branch / worktree. */
-  async releaseTicket(id) {
+  async releaseTicket(id, opts = {}) {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
+    await this.assertRevision(loc, id, opts.expectedRevision);
     if (!current.taken_at && !current.branch && !current.worktree) return current;
     const next = { ...current, updated: nowIso() };
     delete next.taken_at;
@@ -41041,6 +41193,7 @@ ${entry}`;
       throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; use take_ticket action "take" instead of "transfer".`);
     }
     if (!input.assignee) throw new Error(`assignee is required to transfer "${id}"`);
+    await this.assertRevision(loc, id, input.expectedRevision);
     const minutes = await this.claimWindowMinutes();
     const now = /* @__PURE__ */ new Date();
     const state = claimState(current, now, minutes);
@@ -41077,13 +41230,14 @@ ${entry}`;
    * Renew the caller's own claim (CORE-121). Refuses with `CLAIM_NOT_OWNED`
    * when the caller is neither the assignee nor the recorded controller.
    */
-  async renewTicket(id, actor) {
+  async renewTicket(id, actor, opts = {}) {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     const current = parseItem(await readText(loc.file));
     if (!current.taken_at) {
       throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; there is no claim to renew.`);
     }
+    await this.assertRevision(loc, id, opts.expectedRevision);
     if (!actor || current.assignee !== actor && current.claim_controller !== actor) {
       throw new Error(
         `CLAIM_NOT_OWNED: "${id}" is held by ${current.assignee || "an unknown actor"}${current.claim_controller ? ` (controller ${current.claim_controller})` : ""}; only the owner can renew it.`
@@ -41198,6 +41352,7 @@ ${entry}`;
       );
     }
     const file = docPathIn(loc.dir, doc);
+    await this.assertRevision(loc, id, opts.expectedRevision);
     await ensureDir(import_path10.default.dirname(file));
     const existing = await pathExists(file) ? await readText(file) : null;
     if (opts.expectedVersion !== void 0) {
@@ -41572,7 +41727,7 @@ ${content.trim()}
    * A blank line separates successive appends. Emits one activity line per call —
    * callers that stream must batch. Scratch is exempt from doc-type validation.
    */
-  async appendScratch(id, slug, content) {
+  async appendScratch(id, slug, content, opts = {}) {
     const loc = await this.locateItem(id);
     if (!loc) throw new Error(`No item with id "${id}"`);
     if (loc.kind !== "v2") {
@@ -41580,6 +41735,7 @@ ${content.trim()}
         `"${id}" is stored in the legacy layout, which has no ticket folders \u2014 migrate this board to format 2 first.`
       );
     }
+    await this.assertRevision(loc, id, opts.expectedRevision);
     const file = docPathIn(loc.dir, `scratch/${slug}`);
     const had = await pathExists(file);
     await ensureDir(import_path10.default.dirname(file));
@@ -42369,7 +42525,20 @@ async function migrateBoard(store2, opts = {}) {
   const v2 = await migrateToV2(store2, { dryRun });
   const backfill = await backfillStages(store2, { dryRun });
   const v3 = await migrateToV3(store2, { dryRun });
-  return { v2, backfill, v3 };
+  const identity = await migrateIdentity(store2, { dryRun, fallbackFingerprint: opts.fallbackFingerprint });
+  return { v2, backfill, v3, identity };
+}
+async function migrateIdentity(store2, opts = {}) {
+  const existing = await store2.getProject();
+  if (existing) {
+    return { allocated: false, wouldAllocate: false, project_id: existing.project_id, origin: existing.origin };
+  }
+  if (opts.dryRun) return { allocated: false, wouldAllocate: true, project_id: null, origin: null };
+  const { record: record2, allocated } = await store2.ensureProject({
+    origin: "migrated",
+    fallbackFingerprint: opts.fallbackFingerprint
+  });
+  return { allocated, wouldAllocate: false, project_id: record2.project_id, origin: record2.origin };
 }
 function watchKanmer(projectRoot2, onChange, options2 = {}) {
   const paths = resolvePaths(projectRoot2);
@@ -42568,6 +42737,34 @@ function projectIdentity(input) {
   };
   const fingerprint = `kanmer-proj-v1:${(0, import_node_crypto2.createHash)("sha256").update(JSON.stringify(payload)).digest("hex")}`;
   return { ...payload, boardSource: input.boardSource, fingerprint };
+}
+function redactRemoteOrigin(raw) {
+  const value = (raw ?? "").trim();
+  if (!value) return null;
+  const schemed = value.match(/^([a-z][a-z0-9+.-]*:\/\/)([^/?#]*)(.*)$/i);
+  if (schemed) {
+    const [, scheme, authority, rest] = schemed;
+    const at = authority.lastIndexOf("@");
+    return `${scheme}${at === -1 ? authority : authority.slice(at + 1)}${rest}`;
+  }
+  const scp = value.match(/^([^@:/]+):([^@/]*)@(.*)$/);
+  if (scp) return `${scp[1]}@${scp[3]}`;
+  return value;
+}
+function locationFingerprint(input) {
+  const payload = {
+    repoPath: canonicalProjectPath(input.repoPath),
+    boardPath: canonicalProjectPath(input.boardPath),
+    machine: input.machine,
+    boardBranch: input.boardBranch,
+    remoteOrigin: input.remoteOrigin
+  };
+  const fingerprint = `kanmer-loc-v1:${(0, import_node_crypto2.createHash)("sha256").update(JSON.stringify(payload)).digest("hex")}`;
+  return { ...payload, fingerprint };
+}
+function expectedProjectMatches(sent, project) {
+  if (sent === project.fingerprint) return true;
+  return project.project_id !== null && sent === project.project_id;
 }
 
 // src/execution-packet.ts
@@ -43213,14 +43410,18 @@ function classifiedCode(message) {
   if (/\b(?:entering|leaving)\b[^:\n]*\brequires\b/i.test(message) || /\bcannot move\b.*\bcrosses\b/i.test(message)) return "GATE_BLOCKED";
   return void 0;
 }
-function failCoded(error2) {
+function failCoded(error2, project) {
   const message = error2 instanceof Error ? error2.message : String(error2);
   const code = error2 instanceof KanmerError ? error2.code : classifiedCode(message);
   const text = message.startsWith("Conflict:") ? message : `Error: ${message}`;
+  const structured = {
+    ...code ? { error: { code, message } } : {},
+    ...project ? { project } : {}
+  };
   return {
     content: [{ type: "text", text }],
     isError: true,
-    ...code ? { structuredContent: { error: { code, message } } } : {}
+    ...Object.keys(structured).length ? { structuredContent: structured } : {}
   };
 }
 
@@ -43318,8 +43519,8 @@ function canonicalHttpsUrl(value) {
   if (parsed.port === "443") parsed.port = "";
   return parsed;
 }
-function isNonGlobalIpv4(hostname2) {
-  const octets = hostname2.split(".").map(Number);
+function isNonGlobalIpv4(hostname3) {
+  const octets = hostname3.split(".").map(Number);
   if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return true;
   const [a, b, c, d] = octets;
   return a === 0 || a === 10 || a === 127 || a === 100 && b >= 64 && b <= 127 || a === 169 && b === 254 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 0 && c === 0 && d !== 9 && d !== 10 || a === 192 && b === 0 && c === 2 || a === 192 && b === 88 && c === 99 || a === 192 && b === 168 || a === 198 && b >= 18 && b <= 19 || a === 198 && b === 51 && c === 100 || a === 203 && b === 0 && c === 113 || a >= 224;
@@ -43342,8 +43543,8 @@ function parseIpv6Groups(value) {
   if (halves.length === 1 && missing !== 0 || missing < 0) return null;
   return [...left, ...Array.from({ length: missing }, () => 0), ...right];
 }
-function isPrivateAddress(hostname2) {
-  const normalized = hostname2.toLowerCase().replace(/^[\[]|[\]]$/g, "");
+function isPrivateAddress(hostname3) {
+  const normalized = hostname3.toLowerCase().replace(/^[\[]|[\]]$/g, "");
   const version2 = (0, import_node_net.isIP)(normalized);
   if (version2 === 4) return isNonGlobalIpv4(normalized);
   if (version2 !== 6) return false;
@@ -43363,15 +43564,15 @@ function isPrivateAddress(hostname2) {
   first === 16383 && (second & 61440) === 0;
 }
 async function assertPublicDestination(url, lookupImpl, signal) {
-  const hostname2 = url.hostname.toLowerCase().replace(/[\[\]]/g, "");
-  if (hostname2 === "localhost" || hostname2.endsWith(".localhost") || hostname2.endsWith(".local") || hostname2 === "metadata.google.internal" || hostname2 === "metadata.azure.internal") {
+  const hostname3 = url.hostname.toLowerCase().replace(/[\[\]]/g, "");
+  if (hostname3 === "localhost" || hostname3.endsWith(".localhost") || hostname3.endsWith(".local") || hostname3 === "metadata.google.internal" || hostname3 === "metadata.azure.internal") {
     throw new Error(`${url} targets a private or local destination`);
   }
-  if (isPrivateAddress(hostname2)) throw new Error(`${url} targets a private or local destination`);
-  if (lookupImpl && !(0, import_node_net.isIP)(hostname2)) {
+  if (isPrivateAddress(hostname3)) throw new Error(`${url} targets a private or local destination`);
+  if (lookupImpl && !(0, import_node_net.isIP)(hostname3)) {
     let addresses;
     try {
-      addresses = await withDeadline(lookupImpl(hostname2), signal);
+      addresses = await withDeadline(lookupImpl(hostname3), signal);
     } catch {
       if (signal?.aborted) throw new Error(`${url} request timed out`);
       throw new Error(`${url} destination could not be resolved`);
@@ -43381,7 +43582,7 @@ async function assertPublicDestination(url, lookupImpl, signal) {
     }
     return addresses;
   }
-  return [hostname2];
+  return [hostname3];
 }
 async function withDeadline(work, signal) {
   if (!signal) return work;
@@ -43739,7 +43940,7 @@ async function fetchLlmsTxt(options2) {
   const fetchImpl = options2.fetchImpl ?? fetch;
   const timeoutMs = options2.timeoutMs ?? LLMS_TXT_POLICY.timeoutMs;
   const boundFetch = options2.requestImpl ?? (options2.fetchImpl ? void 0 : pinnedFetch);
-  const lookupImpl = options2.lookupImpl ?? (fetchImpl === fetch ? async (hostname2) => (await (0, import_promises11.lookup)(hostname2, { all: true, verbatim: true })).map(({ address }) => address) : void 0);
+  const lookupImpl = options2.lookupImpl ?? (fetchImpl === fetch ? async (hostname3) => (await (0, import_promises11.lookup)(hostname3, { all: true, verbatim: true })).map(({ address }) => address) : void 0);
   const now = options2.now ?? Date.now;
   await assertSafeCacheDirectory(options2.cacheDir);
   const cacheFile = cachePath(options2.cacheDir, root.toString());
@@ -43947,26 +44148,88 @@ function resolveRoot() {
   store = new KanmerStore(projectRoot, { repoRoot });
   rootResolved = true;
 }
+var lastProject = null;
+function responseProject(project) {
+  return { project_id: project.project_id, board_id: project.board_id, fingerprint: project.fingerprint };
+}
 function ok(data) {
-  return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  return {
+    content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    ...lastProject ? { structuredContent: { project: lastProject } } : {}
+  };
 }
 function fail(message) {
-  return failCoded(new Error(message));
+  return failCoded(new Error(message), lastProject ?? void 0);
 }
 function guard(fn) {
   return async (...args) => {
     try {
+      if (!lastProject) await resolveProject();
       return await fn(...args);
     } catch (err) {
-      return failCoded(err);
+      return failCoded(err, lastProject ?? void 0);
     }
   };
+}
+async function legacyIdentity() {
+  const format = await store.detectFormat();
+  const { source } = await store.getBoardWithSource();
+  return projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
+}
+async function resolveProject() {
+  const [record2, legacy] = await Promise.all([store.getProject(), legacyIdentity()]);
+  const project = {
+    project_id: record2?.project_id ?? null,
+    board_id: record2?.board_id ?? null,
+    identity: record2 ? "logical" : "unassigned",
+    origin: record2?.origin ?? null,
+    fingerprint: legacy.fingerprint
+  };
+  lastProject = responseProject(project);
+  return project;
+}
+async function resolveLocation() {
+  const boardBranch = await inspectBoardBranch(projectRoot);
+  let remoteOrigin = null;
+  try {
+    const { stdout } = await execFile5("git", ["config", "--get", "remote.origin.url"], {
+      cwd: projectRoot,
+      windowsHide: true,
+      timeout: 15e3
+    });
+    remoteOrigin = redactRemoteOrigin(stdout.trim());
+  } catch {
+    remoteOrigin = null;
+  }
+  let machine = null;
+  try {
+    machine = (0, import_node_os.hostname)() || null;
+  } catch {
+    machine = null;
+  }
+  return locationFingerprint({
+    repoPath: store.paths.repoRoot,
+    boardPath: projectRoot,
+    machine,
+    boardBranch,
+    remoteOrigin
+  });
+}
+async function assertExpectedProject(expected) {
+  const project = await resolveProject();
+  if (expected !== void 0 && !expectedProjectMatches(expected, project)) {
+    const accepted = project.project_id === null ? `this board has no logical project_id yet (identity unassigned); its fingerprint is ${project.fingerprint}` : `this project is project_id ${project.project_id} (fingerprint ${project.fingerprint})`;
+    throw new KanmerError("WRONG_PROJECT", `expected project ${expected} does not match: ${accepted}`);
+  }
+  return project;
 }
 var initialised = false;
 async function ensureInit() {
   if (initialised) return;
-  await store.init();
+  const legacy = await legacyIdentity();
+  await store.init({ fallbackFingerprint: legacy.fingerprint });
   initialised = true;
+  await resolveProject();
 }
 function actorName(requestServer, extra) {
   const meta = extra?._meta;
@@ -44051,6 +44314,9 @@ var createFields = {
   body: external_exports.string().optional().describe("Markdown body; may contain [[id]] wiki-links")
 };
 var expectedProjectField = external_exports.string().optional().describe("Optional project fingerprint from get_status.project.fingerprint; send only when get_status.compat.expectedProject is optional");
+var expectedRevisionField = external_exports.string().optional().describe(
+  "Optimistic concurrency over the WHOLE ticket: the `revision` you last read from get_item (or set_ticket_doc / get_execution_packet). Unlike expected_updated it also changes when any pipeline document (plan, proof, review record) is rewritten. Rejected with REVISION_CONFLICT if anything changed since; nothing is written."
+);
 function withProject(shape) {
   return { ...shape, expected_project: expectedProjectField };
 }
@@ -44101,14 +44367,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
   function write(fn) {
     return guard(async (input, ...rest) => {
       const { expected_project, ...cleanInput } = input;
-      if (expected_project !== void 0) {
-        const format = await store.detectFormat();
-        const { source } = await store.getBoardWithSource();
-        const identity = projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
-        if (expected_project !== identity.fingerprint) {
-          throw new KanmerError("WRONG_PROJECT", `expected project ${expected_project} does not match current project ${identity.fingerprint}`);
-        }
-      }
+      await assertExpectedProject(expected_project);
       store.setActor(actorName(server, rest[0]));
       await ensureInit();
       return fn(cleanInput, ...rest);
@@ -44118,7 +44377,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "get_status",
     {
       title: "Project status",
-      description: "Orientation call \u2014 use it first, every session. Answers both of the questions you have at session start: WHICH BOARD, and WHICH SERVER. Board: the project root and `rootSource` (how it was found: flag | env | cwd | cwd-worktree | ancestor | ancestor-worktree | init), the `repoRoot` that governing-doc refs resolve against and its `repoRootSource` (flag | env | derived), whether .kanmer/ exists (this tool never creates it), the storage format version, whether the board came from a real board.yml or is the synthesized default, per-stage and per-type item counts, archived/taken counts, and how many file warnings the listing produced. Server: a `server` block naming the build that is answering \u2014 the release `version`, the resolved `path` of the running script, the runtime `sha256` of its bytes (plus `sha256Short`), its `mtime` and `size`, and the `build` shape (packaged | plugin | dev-standalone | dev-esm | unknown). Two hosts pointed at the same board can be running different server builds that enforce different gates; comparing `server.sha256` is how you see that instead of guessing. Repo: a `repo` block answering WHICH KANMER THIS REPO WAS SET UP BY \u2014 `{ upToDate, stale: [{ artefact, state, detail, fix }] }`. Itemised, never a bare boolean. Artefacts checked are the ones migration does not touch: the AGENTS.md managed block, the installed skills trees and their `.kanmer-skills-version` stamps, `board.yml`, and the provider MCP registrations \u2014 compared by CONTENT HASH against what this build ships, not by version string (no artefact records a product version). `state` is `behind` (act on it), `compensated` (the file is old and the runtime already papers over it \u2014 informational, no action), `unstamped` (no evidence either way) or `unknown` (could not be read). `upToDate` is true iff nothing is `behind`. Repair is never automatic: run `kanmer-setup`, which is the reconciliation path (FRD-013). Board format is not listed here \u2014 it is the `format` field above. Board worktree: an informational, non-blocking `boardWorktree` block reports the board path, expected and actual branch, branch match, board source, active ticket count, and operator repair guidance. It never checks out, repairs, initializes, or refuses another tool. Board sync: `boardSync` is `{ remoteBranch, localSha, remoteSha, ahead, behind }` comparing the board HEAD with its last-fetched origin ref, or null without a Git board/remote ref; `ahead > 0` means unpushed board commits the CI merge gate cannot see. It never fetches or pushes. Project safety: `project` gives a machine-local fingerprint over the canonical board root, format and repo root. When `compat.expectedProject` is `optional`, a client may send that fingerprint as `expected_project` on any write; omit it for older servers that do not advertise compatibility. IMPORTANT: the `server` block is absent on servers older than 0.3.3, and the `repo` block on servers older than 0.3.4 \u2014 that ABSENCE is itself the signal 'this build predates the check', not an error. Individual fields are null if they could not be read; the call never fails over it.",
+      description: "Orientation call \u2014 use it first, every session. Answers both of the questions you have at session start: WHICH BOARD, and WHICH SERVER. Board: the project root and `rootSource` (how it was found: flag | env | cwd | cwd-worktree | ancestor | ancestor-worktree | init), the `repoRoot` that governing-doc refs resolve against and its `repoRootSource` (flag | env | derived), whether .kanmer/ exists (this tool never creates it), the storage format version, whether the board came from a real board.yml or is the synthesized default, per-stage and per-type item counts, archived/taken counts, and how many file warnings the listing produced. Server: a `server` block naming the build that is answering \u2014 the release `version`, the resolved `path` of the running script, the runtime `sha256` of its bytes (plus `sha256Short`), its `mtime` and `size`, and the `build` shape (packaged | plugin | dev-standalone | dev-esm | unknown). Two hosts pointed at the same board can be running different server builds that enforce different gates; comparing `server.sha256` is how you see that instead of guessing. Repo: a `repo` block answering WHICH KANMER THIS REPO WAS SET UP BY \u2014 `{ upToDate, stale: [{ artefact, state, detail, fix }] }`. Itemised, never a bare boolean. Artefacts checked are the ones migration does not touch: the AGENTS.md managed block, the installed skills trees and their `.kanmer-skills-version` stamps, `board.yml`, and the provider MCP registrations \u2014 compared by CONTENT HASH against what this build ships, not by version string (no artefact records a product version). `state` is `behind` (act on it), `compensated` (the file is old and the runtime already papers over it \u2014 informational, no action), `unstamped` (no evidence either way) or `unknown` (could not be read). `upToDate` is true iff nothing is `behind`. Repair is never automatic: run `kanmer-setup`, which is the reconciliation path (FRD-013). Board format is not listed here \u2014 it is the `format` field above. Board worktree: an informational, non-blocking `boardWorktree` block reports the board path, expected and actual branch, branch match, board source, active ticket count, and operator repair guidance. It never checks out, repairs, initializes, or refuses another tool. Board sync: `boardSync` is `{ remoteBranch, localSha, remoteSha, ahead, behind }` comparing the board HEAD with its last-fetched origin ref, or null without a Git board/remote ref; `ahead > 0` means unpushed board commits the CI merge gate cannot see. It never fetches or pushes. Project identity (FRD-029): `project.project_id` is the board's stable LOGICAL identity (persisted in .kanmer/project.json; the same across copies of the board at other paths or machines) and `project.board_id` its board; `project.identity` is `logical` once assigned or `unassigned` on a legacy board that has not yet received its one-time identity migration (the first write or migrate_board performs it, recording the prior `fingerprint` as the auditable fallback in `project.origin`/project.json). `project.location` is the separate machine-local evidence \u2014 repo path, board path, machine, board branch, remote origin and a `kanmer-loc-v1` digest \u2014 reported, never used to reassign identity. `project.fingerprint` is the legacy `kanmer-proj-v1` machine-local fingerprint, retained for older clients. When `compat.expectedProject` is `optional`, send `project_id` (preferred) or that fingerprint as `expected_project` on any write to be refused with WRONG_PROJECT before anything runs; omit it for older servers that do not advertise compatibility. When `compat.expectedRevision` is `optional`, ticket mutations also accept `expected_revision` \u2014 the document-inclusive `revision` from get_item \u2014 and refuse a stale one with REVISION_CONFLICT. Every tool result carries `structuredContent.project` naming the logical project. IMPORTANT: the `server` block is absent on servers older than 0.3.3, and the `repo` block on servers older than 0.3.4 \u2014 that ABSENCE is itself the signal 'this build predates the check', not an error. Individual fields are null if they could not be read; the call never fails over it.",
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: false }
     },
@@ -44131,6 +44390,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
       const expectedBranch = process.env.KANMER_BOARD_BRANCH?.trim() || "kanmer-board";
       const actualBranch = await inspectBoardBranch(projectRoot);
       const boardSync = await inspectBoardSync(projectRoot, actualBranch ?? expectedBranch);
+      const [legacy, logical, location] = await Promise.all([legacyIdentity(), resolveProject(), resolveLocation()]);
       const byStage = {};
       for (const s of STAGE_IDS) byStage[s] = 0;
       let offBoardStage = 0;
@@ -44178,8 +44438,14 @@ function createKanmerMcpServer(policy = "local-stdio") {
         exists: exists2,
         format,
         boardSource: source,
-        project: projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source }),
-        compat: { expectedProject: "optional" },
+        /**
+         * FRD-029: the legacy location-derived block (boardRoot, format,
+         * repoRoot, boardSource, fingerprint — unchanged) plus the logical
+         * identity (`project_id`, `board_id`, `identity`, `origin`) and the
+         * separate machine-local `location` evidence.
+         */
+        project: { ...legacy, ...logical, location },
+        compat: { expectedProject: "optional", projectIdentity: "logical", expectedRevision: "optional" },
         dispatch: dispatchPolicyView(dispatchPolicy),
         deploymentTracking: board.deployment !== void 0,
         boardWorktree: {
@@ -44321,14 +44587,16 @@ function createKanmerMcpServer(policy = "local-stdio") {
       if (!item) return fail(`No item with id "${id}"`);
       const info = await store.getTicketDocsInfo(id);
       const blocked = (await blockedSet()).has(id);
+      const revision = (await store.getRevision(id))?.revision ?? null;
       return ok(
         info ? {
           ...item,
           blocked,
+          revision,
           docs: info.docs,
           documentPaths: info.documentPaths,
           checklist: info.checklist
-        } : { ...item, blocked }
+        } : { ...item, blocked, revision }
       );
     })
   );
@@ -44354,15 +44622,14 @@ function createKanmerMcpServer(policy = "local-stdio") {
       annotations: { readOnlyHint: true, openWorldHint: false }
     },
     guard(async ({ id, resume }, extra) => {
-      const format = await store.detectFormat();
-      const { source } = await store.getBoardWithSource();
-      const project = projectIdentity({
-        boardRoot: projectRoot,
-        format,
-        repoRoot: store.paths.repoRoot,
-        boardSource: source
+      const [project, logical] = await Promise.all([legacyIdentity(), resolveProject()]);
+      const packet = await getExecutionPacket({ store, id, actor: actorName(server, extra), project, resume });
+      const revision = packet.ready ? await store.getRevision(id) : null;
+      return ok({
+        ...packet,
+        project: { ...packet.project, project_id: logical.project_id, board_id: logical.board_id, identity: logical.identity },
+        ...packet.ready ? { ticket: { ...packet.ticket, revision: revision?.revision ?? null } } : {}
       });
-      return ok(await getExecutionPacket({ store, id, actor: actorName(server, extra), project, resume }));
     })
   );
   server.registerTool(
@@ -44384,12 +44651,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
       if (!dispatchPolicy.enabled) return dispatchRefusal("DISPATCH_DISABLED", dispatchPolicy.reason ?? "dispatch is disabled", policy2);
       if (!dispatchPolicy.providers.includes(provider)) return dispatchRefusal("DISPATCH_PROVIDER_NOT_ALLOWED", `provider "${provider}" is not allowlisted`, policy2);
       if (!dispatchPolicy.tasks.includes(taskId)) return dispatchRefusal("DISPATCH_TASK_NOT_ALLOWED", `task "${taskId}" is not allowlisted`, policy2);
-      const format = await store.detectFormat();
-      const { source } = await store.getBoardWithSource();
-      const identity = projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
-      if (expected_project !== void 0 && expected_project !== identity.fingerprint) {
-        return failCoded(new KanmerError("WRONG_PROJECT", `expected project ${expected_project} does not match current project ${identity.fingerprint}`));
-      }
+      const identity = await assertExpectedProject(expected_project);
       const item = await store.getItem(ticket_id);
       if (!item || item.type !== "ticket") return dispatchRefusal("DISPATCH_TICKET_NOT_FOUND", `No ticket "${ticket_id}".`, policy2);
       if (item.archived) return dispatchRefusal("DISPATCH_TICKET_ARCHIVED", `${ticket_id} is archived.`, policy2);
@@ -44461,10 +44723,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
     guard(async ({ dispatch_id, reason, expected_project }, extra) => {
       const policy2 = dispatchPolicyView(dispatchPolicy);
       if (!dispatchPolicy.enabled) return dispatchRefusal("DISPATCH_DISABLED", dispatchPolicy.reason ?? "dispatch is disabled", policy2);
-      const format = await store.detectFormat();
-      const { source } = await store.getBoardWithSource();
-      const identity = projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source });
-      if (expected_project !== void 0 && expected_project !== identity.fingerprint) return failCoded(new KanmerError("WRONG_PROJECT", `expected project ${expected_project} does not match current project ${identity.fingerprint}`));
+      await assertExpectedProject(expected_project);
       const active = dispatchSupervisor.list({ projectId: projectRoot, includeRecent: false }).find((status2) => status2.dispatchId === dispatch_id);
       if (!active) return dispatchRefusal("DISPATCH_NOT_FOUND", `No active dispatch "${dispatch_id}" in this project.`, policy2);
       const status = dispatchSupervisor.cancel(dispatch_id, reason?.trim() || "cancelled by client", actorName(server, extra));
@@ -44793,6 +45052,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
         deployment: external_exports.string().optional().describe('Deployment status; pass "" to clear (only when the board declares environments)'),
         body: external_exports.string().optional(),
         archived: external_exports.boolean().optional(),
+        expected_revision: expectedRevisionField,
         expected_updated: external_exports.string().optional().describe(
           "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the item changed since."
         )
@@ -44800,7 +45060,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
     },
     write(
-      async ({ id, expected_updated, ...patch }) => ok(await store.updateItem(id, { ...patch, expectedUpdated: expected_updated }))
+      async ({ id, expected_updated, expected_revision, ...patch }) => ok(await store.updateItem(id, { ...patch, expectedUpdated: expected_updated, expectedRevision: expected_revision }))
     )
   );
   server.registerTool(
@@ -44812,6 +45072,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
         id: external_exports.string().describe("Item id to move"),
         status: external_exports.string().describe("Target status id (workflow stage)"),
         position: external_exports.union([external_exports.enum(["top", "bottom"]), external_exports.object({ after: external_exports.string() })]).optional().describe("Where in the column to place the item"),
+        expected_revision: expectedRevisionField,
         expected_updated: external_exports.string().optional().describe(
           "Optimistic concurrency: the `updated` timestamp you last read. Rejected as a conflict if the item changed since."
         ),
@@ -44822,7 +45083,15 @@ function createKanmerMcpServer(policy = "local-stdio") {
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
     },
     write(
-      async ({ id, status, position, expected_updated, reason }) => ok(await store.moveItem(id, { status, position, expectedUpdated: expected_updated, reason }))
+      async ({ id, status, position, expected_updated, expected_revision, reason }) => ok(
+        await store.moveItem(id, {
+          status,
+          position,
+          expectedUpdated: expected_updated,
+          expectedRevision: expected_revision,
+          reason
+        })
+      )
     )
   );
   server.registerTool(
@@ -44839,16 +45108,24 @@ function createKanmerMcpServer(policy = "local-stdio") {
         assignee: external_exports.string().optional().describe("Defaults to the calling client's name"),
         controller: external_exports.string().optional().describe("Durable controller identity behind the claim (defaults to assignee)"),
         reason: external_exports.string().optional().describe('For transfer of a live claim: an operator override beginning "operator:"'),
-        force: external_exports.boolean().optional().describe("Take over an already-taken ticket")
+        force: external_exports.boolean().optional().describe("Take over an already-taken ticket"),
+        expected_revision: expectedRevisionField
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
     },
-    write(async ({ id, action, branch, worktree, stage, assignee, controller, reason, force }, extra) => {
-      if (action === "release") return ok(await store.releaseTicket(id));
-      if (action === "renew") return ok(await store.renewTicket(id, assignee ?? actorName(server, extra)));
+    write(async ({ id, action, branch, worktree, stage, assignee, controller, reason, force, expected_revision }, extra) => {
+      if (action === "release") return ok(await store.releaseTicket(id, { expectedRevision: expected_revision }));
+      if (action === "renew") {
+        return ok(await store.renewTicket(id, assignee ?? actorName(server, extra), { expectedRevision: expected_revision }));
+      }
       if (action === "transfer") {
         return ok(
-          await store.transferTicket(id, { assignee: assignee ?? actorName(server, extra), controller, reason })
+          await store.transferTicket(id, {
+            assignee: assignee ?? actorName(server, extra),
+            controller,
+            reason,
+            expectedRevision: expected_revision
+          })
         );
       }
       if (!branch) return fail(`branch is required when taking a ticket \u2014 it's the point of taking`);
@@ -44859,7 +45136,8 @@ function createKanmerMcpServer(policy = "local-stdio") {
           stage,
           assignee: assignee ?? actorName(server, extra),
           controller,
-          force
+          force,
+          expectedRevision: expected_revision
         })
       );
     })
@@ -44876,16 +45154,19 @@ function createKanmerMcpServer(policy = "local-stdio") {
         append: external_exports.boolean().optional().describe("Append below existing content instead of replacing"),
         expected_version: external_exports.string().optional().describe(
           "Optimistic concurrency: the `version` you last read from get_ticket_doc. Rejected as a conflict if the document changed since. Omit for last-write-wins."
-        )
+        ),
+        expected_revision: expectedRevisionField
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
     },
-    write(async ({ id, doc, content, append, expected_version }) => {
+    write(async ({ id, doc, content, append, expected_version, expected_revision }) => {
       const { version: version2 } = await store.setDoc(id, doc, content, {
         append,
-        expectedVersion: expected_version
+        expectedVersion: expected_version,
+        expectedRevision: expected_revision
       });
-      return ok({ id, doc, written: true, appended: append === true, version: version2 });
+      const revision = (await store.getRevision(id))?.revision ?? null;
+      return ok({ id, doc, written: true, appended: append === true, version: version2, revision });
     })
   );
   server.registerTool(
@@ -44896,13 +45177,14 @@ function createKanmerMcpServer(policy = "local-stdio") {
       inputSchema: {
         id: external_exports.string().describe("Ticket id"),
         slug: external_exports.string().optional().describe('Scratch slug (default "notes") \u2192 scratch/<slug>.md'),
-        content: external_exports.string().describe("Markdown to append below a blank line")
+        content: external_exports.string().describe("Markdown to append below a blank line"),
+        expected_revision: expectedRevisionField
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
     },
-    write(async ({ id, slug, content }) => {
+    write(async ({ id, slug, content, expected_revision }) => {
       const useSlug = slug ?? "notes";
-      const { file } = await store.appendScratch(id, useSlug, content);
+      const { file } = await store.appendScratch(id, useSlug, content, { expectedRevision: expected_revision });
       return ok({ id, slug: useSlug, appended: true, file });
     })
   );
@@ -44914,17 +45196,18 @@ function createKanmerMcpServer(policy = "local-stdio") {
       inputSchema: {
         id: external_exports.string().describe("Ticket id"),
         path: external_exports.string().describe("Repo-relative path, e.g. docs/prd/checkout.md"),
-        action: external_exports.enum(["add", "remove"]).default("add")
+        action: external_exports.enum(["add", "remove"]).default("add"),
+        expected_revision: expectedRevisionField
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
     },
-    write(async ({ id, path: refPath, action }) => {
+    write(async ({ id, path: refPath, action, expected_revision }) => {
       const item = await store.getItem(id);
       if (!item) return fail(`No item with id "${id}"`);
       const refs = new Set(item.refs ?? []);
       if (action === "remove") refs.delete(refPath);
       else refs.add(refPath);
-      return ok(await store.updateItem(id, { refs: [...refs] }));
+      return ok(await store.updateItem(id, { refs: [...refs], expectedRevision: expected_revision }));
     })
   );
   server.registerTool(
@@ -44936,12 +45219,13 @@ function createKanmerMcpServer(policy = "local-stdio") {
         source_id: external_exports.string().describe("The item that will hold the link"),
         target_id: external_exports.string().describe("The item being linked to / blocked"),
         action: external_exports.enum(["add", "remove"]).default("add"),
-        rel: external_exports.enum(["relates", "blocks"]).default("relates")
+        rel: external_exports.enum(["relates", "blocks"]).default("relates"),
+        expected_revision: expectedRevisionField
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
     },
     write(
-      async ({ source_id, target_id, action, rel }) => ok(await linkItems(store, source_id, target_id, action, rel))
+      async ({ source_id, target_id, action, rel, expected_revision }) => ok(await linkItems(store, source_id, target_id, action, rel, { expectedRevision: expected_revision }))
     )
   );
   server.registerTool(
@@ -45027,13 +45311,26 @@ function createKanmerMcpServer(policy = "local-stdio") {
     "migrate_board",
     {
       title: "Migrate / upgrade the board",
-      description: "Bring the board fully current: run the v1\u2192v2 migration if needed, then backfill the 7-stage default (alias-aware, additive \u2014 never renames or reorders existing stages, never touches item files). Pass dry_run: true to preview what would move and which stages would be added without writing. The agent-facing route to the same upgrade the GUI offers.",
+      description: "Bring the board fully current: run the v1\u2192v2 migration if needed, then backfill the 7-stage default (alias-aware, additive \u2014 never renames or reorders existing stages, never touches item files), then the one-time logical identity migration (FRD-029): a board without .kanmer/project.json receives a `project_id` with the prior machine-local fingerprint recorded as its auditable fallback, reported under `identity`. Pass dry_run: true to preview what would move, which stages would be added and whether an identity would be allocated, without writing. The agent-facing route to the same upgrade the GUI offers.",
       inputSchema: {
         dry_run: external_exports.boolean().optional().describe("Preview without writing")
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true }
     },
-    write(async ({ dry_run }) => ok(await migrateBoard(store, { dryRun: dry_run })))
+    // Deliberately not `write()`: that wrapper's lazy ensureInit() would allocate
+    // the identity (and stamp the skeleton) before the handler ran, so a dry run
+    // could never be read-only and `identity.wouldAllocate` was unreachable over
+    // MCP. Same guard order as write() — WRONG_PROJECT first, then actor, then
+    // init — but init only when actually writing.
+    guard(async ({ dry_run, expected_project }, extra) => {
+      await assertExpectedProject(expected_project);
+      store.setActor(actorName(server, extra));
+      if (!dry_run) await ensureInit();
+      const legacy = await legacyIdentity();
+      const report = await migrateBoard(store, { dryRun: dry_run, fallbackFingerprint: legacy.fingerprint });
+      await resolveProject();
+      return ok(report);
+    })
   );
   server.registerTool(
     "delete_item",
@@ -45166,9 +45463,7 @@ function createKanmerMcpServer(policy = "local-stdio") {
 }
 async function projectFingerprint() {
   if (!rootResolved) resolveRoot();
-  const format = await store.detectFormat();
-  const { source } = await store.getBoardWithSource();
-  return projectIdentity({ boardRoot: projectRoot, format, repoRoot: store.paths.repoRoot, boardSource: source }).fingerprint;
+  return (await legacyIdentity()).fingerprint;
 }
 async function main() {
   const stdioServer = createKanmerMcpServer("local-stdio");

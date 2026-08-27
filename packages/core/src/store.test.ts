@@ -775,6 +775,7 @@ describe("activity log", () => {
     const entries = await store.getActivity();
     const ops = entries.map((e) => e.op);
     expect(ops).toEqual([
+      "update", // board project_id — the one-time identity allocation on init (FRD-029)
       "create",
       "update", // title
       "update", // priority
@@ -785,7 +786,8 @@ describe("activity log", () => {
       "doc",
       "delete",
     ]);
-    const statusMove = entries[3];
+    expect(entries[0]).toMatchObject({ id: "board", field: "project_id" });
+    const statusMove = entries[4];
     expect(statusMove).toMatchObject({ id: t.id, field: "status", from: "review", to: "verifying" });
     expect(entries.every((e) => e.actor === "gui")).toBe(true);
     expect(entries.every((e) => typeof e.ts === "string" && e.ts.length > 0)).toBe(true);

@@ -8,7 +8,7 @@ import matter from "gray-matter";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { canonicalProjectPath, projectIdentity } from "../dist/project-identity.js";
+import { canonicalProjectPath, projectIdentity, redactRemoteOrigin } from "../dist/project-identity.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // KANMER_SERVER lets us point the smoke test at the standalone bundle.
@@ -160,6 +160,16 @@ try {
       windowsIdentity.repoRoot === "c:/Kanmer/Repo" &&
       canonicalProjectPath("C:\\") === "c:/",
     JSON.stringify({ posixIdentity, windowsIdentity }),
+  );
+  check(
+    "remote origin userinfo is stripped before it is reported or hashed (F-003)",
+    redactRemoteOrigin("https://user:ghp_secret@github.com/o/r.git") === "https://github.com/o/r.git" &&
+      redactRemoteOrigin("ssh://git@github.com/o/r.git") === "ssh://github.com/o/r.git" &&
+      redactRemoteOrigin("git@github.com:o/r.git") === "git@github.com:o/r.git" &&
+      redactRemoteOrigin("user:token@github.com:o/r.git") === "user@github.com:o/r.git" &&
+      redactRemoteOrigin("https://github.com/o/r.git") === "https://github.com/o/r.git" &&
+      redactRemoteOrigin("  ") === null && redactRemoteOrigin(null) === null,
+    JSON.stringify([redactRemoteOrigin("https://user:ghp_secret@github.com/o/r.git"), redactRemoteOrigin("user:token@github.com:o/r.git")]),
   );
   check(
     "project identity hash has the exact ordered payload and excludes boardSource",
@@ -448,7 +458,13 @@ try {
   });
   check(
     "create_item rejects standalone plans on a v2 board, naming set_ticket_doc",
-    plan.isError === true && textOf(plan).includes("set_ticket_doc") && plan.structuredContent === undefined,
+    // Unclassified errors still carry no `error` code; since FRD-029 every
+    // result (errors included) names the logical project, so the block is no
+    // longer absent — only the code is.
+    plan.isError === true && textOf(plan).includes("set_ticket_doc") &&
+      plan.structuredContent?.error === undefined &&
+      typeof plan.structuredContent?.project?.fingerprint === "string",
+    JSON.stringify(plan.structuredContent),
   );
 
   // Created directly in implementing — creation is ungated, so imports/backfills
@@ -535,6 +551,211 @@ try {
     "transport expected_project is not persisted in ticket frontmatter",
     !fs.readFileSync(path.join(sandbox, ".kanmer", "areas", "_none", "TICK-001", "TICK-001.md"), "utf8").includes("expected_project"),
   );
+
+  // --- FRD-029: logical project identity and revision-safe mutations ------
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const projectId = statusAfter.project?.project_id;
+  check(
+    "a fresh board is born with a generated logical project_id on its first write",
+    UUID_RE.test(projectId ?? "") &&
+      statusAfter.project?.board_id === projectId &&
+      statusAfter.project?.identity === "logical" &&
+      statusAfter.project?.origin === "generated" &&
+      statusAfter.project?.fingerprint === expectedProject &&
+      statusAfter.compat?.projectIdentity === "logical" &&
+      statusAfter.compat?.expectedRevision === "optional",
+    JSON.stringify(statusAfter.project),
+  );
+  check(
+    "the identity was unassigned before that first write and reads never allocate",
+    statusBefore.project?.identity === "unassigned" && statusBefore.project?.project_id === null,
+    JSON.stringify(statusBefore.project),
+  );
+  const projectFile = JSON.parse(fs.readFileSync(path.join(sandbox, ".kanmer", "project.json"), "utf8"));
+  check(
+    "project.json persists the identity additively (no format bump, version.json untouched)",
+    projectFile.schema === 1 && projectFile.project_id === projectId && projectFile.origin === "generated" &&
+      JSON.parse(fs.readFileSync(path.join(sandbox, ".kanmer", "version.json"), "utf8")).format === 3,
+    JSON.stringify(projectFile),
+  );
+  const location = statusAfter.project?.location;
+  check(
+    "get_status reports a separate machine-local location fingerprint",
+    typeof location?.fingerprint === "string" && location.fingerprint.startsWith("kanmer-loc-v1:") &&
+      typeof location.boardPath === "string" && typeof location.repoPath === "string" &&
+      "machine" in location && "boardBranch" in location && "remoteOrigin" in location &&
+      location.remoteOrigin === null,
+    JSON.stringify(location),
+  );
+  const readWithProject = await client.callTool({ name: "get_item", arguments: { id: "TICK-001" } });
+  check(
+    "every read result identifies the logical project in structuredContent.project",
+    readWithProject.structuredContent?.project?.project_id === projectId &&
+      readWithProject.structuredContent?.project?.fingerprint === expectedProject,
+    JSON.stringify(readWithProject.structuredContent),
+  );
+  const acceptedById = await client.callTool({
+    name: "update_item",
+    arguments: { id: "TICK-001", labels: ["identity"], expected_project: projectId },
+  });
+  check(
+    "expected_project accepts the logical project_id and every write result names the project",
+    acceptedById.isError !== true && acceptedById.structuredContent?.project?.project_id === projectId,
+    JSON.stringify(acceptedById.structuredContent),
+  );
+  const wrongId = await client.callTool({
+    name: "update_item",
+    arguments: { id: "TICK-001", labels: ["stolen"], expected_project: "00000000-0000-4000-8000-000000000000" },
+  });
+  check(
+    "a foreign project_id is refused with WRONG_PROJECT naming this project",
+    wrongId.isError === true && wrongId.structuredContent?.error?.code === "WRONG_PROJECT" &&
+      wrongId.structuredContent?.project?.project_id === projectId &&
+      textOf(wrongId).includes(projectId) &&
+      JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: "TICK-001" } }))).labels?.includes("identity"),
+    JSON.stringify(wrongId.structuredContent),
+  );
+  check(
+    "no mutating tool schema lets a request choose a project path",
+    tools.tools
+      .filter((t) => t.annotations?.readOnlyHint === false)
+      .every((t) => !["root", "path_root", "project_root", "board_root", "repo_root", "cwd"].some((k) => k in (t.inputSchema?.properties ?? {}))),
+  );
+  check(
+    "ticket mutations expose optional expected_revision",
+    ["update_item", "move_item", "take_ticket", "set_ticket_doc", "append_scratch", "link_doc", "link_items"].every((name) => {
+      const tool = tools.tools.find((t) => t.name === name);
+      return tool?.inputSchema?.properties?.expected_revision?.type === "string" &&
+        !tool.inputSchema?.required?.includes("expected_revision");
+    }),
+  );
+  const revisionedItem = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: "TICK-001" } })));
+  const revisionBefore = revisionedItem.revision;
+  check(
+    "get_item exposes a document-inclusive revision that is not written to frontmatter",
+    typeof revisionBefore === "string" && revisionBefore.startsWith("rev1:") &&
+      !fs.readFileSync(path.join(sandbox, ".kanmer", "areas", "_none", "TICK-001", "TICK-001.md"), "utf8").includes("revision"),
+    String(revisionBefore),
+  );
+  const proofWrite = await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: "TICK-001", doc: "proof", content: "# proof v1", expected_revision: revisionBefore },
+  });
+  const revisionAfterProof = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: "TICK-001" } })));
+  check(
+    "a proof write with the current revision is accepted and moves the ticket revision without touching `updated` (F-015)",
+    proofWrite.isError !== true &&
+      JSON.parse(textOf(proofWrite)).revision === revisionAfterProof.revision &&
+      revisionAfterProof.revision !== revisionBefore &&
+      revisionAfterProof.updated === revisionedItem.updated,
+    JSON.stringify({ before: revisionBefore, after: revisionAfterProof.revision, written: JSON.parse(textOf(proofWrite)).revision }),
+  );
+  const ticketBytesBefore = treeSnapshot(path.join(sandbox, ".kanmer", "areas", "_none", "TICK-001"));
+  const staleDoc = await client.callTool({
+    name: "set_ticket_doc",
+    arguments: { id: "TICK-001", doc: "proof", content: "# clobber", expected_revision: revisionBefore },
+  });
+  const staleUpdate = await client.callTool({
+    name: "update_item",
+    arguments: { id: "TICK-001", title: "clobber", expected_revision: revisionBefore },
+  });
+  const staleScratch = await client.callTool({
+    name: "append_scratch",
+    arguments: { id: "TICK-001", content: "clobber", expected_revision: revisionBefore },
+  });
+  check(
+    "a stale expected_revision is refused with REVISION_CONFLICT and nothing is written",
+    [staleDoc, staleUpdate, staleScratch].every((res) =>
+      res.isError === true && textOf(res).startsWith("Conflict:") && res.structuredContent?.error?.code === "REVISION_CONFLICT") &&
+      JSON.stringify(treeSnapshot(path.join(sandbox, ".kanmer", "areas", "_none", "TICK-001"))) === JSON.stringify(ticketBytesBefore),
+    JSON.stringify([staleDoc.structuredContent, staleUpdate.structuredContent, staleScratch.structuredContent]),
+  );
+
+  // A copy of the board at another path is the SAME logical project with a
+  // DIFFERENT location (FRD-029 acceptance 1).
+  const copyRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kanmer-smoke-copy-"));
+  fs.cpSync(path.join(sandbox, ".kanmer"), path.join(copyRoot, ".kanmer"), { recursive: true });
+  const copyTransport = new StdioClientTransport({ command: runner, args: [serverEntry, "--root", copyRoot], env: runnerEnv });
+  const copyClient = new Client({ name: "copy-smoke", version: "0.0.0" });
+  try {
+    await copyClient.connect(copyTransport);
+    const copyStatus = JSON.parse(textOf(await copyClient.callTool({ name: "get_status", arguments: {} })));
+    check(
+      "a copied board at another path keeps its project_id and differs only in location",
+      copyStatus.project?.project_id === projectId &&
+        copyStatus.project?.identity === "logical" &&
+        copyStatus.project?.location?.fingerprint !== location?.fingerprint &&
+        copyStatus.project?.fingerprint !== expectedProject,
+      JSON.stringify(copyStatus.project),
+    );
+    const crossWrite = await copyClient.callTool({
+      name: "update_item",
+      arguments: { id: "TICK-001", labels: ["cross"], expected_project: expectedProject },
+    });
+    check(
+      "the legacy fingerprint of the original location is a WRONG_PROJECT at the copy, while the logical id is accepted",
+      crossWrite.isError === true && crossWrite.structuredContent?.error?.code === "WRONG_PROJECT" &&
+        (await copyClient.callTool({ name: "update_item", arguments: { id: "TICK-001", labels: ["cross"], expected_project: projectId } })).isError !== true,
+      JSON.stringify(crossWrite.structuredContent),
+    );
+  } finally {
+    await copyClient.close();
+    fs.rmSync(copyRoot, { recursive: true, force: true });
+  }
+
+  // A legacy board (no project.json) receives its identity once, on migrate_board, with the fallback recorded.
+  const legacyRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kanmer-smoke-legacy-"));
+  fs.cpSync(path.join(sandbox, ".kanmer"), path.join(legacyRoot, ".kanmer"), { recursive: true });
+  fs.rmSync(path.join(legacyRoot, ".kanmer", "project.json"));
+  const legacyTransport = new StdioClientTransport({ command: runner, args: [serverEntry, "--root", legacyRoot], env: runnerEnv });
+  const legacyClient = new Client({ name: "legacy-smoke", version: "0.0.0" });
+  try {
+    await legacyClient.connect(legacyTransport);
+    const legacyStatus = JSON.parse(textOf(await legacyClient.callTool({ name: "get_status", arguments: {} })));
+    const guessed = await legacyClient.callTool({
+      name: "update_item",
+      arguments: { id: "TICK-001", labels: ["guess"], expected_project: projectId },
+    });
+    check(
+      "a legacy board reports identity unassigned and a guessed project_id is WRONG_PROJECT until migrated",
+      legacyStatus.project?.identity === "unassigned" && legacyStatus.project?.project_id === null &&
+        guessed.isError === true && guessed.structuredContent?.error?.code === "WRONG_PROJECT" &&
+        !fs.existsSync(path.join(legacyRoot, ".kanmer", "project.json")),
+      JSON.stringify(guessed.structuredContent),
+    );
+    // A dry run is truly read-only (F-002): it previews the allocation without
+    // initialising the board, so no project.json and no activity entry appear.
+    const preview = JSON.parse(textOf(await legacyClient.callTool({ name: "migrate_board", arguments: { dry_run: true, expected_project: legacyStatus.project.fingerprint } })));
+    check(
+      "migrate_board dry_run on a legacy board previews wouldAllocate without writing project.json",
+      preview.identity?.allocated === false && preview.identity?.wouldAllocate === true && preview.identity?.project_id === null &&
+        !fs.existsSync(path.join(legacyRoot, ".kanmer", "project.json")) &&
+        JSON.parse(textOf(await legacyClient.callTool({ name: "get_status", arguments: {} }))).project?.identity === "unassigned",
+      JSON.stringify(preview.identity),
+    );
+    // The real migration allocates once, with the prior fingerprint as the auditable fallback.
+    const migrated = JSON.parse(textOf(await legacyClient.callTool({ name: "migrate_board", arguments: { expected_project: legacyStatus.project.fingerprint } })));
+    const migratedFile = JSON.parse(fs.readFileSync(path.join(legacyRoot, ".kanmer", "project.json"), "utf8"));
+    const migratedStatus = JSON.parse(textOf(await legacyClient.callTool({ name: "get_status", arguments: {} })));
+    const activity = JSON.parse(textOf(await legacyClient.callTool({ name: "get_activity", arguments: { id: "board" } })));
+    const again = JSON.parse(textOf(await legacyClient.callTool({ name: "migrate_board", arguments: { expected_project: migratedStatus.project.project_id } })));
+    check(
+      "migrate_board on a legacy board migrates its identity once, with the prior fingerprint as auditable fallback",
+      migrated.identity?.allocated === false && migrated.identity?.origin === "migrated" &&
+        migratedFile.project_id === migrated.identity.project_id &&
+        again.identity?.allocated === false && again.identity?.project_id === migratedFile.project_id &&
+        migratedFile.migratedFrom?.fingerprint === legacyStatus.project.fingerprint &&
+        migratedStatus.project?.identity === "logical" && migratedStatus.project?.origin === "migrated" &&
+        migratedStatus.project?.project_id !== projectId &&
+        // exactly one allocation entry for THIS identity (the copied activity log also carries the sandbox's own)
+        activity.filter((e) => e.field === "project_id" && String(e.to).startsWith(migratedFile.project_id)).length === 1 &&
+        activity.some((e) => e.field === "project_id" && e.from === legacyStatus.project.fingerprint),
+      JSON.stringify({ identity: migrated.identity, file: migratedFile }),
+    );
+  } finally {
+    await legacyClient.close();
+    fs.rmSync(legacyRoot, { recursive: true, force: true });
+  }
   check(
     "board worktree counts active tickets only",
     statusAfter.boardWorktree?.ticketCount === 2,
@@ -1967,6 +2188,25 @@ Second proof attempt passed; the first failure is retained.
     Boolean(claimed.claim_expires_at) && claimed.claim_controller === "ctl-a",
     JSON.stringify({ claim_expires_at: claimed.claim_expires_at, claim_controller: claimed.claim_controller }),
   );
+  // F-004: release/renew/transfer honour expected_revision like take does — a stale token is REVISION_CONFLICT with zero writes.
+  {
+    const staleRev = JSON.parse(textOf(await client.callTool({ name: "get_item", arguments: { id: claimId } }))).revision;
+    await client.callTool({ name: "append_scratch", arguments: { id: claimId, content: "moves nothing counted" } });
+    await client.callTool({ name: "set_ticket_doc", arguments: { id: claimId, doc: "plan", content: "# moved the revision" } });
+    const beforeItem = textOf(await client.callTool({ name: "get_item", arguments: { id: claimId } }));
+    const staleRenew = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "renew", assignee: "ctl-a", expected_revision: staleRev } });
+    const staleRelease = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "release", expected_revision: staleRev } });
+    const staleTransfer = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "transfer", assignee: "ctl-b", reason: "operator: smoke", expected_revision: staleRev } });
+    check(
+      "take_ticket renew/release/transfer refuse a stale expected_revision with REVISION_CONFLICT and write nothing",
+      [staleRenew, staleRelease, staleTransfer].every((r) => r.isError === true && r.structuredContent?.error?.code === "REVISION_CONFLICT") &&
+        textOf(await client.callTool({ name: "get_item", arguments: { id: claimId } })) === beforeItem,
+      JSON.stringify([staleRenew.structuredContent?.error, staleRelease.structuredContent?.error, staleTransfer.structuredContent?.error]),
+    );
+    const freshRev = JSON.parse(beforeItem).revision;
+    const freshRenew = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "renew", assignee: "ctl-a", expected_revision: freshRev } });
+    check("take_ticket renew accepts the current expected_revision", freshRenew.isError !== true, textOf(freshRenew));
+  }
   const liveTransfer = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "transfer", assignee: "ctl-b" } });
   check("take_ticket transfer refuses a live claim with CLAIM_LIVE", liveTransfer.isError === true && textOf(liveTransfer).includes("CLAIM_LIVE"), textOf(liveTransfer));
   const foreignRenew = await client.callTool({ name: "take_ticket", arguments: { id: claimId, action: "renew", assignee: "ctl-b" } });

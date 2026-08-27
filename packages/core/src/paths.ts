@@ -57,6 +57,8 @@ export function resolvePaths(projectRoot: string, repoRoot?: string) {
     boardFile: path.join(data, "board.yml"),
     countersFile: path.join(data, "counters.json"),
     versionFile: path.join(kanmer, "version.json"),
+    /** Logical project identity (FRD-029); absent on boards that predate it. */
+    projectFile: path.join(kanmer, "project.json"),
     /** Format 2: area folders live here, one per area id, plus `_none`. */
     areasRoot: path.join(kanmer, "areas"),
     tickets: path.join(kanmer, TYPE_DIRS.ticket),

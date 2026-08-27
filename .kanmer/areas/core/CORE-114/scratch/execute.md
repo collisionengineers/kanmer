@@ -1,0 +1,1 @@
+2026-08-27 execute (auto run 20260827T133106Z-claude-code, lane 1): PR https://github.com/collisionengineers/kanmer/pull/291 opened from `core-114-project-identity` @ e2bb6ed895a9e3074a3d9521113ac64d153cbecc, worktree `.worktrees/core-114`. Handing off to review.

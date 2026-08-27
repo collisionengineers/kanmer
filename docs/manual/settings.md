@@ -1,4 +1,4 @@
-Settings has five tabs. This is a tour of what is in each, and where to look
+Settings has several tabs. This is a tour of what is in each, and where to look
 when you know what you want to change but not where it lives.
 
 ## Board
@@ -77,6 +77,33 @@ connection cannot be made automatically, the row shows you what to run or which
 file to edit, with a **Copy** button.
 
 See **Connect an agent**.
+
+## Projects
+
+One card per project named in the endpoint registry — the same
+`~/.kanmer/endpoints.json` (or `KANMER_ENDPOINT_REGISTRY`) that every Kanmer
+MCP server reports through `list_projects`. Each card shows the project's
+logical identity, where its board and repository are, which branch the board
+is on and how far ahead of or behind the remote it is, the declared policy
+label, how many tickets it holds, and who is working there right now: every
+active controller with the tickets it holds, and each workspace's branch,
+worktree, claim state and — when the board records one — its lease.
+
+Health is one of **Healthy**, **No identity yet** (a board that has not had
+its one-time identity migration), **Board missing**, **Invalid entry** (the
+registry line is malformed; it is shown, never dropped) or **Error**.
+
+Only the **selected project** — the tab this Settings dialog belongs to — has
+controls: rename its entry, set or clear its policy label, or remove it from
+the registry. If it is not registered yet, name it and press **Add this
+project**; its locations come from the open tab, never from a typed path.
+Every other card is observation only. Its single button, **Open project**,
+opens that project in a tab so you can select it; nothing here writes to
+another project's board or its board branch.
+
+Looking at a project here never changes it: the app reads each board with a
+throw-away read-only view, and writes to the registry file are serialised and
+refused if the file was edited by hand in the meantime.
 
 ## Things that are not in Settings
 

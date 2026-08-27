@@ -127,6 +127,16 @@ import { captureSmokePage, requestedSmokeCapturePath, writeSmokeCapture } from "
 import { remoteProjectIdentity } from "./remoteAccess/identity.js";
 import { RemoteAccessManager } from "./remoteAccess/manager.js";
 import { OpenAITunnelManager, type OpenAITunnelRoots } from "./openaiTunnel.js";
+import { homedir } from "node:os";
+import {
+  ProjectRegistryWriter,
+  assertEndpointName,
+  normalizePolicy,
+  observeRegistry,
+  productionObservationDeps,
+  registryLocation,
+} from "./projectRegistry.js";
+import type { RegistryProjectIdentity, RegistryView } from "../shared/ipc.js";
 import type { OpenAITunnelConfigInput, RemoteConfigInput } from "../shared/ipc.js";
 
 let mainWindow: BrowserWindow | null = null;
@@ -268,6 +278,38 @@ function assertOpenAITunnelConfig(value: unknown): asserts value is OpenAITunnel
   if (keys !== "autoStart,credentialEnv,enabled,executable,expectedGeneration,healthAddress,profileName,runtimeAlias,tunnelId" && keys !== "autoStart,credentialEnv,enabled,executable,expectedGeneration,healthAddress,profileName,tunnelId") throw new Error("OPENAI_PROFILE_UNKNOWN_FIELD");
   const config = value as Partial<OpenAITunnelConfigInput>;
   if ((config.runtimeAlias !== undefined && typeof config.runtimeAlias !== "string") || ![config.profileName, config.tunnelId, config.executable, config.credentialEnv, config.healthAddress].every((part) => typeof part === "string") || typeof config.enabled !== "boolean" || typeof config.autoStart !== "boolean" || (config.expectedGeneration !== null && typeof config.expectedGeneration !== "string")) throw new Error("OPENAI_PROFILE_INVALID");
+}
+
+// ---------------------------------------------------------------------------
+// FRD-029 endpoint registry (GUI-144). One writer for the whole process; the
+// registry file is wherever the MCP server would look for it, so both agree.
+// ---------------------------------------------------------------------------
+let registryWriter: ProjectRegistryWriter | null = null;
+function requireRegistryWriter(): ProjectRegistryWriter {
+  const location = registryLocation(process.env, homedir());
+  if (location.error) throw new Error(`REGISTRY_LOCATION_INVALID: ${location.error}`);
+  if (!registryWriter || registryWriter.path !== location.path) registryWriter = new ProjectRegistryWriter(location.path);
+  return registryWriter;
+}
+
+/** The selected project's identity, read from its open context — never from a renderer-supplied path. */
+async function registrySelectedIdentity(projectId: unknown): Promise<RegistryProjectIdentity | null> {
+  if (projectId === null || projectId === undefined) return null;
+  assertRemoteProjectId(projectId);
+  const ctx = contexts.get(projectId);
+  if (!ctx) return null;
+  const [legacy, record] = await Promise.all([remoteIdentity(ctx), ctx.store.getProject()]);
+  return {
+    project_id: record?.project_id ?? null,
+    board_id: record?.board_id ?? null,
+    identity: record ? "logical" : "unassigned",
+    origin: record?.origin ?? null,
+    fingerprint: legacy.fingerprint,
+  };
+}
+
+async function registryView(projectId: unknown): Promise<RegistryView> {
+  return observeRegistry(process.env, homedir(), productionObservationDeps, await registrySelectedIdentity(projectId));
 }
 
 function remoteOwner(event: IpcMainInvokeEvent): { webContentsId: number; frameRoutingId: number } {
@@ -1083,6 +1125,39 @@ function registerIpc(): void {
     assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); if (expected !== undefined && (!expected || typeof expected !== "object" || (expected.configGeneration !== undefined && expected.configGeneration !== null && typeof expected.configGeneration !== "string") || (expected.runtimeGeneration !== undefined && expected.runtimeGeneration !== null && typeof expected.runtimeGeneration !== "string"))) throw new Error("REMOTE_VERSION_INVALID");
     const ctx = requireCtx(projectId);
     return requireRemoteAccess().doctor(projectId, await remoteIdentity(ctx), { root: ctx.boardRoot, repoRoot: ctx.sourceRoot }, expected?.configGeneration ?? null, expected?.runtimeGeneration ?? null);
+  });
+  ipcMain.handle(CH.registryObserve, async (e, projectId: string | null) => {
+    assertTrustedRemoteSender(e);
+    return registryView(projectId);
+  });
+  ipcMain.handle(CH.registryAddProject, async (e, projectId: string, name: string, policy?: string | null) => {
+    assertTrustedRemoteSender(e); assertRemoteProjectId(projectId); assertEndpointName(name);
+    // Roots come from the open tab, so the renderer can only register a
+    // project the operator already chose through the folder picker.
+    const ctx = requireCtx(projectId);
+    const label = normalizePolicy(policy);
+    await requireRegistryWriter().upsert(name, {
+      boardRoot: ctx.boardRoot,
+      repoRoot: ctx.sourceRoot,
+      boardBranch: ctx.syncStatus.branch,
+      ...(label ? { policy: label } : {}),
+    });
+    return registryView(projectId);
+  });
+  ipcMain.handle(CH.registryRename, async (e, projectId: string | null, from: string, to: string) => {
+    assertTrustedRemoteSender(e); assertEndpointName(from); assertEndpointName(to);
+    await requireRegistryWriter().rename(from, to);
+    return registryView(projectId);
+  });
+  ipcMain.handle(CH.registryRemove, async (e, projectId: string | null, name: string) => {
+    assertTrustedRemoteSender(e); assertEndpointName(name);
+    await requireRegistryWriter().remove(name);
+    return registryView(projectId);
+  });
+  ipcMain.handle(CH.registrySetPolicy, async (e, projectId: string | null, name: string, policy: string | null) => {
+    assertTrustedRemoteSender(e); assertEndpointName(name);
+    await requireRegistryWriter().setPolicy(name, normalizePolicy(policy));
+    return registryView(projectId);
   });
   ipcMain.handle(CH.openAITunnelRegister, async (e, projectId: string) => {
     assertTrustedRemoteSender(e); assertRemoteProjectId(projectId);

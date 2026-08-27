@@ -203,8 +203,9 @@ and the controllers and workspaces currently holding tickets there. The
 answering server marks which entry is its own. Everything across projects is
 observational: writing to another project means connecting to that project's
 endpoint and passing its `project_id` as `expected_project`; sending another
-project's id to this one is refused with `WRONG_PROJECT`. The app's
-project-health view of this registry is tracked separately (GUI-144). Combining boards behind one tunnel is discouraged:
+project's id to this one is refused with `WRONG_PROJECT`. The Kanmer app reads
+and edits the same file from **Settings → Projects** (see **Settings**), so a
+name you add there is what `list_projects` reports. Combining boards behind one tunnel is discouraged:
 each exposes the same Kanmer tool names, leaving the remote agent without a
 clear board-selection boundary.
 

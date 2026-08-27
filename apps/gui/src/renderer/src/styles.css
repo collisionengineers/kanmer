@@ -2005,3 +2005,66 @@ button.danger {
   overflow: auto;
   padding: 12px 18px;
 }
+
+/* Settings → Projects: FRD-029 endpoint registry (GUI-144). */
+.remote-project-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+.registry-endpoint {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: default;
+}
+.registry-endpoint.selected {
+  outline: 2px solid var(--accent, #4c8dff);
+}
+.registry-endpoint-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.registry-health,
+.registry-selected {
+  border-radius: 999px;
+  font-size: 11px;
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+}
+.registry-health-ok { color: #2e9e5b; }
+.registry-health-unassigned { color: #b58a1a; }
+.registry-health-missing-board,
+.registry-health-invalid,
+.registry-health-error { color: #d34b4b; }
+.registry-workspaces,
+.registry-problems {
+  margin: 2px 0 0;
+  padding-left: 16px;
+  font-size: 12px;
+}
+.registry-actions,
+.registry-add,
+.registry-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.registry-add {
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+.registry-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.registry-field input {
+  min-width: 160px;
+}

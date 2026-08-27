@@ -21,6 +21,7 @@ import type {
 } from "../../../shared/ipc.js";
 import type { OpenAITunnelConfigInput, OpenAITunnelDoctorResult, OpenAITunnelProjectView, OpenAITunnelStatus, RemoteConfigInput, RemoteDoctorResult, RemoteProjectView, RemoteStatus } from "../../../shared/ipc.js";
 import { useClient } from "../lib/client.js";
+import { ProjectRegistrySection } from "./ProjectRegistry.js";
 import { boardDraftModified } from "../lib/settingsDraft.js";
 import {
   applyProfileEdit,
@@ -31,7 +32,7 @@ import {
   type Vocabulary,
 } from "../lib/profileDraft.js";
 
-type SettingsTab = "board" | "profiles" | "appearance" | "git" | "connect" | "dispatch" | "remote" | "openai";
+type SettingsTab = "board" | "profiles" | "appearance" | "git" | "connect" | "dispatch" | "remote" | "openai" | "projects";
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: "board", label: "Board" },
   { id: "profiles", label: "Profiles" },
@@ -41,6 +42,7 @@ const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: "dispatch", label: "Dispatch" },
   { id: "remote", label: "Remote access" },
   { id: "openai", label: "OpenAI tunnel" },
+  { id: "projects", label: "Projects" },
 ];
 
 interface SettingsProps {
@@ -245,6 +247,8 @@ export function Settings({
             {tab === "remote" && <RemoteSection projectId={projectId} />}
 
             {tab === "openai" && <OpenAITunnelSection projectId={projectId} />}
+
+            {tab === "projects" && <ProjectRegistrySection projectId={projectId} />}
 
             {tab === "profiles" && <ProfilesTab />}
 

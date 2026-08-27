@@ -12,9 +12,6 @@ stageEntered:
   implementing: '2026-08-27T18:44:42.353Z'
   verifying: '2026-08-27T19:04:49.086Z'
   done: '2026-08-27T19:17:57.015Z'
-taken_at: '2026-08-27T17:38:47.769Z'
-branch: core-114-project-identity
-worktree: .worktrees/core-114
 labels:
   - reliable-autonomy
 groups:
@@ -31,11 +28,12 @@ refs:
 commits:
   - e2bb6ed895a9e3074a3d9521113ac64d153cbecc
   - 631e3a0eef68da61c7d55c1d9948d6583db6f470
+  - 97dfc9f3b446819ed626b4f94008aae6d7a7d0f5
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/291'
 archived: false
 created: '2026-08-26T21:02:41.938Z'
-updated: '2026-08-27T19:17:57.015Z'
+updated: '2026-08-27T19:19:40.262Z'
 ---
 
 ## What
@@ -54,6 +52,12 @@ Independent controllers on different paths or machines need one project identity
 
 ## Verification
 
-- [ ] Same board at different paths retains identity; wrong endpoint and stale revision writes are refused.
+- [x] Same board at different paths retains identity; wrong endpoint and stale revision writes are refused.
 
 ## Outcome
+
+- Merged: PR #291 https://github.com/collisionengineers/kanmer/pull/291 (squash merge 97dfc9f3b446819ed626b4f94008aae6d7a7d0f5, 2026-08-27T19:04:35Z); branch commits e2bb6ed8, 631e3a0e.
+- Review delta attestation fdc1c78976f228d7; proof a12d28c8dc906d78 PASS at the merge SHA.
+- Shipped as planned: project.json identity, location fingerprint, WRONG_PROJECT / REVISION_CONFLICT, expected_revision on all mutating tools, migrate_board identity allocation.
+- Follow-up noted, not created: F-008 — a literal NUL byte in packages/core/src/project.ts should be replaced with an escape.
+- Operational note: the live board remains legacy/unassigned (no project.json) until an operator runs migrate_board; the installed v0.3.12 server stays compatible either way.

@@ -106,3 +106,9 @@ attempts:
 # Proof — CORE-114 logical project identity and revision-safe mutation contracts
 
 Verified at the exact PR #291 merge commit `97dfc9f3b446819ed626b4f94008aae6d7a7d0f5` in a disposable detached worktree. All packet checks passed locally except the `npm run verify` chain, which failed only on the known Windows EBUSY quirk in `scripts/antigravity-plugin-config.test.mjs` (untouched by this change per `git diff --stat 3267c7df..97dfc9f3`); the hosted push-to-main `verify` run 33106667700 at this SHA succeeded, as did PR-head run 33106086301. The FRD-029 acceptance ("same board at different paths retains identity; wrong endpoint and stale revision writes are refused") was exercised manually on throwaway copies, never the live board; the installed v0.3.12 server remains forward-compatible with a board carrying `project.json`. Logs: `%TEMP%\verify-core-114-*.log`.
+
+## Closeout
+
+- PR: https://github.com/collisionengineers/kanmer/pull/291
+- Merged: 2026-08-27T19:04:35Z (squash merge 97dfc9f3b446819ed626b4f94008aae6d7a7d0f5)
+- Closed out 2026-08-27 by claude-code (auto run); proof version a12d28c8dc906d78, result PASS.

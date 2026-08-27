@@ -21,3 +21,14 @@
 - 2026-08-27 verification complete: core 392/392, smoke 274/274, protocol 50/50, typecheck 4/4, plugin:check OK, bundle smokes OK, v0.3.12 compat proof OK; `npm run verify` exit 1 on the known antigravity EBUSY script quirk after core+GUI suites passed (all later steps rerun individually, exit 0).
 
 - [x] [remediation 1] F-001 exclusive allocation + concurrency tests; F-002 read-only dry-run migrate + smoke; F-003 origin userinfo redaction + smoke; F-004 expected_revision on release/renew/transfer + core/smoke tests. Commit 631e3a0e pushed to PR #291; core 396/396, smoke 278/278, protocol 50/50, http 118/0, plugin:check OK, typecheck 0, verify 1 (known antigravity EBUSY quirk).
+
+## Closeout — CORE-114
+
+- [x] PR merge verified (`gh pr view --json state,mergedAt`) — MERGED 2026-08-27T19:04:35Z, merge 97dfc9f3
+- [x] proof.md finalised (PR URL + merge date appended)
+- [x] Moved to final stage (Done, by kanmer-verify)
+- [x] Outcome recorded in ticket body (PR link, follow-ups)
+- [x] cd out of worktree; `git worktree remove .worktrees/core-114` (+ verify worktree)
+- [x] `git branch -D core-114-project-identity` (squash-merged) + `git push origin --delete`
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`

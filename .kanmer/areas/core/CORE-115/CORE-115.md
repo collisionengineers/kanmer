@@ -2,10 +2,12 @@
 id: CORE-115
 type: ticket
 title: Replace permanent claims with renewable workspace leases and batch ownership
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: feature
+stageEntered:
+  preparing: '2026-08-27T19:19:33.844Z'
 labels:
   - reliable-autonomy
 groups:
@@ -17,7 +19,7 @@ refs:
   - docs/functional/frd/FRD-030-renewable-workspace-leases-and-batches.md
 archived: false
 created: '2026-08-26T21:02:41.955Z'
-updated: '2026-08-26T21:41:04.863Z'
+updated: '2026-08-27T19:19:33.844Z'
 ---
 
 ## What

@@ -4,13 +4,14 @@ type: ticket
 title: >-
   Bootstrap ownership and backward-move contract (expiring claims, transfer,
   audited Review → Implementing)
-status: review
+status: verifying
 area: core
 assignee: claude-code
 profile: feature
 stageEntered:
   preparing: '2026-08-27T10:11:31.642Z'
   review: '2026-08-27T11:00:54.345Z'
+  verifying: '2026-08-27T11:54:26.072Z'
 taken_at: '2026-08-27T10:15:27.555Z'
 branch: core-121-bootstrap-ownership
 worktree: .worktrees/core-121
@@ -33,7 +34,7 @@ prs:
   - '287'
 archived: false
 created: '2026-08-27T10:07:40.746Z'
-updated: '2026-08-27T11:00:54.345Z'
+updated: '2026-08-27T11:54:26.072Z'
 ---
 
 ## What

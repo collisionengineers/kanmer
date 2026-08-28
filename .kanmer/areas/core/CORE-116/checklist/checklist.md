@@ -81,3 +81,16 @@
 - [x] `npm run verify` run with exit codes recorded; any failure attributed to a recorded host quirk or reported
 - [x] Post-implementation report written with commands, exit codes, deviations and reviewer focus points
 - [x] PR open against `main` with a `Kanmer: CORE-116` footer; ticket moved to Review
+
+---
+
+## Closeout — CORE-116
+
+- [x] PR merge verified (`gh pr view 299 --json state,mergedAt` — MERGED, mergeCommit 28a12643f1721cf7607ce5427f55fae281ba5026)
+- [x] proof.md finalised — already final (result PASS, verified_at 2026-08-28T05:08:08Z, bound to merge SHA)
+- [x] Already in final stage (Done, not archived)
+- [x] Outcome recorded in ticket body (scope split, carried-forward defect, residual risk, verification note)
+- [ ] cd out of worktree; `git worktree remove .worktrees/core-116`
+- [ ] `git branch -d core-116-delivery-policy` (`-D` if squash/rebase-merged) + delete remote branch
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`

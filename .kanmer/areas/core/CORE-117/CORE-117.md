@@ -2,10 +2,12 @@
 id: CORE-117
 type: ticket
 title: Add quick capture mode and deliberate promotion workflow
-status: backlog
+status: preparing
 area: core
 assignee: ''
 profile: feature
+stageEntered:
+  preparing: '2026-08-28T00:53:14.228Z'
 labels:
   - reliable-autonomy
 groups:
@@ -17,7 +19,7 @@ refs:
   - docs/functional/frd/FRD-032-quick-capture-and-promotion.md
 archived: false
 created: '2026-08-26T21:02:41.985Z'
-updated: '2026-08-26T21:41:04.886Z'
+updated: '2026-08-28T00:53:14.228Z'
 ---
 
 ## What

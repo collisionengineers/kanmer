@@ -22,7 +22,7 @@ than rewriting.*
 - [x] [pre-review] Run `npm run verify` and record its exit code plus any known host quirk, without weakening a test.
 - [x] [pre-review] Re-read `tool-reference.md` and AGENTS.md §8 by hand — `plugin:check` sees tool names and bundle bytes only.
 - [x] [pre-review] No change to `packages/core/src/store.ts`, to any governing document, or to the tool count.
-- [ ] [pre-review] Stop at the approved boundary: PR open with a `Kanmer: CORE-118` footer, report written, ticket in Review; do not merge or start another ticket.
+- [x] [pre-review] Stop at the approved boundary: PR open with a `Kanmer: CORE-118` footer, report written, ticket in Review; do not merge or start another ticket.
 
 `[pre-review]` and `[post-merge]` are plain-text labels for humans and skills. Current gates ignore these labels; use `get_doc_gates` for live gate behaviour.
 
@@ -68,10 +68,11 @@ than rewriting.*
 ## Closeout — CORE-118
 
 - [x] PR merge verified (`gh pr view --json state,mergedAt`) — MERGED, mergeCommit 0f4a21fefc3788a4b8c19c7c550e52e0ab8d5ab2, mergedAt 2026-08-28T00:01:09Z
-- [ ] proof.md finalised (PR URL + merge date appended)
+- [x] proof.md finalised (PR URL + merge date appended below the frontmatter-bound record)
 - [x] Moved to final stage (already Done, proof PASS)
-- [ ] Outcome recorded in ticket body (PR link, follow-ups)
-- [ ] cd out of worktree; `git worktree remove .worktrees/core-118`
-- [ ] `git branch -d core-118-step-packets` (`-D` if squash/rebase-merged)
-- [ ] `git fetch --prune` + `git worktree prune`
-- [ ] `take_ticket action: "release"`
+- [x] Outcome recorded in ticket body (PR link, follow-ups, verifier corrections)
+- [x] cd out of worktree; `git worktree remove .worktrees/core-118` (leftover node_modules dir then `rm -rf` + `git worktree prune`); also removed `.worktrees/verify-core-118-0f4a21fefc3788a4b8c19c7c550e52e0ab8d5ab2`
+- [x] `git branch -d core-118-step-packets` (clean fast-forward delete; merged to origin's copy of the branch)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `git push origin --delete core-118-step-packets`
+- [x] `take_ticket action: "release"` — done; taken_at/branch/worktree cleared

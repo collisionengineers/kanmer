@@ -351,3 +351,9 @@ refusal and a `step: "next"` call: `BOARD_TREE_IDENTICAL=true`,
   worktree was registered.
 - The verification worktree was re-asserted detached, clean and at
   `0f4a21fefc3788a4b8c19c7c550e52e0ab8d5ab2` after all checks completed.
+
+## Closeout
+
+- Merged PR: https://github.com/collisionengineers/kanmer/pull/297
+- Merge commit: `0f4a21fefc3788a4b8c19c7c550e52e0ab8d5ab2`
+- Merge date: 2026-08-28T00:01:09Z

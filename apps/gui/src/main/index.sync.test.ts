@@ -115,6 +115,17 @@ beforeEach(async () => {
 }, REAL_GIT_FIXTURE_TIMEOUT_MS);
 
 afterEach(async () => {
+  // Close the project rather than only dropping its context entry:
+  // `closeProject` is what closes the filesystem watcher, and dropping the map
+  // entry leaves that watcher running over a fixture this hook is about to
+  // delete. On Windows the watcher then raises
+  // `EPERM: operation not permitted, watch '…\.kanmer\areas'` as an
+  // **unhandled rejection**, which fails the whole rail while the suite itself
+  // reports 524/524 green — seen on the hosted runner, and a pre-existing race
+  // rather than anything this ticket introduced (CORE-128). The manual
+  // clearInterval/delete below stays as the fallback for a context
+  // `closeProject` could not take.
+  await __kanmerTest.closeProject(repo);
   const ctx = __kanmerTest.contexts.get(repo) as { syncTimer?: ReturnType<typeof setInterval> } | undefined;
   if (ctx?.syncTimer) clearInterval(ctx.syncTimer);
   __kanmerTest.contexts.delete(repo);

@@ -13,9 +13,6 @@ stageEntered:
   review: '2026-08-28T05:37:16.430Z'
   verifying: '2026-08-28T06:09:19.286Z'
   done: '2026-08-28T06:51:48.983Z'
-taken_at: '2026-08-28T04:50:02.357Z'
-branch: core-131-apply-reconciliation
-worktree: .worktrees/core-131
 labels:
   - reliable-autonomy
 groups:
@@ -25,11 +22,12 @@ refs:
   - docs/functional/frd/FRD-028-rescue-and-reconciliation.md
 commits:
   - abeb16978a4b3f8fece6e98d6bdf54e541544a1b
+  - 452159553bef03cf634bd5d6a2ffb6b9a9415de6
 prs:
   - 'https://github.com/collisionengineers/kanmer/pull/301'
 archived: false
 created: '2026-08-28T03:03:07.312Z'
-updated: '2026-08-28T06:51:48.983Z'
+updated: '2026-08-28T06:57:11.241Z'
 ---
 
 ## What
@@ -63,3 +61,21 @@ Everything CORE-113 lacked now exists and is merged:
 - [ ] A FAIL proof routes by `failure_class`: implementation → Implementing, plan → Preparing, transient stays in Verifying.
 - [ ] An expired claim with dirty work is recovered without deleting or cleaning the workspace; a live claim is refused.
 - [ ] The board worktree is refused as a target in every path.
+
+## Outcome
+
+**What shipped:** `apply_reconciliation` — the apply half of FRD-028 and the work [[CORE-113]] was superseded to enable. Six exhaustive actions (`MOVE_TO_VERIFYING`, `MOVE_TO_IMPLEMENTING`, `MOVE_TO_DONE`, `ROUTE_VERIFICATION_FAILURE`, `RELEASE_CLEAN_TERMINAL_CLAIM`, `RECOVER_EXPIRED_CLAIM`) with a `never` default; typed verification routing on `failure_class`; the durable `## Transitions` audit record; tool roster **39 → 40** across nine sites.
+
+**The F-015 defect that killed CORE-113 is closed, and was proved by execution twice** — once at review, once independently at verification. A proof-only rewrite leaves the ticket file byte-identical, so `updated` never moves and PR #286's CAS would still be blind today; the document-inclusive revision does move; and the stale apply is refused `REVISION_CONFLICT` with no audit line written. Controls proved the refusal *discriminates*: a current revision with a PASS proof still applies `MOVE_TO_DONE`, and a fresh revision with a FAIL proof routes to Implementing.
+
+**FRD-028 coverage:** AC2 and AC4 met, AC1 and AC5 not regressed, **AC3 met with one known gap** — an abandoned claim whose workspace is missing or unrecorded does not route, because the `"missing"` arm of the guard is dead code. It **fails closed**: the dry run still diagnoses, apply refuses `RECONCILIATION_INCONCLUSIVE`, and the operator falls back to `take_ticket action: "transfer"` at the same authority. Owned by **[[CORE-133]]**.
+
+**Residual risk:** the review recorded nine findings; two went to CORE-133 (R-001 major, R-002 minor), one was **rejected outright** (R-008 — `failCoded` returns `isError: true` for every coded refusal, so it described the framework rather than this change), and the rest are dispositioned accepted residual risk in attestation `f8251d2c938a287c`. R-004 (`index.ts:957` still says "there is no apply surface") has since been folded into CORE-133 as a one-liner, because the description ships in the plugin bundle and `check-plugin-sync.mjs` compares tool *names* only — no rail would ever catch it.
+
+**Four declared deviations, all accepted by review and re-confirmed at verification:** `errors.ts` edited though absent from the plan's expected-files table (the plan names both codes; they do not typecheck without it); `npm run verify` run from the worktree, on the reading — reproduced independently — that `check-plugin-sync.mjs:49-66` guards whether a checkout *owns its `@kanmer/core` resolution* rather than whether it is a linked worktree, which the script's own comment states; `npm ci` in the worktree, required by that; and `RECONCILIATION_DRIFT` as a revision-and-stage recheck, honestly labelled belt-and-braces rather than a load-bearing guard.
+
+**Verification note worth preserving:** local `npm run verify` failed across four same-SHA runs with **four different failing sets**, all 5s vitest timeouts and `ENOTEMPTY` teardown, never an assertion. The decisive mechanism argument was that `store.ts`'s diff **deletes zero lines** — two purely additive hunks — so no existing code path changed; both affected test files are untouched by the diff. Hosted CI at the exact merge SHA is green (run 33146971709).
+
+**Deployment:** this board declares no deployment tracking (per CORE-116 and CORE-117 precedent) — not applicable, recorded here in prose rather than the `deployment` field.
+
+**Merged:** PR [#301](https://github.com/collisionengineers/kanmer/pull/301), merge commit `452159553bef03cf634bd5d6a2ffb6b9a9415de6`. Independent post-merge verification: PASS, proof `b8dc5101d0c90fba`, bound to that exact SHA.

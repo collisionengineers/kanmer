@@ -77,3 +77,27 @@ Append with `set_ticket_doc(doc: "checklist", append: true)`.
   `mergeStateStatus` is `BLOCKED` because `main` sets
   `required_conversation_resolution: true` — the reviewer's job, not a defect.
   Not reviewed, not merged, no other ticket started.
+
+---
+
+## Closeout — CORE-131
+
+- [ ] PR merge verified (`gh pr view --json state,mergedAt`)
+- [ ] proof.md finalised (PR URL + merge date appended)
+- [ ] Moved to final stage
+- [ ] Outcome recorded in ticket body (PR link, follow-ups)
+- [ ] cd out of worktree; `git worktree remove .worktrees/<id>`
+- [ ] `git branch -d <branch>` (`-D` if squash/rebase-merged)
+- [ ] `git fetch --prune` + `git worktree prune`
+- [ ] `take_ticket action: "release"`
+
+- [x] PR merge verified — MERGED at 452159553bef03cf634bd5d6a2ffb6b9a9415de6
+- [x] proof.md finalised — already final (PASS, version b8dc5101d0c90fba), untouched
+- [x] Already in final stage (Done, not archived)
+- [x] Outcome recorded in ticket body
+- [x] `git worktree remove .worktrees/core-131`
+- [x] `git branch -d core-131-apply-reconciliation` (succeeded, no -D needed)
+- [x] `git fetch --prune` + `git worktree prune`
+- [x] `take_ticket action: "release"`
+
+Closeout complete.

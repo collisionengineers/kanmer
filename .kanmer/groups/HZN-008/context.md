@@ -42,6 +42,25 @@ Operators coordinating Kanmer projects, constrained implementation agents, indep
 - One active release lease exists per channel. No silent deletion of dirty work. No unlimited remediation or audit loops.
 - **Mutating reconciliation is not attempted before revision and lease contracts exist.** [[CORE-113]] was superseded on 2026-08-27 for this reason (see its Outcome and `scratch/notes.md`); its read-only classifier/collector is salvage material, its `apply_reconciliation` is not.
 
+## Scope discipline (adopted 2026-08-28)
+
+The horizon grew from 15 to 22 members because completed tickets were spawning
+follow-ups at roughly 0.67 new tickets per completion, chiefly by converting
+reviewer findings into tickets. FRD-034 already says dispositioned minor/note
+findings "may remain as explicit residual risk"; filing a ticket for one
+un-accepts the risk that was just accepted.
+
+- A reviewer recommends a **new ticket** only for a blocker/major finding, or a
+  finding that blocks a **named FRD acceptance criterion**. Every other finding
+  is recorded on the ticket as an explicit dispositioned residual risk and
+  stays there.
+- A ticket joins HZN-008 only if it is required by a named acceptance criterion
+  of FRD-028..035 or by this group's Definition of done. Useful work that fails
+  that test is ordinary backlog outside the horizon, not a member of it.
+- Applied on 2026-08-28 by operator decision: [[CORE-129]], [[CORE-130]] and
+  [[GUI-145]] were deferred out of HZN-008 on exactly this test. They remain
+  open on the board; none is lost, and none gates this horizon.
+
 ## Interim ownership and remediation rule (v0.3.12, until the bootstrap ownership contract merges)
 
 - A claim older than 30 minutes with no pause/resume note in `scratch/` and no live controller run record is treated as expired.
@@ -77,11 +96,12 @@ Operators coordinating Kanmer projects, constrained implementation agents, indep
 | [[SKILL-037]] | Expected reviewers settle, delta review, remediation budget, same-PR return | 3 |
 | [[CORE-114]] | Identity and revision safety | 4 |
 | [[CORE-115]] | Leases and isolated/batch workspaces | 5 |
-| [[CORE-116]] | Delivery policy and release-channel leases | 5 |
+| [[CORE-116]] | Delivery policy and per-ticket delivery state | 5 |
+| [[CORE-132]] | Release-channel leases and candidate identity | 5 |
 | [[CORE-117]] | Capture and promotion | 5 |
 | [[CORE-118]] | Evidence/plan validation and step packets | 5 |
 | [[MCP-054]] | Named multi-project endpoint registry | 5 |
-| (new) mutating reconciliation | `apply_reconciliation` on revisions + leases | 6 |
+| [[CORE-131]] | `apply_reconciliation` on revisions + leases | 6 |
 | [[GUI-144]] | GUI multi-project registry health | 6 |
 | [[SKILL-036]] | Durable `/goal`, review and verification control | 6 |
 | [[CORE-119]] | Golden-board and promotion/rollback proof | 7 |

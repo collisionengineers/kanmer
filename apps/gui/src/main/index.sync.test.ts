@@ -105,7 +105,10 @@ beforeEach(async () => {
   await git(repo, "push", "-u", "origin", "main");
   electronMocks.syncBoard.mockReset();
   electronMocks.syncBoard.mockImplementation(async (status) => status);
-});
+  // Same bounded budget as the teardown below: this hook drives eight real
+  // `git` subprocesses, which overruns Vitest's ten-second default hook budget
+  // on a contended Windows host (CORE-128). Scoped to this file.
+}, REAL_GIT_FIXTURE_TIMEOUT_MS);
 
 afterEach(async () => {
   const ctx = __kanmerTest.contexts.get(repo) as { syncTimer?: ReturnType<typeof setInterval> } | undefined;

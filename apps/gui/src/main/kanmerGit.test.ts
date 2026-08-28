@@ -78,7 +78,13 @@ beforeEach(async () => {
   writeFileSync(join(repo, ".kanmer", "version.json"), '{"format":3}\n', "utf8");
   await git(repo, "add", "--", ".kanmer");
   await git(repo, "commit", "-m", "board");
-});
+  // Same bounded budget as the teardown below, and for the same reason: this
+  // hook runs nine real `git` subprocesses against two real repositories, which
+  // Vitest's ten-second default hook budget does not cover once a second
+  // verification rail shares the host — it failed `Hook timed out in 10000ms`
+  // (CORE-128). Scoped to this file rather than raised globally, exactly as the
+  // note above REAL_GIT_TEST_TIMEOUT_MS intends.
+}, REAL_GIT_TEST_TIMEOUT_MS);
 
 afterEach(async () => {
   await rm(dir, {

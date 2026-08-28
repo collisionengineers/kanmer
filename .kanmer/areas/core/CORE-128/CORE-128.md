@@ -4,7 +4,7 @@ type: ticket
 title: >-
   Quarantine or fix the recurring Windows core-test timing failures that block
   verification
-status: review
+status: verifying
 area: core
 assignee: claude-code
 profile: fix
@@ -31,7 +31,7 @@ prs:
   - 'https://github.com/collisionengineers/kanmer/pull/305'
 archived: false
 created: '2026-08-27T23:52:07.305Z'
-updated: '2026-08-28T11:03:23.459Z'
+updated: '2026-08-28T11:23:37.504Z'
 ---
 
 ## What

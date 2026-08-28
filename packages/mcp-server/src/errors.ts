@@ -1,4 +1,13 @@
-export type KanmerErrorCode = "WRONG_PROJECT" | "REVISION_CONFLICT" | "GATE_BLOCKED" | "LEASE_EXPIRED" | "LEASE_CONFLICT";
+export type KanmerErrorCode =
+  | "WRONG_PROJECT"
+  | "REVISION_CONFLICT"
+  | "GATE_BLOCKED"
+  | "LEASE_EXPIRED"
+  | "LEASE_CONFLICT"
+  // FRD-028 apply refusals (CORE-131): nothing to apply, and the ticket moved
+  // under the collection that proposed it. Both are normal outcomes.
+  | "RECONCILIATION_INCONCLUSIVE"
+  | "RECONCILIATION_DRIFT";
 
 /**
  * Lease refusals (CORE-115, FRD-030) that mean "the workspace or lease is not

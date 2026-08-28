@@ -1,5 +1,6 @@
 import { hasLegacyTicketClaim } from "./types.js";
 import type {
+  ReconciliationAction,
   ReconciliationEvidence,
   ReconciliationFinding,
   ReconciliationRecommendation,
@@ -9,6 +10,10 @@ import type {
 // Salvaged from PR #286 (CORE-113) and reduced to the read-only inspector
 // (CORE-122). The classifier is advisory: it never proposes an applyable
 // proposal id, and nothing in core consumes its recommendation as authority.
+// CORE-131 added the typed verification routes and expired-claim recovery, and
+// binds each recommendation to the ticket it was computed for. The binding's
+// `revision` is stamped by the host collector, never read here: this function
+// stays pure and store-free.
 
 function finding(code: string, level: ReconciliationFinding["level"], message: string): ReconciliationFinding {
   return { code, level, message };
@@ -26,8 +31,20 @@ function stableEvidence(evidence: ReconciliationEvidence): ReconciliationEvidenc
   };
 }
 
-function recommend(action: ReconciliationRecommendation["action"], targetStatus?: string): ReconciliationRecommendation {
-  return { action, ...(targetStatus ? { targetStatus } : {}), advisory: true };
+function recommend(
+  evidence: ReconciliationEvidence,
+  action: ReconciliationAction,
+  targetStatus?: string,
+): ReconciliationRecommendation {
+  return {
+    action,
+    ...(targetStatus ? { targetStatus } : {}),
+    advisory: true,
+    ticketId: evidence.ticket.id,
+    // Null here by construction: only a store can compute a document-inclusive
+    // revision, and core never touches one. `reconcileTicket` stamps it.
+    revision: null,
+  };
 }
 
 /**
@@ -38,8 +55,10 @@ function recommend(action: ReconciliationRecommendation["action"], targetStatus?
  * inconclusive evidence); then every advisory warning is recorded WITHOUT
  * returning, so a merged or closed-unmerged Review ticket can still receive
  * its recovery recommendation alongside the warning (GH-3867261023 and the
- * missing-worktree merged-recovery thread from PR #286); then the stage
- * routes, where the same warnings become hard stops for non-Review stages.
+ * missing-worktree merged-recovery thread from PR #286); then expired-claim
+ * recovery, which is deliberately reachable over a dirty workspace; then the
+ * stage routes, where the same warnings become hard stops for non-Review
+ * stages.
  */
 export function reconcileEvidence(input: ReconciliationEvidence): ReconciliationResult {
   const evidence = stableEvidence(input);
@@ -85,7 +104,7 @@ export function reconcileEvidence(input: ReconciliationEvidence): Reconciliation
     findings.push(finding("CLAIM_WITHOUT_RECORDED_WORKSPACE", "warning", "the ticket claim has no recorded workspace; reconciliation preserves the claim and recommends no cleanup"));
   }
   if (evidence.claim.state === "expired") {
-    findings.push(finding("CLAIM_EXPIRED", "warning", "the ticket claim has expired; transfer is an operator/controller decision (take_ticket action transfer) and reconciliation never releases it"));
+    findings.push(finding("CLAIM_EXPIRED", "warning", "the ticket claim has expired; transfer is an operator/controller decision (take_ticket action transfer, or an explicit apply_reconciliation of RECOVER_EXPIRED_CLAIM) and reconciliation never releases it or its workspace"));
   }
   if (checksNotGreen) {
     findings.push(finding("REQUIRED_CHECKS_NOT_GREEN", "warning", "required checks are failing or pending on the selected pull request"));
@@ -98,16 +117,36 @@ export function reconcileEvidence(input: ReconciliationEvidence): Reconciliation
         return none();
       }
       findings.push(finding("MERGED_REVIEW", "info", "the pull request is merged while the ticket remains in Review"));
-      return { evidence, findings, recommendation: recommend("MOVE_TO_VERIFYING", "verifying") };
+      return { evidence, findings, recommendation: recommend(evidence, "MOVE_TO_VERIFYING", "verifying") };
     }
     if (evidence.pullRequest.state === "closed-unmerged") {
       findings.push(finding("CLOSED_UNMERGED_REVIEW", "warning", "the review pull request closed without merge; return to Implementing for an explicit next decision"));
-      return { evidence, findings, recommendation: recommend("MOVE_TO_IMPLEMENTING", "implementing") };
+      return { evidence, findings, recommendation: recommend(evidence, "MOVE_TO_IMPLEMENTING", "implementing") };
     }
     if (evidence.pullRequest.state === "absent" && !hasClaim) {
       findings.push(finding("REVIEW_WITHOUT_PR_OR_WORKER", "warning", "the ticket is in Review without a pull request or active claim; return to Implementing"));
-      return { evidence, findings, recommendation: recommend("MOVE_TO_IMPLEMENTING", "implementing") };
+      return { evidence, findings, recommendation: recommend(evidence, "MOVE_TO_IMPLEMENTING", "implementing") };
     }
+  }
+
+  // An abandoned lease is reclaimable before anything else is judged, and
+  // deliberately BEFORE the dirty/missing stop below: FRD-028 acceptance 4
+  // preserves dirty work, it does not refuse to reassign responsibility for
+  // it. Recovery is `transferTicket`, which never deletes, cleans or moves a
+  // workspace. It sits AFTER the Review routes so a merged Review still
+  // advances rather than being reduced to a transfer, and it is refused for a
+  // terminal ticket, whose only claim action is the clean-terminal release.
+  //
+  // An identity the transfer would itself refuse (`foreign-repository`,
+  // `branch-mismatch`) or cannot prove (`detached`, `unavailable`) gets no
+  // recommendation: the classifier does not propose a refusal.
+  if (
+    evidence.claim.state === "expired" &&
+    evidence.ticket.status !== "done" &&
+    (evidence.workspace.state === "clean" || evidence.workspace.state === "dirty" || evidence.workspace.state === "missing") &&
+    (evidence.workspace.claimIdentity === "matches-claim" || evidence.workspace.claimIdentity === "not-applicable")
+  ) {
+    return { evidence, findings, recommendation: recommend(evidence, "RECOVER_EXPIRED_CLAIM") };
   }
 
   // Outside the Review recovery routes the advisory warnings are stops.
@@ -129,17 +168,34 @@ export function reconcileEvidence(input: ReconciliationEvidence): Reconciliation
         return none();
       }
       findings.push(finding("PASS_PROOF_STILL_VERIFYING", "info", "a PASS proof is present for the merged pull request while the ticket remains Verifying"));
-      return { evidence, findings, recommendation: recommend("MOVE_TO_DONE", "done") };
+      return { evidence, findings, recommendation: recommend(evidence, "MOVE_TO_DONE", "done") };
     }
     if (evidence.proof.state === "fail") {
-      findings.push(finding("FAILED_VERIFICATION_REQUIRES_DISPOSITION", "warning", "verification failed; preserve the proof and route the ticket through its recorded implementation, plan or terminal disposition"));
-      return none();
+      // The routing table is `kanmer-verify/SKILL.md`'s, verbatim. A non-PASS
+      // proof that names no class — or one this build does not recognise —
+      // reaches the default and is inconclusive, never retryable. `transient`
+      // and `inconclusive` both yield NO recommendation: the ticket stays in
+      // Verifying because no board mutation expresses "rerun the check".
+      switch (evidence.proof.failureClass ?? "inconclusive") {
+        case "implementation":
+          findings.push(finding("VERIFICATION_FAILED_IMPLEMENTATION", "warning", "verification failed against the plan and governing docs; the proof is preserved and the ticket returns to Implementing"));
+          return { evidence, findings, recommendation: recommend(evidence, "ROUTE_VERIFICATION_FAILURE", "implementing") };
+        case "plan":
+          findings.push(finding("VERIFICATION_FAILED_PLAN", "warning", "verification failed because the plan is what is wrong; the proof is preserved and the ticket returns to Preparing"));
+          return { evidence, findings, recommendation: recommend(evidence, "ROUTE_VERIFICATION_FAILURE", "preparing") };
+        case "transient":
+          findings.push(finding("VERIFICATION_TRANSIENT_RETRY", "warning", "verification failed on the environment rather than the change; rerun the failed check and retain both attempts — the ticket stays in Verifying and reconciliation recommends no move"));
+          return none();
+        default:
+          findings.push(finding("VERIFICATION_INCONCLUSIVE", "warning", "verification did not distinguish an implementation, plan or transient failure; the ticket stays in Verifying until the proof names a class"));
+          return none();
+      }
     }
   }
 
   if (evidence.ticket.status === "done" && hasClaim && evidence.workspace.state === "clean" && evidence.workspace.claimIdentity === "matches-claim") {
     findings.push(finding("CLEAN_TERMINAL_CLAIM", "info", "a completed ticket still has a clean recorded claim; releasing it belongs to closeout"));
-    return { evidence, findings, recommendation: recommend("RELEASE_CLEAN_TERMINAL_CLAIM") };
+    return { evidence, findings, recommendation: recommend(evidence, "RELEASE_CLEAN_TERMINAL_CLAIM") };
   }
 
   if (evidence.ticket.status === "done" && hasClaim && evidence.workspace.state === "clean") {

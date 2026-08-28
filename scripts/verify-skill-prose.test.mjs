@@ -325,3 +325,349 @@ test("skill prose validator rejects a resumed flow without reference inputs or a
     removeTreeWithRetrySync(fixture);
   }
 });
+
+/** A fixture repo carrying the real skills tree, for the SKILL-036 contract checks. */
+function goalFixture(label) {
+  const fixture = mkdtempSync(join(tmpdir(), label));
+  cpSync(join(root, "plugins", "kanmer", "skills"), join(fixture, "plugins", "kanmer", "skills"), {
+    recursive: true,
+  });
+  mkdirSync(join(fixture, "packages", "core", "src"), { recursive: true });
+  cpSync(join(root, "packages", "core", "src", "profiles.ts"), join(fixture, "packages", "core", "src", "profiles.ts"));
+  writeFileSync(join(fixture, "AGENTS.md"), "Contract fixture.\n");
+  return fixture;
+}
+const skillFile = (fixture, skill) => join(fixture, "plugins", "kanmer", "skills", skill, "SKILL.md");
+const edit = (path, from, to) => {
+  const body = readFileSync(path, "utf8");
+  assert.ok(body.includes(from), `fixture anchor missing: ${from}`);
+  writeFileSync(path, body.replace(from, to));
+};
+
+test("goal contract validator rejects an unfrozen roster and a missing preflight", () => {
+  const fixture = goalFixture("kanmer-goal-scope-contract-");
+  try {
+    const auto = skillFile(fixture, "kanmer-auto");
+    edit(
+      auto,
+      "five scopes: one ticket, one explicit existing group, one area, an explicit\nticket list, or the prepared board.",
+      "one explicit existing group per invocation.",
+    );
+    edit(auto, "### Preflight before the first mutation", "### Getting started");
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /FAIL {2}kanmer-auto accepts the five goal scopes and freezes its roster/);
+    assert.match(result.stdout, /FAIL {2}kanmer-auto preflights identity, delivery target and board health/);
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("goal contract validator rejects trusting a stale gate and routing around a spent budget", () => {
+  const fixture = goalFixture("kanmer-goal-gate-budget-");
+  try {
+    const auto = skillFile(fixture, "kanmer-auto");
+    edit(auto, "### Push the board before trusting a gate", "### Board synchronisation");
+    edit(auto, "to get around that refusal", "whenever the lane would otherwise stall");
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /FAIL {2}kanmer-auto pushes the board before it trusts a gate result/);
+    assert.match(result.stdout, /FAIL {2}kanmer-auto bounds churn and adds no second route around the budget/);
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("goal contract validator rejects a controller that merges or self-replans past its budget", () => {
+  const fixture = goalFixture("kanmer-goal-merge-claim-");
+  try {
+    const auto = skillFile(fixture, "kanmer-auto");
+    writeFileSync(
+      auto,
+      `${readFileSync(auto, "utf8")}\nThe controller merges the PR once every required check is green.\n` +
+        "Once the budget is spent the controller takes another replan on its own authority.\n",
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /FAIL {2}no controller performing the merge itself/);
+    assert.match(result.stdout, /FAIL {2}no self-authorised replan after an exhausted budget/);
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("goal contract validator rejects a run record that loses its scope or roster freeze", () => {
+  const fixture = goalFixture("kanmer-goal-run-record-");
+  try {
+    const assets = join(fixture, "plugins", "kanmer", "skills", "kanmer-auto", "assets");
+    edit(join(assets, "run-state-template.md"), "delivery_target:", "target_branch:");
+    edit(join(assets, "run-state-template.md"), "**frozen at", "selected at");
+    edit(join(assets, "current-run-template.md"), "\nscope: group\n", "\n");
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /FAIL {2}run-state template records delivery_target:/);
+    assert.match(result.stdout, /FAIL {2}run-state Selection contract freezes the roster and the ledger tracks the replan/);
+    assert.match(result.stdout, /FAIL {2}current-run pointer names the scope it is resuming/);
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("goal contract validator rejects a stale-gate review and an asserted transient verdict", () => {
+  const fixture = goalFixture("kanmer-goal-review-verify-");
+  try {
+    edit(
+      skillFile(fixture, "kanmer-review"),
+      "does not re-run when the board is pushed",
+      "re-runs whenever the board is pushed",
+    );
+    edit(
+      skillFile(fixture, "kanmer-verify"),
+      "**`transient` is a conclusion you earn, never one you assert.**",
+      "Treat a red run on a known-flaky host as transient.",
+    );
+
+    const result = spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout, /FAIL {2}kanmer-review binds its gate reading to a pushed board/);
+    assert.match(result.stdout, /FAIL {2}kanmer-verify earns transient with evidence and reads a proof in full/);
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+/**
+ * SKILL-036 remediation round 1. Every assertion added to check 19 by the
+ * remediation gets a mutation that deletes exactly the clause it claims to pin,
+ * because a check whose clause can be removed without a FAIL is advertising a
+ * guarantee it does not provide — the defect the review found in the first
+ * round, where five scopes were declared and one was resolved.
+ */
+const expectFail = (stdout, name) =>
+  assert.ok(stdout.includes(`FAIL  ${name}`), `expected FAIL for check: ${name}\n${stdout}`);
+const expectPass = (stdout, name) =>
+  assert.ok(stdout.includes(`PASS  ${name}`), `expected PASS for check: ${name}\n${stdout}`);
+const runOn = (fixture) => spawnSync(process.execPath, [script, fixture], { encoding: "utf8" });
+
+// F1: each declared scope must lose its own named check when its resolution
+// step goes, and must not be propped up by a neighbouring scope's step.
+const scopeMutations = [
+  [
+    "ticket",
+    '**ticket scope** — `get_item "<TICKET-ID>"`',
+    "**ticket scope** — the named ticket",
+    "kanmer-auto resolves the roster for ticket scope",
+    "kanmer-auto resolves the roster for group scope",
+  ],
+  [
+    "group",
+    '**group scope** — `list_items group: "<explicit group>"`',
+    "**group scope** — the group members",
+    "kanmer-auto resolves the roster for group scope",
+    "kanmer-auto resolves the roster for ticket scope",
+  ],
+  [
+    "area",
+    '**area scope** — `list_items area: "<area id>"`',
+    "**area scope** — the area members",
+    "kanmer-auto resolves the roster for area scope",
+    "kanmer-auto resolves the roster for board scope",
+  ],
+  [
+    "list",
+    "**list scope** — `get_item` for each id the operator named",
+    "**list scope** — the ids the operator named",
+    "kanmer-auto resolves the roster for list scope",
+    "kanmer-auto resolves the roster for area scope",
+  ],
+  [
+    "board",
+    "**board scope** — `list_items` with no scope filter",
+    "**board scope** — the whole prepared board",
+    "kanmer-auto resolves the roster for board scope",
+    "kanmer-auto resolves the roster for list scope",
+  ],
+];
+
+test("goal contract validator rejects a scope advertised with no resolution step", () => {
+  for (const [scope, from, to, failed, unaffected] of scopeMutations) {
+    const fixture = goalFixture(`kanmer-goal-scope-${scope}-`);
+    try {
+      edit(skillFile(fixture, "kanmer-auto"), from, to);
+      const result = runOn(fixture);
+      assert.notEqual(result.status, 0, `${scope} scope mutation should fail the validator`);
+      expectFail(result.stdout, failed);
+      expectPass(result.stdout, unaffected);
+    } finally {
+      removeTreeWithRetrySync(fixture);
+    }
+  }
+});
+
+test("goal contract validator rejects a roster that is not frozen and gated the same way for every scope", () => {
+  const fixture = goalFixture("kanmer-goal-freeze-");
+  try {
+    const auto = skillFile(fixture, "kanmer-auto");
+    edit(auto, "frozen into `## Selection contract` at that\n   moment and never re-resolved", "recorded for this run");
+    edit(auto, "the gates-first readiness rules do not vary by scope", "readiness is judged per ticket");
+
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "kanmer-auto freezes and gates every scope's roster identically");
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("goal contract validator rejects a controller that rebases onto a hardcoded main", () => {
+  const fixture = goalFixture("kanmer-goal-delivery-target-");
+  try {
+    edit(skillFile(fixture, "kanmer-auto"), "rebase origin/<delivery_target>", "rebase origin/main");
+
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "kanmer-auto rebases onto the recorded delivery target, never a literal main");
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("goal contract validator rejects a replan with no remediation-budget precondition", () => {
+  const fixture = goalFixture("kanmer-goal-replan-budget-");
+  try {
+    edit(
+      skillFile(fixture, "kanmer-auto"),
+      ", and only while\n  the remediation budget is **still available before it is spent**",
+      "",
+    );
+
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "kanmer-auto allows its one replan only before the remediation budget is spent");
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("goal contract validator rejects an identity preflight a fresh run can never satisfy", () => {
+  const fixture = goalFixture("kanmer-goal-identity-");
+  try {
+    edit(
+      skillFile(fixture, "kanmer-auto"),
+      "For a **new** run there is\n  no record yet",
+      "For every run the record already exists",
+    );
+
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "kanmer-auto's identity preflight covers a new run as well as a resumed one");
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("goal contract validator rejects evidence hygiene that leaves an out-of-scope finding undispositionable", () => {
+  const fixture = goalFixture("kanmer-goal-deferred-");
+  try {
+    edit(
+      skillFile(fixture, "kanmer-auto"),
+      "**`deferred-to-ticket`** disposition, which is invalid without a linked\n  ticket",
+      "ordinary deferral, which needs nothing further",
+    );
+
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "kanmer-auto keeps `deferred-to-ticket` legal for an out-of-scope finding");
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("goal contract validator rejects a sync check against a hardcoded board branch", () => {
+  const fixture = goalFixture("kanmer-goal-board-branch-");
+  try {
+    edit(skillFile(fixture, "kanmer-auto"), "rev-parse origin/<board-branch>", "rev-parse origin/kanmer-board");
+
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "kanmer-auto pushes the board before it trusts a gate result");
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("goal contract validator rejects an active-Review invariant with no up-to-review exemption", () => {
+  const fixture = goalFixture("kanmer-goal-up-to-review-");
+  try {
+    edit(
+      skillFile(fixture, "kanmer-auto"),
+      "exemption is the supported **up to review** target point",
+      "rule admits no exception",
+    );
+
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "kanmer-auto states the active Review and Verifying invariants");
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+test("goal contract validator rejects a run record that resumes at the pre-scope schema", () => {
+  const fixture = goalFixture("kanmer-goal-schema-");
+  try {
+    edit(
+      skillFile(fixture, "kanmer-auto"),
+      "The current run-record schema is **`schema: 2`**",
+      "The run record carries a schema field",
+    );
+    const assets = join(fixture, "plugins", "kanmer", "skills", "kanmer-auto", "assets");
+    edit(join(assets, "run-state-template.md"), "schema: 2", "schema: 1");
+    edit(join(assets, "current-run-template.md"), "schema: 2", "schema: 1");
+
+    const result = runOn(fixture);
+    assert.notEqual(result.status, 0);
+    expectFail(result.stdout, "kanmer-auto requires run-record schema 2 and refuses to resume a schema-1 record");
+    expectFail(result.stdout, "run-state template is stamped schema: 2");
+    expectFail(result.stdout, "current-run template is stamped schema: 2");
+  } finally {
+    removeTreeWithRetrySync(fixture);
+  }
+});
+
+// F11: the two forbidden-claim checks are named for a capability, so every
+// phrasing that would grant that capability has to fire them — not only the one
+// phrasing the first round happened to write.
+const forbiddenParaphrases = [
+  ["The controller performs the merge itself once every required check is green.", "no controller performing the merge itself"],
+  ["kanmer-auto merges the pull request after the final independent pass.", "no controller performing the merge itself"],
+  ["The controller runs gh pr merge when the reviewer is unavailable.", "no controller performing the merge itself"],
+  ["The controller merges the PR once the delta review clears.", "no controller performing the merge itself"],
+  ["A budget-exhausted lane may self-replan.", "no self-authorised replan after an exhausted budget"],
+  [
+    "After REMEDIATION_BUDGET_EXHAUSTED the controller replans automatically.",
+    "no self-authorised replan after an exhausted budget",
+  ],
+  ["Once the budget is spent the controller takes another replan on its own authority.", "no self-authorised replan after an exhausted budget"],
+  ["The controller replans once the remediation budget is exhausted.", "no self-authorised replan after an exhausted budget"],
+];
+
+test("goal contract validator catches every phrasing of the two forbidden controller claims", () => {
+  for (const [sentence, failed] of forbiddenParaphrases) {
+    const fixture = goalFixture("kanmer-goal-forbidden-");
+    try {
+      const auto = skillFile(fixture, "kanmer-auto");
+      writeFileSync(auto, `${readFileSync(auto, "utf8")}\n${sentence}\n`);
+
+      const result = runOn(fixture);
+      assert.notEqual(result.status, 0, `unguarded paraphrase: ${sentence}`);
+      expectFail(result.stdout, failed);
+    } finally {
+      removeTreeWithRetrySync(fixture);
+    }
+  }
+});

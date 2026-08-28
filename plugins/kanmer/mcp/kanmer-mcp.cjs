@@ -42342,6 +42342,141 @@ ${entry}`;
     });
   }
   /**
+   * Apply ONE reconciliation action proposed by the FRD-028 inspector
+   * (CORE-131). This is a dispatcher, not a mutation path: every branch reaches
+   * an existing verb — `moveItem`, `releaseTicket` or `transferTicket` — and
+   * hands it the caller's `expectedRevision`, so the verb's own locked
+   * compare-and-set inside `withLeaseLock` is the atomicity boundary. There is
+   * no new lock section, no second ownership model and no new stage.
+   *
+   * The precondition re-check below reads the item OUTSIDE the lock, and that
+   * is deliberately not PR #286's defect: #286 took its CAS token from its own
+   * read, so the check validated nothing. Here `expectedRevision` comes from
+   * the caller — bound to the evidence the recommendation was computed from —
+   * and the verb re-reads and re-checks it under the lock. This read only fails
+   * fast and names the responsible controller for the audit line.
+   *
+   * Authority is unchanged: `review → implementing` is still judged by
+   * `backwardMoveEffects`, so it needs a `needs-changes` attestation bound to
+   * this ticket's PR or a caller-supplied reason beginning `operator:`. This
+   * code never synthesises one, never passes `force`, never deletes a branch or
+   * worktree and never cleans a workspace.
+   */
+  async applyReconciliation(id, input) {
+    const loc = await this.locateItem(id);
+    if (!loc) throw new Error(`No item with id "${id}"`);
+    const current = parseItem(await readText(loc.file));
+    if (current.type !== "ticket") {
+      throw new Error(`Only tickets can be reconciled; "${id}" is a ${current.type}`);
+    }
+    const actor = input.actor?.trim() || this.actor;
+    const target = input.targetStatus;
+    const requireStatus = (expected) => {
+      if (current.status !== expected) {
+        throw new Error(
+          `RECONCILIATION_PRECONDITION_FAILED: "${id}" is ${current.status}, but ${input.action} applies only to a ticket in ${expected}.`
+        );
+      }
+    };
+    const requireTarget = (expected) => {
+      if (target !== expected) {
+        throw new Error(
+          `RECONCILIATION_PRECONDITION_FAILED: ${input.action} on "${id}" targets ${expected}, not ${target ?? "(none)"}.`
+        );
+      }
+    };
+    const requireNoTarget = () => {
+      if (target !== void 0) {
+        throw new Error(
+          `RECONCILIATION_PRECONDITION_FAILED: ${input.action} on "${id}" is a claim action and takes no target status (got ${target}).`
+        );
+      }
+    };
+    let next;
+    switch (input.action) {
+      case "MOVE_TO_VERIFYING": {
+        requireStatus("review");
+        requireTarget("verifying");
+        next = await this.moveItem(id, { status: "verifying", expectedRevision: input.expectedRevision });
+        break;
+      }
+      case "MOVE_TO_DONE": {
+        requireStatus("verifying");
+        requireTarget("done");
+        next = await this.moveItem(id, { status: "done", expectedRevision: input.expectedRevision });
+        break;
+      }
+      case "MOVE_TO_IMPLEMENTING": {
+        requireStatus("review");
+        requireTarget("implementing");
+        next = await this.moveItem(id, {
+          status: "implementing",
+          expectedRevision: input.expectedRevision,
+          ...input.reason !== void 0 ? { reason: input.reason } : {}
+        });
+        break;
+      }
+      case "ROUTE_VERIFICATION_FAILURE": {
+        requireStatus("verifying");
+        if (target !== "implementing" && target !== "preparing") {
+          throw new Error(
+            `RECONCILIATION_PRECONDITION_FAILED: ${input.action} on "${id}" routes to implementing or preparing, not ${target ?? "(none)"}.`
+          );
+        }
+        const failureClass = target === "implementing" ? "implementation" : "plan";
+        const reason = input.reason?.trim() || `proof FAIL ${failureClass}: routed by apply_reconciliation from the ticket's recorded proof record`;
+        next = await this.moveItem(id, { status: target, expectedRevision: input.expectedRevision, reason });
+        break;
+      }
+      case "RELEASE_CLEAN_TERMINAL_CLAIM": {
+        requireStatus("done");
+        requireNoTarget();
+        next = await this.releaseTicket(id, { expectedRevision: input.expectedRevision });
+        break;
+      }
+      case "RECOVER_EXPIRED_CLAIM": {
+        requireNoTarget();
+        if (!current.taken_at) {
+          throw new Error(`CLAIM_NOT_TAKEN: "${id}" is not taken; there is no claim to recover.`);
+        }
+        const lease = leaseState(current, /* @__PURE__ */ new Date(), leaseConfig(await this.getBoard()));
+        if (lease.state !== "expired") {
+          throw new Error(
+            `CLAIM_LIVE: "${id}" is held by ${current.assignee || "an unknown actor"} until ${lease.expiresAt ?? "(unknown)"}. Reconciliation recovers only an expired claim; a live one is an operator transfer.`
+          );
+        }
+        const controller = input.controller?.trim();
+        next = await this.transferTicket(id, {
+          assignee: controller || actor,
+          ...controller ? { controller } : {},
+          expectedRevision: input.expectedRevision,
+          ...input.recovery ? { recovery: input.recovery } : {}
+        });
+        break;
+      }
+      default: {
+        const exhaustive = input.action;
+        throw new Error(`Unknown reconciliation action: ${String(exhaustive)}`);
+      }
+    }
+    const from = _KanmerStore.responsibilityOf(current);
+    const to = _KanmerStore.responsibilityOf(next);
+    const claimAction = input.action === "RELEASE_CLEAN_TERMINAL_CLAIM" || input.action === "RECOVER_EXPIRED_CLAIM";
+    const transition = `reconcile ${input.action} by ${actor}` + (claimAction ? `; controller ${from.controller ?? "(none)"} \u2192 ${to.controller ?? "(none)"}` : `; stage ${from.status} \u2192 ${to.status}`) + `; revision ${input.expectedRevision}`;
+    if (loc.kind === "v2") await this.appendTransition(id, transition);
+    await appendActivity(this.paths, [
+      this.activity(id, "update", { field: "reconciliation", from: from.status, to: input.action })
+    ]);
+    return { item: next, action: input.action, from, to, transition };
+  }
+  /** Who is responsible for a ticket right now; null once nothing holds it. */
+  static responsibilityOf(item) {
+    return {
+      status: item.status,
+      controller: item.taken_at ? item.claim_controller ?? item.assignee ?? null : null
+    };
+  }
+  /**
    * Renew (heartbeat) a lease (CORE-115). A leased ticket renews only with its
    * current `lease_id` and `lease_revision`: a non-current id refuses with
    * `LEASE_EXPIRED`, a stale revision with `Conflict:` (REVISION_CONFLICT),
@@ -43246,8 +43381,16 @@ function stableEvidence(evidence) {
     release: { ...evidence.release }
   };
 }
-function recommend(action, targetStatus) {
-  return { action, ...targetStatus ? { targetStatus } : {}, advisory: true };
+function recommend(evidence, action, targetStatus) {
+  return {
+    action,
+    ...targetStatus ? { targetStatus } : {},
+    advisory: true,
+    ticketId: evidence.ticket.id,
+    // Null here by construction: only a store can compute a document-inclusive
+    // revision, and core never touches one. `reconcileTicket` stamps it.
+    revision: null
+  };
 }
 function reconcileEvidence(input) {
   const evidence = stableEvidence(input);
@@ -43284,7 +43427,7 @@ function reconcileEvidence(input) {
     findings.push(finding("CLAIM_WITHOUT_RECORDED_WORKSPACE", "warning", "the ticket claim has no recorded workspace; reconciliation preserves the claim and recommends no cleanup"));
   }
   if (evidence.claim.state === "expired") {
-    findings.push(finding("CLAIM_EXPIRED", "warning", "the ticket claim has expired; transfer is an operator/controller decision (take_ticket action transfer) and reconciliation never releases it"));
+    findings.push(finding("CLAIM_EXPIRED", "warning", "the ticket claim has expired; transfer is an operator/controller decision (take_ticket action transfer, or an explicit apply_reconciliation of RECOVER_EXPIRED_CLAIM) and reconciliation never releases it or its workspace"));
   }
   if (checksNotGreen) {
     findings.push(finding("REQUIRED_CHECKS_NOT_GREEN", "warning", "required checks are failing or pending on the selected pull request"));
@@ -43296,16 +43439,19 @@ function reconcileEvidence(input) {
         return none();
       }
       findings.push(finding("MERGED_REVIEW", "info", "the pull request is merged while the ticket remains in Review"));
-      return { evidence, findings, recommendation: recommend("MOVE_TO_VERIFYING", "verifying") };
+      return { evidence, findings, recommendation: recommend(evidence, "MOVE_TO_VERIFYING", "verifying") };
     }
     if (evidence.pullRequest.state === "closed-unmerged") {
       findings.push(finding("CLOSED_UNMERGED_REVIEW", "warning", "the review pull request closed without merge; return to Implementing for an explicit next decision"));
-      return { evidence, findings, recommendation: recommend("MOVE_TO_IMPLEMENTING", "implementing") };
+      return { evidence, findings, recommendation: recommend(evidence, "MOVE_TO_IMPLEMENTING", "implementing") };
     }
     if (evidence.pullRequest.state === "absent" && !hasClaim) {
       findings.push(finding("REVIEW_WITHOUT_PR_OR_WORKER", "warning", "the ticket is in Review without a pull request or active claim; return to Implementing"));
-      return { evidence, findings, recommendation: recommend("MOVE_TO_IMPLEMENTING", "implementing") };
+      return { evidence, findings, recommendation: recommend(evidence, "MOVE_TO_IMPLEMENTING", "implementing") };
     }
+  }
+  if (evidence.claim.state === "expired" && evidence.ticket.status !== "done" && (evidence.workspace.state === "clean" || evidence.workspace.state === "dirty" || evidence.workspace.state === "missing") && (evidence.workspace.claimIdentity === "matches-claim" || evidence.workspace.claimIdentity === "not-applicable")) {
+    return { evidence, findings, recommendation: recommend(evidence, "RECOVER_EXPIRED_CLAIM") };
   }
   if (dirtyWorkspace || missingWorkspace || unrecordedWorkspace || checksNotGreen) return none();
   if (evidence.ticket.status === "verifying" && !evidence.pullRequest.mergeSha) {
@@ -43323,16 +43469,28 @@ function reconcileEvidence(input) {
         return none();
       }
       findings.push(finding("PASS_PROOF_STILL_VERIFYING", "info", "a PASS proof is present for the merged pull request while the ticket remains Verifying"));
-      return { evidence, findings, recommendation: recommend("MOVE_TO_DONE", "done") };
+      return { evidence, findings, recommendation: recommend(evidence, "MOVE_TO_DONE", "done") };
     }
     if (evidence.proof.state === "fail") {
-      findings.push(finding("FAILED_VERIFICATION_REQUIRES_DISPOSITION", "warning", "verification failed; preserve the proof and route the ticket through its recorded implementation, plan or terminal disposition"));
-      return none();
+      switch (evidence.proof.failureClass ?? "inconclusive") {
+        case "implementation":
+          findings.push(finding("VERIFICATION_FAILED_IMPLEMENTATION", "warning", "verification failed against the plan and governing docs; the proof is preserved and the ticket returns to Implementing"));
+          return { evidence, findings, recommendation: recommend(evidence, "ROUTE_VERIFICATION_FAILURE", "implementing") };
+        case "plan":
+          findings.push(finding("VERIFICATION_FAILED_PLAN", "warning", "verification failed because the plan is what is wrong; the proof is preserved and the ticket returns to Preparing"));
+          return { evidence, findings, recommendation: recommend(evidence, "ROUTE_VERIFICATION_FAILURE", "preparing") };
+        case "transient":
+          findings.push(finding("VERIFICATION_TRANSIENT_RETRY", "warning", "verification failed on the environment rather than the change; rerun the failed check and retain both attempts \u2014 the ticket stays in Verifying and reconciliation recommends no move"));
+          return none();
+        default:
+          findings.push(finding("VERIFICATION_INCONCLUSIVE", "warning", "verification did not distinguish an implementation, plan or transient failure; the ticket stays in Verifying until the proof names a class"));
+          return none();
+      }
     }
   }
   if (evidence.ticket.status === "done" && hasClaim && evidence.workspace.state === "clean" && evidence.workspace.claimIdentity === "matches-claim") {
     findings.push(finding("CLEAN_TERMINAL_CLAIM", "info", "a completed ticket still has a clean recorded claim; releasing it belongs to closeout"));
-    return { evidence, findings, recommendation: recommend("RELEASE_CLEAN_TERMINAL_CLAIM") };
+    return { evidence, findings, recommendation: recommend(evidence, "RELEASE_CLEAN_TERMINAL_CLAIM") };
   }
   if (evidence.ticket.status === "done" && hasClaim && evidence.workspace.state === "clean") {
     findings.push(finding("TERMINAL_CLAIM_IDENTITY_UNVERIFIED", "warning", "the terminal workspace is clean but does not prove the recorded repository and branch identity; reconciliation preserves the claim"));
@@ -44601,6 +44759,38 @@ var import_node_path6 = __toESM(require("path"), 1);
 var import_node_util3 = require("util");
 var import_gray_matter4 = __toESM(require_gray_matter(), 1);
 
+// src/errors.ts
+var LEASE_CONFLICT_PREFIXES = ["LEASE_LIVE:", "CLAIM_LIVE:", "CLAIM_NOT_OWNED:", "WORKSPACE_OCCUPIED:", "RECOVERY_REFUSED:", "LEASE_ID_REQUIRED:", "LEASE_REVISION_REQUIRED:", "BATCH_INVALID:", "BATCH_FROZEN:", "BATCH_WORKSPACE_MISMATCH:", "BATCH_ACTIVE:"];
+var KanmerError = class extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+    this.name = "KanmerError";
+  }
+  code;
+};
+function classifiedCode(message) {
+  if (message.startsWith("Conflict:")) return "REVISION_CONFLICT";
+  if (message.startsWith("LEASE_EXPIRED:")) return "LEASE_EXPIRED";
+  if (LEASE_CONFLICT_PREFIXES.some((prefix) => message.startsWith(prefix))) return "LEASE_CONFLICT";
+  if (/\b(?:entering|leaving)\b[^:\n]*\brequires\b/i.test(message) || /\bcannot move\b.*\bcrosses\b/i.test(message)) return "GATE_BLOCKED";
+  return void 0;
+}
+function failCoded(error2, project) {
+  const message = error2 instanceof Error ? error2.message : String(error2);
+  const code = error2 instanceof KanmerError ? error2.code : classifiedCode(message);
+  const text = message.startsWith("Conflict:") ? message : `Error: ${message}`;
+  const structured = {
+    ...code ? { error: { code, message } } : {},
+    ...project ? { project } : {}
+  };
+  return {
+    content: [{ type: "text", text }],
+    isError: true,
+    ...Object.keys(structured).length ? { structuredContent: structured } : {}
+  };
+}
+
 // src/git-reachability.mjs
 var import_node_child_process2 = require("child_process");
 var import_node_util2 = require("util");
@@ -44660,6 +44850,11 @@ function validTimestamp(value) {
   const text = value instanceof Date ? value.toISOString() : value;
   return typeof text === "string" && text.trim().length > 0 && !Number.isNaN(Date.parse(text));
 }
+var FAILURE_CLASSES = ["implementation", "plan", "transient", "inconclusive"];
+function failureClassOf(raw) {
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  return FAILURE_CLASSES.includes(value) ? value : "inconclusive";
+}
 function proofEvidence(raw) {
   if (!raw) return { state: "absent" };
   try {
@@ -44668,7 +44863,7 @@ function proofEvidence(raw) {
     const result = parsed.result.trim().toUpperCase();
     const mergedSha = parsed.merged_sha.trim();
     if (result === "PASS") return { state: "pass", mergedSha };
-    if (result === "FAIL") return { state: "fail", mergedSha };
+    if (result === "FAIL") return { state: "fail", mergedSha, failureClass: failureClassOf(parsed.failure_class) };
     return { state: "invalid" };
   } catch {
     return { state: "invalid" };
@@ -44866,39 +45061,53 @@ function leaseRecoverySummary(evidence) {
   };
 }
 async function reconcileTicket(store2, id, run, options2) {
-  return reconcileEvidence(await collectReconciliationEvidence(store2, id, run, options2));
-}
-
-// src/errors.ts
-var LEASE_CONFLICT_PREFIXES = ["LEASE_LIVE:", "CLAIM_LIVE:", "CLAIM_NOT_OWNED:", "WORKSPACE_OCCUPIED:", "RECOVERY_REFUSED:", "LEASE_ID_REQUIRED:", "LEASE_REVISION_REQUIRED:", "BATCH_INVALID:", "BATCH_FROZEN:", "BATCH_WORKSPACE_MISMATCH:", "BATCH_ACTIVE:"];
-var KanmerError = class extends Error {
-  constructor(code, message) {
-    super(message);
-    this.code = code;
-    this.name = "KanmerError";
-  }
-  code;
-};
-function classifiedCode(message) {
-  if (message.startsWith("Conflict:")) return "REVISION_CONFLICT";
-  if (message.startsWith("LEASE_EXPIRED:")) return "LEASE_EXPIRED";
-  if (LEASE_CONFLICT_PREFIXES.some((prefix) => message.startsWith(prefix))) return "LEASE_CONFLICT";
-  if (/\b(?:entering|leaving)\b[^:\n]*\brequires\b/i.test(message) || /\bcannot move\b.*\bcrosses\b/i.test(message)) return "GATE_BLOCKED";
-  return void 0;
-}
-function failCoded(error2, project) {
-  const message = error2 instanceof Error ? error2.message : String(error2);
-  const code = error2 instanceof KanmerError ? error2.code : classifiedCode(message);
-  const text = message.startsWith("Conflict:") ? message : `Error: ${message}`;
-  const structured = {
-    ...code ? { error: { code, message } } : {},
-    ...project ? { project } : {}
-  };
+  const result = reconcileEvidence(await collectReconciliationEvidence(store2, id, run, options2));
+  if (!result.recommendation) return result;
+  const revision = await store2.getRevision(id);
   return {
-    content: [{ type: "text", text }],
-    isError: true,
-    ...Object.keys(structured).length ? { structuredContent: structured } : {}
+    ...result,
+    recommendation: { ...result.recommendation, ticketId: id, revision: revision?.revision ?? null }
   };
+}
+async function applyReconciliation(store2, input, run, options2) {
+  const result = await reconcileTicket(store2, input.id, run, options2);
+  const recommendation = result.recommendation;
+  if (!recommendation) {
+    throw new KanmerError(
+      "RECONCILIATION_INCONCLUSIVE",
+      `RECONCILIATION_INCONCLUSIVE: "${input.id}" has no current reconciliation recommendation (${result.findings.map((entry) => entry.code).join(", ") || "no findings"}); there is nothing to apply.`
+    );
+  }
+  if (recommendation.revision === null) {
+    throw new KanmerError(
+      "RECONCILIATION_INCONCLUSIVE",
+      `RECONCILIATION_INCONCLUSIVE: "${input.id}" is a legacy-layout ticket with no document-inclusive revision; it cannot be reconciled safely. Migrate the board first.`
+    );
+  }
+  if (recommendation.revision !== input.expectedRevision) {
+    throw new KanmerError(
+      "REVISION_CONFLICT",
+      `Conflict: "${input.id}" revision changed since the recommendation was read (revision is now ${recommendation.revision}, you expected ${input.expectedRevision}). Re-run reconcile_ticket and apply the recommendation it returns.`
+    );
+  }
+  const current = await store2.getRevision(input.id);
+  const item = await store2.getItem(input.id);
+  if (current?.revision !== recommendation.revision || item?.status !== result.evidence.ticket.status) {
+    throw new KanmerError(
+      "RECONCILIATION_DRIFT",
+      `RECONCILIATION_DRIFT: "${input.id}" changed while its evidence was being collected (revision ${recommendation.revision} \u2192 ${current?.revision ?? "(none)"}, stage ${result.evidence.ticket.status} \u2192 ${item?.status ?? "(none)"}); the ${recommendation.action} recommendation no longer describes it. Re-run reconcile_ticket.`
+    );
+  }
+  const applied = await store2.applyReconciliation(input.id, {
+    action: recommendation.action,
+    ...recommendation.targetStatus !== void 0 ? { targetStatus: recommendation.targetStatus } : {},
+    expectedRevision: input.expectedRevision,
+    ...input.reason !== void 0 ? { reason: input.reason } : {},
+    ...input.controller !== void 0 ? { controller: input.controller } : {},
+    ...input.actor !== void 0 ? { actor: input.actor } : {},
+    recovery: leaseRecoverySummary(result.evidence)
+  });
+  return { ...applied, result };
 }
 
 // src/dispatch-policy.ts
@@ -46346,6 +46555,32 @@ function createKanmerMcpServer(policy = "local-stdio") {
       annotations: { readOnlyHint: true, openWorldHint: true }
     },
     guard(async ({ id }) => ok(await reconcileTicket(store, id)))
+  );
+  server.registerTool(
+    "apply_reconciliation",
+    {
+      title: "Apply a reconciliation recommendation",
+      description: "Apply the ONE recovery action reconcile_ticket currently recommends for a ticket, and only while it is still current (FRD-028). The action is never supplied by the caller: this re-collects and re-classifies through the same read-only inspector, then applies what the fresh evidence supports. `expected_revision` is the `revision` from the recommendation you are applying \u2014 the document-inclusive revision, so a proof, plan or review record rewritten since is a structured REVISION_CONFLICT and nothing is written. No recommendation at all (a `transient` or `inconclusive` verification failure, inconclusive evidence, or the protected board worktree) is a normal RECONCILIATION_INCONCLUSIVE refusal, not an error. The action set is exhaustive and composed only of existing verbs: MOVE_TO_VERIFYING (merged Review), MOVE_TO_DONE (PASS proof in Verifying), MOVE_TO_IMPLEMENTING (closed-unmerged or worker-less Review), ROUTE_VERIFICATION_FAILURE (a FAIL proof's `failure_class`: implementation \u2192 Implementing, plan \u2192 Preparing), RELEASE_CLEAN_TERMINAL_CLAIM (a Done ticket's clean, identity-matched claim) and RECOVER_EXPIRED_CLAIM (transfer an expired lease, preserving branch, worktree and any dirty work). Authority is not widened: a backward move is judged by the existing contract, so Review \u2192 Implementing still needs a needs-changes attestation bound to this ticket's PR or a `reason` beginning `operator:` (REVIEW_RETURN_NEEDS_ATTESTATION otherwise), and a live lease still refuses with CLAIM_LIVE. Every applied action appends one durable line to `## Transitions` in scratch/execution.md naming the action, stage or controller change and the revision. It never deletes a worktree or branch, cleans or force-pushes a workspace, bypasses a required check, adds a stage, or mutates the Kanmer board worktree \u2014 which is refused as a target in every path.",
+      inputSchema: {
+        id: external_exports.string().describe("Existing ticket id"),
+        expected_revision: external_exports.string().describe(
+          "Required. The `revision` carried by the recommendation you are applying (from reconcile_ticket). Refused with REVISION_CONFLICT if the ticket or ANY of its pipeline documents changed since; nothing is written."
+        ),
+        reason: external_exports.string().optional().describe(
+          "Reason for a backward move, judged by the ordinary backward-move contract. Required for Review \u2192 Implementing unless a needs-changes attestation is bound to this ticket's PR, and only a reason beginning `operator:` overrides that. A verification-failure route defaults to `proof FAIL <class>: \u2026` when omitted."
+        ),
+        controller: external_exports.string().optional().describe("Durable controller identity to record when recovering an expired claim; defaults to the calling client.")
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }
+    },
+    write(
+      async ({ id, expected_revision, reason, controller }) => ok(await applyReconciliation(store, {
+        id,
+        expectedRevision: expected_revision,
+        ...reason !== void 0 ? { reason } : {},
+        ...controller !== void 0 ? { controller } : {}
+      }))
+    )
   );
   server.registerTool(
     "get_execution_packet",
